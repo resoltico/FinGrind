@@ -33,7 +33,8 @@ class FinGrindCliArtifactSurfaceContractTest extends CliPublicDocsContractSuppor
     Path textBookKeyFilePath = tempDirectory.resolve("artifacts").resolve("entity-text.book-key");
 
     JsonNode jsonEnvelope =
-        runJsonCommand("generate-book-key-file", "--book-key-file", jsonBookKeyFilePath.toString());
+        runJsonCommand(
+            "generate-book-key-file", "--new-book-key-file", jsonBookKeyFilePath.toString());
     assertSuccessEnvelope(jsonEnvelope);
     assertArtifactList(
         jsonEnvelope,
@@ -44,7 +45,7 @@ class FinGrindCliArtifactSurfaceContractTest extends CliPublicDocsContractSuppor
 
     String textOutput =
         runPlainCommand(
-            "generate-book-key-file", "--book-key-file", textBookKeyFilePath.toString());
+            "generate-book-key-file", "--new-book-key-file", textBookKeyFilePath.toString());
     assertTrue(textOutput.contains("Book Key File Generated"), textOutput);
     assertTrue(textOutput.contains("entity-text.book-key"), textOutput);
     assertTrue(!textOutput.contains("\"status\""), textOutput);
@@ -57,7 +58,7 @@ class FinGrindCliArtifactSurfaceContractTest extends CliPublicDocsContractSuppor
     Path root = tempDirectory.resolve("workflow-artifacts-json");
     Path bookFilePath = root.resolve("books").resolve("entity.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
-    Path replacementBookKeyFilePath = writeNamedBookKey("json-replacement.key", "replacement-key");
+    Path replacementBookKeyFilePath = root.resolve("json-replacement.key");
     Path backupBookFilePath = root.resolve("backup").resolve("entity.backup.sqlite");
     Path backupBookKeyFilePath = root.resolve("backup").resolve("entity.backup.key");
     Path restoredBookFilePath = root.resolve("restored").resolve("entity.sqlite");
@@ -96,7 +97,7 @@ class FinGrindCliArtifactSurfaceContractTest extends CliPublicDocsContractSuppor
             bookKeyFilePath.toString(),
             "--backup-file",
             backupBookFilePath.toString(),
-            "--backup-key-file",
+            "--new-backup-key-file",
             backupBookKeyFilePath.toString());
     assertSuccessEnvelope(backupEnvelope);
     assertArtifactList(
@@ -117,7 +118,7 @@ class FinGrindCliArtifactSurfaceContractTest extends CliPublicDocsContractSuppor
             "restore-book",
             "--book-file",
             restoredBookFilePath.toString(),
-            "--book-key-file",
+            "--new-book-key-file",
             restoredBookKeyFilePath.toString(),
             "--backup-file",
             backupBookFilePath.toString(),
@@ -132,7 +133,7 @@ class FinGrindCliArtifactSurfaceContractTest extends CliPublicDocsContractSuppor
                 ProtocolArtifactOutput.bookKeyFileFormat(), restoredBookKeyFilePath)));
     assertTrue(restoreEnvelope.path("payload").path("bookKeyFile").isMissingNode());
     assertEquals(
-        CliPublicPaths.redactedValue(hint(restoredBookKeyFilePath)),
+        CliPublicPaths.absoluteValue(hint(restoredBookKeyFilePath)),
         restoreEnvelope.path("payload").path("bookKeyFilePath").asText());
 
     RecordingWorkflow inspectRollbackWorkflow = contractWorkflow();
@@ -200,7 +201,7 @@ class FinGrindCliArtifactSurfaceContractTest extends CliPublicDocsContractSuppor
     Path root = tempDirectory.resolve("workflow-artifacts-text");
     Path bookFilePath = root.resolve("books").resolve("entity.sqlite");
     Path bookKeyFilePath = writeBookKey(bookFilePath);
-    Path replacementBookKeyFilePath = writeNamedBookKey("text-replacement.key", "replacement-key");
+    Path replacementBookKeyFilePath = root.resolve("text-replacement.key");
     Path backupBookFilePath = root.resolve("backup").resolve("entity.backup.sqlite");
     Path backupBookKeyFilePath = root.resolve("backup").resolve("entity.backup.key");
     Path restoredBookFilePath = root.resolve("restored").resolve("entity.sqlite");
@@ -235,7 +236,7 @@ class FinGrindCliArtifactSurfaceContractTest extends CliPublicDocsContractSuppor
             bookKeyFilePath.toString(),
             "--backup-file",
             backupBookFilePath.toString(),
-            "--backup-key-file",
+            "--new-backup-key-file",
             backupBookKeyFilePath.toString());
     assertTrue(backupText.contains("Book Backed Up"), backupText);
     assertTrue(backupText.contains("entity.backup.sqlite"), backupText);
@@ -251,7 +252,7 @@ class FinGrindCliArtifactSurfaceContractTest extends CliPublicDocsContractSuppor
             "restore-book",
             "--book-file",
             restoredBookFilePath.toString(),
-            "--book-key-file",
+            "--new-book-key-file",
             restoredBookKeyFilePath.toString(),
             "--backup-file",
             backupBookFilePath.toString(),
@@ -389,7 +390,7 @@ class FinGrindCliArtifactSurfaceContractTest extends CliPublicDocsContractSuppor
       JsonNode actualArtifact = envelope.path("artifacts").get(index);
       assertEquals(expectedArtifact.format(), actualArtifact.path("format").stringValue());
       assertEquals(
-          CliPublicPaths.redactedValue(expectedArtifact.path()),
+          CliPublicPaths.absoluteValue(expectedArtifact.path()),
           actualArtifact.path("path").stringValue());
     }
   }

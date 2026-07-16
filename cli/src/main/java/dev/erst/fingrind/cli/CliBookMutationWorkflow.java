@@ -1,5 +1,7 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.AmendAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.AmendAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
@@ -9,6 +11,8 @@ import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepCommand;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.RetireAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.RetireAccountResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
@@ -21,6 +25,14 @@ interface CliBookMutationWorkflow {
   /** Declares one new account into the selected protected book. */
   ContractDecision<DeclareAccountResult> declareAccount(
       BookAccess bookAccess, DeclareAccountCommand command);
+
+  /** Replaces one never-posted and unreferenced account definition. */
+  ContractDecision<AmendAccountResult> amendAccount(
+      BookAccess bookAccess, AmendAccountCommand command);
+
+  /** Retires one zero-balance account from ordinary authored posting use. */
+  ContractDecision<RetireAccountResult> retireAccount(
+      BookAccess bookAccess, RetireAccountCommand command);
 
   /** Declares or updates one owned tax registration in the selected protected book. */
   ContractDecision<DeclareTaxRegistrationResult> declareTaxRegistration(

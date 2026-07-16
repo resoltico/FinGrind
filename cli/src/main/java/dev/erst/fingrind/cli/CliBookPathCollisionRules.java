@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import java.nio.file.Path;
@@ -15,112 +16,117 @@ final class CliBookPathCollisionRules {
     requireDistinct(
         bookFilePath,
         keyFilePath(passphraseSource),
-        ProtocolOptions.BOOK_KEY_FILE,
-        ProtocolOptions.BOOK_FILE,
-        ProtocolOptions.BOOK_KEY_FILE);
+        ProtocolBookAccessOptions.BOOK_KEY_FILE,
+        ProtocolBookAccessOptions.BOOK_FILE,
+        ProtocolBookAccessOptions.BOOK_KEY_FILE);
     if (requestFile != null) {
       requireDistinct(
           bookFilePath,
           requestFile,
-          ProtocolOptions.REQUEST_FILE,
-          ProtocolOptions.BOOK_FILE,
-          ProtocolOptions.REQUEST_FILE);
+          ProtocolOptions.Request.FILE,
+          ProtocolBookAccessOptions.BOOK_FILE,
+          ProtocolOptions.Request.FILE);
       keyFilePath(passphraseSource)
           .ifPresent(
               keyFilePath ->
                   requireDistinct(
                       keyFilePath,
                       requestFile,
-                      ProtocolOptions.BOOK_KEY_FILE,
-                      ProtocolOptions.BOOK_KEY_FILE,
-                      ProtocolOptions.REQUEST_FILE));
+                      ProtocolBookAccessOptions.BOOK_KEY_FILE,
+                      ProtocolBookAccessOptions.BOOK_KEY_FILE,
+                      ProtocolOptions.Request.FILE));
     }
-  }
-
-  static void validateDistinctRekeyPaths(
-      Path bookFilePath,
-      BookAccess.PassphraseSource currentPassphraseSource,
-      BookAccess.PassphraseSource replacementPassphraseSource) {
-    validateDistinctPaths(bookFilePath, currentPassphraseSource, null);
-    validateDistinctPaths(bookFilePath, replacementPassphraseSource, null);
-    requireDistinct(
-        keyFilePath(currentPassphraseSource),
-        keyFilePath(replacementPassphraseSource),
-        ProtocolOptions.NEW_BOOK_KEY_FILE,
-        ProtocolOptions.BOOK_KEY_FILE,
-        ProtocolOptions.NEW_BOOK_KEY_FILE);
   }
 
   static void validateDistinctBackupPaths(
       Path bookFilePath,
       BookAccess.PassphraseSource passphraseSource,
       Path backupFilePath,
-      Path backupBookKeyFilePath) {
+      Path newBackupKeyFilePath) {
     validateDistinctPaths(bookFilePath, passphraseSource, null);
     requireDistinct(
         bookFilePath,
         backupFilePath,
-        ProtocolOptions.BACKUP_FILE,
-        ProtocolOptions.BOOK_FILE,
-        ProtocolOptions.BACKUP_FILE);
+        ProtocolBookAccessOptions.BACKUP_FILE,
+        ProtocolBookAccessOptions.BOOK_FILE,
+        ProtocolBookAccessOptions.BACKUP_FILE);
     requireDistinct(
         backupFilePath,
-        backupBookKeyFilePath,
-        ProtocolOptions.BACKUP_KEY_FILE,
-        ProtocolOptions.BACKUP_FILE,
-        ProtocolOptions.BACKUP_KEY_FILE);
+        newBackupKeyFilePath,
+        ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE,
+        ProtocolBookAccessOptions.BACKUP_FILE,
+        ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE);
+    requireGeneratedSecretTargetSeparateFromExistingSource(
+        bookFilePath,
+        newBackupKeyFilePath,
+        ProtocolBookAccessOptions.BOOK_FILE,
+        ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE);
     requireDistinct(
         keyFilePath(passphraseSource),
         backupFilePath,
-        ProtocolOptions.BACKUP_FILE,
-        ProtocolOptions.BOOK_KEY_FILE,
-        ProtocolOptions.BACKUP_FILE);
-    requireDistinct(
+        ProtocolBookAccessOptions.BACKUP_FILE,
+        ProtocolBookAccessOptions.BOOK_KEY_FILE,
+        ProtocolBookAccessOptions.BACKUP_FILE);
+    requireGeneratedSecretTargetSeparateFromExistingSource(
         keyFilePath(passphraseSource),
-        backupBookKeyFilePath,
-        ProtocolOptions.BACKUP_KEY_FILE,
-        ProtocolOptions.BOOK_KEY_FILE,
-        ProtocolOptions.BACKUP_KEY_FILE);
+        newBackupKeyFilePath,
+        ProtocolBookAccessOptions.BOOK_KEY_FILE,
+        ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE);
+  }
+
+  static void validateDistinctRekeyTarget(
+      Path bookFilePath,
+      BookAccess.PassphraseSource currentPassphraseSource,
+      Path newBookKeyFilePath) {
+    validateDistinctPaths(bookFilePath, currentPassphraseSource, null);
+    requireGeneratedSecretTargetSeparateFromExistingSource(
+        bookFilePath,
+        newBookKeyFilePath,
+        ProtocolBookAccessOptions.BOOK_FILE,
+        ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE);
+    requireGeneratedSecretTargetSeparateFromExistingSource(
+        keyFilePath(currentPassphraseSource),
+        newBookKeyFilePath,
+        ProtocolBookAccessOptions.BOOK_KEY_FILE,
+        ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE);
   }
 
   static void validateDistinctRestorePaths(
-      Path bookFilePath, Path bookKeyFilePath, Path backupFilePath, Path backupBookKeyFilePath) {
+      Path bookFilePath, Path newBookKeyFilePath, Path backupFilePath, Path backupKeyFilePath) {
     requireDistinct(
         bookFilePath,
-        bookKeyFilePath,
-        ProtocolOptions.BOOK_KEY_FILE,
-        ProtocolOptions.BOOK_FILE,
-        ProtocolOptions.BOOK_KEY_FILE);
+        newBookKeyFilePath,
+        ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
+        ProtocolBookAccessOptions.BOOK_FILE,
+        ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE);
     requireDistinct(
         bookFilePath,
         backupFilePath,
-        ProtocolOptions.BACKUP_FILE,
-        ProtocolOptions.BOOK_FILE,
-        ProtocolOptions.BACKUP_FILE);
+        ProtocolBookAccessOptions.BACKUP_FILE,
+        ProtocolBookAccessOptions.BOOK_FILE,
+        ProtocolBookAccessOptions.BACKUP_FILE);
     requireDistinct(
         bookFilePath,
-        backupBookKeyFilePath,
-        ProtocolOptions.BACKUP_KEY_FILE,
-        ProtocolOptions.BOOK_FILE,
-        ProtocolOptions.BACKUP_KEY_FILE);
-    requireDistinct(
-        bookKeyFilePath,
+        backupKeyFilePath,
+        ProtocolBookAccessOptions.BACKUP_KEY_FILE,
+        ProtocolBookAccessOptions.BOOK_FILE,
+        ProtocolBookAccessOptions.BACKUP_KEY_FILE);
+    requireGeneratedSecretTargetSeparateFromExistingSource(
         backupFilePath,
-        ProtocolOptions.BACKUP_FILE,
-        ProtocolOptions.BOOK_KEY_FILE,
-        ProtocolOptions.BACKUP_FILE);
-    requireDistinct(
-        bookKeyFilePath,
-        backupBookKeyFilePath,
-        ProtocolOptions.BACKUP_KEY_FILE,
-        ProtocolOptions.BOOK_KEY_FILE,
-        ProtocolOptions.BACKUP_KEY_FILE);
+        newBookKeyFilePath,
+        ProtocolBookAccessOptions.BACKUP_FILE,
+        ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE);
+    requireGeneratedSecretTargetSeparateFromExistingSource(
+        backupKeyFilePath,
+        newBookKeyFilePath,
+        ProtocolBookAccessOptions.BACKUP_KEY_FILE,
+        ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE);
     requireDistinct(
         backupFilePath,
-        backupBookKeyFilePath,
-        ProtocolOptions.BACKUP_KEY_FILE,
-        ProtocolOptions.BACKUP_FILE,
-        ProtocolOptions.BACKUP_KEY_FILE);
+        backupKeyFilePath,
+        ProtocolBookAccessOptions.BACKUP_KEY_FILE,
+        ProtocolBookAccessOptions.BACKUP_FILE,
+        ProtocolBookAccessOptions.BACKUP_KEY_FILE);
   }
 
   static Optional<Path> keyFilePath(BookAccess.PassphraseSource passphraseSource) {
@@ -129,18 +135,6 @@ final class CliBookPathCollisionRules {
       case BookAccess.PassphraseSource.StandardInput _ -> Optional.empty();
       case BookAccess.PassphraseSource.InteractivePrompt _ -> Optional.empty();
     };
-  }
-
-  private static void requireDistinct(
-      Optional<Path> leftPath,
-      Optional<Path> rightPath,
-      String errorOption,
-      String leftOption,
-      String rightOption) {
-    if (leftPath.isPresent() && rightPath.isPresent()) {
-      requireDistinct(
-          leftPath.orElseThrow(), rightPath.orElseThrow(), errorOption, leftOption, rightOption);
-    }
   }
 
   private static void requireDistinct(
@@ -169,5 +163,27 @@ final class CliBookPathCollisionRules {
       throw CliArgumentValueParser.invalid(
           errorOption, leftOption + " and " + rightOption + " must not point to the same path.");
     }
+  }
+
+  private static void requireGeneratedSecretTargetSeparateFromExistingSource(
+      Path existingSourcePath,
+      Path generatedSecretTargetPath,
+      String sourceOption,
+      String targetOption) {
+    if (existingSourcePath.toAbsolutePath().equals(generatedSecretTargetPath.toAbsolutePath())) {
+      throw CliGeneratedSecretTargetFailures.occupiedByRequiredSource(
+          targetOption, sourceOption, existingSourcePath);
+    }
+  }
+
+  private static void requireGeneratedSecretTargetSeparateFromExistingSource(
+      Optional<Path> existingSourcePath,
+      Path generatedSecretTargetPath,
+      String sourceOption,
+      String targetOption) {
+    existingSourcePath.ifPresent(
+        path ->
+            requireGeneratedSecretTargetSeparateFromExistingSource(
+                path, generatedSecretTargetPath, sourceOption, targetOption));
   }
 }

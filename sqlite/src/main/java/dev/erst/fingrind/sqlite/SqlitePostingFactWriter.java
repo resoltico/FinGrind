@@ -32,7 +32,7 @@ final class SqlitePostingFactWriter {
       statement.bindText(1, postingFact.postingId().value());
       statement.bindText(2, postingFact.postingKind().wireValue());
       statement.bindText(3, postingFact.postingOriginKind().wireValue());
-      bindOriginatingEntry(statement, retainedOriginatingEntry);
+      bindOriginatingEntry(statement, retainedOriginatingEntry, resolvedOrRetainedOriginatingEntry);
       statement.bindText(
           13, CanonicalTemporalText.formatLocalDate(postingFact.journalEntry().effectiveDate()));
       statement.bindText(
@@ -173,8 +173,11 @@ final class SqlitePostingFactWriter {
   }
 
   private static void bindOriginatingEntry(
-      SqliteNativeStatement statement, @Nullable BookkeepingEntry originatingEntry) {
-    SqliteOriginatingEntryFactMapper.bindOriginatingEntry(statement, originatingEntry);
+      SqliteNativeStatement statement,
+      @Nullable BookkeepingEntry retainedOriginatingEntry,
+      @Nullable BookkeepingEntry resolvedOriginatingEntry) {
+    SqliteOriginatingEntryFactMapper.bindOriginatingEntry(
+        statement, retainedOriginatingEntry, resolvedOriginatingEntry);
   }
 
   private static void bindOptionalText(

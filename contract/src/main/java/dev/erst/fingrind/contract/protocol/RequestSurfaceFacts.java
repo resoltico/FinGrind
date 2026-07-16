@@ -72,6 +72,13 @@ public record RequestSurfaceFacts(
     return temporalScope(archetype);
   }
 
+  /** Returns whether the command has published temporal-scope facts. */
+  public boolean hasTemporalScopeFor(OperationId operationId) {
+    OperationId requiredOperationId = Objects.requireNonNull(operationId, "operationId");
+    return commandTemporalScopes.stream()
+        .anyMatch(facts -> facts.operationId() == requiredOperationId);
+  }
+
   /** Canonical per-entry-kind posting request facts. */
   public record BookkeepingEntryKindFacts(
       BookkeepingEntryKind entryKind,

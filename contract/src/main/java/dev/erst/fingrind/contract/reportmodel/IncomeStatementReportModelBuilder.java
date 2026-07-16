@@ -79,7 +79,8 @@ public final class IncomeStatementReportModelBuilder
     }
     return new ReportModel(
         dev.erst.fingrind.contract.protocol.OperationId.INCOME_STATEMENT.wireName(),
-        "Income Statement",
+        ReportModelSupport.reportTitle(
+            dev.erst.fingrind.contract.protocol.OperationId.INCOME_STATEMENT),
         ReportModel.Orientation.LANDSCAPE,
         ReportModelSupport.context(
             report.bookIdentity(),

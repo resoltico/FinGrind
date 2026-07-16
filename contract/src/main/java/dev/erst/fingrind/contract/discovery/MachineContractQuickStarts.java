@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
@@ -32,10 +33,11 @@ final class MachineContractQuickStarts {
         List.of(
             WorkflowStepDescriptor.note(introNote(surface)),
             WorkflowStepDescriptor.command(
-                "%s %s --book-key-file %s"
+                "%s %s %s %s"
                     .formatted(
                         launcherCommand(surface),
                         ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE),
+                        ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
                         paths.bookKeyFile())),
             WorkflowStepDescriptor.command(
                 "%s %s --book-file %s --book-key-file %s --entity-name \"Acme Studio\" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01"

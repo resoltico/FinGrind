@@ -2,7 +2,6 @@ package dev.erst.fingrind.sqlite;
 
 import static java.lang.System.Logger.Level.WARNING;
 
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -59,7 +58,7 @@ final class SqliteRekeyRollbackFile {
     } catch (IOException exception) {
       throw new SqliteStorageFailureException(
           "Failed to restore the FinGrind SQLite book from the rekey rollback copy at "
-              + publicPathHint(path)
+              + absolutePath(path)
               + ".",
           exception);
     }
@@ -141,7 +140,7 @@ final class SqliteRekeyRollbackFile {
     if (parentDirectory == null) {
       throw new IllegalArgumentException(
           "The FinGrind SQLite book path must resolve to a file beneath a parent directory: "
-              + PublicPathHint.fromPath(normalizedBookPath).value());
+              + SqliteMachinePaths.absoluteValue(normalizedBookPath));
     }
     return parentDirectory;
   }
@@ -162,10 +161,10 @@ final class SqliteRekeyRollbackFile {
     LOGGER.log(
         WARNING,
         "Found stale FinGrind SQLite rekey rollback artifacts beside "
-            + publicPathHint(normalizedBookPath)
+            + absolutePath(normalizedBookPath)
             + ": "
             + rollbackArtifacts.stream()
-                .map(SqliteRekeyRollbackFile::publicPathHint)
+                .map(SqliteRekeyRollbackFile::absolutePath)
                 .collect(Collectors.joining(", "))
             + ". Inspect these encrypted copies explicitly before deleting them.");
   }
@@ -175,13 +174,13 @@ final class SqliteRekeyRollbackFile {
     LOGGER.log(
         WARNING,
         "Failed to scan for stale FinGrind SQLite rekey rollback artifacts beside "
-            + publicPathHint(normalizedBookPath)
+            + absolutePath(normalizedBookPath)
             + ".",
         exception);
   }
 
-  private static String publicPathHint(Path path) {
-    return PublicPathHint.fromPath(path).value();
+  private static String absolutePath(Path path) {
+    return SqliteMachinePaths.absoluteValue(path);
   }
 
   /** Receives one discovered stale rollback-artifact set for one protected book path. */

@@ -101,6 +101,7 @@ public final class ContractRequestShapes {
       List<RequestFieldDescriptor> topLevelFields,
       List<RequestFieldDescriptor> lineFields,
       List<RequestFieldDescriptor> openingBalanceFields,
+      List<RequestFieldDescriptor> recognitionIntervalFields,
       List<RequestFieldDescriptor> foreignExchangeFields,
       List<RequestFieldDescriptor> quotedRateFields,
       List<RequestFieldDescriptor> taxFields,
@@ -121,6 +122,9 @@ public final class ContractRequestShapes {
       lineFields = ContractDescriptorValidation.copyList(lineFields, "lineFields");
       openingBalanceFields =
           ContractDescriptorValidation.copyList(openingBalanceFields, "openingBalanceFields");
+      recognitionIntervalFields =
+          ContractDescriptorValidation.copyList(
+              recognitionIntervalFields, "recognitionIntervalFields");
       foreignExchangeFields =
           ContractDescriptorValidation.copyList(foreignExchangeFields, "foreignExchangeFields");
       quotedRateFields =

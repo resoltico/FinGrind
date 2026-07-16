@@ -85,12 +85,10 @@ public interface CliAdministrationJsonModels {
     }
   }
 
-  record RekeyBookPayload(String bookFile, String replacementPassphraseSource)
-      implements CliSuccessPayload {
+  record RekeyBookPayload(String bookFile, String newBookKeyFile) implements CliSuccessPayload {
     public RekeyBookPayload {
       bookFile = requireText(bookFile, "bookFile");
-      replacementPassphraseSource =
-          requireText(replacementPassphraseSource, "replacementPassphraseSource");
+      newBookKeyFile = requireText(newBookKeyFile, "newBookKeyFile");
     }
   }
 

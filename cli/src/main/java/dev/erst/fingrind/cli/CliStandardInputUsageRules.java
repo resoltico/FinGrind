@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import java.nio.file.Path;
@@ -12,21 +13,11 @@ final class CliStandardInputUsageRules {
   static void validateStandardInputUsage(
       BookAccess.PassphraseSource passphraseSource, @Nullable Path requestFile) {
     if (requestFile != null
-        && ProtocolOptions.STDIN_TOKEN.equals(requestFile.toString())
+        && ProtocolOptions.Request.STDIN_TOKEN.equals(requestFile.toString())
         && isStandardInput(passphraseSource)) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BOOK_PASSPHRASE_STDIN,
+          ProtocolBookAccessOptions.BOOK_PASSPHRASE_STDIN,
           "Standard input cannot supply both the book passphrase and the request JSON.");
-    }
-  }
-
-  static void validateRekeyStandardInputUsage(
-      BookAccess.PassphraseSource currentPassphraseSource,
-      BookAccess.PassphraseSource replacementPassphraseSource) {
-    if (isStandardInput(currentPassphraseSource) && isStandardInput(replacementPassphraseSource)) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolOptions.NEW_BOOK_PASSPHRASE_STDIN,
-          "Standard input cannot supply both the current and new book passphrases.");
     }
   }
 

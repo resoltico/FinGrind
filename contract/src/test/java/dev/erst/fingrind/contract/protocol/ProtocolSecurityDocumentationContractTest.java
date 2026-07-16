@@ -222,7 +222,7 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractReposito
   private static EnvironmentDescriptor readyEnvironmentDescriptor() {
     return new EnvironmentDescriptor(
         new EnvironmentRuntimeDescriptor(
-            ProtocolCatalog.distribution().bundleRuntimeDistribution(), OutputMode.TEXT, null),
+            ProtocolCatalog.distribution().bundleRuntimeDistribution(), OutputMode.TEXT),
         new EnvironmentPublicationDescriptor(
             ProtocolCatalog.distribution().publicCliDistribution(),
             ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),

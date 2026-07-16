@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.runtime.ContractResponseCatalog;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
@@ -88,8 +89,8 @@ class FinGrindCliNegativeEnvelopeMatrixTest extends CliPublicDocsContractSupport
                 .BookAlreadyInitialized());
     dev.erst.fingrind.contract.bookkeeping.RekeyBookResult.Rejected rekeyRejected =
         new dev.erst.fingrind.contract.bookkeeping.RekeyBookResult.Rejected(
-            new dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection
-                .BookNotInitialized());
+            new dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection
+                .SecretTargetOccupied(hint(paths.bookKeyFilePath())));
     dev.erst.fingrind.contract.bookkeeping.BackupBookResult.Rejected backupRejected =
         new dev.erst.fingrind.contract.bookkeeping.BackupBookResult.Rejected(
             new dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection
@@ -138,7 +139,7 @@ class FinGrindCliNegativeEnvelopeMatrixTest extends CliPublicDocsContractSupport
             openBookKeyFileArguments(paths.bookFilePath(), paths.bookKeyFilePath())),
         rejectionSpec(
             CliAdministrativeExitCodes.exitCodeFor(rekeyRejected),
-            dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection.wireCode(
+            dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection.wireCode(
                 rekeyRejected.rejection()),
             contractWorkflow(
                 contractOpenBookResult(),
@@ -166,7 +167,7 @@ class FinGrindCliNegativeEnvelopeMatrixTest extends CliPublicDocsContractSupport
             paths.bookKeyFilePath().toString(),
             "--backup-file",
             paths.backupBookFilePath().toString(),
-            "--backup-key-file",
+            "--new-backup-key-file",
             paths.backupBookKeyFilePath().toString()),
         rejectionSpec(
             CliAdministrativeExitCodes.exitCodeFor(restoreRejected),
@@ -176,8 +177,8 @@ class FinGrindCliNegativeEnvelopeMatrixTest extends CliPublicDocsContractSupport
             cmd(OperationId.RESTORE_BOOK),
             "--book-file",
             paths.bookFilePath().toString(),
-            "--book-key-file",
-            paths.bookKeyFilePath().toString(),
+            "--new-book-key-file",
+            paths.replacementBookKeyFilePath().toString(),
             "--backup-file",
             paths.backupBookFilePath().toString(),
             "--backup-key-file",
@@ -510,15 +511,15 @@ class FinGrindCliNegativeEnvelopeMatrixTest extends CliPublicDocsContractSupport
             paths.bookKeyFilePath().toString(),
             "--backup-file",
             paths.backupBookFilePath().toString(),
-            "--backup-key-file",
+            "--new-backup-key-file",
             paths.backupBookKeyFilePath().toString()),
         failureSpec(
             cmd(OperationId.RESTORE_BOOK),
             cmd(OperationId.RESTORE_BOOK),
             "--book-file",
             paths.bookFilePath().toString(),
-            "--book-key-file",
-            paths.bookKeyFilePath().toString(),
+            "--new-book-key-file",
+            paths.replacementBookKeyFilePath().toString(),
             "--backup-file",
             paths.backupBookFilePath().toString(),
             "--backup-key-file",
@@ -705,6 +706,9 @@ class FinGrindCliNegativeEnvelopeMatrixTest extends CliPublicDocsContractSupport
     assertEquals("rejected", envelope.path("status").stringValue());
     assertTrue(envelope.path("code").isTextual());
     assertTrue(envelope.path("message").isTextual());
+    assertEquals(
+        ContractResponseCatalog.failureCategoryFor(envelope.path("code").stringValue()).wireValue(),
+        envelope.path("category").stringValue());
     assertTrue(envelope.path("artifacts").isMissingNode());
   }
 
@@ -718,6 +722,9 @@ class FinGrindCliNegativeEnvelopeMatrixTest extends CliPublicDocsContractSupport
     assertEquals("error", envelope.path("status").stringValue());
     assertEquals(expectedCode, envelope.path("code").stringValue());
     assertTrue(envelope.path("message").isTextual());
+    assertEquals(
+        ContractResponseCatalog.failureCategoryFor(expectedCode).wireValue(),
+        envelope.path("category").stringValue());
     assertTrue(envelope.path("artifacts").isMissingNode());
     assertTrue(envelope.path("payload").isMissingNode());
   }

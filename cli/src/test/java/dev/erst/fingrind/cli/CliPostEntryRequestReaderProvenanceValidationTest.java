@@ -143,4 +143,28 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
         "Scaffold placeholder must be replaced before submission: provenance.idempotencyKey",
         exception.getMessage());
   }
+
+  @Test
+  void readDeclareTaxRegistrationCommand_rejectsTaxJurisdictionScaffoldPlaceholder() {
+    CliRequestReader requestReader =
+        new CliRequestReader(
+            new ByteArrayInputStream(
+                """
+                {
+                  "jurisdiction": "<ISO-3166-alpha-2>"
+                }
+                """
+                    .getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class,
+            () -> requestReader.readDeclareTaxRegistrationCommand(Path.of("-")));
+
+    assertEquals(
+        "Scaffold placeholder must be replaced before submission: jurisdiction",
+        exception.getMessage());
+    assertEquals(
+        CliJsonRequestHints.declareTaxRegistrationRequestHint(), exception.failure().hint());
+  }
 }

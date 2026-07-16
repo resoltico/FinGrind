@@ -139,6 +139,11 @@ final class SqlitePostingMapper {
     @Nullable BookkeepingEntry resolvedInventoryCostingEntry =
         SqliteResolvedInventoryCostingReader.resolve(
             activeDatabase, postingId, callerAuthoredEntry);
+    @Nullable BookkeepingEntry resolvedAccrualCutoffEntry =
+        resolvedInventoryCostingEntry == null
+            ? SqliteResolvedAccrualCutoffApplicationReader.resolve(
+                activeDatabase, postingId, callerAuthoredEntry)
+            : null;
     return new CommittedPosting(
         postingId,
         journalEntry,
@@ -148,10 +153,12 @@ final class SqlitePostingMapper {
         evidence,
         provenance,
         callerAuthoredEntry,
-        resolvedInventoryCostingEntry == null
+        resolvedInventoryCostingEntry == null && resolvedAccrualCutoffEntry == null
             ? resolvedOriginatingEntry(
                 callerAuthoredEntry, journalEntry, postingLineage, postingKind, postingOriginKind)
-            : resolvedInventoryCostingEntry);
+            : resolvedInventoryCostingEntry == null
+                ? resolvedAccrualCutoffEntry
+                : resolvedInventoryCostingEntry);
   }
 
   private static @Nullable BookkeepingEntry resolvedOriginatingEntry(

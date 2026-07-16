@@ -142,7 +142,7 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
             CliRequestException.class, () -> requestReader.readDeclareAccountCommand(Path.of("-")));
 
     assertEquals(
-        "Unsupported value for financialPositionLineClassification: CURRENT_PERIOD_RESULT. Accepted values: CURRENT_ASSET, INVENTORY, NONCURRENT_ASSET, TRADE_RECEIVABLE, CURRENT_LIABILITY, NONCURRENT_LIABILITY, TRADE_PAYABLE, EQUITY_CONTRIBUTION, EQUITY_WITHDRAWAL, RESULT_HOLDING, RETAINED_ACCUMULATED, RESERVE, OTHER_EQUITY.",
+        "Unsupported value for financialPositionLineClassification: CURRENT_PERIOD_RESULT. Accepted values: CURRENT_ASSET, INVENTORY, PREPAID_EXPENSE, NONCURRENT_ASSET, TRADE_RECEIVABLE, CURRENT_LIABILITY, NONCURRENT_LIABILITY, TRADE_PAYABLE, DEFERRED_REVENUE, ACCRUED_EXPENSE, EQUITY_CONTRIBUTION, EQUITY_WITHDRAWAL, RESULT_HOLDING, RETAINED_ACCUMULATED, RESERVE, OTHER_EQUITY.",
         exception.getMessage());
   }
 
@@ -295,10 +295,9 @@ class CliDeclareAccountRequestReaderTest extends CliRequestReaderTestSupport {
     assertEquals(
         "Request file exceeded the supported "
             + ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
-            + "-byte UTF-8 limit: "
-            + CliPublicPaths.redactedValue(oversizedRequest)
-            + ".",
+            + "-byte UTF-8 limit.",
         fileException.getMessage());
+    assertEquals(oversizedRequest, fileException.failure().path());
 
     CliRequestReader stdinReader =
         new CliRequestReader(

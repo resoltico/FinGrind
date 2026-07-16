@@ -3,6 +3,7 @@ package dev.erst.fingrind.contract.protocol;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.core.AccountClassificationReachability;
@@ -24,7 +25,8 @@ class RequestSurfaceFactsTest {
             "through-date",
             "fiscal-year-label",
             "as-of-date",
-            "inventory-as-of-date"),
+            "inventory-as-of-date",
+            "accrual-cutoff-as-of-date"),
         TemporalScopeArchetype.wireValues());
     assertEquals(
         SourceDocumentTypePolicyMode.ENUMERATED,
@@ -60,7 +62,7 @@ class RequestSurfaceFactsTest {
             .sourceDocumentTypes()
             .scaffoldValue());
     assertEquals(
-        List.of(ProtocolOptions.PERIOD_START, ProtocolOptions.PERIOD_END),
+        List.of(ProtocolOptions.DateRange.PERIOD_START, ProtocolOptions.DateRange.PERIOD_END),
         facts.temporalScope(TemporalScopeArchetype.BOUNDED_PERIOD).optionNames());
     assertEquals(
         TemporalScopeArchetype.THROUGH_DATE,
@@ -68,6 +70,8 @@ class RequestSurfaceFactsTest {
     assertEquals(
         TemporalScopeArchetype.FISCAL_YEAR_LABEL,
         facts.temporalScopeFor(OperationId.FISCAL_YEAR_CLOSE).archetype());
+    assertTrue(facts.hasTemporalScopeFor(OperationId.ACCRUAL_CUTOFF_SCHEDULE));
+    assertFalse(facts.hasTemporalScopeFor(OperationId.GET_POSTING));
     assertEquals(
         "Inclusive through date. FinGrind derives the contiguous sweep window from book start in the selected book or, after a sweep is recorded, from the live transferred-through horizon.",
         facts.temporalScopeFor(OperationId.INTERIM_RESULT_SWEEP).boundarySemantics());

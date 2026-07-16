@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.discovery.WorkflowSurface;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.BookMigrationPolicyMode;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
@@ -185,10 +186,15 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
                 "windows-latest",
                 "report-pdf"));
     ids.addAll(BookInspection.Status.wireValues());
+    ids.addAll(CapabilityCatalog.entries().stream().map(CapabilityCatalogEntry::id).toList());
     ids.addAll(BookMigrationPolicyMode.wireValues());
     ids.addAll(
         ContractErrors.descriptors().stream()
             .map(dev.erst.fingrind.contract.runtime.ContractResponse.ErrorDescriptor::code)
+            .toList());
+    ids.addAll(
+        java.util.Arrays.stream(ContractResponse.FailureCategory.values())
+            .map(ContractResponse.FailureCategory::wireValue)
             .toList());
     ids.addAll(collectRejectionCodes(BookAdministrationRejection.descriptors()));
     ids.addAll(collectRejectionCodes(BookQueryRejection.descriptors()));
@@ -216,6 +222,9 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
     ids.addAll(PlanTransactionMode.wireValues());
     ids.addAll(PlanFailurePolicy.wireValues());
     ids.addAll(PlanResultDetail.wireValues());
+    RequestSurfaceContracts.current()
+        .bookkeepingEntryKinds()
+        .forEach(facts -> ids.addAll(facts.sourceDocumentTypes().acceptedValues()));
     return Set.copyOf(ids);
   }
 

@@ -18,25 +18,29 @@ import org.jspecify.annotations.Nullable;
 /** Parses book-query CLI commands that inspect or read posting data without report exports. */
 final class CliBookQueryArguments {
   private static final CliBookArgumentParser.CommandArgumentSpec INSPECT_BOOK_ARGUMENTS =
-      CliBookArgumentParser.commandArgumentSpec(List.of(ProtocolOptions.OUTPUT), List.of());
+      CliBookArgumentParser.commandArgumentSpec(
+          List.of(ProtocolOptions.Presentation.OUTPUT), List.of());
   private static final CliBookArgumentParser.CommandArgumentSpec GET_POSTING_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
-          List.of(ProtocolOptions.POSTING_ID, ProtocolOptions.OUTPUT),
-          List.of(ProtocolOptions.WITH_CONTEXT));
+          List.of(ProtocolOptions.Request.POSTING_ID, ProtocolOptions.Presentation.OUTPUT),
+          List.of(ProtocolOptions.Presentation.WITH_CONTEXT));
   private static final CliBookArgumentParser.CommandArgumentSpec LIST_ACCOUNTS_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
-          List.of(ProtocolOptions.LIMIT, ProtocolOptions.CURSOR, ProtocolOptions.OUTPUT),
-          List.of(ProtocolOptions.WITH_CONTEXT));
+          List.of(
+              ProtocolOptions.ReportQuery.LIMIT,
+              ProtocolOptions.ReportQuery.CURSOR,
+              ProtocolOptions.Presentation.OUTPUT),
+          List.of(ProtocolOptions.Presentation.WITH_CONTEXT));
   private static final CliBookArgumentParser.CommandArgumentSpec LIST_POSTINGS_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
-              ProtocolOptions.ACCOUNT_CODE,
-              ProtocolOptions.EFFECTIVE_DATE_FROM,
-              ProtocolOptions.EFFECTIVE_DATE_TO,
-              ProtocolOptions.LIMIT,
-              ProtocolOptions.CURSOR,
-              ProtocolOptions.OUTPUT),
-          List.of(ProtocolOptions.WITH_CONTEXT));
+              ProtocolOptions.Request.ACCOUNT_CODE,
+              ProtocolOptions.DateRange.EFFECTIVE_DATE_FROM,
+              ProtocolOptions.DateRange.EFFECTIVE_DATE_TO,
+              ProtocolOptions.ReportQuery.LIMIT,
+              ProtocolOptions.ReportQuery.CURSOR,
+              ProtocolOptions.Presentation.OUTPUT),
+          List.of(ProtocolOptions.Presentation.WITH_CONTEXT));
 
   private CliBookQueryArguments() {}
 
@@ -50,7 +54,7 @@ final class CliBookQueryArguments {
       outputMode =
           CliOptionModes.requireOutputMode(
               outputMode,
-              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Presentation.OUTPUT),
               CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
     }
     return new InspectBook(
@@ -66,33 +70,36 @@ final class CliBookQueryArguments {
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.POSTING_ID.equals(argument)) {
+      if (ProtocolOptions.Request.POSTING_ID.equals(argument)) {
         if (postingIdValue != null) {
           throw CliArgumentValueParser.invalid(
-              ProtocolOptions.POSTING_ID, "Duplicate argument: " + ProtocolOptions.POSTING_ID);
+              ProtocolOptions.Request.POSTING_ID,
+              "Duplicate argument: " + ProtocolOptions.Request.POSTING_ID);
         }
-        postingIdValue = CliOptionValues.requireValue(argumentIterator, ProtocolOptions.POSTING_ID);
+        postingIdValue =
+            CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Request.POSTING_ID);
         continue;
       }
-      if (ProtocolOptions.WITH_CONTEXT.equals(argument)) {
+      if (ProtocolOptions.Presentation.WITH_CONTEXT.equals(argument)) {
         withContext = true;
         continue;
       }
       outputMode =
           CliOptionModes.requireOutputMode(
               outputMode,
-              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Presentation.OUTPUT),
               CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
     }
     if (postingIdValue == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.POSTING_ID, "A " + ProtocolOptions.POSTING_ID + " argument is required.");
+          ProtocolOptions.Request.POSTING_ID,
+          "A " + ProtocolOptions.Request.POSTING_ID + " argument is required.");
     }
     String requiredPostingIdValue = postingIdValue;
     return new GetPosting(
         parsedArguments.bookAccess(),
         CliArgumentValueParser.requireValidArgument(
-            ProtocolOptions.POSTING_ID, () -> new PostingId(requiredPostingIdValue)),
+            ProtocolOptions.Request.POSTING_ID, () -> new PostingId(requiredPostingIdValue)),
         withContext,
         CliOptionModes.resolvedOutputMode(outputMode));
   }
@@ -124,19 +131,19 @@ final class CliBookQueryArguments {
             argumentValues.limit == null
                 ? ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT
                 : argumentValues.limit,
-            ProtocolOptions.LIMIT);
+            ProtocolOptions.ReportQuery.LIMIT);
     Optional<AccountCode> resolvedAccountCode =
         Optional.ofNullable(argumentValues.accountCodeValue)
             .map(
                 value ->
                     CliArgumentValueParser.requireValidArgument(
-                        ProtocolOptions.ACCOUNT_CODE, () -> new AccountCode(value)));
+                        ProtocolOptions.Request.ACCOUNT_CODE, () -> new AccountCode(value)));
     if (argumentValues.effectiveDateFrom != null && argumentValues.effectiveDateTo != null) {
       CliArgumentValueParser.requireOrderedDateRange(
           argumentValues.effectiveDateFrom,
           argumentValues.effectiveDateTo,
-          ProtocolOptions.EFFECTIVE_DATE_FROM,
-          ProtocolOptions.EFFECTIVE_DATE_TO);
+          ProtocolOptions.DateRange.EFFECTIVE_DATE_FROM,
+          ProtocolOptions.DateRange.EFFECTIVE_DATE_TO);
     }
     EffectiveDateRange resolvedEffectiveDateRange =
         EffectiveDateRange.of(argumentValues.effectiveDateFrom, argumentValues.effectiveDateTo);
@@ -157,46 +164,50 @@ final class CliBookQueryArguments {
       ListPostingsArgumentValues argumentValues,
       String argument,
       ListIterator<String> argumentIterator) {
-    if (ProtocolOptions.ACCOUNT_CODE.equals(argument)) {
+    if (ProtocolOptions.Request.ACCOUNT_CODE.equals(argument)) {
       argumentValues.accountCodeValue =
           CliSingleValueOptionRequirements.requireSingleTextOption(
-              argumentValues.accountCodeValue, ProtocolOptions.ACCOUNT_CODE, argumentIterator);
-      return;
-    }
-    if (ProtocolOptions.EFFECTIVE_DATE_FROM.equals(argument)) {
-      argumentValues.effectiveDateFrom =
-          CliSingleValueOptionRequirements.requireSingleDateOption(
-              argumentValues.effectiveDateFrom,
-              ProtocolOptions.EFFECTIVE_DATE_FROM,
+              argumentValues.accountCodeValue,
+              ProtocolOptions.Request.ACCOUNT_CODE,
               argumentIterator);
       return;
     }
-    if (ProtocolOptions.EFFECTIVE_DATE_TO.equals(argument)) {
+    if (ProtocolOptions.DateRange.EFFECTIVE_DATE_FROM.equals(argument)) {
+      argumentValues.effectiveDateFrom =
+          CliSingleValueOptionRequirements.requireSingleDateOption(
+              argumentValues.effectiveDateFrom,
+              ProtocolOptions.DateRange.EFFECTIVE_DATE_FROM,
+              argumentIterator);
+      return;
+    }
+    if (ProtocolOptions.DateRange.EFFECTIVE_DATE_TO.equals(argument)) {
       argumentValues.effectiveDateTo =
           CliSingleValueOptionRequirements.requireSingleDateOption(
-              argumentValues.effectiveDateTo, ProtocolOptions.EFFECTIVE_DATE_TO, argumentIterator);
+              argumentValues.effectiveDateTo,
+              ProtocolOptions.DateRange.EFFECTIVE_DATE_TO,
+              argumentIterator);
       return;
     }
-    if (ProtocolOptions.LIMIT.equals(argument)) {
+    if (ProtocolOptions.ReportQuery.LIMIT.equals(argument)) {
       argumentValues.limit =
           CliSingleValueOptionRequirements.requireSingleIntegerOption(
-              argumentValues.limit, ProtocolOptions.LIMIT, argumentIterator);
+              argumentValues.limit, ProtocolOptions.ReportQuery.LIMIT, argumentIterator);
       return;
     }
-    if (ProtocolOptions.CURSOR.equals(argument)) {
+    if (ProtocolOptions.ReportQuery.CURSOR.equals(argument)) {
       argumentValues.cursor =
           CliSingleValueOptionRequirements.requireSingleTextOption(
-              argumentValues.cursor, ProtocolOptions.CURSOR, argumentIterator);
+              argumentValues.cursor, ProtocolOptions.ReportQuery.CURSOR, argumentIterator);
       return;
     }
-    if (ProtocolOptions.WITH_CONTEXT.equals(argument)) {
+    if (ProtocolOptions.Presentation.WITH_CONTEXT.equals(argument)) {
       argumentValues.withContext = true;
       return;
     }
     argumentValues.outputMode =
         CliOptionModes.requireOutputMode(
             argumentValues.outputMode,
-            CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+            CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Presentation.OUTPUT),
             CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV));
   }
 

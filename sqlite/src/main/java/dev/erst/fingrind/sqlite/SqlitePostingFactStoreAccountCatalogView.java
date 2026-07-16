@@ -35,24 +35,24 @@ interface SqlitePostingFactStoreAccountCatalogView
   /** Finds one registered account by account code. */
   default Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
     storeThreadOwner().requireOwnerThread();
-    return storeReadOperations().findAccount(accountCode);
+    return storeReadOperations().accountCatalog().findAccount(accountCode);
   }
 
   /** Finds several registered accounts keyed by account code. */
   default Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
     storeThreadOwner().requireOwnerThread();
-    return storeReadOperations().findAccounts(accountCodes);
+    return storeReadOperations().accountCatalog().findAccounts(accountCodes);
   }
 
   /** Returns every registered account in declaration order. */
   default List<RegisteredAccount> allAccounts() {
     storeThreadOwner().requireOwnerThread();
-    return storeReadOperations().allAccounts();
+    return storeReadOperations().accountCatalog().allAccounts();
   }
 
   /** Returns one page of registered accounts for the supplied query. */
   default AccountRegistryPage listAccounts(AccountRegistryQuery query) {
     storeThreadOwner().requireOwnerThread();
-    return storeReadOperations().listAccounts(query);
+    return storeReadOperations().accountCatalog().listAccounts(query);
   }
 }

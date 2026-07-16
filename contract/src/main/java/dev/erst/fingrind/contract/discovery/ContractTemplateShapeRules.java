@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import java.util.EnumMap;
 import java.util.Map;
 
 /** Canonical template-shape policy tables for ledger-plan steps and assertions. */
@@ -14,9 +15,11 @@ final class ContractTemplateShapeRules {
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
           false);
   private static final ContractTemplateStepShapeRequirements INSPECT_BOOK_STEP_SHAPE =
       stepShape(
+          ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
@@ -32,11 +35,23 @@ final class ContractTemplateShapeRules {
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          false);
+  private static final ContractTemplateStepShapeRequirements DECLARE_TAX_REGISTRATION_STEP_SHAPE =
+      stepShape(
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.REQUIRED,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
           false);
   private static final ContractTemplateStepShapeRequirements POSTING_STEP_SHAPE =
       stepShape(
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.REQUIRED,
+          ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
@@ -47,12 +62,14 @@ final class ContractTemplateShapeRules {
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.OPTIONAL,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           false);
   private static final ContractTemplateStepShapeRequirements REQUIRED_BALANCE_QUERY_STEP_SHAPE =
       stepShape(
+          ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
@@ -67,10 +84,12 @@ final class ContractTemplateShapeRules {
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
+          ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.REQUIRED,
           false);
   private static final ContractTemplateStepShapeRequirements ASSERTION_STEP_SHAPE =
       stepShape(
+          ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
           ContractTemplateFieldPresence.FORBIDDEN,
@@ -106,27 +125,24 @@ final class ContractTemplateShapeRules {
   private ContractTemplateShapeRules() {}
 
   static Map<LedgerStepKind, ContractTemplateStepShapeRequirements> stepShapeRequirements() {
-    return Map.ofEntries(
-        Map.entry(LedgerStepKind.ENSURE_BOOK, ENSURE_BOOK_STEP_SHAPE),
-        Map.entry(LedgerStepKind.INSPECT_BOOK, INSPECT_BOOK_STEP_SHAPE),
-        Map.entry(LedgerStepKind.DECLARE_ACCOUNT, DECLARE_ACCOUNT_STEP_SHAPE),
-        Map.entry(LedgerStepKind.PREFLIGHT_ENTRY, POSTING_STEP_SHAPE),
-        Map.entry(LedgerStepKind.RECORD_SALE_SETTLED, POSTING_STEP_SHAPE),
-        Map.entry(LedgerStepKind.RECORD_SALE_ON_CREDIT, POSTING_STEP_SHAPE),
-        Map.entry(LedgerStepKind.RECORD_EXPENSE_SETTLED, POSTING_STEP_SHAPE),
-        Map.entry(LedgerStepKind.RECORD_EXPENSE_ON_CREDIT, POSTING_STEP_SHAPE),
-        Map.entry(LedgerStepKind.RECORD_RECEIPT, POSTING_STEP_SHAPE),
-        Map.entry(LedgerStepKind.RECORD_PAYMENT, POSTING_STEP_SHAPE),
-        Map.entry(LedgerStepKind.RECORD_OWNER_CONTRIBUTION, POSTING_STEP_SHAPE),
-        Map.entry(LedgerStepKind.RECORD_OWNER_WITHDRAWAL, POSTING_STEP_SHAPE),
-        Map.entry(LedgerStepKind.RECORD_OPENING_POSITION, POSTING_STEP_SHAPE),
-        Map.entry(LedgerStepKind.RECORD_REVERSAL, POSTING_STEP_SHAPE),
-        Map.entry(LedgerStepKind.POST_ENTRY, POSTING_STEP_SHAPE),
-        Map.entry(LedgerStepKind.LIST_ACCOUNTS, OPTIONAL_QUERY_STEP_SHAPE),
-        Map.entry(LedgerStepKind.LIST_POSTINGS, OPTIONAL_QUERY_STEP_SHAPE),
-        Map.entry(LedgerStepKind.ACCOUNT_BALANCE, REQUIRED_BALANCE_QUERY_STEP_SHAPE),
-        Map.entry(LedgerStepKind.GET_POSTING, POSTING_ID_STEP_SHAPE),
-        Map.entry(LedgerStepKind.ASSERT, ASSERTION_STEP_SHAPE));
+    var requirements =
+        new EnumMap<LedgerStepKind, ContractTemplateStepShapeRequirements>(LedgerStepKind.class);
+    for (LedgerStepKind kind : LedgerStepKind.values()) {
+      if (kind.commitsPosting()) {
+        requirements.put(kind, POSTING_STEP_SHAPE);
+      }
+    }
+    requirements.put(LedgerStepKind.ENSURE_BOOK, ENSURE_BOOK_STEP_SHAPE);
+    requirements.put(LedgerStepKind.INSPECT_BOOK, INSPECT_BOOK_STEP_SHAPE);
+    requirements.put(LedgerStepKind.DECLARE_ACCOUNT, DECLARE_ACCOUNT_STEP_SHAPE);
+    requirements.put(LedgerStepKind.DECLARE_TAX_REGISTRATION, DECLARE_TAX_REGISTRATION_STEP_SHAPE);
+    requirements.put(LedgerStepKind.PREFLIGHT_ENTRY, POSTING_STEP_SHAPE);
+    requirements.put(LedgerStepKind.LIST_ACCOUNTS, OPTIONAL_QUERY_STEP_SHAPE);
+    requirements.put(LedgerStepKind.LIST_POSTINGS, OPTIONAL_QUERY_STEP_SHAPE);
+    requirements.put(LedgerStepKind.ACCOUNT_BALANCE, REQUIRED_BALANCE_QUERY_STEP_SHAPE);
+    requirements.put(LedgerStepKind.GET_POSTING, POSTING_ID_STEP_SHAPE);
+    requirements.put(LedgerStepKind.ASSERT, ASSERTION_STEP_SHAPE);
+    return Map.copyOf(requirements);
   }
 
   static Map<LedgerAssertionKind, ContractTemplateAssertionShapeRequirements>
@@ -142,12 +158,20 @@ final class ContractTemplateShapeRules {
       ContractTemplateFieldPresence openBook,
       ContractTemplateFieldPresence posting,
       ContractTemplateFieldPresence declareAccount,
+      ContractTemplateFieldPresence declareTaxRegistration,
       ContractTemplateFieldPresence query,
       ContractTemplateFieldPresence assertion,
       ContractTemplateFieldPresence postingId,
       boolean queryAccountCodeRequired) {
     return new ContractTemplateStepShapeRequirements(
-        openBook, posting, declareAccount, query, assertion, postingId, queryAccountCodeRequired);
+        openBook,
+        posting,
+        declareAccount,
+        declareTaxRegistration,
+        query,
+        assertion,
+        postingId,
+        queryAccountCodeRequired);
   }
 
   private static ContractTemplateAssertionShapeRequirements assertionShape(

@@ -16,40 +16,10 @@ import dev.erst.fingrind.executor.bookkeeping.BookkeepingEvidenceSemanticsViolat
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.InventoryEntrySemanticsViolations;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
-import org.jspecify.annotations.Nullable;
 
 /** Shared admission and evidence semantics for published post-entry validation. */
 final class PostEntryAdmissionSupport {
-  private static final Map<BookkeepingEntryKind, EconomicEventClass> TYPED_EVENT_CLASSES =
-      Map.ofEntries(
-          Map.entry(BookkeepingEntryKind.SALE_SETTLED, EconomicEventClass.SETTLED_SALE),
-          Map.entry(BookkeepingEntryKind.SALE_ON_CREDIT, EconomicEventClass.CREDIT_SALE),
-          Map.entry(BookkeepingEntryKind.PURCHASE_SETTLED, EconomicEventClass.SETTLED_PURCHASE),
-          Map.entry(BookkeepingEntryKind.PURCHASE_ON_CREDIT, EconomicEventClass.CREDIT_PURCHASE),
-          Map.entry(
-              BookkeepingEntryKind.INVENTORY_CAPITALIZATION_SETTLED,
-              EconomicEventClass.INVENTORY_CAPITALIZATION),
-          Map.entry(
-              BookkeepingEntryKind.INVENTORY_CAPITALIZATION_ON_CREDIT,
-              EconomicEventClass.INVENTORY_CAPITALIZATION),
-          Map.entry(
-              BookkeepingEntryKind.INVENTORY_WRITE_DOWN, EconomicEventClass.INVENTORY_WRITE_DOWN),
-          Map.entry(
-              BookkeepingEntryKind.INVENTORY_SHRINKAGE, EconomicEventClass.INVENTORY_SHRINKAGE),
-          Map.entry(
-              BookkeepingEntryKind.INVENTORY_COUNT_INCREASE,
-              EconomicEventClass.INVENTORY_COUNT_INCREASE),
-          Map.entry(BookkeepingEntryKind.EXPENSE_SETTLED, EconomicEventClass.SETTLED_EXPENSE),
-          Map.entry(BookkeepingEntryKind.EXPENSE_ON_CREDIT, EconomicEventClass.CREDIT_EXPENSE),
-          Map.entry(BookkeepingEntryKind.RECEIPT, EconomicEventClass.AR_SETTLEMENT),
-          Map.entry(BookkeepingEntryKind.PAYMENT, EconomicEventClass.AP_SETTLEMENT),
-          Map.entry(BookkeepingEntryKind.OWNER_CONTRIBUTION, EconomicEventClass.OWNER_CONTRIBUTION),
-          Map.entry(BookkeepingEntryKind.OWNER_WITHDRAWAL, EconomicEventClass.OWNER_WITHDRAWAL),
-          Map.entry(BookkeepingEntryKind.OPENING_POSITION, EconomicEventClass.OPENING),
-          Map.entry(BookkeepingEntryKind.REVERSAL, EconomicEventClass.REVERSAL));
   private static final Set<BookkeepingEntryKind> TRADING_INVENTORY_ENTRY_KINDS =
       Set.of(
           BookkeepingEntryKind.PURCHASE_SETTLED,
@@ -108,7 +78,7 @@ final class PostEntryAdmissionSupport {
     if (accountingBasis != AccountingBasis.CASH) {
       return;
     }
-    appendCashBasisVerbViolation(
+    CashBasisEntryAdmission.appendViolation(
         violations, entryKind, selectorField, selectorValue, resolvedJournal.classification());
   }
 
@@ -122,7 +92,8 @@ final class PostEntryAdmissionSupport {
         || entryKind == BookkeepingEntryKind.DIRECT_JOURNAL) {
       return;
     }
-    appendCashBasisVerbViolation(violations, entryKind, selectorField, selectorValue, null);
+    CashBasisEntryAdmission.appendViolation(
+        violations, entryKind, selectorField, selectorValue, null);
   }
 
   static void rawAdmission(
@@ -174,81 +145,16 @@ final class PostEntryAdmissionSupport {
   }
 
   static EconomicEventClass expectedTypedEventClass(BookkeepingEntryKind entryKind) {
-    if (entryKind == BookkeepingEntryKind.DIRECT_JOURNAL) {
-      throw new IllegalArgumentException("Direct journals do not assert one typed event class.");
-    }
-    return Objects.requireNonNull(TYPED_EVENT_CLASSES.get(entryKind), "entryKind");
+    return TypedEntryEventClassCatalog.requiredEventClass(entryKind);
   }
 
   static boolean canResolveResolvedJournal(BookkeepingEntry entry) {
-    return switch (entry) {
-      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.SaleSettled sale ->
-          (sale.taxSelection() == null || sale.appliedTax() != null)
-              && (sale.inventoryRelief() == null || sale.resolvedInventoryCosting() != null);
-      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.SaleOnCredit sale ->
-          (sale.taxSelection() == null || sale.appliedTax() != null)
-              && (sale.inventoryRelief() == null || sale.resolvedInventoryCosting() != null);
-      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.PurchaseSettled purchase ->
-          purchase.resolvedInventoryAcquisition() != null
-              && (purchase.taxSelection() == null || purchase.appliedTax() != null);
-      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.PurchaseOnCredit purchase ->
-          purchase.resolvedInventoryAcquisition() != null
-              && (purchase.taxSelection() == null || purchase.appliedTax() != null);
-      case dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants
-                  .InventoryCapitalizationSettled
-              capitalization ->
-          capitalization.taxSelection() == null || capitalization.appliedTax() != null;
-      case dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants
-                  .InventoryCapitalizationOnCredit
-              capitalization ->
-          capitalization.taxSelection() == null || capitalization.appliedTax() != null;
-      case dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants
-                  .InventoryShrinkage
-              shrinkage ->
-          shrinkage.resolvedInventoryDisposal() != null;
-      case dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants
-                  .InventoryCountIncrease
-              countIncrease ->
-          countIncrease.resolvedInventoryAcquisition() != null;
-      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.ExpenseSettled expense ->
-          expense.taxSelection() == null || expense.appliedTax() != null;
-      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.ExpenseOnCredit expense ->
-          expense.taxSelection() == null || expense.appliedTax() != null;
-      case dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry.Reversal reversal ->
-          reversal.resolvedJournalEntry() != null;
-      default -> true;
-    };
+    return PostEntryInventoryTaxResolutionReadiness.readiness(entry)
+        .or(() -> PostEntryDeferredResolutionReadiness.readiness(entry))
+        .orElse(true);
   }
 
-  private static void appendCashBasisVerbViolation(
-      List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
-      BookkeepingEntryKind entryKind,
-      String selectorField,
-      String selectorValue,
-      @Nullable ClassificationResult classification) {
-    if (classification != null && classification.eventClass() == EconomicEventClass.ADJUSTMENT) {
-      return;
-    }
-    switch (entryKind) {
-      case SALE_ON_CREDIT, RECEIPT ->
-          appendViolationOnce(
-              violations,
-              "verb-requires-receivable-role",
-              () ->
-                  BookkeepingEntryModeSemanticsViolations.verbRequiresReceivableRole(
-                      selectorField, selectorValue));
-      case PURCHASE_ON_CREDIT, INVENTORY_CAPITALIZATION_ON_CREDIT, EXPENSE_ON_CREDIT, PAYMENT ->
-          appendViolationOnce(
-              violations,
-              "verb-requires-payable-role",
-              () ->
-                  BookkeepingEntryModeSemanticsViolations.verbRequiresPayableRole(
-                      selectorField, selectorValue));
-      default -> {}
-    }
-  }
-
-  private static void appendViolationOnce(
+  static void appendViolationOnce(
       List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
       String code,
       java.util.function.Supplier<BookkeepingPostingRejection.EntrySemanticsViolation>

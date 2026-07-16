@@ -43,6 +43,12 @@ class CliDiscoveryRuntimeOutputRendererTest {
 
     assertTrue(rendered.contains("FinGrind Capabilities"));
     assertTrue(rendered.contains("Operator Overview"));
+    assertTrue(rendered.contains("Capability Scope"));
+    assertTrue(rendered.contains("inventory (partial)"));
+    assertTrue(
+        rendered
+            .replaceAll("\\s+", " ")
+            .contains("Inventory is available only for the owner-managed trading template."));
     assertTrue(rendered.contains("Next Steps"));
     assertTrue(rendered.contains("Operator guide"));
     assertTrue(rendered.contains("Kernel scope"));
@@ -92,7 +98,8 @@ class CliDiscoveryRuntimeOutputRendererTest {
             canonical.reversals(),
             canonical.preflight(),
             canonical.currencyModel(),
-            canonical.bookkeepingKernel());
+            canonical.bookkeepingKernel(),
+            canonical.capabilityCatalog());
 
     String rendered = CliDiscoveryOutputRenderer.renderCapabilitiesText(customized);
 
@@ -190,7 +197,8 @@ class CliDiscoveryRuntimeOutputRendererTest {
                 "cash__single--entity_internal__management---kernel",
                 canonical.bookkeepingKernel().builtInStatements(),
                 canonical.bookkeepingKernel().reportCapabilities(),
-                canonical.bookkeepingKernel().description()));
+                canonical.bookkeepingKernel().description()),
+            canonical.capabilityCatalog());
 
     String rendered = CliDiscoveryOutputRenderer.renderCapabilitiesText(customized);
 
@@ -222,7 +230,8 @@ class CliDiscoveryRuntimeOutputRendererTest {
             canonical.preflight(),
             new ContractResponse.CurrencyDescriptor(
                 "book-functional-currency", "planned-later", "desc"),
-            canonical.bookkeepingKernel());
+            canonical.bookkeepingKernel(),
+            canonical.capabilityCatalog());
 
     String rendered = CliDiscoveryOutputRenderer.renderCapabilitiesText(customized);
 
@@ -252,7 +261,8 @@ class CliDiscoveryRuntimeOutputRendererTest {
             canonical.preflight(),
             new ContractResponse.CurrencyDescriptor(
                 "book-functional-currency", "supported", "desc"),
-            canonical.bookkeepingKernel());
+            canonical.bookkeepingKernel(),
+            canonical.capabilityCatalog());
 
     String rendered = CliDiscoveryOutputRenderer.renderCapabilitiesText(customized);
 
@@ -282,7 +292,8 @@ class CliDiscoveryRuntimeOutputRendererTest {
             canonical.preflight(),
             new ContractResponse.CurrencyDescriptor(
                 "book-functional-currency", "not-supported", "desc"),
-            canonical.bookkeepingKernel());
+            canonical.bookkeepingKernel(),
+            canonical.capabilityCatalog());
 
     String rendered = CliDiscoveryOutputRenderer.renderCapabilitiesText(customized);
     String normalized = rendered.replaceAll("\\s+", " ");
@@ -323,20 +334,18 @@ class CliDiscoveryRuntimeOutputRendererTest {
   }
 
   @Test
-  void renderEnvironmentText_rendersConfiguredDefaultOutputSource() {
+  void renderEnvironmentText_rendersBuiltInDefaultOutput() {
     String rendered =
         CliDiscoveryOutputRenderer.renderEnvironmentText(
             new dev.erst.fingrind.contract.runtime.EnvironmentDescriptor(
                 new dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor(
-                    RuntimeDistribution.SELF_CONTAINED_BUNDLE,
-                    OutputMode.JSON,
-                    "FINGRIND_DEFAULT_OUTPUT"),
+                    RuntimeDistribution.SELF_CONTAINED_BUNDLE, OutputMode.TEXT),
                 CliDiscoveryTestSupport.environment().publication(),
                 CliDiscoveryTestSupport.environment().storage(),
                 CliDiscoveryTestSupport.environment().sqlite()));
 
     assertTrue(rendered.contains("Default output mode"));
-    assertTrue(rendered.contains("json via FINGRIND_DEFAULT_OUTPUT"));
+    assertTrue(rendered.contains("text (built in)"));
   }
 
   @Test
@@ -421,7 +430,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
         CliDiscoveryOutputRenderer.renderEnvironmentText(
             new dev.erst.fingrind.contract.runtime.EnvironmentDescriptor(
                 new dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor(
-                    RuntimeDistribution.SELF_CONTAINED_BUNDLE, OutputMode.TEXT, null),
+                    RuntimeDistribution.SELF_CONTAINED_BUNDLE, OutputMode.TEXT),
                 new dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor(
                     ProtocolCatalog.distribution().publicCliDistribution(),
                     List.of(PublicCliBundleTarget.LINUX_X86_64),
@@ -442,7 +451,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
         CliDiscoveryOutputRenderer.renderEnvironmentText(
             new dev.erst.fingrind.contract.runtime.EnvironmentDescriptor(
                 new dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor(
-                    RuntimeDistribution.SELF_CONTAINED_BUNDLE, OutputMode.TEXT, null),
+                    RuntimeDistribution.SELF_CONTAINED_BUNDLE, OutputMode.TEXT),
                 new dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor(
                     ProtocolCatalog.distribution().publicCliDistribution(),
                     List.of(PublicCliBundleTarget.LINUX_X86_64),
@@ -474,7 +483,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
       environmentForDistribution(RuntimeDistribution distribution) {
     return new dev.erst.fingrind.contract.runtime.EnvironmentDescriptor(
         new dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor(
-            distribution, OutputMode.TEXT, null),
+            distribution, OutputMode.TEXT),
         new dev.erst.fingrind.contract.runtime.EnvironmentPublicationDescriptor(
             ProtocolCatalog.distribution().publicCliDistribution(),
             List.of(),

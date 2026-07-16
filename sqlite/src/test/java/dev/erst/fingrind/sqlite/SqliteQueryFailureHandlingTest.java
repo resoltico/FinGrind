@@ -9,7 +9,6 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
-import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
@@ -74,7 +73,9 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
               IllegalStateException.class,
               () ->
                   postingFactStore.accountLedger(
-                      AccountLedgerCriteria.unbounded(new AccountCode("1000")), cashAccount));
+                      SqliteStoreTestIntrospectionSupport.accountLedgerCriteria(
+                          new AccountCode("1000"), null, null),
+                      cashAccount));
       assertProtectedBookVerificationFailure(exception);
     }
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(invalidBookPath))) {
@@ -133,7 +134,9 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
               IllegalStateException.class,
               () ->
                   postingFactStore.accountLedger(
-                      AccountLedgerCriteria.unbounded(new AccountCode("1000")), cashAccount));
+                      SqliteStoreTestIntrospectionSupport.accountLedgerCriteria(
+                          new AccountCode("1000"), null, null),
+                      cashAccount));
       assertTrue(
           NullTestSupport.messageOf(accountLedgerFailure).contains("Failed to query SQLite book."));
       IllegalStateException periodSummaryFailure =
@@ -159,7 +162,9 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
               () ->
                   readView(postingFactStore)
                       .accountLedger(
-                          AccountLedgerCriteria.unbounded(new AccountCode("1000")), cashAccount));
+                          SqliteStoreTestIntrospectionSupport.accountLedgerCriteria(
+                              new AccountCode("1000"), null, null),
+                          cashAccount));
       assertTrue(
           NullTestSupport.messageOf(readAccountLedgerFailure)
               .contains("Failed to query SQLite book."));

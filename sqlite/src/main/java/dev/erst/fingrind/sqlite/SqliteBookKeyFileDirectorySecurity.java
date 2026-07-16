@@ -1,7 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import static dev.erst.fingrind.sqlite.SqliteBookKeyFileSecuritySupport.redactedPath;
-
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -66,8 +64,7 @@ final class SqliteBookKeyFileDirectorySecurity {
       throw new SqliteCallerPathContractException(
           normalizedPath,
           SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY,
-          "The FinGrind book key file must resolve beneath a parent directory: "
-              + redactedPath(normalizedPath));
+          "The FinGrind book key file must resolve beneath a parent directory.");
     }
     SqliteBookKeyFileSecuritySupport.requireSupportedSecureFilesystem(parentDirectory);
     if (Files.exists(parentDirectory, LinkOption.NOFOLLOW_LINKS)) {
@@ -75,8 +72,7 @@ final class SqliteBookKeyFileDirectorySecurity {
         throw new SqliteCallerPathContractException(
             normalizedPath,
             SqliteCallerPathFailure.PARENT_PATH_COLLISION,
-            "The FinGrind book key file must resolve beneath a real parent directory: "
-                + redactedPath(normalizedPath));
+            "The FinGrind book key file must resolve beneath a real parent directory.");
       }
       requireSecureParentDirectorySecurity(parentDirectory, inspectSecurity(parentDirectory))
           .requireAccepted();
@@ -145,8 +141,8 @@ final class SqliteBookKeyFileDirectorySecurity {
         permissions,
         PosixFilePermission.OWNER_EXECUTE,
         POSIX_KEY_DIRECTORY_PERMISSIONS,
-        "The FinGrind book key file parent directory must be owner-searchable: ",
-        "The FinGrind book key file parent directory must use owner-only permissions: ");
+        "The FinGrind book key file parent directory must be owner-searchable.",
+        "The FinGrind book key file parent directory must use owner-only permissions.");
   }
 
   private static ContractDecision<Path> requireSecureParentDirectoryAcl(
@@ -156,8 +152,8 @@ final class SqliteBookKeyFileDirectorySecurity {
         security,
         ACL_DIRECTORY_REQUIRED_PERMISSIONS,
         ACL_SECRET_DIRECTORY_ACCESS_PERMISSIONS,
-        "The FinGrind book key file parent directory ACL must grant the directory owner traversal access: ",
-        "The FinGrind book key file parent directory ACL must grant secret-directory access only to the directory owner: ");
+        "The FinGrind book key file parent directory ACL must grant the directory owner traversal access.",
+        "The FinGrind book key file parent directory ACL must grant secret-directory access only to the directory owner.");
   }
 
   private static boolean hardenExistingOwnerAccessiblePosixDirectory(

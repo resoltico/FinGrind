@@ -1,7 +1,12 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.FinancingBookkeepingEntryVariants;
+import dev.erst.fingrind.contract.bookkeeping.FixedAssetBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
+import dev.erst.fingrind.contract.bookkeeping.RealizedForeignExchangeBookkeepingEntryVariants;
+import dev.erst.fingrind.contract.bookkeeping.StandardBookkeepingEntryVariants;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.JournalLine;
 import java.util.Collections;
@@ -33,62 +38,22 @@ final class PostingRequestAccounts {
     switch (entry) {
       case BookkeepingEntry.DirectJournal journal ->
           journal.lines().stream().map(JournalLine::accountCode).forEach(requestedAccounts::add);
-      case BookkeepingEntry.SaleSettled sale -> {
-        requestedAccounts.add(sale.cashAccountCode());
-        requestedAccounts.add(sale.revenueAccountCode());
-        if (sale.inventoryRelief() != null) {
-          requestedAccounts.add(sale.inventoryRelief().inventoryAccountCode());
-          requestedAccounts.add(sale.inventoryRelief().costOfSalesAccountCode());
-        }
-      }
-      case BookkeepingEntry.SaleOnCredit sale -> {
-        requestedAccounts.add(sale.receivableAccountCode());
-        requestedAccounts.add(sale.revenueAccountCode());
-        if (sale.inventoryRelief() != null) {
-          requestedAccounts.add(sale.inventoryRelief().inventoryAccountCode());
-          requestedAccounts.add(sale.inventoryRelief().costOfSalesAccountCode());
-        }
-      }
-      case BookkeepingEntry.PurchaseSettled purchase -> {
-        requestedAccounts.add(purchase.inventoryAccountCode());
-        requestedAccounts.add(purchase.cashAccountCode());
-      }
-      case BookkeepingEntry.PurchaseOnCredit purchase -> {
-        requestedAccounts.add(purchase.inventoryAccountCode());
-        requestedAccounts.add(purchase.payableAccountCode());
-      }
       case InventoryBookkeepingEntryVariants inventoryEntry ->
           PostingRequestInventoryAccounts.add(requestedAccounts, inventoryEntry);
-      case BookkeepingEntry.ExpenseSettled expense -> {
-        requestedAccounts.add(expense.expenseAccountCode());
-        requestedAccounts.add(expense.cashAccountCode());
-      }
-      case BookkeepingEntry.ExpenseOnCredit expense -> {
-        requestedAccounts.add(expense.expenseAccountCode());
-        requestedAccounts.add(expense.payableAccountCode());
-      }
-      case BookkeepingEntry.Receipt receipt -> {
-        requestedAccounts.add(receipt.cashAccountCode());
-        requestedAccounts.add(receipt.receivableAccountCode());
-        if (receipt.settlementAdjunct() != null) {
-          requestedAccounts.add(receipt.settlementAdjunct().accountCode());
-        }
-      }
-      case BookkeepingEntry.Payment payment -> {
-        requestedAccounts.add(payment.payableAccountCode());
-        requestedAccounts.add(payment.cashAccountCode());
-        if (payment.settlementAdjunct() != null) {
-          requestedAccounts.add(payment.settlementAdjunct().accountCode());
-        }
-      }
-      case BookkeepingEntry.OwnerContribution contribution -> {
-        requestedAccounts.add(contribution.cashAccountCode());
-        requestedAccounts.add(contribution.equityAccountCode());
-      }
-      case BookkeepingEntry.OwnerWithdrawal withdrawal -> {
-        requestedAccounts.add(withdrawal.equityAccountCode());
-        requestedAccounts.add(withdrawal.cashAccountCode());
-      }
+      case AccrualCutoffBookkeepingEntryVariants accrualCutoffEntry ->
+          PostingRequestAccrualCutoffAccounts.add(requestedAccounts, accrualCutoffEntry);
+      case dev.erst.fingrind.contract.bookkeeping.LatvianPayrollBookkeepingEntryVariants
+              payrollEntry ->
+          PostingRequestLatvianPayrollAccounts.add(requestedAccounts, payrollEntry);
+      case FixedAssetBookkeepingEntryVariants fixedAssetEntry ->
+          PostingRequestFixedAssetAccounts.add(requestedAccounts, fixedAssetEntry);
+      case FinancingBookkeepingEntryVariants financingEntry ->
+          PostingRequestFinancingAccounts.add(requestedAccounts, financingEntry);
+      case RealizedForeignExchangeBookkeepingEntryVariants realizedForeignExchangeEntry ->
+          PostingRequestRealizedForeignExchangeAccounts.add(
+              requestedAccounts, realizedForeignExchangeEntry);
+      case StandardBookkeepingEntryVariants standardEntry ->
+          PostingRequestStandardTypedEntryAccounts.add(requestedAccounts, standardEntry);
       case BookkeepingEntry.OpeningPosition openingPosition ->
           openingPosition.balances().stream()
               .map(BookkeepingEntry.OpeningPosition.OpeningAccountBalance::accountCode)

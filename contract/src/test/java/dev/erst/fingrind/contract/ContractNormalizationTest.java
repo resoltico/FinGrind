@@ -5,12 +5,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPagination;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
 import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.workflow.LedgerFact;
@@ -47,6 +49,10 @@ class ContractNormalizationTest {
                         CASH_ACCOUNT,
                         EffectiveDateRange.unbounded(),
                         PostingCoverage.ALL_POSTING_KINDS,
+                        new AccountLedgerPagination(
+                            ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT,
+                            Optional.empty(),
+                            Optional.empty()),
                         nullOf(),
                         List.of(),
                         List.of()))
@@ -61,6 +67,10 @@ class ContractNormalizationTest {
                         CASH_ACCOUNT,
                         EffectiveDateRange.unbounded(),
                         PostingCoverage.ALL_POSTING_KINDS,
+                        new AccountLedgerPagination(
+                            ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT,
+                            Optional.empty(),
+                            Optional.empty()),
                         List.of(),
                         nullOf(),
                         List.of()))
@@ -75,6 +85,10 @@ class ContractNormalizationTest {
                         CASH_ACCOUNT,
                         EffectiveDateRange.unbounded(),
                         PostingCoverage.ALL_POSTING_KINDS,
+                        new AccountLedgerPagination(
+                            ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT,
+                            Optional.empty(),
+                            Optional.empty()),
                         List.of(),
                         List.of(),
                         nullOf()))

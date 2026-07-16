@@ -13,9 +13,9 @@ final class ProtocolPeriodCloseOperations {
         "Interim Result Sweep",
         List.of(),
         List.of(
-            ProtocolOptions.BOOK_FILE + " <path>",
+            ProtocolBookAccessOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
-            ProtocolOptions.THROUGH + " <YYYY-MM-DD>",
+            ProtocolOptions.DateRange.THROUGH + " <YYYY-MM-DD>",
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),
@@ -38,9 +38,9 @@ final class ProtocolPeriodCloseOperations {
         "Fiscal-Year Close",
         List.of(),
         List.of(
-            ProtocolOptions.BOOK_FILE + " <path>",
+            ProtocolBookAccessOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
-            ProtocolOptions.YEAR + " <YYYY>",
+            ProtocolOptions.DateRange.YEAR + " <YYYY>",
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),

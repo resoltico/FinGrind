@@ -38,6 +38,18 @@ final class MachineContractPostEntryComponentSchemas {
         MachineContractPostEntryNestedFieldSpecs.inventoryReliefFields());
   }
 
+  static Map<String, Object> recognitionIntervalSchema() {
+    return MachineContractSchemaSupport.objectSchema(
+        "Inclusive date interval in which a deferred balance may be recognized.",
+        MachineContractPostEntryNestedFieldSpecs.recognitionIntervalFields());
+  }
+
+  static Map<String, Object> fixedAssetDepreciationScheduleSchema() {
+    return MachineContractSchemaSupport.objectSchema(
+        "Straight-line depreciation terms retained with one capitalized fixed asset.",
+        MachineContractPostEntryNestedFieldSpecs.fixedAssetDepreciationScheduleFields());
+  }
+
   static Map<String, Object> foreignExchangeSchema() {
     return MachineContractSchemaSupport.objectSchema(
         "Optional owned foreign-exchange facts for a transaction-currency event translated into book functional currency.",

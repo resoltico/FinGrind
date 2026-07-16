@@ -88,7 +88,9 @@ final class CliLedgerPlanParser {
   }
 
   private static boolean isAdministrativeStepKind(LedgerStepKind kind) {
-    return kind == LedgerStepKind.ENSURE_BOOK || kind == LedgerStepKind.DECLARE_ACCOUNT;
+    return kind == LedgerStepKind.ENSURE_BOOK
+        || kind == LedgerStepKind.DECLARE_ACCOUNT
+        || kind == LedgerStepKind.DECLARE_TAX_REGISTRATION;
   }
 
   private static LedgerStep readAdministrativeStep(
@@ -98,6 +100,12 @@ final class CliLedgerPlanParser {
           stepId,
           CliLedgerPlanEnsureBookParser.read(
               requiredObject(stepNode, ProtocolLedgerPlanFields.Step.ENSURE_BOOK)));
+    }
+    if (kind == LedgerStepKind.DECLARE_TAX_REGISTRATION) {
+      return new LedgerStep.DeclareTaxRegistration(
+          stepId,
+          CliPostingRequestParser.readDeclareTaxRegistrationCommand(
+              requiredObject(stepNode, ProtocolLedgerPlanFields.Step.DECLARE_TAX_REGISTRATION)));
     }
     return new LedgerStep.DeclareAccount(
         stepId,
@@ -150,6 +158,13 @@ final class CliLedgerPlanParser {
         ProtocolLedgerPlanFields.Step.DECLARE_ACCOUNT,
         ProtocolBookRequestFieldSets.declareAccountFields(),
         LedgerStepKind.DECLARE_ACCOUNT);
+    rejectFlattenedNestedStepPayload(
+        stepNode,
+        kind,
+        unexpectedFields,
+        ProtocolLedgerPlanFields.Step.DECLARE_TAX_REGISTRATION,
+        ProtocolBookRequestFieldSets.declareTaxRegistrationFields(),
+        LedgerStepKind.DECLARE_TAX_REGISTRATION);
     CliLedgerPlanPostingStepParser.rejectFlattenedPostingPayload(stepNode, kind, unexpectedFields);
     rejectFlattenedNestedStepPayload(
         stepNode,

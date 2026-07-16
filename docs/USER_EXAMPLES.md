@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.60.0"
 domain: USER_EXAMPLES
-updated: "2026-07-11"
+updated: "2026-07-14"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, financial-position, inventory-valuation, income-statement, cash-flow-statement, changes-in-equity, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -65,7 +65,7 @@ For automation, generate a dedicated key file:
 ```bash
 fingrind \
   generate-book-key-file \
-  --book-key-file ./secrets/acme.book-key
+  --new-book-key-file ./secrets/acme.book-key
 ```
 
 Keep that key outside the book directory. The examples below use `./secrets/` for passphrase
@@ -125,7 +125,7 @@ fingrind \
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"<redacted>/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","accountingKernelProfile":"internal-management-bookkeeping-kernel","accountingBasis":"CASH","accountingFrameworkPosition":"NON_STATUTORY_INTERNAL_MANAGEMENT","entityForm":"OWNER_MANAGED_SINGLE_ENTITY","bookTemplateId":"OWNER_MANAGED_SERVICE","functionalCurrency":"EUR","fiscalYearStart":"01-01"}}}
+{"status":"ok","payload":{"bookFile":"/workspace/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","accountingKernelProfile":"internal-management-bookkeeping-kernel","accountingBasis":"CASH","accountingFrameworkPosition":"NON_STATUTORY_INTERNAL_MANAGEMENT","entityForm":"OWNER_MANAGED_SINGLE_ENTITY","bookTemplateId":"OWNER_MANAGED_SERVICE","functionalCurrency":"EUR","fiscalYearStart":"01-01"}}}
 ```
 
 That initialized book starts from the explicitly selected owner-managed service seed template with
@@ -152,14 +152,6 @@ whether the path is safe for `open-book`, `declare-account`, or `post-entry`.
 
 ## Rotate One Book Passphrase
 
-Generate the replacement key file before you ask `rekey-book` to use it:
-
-```bash
-fingrind \
-  generate-book-key-file \
-  --book-key-file ./secrets/acme.rotated.book-key
-```
-
 ```bash
 fingrind \
   rekey-book \
@@ -168,29 +160,19 @@ fingrind \
   --new-book-key-file ./secrets/acme.rotated.book-key
 ```
 
-`--new-book-key-file` must point to an existing generated or operator-supplied secret
-file. `rekey-book` also accepts `--new-book-passphrase-stdin` and
-`--new-book-passphrase-prompt` for the new secret. The interactive replacement
-prompt asks for the new passphrase twice and rejects mismatched entries. FinGrind creates one
-same-directory rollback copy before rotating the book and restores the pre-rekey file
-automatically if new-passphrase verification fails. If a crash or forced stop interrupts
-that cleanup, the rollback artifact remains in the book directory under the old ciphertext until
-you inspect or delete it; later opens warn when they detect that stale copy.
-
-If you prefer the interactive replacement prompt instead of an existing file:
-
-```bash
-fingrind \
-  rekey-book \
-  --book-file ./books/acme.sqlite \
-  --book-key-file ./secrets/acme.book-key \
-  --new-book-passphrase-prompt
-```
+`--new-book-key-file` must name an absent target on a filesystem that supports atomic no-replace
+publication. FinGrind generates and publishes the fresh owner-only secret only after it has staged
+and verified the re-encrypted book. `rekey-book` does not accept a replacement secret through
+standard input or an interactive prompt. FinGrind creates one same-directory rollback copy before
+rotating the book and restores the pre-rekey file automatically if staged verification fails. If a
+crash or forced stop interrupts cleanup, the rollback artifact remains in the book directory under
+the old ciphertext until you inspect or delete it; later opens warn when they detect that stale
+copy.
 
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"<redacted>/books/acme.sqlite","replacementPassphraseSource":"key-file"},"artifacts":[{"format":"book-key-file","path":"<redacted>/keys/acme.rotated.book-key"}]}
+{"status":"ok","payload":{"bookFile":"/workspace/books/acme.sqlite","newBookKeyFile":"/workspace/secrets/acme.rotated.book-key"},"artifacts":[{"format":"book-key-file","path":"/workspace/secrets/acme.rotated.book-key"}]}
 ```
 
 ## Back Up And Restore One Closed Protected Book
@@ -203,7 +185,7 @@ fingrind \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --backup-file ./backup/books/acme.sqlite \
-  --backup-key-file ./backup/secrets/acme.book-key
+  --new-backup-key-file ./backup/secrets/acme.book-key
 ```
 
 That command refuses to run when the live book has blocking SQLite sidecars or stale rollback
@@ -218,9 +200,10 @@ To restore, verify the backup pair and replace the live book path in one step:
 fingrind \
   restore-book \
   --book-file ./books/acme.sqlite \
-  --book-key-file ./secrets/acme-restored.book-key \
+  --new-book-key-file ./secrets/acme-restored.book-key \
   --backup-file ./backup/books/acme.sqlite \
-  --backup-key-file ./backup/secrets/acme.book-key
+  --backup-key-file ./backup/secrets/acme.book-key \
+  --replace-existing-book
 ```
 
 After restore completes, reopen `./books/acme.sqlite` with `./secrets/acme-restored.book-key`
@@ -228,10 +211,17 @@ because the restored encrypted book is re-encrypted under that destination secre
 If the selected live-book or live-key parent directory does not exist yet, FinGrind creates it
 with owner-only protection before publishing the restored pair. If either directory already
 exists, keep it owner-only before you reuse that restore target.
+Without `--replace-existing-book`, the selected `--book-file` must remain absent through final
+publication. If another process creates it while restore is staging, FinGrind leaves that book
+unchanged, removes its own staged artifacts, and rejects the restore.
 
 ## Inspect Or Repair One Interrupted Rekey
 
 Inspect stale same-directory rollback artifacts first:
+
+Inspection reads sibling rollback artifact paths without opening the protected book, so it does not
+take a book key or another passphrase source. The subsequent restore or delete action requires the
+current book passphrase source because it acts on a selected artifact.
 
 ```bash
 fingrind \
@@ -303,6 +293,37 @@ fingrind \
   --book-key-file ./secrets/acme.book-key \
   --limit 1 \
   --cursor "<nextCursor-from-the-prior-page>"
+```
+
+## Amend Or Retire An Account
+
+Use an amendment only while the account has no posted history, tax-registration binding, or child
+account. Generate the canonical request, replace its placeholders with the new definition, then
+submit it against the selected book:
+
+```bash
+fingrind \
+  print-request-template amend-account > ./cash-reserve-amend.json
+
+fingrind \
+  amend-account \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
+  --request-file ./cash-reserve-amend.json
+```
+
+To retire an account, it must have a zero current balance and no live tax-registration or
+child-account binding. Retirement keeps its identity and journal history; it blocks new ordinary
+authored use, while a historical `record-reversal` remains admissible.
+
+```bash
+printf '%s\n' '{"accountCode":"cash-reserve"}' > ./retire-account.json
+
+fingrind \
+  retire-account \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
+  --request-file ./retire-account.json
 ```
 
 ## Preflight And Commit One Entry
@@ -389,9 +410,11 @@ fingrind \
 
 Like `print-request-template`, this scaffold uses the same canonical content as the checked-in
 [examples/ledger-plan-template.json](./examples/ledger-plan-template.json) companion example.
-Its nested posting scaffold defaults to one minimal `"entryKind": "SALE_SETTLED"` posting with
-`cashAccountCode`, `revenueAccountCode`, and `amount`, and the emitted workflow uses the same placeholder evidence and provenance
-tokens as the request template. Replace those placeholder values before real-world use.
+It initializes the book, declares the payable and recoverable VAT accounts, then declares the
+registration in one transaction. Replace the tax-registration identity and tax-code placeholder
+values before real-world use. The example is structural, not a Latvian VAT determination: verify
+registration, rate, deduction, place-of-supply, invoice, and filing treatment against the primary
+sources listed in [DOC_00_PrimarySources.md](./DOC_00_PrimarySources.md).
 
 Or execute the checked-in runnable example plan directly against a fresh book:
 
@@ -409,24 +432,27 @@ fingrind \
 
 That plan:
 - ensures a new book exists with the declared identity
-- posts one balanced entry
-- asserts the resulting cash balance
+- declares the required VAT payable account
+- declares the required VAT recoverable account
+- declares the tax registration only after its prerequisite accounts exist
+
+If any setup step is refused, `execute-plan` rolls the complete setup back and returns the ordered
+failure journal. A successful plan exposes each declaration in that same journal; it does not hide
+account creation inside `declare-tax-registration`.
 
 `execute-plan` defaults to a bounded text summary. The examples above pass `--output json` and
 `--result-detail full` because the checked-in response fixtures below include the machine envelope
 and the full execution journal.
 
 Checked-in plan examples:
-- [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): checked-in source-copy companion for the canonical minimal sale plan scaffold
-- [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): primary runnable plan example using one sale entry
-- [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json): sale-first plan that also demonstrates in-plan queries
+- [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): checked-in source-copy companion for the canonical tax-setup plan scaffold
+- [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): primary runnable plan example that creates the tax setup atomically
+- [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json): follow-on plan that pages the initialized account registry
 - [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json)
 - [examples/execute-plan-assertion-failed-response.json](./examples/execute-plan-assertion-failed-response.json)
 - [examples/execute-plan-query-response.json](./examples/execute-plan-query-response.json)
 
-If you want the plan itself to inspect paginated state before it finishes, use the checked-in
-query example. It keeps the posting step in the sale-first request language while focusing on the
-query steps:
+After the tax-setup plan succeeds, use the checked-in query plan to inspect paginated registry state:
 
 - `./ledger-plan-query-request.json`: copy [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json)
 
@@ -502,6 +528,7 @@ fingrind \
   --account-code cash \
   --effective-date-from 2026-04-07 \
   --effective-date-to 2026-04-07 \
+  --limit 50 \
   --output csv
 
 fingrind \
@@ -539,6 +566,19 @@ fingrind \
   --pdf-out ./acme-trial-balance.pdf
 ```
 
+For JSON pagination, pass the opaque `payload.nextCursor` from a previous account-ledger response back unchanged. A cursor continues the ledger's ascending keyset order; it is not a read snapshot.
+
+```bash
+fingrind \
+  account-ledger \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
+  --account-code cash \
+  --limit 50 \
+  --cursor '<nextCursor-from-the-previous-response>' \
+  --output json
+```
+
 Checked-in report examples:
 - [examples/trial-balance-response.json](./examples/trial-balance-response.json)
 - [examples/account-ledger-response.json](./examples/account-ledger-response.json)
@@ -555,204 +595,12 @@ movement into operating, investing, and financing sections from the declared cou
 rounded moving-average unit-cost projection is informational and is never multiplied back into the
 carrying value.
 `--pdf-out` writes a parallel PDF artifact to the requested path. If the report succeeds and JSON
-is selected on stdout, the success envelope also publishes one redacted PDF path hint under
+is selected on stdout, the success envelope also publishes one canonical absolute PDF path under
 `artifacts[]`. `--output text --pdf-out <path>` writes one artifact confirmation block to stdout
 instead of the full report body, and `--output csv` cannot be paired with `--pdf-out`. If the
 artifact write fails, the command returns one deterministic `pdf-export-failure` error instead of
 publishing a successful report. FinGrind does not check PDF binaries into `docs/examples`;
 the checked-in text and CSV examples remain the canonical review fixtures.
 
-## Book Must Exist And Be Opened
-
-```bash
-fingrind \
-  preflight-entry \
-  --book-file ./missing.sqlite \
-  --book-key-file ./secrets/acme.book-key \
-  --request-file ./basic-posting-request.json
-```
-
-One deterministic rejection:
-
-```json
-{"status":"rejected","code":"posting-book-not-initialized","message":"The selected book does not exist or has not been initialized with open-book.","idempotencyKey":"idem-basic-1"}
-```
-
-## Accounts Must Be Declared First
-
-Create this local file first:
-- `./unknown-account-request.json`: copy [examples/unknown-account-request.json](./examples/unknown-account-request.json)
-
-```bash
-fingrind \
-  preflight-entry \
-  --book-file ./books/acme.sqlite \
-  --book-key-file ./secrets/acme.book-key \
-  --request-file ./unknown-account-request.json
-```
-
-Checked-in machine and operator examples live at
-[examples/account-state-violations-response.json](./examples/account-state-violations-response.json)
-and
-[examples/account-state-violations-text.txt](./examples/account-state-violations-text.txt).
-Posting-side account failures are now aggregated under `account-state-violations` so callers can
-repair every reported account issue before retrying; the machine envelope keeps a stable summary
-while the ordered `details.violations[]` items and the text-mode `Issue N | <code>` sections carry
-the actionable per-issue repair data. This example uses the same sale-first surface as the runnable
-posting flow so the rejection stays anchored to the primary write language.
-
-## Entry-Semantics Rejections Explain Every Issue
-
-Create this local file first:
-- `./entry-semantics-multi-violation-request.json`: copy [examples/entry-semantics-multi-violation-request.json](./examples/entry-semantics-multi-violation-request.json)
-
-```bash
-fingrind \
-  preflight-entry \
-  --book-file ./books/acme.sqlite \
-  --book-key-file ./secrets/acme.book-key \
-  --request-file ./entry-semantics-multi-violation-request.json \
-  --output text
-```
-
-Checked-in machine and operator examples live at
-[examples/entry-semantics-violations-response.json](./examples/entry-semantics-violations-response.json)
-and
-[examples/entry-semantics-violations-text.txt](./examples/entry-semantics-violations-text.txt).
-The machine envelope keeps a stable family summary plus ordered `details.violations[]` items, while
-the text surface renders the same family as one `Summary` header plus one `Issue N | <code>`
-section per violation so an operator can repair every problem without scraping one concatenated
-paragraph.
-
-## Idempotent Replay
-
-```bash
-fingrind \
-  record-sale-settled \
-  --book-file ./books/acme.sqlite \
-  --book-key-file ./secrets/acme.book-key \
-  --request-file ./basic-posting-request.json
-```
-
-One repeat commit response for the exact same normalized request:
-
-```json
-{"status":"ok","payload":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f72","idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-07","recordedAt":"2026-04-07T12:00:00Z","idempotentReplay":true,"resolvedJournal":{"expandedLines":{"effectiveDate":"2026-04-07","lines":[{"accountCode":"cash","side":"DEBIT","amount":{"currencyCode":"EUR","minorUnits":"1000"}},{"accountCode":"service-revenue","side":"CREDIT","amount":{"currencyCode":"EUR","minorUnits":"1000"}}]},"classification":{"eventClass":"SETTLED_SALE","anchorSignature":[{"accountRole":"CASH","side":"DEBIT"},{"accountRole":"REVENUE","side":"CREDIT"}],"containedTypedEvents":["SETTLED_SALE"],"hasCashLine":true,"evidenceClass":"CASH_SETTLEMENT","structural":{"adoptionOpeningEntry":false}}}}}
-```
-
-If the same `idempotencyKey` is reused with a different normalized request, the book still
-rejects it with `idempotency-key-conflict`.
-
-## Read The Request From Standard Input
-
-```bash
-cat ./basic-posting-request.json | \
-  fingrind \
-    preflight-entry \
-    --book-file ./books/stdin.sqlite \
-    --book-key-file ./secrets/acme.book-key \
-    --request-file -
-```
-
-On Windows PowerShell, the same stdin flow is:
-
-```powershell
-Get-Content .\basic-posting-request.json -Raw | fingrind preflight-entry --book-file .\books\stdin.sqlite --book-key-file .\secrets\acme.book-key --request-file -
-```
-
-Remember that the selected book must already be initialized and the referenced accounts must
-already be declared before that stdin-driven preflight can succeed.
-`--request-file -` uses standard input for JSON, so it cannot be combined with
-`--book-passphrase-stdin` in the same invocation.
-
-## Reversal Request Template
-
-Create this local file first:
-- `./reversal-request.json`: copy [examples/reversal-request.json](./examples/reversal-request.json)
-
-```bash
-cat ./reversal-request.json
-```
-
-That file is a template. Replace `reversal.priorPostingId` with a real `postingId` returned by an
-earlier commit in the same book, keep `evidence.sourceDocuments[]` pointed at the reversal's own
-supporting document, then preflight or commit it:
-
-```bash
-fingrind \
-  preflight-entry \
-  --book-file ./reversals.sqlite \
-  --book-key-file ./secrets/acme.book-key \
-  --request-file ./reversal-request.json
-```
-
-## Trigger A Deterministic Invalid Request
-
-Create this local file first:
-- `./invalid-empty-lines-request.json`: copy [examples/invalid-empty-lines-request.json](./examples/invalid-empty-lines-request.json)
-
-```bash
-fingrind \
-  preflight-entry \
-  --book-file ./errors.sqlite \
-  --book-key-file ./secrets/acme.book-key \
-  --request-file ./invalid-empty-lines-request.json \
-  --output json
-```
-
-One invalid-request response:
-
-```json
-{"status":"error","code":"invalid-request","message":"Journal entry must contain at least one line.","hint":"Run 'fingrind print-request-template' for the canonical request scaffold, then replace its placeholder evidence and provenance values before real-world use, or run 'fingrind capabilities' for accepted enums and fields.","details":{"violations":["Journal entry must contain at least one line."]}}
-```
-
-## Invalid Cursor Is Rejected Deterministically
-
-```bash
-fingrind \
-  list-postings \
-  --book-file ./books/acme.sqlite \
-  --book-key-file ./secrets/acme.book-key \
-  --cursor definitely-not-a-valid-cursor \
-  --output json
-```
-
-One deterministic error example is checked in at
-[examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json).
-
-## Protected-Book Verification Fails Deterministically
-
-```bash
-fingrind generate-book-key-file --book-key-file ./secrets/wrong.book-key
-fingrind \
-  list-accounts \
-  --book-file ./books/acme.sqlite \
-  --book-key-file ./secrets/wrong.book-key \
-  --output json
-```
-
-One deterministic error example is checked in at
-[examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json).
-Wrong passphrases, damaged or truncated protected books, and unsupported protected SQLite variants
-now return `protected-book-verification-failed` with exit `6`; SQLite storage symptoms such as
-`SQLITE_NOTADB` do not leak to callers.
-
-## Prompt Mode Requires A Supported Interactive Terminal
-
-```bash
-fingrind \
-  open-book \
-  --book-file ./prompt.sqlite \
-  --entity-name "Acme Studio" \
-  --book-template-id OWNER_MANAGED_SERVICE \
-  --accounting-basis CASH \
-  --functional-currency EUR \
-  --fiscal-year-start 01-01 \
-  \
-  --book-passphrase-prompt
-```
-
-When no supported controlling terminal is available, FinGrind returns the deterministic
-`interactive-prompt-unavailable` error with a repair hint pointing to `--book-key-file` or
-`--book-passphrase-stdin` and exits with code `5`. One example is checked in at
-[examples/interactive-prompt-unavailable-error.txt](./examples/interactive-prompt-unavailable-error.txt).
+For safe retries, request input, reversal, and deterministic failure-recovery flows, continue with
+[USER_ENTRY_WORKFLOWS.md](./USER_ENTRY_WORKFLOWS.md).

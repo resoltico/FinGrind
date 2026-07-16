@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor.maintenance;
 
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailurePaths;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.StagedBookReplacement;
 import java.nio.file.Files;
@@ -44,13 +45,27 @@ final class ProtectedBookMaintenanceWorkflowSupport {
     return new ProtectedBookMaintenanceRejection.ArtifactBusy(artifactRole, artifactPath);
   }
 
+  <T> MaintenanceDecision<T> storageFailure(Path path, String message, String argumentName) {
+    Objects.requireNonNull(path, "path");
+    Objects.requireNonNull(message, "message");
+    Objects.requireNonNull(argumentName, "argumentName");
+    return MaintenanceDecision.failed(
+        new MaintenanceFailure(
+            ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE,
+            message,
+            "Inspect the selected filesystem path and retry after resolving the underlying storage problem.",
+            argumentName,
+            ContractFailurePaths.primary(path)));
+  }
+
   <T> MaintenanceDecision<T> compensateAuditAfterExternalCommitFailure(
       ProtectedBookMaintenanceStore.VerifiedBook verifiedBook,
       Instant recordedAt,
       ProtectedBookMaintenanceAuditCompensationKind auditKind,
+      Path path,
       String failureMessage,
-      String argumentName,
-      RuntimeException commitFailure) {
+      String argumentName) {
+    Objects.requireNonNull(path, "path");
     return store
         .appendMaintenanceAuditCompensation(verifiedBook, recordedAt, auditKind)
         .fold(
@@ -59,8 +74,9 @@ final class ProtectedBookMaintenanceWorkflowSupport {
                     new MaintenanceFailure(
                         ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE,
                         failureMessage,
-                        commitFailure.getMessage(),
-                        argumentName)),
+                        "Inspect the selected filesystem path and retry after resolving the underlying storage problem.",
+                        argumentName,
+                        ContractFailurePaths.primary(path))),
             MaintenanceDecision::failed);
   }
 
@@ -121,8 +137,7 @@ final class ProtectedBookMaintenanceWorkflowSupport {
               },
               MaintenanceDecision::failed);
     } catch (ProtectedBookMaintenanceRejectionException exception) {
-      return MaintenanceDecision.accepted(
-          rejectedOutcome.apply(pathInvalid(exception.rejection())));
+      return MaintenanceDecision.accepted(rejectedOutcome.apply(exception.rejection()));
     }
   }
 
@@ -224,14 +239,5 @@ final class ProtectedBookMaintenanceWorkflowSupport {
     ProtectedBookMaintenanceRejection rejection() {
       return rejection;
     }
-  }
-
-  private static ProtectedBookMaintenanceRejection.ArtifactPathInvalid pathInvalid(
-      ProtectedBookMaintenanceRejection rejection) {
-    if (rejection instanceof ProtectedBookMaintenanceRejection.ArtifactPathInvalid pathInvalid) {
-      return pathInvalid;
-    }
-    throw new IllegalArgumentException(
-        "Expected one maintenance artifact-path rejection, but received: " + rejection);
   }
 }

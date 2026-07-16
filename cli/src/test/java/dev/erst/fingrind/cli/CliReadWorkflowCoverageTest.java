@@ -3,10 +3,14 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffScheduleQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffScheduleResult;
 import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.InventoryValuationQuery;
 import dev.erst.fingrind.contract.bookkeeping.InventoryValuationResult;
+import dev.erst.fingrind.contract.bookkeeping.LatvianPayrollRegisterQuery;
+import dev.erst.fingrind.contract.bookkeeping.LatvianPayrollRegisterResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.ComparativeSelection;
@@ -52,5 +56,14 @@ class CliReadWorkflowCoverageTest extends CliBookWorkflowFixtureSupport {
             bookAccess, new InventoryValuationQuery(java.util.Optional.empty(), false));
     assertNotNull(inventoryDecision.requireAccepted());
     assertInstanceOf(InventoryValuationResult.class, inventoryDecision.requireAccepted());
+    var accrualCutoffDecision =
+        workflow.accrualCutoffSchedule(
+            bookAccess, new AccrualCutoffScheduleQuery(java.util.Optional.empty()));
+    assertNotNull(accrualCutoffDecision.requireAccepted());
+    assertInstanceOf(AccrualCutoffScheduleResult.class, accrualCutoffDecision.requireAccepted());
+    var payrollRegisterDecision =
+        workflow.latvianPayrollRegister(bookAccess, new LatvianPayrollRegisterQuery());
+    assertNotNull(payrollRegisterDecision.requireAccepted());
+    assertInstanceOf(LatvianPayrollRegisterResult.class, payrollRegisterDecision.requireAccepted());
   }
 }

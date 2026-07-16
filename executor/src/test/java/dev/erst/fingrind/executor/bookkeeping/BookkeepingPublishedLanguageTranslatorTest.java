@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.bookkeeping.AmendAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.AmendAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.ClosedFiscalYear;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
@@ -21,6 +23,7 @@ import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
+import dev.erst.fingrind.contract.bookkeeping.RetireAccountResult;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountNodeKind;
@@ -122,6 +125,71 @@ class BookkeepingPublishedLanguageTranslatorTest {
                 java.util.Optional.empty(),
                 java.util.Optional.of(CashFlowAssetClassification.NON_CASH))),
         assertInstanceOf(DeclareAccountResult.Rejected.class, rejected).rejection());
+  }
+
+  @Test
+  void accountRegistryPublishedLanguageTranslator_translatesLifecycleCommandsAndOutcomes() {
+    RegisteredAccount account =
+        registeredAccount(
+            new AccountCode("1000"),
+            new AccountName("Cash"),
+            AccountType.ASSET,
+            NormalBalance.DEBIT,
+            true,
+            Instant.parse("2026-05-05T09:15:30Z"));
+    AmendAccountCommand command =
+        new AmendAccountCommand(
+            account.accountCode(),
+            new AccountName("Operating Cash"),
+            account.accountType(),
+            account.accountTaxonomy());
+
+    AccountDeclaration amendment =
+        AccountRegistryPublishedLanguageTranslator.fromPublished(command);
+    AmendAccountResult amended =
+        AccountRegistryPublishedLanguageTranslator.toPublished(
+            new AccountAmendmentOutcome.Amended(account));
+    AmendAccountResult unchanged =
+        AccountRegistryPublishedLanguageTranslator.toPublished(
+            new AccountAmendmentOutcome.Unchanged(account));
+    AmendAccountResult rejected =
+        AccountRegistryPublishedLanguageTranslator.toPublished(
+            new AccountAmendmentOutcome.Rejected(
+                new AccountRegistryLifecycleRejection.AccountNotFound(account.accountCode())));
+    RetireAccountResult retired =
+        AccountRegistryPublishedLanguageTranslator.toPublished(
+            new AccountRetirementOutcome.Retired(account));
+    RetireAccountResult retirementUnchanged =
+        AccountRegistryPublishedLanguageTranslator.toPublished(
+            new AccountRetirementOutcome.Unchanged(account));
+    RetireAccountResult retirementRejected =
+        AccountRegistryPublishedLanguageTranslator.toPublished(
+            new AccountRetirementOutcome.Rejected(
+                new AccountRegistryLifecycleRejection.AccountBalanceNotZero(
+                    account.accountCode())));
+
+    assertEquals(command.accountCode(), amendment.accountCode());
+    assertEquals(command.accountName(), amendment.accountName());
+    assertEquals(
+        BookkeepingPublishedLanguageTranslator.toPublished(account),
+        assertInstanceOf(AmendAccountResult.Amended.class, amended).account());
+    assertEquals(
+        BookkeepingPublishedLanguageTranslator.toPublished(account),
+        assertInstanceOf(AmendAccountResult.Unchanged.class, unchanged).account());
+    assertEquals(
+        new dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection
+            .AccountNotFound(account.accountCode()),
+        assertInstanceOf(AmendAccountResult.Rejected.class, rejected).rejection());
+    assertEquals(
+        BookkeepingPublishedLanguageTranslator.toPublished(account),
+        assertInstanceOf(RetireAccountResult.Retired.class, retired).account());
+    assertEquals(
+        BookkeepingPublishedLanguageTranslator.toPublished(account),
+        assertInstanceOf(RetireAccountResult.Unchanged.class, retirementUnchanged).account());
+    assertEquals(
+        new dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection
+            .AccountBalanceNotZero(account.accountCode()),
+        assertInstanceOf(RetireAccountResult.Rejected.class, retirementRejected).rejection());
   }
 
   @Test

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
+import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -21,6 +22,56 @@ import tools.jackson.core.io.ContentReference;
 
 /** Unit tests for {@link CliJsonRequestCodec}. */
 class CliJsonRequestCodecTest {
+  @Test
+  void requestPlaceholderValues_rejectNestedScaffoldValuesAndKeepRealValues() throws Exception {
+    var mapper = CliJsonObjectMappers.configuredObjectMapper();
+    var realProvenance =
+        (tools.jackson.databind.node.ObjectNode) mapper.readTree("{\"actorId\":\"operator-1\"}");
+    assertEquals(
+        "operator-1",
+        CliRequestPlaceholderValues.requiredRealProvenanceText(
+            realProvenance, "actorId", ScaffoldPlaceholders.ACTOR_ID));
+
+    var reservedProvenance =
+        (tools.jackson.databind.node.ObjectNode)
+            mapper.readTree("{\"actorId\":\"%s\"}".formatted(ScaffoldPlaceholders.ACTOR_ID));
+    IllegalArgumentException provenanceFailure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                CliRequestPlaceholderValues.requiredRealProvenanceText(
+                    reservedProvenance, "actorId", ScaffoldPlaceholders.ACTOR_ID));
+    assertEquals(
+        "Scaffold placeholder must be replaced before submission: provenance.actorId",
+        provenanceFailure.getMessage());
+
+    IllegalArgumentException topLevelFailure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                CliRequestPlaceholderValues.requiredRealText(
+                    reservedProvenance, "actorId", ScaffoldPlaceholders.ACTOR_ID, null));
+    assertEquals(
+        "Scaffold placeholder must be replaced before submission: actorId",
+        topLevelFailure.getMessage());
+
+    var requestWithReservedSourceDocument =
+        mapper.readTree(
+            """
+            {"evidence":{"sourceDocuments":[{"sourceDocumentId":"%s"}]}}
+            """
+                .formatted(ScaffoldPlaceholders.SOURCE_DOCUMENT_ID));
+    IllegalArgumentException requestFailure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                CliRequestPlaceholderValues.rejectReservedScaffoldValues(
+                    requestWithReservedSourceDocument));
+    assertEquals(
+        "Scaffold placeholder must be replaced before submission: sourceDocuments[0].sourceDocumentId",
+        requestFailure.getMessage());
+  }
+
   @Test
   void hasDuplicateObjectKeys_returnsFalseWhenObjectKeysAreDistinct() throws Exception {
     assertFalse(
@@ -61,9 +112,8 @@ class CliJsonRequestCodecTest {
         CliJsonRequestFailures.requestReadFailure(
             requestFile, new NoSuchFileException(requestFile.toString()), "unused hint");
 
-    assertEquals(
-        "Request file does not exist: " + CliPublicPaths.redactedValue(requestFile) + ".",
-        exception.getMessage());
+    assertEquals("Request file does not exist.", exception.getMessage());
+    assertEquals(requestFile, exception.failure().path());
     assertTrue(
         Objects.requireNonNull(exception.failure().hint())
             .contains("Verify that the selected --request-file exists and is readable"));
@@ -77,9 +127,8 @@ class CliJsonRequestCodecTest {
         CliJsonRequestFailures.requestReadFailure(
             requestFile, new AccessDeniedException(requestFile.toString()), "unused hint");
 
-    assertEquals(
-        "Request file is not readable: " + CliPublicPaths.redactedValue(requestFile) + ".",
-        exception.getMessage());
+    assertEquals("Request file is not readable.", exception.getMessage());
+    assertEquals(requestFile, exception.failure().path());
   }
 
   @Test
@@ -90,9 +139,8 @@ class CliJsonRequestCodecTest {
         CliJsonRequestFailures.requestReadFailure(
             requestFile, new IOException("boom"), "unused hint");
 
-    assertEquals(
-        "Failed to read request file: " + CliPublicPaths.redactedValue(requestFile) + ".",
-        exception.getMessage());
+    assertEquals("Failed to read request file.", exception.getMessage());
+    assertEquals(requestFile, exception.failure().path());
   }
 
   @Test
@@ -136,10 +184,9 @@ class CliJsonRequestCodecTest {
     assertEquals(
         "Request file exceeded the supported "
             + ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
-            + "-byte UTF-8 limit: "
-            + CliPublicPaths.redactedValue(requestFile)
-            + ".",
+            + "-byte UTF-8 limit.",
         fileException.getMessage());
+    assertEquals(requestFile, fileException.failure().path());
   }
 
   @Test

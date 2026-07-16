@@ -19,9 +19,6 @@ import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
-import dev.erst.fingrind.contract.bookkeeping.InventoryValuationQuery;
-import dev.erst.fingrind.contract.bookkeeping.InventoryValuationReport;
-import dev.erst.fingrind.contract.bookkeeping.InventoryValuationResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
@@ -30,11 +27,6 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.reportmodel.AccountBalanceReportModelBuilder;
 import dev.erst.fingrind.contract.reportmodel.AccountLedgerReportModelBuilder;
-import dev.erst.fingrind.contract.reportmodel.CashFlowStatementReportModelBuilder;
-import dev.erst.fingrind.contract.reportmodel.ChangesInEquityReportModelBuilder;
-import dev.erst.fingrind.contract.reportmodel.FinancialPositionReportModelBuilder;
-import dev.erst.fingrind.contract.reportmodel.IncomeStatementReportModelBuilder;
-import dev.erst.fingrind.contract.reportmodel.InventoryValuationReportModelBuilder;
 import dev.erst.fingrind.contract.reportmodel.PeriodSummaryReportModelBuilder;
 import dev.erst.fingrind.contract.reportmodel.ReportModel;
 import dev.erst.fingrind.contract.reportmodel.TaxObligationReportModelBuilder;
@@ -87,49 +79,23 @@ record CliReportCommandCatalog(
   CliConfiguredReportHandler<
           FinancialPositionQuery, FinancialPositionResult, FinancialPositionReport>
       financialPosition() {
-    return configured(
-        readWorkflow::financialPosition,
-        FinancialPositionReportModelBuilder::buildModel,
-        responseWriter::writeFinancialPositionResult,
-        CliReportExitCodes::exitCodeFor);
+    return CliStatementReportCommandHandlers.financialPosition(readWorkflow, responseWriter);
   }
 
   CliConfiguredReportHandler<IncomeStatementQuery, IncomeStatementResult, IncomeStatementReport>
       incomeStatement() {
-    return configured(
-        readWorkflow::incomeStatement,
-        IncomeStatementReportModelBuilder::buildModel,
-        responseWriter::writeIncomeStatementResult,
-        CliReportExitCodes::exitCodeFor);
-  }
-
-  CliConfiguredReportHandler<
-          InventoryValuationQuery, InventoryValuationResult, InventoryValuationReport>
-      inventoryValuation() {
-    return configured(
-        readWorkflow::inventoryValuation,
-        InventoryValuationReportModelBuilder::buildModel,
-        responseWriter::writeInventoryValuationResult,
-        CliReportExitCodes::exitCodeFor);
+    return CliStatementReportCommandHandlers.incomeStatement(readWorkflow, responseWriter);
   }
 
   CliConfiguredReportHandler<
           CashFlowStatementQuery, CashFlowStatementResult, CashFlowStatementReport>
       cashFlowStatement() {
-    return configured(
-        readWorkflow::cashFlowStatement,
-        CashFlowStatementReportModelBuilder::buildModel,
-        responseWriter::writeCashFlowStatementResult,
-        CliReportExitCodes::exitCodeFor);
+    return CliStatementReportCommandHandlers.cashFlowStatement(readWorkflow, responseWriter);
   }
 
   CliConfiguredReportHandler<ChangesInEquityQuery, ChangesInEquityResult, ChangesInEquityReport>
       changesInEquity() {
-    return configured(
-        readWorkflow::changesInEquity,
-        ChangesInEquityReportModelBuilder::buildModel,
-        responseWriter::writeChangesInEquityResult,
-        CliReportExitCodes::exitCodeFor);
+    return CliStatementReportCommandHandlers.changesInEquity(readWorkflow, responseWriter);
   }
 
   CliConfiguredReportHandler<TaxObligationQuery, TaxObligationResult, TaxObligationReport>
@@ -142,7 +108,7 @@ record CliReportCommandCatalog(
         CliBookQueryExitCodes::exitCodeFor);
   }
 
-  private static <QUERY, RESULT extends BookQueryReportResult<REPORTED>, REPORTED>
+  static <QUERY, RESULT extends BookQueryReportResult<REPORTED>, REPORTED>
       CliConfiguredReportHandler<QUERY, RESULT, REPORTED> configured(
           CliConfiguredReportHandler.WorkflowCall<QUERY, RESULT> workflowCall,
           Function<REPORTED, ReportModel> reportModelBuilder,

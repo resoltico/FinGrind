@@ -1,13 +1,16 @@
 package dev.erst.fingrind.executor;
 
-import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.expense;
-import static dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.inventory;
+import static dev.erst.fingrind.executor.PostEntryAccountDistinctness.distinct;
+import static dev.erst.fingrind.executor.PostEntryOperatingAccountExpectations.cash;
+import static dev.erst.fingrind.executor.PostEntryOperatingAccountExpectations.expense;
+import static dev.erst.fingrind.executor.PostEntryOperatingAccountExpectations.inventory;
+import static dev.erst.fingrind.executor.PostEntryOperatingAccountExpectations.payable;
+import static dev.erst.fingrind.executor.PostEntryOperatingAccountExpectations.revenue;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.InventoryRelief;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.AccountExpectation;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.util.List;
@@ -50,7 +53,7 @@ final class PostEntryInventoryRoleAccountSemantics {
         selectorField,
         selectorValue,
         inventory(purchase.inventoryAccountCode(), "inventoryAccountCode"),
-        PostEntryRoleAccountExpectations.cash(purchase.cashAccountCode(), "cashAccountCode"));
+        cash(purchase.cashAccountCode(), "cashAccountCode"));
   }
 
   static void validate(
@@ -65,8 +68,7 @@ final class PostEntryInventoryRoleAccountSemantics {
         selectorField,
         selectorValue,
         inventory(purchase.inventoryAccountCode(), "inventoryAccountCode"),
-        PostEntryRoleAccountExpectations.payable(
-            purchase.payableAccountCode(), "payableAccountCode"));
+        payable(purchase.payableAccountCode(), "payableAccountCode"));
   }
 
   static void validate(
@@ -81,7 +83,7 @@ final class PostEntryInventoryRoleAccountSemantics {
         selectorField,
         selectorValue,
         inventory(capitalization.inventoryAccountCode(), "inventoryAccountCode"),
-        PostEntryRoleAccountExpectations.cash(capitalization.cashAccountCode(), "cashAccountCode"));
+        cash(capitalization.cashAccountCode(), "cashAccountCode"));
   }
 
   static void validate(
@@ -96,8 +98,7 @@ final class PostEntryInventoryRoleAccountSemantics {
         selectorField,
         selectorValue,
         inventory(capitalization.inventoryAccountCode(), "inventoryAccountCode"),
-        PostEntryRoleAccountExpectations.payable(
-            capitalization.payableAccountCode(), "payableAccountCode"));
+        payable(capitalization.payableAccountCode(), "payableAccountCode"));
   }
 
   static void validate(
@@ -146,8 +147,7 @@ final class PostEntryInventoryRoleAccountSemantics {
         selectorField,
         selectorValue,
         inventory(countIncrease.inventoryAccountCode(), "inventoryAccountCode"),
-        PostEntryRoleAccountExpectations.revenue(
-            countIncrease.countGainAccountCode(), "countGainAccountCode"));
+        revenue(countIncrease.countGainAccountCode(), "countGainAccountCode"));
   }
 
   static void validateOptionalInventoryRelief(
@@ -164,7 +164,7 @@ final class PostEntryInventoryRoleAccountSemantics {
         accounts,
         selectorField,
         selectorValue,
-        PostEntryRoleAccountExpectations.distinct(
+        distinct(
             inventoryRelief.inventoryAccountCode(),
             "inventoryRelief.inventoryAccountCode",
             inventoryRelief.costOfSalesAccountCode(),
@@ -197,8 +197,8 @@ final class PostEntryInventoryRoleAccountSemantics {
       Map<AccountCode, RegisteredAccount> accounts,
       String selectorField,
       String selectorValue,
-      AccountExpectation firstExpectation,
-      AccountExpectation secondExpectation) {
+      PostEntryAccountExpectation firstExpectation,
+      PostEntryAccountExpectation secondExpectation) {
     PostEntryRoleAccountSemantics.validatePair(
         violations, accounts, selectorField, selectorValue, firstExpectation, secondExpectation);
   }

@@ -6,6 +6,7 @@ import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookPassphraseSource;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import dev.erst.fingrind.executor.spi.StagedBookReplacement;
 import dev.erst.fingrind.executor.spi.StagedRollbackArtifactDeletion;
@@ -35,6 +36,9 @@ public final class SqliteProtectedBookMaintenanceProcessHelper {
     }
     switch (args[0]) {
       case "stage-backup" -> stageBackup(args);
+      case "prepare-pair" -> preparePair(args);
+      case "publish-reserved-key" -> publishReservedPairCheckpoint(args, false);
+      case "publish-reserved-book" -> publishReservedPairCheckpoint(args, true);
       case "stage-replacement" -> stageReplacement(args);
       case "stage-rollback-delete" -> stageRollbackDeletion(args);
       default ->
@@ -54,8 +58,19 @@ public final class SqliteProtectedBookMaintenanceProcessHelper {
         new ProtectedBookAccess(bookPath, new ProtectedBookPassphraseSource.KeyFile(bookKeyPath));
     try (dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.VerifiedBook
             verifiedSourceBook = verifiedBook(store, sourceAccess);
+        dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.PreparedPairPublication
+            preparedPairPublication =
+                store.preparePairPublication(
+                    backupKeyPath,
+                    backupPath,
+                    dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore
+                        .RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                    dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole
+                        .BACKUP_TARGET,
+                    dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole
+                        .BACKUP_KEY_TARGET);
         StagedBackupPair ignored =
-            acceptedValue(store.stageBackupPair(verifiedSourceBook, backupPath, backupKeyPath))) {
+            acceptedValue(store.stageBackupPair(verifiedSourceBook, preparedPairPublication))) {
       signalReady(signalPath);
       sleepUntilKilled();
     }
@@ -68,6 +83,48 @@ public final class SqliteProtectedBookMaintenanceProcessHelper {
     Path signalPath = normalizedPath(args[3]);
     SqliteProtectedBookMaintenanceStore store = maintenanceStore();
     try (StagedBookReplacement ignored = store.stageReplacement(sourcePath, targetPath)) {
+      signalReady(signalPath);
+      sleepUntilKilled();
+    }
+  }
+
+  private static void publishReservedPairCheckpoint(String[] args, boolean publishBook)
+      throws IOException, InterruptedException {
+    requireArgumentCount(args, 4);
+    Path bookPath = normalizedPath(args[1]);
+    Path secretPath = normalizedPath(args[2]);
+    Path signalPath = normalizedPath(args[3]);
+    try (SqliteOwnedDestinationReservation secretReservation =
+            SqliteOwnedDestinationReservation.reserve(secretPath);
+        SqliteOwnedDestinationReservation bookReservation =
+            SqliteOwnedDestinationReservation.reserve(bookPath)) {
+      SqliteOwnedStagedArtifact stagedSecret =
+          secretReservation.createStage(".backup-key-", ".tmp");
+      Files.writeString(stagedSecret.stagedPath(), "interrupted-generated-secret");
+      secretReservation.publishRetainingStage(stagedSecret, Files::createLink);
+      if (publishBook) {
+        SqliteOwnedStagedArtifact stagedBook = bookReservation.createStage(".backup-", ".sqlite");
+        Files.writeString(stagedBook.stagedPath(), "interrupted-book");
+        bookReservation.publishRetainingStage(stagedBook, Files::createLink);
+      }
+      signalReady(signalPath);
+      sleepUntilKilled();
+    }
+  }
+
+  private static void preparePair(String[] args) throws IOException, InterruptedException {
+    requireArgumentCount(args, 4);
+    Path bookPath = normalizedPath(args[1]);
+    Path secretPath = normalizedPath(args[2]);
+    Path signalPath = normalizedPath(args[3]);
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+    try (ProtectedBookMaintenanceStore.PreparedPairPublication ignored =
+        store.preparePairPublication(
+            secretPath,
+            bookPath,
+            ProtectedBookMaintenanceStore.RestoredBookTargetPolicy.REQUIRE_ABSENT,
+            ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+            ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET)) {
       signalReady(signalPath);
       sleepUntilKilled();
     }

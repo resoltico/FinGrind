@@ -128,6 +128,13 @@ final class LedgerPlanEntryFactMapper {
       appendReversalFacts(facts, reversal);
       return;
     }
+    if (entry
+        instanceof
+        dev.erst.fingrind.contract.bookkeeping.LatvianPayrollBookkeepingEntryVariants
+            payrollEntry) {
+      LedgerPlanLatvianPayrollEntryFactMapper.append(facts, payrollEntry);
+      return;
+    }
     if (entry instanceof InventoryBookkeepingEntryVariants inventoryEntry) {
       LedgerPlanInventoryEntryFactMapper.append(facts, inventoryEntry);
       return;

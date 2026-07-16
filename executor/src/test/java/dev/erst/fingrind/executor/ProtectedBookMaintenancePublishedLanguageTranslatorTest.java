@@ -10,7 +10,6 @@ import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookBackupOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
@@ -73,7 +72,7 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
   }
 
   @Test
-  void translator_disambiguatesGroupedMaintenanceArtifactHints() {
+  void translator_preservesGroupedMaintenanceArtifactPaths() {
     Path book = path("work-volume/books/main.sqlite");
     Path backup = path("work-volume/backup/books/main.sqlite");
     Path backupKey = path("work-volume/backup/secrets/main.book-key");
@@ -84,13 +83,9 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
             ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
                 new ProtectedBookBackupOutcome.BackedUp(book, backup, backupKey)));
 
-    assertEquals(
-        new PublicPathHint("<redacted>/work-volume/books/main.sqlite"), backedUp.bookFilePath());
-    assertEquals(
-        new PublicPathHint("<redacted>/backup/books/main.sqlite"), backedUp.backupFilePath());
-    assertEquals(
-        new PublicPathHint("<redacted>/backup/secrets/main.book-key"),
-        backedUp.backupBookKeyFilePath());
+    assertEquals(book, backedUp.bookFilePath());
+    assertEquals(backup, backedUp.backupFilePath());
+    assertEquals(backupKey, backedUp.backupBookKeyFilePath());
   }
 
   @Test
@@ -141,12 +136,12 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
                 new ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists(backup)));
     assertEquals(hint(backup), destinationExists.backupFilePath());
 
-    BookMaintenanceRejection.BackupKeyFileAlreadyExists keyExists =
+    BookMaintenanceRejection.SecretTargetOccupied keyExists =
         assertInstanceOf(
-            BookMaintenanceRejection.BackupKeyFileAlreadyExists.class,
+            BookMaintenanceRejection.SecretTargetOccupied.class,
             ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-                new ProtectedBookMaintenanceRejection.BackupKeyFileAlreadyExists(backupKey)));
-    assertEquals(hint(backupKey), keyExists.backupBookKeyFilePath());
+                new ProtectedBookMaintenanceRejection.SecretTargetOccupied(backupKey)));
+    assertEquals(hint(backupKey), keyExists.secretTargetPath());
 
     for (ProtectedBookVerificationFailure localFailure :
         ProtectedBookVerificationFailure.values()) {
@@ -214,8 +209,8 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
     return Path.of(relativePath).toAbsolutePath().normalize();
   }
 
-  private static PublicPathHint hint(Path path) {
-    return PublicPathHint.fromPath(path);
+  private static Path hint(Path path) {
+    return path.toAbsolutePath().normalize();
   }
 
   private static void assertVerificationFailureProjection(

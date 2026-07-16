@@ -29,7 +29,7 @@ import java.util.Set;
 final class SqliteStoreQueryOperations {
   /** One initialized-book point query executed against a live SQLite handle. */
   @FunctionalInterface
-  private interface NativeQuery<T> {
+  interface NativeQuery<T> {
     /** Runs one point query against the active SQLite handle. */
     T run(SqliteNativeDatabase activeDatabase);
   }
@@ -193,7 +193,8 @@ final class SqliteStoreQueryOperations {
         activeDatabase -> SqliteAccountStatementQueries.loadAccountPage(activeDatabase, query));
   }
 
-  private <T> T queryInitialized(String failureMessage, NativeQuery<T> query) {
+  <T> T queryInitialized(String failureMessage, NativeQuery<T> query) {
+    lifecycle.ensureOpenSession();
     try {
       return SqliteStoreOperations.retryTransientLockFailures(
           () -> query.run(lifecycle.initializedQueryDatabase()));

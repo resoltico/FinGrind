@@ -100,6 +100,16 @@ class ForeignExchangeTemplateDescriptorValidationTest {
                             openingBalanceTemplate("2000", JournalLine.EntrySide.CREDIT, "1000")),
                         evidenceTemplate(),
                         provenanceTemplate(),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
                         null))
             .getMessage());
   }

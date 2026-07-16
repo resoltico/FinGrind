@@ -4,13 +4,10 @@ import dev.erst.fingrind.contract.discovery.ContractDiscoveryDescriptor;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
-import org.jspecify.annotations.Nullable;
 
 /** Descriptor for the launcher/runtime identity backing the active CLI process. */
 public record EnvironmentRuntimeDescriptor(
-    RuntimeDistribution runtimeDistribution,
-    OutputMode defaultOutputMode,
-    @Nullable String defaultOutputModeSource)
+    RuntimeDistribution runtimeDistribution, OutputMode defaultOutputMode)
     implements ContractDiscoveryDescriptor {
   /** Validates one runtime descriptor payload. */
   public EnvironmentRuntimeDescriptor {
@@ -18,8 +15,5 @@ public record EnvironmentRuntimeDescriptor(
         ContractDescriptorValidation.requireValue(runtimeDistribution, "runtimeDistribution");
     defaultOutputMode =
         ContractDescriptorValidation.requireValue(defaultOutputMode, "defaultOutputMode");
-    defaultOutputModeSource =
-        ContractDescriptorValidation.requireOptionalText(
-            defaultOutputModeSource, "defaultOutputModeSource");
   }
 }

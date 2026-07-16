@@ -24,7 +24,6 @@ import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
-import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
@@ -55,7 +54,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         OutputMode.JSON);
     var generatedEnvelope = readJson(outputStream);
     assertEquals(
-        CliPublicPaths.redactedValue(tightenedKeyParent),
+        CliPublicPaths.absoluteValue(tightenedKeyParent),
         generatedEnvelope.path("payload").path("tightenedParentDirectories").get(0).stringValue());
 
     outputStream.reset();
@@ -93,12 +92,11 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     outputStream.reset();
     responseWriter.writeRekeyBookResult(
         new RekeyBookResult.Rekeyed(Path.of("books/book.sqlite")),
-        new BookAccess.PassphraseSource.KeyFile(Path.of("keys/rotated.key")),
+        Path.of("keys/rotated.key"),
         OutputMode.TEXT);
     String rekeyText = outputStream.toString(StandardCharsets.UTF_8);
     assertTrue(rekeyText.contains("Book Rekeyed"));
-    assertTrue(rekeyText.contains("Replacement secret source"));
-    assertTrue(rekeyText.contains("Key file"));
+    assertTrue(rekeyText.contains("New book key file"));
     assertTrue(rekeyText.contains("rotated.key"));
     outputStream.reset();
     responseWriter.writeDeclareAccountResult(
@@ -346,7 +344,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         () ->
             responseWriter.writeRekeyBookResult(
                 new RekeyBookResult.Rekeyed(Path.of("books/book.sqlite")),
-                BookAccess.PassphraseSource.StandardInput.INSTANCE,
+                Path.of("keys/rotated.key"),
                 OutputMode.CSV));
     assertThrows(
         IllegalArgumentException.class,
@@ -466,27 +464,29 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     CliResponseWriter successWriter = new CliResponseWriter(utf8PrintStream(successOutput));
     successWriter.writeRekeyBookResult(
         new RekeyBookResult.Rekeyed(Path.of("books").resolve("entity.sqlite")),
-        new BookAccess.PassphraseSource.KeyFile(Path.of("keys").resolve("rotated.key")));
+        Path.of("keys").resolve("rotated.key"));
     String successJson = successOutput.toString(StandardCharsets.UTF_8);
     assertJsonContains(successJson, "\"status\":\"ok\"");
     assertJsonContains(successJson, "\"bookFile\"");
-    assertJsonContains(successJson, "\"replacementPassphraseSource\":\"key-file\"");
+    assertJsonContains(successJson, "\"newBookKeyFile\"");
     var successEnvelope = readJson(successOutput);
     assertTrue(successEnvelope.path("payload").path("replacementBookKeyFile").isMissingNode());
     assertEquals(
         ProtocolArtifactOutput.bookKeyFileFormat(),
         successEnvelope.path("artifacts").get(0).path("format").stringValue());
     assertEquals(
-        publicHintValue(Path.of("keys/rotated.key")),
+        Path.of("keys/rotated.key").toAbsolutePath().normalize().toString().replace('\\', '/'),
         successEnvelope.path("artifacts").get(0).path("path").asText().replace('\\', '/'));
     ByteArrayOutputStream rejectionOutput = new ByteArrayOutputStream();
     CliResponseWriter rejectionWriter = new CliResponseWriter(utf8PrintStream(rejectionOutput));
     rejectionWriter.writeRekeyBookResult(
-        new RekeyBookResult.Rejected(new BookAdministrationRejection.BookNotInitialized()),
-        BookAccess.PassphraseSource.InteractivePrompt.INSTANCE);
+        new RekeyBookResult.Rejected(
+            new dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection
+                .SecretTargetOccupied(Path.of("keys/occupied.key"))),
+        Path.of("keys/occupied.key"));
     String rejectionJson = rejectionOutput.toString(StandardCharsets.UTF_8);
     assertJsonContains(rejectionJson, "\"status\":\"rejected\"");
-    assertJsonContains(rejectionJson, "\"code\":\"administration-book-not-initialized\"");
+    assertJsonContains(rejectionJson, "\"code\":\"secret-target-occupied\"");
   }
 
   @Test
@@ -496,43 +496,40 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         new CliResponseWriter(utf8PrintStream(standardInputTextOutput));
     standardInputTextWriter.writeRekeyBookResult(
         new RekeyBookResult.Rekeyed(Path.of("books").resolve("entity.sqlite")),
-        BookAccess.PassphraseSource.StandardInput.INSTANCE,
+        Path.of("keys/rotated.key"),
         OutputMode.TEXT);
     String standardInputText = standardInputTextOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(standardInputText.contains("Standard input"));
-    assertFalse(standardInputText.contains("Replacement key file"));
+    assertTrue(standardInputText.contains("New book key file"));
 
     ByteArrayOutputStream interactivePromptTextOutput = new ByteArrayOutputStream();
     CliResponseWriter interactivePromptTextWriter =
         new CliResponseWriter(utf8PrintStream(interactivePromptTextOutput));
     interactivePromptTextWriter.writeRekeyBookResult(
         new RekeyBookResult.Rekeyed(Path.of("books").resolve("entity.sqlite")),
-        BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+        Path.of("keys/rotated.key"),
         OutputMode.TEXT);
     String interactivePromptText = interactivePromptTextOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(interactivePromptText.contains("Interactive prompt"));
-    assertFalse(interactivePromptText.contains("Replacement key file"));
+    assertTrue(interactivePromptText.contains("New book key file"));
 
     ByteArrayOutputStream standardInputJsonOutput = new ByteArrayOutputStream();
     CliResponseWriter standardInputJsonWriter =
         new CliResponseWriter(utf8PrintStream(standardInputJsonOutput));
     standardInputJsonWriter.writeRekeyBookResult(
         new RekeyBookResult.Rekeyed(Path.of("books").resolve("entity.sqlite")),
-        BookAccess.PassphraseSource.StandardInput.INSTANCE);
+        Path.of("keys/rotated.key"));
     String standardInputJson = standardInputJsonOutput.toString(StandardCharsets.UTF_8);
-    assertJsonContains(standardInputJson, "\"replacementPassphraseSource\":\"standard-input\"");
-    assertTrue(readJson(standardInputJsonOutput).path("artifacts").isMissingNode());
+    assertJsonContains(standardInputJson, "\"newBookKeyFile\"");
+    assertFalse(readJson(standardInputJsonOutput).path("artifacts").isMissingNode());
 
     ByteArrayOutputStream interactivePromptJsonOutput = new ByteArrayOutputStream();
     CliResponseWriter interactivePromptJsonWriter =
         new CliResponseWriter(utf8PrintStream(interactivePromptJsonOutput));
     interactivePromptJsonWriter.writeRekeyBookResult(
         new RekeyBookResult.Rekeyed(Path.of("books").resolve("entity.sqlite")),
-        BookAccess.PassphraseSource.InteractivePrompt.INSTANCE);
+        Path.of("keys/rotated.key"));
     String interactivePromptJson = interactivePromptJsonOutput.toString(StandardCharsets.UTF_8);
-    assertJsonContains(
-        interactivePromptJson, "\"replacementPassphraseSource\":\"interactive-prompt\"");
-    assertTrue(readJson(interactivePromptJsonOutput).path("artifacts").isMissingNode());
+    assertJsonContains(interactivePromptJson, "\"newBookKeyFile\"");
+    assertFalse(readJson(interactivePromptJsonOutput).path("artifacts").isMissingNode());
   }
 
   @Test
@@ -618,7 +615,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     assertEquals("rejected", json.path("status").stringValue());
     assertEquals("rollback-artifact-selection-required", json.path("code").stringValue());
     assertEquals(
-        publicHintValue(Path.of("books/entity.sqlite")),
+        CliPublicPaths.absoluteValue(Path.of("books/entity.sqlite")),
         json.path("details").path("bookFile").asText().replace('\\', '/'));
     assertEquals(2, json.path("details").path("rollbackArtifacts").size());
   }
@@ -641,7 +638,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         ProtocolArtifactOutput.rollbackBookFileFormat(),
         envelope.path("artifacts").get(0).path("format").stringValue());
     assertEquals(
-        publicHintValue(Path.of("books/entity.rekey-rollback.sqlite")),
+        CliPublicPaths.absoluteValue(Path.of("books/entity.rekey-rollback.sqlite")),
         envelope.path("artifacts").get(0).path("path").asText().replace('\\', '/'));
   }
 

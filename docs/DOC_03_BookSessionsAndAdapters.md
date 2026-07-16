@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.60.0"
 domain: ADAPTERS
-updated: "2026-07-11"
+updated: "2026-07-12"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -116,9 +116,10 @@ public enum BookAuditEventKind implements WireValue
   posting identity when the event kind requires it
 - `BookAuditEventKind`: the closed durable audit vocabulary
 - Current kinds: `BOOK_OPENED`, `ACCOUNT_DECLARED`, `ACCOUNT_REACTIVATED`, `ACCOUNT_RENAMED`,
-  `POSTING_COMMITTED`, `POSTING_REVERSED`, `BOOK_REKEYED`, `BACKUP_CREATED`,
-  `BACKUP_RESTORED`, `REKEY_ROLLBACK_RESTORED`, `REKEY_ROLLBACK_DELETED`,
-  `BACKUP_CREATED_COMPENSATED`, `REKEY_ROLLBACK_DELETED_COMPENSATED`,
+  `POSTING_COMMITTED`, `POSTING_REVERSED`, `BOOK_REKEYED`, `BACKUP_RESTORED`,
+  `REKEY_ROLLBACK_RESTORED`, `REKEY_ROLLBACK_DELETED`, and
+  `REKEY_ROLLBACK_DELETED_COMPENSATED`. Format-39 books may retain historical
+  `BACKUP_CREATED` and `BACKUP_CREATED_COMPENSATED` facts; new backups do not mutate their source book.
   `INTERIM_RESULT_SWEPT`, and `FISCAL_YEAR_CLOSED`
 - Storage boundary: SQLite persists these rows in `audit_event` and rejects direct update/delete
   mutation through append-only triggers
@@ -320,7 +321,7 @@ public record MaintenanceFailure(...)
 - `MaintenanceFailure`: local runtime failure value that isolates protected-book maintenance from
   the public contract failure envelope until the published-language adapter translates it outward
 
-## `ProtectedBookBackupOutcome`, `ProtectedBookRestoreOutcome`, And `ProtectedBookRecoveryOutcome`
+## `ProtectedBookBackupOutcome`, `ProtectedBookRekeyOutcome`, `ProtectedBookRestoreOutcome`, And `ProtectedBookRecoveryOutcome`
 
 These local maintenance result families keep backup, restore, and rollback-recovery outcomes inside
 the maintenance context until the published-language translator projects them into public contract
@@ -328,16 +329,19 @@ types.
 
 ```java
 public sealed interface ProtectedBookBackupOutcome
+public sealed interface ProtectedBookRekeyOutcome
 public sealed interface ProtectedBookRestoreOutcome
 public sealed interface ProtectedBookRecoveryOutcome
 ```
 
 - `ProtectedBookBackupOutcome`: accepted or rejected result for verified encrypted backup export
+- `ProtectedBookRekeyOutcome`: accepted or rejected result for staged rekey publication under one
+  newly generated key file
 - `ProtectedBookRestoreOutcome`: accepted or rejected result for verified backup restore
 - `ProtectedBookRecoveryOutcome`: accepted or rejected result for rollback inspection, rollback
   restore, and rollback deletion
-- Boundary: each local outcome carries local `Path` values and local maintenance rejections rather
-  than public redacted path hints
+- Boundary: each local outcome carries local `Path` values and local maintenance rejections; the
+  published JSON contract preserves their canonical absolute paths
 
 ## `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenancePathFailure`, `ProtectedBookMaintenanceRejection`, `ProtectedBookMaintenanceRejectionException`, And `ProtectedBookMaintenanceWorkflow`
 
@@ -402,9 +406,10 @@ public enum ProtectedBookVerificationFailure
 - `ProtectedBookMaintenancePublishedLanguageTranslator`: the only exported translator that may
   project local maintenance outcomes into `BackupBookResult`, `RestoreBookResult`,
   `RekeyRollbackResult`, and `BookMaintenanceRejection`
-- Redaction rule: the translator converts filesystem `Path` values into `PublicPathHint` values
-  and converts local artifact-role and verification-failure vocabularies into the stable public
-  contract types instead of leaking SQLite or filesystem implementation detail across the boundary
+- Translation rule: the translator normalizes filesystem `Path` values into the stable public
+  contract and converts local artifact-role and verification-failure vocabularies without leaking
+  SQLite implementation detail. JSON preserves canonical absolute paths; text rendering redacts
+  them at the final presentation boundary.
 
 ## `AccountRegistryCursor`, `AccountRegistryQuery`, `AccountRegistryPage`, `PostingHistoryCursor`, `PostingHistoryQuery`, `PostingHistoryPage`, `AccountBalanceCriteria`, `AccountBalanceView`, `TrialBalanceCriteria`, `TrialBalanceRowView`, `TrialBalanceView`, `AccountLedgerCriteria`, `AccountLedgerEntryView`, `AccountLedgerView`, `PeriodSummaryCriteria`, `PeriodCurrencySummaryView`, `PeriodAccountActivityView`, And `PeriodSummaryView`
 
@@ -435,6 +440,21 @@ public record PeriodSummaryView(...)
 
 - Purpose: keep pagination, balance criteria, report rows, and report views inside the local
   bookkeeping context
+
+## `AccountLedgerCursor`
+
+This local cursor is the executor-owned continuation boundary for an ascending account-ledger
+page. It is translated to the public opaque cursor only at the published-language boundary.
+
+```java
+public record AccountLedgerCursor(
+    LocalDate effectiveDate,
+    Instant recordedAt,
+    PostingId postingId)
+```
+
+- Purpose: preserve the deterministic `(effectiveDate, recordedAt, postingId)` keyset boundary
+  between ledger pages without exposing a storage-specific representation
 - Shared kernel: these local types reuse `core.EffectiveDateRange` and
   `core.CurrencyBalance` where the concept is genuinely common to public and local bookkeeping
   language, while public interaction limits such as paging remain protocol-owned in
@@ -615,7 +635,7 @@ public final class SqliteStorageFailureException extends IllegalStateException
   that FinGrind should have rejected before commit, so the CLI classifies it as `internal-error`
 - `SqliteStorageFailureException`: storage operation failed after the runtime was already available
 
-## `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqliteReportingPeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteRekeySession`, `SqliteAdministrationSessions`, `SqliteReadSessions`, `SqlitePostingSessions`, `SqliteReportingPeriodCloseSessions`, `SqlitePlanExecutionSessions`, `SqliteRekeySessions`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions`
+## `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqliteReportingPeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteAdministrationSessions`, `SqliteReadSessions`, `SqlitePostingSessions`, `SqliteReportingPeriodCloseSessions`, `SqlitePlanExecutionSessions`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions`
 
 FinGrind now publishes one family of workflow-shaped SQLite session views instead of one composite
 god-session. `SqliteBookSessionMode` names the caller intent, `SqlitePassphraseIntent` and
@@ -629,13 +649,11 @@ public interface SqliteReadSession extends AutoCloseable
 public interface SqlitePostingSession extends AutoCloseable
 public interface SqliteReportingPeriodCloseSession extends AutoCloseable
 public interface SqlitePlanExecutionSession extends AutoCloseable
-public interface SqliteRekeySession extends AutoCloseable
 public final class SqliteAdministrationSessions
 public final class SqliteReadSessions
 public final class SqlitePostingSessions
 public final class SqliteReportingPeriodCloseSessions
 public final class SqlitePlanExecutionSessions
-public final class SqliteRekeySessions
 public enum SqliteBookSessionMode
 public enum SqlitePassphraseIntent
 public interface SqlitePassphraseResolver
@@ -649,18 +667,16 @@ public final class SqliteBookSessions
 - `SqlitePostingSession`: administration, reads, validation, and commit for ordinary posting flows
 - `SqliteReportingPeriodCloseSession`: interim-result-sweep and fiscal-year-close workflows
 - `SqlitePlanExecutionSession`: plan execution plus transaction ownership
-- `SqliteRekeySession`: rekey workflows
 - `SqliteAdministrationSessions`: resolves one protected-book access tuple into an administration session
 - `SqliteReadSessions`: resolves one protected-book access tuple into a read session
 - `SqlitePostingSessions`: resolves one protected-book access tuple into a posting session
 - `SqliteReportingPeriodCloseSessions`: resolves one protected-book access tuple into a close-operation
   session
 - `SqlitePlanExecutionSessions`: resolves one protected-book access tuple into a plan-execution session
-- `SqliteRekeySessions`: resolves one protected-book access tuple into a rekey session
 - `SqliteBookSessionMode`: distinguishes `READ_ONLY`, `READ_WRITE_EXISTING`,
   `READ_WRITE_CREATE`, and `PLAN_EXECUTION`
-- `SqlitePassphraseIntent`: distinguishes whether the caller is resolving an existing book secret
-  or a confirmed replacement/new secret before `openBook(...)` or `rekeyBook(...)`
+- `SqlitePassphraseIntent`: distinguishes existing-book, plan-setup, and newly chosen secret
+  resolution without publishing a broad mutation session
 - `SqlitePassphraseResolver`: resolves the contract-level `BookAccess.PassphraseSource` plus one
   `SqlitePassphraseIntent` into a `SqliteBookPassphrase` whose owned buffers are best-effort
   overwritten after use
@@ -681,8 +697,7 @@ public enum ProtectedBookMaintenanceAuditKind
 ```
 
 - `ProtectedBookMaintenanceAuditKind`: the closed successful-maintenance vocabulary:
-  `BACKUP_CREATED`, `BACKUP_RESTORED`, `REKEY_ROLLBACK_RESTORED`, and
-  `REKEY_ROLLBACK_DELETED`
+  `BACKUP_RESTORED`, `REKEY_ROLLBACK_RESTORED`, and `REKEY_ROLLBACK_DELETED`
 - Storage projection: `SqliteProtectedBookMaintenanceStore` maps these maintenance audit kinds
   onto `BookAuditEventKind` values and inserts them into the protected book's `audit_event` table
 - Boundary: side-effect-free inspection does not emit one maintenance audit fact
@@ -697,9 +712,8 @@ public enum ProtectedBookMaintenanceAuditCompensationKind
 ```
 
 - `ProtectedBookMaintenanceAuditCompensationKind`: the closed compensation vocabulary:
-  `BACKUP_CREATED` and `REKEY_ROLLBACK_DELETED`
-- Storage projection: `SqliteProtectedBookMaintenanceStore` maps these compensation kinds onto
-  `BookAuditEventKind.BACKUP_CREATED_COMPENSATED` and
+  `REKEY_ROLLBACK_DELETED`
+- Storage projection: `SqliteProtectedBookMaintenanceStore` maps this compensation kind onto
   `BookAuditEventKind.REKEY_ROLLBACK_DELETED_COMPENSATED`
 - Boundary: compensation facts exist only when a previously published maintenance fact must be
   durably retracted after later failure cleanup

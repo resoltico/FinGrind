@@ -298,6 +298,20 @@ class ChartOfAccountsTest {
         rejection.candidateAccountCodes());
   }
 
+  @Test
+  void validateAllowsReplacingTheExistingSingularAccountDefinition() {
+    ChartOfAccounts chart = ChartOfAccounts.of(List.of(resultHoldingAccount("3200", true)));
+
+    assertEquals(
+        Optional.empty(),
+        chart.validate(
+            new AccountDeclaration(
+                new AccountCode("3200"),
+                new AccountName("Updated Result Holding"),
+                AccountType.EQUITY,
+                financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING))));
+  }
+
   private static RegisteredAccount assetAccount(
       String accountCode, Optional<AccountCode> parentAccountCode, boolean active) {
     return registeredAccount(

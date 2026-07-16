@@ -15,18 +15,18 @@ interface SqliteReadTaxCatalogCapabilityView
   default Optional<DeclaredTaxRegistration> findTaxRegistration(
       TaxRegistrationId taxRegistrationId) {
     storeThreadOwner().requireOwnerThread();
-    return storeReadOperations().findTaxRegistration(taxRegistrationId);
+    return storeReadOperations().taxRegistrations().findTaxRegistration(taxRegistrationId);
   }
 
   @Override
   default List<DeclaredTaxRegistration> allTaxRegistrations() {
     storeThreadOwner().requireOwnerThread();
-    return storeReadOperations().allTaxRegistrations();
+    return storeReadOperations().taxRegistrations().allTaxRegistrations();
   }
 
   @Override
   default TaxRegistrationPage listTaxRegistrations(ListTaxRegistrationsQuery query) {
     storeThreadOwner().requireOwnerThread();
-    return storeReadOperations().listTaxRegistrations(query);
+    return storeReadOperations().taxRegistrations().listTaxRegistrations(query);
   }
 }

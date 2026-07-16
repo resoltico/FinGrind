@@ -1,8 +1,10 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOperation;
+import dev.erst.fingrind.contract.protocol.ProtocolPostingRequestTopics;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -10,9 +12,20 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 /** Registry that maps each public operation id onto the corresponding typed CLI parser. */
 final class CliCommandParsingRegistry {
+  private static final Map<OperationId, Function<List<String>, CliCommand>> EXPLICIT_WRITE_PARSERS =
+      Map.of(
+          OperationId.DECLARE_ACCOUNT, CliRequestMutationArguments::parseDeclareAccountCommand,
+          OperationId.AMEND_ACCOUNT, CliRequestMutationArguments::parseAmendAccountCommand,
+          OperationId.RETIRE_ACCOUNT, CliRequestMutationArguments::parseRetireAccountCommand,
+          OperationId.DECLARE_TAX_REGISTRATION,
+              CliRequestMutationArguments::parseDeclareTaxRegistrationCommand,
+          OperationId.EXECUTE_PLAN, CliRequestMutationArguments::parseExecutePlanCommand,
+          OperationId.PREFLIGHT_ENTRY, CliPostingMutationArguments::parsePreflightEntryCommand,
+          OperationId.POST_ENTRY, CliPostingMutationArguments::parsePostEntryCommand);
   private static final ParserCatalog PARSERS = new ParserCatalog(validatedParsers(parserMap()));
 
   private CliCommandParsingRegistry() {}
@@ -89,73 +102,67 @@ final class CliCommandParsingRegistry {
   private static ParserBinding[] reportBindings() {
     return new ParserBinding[] {
       binding(OperationId.TAX_OBLIGATION, CliTaxQueryArguments::parseTaxObligationCommand),
-      binding(OperationId.ACCOUNT_BALANCE, CliReportArguments::parseAccountBalanceCommand),
-      binding(OperationId.TRIAL_BALANCE, CliReportArguments::parseTrialBalanceCommand),
-      binding(OperationId.ACCOUNT_LEDGER, CliReportArguments::parseAccountLedgerCommand),
-      binding(OperationId.PERIOD_SUMMARY, CliReportArguments::parsePeriodSummaryCommand),
-      binding(OperationId.FINANCIAL_POSITION, CliReportArguments::parseFinancialPositionCommand),
-      binding(OperationId.INVENTORY_VALUATION, CliReportArguments::parseInventoryValuationCommand),
-      binding(OperationId.INCOME_STATEMENT, CliReportArguments::parseIncomeStatementCommand),
-      binding(OperationId.CASH_FLOW_STATEMENT, CliReportArguments::parseCashFlowStatementCommand),
-      binding(OperationId.CHANGES_IN_EQUITY, CliReportArguments::parseChangesInEquityCommand)
+      binding(OperationId.ACCOUNT_BALANCE, CliAccountReportArguments::parseAccountBalanceCommand),
+      binding(OperationId.TRIAL_BALANCE, CliSummaryReportArguments::parseTrialBalanceCommand),
+      binding(OperationId.ACCOUNT_LEDGER, CliAccountReportArguments::parseAccountLedgerCommand),
+      binding(OperationId.PERIOD_SUMMARY, CliSummaryReportArguments::parsePeriodSummaryCommand),
+      binding(
+          OperationId.FINANCIAL_POSITION, CliSummaryReportArguments::parseFinancialPositionCommand),
+      binding(
+          OperationId.INVENTORY_VALUATION,
+          CliInventoryValuationArguments::parseInventoryValuationCommand),
+      binding(
+          OperationId.ACCRUAL_CUTOFF_SCHEDULE,
+          CliAccrualCutoffScheduleArguments::parseAccrualCutoffScheduleCommand),
+      binding(
+          OperationId.FIXED_ASSET_REGISTER,
+          CliFixedAssetRegisterArguments::parseFixedAssetRegisterCommand),
+      binding(
+          OperationId.FINANCING_REGISTER,
+          CliFinancingRegisterArguments::parseFinancingRegisterCommand),
+      binding(
+          OperationId.REALIZED_FOREIGN_EXCHANGE_REGISTER,
+          CliRealizedForeignExchangeRegisterArguments::parseRealizedForeignExchangeRegisterCommand),
+      binding(
+          OperationId.LATVIAN_PAYROLL_REGISTER,
+          CliLatvianPayrollRegisterArguments::parseLatvianPayrollRegisterCommand),
+      binding(OperationId.INCOME_STATEMENT, CliSummaryReportArguments::parseIncomeStatementCommand),
+      binding(
+          OperationId.CASH_FLOW_STATEMENT,
+          CliSummaryReportArguments::parseCashFlowStatementCommand),
+      binding(OperationId.CHANGES_IN_EQUITY, CliSummaryReportArguments::parseChangesInEquityCommand)
     };
   }
 
   private static ParserBinding[] writeBindings() {
-    return new ParserBinding[] {
-      binding(OperationId.DECLARE_ACCOUNT, CliRequestMutationArguments::parseDeclareAccountCommand),
-      binding(
-          OperationId.DECLARE_TAX_REGISTRATION,
-          CliRequestMutationArguments::parseDeclareTaxRegistrationCommand),
-      binding(OperationId.EXECUTE_PLAN, CliRequestMutationArguments::parseExecutePlanCommand),
-      binding(OperationId.PREFLIGHT_ENTRY, CliPostingMutationArguments::parsePreflightEntryCommand),
-      binding(
-          OperationId.RECORD_SALE_SETTLED,
-          CliPostingMutationArguments::parseRecordSaleSettledCommand),
-      binding(
-          OperationId.RECORD_SALE_ON_CREDIT,
-          CliPostingMutationArguments::parseRecordSaleOnCreditCommand),
-      binding(
-          OperationId.RECORD_PURCHASE_SETTLED,
-          CliPostingMutationArguments::parseRecordPurchaseSettledCommand),
-      binding(
-          OperationId.RECORD_PURCHASE_ON_CREDIT,
-          CliPostingMutationArguments::parseRecordPurchaseOnCreditCommand),
-      binding(
-          OperationId.RECORD_INVENTORY_CAPITALIZATION_SETTLED,
-          CliInventoryPostingMutationArguments::parseRecordInventoryCapitalizationSettledCommand),
-      binding(
-          OperationId.RECORD_INVENTORY_CAPITALIZATION_ON_CREDIT,
-          CliInventoryPostingMutationArguments::parseRecordInventoryCapitalizationOnCreditCommand),
-      binding(
-          OperationId.RECORD_INVENTORY_WRITE_DOWN,
-          CliInventoryPostingMutationArguments::parseRecordInventoryWriteDownCommand),
-      binding(
-          OperationId.RECORD_INVENTORY_SHRINKAGE,
-          CliInventoryPostingMutationArguments::parseRecordInventoryShrinkageCommand),
-      binding(
-          OperationId.RECORD_INVENTORY_COUNT_INCREASE,
-          CliInventoryPostingMutationArguments::parseRecordInventoryCountIncreaseCommand),
-      binding(
-          OperationId.RECORD_EXPENSE_SETTLED,
-          CliPostingMutationArguments::parseRecordExpenseSettledCommand),
-      binding(
-          OperationId.RECORD_EXPENSE_ON_CREDIT,
-          CliPostingMutationArguments::parseRecordExpenseOnCreditCommand),
-      binding(OperationId.RECORD_RECEIPT, CliPostingMutationArguments::parseRecordReceiptCommand),
-      binding(OperationId.RECORD_PAYMENT, CliPostingMutationArguments::parseRecordPaymentCommand),
-      binding(
-          OperationId.RECORD_OWNER_CONTRIBUTION,
-          CliPostingMutationArguments::parseRecordOwnerContributionCommand),
-      binding(
-          OperationId.RECORD_OWNER_WITHDRAWAL,
-          CliPostingMutationArguments::parseRecordOwnerWithdrawalCommand),
-      binding(
-          OperationId.RECORD_OPENING_POSITION,
-          CliPostingMutationArguments::parseRecordOpeningPositionCommand),
-      binding(OperationId.RECORD_REVERSAL, CliPostingMutationArguments::parseRecordReversalCommand),
-      binding(OperationId.POST_ENTRY, CliPostingMutationArguments::parsePostEntryCommand)
-    };
+    return Stream.concat(
+            accountRegistryMutationOperationIds(),
+            ProtocolCatalog.operations().stream()
+                .filter(operation -> operation.category() == OperationCategory.WRITE)
+                .map(ProtocolOperation::id))
+        .map(operationId -> binding(operationId, writeParser(operationId)))
+        .toArray(ParserBinding[]::new);
+  }
+
+  private static Stream<OperationId> accountRegistryMutationOperationIds() {
+    return Stream.of(
+        OperationId.DECLARE_ACCOUNT,
+        OperationId.AMEND_ACCOUNT,
+        OperationId.RETIRE_ACCOUNT,
+        OperationId.DECLARE_TAX_REGISTRATION);
+  }
+
+  static Function<List<String>, CliCommand> writeParser(OperationId operationId) {
+    Function<List<String>, CliCommand> explicitParser = EXPLICIT_WRITE_PARSERS.get(operationId);
+    if (explicitParser != null) {
+      return explicitParser;
+    }
+    if (ProtocolPostingRequestTopics.requiredEntryKind(operationId).isPresent()) {
+      return arguments ->
+          CliPostingMutationArguments.parseRecordEntryCommand(arguments, operationId);
+    }
+    throw new IllegalArgumentException(
+        "No write-command parser is owned for " + operationId.wireName() + ".");
   }
 
   private static ParserBinding binding(

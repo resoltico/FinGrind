@@ -1,6 +1,8 @@
 package dev.erst.fingrind.executor.maintenance;
 
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.PreparedPairPublication;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
 import dev.erst.fingrind.executor.spi.StagedRestoredBookPair;
 import java.nio.file.Path;
 import java.util.List;
@@ -15,10 +17,14 @@ final class ProtectedBookRestoreWorkflow {
   }
 
   MaintenanceDecision<ProtectedBookRestoreOutcome> restoreBook(
-      Path bookFilePath, Path bookKeyFilePath, Path backupFilePath, Path backupKeyFilePath) {
+      Path bookFilePath,
+      Path newBookKeyFilePath,
+      Path backupFilePath,
+      Path backupKeyFilePath,
+      boolean replaceExistingBook) {
     ProtectedBookMaintenanceStore store = support.store();
     Path normalizedBookPath = store.normalize(bookFilePath, "bookFilePath");
-    Path normalizedBookKeyFilePath = store.normalize(bookKeyFilePath, "bookKeyFilePath");
+    Path normalizedNewBookKeyFilePath = store.normalize(newBookKeyFilePath, "newBookKeyFilePath");
     Path normalizedBackupFilePath = store.normalize(backupFilePath, "backupFilePath");
     Path normalizedBackupKeyFilePath = store.normalize(backupKeyFilePath, "backupKeyFilePath");
     if (normalizedBookPath.equals(normalizedBackupFilePath)) {
@@ -27,6 +33,34 @@ final class ProtectedBookRestoreWorkflow {
               new ProtectedBookMaintenanceRejection.BackupSourceMatchesLiveBook(
                   normalizedBookPath, normalizedBackupFilePath)));
     }
+    try (PreparedPairPublication preparedPublication =
+        store.preparePairPublication(
+            normalizedNewBookKeyFilePath,
+            normalizedBookPath,
+            replaceExistingBook
+                ? RestoredBookTargetPolicy.REPLACE_SELECTED
+                : RestoredBookTargetPolicy.REQUIRE_ABSENT,
+            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+            ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET)) {
+      return restoreWithPreparedPublication(
+          normalizedBackupFilePath, normalizedBackupKeyFilePath, store, preparedPublication);
+    } catch (ProtectedBookMaintenanceRejectionException exception) {
+      return MaintenanceDecision.accepted(
+          new ProtectedBookRestoreOutcome.Rejected(exception.rejection()));
+    } catch (RuntimeException recoveryFailure) {
+      return support.storageFailure(
+          normalizedBookPath,
+          "Failed to recover or prepare the FinGrind restored-book pair publication.",
+          "bookFilePath");
+    }
+  }
+
+  private MaintenanceDecision<ProtectedBookRestoreOutcome> restoreWithPreparedPublication(
+      Path normalizedBackupFilePath,
+      Path normalizedBackupKeyFilePath,
+      ProtectedBookMaintenanceStore store,
+      PreparedPairPublication preparedPublication) {
+    Path normalizedBookPath = preparedPublication.bookTargetPath();
     List<Path> liveBookBlockingArtifacts = store.blockingArtifactsForBook(normalizedBookPath);
     if (!liveBookBlockingArtifacts.isEmpty()) {
       return MaintenanceDecision.accepted(
@@ -50,59 +84,40 @@ final class ProtectedBookRestoreWorkflow {
         backupAccess,
         ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE,
         verifiedBackup ->
-            restoreVerifiedBook(normalizedBookPath, normalizedBookKeyFilePath, verifiedBackup),
+            restoreVerifiedBook(normalizedBookPath, preparedPublication, verifiedBackup),
         ProtectedBookRestoreOutcome.Rejected::new);
   }
 
   private MaintenanceDecision<ProtectedBookRestoreOutcome> restoreVerifiedBook(
       Path normalizedBookPath,
-      Path normalizedBookKeyFilePath,
+      PreparedPairPublication preparedPublication,
       ProtectedBookMaintenanceStore.VerifiedBook verifiedBackup) {
     ProtectedBookMaintenanceStore store = support.store();
     try {
-      ProtectedBookMaintenanceStore.LeaseAcquisition liveBookLeaseAcquisition =
-          store.acquireManagedArtifactLease(
-              normalizedBookPath, ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET);
-      if (liveBookLeaseAcquisition instanceof ProtectedBookMaintenanceStore.LeaseBusy leaseBusy) {
-        return MaintenanceDecision.accepted(
-            new ProtectedBookRestoreOutcome.Rejected(
-                support.busyArtifact(
-                    ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, leaseBusy.artifactPath())));
-      }
       ProtectedBookMaintenanceStore.LeaseAcquisition sourceLeaseAcquisition =
           store.acquireExistingArtifactLease(
               verifiedBackup.artifactPath(), ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE);
       if (sourceLeaseAcquisition instanceof ProtectedBookMaintenanceStore.LeaseBusy leaseBusy) {
-        try (ProtectedBookMaintenanceStore.HeldLease ignored =
-            (ProtectedBookMaintenanceStore.HeldLease) liveBookLeaseAcquisition) {
-          return MaintenanceDecision.accepted(
-              new ProtectedBookRestoreOutcome.Rejected(
-                  support.busyArtifact(
-                      ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE,
-                      leaseBusy.artifactPath())));
-        }
+        return MaintenanceDecision.accepted(
+            new ProtectedBookRestoreOutcome.Rejected(
+                support.busyArtifact(
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE, leaseBusy.artifactPath())));
       }
-      try (ProtectedBookMaintenanceStore.HeldLease ignoredLiveBook =
-              (ProtectedBookMaintenanceStore.HeldLease) liveBookLeaseAcquisition;
-          ProtectedBookMaintenanceStore.HeldLease ignoredSourceArtifact =
-              (ProtectedBookMaintenanceStore.HeldLease) sourceLeaseAcquisition) {
+      try (ProtectedBookMaintenanceStore.HeldLease ignoredSourceArtifact =
+          (ProtectedBookMaintenanceStore.HeldLease) sourceLeaseAcquisition) {
         return store
-            .stageRestoredBookPair(verifiedBackup, normalizedBookPath, normalizedBookKeyFilePath)
+            .stageRestoredBookPair(verifiedBackup, preparedPublication)
             .fold(
                 stagedRestoredBookPair ->
                     commitRestoredBookPair(
-                        normalizedBookPath, normalizedBookKeyFilePath, stagedRestoredBookPair),
+                        normalizedBookPath,
+                        preparedPublication.secretTargetPath(),
+                        stagedRestoredBookPair),
                 MaintenanceDecision::failed);
       }
     } catch (ProtectedBookMaintenanceRejectionException exception) {
-      if (exception.rejection()
-          instanceof ProtectedBookMaintenanceRejection.ArtifactPathInvalid pathInvalid) {
-        return MaintenanceDecision.accepted(new ProtectedBookRestoreOutcome.Rejected(pathInvalid));
-      }
-      throw new IllegalArgumentException(
-          "Expected one maintenance artifact-path rejection, but received: "
-              + exception.rejection(),
-          exception);
+      return MaintenanceDecision.accepted(
+          new ProtectedBookRestoreOutcome.Rejected(exception.rejection()));
     }
   }
 
@@ -143,6 +158,14 @@ final class ProtectedBookRestoreWorkflow {
                 }
               },
               MaintenanceDecision::failed);
+    } catch (ProtectedBookMaintenanceRejectionException exception) {
+      return MaintenanceDecision.accepted(
+          new ProtectedBookRestoreOutcome.Rejected(exception.rejection()));
+    } catch (RuntimeException commitFailure) {
+      return support.storageFailure(
+          normalizedBookPath,
+          "Failed to publish the staged FinGrind restored-book pair.",
+          "bookFilePath");
     }
   }
 }

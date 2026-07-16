@@ -1,9 +1,6 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.core.CurrencyBalance;
-import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
-import dev.erst.fingrind.core.Money;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -52,16 +49,5 @@ final class CliReportRenderSupport {
                 ? lowerTitle.substring(0, lowerTitle.length() - 1)
                 : lowerTitle;
     return CliQueryScopeText.noMatchesLabel(baseName + " lines");
-  }
-
-  static CurrencyBalance balanceForCurrency(List<CurrencyBalance> balances, String currencyCode) {
-    return balances.stream()
-        .filter(balance -> balance.netAmount().currencyUnit().code().equals(currencyCode))
-        .findFirst()
-        .orElseGet(
-            () -> {
-              CurrencyUnit currencyUnit = CurrencyUnit.of(currencyCode);
-              return CurrencyBalance.ofTotals(Money.zero(currencyUnit), Money.zero(currencyUnit));
-            });
   }
 }

@@ -70,10 +70,6 @@ class SqliteStoreSessionStateTracker {
         };
   }
 
-  final void rotateSessionSecret(SqliteBookPassphrase replacementPassphrase) {
-    sessionSecret.rotateTo(replacementPassphrase);
-  }
-
   final @Nullable SqliteNativeDatabase publishedDatabase() {
     return switch (sessionState) {
       case SqliteIdleStoreSession ignored -> null;

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.executor.workflow.BookWorkflowAssertion;
+import dev.erst.fingrind.executor.workflow.BookWorkflowAssertionStep;
 import dev.erst.fingrind.executor.workflow.BookWorkflowBoundaryCheckpoint;
 import dev.erst.fingrind.executor.workflow.BookWorkflowExecutionJournal;
 import dev.erst.fingrind.executor.workflow.BookWorkflowExecutionStatus;
@@ -200,7 +201,7 @@ class BookWorkflowJournalModelTest {
 
   private static BookWorkflowJournalDescriptor.Step assertionDescriptor(String stepId) {
     return new BookWorkflowJournalDescriptor.Step(
-        new BookWorkflowStep.Assert(
+        new BookWorkflowAssertionStep(
             stepId(stepId), new BookWorkflowAssertion.AccountDeclared(CASH_ACCOUNT.accountCode())));
   }
 

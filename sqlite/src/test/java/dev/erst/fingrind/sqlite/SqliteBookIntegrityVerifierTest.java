@@ -191,7 +191,6 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
   void persistedPostingLifecycleAudit_rejectsDurableLifecycleViolations() {
     assertRejectsLateOpeningBalanceLifecycle();
     assertRejectsOpeningBalancePostedToNominalAccount();
-    assertRejectsInactiveAccountLifecycle();
     assertRejectsClosedPeriodBackfillLifecycle();
     assertRejectsInvalidInterimSweepLinkLifecycle();
     assertRejectsUnlinkedInterimSweepPostingLifecycle();
@@ -258,20 +257,6 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
               database, "posting-opening-balance", 0, "4000", "CREDIT", "EUR", 1000);
           insertJournalLineRow(
               database, "posting-opening-balance", 1, "1000", "DEBIT", "EUR", 1000);
-        });
-  }
-
-  private void assertRejectsInactiveAccountLifecycle() {
-    assertRejectedPersistedPostingLifecycle(
-        "persisted-inactive-account-line.sqlite",
-        """
-        drop trigger journal_line_validate_active_account_on_insert
-        """,
-        database -> {
-          database.executeStatement("update account set active = 0 where account_code = '1000'");
-          insertPostingFactRow(database, "posting-inactive", "idem-inactive");
-          insertJournalLineRow(database, "posting-inactive", 0, "1000", "DEBIT", "EUR", 1000);
-          insertJournalLineRow(database, "posting-inactive", 1, "2000", "CREDIT", "EUR", 1000);
         });
   }
 

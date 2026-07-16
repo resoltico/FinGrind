@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.discovery.ContractLatvianPayrollTemplates.MonthlyPayrollTemplateDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
@@ -28,6 +29,53 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
               "cash", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "1000")),
           new ContractTemplates.OpeningBalanceTemplateDescriptor(
               "owner-capital", JournalLine.EntrySide.CREDIT, new MonetaryAmount("EUR", "1000")));
+  private static final Map<BookkeepingEntryKind, TemplateFamily> TEMPLATE_FAMILIES =
+      Map.ofEntries(
+          Map.entry(BookkeepingEntryKind.DIRECT_JOURNAL, TemplateFamily.DIRECT_JOURNAL),
+          Map.entry(BookkeepingEntryKind.SALE_SETTLED, TemplateFamily.STANDARD),
+          Map.entry(BookkeepingEntryKind.SALE_ON_CREDIT, TemplateFamily.STANDARD),
+          Map.entry(BookkeepingEntryKind.PURCHASE_SETTLED, TemplateFamily.STANDARD),
+          Map.entry(BookkeepingEntryKind.PURCHASE_ON_CREDIT, TemplateFamily.STANDARD),
+          Map.entry(
+              BookkeepingEntryKind.INVENTORY_CAPITALIZATION_SETTLED, TemplateFamily.INVENTORY),
+          Map.entry(
+              BookkeepingEntryKind.INVENTORY_CAPITALIZATION_ON_CREDIT, TemplateFamily.INVENTORY),
+          Map.entry(BookkeepingEntryKind.INVENTORY_WRITE_DOWN, TemplateFamily.INVENTORY),
+          Map.entry(BookkeepingEntryKind.INVENTORY_SHRINKAGE, TemplateFamily.INVENTORY),
+          Map.entry(BookkeepingEntryKind.INVENTORY_COUNT_INCREASE, TemplateFamily.INVENTORY),
+          Map.entry(BookkeepingEntryKind.EXPENSE_SETTLED, TemplateFamily.STANDARD),
+          Map.entry(BookkeepingEntryKind.EXPENSE_ON_CREDIT, TemplateFamily.STANDARD),
+          Map.entry(BookkeepingEntryKind.RECEIPT, TemplateFamily.STANDARD),
+          Map.entry(BookkeepingEntryKind.PAYMENT, TemplateFamily.STANDARD),
+          Map.entry(BookkeepingEntryKind.OWNER_CONTRIBUTION, TemplateFamily.STANDARD),
+          Map.entry(BookkeepingEntryKind.OWNER_WITHDRAWAL, TemplateFamily.STANDARD),
+          Map.entry(BookkeepingEntryKind.PREPAYMENT, TemplateFamily.ACCRUAL_CUTOFF),
+          Map.entry(BookkeepingEntryKind.DEFERRED_REVENUE, TemplateFamily.ACCRUAL_CUTOFF),
+          Map.entry(BookkeepingEntryKind.ACCRUED_EXPENSE, TemplateFamily.ACCRUAL_CUTOFF),
+          Map.entry(BookkeepingEntryKind.ACCRUAL_CUTOFF_RECOGNITION, TemplateFamily.ACCRUAL_CUTOFF),
+          Map.entry(BookkeepingEntryKind.ACCRUED_EXPENSE_SETTLEMENT, TemplateFamily.ACCRUAL_CUTOFF),
+          Map.entry(BookkeepingEntryKind.FIXED_ASSET_CAPITALIZATION, TemplateFamily.FIXED_ASSET),
+          Map.entry(BookkeepingEntryKind.FIXED_ASSET_DEPRECIATION, TemplateFamily.FIXED_ASSET),
+          Map.entry(BookkeepingEntryKind.FIXED_ASSET_DISPOSAL, TemplateFamily.FIXED_ASSET),
+          Map.entry(BookkeepingEntryKind.FINANCING_BORROWING, TemplateFamily.FINANCING),
+          Map.entry(BookkeepingEntryKind.FINANCING_PRINCIPAL_REPAYMENT, TemplateFamily.FINANCING),
+          Map.entry(BookkeepingEntryKind.FINANCING_INTEREST_ACCRUAL, TemplateFamily.FINANCING),
+          Map.entry(BookkeepingEntryKind.FINANCING_INTEREST_PAYMENT, TemplateFamily.FINANCING),
+          Map.entry(
+              BookkeepingEntryKind.FOREIGN_CURRENCY_OBLIGATION,
+              TemplateFamily.REALIZED_FOREIGN_EXCHANGE),
+          Map.entry(
+              BookkeepingEntryKind.REALIZED_FOREIGN_EXCHANGE_SETTLEMENT,
+              TemplateFamily.REALIZED_FOREIGN_EXCHANGE),
+          Map.entry(BookkeepingEntryKind.LATVIAN_MONTHLY_PAYROLL, TemplateFamily.LATVIAN_PAYROLL),
+          Map.entry(
+              BookkeepingEntryKind.LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT,
+              TemplateFamily.LATVIAN_PAYROLL_SETTLEMENT),
+          Map.entry(
+              BookkeepingEntryKind.LATVIAN_PAYROLL_STATE_REMITTANCE,
+              TemplateFamily.LATVIAN_PAYROLL_SETTLEMENT),
+          Map.entry(BookkeepingEntryKind.OPENING_POSITION, TemplateFamily.OPENING_POSITION),
+          Map.entry(BookkeepingEntryKind.REVERSAL, TemplateFamily.REVERSAL));
 
   private MachineContractPostEntryVariantTemplateTestSupport() {}
 
@@ -42,13 +90,31 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
             .scaffoldValue(),
         template.evidence().sourceDocuments().getFirst().sourceDocumentType());
     assertNotNull(template.provenance());
+    switch (templateFamily(entryKind)) {
+      case DIRECT_JOURNAL -> assertDirectJournalTemplate(template);
+      case STANDARD -> assertStandardTemplate(entryKind, template);
+      case INVENTORY -> assertInventoryTemplate(entryKind, template);
+      case ACCRUAL_CUTOFF -> assertAccrualCutoffTemplate(entryKind, template);
+      case FIXED_ASSET, FINANCING, REALIZED_FOREIGN_EXCHANGE ->
+          MachineContractLifecyclePostEntryTemplateAssertions.assertTemplate(entryKind, template);
+      case LATVIAN_PAYROLL -> assertLatvianPayrollTemplate(template);
+      case LATVIAN_PAYROLL_SETTLEMENT -> assertLatvianPayrollSettlementTemplate(template);
+      case OPENING_POSITION -> assertOpeningPositionTemplate(template);
+      case REVERSAL -> assertReversalTemplate(template);
+    }
+  }
+
+  private static void assertDirectJournalTemplate(
+      ContractTemplates.PostingRequestTemplateDescriptor template) {
+    assertNotNull(template.lines());
+    assertNull(template.amount());
+    assertNull(template.openingBalances());
+    assertNull(template.reversal());
+  }
+
+  private static void assertStandardTemplate(
+      BookkeepingEntryKind entryKind, ContractTemplates.PostingRequestTemplateDescriptor template) {
     switch (entryKind) {
-      case DIRECT_JOURNAL -> {
-        assertNotNull(template.lines());
-        assertNull(template.amount());
-        assertNull(template.openingBalances());
-        assertNull(template.reversal());
-      }
       case SALE_SETTLED -> {
         assertEquals("cash", template.cashAccountCode());
         assertEquals("service-revenue", template.revenueAccountCode());
@@ -73,13 +139,12 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
         assertNull(template.inventoryRelief());
         assertQuantityUnitCostTemplateShape(template);
       }
-      case EXPENSE_SETTLED -> {
-        assertEquals("cash", template.cashAccountCode());
-        assertEquals("operating-expense", template.expenseAccountCode());
-        assertAmountTemplateShape(template);
-      }
-      case EXPENSE_ON_CREDIT -> {
-        assertEquals("accounts-payable", template.payableAccountCode());
+      case EXPENSE_SETTLED, EXPENSE_ON_CREDIT -> {
+        assertEquals(
+            entryKind == BookkeepingEntryKind.EXPENSE_SETTLED ? "cash" : "accounts-payable",
+            entryKind == BookkeepingEntryKind.EXPENSE_SETTLED
+                ? template.cashAccountCode()
+                : template.payableAccountCode());
         assertEquals("operating-expense", template.expenseAccountCode());
         assertAmountTemplateShape(template);
       }
@@ -98,19 +163,7 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
         assertEquals(ownerEquityAccount(entryKind), template.equityAccountCode());
         assertAmountTemplateShape(template);
       }
-      case OPENING_POSITION -> {
-        assertNull(template.amount());
-        assertNull(template.lines());
-        assertEquals(2, Objects.requireNonNull(template.openingBalances()).size());
-      }
-      case REVERSAL -> {
-        assertNull(template.lines());
-        assertNull(template.amount());
-        assertEquals(
-            "018f0000-0000-7000-8000-000000000001",
-            Objects.requireNonNull(template.reversal()).priorPostingId());
-      }
-      default -> assertInventoryTemplate(entryKind, template);
+      default -> throw new IllegalArgumentException("Expected standard entry kind.");
     }
   }
 
@@ -144,6 +197,92 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
     }
   }
 
+  private static void assertAccrualCutoffTemplate(
+      BookkeepingEntryKind entryKind, ContractTemplates.PostingRequestTemplateDescriptor template) {
+    switch (entryKind) {
+      case PREPAYMENT -> {
+        assertEquals("cash", template.cashAccountCode());
+        assertEquals("operating-expense", template.expenseAccountCode());
+        assertEquals("prepaid-expense", template.prepaymentAssetAccountCode());
+        assertRecognitionInterval(template);
+        assertAmountTemplateShape(template);
+      }
+      case DEFERRED_REVENUE -> {
+        assertEquals("cash", template.cashAccountCode());
+        assertEquals("service-revenue", template.revenueAccountCode());
+        assertEquals("deferred-revenue", template.deferredRevenueAccountCode());
+        assertRecognitionInterval(template);
+        assertAmountTemplateShape(template);
+      }
+      case ACCRUED_EXPENSE -> {
+        assertEquals("operating-expense", template.expenseAccountCode());
+        assertEquals("accrued-expense", template.accruedExpenseLiabilityAccountCode());
+        assertNull(template.recognitionInterval());
+        assertAmountTemplateShape(template);
+      }
+      case ACCRUAL_CUTOFF_RECOGNITION -> {
+        assertNull(template.recognitionInterval());
+        assertAmountTemplateShape(template);
+      }
+      case ACCRUED_EXPENSE_SETTLEMENT -> {
+        assertEquals("cash", template.cashAccountCode());
+        assertNull(template.recognitionInterval());
+        assertAmountTemplateShape(template);
+      }
+      default -> throw new IllegalArgumentException("Expected accrual cut-off entry kind.");
+    }
+  }
+
+  private static void assertOpeningPositionTemplate(
+      ContractTemplates.PostingRequestTemplateDescriptor template) {
+    assertNull(template.amount());
+    assertNull(template.lines());
+    assertEquals(2, Objects.requireNonNull(template.openingBalances()).size());
+  }
+
+  private static void assertLatvianPayrollTemplate(
+      ContractTemplates.PostingRequestTemplateDescriptor template) {
+    ContractLatvianPayrollTemplates.MonthlyPayrollTemplateDescriptor payroll =
+        Objects.requireNonNull(template.latvianMonthlyPayroll());
+    assertEquals("payroll-lv-2026-01-employee-001", payroll.payrollRunId());
+    assertEquals("employee-001", payroll.employeeReference());
+    assertEquals("2026-01", payroll.payrollMonth());
+    assertEquals("wage-expense", payroll.wageExpenseAccountCode());
+    assertEquals("employer-social-expense", payroll.employerSocialContributionExpenseAccountCode());
+    assertEquals("net-wages-payable", payroll.netWagesPayableAccountCode());
+    assertEquals("employee-social-payable", payroll.employeeSocialContributionPayableAccountCode());
+    assertEquals("employer-social-payable", payroll.employerSocialContributionPayableAccountCode());
+    assertEquals("personal-income-tax-payable", payroll.personalIncomeTaxPayableAccountCode());
+    assertEquals(new MonetaryAmount("EUR", "200000"), payroll.grossWages());
+    assertNull(template.amount());
+    assertNull(template.lines());
+    assertNull(template.openingBalances());
+    assertNull(template.reversal());
+  }
+
+  private static void assertLatvianPayrollSettlementTemplate(
+      ContractTemplates.PostingRequestTemplateDescriptor template) {
+    assertEquals("cash", template.cashAccountCode());
+    assertEquals(
+        "payroll-lv-2026-01-employee-001",
+        Objects.requireNonNull(template.latvianPayrollSettlement()).payrollRunId());
+    assertNull(template.amount());
+    assertNull(template.quantity());
+    assertNull(template.unitCost());
+    assertNull(template.lines());
+    assertNull(template.openingBalances());
+    assertNull(template.reversal());
+  }
+
+  private static void assertReversalTemplate(
+      ContractTemplates.PostingRequestTemplateDescriptor template) {
+    assertNull(template.lines());
+    assertNull(template.amount());
+    assertEquals(
+        "018f0000-0000-7000-8000-000000000001",
+        Objects.requireNonNull(template.reversal()).priorPostingId());
+  }
+
   static Map<OperationId, BookkeepingEntryKind> scaffoldOperationEntryKinds() {
     return Map.ofEntries(
         Map.entry(OperationId.POST_ENTRY, BookkeepingEntryKind.DIRECT_JOURNAL),
@@ -170,6 +309,48 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
         Map.entry(OperationId.RECORD_PAYMENT, BookkeepingEntryKind.PAYMENT),
         Map.entry(OperationId.RECORD_OWNER_CONTRIBUTION, BookkeepingEntryKind.OWNER_CONTRIBUTION),
         Map.entry(OperationId.RECORD_OWNER_WITHDRAWAL, BookkeepingEntryKind.OWNER_WITHDRAWAL),
+        Map.entry(OperationId.RECORD_PREPAYMENT, BookkeepingEntryKind.PREPAYMENT),
+        Map.entry(OperationId.RECORD_DEFERRED_REVENUE, BookkeepingEntryKind.DEFERRED_REVENUE),
+        Map.entry(OperationId.RECORD_ACCRUED_EXPENSE, BookkeepingEntryKind.ACCRUED_EXPENSE),
+        Map.entry(
+            OperationId.RECORD_ACCRUAL_CUTOFF_RECOGNITION,
+            BookkeepingEntryKind.ACCRUAL_CUTOFF_RECOGNITION),
+        Map.entry(
+            OperationId.RECORD_ACCRUED_EXPENSE_SETTLEMENT,
+            BookkeepingEntryKind.ACCRUED_EXPENSE_SETTLEMENT),
+        Map.entry(
+            OperationId.RECORD_FIXED_ASSET_CAPITALIZATION,
+            BookkeepingEntryKind.FIXED_ASSET_CAPITALIZATION),
+        Map.entry(
+            OperationId.RECORD_FIXED_ASSET_DEPRECIATION,
+            BookkeepingEntryKind.FIXED_ASSET_DEPRECIATION),
+        Map.entry(
+            OperationId.RECORD_FIXED_ASSET_DISPOSAL, BookkeepingEntryKind.FIXED_ASSET_DISPOSAL),
+        Map.entry(OperationId.RECORD_FINANCING_BORROWING, BookkeepingEntryKind.FINANCING_BORROWING),
+        Map.entry(
+            OperationId.RECORD_FINANCING_PRINCIPAL_REPAYMENT,
+            BookkeepingEntryKind.FINANCING_PRINCIPAL_REPAYMENT),
+        Map.entry(
+            OperationId.RECORD_FINANCING_INTEREST_ACCRUAL,
+            BookkeepingEntryKind.FINANCING_INTEREST_ACCRUAL),
+        Map.entry(
+            OperationId.RECORD_FINANCING_INTEREST_PAYMENT,
+            BookkeepingEntryKind.FINANCING_INTEREST_PAYMENT),
+        Map.entry(
+            OperationId.RECORD_FOREIGN_CURRENCY_OBLIGATION,
+            BookkeepingEntryKind.FOREIGN_CURRENCY_OBLIGATION),
+        Map.entry(
+            OperationId.RECORD_REALIZED_FOREIGN_EXCHANGE_SETTLEMENT,
+            BookkeepingEntryKind.REALIZED_FOREIGN_EXCHANGE_SETTLEMENT),
+        Map.entry(
+            OperationId.RECORD_LATVIAN_MONTHLY_PAYROLL,
+            BookkeepingEntryKind.LATVIAN_MONTHLY_PAYROLL),
+        Map.entry(
+            OperationId.RECORD_LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT,
+            BookkeepingEntryKind.LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT),
+        Map.entry(
+            OperationId.RECORD_LATVIAN_PAYROLL_STATE_REMITTANCE,
+            BookkeepingEntryKind.LATVIAN_PAYROLL_STATE_REMITTANCE),
         Map.entry(OperationId.RECORD_OPENING_POSITION, BookkeepingEntryKind.OPENING_POSITION),
         Map.entry(OperationId.RECORD_REVERSAL, BookkeepingEntryKind.REVERSAL));
   }
@@ -194,15 +375,78 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
         Map.entry(BookkeepingEntryKind.EXPENSE_ON_CREDIT, "expenseOnCredit"),
         Map.entry(BookkeepingEntryKind.OWNER_CONTRIBUTION, "ownerContribution"),
         Map.entry(BookkeepingEntryKind.OWNER_WITHDRAWAL, "ownerWithdrawal"),
+        Map.entry(BookkeepingEntryKind.PREPAYMENT, "prepayment"),
+        Map.entry(BookkeepingEntryKind.DEFERRED_REVENUE, "deferredRevenue"),
+        Map.entry(BookkeepingEntryKind.ACCRUED_EXPENSE, "accruedExpense"),
+        Map.entry(BookkeepingEntryKind.ACCRUAL_CUTOFF_RECOGNITION, "accrualCutoffRecognition"),
+        Map.entry(BookkeepingEntryKind.ACCRUED_EXPENSE_SETTLEMENT, "accruedExpenseSettlement"),
         Map.entry(BookkeepingEntryKind.OPENING_POSITION, "openingPosition"),
         Map.entry(BookkeepingEntryKind.REVERSAL, "reversal"));
   }
 
   static ContractPostingRequestTemplateValidators.PostingTemplateFields canonicalFields(
       BookkeepingEntryKind entryKind,
-      ContractTemplates.@Nullable SettlementAdjunctTemplateDescriptor settlementAdjunct) {
-    return switch (entryKind) {
+      ContractSettlementTemplates.@Nullable SettlementAdjunctTemplateDescriptor settlementAdjunct) {
+    return switch (templateFamily(entryKind)) {
       case DIRECT_JOURNAL -> emptyFields(settlementAdjunct, JOURNAL_LINES, null);
+      case STANDARD -> standardCanonicalFields(entryKind, settlementAdjunct);
+      case INVENTORY -> inventoryCanonicalFields(entryKind, settlementAdjunct);
+      case ACCRUAL_CUTOFF -> accrualCutoffCanonicalFields(entryKind, settlementAdjunct);
+      case FIXED_ASSET, FINANCING, REALIZED_FOREIGN_EXCHANGE -> lifecycleContextFields(entryKind);
+      case LATVIAN_PAYROLL -> emptyFields(settlementAdjunct, null, null, payrollTemplate());
+      case LATVIAN_PAYROLL_SETTLEMENT -> payrollSettlementFields();
+      case OPENING_POSITION -> emptyFields(settlementAdjunct, null, OPENING_BALANCES);
+      case REVERSAL -> emptyFields(settlementAdjunct, null, null);
+    };
+  }
+
+  private static TemplateFamily templateFamily(BookkeepingEntryKind entryKind) {
+    return Objects.requireNonNull(
+        TEMPLATE_FAMILIES.get(entryKind),
+        () -> "No posting-template fixture family is registered for " + entryKind + ".");
+  }
+
+  private static ContractPostingRequestTemplateValidators.PostingTemplateFields
+      payrollSettlementFields() {
+    return new ContractPostingRequestTemplateValidators.PostingTemplateFields(
+        "cash",
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        new ContractLatvianPayrollTemplates.PayrollSettlementTemplateDescriptor(
+            "payroll-lv-2026-01-employee-001"),
+        null,
+        null,
+        null);
+  }
+
+  private static ContractPostingRequestTemplateValidators.PostingTemplateFields
+      standardCanonicalFields(
+          BookkeepingEntryKind entryKind,
+          ContractSettlementTemplates.@Nullable SettlementAdjunctTemplateDescriptor
+              settlementAdjunct) {
+    return switch (entryKind) {
       case SALE_SETTLED ->
           amountFields("cash", null, null, "service-revenue", null, null, null, settlementAdjunct);
       case SALE_ON_CREDIT ->
@@ -249,16 +493,108 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
               null,
               ownerEquityAccount(entryKind),
               settlementAdjunct);
-      case OPENING_POSITION -> emptyFields(settlementAdjunct, null, OPENING_BALANCES);
-      case REVERSAL -> emptyFields(settlementAdjunct, null, null);
-      default -> inventoryCanonicalFields(entryKind, settlementAdjunct);
+      default -> throw new IllegalArgumentException("Expected standard entry kind.");
+    };
+  }
+
+  private static ContractPostingRequestTemplateValidators.PostingTemplateFields
+      lifecycleContextFields(BookkeepingEntryKind entryKind) {
+    ContractTemplates.PostingRequestTemplateDescriptor template =
+        MachineContractPostEntryVariantSchemas.template(entryKind);
+    return new ContractPostingRequestTemplateValidators.PostingTemplateFields(
+        template.cashAccountCode(),
+        template.receivableAccountCode(),
+        template.payableAccountCode(),
+        template.revenueAccountCode(),
+        template.inventoryAccountCode(),
+        template.expenseAccountCode(),
+        template.writeDownLossAccountCode(),
+        template.shrinkageLossAccountCode(),
+        template.countGainAccountCode(),
+        template.equityAccountCode(),
+        template.amount(),
+        template.quantity(),
+        template.unitCost(),
+        template.inventoryRelief(),
+        template.settlementAdjunct(),
+        template.foreignExchange(),
+        template.tax(),
+        template.lines(),
+        template.openingBalances(),
+        template.accrualCutoffId(),
+        template.prepaymentAssetAccountCode(),
+        template.deferredRevenueAccountCode(),
+        template.accruedExpenseLiabilityAccountCode(),
+        template.recognitionInterval(),
+        template.latvianMonthlyPayroll(),
+        template.latvianPayrollSettlement(),
+        template.fixedAsset(),
+        template.financing(),
+        template.realizedForeignExchange());
+  }
+
+  private static ContractPostingRequestTemplateValidators.PostingTemplateFields
+      accrualCutoffCanonicalFields(
+          BookkeepingEntryKind entryKind,
+          ContractSettlementTemplates.@Nullable SettlementAdjunctTemplateDescriptor
+              settlementAdjunct) {
+    return switch (entryKind) {
+      case PREPAYMENT ->
+          accrualCutoffFields(
+              "cash",
+              null,
+              "operating-expense",
+              "prepayment-2026-q1",
+              "prepaid-expense",
+              null,
+              null,
+              recognitionInterval(),
+              settlementAdjunct);
+      case DEFERRED_REVENUE ->
+          accrualCutoffFields(
+              "cash",
+              "service-revenue",
+              null,
+              "deferred-revenue-2026-q1",
+              null,
+              "deferred-revenue",
+              null,
+              recognitionInterval(),
+              settlementAdjunct);
+      case ACCRUED_EXPENSE ->
+          accrualCutoffFields(
+              null,
+              null,
+              "operating-expense",
+              "accrued-expense-2026-01",
+              null,
+              null,
+              "accrued-expense",
+              null,
+              settlementAdjunct);
+      case ACCRUAL_CUTOFF_RECOGNITION ->
+          accrualCutoffFields(
+              null, null, null, "prepayment-2026-q1", null, null, null, null, settlementAdjunct);
+      case ACCRUED_EXPENSE_SETTLEMENT ->
+          accrualCutoffFields(
+              "cash",
+              null,
+              null,
+              "accrued-expense-2026-01",
+              null,
+              null,
+              null,
+              null,
+              settlementAdjunct);
+      default -> throw new IllegalArgumentException("Expected accrual cut-off entry kind.");
     };
   }
 
   private static ContractPostingRequestTemplateValidators.PostingTemplateFields
       inventoryCanonicalFields(
           BookkeepingEntryKind entryKind,
-          ContractTemplates.@Nullable SettlementAdjunctTemplateDescriptor settlementAdjunct) {
+          ContractSettlementTemplates.@Nullable SettlementAdjunctTemplateDescriptor
+              settlementAdjunct) {
     return switch (entryKind) {
       case INVENTORY_CAPITALIZATION_SETTLED ->
           amountFields("cash", null, null, null, "inventory", null, null, settlementAdjunct);
@@ -278,12 +614,54 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
     };
   }
 
+  private static ContractPostingRequestTemplateValidators.PostingTemplateFields accrualCutoffFields(
+      @Nullable String cashAccountCode,
+      @Nullable String revenueAccountCode,
+      @Nullable String expenseAccountCode,
+      String accrualCutoffId,
+      @Nullable String prepaymentAssetAccountCode,
+      @Nullable String deferredRevenueAccountCode,
+      @Nullable String accruedExpenseLiabilityAccountCode,
+      ContractTemplates.@Nullable RecognitionIntervalTemplateDescriptor recognitionInterval,
+      ContractSettlementTemplates.@Nullable SettlementAdjunctTemplateDescriptor settlementAdjunct) {
+    return new ContractPostingRequestTemplateValidators.PostingTemplateFields(
+        cashAccountCode,
+        null,
+        null,
+        revenueAccountCode,
+        null,
+        expenseAccountCode,
+        null,
+        null,
+        null,
+        null,
+        new MonetaryAmount("EUR", "1000"),
+        null,
+        null,
+        null,
+        settlementAdjunct,
+        null,
+        null,
+        null,
+        null,
+        accrualCutoffId,
+        prepaymentAssetAccountCode,
+        deferredRevenueAccountCode,
+        accruedExpenseLiabilityAccountCode,
+        recognitionInterval,
+        null,
+        null,
+        null,
+        null,
+        null);
+  }
+
   private static String ownerEquityAccount(BookkeepingEntryKind entryKind) {
     return entryKind == BookkeepingEntryKind.OWNER_CONTRIBUTION ? "owner-capital" : "owner-draws";
   }
 
-  static ContractTemplates.@Nullable SettlementAdjunctTemplateDescriptor settlementAdjunctIfOwned(
-      BookkeepingEntryKind entryKind) {
+  static ContractSettlementTemplates.@Nullable SettlementAdjunctTemplateDescriptor
+      settlementAdjunctIfOwned(BookkeepingEntryKind entryKind) {
     return entryKind == BookkeepingEntryKind.RECEIPT || entryKind == BookkeepingEntryKind.PAYMENT
         ? settlementAdjunct()
         : null;
@@ -296,8 +674,8 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
         : null;
   }
 
-  static ContractTemplates.SettlementAdjunctTemplateDescriptor settlementAdjunct() {
-    return new ContractTemplates.SettlementAdjunctTemplateDescriptor(
+  static ContractSettlementTemplates.SettlementAdjunctTemplateDescriptor settlementAdjunct() {
+    return new ContractSettlementTemplates.SettlementAdjunctTemplateDescriptor(
         "settlement-clearing", new MonetaryAmount("EUR", "250"));
   }
 
@@ -309,7 +687,7 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
       @Nullable String inventoryAccountCode,
       @Nullable String expenseAccountCode,
       @Nullable String equityAccountCode,
-      ContractTemplates.@Nullable SettlementAdjunctTemplateDescriptor settlementAdjunct) {
+      ContractSettlementTemplates.@Nullable SettlementAdjunctTemplateDescriptor settlementAdjunct) {
     return new ContractPostingRequestTemplateValidators.PostingTemplateFields(
         cashAccountCode,
         receivableAccountCode,
@@ -329,6 +707,16 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
         null,
         null,
         null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
         null);
   }
 
@@ -341,7 +729,8 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
           @Nullable String inventoryAccountCode,
           @Nullable String expenseAccountCode,
           @Nullable String equityAccountCode,
-          ContractTemplates.@Nullable SettlementAdjunctTemplateDescriptor settlementAdjunct) {
+          ContractSettlementTemplates.@Nullable SettlementAdjunctTemplateDescriptor
+              settlementAdjunct) {
     return new ContractPostingRequestTemplateValidators.PostingTemplateFields(
         cashAccountCode,
         receivableAccountCode,
@@ -361,6 +750,16 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
         null,
         null,
         null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
         null);
   }
 
@@ -371,7 +770,8 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
           @Nullable String shrinkageLossAccountCode,
           @Nullable String countGainAccountCode,
           @Nullable String quantity,
-          ContractTemplates.@Nullable SettlementAdjunctTemplateDescriptor settlementAdjunct) {
+          ContractSettlementTemplates.@Nullable SettlementAdjunctTemplateDescriptor
+              settlementAdjunct) {
     return new ContractPostingRequestTemplateValidators.PostingTemplateFields(
         null,
         null,
@@ -391,13 +791,31 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
         null,
         null,
         null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
         null);
   }
 
   private static ContractPostingRequestTemplateValidators.PostingTemplateFields emptyFields(
-      ContractTemplates.@Nullable SettlementAdjunctTemplateDescriptor settlementAdjunct,
+      ContractSettlementTemplates.@Nullable SettlementAdjunctTemplateDescriptor settlementAdjunct,
       @Nullable List<ContractTemplates.JournalLineTemplateDescriptor> lines,
       @Nullable List<ContractTemplates.OpeningBalanceTemplateDescriptor> openingBalances) {
+    return emptyFields(settlementAdjunct, lines, openingBalances, null);
+  }
+
+  private static ContractPostingRequestTemplateValidators.PostingTemplateFields emptyFields(
+      ContractSettlementTemplates.@Nullable SettlementAdjunctTemplateDescriptor settlementAdjunct,
+      @Nullable List<ContractTemplates.JournalLineTemplateDescriptor> lines,
+      @Nullable List<ContractTemplates.OpeningBalanceTemplateDescriptor> openingBalances,
+      @Nullable MonthlyPayrollTemplateDescriptor latvianMonthlyPayroll) {
     return new ContractPostingRequestTemplateValidators.PostingTemplateFields(
         null,
         null,
@@ -417,7 +835,32 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
         null,
         null,
         lines,
-        openingBalances);
+        openingBalances,
+        null,
+        null,
+        null,
+        null,
+        null,
+        latvianMonthlyPayroll,
+        null,
+        null,
+        null,
+        null);
+  }
+
+  private static ContractLatvianPayrollTemplates.MonthlyPayrollTemplateDescriptor
+      payrollTemplate() {
+    return new ContractLatvianPayrollTemplates.MonthlyPayrollTemplateDescriptor(
+        "payroll-lv-2026-01-employee-001",
+        "employee-001",
+        "2026-01",
+        "wage-expense",
+        "employer-social-expense",
+        "net-wages-payable",
+        "employee-social-payable",
+        "employer-social-payable",
+        "personal-income-tax-payable",
+        new MonetaryAmount("EUR", "200000"));
   }
 
   private static void assertAmountTemplateShape(
@@ -438,5 +881,31 @@ final class MachineContractPostEntryVariantTemplateTestSupport {
     assertNull(template.lines());
     assertNull(template.openingBalances());
     assertNull(template.reversal());
+  }
+
+  private static void assertRecognitionInterval(
+      ContractTemplates.PostingRequestTemplateDescriptor template) {
+    assertEquals(
+        new ContractTemplates.RecognitionIntervalTemplateDescriptor("2026-01-15", "2026-03-31"),
+        template.recognitionInterval());
+  }
+
+  private static ContractTemplates.RecognitionIntervalTemplateDescriptor recognitionInterval() {
+    return new ContractTemplates.RecognitionIntervalTemplateDescriptor("2026-01-15", "2026-03-31");
+  }
+
+  /** Groups canonical posting-template fixtures by their independent contract surface. */
+  private enum TemplateFamily {
+    DIRECT_JOURNAL,
+    STANDARD,
+    INVENTORY,
+    ACCRUAL_CUTOFF,
+    FIXED_ASSET,
+    FINANCING,
+    REALIZED_FOREIGN_EXCHANGE,
+    LATVIAN_PAYROLL,
+    LATVIAN_PAYROLL_SETTLEMENT,
+    OPENING_POSITION,
+    REVERSAL
   }
 }

@@ -23,6 +23,10 @@ public final class ProtocolPostingNestedFieldSets {
       Set.copyOf(ProtocolPostEntryFields.settlementAdjunctFields());
   private static final Set<String> INVENTORY_RELIEF_FIELDS =
       Set.copyOf(ProtocolPostEntryFields.inventoryReliefFields());
+  private static final Set<String> RECOGNITION_INTERVAL_FIELDS =
+      Set.copyOf(ProtocolPostEntryFields.recognitionIntervalFields());
+  private static final Set<String> FIXED_ASSET_DEPRECIATION_SCHEDULE_FIELDS =
+      Set.copyOf(ProtocolPostEntryFields.fixedAssetDepreciationScheduleFields());
   private static final Set<String> FOREIGN_EXCHANGE_FIELDS =
       Set.copyOf(ProtocolPostEntryFields.foreignExchangeFields());
   private static final Set<String> QUOTED_RATE_FIELDS =
@@ -78,6 +82,16 @@ public final class ProtocolPostingNestedFieldSets {
   /** Returns the accepted nested fields for trading-sale inventory relief objects. */
   public static Set<String> inventoryReliefFields() {
     return INVENTORY_RELIEF_FIELDS;
+  }
+
+  /** Returns the accepted nested fields for accrual cut-off recognition intervals. */
+  public static Set<String> recognitionIntervalFields() {
+    return RECOGNITION_INTERVAL_FIELDS;
+  }
+
+  /** Returns the accepted nested fields for fixed-asset depreciation schedules. */
+  public static Set<String> fixedAssetDepreciationScheduleFields() {
+    return FIXED_ASSET_DEPRECIATION_SCHEDULE_FIELDS;
   }
 
   /** Returns the accepted nested fields for request-side foreign-exchange facts. */

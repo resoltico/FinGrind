@@ -4,6 +4,10 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
+import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffScheduleQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffScheduleResult;
+import dev.erst.fingrind.contract.bookkeeping.AmendAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.AmendAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementResult;
@@ -14,8 +18,12 @@ import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
+import dev.erst.fingrind.contract.bookkeeping.FinancingRegisterQuery;
+import dev.erst.fingrind.contract.bookkeeping.FinancingRegisterResult;
 import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseCommand;
 import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
+import dev.erst.fingrind.contract.bookkeeping.FixedAssetRegisterQuery;
+import dev.erst.fingrind.contract.bookkeeping.FixedAssetRegisterResult;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
@@ -23,6 +31,8 @@ import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepCommand;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
 import dev.erst.fingrind.contract.bookkeeping.InventoryValuationQuery;
 import dev.erst.fingrind.contract.bookkeeping.InventoryValuationResult;
+import dev.erst.fingrind.contract.bookkeeping.LatvianPayrollRegisterQuery;
+import dev.erst.fingrind.contract.bookkeeping.LatvianPayrollRegisterResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
@@ -33,9 +43,13 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.RealizedForeignExchangeRegisterQuery;
+import dev.erst.fingrind.contract.bookkeeping.RealizedForeignExchangeRegisterResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RetireAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.RetireAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -63,7 +77,7 @@ abstract class CliBookWorkflowAdapter implements CliBookWorkflow {
 
   @Override
   public ContractDecision<RekeyBookResult> rekeyBook(
-      BookAccess bookAccess, PassphraseSource replacementPassphraseSource) {
+      BookAccess bookAccess, Path newBookKeyFilePath) {
     throw unexpectedInvocation("rekeyBook");
   }
 
@@ -75,7 +89,11 @@ abstract class CliBookWorkflowAdapter implements CliBookWorkflow {
 
   @Override
   public ContractDecision<RestoreBookResult> restoreBook(
-      Path bookFilePath, Path bookKeyFilePath, Path backupFilePath, Path backupKeyFilePath) {
+      Path bookFilePath,
+      Path newBookKeyFilePath,
+      Path backupFilePath,
+      Path backupKeyFilePath,
+      boolean replaceExistingBook) {
     throw unexpectedInvocation("restoreBook");
   }
 
@@ -102,6 +120,18 @@ abstract class CliBookWorkflowAdapter implements CliBookWorkflow {
   public ContractDecision<DeclareAccountResult> declareAccount(
       BookAccess bookAccess, DeclareAccountCommand command) {
     throw unexpectedInvocation("declareAccount");
+  }
+
+  @Override
+  public ContractDecision<AmendAccountResult> amendAccount(
+      BookAccess bookAccess, AmendAccountCommand command) {
+    throw unexpectedInvocation("amendAccount");
+  }
+
+  @Override
+  public ContractDecision<RetireAccountResult> retireAccount(
+      BookAccess bookAccess, RetireAccountCommand command) {
+    throw unexpectedInvocation("retireAccount");
   }
 
   @Override
@@ -196,6 +226,36 @@ abstract class CliBookWorkflowAdapter implements CliBookWorkflow {
   public ContractDecision<InventoryValuationResult> inventoryValuation(
       BookAccess bookAccess, InventoryValuationQuery query) {
     throw unexpectedInvocation("inventoryValuation");
+  }
+
+  @Override
+  public ContractDecision<AccrualCutoffScheduleResult> accrualCutoffSchedule(
+      BookAccess bookAccess, AccrualCutoffScheduleQuery query) {
+    throw unexpectedInvocation("accrualCutoffSchedule");
+  }
+
+  @Override
+  public ContractDecision<LatvianPayrollRegisterResult> latvianPayrollRegister(
+      BookAccess bookAccess, LatvianPayrollRegisterQuery query) {
+    throw unexpectedInvocation("latvianPayrollRegister");
+  }
+
+  @Override
+  public ContractDecision<FixedAssetRegisterResult> fixedAssetRegister(
+      BookAccess bookAccess, FixedAssetRegisterQuery query) {
+    throw unexpectedInvocation("fixedAssetRegister");
+  }
+
+  @Override
+  public ContractDecision<FinancingRegisterResult> financingRegister(
+      BookAccess bookAccess, FinancingRegisterQuery query) {
+    throw unexpectedInvocation("financingRegister");
+  }
+
+  @Override
+  public ContractDecision<RealizedForeignExchangeRegisterResult> realizedForeignExchangeRegister(
+      BookAccess bookAccess, RealizedForeignExchangeRegisterQuery query) {
+    throw unexpectedInvocation("realizedForeignExchangeRegister");
   }
 
   @Override

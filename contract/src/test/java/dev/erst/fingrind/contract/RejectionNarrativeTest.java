@@ -16,7 +16,6 @@ import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
@@ -216,9 +215,14 @@ class RejectionNarrativeTest {
             .contains("will not overwrite"));
     assertTrue(
         RejectionNarrative.message(
-                new BookMaintenanceRejection.BackupKeyFileAlreadyExists(
+                new BookMaintenanceRejection.SecretTargetOccupied(
                     hint(java.nio.file.Path.of("backup/acme.book-key"))))
-            .contains("key file"));
+            .contains("generated-secret target"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookMaintenanceRejection.BookDestinationOccupied(
+                    hint(java.nio.file.Path.of("books/acme.sqlite"))))
+            .contains("--replace-existing-book"));
     assertTrue(
         RejectionNarrative.message(
                 new BookMaintenanceRejection.ArtifactVerificationFailed(
@@ -254,8 +258,8 @@ class RejectionNarrativeTest {
             .contains("does not belong"));
   }
 
-  private static PublicPathHint hint(java.nio.file.Path path) {
-    return PublicPathHint.fromPath(path);
+  private static java.nio.file.Path hint(java.nio.file.Path path) {
+    return path.toAbsolutePath().normalize();
   }
 
   @Test

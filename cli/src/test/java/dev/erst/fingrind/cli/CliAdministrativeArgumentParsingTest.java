@@ -25,7 +25,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
             CliArguments.parse(
                 new String[] {
                   "generate-book-key-file",
-                  "--book-key-file",
+                  "--new-book-key-file",
                   "books/entity.book-key",
                   "--tighten-parents"
                 }));
@@ -63,7 +63,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
             GenerateBookKeyFile.class,
             CliArguments.parse(
                 new String[] {
-                  "generate-book-key-file", "--book-key-file", "books/entity.book-key"
+                  "generate-book-key-file", "--new-book-key-file", "books/entity.book-key"
                 }));
 
     assertEquals(Path.of("books/entity.book-key"), command.bookKeyFilePath());
@@ -78,7 +78,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
             CliArguments.parse(
                 new String[] {
                   "generate-book-key-file",
-                  "--book-key-file",
+                  "--new-book-key-file",
                   "books/entity.book-key",
                   "--output",
                   "text"
@@ -184,7 +184,7 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                 CliArguments.parse(
                     new String[] {
                       "generate-book-key-file",
-                      "--book-key-file",
+                      "--new-book-key-file",
                       "books/entity.book-key",
                       "--output",
                       "csv"

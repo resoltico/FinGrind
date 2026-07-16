@@ -26,7 +26,8 @@ public final class ChangesInEquityReportModelBuilder
     appendComparativeSections(sections, report);
     return new ReportModel(
         dev.erst.fingrind.contract.protocol.OperationId.CHANGES_IN_EQUITY.wireName(),
-        "Changes In Equity",
+        ReportModelSupport.reportTitle(
+            dev.erst.fingrind.contract.protocol.OperationId.CHANGES_IN_EQUITY),
         ReportModel.Orientation.LANDSCAPE,
         ReportModelSupport.context(
             report.bookIdentity(),

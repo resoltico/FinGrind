@@ -15,6 +15,7 @@ import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
 import dev.erst.fingrind.contract.workflow.LedgerJournalStep;
+import dev.erst.fingrind.contract.workflow.LedgerPlanFailure;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import java.io.ByteArrayOutputStream;
@@ -212,7 +213,8 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
             startedAt,
             finishedAt,
             List.of(),
-            new LedgerStepFailure("storage-commit-failed", "Commit failed.", List.of()));
+            new LedgerStepFailure(
+                LedgerPlanFailure.UNEXPECTED_PLAN_FAILURE.code(), "Commit failed.", List.of()));
     responseWriter.writeLedgerPlanResult(
         new LedgerPlanResult.Rejected(
             planId("plan-1"),
@@ -251,7 +253,8 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
             startedAt,
             finishedAt,
             List.of(),
-            new LedgerStepFailure("storage-commit-failed", "Commit failed.", List.of()));
+            new LedgerStepFailure(
+                LedgerPlanFailure.UNEXPECTED_PLAN_FAILURE.code(), "Commit failed.", List.of()));
     CliPlanJsonModels.LedgerPlanPayload rejectedPayload =
         CliPlanPayloadMapper.ledgerPlanPayload(
             new LedgerPlanResult.Rejected(

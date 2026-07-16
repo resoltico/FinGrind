@@ -108,13 +108,15 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void run_mapsBookWorkflowRejectionsToExitCodeTwo() throws IOException {
+  void run_mapsBookWorkflowRejectionsToTheirTypedExitCodes() throws IOException {
     Path declareAccountFile =
         writeNamedRequest("declare.json", declareAccountJson("1000", "Cash", "DEBIT"));
     RecordingWorkflow workflow =
         new RecordingWorkflow(
             new OpenBookResult.Rejected(new BookAdministrationRejection.BookAlreadyInitialized()),
-            new RekeyBookResult.Rejected(new BookAdministrationRejection.BookNotInitialized()),
+            new RekeyBookResult.Rejected(
+                new dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection
+                    .SecretTargetOccupied(tempDirectory.resolve("replacement.key"))),
             new DeclareAccountResult.Rejected(new BookAdministrationRejection.BookNotInitialized()),
             new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized()),
             new PostEntryResult.PreflightRejected(
@@ -133,7 +135,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                 workflow)
             .run(openBookKeyFileArguments(bookFilePath, bookKeyFilePath)));
     assertEquals(
-        2,
+        7,
         cli(
                 new ByteArrayInputStream(new byte[0]),
                 utf8PrintStream(new ByteArrayOutputStream()),
@@ -231,7 +233,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
 
           @Override
           public ContractDecision<RekeyBookResult> rekeyBook(
-              BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
+              BookAccess bookAccess, Path newBookKeyFilePath) {
             throw new AssertionError("rekeyBook should not be called in this test");
           }
 
@@ -244,9 +246,10 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
           @Override
           public ContractDecision<RestoreBookResult> restoreBook(
               Path bookFilePath,
-              Path bookKeyFilePath,
+              Path newBookKeyFilePath,
               Path backupFilePath,
-              Path backupKeyFilePath) {
+              Path backupKeyFilePath,
+              boolean replaceExistingBook) {
             throw new AssertionError("restoreBook should not be called in this test");
           }
 

@@ -11,6 +11,7 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
+import dev.erst.fingrind.executor.bookkeeping.AccrualCutoffRecord;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.InventoryValuationMovementRecord;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
@@ -27,18 +28,28 @@ final class StatementBookStore implements BookkeepingReadStore {
   private final List<RegisteredAccount> accounts;
   private final List<CommittedPosting> postings;
   private final List<InventoryValuationMovementRecord> inventoryValuationMovements;
+  private final List<AccrualCutoffRecord> accrualCutoffs;
 
   StatementBookStore(List<RegisteredAccount> accounts, List<CommittedPosting> postings) {
-    this(accounts, postings, List.of());
+    this(accounts, postings, List.of(), List.of());
   }
 
   StatementBookStore(
       List<RegisteredAccount> accounts,
       List<CommittedPosting> postings,
       List<InventoryValuationMovementRecord> inventoryValuationMovements) {
+    this(accounts, postings, inventoryValuationMovements, List.of());
+  }
+
+  StatementBookStore(
+      List<RegisteredAccount> accounts,
+      List<CommittedPosting> postings,
+      List<InventoryValuationMovementRecord> inventoryValuationMovements,
+      List<AccrualCutoffRecord> accrualCutoffs) {
     this.accounts = List.copyOf(accounts);
     this.postings = List.copyOf(postings);
     this.inventoryValuationMovements = List.copyOf(inventoryValuationMovements);
+    this.accrualCutoffs = List.copyOf(accrualCutoffs);
   }
 
   @Override
@@ -86,6 +97,17 @@ final class StatementBookStore implements BookkeepingReadStore {
             movement ->
                 effectiveDateAsOf
                     .map(effectiveDate -> !movement.effectiveDate().isAfter(effectiveDate))
+                    .orElse(true))
+        .toList();
+  }
+
+  @Override
+  public List<AccrualCutoffRecord> accrualCutoffs(Optional<LocalDate> effectiveDateAsOf) {
+    return accrualCutoffs.stream()
+        .filter(
+            cutoff ->
+                effectiveDateAsOf
+                    .map(effectiveDate -> !cutoff.originatedOn().isAfter(effectiveDate))
                     .orElse(true))
         .toList();
   }

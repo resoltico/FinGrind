@@ -1,6 +1,8 @@
 package dev.erst.fingrind.contract.reportmodel;
 
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
+import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.BookDoctrineDisplay;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyBalance;
@@ -20,6 +22,12 @@ final class ReportModelSupport {
 
   static ReportColumn rightColumn(String key, String title) {
     return new ReportColumn(key, title, ReportColumn.Alignment.RIGHT);
+  }
+
+  static String reportTitle(OperationId operationId) {
+    return ProtocolCatalog.operation(
+            ContractDescriptorValidation.requireValue(operationId, "operationId"))
+        .displayLabel();
   }
 
   static ReportRow row(String rowId, String... cells) {

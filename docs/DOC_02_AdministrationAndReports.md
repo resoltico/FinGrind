@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.60.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-07-11"
+updated: "2026-07-13"
 route:
   keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, inventory-valuation, interim-result-sweep, fiscal-year-close, financial-position, income-statement, cash-flow-statement, changes-in-equity, declare-tax-registration, list-tax-registrations, tax-obligation]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented", "where is interim-result-sweep documented", "where is fiscal-year-close documented", "where are the primary statement models documented", "where is the tax registration and filing surface documented"]
@@ -73,6 +73,28 @@ public final class BookReadService
   `BookkeepingReadReportPublishedLanguageTranslator`, and
   `BookkeepingReadStatementPublishedLanguageTranslator` project local read pages, reports,
   statements, and query rejections into the public read/report DTO surface
+
+## CLI Report Projections
+
+The public CLI projects each canonical report DTO in two deliberately separate forms. Text and PDF
+use `ReportModel` as the human presentation model. JSON uses a report-family-specific semantic
+payload containing canonical `bookIdentity`, a family-specific `resolvedQuery`, result metadata,
+and exact report facts; CSV is the corresponding typed row table. This separation keeps display
+columns, alignment, labels, and formatted money out of the machine contract while preserving one
+shared operator presentation model.
+
+The income-statement payload includes exact `grossProfitTotals` and, when requested,
+`comparativeGrossProfitTotals`, so the machine result retains the same trading subtotal facts that
+the human projection presents. CSV remains row-only and does not mix those totals into its record
+family.
+
+`resolvedQuery` records accepted and resolved inputs, not a durable read revision. The account
+balance and account ledger query forms always retain their own optional effective-date bounds as
+explicit `null` values when omitted; they never use a generic query record or irrelevant null
+fields from another report family. A later
+back-dated posting in an open accounting period can change a report with the same query. Exact
+replay therefore remains outside the report DTO contract until the book owns a durable revision
+model.
 
 ## `BookkeepingReadService` And `BookkeepingLookupOutcome`
 
@@ -209,9 +231,9 @@ public final class TaxAdministrationService
 public interface TaxAdministrationStore
 ```
 
-- `DeclareTaxRegistrationCommand`: requests one owned tax registration with payable and
-  recoverable account codes, one filing frequency plus due offset, and one or more declared tax
-  codes
+- `DeclareTaxRegistrationCommand`: requests one owned tax registration with already-declared
+  payable and recoverable account codes, one filing frequency plus due offset, and one or more
+  declared tax codes; it never creates prerequisite accounts implicitly
 - `DeclareTaxRegistrationResult`: variants `Declared`, `Updated`, `Unchanged`, `Rejected`
 - `DeclaredTaxRegistration`: durable current snapshot for one tax registration, including its
   declaration timestamp and declared code catalog
@@ -274,6 +296,9 @@ public sealed interface RekeyRollbackResult
 - Purpose: model the explicit `inspect-rekey-rollback`, `restore-rekey-rollback`, and
   `delete-rekey-rollback` command results instead of hiding multiple maintenance workflows behind
   one action enum
+- Access boundary: inspection discovers sibling artifact paths without opening the protected book
+  and needs no passphrase source; restore and delete act on a selected artifact and require the
+  current book passphrase source
 
 ## `BookInspection`
 
@@ -541,12 +566,25 @@ public sealed interface TrialBalanceResult
 - Report semantics: the report carries `BookIdentity`, `PostingCoverage`, and one optional
   comparative row set when the caller selects `comparativeSelection` other than `none`
 
-## `AccountLedgerQuery`, `AccountLedgerEntry`, `AccountLedgerReport`, And `AccountLedgerResult`
+## `AccountLedgerPageCursor`, `AccountLedgerPagination`, `AccountLedgerQuery`, `AccountLedgerEntry`, `AccountLedgerReport`, And `AccountLedgerResult`
 
 These types own the running ledger surface for one declared account.
 
 ```java
-public record AccountLedgerQuery(AccountCode accountCode, EffectiveDateRange effectiveDateRange)
+public record AccountLedgerPageCursor(
+    LocalDate effectiveDate,
+    Instant recordedAt,
+    PostingId postingId)
+public record AccountLedgerPagination(
+    int limit,
+    Optional<AccountLedgerPageCursor> cursor,
+    Optional<AccountLedgerPageCursor> nextCursor)
+public record AccountLedgerQuery(
+    AccountCode accountCode,
+    EffectiveDateRange effectiveDateRange,
+    PostingCoverage postingCoverage,
+    int limit,
+    Optional<AccountLedgerPageCursor> cursor)
 public record AccountLedgerEntry(
     PostingFact postingFact,
     CurrencyBalance movement,
@@ -556,11 +594,14 @@ public record AccountLedgerReport(...)
 public sealed interface AccountLedgerResult
 ```
 
-- Purpose: request and carry one running ledger with opening balances, activity rows, and closing
+- Purpose: request and carry a running ledger with opening balances, activity rows, and closing
   balances
 - Result variants: `Reported`, `Rejected`
 - Report semantics: the report carries the selected book identity alongside the declared account,
-  bounded ledger range, opening balances, movement rows, and closing balances
+  bounded ledger range, keyset page boundary, opening balances, movement rows, and closing balances
+- Pagination semantics: the opaque cursor names the final row from the prior page in canonical
+  `(effectiveDate, recordedAt, postingId)` order; opening balances include that prior row so the
+  next returned row continues the running balance without replaying it
 
 ## `PeriodSummaryQuery`, `PeriodCurrencySummary`, `PeriodAccountActivityRow`, `PeriodSummaryReport`, And `PeriodSummaryResult`
 
@@ -843,62 +884,5 @@ public sealed interface BookQueryRejection
 
 - Variants: `BookNotInitialized`, `UnknownAccount`, `PostingNotFound`
 
-## `BookMaintenanceArtifactRole`, `BookMaintenancePathFailure`, `BookMaintenanceVerificationFailure`, `BookMaintenanceRejection`, And `PublicPathHint`
-
-These public maintenance-contract types keep verification-driven maintenance outcomes typed and
-redacted at the published-language edge.
-
-```java
-public enum BookMaintenanceArtifactRole implements WireValue
-public enum BookMaintenancePathFailure implements WireValue
-public enum BookMaintenanceVerificationFailure implements WireValue
-public sealed interface BookMaintenanceRejection
-public record PublicPathHint(String value)
-```
-
-- `BookMaintenanceArtifactRole`: keeps maintenance failures precise about whether the rejected
-  artifact was the live book, backup source, backup target, backup-key target, rollback artifact,
-  or restored target
-- `BookMaintenancePathFailure`: keeps maintenance path-contract refusals typed as missing parent
-  directory, parent path collision, missing owner traversal/write access, missing owner-only
-  protection, non-regular target path, or unsupported secure filesystem
-- `BookMaintenanceVerificationFailure`: keeps deterministic maintenance verification failures typed
-  as missing, blank SQLite, foreign SQLite, unsupported format version, incomplete FinGrind book,
-  or protected-book verification failure
-- `PublicPathHint`: redacts filesystem paths to `<redacted>` or
-  `<redacted>/<smallest-distinguishing-trailing-context>` so public maintenance output proves
-  which artifact failed without leaking absolute operator paths
-- Boundary: `BookMaintenanceRejection.ArtifactPathInvalid`,
-  `BookMaintenanceRejection.ArtifactBusy`, and
-  `BookMaintenanceRejection.ArtifactVerificationFailed` use these types so backup, restore, and
-  rekey-recovery refusals preserve artifact role, path failure or verification class, and redacted
-  path hints as
-  first-class machine contract
-  instead of collapsing maintenance verification into generic runtime failure text
-
-## `BookMaintenanceRejection`
-
-`BookMaintenanceRejection` is the closed family of deterministic maintenance-workflow refusals.
-
-```java
-public sealed interface BookMaintenanceRejection
-```
-
-- Variants: `BookHasBlockingArtifacts`, `BackupSourceHasBlockingArtifacts`,
-  `ArtifactPathInvalid`, `ArtifactBusy`, `BackupDestinationAlreadyExists`,
-  `BackupKeyFileAlreadyExists`, `ArtifactVerificationFailed`,
-  `NoRollbackArtifactsFound`, `RollbackArtifactSelectionRequired`,
-  `RollbackArtifactNotFound`, and `RollbackArtifactNotForBook`
-- Purpose: preserve closed-copy and rollback-artifact safety as first-class rejection language
-  instead of leaking maintenance mistakes as ad hoc storage exceptions
-
-## `RejectionNarrative`
-
-`RejectionNarrative` owns user-facing rejection prose for public rejection contracts.
-
-```java
-public final class RejectionNarrative
-```
-
-- Purpose: prevent CLI rendering and other public rejection surfaces from leaking Java class names
-  as rejection text
+The maintenance rejection and path-presentation contract is documented in
+[DOC_02_BookMaintenanceContracts.md](./DOC_02_BookMaintenanceContracts.md).

@@ -56,6 +56,14 @@ class BookAuditEventTest {
         BookAuditEvent.accountRenamed(FIXED_INSTANT, accountCode));
     assertEquals(
         new BookAuditEvent(
+            FIXED_INSTANT, BookAuditEventKind.ACCOUNT_AMENDED, accountCode, null, null),
+        BookAuditEvent.accountAmended(FIXED_INSTANT, accountCode));
+    assertEquals(
+        new BookAuditEvent(
+            FIXED_INSTANT, BookAuditEventKind.ACCOUNT_RETIRED, accountCode, null, null),
+        BookAuditEvent.accountRetired(FIXED_INSTANT, accountCode));
+    assertEquals(
+        new BookAuditEvent(
             FIXED_INSTANT,
             BookAuditEventKind.POSTING_COMMITTED,
             null,
@@ -214,6 +222,26 @@ class BookAuditEventTest {
         "ACCOUNT_RENAMED audit events must not carry postingId or closeOperationOrder.",
         accountRenamedFailure.getMessage());
 
+    IllegalArgumentException accountAmendedFailure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new BookAuditEvent(
+                    FIXED_INSTANT, BookAuditEventKind.ACCOUNT_AMENDED, accountCode, null, 1));
+    assertEquals(
+        "ACCOUNT_AMENDED audit events must not carry postingId or closeOperationOrder.",
+        accountAmendedFailure.getMessage());
+
+    IllegalArgumentException accountRetiredFailure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new BookAuditEvent(
+                    FIXED_INSTANT, BookAuditEventKind.ACCOUNT_RETIRED, accountCode, null, 1));
+    assertEquals(
+        "ACCOUNT_RETIRED audit events must not carry postingId or closeOperationOrder.",
+        accountRetiredFailure.getMessage());
+
     IllegalArgumentException postingReversedFailure =
         assertThrows(
             IllegalArgumentException.class,
@@ -242,6 +270,22 @@ class BookAuditEventTest {
                 new BookAuditEvent(
                     FIXED_INSTANT, BookAuditEventKind.ACCOUNT_RENAMED, null, null, null));
     assertEquals("accountCode", renamedAccountCodeFailure.getMessage());
+
+    NullPointerException amendedAccountCodeFailure =
+        assertThrows(
+            NullPointerException.class,
+            () ->
+                new BookAuditEvent(
+                    FIXED_INSTANT, BookAuditEventKind.ACCOUNT_AMENDED, null, null, null));
+    assertEquals("accountCode", amendedAccountCodeFailure.getMessage());
+
+    NullPointerException retiredAccountCodeFailure =
+        assertThrows(
+            NullPointerException.class,
+            () ->
+                new BookAuditEvent(
+                    FIXED_INSTANT, BookAuditEventKind.ACCOUNT_RETIRED, null, null, null));
+    assertEquals("accountCode", retiredAccountCodeFailure.getMessage());
 
     NullPointerException postingIdFailure =
         assertThrows(
@@ -277,6 +321,8 @@ class BookAuditEventTest {
             "ACCOUNT_DECLARED",
             "ACCOUNT_REACTIVATED",
             "ACCOUNT_RENAMED",
+            "ACCOUNT_AMENDED",
+            "ACCOUNT_RETIRED",
             "POSTING_COMMITTED",
             "POSTING_REVERSED",
             "BOOK_REKEYED",

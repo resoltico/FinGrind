@@ -39,6 +39,11 @@ import java.util.Set;
 final class SqliteStoreReadOperations {
   private final SqliteStoreQueryOperations queryOperations;
   private final SqliteStorePostingQueryOperations postingQueryOperations;
+  private final AccountCatalogReadOperations accountCatalog;
+  private final TaxRegistrationReadOperations taxRegistrations;
+  private final InventoryReadOperations inventory;
+  private final SqliteStoreLifecycleReadOperations lifecycleContexts;
+  private final PostingLookupReadOperations postingLookup;
   private final ReportingReadOperations reporting;
   private final PostingHistoryReadOperations postingHistory;
 
@@ -47,6 +52,11 @@ final class SqliteStoreReadOperations {
     Objects.requireNonNull(lifecycle, "lifecycle");
     this.queryOperations = new SqliteStoreQueryOperations(context, lifecycle);
     this.postingQueryOperations = new SqliteStorePostingQueryOperations(context, lifecycle);
+    this.accountCatalog = new AccountCatalogReadOperations(queryOperations);
+    this.taxRegistrations = new TaxRegistrationReadOperations(queryOperations);
+    this.inventory = new InventoryReadOperations(queryOperations);
+    this.lifecycleContexts = new SqliteStoreLifecycleReadOperations(queryOperations, lifecycle);
+    this.postingLookup = new PostingLookupReadOperations(postingQueryOperations);
     SqliteStoreReportOperations reportOperations =
         new SqliteStoreReportOperations(context, lifecycle);
     this.reporting = new ReportingReadOperations(postingQueryOperations, reportOperations);
@@ -57,56 +67,41 @@ final class SqliteStoreReadOperations {
     return queryOperations.inspectBook();
   }
 
-  Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
-    return queryOperations.findAccount(accountCode);
+  AccountCatalogReadOperations accountCatalog() {
+    return accountCatalog;
   }
 
-  Optional<InventoryAccountState> findInventoryAccountState(AccountCode inventoryAccountCode) {
-    return queryOperations.findInventoryAccountState(inventoryAccountCode);
+  TaxRegistrationReadOperations taxRegistrations() {
+    return taxRegistrations;
   }
 
-  List<InventoryMovementRecord> inventoryMovements(PostingId postingId) {
-    return queryOperations.inventoryMovements(postingId);
+  InventoryReadOperations inventory() {
+    return inventory;
   }
 
-  Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
-    return queryOperations.findAccounts(accountCodes);
+  SqliteStoreLifecycleReadOperations.AccrualCutoffReadOperations accrualCutoffLifecycle() {
+    return lifecycleContexts.accrualCutoff();
   }
 
-  List<RegisteredAccount> allAccounts() {
-    return queryOperations.allAccounts();
+  SqliteStoreLifecycleReadOperations.FixedAssetReadOperations fixedAssets() {
+    return lifecycleContexts.fixedAssets();
   }
 
-  Optional<DeclaredTaxRegistration> findTaxRegistration(TaxRegistrationId taxRegistrationId) {
-    return queryOperations.findTaxRegistration(taxRegistrationId);
+  SqliteStoreLifecycleReadOperations.FinancingReadOperations financing() {
+    return lifecycleContexts.financing();
   }
 
-  List<DeclaredTaxRegistration> allTaxRegistrations() {
-    return queryOperations.allTaxRegistrations();
+  SqliteStoreLifecycleReadOperations.RealizedForeignExchangeReadOperations
+      realizedForeignExchange() {
+    return lifecycleContexts.realizedForeignExchange();
   }
 
-  TaxRegistrationPage listTaxRegistrations(ListTaxRegistrationsQuery query) {
-    return queryOperations.listTaxRegistrations(query);
+  SqliteStoreLifecycleReadOperations.LatvianPayrollReadOperations latvianPayroll() {
+    return lifecycleContexts.latvianPayroll();
   }
 
-  AccountRegistryPage listAccounts(AccountRegistryQuery query) {
-    return queryOperations.listAccounts(query);
-  }
-
-  Optional<StoredRequestPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
-    return postingQueryOperations.findExistingPosting(idempotencyKey);
-  }
-
-  Optional<CommittedPosting> findPosting(PostingId postingId) {
-    return postingQueryOperations.findPosting(postingId);
-  }
-
-  Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
-    return postingQueryOperations.findReversalFor(priorPostingId);
-  }
-
-  PostingHistoryPage listPostings(PostingHistoryQuery query) {
-    return postingQueryOperations.listPostings(query);
+  PostingLookupReadOperations postingLookup() {
+    return postingLookup;
   }
 
   PostingHistoryReadOperations postingHistory() {
@@ -115,6 +110,94 @@ final class SqliteStoreReadOperations {
 
   ReportingReadOperations reporting() {
     return reporting;
+  }
+
+  /** Reads registered-account facts and pages from the Account Registry context. */
+  static final class AccountCatalogReadOperations {
+    private final SqliteStoreQueryOperations queryOperations;
+
+    private AccountCatalogReadOperations(SqliteStoreQueryOperations queryOperations) {
+      this.queryOperations = queryOperations;
+    }
+
+    Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
+      return queryOperations.findAccount(accountCode);
+    }
+
+    Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
+      return queryOperations.findAccounts(accountCodes);
+    }
+
+    List<RegisteredAccount> allAccounts() {
+      return queryOperations.allAccounts();
+    }
+
+    AccountRegistryPage listAccounts(AccountRegistryQuery query) {
+      return queryOperations.listAccounts(query);
+    }
+  }
+
+  /** Reads durable tax-registration facts and pages from the Tax Registration context. */
+  static final class TaxRegistrationReadOperations {
+    private final SqliteStoreQueryOperations queryOperations;
+
+    private TaxRegistrationReadOperations(SqliteStoreQueryOperations queryOperations) {
+      this.queryOperations = queryOperations;
+    }
+
+    Optional<DeclaredTaxRegistration> findTaxRegistration(TaxRegistrationId taxRegistrationId) {
+      return queryOperations.findTaxRegistration(taxRegistrationId);
+    }
+
+    List<DeclaredTaxRegistration> allTaxRegistrations() {
+      return queryOperations.allTaxRegistrations();
+    }
+
+    TaxRegistrationPage listTaxRegistrations(ListTaxRegistrationsQuery query) {
+      return queryOperations.listTaxRegistrations(query);
+    }
+  }
+
+  /** Reads materialized inventory facts that the Inventory Costing context owns. */
+  static final class InventoryReadOperations {
+    private final SqliteStoreQueryOperations queryOperations;
+
+    private InventoryReadOperations(SqliteStoreQueryOperations queryOperations) {
+      this.queryOperations = queryOperations;
+    }
+
+    Optional<InventoryAccountState> findInventoryAccountState(AccountCode inventoryAccountCode) {
+      return queryOperations.findInventoryAccountState(inventoryAccountCode);
+    }
+
+    List<InventoryMovementRecord> inventoryMovements(PostingId postingId) {
+      return queryOperations.inventoryMovements(postingId);
+    }
+  }
+
+  /** Reads individual postings and pages from the Posting History context. */
+  static final class PostingLookupReadOperations {
+    private final SqliteStorePostingQueryOperations postingQueryOperations;
+
+    private PostingLookupReadOperations(SqliteStorePostingQueryOperations postingQueryOperations) {
+      this.postingQueryOperations = postingQueryOperations;
+    }
+
+    Optional<StoredRequestPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
+      return postingQueryOperations.findExistingPosting(idempotencyKey);
+    }
+
+    Optional<CommittedPosting> findPosting(PostingId postingId) {
+      return postingQueryOperations.findPosting(postingId);
+    }
+
+    Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
+      return postingQueryOperations.findReversalFor(priorPostingId);
+    }
+
+    PostingHistoryPage listPostings(PostingHistoryQuery query) {
+      return postingQueryOperations.listPostings(query);
+    }
   }
 
   /** Reads posting-history facts that support close policy and posting-history projections. */

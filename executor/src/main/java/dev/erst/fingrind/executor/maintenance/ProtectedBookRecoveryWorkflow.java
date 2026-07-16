@@ -169,9 +169,9 @@ final class ProtectedBookRecoveryWorkflow {
           verifiedLiveBook,
           recordedAt,
           ProtectedBookMaintenanceAuditCompensationKind.REKEY_ROLLBACK_DELETED,
+          selectedRollbackArtifact,
           "Failed to delete the staged FinGrind rollback artifact.",
-          "rollbackArtifactPath",
-          commitFailure);
+          "rollbackArtifactPath");
     }
   }
 }

@@ -45,6 +45,16 @@ final class MachineContractInventoryPostEntryVariantTemplates {
         null,
         MachineContractPostEntryVariantTemplates.evidenceTemplate(entryKind),
         MachineContractPostEntryVariantTemplates.provenanceTemplate(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
         null);
   }
 
@@ -77,6 +87,16 @@ final class MachineContractInventoryPostEntryVariantTemplates {
         null,
         MachineContractPostEntryVariantTemplates.evidenceTemplate(entryKind),
         MachineContractPostEntryVariantTemplates.provenanceTemplate(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
         null);
   }
 
@@ -106,6 +126,16 @@ final class MachineContractInventoryPostEntryVariantTemplates {
         null,
         MachineContractPostEntryVariantTemplates.evidenceTemplate(entryKind),
         MachineContractPostEntryVariantTemplates.provenanceTemplate(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
         null);
   }
 
@@ -135,6 +165,16 @@ final class MachineContractInventoryPostEntryVariantTemplates {
         null,
         MachineContractPostEntryVariantTemplates.evidenceTemplate(entryKind),
         MachineContractPostEntryVariantTemplates.provenanceTemplate(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
         null);
   }
 }

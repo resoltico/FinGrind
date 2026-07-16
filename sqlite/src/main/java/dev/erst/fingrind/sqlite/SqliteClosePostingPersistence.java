@@ -49,6 +49,9 @@ final class SqliteClosePostingPersistence {
         Objects.requireNonNull(requestFingerprint, "requestFingerprint"));
     commitFaultHook.afterPostingFactInserted(postingFact);
     SqliteMutationWriter.insertJournalLines(activeDatabase, postingFact, commitFaultHook);
+    SqliteAccrualCutoffWriter.persist(activeDatabase, postingFact);
+    SqliteLatvianPayrollWriter.persist(activeDatabase, postingFact);
+    SqliteOwnedContextWriter.persist(activeDatabase, postingFact);
     persistInventoryCosting(activeDatabase, postingFact.postingId(), acceptedPosting);
     SqliteAuditEventWriter.insertAuditEvent(
         activeDatabase, BookAuditEvent.postingCommitted(postingFact));

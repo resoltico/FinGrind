@@ -136,9 +136,9 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
         CliJsonObjectMappers.configuredObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("error", failureEnvelope.path("status").stringValue());
     assertEquals("invalid-request", failureEnvelope.path("code").stringValue());
+    assertEquals("Request file does not exist.", failureEnvelope.path("message").stringValue());
     assertEquals(
-        "Request file does not exist: " + CliPublicPaths.redactedValue(requestFile) + ".",
-        failureEnvelope.path("message").stringValue());
+        CliPublicPaths.absoluteValue(requestFile), failureEnvelope.path("path").stringValue());
     assertTrue(
         failureEnvelope
             .path("hint")
@@ -206,10 +206,10 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     assertEquals(
         "Request file exceeded the supported "
             + ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES
-            + "-byte UTF-8 limit: "
-            + CliPublicPaths.redactedValue(requestFile)
-            + ".",
+            + "-byte UTF-8 limit.",
         failureEnvelope.path("message").stringValue());
+    assertEquals(
+        CliPublicPaths.absoluteValue(requestFile), failureEnvelope.path("path").stringValue());
     assertTrue(failureEnvelope.path("hint").stringValue().contains("split the work into smaller"));
     assertFalse(workflow.workflowInvoked());
   }

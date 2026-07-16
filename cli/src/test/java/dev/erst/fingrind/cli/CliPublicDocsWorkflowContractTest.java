@@ -44,7 +44,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
                     repositoryRoot().resolve("cli/src/bundle/root/quick-start-request.json"),
                     StandardCharsets.UTF_8)));
     JsonNode generatedKey =
-        runJsonCommand("generate-book-key-file", "--book-key-file", bookKeyFile.toString());
+        runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFile.toString());
     assertEquals("ok", generatedKey.path("status").stringValue());
     assertGeneratedKeyFileIsSecure(
         bookKeyFile, generatedKey.path("payload").path("permissions").stringValue());
@@ -146,14 +146,18 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
         normalizeLineEndings(
             Files.readString(
                 repositoryRoot().resolve("docs/USER_REQUESTS.md"), StandardCharsets.UTF_8));
+    String entryWorkflowsGuide =
+        normalizeLineEndings(
+            Files.readString(
+                repositoryRoot().resolve("docs/USER_ENTRY_WORKFLOWS.md"), StandardCharsets.UTF_8));
     assertTrue(examplesGuide.contains("placeholder-first sample"));
     assertTrue(examplesGuide.contains("single-use per book"));
     assertTrue(examplesGuide.contains("--entity-name"));
     assertTrue(examplesGuide.contains("--functional-currency"));
     assertTrue(examplesGuide.contains("--fiscal-year-start"));
     assertTrue(examplesGuide.contains("seed template"));
-    assertTrue(examplesGuide.contains("entry-semantics-multi-violation-request.json"));
-    assertTrue(examplesGuide.contains("entry-semantics-violations-text.txt"));
+    assertTrue(entryWorkflowsGuide.contains("entry-semantics-multi-violation-request.json"));
+    assertTrue(entryWorkflowsGuide.contains("entry-semantics-violations-text.txt"));
     assertTrue(requestsGuide.contains("placeholder-first sample"));
     assertTrue(requestsGuide.contains("single-use per book"));
     assertTrue(requestsGuide.contains("account-state-violations-text.txt"));
@@ -174,26 +178,33 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     Path reversalRequestFile = copyExampleFixture("reversal-request.json");
     Path planBookFile = workspace.resolve("acme-plan.sqlite");
     Path planRequestFile = copyExampleFixture("ledger-plan-request.json");
-    Path queryPlanBookFile = workspace.resolve("acme-plan-query.sqlite");
     Path queryPlanRequestFile = copyExampleFixture("ledger-plan-query-request.json");
     JsonNode postingRequest = readJson(postingRequestFile);
     assertTrue(postingRequest.path("recipeKind").isMissingNode());
     assertEquals("SALE_SETTLED", postingRequest.path("entryKind").stringValue());
     assertEquals("cash", postingRequest.path("cashAccountCode").stringValue());
     JsonNode planRequest = readJson(planRequestFile);
-    JsonNode planPosting = canonicalPostingStep(planRequest).path("posting");
-    assertTrue(planPosting.path("recipeKind").isMissingNode());
-    assertEquals("SALE_SETTLED", planPosting.path("entryKind").stringValue());
-    assertEquals("cash", planPosting.path("cashAccountCode").stringValue());
-    JsonNode queryPlanRequest = readJson(queryPlanRequestFile);
+    assertEquals("tax-setup-demo-1", planRequest.path("planId").stringValue());
     assertEquals(
-        "SALE_SETTLED",
-        canonicalPostingStep(queryPlanRequest).path("posting").path("entryKind").stringValue());
+        "declare-tax-registration", planRequest.path("steps").get(3).path("kind").stringValue());
+    assertEquals(
+        "tax-payable-vat",
+        planRequest
+            .path("steps")
+            .get(3)
+            .path("declareTaxRegistration")
+            .path("payableAccountCode")
+            .stringValue());
+    JsonNode queryPlanRequest = readJson(queryPlanRequestFile);
+    assertEquals("account-page-demo-1", queryPlanRequest.path("planId").stringValue());
+    assertEquals(1, queryPlanRequest.path("steps").size());
+    assertEquals(
+        "page-accounts", queryPlanRequest.path("steps").get(0).path("stepId").stringValue());
     JsonNode unknownAccountRequest = readJson(unknownAccountRequestFile);
     assertEquals("SALE_SETTLED", unknownAccountRequest.path("entryKind").stringValue());
     JsonNode entrySemanticsRequest = readJson(entrySemanticsRequestFile);
     assertEquals("SALE_SETTLED", entrySemanticsRequest.path("entryKind").stringValue());
-    runJsonCommand("generate-book-key-file", "--book-key-file", bookKeyFile.toString());
+    runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFile.toString());
     runJsonCommand(openBookKeyFileArguments(bookFile, bookKeyFile));
     runJsonCommand(
         "declare-account",
@@ -282,19 +293,19 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             "10");
     assertPostingIdsContain(listing.path("payload").path("postings"), postingId, reversalPostingId);
     JsonNode rawPlanTemplate = runRawJsonCommand("print-plan-template");
-    JsonNode rawPlanPosting = canonicalPostingStep(rawPlanTemplate).path("posting");
-    assertTrue(rawPlanPosting.path("recipeKind").isMissingNode());
-    assertEquals("SALE_SETTLED", rawPlanPosting.path("entryKind").stringValue());
-    assertEquals("cash", rawPlanPosting.path("cashAccountCode").stringValue());
+    assertEquals("tax-setup", rawPlanTemplate.path("planId").stringValue());
     assertEquals(
-        "replace-before-commit-source-document-id",
-        rawPlanPosting
-            .path("evidence")
-            .path("sourceDocuments")
-            .get(0)
-            .path("sourceDocumentId")
+        "declare-tax-registration",
+        rawPlanTemplate.path("steps").get(3).path("kind").stringValue());
+    assertEquals(
+        "tax-payable-vat",
+        rawPlanTemplate
+            .path("steps")
+            .get(3)
+            .path("declareTaxRegistration")
+            .path("payableAccountCode")
             .stringValue());
-    assertEquals("PERSON", rawPlanPosting.path("provenance").path("actorType").stringValue());
+    assertFalse(rawPlanTemplate.toString().contains("\"posting\""));
     JsonNode planResult =
         runJsonCommand(
             "execute-plan",
@@ -308,11 +319,17 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             planRequestFile.toString());
     assertEquals("ok", planResult.path("status").stringValue());
     assertEquals("succeeded", planResult.path("payload").path("status").stringValue());
+    assertJournalStepIds(
+        planResult.path("payload").path("journal"),
+        "ensure-book",
+        "declare-tax-payable",
+        "declare-tax-recoverable",
+        "declare-tax-registration");
     JsonNode queryPlanResult =
         runJsonCommand(
             "execute-plan",
             "--book-file",
-            queryPlanBookFile.toString(),
+            planBookFile.toString(),
             "--book-key-file",
             bookKeyFile.toString(),
             "--result-detail",
@@ -321,6 +338,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             queryPlanRequestFile.toString());
     assertEquals("ok", queryPlanResult.path("status").stringValue());
     assertEquals("succeeded", queryPlanResult.path("payload").path("status").stringValue());
+    assertJournalStepIds(queryPlanResult.path("payload").path("journal"), "page-accounts");
     JsonNode queryData =
         findStepData(queryPlanResult.path("payload").path("journal"), "page-accounts");
     assertEquals(1, queryData.path("count").asInt());
@@ -335,36 +353,12 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     throw new AssertionError("Missing plan journal step: " + stepId);
   }
 
-  private static JsonNode canonicalPostingStep(JsonNode planDocument) {
-    JsonNode matchingStep = null;
-    for (JsonNode step : planDocument.path("steps")) {
-      if (isCommittedPostingKind(step.path("kind").stringValue()) && step.has("posting")) {
-        if (matchingStep != null) {
-          throw new AssertionError(
-              "Expected exactly one canonical committed-posting scaffold step in the plan document.");
-        }
-        matchingStep = step;
-      }
+  private static void assertJournalStepIds(JsonNode journal, String... expectedStepIds) {
+    assertEquals(expectedStepIds.length, journal.path("steps").size());
+    for (int index = 0; index < expectedStepIds.length; index++) {
+      assertEquals(
+          expectedStepIds[index], journal.path("steps").get(index).path("stepId").stringValue());
     }
-    if (matchingStep == null) {
-      throw new AssertionError(
-          "Expected exactly one canonical committed-posting scaffold step in the plan document.");
-    }
-    return matchingStep;
-  }
-
-  private static boolean isCommittedPostingKind(String kind) {
-    return switch (kind) {
-      case "record-sale-settled",
-          "record-expense-settled",
-          "record-owner-contribution",
-          "record-owner-withdrawal",
-          "record-opening-position",
-          "record-reversal",
-          "post-entry" ->
-          true;
-      default -> false;
-    };
   }
 
   private static JsonNode readJson(Path path) throws IOException {

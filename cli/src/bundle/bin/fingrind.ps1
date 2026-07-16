@@ -8,6 +8,10 @@ $applicationJar = Join-Path $appHome "lib/app/fingrind.jar"
 $applicationModule = "dev.erst.fingrind.cli/dev.erst.fingrind.cli.App"
 $internalCliArgumentsFileEnv = "FINGRIND_INTERNAL_CLI_ARGUMENTS_FILE"
 $scriptInvocationArguments = @($args)
+$invocationLabel = $MyInvocation.InvocationName
+if ([string]::IsNullOrWhiteSpace($invocationLabel)) {
+    $invocationLabel = $PSCommandPath
+}
 
 function New-StagedCliArgumentsFile {
     param(
@@ -58,6 +62,7 @@ function Invoke-FinGrindBundleLauncher {
         "-D{{sqliteBundleHomeSystemProperty}}=$appHome",
         "-Dfingrind.runtime.distribution={{bundleRuntimeDistribution}}",
         "-Dfingrind.runtime.bundle-target={{bundleClassifier}}",
+        "-Ddev.erst.fingrind.invocation=$invocationLabel",
         "--module-path",
         $applicationJar,
         "--module",

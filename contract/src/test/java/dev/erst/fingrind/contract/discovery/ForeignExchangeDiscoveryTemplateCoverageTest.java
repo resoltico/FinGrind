@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
-import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
+import dev.erst.fingrind.contract.protocol.ProtocolForeignExchangeRequestFields;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
 import java.util.Objects;
@@ -33,32 +33,35 @@ class ForeignExchangeDiscoveryTemplateCoverageTest {
         RequestFieldPresence.REQUIRED,
         fieldNamed(
                 saleDescriptor.foreignExchangeFields(),
-                ProtocolPostEntryFields.ForeignExchange.TRANSACTION_AMOUNT)
+                ProtocolForeignExchangeRequestFields.ForeignExchange.TRANSACTION_AMOUNT)
             .presence());
     assertEquals(
         RequestFieldPresence.REQUIRED,
         fieldNamed(
-                saleDescriptor.quotedRateFields(), ProtocolPostEntryFields.QuotedRate.QUOTE_SOURCE)
+                saleDescriptor.quotedRateFields(),
+                ProtocolForeignExchangeRequestFields.QuotedRate.QUOTE_SOURCE)
             .presence());
     assertEquals(
-        List.of("SPOT_TRANSACTION", "REALIZED_SETTLEMENT", "UNREALIZED_REMEASUREMENT"),
-        vocabularyNamed(saleDescriptor, ProtocolPostEntryFields.ForeignExchange.TREATMENT_KIND)
+        List.of("SPOT_TRANSACTION", "UNREALIZED_REMEASUREMENT"),
+        vocabularyNamed(
+                saleDescriptor, ProtocolForeignExchangeRequestFields.ForeignExchange.TREATMENT_KIND)
             .values());
     assertEquals(
         Optional.empty(),
         vocabularyNamedOptional(
-            openingPositionDescriptor, ProtocolPostEntryFields.ForeignExchange.TREATMENT_KIND));
+            openingPositionDescriptor,
+            ProtocolForeignExchangeRequestFields.ForeignExchange.TREATMENT_KIND));
     assertEquals(
         RequestFieldPresence.FORBIDDEN,
         fieldNamed(
                 openingPositionDescriptor.foreignExchangeFields(),
-                ProtocolPostEntryFields.ForeignExchange.TRANSACTION_AMOUNT)
+                ProtocolForeignExchangeRequestFields.ForeignExchange.TRANSACTION_AMOUNT)
             .presence());
     assertEquals(
         RequestFieldPresence.FORBIDDEN,
         fieldNamed(
                 openingPositionDescriptor.quotedRateFields(),
-                ProtocolPostEntryFields.QuotedRate.QUOTE_SOURCE)
+                ProtocolForeignExchangeRequestFields.QuotedRate.QUOTE_SOURCE)
             .presence());
   }
 

@@ -1,9 +1,15 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.FinancingBookkeepingEntryVariants;
+import dev.erst.fingrind.contract.bookkeeping.FixedAssetBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
+import dev.erst.fingrind.contract.bookkeeping.LatvianPayrollBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.RealizedForeignExchangeBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct;
+import dev.erst.fingrind.contract.bookkeeping.StandardBookkeepingEntryVariants;
 import org.jspecify.annotations.Nullable;
 
 /** Maps retained originating-entry facts onto the persisted posting-fact columns. */
@@ -11,15 +17,47 @@ final class SqliteOriginatingEntryFactMapper {
   private SqliteOriginatingEntryFactMapper() {}
 
   static void bindOriginatingEntry(
-      SqliteNativeStatement statement, @Nullable BookkeepingEntry originatingEntry) {
-    bindOriginatingEntryFactValues(statement, originatingEntryFactValues(originatingEntry));
+      SqliteNativeStatement statement,
+      @Nullable BookkeepingEntry retainedOriginatingEntry,
+      @Nullable BookkeepingEntry resolvedOriginatingEntry) {
+    bindOriginatingEntryFactValues(
+        statement, originatingEntryFactValues(retainedOriginatingEntry, resolvedOriginatingEntry));
   }
 
   private static OriginatingEntryFactValues originatingEntryFactValues(
-      @Nullable BookkeepingEntry originatingEntry) {
+      @Nullable BookkeepingEntry retainedOriginatingEntry,
+      @Nullable BookkeepingEntry resolvedOriginatingEntry) {
+    BookkeepingEntry originatingEntry =
+        requiresExecutorResolvedFacts(retainedOriginatingEntry)
+            ? java.util.Objects.requireNonNull(
+                resolvedOriginatingEntry,
+                "Executor-owned posting facts require an executor-resolved entry.")
+            : retainedOriginatingEntry;
     if (originatingEntry == null) {
       return OriginatingEntryFactValues.empty();
     }
+    return switch (originatingEntry) {
+      case InventoryBookkeepingEntryVariants inventoryEntry ->
+          SqliteInventoryOriginatingEntryFactValues.originatingEntryFactValues(inventoryEntry);
+      case AccrualCutoffBookkeepingEntryVariants accrualCutoffEntry ->
+          SqliteAccrualCutoffOriginatingEntryFactValues.originatingEntryFactValues(
+              accrualCutoffEntry);
+      case LatvianPayrollBookkeepingEntryVariants _ -> OriginatingEntryFactValues.empty();
+      case FixedAssetBookkeepingEntryVariants fixedAssetEntry ->
+          SqliteFixedAssetOriginatingEntryFactValues.originatingEntryFactValues(fixedAssetEntry);
+      case FinancingBookkeepingEntryVariants financingEntry ->
+          SqliteFinancingOriginatingEntryFactValues.originatingEntryFactValues(financingEntry);
+      case RealizedForeignExchangeBookkeepingEntryVariants foreignExchangeEntry ->
+          SqliteRealizedForeignExchangeOriginatingEntryFactValues.originatingEntryFactValues(
+              foreignExchangeEntry);
+      case StandardBookkeepingEntryVariants standardEntry ->
+          standardOriginatingEntryFactValues(standardEntry);
+      case BookkeepingEntry.ScalarFactFree _ -> OriginatingEntryFactValues.empty();
+    };
+  }
+
+  private static OriginatingEntryFactValues standardOriginatingEntryFactValues(
+      StandardBookkeepingEntryVariants originatingEntry) {
     return switch (originatingEntry) {
       case BookkeepingEntry.SaleSettled sale ->
           simpleOriginatingEntryFactValues(
@@ -45,8 +83,6 @@ final class SqliteOriginatingEntryFactMapper {
               purchase.payableAccountCode().value(),
               purchase.quantity().value(),
               purchase.unitCost());
-      case InventoryBookkeepingEntryVariants inventoryEntry ->
-          SqliteInventoryOriginatingEntryFactValues.originatingEntryFactValues(inventoryEntry);
       case BookkeepingEntry.ExpenseSettled expense ->
           simpleOriginatingEntryFactValues(
               expense.expenseAccountCode().value(),
@@ -83,9 +119,6 @@ final class SqliteOriginatingEntryFactMapper {
               withdrawal.cashAccountCode().value(),
               withdrawal.amount(),
               null);
-      case BookkeepingEntry.DirectJournal _ -> OriginatingEntryFactValues.empty();
-      case BookkeepingEntry.OpeningPosition _ -> OriginatingEntryFactValues.empty();
-      case BookkeepingEntry.Reversal _ -> OriginatingEntryFactValues.empty();
     };
   }
 
@@ -100,6 +133,14 @@ final class SqliteOriginatingEntryFactMapper {
     statement.bindText(10, factValues.quantity());
     statement.bindText(11, factValues.unitCostCurrencyCode());
     bindOptionalLong(statement, 12, factValues.unitCostMinorUnits());
+  }
+
+  private static boolean requiresExecutorResolvedFacts(
+      @Nullable BookkeepingEntry retainedOriginatingEntry) {
+    return retainedOriginatingEntry instanceof AccrualCutoffBookkeepingEntryVariants
+        || retainedOriginatingEntry instanceof FixedAssetBookkeepingEntryVariants
+        || retainedOriginatingEntry instanceof FinancingBookkeepingEntryVariants
+        || retainedOriginatingEntry instanceof RealizedForeignExchangeBookkeepingEntryVariants;
   }
 
   static OriginatingEntryFactValues simpleOriginatingEntryFactValues(

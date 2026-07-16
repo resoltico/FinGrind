@@ -7,10 +7,8 @@ import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
 import dev.erst.fingrind.contract.tax.TaxDeclarationRejection;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.nio.file.Files;
 import java.time.Instant;
@@ -61,7 +59,7 @@ final class SqliteStoreAdministrationMutationOperations {
             for (AccountDeclaration seededAccount : seededAccounts) {
               RegisteredAccount declaredAccount =
                   RegisteredAccount.declareNew(seededAccount, initializedAt);
-              SqliteMutationWriter.upsertAccount(activeDatabase, declaredAccount);
+              SqliteAccountRegistryMutationWriter.upsertAccount(activeDatabase, declaredAccount);
             }
             SqliteAuditEventWriter.insertAuditEvent(
                 activeDatabase, BookAuditEvent.bookOpened(initializedAt));
@@ -76,54 +74,6 @@ final class SqliteStoreAdministrationMutationOperations {
             SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
             throw SqliteStoreOperations.sqliteFailure(
                 "Failed to initialize SQLite book.", exception);
-          } catch (RuntimeException exception) {
-            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-            throw exception;
-          }
-        });
-  }
-
-  AccountDeclarationOutcome declareAccount(AccountDeclaration declaration, Instant declaredAt) {
-    lifecycle.ensureOpenSession();
-    context.accessMode().requireWritableMutation();
-    Objects.requireNonNull(declaration, "declaration");
-    if (Files.notExists(context.bookPath())) {
-      return new AccountDeclarationOutcome.Rejected(
-          new BookkeepingAdministrationRejection.BookNotInitialized());
-    }
-    return withBorrowedDatabase(
-        activeDatabase -> {
-          SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
-          try {
-            if (!lifecycle.isInitializedBook(activeDatabase)) {
-              return new AccountDeclarationOutcome.Rejected(
-                  new BookkeepingAdministrationRejection.BookNotInitialized());
-            }
-
-            transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
-            Optional<RegisteredAccount> existingAccount =
-                SqliteAccountStatementQueries.findOneAccount(
-                    activeDatabase, declaration.accountCode());
-            AccountDeclarationOutcome declarationOutcome =
-                RegisteredAccount.declare(existingAccount.orElse(null), declaration, declaredAt);
-            if (declarationOutcome instanceof AccountDeclarationOutcome.Rejected rejected) {
-              SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-              return rejected;
-            }
-            if (declarationOutcome instanceof AccountDeclarationOutcome.Unchanged unchanged) {
-              SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-              return unchanged;
-            }
-            RegisteredAccount declaredAccount = declaredAccount(declarationOutcome);
-            SqliteMutationWriter.upsertAccount(activeDatabase, declaredAccount);
-            SqliteAuditEventWriter.insertAuditEvent(
-                activeDatabase, accountAuditEvent(declaredAt, declarationOutcome));
-            SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
-            return declarationOutcome;
-          } catch (SqliteNativeException exception) {
-            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-            throw SqliteStoreOperations.sqliteFailure(
-                "Failed to declare SQLite book account.", exception);
           } catch (RuntimeException exception) {
             SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
             throw exception;
@@ -186,36 +136,6 @@ final class SqliteStoreAdministrationMutationOperations {
             throw exception;
           }
         });
-  }
-
-  static RegisteredAccount declaredAccount(AccountDeclarationOutcome declarationOutcome) {
-    return switch (Objects.requireNonNull(declarationOutcome, "declarationOutcome")) {
-      case AccountDeclarationOutcome.Declared declared -> declared.account();
-      case AccountDeclarationOutcome.Reactivated reactivated -> reactivated.account();
-      case AccountDeclarationOutcome.Renamed renamed -> renamed.account();
-      case AccountDeclarationOutcome.Unchanged unchanged -> unchanged.account();
-      case AccountDeclarationOutcome.Rejected rejected ->
-          throw new IllegalArgumentException(
-              "Rejected account declarations do not carry a durable account snapshot: "
-                  + rejected.rejection());
-    };
-  }
-
-  static BookAuditEvent accountAuditEvent(
-      Instant recordedAt, AccountDeclarationOutcome declarationOutcome) {
-    return switch (Objects.requireNonNull(declarationOutcome, "declarationOutcome")) {
-      case AccountDeclarationOutcome.Declared declared ->
-          BookAuditEvent.accountDeclared(recordedAt, declared.account().accountCode());
-      case AccountDeclarationOutcome.Reactivated reactivated ->
-          BookAuditEvent.accountReactivated(recordedAt, reactivated.account().accountCode());
-      case AccountDeclarationOutcome.Renamed renamed ->
-          BookAuditEvent.accountRenamed(recordedAt, renamed.account().accountCode());
-      case AccountDeclarationOutcome.Unchanged _ ->
-          throw new IllegalArgumentException("Unchanged account declarations do not append audit.");
-      case AccountDeclarationOutcome.Rejected rejected ->
-          throw new IllegalArgumentException(
-              "Rejected account declarations do not append audit: " + rejected.rejection());
-    };
   }
 
   private static DeclaredTaxRegistration declaredTaxRegistrationSnapshot(

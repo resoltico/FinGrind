@@ -206,7 +206,7 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
             : SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID;
     return new EnvironmentDescriptor(
         new EnvironmentRuntimeDescriptor(
-            RuntimeDistribution.fromWireValue(runtimeDistribution), OutputMode.TEXT, null),
+            RuntimeDistribution.fromWireValue(runtimeDistribution), OutputMode.TEXT),
         new EnvironmentPublicationDescriptor(
             ProtocolCatalog.distribution().publicCliDistribution(),
             ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),

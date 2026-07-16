@@ -9,8 +9,7 @@ import tools.jackson.databind.JsonNode;
 class CliPublicDocsContractSupportTest extends CliPublicDocsContractSupport {
 
   @Test
-  void canonicalization_preservesRedactedPublicPathHintsAcrossTextAndJsonFixtures()
-      throws Exception {
+  void canonicalization_keepsTextRedactionSeparateFromAbsoluteJsonPaths() throws Exception {
 
     assertEquals(
         "<redacted>/books/acme.sqlite",
@@ -20,11 +19,11 @@ class CliPublicDocsContractSupportTest extends CliPublicDocsContractSupport {
         OBJECT_MAPPER.readTree(
             """
             {
-              "bookFile": "<redacted>\\\\books\\\\acme.sqlite"
+              "bookFile": "/workspace/books/acme.sqlite"
             }
             """);
     assertEquals(
-        "{\"bookFile\":\"<redacted>/books/acme.sqlite\"}",
+        "{\"bookFile\":\"/workspace/books/acme.sqlite\"}",
         canonicalizeJsonFixture(jsonFixture).toString());
   }
 }

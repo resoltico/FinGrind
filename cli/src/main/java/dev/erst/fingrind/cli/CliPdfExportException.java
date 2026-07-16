@@ -1,6 +1,5 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -11,12 +10,8 @@ final class CliPdfExportException extends RuntimeException {
   private final Path outputPath;
 
   CliPdfExportException(Path outputPath, Exception cause) {
-    super(
-        "Failed to write PDF export to "
-            + PublicPathHint.fromPath(Objects.requireNonNull(outputPath, "outputPath")).value()
-            + ".",
-        Objects.requireNonNull(cause, "cause"));
-    this.outputPath = outputPath;
+    super("Failed to write the PDF export.", Objects.requireNonNull(cause, "cause"));
+    this.outputPath = Objects.requireNonNull(outputPath, "outputPath");
   }
 
   Path outputPath() {

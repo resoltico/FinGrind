@@ -1,11 +1,10 @@
 package dev.erst.fingrind.executor.maintenance;
 
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.PreparedPairPublication;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
 import java.nio.file.Path;
-import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
@@ -27,6 +26,33 @@ final class ProtectedBookBackupWorkflow {
     Path normalizedBackupFilePath = store.normalize(backupFilePath, "backupFilePath");
     Path normalizedBackupBookKeyFilePath =
         store.normalize(backupBookKeyFilePath, "backupBookKeyFilePath");
+    try (PreparedPairPublication preparedPublication =
+        store.preparePairPublication(
+            normalizedBackupBookKeyFilePath,
+            normalizedBackupFilePath,
+            RestoredBookTargetPolicy.REQUIRE_ABSENT,
+            ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+            ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET)) {
+      return backupWithPreparedPublication(
+          normalizedAccess, normalizedBookPath, store, preparedPublication);
+    } catch (ProtectedBookMaintenanceRejectionException exception) {
+      return MaintenanceDecision.accepted(
+          new ProtectedBookBackupOutcome.Rejected(exception.rejection()));
+    } catch (RuntimeException recoveryFailure) {
+      return support.storageFailure(
+          normalizedBackupFilePath,
+          "Failed to recover or prepare the FinGrind backup pair publication.",
+          "backupFilePath");
+    }
+  }
+
+  private MaintenanceDecision<ProtectedBookBackupOutcome> backupWithPreparedPublication(
+      ProtectedBookAccess normalizedAccess,
+      Path normalizedBookPath,
+      ProtectedBookMaintenanceStore store,
+      PreparedPairPublication preparedPublication) {
+    Path normalizedBackupFilePath = preparedPublication.bookTargetPath();
+    Path normalizedBackupBookKeyFilePath = preparedPublication.secretTargetPath();
     List<Path> blockingArtifacts = store.blockingArtifactsForBook(normalizedBookPath);
     if (!blockingArtifacts.isEmpty()) {
       return MaintenanceDecision.accepted(
@@ -34,87 +60,56 @@ final class ProtectedBookBackupWorkflow {
               new ProtectedBookMaintenanceRejection.BookHasBlockingArtifacts(
                   normalizedBookPath, blockingArtifacts)));
     }
-    if (Files.exists(normalizedBackupFilePath, LinkOption.NOFOLLOW_LINKS)) {
+    ProtectedBookMaintenanceStore.LeaseAcquisition leaseAcquisition =
+        store.acquireManagedArtifactLease(
+            normalizedBookPath, ProtectedBookMaintenanceArtifactRole.LIVE_BOOK);
+    if (leaseAcquisition instanceof ProtectedBookMaintenanceStore.LeaseBusy leaseBusy) {
       return MaintenanceDecision.accepted(
           new ProtectedBookBackupOutcome.Rejected(
-              new ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists(
-                  normalizedBackupFilePath)));
+              support.busyArtifact(
+                  ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, leaseBusy.artifactPath())));
     }
-    if (Files.exists(normalizedBackupBookKeyFilePath, LinkOption.NOFOLLOW_LINKS)) {
-      return MaintenanceDecision.accepted(
-          new ProtectedBookBackupOutcome.Rejected(
-              new ProtectedBookMaintenanceRejection.BackupKeyFileAlreadyExists(
-                  normalizedBackupBookKeyFilePath)));
-    }
-    try {
-      ProtectedBookMaintenanceStore.LeaseAcquisition leaseAcquisition =
-          store.acquireManagedArtifactLease(
-              normalizedBookPath, ProtectedBookMaintenanceArtifactRole.LIVE_BOOK);
-      if (leaseAcquisition instanceof ProtectedBookMaintenanceStore.LeaseBusy leaseBusy) {
-        return MaintenanceDecision.accepted(
-            new ProtectedBookBackupOutcome.Rejected(
-                support.busyArtifact(
-                    ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, leaseBusy.artifactPath())));
-      }
-      try (ProtectedBookMaintenanceStore.HeldLease ignored =
-          (ProtectedBookMaintenanceStore.HeldLease) leaseAcquisition) {
-        return support.continueWithVerifiedBook(
-            normalizedAccess,
-            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
-            verifiedLiveBook ->
-                store
-                    .stageBackupPair(
-                        verifiedLiveBook, normalizedBackupFilePath, normalizedBackupBookKeyFilePath)
-                    .fold(
-                        stagedBackupPair -> {
-                          try (StagedBackupPair ignoredStaged = stagedBackupPair) {
-                            return stagedBackupPair
-                                .verifyInitializedBackup()
-                                .fold(
-                                    verification -> {
-                                      if (verification
-                                          instanceof
-                                          ProtectedBookMaintenanceStore.VerificationFailure
-                                              verificationFailure) {
-                                        return MaintenanceDecision.accepted(
-                                            new ProtectedBookBackupOutcome.Rejected(
-                                                support.verificationFailed(
-                                                    ProtectedBookMaintenanceArtifactRole
-                                                        .BACKUP_SOURCE,
-                                                    verificationFailure)));
-                                      }
-                                      Instant recordedAt = support.recordedAt();
-                                      return store
-                                          .appendMaintenanceAudit(
-                                              verifiedLiveBook,
-                                              recordedAt,
-                                              ProtectedBookMaintenanceAuditKind.BACKUP_CREATED)
-                                          .fold(
-                                              ignoredAudit ->
-                                                  commitBackedUpPair(
-                                                      verifiedLiveBook,
-                                                      recordedAt,
-                                                      stagedBackupPair,
-                                                      normalizedBookPath,
-                                                      normalizedBackupFilePath,
-                                                      normalizedBackupBookKeyFilePath),
-                                              MaintenanceDecision::failed);
-                                    },
-                                    MaintenanceDecision::failed);
-                          }
-                        },
-                        MaintenanceDecision::failed),
-            ProtectedBookBackupOutcome.Rejected::new);
-      }
-    } catch (ProtectedBookMaintenanceRejectionException exception) {
-      return MaintenanceDecision.accepted(
-          new ProtectedBookBackupOutcome.Rejected(exception.rejection()));
+    try (ProtectedBookMaintenanceStore.HeldLease ignored =
+        (ProtectedBookMaintenanceStore.HeldLease) leaseAcquisition) {
+      return support.continueWithVerifiedBook(
+          normalizedAccess,
+          ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+          verifiedLiveBook ->
+              store
+                  .stageBackupPair(verifiedLiveBook, preparedPublication)
+                  .fold(
+                      stagedBackupPair -> {
+                        try (StagedBackupPair ignoredStaged = stagedBackupPair) {
+                          return stagedBackupPair
+                              .verifyInitializedBackup()
+                              .fold(
+                                  verification -> {
+                                    if (verification
+                                        instanceof
+                                        ProtectedBookMaintenanceStore.VerificationFailure
+                                            verificationFailure) {
+                                      return MaintenanceDecision.accepted(
+                                          new ProtectedBookBackupOutcome.Rejected(
+                                              support.verificationFailed(
+                                                  ProtectedBookMaintenanceArtifactRole
+                                                      .BACKUP_SOURCE,
+                                                  verificationFailure)));
+                                    }
+                                    return commitBackedUpPair(
+                                        stagedBackupPair,
+                                        normalizedBookPath,
+                                        normalizedBackupFilePath,
+                                        normalizedBackupBookKeyFilePath);
+                                  },
+                                  MaintenanceDecision::failed);
+                        }
+                      },
+                      MaintenanceDecision::failed),
+          ProtectedBookBackupOutcome.Rejected::new);
     }
   }
 
   private MaintenanceDecision<ProtectedBookBackupOutcome> commitBackedUpPair(
-      ProtectedBookMaintenanceStore.VerifiedBook verifiedLiveBook,
-      Instant recordedAt,
       StagedBackupPair stagedBackupPair,
       Path normalizedBookPath,
       Path normalizedBackupFilePath,
@@ -124,14 +119,14 @@ final class ProtectedBookBackupWorkflow {
       return MaintenanceDecision.accepted(
           new ProtectedBookBackupOutcome.BackedUp(
               normalizedBookPath, normalizedBackupFilePath, normalizedBackupBookKeyFilePath));
+    } catch (ProtectedBookMaintenanceRejectionException rejection) {
+      return MaintenanceDecision.accepted(
+          new ProtectedBookBackupOutcome.Rejected(rejection.rejection()));
     } catch (RuntimeException commitFailure) {
-      return support.compensateAuditAfterExternalCommitFailure(
-          verifiedLiveBook,
-          recordedAt,
-          ProtectedBookMaintenanceAuditCompensationKind.BACKUP_CREATED,
+      return support.storageFailure(
+          normalizedBackupFilePath,
           "Failed to publish the staged FinGrind backup pair.",
-          "backupFilePath",
-          commitFailure);
+          "backupFilePath");
     }
   }
 }

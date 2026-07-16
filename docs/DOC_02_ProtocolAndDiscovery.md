@@ -2,17 +2,16 @@
 afad: "4.0"
 version: "0.60.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-07-11"
+updated: "2026-07-14"
 route:
-  keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, declare-tax-registration, tax-obligation]
-  questions: ["where is protocol metadata documented in fingrind", "which doc covers MachineContract and ContractDiscovery", "where are request and response descriptor types documented", "where is the tax request surface documented"]
+  keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, tax-setup, declare-tax-registration, amend-account, retire-account, tax-obligation]
+  questions: ["where is protocol metadata documented in fingrind", "where is the tax setup request surface documented", "where are account lifecycle commands documented"]
 ---
 
 # Contract Protocol And Discovery Reference
 
 This file documents the exported `contract` surfaces that define FinGrind's protocol catalog,
-discovery payloads, request and response descriptors, deterministic contract-error vocabulary, and
-public book-format metadata.
+runtime and distribution facts, shared request-field vocabularies, and public book-format metadata.
 
 ## `ProtocolCatalog`
 
@@ -26,6 +25,30 @@ public final class ProtocolCatalog
 - Purpose: own operation ids, aliases, display labels, output modes, usage lines, summaries,
   examples, query limits, public bundle targets, and fixed bookkeeping limitations
 - Consumers: CLI parsing, `help`, `capabilities`, `MachineContract`, docs lint, and examples
+
+## `CapabilityCatalog`, `CapabilityCatalogEntry`, And `CapabilityStatus`
+
+`CapabilityCatalog` is the canonical owner of FinGrind's published capability scope. Each
+`CapabilityCatalogEntry` supplies a stable capability id, a `CapabilityStatus`, and an operative
+boundary when the status is partial.
+
+```java
+public final class CapabilityCatalog
+public record CapabilityCatalogEntry(
+    String id, CapabilityStatus status, @Nullable String operativeBoundary)
+public enum CapabilityStatus { IMPLEMENTED, PARTIAL, EXCLUDED }
+```
+
+- Invariant: every partial entry has one nonblank operative boundary; implemented and excluded
+  entries do not carry an unowned boundary
+- Consumers: `ProtocolDomainCatalog`, `CapabilitiesDescriptor`, the accounting-kernel scope ADR
+  renderer, and the ADR parity contract test
+- Discovery reach: `capabilities --output json --detail full` publishes the canonical list at
+  `fullContract.capabilityCatalog`; `capabilities --output json --focus capability-catalog`
+  publishes the same complete list as a focused slice, and text capabilities renders the same
+  source in its Capability Scope section
+- Boundary: this catalog owns published implementation scope, not command grammar, storage
+  schema, or prospective capability design
 
 ## `ProtocolOperation`
 
@@ -144,6 +167,20 @@ public final class ProtocolOptions
 - Purpose: keep option text consistent across parser, help, capabilities, templates, and docs
 - Scope: book access, passphrase sources, request files, report output, PDF export, pagination,
   posting lookup, date filters, and `execute-plan` result detail
+- `ProtocolBookAccessOptions` owns the protected-book file, key, passphrase, backup, restore,
+  replacement, and rollback option spellings; `ProtocolOptions` consumes its passphrase-source
+  vocabulary rather than duplicating it
+
+## `ProtocolOptions.Request`, `ProtocolOptions.DateRange`, `ProtocolOptions.ReportQuery`, `ProtocolOptions.BookDefinition`, `ProtocolOptions.Presentation`, And `ProtocolOptions.Discovery`
+
+These nested owners partition public CLI option spellings by the contract they shape.
+
+- `Request`: request document and primary-resource selectors
+- `DateRange`: effective-date, reporting-period, fiscal-year, and as-of selectors
+- `ReportQuery`: comparative, coverage, pagination, and cursor selectors
+- `BookDefinition`: open-book identity, doctrine, accounting-basis, and initialization selectors
+- `Presentation`: output-mode and PDF artifact selectors
+- `Discovery`: discovery filtering and result-detail selectors
 
 ## `ProtocolInteractionLimits`
 
@@ -426,7 +463,7 @@ public record QuotedExchangeRate(...)
   positive amount on both sides, and proves that the published functional amount equals the quoted
   rate translation exactly
 - `ForeignExchangeTreatmentKind`: closes the public treatment vocabulary to
-  `SPOT_TRANSACTION`, `REALIZED_SETTLEMENT`, and `UNREALIZED_REMEASUREMENT`
+  `SPOT_TRANSACTION` and `UNREALIZED_REMEASUREMENT`
 - `QuotedExchangeRate`: owns one directional exact quote with quote date and quote source, and
   performs half-up translation from transaction currency into functional currency
 
@@ -517,6 +554,27 @@ public final class ProtocolLedgerPlanRequestFieldSets
   nested object semantics remain owned by the narrower protocol field classes and request-shape
   descriptors
 
+## `ProtocolFixedAssetRequestFields`, `ProtocolFixedAssetRequestFields.DepreciationSchedule`, `ProtocolForeignExchangeRequestFields`, `ProtocolForeignExchangeRequestFields.ForeignExchange`, And `ProtocolForeignExchangeRequestFields.QuotedRate`
+
+```java
+public final class ProtocolFixedAssetRequestFields
+public static final class ProtocolFixedAssetRequestFields.DepreciationSchedule
+public final class ProtocolForeignExchangeRequestFields
+public static final class ProtocolForeignExchangeRequestFields.ForeignExchange
+public static final class ProtocolForeignExchangeRequestFields.QuotedRate
+```
+
+These owners keep lifecycle-specific request vocabulary independent from the generic posting envelope. `ProtocolFixedAssetRequestFields` names fixed-asset identifiers, cost, disposal proceeds, and the straight-line schedule fields. `ProtocolForeignExchangeRequestFields` owns the nested transaction and functional amounts, quote, date, and source fields used by foreign-currency obligation and settlement requests.
+
+## `ProtocolFixedAssetPostingRequestFieldSets` And `ProtocolFinancingPostingRequestFieldSets`
+
+```java
+public final class ProtocolFixedAssetPostingRequestFieldSets
+public final class ProtocolFinancingPostingRequestFieldSets
+```
+
+These context-owned sets publish the accepted request keys for fixed-asset and financing commands. Machine schemas, request templates, help, and CLI parsing consume the same inventories; entry-specific requiredness remains owned by the corresponding variant validators.
+
 ## `ProtocolPostingRequestTopics`
 
 This protocol helper is the canonical command-topic selector for published posting-request lanes.
@@ -586,195 +644,11 @@ public final class ProtocolManagedSqliteCatalog
 - Boundary: each catalog owns one coherent slice of public protocol metadata and leaves field-level
   structure to the narrower protocol field owners above
 
-## `MachineContract`
+## `Machine Contract And Descriptor Reference`
 
-`MachineContract` is the public discovery assembler for `help`, `version`, `capabilities`,
-`print-request-template`, and `print-plan-template`.
-
-```java
-public final class MachineContract
-```
-
-- Purpose: render discovery payloads from typed contract state instead of CLI-owned literals
-- Versioning: `protocolVersion()` is the single canonical owner for the public discovery and
-  machine-envelope contract line, and discovery JSON payloads carry that field directly so
-  callers can detect hard public breaks without inferring from the application version
-- Inputs: `ProtocolCatalog`, `ContractDiscovery`, the top-level discovery descriptor types,
-  `ContractRequestShapes`, `ContractResponse`, and `ContractTemplates`
-- Help behavior: `help()` now owns the canonical typed workflow and note inventory, while the CLI
-  transport deliberately narrows the root help surface to one concise overview and uses
-  `capabilities` as the deep doctrine/runtime contract
-- Command-help behavior: `help(OperationId)` and the CLI `<command> --help` alias both scope the
-  rendered discovery payload to one selected operation, while the CLI help renderer rewrites
-  canonical `fingrind ...` examples and repair hints to the active launcher surface such as
-  `./bin/fingrind` or `.\bin\fingrind.ps1`; request-file commands additionally inline the
-  canonical request template, accepted field tables, and enum vocabularies so a caller can form a
-  valid payload from the CLI alone, and typed `record-*` help narrows that payload guidance to the
-  selected business-event variant instead of restating the full union write shape
-- Template behavior: `requestTemplate()` and `planTemplate()` emit deterministic placeholder-first
-  sample documents, while the CLI raw-template commands now route both help snippets and
-  `print-request-template` / `print-plan-template` through the same canonical serializer so
-  machine fixtures remain byte-identical to live command output and the checked-in public examples
-  stay semantically aligned without drifting away from the placeholder scaffold contract
-
-## `ScaffoldPlaceholders`, `WorkflowSurface`, `WorkflowDescriptor`, `WorkflowStepKind`, And `WorkflowStepDescriptor`
-
-These public contract owners keep scaffold-reservation and help-workflow guidance typed.
-
-```java
-public final class ScaffoldPlaceholders
-public enum WorkflowSurface
-public record WorkflowDescriptor(...)
-public enum WorkflowStepKind
-public sealed interface WorkflowStepDescriptor
-```
-
-- `ScaffoldPlaceholders`: owns the canonical reserved sentinel vocabulary that the CLI request
-  validators reject when callers try to smuggle internal scaffolding tokens into committed
-  bookkeeping payloads
-- `WorkflowSurface`: publishes the stable machine-readable quick-start surface keys such as the
-  self-contained POSIX-shell and Windows-PowerShell bundle flows
-- `WorkflowDescriptor`: groups one platform-specific quick-start sequence under its published
-  workflow surface
-- `WorkflowStepKind`: distinguishes command, edit, and note steps in the public help workflow
-- `WorkflowStepDescriptor`: keeps each workflow step typed through explicit `Command`, `Edit`, and
-  `Note` variants so machine consumers can distinguish runnable commands from canonical file-write
-  payloads and explanatory notes without nullable payload slots
-
-## `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates`
-
-These public contract owners define the typed descriptor families used by `MachineContract`.
-
-```java
-public final class ContractDiscovery
-public final class ContractRequestShapes
-public final class ContractResponse
-public final class ContractTemplates
-```
-
-- `ContractDiscovery`: discovery-descriptor registry used for coverage and contract audits
-- `ContractDiscoveryDescriptor` is the sealed public owner that makes discovery-descriptor
-  registration exhaustive instead of list-maintained
-- `ApplicationIdentity`, `HelpDescriptor`, `CapabilitiesDescriptor`,
-  `StorageSurfaceDescriptor`, `CommandCatalogDescriptor`, `VersionDescriptor`,
-  `ArtifactOutputDescriptor`, `CommandDescriptor`, `ExitCodeDescriptor`,
-  `EnvironmentRuntimeDescriptor`, `EnvironmentPublicationDescriptor`,
-  `EnvironmentStorageDescriptor`, `EnvironmentSqliteDescriptor`, `EnvironmentDescriptor`, and
-  `SqliteCompileOptionsVerificationStatus` are the top-level typed discovery payloads
-- `MachineContract.protocolVersion()` is the canonical owner for the current public discovery and
-  machine-envelope contract line, and `HelpDescriptor`, `CapabilitiesDescriptor`, and
-  `VersionDescriptor` all publish that value directly
-- `EnvironmentSqliteDescriptor.runtime` is an explicit state family with `ReadyRuntime`,
-  `UnavailableRuntime`, `FailedRuntime`, and `IncompatibleRuntime`, so discovery payloads publish
-  compile-option proof, trust basis, loaded-library facts, and failure detail only in the runtime
-  states where those facts actually exist
-- `EnvironmentStorageDescriptor.defaultProtectedBookFormat` publishes the canonical protected-book
-  cipher, page-size, reserve-byte, and KDF facts as one typed contract record instead of leaking
-  those defaults through loosely related scalar fields
-- `HelpDescriptor.quickStart` is a typed `WorkflowDescriptor` list keyed by `WorkflowSurface`
-  rather than a flat string array, so canonical quick starts can publish platform-aware command,
-  file-write, and note steps without implying that one shell transcript fits every bundle target
-  or forcing agents to parse prose to reconstruct JSON seed files
-- `CommandCatalogDescriptor` groups full `CommandDescriptor` records by operation category, so the
-  machine-readable `capabilities` payload publishes per-command identity, aliases, options,
-  execution mode, output modes, artifact outputs, and summaries without falling back to one lossy
-  global stdout-mode list
-- `CommandDescriptor` keeps command identity, execution mode, output modes, and artifact outputs
-  typed through `OperationId`, `ExecutionMode`, `OutputMode`, and `ArtifactOutputDescriptor`
-  instead of flattening those closed vocabularies into strings
-- `ContractRequestShapes`: transport request-input descriptors plus bookkeeping-entry,
-  account-declaration, tax-registration declaration, and ledger-plan request-shape descriptors
-- `ContractRequestShapes.RequestShapeDescriptorType` is the sealed nested owner that keeps the
-  published request-shape inventory exhaustive
-- `ContractRequestShapes.RequestInputDescriptor`, `.RequestShapesDescriptor`,
-  `.BookkeepingEntryRequestShapeDescriptor`, `.DeclareAccountRequestShapeDescriptor`,
-  `.DeclareTaxRegistrationRequestShapeDescriptor`, `.LedgerPlanRequestShapeDescriptor`,
-  `.RequestFieldDescriptor`,
-  `.EntryKindSemanticsDescriptor`, `.EvidenceRequirementDescriptor`, and
-  `.EnumVocabularyDescriptor` are the nested typed request-shape descriptors
-- `ContractRequestShapes.RequestShapesDescriptor` publishes `declareTaxRegistration` as one
-  first-class sibling beside the bookkeeping-entry, account, and ledger-plan request shapes
-- `ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor` now publishes the nested request
-  `foreignExchangeFields`, `quotedRateFields`, and `taxFields` inventories beside the
-  journal-line, opening-balance, evidence, provenance, and reversal families
-- `ContractRequestShapes.EntryKindSemanticsDescriptor` publishes one entry kind's required and
-  forbidden top-level fields plus the canonical `sourceDocumentType` policy for that entry kind
-- `ContractRequestShapes.EvidenceRequirementDescriptor` publishes the non-negotiable source-document
-  minimum for every bookkeeping-entry request
-- `RequestFieldPresence` is the stable request-field presence vocabulary shared by request-shape
-  descriptors and executable schema authorship, with `required`, `conditional`, `optional`, and
-  `forbidden` wire values
-- `ContractResponse`: response-model, rejection, audit, preflight, currency, and plan-execution
-  descriptors
-- `ContractResponse.ResponseDescriptorType` is the sealed nested owner for the published response
-  descriptor inventory
-- `ContractResponse.BookModelDescriptor`, `.FieldDescriptor`, `.ErrorDescriptor`,
-  `.ResponseModelDescriptor`, `.PlanExecutionDescriptor`, `.RejectionDescriptor`,
-  `.AuditDescriptor`, `.AccountRegistryDescriptor`, `.InitializationRequirement`,
-  `.ReversalDescriptor`, `.PreflightDescriptor`, `.CommitGuarantee`, `.CurrencyDescriptor`,
-  and `.BookkeepingKernelDescriptor` are the nested typed response descriptors
-- `ContractTemplates`: canonical request template descriptors
-- `ContractPlanTemplates`: canonical ledger-plan template descriptors
-- `TemplateDescriptorType` is the sealed owner for the published template-descriptor inventory
-- `ContractPlanTemplates.EnsureBookTemplateDescriptor`, `.LedgerPlanTemplateDescriptor`,
-  `.LedgerPlanStepTemplateDescriptor`, `.LedgerPlanQueryTemplateDescriptor`, and
-  `.LedgerAssertionTemplateDescriptor` are the nested typed ledger-plan template descriptors
-- `ContractTemplates.PostingRequestTemplateDescriptor`, `.JournalLineTemplateDescriptor`,
-  `.SettlementAdjunctTemplateDescriptor`, `.TaxSelectionTemplateDescriptor`,
-  `.ProvenanceTemplateDescriptor`, `.ReversalTemplateDescriptor`,
-  `.DeclareAccountTemplateDescriptor`, `.DeclareTaxRegistrationTemplateDescriptor`,
-  `.DeclareTaxCodeTemplateDescriptor`, and related evidence descriptors are the nested typed
-  request template descriptors
-- `InventoryReliefTemplateDescriptor` is the top-level typed trading-sale relief descriptor
-  reused by posting request templates instead of remaining buried as an anonymous object shape
-- `ForeignExchangeTemplateDescriptor` and `QuotedExchangeRateTemplateDescriptor` are the
-  top-level typed FX request template descriptors reused by posting request templates
-- Template descriptors keep actor type, account type, entry side, normal balance, step kind,
-  assertion kind, balance side, and exact money typed at the public boundary, and they reject
-  structurally impossible ledger plan step or assertion combinations before any renderer publishes
-  them
-
-## `ContractErrors`, `ContractFailure`, `ContractDecision`, And `ContractFailureException`
-
-These contract-owned types publish deterministic non-rejection failures and the accepted-or-rejected
-decision seam used by low-level contract boundaries.
-
-```java
-public final class ContractErrors
-public record ContractFailure(...)
-public sealed interface ContractDecision<T>
-public final class ContractFailureException extends IllegalStateException
-```
-
-- Purpose: distinguish malformed input and deterministic invocation failures from runtime failure
-- Contract: `ContractErrors.Descriptor` owns stable error codes such as `invalid-request`,
-  `invalid-page-cursor`, `protected-book-verification-failed`, `internal-defect`,
-  `internal-error`, `managed-runtime-failure`, `storage-runtime-failure`,
-  `pdf-export-failure`, and `interactive-prompt-unavailable`, plus the published process
-  `exitCode` for each deterministic machine error
-- `invalid-request` now advertises structured `detailFields` when the malformed request reaches
-  aggregated journal grammar validation, with `details.violations[]` carrying the full ordered
-  set of detected issues
-- `ContractFailure` carries the stable descriptor plus the caller-facing message, optional hint,
-  and optional argument name without routing expected failures through exceptions
-- `ContractDecision` carries either the accepted typed payload or one deterministic
-  `ContractFailure`, letting internal seams return structured failures directly
-- `ContractFailureException` is the imperative bridge for seams that still must throw while
-  preserving an exact deterministic `ContractFailure` for higher layers to map back into the
-  public machine contract
-
-## `DescriptorNamespaceSupport`
-
-`DescriptorNamespaceSupport` is the discovery-namespace helper that enumerates permitted subclasses
-for sealed descriptor roots.
-
-```java
-public final class DescriptorNamespaceSupport
-```
-
-- Purpose: keep descriptor inventory discovery exact and centralized instead of scattering
-  reflection logic across discovery surfaces
-- Validation: rejects descriptor roots that are not sealed before exposing their namespace members
+Machine-contract assembly, discovery descriptor families, request and response shapes, workflow and
+template descriptors, and deterministic contract failures are documented in
+[DOC_02_MachineContractAndDescriptors.md](./DOC_02_MachineContractAndDescriptors.md).
 
 ## `BookFormatContract`
 
@@ -787,7 +661,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 39`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 46`
 
 ## `ProtectedBookFormatContract`
 

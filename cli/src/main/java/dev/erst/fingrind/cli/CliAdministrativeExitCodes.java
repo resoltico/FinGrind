@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.AmendAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
@@ -9,6 +10,7 @@ import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RetireAccountResult;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 
 /** Exit-code mapping for administrative and maintenance command results. */
@@ -25,7 +27,7 @@ final class CliAdministrativeExitCodes {
   static int exitCodeFor(RekeyBookResult result) {
     return switch (result) {
       case RekeyBookResult.Rekeyed _ -> 0;
-      case RekeyBookResult.Rejected _ -> 2;
+      case RekeyBookResult.Rejected rejected -> exitCodeFor(rejected.rejection());
     };
   }
 
@@ -62,6 +64,22 @@ final class CliAdministrativeExitCodes {
     };
   }
 
+  static int exitCodeFor(AmendAccountResult result) {
+    return switch (result) {
+      case AmendAccountResult.Amended _ -> 0;
+      case AmendAccountResult.Unchanged _ -> 0;
+      case AmendAccountResult.Rejected _ -> 2;
+    };
+  }
+
+  static int exitCodeFor(RetireAccountResult result) {
+    return switch (result) {
+      case RetireAccountResult.Retired _ -> 0;
+      case RetireAccountResult.Unchanged _ -> 0;
+      case RetireAccountResult.Rejected _ -> 2;
+    };
+  }
+
   static int exitCodeFor(DeclareTaxRegistrationResult result) {
     return switch (result) {
       case DeclareTaxRegistrationResult.Declared _ -> 0;
@@ -86,19 +104,6 @@ final class CliAdministrativeExitCodes {
   }
 
   private static int exitCodeFor(BookMaintenanceRejection rejection) {
-    return switch (rejection) {
-      case BookMaintenanceRejection.BookHasBlockingArtifacts _ -> 7;
-      case BookMaintenanceRejection.BackupSourceHasBlockingArtifacts _ -> 7;
-      case BookMaintenanceRejection.ArtifactPathInvalid _ -> 6;
-      case BookMaintenanceRejection.ArtifactBusy _ -> 7;
-      case BookMaintenanceRejection.BackupDestinationAlreadyExists _ -> 7;
-      case BookMaintenanceRejection.BackupKeyFileAlreadyExists _ -> 7;
-      case BookMaintenanceRejection.ArtifactVerificationFailed _ -> 6;
-      case BookMaintenanceRejection.BackupSourceMatchesLiveBook _ -> 2;
-      case BookMaintenanceRejection.NoRollbackArtifactsFound _ -> 2;
-      case BookMaintenanceRejection.RollbackArtifactSelectionRequired _ -> 2;
-      case BookMaintenanceRejection.RollbackArtifactNotFound _ -> 2;
-      case BookMaintenanceRejection.RollbackArtifactNotForBook _ -> 2;
-    };
+    return CliMaintenanceExitCodes.exitCodeFor(rejection);
   }
 }

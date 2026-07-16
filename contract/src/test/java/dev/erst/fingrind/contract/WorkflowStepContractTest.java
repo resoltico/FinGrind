@@ -24,6 +24,9 @@ class WorkflowStepContractTest {
     assertTrue(ScaffoldPlaceholders.isReserved(ScaffoldPlaceholders.COMMAND_ID));
     assertTrue(ScaffoldPlaceholders.isReserved(ScaffoldPlaceholders.IDEMPOTENCY_KEY));
     assertTrue(ScaffoldPlaceholders.isReserved(ScaffoldPlaceholders.CAUSATION_ID));
+    assertTrue(ScaffoldPlaceholders.isReserved(ScaffoldPlaceholders.TAX_REGISTRATION_ID));
+    assertTrue(ScaffoldPlaceholders.isReserved(ScaffoldPlaceholders.TAX_JURISDICTION));
+    assertTrue(ScaffoldPlaceholders.isReserved(ScaffoldPlaceholders.OUTPUT_TAX_CODE));
     assertFalse(ScaffoldPlaceholders.isReserved("real-id"));
   }
 

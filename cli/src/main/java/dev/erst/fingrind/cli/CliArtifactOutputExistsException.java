@@ -1,6 +1,5 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -12,11 +11,9 @@ final class CliArtifactOutputExistsException extends RuntimeException {
   private final String artifactOptionName;
 
   CliArtifactOutputExistsException(Path outputPath, String artifactOptionName) {
-    super(
-        "The requested artifact destination already exists and will not be overwritten: "
-            + PublicPathHint.fromPath(Objects.requireNonNull(outputPath, "outputPath")).value());
+    super("The requested artifact destination already exists and will not be overwritten.");
     this.artifactOptionName = Objects.requireNonNull(artifactOptionName, "artifactOptionName");
-    this.outputPath = outputPath;
+    this.outputPath = Objects.requireNonNull(outputPath, "outputPath");
   }
 
   Path outputPath() {

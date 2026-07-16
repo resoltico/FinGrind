@@ -1,10 +1,12 @@
 package dev.erst.fingrind.contract.discovery;
 
+import dev.erst.fingrind.contract.protocol.ProtocolFixedAssetRequestFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
 import java.util.List;
+import java.util.Map;
 
 /** Nested component field sets for post-entry machine contracts. */
 final class MachineContractPostEntryNestedFieldSpecs {
@@ -99,6 +101,39 @@ final class MachineContractPostEntryNestedFieldSpecs {
             "Exact positive quantity text carried by the inventory-relief leg of a trading sale.",
             MachineContractScalarSchemas.quantityTextSchema(
                 "Exact positive quantity text carried by the inventory-relief leg of a trading sale.")));
+  }
+
+  static List<MachineContractFieldSpec> recognitionIntervalFields() {
+    return List.of(
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.RecognitionInterval.START_DATE,
+            "Inclusive ISO-8601 local date on which recognition may first occur.",
+            MachineContractScalarSchemas.dateStringSchema(
+                "Inclusive ISO-8601 local date on which recognition may first occur.")),
+        MachineContractFieldSpec.required(
+            ProtocolPostEntryFields.RecognitionInterval.END_DATE,
+            "Inclusive ISO-8601 local date on which recognition may last occur.",
+            MachineContractScalarSchemas.dateStringSchema(
+                "Inclusive ISO-8601 local date on which recognition may last occur.")));
+  }
+
+  static List<MachineContractFieldSpec> fixedAssetDepreciationScheduleFields() {
+    return List.of(
+        MachineContractFieldSpec.required(
+            ProtocolFixedAssetRequestFields.DepreciationSchedule.IN_SERVICE_DATE,
+            "ISO-8601 local date on which the capitalized asset enters service.",
+            MachineContractScalarSchemas.dateStringSchema(
+                "ISO-8601 local date on which the capitalized asset enters service.")),
+        MachineContractFieldSpec.required(
+            ProtocolFixedAssetRequestFields.DepreciationSchedule.USEFUL_LIFE_MONTHS,
+            "Positive integer count of straight-line depreciation months.",
+            Map.of("type", "integer", "minimum", 1, "maximum", 1200)),
+        MachineContractFieldSpec.required(
+            ProtocolFixedAssetRequestFields.DepreciationSchedule.RESIDUAL_VALUE,
+            "Exact non-negative functional-currency residual value retained at the end of the useful life.",
+            MachineContractScalarSchemas.moneyObjectSchema(
+                "Exact non-negative functional-currency residual value retained at the end of the useful life.",
+                false)));
   }
 
   static List<MachineContractFieldSpec> provenanceFields() {

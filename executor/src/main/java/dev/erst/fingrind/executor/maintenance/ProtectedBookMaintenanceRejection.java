@@ -12,7 +12,8 @@ public sealed interface ProtectedBookMaintenanceRejection
         ProtectedBookMaintenanceRejection.ArtifactPathInvalid,
         ProtectedBookMaintenanceRejection.ArtifactBusy,
         ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists,
-        ProtectedBookMaintenanceRejection.BackupKeyFileAlreadyExists,
+        ProtectedBookMaintenanceRejection.SecretTargetOccupied,
+        ProtectedBookMaintenanceRejection.BookDestinationOccupied,
         ProtectedBookMaintenanceRejection.ArtifactVerificationFailed,
         ProtectedBookMaintenanceRejection.NoRollbackArtifactsFound,
         ProtectedBookMaintenanceRejection.RollbackArtifactSelectionRequired,
@@ -84,11 +85,17 @@ public sealed interface ProtectedBookMaintenanceRejection
     }
   }
 
-  /** Rejection for backup commands that refuse to overwrite one existing backup key file. */
-  record BackupKeyFileAlreadyExists(Path backupBookKeyFilePath)
-      implements ProtectedBookMaintenanceRejection {
-    public BackupKeyFileAlreadyExists {
-      Objects.requireNonNull(backupBookKeyFilePath, "backupBookKeyFilePath");
+  /** Rejection for generated-secret workflows that refuse to overwrite an occupied target. */
+  record SecretTargetOccupied(Path secretTargetPath) implements ProtectedBookMaintenanceRejection {
+    public SecretTargetOccupied {
+      Objects.requireNonNull(secretTargetPath, "secretTargetPath");
+    }
+  }
+
+  /** Rejection for restore commands lacking explicit consent to replace one existing book. */
+  record BookDestinationOccupied(Path bookFilePath) implements ProtectedBookMaintenanceRejection {
+    public BookDestinationOccupied {
+      Objects.requireNonNull(bookFilePath, "bookFilePath");
     }
   }
 

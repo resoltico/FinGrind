@@ -63,7 +63,7 @@ class ProtectedBookMaintenanceServiceTest {
   }
 
   @Test
-  void backupBook_recordsOneDeterministicAuditBeforePublishingOneVerifiedBackupPair() {
+  void backupBook_publishesOneVerifiedBackupPairWithoutMutatingTheLiveBookAudit() {
     FakeMaintenanceStore store = new FakeMaintenanceStore();
     Path book = path(tempDirectory, "book.sqlite");
     Path backup = path(tempDirectory, "backup.sqlite");
@@ -77,11 +77,7 @@ class ProtectedBookMaintenanceServiceTest {
     assertEquals(hint(book), backedUp.bookFilePath());
     assertEquals(hint(backup), backedUp.backupFilePath());
     assertEquals(hint(backupKey), backedUp.backupBookKeyFilePath());
-    assertEquals(1, store.recordedAudits.size());
-    RecordedAudit audit = store.recordedAudits.getFirst();
-    assertEquals(store.normalized(book), audit.bookPath());
-    assertEquals(FIXED_CLOCK.instant(), audit.recordedAt());
-    assertEquals(ProtectedBookMaintenanceAuditKind.BACKUP_CREATED, audit.auditKind());
+    assertTrue(store.recordedAudits.isEmpty());
     assertTrue(store.lastStagedBackupPairCommitted);
     assertTrue(store.lastStagedBackupPairClosed);
   }
@@ -137,8 +133,7 @@ class ProtectedBookMaintenanceServiceTest {
             BackupBookResult.Rejected.class,
             service(store).backupBook(access(book), backup, backupKey).requireAccepted());
 
-    assertInstanceOf(
-        BookMaintenanceRejection.BackupKeyFileAlreadyExists.class, rejected.rejection());
+    assertInstanceOf(BookMaintenanceRejection.SecretTargetOccupied.class, rejected.rejection());
   }
 
   @Test
@@ -193,7 +188,7 @@ class ProtectedBookMaintenanceServiceTest {
     RestoreBookResult.Rejected rejected =
         assertInstanceOf(
             RestoreBookResult.Rejected.class,
-            service(store).restoreBook(book, bookKey, book, backupKey).requireAccepted());
+            service(store).restoreBook(book, bookKey, book, backupKey, false).requireAccepted());
 
     BookMaintenanceRejection.BackupSourceMatchesLiveBook conflict =
         assertInstanceOf(
@@ -218,7 +213,7 @@ class ProtectedBookMaintenanceServiceTest {
     RestoreBookResult.Restored restored =
         assertInstanceOf(
             RestoreBookResult.Restored.class,
-            service(store).restoreBook(book, bookKey, backup, backupKey).requireAccepted());
+            service(store).restoreBook(book, bookKey, backup, backupKey, false).requireAccepted());
 
     assertEquals(hint(book), restored.bookFilePath());
     assertEquals(hint(bookKey), restored.bookKeyFilePath());
@@ -242,7 +237,7 @@ class ProtectedBookMaintenanceServiceTest {
     RestoreBookResult.Rejected rejected =
         assertInstanceOf(
             RestoreBookResult.Rejected.class,
-            service(store).restoreBook(book, bookKey, backup, backupKey).requireAccepted());
+            service(store).restoreBook(book, bookKey, backup, backupKey, false).requireAccepted());
 
     BookMaintenanceRejection.BookHasBlockingArtifacts blockingArtifacts =
         assertInstanceOf(
@@ -263,7 +258,7 @@ class ProtectedBookMaintenanceServiceTest {
     RestoreBookResult.Rejected rejected =
         assertInstanceOf(
             RestoreBookResult.Rejected.class,
-            service(store).restoreBook(book, bookKey, backup, backupKey).requireAccepted());
+            service(store).restoreBook(book, bookKey, backup, backupKey, false).requireAccepted());
 
     BookMaintenanceRejection.BackupSourceHasBlockingArtifacts blockingArtifacts =
         assertInstanceOf(
@@ -287,7 +282,7 @@ class ProtectedBookMaintenanceServiceTest {
     RestoreBookResult.Rejected rejected =
         assertInstanceOf(
             RestoreBookResult.Rejected.class,
-            service(store).restoreBook(book, bookKey, backup, backupKey).requireAccepted());
+            service(store).restoreBook(book, bookKey, backup, backupKey, false).requireAccepted());
 
     BookMaintenanceRejection.ArtifactVerificationFailed failed =
         assertInstanceOf(
@@ -309,7 +304,7 @@ class ProtectedBookMaintenanceServiceTest {
     RestoreBookResult.Rejected rejected =
         assertInstanceOf(
             RestoreBookResult.Rejected.class,
-            service(store).restoreBook(book, bookKey, backup, backupKey).requireAccepted());
+            service(store).restoreBook(book, bookKey, backup, backupKey, false).requireAccepted());
 
     BookMaintenanceRejection.ArtifactBusy busy =
         assertInstanceOf(BookMaintenanceRejection.ArtifactBusy.class, rejected.rejection());
@@ -328,7 +323,7 @@ class ProtectedBookMaintenanceServiceTest {
     RestoreBookResult.Rejected rejected =
         assertInstanceOf(
             RestoreBookResult.Rejected.class,
-            service(store).restoreBook(book, bookKey, backup, backupKey).requireAccepted());
+            service(store).restoreBook(book, bookKey, backup, backupKey, false).requireAccepted());
 
     BookMaintenanceRejection.ArtifactBusy busy =
         assertInstanceOf(BookMaintenanceRejection.ArtifactBusy.class, rejected.rejection());
@@ -354,7 +349,7 @@ class ProtectedBookMaintenanceServiceTest {
     RestoreBookResult.Rejected rejected =
         assertInstanceOf(
             RestoreBookResult.Rejected.class,
-            service(store).restoreBook(book, bookKey, backup, backupKey).requireAccepted());
+            service(store).restoreBook(book, bookKey, backup, backupKey, false).requireAccepted());
 
     BookMaintenanceRejection.ArtifactVerificationFailed failed =
         assertInstanceOf(
@@ -377,7 +372,8 @@ class ProtectedBookMaintenanceServiceTest {
         MaintenanceDecision.failed(MaintenanceFailure.fromContractFailure(failure));
 
     assertEquals(
-        failure, service(store).restoreBook(book, bookKey, backup, backupKey).requireRejected());
+        failure,
+        service(store).restoreBook(book, bookKey, backup, backupKey, false).requireRejected());
   }
 
   private static Path restoreBookKey(Path bookFilePath) {
@@ -783,7 +779,7 @@ class ProtectedBookMaintenanceServiceTest {
   }
 
   @Test
-  void backupBook_appendsOneCompensatingAuditWhenBackupPublicationFails() {
+  void backupBook_publicationFailureDoesNotMutateTheLiveBookAudit() {
     FakeMaintenanceStore store = new FakeMaintenanceStore();
     Path book = path(tempDirectory, "book.sqlite");
     Path backup = path(tempDirectory, "backup.sqlite");
@@ -794,12 +790,12 @@ class ProtectedBookMaintenanceServiceTest {
         service(store).backupBook(access(book), backup, backupKey).requireRejected();
 
     assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, failure.descriptor());
-    assertEquals(1, store.recordedAudits.size());
-    assertEquals(1, store.compensatedAudits.size());
+    assertTrue(store.recordedAudits.isEmpty());
+    assertTrue(store.compensatedAudits.isEmpty());
   }
 
   @Test
-  void backupBook_surfacesOneAuditCompensationFailureAfterBackupPublicationFailure() {
+  void backupBook_publicationFailureDoesNotCallAuditCompensation() {
     FakeMaintenanceStore store = new FakeMaintenanceStore();
     Path book = path(tempDirectory, "book.sqlite");
     Path backup = path(tempDirectory, "backup.sqlite");
@@ -812,8 +808,8 @@ class ProtectedBookMaintenanceServiceTest {
     ContractFailure failure =
         service(store).backupBook(access(book), backup, backupKey).requireRejected();
 
-    assertEquals(compensateFailure, failure);
-    assertEquals(1, store.recordedAudits.size());
+    assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, failure.descriptor());
+    assertTrue(store.recordedAudits.isEmpty());
     assertTrue(store.compensatedAudits.isEmpty());
   }
 

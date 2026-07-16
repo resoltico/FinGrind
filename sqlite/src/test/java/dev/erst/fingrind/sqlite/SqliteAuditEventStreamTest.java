@@ -70,31 +70,4 @@ class SqliteAuditEventStreamTest extends SqlitePostingFactStoreTestSupport {
               """));
     }
   }
-
-  @Test
-  void rekeyBook_appendsBookRekeyedAuditEvent() throws Exception {
-    Path bookPath = tempDirectory.resolve("audit-event-rekey.sqlite");
-    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath));
-        SqliteBookPassphrase replacementPassphrase =
-            SqliteBookPassphrase.fromCharacters(
-                "audit event replacement", "rotated-audit-key".toCharArray())) {
-      initializeBookWithMinimalNumericAccounts(postingFactStore);
-
-      assertEquals(
-          new dev.erst.fingrind.contract.bookkeeping.RekeyBookResult.Rekeyed(
-              bookPath.toAbsolutePath().normalize()),
-          postingFactStore.rekeyBook(replacementPassphrase, Instant.parse("2026-04-08T10:15:30Z")));
-
-      assertEquals(
-          "BOOK_REKEYED",
-          queryText(
-              requireStoreDatabase(postingFactStore),
-              """
-              select event_kind
-              from audit_event
-              order by audit_event_order desc
-              limit 1
-              """));
-    }
-  }
 }

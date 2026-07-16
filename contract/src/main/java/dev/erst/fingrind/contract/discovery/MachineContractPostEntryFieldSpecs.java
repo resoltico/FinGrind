@@ -1,18 +1,32 @@
 package dev.erst.fingrind.contract.discovery;
 
+import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffId;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
+import java.util.stream.Stream;
 
 /** Field specifications for machine-readable post-entry requests. */
 final class MachineContractPostEntryFieldSpecs {
   private MachineContractPostEntryFieldSpecs() {}
 
   static List<MachineContractFieldSpec> topLevelFields() {
+    return Stream.of(
+            identityFields(),
+            primaryAccountRoleFields(),
+            accrualCutoffFields(),
+            remainingAccountRoleFields(),
+            monetaryFields(),
+            componentFields())
+        .flatMap(List::stream)
+        .toList();
+  }
+
+  private static List<MachineContractFieldSpec> identityFields() {
     return List.of(
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-            "Caller-authored bookkeeping entry kind. FinGrind accepts direct journals and typed entries for sales, purchases, inventory capitalization, write-down, shrinkage, count increase, expenses, settlements, owner movements, opening position, and reversal.",
+            "Caller-authored bookkeeping entry kind. FinGrind accepts direct journals and published command-specific typed variants; use machine discovery or command help for each variant's exact requirements.",
             MachineContractScalarSchemas.enumStringSchema(
                 "Caller-authored bookkeeping entry kind.", BookkeepingEntryKind.wireValues())),
         MachineContractFieldSpec.required(
@@ -24,7 +38,11 @@ final class MachineContractPostEntryFieldSpecs {
             ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
             "Declared cash account used by a cash-settled operational entry or owner movement.",
             MachineContractPostEntryRequiredFieldSpecs.accountCodeSchema(
-                "Declared cash account used by a cash-settled operational entry or owner movement.")),
+                "Declared cash account used by a cash-settled operational entry or owner movement.")));
+  }
+
+  private static List<MachineContractFieldSpec> primaryAccountRoleFields() {
+    return List.of(
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.RECEIVABLE_ACCOUNT_CODE,
             "Declared trade receivable account used by a sale-on-credit or receipt entry.",
@@ -40,6 +58,36 @@ final class MachineContractPostEntryFieldSpecs {
             "Declared revenue account credited by a sale entry.",
             MachineContractPostEntryRequiredFieldSpecs.accountCodeSchema(
                 "Declared revenue account credited by a sale entry.")),
+        MachineContractFieldSpec.optional(
+            ProtocolPostEntryFields.TopLevel.ACCRUAL_CUTOFF_ID,
+            "Stable caller-chosen identifier for one prepayment, deferred-revenue, or accrued-expense lifecycle.",
+            MachineContractScalarSchemas.tokenStringSchema(
+                "Stable caller-chosen identifier for one accrual cut-off lifecycle.",
+                AccrualCutoffId.pattern(),
+                AccrualCutoffId.maxLength())));
+  }
+
+  private static List<MachineContractFieldSpec> accrualCutoffFields() {
+    return List.of(
+        MachineContractFieldSpec.optional(
+            ProtocolPostEntryFields.TopLevel.PREPAYMENT_ASSET_ACCOUNT_CODE,
+            "Declared prepaid-expense asset account debited by a prepayment.",
+            MachineContractPostEntryRequiredFieldSpecs.accountCodeSchema(
+                "Declared prepaid-expense asset account debited by a prepayment.")),
+        MachineContractFieldSpec.optional(
+            ProtocolPostEntryFields.TopLevel.DEFERRED_REVENUE_ACCOUNT_CODE,
+            "Declared deferred-revenue liability account credited by a deferred-revenue receipt.",
+            MachineContractPostEntryRequiredFieldSpecs.accountCodeSchema(
+                "Declared deferred-revenue liability account credited by a deferred-revenue receipt.")),
+        MachineContractFieldSpec.optional(
+            ProtocolPostEntryFields.TopLevel.ACCRUED_EXPENSE_LIABILITY_ACCOUNT_CODE,
+            "Declared accrued-expense liability account credited by an accrued expense.",
+            MachineContractPostEntryRequiredFieldSpecs.accountCodeSchema(
+                "Declared accrued-expense liability account credited by an accrued expense.")));
+  }
+
+  private static List<MachineContractFieldSpec> remainingAccountRoleFields() {
+    return List.of(
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
             "Declared inventory asset account used by a typed inventory entry.",
@@ -69,7 +117,11 @@ final class MachineContractPostEntryFieldSpecs {
             ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
             "Declared equity account used by an owner contribution or owner withdrawal entry.",
             MachineContractPostEntryRequiredFieldSpecs.accountCodeSchema(
-                "Declared equity account used by an owner contribution or owner withdrawal entry.")),
+                "Declared equity account used by an owner contribution or owner withdrawal entry.")));
+  }
+
+  private static List<MachineContractFieldSpec> monetaryFields() {
+    return List.of(
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.AMOUNT,
             "Exact positive pre-VAT money object carried by an amount-based typed business entry.",
@@ -87,10 +139,18 @@ final class MachineContractPostEntryFieldSpecs {
             MachineContractScalarSchemas.moneyObjectSchema(
                 "Exact positive functional-currency pre-VAT unit cost carried by an inventory acquisition or count increase.",
                 true)),
+        MachineContractFieldSpec.optional(
+            ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL,
+            "Inclusive date interval in which an admitted prepayment or deferred-revenue balance may be recognized.",
+            MachineContractPostEntryComponentSchemas.recognitionIntervalSchema()),
         MachineContractFieldSpec.conditional(
             ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF,
             "Conditional inventory-relief facts paired with a sale entry. Trading-template sale requests require this object so one committed sale can carry both revenue recognition and cost-of-sales relief.",
-            MachineContractPostEntryComponentSchemas.inventoryReliefSchema()),
+            MachineContractPostEntryComponentSchemas.inventoryReliefSchema()));
+  }
+
+  private static List<MachineContractFieldSpec> componentFields() {
+    return List.of(
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.TopLevel.SETTLEMENT_ADJUNCT,
             "Optional settlement-side adjunct used by a receipt or payment entry.",

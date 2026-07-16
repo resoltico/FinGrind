@@ -1,8 +1,10 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.AccountRetirementOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
@@ -55,5 +57,30 @@ public final class BookAdministrationService {
       return new AccountDeclarationOutcome.Rejected(rejection.orElseThrow());
     }
     return bookStore.declareAccount(command, clock.instant());
+  }
+
+  /** Amends one never-posted and unreferenced account definition. */
+  public AccountAmendmentOutcome amendAccount(AccountDeclaration command) {
+    Objects.requireNonNull(command, "command");
+    if (!lifecycleReader.allowsInitializedWorkflow()) {
+      return new AccountAmendmentOutcome.Rejected(
+          new BookkeepingAdministrationRejection.BookNotInitialized());
+    }
+    Optional<BookkeepingAdministrationRejection> rejection =
+        ChartOfAccounts.of(accountCatalogStore.allAccounts()).validate(command);
+    if (rejection.isPresent()) {
+      return new AccountAmendmentOutcome.Rejected(rejection.orElseThrow());
+    }
+    return bookStore.amendAccount(command, clock.instant());
+  }
+
+  /** Retires one zero-balance account from ordinary authored posting use. */
+  public AccountRetirementOutcome retireAccount(dev.erst.fingrind.core.AccountCode accountCode) {
+    Objects.requireNonNull(accountCode, "accountCode");
+    if (!lifecycleReader.allowsInitializedWorkflow()) {
+      return new AccountRetirementOutcome.Rejected(
+          new BookkeepingAdministrationRejection.BookNotInitialized());
+    }
+    return bookStore.retireAccount(accountCode, clock.instant());
   }
 }

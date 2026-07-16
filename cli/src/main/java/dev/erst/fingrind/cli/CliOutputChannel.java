@@ -30,7 +30,11 @@ final class CliOutputChannel {
   }
 
   void writeDiagnosticEnvelope(Record envelope) {
-    writeDocument(diagnosticsStream, CliWireJson.writeJsonBytes(envelope));
+    Record resolvedEnvelope =
+        envelope instanceof CliEnvelopeJsonModels.Envelope<?> typedEnvelope
+            ? CliEnvelopeMapper.withFailurePaths(typedEnvelope)
+            : envelope;
+    writeDocument(diagnosticsStream, CliWireJson.writeJsonBytes(resolvedEnvelope));
   }
 
   private static void writeDocument(PrintStream stream, byte[] document) {

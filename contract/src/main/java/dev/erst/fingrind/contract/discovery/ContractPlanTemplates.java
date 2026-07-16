@@ -13,7 +13,6 @@ import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.InventoryCostingDoctrine;
 import java.util.List;
-import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /** Ledger-plan template descriptor namespace for discovery commands. */
@@ -30,33 +29,6 @@ public interface ContractPlanTemplates {
         throw new IllegalArgumentException("steps must not be empty.");
       }
     }
-
-    /** Returns the single published scaffold posting step for execute-plan discovery. */
-    public LedgerPlanStepTemplateDescriptor canonicalPostingScaffoldStep() {
-      LedgerPlanStepTemplateDescriptor step =
-          steps.stream()
-              .filter(stepTemplate -> stepTemplate.kind().commitsPosting())
-              .reduce(
-                  (first, second) -> {
-                    throw new IllegalStateException(
-                        "Expected exactly one canonical committed-posting scaffold step with a posting payload.");
-                  })
-              .orElseThrow(
-                  () ->
-                      new IllegalStateException(
-                          "Expected exactly one canonical committed-posting scaffold step with a posting payload."));
-      Objects.requireNonNull(
-          step.posting(),
-          "Canonical committed-posting scaffold step must publish a posting template.");
-      return step;
-    }
-
-    /** Returns the canonical posting template nested under the published scaffold posting step. */
-    public ContractTemplates.PostingRequestTemplateDescriptor canonicalPostingTemplate() {
-      return Objects.requireNonNull(
-          canonicalPostingScaffoldStep().posting(),
-          "Canonical committed-posting scaffold step must publish a posting template.");
-    }
   }
 
   /** Canonical ledger-plan step template descriptor. */
@@ -66,6 +38,7 @@ public interface ContractPlanTemplates {
       ContractPlanTemplates.@Nullable EnsureBookTemplateDescriptor ensureBook,
       ContractTemplates.@Nullable PostingRequestTemplateDescriptor posting,
       ContractTemplates.@Nullable DeclareAccountTemplateDescriptor declareAccount,
+      ContractTemplates.@Nullable DeclareTaxRegistrationTemplateDescriptor declareTaxRegistration,
       ContractPlanTemplates.@Nullable LedgerPlanQueryTemplateDescriptor query,
       ContractPlanTemplates.@Nullable LedgerAssertionTemplateDescriptor assertion,
       @Nullable String postingId)
@@ -77,6 +50,7 @@ public interface ContractPlanTemplates {
         ContractPlanTemplates.@Nullable EnsureBookTemplateDescriptor ensureBook,
         ContractTemplates.@Nullable PostingRequestTemplateDescriptor posting,
         ContractTemplates.@Nullable DeclareAccountTemplateDescriptor declareAccount,
+        ContractTemplates.@Nullable DeclareTaxRegistrationTemplateDescriptor declareTaxRegistration,
         ContractPlanTemplates.@Nullable LedgerPlanQueryTemplateDescriptor query,
         ContractPlanTemplates.@Nullable LedgerAssertionTemplateDescriptor assertion,
         @Nullable String postingId) {
@@ -86,6 +60,9 @@ public interface ContractPlanTemplates {
       this.posting = ContractDescriptorValidation.requireOptionalValue(posting, "posting");
       this.declareAccount =
           ContractDescriptorValidation.requireOptionalValue(declareAccount, "declareAccount");
+      this.declareTaxRegistration =
+          ContractDescriptorValidation.requireOptionalValue(
+              declareTaxRegistration, "declareTaxRegistration");
       this.query = ContractDescriptorValidation.requireOptionalValue(query, "query");
       this.assertion = ContractDescriptorValidation.requireOptionalValue(assertion, "assertion");
       this.postingId = ContractDescriptorValidation.requireOptionalText(postingId, "postingId");
@@ -94,6 +71,7 @@ public interface ContractPlanTemplates {
           this.ensureBook,
           this.posting,
           this.declareAccount,
+          this.declareTaxRegistration,
           this.query,
           this.assertion,
           this.postingId);

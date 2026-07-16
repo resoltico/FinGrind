@@ -6,6 +6,8 @@ import dev.erst.fingrind.contract.bookkeeping.InventoryQuantityBelowZero;
 import dev.erst.fingrind.contract.bookkeeping.InventoryWriteDownExceedsCarryingCost;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal;
+import dev.erst.fingrind.contract.tax.TaxDeclarationRejection;
+import dev.erst.fingrind.contract.tax.TaxDefinitionViolation;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.CurrencyUnit;
@@ -162,5 +164,29 @@ class LedgerPlanWorkflowFailureMapperTest {
                     "resultingCostShortfall",
                     new dev.erst.fingrind.contract.bookkeeping.MonetaryAmount("EUR", "400")))),
         rejection.facts().get(3));
+  }
+
+  @Test
+  void taxDeclarationFailure_preservesMissingBookAndDefinitionViolationFacts() {
+    BookWorkflowFailure missingBook =
+        LedgerPlanWorkflowFailureMapper.taxDeclarationFailure(
+            new TaxDeclarationRejection.BookNotInitialized());
+    BookWorkflowFailure definitionViolations =
+        LedgerPlanWorkflowFailureMapper.taxDeclarationFailure(
+            new TaxDeclarationRejection.DefinitionViolations(
+                List.of(
+                    new TaxDefinitionViolation(
+                        "unknown-payable-account",
+                        "payableAccountCode",
+                        "The payable account is not declared."))));
+
+    assertEquals("tax-book-not-initialized", missingBook.code());
+    assertEquals(
+        "The selected book does not exist or has not been initialized with an ensure-book step.",
+        missingBook.message());
+    assertEquals(List.of(), missingBook.facts());
+    assertEquals("tax-definition-violations", definitionViolations.code());
+    assertEquals(
+        List.of(BookWorkflowFact.count("violationCount", 1)), definitionViolations.facts());
   }
 }

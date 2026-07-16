@@ -371,16 +371,17 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             "2026-04-30");
     JsonNode payload = obligationEnvelope.path("payload");
     assertEquals("tax-obligation", payload.path("family").stringValue());
-    assertEquals("EUR 31.50", payload.path("verdicts").get(0).path("value").stringValue());
-    assertEquals("EUR 10.50", payload.path("verdicts").get(1).path("value").stringValue());
-    assertEquals("EUR 6.00", payload.path("verdicts").get(2).path("value").stringValue());
-    assertEquals("EUR 21.00", payload.path("verdicts").get(3).path("value").stringValue());
-    JsonNode codeSummaries = payload.path("sections").get(0);
-    assertEquals("codeSummaries", codeSummaries.path("key").stringValue());
-    assertEquals(3, codeSummaries.path("rows").size());
+    assertEquals("3150", payload.path("totals").path("outputTax").path("minorUnits").stringValue());
     assertEquals(
-        "EUR 21.00",
-        codeSummaries.path("totals").get(0).path("rows").get(3).path("cells").get(1).stringValue());
+        "1050",
+        payload.path("totals").path("recoverableInputTax").path("minorUnits").stringValue());
+    assertEquals(
+        "600",
+        payload.path("totals").path("nonrecoverableInputTax").path("minorUnits").stringValue());
+    assertEquals(
+        "2100", payload.path("totals").path("netPayable").path("minorUnits").stringValue());
+    assertEquals(3, payload.path("rows").size());
+    assertTrue(payload.path("rows").toString().contains("\"taxCode\":\"vat-standard-sale\""));
 
     String obligationText =
         runText(
@@ -421,22 +422,12 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             "csv");
     assertTrue(
         obligationCsv.contains(
-            "exportFamily,rowId,parentRowId,relationKind,recordKind,taxRegistrationId,taxRegistrationName,taxJurisdiction,taxRegistrationNumber,effectiveDateFrom,effectiveDateTo,dueDate,taxCode,taxCodeName,applicationKind,postingCount,currencyCode,taxableAmount,taxAmount,grossAmount,outputTax,recoverableInputTax,nonrecoverableInputTax,netPayable,netReceivable,message"),
+            "family,taxCode,taxCodeName,application,postings,taxableCurrencyCode,taxableMinorUnits,taxCurrencyCode,taxMinorUnits,grossCurrencyCode,grossMinorUnits,outputTaxCurrencyCode,outputTaxMinorUnits,recoverableInputTaxCurrencyCode,recoverableInputTaxMinorUnits,nonrecoverableInputTaxCurrencyCode,nonrecoverableInputTaxMinorUnits,netPayableCurrencyCode,netPayableMinorUnits,netReceivableCurrencyCode,netReceivableMinorUnits"),
         obligationCsv);
     assertTrue(
-        obligationCsv.contains(
-            "tax-obligation-row:vat-standard-sale:OUTPUT_SALE,,line,tax-obligation,vat-lv"),
+        obligationCsv.contains("tax-obligation,vat-standard-sale,VAT Standard Sale,OUTPUT_SALE,"),
         obligationCsv);
-    assertTrue(
-        obligationCsv.contains(",vat-standard-sale,VAT Standard Sale,OUTPUT_SALE,"), obligationCsv);
-    assertTrue(
-        obligationCsv.contains("tax-obligation-total:EUR,,report-total,tax-obligation,vat-lv"),
-        obligationCsv);
-    assertTrue(obligationCsv.contains("31.50"), obligationCsv);
-    assertTrue(obligationCsv.contains("10.50"), obligationCsv);
-    assertTrue(obligationCsv.contains("6.00"), obligationCsv);
-    assertTrue(obligationCsv.contains("21.00"), obligationCsv);
-    assertTrue(obligationCsv.contains("0.00"), obligationCsv);
+    assertTrue(obligationCsv.contains(",EUR,3150,EUR,1050,EUR,600,EUR,2100,EUR,0"), obligationCsv);
 
     String emptyObligationText =
         runText(
@@ -475,12 +466,7 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             "2026-04-30",
             "--output",
             "csv");
-    assertTrue(
-        emptyObligationCsv.contains("tax-obligation-total:EUR,,report-empty,tax-obligation,vat-ee"),
-        emptyObligationCsv);
-    assertTrue(
-        emptyObligationCsv.contains("No tax obligation code summaries matched the selected scope."),
-        emptyObligationCsv);
+    assertEquals(1, emptyObligationCsv.lines().count(), emptyObligationCsv);
 
     Path textPdfOut = tempDirectory.resolve("tax-obligation-text.pdf");
     String textPdfOutput =
@@ -528,7 +514,7 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(1, pdfEnvelope.path("artifacts").size());
     assertEquals("pdf", pdfEnvelope.path("artifacts").get(0).path("format").stringValue());
     assertEquals(
-        CliPublicPaths.redactedValue(jsonPdfOut),
+        CliPublicPaths.absoluteValue(jsonPdfOut),
         pdfEnvelope.path("artifacts").get(0).path("path").stringValue());
     assertTrue(Files.exists(jsonPdfOut), jsonPdfOut.toString());
   }

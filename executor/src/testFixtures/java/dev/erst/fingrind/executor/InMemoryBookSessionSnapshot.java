@@ -8,6 +8,8 @@ import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.ClosedFiscalYearRecord;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
+import dev.erst.fingrind.executor.bookkeeping.InventoryAccountState;
+import dev.erst.fingrind.executor.bookkeeping.InventoryMovementRecord;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.SweptInterimResult;
 import dev.erst.fingrind.executor.spi.StoredRequestPosting;
@@ -24,6 +26,8 @@ record InMemoryBookSessionSnapshot(
     Map<TaxRegistrationId, DeclaredTaxRegistration> taxRegistrationsById,
     Map<IdempotencyKey, StoredRequestPosting> postingsByIdempotencyKey,
     Map<PostingId, CommittedPosting> postingsByPostingId,
+    Map<PostingId, List<InventoryMovementRecord>> inventoryMovementsByPostingId,
+    Map<AccountCode, InventoryAccountState> inventoryStateByAccount,
     Map<PostingId, CommittedPosting> reversalsByPriorPostingId,
     List<SweptInterimResult> transferredPeriodResults,
     List<ClosedFiscalYearRecord> closedFiscalYears) {}

@@ -114,16 +114,6 @@ public interface CliDiscoveryCommonJsonModels {
     }
   }
 
-  record CapabilitiesRequestInputSlicePayload(
-      RequestInputCompactPayload requestInput,
-      dev.erst.fingrind.contract.discovery.ContractRequestShapes.@Nullable RequestInputDescriptor
-          fullRequestInput)
-      implements ProtocolSuccessPayload {
-    public CapabilitiesRequestInputSlicePayload {
-      requestInput = requireValue(requestInput, "requestInput");
-    }
-  }
-
   record CapabilitiesCommandsSlicePayload(
       @Nullable String category,
       List<CommandNamePayload> commands,

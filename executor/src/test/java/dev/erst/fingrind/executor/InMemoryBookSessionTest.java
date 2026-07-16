@@ -487,6 +487,9 @@ class InMemoryBookSessionTest {
               cashAccount,
               reportDate,
               allPostingKinds(),
+              50,
+              Optional.empty(),
+              Optional.empty(),
               openingBalances,
               List.of(
                   new AccountLedgerEntryView(
@@ -496,7 +499,8 @@ class InMemoryBookSessionTest {
                       BalanceSide.DEBIT)),
               closingBalances),
           bookSession.accountLedger(
-              new AccountLedgerCriteria(cashAccount.accountCode(), reportDate, allPostingKinds()),
+              new AccountLedgerCriteria(
+                  cashAccount.accountCode(), reportDate, allPostingKinds(), 50, Optional.empty()),
               cashAccount));
       assertEquals(
           new PeriodSummaryView(

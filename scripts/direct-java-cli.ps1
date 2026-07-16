@@ -24,6 +24,7 @@ Invoke-FinGrindCliWrapper `
     -Context $context `
     -RuntimeManifest $runtimeManifest `
     -RuntimeDistribution "direct-java-invocation" `
+    -InvocationLabel $MyInvocation.InvocationName `
     -Arguments $args
 
 exit $script:FinGrindCliWrapperExitCode

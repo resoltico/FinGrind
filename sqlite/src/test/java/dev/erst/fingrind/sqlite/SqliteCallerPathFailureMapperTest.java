@@ -1,6 +1,8 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.runtime.ContractErrors;
@@ -31,6 +33,9 @@ class SqliteCallerPathFailureMapperTest {
     assertBookFileMapping(
         SqliteCallerPathFailure.UNSUPPORTED_SECURE_FILESYSTEM,
         "supports POSIX owner-only permissions or Windows owner-only ACLs");
+    assertBookFileMapping(
+        SqliteCallerPathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED,
+        "supports atomic no-replace secret publication");
   }
 
   @Test
@@ -50,6 +55,9 @@ class SqliteCallerPathFailureMapperTest {
     assertBookKeyFileMapping(
         SqliteCallerPathFailure.UNSUPPORTED_SECURE_FILESYSTEM,
         "supports POSIX owner-only permissions or Windows owner-only ACLs");
+    assertBookKeyFileMapping(
+        SqliteCallerPathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED,
+        "supports atomic no-replace secret publication");
   }
 
   @Test
@@ -72,6 +80,9 @@ class SqliteCallerPathFailureMapperTest {
     assertMaintenanceMapping(
         SqliteCallerPathFailure.UNSUPPORTED_SECURE_FILESYSTEM,
         ProtectedBookMaintenancePathFailure.UNSUPPORTED_SECURE_FILESYSTEM);
+    assertMaintenanceMapping(
+        SqliteCallerPathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED,
+        ProtectedBookMaintenancePathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED);
   }
 
   @Test
@@ -89,6 +100,7 @@ class SqliteCallerPathFailureMapperTest {
     var failure = SqliteCallerPathFailureMapper.invalidBookFilePath(exceptionFor(pathFailure));
     assertEquals(ContractErrors.Descriptor.INVALID_BOOK_FILE_PATH, failure.descriptor());
     assertTrue(failure.message().contains(expectedMessageFragment), failure.message());
+    assertPathIsTypedAndAbsentFromMessage(failure);
   }
 
   private static void assertBookKeyFileMapping(
@@ -96,6 +108,17 @@ class SqliteCallerPathFailureMapperTest {
     var failure = SqliteCallerPathFailureMapper.invalidBookKeyFile(exceptionFor(pathFailure));
     assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
     assertTrue(failure.message().contains(expectedMessageFragment), failure.message());
+    assertPathIsTypedAndAbsentFromMessage(failure);
+  }
+
+  private static void assertPathIsTypedAndAbsentFromMessage(
+      dev.erst.fingrind.contract.runtime.ContractFailure failure) {
+    var paths = failure.paths();
+    assertNotNull(paths);
+    Path expected = REQUESTED_PATH.toAbsolutePath().normalize();
+    assertEquals(expected, paths.path());
+    assertEquals(java.util.List.of(), paths.relatedPaths());
+    assertFalse(failure.message().contains(expected.toString()), failure.message());
   }
 
   private static void assertMaintenanceMapping(

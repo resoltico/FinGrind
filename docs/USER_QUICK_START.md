@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.60.0"
 domain: USER_QUICK_START
-updated: "2026-07-11"
+updated: "2026-07-12"
 route:
   keywords: [fingrind, quick start, first run, open book, seed template, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -82,7 +82,7 @@ FinGrind protects each book. Start by creating one key file that will hold the s
 book:
 
 ```bash
-fingrind generate-book-key-file --book-key-file ./secrets/acme.book-key
+fingrind generate-book-key-file --new-book-key-file ./secrets/acme.book-key
 ```
 
 That command creates the file for you and refuses to overwrite an existing one.

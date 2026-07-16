@@ -45,6 +45,18 @@ final class CliJsonRequestHints {
         + " --output json --detail full'.";
   }
 
+  static String amendAccountRequestHint() {
+    return "Use '"
+        + CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+        + " "
+        + OperationId.AMEND_ACCOUNT.wireName()
+        + "' for a starter account-definition request file. Amendments are admitted only while the account has no postings, tax registrations, or child accounts.";
+  }
+
+  static String retireAccountRequestHint() {
+    return "Provide the accountCode to retire. Retirement requires a zero current balance and no active operational reference; it preserves ledger history and permits historical reversals.";
+  }
+
   static String ledgerPlanRequestHint() {
     return "Use '"
         + CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)

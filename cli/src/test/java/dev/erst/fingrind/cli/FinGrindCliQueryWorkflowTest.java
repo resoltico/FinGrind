@@ -95,7 +95,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                     bookKeyFilePath.toString())));
     var inspectEnvelope = new ObjectMapper().readTree(inspectOutput.toByteArray());
     assertEquals(
-        CliPublicPaths.redactedValue(bookFilePath),
+        CliPublicPaths.absoluteValue(bookFilePath),
         inspectEnvelope.path("payload").path("bookFile").stringValue());
     assertEquals("initialized", inspectEnvelope.path("payload").path("state").stringValue());
     ByteArrayOutputStream getPostingOutput = new ByteArrayOutputStream();
@@ -143,7 +143,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                     "--account-code",
                     "1000")));
     assertJsonContains(balanceOutput, "\"family\":\"account-balance\"");
-    assertTrue(balanceOutput.toString(StandardCharsets.UTF_8).contains("\"sections\""));
+    assertTrue(balanceOutput.toString(StandardCharsets.UTF_8).contains("\"balances\""));
   }
 
   @Test

@@ -29,11 +29,14 @@ create table if not exists account (
         or financial_position_line_classification in (
             'CURRENT_ASSET',
             'INVENTORY',
+            'PREPAID_EXPENSE',
             'NONCURRENT_ASSET',
             'TRADE_RECEIVABLE',
             'CURRENT_LIABILITY',
             'NONCURRENT_LIABILITY',
             'TRADE_PAYABLE',
+            'DEFERRED_REVENUE',
+            'ACCRUED_EXPENSE',
             'EQUITY_CONTRIBUTION',
             'EQUITY_WITHDRAWAL',
             'RESULT_HOLDING',
@@ -141,7 +144,11 @@ create table if not exists account (
         (
             account_type = 'ASSET'
             and financial_position_line_classification in (
-                'CURRENT_ASSET', 'INVENTORY', 'NONCURRENT_ASSET', 'TRADE_RECEIVABLE'
+                'CURRENT_ASSET',
+                'INVENTORY',
+                'PREPAID_EXPENSE',
+                'NONCURRENT_ASSET',
+                'TRADE_RECEIVABLE'
             )
             and cash_flow_asset_classification in ('CASH_AND_CASH_EQUIVALENT', 'NON_CASH')
             and profit_and_loss_line_classification is null
@@ -150,7 +157,11 @@ create table if not exists account (
         (
             account_type = 'LIABILITY'
             and financial_position_line_classification in (
-                'CURRENT_LIABILITY', 'NONCURRENT_LIABILITY', 'TRADE_PAYABLE'
+                'CURRENT_LIABILITY',
+                'NONCURRENT_LIABILITY',
+                'TRADE_PAYABLE',
+                'DEFERRED_REVENUE',
+                'ACCRUED_EXPENSE'
             )
             and cash_flow_asset_classification is null
             and profit_and_loss_line_classification is null

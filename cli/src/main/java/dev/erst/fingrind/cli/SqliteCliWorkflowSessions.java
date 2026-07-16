@@ -7,7 +7,6 @@ import dev.erst.fingrind.sqlite.SqliteAdministrationSession;
 import dev.erst.fingrind.sqlite.SqlitePlanExecutionSession;
 import dev.erst.fingrind.sqlite.SqlitePostingSession;
 import dev.erst.fingrind.sqlite.SqliteReadSession;
-import dev.erst.fingrind.sqlite.SqliteRekeySession;
 import dev.erst.fingrind.sqlite.SqliteReportingPeriodCloseSession;
 import java.time.Clock;
 import java.util.function.Function;
@@ -69,18 +68,6 @@ final class SqliteCliWorkflowSessions {
         bookSession -> {
           try (SqlitePlanExecutionSession ignored = bookSession) {
             return ContractDecision.accepted(work.apply(bookSession));
-          }
-        },
-        ContractDecision::rejected);
-  }
-
-  static <T> ContractDecision<T> withRekeySession(
-      ContractDecision<SqliteRekeySession> decision,
-      Function<SqliteRekeySession, ContractDecision<T>> work) {
-    return decision.fold(
-        bookSession -> {
-          try (SqliteRekeySession ignored = bookSession) {
-            return work.apply(bookSession);
           }
         },
         ContractDecision::rejected);

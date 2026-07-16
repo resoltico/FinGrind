@@ -16,6 +16,7 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookPassphraseSource;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRecoveryOutcome;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookRekeyOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRestoreOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
@@ -45,6 +46,8 @@ class ProtectedBookMaintenanceModelTest {
     assertEquals(
         bookKey, new ProtectedBookRestoreOutcome.Restored(book, bookKey).bookKeyFilePath());
     assertEquals(rejection, new ProtectedBookRestoreOutcome.Rejected(rejection).rejection());
+    assertEquals(book, new ProtectedBookRekeyOutcome.Rekeyed(book, bookKey).bookFilePath());
+    assertEquals(rejection, new ProtectedBookRekeyOutcome.Rejected(rejection).rejection());
     assertIterableEquals(
         List.of(rollback),
         new ProtectedBookRecoveryOutcome.Inspected(book, List.of(rollback))
@@ -58,6 +61,10 @@ class ProtectedBookMaintenanceModelTest {
         new ProtectedBookMaintenanceRejectionException(rejection);
     assertEquals(rejection, rejectionException.rejection());
     assertEquals(rejection.toString(), rejectionException.getMessage());
+    IllegalStateException cause = new IllegalStateException("storage collision");
+    ProtectedBookMaintenanceRejectionException causedRejectionException =
+        new ProtectedBookMaintenanceRejectionException(rejection, cause);
+    assertEquals(cause, causedRejectionException.getCause());
 
     assertEquals(book, localAccess.toPublished().bookFilePath());
     assertEquals(localAccess, ProtectedBookAccess.fromPublished(localAccess.toPublished()));
@@ -104,6 +111,8 @@ class ProtectedBookMaintenanceModelTest {
                 backup,
                 ProtectedBookVerificationFailure.FOREIGN_SQLITE)
             .verificationFailure());
+    assertEquals(
+        book, new ProtectedBookMaintenanceRejection.BookDestinationOccupied(book).bookFilePath());
     assertEquals(
         List.of(rollback, rollbackTwo),
         new ProtectedBookMaintenanceRejection.RollbackArtifactSelectionRequired(
@@ -152,7 +161,8 @@ class ProtectedBookMaintenanceModelTest {
             ProtectedBookMaintenancePathFailure.PARENT_OWNER_ACCESS_REQUIRED,
             ProtectedBookMaintenancePathFailure.PARENT_OWNER_ONLY_REQUIRED,
             ProtectedBookMaintenancePathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
-            ProtectedBookMaintenancePathFailure.UNSUPPORTED_SECURE_FILESYSTEM),
+            ProtectedBookMaintenancePathFailure.UNSUPPORTED_SECURE_FILESYSTEM,
+            ProtectedBookMaintenancePathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED),
         List.of(ProtectedBookMaintenancePathFailure.values()));
     assertIterableEquals(
         List.of(
@@ -165,15 +175,13 @@ class ProtectedBookMaintenanceModelTest {
         List.of(ProtectedBookVerificationFailure.values()));
     assertIterableEquals(
         List.of(
-            ProtectedBookMaintenanceAuditKind.BACKUP_CREATED,
             ProtectedBookMaintenanceAuditKind.BACKUP_RESTORED,
+            ProtectedBookMaintenanceAuditKind.BOOK_REKEYED,
             ProtectedBookMaintenanceAuditKind.REKEY_ROLLBACK_RESTORED,
             ProtectedBookMaintenanceAuditKind.REKEY_ROLLBACK_DELETED),
         List.of(ProtectedBookMaintenanceAuditKind.values()));
     assertIterableEquals(
-        List.of(
-            ProtectedBookMaintenanceAuditCompensationKind.BACKUP_CREATED,
-            ProtectedBookMaintenanceAuditCompensationKind.REKEY_ROLLBACK_DELETED),
+        List.of(ProtectedBookMaintenanceAuditCompensationKind.REKEY_ROLLBACK_DELETED),
         List.of(ProtectedBookMaintenanceAuditCompensationKind.values()));
   }
 

@@ -4,12 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryHelpJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
-import dev.erst.fingrind.contract.discovery.ContractPlanTemplates;
 import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
@@ -58,6 +57,14 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
                     CliDiscoveryPayloadMapperTest.identity(),
                     CliDiscoveryPayloadMapperTest.environment(),
                     OperationId.DECLARE_TAX_REGISTRATION)));
+    CliDiscoveryHelpJsonModels.CommandHelpPayload amendPayload =
+        assertInstanceOf(
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+            CliDiscoveryPayloadMapperTest.fullHelpPayload(
+                MachineContract.help(
+                    CliDiscoveryPayloadMapperTest.identity(),
+                    CliDiscoveryPayloadMapperTest.environment(),
+                    OperationId.AMEND_ACCOUNT)));
     CliDiscoveryHelpJsonModels.CommandHelpPayload compactDeclarePayload =
         assertInstanceOf(
             CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
@@ -95,7 +102,7 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
     assertEquals(
         ProtocolCatalog.operation(OperationId.DECLARE_ACCOUNT).usage(), declarePayload.syntax());
     assertEquals(
-        "Provide an account-declaration JSON document through --request-file <path|->.",
+        "Provide an account-definition JSON document through --request-file <path|->.",
         declarePayload.requestFile().description());
     assertNull(declarePayload.requestFile().postingTemplate());
     assertNotNull(declarePayload.requestFile().declareAccountTemplate());
@@ -103,9 +110,20 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
     assertTrue(
         Objects.requireNonNull(declarePayload.requestFile().shortcutCommand())
             .contains("declare-account"));
+
+    assertNotNull(amendPayload.requestFile());
+    assertEquals(
+        ProtocolCatalog.operation(OperationId.AMEND_ACCOUNT).usage(), amendPayload.syntax());
+    assertEquals(
+        "Provide an account-definition JSON document through --request-file <path|->.",
+        amendPayload.requestFile().description());
+    assertNotNull(amendPayload.requestFile().declareAccountTemplate());
+    assertTrue(
+        Objects.requireNonNull(amendPayload.requestFile().shortcutCommand())
+            .contains("amend-account"));
     assertNotNull(compactDeclarePayload.requestFile());
     assertEquals(
-        "Provide an account-declaration JSON document through --request-file <path|->.",
+        "Provide an account-definition JSON document through --request-file <path|->.",
         compactDeclarePayload.requestFile().description());
     assertNull(compactDeclarePayload.requestFile().postingTemplate());
     assertNull(compactDeclarePayload.requestFile().declareAccountTemplate());
@@ -203,61 +221,23 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
   }
 
   @Test
-  void helpPayload_executePlanRejectsMissingCanonicalPostingScaffoldStep() {
+  void helpPayload_executePlanSupportsTaxOnlyPlanWithoutAPostingScaffold() {
     HelpDescriptor executePlan =
         MachineContract.help(
             CliDiscoveryPayloadMapperTest.identity(),
             CliDiscoveryPayloadMapperTest.environment(),
             OperationId.EXECUTE_PLAN);
-    ContractPlanTemplates.LedgerPlanTemplateDescriptor baseTemplate =
-        Objects.requireNonNull(executePlan.planTemplate());
-    ContractPlanTemplates.LedgerPlanTemplateDescriptor withoutCanonicalPosting =
-        new ContractPlanTemplates.LedgerPlanTemplateDescriptor(
-            baseTemplate.planId(),
-            baseTemplate.steps().stream().filter(step -> !step.kind().commitsPosting()).toList());
+    CliDiscoveryHelpJsonModels.CommandHelpPayload payload =
+        assertInstanceOf(
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+            CliDiscoveryPayloadMapperTest.fullHelpPayload(executePlan));
 
-    IllegalStateException failure =
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                CliDiscoveryPayloadMapperTest.fullHelpPayload(
-                    helpDescriptorWithPlanTemplate(executePlan, withoutCanonicalPosting)));
-
+    CliDiscoveryCommonJsonModels.RequestFileGuidancePayload requestFile =
+        Objects.requireNonNull(payload.requestFile());
+    assertEquals("tax-setup", Objects.requireNonNull(requestFile.ledgerPlanTemplate()).planId());
     assertTrue(
-        Objects.requireNonNull(failure.getMessage())
-            .contains("canonical committed-posting scaffold"),
-        failure::getMessage);
-  }
-
-  @Test
-  void helpPayload_executePlanRejectsAmbiguousCanonicalPostingScaffoldStep() {
-    HelpDescriptor executePlan =
-        MachineContract.help(
-            CliDiscoveryPayloadMapperTest.identity(),
-            CliDiscoveryPayloadMapperTest.environment(),
-            OperationId.EXECUTE_PLAN);
-    ContractPlanTemplates.LedgerPlanTemplateDescriptor baseTemplate =
-        Objects.requireNonNull(executePlan.planTemplate());
-    ContractPlanTemplates.LedgerPlanStepTemplateDescriptor canonicalPosting =
-        baseTemplate.canonicalPostingScaffoldStep();
-    ContractPlanTemplates.LedgerPlanTemplateDescriptor ambiguousTemplate =
-        new ContractPlanTemplates.LedgerPlanTemplateDescriptor(
-            baseTemplate.planId(),
-            java.util.stream.Stream.concat(
-                    baseTemplate.steps().stream(), java.util.stream.Stream.of(canonicalPosting))
-                .toList());
-
-    IllegalStateException failure =
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                CliDiscoveryPayloadMapperTest.fullHelpPayload(
-                    helpDescriptorWithPlanTemplate(executePlan, ambiguousTemplate)));
-
-    assertTrue(
-        Objects.requireNonNull(failure.getMessage())
-            .contains("canonical committed-posting scaffold"),
-        failure::getMessage);
+        requestFile.ledgerPlanTemplate().steps().stream()
+            .noneMatch(step -> step.posting() != null));
   }
 
   @Test
@@ -297,12 +277,11 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
     assertNull(payload.requestFile().requestShapes().bookkeepingEntry());
     assertNotNull(
         Objects.requireNonNull(payload.requestFile().requestShapes().ledgerPlan()).postingModel());
-    ContractPlanTemplates.LedgerPlanStepTemplateDescriptor canonicalPostingStep =
-        Objects.requireNonNull(payload.requestFile().ledgerPlanTemplate())
-            .canonicalPostingScaffoldStep();
     assertEquals(
-        BookkeepingEntryKind.SALE_SETTLED,
-        Objects.requireNonNull(canonicalPostingStep.posting()).entryKind());
+        "tax-setup", Objects.requireNonNull(payload.requestFile().ledgerPlanTemplate()).planId());
+    assertTrue(
+        payload.requestFile().ledgerPlanTemplate().steps().stream()
+            .noneMatch(step -> step.posting() != null));
   }
 
   private static void assertPostingGuidance(OperationId operationId) {
@@ -358,28 +337,6 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
                         .EntryKindSemanticsDescriptor
                     ::entryKind)
             .toList());
-  }
-
-  private static HelpDescriptor helpDescriptorWithPlanTemplate(
-      HelpDescriptor baseHelp, ContractPlanTemplates.LedgerPlanTemplateDescriptor planTemplate) {
-    return new HelpDescriptor(
-        baseHelp.application(),
-        baseHelp.version(),
-        baseHelp.protocolVersion(),
-        baseHelp.description(),
-        baseHelp.usage(),
-        baseHelp.bookModel(),
-        baseHelp.bookkeepingKernel(),
-        baseHelp.requestShapes(),
-        baseHelp.requestTemplate(),
-        baseHelp.declareAccountTemplate(),
-        baseHelp.declareTaxRegistrationTemplate(),
-        planTemplate,
-        baseHelp.commands(),
-        baseHelp.quickStart(),
-        baseHelp.exitCodes(),
-        baseHelp.preflight(),
-        baseHelp.currencyModel());
   }
 
   private static HelpDescriptor helpDescriptorWithDeclareTaxRegistrationArtifacts(
@@ -449,6 +406,16 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
                 "opening-equity", JournalLine.EntrySide.CREDIT, new MonetaryAmount("EUR", "1000"))),
         canonical.evidence(),
         canonical.provenance(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
         null);
   }
 }

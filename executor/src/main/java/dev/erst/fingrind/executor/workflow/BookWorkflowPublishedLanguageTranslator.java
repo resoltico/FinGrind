@@ -67,6 +67,9 @@ public final class BookWorkflowPublishedLanguageTranslator {
               fromPublished(declareAccount.stepId()),
               BookkeepingRequestPublishedLanguageTranslator.fromPublished(
                   declareAccount.command()));
+      case LedgerStep.DeclareTaxRegistration declareTaxRegistration ->
+          new BookWorkflowStep.DeclareTaxRegistration(
+              fromPublished(declareTaxRegistration.stepId()), declareTaxRegistration.command());
       case LedgerStep.PreflightEntry preflightEntry ->
           new BookWorkflowStep.PreflightEntry(
               fromPublished(preflightEntry.stepId()), preflightEntry.command());
@@ -87,7 +90,7 @@ public final class BookWorkflowPublishedLanguageTranslator {
           new BookWorkflowStep.AccountBalance(
               fromPublished(accountBalance.stepId()), fromPublished(accountBalance.query()));
       case LedgerStep.Assert assertion ->
-          new BookWorkflowStep.Assert(
+          new BookWorkflowAssertionStep(
               fromPublished(assertion.stepId()), fromPublished(assertion.assertion()));
     };
   }

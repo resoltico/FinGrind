@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -46,7 +47,7 @@ import org.junit.jupiter.api.Test;
 /** Coverage for administrative preflight branches that wrap tighten-parent I/O failures. */
 class CliAdministrativeCommandExecutorCoverageTest extends CliResponseWriterTestSupport {
   @Test
-  void administrativeExecutors_wrapTightenParentIoFailuresWithRedactedContext() throws IOException {
+  void administrativeExecutors_wrapTightenParentIoFailuresWithoutLeakingPaths() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliWorkflowDoubleSupport.ExplodingWorkflow workflow =
         new CliWorkflowDoubleSupport.ExplodingWorkflow(
@@ -68,7 +69,7 @@ class CliAdministrativeCommandExecutorCoverageTest extends CliResponseWriterTest
       assertTrue(
           keyMessage.contains("Failed to tighten the existing book-key parent directory"),
           keyMessage);
-      assertTrue(keyMessage.contains("<redacted>/secure/entity.book-key"), keyMessage);
+      assertFalse(keyMessage.contains("/secure/entity.book-key"), keyMessage);
       assertEquals("boom", assertInstanceOf(IOException.class, keyFailure.getCause()).getMessage());
 
       Path bookFilePath = fileSystem.getPath("/books/entity.sqlite");
@@ -86,7 +87,7 @@ class CliAdministrativeCommandExecutorCoverageTest extends CliResponseWriterTest
       assertTrue(
           bookMessage.contains("Failed to tighten the existing book parent directory"),
           bookMessage);
-      assertTrue(bookMessage.contains("<redacted>/books/entity.sqlite"), bookMessage);
+      assertFalse(bookMessage.contains("/books/entity.sqlite"), bookMessage);
       assertEquals(
           "boom", assertInstanceOf(IOException.class, bookFailure.getCause()).getMessage());
     }

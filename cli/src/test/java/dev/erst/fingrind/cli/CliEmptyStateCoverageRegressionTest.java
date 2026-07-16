@@ -31,7 +31,7 @@ import org.junit.jupiter.api.Test;
 /** Locks public empty-state and comparative rendering branches introduced by recent refactors. */
 class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
   @Test
-  void renderAccountBalanceCsv_emitsExplicitEmptyRow() {
+  void renderAccountBalanceCsv_emitsItsTypedHeaderWithoutSyntheticRecords() {
     AccountBalanceSnapshot snapshot =
         new AccountBalanceSnapshot(
             bookIdentity(),
@@ -48,11 +48,8 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
             List.of());
 
     String csv = CliQueryOutputRenderer.renderAccountBalanceCsv(snapshot);
-    assertTrue(csv.startsWith("exportFamily,rowId,parentRowId,relationKind"));
-    assertEquals(CliCsvExportFamilies.ACCOUNT_BALANCE, csvValue(csv, 1, "exportFamily"));
-    assertEquals("scope-empty", csvValue(csv, 1, "relationKind"));
-    assertEquals(CliCsvExportFamilies.ACCOUNT_BALANCE, csvValue(csv, 1, "recordKind"));
-    assertEquals("No balances matched the selected scope.", csvValue(csv, 1, "message"));
+    assertTrue(csv.startsWith("family,accountCode,accountName"));
+    assertEquals(1, csv.lines().count());
   }
 
   @Test
@@ -79,7 +76,7 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
   }
 
   @Test
-  void renderPeriodSummaryTextAndCsv_emitExplicitEmptyCurrencyAndAccountSections() {
+  void renderPeriodSummaryTextAndCsv_keepHumanEmptyGuidanceOutOfTheTypedTable() {
     PeriodSummaryReport report =
         new PeriodSummaryReport(
             bookIdentity(),
@@ -97,14 +94,12 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
 
     assertTrue(text.contains("No currency totals matched the selected scope."));
     assertTrue(text.contains("No account activity matched the selected scope."));
-    assertTrue(csv.contains("No currency totals matched the selected scope."));
-    assertTrue(csv.contains("No account activity matched the selected scope."));
-    assertTrue(csv.contains("period-summary:currency-empty"));
-    assertTrue(csv.contains("period-summary:account-empty"));
+    assertTrue(csv.startsWith("family,recordScope,accountCode"));
+    assertEquals(1, csv.lines().count());
   }
 
   @Test
-  void renderTrialBalanceTextAndCsv_coverEmptyCurrentAndComparativeRegisterBranches() {
+  void renderTrialBalanceTextKeepsEmptyGuidanceWhileCsvStaysAHeaderOnlyTable() {
     TrialBalanceReport report =
         new TrialBalanceReport(
             bookIdentity(),
@@ -125,9 +120,8 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
     assertTrue(text.contains("Outcome"));
     assertTrue(text.contains("No account balances matched the selected scope."));
     assertTrue(text.contains("Comparative Trial Balance"));
-    assertTrue(csv.contains("trial-balance-empty:current:2026-04-30"));
-    assertTrue(csv.contains("No account balances matched the selected scope."));
-    assertTrue(csv.contains("trial-balance-total:comparative:EUR"));
+    assertTrue(csv.startsWith("family,reportPeriod,accountCode"));
+    assertEquals(1, csv.lines().count());
   }
 
   @Test
@@ -236,7 +230,7 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
   }
 
   @Test
-  void renderFinancialPositionCsv_emitsGlobalEmptyRowsWhenNoSectionsExist() {
+  void renderFinancialPositionCsv_isHeaderOnlyWhenNoStatementRowsExist() {
     FinancialPositionReport report =
         new FinancialPositionReport(
             bookIdentity(),
@@ -249,10 +243,8 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
             List.of());
 
     String csv = CliQueryOutputRenderer.renderFinancialPositionCsv(report);
-    assertTrue(csv.contains("financial-position-report-empty:current:2026-04-30"));
-    assertTrue(csv.contains("financial-position-report-empty:comparative:2025-04-30"));
-    assertEquals(
-        2, countOccurrences(csv, "No financial position lines matched the selected scope."));
+    assertTrue(csv.startsWith("family,reportPeriod,sectionKind,lineCode"));
+    assertEquals(1, csv.lines().count());
   }
 
   @Test
@@ -288,7 +280,7 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
   }
 
   @Test
-  void renderIncomeStatementCsv_emitsGlobalEmptyRowsWhenSectionsAndTotalsAreAbsent() {
+  void renderIncomeStatementCsv_isHeaderOnlyWhenNoStatementRowsExist() {
     IncomeStatementReport report =
         new IncomeStatementReport(
             bookIdentity(),
@@ -303,9 +295,8 @@ class CliEmptyStateCoverageRegressionTest extends CliFixtureSupport {
 
     String csv = CliQueryOutputRenderer.renderIncomeStatementCsv(report);
 
-    assertTrue(csv.contains("income-statement-report-empty:current:2026-04-01:2026-04-30"));
-    assertTrue(csv.contains("income-statement-report-empty:comparative:2025-04-01:2025-04-30"));
-    assertEquals(2, countOccurrences(csv, "No income statement lines matched the selected scope."));
+    assertTrue(csv.startsWith("family,reportPeriod,sectionKind,lineCode"));
+    assertEquals(1, csv.lines().count());
   }
 
   @Test

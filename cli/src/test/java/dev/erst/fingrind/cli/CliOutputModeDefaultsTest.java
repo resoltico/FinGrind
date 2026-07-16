@@ -30,47 +30,8 @@ class CliOutputModeDefaultsTest {
         OutputMode.CSV,
         CliOutputModeDefaults.resolved(
             OutputMode.CSV, CliOutputModeDefaults.OutputSurface.SELECTABLE));
-    assertEquals(
-        CliOutputModeDefaults.outputDefault(CliOutputModeDefaults.OutputSurface.SELECTABLE).mode(),
-        CliOutputModeDefaults.inferredDefault(CliOutputModeDefaults.OutputSurface.SELECTABLE));
-  }
-
-  @Test
-  void outputModeDefaults_coverBlankInvalidAndRejectedConfiguredValues() {
-    assertEquals(
-        OutputMode.TEXT,
-        CliOutputModeDefaults.inferredDefault(
-            null, CliOutputModeDefaults.OutputSurface.SELECTABLE));
-    assertEquals(
-        OutputMode.JSON,
-        CliOutputModeDefaults.inferredDefault(
-            "json", CliOutputModeDefaults.OutputSurface.SELECTABLE));
-    assertEquals(
-        OutputMode.JSON,
-        CliOutputModeDefaults.outputDefault("json", CliOutputModeDefaults.OutputSurface.DISCOVERY)
-            .mode());
-    assertEquals(
-        OutputMode.TEXT,
-        CliOutputModeDefaults.inferredDefault("", CliOutputModeDefaults.OutputSurface.SELECTABLE));
-    assertEquals(
-        OutputMode.TEXT,
-        CliOutputModeDefaults.outputDefault(" ", CliOutputModeDefaults.OutputSurface.DISCOVERY)
-            .mode());
-    assertEquals(
-        OutputMode.TEXT,
-        CliOutputModeDefaults.outputDefault(null, CliOutputModeDefaults.OutputSurface.DISCOVERY)
-            .mode());
-    assertEquals(
-        OutputMode.TEXT,
-        CliOutputModeDefaults.inferredDefault(
-            "bogus", CliOutputModeDefaults.OutputSurface.SELECTABLE));
-    assertThrows(
-        CliArgumentsException.class,
-        () ->
-            CliOutputModeDefaults.outputDefault(
-                "bogus", CliOutputModeDefaults.OutputSurface.DISCOVERY));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new CliOutputModeDefaults.OutputDefault(OutputMode.CSV, null));
+        () -> new CliOutputModeDefaults.OutputDefault(OutputMode.CSV));
   }
 }

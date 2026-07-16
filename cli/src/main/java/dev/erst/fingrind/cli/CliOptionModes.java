@@ -1,10 +1,12 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.DiscoveryFocus;
 import dev.erst.fingrind.contract.protocol.OperationCategory;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
@@ -26,18 +28,19 @@ final class CliOptionModes {
       @Nullable PostingCoverage currentPostingCoverage, ListIterator<String> argumentIterator) {
     if (currentPostingCoverage != null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.POSTING_COVERAGE,
-          "Duplicate argument: " + ProtocolOptions.POSTING_COVERAGE);
+          ProtocolOptions.ReportQuery.POSTING_COVERAGE,
+          "Duplicate argument: " + ProtocolOptions.ReportQuery.POSTING_COVERAGE);
     }
     String rawValue =
-        CliOptionValues.requireValue(argumentIterator, ProtocolOptions.POSTING_COVERAGE);
+        CliOptionValues.requireValue(
+            argumentIterator, ProtocolOptions.ReportQuery.POSTING_COVERAGE);
     try {
       return PostingCoverage.fromWireValue(rawValue);
     } catch (IllegalArgumentException exception) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.POSTING_COVERAGE,
+          ProtocolOptions.ReportQuery.POSTING_COVERAGE,
           "Unsupported posting coverage for "
-              + ProtocolOptions.POSTING_COVERAGE
+              + ProtocolOptions.ReportQuery.POSTING_COVERAGE
               + ": "
               + rawValue
               + ". Accepted values: "
@@ -53,20 +56,22 @@ final class CliOptionModes {
       List<OutputMode> supportedModes) {
     if (currentOutputMode != null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.OUTPUT, "Duplicate argument: " + ProtocolOptions.OUTPUT);
+          ProtocolOptions.Presentation.OUTPUT,
+          "Duplicate argument: " + ProtocolOptions.Presentation.OUTPUT);
     }
     OutputMode outputMode;
     try {
       outputMode = OutputMode.fromWireValue(rawOutputMode);
     } catch (IllegalArgumentException exception) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.OUTPUT,
+          ProtocolOptions.Presentation.OUTPUT,
           unsupportedOutputModeMessage(rawOutputMode, supportedModes),
           exception);
     }
     if (!supportedModes.contains(outputMode)) {
       throw CliArgumentValueParser.unsupportedOutputSelection(
-          ProtocolOptions.OUTPUT, unsupportedOutputModeMessage(rawOutputMode, supportedModes));
+          ProtocolOptions.Presentation.OUTPUT,
+          unsupportedOutputModeMessage(rawOutputMode, supportedModes));
     }
     return outputMode;
   }
@@ -75,16 +80,18 @@ final class CliOptionModes {
       @Nullable PlanResultDetail currentResultDetail, ListIterator<String> argumentIterator) {
     if (currentResultDetail != null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.RESULT_DETAIL, "Duplicate argument: " + ProtocolOptions.RESULT_DETAIL);
+          ProtocolOptions.Discovery.RESULT_DETAIL,
+          "Duplicate argument: " + ProtocolOptions.Discovery.RESULT_DETAIL);
     }
-    String rawValue = CliOptionValues.requireValue(argumentIterator, ProtocolOptions.RESULT_DETAIL);
+    String rawValue =
+        CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Discovery.RESULT_DETAIL);
     try {
       return PlanResultDetail.fromWireValue(rawValue);
     } catch (IllegalArgumentException exception) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.RESULT_DETAIL,
+          ProtocolOptions.Discovery.RESULT_DETAIL,
           "Unsupported result detail for "
-              + ProtocolOptions.RESULT_DETAIL
+              + ProtocolOptions.Discovery.RESULT_DETAIL
               + ": "
               + rawValue
               + ". Accepted values: "
@@ -99,16 +106,18 @@ final class CliOptionModes {
       @Nullable DiscoveryDetail currentDetail, ListIterator<String> argumentIterator) {
     if (currentDetail != null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.DETAIL, "Duplicate argument: " + ProtocolOptions.DETAIL);
+          ProtocolOptions.Discovery.DETAIL,
+          "Duplicate argument: " + ProtocolOptions.Discovery.DETAIL);
     }
-    String rawValue = CliOptionValues.requireValue(argumentIterator, ProtocolOptions.DETAIL);
+    String rawValue =
+        CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Discovery.DETAIL);
     try {
       return DiscoveryDetail.fromWireValue(rawValue);
     } catch (IllegalArgumentException exception) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.DETAIL,
+          ProtocolOptions.Discovery.DETAIL,
           "Unsupported discovery detail for "
-              + ProtocolOptions.DETAIL
+              + ProtocolOptions.Discovery.DETAIL
               + ": "
               + rawValue
               + ". Accepted values: "
@@ -123,16 +132,18 @@ final class CliOptionModes {
       @Nullable DiscoveryFocus currentFocus, ListIterator<String> argumentIterator) {
     if (currentFocus != null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.FOCUS, "Duplicate argument: " + ProtocolOptions.FOCUS);
+          ProtocolOptions.Discovery.FOCUS,
+          "Duplicate argument: " + ProtocolOptions.Discovery.FOCUS);
     }
-    String rawValue = CliOptionValues.requireValue(argumentIterator, ProtocolOptions.FOCUS);
+    String rawValue =
+        CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Discovery.FOCUS);
     try {
       return DiscoveryFocus.fromWireValue(rawValue);
     } catch (IllegalArgumentException exception) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.FOCUS,
+          ProtocolOptions.Discovery.FOCUS,
           "Unsupported discovery focus for "
-              + ProtocolOptions.FOCUS
+              + ProtocolOptions.Discovery.FOCUS
               + ": "
               + rawValue
               + ". Accepted values: "
@@ -146,16 +157,18 @@ final class CliOptionModes {
       @Nullable OperationCategory currentCategory, ListIterator<String> argumentIterator) {
     if (currentCategory != null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.CATEGORY, "Duplicate argument: " + ProtocolOptions.CATEGORY);
+          ProtocolOptions.Discovery.CATEGORY,
+          "Duplicate argument: " + ProtocolOptions.Discovery.CATEGORY);
     }
-    String rawValue = CliOptionValues.requireValue(argumentIterator, ProtocolOptions.CATEGORY);
+    String rawValue =
+        CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Discovery.CATEGORY);
     try {
       return OperationCategory.fromWireValue(rawValue);
     } catch (IllegalArgumentException exception) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.CATEGORY,
+          ProtocolOptions.Discovery.CATEGORY,
           "Unsupported operation category for "
-              + ProtocolOptions.CATEGORY
+              + ProtocolOptions.Discovery.CATEGORY
               + ": "
               + rawValue
               + ". Accepted values: "
@@ -181,11 +194,11 @@ final class CliOptionModes {
     OutputMode resolvedOutputMode = resolvedOutputMode(outputMode);
     if (pdfOutPath != null && resolvedOutputMode == OutputMode.CSV) {
       throw CliArgumentValueParser.unsupportedOutputSelection(
-          ProtocolOptions.OUTPUT,
+          ProtocolOptions.Presentation.OUTPUT,
           "Unsupported output mode for "
-              + ProtocolOptions.OUTPUT
+              + ProtocolOptions.Presentation.OUTPUT
               + ": csv. When "
-              + ProtocolOptions.PDF_OUT
+              + ProtocolOptions.Presentation.PDF_OUT
               + " is selected, accepted stdout modes are json or text.");
     }
     return new CliReportOutput(resolvedOutputMode, pdfOutPath);
@@ -195,9 +208,11 @@ final class CliOptionModes {
       @Nullable Path currentPdfOutPath, ListIterator<String> argumentIterator) {
     if (currentPdfOutPath != null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.PDF_OUT, "Duplicate argument: " + ProtocolOptions.PDF_OUT);
+          ProtocolOptions.Presentation.PDF_OUT,
+          "Duplicate argument: " + ProtocolOptions.Presentation.PDF_OUT);
     }
-    return CliOptionValues.requirePathOptionValue(argumentIterator, ProtocolOptions.PDF_OUT);
+    return CliOptionValues.requirePathOptionValue(
+        argumentIterator, ProtocolOptions.Presentation.PDF_OUT);
   }
 
   static List<OutputMode> supportedOutputModes(OutputMode... outputModes) {
@@ -210,7 +225,7 @@ final class CliOptionModes {
     } catch (IllegalArgumentException exception) {
       throw new CliArgumentsException(
           ContractErrors.Descriptor.INVALID_PAGE_CURSOR.code(),
-          ProtocolOptions.CURSOR,
+          ProtocolOptions.ReportQuery.CURSOR,
           Objects.requireNonNullElse(exception.getMessage(), "Unsupported posting page cursor."),
           CliOperationText.listPostingsCursorRepairHint(),
           exception);
@@ -223,9 +238,27 @@ final class CliOptionModes {
     } catch (IllegalArgumentException exception) {
       throw new CliArgumentsException(
           ContractErrors.Descriptor.INVALID_PAGE_CURSOR.code(),
-          ProtocolOptions.CURSOR,
+          ProtocolOptions.ReportQuery.CURSOR,
           Objects.requireNonNullElse(exception.getMessage(), "Unsupported account page cursor."),
           CliOperationText.listAccountsCursorRepairHint(),
+          exception);
+    }
+  }
+
+  static AccountLedgerPageCursor accountLedgerPageCursor(String wireValue) {
+    try {
+      return AccountLedgerPageCursor.fromWireValue(wireValue);
+    } catch (IllegalArgumentException exception) {
+      throw new CliArgumentsException(
+          ContractErrors.Descriptor.INVALID_PAGE_CURSOR.code(),
+          ProtocolOptions.ReportQuery.CURSOR,
+          Objects.requireNonNullElse(
+              exception.getMessage(), "Unsupported account ledger page cursor."),
+          "Pass the nextCursor returned by "
+              + OperationId.ACCOUNT_LEDGER.wireName()
+              + " unchanged, or omit "
+              + ProtocolOptions.ReportQuery.CURSOR
+              + " to start at the first ledger row.",
           exception);
     }
   }
@@ -236,7 +269,7 @@ final class CliOptionModes {
     } catch (IllegalArgumentException exception) {
       throw new CliArgumentsException(
           ContractErrors.Descriptor.INVALID_PAGE_CURSOR.code(),
-          ProtocolOptions.CURSOR,
+          ProtocolOptions.ReportQuery.CURSOR,
           Objects.requireNonNullElse(
               exception.getMessage(), "Unsupported tax registration page cursor."),
           CliOperationText.listTaxRegistrationsCursorRepairHint(),
@@ -247,7 +280,7 @@ final class CliOptionModes {
   private static String unsupportedOutputModeMessage(
       String rawOutputMode, List<OutputMode> supportedModes) {
     return "Unsupported output mode for "
-        + ProtocolOptions.OUTPUT
+        + ProtocolOptions.Presentation.OUTPUT
         + ": "
         + rawOutputMode
         + ". Accepted values: "

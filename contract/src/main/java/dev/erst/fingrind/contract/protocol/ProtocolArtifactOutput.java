@@ -13,47 +13,42 @@ public record ProtocolArtifactOutput(String format, String option, String descri
   private static final ProtocolArtifactOutput PDF =
       new ProtocolArtifactOutput(
           PDF_FORMAT,
-          ProtocolOptions.PDF_OUT + " <path>",
+          ProtocolOptions.Presentation.PDF_OUT + " <path>",
           "Writes a PDF report artifact to the selected destination while preserving the command's selected stdout output mode.");
   private static final ProtocolArtifactOutput BOOK_FILE =
       new ProtocolArtifactOutput(
           BOOK_FILE_FORMAT,
-          ProtocolOptions.BOOK_FILE + " <path>",
+          ProtocolBookAccessOptions.BOOK_FILE + " <path>",
           "Publishes the restored live book file path selected for the restore workflow.");
   private static final ProtocolArtifactOutput GENERATED_BOOK_KEY_FILE =
       new ProtocolArtifactOutput(
           BOOK_KEY_FILE_FORMAT,
-          ProtocolOptions.BOOK_KEY_FILE + " <path>",
-          "Writes a new owner-only UTF-8 book key file to the selected destination.");
-  private static final ProtocolArtifactOutput REPLACEMENT_BOOK_KEY_FILE =
+          ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE + " <path>",
+          "Publishes a newly generated owner-only UTF-8 book key file at an absent target path.");
+  private static final ProtocolArtifactOutput NEW_BOOK_KEY_FILE =
       new ProtocolArtifactOutput(
           BOOK_KEY_FILE_FORMAT,
-          ProtocolOptions.NEW_BOOK_KEY_FILE + " <existing-path>",
-          "Publishes the replacement book key file path when rekey uses a key-file passphrase source.");
-  private static final ProtocolArtifactOutput BOOK_KEY_FILE =
+          ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE + " <path>",
+          "Publishes the newly generated book key file for a staged rekey or restore workflow.");
+  private static final ProtocolArtifactOutput NEW_BACKUP_KEY_FILE =
       new ProtocolArtifactOutput(
-          BOOK_KEY_FILE_FORMAT,
-          ProtocolOptions.BOOK_KEY_FILE + " <path>",
-          "Publishes the restored live book key file path selected for the restore workflow.");
+          BACKUP_KEY_FILE_FORMAT,
+          ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE + " <path>",
+          "Publishes the newly generated backup key file that reopens the exported backup copy.");
   private static final ProtocolArtifactOutput BACKUP_FILE =
       new ProtocolArtifactOutput(
           BACKUP_FILE_FORMAT,
-          ProtocolOptions.BACKUP_FILE + " <path>",
+          ProtocolBookAccessOptions.BACKUP_FILE + " <path>",
           "Writes an encrypted backup-book copy to the selected destination without overwriting an existing file.");
-  private static final ProtocolArtifactOutput BACKUP_KEY_FILE =
-      new ProtocolArtifactOutput(
-          BACKUP_KEY_FILE_FORMAT,
-          ProtocolOptions.BACKUP_KEY_FILE + " <path>",
-          "Writes the backup-book key file that reopens the exported backup copy without overwriting an existing file.");
   private static final ProtocolArtifactOutput ROLLBACK_BOOK_FILE =
       new ProtocolArtifactOutput(
           ROLLBACK_BOOK_FILE_FORMAT,
-          ProtocolOptions.ROLLBACK_BOOK_FILE + " <path>",
+          ProtocolBookAccessOptions.ROLLBACK_BOOK_FILE + " <path>",
           "Publishes the rollback-book file path selected or discovered during rekey recovery workflows.");
   private static final ProtocolArtifactOutput DISCOVERED_ROLLBACK_BOOK_FILE =
       new ProtocolArtifactOutput(
           ROLLBACK_BOOK_FILE_FORMAT,
-          ProtocolOptions.BOOK_FILE + " <path>",
+          ProtocolBookAccessOptions.BOOK_FILE + " <path>",
           "Publishes rollback-book file paths discovered beside the selected live book path.");
 
   /** Validates an artifact-export descriptor. */
@@ -93,14 +88,9 @@ public record ProtocolArtifactOutput(String format, String option, String descri
     return BOOK_KEY_FILE_FORMAT;
   }
 
-  /** Returns the canonical replacement book-key-file descriptor for rekey workflows. */
-  public static ProtocolArtifactOutput replacementBookKeyFile() {
-    return REPLACEMENT_BOOK_KEY_FILE;
-  }
-
-  /** Returns the canonical restored book-key-file descriptor. */
-  public static ProtocolArtifactOutput bookKeyFile() {
-    return BOOK_KEY_FILE;
+  /** Returns the canonical generated book-key-file descriptor for rekey and restore workflows. */
+  public static ProtocolArtifactOutput newBookKeyFile() {
+    return NEW_BOOK_KEY_FILE;
   }
 
   /** Returns the canonical backup-file descriptor. */
@@ -113,9 +103,9 @@ public record ProtocolArtifactOutput(String format, String option, String descri
     return BACKUP_FILE_FORMAT;
   }
 
-  /** Returns the canonical backup-key-file descriptor. */
-  public static ProtocolArtifactOutput backupKeyFile() {
-    return BACKUP_KEY_FILE;
+  /** Returns the canonical generated backup-key-file descriptor. */
+  public static ProtocolArtifactOutput newBackupKeyFile() {
+    return NEW_BACKUP_KEY_FILE;
   }
 
   /** Returns the stable wire format published for backup key file artifacts. */

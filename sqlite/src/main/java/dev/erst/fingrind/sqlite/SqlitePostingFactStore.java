@@ -118,11 +118,6 @@ class SqlitePostingFactStore
   }
 
   @Override
-  public Path storeBookPath() {
-    return context.bookPath();
-  }
-
-  @Override
   public SqliteStoreLifecycle storeLifecycle() {
     return lifecycle;
   }

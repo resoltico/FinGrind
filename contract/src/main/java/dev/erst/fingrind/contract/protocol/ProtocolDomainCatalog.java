@@ -35,4 +35,9 @@ public final class ProtocolDomainCatalog {
   public RequestSurfaceFacts requestSurface() {
     return ProtocolCatalogFacts.REQUEST_SURFACE;
   }
+
+  /** Returns the canonical published capability scope and its operative boundaries. */
+  public java.util.List<CapabilityCatalogEntry> capabilities() {
+    return CapabilityCatalog.entries();
+  }
 }

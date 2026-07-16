@@ -129,14 +129,13 @@ final class CliDiscoveryCommandExecutor {
     if (commandTopic == OperationId.DECLARE_TAX_REGISTRATION) {
       return MachineContract.declareTaxRegistrationTemplate();
     }
-    if (ProtocolRequestTemplateTopics.supports(commandTopic)
-        && commandTopic != OperationId.DECLARE_ACCOUNT) {
+    if (commandTopic == OperationId.DECLARE_ACCOUNT || commandTopic == OperationId.AMEND_ACCOUNT) {
+      return MachineContract.declareAccountTemplate();
+    }
+    if (ProtocolRequestTemplateTopics.supports(commandTopic)) {
       return Objects.requireNonNull(
           MachineContract.requestTemplate(commandTopic, bookTemplateId),
           "Missing request template for " + commandTopic.wireName() + ".");
-    }
-    if (commandTopic == OperationId.DECLARE_ACCOUNT) {
-      return MachineContract.declareAccountTemplate();
     }
     throw new IllegalArgumentException(
         "Request templates are available only for "

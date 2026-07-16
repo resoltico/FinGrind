@@ -116,10 +116,7 @@ final class CliDiscoveryRuntimeTextRenderer {
   }
 
   private static String displayDefaultOutputMode(EnvironmentRuntimeDescriptor runtimeDescriptor) {
-    String defaultOutputMode = runtimeDescriptor.defaultOutputMode().wireValue();
-    return runtimeDescriptor.defaultOutputModeSource() == null
-        ? defaultOutputMode + " (built in)"
-        : defaultOutputMode + " via " + runtimeDescriptor.defaultOutputModeSource();
+    return runtimeDescriptor.defaultOutputMode().wireValue() + " (built in)";
   }
 
   private static String displayPublicationSurface(

@@ -17,7 +17,7 @@ def verify_book_key_generation(
         run_cli(
             config,
             operation_ids["generateBookKeyFile"],
-            "--book-key-file",
+            "--new-book-key-file",
             config.book_key.argument,
             "--output",
             "json",

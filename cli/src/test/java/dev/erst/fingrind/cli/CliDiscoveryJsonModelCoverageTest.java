@@ -8,6 +8,7 @@ import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesSliceJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryHelpJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryRequestInputSliceJsonModels;
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
@@ -174,7 +175,7 @@ class CliDiscoveryJsonModelCoverageTest {
             DiscoveryDetail.MINIMAL,
             DiscoveryFocus.REQUEST_INPUT,
             null,
-            new CliDiscoveryCommonJsonModels.CapabilitiesRequestInputSlicePayload(
+            new CliDiscoveryRequestInputSliceJsonModels.CapabilitiesRequestInputSlicePayload(
                 requestInput,
                 NullTestSupport.nullOf(ContractRequestShapes.RequestInputDescriptor.class)),
             java.util.List.of("next"));
@@ -287,8 +288,8 @@ class CliDiscoveryJsonModelCoverageTest {
             null,
             java.util.List.of(),
             false);
-    CliDiscoveryCommonJsonModels.CapabilitiesRequestInputSlicePayload requestInputSlice =
-        new CliDiscoveryCommonJsonModels.CapabilitiesRequestInputSlicePayload(
+    CliDiscoveryRequestInputSliceJsonModels.CapabilitiesRequestInputSlicePayload requestInputSlice =
+        new CliDiscoveryRequestInputSliceJsonModels.CapabilitiesRequestInputSlicePayload(
             new CliDiscoveryCommonJsonModels.RequestInputCompactPayload(
                 "--book-file",
                 java.util.List.of("--book-key-file"),

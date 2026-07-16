@@ -85,7 +85,14 @@ public sealed interface TaxDeclarationRejection
 
     private ContractResponse.RejectionDescriptor descriptor() {
       return new ContractResponse.RejectionDescriptor(
-          code(), description(), detailFields(), List.of());
+          code(), category(), description(), detailFields(), List.of());
+    }
+
+    private ContractResponse.FailureCategory category() {
+      return switch (this) {
+        case BOOK_NOT_INITIALIZED -> ContractResponse.FailureCategory.PRECONDITION;
+        case DEFINITION_VIOLATIONS -> ContractResponse.FailureCategory.DOMAIN_SEMANTIC;
+      };
     }
 
     private static List<ContractResponse.RejectionDescriptor> descriptors() {

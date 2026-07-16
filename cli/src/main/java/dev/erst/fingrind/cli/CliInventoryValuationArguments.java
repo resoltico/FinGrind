@@ -14,8 +14,11 @@ import org.jspecify.annotations.Nullable;
 final class CliInventoryValuationArguments {
   private static final CliBookArgumentParser.CommandArgumentSpec ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
-          List.of(ProtocolOptions.AS_OF, ProtocolOptions.OUTPUT, ProtocolOptions.PDF_OUT),
-          List.of(ProtocolOptions.MOVEMENTS));
+          List.of(
+              ProtocolOptions.DateRange.AS_OF,
+              ProtocolOptions.Presentation.OUTPUT,
+              ProtocolOptions.Presentation.PDF_OUT),
+          List.of(ProtocolOptions.DateRange.MOVEMENTS));
 
   private CliInventoryValuationArguments() {}
 
@@ -29,22 +32,23 @@ final class CliInventoryValuationArguments {
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.AS_OF.equals(argument)) {
+      if (ProtocolOptions.DateRange.AS_OF.equals(argument)) {
         effectiveDateAsOf =
-            CliReportArguments.requireDateOption(
-                effectiveDateAsOf, argumentIterator, ProtocolOptions.AS_OF);
+            CliReportOptionArguments.requireDateOption(
+                effectiveDateAsOf, argumentIterator, ProtocolOptions.DateRange.AS_OF);
         continue;
       }
-      if (ProtocolOptions.MOVEMENTS.equals(argument)) {
+      if (ProtocolOptions.DateRange.MOVEMENTS.equals(argument)) {
         if (includeMovements) {
           throw CliArgumentValueParser.invalid(
-              ProtocolOptions.MOVEMENTS, "Duplicate argument: " + ProtocolOptions.MOVEMENTS);
+              ProtocolOptions.DateRange.MOVEMENTS,
+              "Duplicate argument: " + ProtocolOptions.DateRange.MOVEMENTS);
         }
         includeMovements = true;
         continue;
       }
-      if (ProtocolOptions.OUTPUT.equals(argument)) {
-        outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
+      if (ProtocolOptions.Presentation.OUTPUT.equals(argument)) {
+        outputMode = CliReportOptionArguments.requireReportOutputMode(outputMode, argumentIterator);
         continue;
       }
       pdfOutPath = CliOptionModes.requirePdfOutPath(pdfOutPath, argumentIterator);

@@ -7,6 +7,7 @@ import static dev.erst.fingrind.cli.CliJsonStructureAccess.rejectUnexpectedField
 import static dev.erst.fingrind.cli.CliJsonStructureAccess.requireObjectNode;
 import static dev.erst.fingrind.cli.CliJsonStructureAccess.requiredObject;
 
+import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffRecognitionInterval;
 import dev.erst.fingrind.contract.bookkeeping.InventoryRelief;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
@@ -15,6 +16,7 @@ import dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct;
 import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
 import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
 import dev.erst.fingrind.contract.fx.QuotedExchangeRate;
+import dev.erst.fingrind.contract.protocol.ProtocolForeignExchangeRequestFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostingNestedFieldSets;
 import dev.erst.fingrind.contract.tax.TaxCode;
@@ -61,33 +63,48 @@ final class CliBookkeepingEntryNestedParser {
         ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
         ProtocolPostingNestedFieldSets.foreignExchangeFields());
     ObjectNode quotedRateObject =
-        requiredObject(foreignExchangeObject, ProtocolPostEntryFields.ForeignExchange.QUOTED_RATE);
+        requiredObject(
+            foreignExchangeObject,
+            ProtocolForeignExchangeRequestFields.ForeignExchange.QUOTED_RATE);
     rejectUnexpectedFields(
         quotedRateObject,
         ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE
             + "."
-            + ProtocolPostEntryFields.ForeignExchange.QUOTED_RATE,
+            + ProtocolForeignExchangeRequestFields.ForeignExchange.QUOTED_RATE,
         ProtocolPostingNestedFieldSets.quotedRateFields());
     return new ForeignExchangeDetails(
         monetaryAmount(
-            foreignExchangeObject, ProtocolPostEntryFields.ForeignExchange.TRANSACTION_AMOUNT),
+            foreignExchangeObject,
+            ProtocolForeignExchangeRequestFields.ForeignExchange.TRANSACTION_AMOUNT),
         monetaryAmount(
-            foreignExchangeObject, ProtocolPostEntryFields.ForeignExchange.FUNCTIONAL_AMOUNT),
+            foreignExchangeObject,
+            ProtocolForeignExchangeRequestFields.ForeignExchange.FUNCTIONAL_AMOUNT),
         new QuotedExchangeRate(
             monetaryAmount(
-                quotedRateObject, ProtocolPostEntryFields.QuotedRate.TRANSACTION_CURRENCY_AMOUNT),
+                quotedRateObject,
+                ProtocolForeignExchangeRequestFields.QuotedRate.TRANSACTION_CURRENCY_AMOUNT),
             monetaryAmount(
-                quotedRateObject, ProtocolPostEntryFields.QuotedRate.FUNCTIONAL_CURRENCY_AMOUNT),
+                quotedRateObject,
+                ProtocolForeignExchangeRequestFields.QuotedRate.FUNCTIONAL_CURRENCY_AMOUNT),
             CanonicalTemporalText.parseLocalDate(
-                requiredText(quotedRateObject, ProtocolPostEntryFields.QuotedRate.QUOTED_ON),
-                ProtocolPostEntryFields.QuotedRate.QUOTED_ON),
-            requiredText(quotedRateObject, ProtocolPostEntryFields.QuotedRate.QUOTE_SOURCE)),
+                requiredText(
+                    quotedRateObject, ProtocolForeignExchangeRequestFields.QuotedRate.QUOTED_ON),
+                ProtocolForeignExchangeRequestFields.QuotedRate.QUOTED_ON),
+            requiredText(
+                quotedRateObject, ProtocolForeignExchangeRequestFields.QuotedRate.QUOTE_SOURCE)),
         parseWireValue(
             requiredText(
-                foreignExchangeObject, ProtocolPostEntryFields.ForeignExchange.TREATMENT_KIND),
-            ProtocolPostEntryFields.ForeignExchange.TREATMENT_KIND,
+                foreignExchangeObject,
+                ProtocolForeignExchangeRequestFields.ForeignExchange.TREATMENT_KIND),
+            ProtocolForeignExchangeRequestFields.ForeignExchange.TREATMENT_KIND,
             ForeignExchangeTreatmentKind.wireValues(),
             ForeignExchangeTreatmentKind::fromWireValue));
+  }
+
+  static ForeignExchangeDetails requiredForeignExchange(ObjectNode rootNode) {
+    requiredObject(rootNode, ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE);
+    return java.util.Objects.requireNonNull(
+        optionalForeignExchange(rootNode), ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE);
   }
 
   static @org.jspecify.annotations.Nullable SettlementAdjunct optionalSettlementAdjunct(
@@ -134,6 +151,26 @@ final class CliBookkeepingEntryNestedParser {
                 ProtocolPostEntryFields.InventoryRelief.COST_OF_SALES_ACCOUNT_CODE)),
         new QuantityText(
             requiredText(inventoryReliefObject, ProtocolPostEntryFields.InventoryRelief.QUANTITY)));
+  }
+
+  static AccrualCutoffRecognitionInterval requiredRecognitionInterval(ObjectNode rootNode) {
+    ObjectNode intervalObject =
+        requiredObject(rootNode, ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL);
+    rejectUnexpectedFields(
+        intervalObject,
+        ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL,
+        ProtocolPostingNestedFieldSets.recognitionIntervalFields());
+    return new AccrualCutoffRecognitionInterval(
+        CanonicalTemporalText.parseLocalDate(
+            requiredText(intervalObject, ProtocolPostEntryFields.RecognitionInterval.START_DATE),
+            ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL
+                + "."
+                + ProtocolPostEntryFields.RecognitionInterval.START_DATE),
+        CanonicalTemporalText.parseLocalDate(
+            requiredText(intervalObject, ProtocolPostEntryFields.RecognitionInterval.END_DATE),
+            ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL
+                + "."
+                + ProtocolPostEntryFields.RecognitionInterval.END_DATE));
   }
 
   static PostingLineage.Reversal readRequiredReversal(ObjectNode rootNode) {

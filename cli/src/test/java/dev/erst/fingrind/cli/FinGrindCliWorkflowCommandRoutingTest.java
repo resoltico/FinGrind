@@ -208,11 +208,9 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                 replacementBookKeyFilePath.toString())));
     assertEquals(
         List.of(bookAccess(bookFilePath, currentBookKeyFilePath)), workflow.rekeyBookAccesses());
-    assertEquals(
-        List.of(new BookAccess.PassphraseSource.KeyFile(replacementBookKeyFilePath)),
-        workflow.rekeyReplacementPassphraseSources());
+    assertEquals(List.of(replacementBookKeyFilePath), workflow.newRekeyBookKeyFilePaths());
     String output = outputStream.toString(StandardCharsets.UTF_8);
-    assertTrue(output.contains("\"replacementPassphraseSource\""));
+    assertTrue(output.contains("\"newBookKeyFile\""));
     assertTrue(output.contains("\"artifacts\""));
     assertTrue(
         output.contains("\"format\":\"" + ProtocolArtifactOutput.bookKeyFileFormat() + "\""));
@@ -274,7 +272,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                 currentBookKeyFilePath.toString(),
                 "--backup-file",
                 backupFilePath.toString(),
-                "--backup-key-file",
+                "--new-backup-key-file",
                 backupBookKeyFilePath.toString())));
     assertEquals(
         0,
@@ -283,7 +281,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                 "restore-book",
                 "--book-file",
                 bookFilePath.toString(),
-                "--book-key-file",
+                "--new-book-key-file",
                 currentBookKeyFilePath.toString(),
                 "--backup-file",
                 backupFilePath.toString(),

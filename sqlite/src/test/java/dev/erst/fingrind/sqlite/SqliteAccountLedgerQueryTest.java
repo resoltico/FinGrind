@@ -1,8 +1,10 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPagination;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BalanceSide;
@@ -16,6 +18,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
@@ -63,6 +66,7 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
               publishedAccount(cashAccount),
               EffectiveDateRange.of(LocalDate.parse("2026-04-08"), LocalDate.parse("2026-04-09")),
               dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
+              AccountLedgerPagination.firstPage(50),
               List.of(balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT)),
               List.of(
                   new AccountLedgerEntry(
@@ -80,8 +84,11 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
               postingFactStore.accountLedger(
                   new AccountLedgerCriteria(
                       new AccountCode("1000"),
-                      LocalDate.parse("2026-04-08"),
-                      LocalDate.parse("2026-04-09")),
+                      EffectiveDateRange.of(
+                          LocalDate.parse("2026-04-08"), LocalDate.parse("2026-04-09")),
+                      dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
+                      50,
+                      Optional.empty()),
                   cashAccount)));
     }
   }
@@ -109,6 +116,7 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
               publishedAccount(cashAccount),
               EffectiveDateRange.of(LocalDate.MIN, null),
               dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
+              AccountLedgerPagination.firstPage(50),
               List.of(),
               List.of(
                   new AccountLedgerEntry(
@@ -119,7 +127,12 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
               List.of(balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT))),
           published(
               postingFactStore.accountLedger(
-                  new AccountLedgerCriteria(new AccountCode("1000"), LocalDate.MIN, null),
+                  new AccountLedgerCriteria(
+                      new AccountCode("1000"),
+                      EffectiveDateRange.of(LocalDate.MIN, null),
+                      dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
+                      50,
+                      Optional.empty()),
                   cashAccount)));
     }
   }
@@ -157,6 +170,7 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
               publishedAccount(revenueAccount),
               EffectiveDateRange.of(LocalDate.parse("2026-04-08"), LocalDate.parse("2026-04-08")),
               dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
+              AccountLedgerPagination.firstPage(50),
               List.of(balance("EUR", "0.00", "10.00", "10.00", BalanceSide.CREDIT)),
               List.of(
                   new AccountLedgerEntry(
@@ -169,8 +183,11 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
               postingFactStore.accountLedger(
                   new AccountLedgerCriteria(
                       new AccountCode("2000"),
-                      LocalDate.parse("2026-04-08"),
-                      LocalDate.parse("2026-04-08")),
+                      EffectiveDateRange.of(
+                          LocalDate.parse("2026-04-08"), LocalDate.parse("2026-04-08")),
+                      dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
+                      50,
+                      Optional.empty()),
                   revenueAccount)));
     }
   }
@@ -208,6 +225,7 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
               publishedAccount(cashAccount),
               EffectiveDateRange.of(LocalDate.parse("2026-04-09"), LocalDate.parse("2026-04-09")),
               dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
+              AccountLedgerPagination.firstPage(50),
               List.of(balance("EUR", "17.00", "0.00", "17.00", BalanceSide.DEBIT)),
               List.of(),
               List.of(balance("EUR", "17.00", "0.00", "17.00", BalanceSide.DEBIT))),
@@ -215,9 +233,102 @@ class SqliteAccountLedgerQueryTest extends SqlitePostingFactStoreTestSupport {
               postingFactStore.accountLedger(
                   new AccountLedgerCriteria(
                       new AccountCode("1000"),
-                      LocalDate.parse("2026-04-09"),
-                      LocalDate.parse("2026-04-09")),
+                      EffectiveDateRange.of(
+                          LocalDate.parse("2026-04-09"), LocalDate.parse("2026-04-09")),
+                      dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
+                      50,
+                      Optional.empty()),
                   cashAccount)));
+    }
+  }
+
+  @Test
+  void accountLedger_pagesInCanonicalAscendingOrderAndCarriesRunningBalancesAcrossCursors() {
+    Path databasePath = tempDirectory.resolve("account-ledger-keyset-pagination.sqlite");
+    CommittedPosting firstPosting =
+        postingFact(
+            "posting-1",
+            "idem-1",
+            LocalDate.parse("2026-04-07"),
+            Instant.parse("2026-04-07T10:15:30Z"),
+            List.of(
+                line("1000", JournalLine.EntrySide.DEBIT, "EUR", "10.00"),
+                line("2000", JournalLine.EntrySide.CREDIT, "EUR", "10.00")));
+    CommittedPosting secondPosting =
+        postingFact(
+            "posting-2",
+            "idem-2",
+            LocalDate.parse("2026-04-07"),
+            Instant.parse("2026-04-07T10:15:31Z"),
+            List.of(
+                line("1000", JournalLine.EntrySide.CREDIT, "EUR", "14.00"),
+                line("2000", JournalLine.EntrySide.DEBIT, "EUR", "14.00")));
+    CommittedPosting thirdPosting =
+        postingFact(
+            "posting-3",
+            "idem-3",
+            LocalDate.parse("2026-04-07"),
+            Instant.parse("2026-04-07T10:15:32Z"),
+            List.of(
+                line("1000", JournalLine.EntrySide.DEBIT, "EUR", "8.00"),
+                line("2000", JournalLine.EntrySide.CREDIT, "EUR", "8.00")));
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
+      commitPosting(postingFactStore, firstPosting);
+      commitPosting(postingFactStore, secondPosting);
+      commitPosting(postingFactStore, thirdPosting);
+      RegisteredAccount cashAccount =
+          postingFactStore.findAccount(new AccountCode("1000")).orElseThrow();
+      AccountLedgerCriteria firstPageQuery =
+          new AccountLedgerCriteria(
+              new AccountCode("1000"),
+              EffectiveDateRange.of(LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07")),
+              dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
+              1,
+              Optional.empty());
+      var firstPage = postingFactStore.accountLedger(firstPageQuery, cashAccount);
+      assertEquals(
+          List.of(firstPosting.postingId()),
+          firstPage.entries().stream().map(entry -> entry.posting().postingId()).toList());
+      assertEquals(money("EUR", "10.00"), firstPage.entries().getFirst().runningNetAmount());
+      assertTrue(firstPage.nextCursor().isPresent());
+
+      var secondPage =
+          postingFactStore.accountLedger(
+              new AccountLedgerCriteria(
+                  firstPageQuery.accountCode(),
+                  firstPageQuery.effectiveDateRange(),
+                  firstPageQuery.postingCoverage(),
+                  1,
+                  firstPage.nextCursor()),
+              cashAccount);
+      assertEquals(
+          List.of(secondPosting.postingId()),
+          secondPage.entries().stream().map(entry -> entry.posting().postingId()).toList());
+      assertEquals(money("EUR", "4.00"), secondPage.entries().getFirst().runningNetAmount());
+      assertEquals(BalanceSide.CREDIT, secondPage.entries().getFirst().runningBalanceSide());
+      assertTrue(secondPage.nextCursor().isPresent());
+
+      var thirdPage =
+          postingFactStore.accountLedger(
+              new AccountLedgerCriteria(
+                  firstPageQuery.accountCode(),
+                  EffectiveDateRange.unbounded(),
+                  firstPageQuery.postingCoverage(),
+                  1,
+                  secondPage.nextCursor()),
+              cashAccount);
+      assertEquals(
+          List.of(thirdPosting.postingId()),
+          thirdPage.entries().stream().map(entry -> entry.posting().postingId()).toList());
+      assertEquals(money("EUR", "4.00"), thirdPage.entries().getFirst().runningNetAmount());
+      assertEquals(BalanceSide.DEBIT, thirdPage.entries().getFirst().runningBalanceSide());
+      assertTrue(thirdPage.nextCursor().isEmpty());
+      assertEquals(
+          List.of(balance("EUR", "18.00", "14.00", "4.00", BalanceSide.DEBIT)),
+          firstPage.closingBalances());
+      assertEquals(firstPage.closingBalances(), secondPage.closingBalances());
+      assertEquals(firstPage.closingBalances(), thirdPage.closingBalances());
     }
   }
 

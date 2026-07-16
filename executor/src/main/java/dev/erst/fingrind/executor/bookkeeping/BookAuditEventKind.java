@@ -48,6 +48,26 @@ public enum BookAuditEventKind implements WireValue {
       rejectPostingAndCloseOrder(wireValue(), postingId, closeOperationOrder);
     }
   },
+  ACCOUNT_AMENDED("ACCOUNT_AMENDED") {
+    @Override
+    void validatePayload(
+        @Nullable AccountCode accountCode,
+        @Nullable PostingId postingId,
+        @Nullable Integer closeOperationOrder) {
+      Objects.requireNonNull(accountCode, "accountCode");
+      rejectPostingAndCloseOrder(wireValue(), postingId, closeOperationOrder);
+    }
+  },
+  ACCOUNT_RETIRED("ACCOUNT_RETIRED") {
+    @Override
+    void validatePayload(
+        @Nullable AccountCode accountCode,
+        @Nullable PostingId postingId,
+        @Nullable Integer closeOperationOrder) {
+      Objects.requireNonNull(accountCode, "accountCode");
+      rejectPostingAndCloseOrder(wireValue(), postingId, closeOperationOrder);
+    }
+  },
   POSTING_COMMITTED("POSTING_COMMITTED") {
     @Override
     void validatePayload(

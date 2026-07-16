@@ -10,8 +10,8 @@ import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
+import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
-import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
 import java.util.ArrayList;
@@ -25,7 +25,7 @@ class CliFailureOutputRendererTest {
     String invalidJson =
         CliFailureOutputRenderer.renderFailureText(
             new CliFailure(
-                "invalid-json",
+                "invalid-request",
                 "Malformed request.",
                 "Fix the JSON syntax and retry.",
                 "--request-file",
@@ -39,12 +39,6 @@ class CliFailureOutputRendererTest {
                 "--request-file",
                 new CliErrorJsonModels.InvalidRequestDetails(
                     List.of("accountCode is required", "amount must be positive"))));
-    String warning =
-        CliFailureOutputRenderer.renderWarningText(
-            new CliFailure("warning-code", "Heads up.", "Review the output.", "--output"));
-    String info =
-        CliFailureOutputRenderer.renderInfoText(
-            new CliFailure("info-code", "FYI.", "Continue with the next step.", "--book-file"));
 
     assertTrue(invalidJson.contains("Error"));
     assertTrue(invalidJson.contains("Argument"));
@@ -56,17 +50,13 @@ class CliFailureOutputRendererTest {
     assertTrue(invalidRequest.contains("Violations"));
     assertTrue(invalidRequest.contains("accountCode is required"));
     assertTrue(invalidRequest.contains("amount must be positive"));
-    assertTrue(warning.contains("Warning"));
-    assertTrue(warning.contains("warning-code"));
-    assertTrue(info.contains("Info"));
-    assertTrue(info.contains("info-code"));
   }
 
   @Test
   void renderFailureText_omitsHintRowWhenNoHintIsProvided() {
     String rendered =
         CliFailureOutputRenderer.renderFailureText(
-            new CliFailure("runtime-failure", "Runtime exploded.", null, "--book-file"));
+            new CliFailure("storage-runtime-failure", "Runtime exploded.", null, "--book-file"));
 
     assertTrue(rendered.contains("Argument"));
     assertTrue(rendered.contains("--book-file"));
@@ -115,6 +105,18 @@ class CliFailureOutputRendererTest {
         new CliRejectionJsonModels.PriorPostingDetails("posting-9"),
         "Prior posting id",
         "posting-9");
+    assertRenderedRejection(
+        new CliRejectionJsonModels.AccountDependenciesDetails(
+            "1100", List.of("postings", "tax-registrations")),
+        "Account code",
+        "1100",
+        "Durable dependencies",
+        "postings, tax-registrations");
+    assertRenderedRejection(
+        new CliRejectionJsonModels.AccountCodeDetails("1100"), "Account code", "1100");
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new CliRejectionJsonModels.AccountDependenciesDetails("1100", List.of()));
     assertRenderedRejection(
         new CliRejectionJsonModels.AccountTypeConflictDetails("3200", "EQUITY", "LIABILITY"),
         "Existing account type",
@@ -426,7 +428,7 @@ class CliFailureOutputRendererTest {
             List.of(
                 new CliPlanJsonModels.LedgerJournalEntryPayload(
                     "step-1",
-                    LedgerJournalKind.ASSERT,
+                    LedgerStepKind.ASSERT,
                     LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
                     null,
                     LedgerStepStatus.ASSERTION_FAILED,

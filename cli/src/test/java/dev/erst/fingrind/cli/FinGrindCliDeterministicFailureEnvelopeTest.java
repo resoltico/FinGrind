@@ -8,6 +8,7 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractResponseCatalog;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -87,28 +88,7 @@ class FinGrindCliDeterministicFailureEnvelopeTest extends FinGrindCliTestSupport
   }
 
   @Test
-  void run_honorsConfiguredDefaultOutputForInvalidAndInternalFailures()
-      throws IOException, InterruptedException {
-    assertConfiguredDefaultFailure(
-        "invalid-request", invalidTrialBalanceArguments(), 1, "invalid-request");
-    assertConfiguredDefaultFailure(
-        "report-internal-error", reportTrialBalanceArguments(), 70, "internal-error");
-  }
-
-  @Test
-  void run_honorsConfiguredDefaultOutputForRejectedQueryDiagnostics()
-      throws IOException, InterruptedException {
-    ObservedInvocation jsonObserved =
-        runChildProbe("report-rejected", "json", reportTrialBalanceArguments());
-    ObservedInvocation textObserved =
-        runChildProbe("report-rejected", "text", reportTrialBalanceArguments());
-
-    assertJsonFailure(jsonObserved, 2, "rejected", "query-book-not-initialized");
-    assertTextFailure(textObserved, 2, "Rejected", "query-book-not-initialized");
-  }
-
-  @Test
-  void run_keepsDuplicateOutputFailuresMachineReadable() throws IOException {
+  void run_usesTextForDuplicateOutputSelection() throws IOException {
     ObservedInvocation observed =
         runCli(
             new CliBookWorkflowAdapter() {},
@@ -124,11 +104,11 @@ class FinGrindCliDeterministicFailureEnvelopeTest extends FinGrindCliTestSupport
               "json"
             });
 
-    assertJsonFailure(observed, 1, "error", "invalid-request");
+    assertTextFailure(observed, 1, "Error", "invalid-request");
   }
 
   @Test
-  void run_keepsInvalidOutputValueFailuresMachineReadable() throws IOException {
+  void run_usesTextForInvalidOutputSelection() throws IOException {
     ObservedInvocation observed =
         runCli(
             new CliBookWorkflowAdapter() {},
@@ -142,11 +122,11 @@ class FinGrindCliDeterministicFailureEnvelopeTest extends FinGrindCliTestSupport
               "markdown"
             });
 
-    assertJsonFailure(observed, 1, "error", "invalid-request");
+    assertTextFailure(observed, 1, "Error", "invalid-request");
   }
 
   @Test
-  void run_keepsUnsupportedCommandOutputFailuresMachineReadable() throws IOException {
+  void run_usesTextWhenCsvIsUnsupportedForTheSelectedCommand() throws IOException {
     ObservedInvocation observed =
         runCli(
             new CliBookWorkflowAdapter() {},
@@ -162,25 +142,38 @@ class FinGrindCliDeterministicFailureEnvelopeTest extends FinGrindCliTestSupport
               "csv"
             });
 
-    assertJsonFailure(observed, 2, "error", "unsupported-output-selection");
+    assertTextFailure(observed, 2, "Error", "unsupported-output-selection");
   }
 
   @Test
-  void run_keepsUnknownCommandFailuresMachineReadableEvenWhenTextIsRequested() throws IOException {
-    ObservedInvocation observed =
+  void run_keepsUnknownCommandFailuresInTheExplicitlySelectedMode() throws IOException {
+    ObservedInvocation absentOutputObserved =
+        runCli(new CliBookWorkflowAdapter() {}, new String[] {"wat-command"});
+    ObservedInvocation textObserved =
         runCli(new CliBookWorkflowAdapter() {}, new String[] {"wat-command", "--output", "text"});
+    ObservedInvocation jsonObserved =
+        runCli(new CliBookWorkflowAdapter() {}, new String[] {"wat-command", "--output", "json"});
 
-    assertJsonFailure(observed, 1, "error", "unknown-command");
+    assertTextFailure(absentOutputObserved, 1, "Error", "unknown-command");
+    assertTextFailure(textObserved, 1, "Error", "unknown-command");
+    assertJsonFailure(jsonObserved, 1, "error", "unknown-command");
   }
 
-  private void assertConfiguredDefaultFailure(
-      String scenario, String[] cliArguments, int expectedExitCode, String expectedCode)
-      throws IOException, InterruptedException {
-    ObservedInvocation jsonObserved = runChildProbe(scenario, "json", cliArguments);
-    ObservedInvocation textObserved = runChildProbe(scenario, "text", cliArguments);
+  @Test
+  void run_usesTextForMissingOutputValue() throws IOException {
+    ObservedInvocation observed =
+        runCli(
+            new CliBookWorkflowAdapter() {},
+            new String[] {
+              "trial-balance",
+              "--book-file",
+              "book.sqlite",
+              "--book-key-file",
+              "book.key",
+              "--output"
+            });
 
-    assertJsonFailure(jsonObserved, expectedExitCode, "error", expectedCode);
-    assertTextFailure(textObserved, expectedExitCode, "Error", expectedCode);
+    assertTextFailure(observed, 1, "Error", "invalid-request");
   }
 
   private static ObservedInvocation runCli(CliBookWorkflow workflow, String[] arguments) {
@@ -200,27 +193,6 @@ class FinGrindCliDeterministicFailureEnvelopeTest extends FinGrindCliTestSupport
         diagnosticsStream.toString(StandardCharsets.UTF_8));
   }
 
-  private static ObservedInvocation runChildProbe(
-      String scenario, String configuredOutputMode, String[] cliArguments)
-      throws IOException, InterruptedException {
-    String[] childArguments = new String[cliArguments.length + 1];
-    childArguments[0] = scenario;
-    System.arraycopy(cliArguments, 0, childArguments, 1, cliArguments.length);
-    ProcessBuilder processBuilder =
-        new ProcessBuilder(
-            CliChildJvmSupport.childJavaCommand(CliFailureEnvelopeProbe.class, childArguments));
-    processBuilder
-        .environment()
-        .put(CliOutputModeDefaults.DEFAULT_OUTPUT_ENVIRONMENT_VARIABLE, configuredOutputMode);
-    try (Process process = processBuilder.start()) {
-      int exitCode = process.waitFor();
-      return new ObservedInvocation(
-          exitCode,
-          new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8),
-          new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8));
-    }
-  }
-
   private static void assertJsonFailure(
       ObservedInvocation observed, int expectedExitCode, String expectedStatus, String expectedCode)
       throws IOException {
@@ -229,6 +201,10 @@ class FinGrindCliDeterministicFailureEnvelopeTest extends FinGrindCliTestSupport
     JsonNode envelope = CliJsonObjectMappers.configuredObjectMapper().readTree(observed.stderr());
     assertEquals(expectedStatus, envelope.path("status").stringValue(), observed.stderr());
     assertEquals(expectedCode, envelope.path("code").stringValue(), observed.stderr());
+    assertEquals(
+        ContractResponseCatalog.failureCategoryFor(expectedCode).wireValue(),
+        envelope.path("category").stringValue(),
+        observed.stderr());
     assertTrue(observed.stderr().endsWith(System.lineSeparator()), observed.stderr());
   }
 

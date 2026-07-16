@@ -19,6 +19,7 @@ public final class ProtocolLedgerPlanFields {
         Step.ENSURE_BOOK,
         Step.POSTING,
         Step.DECLARE_ACCOUNT,
+        Step.DECLARE_TAX_REGISTRATION,
         Step.QUERY,
         Step.ASSERTION,
         Step.POSTING_ID);
@@ -74,6 +75,9 @@ public final class ProtocolLedgerPlanFields {
 
     /** Account declaration payload. */
     public static final String DECLARE_ACCOUNT = "declareAccount";
+
+    /** Tax registration declaration payload. */
+    public static final String DECLARE_TAX_REGISTRATION = "declareTaxRegistration";
 
     /** Query payload. */
     public static final String QUERY = "query";

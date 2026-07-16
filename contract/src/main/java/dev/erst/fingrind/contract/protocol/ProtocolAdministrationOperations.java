@@ -17,6 +17,8 @@ final class ProtocolAdministrationOperations {
         ProtocolBookMaintenanceOperations.deleteRekeyRollbackOperation(),
         ProtocolBookMaintenanceOperations.restoreRekeyRollbackOperation(),
         declareAccountOperation(),
+        amendAccountOperation(),
+        retireAccountOperation(),
         declareTaxRegistrationOperation(),
         ProtocolPeriodCloseOperations.interimResultSweepOperation(),
         ProtocolPeriodCloseOperations.fiscalYearCloseOperation());
@@ -29,25 +31,25 @@ final class ProtocolAdministrationOperations {
         "Open Book",
         List.of(),
         List.of(
-            ProtocolOptions.BOOK_FILE + " <path>",
+            ProtocolBookAccessOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
-            ProtocolOptions.ENTITY_NAME + " <text>",
-            ProtocolOptions.BOOK_TEMPLATE_ID
+            ProtocolOptions.BookDefinition.ENTITY_NAME + " <text>",
+            ProtocolOptions.BookDefinition.TEMPLATE_ID
                 + " <"
                 + String.join("|", dev.erst.fingrind.core.BookTemplateId.wireValues())
                 + ">",
-            ProtocolOptions.ACCOUNTING_BASIS
+            ProtocolOptions.BookDefinition.ACCOUNTING_BASIS
                 + " <"
                 + String.join("|", dev.erst.fingrind.core.AccountingBasis.wireValues())
                 + ">",
             "["
-                + ProtocolOptions.INVENTORY_COSTING
+                + ProtocolOptions.BookDefinition.INVENTORY_COSTING
                 + " <"
                 + String.join("|", dev.erst.fingrind.core.InventoryCostingDoctrine.wireValues())
                 + ">] (required for OWNER_MANAGED_TRADING)",
-            ProtocolOptions.FUNCTIONAL_CURRENCY + " <currency-code>",
-            ProtocolOptions.FISCAL_YEAR_START + " <MM-DD>",
-            "[" + ProtocolOptions.TIGHTEN_PARENTS + "]",
+            ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY + " <currency-code>",
+            ProtocolOptions.BookDefinition.FISCAL_YEAR_START + " <MM-DD>",
+            "[" + ProtocolOptions.BookDefinition.TIGHTEN_PARENTS + "]",
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),
@@ -57,35 +59,35 @@ final class ProtocolAdministrationOperations {
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s \"Acme Studio\" %s OWNER_MANAGED_SERVICE %s CASH %s EUR %s 01-01"
                     .formatted(
                         OperationId.OPEN_BOOK.wireName(),
-                        ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.BOOK_KEY_FILE,
-                        ProtocolOptions.ENTITY_NAME,
-                        ProtocolOptions.BOOK_TEMPLATE_ID,
-                        ProtocolOptions.ACCOUNTING_BASIS,
-                        ProtocolOptions.FUNCTIONAL_CURRENCY,
-                        ProtocolOptions.FISCAL_YEAR_START)),
+                        ProtocolBookAccessOptions.BOOK_FILE,
+                        ProtocolBookAccessOptions.BOOK_KEY_FILE,
+                        ProtocolOptions.BookDefinition.ENTITY_NAME,
+                        ProtocolOptions.BookDefinition.TEMPLATE_ID,
+                        ProtocolOptions.BookDefinition.ACCOUNTING_BASIS,
+                        ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
+                        ProtocolOptions.BookDefinition.FISCAL_YEAR_START)),
             ProtocolExampleStep.command(
                 "fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s OWNER_MANAGED_SERVICE %s CASH %s EUR %s 01-01 %s"
                     .formatted(
                         OperationId.OPEN_BOOK.wireName(),
-                        ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.ENTITY_NAME,
-                        ProtocolOptions.BOOK_TEMPLATE_ID,
-                        ProtocolOptions.ACCOUNTING_BASIS,
-                        ProtocolOptions.FUNCTIONAL_CURRENCY,
-                        ProtocolOptions.FISCAL_YEAR_START,
-                        ProtocolOptions.BOOK_PASSPHRASE_PROMPT)),
+                        ProtocolBookAccessOptions.BOOK_FILE,
+                        ProtocolOptions.BookDefinition.ENTITY_NAME,
+                        ProtocolOptions.BookDefinition.TEMPLATE_ID,
+                        ProtocolOptions.BookDefinition.ACCOUNTING_BASIS,
+                        ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
+                        ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
+                        ProtocolBookAccessOptions.BOOK_PASSPHRASE_PROMPT)),
             ProtocolExampleStep.command(
                 "cat ./secrets/acme.book-key | fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s OWNER_MANAGED_SERVICE %s CASH %s EUR %s 01-01 %s"
                     .formatted(
                         OperationId.OPEN_BOOK.wireName(),
-                        ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.ENTITY_NAME,
-                        ProtocolOptions.BOOK_TEMPLATE_ID,
-                        ProtocolOptions.ACCOUNTING_BASIS,
-                        ProtocolOptions.FUNCTIONAL_CURRENCY,
-                        ProtocolOptions.FISCAL_YEAR_START,
-                        ProtocolOptions.BOOK_PASSPHRASE_STDIN))));
+                        ProtocolBookAccessOptions.BOOK_FILE,
+                        ProtocolOptions.BookDefinition.ENTITY_NAME,
+                        ProtocolOptions.BookDefinition.TEMPLATE_ID,
+                        ProtocolOptions.BookDefinition.ACCOUNTING_BASIS,
+                        ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
+                        ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
+                        ProtocolBookAccessOptions.BOOK_PASSPHRASE_STDIN))));
   }
 
   private static ProtocolOperation declareAccountOperation() {
@@ -95,9 +97,9 @@ final class ProtocolAdministrationOperations {
         "Declare Account",
         List.of(),
         List.of(
-            ProtocolOptions.BOOK_FILE + " <path>",
+            ProtocolBookAccessOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
-            ProtocolOptions.REQUEST_FILE + " <path|->",
+            ProtocolOptions.Request.FILE + " <path|->",
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),
@@ -107,16 +109,16 @@ final class ProtocolAdministrationOperations {
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./declare-account-supplemental-cash-reserve.json"
                     .formatted(
                         OperationId.DECLARE_ACCOUNT.wireName(),
-                        ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.BOOK_KEY_FILE,
-                        ProtocolOptions.REQUEST_FILE)),
+                        ProtocolBookAccessOptions.BOOK_FILE,
+                        ProtocolBookAccessOptions.BOOK_KEY_FILE,
+                        ProtocolOptions.Request.FILE)),
             ProtocolExampleStep.command(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./declare-account-supplemental-misc-revenue.json"
                     .formatted(
                         OperationId.DECLARE_ACCOUNT.wireName(),
-                        ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.BOOK_KEY_FILE,
-                        ProtocolOptions.REQUEST_FILE))));
+                        ProtocolBookAccessOptions.BOOK_FILE,
+                        ProtocolBookAccessOptions.BOOK_KEY_FILE,
+                        ProtocolOptions.Request.FILE))));
   }
 
   private static ProtocolOperation declareTaxRegistrationOperation() {
@@ -126,20 +128,68 @@ final class ProtocolAdministrationOperations {
         "Declare Tax Registration",
         List.of(),
         List.of(
-            ProtocolOptions.BOOK_FILE + " <path>",
+            ProtocolBookAccessOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
-            ProtocolOptions.REQUEST_FILE + " <path|->",
+            ProtocolOptions.Request.FILE + " <path|->",
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),
-        "Declare or update an owned tax registration in the selected book.",
+        "Declare or update an owned tax registration using already-declared payable and recoverable accounts; this command never creates accounts implicitly.",
         List.of(
             ProtocolExampleStep.command(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./declare-tax-registration.json"
                     .formatted(
                         OperationId.DECLARE_TAX_REGISTRATION.wireName(),
-                        ProtocolOptions.BOOK_FILE,
-                        ProtocolOptions.BOOK_KEY_FILE,
-                        ProtocolOptions.REQUEST_FILE))));
+                        ProtocolBookAccessOptions.BOOK_FILE,
+                        ProtocolBookAccessOptions.BOOK_KEY_FILE,
+                        ProtocolOptions.Request.FILE))));
+  }
+
+  private static ProtocolOperation amendAccountOperation() {
+    return ProtocolOperationDefinitions.operation(
+        OperationId.AMEND_ACCOUNT,
+        OperationCategory.ADMINISTRATION,
+        "Amend Account",
+        List.of(),
+        List.of(
+            ProtocolBookAccessOptions.BOOK_FILE + " <path>",
+            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptions.Request.FILE + " <path|->",
+            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+        ExecutionMode.JSON_ENVELOPE,
+        List.of(OutputMode.JSON, OutputMode.TEXT),
+        "Replace the definition of a never-posted, unreferenced account without erasing its identity or lifecycle history.",
+        List.of(
+            ProtocolExampleStep.command(
+                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./amend-account.json"
+                    .formatted(
+                        OperationId.AMEND_ACCOUNT.wireName(),
+                        ProtocolBookAccessOptions.BOOK_FILE,
+                        ProtocolBookAccessOptions.BOOK_KEY_FILE,
+                        ProtocolOptions.Request.FILE))));
+  }
+
+  private static ProtocolOperation retireAccountOperation() {
+    return ProtocolOperationDefinitions.operation(
+        OperationId.RETIRE_ACCOUNT,
+        OperationCategory.ADMINISTRATION,
+        "Retire Account",
+        List.of(),
+        List.of(
+            ProtocolBookAccessOptions.BOOK_FILE + " <path>",
+            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptions.Request.FILE + " <path|->",
+            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+        ExecutionMode.JSON_ENVELOPE,
+        List.of(OutputMode.JSON, OutputMode.TEXT),
+        "Retire a zero-balance account from new ordinary authored postings while preserving its ledger history and admitting historical reversals.",
+        List.of(
+            ProtocolExampleStep.command(
+                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./retire-account.json"
+                    .formatted(
+                        OperationId.RETIRE_ACCOUNT.wireName(),
+                        ProtocolBookAccessOptions.BOOK_FILE,
+                        ProtocolBookAccessOptions.BOOK_KEY_FILE,
+                        ProtocolOptions.Request.FILE))));
   }
 }

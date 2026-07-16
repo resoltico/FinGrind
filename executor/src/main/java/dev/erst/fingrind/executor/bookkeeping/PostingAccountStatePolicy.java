@@ -9,7 +9,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
-/** Validates that every requested posting account is known and active. */
+/** Validates that posting accounts are known, postable, and active for ordinary authored use. */
 public final class PostingAccountStatePolicy {
   /** Returns the first declared-account rejection for one caller-authored posting request. */
   public Optional<BookkeepingPostingRejection> declaredAccountRejectionFor(
@@ -18,7 +18,7 @@ public final class PostingAccountStatePolicy {
     Objects.requireNonNull(book, "book");
     Set<AccountCode> requestedAccounts = PostingRequestAccounts.requestedAccounts(postingRequest);
     Map<AccountCode, RegisteredAccount> declaredAccounts = book.findAccounts(requestedAccounts);
-    return declaredAccountRejectionFor(requestedAccounts, declaredAccounts);
+    return declaredAccountRejectionFor(requestedAccounts, declaredAccounts, false);
   }
 
   Optional<BookkeepingPostingRejection> rejectionFor(
@@ -28,7 +28,8 @@ public final class PostingAccountStatePolicy {
     Set<AccountCode> requestedAccounts = PostingRequestAccounts.requestedAccounts(postingRequest);
     Map<AccountCode, RegisteredAccount> declaredAccounts = book.findAccounts(requestedAccounts);
     Optional<BookkeepingPostingRejection> declaredAccountRejection =
-        declaredAccountRejectionFor(requestedAccounts, declaredAccounts);
+        declaredAccountRejectionFor(
+            requestedAccounts, declaredAccounts, postingRequest.postingLineage().isReversal());
     if (declaredAccountRejection.isPresent()) {
       return declaredAccountRejection;
     }
@@ -36,7 +37,9 @@ public final class PostingAccountStatePolicy {
   }
 
   private static Optional<BookkeepingPostingRejection> declaredAccountRejectionFor(
-      Set<AccountCode> requestedAccounts, Map<AccountCode, RegisteredAccount> declaredAccounts) {
+      Set<AccountCode> requestedAccounts,
+      Map<AccountCode, RegisteredAccount> declaredAccounts,
+      boolean historicalReversal) {
     Set<BookkeepingPostingRejection.AccountStateViolation> violations = new LinkedHashSet<>();
     for (AccountCode accountCode : requestedAccounts) {
       RegisteredAccount account = declaredAccounts.get(accountCode);
@@ -44,7 +47,7 @@ public final class PostingAccountStatePolicy {
         violations.add(new BookkeepingPostingRejection.UnknownAccount(accountCode));
         continue;
       }
-      if (!account.active()) {
+      if (!account.active() && !historicalReversal) {
         violations.add(new BookkeepingPostingRejection.InactiveAccount(accountCode));
         continue;
       }

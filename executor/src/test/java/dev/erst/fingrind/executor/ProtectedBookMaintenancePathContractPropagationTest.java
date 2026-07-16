@@ -7,7 +7,6 @@ import static dev.erst.fingrind.executor.ProtectedBookMaintenanceTestSupport.ser
 import static dev.erst.fingrind.executor.ProtectedBookMaintenanceTestSupport.touch;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
@@ -68,7 +67,7 @@ class ProtectedBookMaintenancePathContractPropagationTest {
     RestoreBookResult.Rejected rejected =
         assertInstanceOf(
             RestoreBookResult.Rejected.class,
-            service(store).restoreBook(book, bookKey, backup, backupKey).requireAccepted());
+            service(store).restoreBook(book, bookKey, backup, backupKey, false).requireAccepted());
 
     assertArtifactPathInvalid(
         rejected.rejection(),
@@ -93,7 +92,7 @@ class ProtectedBookMaintenancePathContractPropagationTest {
     RestoreBookResult.Rejected rejected =
         assertInstanceOf(
             RestoreBookResult.Rejected.class,
-            service(store).restoreBook(book, bookKey, backup, backupKey).requireAccepted());
+            service(store).restoreBook(book, bookKey, backup, backupKey, false).requireAccepted());
 
     assertArtifactPathInvalid(
         rejected.rejection(),
@@ -162,7 +161,7 @@ class ProtectedBookMaintenancePathContractPropagationTest {
   }
 
   @Test
-  void restoreBook_failsFastWhenTheStoreThrowsANonPathMaintenanceRejection() {
+  void restoreBook_projectsNonPathMaintenanceRejectionsWithoutRewritingThem() {
     FakeMaintenanceStore store = new FakeMaintenanceStore();
     Path book = path(tempDirectory, "book.sqlite");
     Path bookKey = restoreBookKey(book);
@@ -172,18 +171,19 @@ class ProtectedBookMaintenancePathContractPropagationTest {
         new ProtectedBookMaintenanceRejection.ArtifactBusy(
             ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE, store.normalized(backup));
 
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> service(store).restoreBook(book, bookKey, backup, backupKey));
+    RestoreBookResult.Rejected rejected =
+        assertInstanceOf(
+            RestoreBookResult.Rejected.class,
+            service(store).restoreBook(book, bookKey, backup, backupKey, false).requireAccepted());
 
-    assertTrue(
-        java.util.Objects.requireNonNull(exception.getMessage())
-            .contains("Expected one maintenance artifact-path rejection"));
+    BookMaintenanceRejection.ArtifactBusy busy =
+        assertInstanceOf(BookMaintenanceRejection.ArtifactBusy.class, rejected.rejection());
+    assertEquals(BookMaintenanceArtifactRole.BACKUP_SOURCE, busy.artifactRole());
+    assertEquals(hint(backup), busy.artifactPath());
   }
 
   @Test
-  void restoreBook_failsFastWhenReplacementStagingThrowsANonPathMaintenanceRejection() {
+  void restoreBook_projectsReplacementStagingNonPathRejectionsWithoutRewritingThem() {
     FakeMaintenanceStore store = new FakeMaintenanceStore();
     Path book = path(tempDirectory, "book.sqlite");
     Path bookKey = restoreBookKey(book);
@@ -193,25 +193,26 @@ class ProtectedBookMaintenancePathContractPropagationTest {
         new ProtectedBookMaintenanceRejection.ArtifactBusy(
             ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET, store.normalized(book));
 
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> service(store).restoreBook(book, bookKey, backup, backupKey));
+    RestoreBookResult.Rejected rejected =
+        assertInstanceOf(
+            RestoreBookResult.Rejected.class,
+            service(store).restoreBook(book, bookKey, backup, backupKey, false).requireAccepted());
 
-    assertTrue(
-        java.util.Objects.requireNonNull(exception.getMessage())
-            .contains("Expected one maintenance artifact-path rejection"));
+    BookMaintenanceRejection.ArtifactBusy busy =
+        assertInstanceOf(BookMaintenanceRejection.ArtifactBusy.class, rejected.rejection());
+    assertEquals(BookMaintenanceArtifactRole.RESTORED_TARGET, busy.artifactRole());
+    assertEquals(hint(book), busy.artifactPath());
   }
 
   private static void assertArtifactPathInvalid(
       BookMaintenanceRejection rejection,
       BookMaintenanceArtifactRole expectedRole,
-      dev.erst.fingrind.contract.runtime.PublicPathHint expectedPathHint,
+      Path expectedPath,
       BookMaintenancePathFailure expectedPathFailure) {
     BookMaintenanceRejection.ArtifactPathInvalid invalid =
         assertInstanceOf(BookMaintenanceRejection.ArtifactPathInvalid.class, rejection);
     assertEquals(expectedRole, invalid.artifactRole());
-    assertEquals(expectedPathHint, invalid.artifactPath());
+    assertEquals(expectedPath, invalid.artifactPath());
     assertEquals(expectedPathFailure, invalid.pathFailure());
   }
 

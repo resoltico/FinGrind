@@ -59,7 +59,8 @@ public final class CashFlowStatementReportModelBuilder
     }
     return new ReportModel(
         dev.erst.fingrind.contract.protocol.OperationId.CASH_FLOW_STATEMENT.wireName(),
-        "Cash Receipts And Payments",
+        ReportModelSupport.reportTitle(
+            dev.erst.fingrind.contract.protocol.OperationId.CASH_FLOW_STATEMENT),
         ReportModel.Orientation.LANDSCAPE,
         ReportModelSupport.context(
             report.bookIdentity(),

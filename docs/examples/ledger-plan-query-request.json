@@ -1,60 +1,9 @@
 {
-  "planId": "plan-query-demo-1",
+  "planId": "account-page-demo-1",
   "steps": [
-    {
-      "stepId": "ensure-book",
-      "kind": "ensure-book",
-      "ensureBook": {
-        "entityName": "Acme Studio",
-        "bookTemplateId": "OWNER_MANAGED_SERVICE",
-        "accountingBasis": "CASH",
-        "functionalCurrency": "EUR",
-        "fiscalYearStart": "01-01"
-      }
-    },
-    {
-      "stepId": "record-sale-settled",
-      "kind": "record-sale-settled",
-      "posting": {
-        "entryKind": "SALE_SETTLED",
-        "effectiveDate": "2026-04-07",
-        "cashAccountCode": "cash",
-        "revenueAccountCode": "service-revenue",
-        "amount": {
-          "currencyCode": "EUR",
-          "minorUnits": "1000"
-        },
-        "evidence": {
-          "sourceDocuments": [
-            {
-              "sourceDocumentId": "document-query-1",
-              "sourceDocumentType": "cash-receipt",
-              "documentDate": "2026-04-07"
-            }
-          ],
-          "approvals": [
-
-          ]
-        },
-        "provenance": {
-          "actorId": "agent-query-1",
-          "actorType": "AGENT",
-          "commandId": "command-query-1",
-          "idempotencyKey": "idem-query-demo-1",
-          "causationId": "cause-query-1"
-        }
-      }
-    },
     {
       "stepId": "page-accounts",
       "kind": "list-accounts",
-      "query": {
-        "limit": 1
-      }
-    },
-    {
-      "stepId": "page-postings",
-      "kind": "list-postings",
       "query": {
         "limit": 1
       }

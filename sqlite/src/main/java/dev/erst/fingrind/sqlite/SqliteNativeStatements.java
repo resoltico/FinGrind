@@ -66,7 +66,7 @@ final class SqliteNativeStatements {
                         SqliteNativeCalls.PrepareV2Call.class, sqliteApi.sqlite3PrepareV2())
                     .invoke(databaseHandle, sql, -1, statementPointer, tailPointer);
             if (resultCode != SqliteNativeResultCode.code("OK")) {
-              throw SqliteNativeErrors.failure(resultCode, sqliteApi);
+              throw SqliteNativeErrors.failure(resultCode, databaseHandle);
             }
             return resultCode;
           });

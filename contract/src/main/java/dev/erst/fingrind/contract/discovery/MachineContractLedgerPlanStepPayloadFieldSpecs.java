@@ -27,32 +27,7 @@ final class MachineContractLedgerPlanStepPayloadFieldSpecs {
   }
 
   static MachineContractFieldSpec conditionalPostingField() {
-    String description =
-        "Posting request payload for "
-            + MachineContractLedgerPlanFieldSupport.operation(OperationId.PREFLIGHT_ENTRY)
-            + ", "
-            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_SALE_SETTLED)
-            + ", "
-            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_SALE_ON_CREDIT)
-            + ", "
-            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_EXPENSE_SETTLED)
-            + ", "
-            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_EXPENSE_ON_CREDIT)
-            + ", "
-            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_RECEIPT)
-            + ", "
-            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_PAYMENT)
-            + ", "
-            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_OWNER_CONTRIBUTION)
-            + ", "
-            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_OWNER_WITHDRAWAL)
-            + ", "
-            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_OPENING_POSITION)
-            + ", "
-            + MachineContractLedgerPlanFieldSupport.operation(OperationId.RECORD_REVERSAL)
-            + ", and "
-            + MachineContractLedgerPlanFieldSupport.operation(OperationId.POST_ENTRY)
-            + " steps.";
+    String description = "Posting request payload for preflight and every posting commit step.";
     return MachineContractFieldSpec.conditional(
         ProtocolLedgerPlanFields.Step.POSTING,
         description,
@@ -82,6 +57,25 @@ final class MachineContractLedgerPlanStepPayloadFieldSpecs {
         conditionalDeclareAccountField().name(),
         conditionalDeclareAccountField().description(),
         MachineContractLedgerPlanFieldSupport.acceptedSchema(conditionalDeclareAccountField()));
+  }
+
+  static MachineContractFieldSpec conditionalDeclareTaxRegistrationField() {
+    String description =
+        "Tax registration declaration payload for "
+            + MachineContractLedgerPlanFieldSupport.operation(OperationId.DECLARE_TAX_REGISTRATION)
+            + " steps.";
+    return MachineContractFieldSpec.conditional(
+        ProtocolLedgerPlanFields.Step.DECLARE_TAX_REGISTRATION,
+        description,
+        MachineContractDeclareTaxRegistrationSchemas.declareTaxRegistrationSchemaWithoutDialect());
+  }
+
+  static MachineContractFieldSpec requiredDeclareTaxRegistrationField() {
+    return MachineContractFieldSpec.required(
+        conditionalDeclareTaxRegistrationField().name(),
+        conditionalDeclareTaxRegistrationField().description(),
+        MachineContractLedgerPlanFieldSupport.acceptedSchema(
+            conditionalDeclareTaxRegistrationField()));
   }
 
   static MachineContractFieldSpec conditionalQueryField() {

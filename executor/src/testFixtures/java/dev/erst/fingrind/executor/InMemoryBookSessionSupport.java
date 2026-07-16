@@ -5,6 +5,7 @@ import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCursor;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
@@ -60,6 +61,23 @@ final class InMemoryBookSessionSupport {
         || (effectiveDate.equals(pageCursor.effectiveDate())
             && recordedAt.equals(pageCursor.recordedAt())
             && postingId.compareTo(pageCursor.postingId().value()) < 0);
+  }
+
+  static boolean matchesAccountLedgerCursor(
+      CommittedPosting posting, Optional<AccountLedgerCursor> cursor) {
+    if (cursor.isEmpty()) {
+      return true;
+    }
+    AccountLedgerCursor pageCursor = cursor.orElseThrow();
+    LocalDate effectiveDate = posting.journalEntry().effectiveDate();
+    Instant recordedAt = posting.provenance().recordedAt();
+    String postingId = posting.postingId().value();
+    return effectiveDate.isAfter(pageCursor.effectiveDate())
+        || (effectiveDate.equals(pageCursor.effectiveDate())
+            && recordedAt.isAfter(pageCursor.recordedAt()))
+        || (effectiveDate.equals(pageCursor.effectiveDate())
+            && recordedAt.equals(pageCursor.recordedAt())
+            && postingId.compareTo(pageCursor.postingId().value()) > 0);
   }
 
   static void accumulate(Map<CurrencyUnit, Totals> totalsByCurrency, JournalLine line) {

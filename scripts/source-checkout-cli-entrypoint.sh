@@ -43,11 +43,11 @@ fg_cli_wrapper_launch_source_checkout() {
     fg_cli_wrapper_prepare_runtime_if_needed \
         "failed to prepare the source-checkout wrapper runtime from the current checkout"
     fg_cli_wrapper_verify_raw_jar \
-        "missing source-checkout wrapper JAR at ${fg_cli_wrapper_raw_jar}; run ./gradlew :cli:prepareSourceCheckoutCliRuntime"
+        "missing or invalid source-checkout wrapper JAR at ${fg_cli_wrapper_raw_jar}; run ./gradlew :cli:prepareSourceCheckoutCliRuntime"
     fg_cli_wrapper_load_runtime_manifest \
         "missing source-checkout runtime manifest at ${fg_cli_wrapper_source_checkout_runtime_manifest}; run ./gradlew :cli:prepareSourceCheckoutCliRuntime" \
         "source-checkout runtime manifest at ${fg_cli_wrapper_source_checkout_runtime_manifest} is not synchronized with the prepared runtime; rerun ./gradlew :cli:prepareSourceCheckoutCliRuntime"
-    fg_cli_wrapper_exec_java source-checkout-gradle "$@"
+    fg_cli_wrapper_exec_java source-checkout-gradle "${launcher_path}" "$@"
 }
 
 fg_cli_wrapper_launch_direct_java() {
@@ -58,9 +58,9 @@ fg_cli_wrapper_launch_direct_java() {
     fg_cli_wrapper_prepare_runtime_if_needed \
         "failed to prepare the developer direct-Java wrapper runtime from the current checkout"
     fg_cli_wrapper_verify_raw_jar \
-        "missing developer raw JAR at ${fg_cli_wrapper_raw_jar}; run ./gradlew :cli:prepareSourceCheckoutCliRuntime"
+        "missing or invalid developer raw JAR at ${fg_cli_wrapper_raw_jar}; run ./gradlew :cli:prepareSourceCheckoutCliRuntime"
     fg_cli_wrapper_load_runtime_manifest \
         "missing source-checkout runtime manifest at ${fg_cli_wrapper_source_checkout_runtime_manifest}; run ./gradlew :cli:prepareSourceCheckoutCliRuntime" \
         "source-checkout runtime manifest at ${fg_cli_wrapper_source_checkout_runtime_manifest} is not synchronized with the prepared runtime; rerun ./gradlew :cli:prepareSourceCheckoutCliRuntime"
-    fg_cli_wrapper_exec_java direct-java-invocation "$@"
+    fg_cli_wrapper_exec_java direct-java-invocation "${launcher_path}" "$@"
 }

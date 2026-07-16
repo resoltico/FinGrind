@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor.workflow;
 
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
@@ -13,6 +14,7 @@ import java.util.Objects;
 public sealed interface BookWorkflowStep
     permits BookWorkflowStep.EnsureBook,
         BookWorkflowStep.DeclareAccount,
+        BookWorkflowStep.DeclareTaxRegistration,
         BookWorkflowStep.PreflightEntry,
         BookWorkflowStep.PostEntry,
         BookWorkflowStep.InspectBook,
@@ -20,7 +22,7 @@ public sealed interface BookWorkflowStep
         BookWorkflowStep.GetPosting,
         BookWorkflowStep.ListPostings,
         BookWorkflowStep.AccountBalance,
-        BookWorkflowStep.Assert {
+        BookWorkflowAssertionStep {
   /** Stable caller-supplied step identifier. */
   BookWorkflowStepId stepId();
 
@@ -39,6 +41,16 @@ public sealed interface BookWorkflowStep
       implements BookWorkflowStep {
     /** Validates the step. */
     public DeclareAccount {
+      requireStepId(stepId);
+      Objects.requireNonNull(command, "command");
+    }
+  }
+
+  /** Declares one tax registration. */
+  record DeclareTaxRegistration(BookWorkflowStepId stepId, DeclareTaxRegistrationCommand command)
+      implements BookWorkflowStep {
+    /** Validates the step. */
+    public DeclareTaxRegistration {
       requireStepId(stepId);
       Objects.requireNonNull(command, "command");
     }
@@ -108,16 +120,6 @@ public sealed interface BookWorkflowStep
     public AccountBalance {
       requireStepId(stepId);
       Objects.requireNonNull(query, "query");
-    }
-  }
-
-  /** Evaluates one workflow assertion. */
-  record Assert(BookWorkflowStepId stepId, BookWorkflowAssertion assertion)
-      implements BookWorkflowStep {
-    /** Validates the step. */
-    public Assert {
-      requireStepId(stepId);
-      Objects.requireNonNull(assertion, "assertion");
     }
   }
 

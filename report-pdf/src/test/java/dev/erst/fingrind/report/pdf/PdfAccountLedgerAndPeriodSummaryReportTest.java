@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPagination;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.PeriodCurrencySummary;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
@@ -56,6 +57,7 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
             new EffectiveDateRange.Bounded(
                 LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
             PostingCoverage.ALL_POSTING_KINDS,
+            AccountLedgerPagination.firstPage(50),
             List.of(balance("EUR", "0.00", "0.00", "0.00", BalanceSide.ZERO)),
             ledgerEntries(72),
             List.of(balance("EUR", "3600.00", "0.00", "3600.00", BalanceSide.DEBIT)));
@@ -131,6 +133,7 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
             new EffectiveDateRange.Bounded(
                 LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
             PostingCoverage.ALL_POSTING_KINDS,
+            AccountLedgerPagination.firstPage(50),
             List.of(balance("EUR", "250.00", "0.00", "250.00", BalanceSide.DEBIT)),
             List.of(
                 new AccountLedgerEntry(
@@ -162,6 +165,7 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
             new EffectiveDateRange.Bounded(
                 LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
             PostingCoverage.ALL_POSTING_KINDS,
+            AccountLedgerPagination.firstPage(50),
             List.of(balance("EUR", "0.00", "25.00", "25.00", BalanceSide.CREDIT)),
             List.of(),
             List.of(balance("EUR", "0.00", "25.00", "25.00", BalanceSide.CREDIT)));
@@ -206,6 +210,7 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
             new EffectiveDateRange.Bounded(
                 LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
             PostingCoverage.ALL_POSTING_KINDS,
+            AccountLedgerPagination.firstPage(50),
             List.of(),
             List.of(
                 new AccountLedgerEntry(

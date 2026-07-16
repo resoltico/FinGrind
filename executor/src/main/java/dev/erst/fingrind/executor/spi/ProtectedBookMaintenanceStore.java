@@ -17,6 +17,17 @@ public interface ProtectedBookMaintenanceStore {
   /** Returns one normalized absolute path for the supplied maintenance argument. */
   Path normalize(Path path, String argumentName);
 
+  /**
+   * Reserves all absent final targets needed by one pair publication before its source is
+   * inspected.
+   */
+  PreparedPairPublication preparePairPublication(
+      Path normalizedSecretTargetPath,
+      Path normalizedBookTargetPath,
+      RestoredBookTargetPolicy bookTargetPolicy,
+      ProtectedBookMaintenanceArtifactRole bookArtifactRole,
+      ProtectedBookMaintenanceArtifactRole secretArtifactRole);
+
   /** Lists every artifact that blocks one clean live-book maintenance workflow. */
   List<Path> blockingArtifactsForBook(Path normalizedBookPath);
 
@@ -40,14 +51,38 @@ public interface ProtectedBookMaintenanceStore {
    * to the final destination yet.
    */
   MaintenanceDecision<StagedBackupPair> stageBackupPair(
-      VerifiedBook sourceBook, Path normalizedBackupFilePath, Path normalizedBackupBookKeyFilePath);
+      VerifiedBook sourceBook, PreparedPairPublication preparedPairPublication);
 
   /**
    * Stages one restored live-book pair by re-encrypting the verified backup under one new
    * destination key file before publication.
    */
   MaintenanceDecision<StagedRestoredBookPair> stageRestoredBookPair(
-      VerifiedBook sourceBook, Path normalizedBookFilePath, Path normalizedBookKeyFilePath);
+      VerifiedBook sourceBook, PreparedPairPublication preparedPairPublication);
+
+  /** Publication authority for one restored-book target path. */
+  enum RestoredBookTargetPolicy {
+    /** Publish only when the final book path remains absent through the final atomic operation. */
+    REQUIRE_ABSENT,
+
+    /** Atomically replace the book path that the caller explicitly selected for replacement. */
+    REPLACE_SELECTED
+  }
+
+  /** Holds the reservations that make one staged pair safe to publish after source verification. */
+  interface PreparedPairPublication extends AutoCloseable {
+    /** Absolute normalized final protected-book artifact path. */
+    Path bookTargetPath();
+
+    /** Absolute normalized final generated-secret path. */
+    Path secretTargetPath();
+
+    /** Final-book publication authority selected by the caller. */
+    RestoredBookTargetPolicy bookTargetPolicy();
+
+    @Override
+    void close();
+  }
 
   /**
    * Verifies that the supplied replicated book path opens with the same secret material as the

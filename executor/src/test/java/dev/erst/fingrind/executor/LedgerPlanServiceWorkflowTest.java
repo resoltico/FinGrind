@@ -22,6 +22,19 @@ import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
+import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
+import dev.erst.fingrind.contract.tax.TaxApplicationKind;
+import dev.erst.fingrind.contract.tax.TaxCode;
+import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
+import dev.erst.fingrind.contract.tax.TaxCodeName;
+import dev.erst.fingrind.contract.tax.TaxInclusionMode;
+import dev.erst.fingrind.contract.tax.TaxJurisdiction;
+import dev.erst.fingrind.contract.tax.TaxObligationFrequency;
+import dev.erst.fingrind.contract.tax.TaxRate;
+import dev.erst.fingrind.contract.tax.TaxRegistrationId;
+import dev.erst.fingrind.contract.tax.TaxRegistrationName;
+import dev.erst.fingrind.contract.tax.TaxRegistrationNumber;
 import dev.erst.fingrind.contract.workflow.LedgerAssertion;
 import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
@@ -40,6 +53,7 @@ import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import java.util.List;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests covering commit, rejection, and rollback workflows in {@link LedgerPlanService}. */
@@ -100,12 +114,157 @@ class LedgerPlanServiceWorkflowTest {
       assertTrue(
           result.journal().steps().stream()
               .allMatch(step -> step.status() == LedgerStepStatus.SUCCEEDED));
-      assertEquals(LedgerJournalKind.ENSURE_BOOK, result.journal().steps().getFirst().kind());
-      assertEquals(LedgerJournalKind.ASSERT, result.journal().steps().getLast().kind());
+      assertEquals(LedgerStepKind.ENSURE_BOOK, result.journal().steps().getFirst().kind());
+      assertEquals(LedgerStepKind.ASSERT, result.journal().steps().getLast().kind());
       assertEquals(
           LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
           result.journal().steps().getLast().detailKind());
       assertTrue(bookSession.findPosting(new PostingId("posting-1")).isPresent());
+    }
+  }
+
+  @Test
+  void execute_commitsTaxSetupAtomicallyAndRecordsTheDeclaredRegistration() {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      var result =
+          service(bookSession)
+              .execute(
+                  new LedgerPlan(
+                      planId("tax-setup"),
+                      List.of(
+                          openBookStep("ensure-book"),
+                          new LedgerStep.DeclareAccount(
+                              stepId("declare-tax-payable"),
+                              new DeclareAccountCommand(
+                                  new AccountCode("tax-payable-vat"),
+                                  new AccountName("VAT Payable"),
+                                  AccountType.LIABILITY,
+                                  financialPositionTaxonomy(
+                                      FinancialPositionLineClassification.CURRENT_LIABILITY))),
+                          new LedgerStep.DeclareAccount(
+                              stepId("declare-tax-recoverable"),
+                              new DeclareAccountCommand(
+                                  new AccountCode("tax-recoverable-vat"),
+                                  new AccountName("VAT Recoverable"),
+                                  AccountType.ASSET,
+                                  financialPositionTaxonomy(
+                                      FinancialPositionLineClassification.CURRENT_ASSET))),
+                          new LedgerStep.DeclareTaxRegistration(
+                              stepId("declare-tax-registration"), taxRegistrationCommand()))));
+
+      assertEquals(LedgerPlanStatus.SUCCEEDED, result.status());
+      assertEquals(
+          List.of(
+              LedgerStepKind.ENSURE_BOOK,
+              LedgerStepKind.DECLARE_ACCOUNT,
+              LedgerStepKind.DECLARE_ACCOUNT,
+              LedgerStepKind.DECLARE_TAX_REGISTRATION),
+          result.journal().steps().stream().map(step -> step.kind()).toList());
+      assertTrue(
+          result.journal().steps().get(3).facts().stream()
+              .anyMatch(fact -> textFact(fact, "taxRegistrationId", "vat-lv")));
+      assertTrue(
+          result.journal().steps().get(3).facts().stream()
+              .anyMatch(
+                  fact ->
+                      groupFact(
+                          fact,
+                          "taxCode",
+                          "taxCode",
+                          "vat-standard-sale",
+                          "applicationKind",
+                          "OUTPUT_SALE")));
+      assertTrue(bookSession.findTaxRegistration(new TaxRegistrationId("vat-lv")).isPresent());
+    }
+  }
+
+  @Test
+  void execute_rollsBackTaxSetupWhenTheRegistrationCannotUseTheDeclaredAccounts() {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      DeclareTaxRegistrationCommand invalidRegistration =
+          new DeclareTaxRegistrationCommand(
+              new TaxRegistrationId("vat-lv"),
+              new TaxRegistrationName("Latvia VAT"),
+              new TaxJurisdiction("LV"),
+              null,
+              new AccountCode("tax-payable-vat"),
+              new AccountCode("missing-recoverable-account"),
+              TaxObligationFrequency.MONTHLY,
+              20,
+              List.of(
+                  new TaxCodeDefinition(
+                      new TaxCode("vat-standard-sale"),
+                      new TaxCodeName("VAT Standard Sale"),
+                      new TaxRate(210_000),
+                      TaxInclusionMode.EXCLUSIVE,
+                      TaxApplicationKind.OUTPUT_SALE)));
+      var result =
+          service(bookSession)
+              .execute(
+                  new LedgerPlan(
+                      planId("tax-setup-rejected"),
+                      List.of(
+                          openBookStep("ensure-book"),
+                          new LedgerStep.DeclareAccount(
+                              stepId("declare-tax-payable"),
+                              new DeclareAccountCommand(
+                                  new AccountCode("tax-payable-vat"),
+                                  new AccountName("VAT Payable"),
+                                  AccountType.LIABILITY,
+                                  financialPositionTaxonomy(
+                                      FinancialPositionLineClassification.CURRENT_LIABILITY))),
+                          new LedgerStep.DeclareTaxRegistration(
+                              stepId("declare-tax-registration"), invalidRegistration))));
+
+      assertEquals(LedgerPlanStatus.REJECTED, result.status());
+      assertEquals(
+          "tax-definition-violations", result.journal().steps().getLast().requiredFailure().code());
+      assertFalse(bookSession.inspectBook().initialized());
+      assertTrue(bookSession.allAccounts().isEmpty());
+      assertTrue(bookSession.findTaxRegistration(new TaxRegistrationId("vat-lv")).isEmpty());
+    }
+  }
+
+  @Test
+  void execute_recordsUpdatedAndUnchangedTaxRegistrationOutcomes() {
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      var initial =
+          service(bookSession)
+              .execute(
+                  new LedgerPlan(
+                      planId("tax-registration-declared"),
+                      taxSetupSteps(taxRegistrationCommand())));
+      DeclareTaxRegistrationCommand updatedCommand =
+          taxRegistrationCommand(new TaxRegistrationNumber("LV40001234567"));
+      var updated =
+          service(bookSession)
+              .execute(
+                  new LedgerPlan(
+                      planId("tax-registration-updated"),
+                      List.of(
+                          new LedgerStep.DeclareTaxRegistration(
+                              stepId("update-tax-registration"), updatedCommand))));
+      var unchanged =
+          service(bookSession)
+              .execute(
+                  new LedgerPlan(
+                      planId("tax-registration-unchanged"),
+                      List.of(
+                          new LedgerStep.DeclareTaxRegistration(
+                              stepId("replay-tax-registration"), updatedCommand))));
+
+      assertEquals(LedgerPlanStatus.SUCCEEDED, initial.status());
+      assertEquals(LedgerPlanStatus.SUCCEEDED, updated.status());
+      assertEquals(LedgerPlanStatus.SUCCEEDED, unchanged.status());
+      assertTrue(
+          updated.journal().steps().getFirst().facts().stream()
+              .anyMatch(fact -> textFact(fact, "outcome", "updated")));
+      assertTrue(
+          updated.journal().steps().getFirst().facts().stream()
+              .anyMatch(fact -> textFact(fact, "registrationNumber", "LV40001234567")));
+      assertTrue(
+          unchanged.journal().steps().getFirst().facts().stream()
+              .anyMatch(fact -> textFact(fact, "outcome", "unchanged")));
     }
   }
 
@@ -128,6 +287,56 @@ class LedgerPlanServiceWorkflowTest {
           result.journal().steps().getFirst().requiredFailure().code());
       assertFalse(bookSession.inspectBook().initialized());
     }
+  }
+
+  private static DeclareTaxRegistrationCommand taxRegistrationCommand() {
+    return taxRegistrationCommand(null);
+  }
+
+  private static DeclareTaxRegistrationCommand taxRegistrationCommand(
+      @Nullable TaxRegistrationNumber registrationNumber) {
+    return new DeclareTaxRegistrationCommand(
+        new TaxRegistrationId("vat-lv"),
+        new TaxRegistrationName("Latvia VAT"),
+        new TaxJurisdiction("LV"),
+        registrationNumber,
+        new AccountCode("tax-payable-vat"),
+        new AccountCode("tax-recoverable-vat"),
+        TaxObligationFrequency.MONTHLY,
+        20,
+        List.of(
+            new TaxCodeDefinition(
+                new TaxCode("vat-standard-sale"),
+                new TaxCodeName("VAT Standard Sale"),
+                new TaxRate(210_000),
+                TaxInclusionMode.EXCLUSIVE,
+                TaxApplicationKind.OUTPUT_SALE),
+            new TaxCodeDefinition(
+                new TaxCode("vat-standard-expense"),
+                new TaxCodeName("VAT Standard Expense"),
+                new TaxRate(210_000),
+                TaxInclusionMode.INCLUSIVE,
+                TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE)));
+  }
+
+  private static List<LedgerStep> taxSetupSteps(DeclareTaxRegistrationCommand taxRegistration) {
+    return List.of(
+        openBookStep("ensure-book"),
+        new LedgerStep.DeclareAccount(
+            stepId("declare-tax-payable"),
+            new DeclareAccountCommand(
+                new AccountCode("tax-payable-vat"),
+                new AccountName("VAT Payable"),
+                AccountType.LIABILITY,
+                financialPositionTaxonomy(FinancialPositionLineClassification.CURRENT_LIABILITY))),
+        new LedgerStep.DeclareAccount(
+            stepId("declare-tax-recoverable"),
+            new DeclareAccountCommand(
+                new AccountCode("tax-recoverable-vat"),
+                new AccountName("VAT Recoverable"),
+                AccountType.ASSET,
+                financialPositionTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET))),
+        new LedgerStep.DeclareTaxRegistration(stepId("declare-tax-registration"), taxRegistration));
   }
 
   @Test
@@ -378,7 +587,8 @@ class LedgerPlanServiceWorkflowTest {
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(
           "unexpected-plan-failure", result.journal().steps().getLast().requiredFailure().code());
-      assertEquals(LedgerJournalKind.PLAN_BOUNDARY, result.journal().steps().getLast().kind());
+      assertEquals(
+          LedgerJournalKind.BoundaryKind.PLAN_BOUNDARY, result.journal().steps().getLast().kind());
       assertEquals(
           LedgerBoundaryCheckpoint.BEGIN, result.journal().steps().getLast().boundaryCheckpoint());
       assertTrue(
@@ -407,7 +617,8 @@ class LedgerPlanServiceWorkflowTest {
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(
           "unexpected-plan-failure", result.journal().steps().getLast().requiredFailure().code());
-      assertEquals(LedgerJournalKind.PLAN_BOUNDARY, result.journal().steps().getLast().kind());
+      assertEquals(
+          LedgerJournalKind.BoundaryKind.PLAN_BOUNDARY, result.journal().steps().getLast().kind());
       assertEquals(
           LedgerBoundaryCheckpoint.INITIALIZATION_CHECK,
           result.journal().steps().getLast().boundaryCheckpoint());
@@ -437,7 +648,8 @@ class LedgerPlanServiceWorkflowTest {
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(
           "unexpected-plan-failure", result.journal().steps().getLast().requiredFailure().code());
-      assertEquals(LedgerJournalKind.PLAN_BOUNDARY, result.journal().steps().getLast().kind());
+      assertEquals(
+          LedgerJournalKind.BoundaryKind.PLAN_BOUNDARY, result.journal().steps().getLast().kind());
       assertEquals(
           LedgerBoundaryCheckpoint.COMMIT, result.journal().steps().getLast().boundaryCheckpoint());
       assertTrue(
@@ -473,7 +685,8 @@ class LedgerPlanServiceWorkflowTest {
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(
           "unexpected-plan-failure", result.journal().steps().getLast().requiredFailure().code());
-      assertEquals(LedgerJournalKind.PLAN_BOUNDARY, result.journal().steps().getLast().kind());
+      assertEquals(
+          LedgerJournalKind.BoundaryKind.PLAN_BOUNDARY, result.journal().steps().getLast().kind());
       assertEquals(
           LedgerBoundaryCheckpoint.ROLLBACK,
           result.journal().steps().getLast().boundaryCheckpoint());
@@ -509,7 +722,8 @@ class LedgerPlanServiceWorkflowTest {
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(
           "unexpected-plan-failure", result.journal().steps().getLast().requiredFailure().code());
-      assertEquals(LedgerJournalKind.PLAN_BOUNDARY, result.journal().steps().getLast().kind());
+      assertEquals(
+          LedgerJournalKind.BoundaryKind.PLAN_BOUNDARY, result.journal().steps().getLast().kind());
       assertEquals(
           LedgerBoundaryCheckpoint.ROLLBACK,
           result.journal().steps().getLast().boundaryCheckpoint());

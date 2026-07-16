@@ -10,19 +10,10 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Stream;
 
 /** Shared closed-copy filesystem helpers for backup, restore, and rollback recovery. */
 final class SqliteBookMaintenanceFiles {
   private static final List<String> SQLITE_SIDECAR_SUFFIXES = List.of("-journal", "-wal", "-shm");
-  private static final List<StageArtifactPattern> STAGE_ARTIFACT_PATTERNS =
-      List.of(
-          new StageArtifactPattern(".backup-", ".sqlite"),
-          new StageArtifactPattern(".backup-key-", ".tmp"),
-          new StageArtifactPattern(".restore-", ".tmp"),
-          new StageArtifactPattern(".restore-key-", ".tmp"),
-          new StageArtifactPattern(".previous-", ".sqlite"),
-          new StageArtifactPattern(".previous-key-", ".tmp"));
 
   private SqliteBookMaintenanceFiles() {}
 
@@ -113,7 +104,7 @@ final class SqliteBookMaintenanceFiles {
           exception);
     } finally {
       if (stagedCopy != null) {
-        SqliteBookKeyFileGenerator.deleteQuietly(stagedCopy);
+        SqliteFileCleanup.deleteQuietly(stagedCopy);
       }
     }
   }
@@ -130,37 +121,6 @@ final class SqliteBookMaintenanceFiles {
     }
   }
 
-  static void cleanupAbandonedStageArtifacts(Path normalizedBasePath) {
-    Objects.requireNonNull(normalizedBasePath, "normalizedBasePath");
-    Path parentDirectory = normalizedBasePath.getParent();
-    if (parentDirectory == null || !Files.isDirectory(parentDirectory, LinkOption.NOFOLLOW_LINKS)) {
-      return;
-    }
-    String baseName =
-        Objects.requireNonNull(normalizedBasePath.getFileName(), "normalizedBasePath fileName")
-            .toString();
-    try (Stream<Path> siblings = Files.list(parentDirectory)) {
-      siblings
-          .filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
-          .filter(path -> matchesStageArtifact(baseName, path.getFileName().toString()))
-          .forEach(SqliteBookKeyFileGenerator::deleteQuietly);
-    } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Failed to clean abandoned SQLite maintenance stage artifacts beside "
-              + normalizedBasePath
-              + ".",
-          exception);
-    }
-  }
-
-  private static boolean matchesStageArtifact(String baseName, String siblingName) {
-    return STAGE_ARTIFACT_PATTERNS.stream()
-        .anyMatch(
-            pattern ->
-                siblingName.startsWith(baseName + pattern.infix())
-                    && siblingName.endsWith(pattern.suffix()));
-  }
-
   private static void moveReplacing(Path stagedCopy, Path normalizedTargetBookPath)
       throws IOException {
     try {
@@ -173,6 +133,4 @@ final class SqliteBookMaintenanceFiles {
       Files.move(stagedCopy, normalizedTargetBookPath, StandardCopyOption.REPLACE_EXISTING);
     }
   }
-
-  private record StageArtifactPattern(String infix, String suffix) {}
 }

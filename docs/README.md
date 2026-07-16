@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.60.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-07-11"
+updated: "2026-07-14"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -24,10 +24,12 @@ Then choose one of the user, developer, or reference tracks below.
 - [USER_QUICK_START.md](./USER_QUICK_START.md): fastest path to create one protected book, post one entry, and read one report back
 - [USER_INSTALL.md](./USER_INSTALL.md): exact public bundle names, launcher paths, checksum commands, attestation commands, and container package surface
 - [USER_CLI.md](./USER_CLI.md): packaged CLI usage, commands, report output modes, PDF artifact behavior, exit codes, and runtime requirements
+- [USER_CLI_OPERATIONAL_NOTES.md](./USER_CLI_OPERATIONAL_NOTES.md): cross-command diagnostics, protected-book handling, query and report output, runtime facts, and failure boundaries
 - [USER_CONTAINER.md](./USER_CONTAINER.md): published container image workflow, mounted workspace model, and smoke-tested command examples
 - [USER_REQUESTS.md](./USER_REQUESTS.md): posting, account-declaration, and ledger-plan JSON request shapes plus executable request schemas
 - [USER_RESPONSES.md](./USER_RESPONSES.md): success, rejection, and error envelopes plus read, report, discovery, and plan-result payloads
-- [USER_EXAMPLES.md](./USER_EXAMPLES.md): copy-paste command flows for opening books, inspecting compatibility, paging accounts, running office-worker reports, querying committed history, preflight, commit, atomic ledger plans, duplicates, stdin, and reversal templates
+- [USER_EXAMPLES.md](./USER_EXAMPLES.md): copy-paste command flows for opening books, inspecting compatibility, paging accounts, running office-worker reports, querying committed history, preflight, commit, and atomic ledger plans
+- [USER_ENTRY_WORKFLOWS.md](./USER_ENTRY_WORKFLOWS.md): copy-paste workflows for safe retries, standard-input requests, reversals, and deterministic posting or runtime failure recovery
 
 The checked-in `examples/*` files below are source-checkout fixtures for review and copying.
 Public release bundles do not include the repository's `docs/examples/` tree.
@@ -59,9 +61,9 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json): deterministic invalid cursor error example
 - [examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json): deterministic protected-book verification failure example
 - [examples/interactive-prompt-unavailable-error.txt](./examples/interactive-prompt-unavailable-error.txt): deterministic non-interactive prompt failure example
-- [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): checked-in source-copy companion for the `print-plan-template` minimal sale ledger-plan scaffold
-- [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): primary runnable `execute-plan` request for a fresh book using direct journal lines
-- [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json): sale-first `execute-plan` request that pages accounts and postings inside the plan journal
+- [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): checked-in source-copy companion for the `print-plan-template` atomic tax-setup ledger-plan scaffold
+- [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): primary runnable `execute-plan` request that establishes tax accounts and a tax registration atomically
+- [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json): follow-on `execute-plan` request that pages the initialized account registry
 - [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json): example committed ledger-plan response with `resultDetail: "full"` and a per-step journal
 - [examples/execute-plan-assertion-failed-response.json](./examples/execute-plan-assertion-failed-response.json): example failed assertion ledger-plan response with `resultDetail: "full"` and a bounded per-step journal
 - [examples/execute-plan-query-response.json](./examples/execute-plan-query-response.json): example committed ledger-plan response with `resultDetail: "full"` whose query steps retain pagination facts and structured row groups
@@ -75,12 +77,18 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DEVELOPER_AGGREGATES.md](./DEVELOPER_AGGREGATES.md): explicit bookkeeping and workflow consistency boundaries, invariants, and mutation owners
 - [ADR_ACCOUNTING_FOUNDATION.md](./ADR_ACCOUNTING_FOUNDATION.md): exact accounting-foundation target doctrine, current maturity, and hard-break implementation order for missing accounting contexts
 - [ADR_ACCOUNTING_KERNEL_SCOPE.md](./ADR_ACCOUNTING_KERNEL_SCOPE.md): current bookkeeping-kernel scope, public truth boundaries, and intentional exclusions
+- [ADR_ACCRUAL_CUTOFFS.md](./ADR_ACCRUAL_CUTOFFS.md): accrual cut-off bounded context, aggregate invariants, persistence facts, and publication boundary
+- [ADR_FIXED_ASSETS.md](./ADR_FIXED_ASSETS.md): fixed-assets context boundary, lifecycle invariants, primary reference, and publication gate
+- [ADR_FINANCING.md](./ADR_FINANCING.md): financing context boundary, lifecycle invariants, primary reference, and publication gate
+- [ADR_LATVIAN_PAYROLL.md](./ADR_LATVIAN_PAYROLL.md): Latvian monthly-payroll bounded context, statutory profile, aggregate invariants, persistence facts, and publication boundary
+- [ADR_REALIZED_FOREIGN_EXCHANGE.md](./ADR_REALIZED_FOREIGN_EXCHANGE.md): realized-FX settlement boundary, lifecycle invariants, primary reference, and publication gate
 - [ADR_INVENTORY_COSTING.md](./ADR_INVENTORY_COSTING.md): live inventory-costing doctrine, its exact pool-based truth boundary, and the constraints later inventory work must preserve
 - [DEVELOPER_DOMAIN_MODEL.md](./DEVELOPER_DOMAIN_MODEL.md): canonical bounded contexts, context map, and accounting-entity vocabulary
 - [DEVELOPER_DISTRIBUTION.md](./DEVELOPER_DISTRIBUTION.md): bundle layout, public artifact rules, and release-asset expectations
 - [DEVELOPER_UNSIGNED_DISTRIBUTION.md](./DEVELOPER_UNSIGNED_DISTRIBUTION.md): current unsigned macOS and Windows bundle policy, the quarantine and Mark-of-the-Web gates, and the checksum-plus-attestation trust model
 - [DEVELOPER_DOCUMENTATION.md](./DEVELOPER_DOCUMENTATION.md): documentation placement, maintenance, and reference-spine rules
 - [DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md): contributor Docker posture, smoke workflow, and runtime-container boundaries
+- [DEVELOPER_CI.md](./DEVELOPER_CI.md): CI gate topology and path-based devcontainer workflow policy
 - [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md): Gradle architecture, included build logic, wrapper policy, and nested Jazzer build structure
 - [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md): host Java 26 setup and wrapper-first contributor posture
 - [DEVELOPER_JAZZER.md](./DEVELOPER_JAZZER.md): Jazzer purpose, boundaries, and local-only fuzzing stance
@@ -103,7 +111,12 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 ## Reference And Schema
 
 - [DOC_00_Index.md](./DOC_00_Index.md)
+- [DOC_00_PrimarySources.md](./DOC_00_PrimarySources.md)
+- [DOC_00_BookkeepingRead.md](./DOC_00_BookkeepingRead.md)
 - [DOC_00_InventoryCosting.md](./DOC_00_InventoryCosting.md)
+- [DOC_00_OwnedLifecycleContexts.md](./DOC_00_OwnedLifecycleContexts.md)
+- [DOC_00_ProtectedBookMaintenance.md](./DOC_00_ProtectedBookMaintenance.md)
+- [DOC_00_ResponseAndWorkflow.md](./DOC_00_ResponseAndWorkflow.md)
 - [DOC_01_Core.md](./DOC_01_Core.md)
 - [DOC_01_Core_BookDoctrine.md](./DOC_01_Core_BookDoctrine.md)
 - [DOC_01_Core_LedgerAndPosting.md](./DOC_01_Core_LedgerAndPosting.md)
@@ -111,7 +124,13 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md)
 - [DOC_02_Application.md](./DOC_02_Application.md)
 - [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md)
+- [DOC_02_MachineContractAndDescriptors.md](./DOC_02_MachineContractAndDescriptors.md)
 - [DOC_02_AdministrationAndReports.md](./DOC_02_AdministrationAndReports.md)
+- [DOC_02_AccountRegistryLifecycle.md](./DOC_02_AccountRegistryLifecycle.md)
+- [DOC_02_AccrualCutoffs.md](./DOC_02_AccrualCutoffs.md)
+- [DOC_02_OwnedLifecycleContexts.md](./DOC_02_OwnedLifecycleContexts.md)
+- [DOC_02_LatvianPayroll.md](./DOC_02_LatvianPayroll.md)
+- [DOC_02_BookMaintenanceContracts.md](./DOC_02_BookMaintenanceContracts.md)
 - [DOC_02_InventoryValuation.md](./DOC_02_InventoryValuation.md)
 - [DOC_02_IncomeStatementPresentation.md](./DOC_02_IncomeStatementPresentation.md)
 - [DOC_02_SharedReportModel.md](./DOC_02_SharedReportModel.md)
@@ -138,4 +157,10 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [sqlite/SCHEMA_CORE_11_FISCAL_YEAR_CLOSE_TARGET_RULES.md](./sqlite/SCHEMA_CORE_11_FISCAL_YEAR_CLOSE_TARGET_RULES.md)
 - [sqlite/SCHEMA_CORE_12_FISCAL_YEAR_CLOSE_LINKS.md](./sqlite/SCHEMA_CORE_12_FISCAL_YEAR_CLOSE_LINKS.md)
 - [sqlite/SCHEMA_CORE_13_AUDIT_EVENTS.md](./sqlite/SCHEMA_CORE_13_AUDIT_EVENTS.md)
+- [sqlite/SCHEMA_CORE_13z_ACCRUAL_CUTOFF.md](./sqlite/SCHEMA_CORE_13z_ACCRUAL_CUTOFF.md)
+- [sqlite/SCHEMA_CORE_13za_ACCRUAL_CUTOFF_APPLICATIONS.md](./sqlite/SCHEMA_CORE_13za_ACCRUAL_CUTOFF_APPLICATIONS.md)
+- [sqlite/SCHEMA_CORE_13zb_FIXED_ASSETS.md](./sqlite/SCHEMA_CORE_13zb_FIXED_ASSETS.md)
+- [sqlite/SCHEMA_CORE_13zc_FINANCING.md](./sqlite/SCHEMA_CORE_13zc_FINANCING.md)
+- [sqlite/SCHEMA_CORE_13zd_REALIZED_FOREIGN_EXCHANGE.md](./sqlite/SCHEMA_CORE_13zd_REALIZED_FOREIGN_EXCHANGE.md)
+- [sqlite/SCHEMA_CORE_13ze_LATVIAN_PAYROLL.md](./sqlite/SCHEMA_CORE_13ze_LATVIAN_PAYROLL.md)
 - [sqlite/SCHEMA_CORE_14_INDEXES_AND_IMMUTABILITY.md](./sqlite/SCHEMA_CORE_14_INDEXES_AND_IMMUTABILITY.md)

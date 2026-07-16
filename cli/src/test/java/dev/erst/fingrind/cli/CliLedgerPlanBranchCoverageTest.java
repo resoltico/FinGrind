@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
@@ -42,6 +43,17 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
     assertCommittedPostingKind(
         OperationId.RECORD_OPENING_POSITION, LedgerStepKind.RECORD_OPENING_POSITION);
     assertCommittedPostingKind(OperationId.RECORD_REVERSAL, LedgerStepKind.RECORD_REVERSAL);
+    assertCommittedPostingKind(OperationId.RECORD_PREPAYMENT, LedgerStepKind.RECORD_PREPAYMENT);
+    assertCommittedPostingKind(
+        OperationId.RECORD_DEFERRED_REVENUE, LedgerStepKind.RECORD_DEFERRED_REVENUE);
+    assertCommittedPostingKind(
+        OperationId.RECORD_ACCRUED_EXPENSE, LedgerStepKind.RECORD_ACCRUED_EXPENSE);
+    assertCommittedPostingKind(
+        OperationId.RECORD_ACCRUAL_CUTOFF_RECOGNITION,
+        LedgerStepKind.RECORD_ACCRUAL_CUTOFF_RECOGNITION);
+    assertCommittedPostingKind(
+        OperationId.RECORD_ACCRUED_EXPENSE_SETTLEMENT,
+        LedgerStepKind.RECORD_ACCRUED_EXPENSE_SETTLEMENT);
     assertCommittedPostingKind(OperationId.POST_ENTRY, LedgerStepKind.POST_ENTRY);
   }
 
@@ -94,7 +106,7 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
   }
 
   @Test
-  void postingRequestParser_acceptsNullTopicAndDataMapperCoversDeclareAccountBranch() {
+  void postingRequestParser_acceptsNullTopicAndDataMapperCoversDeclarationBranches() {
     ObjectNode requestNode =
         (ObjectNode)
             CliJsonObjectMappers.configuredObjectMapper().readTree(validRequestJson(false));
@@ -115,6 +127,59 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
             CliLedgerStepDataPayloadMapper.ledgerStepDataPayload(declareAccountEntry));
     assertEquals("declared", payload.outcome());
     assertEquals("1110", payload.account().accountCode());
+
+    LedgerJournalEntry declareTaxRegistrationEntry =
+        new LedgerJournalEntry.Succeeded(
+            stepId("declare-tax"),
+            LedgerJournalStep.standard(LedgerStepKind.DECLARE_TAX_REGISTRATION),
+            Instant.parse("2026-05-15T10:00:00Z"),
+            Instant.parse("2026-05-15T10:00:01Z"),
+            declareTaxRegistrationFacts());
+
+    CliPlanJsonModels.TaxRegistrationDeclarationStepDataPayload taxPayload =
+        assertInstanceOf(
+            CliPlanJsonModels.TaxRegistrationDeclarationStepDataPayload.class,
+            CliLedgerStepDataPayloadMapper.ledgerStepDataPayload(declareTaxRegistrationEntry));
+    assertEquals("declared", taxPayload.outcome());
+    assertEquals("vat-lv", taxPayload.taxRegistration().taxRegistrationId());
+    assertEquals("vat-standard-sale", taxPayload.taxRegistration().taxCodes().get(0).taxCode());
+
+    LedgerJournalEntry committedEntry =
+        new LedgerJournalEntry.Succeeded(
+            stepId("record-owner-contribution"),
+            LedgerJournalStep.standard(LedgerStepKind.RECORD_OWNER_CONTRIBUTION),
+            Instant.parse("2026-05-15T10:00:02Z"),
+            Instant.parse("2026-05-15T10:00:03Z"),
+            List.of(
+                LedgerFact.text("postingId", "posting-1"),
+                LedgerFact.text("idempotencyKey", "idem-1"),
+                LedgerFact.text("effectiveDate", "2026-05-15"),
+                LedgerFact.text("recordedAt", "2026-05-15T10:00:03Z")));
+    CliPlanJsonModels.CommittedEntryStepDataPayload committedPayload =
+        assertInstanceOf(
+            CliPlanJsonModels.CommittedEntryStepDataPayload.class,
+            CliLedgerStepDataPayloadMapper.ledgerStepDataPayload(committedEntry));
+    assertEquals("posting-1", committedPayload.postingId());
+    assertEquals("2026-05-15T10:00:03Z", committedPayload.recordedAt());
+
+    String taxRegistrationText = CliPlanDetailTextRenderer.renderStepData(taxPayload);
+    assertTrue(taxRegistrationText.contains("Tax registration id"));
+    assertTrue(taxRegistrationText.contains("Tax codes"));
+    assertTrue(taxRegistrationText.contains("VAT Standard Sale"));
+
+    CliPlanJsonModels.TaxRegistrationDeclarationStepDataPayload unnumberedTaxPayload =
+        new CliPlanJsonModels.TaxRegistrationDeclarationStepDataPayload(
+            "declared",
+            CliLedgerTaxRegistrationPayloadMapper.taxRegistrationPayload(
+                declareTaxRegistrationFacts().stream()
+                    .filter(
+                        fact ->
+                            !(fact instanceof LedgerFact.Text text
+                                && "registrationNumber".equals(text.name())))
+                    .toList()));
+    String unnumberedTaxText = CliPlanDetailTextRenderer.renderStepData(unnumberedTaxPayload);
+    assertTrue(unnumberedTaxText.contains("Registration number"));
+    assertTrue(unnumberedTaxText.contains("(none)"));
   }
 
   private static void assertCommittedPostingKind(OperationId operationId, LedgerStepKind kind) {
@@ -183,5 +248,27 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
             java.util.stream.Stream.of(LedgerFact.text("outcome", "declared")),
             accountFacts().stream())
         .toList();
+  }
+
+  private static List<LedgerFact> declareTaxRegistrationFacts() {
+    return List.of(
+        LedgerFact.text("outcome", "declared"),
+        LedgerFact.text("taxRegistrationId", "vat-lv"),
+        LedgerFact.text("taxRegistrationName", "Latvia VAT"),
+        LedgerFact.text("jurisdiction", "LV"),
+        LedgerFact.text("registrationNumber", "LV40001234567"),
+        LedgerFact.text("payableAccountCode", "2100"),
+        LedgerFact.text("recoverableAccountCode", "1300"),
+        LedgerFact.text("obligationFrequency", "MONTHLY"),
+        LedgerFact.count("dueDaysAfterPeriodEnd", 20),
+        LedgerFact.group(
+            "taxCode",
+            List.of(
+                LedgerFact.text("taxCode", "vat-standard-sale"),
+                LedgerFact.text("taxCodeName", "VAT Standard Sale"),
+                LedgerFact.count("ratePartsPerMillion", 210000),
+                LedgerFact.text("inclusionMode", "EXCLUSIVE"),
+                LedgerFact.text("applicationKind", "OUTPUT_SALE"))),
+        LedgerFact.text("declaredAt", "2026-05-15T10:00:00Z"));
   }
 }

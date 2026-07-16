@@ -6,11 +6,15 @@ import java.util.List;
 public enum FinancialPositionLineClassification implements WireValue {
   CURRENT_ASSET(AccountType.ASSET, NormalBalance.DEBIT, AccountRole.AUX, false),
   INVENTORY(AccountType.ASSET, NormalBalance.DEBIT, AccountRole.INVENTORY, false),
+  PREPAID_EXPENSE(AccountType.ASSET, NormalBalance.DEBIT, AccountRole.PREPAID_EXPENSE, false),
   NONCURRENT_ASSET(AccountType.ASSET, NormalBalance.DEBIT, AccountRole.AUX, false),
   TRADE_RECEIVABLE(AccountType.ASSET, NormalBalance.DEBIT, AccountRole.RECEIVABLE, false),
   CURRENT_LIABILITY(AccountType.LIABILITY, NormalBalance.CREDIT, AccountRole.AUX, false),
   NONCURRENT_LIABILITY(AccountType.LIABILITY, NormalBalance.CREDIT, AccountRole.AUX, false),
   TRADE_PAYABLE(AccountType.LIABILITY, NormalBalance.CREDIT, AccountRole.PAYABLE, false),
+  DEFERRED_REVENUE(
+      AccountType.LIABILITY, NormalBalance.CREDIT, AccountRole.DEFERRED_REVENUE, false),
+  ACCRUED_EXPENSE(AccountType.LIABILITY, NormalBalance.CREDIT, AccountRole.ACCRUED_EXPENSE, false),
   EQUITY_CONTRIBUTION(
       AccountType.EQUITY, NormalBalance.CREDIT, AccountRole.EQUITY_CONTRIBUTED, false),
   EQUITY_WITHDRAWAL(AccountType.EQUITY, NormalBalance.DEBIT, AccountRole.EQUITY_DRAWS, false),

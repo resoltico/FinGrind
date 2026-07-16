@@ -26,6 +26,7 @@ import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.executor.spi.PostingLookupStore;
 import dev.erst.fingrind.executor.spi.StoredRequestPosting;
+import dev.erst.fingrind.executor.spi.TaxAdministrationStore;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -78,7 +79,7 @@ public final class CliFuzzWorkflowFixtures {
   }
 
   /** Creates the fixed-clock ledger-plan service used by plan fuzz harnesses and replay. */
-  public static <T extends BookAdministrationStore & AccountCatalogStore>
+  public static <T extends BookAdministrationStore & AccountCatalogStore & TaxAdministrationStore>
       LedgerPlanService ledgerPlanService(
           LedgerPlanTransaction transactionStore,
           T administrationStore,
@@ -99,6 +100,7 @@ public final class CliFuzzWorkflowFixtures {
         readStore,
         validationStore,
         commitStore,
+        administrationStore,
         postingIdGenerator,
         CliFuzzFixtures.fixedClock());
   }

@@ -10,7 +10,8 @@ public enum BookMaintenancePathFailure implements WireValue {
   PARENT_OWNER_ACCESS_REQUIRED,
   PARENT_OWNER_ONLY_REQUIRED,
   TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
-  UNSUPPORTED_SECURE_FILESYSTEM;
+  UNSUPPORTED_SECURE_FILESYSTEM,
+  ATOMIC_SECRET_PUBLICATION_UNSUPPORTED;
 
   @Override
   public String wireValue() {
@@ -21,6 +22,7 @@ public enum BookMaintenancePathFailure implements WireValue {
       case PARENT_OWNER_ONLY_REQUIRED -> "parent-owner-only-required";
       case TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE -> "target-must-be-regular-non-symlink-file";
       case UNSUPPORTED_SECURE_FILESYSTEM -> "unsupported-secure-filesystem";
+      case ATOMIC_SECRET_PUBLICATION_UNSUPPORTED -> "atomic-secret-publication-unsupported";
     };
   }
 

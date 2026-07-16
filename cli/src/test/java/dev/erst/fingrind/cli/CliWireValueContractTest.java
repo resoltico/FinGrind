@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.protocol.CapabilityStatus;
 import dev.erst.fingrind.contract.protocol.ExecutionMode;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
@@ -87,6 +88,7 @@ class CliWireValueContractTest {
         LedgerStepStatus.values(),
         SqliteCompileOptionsVerificationStatus.values(),
         ExecutionMode.values(),
+        CapabilityStatus.values(),
         LedgerAssertionKind.values(),
         LedgerStepKind.values(),
         OutputMode.values(),

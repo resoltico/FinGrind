@@ -13,6 +13,7 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCursor;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.CashFlowStatementCriteria;
@@ -66,7 +67,16 @@ final class BookReadQueryTranslator {
   static AccountLedgerCriteria fromPublished(AccountLedgerQuery query) {
     Objects.requireNonNull(query, "query");
     return new AccountLedgerCriteria(
-        query.accountCode(), query.effectiveDateRange(), query.postingCoverage());
+        query.accountCode(),
+        query.effectiveDateRange(),
+        query.postingCoverage(),
+        query.limit(),
+        query
+            .cursor()
+            .map(
+                cursor ->
+                    new AccountLedgerCursor(
+                        cursor.effectiveDate(), cursor.recordedAt(), cursor.postingId())));
   }
 
   static PeriodSummaryCriteria fromPublished(PeriodSummaryQuery query) {

@@ -1,5 +1,7 @@
 package dev.erst.fingrind.executor;
 
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
 import dev.erst.fingrind.contract.tax.TaxRegistrationId;
 import dev.erst.fingrind.core.EffectiveDateRange;
@@ -17,6 +19,8 @@ import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.executor.spi.StoredRequestPosting;
+import dev.erst.fingrind.executor.spi.TaxAdministrationStore;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
@@ -25,8 +29,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /** Shared in-memory posting-validation and commit fixture state for executor tests. */
-abstract class AbstractInMemoryPostingSession extends AbstractInMemoryBookAdministrationSession
-    implements PostingValidationStore, PostingCommitStore {
+abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifecycleSession
+    implements PostingValidationStore, PostingCommitStore, TaxAdministrationStore {
   protected final Map<TaxRegistrationId, DeclaredTaxRegistration> taxRegistrationsById =
       InMemoryBookSessionSupport.mutableMap();
   protected final Map<IdempotencyKey, StoredRequestPosting> postingsByIdempotencyKey =
@@ -41,6 +45,16 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryBookAdmini
       InMemoryBookSessionSupport.mutableMap();
   protected final PostingAcceptancePolicy postingAcceptancePolicy =
       PostingAcceptancePolicy.currentKernel();
+
+  @Override
+  protected final Map<PostingId, CommittedPosting> postingsByPostingId() {
+    return postingsByPostingId;
+  }
+
+  @Override
+  protected final Map<PostingId, CommittedPosting> reversalsByPriorPostingId() {
+    return reversalsByPriorPostingId;
+  }
 
   @Override
   public Optional<StoredRequestPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
@@ -81,6 +95,41 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryBookAdmini
     Objects.requireNonNull(taxRegistrationId, "taxRegistrationId");
     return InMemoryBookSessionSupport.withLock(
         lock, () -> Optional.ofNullable(taxRegistrationsById.get(taxRegistrationId)));
+  }
+
+  @Override
+  public DeclareTaxRegistrationResult declareTaxRegistration(
+      DeclareTaxRegistrationCommand command, Instant declaredAt) {
+    Objects.requireNonNull(command, "command");
+    Objects.requireNonNull(declaredAt, "declaredAt");
+    return InMemoryBookSessionSupport.withLock(
+        lock,
+        () -> {
+          if (!initialized) {
+            return new DeclareTaxRegistrationResult.Rejected(
+                new dev.erst.fingrind.contract.tax.TaxDeclarationRejection.BookNotInitialized());
+          }
+          DeclaredTaxRegistration existing = taxRegistrationsById.get(command.taxRegistrationId());
+          DeclaredTaxRegistration candidate =
+              new DeclaredTaxRegistration(
+                  command.taxRegistrationId(),
+                  command.taxRegistrationName(),
+                  command.jurisdiction(),
+                  command.registrationNumber(),
+                  command.payableAccountCode(),
+                  command.recoverableAccountCode(),
+                  command.obligationFrequency(),
+                  command.dueDaysAfterPeriodEnd(),
+                  command.taxCodes(),
+                  existing == null ? declaredAt : existing.declaredAt());
+          if (existing != null && existing.equals(candidate)) {
+            return new DeclareTaxRegistrationResult.Unchanged(existing);
+          }
+          taxRegistrationsById.put(candidate.taxRegistrationId(), candidate);
+          return existing == null
+              ? new DeclareTaxRegistrationResult.Declared(candidate)
+              : new DeclareTaxRegistrationResult.Updated(candidate);
+        });
   }
 
   @Override
@@ -167,5 +216,32 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryBookAdmini
             postingFact.evidence(),
             postingFact.provenance()),
         postingFact::postingId);
+  }
+
+  @Override
+  protected boolean hasPostingHistory(dev.erst.fingrind.core.AccountCode accountCode) {
+    return postingsByPostingId.values().stream()
+        .flatMap(posting -> posting.journalEntry().lines().stream())
+        .anyMatch(line -> line.accountCode().equals(accountCode));
+  }
+
+  @Override
+  protected boolean hasTaxRegistrationBinding(dev.erst.fingrind.core.AccountCode accountCode) {
+    return taxRegistrationsById.values().stream()
+        .anyMatch(
+            registration ->
+                registration.payableAccountCode().equals(accountCode)
+                    || registration.recoverableAccountCode().equals(accountCode));
+  }
+
+  @Override
+  protected boolean currentBalanceZero(dev.erst.fingrind.core.AccountCode accountCode) {
+    dev.erst.fingrind.executor.bookkeeping.RegisteredAccount account =
+        accountsByCode.get(accountCode);
+    return account == null
+        || InMemoryBookSessionSupport.balancesFor(
+                account, List.copyOf(postingsByPostingId.values()))
+            .stream()
+            .allMatch(balance -> balance.balanceSide() == dev.erst.fingrind.core.BalanceSide.ZERO);
   }
 }

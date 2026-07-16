@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.AmendAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
@@ -7,8 +8,8 @@ import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
+import dev.erst.fingrind.contract.bookkeeping.RetireAccountResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import java.nio.file.Path;
@@ -77,10 +78,8 @@ final class CliMutationResponseWriter {
   }
 
   void writeRekeyBookResult(
-      RekeyBookResult result,
-      BookAccess.PassphraseSource replacementPassphraseSource,
-      OutputMode outputMode) {
-    administrativeWriter.writeRekeyBookResult(result, replacementPassphraseSource, outputMode);
+      RekeyBookResult result, java.nio.file.Path newBookKeyFilePath, OutputMode outputMode) {
+    administrativeWriter.writeRekeyBookResult(result, newBookKeyFilePath, outputMode);
   }
 
   void writeBackupBookResult(
@@ -107,6 +106,14 @@ final class CliMutationResponseWriter {
 
   void writeDeclareAccountResult(DeclareAccountResult result, OutputMode outputMode) {
     administrativeWriter.writeDeclareAccountResult(result, outputMode);
+  }
+
+  void writeAmendAccountResult(AmendAccountResult result, OutputMode outputMode) {
+    administrativeWriter.writeAmendAccountResult(result, outputMode);
+  }
+
+  void writeRetireAccountResult(RetireAccountResult result, OutputMode outputMode) {
+    administrativeWriter.writeRetireAccountResult(result, outputMode);
   }
 
   void writeDeclareTaxRegistrationResult(

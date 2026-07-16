@@ -31,26 +31,26 @@ class SqliteStoreAdministrationMutationOperationsCoverageTest {
 
     assertEquals(
         account,
-        SqliteStoreAdministrationMutationOperations.declaredAccount(
+        SqliteStoreAccountRegistryMutationOperations.declaredAccount(
             new AccountDeclarationOutcome.Declared(account)));
     assertEquals(
         account,
-        SqliteStoreAdministrationMutationOperations.declaredAccount(
+        SqliteStoreAccountRegistryMutationOperations.declaredAccount(
             new AccountDeclarationOutcome.Reactivated(account)));
     assertEquals(
         account,
-        SqliteStoreAdministrationMutationOperations.declaredAccount(
+        SqliteStoreAccountRegistryMutationOperations.declaredAccount(
             new AccountDeclarationOutcome.Renamed(account)));
     assertEquals(
         account,
-        SqliteStoreAdministrationMutationOperations.declaredAccount(
+        SqliteStoreAccountRegistryMutationOperations.declaredAccount(
             new AccountDeclarationOutcome.Unchanged(account)));
 
     IllegalArgumentException rejected =
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                SqliteStoreAdministrationMutationOperations.declaredAccount(
+                SqliteStoreAccountRegistryMutationOperations.declaredAccount(
                     new AccountDeclarationOutcome.Rejected(
                         new BookkeepingAdministrationRejection.BookNotInitialized())));
     assertTrue(
@@ -72,22 +72,22 @@ class SqliteStoreAdministrationMutationOperationsCoverageTest {
 
     assertEquals(
         BookAuditEvent.accountDeclared(recordedAt, account.accountCode()),
-        SqliteStoreAdministrationMutationOperations.accountAuditEvent(
+        SqliteStoreAccountRegistryMutationOperations.accountAuditEvent(
             recordedAt, new AccountDeclarationOutcome.Declared(account)));
     assertEquals(
         BookAuditEvent.accountReactivated(recordedAt, account.accountCode()),
-        SqliteStoreAdministrationMutationOperations.accountAuditEvent(
+        SqliteStoreAccountRegistryMutationOperations.accountAuditEvent(
             recordedAt, new AccountDeclarationOutcome.Reactivated(account)));
     assertEquals(
         BookAuditEvent.accountRenamed(recordedAt, account.accountCode()),
-        SqliteStoreAdministrationMutationOperations.accountAuditEvent(
+        SqliteStoreAccountRegistryMutationOperations.accountAuditEvent(
             recordedAt, new AccountDeclarationOutcome.Renamed(account)));
 
     IllegalArgumentException unchanged =
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                SqliteStoreAdministrationMutationOperations.accountAuditEvent(
+                SqliteStoreAccountRegistryMutationOperations.accountAuditEvent(
                     recordedAt, new AccountDeclarationOutcome.Unchanged(account)));
     assertEquals("Unchanged account declarations do not append audit.", unchanged.getMessage());
 
@@ -95,7 +95,7 @@ class SqliteStoreAdministrationMutationOperationsCoverageTest {
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                SqliteStoreAdministrationMutationOperations.accountAuditEvent(
+                SqliteStoreAccountRegistryMutationOperations.accountAuditEvent(
                     recordedAt,
                     new AccountDeclarationOutcome.Rejected(
                         new BookkeepingAdministrationRejection.BookNotInitialized())));

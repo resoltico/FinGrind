@@ -2,14 +2,10 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.protocol.OperationId;
-import java.time.LocalDate;
 import java.util.List;
 
-/** Renders account-balance query payloads for text and CSV output modes. */
+/** Renders the human account-balance report projection. */
 final class CliAccountBalanceOutputRenderer {
-  private static final String OPERATION_ID = OperationId.ACCOUNT_BALANCE.wireName();
-  private static final String RECORD_KIND = CliCsvExportFamilies.ACCOUNT_BALANCE;
-
   private CliAccountBalanceOutputRenderer() {}
 
   static String renderText(AccountBalanceSnapshot snapshot) {
@@ -60,74 +56,6 @@ final class CliAccountBalanceOutputRenderer {
         "Account Balance",
         CliReportRenderSupport.joinSections(
             summary, balances, CliReportRenderSupport.section("Context", context)));
-  }
-
-  static String renderCsv(AccountBalanceSnapshot snapshot) {
-    return CliTextFormat.renderCsv(
-        List.of(
-            "exportFamily",
-            "rowId",
-            "parentRowId",
-            "relationKind",
-            "recordKind",
-            "accountCode",
-            "accountName",
-            "accountType",
-            "normalBalance",
-            "effectiveDateFrom",
-            "effectiveDateTo",
-            "currencyCode",
-            "debitTotal",
-            "creditTotal",
-            "netAmount",
-            "balanceSide",
-            "message"),
-        snapshot.balances().isEmpty()
-            ? List.of(
-                List.of(
-                    CliCsvExportFamilies.ACCOUNT_BALANCE,
-                    OPERATION_ID + "-empty:" + snapshot.account().accountCode().value(),
-                    "",
-                    "scope-empty",
-                    RECORD_KIND,
-                    snapshot.account().accountCode().value(),
-                    snapshot.account().accountName().value(),
-                    snapshot.account().accountType().wireValue(),
-                    snapshot.account().normalBalance().wireValue(),
-                    snapshot.effectiveDateFrom().map(LocalDate::toString).orElse(""),
-                    snapshot.effectiveDateTo().map(LocalDate::toString).orElse(""),
-                    "",
-                    "",
-                    "",
-                    "",
-                    "",
-                    CliQueryScopeText.noMatchesLabel("balances")))
-            : snapshot.balances().stream()
-                .map(
-                    balance ->
-                        List.of(
-                            CliCsvExportFamilies.ACCOUNT_BALANCE,
-                            OPERATION_ID
-                                + ":"
-                                + snapshot.account().accountCode().value()
-                                + ":"
-                                + balance.netAmount().currencyUnit().code(),
-                            "",
-                            "balance",
-                            RECORD_KIND,
-                            snapshot.account().accountCode().value(),
-                            snapshot.account().accountName().value(),
-                            snapshot.account().accountType().wireValue(),
-                            snapshot.account().normalBalance().wireValue(),
-                            snapshot.effectiveDateFrom().map(LocalDate::toString).orElse(""),
-                            snapshot.effectiveDateTo().map(LocalDate::toString).orElse(""),
-                            balance.netAmount().currencyUnit().code(),
-                            CliQueryScopeText.displayMoney(balance.debitTotal()),
-                            CliQueryScopeText.displayMoney(balance.creditTotal()),
-                            CliQueryScopeText.displayMoney(balance.netAmount()),
-                            balance.balanceSide().wireValue(),
-                            ""))
-                .toList());
   }
 
   private static List<List<String>> mergeContextRows(

@@ -3,9 +3,11 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
@@ -26,7 +28,7 @@ class CliAdministrativeMaintenanceArgumentParsingTest extends CliArgumentParsing
                   "book.key",
                   "--backup-file",
                   "backup/entity.sqlite",
-                  "--backup-key-file",
+                  "--new-backup-key-file",
                   "backup/entity.key",
                   "--output",
                   "text"
@@ -39,7 +41,7 @@ class CliAdministrativeMaintenanceArgumentParsingTest extends CliArgumentParsing
                   "restore-book",
                   "--book-file",
                   "book.sqlite",
-                  "--book-key-file",
+                  "--new-book-key-file",
                   "book.key",
                   "--backup-file",
                   "backup/entity.sqlite",
@@ -79,7 +81,7 @@ class CliAdministrativeMaintenanceArgumentParsingTest extends CliArgumentParsing
     assertEquals(OutputMode.TEXT, backupBook.outputMode());
 
     assertEquals(Path.of("book.sqlite"), restoreBook.bookFilePath());
-    assertEquals(Path.of("book.key"), restoreBook.bookKeyFilePath());
+    assertEquals(Path.of("book.key"), restoreBook.newBookKeyFilePath());
     assertEquals(Path.of("backup/entity.sqlite"), restoreBook.backupFilePath());
     assertEquals(Path.of("backup/entity.key"), restoreBook.backupKeyFilePath());
     assertEquals(OutputMode.TEXT, restoreBook.outputMode());
@@ -195,7 +197,7 @@ class CliAdministrativeMaintenanceArgumentParsingTest extends CliArgumentParsing
 
     assertEquals("--book-key-file", exception.argument());
     assertEquals(
-        "Book passphrase source arguments are accepted only when delete-rekey-rollback or restore-rekey-rollback is selected.",
+        "inspect-rekey-rollback inspects sibling rollback artifact paths without opening the protected book and therefore accepts no book passphrase source. delete-rekey-rollback and restore-rekey-rollback require a source because they act on a selected rollback artifact.",
         exception.getMessage());
   }
 
@@ -214,7 +216,7 @@ class CliAdministrativeMaintenanceArgumentParsingTest extends CliArgumentParsing
                       "book.key",
                       "--backup-file",
                       "book.sqlite",
-                      "--backup-key-file",
+                      "--new-backup-key-file",
                       "backup.key"
                     }));
     CliArgumentsException restoreCollision =
@@ -226,7 +228,7 @@ class CliAdministrativeMaintenanceArgumentParsingTest extends CliArgumentParsing
                       "restore-book",
                       "--book-file",
                       "book.sqlite",
-                      "--book-key-file",
+                      "--new-book-key-file",
                       "book.key",
                       "--backup-file",
                       "backup.sqlite",
@@ -242,5 +244,97 @@ class CliAdministrativeMaintenanceArgumentParsingTest extends CliArgumentParsing
     assertEquals(
         "--backup-file and --backup-key-file must not point to the same path.",
         restoreCollision.getMessage());
+
+    CliArgumentsException restoreNewKeyCollision =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "restore-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--new-book-key-file",
+                      "book.sqlite",
+                      "--backup-file",
+                      "backup.sqlite",
+                      "--backup-key-file",
+                      "backup.key"
+                    }));
+    assertEquals("--new-book-key-file", restoreNewKeyCollision.argument());
+    assertEquals(
+        "--book-file and --new-book-key-file must not point to the same path.",
+        restoreNewKeyCollision.getMessage());
+
+    CliArgumentsException backupSourceKeyCollision =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "backup-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--backup-file",
+                      "backup.sqlite",
+                      "--new-backup-key-file",
+                      "book.key"
+                    }));
+    assertEquals("--new-backup-key-file", backupSourceKeyCollision.argument());
+    assertEquals(
+        ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED.code(), backupSourceKeyCollision.code());
+    assertTrue(
+        java.util.Objects.requireNonNull(backupSourceKeyCollision.getMessage())
+            .contains("--book-key-file"));
+
+    CliArgumentsException restoreSourceKeyCollision =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "restore-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--new-book-key-file",
+                      "backup.key",
+                      "--backup-file",
+                      "backup.sqlite",
+                      "--backup-key-file",
+                      "backup.key"
+                    }));
+    assertEquals("--new-book-key-file", restoreSourceKeyCollision.argument());
+    assertEquals(
+        ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED.code(), restoreSourceKeyCollision.code());
+    assertTrue(
+        java.util.Objects.requireNonNull(restoreSourceKeyCollision.getMessage())
+            .contains("--backup-key-file"));
+  }
+
+  @Test
+  void parse_restoreBookRejectsDuplicateReplacementConsent() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "restore-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--new-book-key-file",
+                      "new-book.key",
+                      "--backup-file",
+                      "backup.sqlite",
+                      "--backup-key-file",
+                      "backup.key",
+                      "--replace-existing-book",
+                      "--replace-existing-book"
+                    }));
+
+    assertEquals("--replace-existing-book", exception.argument());
+    assertEquals("Duplicate argument: --replace-existing-book", exception.getMessage());
   }
 }

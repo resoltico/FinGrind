@@ -75,6 +75,15 @@ public final class BookkeepingAdministrationRejectionPublishedMapper {
               conflict.accountCode(),
               conflict.existingAccountTaxonomy(),
               conflict.requestedAccountTaxonomy());
+      case AccountRegistryLifecycleRejection.AccountNotFound missing ->
+          new dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection
+              .AccountNotFound(missing.accountCode());
+      case AccountRegistryLifecycleRejection.AccountHasDependents dependents ->
+          new dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection
+              .AccountHasDependents(dependents.accountCode(), dependents.dependencies());
+      case AccountRegistryLifecycleRejection.AccountBalanceNotZero balance ->
+          new dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection
+              .AccountBalanceNotZero(balance.accountCode());
       case BookkeepingAdministrationRejection.ParentAccountMissing conflict ->
           new BookAdministrationRejection.ParentAccountMissing(
               conflict.accountCode(), conflict.parentAccountCode());

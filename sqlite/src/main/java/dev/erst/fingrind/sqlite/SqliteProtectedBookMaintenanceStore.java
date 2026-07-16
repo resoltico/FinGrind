@@ -8,6 +8,8 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRo
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditCompensationKind;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditKind;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.PreparedPairPublication;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import dev.erst.fingrind.executor.spi.StagedRestoredBookPair;
 import java.nio.file.Files;
@@ -15,6 +17,7 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * SQLite-backed maintenance store for protected-book verification and staged artifact workflows.
@@ -24,12 +27,71 @@ public final class SqliteProtectedBookMaintenanceStore
   private final SqlitePassphraseResolver passphraseResolver;
   private final SqliteProtectedBookVerificationSupport verificationSupport;
   private final SqliteProtectedBookMaintenanceAuditSupport auditSupport;
+  private final SqliteProtectedBookPairPublicationPreparation pairPublicationPreparation;
 
   /** Creates the SQLite maintenance store with one passphrase-resolution seam. */
   public SqliteProtectedBookMaintenanceStore(SqlitePassphraseResolver passphraseResolver) {
+    this(passphraseResolver, null);
+  }
+
+  SqliteProtectedBookMaintenanceStore(
+      SqlitePassphraseResolver passphraseResolver,
+      SqliteProtectedBookPairPublicationPreparation.@Nullable InterruptedPairCompanionBookVerifier
+          interruptedPairCompanionBookVerifier) {
     this.passphraseResolver = Objects.requireNonNull(passphraseResolver, "passphraseResolver");
     this.verificationSupport = new SqliteProtectedBookVerificationSupport();
     this.auditSupport = new SqliteProtectedBookMaintenanceAuditSupport();
+    this.pairPublicationPreparation =
+        new SqliteProtectedBookPairPublicationPreparation(
+            this,
+            interruptedPairCompanionBookVerifier == null
+                ? this::opensInitializedBook
+                : interruptedPairCompanionBookVerifier);
+  }
+
+  @Override
+  public PreparedPairPublication preparePairPublication(
+      Path normalizedSecretTargetPath,
+      Path normalizedBookTargetPath,
+      RestoredBookTargetPolicy bookTargetPolicy,
+      ProtectedBookMaintenanceArtifactRole bookArtifactRole,
+      ProtectedBookMaintenanceArtifactRole secretArtifactRole) {
+    return pairPublicationPreparation.prepare(
+        normalizedSecretTargetPath,
+        normalizedBookTargetPath,
+        bookTargetPolicy,
+        bookArtifactRole,
+        secretArtifactRole);
+  }
+
+  void recoverInterruptedPairPublication(
+      Path normalizedSecretTargetPath, Path normalizedBookTargetPath) {
+    pairPublicationPreparation.recoverInterruptedPublication(
+        normalizedSecretTargetPath, normalizedBookTargetPath);
+  }
+
+  private boolean opensInitializedBook(
+      Path normalizedBookTargetPath, Path normalizedSecretTargetPath) {
+    return hasRegularBookPair(normalizedBookTargetPath, normalizedSecretTargetPath)
+        && SqliteBookKeyFile.loadDecision(normalizedSecretTargetPath)
+            .fold(
+                passphrase -> {
+                  BookVerification verification =
+                      verificationSupport.verifyResolvedBook(normalizedBookTargetPath, passphrase);
+                  if (verification instanceof VerifiedBook verifiedBook) {
+                    try (verifiedBook) {
+                      return true;
+                    }
+                  }
+                  return false;
+                },
+                rejected -> false);
+  }
+
+  static boolean hasRegularBookPair(
+      Path normalizedBookTargetPath, Path normalizedSecretTargetPath) {
+    return Files.isRegularFile(normalizedBookTargetPath, LinkOption.NOFOLLOW_LINKS)
+        && Files.isRegularFile(normalizedSecretTargetPath, LinkOption.NOFOLLOW_LINKS);
   }
 
   @Override
@@ -56,44 +118,28 @@ public final class SqliteProtectedBookMaintenanceStore
 
   @Override
   public MaintenanceDecision<StagedBackupPair> stageBackupPair(
-      VerifiedBook sourceBook,
-      Path normalizedBackupFilePath,
-      Path normalizedBackupBookKeyFilePath) {
+      VerifiedBook sourceBook, PreparedPairPublication preparedPairPublication) {
     SqliteVerifiedBook verifiedSourceBook = requireVerifiedBook(sourceBook);
-    Objects.requireNonNull(normalizedBackupFilePath, "normalizedBackupFilePath");
-    Objects.requireNonNull(normalizedBackupBookKeyFilePath, "normalizedBackupBookKeyFilePath");
-    try {
-      return SqliteProtectedBookStagingSupport.stageResolvedBackupPair(
-          verifiedSourceBook.artifactPath(),
-          normalizedBackupFilePath,
-          normalizedBackupBookKeyFilePath,
-          verifiedSourceBook.passphraseCopy(),
-          verificationSupport);
-    } catch (SqliteCallerPathContractException exception) {
-      ProtectedBookMaintenanceArtifactRole artifactRole =
-          exception.requestedPath().equals(normalizedBackupBookKeyFilePath)
-              ? ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET
-              : ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET;
-      throw maintenanceRejection(artifactRole, exception);
-    }
+    SqlitePreparedPairPublication preparedPublication =
+        requirePreparedPairPublication(preparedPairPublication);
+    return SqliteProtectedBookStagingSupport.stageResolvedBackupPair(
+        verifiedSourceBook.artifactPath(),
+        preparedPublication,
+        verifiedSourceBook.passphraseCopy(),
+        verificationSupport);
   }
 
   @Override
   public MaintenanceDecision<StagedRestoredBookPair> stageRestoredBookPair(
-      VerifiedBook sourceBook, Path normalizedBookFilePath, Path normalizedBookKeyFilePath) {
+      VerifiedBook sourceBook, PreparedPairPublication preparedPairPublication) {
     SqliteVerifiedBook verifiedSourceBook = requireVerifiedBook(sourceBook);
-    Objects.requireNonNull(normalizedBookFilePath, "normalizedBookFilePath");
-    Objects.requireNonNull(normalizedBookKeyFilePath, "normalizedBookKeyFilePath");
-    try {
-      return SqliteProtectedBookStagingSupport.stageResolvedRestoredBookPair(
-          verifiedSourceBook.artifactPath(),
-          normalizedBookFilePath,
-          normalizedBookKeyFilePath,
-          verifiedSourceBook.passphraseCopy(),
-          verificationSupport);
-    } catch (SqliteCallerPathContractException exception) {
-      throw maintenanceRejection(ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET, exception);
-    }
+    SqlitePreparedPairPublication preparedPublication =
+        requirePreparedPairPublication(preparedPairPublication);
+    return SqliteProtectedBookStagingSupport.stageResolvedRestoredBookPair(
+        verifiedSourceBook.artifactPath(),
+        preparedPublication,
+        verifiedSourceBook.passphraseCopy(),
+        verificationSupport);
   }
 
   @Override
@@ -145,11 +191,22 @@ public final class SqliteProtectedBookMaintenanceStore
           new VerificationFailure(normalizedBookPath, ProtectedBookVerificationFailure.MISSING));
     }
     try {
-      SqliteProtectedBookStagingSupport.requireRegularNonSymlinkFile(normalizedBookPath);
+      SqliteProtectedBookStagingFiles.requireRegularNonSymlinkFile(normalizedBookPath);
     } catch (SqliteCallerPathContractException exception) {
       bookPassphrase.close();
       throw maintenanceRejection(artifactRole, exception);
     }
-    return verificationSupport.verifyResolvedBook(normalizedBookPath, bookPassphrase);
+    return MaintenanceDecision.accepted(
+        verificationSupport.verifyResolvedBook(normalizedBookPath, bookPassphrase));
+  }
+
+  private static SqlitePreparedPairPublication requirePreparedPairPublication(
+      PreparedPairPublication preparedPairPublication) {
+    if (preparedPairPublication
+        instanceof SqlitePreparedPairPublication sqlitePreparedPublication) {
+      return sqlitePreparedPublication;
+    }
+    throw new IllegalArgumentException(
+        "The FinGrind SQLite maintenance store requires its own prepared pair-publication handle.");
   }
 }

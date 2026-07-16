@@ -26,10 +26,6 @@ final class SqliteCapabilitySessions {
     return new SqlitePlanExecutionCapabilitySession(store);
   }
 
-  static SqliteRekeySession rekey(SqlitePostingFactStore store) {
-    return SqliteRekeyCapabilityView.open(store);
-  }
-
   static SqlitePostingFactStore storeOf(AutoCloseable session) {
     Objects.requireNonNull(session, "session");
     if (session instanceof SqlitePostingFactStore store) {

@@ -16,6 +16,11 @@ public final class ScaffoldPlaceholders {
   public static final String APPROVAL_ID = "replace-before-commit-approval-id";
   public static final String APPROVAL_TYPE = "replace-before-commit-approval-type";
   public static final String APPROVER_ID = "replace-before-commit-approver-id";
+  public static final String TAX_REGISTRATION_ID = "replace-before-commit-tax-registration-id";
+  public static final String TAX_JURISDICTION = "<ISO-3166-alpha-2>";
+  public static final String TAX_REGISTRATION_NUMBER = "replace-before-commit-registration-number";
+  public static final String OUTPUT_TAX_CODE = "replace-before-commit-output-tax-code";
+  public static final String INPUT_TAX_CODE = "replace-before-commit-input-tax-code";
 
   private static final Set<String> RESERVED_VALUES =
       Set.of(
@@ -29,7 +34,12 @@ public final class ScaffoldPlaceholders {
           SOURCE_DOCUMENT_TYPE,
           APPROVAL_ID,
           APPROVAL_TYPE,
-          APPROVER_ID);
+          APPROVER_ID,
+          TAX_REGISTRATION_ID,
+          TAX_JURISDICTION,
+          TAX_REGISTRATION_NUMBER,
+          OUTPUT_TAX_CODE,
+          INPUT_TAX_CODE);
 
   private ScaffoldPlaceholders() {}
 

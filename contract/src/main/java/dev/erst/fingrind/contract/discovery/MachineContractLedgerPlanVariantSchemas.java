@@ -50,6 +50,11 @@ final class MachineContractLedgerPlanVariantSchemas {
       return ledgerStepSchema(
           kind, MachineContractLedgerPlanStepPayloadFieldSpecs.requiredDeclareAccountField());
     }
+    if (kind == LedgerStepKind.DECLARE_TAX_REGISTRATION) {
+      return ledgerStepSchema(
+          kind,
+          MachineContractLedgerPlanStepPayloadFieldSpecs.requiredDeclareTaxRegistrationField());
+    }
     if (kind.carriesPostingPayload()) {
       return ledgerStepSchema(
           kind, MachineContractLedgerPlanStepPayloadFieldSpecs.requiredPostingField());

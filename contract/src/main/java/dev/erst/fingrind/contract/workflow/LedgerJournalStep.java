@@ -53,7 +53,7 @@ public sealed interface LedgerJournalStep
 
     @Override
     public LedgerJournalKind kind() {
-      return LedgerJournalKind.fromWireValue(stepKind.wireValue());
+      return stepKind;
     }
 
     @Override
@@ -71,7 +71,7 @@ public sealed interface LedgerJournalStep
 
     @Override
     public LedgerJournalKind kind() {
-      return LedgerJournalKind.ASSERT;
+      return LedgerStepKind.ASSERT;
     }
   }
 
@@ -83,7 +83,7 @@ public sealed interface LedgerJournalStep
 
     @Override
     public LedgerJournalKind kind() {
-      return LedgerJournalKind.PLAN_BOUNDARY;
+      return LedgerJournalKind.BoundaryKind.PLAN_BOUNDARY;
     }
 
     @Override

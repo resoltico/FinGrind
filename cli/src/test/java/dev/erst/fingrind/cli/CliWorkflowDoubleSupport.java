@@ -15,7 +15,6 @@ import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.contract.tax.TaxObligationResult;
 import java.nio.file.Path;
 
@@ -149,7 +148,7 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
     return ContractDecision.accepted(value);
   }
 
-  protected static PublicPathHint hint(Path path) {
-    return PublicPathHint.fromPath(path);
+  protected static Path hint(Path path) {
+    return path.toAbsolutePath().normalize();
   }
 }

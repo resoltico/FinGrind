@@ -14,7 +14,6 @@ import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.executor.ProtectedBookMaintenanceService;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
@@ -49,7 +48,7 @@ class SqliteProtectedBookMaintenanceServiceTest extends SqliteNativeBridgeTestSu
           };
 
   @Test
-  void backupBook_createsOneVerifiedBackupPairAndRecordsOneInBookAuditWithoutPlaintextJournal() {
+  void backupBook_createsOneVerifiedBackupPairWithoutMutatingTheLiveBookAudit() {
     Path bookPath = tempDirectory.resolve("books").resolve("entity.sqlite");
     BookAccess liveBookAccess = bookAccess(bookPath);
     initializeBook(liveBookAccess);
@@ -68,7 +67,7 @@ class SqliteProtectedBookMaintenanceServiceTest extends SqliteNativeBridgeTestSu
     assertEquals(hint(backupBookKeyFilePath), backedUp.backupBookKeyFilePath());
     assertTrue(Files.exists(backupFilePath));
     assertTrue(Files.exists(backupBookKeyFilePath));
-    assertEquals(1, auditEventCount(liveBookAccess, "BACKUP_CREATED"));
+    assertEquals(0, auditEventCount(liveBookAccess, "BACKUP_CREATED"));
     assertEquals(
         0,
         auditEventCount(
@@ -138,7 +137,7 @@ class SqliteProtectedBookMaintenanceServiceTest extends SqliteNativeBridgeTestSu
 
     assertEquals(hint(backupFilePath), backedUp.backupFilePath());
     assertEquals(1, resolveCalls.get());
-    assertEquals(1, auditEventCount(liveBookAccess, "BACKUP_CREATED"));
+    assertEquals(0, auditEventCount(liveBookAccess, "BACKUP_CREATED"));
   }
 
   @Test
@@ -218,12 +217,13 @@ class SqliteProtectedBookMaintenanceServiceTest extends SqliteNativeBridgeTestSu
     BookAccess liveBookAccess = bookAccess(bookPath);
     initializeBook(liveBookAccess);
     Path backupBookKeyFilePath = keyFilePath(liveBookAccess);
+    Path newBookKeyFilePath = bookPath.resolveSibling("same-path.new.book-key");
 
     RestoreBookResult.Rejected rejected =
         assertInstanceOf(
             RestoreBookResult.Rejected.class,
             maintenanceService()
-                .restoreBook(bookPath, keyFilePath(liveBookAccess), bookPath, backupBookKeyFilePath)
+                .restoreBook(bookPath, newBookKeyFilePath, bookPath, backupBookKeyFilePath, true)
                 .requireAccepted());
 
     BookMaintenanceRejection.BackupSourceMatchesLiveBook conflict =
@@ -262,7 +262,11 @@ class SqliteProtectedBookMaintenanceServiceTest extends SqliteNativeBridgeTestSu
             RestoreBookResult.Restored.class,
             maintenanceService()
                 .restoreBook(
-                    restoredBookPath, restoredBookKeyPath, backupFilePath, backupBookKeyFilePath)
+                    restoredBookPath,
+                    restoredBookKeyPath,
+                    backupFilePath,
+                    backupBookKeyFilePath,
+                    false)
                 .requireAccepted());
 
     assertEquals(hint(restoredBookPath), restored.bookFilePath());
@@ -291,7 +295,11 @@ class SqliteProtectedBookMaintenanceServiceTest extends SqliteNativeBridgeTestSu
             RestoreBookResult.Restored.class,
             maintenanceService()
                 .restoreBook(
-                    restoredBookPath, restoredBookKeyPath, backupFilePath, backupBookKeyFilePath)
+                    restoredBookPath,
+                    restoredBookKeyPath,
+                    backupFilePath,
+                    backupBookKeyFilePath,
+                    false)
                 .requireAccepted());
 
     assertEquals(hint(restoredBookPath), restored.bookFilePath());
@@ -348,7 +356,7 @@ class SqliteProtectedBookMaintenanceServiceTest extends SqliteNativeBridgeTestSu
           org.junit.jupiter.api.Assertions.assertThrows(
               IllegalStateException.class,
               () ->
-                  SqliteProtectedBookStagingSupport.ensureSecureBackupKeyFileParentDirectory(
+                  SqliteProtectedBookStagingFiles.ensureSecureBackupKeyFileParentDirectory(
                       nestedKeyPath));
 
       assertTrue(
@@ -489,8 +497,8 @@ class SqliteProtectedBookMaintenanceServiceTest extends SqliteNativeBridgeTestSu
         FIXED_CLOCK, new SqliteProtectedBookMaintenanceStore(passphraseResolver));
   }
 
-  private static PublicPathHint hint(Path path) {
-    return PublicPathHint.fromPath(path);
+  private static Path hint(Path path) {
+    return path.toAbsolutePath().normalize();
   }
 
   private static ProtectedBookAccess localAccess(BookAccess bookAccess) {

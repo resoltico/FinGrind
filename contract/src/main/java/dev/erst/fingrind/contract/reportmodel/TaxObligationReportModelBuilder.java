@@ -21,7 +21,8 @@ public final class TaxObligationReportModelBuilder
   public static ReportModel buildModel(TaxObligationReport report) {
     return new ReportModel(
         dev.erst.fingrind.contract.protocol.OperationId.TAX_OBLIGATION.wireName(),
-        "Tax Obligation",
+        ReportModelSupport.reportTitle(
+            dev.erst.fingrind.contract.protocol.OperationId.TAX_OBLIGATION),
         ReportModel.Orientation.LANDSCAPE,
         ReportModelSupport.taxContext(
             report.bookIdentity(),

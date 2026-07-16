@@ -1,19 +1,14 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
-import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
-import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementQuery;
-import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
-import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
-import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffScheduleQuery;
+import dev.erst.fingrind.contract.bookkeeping.FixedAssetRegisterQuery;
 import dev.erst.fingrind.contract.bookkeeping.InventoryValuationQuery;
-import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
-import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.LatvianPayrollRegisterQuery;
 import dev.erst.fingrind.contract.reportmodel.ReportModel;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
-import dev.erst.fingrind.contract.tax.TaxObligationQuery;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.BiConsumer;
@@ -23,76 +18,73 @@ import java.util.function.Supplier;
 import java.util.function.ToIntFunction;
 import org.jspecify.annotations.Nullable;
 
-/** Executes reporting CLI commands and exports optional PDF artifacts. */
+/** Executes configured report handlers with uniform prompting, rendering, and PDF export. */
 final class CliReportCommandExecutor {
   private final CliReportCommandCatalog handlers;
   private final CliFailureResponseWriter failureWriter;
   private final CliPdfReportExporter pdfReportExporter;
+  private final Clock clock;
 
   CliReportCommandExecutor(
       CliReportResponseWriter responseWriter,
       CliFailureResponseWriter failureWriter,
       CliBookReadWorkflow readWorkflow,
-      CliPdfReportExporter pdfReportExporter) {
+      CliPdfReportExporter pdfReportExporter,
+      Clock clock) {
     CliReportResponseWriter requiredResponseWriter =
         Objects.requireNonNull(responseWriter, "responseWriter");
     CliBookReadWorkflow requiredReadWorkflow = Objects.requireNonNull(readWorkflow, "readWorkflow");
     this.handlers = new CliReportCommandCatalog(requiredReadWorkflow, requiredResponseWriter);
     this.failureWriter = Objects.requireNonNull(failureWriter, "failureWriter");
     this.pdfReportExporter = Objects.requireNonNull(pdfReportExporter, "pdfReportExporter");
+    this.clock = Objects.requireNonNull(clock, "clock");
   }
 
-  int runAccountBalanceCommand(
-      BookAccess bookAccess, AccountBalanceQuery query, CliReportOutput output) {
-    return runConfiguredReportCommand(bookAccess, query, output, handlers.accountBalance());
-  }
-
-  int runTrialBalanceCommand(
-      BookAccess bookAccess, TrialBalanceQuery query, CliReportOutput output) {
-    return runConfiguredReportCommand(bookAccess, query, output, handlers.trialBalance());
-  }
-
-  int runAccountLedgerCommand(
-      BookAccess bookAccess, AccountLedgerQuery query, CliReportOutput output) {
-    return runConfiguredReportCommand(bookAccess, query, output, handlers.accountLedger());
-  }
-
-  int runPeriodSummaryCommand(
-      BookAccess bookAccess, PeriodSummaryQuery query, CliReportOutput output) {
-    return runConfiguredReportCommand(bookAccess, query, output, handlers.periodSummary());
-  }
-
-  int runFinancialPositionCommand(
-      BookAccess bookAccess, FinancialPositionQuery query, CliReportOutput output) {
-    return runConfiguredReportCommand(bookAccess, query, output, handlers.financialPosition());
-  }
-
-  int runIncomeStatementCommand(
-      BookAccess bookAccess, IncomeStatementQuery query, CliReportOutput output) {
-    return runConfiguredReportCommand(bookAccess, query, output, handlers.incomeStatement());
+  CliReportCommandCatalog handlers() {
+    return handlers;
   }
 
   int runInventoryValuationCommand(
       BookAccess bookAccess, InventoryValuationQuery query, CliReportOutput output) {
-    return runConfiguredReportCommand(bookAccess, query, output, handlers.inventoryValuation());
+    return runConfiguredReportCommand(
+        bookAccess,
+        query,
+        output,
+        CliOperationalReportCommandHandlers.inventoryValuation(
+            handlers.readWorkflow(), handlers.responseWriter()));
   }
 
-  int runCashFlowStatementCommand(
-      BookAccess bookAccess, CashFlowStatementQuery query, CliReportOutput output) {
-    return runConfiguredReportCommand(bookAccess, query, output, handlers.cashFlowStatement());
+  int runAccrualCutoffScheduleCommand(
+      BookAccess bookAccess, AccrualCutoffScheduleQuery query, CliReportOutput output) {
+    return runConfiguredReportCommand(
+        bookAccess,
+        query,
+        output,
+        CliOperationalReportCommandHandlers.accrualCutoffSchedule(
+            handlers.readWorkflow(), handlers.responseWriter()));
   }
 
-  int runChangesInEquityCommand(
-      BookAccess bookAccess, ChangesInEquityQuery query, CliReportOutput output) {
-    return runConfiguredReportCommand(bookAccess, query, output, handlers.changesInEquity());
+  int runFixedAssetRegisterCommand(
+      BookAccess bookAccess, FixedAssetRegisterQuery query, CliReportOutput output) {
+    return runConfiguredReportCommand(
+        bookAccess,
+        query,
+        output,
+        CliOperationalReportCommandHandlers.fixedAssetRegister(
+            handlers.readWorkflow(), handlers.responseWriter()));
   }
 
-  int runTaxObligationCommand(
-      BookAccess bookAccess, TaxObligationQuery query, CliReportOutput output) {
-    return runConfiguredReportCommand(bookAccess, query, output, handlers.taxObligation());
+  int runLatvianPayrollRegisterCommand(
+      BookAccess bookAccess, LatvianPayrollRegisterQuery query, CliReportOutput output) {
+    return runConfiguredReportCommand(
+        bookAccess,
+        query,
+        output,
+        CliOperationalReportCommandHandlers.latvianPayrollRegister(
+            handlers.readWorkflow(), handlers.responseWriter()));
   }
 
-  private <QUERY, RESULT, REPORTED> int runConfiguredReportCommand(
+  <QUERY, RESULT, REPORTED> int runConfiguredReportCommand(
       BookAccess bookAccess,
       QUERY query,
       CliReportOutput output,
@@ -122,7 +114,7 @@ final class CliReportCommandExecutor {
         result ->
             exportReportedResult(result, output.pdfOutPath(), reportedValue, reportModelBuilder),
         (result, exportedArtifactPath) ->
-            writeResult.write(result, output.outputMode(), exportedArtifactPath),
+            writeResult.write(result, output.outputMode(), exportedArtifactPath, clock.instant()),
         successExitCode);
   }
 

@@ -9,7 +9,6 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.RequestFingerprint;
 import dev.erst.fingrind.executor.bookkeeping.ClosedFiscalYearRecord;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.SweptInterimResult;
 import java.time.Instant;
 import java.util.List;
@@ -54,54 +53,6 @@ final class SqliteMutationWriter {
         activeDatabase.prepare(SqlitePostingSql.INSERT_BOOK_META_VALUE)) {
       statement.bindText(1, metaKey);
       statement.bindText(2, value);
-      statement.step();
-    }
-  }
-
-  static void upsertAccount(SqliteNativeDatabase activeDatabase, RegisteredAccount account) {
-    try (SqliteNativeStatement statement =
-        activeDatabase.prepare(SqlitePostingSql.UPSERT_ACCOUNT)) {
-      statement.bindText(1, account.accountCode().value());
-      statement.bindText(2, account.accountName().value());
-      statement.bindText(3, account.accountType().wireValue());
-      statement.bindText(4, account.accountTaxonomy().nodeKind().wireValue());
-      bindOptionalText(
-          statement,
-          5,
-          account.accountTaxonomy().parentAccountCode().map(AccountCode::value).orElse(null));
-      bindOptionalText(
-          statement,
-          6,
-          account
-              .accountTaxonomy()
-              .financialPositionLineClassification()
-              .map(value -> value.wireValue())
-              .orElse(null));
-      bindOptionalText(
-          statement,
-          7,
-          account
-              .accountTaxonomy()
-              .cashFlowAssetClassification()
-              .map(value -> value.wireValue())
-              .orElse(null));
-      bindOptionalText(
-          statement,
-          8,
-          account
-              .accountTaxonomy()
-              .profitAndLossLineClassification()
-              .map(value -> value.wireValue())
-              .orElse(null));
-      bindOptionalText(
-          statement, 9, account.unitOfMeasure() == null ? null : account.unitOfMeasure().token());
-      if (account.unitOfMeasure() == null) {
-        statement.bindNull(10);
-      } else {
-        statement.bindInt(10, account.unitOfMeasure().quantityScale());
-      }
-      statement.bindInt(11, Boolean.compare(account.active(), false));
-      statement.bindText(12, CanonicalTemporalText.formatUtcInstant(account.declaredAt()));
       statement.step();
     }
   }

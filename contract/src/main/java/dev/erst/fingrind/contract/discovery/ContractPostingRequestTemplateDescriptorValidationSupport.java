@@ -1,13 +1,19 @@
 package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.discovery.ContractFinancingTemplates.FinancingTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractFixedAssetTemplates.FixedAssetTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractLatvianPayrollTemplates.MonthlyPayrollTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractLatvianPayrollTemplates.PayrollSettlementTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractRealizedForeignExchangeTemplates.RealizedForeignExchangeTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractReversalTemplates.ReversalTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractSettlementTemplates.SettlementAdjunctTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractSettlementTemplates.TaxSelectionTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.AccountingEvidenceTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.JournalLineTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.OpeningBalanceTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.ProvenanceTemplateDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractTemplates.SettlementAdjunctTemplateDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractTemplates.TaxSelectionTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractTemplates.RecognitionIntervalTemplateDescriptor;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
@@ -18,118 +24,120 @@ final class ContractPostingRequestTemplateDescriptorValidationSupport {
   private ContractPostingRequestTemplateDescriptorValidationSupport() {}
 
   static ValidatedPostingRequestTemplateDescriptor validate(PostingRequestTemplateDraft draft) {
-    BookkeepingEntryKind entryKind =
-        ContractDescriptorValidation.requireValue(draft.entryKind(), "entryKind");
-    String effectiveDate =
-        ContractDescriptorValidation.requireText(draft.effectiveDate(), "effectiveDate");
-    String cashAccountCode =
-        ContractDescriptorValidation.requireOptionalText(
-            draft.cashAccountCode(), "cashAccountCode");
-    String receivableAccountCode =
-        ContractDescriptorValidation.requireOptionalText(
-            draft.receivableAccountCode(), "receivableAccountCode");
-    String payableAccountCode =
-        ContractDescriptorValidation.requireOptionalText(
-            draft.payableAccountCode(), "payableAccountCode");
-    String revenueAccountCode =
-        ContractDescriptorValidation.requireOptionalText(
-            draft.revenueAccountCode(), "revenueAccountCode");
-    String inventoryAccountCode =
-        ContractDescriptorValidation.requireOptionalText(
-            draft.inventoryAccountCode(), "inventoryAccountCode");
-    String expenseAccountCode =
-        ContractDescriptorValidation.requireOptionalText(
-            draft.expenseAccountCode(), "expenseAccountCode");
-    String writeDownLossAccountCode =
-        ContractDescriptorValidation.requireOptionalText(
-            draft.writeDownLossAccountCode(), "writeDownLossAccountCode");
-    String shrinkageLossAccountCode =
-        ContractDescriptorValidation.requireOptionalText(
-            draft.shrinkageLossAccountCode(), "shrinkageLossAccountCode");
-    String countGainAccountCode =
-        ContractDescriptorValidation.requireOptionalText(
-            draft.countGainAccountCode(), "countGainAccountCode");
-    String equityAccountCode =
-        ContractDescriptorValidation.requireOptionalText(
-            draft.equityAccountCode(), "equityAccountCode");
-    MonetaryAmount amount =
-        ContractDescriptorValidation.requireOptionalValue(draft.amount(), "amount");
-    String quantity =
-        ContractDescriptorValidation.requireOptionalText(draft.quantity(), "quantity");
-    MonetaryAmount unitCost =
-        ContractDescriptorValidation.requireOptionalValue(draft.unitCost(), "unitCost");
-    InventoryReliefTemplateDescriptor inventoryRelief =
-        ContractDescriptorValidation.requireOptionalValue(
-            draft.inventoryRelief(), "inventoryRelief");
-    SettlementAdjunctTemplateDescriptor settlementAdjunct =
-        ContractDescriptorValidation.requireOptionalValue(
-            draft.settlementAdjunct(), "settlementAdjunct");
-    ForeignExchangeTemplateDescriptor foreignExchange =
-        ContractDescriptorValidation.requireOptionalValue(
-            draft.foreignExchange(), "foreignExchange");
-    TaxSelectionTemplateDescriptor tax =
-        ContractDescriptorValidation.requireOptionalValue(draft.tax(), "tax");
-    List<JournalLineTemplateDescriptor> lines =
-        draft.lines() == null
-            ? null
-            : ContractDescriptorValidation.copyList(draft.lines(), "lines");
-    List<OpeningBalanceTemplateDescriptor> openingBalances =
-        draft.openingBalances() == null
-            ? null
-            : ContractDescriptorValidation.copyList(draft.openingBalances(), "openingBalances");
-    AccountingEvidenceTemplateDescriptor evidence =
-        ContractDescriptorValidation.requireValue(draft.evidence(), "evidence");
-    ProvenanceTemplateDescriptor provenance =
-        ContractDescriptorValidation.requireValue(draft.provenance(), "provenance");
-    ReversalTemplateDescriptor reversal = draft.reversal();
+    ValidatedTemplateDraft validatedDraft = validateDraft(draft);
     ContractPostingRequestTemplateValidators.validate(
-        entryKind,
+        validatedDraft.entryKind(), validatedDraft.fields(), validatedDraft.reversal());
+    return validatedDraft.descriptor();
+  }
+
+  private static ValidatedTemplateDraft validateDraft(PostingRequestTemplateDraft draft) {
+    return new ValidatedTemplateDraft(
+        ContractDescriptorValidation.requireValue(draft.entryKind(), "entryKind"),
+        ContractDescriptorValidation.requireText(draft.effectiveDate(), "effectiveDate"),
         new ContractPostingRequestTemplateValidators.PostingTemplateFields(
-            cashAccountCode,
-            receivableAccountCode,
-            payableAccountCode,
-            revenueAccountCode,
-            inventoryAccountCode,
-            expenseAccountCode,
-            writeDownLossAccountCode,
-            shrinkageLossAccountCode,
-            countGainAccountCode,
-            equityAccountCode,
-            amount,
-            quantity,
-            unitCost,
-            inventoryRelief,
-            settlementAdjunct,
-            foreignExchange,
-            tax,
-            lines,
-            openingBalances),
-        reversal);
-    return new ValidatedPostingRequestTemplateDescriptor(
-        entryKind,
-        effectiveDate,
-        cashAccountCode,
-        receivableAccountCode,
-        payableAccountCode,
-        revenueAccountCode,
-        inventoryAccountCode,
-        expenseAccountCode,
-        writeDownLossAccountCode,
-        shrinkageLossAccountCode,
-        countGainAccountCode,
-        equityAccountCode,
-        amount,
-        quantity,
-        unitCost,
-        inventoryRelief,
-        settlementAdjunct,
-        foreignExchange,
-        tax,
-        lines,
-        openingBalances,
-        evidence,
-        provenance,
-        reversal);
+            ContractDescriptorValidation.requireOptionalText(
+                draft.cashAccountCode(), "cashAccountCode"),
+            ContractDescriptorValidation.requireOptionalText(
+                draft.receivableAccountCode(), "receivableAccountCode"),
+            ContractDescriptorValidation.requireOptionalText(
+                draft.payableAccountCode(), "payableAccountCode"),
+            ContractDescriptorValidation.requireOptionalText(
+                draft.revenueAccountCode(), "revenueAccountCode"),
+            ContractDescriptorValidation.requireOptionalText(
+                draft.inventoryAccountCode(), "inventoryAccountCode"),
+            ContractDescriptorValidation.requireOptionalText(
+                draft.expenseAccountCode(), "expenseAccountCode"),
+            ContractDescriptorValidation.requireOptionalText(
+                draft.writeDownLossAccountCode(), "writeDownLossAccountCode"),
+            ContractDescriptorValidation.requireOptionalText(
+                draft.shrinkageLossAccountCode(), "shrinkageLossAccountCode"),
+            ContractDescriptorValidation.requireOptionalText(
+                draft.countGainAccountCode(), "countGainAccountCode"),
+            ContractDescriptorValidation.requireOptionalText(
+                draft.equityAccountCode(), "equityAccountCode"),
+            ContractDescriptorValidation.requireOptionalValue(draft.amount(), "amount"),
+            ContractDescriptorValidation.requireOptionalText(draft.quantity(), "quantity"),
+            ContractDescriptorValidation.requireOptionalValue(draft.unitCost(), "unitCost"),
+            ContractDescriptorValidation.requireOptionalValue(
+                draft.inventoryRelief(), "inventoryRelief"),
+            ContractDescriptorValidation.requireOptionalValue(
+                draft.settlementAdjunct(), "settlementAdjunct"),
+            ContractDescriptorValidation.requireOptionalValue(
+                draft.foreignExchange(), "foreignExchange"),
+            ContractDescriptorValidation.requireOptionalValue(draft.tax(), "tax"),
+            copyOptionalList(draft.lines(), "lines"),
+            copyOptionalList(draft.openingBalances(), "openingBalances"),
+            ContractDescriptorValidation.requireOptionalText(
+                draft.accrualCutoffId(), "accrualCutoffId"),
+            ContractDescriptorValidation.requireOptionalText(
+                draft.prepaymentAssetAccountCode(), "prepaymentAssetAccountCode"),
+            ContractDescriptorValidation.requireOptionalText(
+                draft.deferredRevenueAccountCode(), "deferredRevenueAccountCode"),
+            ContractDescriptorValidation.requireOptionalText(
+                draft.accruedExpenseLiabilityAccountCode(), "accruedExpenseLiabilityAccountCode"),
+            ContractDescriptorValidation.requireOptionalValue(
+                draft.recognitionInterval(), "recognitionInterval"),
+            ContractDescriptorValidation.requireOptionalValue(
+                draft.latvianMonthlyPayroll(), "latvianMonthlyPayroll"),
+            ContractDescriptorValidation.requireOptionalValue(
+                draft.latvianPayrollSettlement(), "latvianPayrollSettlement"),
+            ContractDescriptorValidation.requireOptionalValue(draft.fixedAsset(), "fixedAsset"),
+            ContractDescriptorValidation.requireOptionalValue(draft.financing(), "financing"),
+            ContractDescriptorValidation.requireOptionalValue(
+                draft.realizedForeignExchange(), "realizedForeignExchange")),
+        ContractDescriptorValidation.requireValue(draft.evidence(), "evidence"),
+        ContractDescriptorValidation.requireValue(draft.provenance(), "provenance"),
+        draft.reversal());
+  }
+
+  private static <T> @Nullable List<T> copyOptionalList(@Nullable List<T> values, String name) {
+    return values == null ? null : ContractDescriptorValidation.copyList(values, name);
+  }
+
+  private record ValidatedTemplateDraft(
+      BookkeepingEntryKind entryKind,
+      String effectiveDate,
+      ContractPostingRequestTemplateValidators.PostingTemplateFields fields,
+      AccountingEvidenceTemplateDescriptor evidence,
+      ProvenanceTemplateDescriptor provenance,
+      @Nullable ReversalTemplateDescriptor reversal) {
+    private ValidatedPostingRequestTemplateDescriptor descriptor() {
+      return new ValidatedPostingRequestTemplateDescriptor(
+          entryKind,
+          effectiveDate,
+          fields.cashAccountCode(),
+          fields.receivableAccountCode(),
+          fields.payableAccountCode(),
+          fields.revenueAccountCode(),
+          fields.inventoryAccountCode(),
+          fields.expenseAccountCode(),
+          fields.writeDownLossAccountCode(),
+          fields.shrinkageLossAccountCode(),
+          fields.countGainAccountCode(),
+          fields.equityAccountCode(),
+          fields.amount(),
+          fields.quantity(),
+          fields.unitCost(),
+          fields.inventoryRelief(),
+          fields.settlementAdjunct(),
+          fields.foreignExchange(),
+          fields.tax(),
+          fields.lines(),
+          fields.openingBalances(),
+          evidence,
+          provenance,
+          reversal,
+          fields.accrualCutoffId(),
+          fields.prepaymentAssetAccountCode(),
+          fields.deferredRevenueAccountCode(),
+          fields.accruedExpenseLiabilityAccountCode(),
+          fields.recognitionInterval(),
+          fields.latvianMonthlyPayroll(),
+          fields.latvianPayrollSettlement(),
+          fields.fixedAsset(),
+          fields.financing(),
+          fields.realizedForeignExchange());
+    }
   }
 
   record ValidatedPostingRequestTemplateDescriptor(
@@ -156,7 +164,17 @@ final class ContractPostingRequestTemplateDescriptorValidationSupport {
       @Nullable List<OpeningBalanceTemplateDescriptor> openingBalances,
       AccountingEvidenceTemplateDescriptor evidence,
       ProvenanceTemplateDescriptor provenance,
-      @Nullable ReversalTemplateDescriptor reversal) {}
+      @Nullable ReversalTemplateDescriptor reversal,
+      @Nullable String accrualCutoffId,
+      @Nullable String prepaymentAssetAccountCode,
+      @Nullable String deferredRevenueAccountCode,
+      @Nullable String accruedExpenseLiabilityAccountCode,
+      @Nullable RecognitionIntervalTemplateDescriptor recognitionInterval,
+      @Nullable MonthlyPayrollTemplateDescriptor latvianMonthlyPayroll,
+      @Nullable PayrollSettlementTemplateDescriptor latvianPayrollSettlement,
+      @Nullable FixedAssetTemplateDescriptor fixedAsset,
+      @Nullable FinancingTemplateDescriptor financing,
+      @Nullable RealizedForeignExchangeTemplateDescriptor realizedForeignExchange) {}
 
   record PostingRequestTemplateDraft(
       BookkeepingEntryKind entryKind,
@@ -182,5 +200,15 @@ final class ContractPostingRequestTemplateDescriptorValidationSupport {
       @Nullable List<OpeningBalanceTemplateDescriptor> openingBalances,
       AccountingEvidenceTemplateDescriptor evidence,
       ProvenanceTemplateDescriptor provenance,
-      @Nullable ReversalTemplateDescriptor reversal) {}
+      @Nullable ReversalTemplateDescriptor reversal,
+      @Nullable String accrualCutoffId,
+      @Nullable String prepaymentAssetAccountCode,
+      @Nullable String deferredRevenueAccountCode,
+      @Nullable String accruedExpenseLiabilityAccountCode,
+      @Nullable RecognitionIntervalTemplateDescriptor recognitionInterval,
+      @Nullable MonthlyPayrollTemplateDescriptor latvianMonthlyPayroll,
+      @Nullable PayrollSettlementTemplateDescriptor latvianPayrollSettlement,
+      @Nullable FixedAssetTemplateDescriptor fixedAsset,
+      @Nullable FinancingTemplateDescriptor financing,
+      @Nullable RealizedForeignExchangeTemplateDescriptor realizedForeignExchange) {}
 }

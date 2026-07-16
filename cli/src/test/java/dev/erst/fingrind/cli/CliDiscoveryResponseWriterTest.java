@@ -273,7 +273,7 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
         ProtocolArtifactOutput.bookKeyFileFormat(),
         json.path("artifacts").get(0).path("format").stringValue());
     assertEquals(
-        CliPublicPaths.redactedValue(Path.of("secrets").resolve("entity.book-key")),
+        CliPublicPaths.absoluteValue(Path.of("secrets").resolve("entity.book-key")),
         json.path("artifacts").get(0).path("path").stringValue());
     assertEquals("base64url-no-padding", json.path("payload").path("encoding").stringValue());
     assertEquals(256, json.path("payload").path("entropyBits").asInt());

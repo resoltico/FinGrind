@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.60.0"
 domain: DEVELOPER_SECURITY
-updated: "2026-07-11"
+updated: "2026-07-12"
 route:
   keywords: [fingrind, security, threat-boundary, protected-book, sqlite3mc, key-lifecycle, runtime-provenance, ciphertext, passphrase, compile-options]
   questions: ["what is the fingrind security model", "what does protected-book-verification-failed mean", "what security boundary does fingrind promise", "how does fingrind handle passphrases and sqlite runtime identity"]
@@ -46,7 +46,7 @@ What FinGrind protects at rest:
 What FinGrind does not protect automatically:
 - decoded query results in process memory
 - the durable session-scoped passphrase copy that remains in memory until the owning SQLite
-  session closes or rotates to a replacement secret
+  session closes
 - short-lived working passphrase copies between native handoff and best-effort heap overwrite
 - any heap-resident secret copies the JVM GC, heap dump tooling, or crash handling may preserve
   beyond the specific arrays FinGrind overwrites
@@ -82,12 +82,14 @@ Current lifecycle rules:
   prompt payloads larger than 4096 bytes after UTF-8 normalization
 - the SQLite adapter applies secrets through native `sqlite3_key()` and `sqlite3_rekey()`, not
   SQL text
-- `SqliteSessionSecret` owns one durable session-scoped passphrase copy so the store can reopen
-  or rekey without asking the caller to re-resolve the secret on every operation
-- each native open or rekey call borrows one working passphrase copy from that durable session
+- `SqliteSessionSecret` owns one durable session-scoped passphrase copy so an opened store can
+  reopen without asking the caller to re-resolve its existing secret on every operation
+- each native open call borrows one working passphrase copy from that durable session
   secret and best-effort overwrites the working copy immediately after native handoff
-- the durable session copy is best-effort overwritten when the owning session closes or rotates to
-  a new secret
+- the durable session copy is best-effort overwritten when the owning session closes
+- `rekey-book`, `backup-book`, and `restore-book` generate fresh absent-target key files in the
+  protected-book staging flow; generated keys are never supplied through CLI text, standard input,
+  or a prompt
 - key files must remain owner-only (`0400` or `0600` on POSIX hosts, owner-only ACL on Windows),
   and the owner-only parent directory must also remain owner-only so another principal cannot
   browse, replace, or remove the secret path through directory access alone

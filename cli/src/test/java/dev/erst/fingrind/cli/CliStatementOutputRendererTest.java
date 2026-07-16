@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.cli.json.CliStatementReportJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityRow;
@@ -22,6 +23,7 @@ import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.StatementLineKind;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -121,15 +123,17 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(renderedText.contains("Financing"));
     assertTrue(renderedText.contains("Revenue (Operating revenue)"), renderedText);
     assertFalse(renderedText.contains("Revenue | Operating revenue"), renderedText);
-    assertTrue(renderedCsv.startsWith("exportFamily,rowId,parentRowId,relationKind"));
-    assertTrue(renderedCsv.contains("cash-flow-statement-row:current:OPERATING:2000"));
-    assertTrue(renderedCsv.contains("cash-flow-statement-row:current:FINANCING:3000"));
-    assertTrue(renderedCsv.contains("cash-flow-statement-report-total:current:EUR"));
-    assertTrue(renderedCsv.contains("cash-flow-statement-row:comparative:OPERATING:2000"));
+    assertTrue(
+        renderedCsv.startsWith("family,reportPeriod,sectionKind,lineCode,lineName,lineType"));
+    assertTrue(renderedCsv.contains("cash-flow-statement,current,OPERATING,2000,Revenue"));
+    assertTrue(renderedCsv.contains("cash-flow-statement,current,FINANCING,3000,Owner Capital"));
+    assertTrue(
+        renderedCsv.contains("cash-flow-statement,comparative,OPERATING,2000,Prior Revenue"));
+    assertFalse(renderedCsv.contains("report-total"));
   }
 
   @Test
-  void renderCashFlowStatementCsv_usesCurrentOnlyEmptyRowWhenNothingMatches() {
+  void renderCashFlowStatementCsv_emitsOnlyTheHeaderWhenNothingMatches() {
     CashFlowStatementReport emptyCashFlowStatement =
         new CashFlowStatementReport(
             bookIdentity(),
@@ -148,11 +152,9 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
 
     String renderedCsv = CliQueryOutputRenderer.renderCashFlowStatementCsv(emptyCashFlowStatement);
 
-    assertTrue(renderedCsv.startsWith("exportFamily,rowId,parentRowId,relationKind"));
     assertTrue(
-        renderedCsv.contains("cash-flow-statement-report-empty:current:2026-04-01:2026-04-30"));
-    assertTrue(renderedCsv.contains("No cash-flow lines matched the selected scope."));
-    assertFalse(renderedCsv.contains("cash-flow-statement-row:comparative:"));
+        renderedCsv.startsWith("family,reportPeriod,sectionKind,lineCode,lineName,lineType"));
+    assertEquals(1, renderedCsv.lines().count());
   }
 
   @Test
@@ -279,7 +281,7 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void renderChangesInEquityCsv_fillsMissingCurrencyTotalsWithZeroBalances() {
+  void renderChangesInEquityCsv_exportsOnlySemanticEquityRows() {
     CurrencyBalance openingBalance =
         CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "0.00"));
     CurrencyBalance movementBalance =
@@ -313,8 +315,9 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
 
     String rendered = CliQueryOutputRenderer.renderChangesInEquityCsv(report);
 
-    assertTrue(rendered.contains("changes-in-equity-row:current:3200"));
-    assertTrue(rendered.contains("changes-in-equity-total:current:EUR:ZERO"));
+    assertTrue(rendered.startsWith("family,reportPeriod,lineCode,lineName,lineType"));
+    assertTrue(rendered.contains("changes-in-equity,current,3200,Retained Earnings,EQUITY"));
+    assertFalse(rendered.contains("total:"));
   }
 
   @Test
@@ -443,6 +446,8 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
         CliQueryOutputRenderer.renderIncomeStatementText(tradingIncomeStatement);
     String incomeStatementCsv =
         CliQueryOutputRenderer.renderIncomeStatementCsv(tradingIncomeStatement);
+    CliStatementReportJsonModels.IncomeStatementPayload incomeStatementPayload =
+        CliReportPayloadMapper.incomeStatement(tradingIncomeStatement, Instant.EPOCH);
 
     assertTrue(incomeStatementText.contains("Gross Profit"));
     assertTrue(incomeStatementText.contains("Cost of Sales"));
@@ -452,14 +457,16 @@ class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(
         incomeStatementText.indexOf("Cost of Sales Totals")
             < incomeStatementText.indexOf("Gross Profit"));
-    assertTrue(incomeStatementCsv.contains("GROSS_PROFIT_TOTAL"));
-    assertTrue(incomeStatementCsv.contains("income-statement-gross-profit:current:EUR"));
+    assertFalse(incomeStatementCsv.contains("GROSS_PROFIT_TOTAL"));
+    assertEquals(
+        "6000", incomeStatementPayload.grossProfitTotals().get(0).netAmount().minorUnits());
     assertTrue(
         incomeStatementCsv.startsWith(
-            "exportFamily,rowId,parentRowId,relationKind,reportBasis,recordKind,effectiveDateFrom,effectiveDateTo,sectionCode,"));
-    assertTrue(incomeStatementCsv.contains(",COST_OF_SALES,5100,Cost of Sales,"));
-    assertTrue(incomeStatementCsv.contains(",EXPENSE,6100,Operating Expense,"));
-    assertFalse(incomeStatementCsv.contains(",EXPENSE,5100,Cost of Sales,"));
-    assertTrue(incomeStatementCsv.contains(",60.00,CREDIT,"));
+            "family,reportPeriod,sectionKind,lineCode,lineName,lineType,financialPositionLineClassification,profitAndLossLineClassification,lineKind,"));
+    assertTrue(incomeStatementCsv.contains(",EXPENSE,5100,Cost of Sales,EXPENSE,,COST_OF_SALES,"));
+    assertTrue(
+        incomeStatementCsv.contains(",EXPENSE,6100,Operating Expense,EXPENSE,,OPERATING_EXPENSE,"));
+    assertFalse(
+        incomeStatementCsv.contains(",EXPENSE,5100,Cost of Sales,EXPENSE,,OPERATING_EXPENSE,"));
   }
 }

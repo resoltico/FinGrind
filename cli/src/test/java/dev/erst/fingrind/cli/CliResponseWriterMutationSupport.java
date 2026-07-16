@@ -10,7 +10,6 @@ import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import java.io.PrintStream;
@@ -52,16 +51,13 @@ class CliResponseWriterMutationSupport extends CliResponseWriterDiscoverySupport
     mutationWriter.writeGenerateBookKeyFileResult(generatedKeyFile, List.of(), outputMode);
   }
 
-  void writeRekeyBookResult(
-      RekeyBookResult result, BookAccess.PassphraseSource replacementPassphraseSource) {
-    writeRekeyBookResult(result, replacementPassphraseSource, OutputMode.JSON);
+  void writeRekeyBookResult(RekeyBookResult result, Path newBookKeyFilePath) {
+    writeRekeyBookResult(result, newBookKeyFilePath, OutputMode.JSON);
   }
 
   void writeRekeyBookResult(
-      RekeyBookResult result,
-      BookAccess.PassphraseSource replacementPassphraseSource,
-      OutputMode outputMode) {
-    mutationWriter.writeRekeyBookResult(result, replacementPassphraseSource, outputMode);
+      RekeyBookResult result, Path newBookKeyFilePath, OutputMode outputMode) {
+    mutationWriter.writeRekeyBookResult(result, newBookKeyFilePath, outputMode);
   }
 
   void writeBackupBookResult(BackupBookResult result, OutputMode outputMode) {

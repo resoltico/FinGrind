@@ -61,7 +61,11 @@ final class AccountStateViolationNarrativeSupport {
 
   private static ContractResponse.RejectionDescriptor descriptor(AccountStateViolationOwner owner) {
     return new ContractResponse.RejectionDescriptor(
-        owner.code(), owner.description(), DETAIL_FIELDS, List.of());
+        owner.code(),
+        ContractResponse.FailureCategory.DOMAIN_SEMANTIC,
+        owner.description(),
+        DETAIL_FIELDS,
+        List.of());
   }
 
   private static String inventoryMovementPrecedesAccountHorizonMessage(

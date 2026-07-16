@@ -42,11 +42,11 @@ class LedgerJournalModelTest extends ContractTestSupport {
     assertEquals(
         List.of(LedgerFact.text("currencyCode", "EUR")),
         LedgerFact.group("balance", List.of(LedgerFact.text("currencyCode", "EUR"))).facts());
-    assertEquals(LedgerJournalKind.POST_ENTRY, standardStep.kind());
+    assertEquals(LedgerStepKind.POST_ENTRY, standardStep.kind());
     assertNull(standardStep.detailKind());
-    assertEquals(LedgerJournalKind.ASSERT, assertionStep.kind());
+    assertEquals(LedgerStepKind.ASSERT, assertionStep.kind());
     assertEquals(LedgerAssertionKind.ACCOUNT_DECLARED, assertionStep.detailKind());
-    assertEquals(LedgerJournalKind.PLAN_BOUNDARY, boundaryStep.kind());
+    assertEquals(LedgerJournalKind.BoundaryKind.PLAN_BOUNDARY, boundaryStep.kind());
     assertNull(boundaryStep.detailKind());
     assertEquals(LedgerBoundaryCheckpoint.COMMIT, boundaryStep.boundaryCheckpoint());
     assertThrows(NullPointerException.class, () -> new LedgerFact.Text("null", nullOf()));
@@ -85,11 +85,11 @@ class LedgerJournalModelTest extends ContractTestSupport {
             List.of(),
             failure);
     assertEquals(LedgerAssertionKind.ACCOUNT_DECLARED, detailed.detailKind());
-    assertEquals(LedgerJournalKind.ASSERT, detailed.kind());
+    assertEquals(LedgerStepKind.ASSERT, detailed.kind());
     assertNull(nullableOptionals.detailKind());
-    assertEquals(LedgerJournalKind.POST_ENTRY, nullableOptionals.kind());
+    assertEquals(LedgerStepKind.POST_ENTRY, nullableOptionals.kind());
     assertNull(nullableOptionals.boundaryCheckpoint());
-    assertEquals(LedgerJournalKind.PLAN_BOUNDARY, boundaryFailed.kind());
+    assertEquals(LedgerJournalKind.BoundaryKind.PLAN_BOUNDARY, boundaryFailed.kind());
     assertEquals(LedgerBoundaryCheckpoint.COMMIT, boundaryFailed.boundaryCheckpoint());
     assertNull(boundaryFailed.detailKind());
     assertNull(new LedgerStep.EnsureBook(stepId("open"), openBookCommand()).detailKind());
@@ -134,6 +134,7 @@ class LedgerJournalModelTest extends ContractTestSupport {
         List.of(
             "ensure-book",
             "declare-account",
+            "declare-tax-registration",
             "preflight-entry",
             "record-sale-settled",
             "record-sale-on-credit",
@@ -144,6 +145,23 @@ class LedgerJournalModelTest extends ContractTestSupport {
             "record-inventory-write-down",
             "record-inventory-shrinkage",
             "record-inventory-count-increase",
+            "record-prepayment",
+            "record-deferred-revenue",
+            "record-accrued-expense",
+            "record-accrual-cutoff-recognition",
+            "record-accrued-expense-settlement",
+            "record-latvian-monthly-payroll",
+            "record-latvian-payroll-net-wage-settlement",
+            "record-latvian-payroll-state-remittance",
+            "record-fixed-asset-capitalization",
+            "record-fixed-asset-depreciation",
+            "record-fixed-asset-disposal",
+            "record-financing-borrowing",
+            "record-financing-principal-repayment",
+            "record-financing-interest-accrual",
+            "record-financing-interest-payment",
+            "record-foreign-currency-obligation",
+            "record-realized-foreign-exchange-settlement",
             "record-expense-settled",
             "record-expense-on-credit",
             "record-receipt",
@@ -161,7 +179,9 @@ class LedgerJournalModelTest extends ContractTestSupport {
             "assert",
             "plan-boundary"),
         LedgerJournalKind.wireValues());
-    assertEquals(LedgerJournalKind.PLAN_BOUNDARY, LedgerJournalKind.fromWireValue("plan-boundary"));
+    assertEquals(
+        LedgerJournalKind.BoundaryKind.PLAN_BOUNDARY,
+        LedgerJournalKind.fromWireValue("plan-boundary"));
     assertEquals(
         List.of("begin", "initialization-check", "commit", "rollback"),
         LedgerBoundaryCheckpoint.wireValues());

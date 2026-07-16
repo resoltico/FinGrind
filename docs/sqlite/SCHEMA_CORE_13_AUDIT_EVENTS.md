@@ -65,6 +65,8 @@ create table if not exists audit_event (
             'ACCOUNT_DECLARED',
             'ACCOUNT_REACTIVATED',
             'ACCOUNT_RENAMED',
+            'ACCOUNT_AMENDED',
+            'ACCOUNT_RETIRED',
             'POSTING_COMMITTED',
             'POSTING_REVERSED',
             'BOOK_REKEYED',
@@ -101,7 +103,13 @@ create table if not exists audit_event (
         )
         or
         (
-            event_kind in ('ACCOUNT_DECLARED', 'ACCOUNT_REACTIVATED', 'ACCOUNT_RENAMED')
+            event_kind in (
+                'ACCOUNT_DECLARED',
+                'ACCOUNT_REACTIVATED',
+                'ACCOUNT_RENAMED',
+                'ACCOUNT_AMENDED',
+                'ACCOUNT_RETIRED'
+            )
             and account_code is not null
             and posting_id is null
             and close_operation_order is null

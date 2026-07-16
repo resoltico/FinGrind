@@ -12,6 +12,7 @@ public enum DiscoveryFocus implements WireValue {
   REQUEST_INPUT("request-input"),
   CURRENCY_MODEL("currency-model"),
   BOOKKEEPING_KERNEL("bookkeeping-kernel"),
+  CAPABILITY_CATALOG("capability-catalog"),
   RESPONSE_CONTRACT("response-contract");
 
   private final String wireValue;

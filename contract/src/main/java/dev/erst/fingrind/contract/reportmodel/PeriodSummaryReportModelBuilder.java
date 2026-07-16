@@ -66,7 +66,8 @@ public final class PeriodSummaryReportModelBuilder
             List.of()));
     return new ReportModel(
         dev.erst.fingrind.contract.protocol.OperationId.PERIOD_SUMMARY.wireName(),
-        "Period Summary",
+        ReportModelSupport.reportTitle(
+            dev.erst.fingrind.contract.protocol.OperationId.PERIOD_SUMMARY),
         ReportModel.Orientation.LANDSCAPE,
         ReportModelSupport.context(
             report.bookIdentity(),

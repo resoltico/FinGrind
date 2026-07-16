@@ -3,9 +3,12 @@ package dev.erst.fingrind.executor;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffBookkeepingEntryVariants;
+import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffId;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.ResolvedAccrualCutoffApplication;
 import dev.erst.fingrind.contract.bookkeeping.ResolvedInventoryAcquisition;
 import dev.erst.fingrind.contract.bookkeeping.ResolvedInventoryDisposal;
 import dev.erst.fingrind.contract.tax.AppliedTax;
@@ -17,6 +20,8 @@ import dev.erst.fingrind.contract.tax.TaxRate;
 import dev.erst.fingrind.contract.tax.TaxRegistrationId;
 import dev.erst.fingrind.contract.tax.TaxSelection;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccrualCutoffApplicationKind;
+import dev.erst.fingrind.core.AccrualCutoffKind;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.Quantity;
 import java.time.LocalDate;
@@ -65,6 +70,51 @@ class PostEntryAdmissionSupportResolutionReadinessTest {
     assertTrue(PostEntryAdmissionSupport.canResolveResolvedJournal(shrinkage(disposal())));
     assertFalse(PostEntryAdmissionSupport.canResolveResolvedJournal(countIncrease(null)));
     assertTrue(PostEntryAdmissionSupport.canResolveResolvedJournal(countIncrease(acquisition())));
+  }
+
+  @Test
+  void canResolveResolvedJournal_requiresAccrualCutoffApplicationResolution() {
+    AccrualCutoffId cutoffId = new AccrualCutoffId("cutoff-2026-04");
+    ResolvedAccrualCutoffApplication recognitionResolution =
+        new ResolvedAccrualCutoffApplication(
+            AccrualCutoffKind.PREPAYMENT,
+            AccrualCutoffApplicationKind.RECOGNITION,
+            new AccountCode("expense"),
+            new AccountCode("prepaid-expense"));
+    ResolvedAccrualCutoffApplication settlementResolution =
+        new ResolvedAccrualCutoffApplication(
+            AccrualCutoffKind.ACCRUED_EXPENSE,
+            AccrualCutoffApplicationKind.SETTLEMENT,
+            new AccountCode("accrued-expense"),
+            new AccountCode("cash"));
+
+    assertFalse(
+        PostEntryAdmissionSupport.canResolveResolvedJournal(
+            new AccrualCutoffBookkeepingEntryVariants.AccrualCutoffRecognition(
+                EFFECTIVE_DATE, cutoffId, new MonetaryAmount("EUR", "1000"), null)));
+    assertTrue(
+        PostEntryAdmissionSupport.canResolveResolvedJournal(
+            new AccrualCutoffBookkeepingEntryVariants.AccrualCutoffRecognition(
+                EFFECTIVE_DATE,
+                cutoffId,
+                new MonetaryAmount("EUR", "1000"),
+                recognitionResolution)));
+    assertFalse(
+        PostEntryAdmissionSupport.canResolveResolvedJournal(
+            new AccrualCutoffBookkeepingEntryVariants.AccruedExpenseSettlement(
+                EFFECTIVE_DATE,
+                cutoffId,
+                new AccountCode("cash"),
+                new MonetaryAmount("EUR", "1000"),
+                null)));
+    assertTrue(
+        PostEntryAdmissionSupport.canResolveResolvedJournal(
+            new AccrualCutoffBookkeepingEntryVariants.AccruedExpenseSettlement(
+                EFFECTIVE_DATE,
+                cutoffId,
+                new AccountCode("cash"),
+                new MonetaryAmount("EUR", "1000"),
+                settlementResolution)));
   }
 
   private static BookkeepingEntry.PurchaseSettled purchaseSettled(

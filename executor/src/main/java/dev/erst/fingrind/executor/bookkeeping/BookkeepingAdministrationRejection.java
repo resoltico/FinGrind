@@ -15,6 +15,7 @@ public sealed interface BookkeepingAdministrationRejection
         BookkeepingAdministrationRejection.BookContainsSchema,
         BookkeepingAdministrationRejection.AccountTypeConflict,
         BookkeepingAdministrationRejection.AccountTaxonomyConflict,
+        AccountRegistryLifecycleRejection,
         BookkeepingAdministrationRejection.ParentAccountMissing,
         BookkeepingAdministrationRejection.ParentAccountInactive,
         BookkeepingAdministrationRejection.ParentAccountTypeConflict,

@@ -456,9 +456,9 @@ class BookkeepingEntrySupportTest {
     ForeignExchangeDetails matchingSpot =
         foreignExchangeDetails(
             "USD", "10000", "EUR", "9200", ForeignExchangeTreatmentKind.SPOT_TRANSACTION);
-    ForeignExchangeDetails realizedSettlement =
+    ForeignExchangeDetails unrealizedRemeasurement =
         foreignExchangeDetails(
-            "USD", "10000", "EUR", "9200", ForeignExchangeTreatmentKind.REALIZED_SETTLEMENT);
+            "USD", "10000", "EUR", "9200", ForeignExchangeTreatmentKind.UNREALIZED_REMEASUREMENT);
 
     assertDoesNotThrow(
         () ->
@@ -528,7 +528,7 @@ class BookkeepingEntrySupportTest {
                         new MonetaryAmount("EUR", "9200"),
                         null,
                         null,
-                        realizedSettlement,
+                        unrealizedRemeasurement,
                         null,
                         null))
             .getMessage());
@@ -550,9 +550,9 @@ class BookkeepingEntrySupportTest {
 
   @Test
   void directJournalForeignExchange_allowsNonSpotTreatmentsButRequiresJournalMagnitudeMatch() {
-    ForeignExchangeDetails realizedSettlement =
+    ForeignExchangeDetails unrealizedRemeasurement =
         foreignExchangeDetails(
-            "USD", "10000", "EUR", "9200", ForeignExchangeTreatmentKind.REALIZED_SETTLEMENT);
+            "USD", "10000", "EUR", "9200", ForeignExchangeTreatmentKind.UNREALIZED_REMEASUREMENT);
 
     assertDoesNotThrow(
         () ->
@@ -568,7 +568,7 @@ class BookkeepingEntrySupportTest {
                             new AccountCode("4000"),
                             JournalLine.EntrySide.CREDIT,
                             Money.parse("EUR", "92.00")))),
-                realizedSettlement));
+                unrealizedRemeasurement));
     assertEquals(
         "directJournal foreignExchange.functionalAmount must match the total debit and credit magnitude.",
         assertThrows(
@@ -586,7 +586,7 @@ class BookkeepingEntrySupportTest {
                                     new AccountCode("4000"),
                                     JournalLine.EntrySide.CREDIT,
                                     Money.parse("EUR", "91.00")))),
-                        realizedSettlement))
+                        unrealizedRemeasurement))
             .getMessage());
   }
 

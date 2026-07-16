@@ -18,8 +18,7 @@ interface CliBookLifecycleWorkflow {
   ContractDecision<OpenBookResult> openBook(BookAccess bookAccess, OpenBookCommand command);
 
   /** Replaces the passphrase material protecting one existing book. */
-  ContractDecision<RekeyBookResult> rekeyBook(
-      BookAccess bookAccess, PassphraseSource replacementPassphraseSource);
+  ContractDecision<RekeyBookResult> rekeyBook(BookAccess bookAccess, Path newBookKeyFilePath);
 
   /** Creates a backup copy plus its companion key artifact. */
   ContractDecision<BackupBookResult> backupBook(
@@ -27,7 +26,11 @@ interface CliBookLifecycleWorkflow {
 
   /** Restores one protected book from a backup artifact set. */
   ContractDecision<RestoreBookResult> restoreBook(
-      Path bookFilePath, Path bookKeyFilePath, Path backupFilePath, Path backupKeyFilePath);
+      Path bookFilePath,
+      Path newBookKeyFilePath,
+      Path backupFilePath,
+      Path backupKeyFilePath,
+      boolean replaceExistingBook);
 
   /** Reads rollback metadata for the most recent interrupted rekey flow. */
   ContractDecision<RekeyRollbackResult> inspectRekeyRollback(Path bookFilePath);

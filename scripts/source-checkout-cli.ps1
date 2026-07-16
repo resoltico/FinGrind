@@ -24,6 +24,7 @@ Invoke-FinGrindCliWrapper `
     -Context $context `
     -RuntimeManifest $runtimeManifest `
     -RuntimeDistribution "source-checkout-gradle" `
+    -InvocationLabel $MyInvocation.InvocationName `
     -Arguments $args
 
 exit $script:FinGrindCliWrapperExitCode

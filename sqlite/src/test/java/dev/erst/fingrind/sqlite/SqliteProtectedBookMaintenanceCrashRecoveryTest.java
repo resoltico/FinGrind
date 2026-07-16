@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -41,7 +42,7 @@ class SqliteProtectedBookMaintenanceCrashRecoveryTest extends SqliteNativeBridge
           };
 
   @Test
-  void killedBackupStage_doesNotPublishOneFinalPairAndOneRetryCleansAbandonedStageArtifacts()
+  void killedBackupStage_recoversOwnedArtifactsOnTheNextAttemptWithoutDeletingAnUnownedLookalike()
       throws Exception {
     Path bookPath = tempDirectory.resolve("books").resolve("source.sqlite");
     BookAccess sourceAccess = bookAccess(bookPath);
@@ -61,27 +62,57 @@ class SqliteProtectedBookMaintenanceCrashRecoveryTest extends SqliteNativeBridge
     waitForSignal(helper, signalPath);
     killHelper(helper);
 
-    assertFalse(Files.exists(backupFilePath));
-    assertFalse(Files.exists(backupBookKeyFilePath));
-    assertNoStageArtifacts(backupBookKeyFilePath, ".backup-key-", ".tmp");
+    assertTrue(Files.exists(backupFilePath));
+    assertTrue(Files.exists(backupBookKeyFilePath));
+    assertStageArtifactsExist(backupFilePath, ".backup-", ".sqlite");
+    assertStageArtifactsExist(backupBookKeyFilePath, ".backup-key-", ".tmp");
+    assertOwnedStageRecordExists(backupFilePath);
+    assertOwnedStageRecordExists(backupBookKeyFilePath);
+    Path unownedLookalike =
+        backupFilePath.resolveSibling(backupFilePath.getFileName() + ".backup-unowned.sqlite");
+    Files.writeString(unownedLookalike, "unowned");
 
     SqliteProtectedBookMaintenanceStore store = maintenanceStore();
     try (ProtectedBookMaintenanceStore.VerifiedBook verifiedSourceBook =
             verifiedBook(store, sourceAccess);
+        ProtectedBookMaintenanceStore.PreparedPairPublication preparedPairPublication =
+            store.preparePairPublication(
+                backupBookKeyFilePath,
+                backupFilePath,
+                ProtectedBookMaintenanceStore.RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET);
         StagedBackupPair stagedBackupPair =
-            acceptedValue(
-                store.stageBackupPair(verifiedSourceBook, backupFilePath, backupBookKeyFilePath))) {
+            acceptedValue(store.stageBackupPair(verifiedSourceBook, preparedPairPublication))) {
       stagedBackupPair.commit();
     }
 
     assertTrue(Files.exists(backupFilePath));
     assertTrue(Files.exists(backupBookKeyFilePath));
-    assertNoStageArtifacts(backupFilePath, ".backup-", ".sqlite");
-    assertNoStageArtifacts(backupBookKeyFilePath, ".backup-key-", ".tmp");
+    assertNoOwnedStageRecords(backupFilePath);
+    assertNoOwnedStageRecords(backupBookKeyFilePath);
+    assertTrue(Files.exists(unownedLookalike));
   }
 
   @Test
-  void killedReplacementStage_leavesOneLiveTargetUntouchedAndOneRetrySucceeds() throws Exception {
+  void killedPublicationAfterGeneratedSecretLink_recoversBothReservationsBeforeRetry() {
+    assertDoesNotThrow(() -> recoverKilledReservedPairPublication("publish-reserved-key"));
+  }
+
+  @Test
+  void killedPublicationAfterBookLink_recoversBothReservationsBeforeRetry() {
+    assertDoesNotThrow(() -> recoverKilledReservedPairPublication("publish-reserved-book"));
+  }
+
+  @Test
+  void killedPreparedPair_reclaimsItsStaleLeasesAndReservationsBeforeRetry() {
+    assertDoesNotThrow(() -> recoverKilledReservedPairPublication("prepare-pair"));
+  }
+
+  @Test
+  void
+      killedReplacementStage_recoversOwnedArtifactsOnTheNextAttemptWithoutDeletingAnUnownedLookalike()
+          throws Exception {
     Path sourcePath = writeArtifact("replacement-source.sqlite", "replacement");
     Path targetPath = writeArtifact("replacement-target.sqlite", "previous");
     Path signalPath = tempDirectory.resolve("signals").resolve("replacement-stage.ready");
@@ -92,6 +123,12 @@ class SqliteProtectedBookMaintenanceCrashRecoveryTest extends SqliteNativeBridge
     killHelper(helper);
 
     assertEquals("previous", Files.readString(targetPath));
+    assertStageArtifactsExist(targetPath, ".restore-", ".tmp");
+    assertStageArtifactsExist(targetPath, ".previous-", ".sqlite");
+    assertOwnedStageRecordExists(targetPath);
+    Path unownedLookalike =
+        targetPath.resolveSibling(targetPath.getFileName() + ".restore-unowned.tmp");
+    Files.writeString(unownedLookalike, "unowned");
 
     try (StagedBookReplacement stagedReplacement =
         maintenanceStore().stageReplacement(sourcePath, targetPath)) {
@@ -99,8 +136,8 @@ class SqliteProtectedBookMaintenanceCrashRecoveryTest extends SqliteNativeBridge
     }
 
     assertEquals("replacement", Files.readString(targetPath));
-    assertNoStageArtifacts(targetPath, ".restore-", ".tmp");
-    assertNoStageArtifacts(targetPath, ".previous-", ".sqlite");
+    assertNoOwnedStageRecords(targetPath);
+    assertTrue(Files.exists(unownedLookalike));
   }
 
   @Test
@@ -126,6 +163,41 @@ class SqliteProtectedBookMaintenanceCrashRecoveryTest extends SqliteNativeBridge
 
   private SqliteProtectedBookMaintenanceStore maintenanceStore() {
     return new SqliteProtectedBookMaintenanceStore(KEY_FILE_RESOLVER);
+  }
+
+  private void recoverKilledReservedPairPublication(String helperMode)
+      throws IOException, InterruptedException {
+    Path finalBookPath = tempDirectory.resolve(helperMode).resolve("backup.sqlite");
+    Path finalSecretPath = tempDirectory.resolve(helperMode).resolve("backup.key");
+    writeArtifact(helperMode + "/parent-ready", "ready");
+    Path signalPath = tempDirectory.resolve("signals").resolve(helperMode + ".ready");
+
+    HelperProcess helper =
+        startHelperProcess(helperMode, finalBookPath, finalSecretPath, signalPath);
+    waitForSignal(helper, signalPath);
+    killHelper(helper);
+
+    assertTrue(Files.exists(finalBookPath));
+    assertTrue(Files.exists(finalSecretPath));
+    assertOwnedStageRecordExists(finalBookPath);
+    assertOwnedStageRecordExists(finalSecretPath);
+
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+    try (ProtectedBookMaintenanceStore.PreparedPairPublication ignored =
+        store.preparePairPublication(
+            finalSecretPath,
+            finalBookPath,
+            ProtectedBookMaintenanceStore.RestoredBookTargetPolicy.REQUIRE_ABSENT,
+            ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+            ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET)) {
+      assertTrue(Files.exists(finalBookPath));
+      assertTrue(Files.exists(finalSecretPath));
+    }
+
+    assertFalse(Files.exists(finalBookPath));
+    assertFalse(Files.exists(finalSecretPath));
+    assertNoOwnedStageRecords(finalBookPath);
+    assertNoOwnedStageRecords(finalSecretPath);
   }
 
   private static ProtectedBookMaintenanceStore.VerifiedBook verifiedBook(
@@ -245,21 +317,44 @@ class SqliteProtectedBookMaintenanceCrashRecoveryTest extends SqliteNativeBridge
     }
   }
 
-  private static void assertNoStageArtifacts(Path basePath, String infix, String suffix)
+  private static void assertStageArtifactsExist(Path basePath, String infix, String suffix)
       throws IOException {
-    Path parentDirectory = basePath.getParent();
-    if (parentDirectory == null || !Files.isDirectory(parentDirectory)) {
-      return;
-    }
+    Path parentDirectory = Objects.requireNonNull(basePath.getParent(), "basePath parent");
     String baseName =
         Objects.requireNonNull(basePath.getFileName(), "basePath fileName").toString();
     try (Stream<Path> siblings = Files.list(parentDirectory)) {
       assertTrue(
-          siblings.noneMatch(
+          siblings.anyMatch(
               path ->
                   path.getFileName().toString().startsWith(baseName + infix)
                       && path.getFileName().toString().endsWith(suffix)),
-          "Expected no abandoned stage artifacts beside " + basePath + ".");
+          "Expected one abandoned stage artifact beside " + basePath + ".");
+    }
+  }
+
+  private static void assertOwnedStageRecordExists(Path basePath) throws IOException {
+    assertTrue(
+        countOwnedStageRecords(basePath) > 0L,
+        "Expected an owned stage record beside " + basePath + ".");
+  }
+
+  private static void assertNoOwnedStageRecords(Path basePath) throws IOException {
+    assertEquals(0L, countOwnedStageRecords(basePath));
+  }
+
+  private static long countOwnedStageRecords(Path basePath) throws IOException {
+    Path parentDirectory = Objects.requireNonNull(basePath.getParent(), "basePath parent");
+    String baseName =
+        Objects.requireNonNull(basePath.getFileName(), "basePath fileName").toString();
+    try (Stream<Path> siblings = Files.list(parentDirectory)) {
+      return siblings
+          .filter(
+              path -> {
+                String name = path.getFileName().toString();
+                return name.startsWith("." + baseName + ".fingrind-maintenance-stage-")
+                    && name.endsWith(".owner");
+              })
+          .count();
     }
   }
 

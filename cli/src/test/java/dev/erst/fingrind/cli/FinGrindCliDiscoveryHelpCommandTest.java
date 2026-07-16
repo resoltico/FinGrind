@@ -387,6 +387,7 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
                         .toList(),
                     postEntryShape.lineFields(),
                     postEntryShape.openingBalanceFields(),
+                    postEntryShape.recognitionIntervalFields(),
                     postEntryShape.foreignExchangeFields(),
                     postEntryShape.quotedRateFields(),
                     postEntryShape.taxFields(),
@@ -545,6 +546,11 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
     assertTemporalScopeHelp(
         "inventory-valuation",
         "inventory-as-of-date",
+        "--as-of",
+        "Supply --as-of to pin the cutoff explicitly");
+    assertTemporalScopeHelp(
+        "accrual-cutoff-schedule",
+        "accrual-cutoff-as-of-date",
         "--as-of",
         "Supply --as-of to pin the cutoff explicitly");
     assertTemporalScopeHelp(

@@ -76,9 +76,12 @@ final class CliBookkeepingEntryStructureParser {
   }
 
   static MonetaryAmount requiredPositiveAmount(ObjectNode rootNode) {
-    return MonetaryAmount.of(
-        CliJsonMoneyParser.requiredPositiveMoney(rootNode, ProtocolPostEntryFields.TopLevel.AMOUNT)
-            .money());
+    return requiredPositiveAmount(rootNode, ProtocolPostEntryFields.TopLevel.AMOUNT);
+  }
+
+  /** Reads one required positive monetary field into the typed bookkeeping request model. */
+  static MonetaryAmount requiredPositiveAmount(ObjectNode rootNode, String fieldName) {
+    return MonetaryAmount.of(CliJsonMoneyParser.requiredPositiveMoney(rootNode, fieldName).money());
   }
 
   static QuantityText requiredPositiveQuantity(ObjectNode rootNode) {

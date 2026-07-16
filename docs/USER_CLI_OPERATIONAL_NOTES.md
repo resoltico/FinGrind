@@ -1,0 +1,83 @@
+---
+afad: "4.0"
+version: "0.60.0"
+domain: USER_CLI_OPERATIONAL_NOTES
+updated: "2026-07-15"
+route:
+  keywords: [fingrind, cli, diagnostics, book-key-file, passphrase, backup, restore, pagination, report-output, runtime]
+  questions: ["how does fingrind protect book keys", "what diagnostics does fingrind return", "how do fingrind reports and runtime contracts work"]
+---
+
+# CLI Operational Notes
+
+**Purpose**: Explain FinGrind CLI diagnostics, protected-book handling, report publication, and runtime facts that apply across commands.
+**Prerequisites**: Read [USER_CLI.md](./USER_CLI.md) for command usage and [USER_INSTALL.md](./USER_INSTALL.md) for public bundle installation.
+
+## Diagnostics And Protected Books
+
+- Error envelopes may include `hint` and `argument` fields to help an agent or operator repair the call without consulting docs.
+- Rejected and error responses for non-plan commands are written to stderr so stdout remains reserved for successful primary results, fixed-output scaffolds, and other success-only contracts.
+- A valid explicit `--output json` selects the JSON diagnostics envelope even when the command is unknown. Absent, missing, duplicate, or invalid output selection uses text diagnostics; explicit `--output text` always stays text. CSV has no failure-row grammar, so its failures use the same text diagnostics renderer.
+- `help`, `version`, `capabilities`, `print-request-template`, and `print-plan-template` reject extra arguments.
+- `open-book` requires an absent `--book-file` destination. It rejects an existing path with `book-destination-occupied` before resolving its selected key or accessing the file, and creates missing parent directories for nested destinations with owner-only protection. When the parent already exists, FinGrind requires it to remain owner-only.
+- `generate-book-key-file --new-book-key-file` creates one new owner-only UTF-8 key file, requires a filesystem with atomic no-replace secret publication, and refuses to overwrite an existing path. When the selected parent directory does not exist, FinGrind creates it with owner-only protection; when the parent already exists, FinGrind requires it to remain owner-only. Generated files report `0600` on POSIX filesystems and `owner-only-acl` on Windows.
+- `backup-book` creates missing parent directories for nested `--backup-file` and `--new-backup-key-file` paths with owner-only protection. When either parent directory already exists, FinGrind requires it to remain owner-only before the backup pair is published.
+- `restore-book` creates missing parent directories for nested `--book-file` and `--new-book-key-file` targets with owner-only protection. When either selected parent directory already exists, FinGrind requires it to remain owner-only before the restored live pair is published. An existing `--book-file` additionally requires `--replace-existing-book`; without that option, the destination must remain absent through final publication or restore rejects without overwriting the intervening book.
+- `--book-key-file` must point to a non-empty single-line UTF-8 passphrase file no larger than 4096 bytes; one trailing LF or CRLF is tolerated and stripped, but embedded control characters are rejected.
+- Book key files must use POSIX owner-only permissions (`0400` or `0600`) on macOS/Linux or a Windows owner-only ACL on Windows, their containing directory must also remain owner-only, and the public examples keep those files under a separate `./secrets/` tree instead of beside the book.
+- `--book-passphrase-stdin` reads one UTF-8 passphrase payload from standard input and therefore cannot be paired with `--request-file -`. The accepted stdin payload is capped at 4096 bytes. Feed that stdin route from a file or secret-fetching process rather than embedding the passphrase literal in shell history.
+- `--book-passphrase-prompt` reads the passphrase from the controlling terminal without echo, the accepted prompt payload is capped at 4096 UTF-8 bytes after normalization, and this prompt route is accepted only with `--output text`.
+- `--request-file <path>` reads one UTF-8 JSON object document capped at `1048576` bytes.
+- `--request-file -` reads one UTF-8 JSON object document from standard input under that same `1048576`-byte limit.
+- `rekey-book` requires one current passphrase source plus one absent `--new-book-key-file` target. It generates the replacement secret itself and does not accept a replacement secret through standard input or an interactive prompt.
+- `rekey-book` rejects using the same key-file path for both current and new secrets.
+- `rekey-book` uses one same-directory encrypted rollback copy while rotation is in progress. If a crash or forced stop interrupts cleanup, that stale `*.rekey-rollback-*.sqlite` file remains in the book directory until you inspect or delete it, and later opens warn when they detect it.
+- The supported backup/restore workflow is one encrypted closed-book copy plus later file replacement. Do not copy a book while FinGrind is actively mutating it, and keep the copied `.sqlite` file under the same protected filesystem stance as the live book while storing key material separately from the copied book tree.
+- `restore-book` uses `--backup-key-file` only to open the backup source and then re-encrypts the restored live book under the generated `--new-book-key-file`, so reopen the restored `--book-file` path with that destination key file after the restore completes.
+- The packaged CLI does not require an external `sqlite3` binary and does not shell out to `sqlite3`.
+
+## Queries And Reports
+
+- `inspect-book` is the safest machine-readable probe before `open-book`, `declare-account`, or `post-entry`, because it reports initialization state, detected book-format version, supported book-format version, and compatibility with the current binary.
+- Read-oriented commands do not repair book-file permissions as a side effect. Permission repair happens on mutation-capable opens such as `open-book` and `rekey-book`.
+- `list-accounts` returns paginated payloads with `limit`, `accounts`, and an optional opaque `nextCursor` that can be passed back through `--cursor`.
+- `list-postings` returns paginated payloads with `limit`, `postings`, and an optional opaque `nextCursor` that can be passed back through `--cursor`.
+- `account-ledger` returns a paginated payload with `resolvedQuery.effectiveDateFrom` and `resolvedQuery.effectiveDateTo` always present (`null` for an omitted bound), `resolvedQuery.pagination.limit`, an accepted opaque `resolvedQuery.pagination.cursor`, and an optional opaque `nextCursor` that continues the canonical ascending `(effectiveDate, recordedAt, postingId)` order through `--cursor`.
+- `inspect-book`, `list-accounts`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`, `accrual-cutoff-schedule`, `fixed-asset-register`, `financing-register`, `realized-foreign-exchange-register`, `income-statement`, `cash-flow-statement`, `changes-in-equity`, and `tax-obligation` accept `--output text`; all tabular read/report commands except `inspect-book` and `get-posting` also accept `--output csv`.
+- `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`, `accrual-cutoff-schedule`, `fixed-asset-register`, `financing-register`, `realized-foreign-exchange-register`, `income-statement`, `cash-flow-statement`, `changes-in-equity`, and `tax-obligation` can also write one PDF artifact through `--pdf-out <path>`. PDF export is explicit file output, not another stdout output mode. If the primary report succeeds, JSON success envelopes publish one canonical absolute artifact path under `artifacts[]`, while `--output text` writes one artifact confirmation block to stdout and `--output csv` is rejected when paired with `--pdf-out`. If the PDF artifact fails, the command returns one deterministic `pdf-export-failure` error instead of publishing a successful report result.
+- JSON report money fields are typed exact-money objects with `currencyCode` and `minorUnits`. Report CSV pairs every money column as `...CurrencyCode` and `...MinorUnits`, without context or query metadata rows; JSON carries the full semantic report and resolved query. An income statement JSON result carries `grossProfitTotals[]` and, when comparative selection is present, `comparativeGrossProfitTotals[]`; CSV remains the table of statement rows rather than a mixed row-and-total document.
+- `print-plan-template` emits the accepted atomic tax-setup request shape, including the ordered account and tax-registration declarations; custom plans may also use the generic nested `assertion` object for assertion steps.
+- `execute-plan` reuses the same posting and query rules as the single-command surface, but runs the whole plan inside one atomic transaction and returns a bounded `payload.summary` by default. `--result-detail full` additionally includes `payload.journal` on success or `details.plan.journal` on deterministic plan failure. Committed business-entry steps preserve their typed `record-*` journal kinds, raw direct-journal fallback steps stay `post-entry`, and journal steps now carry typed `data` records; successful `list-accounts` and `list-postings` steps keep both pagination fields and structured row arrays instead of collapsing to counts alone.
+
+## Runtime And Discovery
+
+- The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.3 / SQLite3 Multiple Ciphers 2.3.6 native library.
+- `environment.runtime.runtimeDistribution` tells you whether the current process is running from a self-contained bundle, container image, source-checkout Gradle launch, or direct Java wrapper invocation.
+- `environment.publication.supportedPublicCliBundleTargets` and `environment.publication.unsupportedPublicCliBundleTargets` expose the public distribution matrix directly to automation.
+- `capabilities.requestShapes.schemaDialect` declares the JSON Schema dialect, and `capabilities.requestShapes.*.schema` publishes executable request schemas alongside the field descriptor arrays.
+- Request JSON must be one object document; duplicate keys and unknown fields are rejected at every object level.
+- `environment` reports runtime-contract details directly under: `payload.runtime.runtimeDistribution`, `payload.publication.publicCliDistribution`, `payload.publication.sourceCheckoutJava`, `payload.publication.supportedPublicCliBundleTargets`, `payload.publication.unsupportedPublicCliBundleTargets`, `payload.sqlite.bundleHomeSystemProperty`, `payload.sqlite.requiredCompileOptions`, `payload.sqlite.forbiddenCompileOptions`, `payload.sqlite.requiresSecureMemorySupport`, `payload.sqlite.requiredMinimumSqliteVersion`, `payload.sqlite.requiredSqlite3mcVersion`, `payload.sqlite.requiredSqliteSourceId`, `payload.sqlite.runtime.compileOptionsVerification`, `payload.sqlite.runtime.status`, `payload.sqlite.runtime.runtimeProvenance`, `payload.sqlite.runtime.runtimeTrustBasis`, `payload.sqlite.runtime.loadedLibraryPath` as a canonical absolute path, `payload.sqlite.runtime.loadedSqliteVersion`, `payload.sqlite.runtime.loadedSqlite3mcVersion`, `payload.sqlite.runtime.loadedSqliteSourceId`, `payload.storage.bookProtectionMode`, and `payload.storage.defaultProtectedBookFormat.cipher`, `payload.storage.defaultProtectedBookFormat.legacyMode`, `payload.storage.defaultProtectedBookFormat.pageSize`, `payload.storage.defaultProtectedBookFormat.reservedBytes`, `environment.storage.defaultProtectedBookFormat.kdfIter`, and `environment.storage.defaultProtectedBookFormat.plaintextHeaderSize`.
+- `environment.sqlite.runtime.compileOptionsVerification` is `verified` only when the managed runtime is ready, `failed` when the loaded library is present but violates the compile-option contract by missing required options or exposing forbidden options, and `not-verified` when the runtime is unavailable, when the probe resolved one runtime target but aborted before verification could finish, or when an earlier compatibility gate prevents a compile-option verdict.
+- `capabilities` also reports `preflight.semantics`, `preflight.commitGuarantee`, and `currencyModel` so agents can discover the advisory preflight contract plus the single-functional-currency and owned-foreign-exchange doctrine without reading source code.
+- Gradle-driven local runs, the source-checkout wrapper, and the container image use a managed SQLite 3.53.3 / SQLite3 Multiple Ciphers 2.3.6 shared library.
+- The developer direct-Java wrappers auto-discover that managed SQLite3MC library and scoped native access when they run from a prepared checkout. Direct-Java launches outside that checkout shape are unsupported.
+- `capabilities` is the best machine-readable contract surface.
+- `capabilities.requestInput.outputOption` publishes the canonical stdout-selection flag, while `capabilities --output json` and `capabilities --output json --detail full` publish the authoritative per-command stdout and artifact contract through grouped `CommandDescriptor` objects.
+- `capabilities.commands`, command groups, usage lines, aliases, output modes, artifact outputs, and summaries are rendered from the contract protocol catalog rather than copied into the CLI renderer.
+- `print-request-template` intentionally omits committed audit fields. Callers must not send `provenance.recordedAt` or `provenance.sourceChannel`.
+- `print-request-template` and `print-plan-template` intentionally emit placeholder-first sample documents whose evidence and provenance values must be replaced before real-world use.
+- `print-plan-template` is the fastest machine bootstrap for a new tax-enabled book because it includes `ensure-book`, the prerequisite account declarations, and the tax-registration step in one atomic workflow.
+
+## Failure Boundaries
+
+- `--book-passphrase-prompt` is accepted only with `--output text`; selecting `json` or `csv` with that prompt route is rejected deterministically as `invalid-request` with a repair hint that points back to `--output text`, `--book-key-file`, or `--book-passphrase-stdin`.
+- When `--output text` is selected, `--book-passphrase-prompt` either reads from a supported controlling terminal or fails deterministically with `interactive-prompt-unavailable` and a repair hint that points to `--book-key-file` or `--book-passphrase-stdin`.
+- FinGrind does not accept SQLite URI `key=` or `hexkey=` transport, plaintext CLI passphrase arguments, or environment-variable passphrase transport. The protected-book contract is always one explicit safe passphrase source plus the upstream default `chacha20` cipher.
+- Protected-book encryption covers the SQLite book bytes themselves, but not decoded query results in process memory, copied backups, exported reports, or key files stored beside the database. Treat those artifacts as separate protection problems.
+- FinGrind forces SQLite temp storage into memory. If an operator changes that policy outside the supported runtime, any temp spill files fall outside the documented encrypted-book boundary.
+- Successful `post-entry` responses carry a FinGrind-generated UUID v7 `postingId`.
+- Posting-side account failures are reported as `account-state-violations` with one or more structured issue objects in `details.violations[]`; their machine envelope keeps a stable summary and omits a top-level repair `hint`.
+- Posting-side entry-semantic failures are reported as `entry-semantics-violations` with one or more ordered issue objects in `details.violations[]`, and each issue carries stable `category` plus action-first `repair` guidance; their machine envelope likewise keeps a stable summary and omits a top-level repair `hint`.
+- The operator-facing `--output text` projection for those two nested repairable posting families renders one top-level `Summary` row plus one `Issue N | <code>` section per violation; checked-in examples live at [examples/account-state-violations-text.txt](./examples/account-state-violations-text.txt) and [examples/entry-semantics-violations-text.txt](./examples/entry-semantics-violations-text.txt).
+- Wrong passphrases, damaged or truncated protected books, and unsupported protected SQLite files are reported as the deterministic `protected-book-verification-failed` error instead of leaking raw SQLite symptoms such as `SQLITE_NOTADB`.
+- In a source checkout, example payloads live under [docs/examples/](./examples/). Public release bundles do not ship those repository fixture paths.

@@ -64,9 +64,7 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
         outputStream,
         () ->
             executor.runRekeyBookCommand(
-                PROMPT_BOOK_ACCESS,
-                BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
-                OutputMode.JSON));
+                PROMPT_BOOK_ACCESS, Path.of("keys/entity.new.book-key"), OutputMode.JSON));
     assertPromptFailure(
         outputStream,
         () ->
@@ -191,79 +189,93 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
             reportWriter(outputStream),
             failureWriter(outputStream),
             workflow,
-            new CliPdfReportExporter(new PdfReportService("FinGrind", "0.57.0", fixedClock())));
+            new CliPdfReportExporter(new PdfReportService("FinGrind", "0.57.0", fixedClock())),
+            fixedClock());
     CliReportOutput jsonOutput = new CliReportOutput(OutputMode.JSON, null);
 
     assertPromptFailure(
         outputStream,
         () ->
-            executor.runAccountBalanceCommand(
+            executor.runConfiguredReportCommand(
                 PROMPT_BOOK_ACCESS,
                 AccountBalanceQuery.unbounded(new AccountCode("1000")),
-                jsonOutput));
+                jsonOutput,
+                executor.handlers().accountBalance()));
     assertPromptFailure(
         outputStream,
         () ->
-            executor.runTrialBalanceCommand(
+            executor.runConfiguredReportCommand(
                 PROMPT_BOOK_ACCESS,
                 new TrialBalanceQuery(
                     Optional.of(LocalDate.parse("2026-04-30")),
                     dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
                     ComparativeSelection.none()),
-                jsonOutput));
+                jsonOutput,
+                executor.handlers().trialBalance()));
     assertPromptFailure(
         outputStream,
         () ->
-            executor.runAccountLedgerCommand(
+            executor.runConfiguredReportCommand(
                 PROMPT_BOOK_ACCESS,
-                AccountLedgerQuery.unbounded(new AccountCode("1000")),
-                jsonOutput));
+                new AccountLedgerQuery(
+                    new AccountCode("1000"),
+                    dev.erst.fingrind.core.EffectiveDateRange.unbounded(),
+                    dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
+                    50,
+                    java.util.Optional.empty()),
+                jsonOutput,
+                executor.handlers().accountLedger()));
     assertPromptFailure(
         outputStream,
         () ->
-            executor.runPeriodSummaryCommand(
+            executor.runConfiguredReportCommand(
                 PROMPT_BOOK_ACCESS,
                 new PeriodSummaryQuery(
                     LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
-                jsonOutput));
+                jsonOutput,
+                executor.handlers().periodSummary()));
     assertPromptFailure(
         outputStream,
         () ->
-            executor.runFinancialPositionCommand(
+            executor.runConfiguredReportCommand(
                 PROMPT_BOOK_ACCESS,
                 new FinancialPositionQuery(
                     Optional.of(LocalDate.parse("2026-04-30")), ComparativeSelection.none()),
-                jsonOutput));
+                jsonOutput,
+                executor.handlers().financialPosition()));
     assertPromptFailure(
         outputStream,
         () ->
-            executor.runIncomeStatementCommand(
+            executor.runConfiguredReportCommand(
                 PROMPT_BOOK_ACCESS,
                 new IncomeStatementQuery(
                     LocalDate.parse("2026-04-01"),
                     LocalDate.parse("2026-04-30"),
                     ComparativeSelection.none()),
-                jsonOutput));
+                jsonOutput,
+                executor.handlers().incomeStatement()));
     assertPromptFailure(
         outputStream,
         () ->
-            executor.runChangesInEquityCommand(
+            executor.runConfiguredReportCommand(
                 PROMPT_BOOK_ACCESS,
                 new ChangesInEquityQuery(
                     LocalDate.parse("2026-04-01"),
                     LocalDate.parse("2026-04-30"),
                     ComparativeSelection.none()),
-                jsonOutput));
+                jsonOutput,
+                executor.handlers().changesInEquity()));
     assertPromptFailure(
         outputStream,
         () ->
-            executor.runTaxObligationCommand(
+            executor.runConfiguredReportCommand(
                 PROMPT_BOOK_ACCESS,
                 new TaxObligationQuery(
                     new TaxRegistrationId("vat-lv"),
                     LocalDate.parse("2026-04-01"),
                     LocalDate.parse("2026-04-30")),
-                jsonOutput));
+                jsonOutput,
+                executor.handlers().taxObligation()));
     assertEquals("", diagnosticsStream.toString(java.nio.charset.StandardCharsets.UTF_8));
   }
 

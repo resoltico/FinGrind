@@ -1,6 +1,6 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -21,17 +21,6 @@ final class CliBookPassphraseParser {
     return candidateSource;
   }
 
-  static PassphraseSourceKind requireSingleNewPassphraseSource(
-      @Nullable PassphraseSourceKind currentSource, PassphraseSourceKind candidateSource) {
-    Objects.requireNonNull(candidateSource, "candidateSource");
-    if (currentSource != null) {
-      throw CliArgumentValueParser.invalid(
-          newOptionName(candidateSource),
-          "Exactly one new book passphrase source is permitted per command.");
-    }
-    return candidateSource;
-  }
-
   static BookAccess.PassphraseSource passphraseSource(
       @Nullable PassphraseSourceKind passphraseSourceKind, @Nullable Path bookKeyFilePath) {
     return switch (Objects.requireNonNull(passphraseSourceKind, "passphraseSourceKind")) {
@@ -43,19 +32,11 @@ final class CliBookPassphraseParser {
     };
   }
 
-  static String newOptionName(PassphraseSourceKind passphraseSourceKind) {
-    return switch (Objects.requireNonNull(passphraseSourceKind, "passphraseSourceKind")) {
-      case KEY_FILE -> ProtocolOptions.NEW_BOOK_KEY_FILE;
-      case STANDARD_INPUT -> ProtocolOptions.NEW_BOOK_PASSPHRASE_STDIN;
-      case INTERACTIVE_PROMPT -> ProtocolOptions.NEW_BOOK_PASSPHRASE_PROMPT;
-    };
-  }
-
   /** Canonical passphrase-source selections accepted by the CLI parser. */
   enum PassphraseSourceKind {
-    KEY_FILE(ProtocolOptions.BOOK_KEY_FILE),
-    STANDARD_INPUT(ProtocolOptions.BOOK_PASSPHRASE_STDIN),
-    INTERACTIVE_PROMPT(ProtocolOptions.BOOK_PASSPHRASE_PROMPT);
+    KEY_FILE(ProtocolBookAccessOptions.BOOK_KEY_FILE),
+    STANDARD_INPUT(ProtocolBookAccessOptions.BOOK_PASSPHRASE_STDIN),
+    INTERACTIVE_PROMPT(ProtocolBookAccessOptions.BOOK_PASSPHRASE_PROMPT);
 
     private final String optionName;
 

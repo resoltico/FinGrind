@@ -46,14 +46,15 @@ printf '%s' "${help_output}" | grep -F './scripts/verify-build-logic-plugin-jar.
 
 verifier_call_line="$(grep -n '"${repo_hygiene_verifier}"' "${quality_gate_script}" | tail -1 | cut -d: -f1)"
 jacoco_verifier_call_line="$(grep -n '"${jacoco_artifacts_verifier}"' "${quality_gate_script}" | tail -1 | cut -d: -f1)"
-gradle_check_line="$(grep -n '"${gradlew}" check coverage' "${quality_gate_script}" | tail -1 | cut -d: -f1)"
+gradle_check_line="$(grep -n '"${gradlew}" check coverage --rerun-tasks' "${quality_gate_script}" | tail -1 | cut -d: -f1)"
 build_logic_check_line="$(grep -n '"${gradlew}" -p "${build_logic_dir}" check' "${quality_gate_script}" | tail -1 | cut -d: -f1)"
 build_logic_plugin_jar_verifier_line="$(grep -n '"${build_logic_plugin_jar_verifier}"' "${quality_gate_script}" | tail -1 | cut -d: -f1)"
 python_support_source_line="$(grep -n '"${python_runtime_support}"' "${quality_gate_script}" | head -1 | cut -d: -f1)"
 python_support_prepare_line="$(grep -n '^prepare_python_runtime_env$' "${quality_gate_script}" | head -1 | cut -d: -f1)"
 [[ -n "${verifier_call_line}" ]] || die "quality-gate helper no longer invokes the repo hygiene verifier"
 [[ -n "${jacoco_verifier_call_line}" ]] || die "quality-gate helper no longer invokes the JaCoCo artifact verifier"
-[[ -n "${gradle_check_line}" ]] || die "quality-gate helper no longer invokes Gradle check coverage"
+[[ -n "${gradle_check_line}" ]] || die \
+    "quality-gate helper no longer forces a fresh Gradle check-and-coverage execution"
 [[ -n "${build_logic_check_line}" ]] || die "quality-gate helper no longer invokes the included build check"
 [[ -n "${build_logic_plugin_jar_verifier_line}" ]] || die \
     "quality-gate helper no longer invokes the build-logic plugin-jar verifier"

@@ -1,6 +1,6 @@
 package dev.erst.fingrind.contract.runtime;
 
-import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -27,7 +27,7 @@ public record BookAccess(Path bookFilePath, PassphraseSource passphraseSource) {
 
       @Override
       public String optionName() {
-        return ProtocolOptions.BOOK_KEY_FILE;
+        return ProtocolBookAccessOptions.BOOK_KEY_FILE;
       }
     }
 
@@ -37,7 +37,7 @@ public record BookAccess(Path bookFilePath, PassphraseSource passphraseSource) {
 
       @Override
       public String optionName() {
-        return ProtocolOptions.BOOK_PASSPHRASE_STDIN;
+        return ProtocolBookAccessOptions.BOOK_PASSPHRASE_STDIN;
       }
     }
 
@@ -47,7 +47,7 @@ public record BookAccess(Path bookFilePath, PassphraseSource passphraseSource) {
 
       @Override
       public String optionName() {
-        return ProtocolOptions.BOOK_PASSPHRASE_PROMPT;
+        return ProtocolBookAccessOptions.BOOK_PASSPHRASE_PROMPT;
       }
     }
   }

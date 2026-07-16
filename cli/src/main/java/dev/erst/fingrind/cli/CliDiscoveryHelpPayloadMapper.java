@@ -34,6 +34,12 @@ final class CliDiscoveryHelpPayloadMapper {
           OperationId.RECORD_INVENTORY_WRITE_DOWN,
           OperationId.RECORD_INVENTORY_SHRINKAGE,
           OperationId.RECORD_INVENTORY_COUNT_INCREASE,
+          OperationId.RECORD_PREPAYMENT,
+          OperationId.RECORD_DEFERRED_REVENUE,
+          OperationId.RECORD_ACCRUED_EXPENSE,
+          OperationId.RECORD_ACCRUAL_CUTOFF_RECOGNITION,
+          OperationId.RECORD_ACCRUED_EXPENSE_SETTLEMENT,
+          OperationId.RECORD_LATVIAN_MONTHLY_PAYROLL,
           OperationId.RECORD_EXPENSE_SETTLED,
           OperationId.RECORD_EXPENSE_ON_CREDIT,
           OperationId.RECORD_RECEIPT,
@@ -71,7 +77,7 @@ final class CliDiscoveryHelpPayloadMapper {
         helpDescriptor.description(),
         DiscoveryDetail.MINIMAL,
         category == null ? null : category.wireValue(),
-        commandNamePayloads(helpDescriptor.commands()),
+        CliDiscoveryHelpCommandPayloads.commandNamePayloads(helpDescriptor.commands()),
         "See --detail compact.",
         "See --detail full.");
   }
@@ -85,7 +91,7 @@ final class CliDiscoveryHelpPayloadMapper {
         helpDescriptor.description(),
         DiscoveryDetail.COMPACT,
         category == null ? null : category.wireValue(),
-        commandIndexPayloads(helpDescriptor.commands()),
+        CliDiscoveryHelpCommandPayloads.commandIndexPayloads(helpDescriptor.commands()),
         helpDescriptor.exitCodes(),
         "Use '"
             + CliInvocationText.commandExample(OperationId.CAPABILITIES)
@@ -93,7 +99,7 @@ final class CliDiscoveryHelpPayloadMapper {
         "Use '"
             + CliInvocationText.commandExample(OperationId.HELP)
             + " --output json "
-            + ProtocolOptions.DETAIL
+            + ProtocolOptions.Discovery.DETAIL
             + " full' for exhaustive discovery grammar, templates, and response contract details.");
   }
 
@@ -176,8 +182,8 @@ final class CliDiscoveryHelpPayloadMapper {
     if (isPostingRequestOperation(operationId)) {
       return postingRequestGuidance(helpDescriptor, operationId, detail);
     }
-    if (operationId == OperationId.DECLARE_ACCOUNT) {
-      return declareAccountRequestGuidance(helpDescriptor, detail);
+    if (operationId == OperationId.DECLARE_ACCOUNT || operationId == OperationId.AMEND_ACCOUNT) {
+      return accountDefinitionRequestGuidance(helpDescriptor, operationId, detail);
     }
     if (operationId == OperationId.DECLARE_TAX_REGISTRATION) {
       return declareTaxRegistrationRequestGuidance(helpDescriptor, detail);
@@ -218,7 +224,8 @@ final class CliDiscoveryHelpPayloadMapper {
   }
 
   private static Optional<CliDiscoveryCommonJsonModels.RequestFileGuidancePayload>
-      declareAccountRequestGuidance(HelpDescriptor helpDescriptor, DiscoveryDetail detail) {
+      accountDefinitionRequestGuidance(
+          HelpDescriptor helpDescriptor, OperationId operationId, DiscoveryDetail detail) {
     if (helpDescriptor.requestShapes() == null
         || helpDescriptor.requestShapes().declareAccount() == null
         || helpDescriptor.declareAccountTemplate() == null) {
@@ -226,7 +233,7 @@ final class CliDiscoveryHelpPayloadMapper {
     }
     return Optional.of(
         new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
-            "Provide an account-declaration JSON document through --request-file <path|->.",
+            "Provide an account-definition JSON document through --request-file <path|->.",
             detail,
             null,
             detail == DiscoveryDetail.FULL ? helpDescriptor.declareAccountTemplate() : null,
@@ -242,7 +249,7 @@ final class CliDiscoveryHelpPayloadMapper {
                 : null,
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
                 + " "
-                + OperationId.DECLARE_ACCOUNT.wireName()));
+                + operationId.wireName()));
   }
 
   private static Optional<CliDiscoveryCommonJsonModels.RequestFileGuidancePayload>
@@ -279,9 +286,6 @@ final class CliDiscoveryHelpPayloadMapper {
         || helpDescriptor.requestShapes().ledgerPlan() == null
         || helpDescriptor.planTemplate() == null) {
       return Optional.empty();
-    }
-    if (detail == DiscoveryDetail.FULL) {
-      helpDescriptor.planTemplate().canonicalPostingScaffoldStep();
     }
     return Optional.of(
         new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
@@ -323,28 +327,5 @@ final class CliDiscoveryHelpPayloadMapper {
 
   private static boolean isCommandScoped(HelpDescriptor helpDescriptor) {
     return helpDescriptor.commands().size() == 1 && helpDescriptor.quickStart().isEmpty();
-  }
-
-  private static List<CliDiscoveryCommonJsonModels.CommandIndexPayload> commandIndexPayloads(
-      List<CommandDescriptor> commands) {
-    return commands.stream()
-        .map(
-            command ->
-                new CliDiscoveryCommonJsonModels.CommandIndexPayload(
-                    command.name(),
-                    ProtocolCatalog.operation(command.name()).category().wireValue(),
-                    command.summary()))
-        .toList();
-  }
-
-  private static List<CliDiscoveryCommonJsonModels.CommandNamePayload> commandNamePayloads(
-      List<CommandDescriptor> commands) {
-    return commands.stream()
-        .map(
-            command ->
-                new CliDiscoveryCommonJsonModels.CommandNamePayload(
-                    command.name(),
-                    ProtocolCatalog.operation(command.name()).category().wireValue()))
-        .toList();
   }
 }

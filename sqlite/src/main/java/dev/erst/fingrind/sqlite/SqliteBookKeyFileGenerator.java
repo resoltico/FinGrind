@@ -1,18 +1,13 @@
 package dev.erst.fingrind.sqlite;
 
-import static java.lang.System.Logger.Level.WARNING;
-
-import dev.erst.fingrind.contract.protocol.OperationId;
-import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.security.SecureRandom;
@@ -26,8 +21,6 @@ public final class SqliteBookKeyFileGenerator {
   static final int GENERATED_ENTROPY_BITS = 256;
   private static final int GENERATED_RANDOM_BYTES = GENERATED_ENTROPY_BITS / 8;
   private static final SecureRandom SECURE_RANDOM = new SecureRandom();
-  private static final System.Logger LOGGER =
-      System.getLogger(SqliteBookKeyFileGenerator.class.getName());
 
   /** Internal seam for materializing a newly created key file during generator tests. */
   @FunctionalInterface
@@ -48,13 +41,6 @@ public final class SqliteBookKeyFileGenerator {
   interface EmptyKeyFileCreator {
     /** Creates one empty key file or returns the shaped rejection for an occupied destination. */
     ContractDecision<Path> create(Path normalizedPath) throws IOException;
-  }
-
-  /** Internal seam for reporting best-effort cleanup failures during generator tests. */
-  @FunctionalInterface
-  interface DeleteFailureReporter {
-    /** Handles one non-fatal cleanup failure while preserving the primary outcome. */
-    void report(String action, Exception exception);
   }
 
   private SqliteBookKeyFileGenerator() {}
@@ -97,7 +83,7 @@ public final class SqliteBookKeyFileGenerator {
         secureRandom,
         generatedKeyFileMaterializer,
         SqliteBookKeyFileGenerator::ensureParentDirectory,
-        SqliteBookKeyFileGenerator::createFile);
+        SqliteBookKeyFileGenerator::createStageFile);
   }
 
   static ContractDecision<GeneratedBookKeyFile> generateDecision(
@@ -117,38 +103,48 @@ public final class SqliteBookKeyFileGenerator {
       return ContractDecision.rejected(SqliteCallerPathFailureMapper.invalidBookKeyFile(exception));
     }
     byte[] encodedPassphrase = encodedPassphraseBytes(secureRandom);
-    boolean created = false;
+    SqliteOwnedStagedArtifact stagedArtifact = null;
+    boolean published = false;
     try {
+      recoverOwnedStageIfParentExists(normalizedPath);
+      SqliteGeneratedSecretTarget.requireAbsent(normalizedPath);
       secureParentDirectoryEnsurer.ensure(normalizedPath);
-      ContractDecision<Path> createdFile = emptyKeyFileCreator.create(normalizedPath);
+      SqliteGeneratedSecretTarget secretTarget =
+          SqliteGeneratedSecretTarget.requireAbsent(normalizedPath);
+      SqliteGeneratedSecretTarget.requireAtomicNoReplacePublication(normalizedPath);
+      stagedArtifact = secretTarget.createStage(".generated-key-", ".tmp");
+      Path stagedPath = stagedArtifact.stagedPath();
+      Files.deleteIfExists(stagedPath);
+      ContractDecision<Path> createdFile = emptyKeyFileCreator.create(stagedPath);
       switch (createdFile) {
         case ContractDecision.Accepted<Path> _ -> {}
         case ContractDecision.Rejected<Path>(var failure) -> {
           return ContractDecision.rejected(failure);
         }
       }
-      created = true;
-      generatedKeyFileMaterializer.materialize(normalizedPath, encodedPassphrase);
+      generatedKeyFileMaterializer.materialize(stagedPath, encodedPassphrase);
+      secretTarget.publishRetainingStage(stagedPath);
+      published = true;
+      stagedArtifact.discard();
       return ContractDecision.accepted(
           new GeneratedBookKeyFile(
               normalizedPath,
               GENERATED_ENCODING,
               GENERATED_ENTROPY_BITS,
               SqliteBookKeyFileSecurity.generatedPermissionsDescriptor(normalizedPath)));
+    } catch (SqliteGeneratedSecretTargetOccupiedException exception) {
+      return ContractDecision.rejected(secretTargetOccupiedFailure(exception.targetPath()));
     } catch (SqliteCallerPathContractException exception) {
-      if (created) {
-        deleteQuietly(normalizedPath);
-      }
       return ContractDecision.rejected(SqliteCallerPathFailureMapper.invalidBookKeyFile(exception));
     } catch (IOException exception) {
-      if (created) {
-        deleteQuietly(normalizedPath);
-      }
       throw new IllegalStateException(
           "Failed to create the FinGrind book key file: "
-              + PublicPathHint.fromPath(normalizedPath).value(),
+              + SqliteMachinePaths.absoluteValue(normalizedPath),
           exception);
     } finally {
+      if (!published && stagedArtifact != null) {
+        stagedArtifact.discard();
+      }
       Arrays.fill(encodedPassphrase, (byte) 0);
     }
   }
@@ -164,24 +160,29 @@ public final class SqliteBookKeyFileGenerator {
     return bookKeyFilePath.toAbsolutePath().normalize();
   }
 
+  private static void recoverOwnedStageIfParentExists(Path normalizedPath) {
+    Path parent = normalizedPath.getParent();
+    if (parent != null && Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)) {
+      SqliteOwnedStagedArtifact.recoverFor(normalizedPath);
+    }
+  }
+
   static void ensureParentDirectory(Path normalizedPath) throws IOException {
     SqliteBookKeyFileSecurity.ensureSecureParentDirectory(normalizedPath);
   }
 
-  private static ContractDecision<Path> createFile(Path normalizedPath) throws IOException {
-    try {
-      SqliteBookKeyFileSecurity.createSecureEmptyFile(normalizedPath);
-      return ContractDecision.accepted(normalizedPath);
-    } catch (FileAlreadyExistsException exception) {
-      return ContractDecision.rejected(
-          ContractErrors.Descriptor.BOOK_KEY_FILE_ALREADY_EXISTS.failure(
-              "The FinGrind book key file already exists and will not be overwritten: "
-                  + PublicPathHint.fromPath(normalizedPath).value(),
-              "Choose a different destination path for "
-                  + ProtocolCatalog.operationName(OperationId.GENERATE_BOOK_KEY_FILE)
-                  + ", or remove the existing file yourself before rerunning.",
-              null));
-    }
+  private static ContractDecision<Path> createStageFile(Path normalizedPath) throws IOException {
+    SqliteBookKeyFileSecurity.createSecureEmptyFile(normalizedPath);
+    return ContractDecision.accepted(normalizedPath);
+  }
+
+  private static dev.erst.fingrind.contract.runtime.ContractFailure secretTargetOccupiedFailure(
+      Path targetPath) {
+    return ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED.failureAt(
+        targetPath,
+        "Generated secret target already exists and will not be overwritten.",
+        "Choose an absent --new-book-key-file path or remove the existing file yourself before retrying.",
+        "--new-book-key-file");
   }
 
   private static void writeFile(Path normalizedPath, byte[] encodedPassphrase) throws IOException {
@@ -201,33 +202,5 @@ public final class SqliteBookKeyFileGenerator {
     } finally {
       Arrays.fill(randomBytes, (byte) 0);
     }
-  }
-
-  /**
-   * Deletes one normalized key-file path as best-effort cleanup after generation failure.
-   *
-   * <p>This helper preserves the primary generation failure by logging cleanup problems instead of
-   * surfacing them as the main outcome.
-   */
-  public static void deleteQuietly(Path normalizedPath) {
-    deleteQuietly(normalizedPath, SqliteBookKeyFileGenerator::reportCleanupFailure);
-  }
-
-  static void deleteQuietly(Path normalizedPath, DeleteFailureReporter reporter) {
-    Objects.requireNonNull(reporter, "reporter");
-    try {
-      Files.deleteIfExists(normalizedPath);
-    } catch (IOException exception) {
-      reporter.report("deleting one partially created book-key path", exception);
-    }
-  }
-
-  private static void reportCleanupFailure(String action, Exception exception) {
-    Objects.requireNonNull(action, "action");
-    Objects.requireNonNull(exception, "exception");
-    LOGGER.log(
-        WARNING,
-        "SQLite best-effort cleanup failed during " + action + "; preserving the primary outcome.",
-        exception);
   }
 }

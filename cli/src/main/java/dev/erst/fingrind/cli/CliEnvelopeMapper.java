@@ -9,7 +9,6 @@ import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
 import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import java.nio.file.Path;
@@ -76,7 +75,11 @@ final class CliEnvelopeMapper {
         failure.argument(),
         null,
         details,
-        null);
+        null,
+        failure.path() == null ? null : CliPublicPaths.absoluteValue(failure.path()),
+        failure.path() == null
+            ? null
+            : failure.relatedPaths().stream().map(CliPublicPaths::absoluteValue).toList());
   }
 
   static CliEnvelopeJsonModels.Envelope<ProtocolSuccessPayload> preflightEnvelope(
@@ -101,18 +104,35 @@ final class CliEnvelopeMapper {
   }
 
   static CliEnvelopeJsonModels.SuccessArtifact successArtifact(String format, Path path) {
-    return new CliEnvelopeJsonModels.SuccessArtifact(format, CliPublicPaths.redactedValue(path));
-  }
-
-  static CliEnvelopeJsonModels.SuccessArtifact successArtifact(
-      String format, PublicPathHint pathHint) {
-    return new CliEnvelopeJsonModels.SuccessArtifact(
-        format, CliPublicPaths.redactedValue(pathHint));
+    return new CliEnvelopeJsonModels.SuccessArtifact(format, CliPublicPaths.absoluteValue(path));
   }
 
   static List<CliEnvelopeJsonModels.SuccessArtifact> successArtifacts(
       CliEnvelopeJsonModels.SuccessArtifact... artifacts) {
     return List.of(artifacts);
+  }
+
+  static <T extends ProtocolSuccessPayload> CliEnvelopeJsonModels.Envelope<T> withFailurePaths(
+      CliEnvelopeJsonModels.Envelope<T> envelope) {
+    if (envelope.status() == ProtocolEnvelopeStatus.OK || envelope.path() != null) {
+      return envelope;
+    }
+    CliEnvelopeFailurePaths paths = CliEnvelopeFailurePaths.from(envelope.details());
+    if (paths == null) {
+      return envelope;
+    }
+    return new CliEnvelopeJsonModels.Envelope<>(
+        envelope.status(),
+        envelope.payload(),
+        envelope.code(),
+        envelope.message(),
+        envelope.hint(),
+        envelope.argument(),
+        envelope.idempotencyKey(),
+        envelope.details(),
+        envelope.artifacts(),
+        paths.path(),
+        paths.relatedPaths());
   }
 
   private static CliEnvelopeJsonModels.Envelope<CliPlanJsonModels.LedgerPlanPayload>

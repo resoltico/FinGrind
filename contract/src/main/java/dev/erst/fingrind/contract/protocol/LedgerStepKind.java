@@ -1,17 +1,22 @@
 package dev.erst.fingrind.contract.protocol;
 
+import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.WireValue;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
 
 /** Canonical wire kinds accepted for top-level ledger-plan steps. */
-public enum LedgerStepKind implements WireValue {
+public enum LedgerStepKind implements WireValue, LedgerJournalKind {
   ENSURE_BOOK("ensure-book"),
   DECLARE_ACCOUNT(OperationId.DECLARE_ACCOUNT),
+  DECLARE_TAX_REGISTRATION(OperationId.DECLARE_TAX_REGISTRATION),
   PREFLIGHT_ENTRY(OperationId.PREFLIGHT_ENTRY),
   RECORD_SALE_SETTLED(OperationId.RECORD_SALE_SETTLED),
   RECORD_SALE_ON_CREDIT(OperationId.RECORD_SALE_ON_CREDIT),
@@ -22,6 +27,25 @@ public enum LedgerStepKind implements WireValue {
   RECORD_INVENTORY_WRITE_DOWN(OperationId.RECORD_INVENTORY_WRITE_DOWN),
   RECORD_INVENTORY_SHRINKAGE(OperationId.RECORD_INVENTORY_SHRINKAGE),
   RECORD_INVENTORY_COUNT_INCREASE(OperationId.RECORD_INVENTORY_COUNT_INCREASE),
+  RECORD_PREPAYMENT(OperationId.RECORD_PREPAYMENT),
+  RECORD_DEFERRED_REVENUE(OperationId.RECORD_DEFERRED_REVENUE),
+  RECORD_ACCRUED_EXPENSE(OperationId.RECORD_ACCRUED_EXPENSE),
+  RECORD_ACCRUAL_CUTOFF_RECOGNITION(OperationId.RECORD_ACCRUAL_CUTOFF_RECOGNITION),
+  RECORD_ACCRUED_EXPENSE_SETTLEMENT(OperationId.RECORD_ACCRUED_EXPENSE_SETTLEMENT),
+  RECORD_LATVIAN_MONTHLY_PAYROLL(OperationId.RECORD_LATVIAN_MONTHLY_PAYROLL),
+  RECORD_LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT(
+      OperationId.RECORD_LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT),
+  RECORD_LATVIAN_PAYROLL_STATE_REMITTANCE(OperationId.RECORD_LATVIAN_PAYROLL_STATE_REMITTANCE),
+  RECORD_FIXED_ASSET_CAPITALIZATION(OperationId.RECORD_FIXED_ASSET_CAPITALIZATION),
+  RECORD_FIXED_ASSET_DEPRECIATION(OperationId.RECORD_FIXED_ASSET_DEPRECIATION),
+  RECORD_FIXED_ASSET_DISPOSAL(OperationId.RECORD_FIXED_ASSET_DISPOSAL),
+  RECORD_FINANCING_BORROWING(OperationId.RECORD_FINANCING_BORROWING),
+  RECORD_FINANCING_PRINCIPAL_REPAYMENT(OperationId.RECORD_FINANCING_PRINCIPAL_REPAYMENT),
+  RECORD_FINANCING_INTEREST_ACCRUAL(OperationId.RECORD_FINANCING_INTEREST_ACCRUAL),
+  RECORD_FINANCING_INTEREST_PAYMENT(OperationId.RECORD_FINANCING_INTEREST_PAYMENT),
+  RECORD_FOREIGN_CURRENCY_OBLIGATION(OperationId.RECORD_FOREIGN_CURRENCY_OBLIGATION),
+  RECORD_REALIZED_FOREIGN_EXCHANGE_SETTLEMENT(
+      OperationId.RECORD_REALIZED_FOREIGN_EXCHANGE_SETTLEMENT),
   RECORD_EXPENSE_SETTLED(OperationId.RECORD_EXPENSE_SETTLED),
   RECORD_EXPENSE_ON_CREDIT(OperationId.RECORD_EXPENSE_ON_CREDIT),
   RECORD_RECEIPT(OperationId.RECORD_RECEIPT),
@@ -43,13 +67,16 @@ public enum LedgerStepKind implements WireValue {
   private static final Set<LedgerStepKind> POSTING_COMMIT_STEPS = postingCommitSteps();
 
   private final String wireValue;
+  private final @Nullable OperationId operationId;
 
   LedgerStepKind(String wireValue) {
     this.wireValue = Objects.requireNonNull(wireValue, "wireValue");
+    operationId = null;
   }
 
   LedgerStepKind(OperationId operationId) {
-    this(Objects.requireNonNull(operationId, "operationId").wireName());
+    this.operationId = Objects.requireNonNull(operationId, "operationId");
+    wireValue = operationId.wireName();
   }
 
   /** Returns the stable wire value for this plan step kind. */
@@ -78,6 +105,26 @@ public enum LedgerStepKind implements WireValue {
   /** Returns every stable wire value in declaration order. */
   public static List<String> wireValues() {
     return WireValue.wireValues(LedgerStepKind.class);
+  }
+
+  /** Returns request-file operations that execute a ledger-plan step, in declaration order. */
+  public static List<OperationId> requestFileOperationIds() {
+    return Stream.concat(
+            Arrays.stream(values())
+                .filter(
+                    step ->
+                        step == DECLARE_ACCOUNT
+                            || step == DECLARE_TAX_REGISTRATION
+                            || step == PREFLIGHT_ENTRY
+                            || step.commitsPosting())
+                .map(LedgerStepKind::operationId)
+                .filter(Objects::nonNull),
+            Stream.of(OperationId.EXECUTE_PLAN))
+        .toList();
+  }
+
+  private @Nullable OperationId operationId() {
+    return operationId;
   }
 
   /** Parses one stable wire step kind. */

@@ -35,6 +35,8 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels, CliTaxRejecti
   sealed interface AccountRejectionDetails extends RejectionDetails
       permits AccountTypeConflictDetails,
           AccountTaxonomyConflictDetails,
+          AccountCodeDetails,
+          AccountDependenciesDetails,
           ParentAccountDetails,
           ParentAccountTypeConflictDetails,
           ParentAccountNodeKindDetails,
@@ -66,7 +68,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels, CliTaxRejecti
           ArtifactBusyDetails,
           ArtifactVerificationFailureDetails,
           BackupFileDetails,
-          BackupBookKeyFileDetails,
+          SecretTargetDetails,
           RollbackArtifactDetails,
           RollbackArtifactMismatchDetails,
           RollbackArtifactSelectionDetails {}
@@ -116,6 +118,23 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels, CliTaxRejecti
       accountCode = requireText(accountCode, "accountCode");
       existingAccountTaxonomy = requireValue(existingAccountTaxonomy, "existingAccountTaxonomy");
       requestedAccountTaxonomy = requireValue(requestedAccountTaxonomy, "requestedAccountTaxonomy");
+    }
+  }
+
+  record AccountCodeDetails(String accountCode) implements AccountRejectionDetails {
+    public AccountCodeDetails {
+      accountCode = requireText(accountCode, "accountCode");
+    }
+  }
+
+  record AccountDependenciesDetails(String accountCode, List<String> dependencies)
+      implements AccountRejectionDetails {
+    public AccountDependenciesDetails {
+      accountCode = requireText(accountCode, "accountCode");
+      dependencies = copyList(dependencies, "dependencies");
+      if (dependencies.isEmpty()) {
+        throw new IllegalArgumentException("dependencies must not be empty.");
+      }
     }
   }
 
@@ -362,9 +381,9 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels, CliTaxRejecti
     }
   }
 
-  record BackupBookKeyFileDetails(String backupBookKeyFile) implements MaintenanceRejectionDetails {
-    public BackupBookKeyFileDetails {
-      backupBookKeyFile = requireText(backupBookKeyFile, "backupBookKeyFile");
+  record SecretTargetDetails(String secretTarget) implements MaintenanceRejectionDetails {
+    public SecretTargetDetails {
+      secretTarget = requireText(secretTarget, "secretTarget");
     }
   }
 

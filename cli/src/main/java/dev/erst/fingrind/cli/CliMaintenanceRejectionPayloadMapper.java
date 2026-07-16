@@ -27,16 +27,17 @@ final class CliMaintenanceRejectionPayloadMapper {
   private CliMaintenanceRejectionPayloadMapper() {}
 
   static CliEnvelopeJsonModels.Envelope<?> rejectedEnvelope(BookMaintenanceRejection rejection) {
-    return new CliEnvelopeJsonModels.Envelope<>(
-        ProtocolEnvelopeStatus.REJECTED,
-        null,
-        BookMaintenanceRejection.wireCode(rejection),
-        RejectionNarrative.message(rejection),
-        rejectionHint(rejection),
-        null,
-        null,
-        rejectionDetails(rejection),
-        null);
+    return CliEnvelopeMapper.withFailurePaths(
+        new CliEnvelopeJsonModels.Envelope<>(
+            ProtocolEnvelopeStatus.REJECTED,
+            null,
+            BookMaintenanceRejection.wireCode(rejection),
+            RejectionNarrative.message(rejection),
+            rejectionHint(rejection),
+            null,
+            null,
+            rejectionDetails(rejection),
+            null));
   }
 
   private static String rejectionHint(BookMaintenanceRejection rejection) {
@@ -65,14 +66,71 @@ final class CliMaintenanceRejectionPayloadMapper {
           "Choose a new --backup-file path or remove the existing encrypted backup copy yourself before rerunning "
               + BACKUP_BOOK_OPERATION
               + ".";
-      case BookMaintenanceRejection.BackupKeyFileAlreadyExists _ ->
-          "Choose a new --backup-key-file path or remove the existing key file yourself before rerunning "
-              + BACKUP_BOOK_OPERATION
-              + ".";
+      case BookMaintenanceRejection.SecretTargetOccupied _ ->
+          "Choose one absent generated-secret target path, then rerun the maintenance command.";
+      case BookMaintenanceRejection.BookDestinationOccupied _ ->
+          "Rerun "
+              + RESTORE_BOOK_OPERATION
+              + " with --replace-existing-book only after confirming that the selected destination book is the intended replacement target.";
       case BookMaintenanceRejection.ArtifactVerificationFailed verificationFailed ->
           "Use an artifact that opens as an initialized FinGrind protected book for role "
               + verificationFailed.artifactRole().wireValue()
               + ", with the matching passphrase source for that artifact, then rerun the maintenance command.";
+      case BookMaintenanceRejection.RollbackArtifactRejection rollbackRejection ->
+          rollbackRejectionHint(rollbackRejection);
+    };
+  }
+
+  private static CliRejectionJsonModels.@org.jspecify.annotations.Nullable RejectionDetails
+      rejectionDetails(BookMaintenanceRejection rejection) {
+    return switch (rejection) {
+      case BookMaintenanceRejection.BookHasBlockingArtifacts blockingArtifacts ->
+          new CliRejectionJsonModels.BlockingArtifactsDetails(
+              CliPublicPaths.absoluteValue(blockingArtifacts.bookFilePath()),
+              blockingArtifacts.blockingArtifactPaths().stream()
+                  .map(CliPublicPaths::absoluteValue)
+                  .toList());
+      case BookMaintenanceRejection.BackupSourceHasBlockingArtifacts blockingArtifacts ->
+          new CliRejectionJsonModels.BlockingArtifactsDetails(
+              CliPublicPaths.absoluteValue(blockingArtifacts.backupFilePath()),
+              blockingArtifacts.blockingArtifactPaths().stream()
+                  .map(CliPublicPaths::absoluteValue)
+                  .toList());
+      case BookMaintenanceRejection.BackupSourceMatchesLiveBook sourceMatchesLiveBook ->
+          new CliRejectionJsonModels.BookAndBackupFileDetails(
+              CliPublicPaths.absoluteValue(sourceMatchesLiveBook.bookFilePath()),
+              CliPublicPaths.absoluteValue(sourceMatchesLiveBook.backupFilePath()));
+      case BookMaintenanceRejection.ArtifactPathInvalid invalidArtifactPath ->
+          new CliArtifactPathFailureDetails(
+              invalidArtifactPath.artifactRole().wireValue(),
+              CliPublicPaths.absoluteValue(invalidArtifactPath.artifactPath()),
+              invalidArtifactPath.pathFailure().wireValue());
+      case BookMaintenanceRejection.ArtifactBusy artifactBusy ->
+          new CliRejectionJsonModels.ArtifactBusyDetails(
+              artifactBusy.artifactRole().wireValue(),
+              CliPublicPaths.absoluteValue(artifactBusy.artifactPath()));
+      case BookMaintenanceRejection.BackupDestinationAlreadyExists destinationAlreadyExists ->
+          new CliRejectionJsonModels.BackupFileDetails(
+              CliPublicPaths.absoluteValue(destinationAlreadyExists.backupFilePath()));
+      case BookMaintenanceRejection.SecretTargetOccupied targetOccupied ->
+          new CliRejectionJsonModels.SecretTargetDetails(
+              CliPublicPaths.absoluteValue(targetOccupied.secretTargetPath()));
+      case BookMaintenanceRejection.BookDestinationOccupied destinationOccupied ->
+          new CliRejectionJsonModels.BookFileDetails(
+              CliPublicPaths.absoluteValue(destinationOccupied.bookFilePath()));
+      case BookMaintenanceRejection.ArtifactVerificationFailed verificationFailed ->
+          new CliRejectionJsonModels.ArtifactVerificationFailureDetails(
+              verificationFailed.artifactRole().wireValue(),
+              CliPublicPaths.absoluteValue(verificationFailed.artifactPath()),
+              verificationFailed.verificationFailure().wireValue());
+      case BookMaintenanceRejection.RollbackArtifactRejection rollbackRejection ->
+          rollbackRejectionDetails(rollbackRejection);
+    };
+  }
+
+  private static String rollbackRejectionHint(
+      BookMaintenanceRejection.RollbackArtifactRejection rejection) {
+    return switch (rejection) {
       case BookMaintenanceRejection.NoRollbackArtifactsFound _ ->
           "Rerun "
               + INSPECT_REKEY_ROLLBACK_OPERATION
@@ -93,59 +151,24 @@ final class CliMaintenanceRejectionPayloadMapper {
   }
 
   private static CliRejectionJsonModels.@org.jspecify.annotations.Nullable RejectionDetails
-      rejectionDetails(BookMaintenanceRejection rejection) {
+      rollbackRejectionDetails(BookMaintenanceRejection.RollbackArtifactRejection rejection) {
     return switch (rejection) {
-      case BookMaintenanceRejection.BookHasBlockingArtifacts blockingArtifacts ->
-          new CliRejectionJsonModels.BlockingArtifactsDetails(
-              blockingArtifacts.bookFilePath().value(),
-              blockingArtifacts.blockingArtifactPaths().stream()
-                  .map(path -> path.value())
-                  .toList());
-      case BookMaintenanceRejection.BackupSourceHasBlockingArtifacts blockingArtifacts ->
-          new CliRejectionJsonModels.BlockingArtifactsDetails(
-              blockingArtifacts.backupFilePath().value(),
-              blockingArtifacts.blockingArtifactPaths().stream()
-                  .map(path -> path.value())
-                  .toList());
-      case BookMaintenanceRejection.BackupSourceMatchesLiveBook sourceMatchesLiveBook ->
-          new CliRejectionJsonModels.BookAndBackupFileDetails(
-              sourceMatchesLiveBook.bookFilePath().value(),
-              sourceMatchesLiveBook.backupFilePath().value());
-      case BookMaintenanceRejection.ArtifactPathInvalid invalidArtifactPath ->
-          new CliArtifactPathFailureDetails(
-              invalidArtifactPath.artifactRole().wireValue(),
-              invalidArtifactPath.artifactPath().value(),
-              invalidArtifactPath.pathFailure().wireValue());
-      case BookMaintenanceRejection.ArtifactBusy artifactBusy ->
-          new CliRejectionJsonModels.ArtifactBusyDetails(
-              artifactBusy.artifactRole().wireValue(), artifactBusy.artifactPath().value());
-      case BookMaintenanceRejection.BackupDestinationAlreadyExists destinationAlreadyExists ->
-          new CliRejectionJsonModels.BackupFileDetails(
-              destinationAlreadyExists.backupFilePath().value());
-      case BookMaintenanceRejection.BackupKeyFileAlreadyExists destinationAlreadyExists ->
-          new CliRejectionJsonModels.BackupBookKeyFileDetails(
-              destinationAlreadyExists.backupBookKeyFilePath().value());
-      case BookMaintenanceRejection.ArtifactVerificationFailed verificationFailed ->
-          new CliRejectionJsonModels.ArtifactVerificationFailureDetails(
-              verificationFailed.artifactRole().wireValue(),
-              verificationFailed.artifactPath().value(),
-              verificationFailed.verificationFailure().wireValue());
       case BookMaintenanceRejection.NoRollbackArtifactsFound noRollbackArtifactsFound ->
           new CliRejectionJsonModels.BookFileDetails(
-              noRollbackArtifactsFound.bookFilePath().value());
+              CliPublicPaths.absoluteValue(noRollbackArtifactsFound.bookFilePath()));
       case BookMaintenanceRejection.RollbackArtifactSelectionRequired selectionRequired ->
           new CliRejectionJsonModels.RollbackArtifactSelectionDetails(
-              selectionRequired.bookFilePath().value(),
+              CliPublicPaths.absoluteValue(selectionRequired.bookFilePath()),
               selectionRequired.rollbackArtifactPaths().stream()
-                  .map(path -> path.value())
+                  .map(CliPublicPaths::absoluteValue)
                   .toList());
       case BookMaintenanceRejection.RollbackArtifactNotFound rollbackArtifactNotFound ->
           new CliRejectionJsonModels.RollbackArtifactDetails(
-              rollbackArtifactNotFound.rollbackArtifactPath().value());
+              CliPublicPaths.absoluteValue(rollbackArtifactNotFound.rollbackArtifactPath()));
       case BookMaintenanceRejection.RollbackArtifactNotForBook rollbackArtifactNotForBook ->
           new CliRejectionJsonModels.RollbackArtifactMismatchDetails(
-              rollbackArtifactNotForBook.bookFilePath().value(),
-              rollbackArtifactNotForBook.rollbackArtifactPath().value());
+              CliPublicPaths.absoluteValue(rollbackArtifactNotForBook.bookFilePath()),
+              CliPublicPaths.absoluteValue(rollbackArtifactNotForBook.rollbackArtifactPath()));
     };
   }
 
@@ -163,6 +186,8 @@ final class CliMaintenanceRejectionPayloadMapper {
           "Choose a regular non-symlink artifact path for this maintenance workflow, then rerun the command.";
       case UNSUPPORTED_SECURE_FILESYSTEM ->
           "Choose a path on a filesystem that supports POSIX owner-only permissions or Windows owner-only ACLs, then rerun the maintenance command.";
+      case ATOMIC_SECRET_PUBLICATION_UNSUPPORTED ->
+          "Choose a path on a filesystem that supports atomic no-replace secret publication, then rerun the maintenance command.";
     };
   }
 }

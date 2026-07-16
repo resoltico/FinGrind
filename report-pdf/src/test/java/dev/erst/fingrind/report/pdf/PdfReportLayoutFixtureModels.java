@@ -2,6 +2,7 @@ package dev.erst.fingrind.report.pdf;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPagination;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.CashFlowRow;
 import dev.erst.fingrind.contract.bookkeeping.CashFlowSection;
@@ -82,6 +83,7 @@ final class PdfReportLayoutFixtureModels {
             new EffectiveDateRange.Bounded(
                 LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
             PostingCoverage.ALL_POSTING_KINDS,
+            AccountLedgerPagination.firstPage(50),
             List.of(
                 PdfReportFixtureSupport.balance(
                     "EUR", "250.00", "0.00", "250.00", BalanceSide.DEBIT)),

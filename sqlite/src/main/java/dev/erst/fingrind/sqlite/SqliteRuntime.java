@@ -68,7 +68,7 @@ public final class SqliteRuntime {
 
   /** Returns the resolved absolute path for the loaded SQLite runtime artifact. */
   public static String loadedLibraryPath() {
-    return publicLoadedLibraryPath(SqliteNativeBootstrap.api().loadedLibraryPath());
+    return absoluteLoadedLibraryPath(SqliteNativeBootstrap.api().loadedLibraryPath());
   }
 
   /** Probes the packaged SQLite runtime without throwing, for CLI discovery surfaces. */
@@ -213,15 +213,11 @@ public final class SqliteRuntime {
     }
   }
 
-  static String publicLoadedLibraryPath(String loadedLibraryPath) {
-    return SqliteRuntimePathEvidenceSupport.publicLoadedLibraryPath(loadedLibraryPath);
+  static String absoluteLoadedLibraryPath(String loadedLibraryPath) {
+    return SqliteRuntimePathEvidenceSupport.absolutePath(loadedLibraryPath);
   }
 
   static @Nullable SqliteRuntimeArtifactEvidence artifactEvidence(String loadedLibraryPath) {
     return SqliteRuntimePathEvidenceSupport.artifactEvidence(loadedLibraryPath);
-  }
-
-  static int trailingPunctuationStart(String rawPath) {
-    return SqliteRuntimePathEvidenceSupport.trailingPunctuationStart(rawPath);
   }
 }

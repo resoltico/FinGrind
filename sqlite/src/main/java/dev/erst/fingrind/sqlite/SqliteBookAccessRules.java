@@ -1,6 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
@@ -27,7 +27,7 @@ final class SqliteBookAccessRules {
       BookAccess.PassphraseSource source) {
     return ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
         "SQLite same-package file-backed stores require a "
-            + ProtocolOptions.BOOK_KEY_FILE
+            + ProtocolBookAccessOptions.BOOK_KEY_FILE
             + " access selection, not "
             + source.optionName()
             + ".",

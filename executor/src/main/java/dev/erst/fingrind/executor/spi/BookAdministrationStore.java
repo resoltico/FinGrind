@@ -1,8 +1,10 @@
 package dev.erst.fingrind.executor.spi;
 
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.AccountRetirementOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import java.time.Instant;
 import java.util.List;
@@ -15,4 +17,11 @@ public interface BookAdministrationStore {
 
   /** Declares or reactivates one account in the selected book. */
   AccountDeclarationOutcome declareAccount(AccountDeclaration declaration, Instant declaredAt);
+
+  /** Replaces one account definition when the Account Registry admits the lifecycle change. */
+  AccountAmendmentOutcome amendAccount(AccountDeclaration amendment, Instant amendedAt);
+
+  /** Retires one account when the Account Registry admits the lifecycle change. */
+  AccountRetirementOutcome retireAccount(
+      dev.erst.fingrind.core.AccountCode accountCode, Instant retiredAt);
 }

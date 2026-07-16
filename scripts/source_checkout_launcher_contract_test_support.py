@@ -172,8 +172,13 @@ def assert_runtime_failure_envelope(args: argparse.Namespace) -> int:
         and ":cli:prepareSourceCheckoutCliRuntime" not in hint
     ):
         raise SystemExit(f"{args.label} did not report the source-checkout runtime recovery path")
-    if "supported launchers" not in message and "supported launchers" not in hint:
-        raise SystemExit(f"{args.label} did not direct the operator toward supported launchers")
+    if (
+        "supported FinGrind launcher surface" not in message
+        and "supported FinGrind launcher surface" not in hint
+    ):
+        raise SystemExit(
+            f"{args.label} did not direct the operator toward a supported FinGrind launcher surface"
+        )
     return 0
 
 

@@ -97,6 +97,6 @@ final class CliBookInspectionPayloadMapper {
   }
 
   private static String absolutePath(Path bookFilePath) {
-    return CliPublicPaths.redactedValue(bookFilePath);
+    return CliPublicPaths.absoluteValue(bookFilePath);
   }
 }

@@ -9,14 +9,18 @@ final class SqliteFileCleanup {
   private SqliteFileCleanup() {}
 
   static void deleteQuietly(Path path) {
-    deleteQuietly(path, SqliteBestEffort::reportCleanupFailure);
+    deleteQuietly(path, "deleting one temporary SQLite maintenance path");
   }
 
-  static void deleteQuietly(Path path, SqliteBestEffort.Reporter reporter) {
+  static void deleteQuietly(Path path, String action) {
+    deleteQuietly(path, action, SqliteBestEffort::reportCleanupFailure);
+  }
+
+  static void deleteQuietly(Path path, String action, SqliteBestEffort.Reporter reporter) {
     try {
       Files.deleteIfExists(path);
     } catch (IOException exception) {
-      reporter.report("deleting one temporary SQLite maintenance path", exception);
+      reporter.report(action, exception);
     }
   }
 }

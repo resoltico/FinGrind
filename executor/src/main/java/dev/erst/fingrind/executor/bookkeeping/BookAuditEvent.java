@@ -43,6 +43,18 @@ public record BookAuditEvent(
         recordedAt, BookAuditEventKind.ACCOUNT_RENAMED, accountCode, null, null);
   }
 
+  /** Returns one audit event recording an admitted account-definition amendment. */
+  public static BookAuditEvent accountAmended(Instant recordedAt, AccountCode accountCode) {
+    return new BookAuditEvent(
+        recordedAt, BookAuditEventKind.ACCOUNT_AMENDED, accountCode, null, null);
+  }
+
+  /** Returns one audit event recording an account retirement. */
+  public static BookAuditEvent accountRetired(Instant recordedAt, AccountCode accountCode) {
+    return new BookAuditEvent(
+        recordedAt, BookAuditEventKind.ACCOUNT_RETIRED, accountCode, null, null);
+  }
+
   /** Returns one audit event derived from a committed posting or reversal posting. */
   public static BookAuditEvent postingCommitted(CommittedPosting posting) {
     Objects.requireNonNull(posting, "posting");

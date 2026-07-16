@@ -1,8 +1,10 @@
 package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
+import dev.erst.fingrind.contract.protocol.CapabilityCatalogEntry;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.contract.runtime.StorageSurfaceDescriptor;
+import java.util.List;
 
 /** Descriptor for the capabilities payload. */
 public record CapabilitiesDescriptor(
@@ -20,7 +22,8 @@ public record CapabilitiesDescriptor(
     ContractResponse.ReversalDescriptor reversals,
     ContractResponse.PreflightDescriptor preflight,
     ContractResponse.CurrencyDescriptor currencyModel,
-    ContractResponse.BookkeepingKernelDescriptor bookkeepingKernel)
+    ContractResponse.BookkeepingKernelDescriptor bookkeepingKernel,
+    List<CapabilityCatalogEntry> capabilityCatalog)
     implements ContractDiscoveryDescriptor {
   /** Validates one capabilities descriptor payload. */
   public CapabilitiesDescriptor {
@@ -40,5 +43,7 @@ public record CapabilitiesDescriptor(
     currencyModel = ContractDescriptorValidation.requireValue(currencyModel, "currencyModel");
     bookkeepingKernel =
         ContractDescriptorValidation.requireValue(bookkeepingKernel, "bookkeepingKernel");
+    capabilityCatalog =
+        ContractDescriptorValidation.copyList(capabilityCatalog, "capabilityCatalog");
   }
 }

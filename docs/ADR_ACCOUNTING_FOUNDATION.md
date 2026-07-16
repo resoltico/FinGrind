@@ -107,12 +107,15 @@ Must own:
 - invoicing
 - settlement
 - inventory
-- payroll
+- further payroll profiles
 
 Current accepted design line:
 - inventory's first executable doctrine is one per-account perpetual moving weighted-average
   costing context documented in [ADR_INVENTORY_COSTING.md](./ADR_INVENTORY_COSTING.md), with
   typed commands, durable movement and on-hand state, executor admission, and conformance tests
+- the first executable payroll doctrine is the deliberately narrow Latvian 2026 monthly-employment
+  context documented in [ADR_LATVIAN_PAYROLL.md](./ADR_LATVIAN_PAYROLL.md); it does not imply
+  support for other jurisdictions, worker profiles, statutory filings, or general payroll
 
 Completion gate:
 - operating flows create business events that publish accounting facts into the protected book
@@ -129,7 +132,7 @@ The hard-break implementation order is:
 5. Foreign-exchange context
 6. Disclosure context
 7. Operational subledger contexts
-8. Jurisdiction or standards overlays only after the neutral foundation above is executable
+8. Additional jurisdiction or standards overlays only after the neutral foundation above is executable
 
 This order is deliberate:
 - evidence must arrive before business events can be trusted

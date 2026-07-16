@@ -1,7 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import static dev.erst.fingrind.sqlite.SqliteBookKeyFileSecuritySupport.redactedPath;
-
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import java.io.IOException;
@@ -28,13 +26,11 @@ final class SqliteBookKeyFileSecurityPolicy {
       String ownerOnlyMessage) {
     if (!permissions.contains(requiredPermission)) {
       return ContractDecision.rejected(
-          SqliteBookKeyFileSecuritySupport.invalidBookKeyFile(
-              ownerRequiredMessage + redactedPath(path)));
+          SqliteBookKeyFileSecuritySupport.invalidBookKeyFile(path, ownerRequiredMessage));
     }
     if (!allowedPermissions.containsAll(permissions)) {
       return ContractDecision.rejected(
-          SqliteBookKeyFileSecuritySupport.invalidBookKeyFile(
-              ownerOnlyMessage + redactedPath(path)));
+          SqliteBookKeyFileSecuritySupport.invalidBookKeyFile(path, ownerOnlyMessage));
     }
     return ContractDecision.accepted(path);
   }
@@ -51,8 +47,7 @@ final class SqliteBookKeyFileSecurityPolicy {
         .filter(entry -> security.owner().equals(entry.principal()))
         .noneMatch(entry -> entry.permissions().containsAll(ownerRequiredPermissions))) {
       return ContractDecision.rejected(
-          SqliteBookKeyFileSecuritySupport.invalidBookKeyFile(
-              ownerRequiredMessage + redactedPath(path)));
+          SqliteBookKeyFileSecuritySupport.invalidBookKeyFile(path, ownerRequiredMessage));
     }
     java.util.Optional<ContractFailure> nonOwnerAccessFailure =
         security.acl().stream()
@@ -66,9 +61,7 @@ final class SqliteBookKeyFileSecurityPolicy {
             .map(
                 ignoredEntry ->
                     SqliteBookKeyFileSecuritySupport.invalidBookKeyFile(
-                        ownerOnlyMessage
-                            + redactedPath(path)
-                            + " grants access to a non-owner principal."));
+                        path, ownerOnlyMessage + " It grants access to a non-owner principal."));
     if (nonOwnerAccessFailure.isPresent()) {
       return ContractDecision.rejected(nonOwnerAccessFailure.orElseThrow());
     }

@@ -45,6 +45,7 @@ import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.workflow.BookWorkflowAssertion;
+import dev.erst.fingrind.executor.workflow.BookWorkflowAssertionStep;
 import dev.erst.fingrind.executor.workflow.BookWorkflowBoundaryCheckpoint;
 import dev.erst.fingrind.executor.workflow.BookWorkflowFact;
 import dev.erst.fingrind.executor.workflow.BookWorkflowFailure;
@@ -137,7 +138,7 @@ class LedgerPlanOutcomeMapperTest {
     var publishedEntry = BookWorkflowPublishedLanguageTranslator.toPublished(journalEntry);
 
     assertEquals("unexpected-plan-failure", journalEntry.failure().code());
-    assertEquals(LedgerJournalKind.PLAN_BOUNDARY, publishedEntry.kind());
+    assertEquals(LedgerJournalKind.BoundaryKind.PLAN_BOUNDARY, publishedEntry.kind());
     assertEquals(
         dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint.COMMIT,
         publishedEntry.boundaryCheckpoint());
@@ -701,7 +702,7 @@ class LedgerPlanOutcomeMapperTest {
     assertEquals(
         BookkeepingQueryRejection.bookNotInitializedCode(),
         LedgerPlanStepOutcomes.missingBookCode(
-            new BookWorkflowStep.Assert(
+            new BookWorkflowAssertionStep(
                 internalStepId("assert"),
                 new BookWorkflowAssertion.AccountBalanceEquals(
                     new AccountCode("1000"),

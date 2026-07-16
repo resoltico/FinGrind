@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -25,7 +26,8 @@ class CliFailureMapperTest {
     assertNotNull(failure);
     assertEquals("artifact-output-already-exists", failure.code());
     assertTrue(failure.message().contains("already exists"));
-    assertTrue(failure.message().contains("reports/out.pdf"));
+    assertEquals(Path.of("reports/out.pdf"), failure.path());
+    assertFalse(failure.message().contains("reports/out.pdf"));
     assertEquals("--pdf-out", failure.argument());
     assertNotNull(failure.hint());
     assertTrue(failure.hint().contains("Choose a missing --pdf-out destination"));
@@ -55,8 +57,8 @@ class CliFailureMapperTest {
 
     assertNotNull(failure);
     assertEquals("pdf-export-failure", failure.code());
-    assertTrue(failure.message().startsWith("Failed to write PDF export to "));
-    assertTrue(failure.message().contains("out.pdf"));
+    assertEquals("Failed to write the PDF export.", failure.message());
+    assertEquals(Path.of("reports/out.pdf"), failure.path());
     assertEquals("--pdf-out", failure.argument());
     assertNotNull(failure.hint());
     assertTrue(failure.hint().contains("filesystem space"));

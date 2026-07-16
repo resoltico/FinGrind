@@ -7,6 +7,7 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.profitAnd
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.requestProvenance;
 
+import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffId;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
@@ -23,6 +24,7 @@ import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.bookkeeping.AccrualCutoffRecord;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
@@ -362,23 +364,33 @@ final class PostEntrySemanticsPolicyTestSupport {
     private final BookIdentity bookIdentity;
     private final Map<AccountCode, RegisteredAccount> accounts;
     private final Map<PostingId, CommittedPosting> postingsById;
+    private final Map<AccrualCutoffId, AccrualCutoffRecord> cutoffsById;
 
     PostingValidationStoreDouble(Map<AccountCode, RegisteredAccount> accounts) {
-      this(ExecutorAccountingTestSupport.bookIdentity(), accounts, Map.of());
+      this(ExecutorAccountingTestSupport.bookIdentity(), accounts, Map.of(), Map.of());
     }
 
     PostingValidationStoreDouble(
         BookIdentity bookIdentity, Map<AccountCode, RegisteredAccount> accounts) {
-      this(bookIdentity, accounts, Map.of());
+      this(bookIdentity, accounts, Map.of(), Map.of());
     }
 
     PostingValidationStoreDouble(
         BookIdentity bookIdentity,
         Map<AccountCode, RegisteredAccount> accounts,
         Map<PostingId, CommittedPosting> postingsById) {
+      this(bookIdentity, accounts, postingsById, Map.of());
+    }
+
+    PostingValidationStoreDouble(
+        BookIdentity bookIdentity,
+        Map<AccountCode, RegisteredAccount> accounts,
+        Map<PostingId, CommittedPosting> postingsById,
+        Map<AccrualCutoffId, AccrualCutoffRecord> cutoffsById) {
       this.bookIdentity = bookIdentity;
       this.accounts = accounts;
       this.postingsById = postingsById;
+      this.cutoffsById = cutoffsById;
     }
 
     @Override
@@ -424,6 +436,11 @@ final class PostEntrySemanticsPolicyTestSupport {
                   posting.reversalReference().stream()
                       .anyMatch(reference -> reference.priorPostingId().equals(priorPostingId)))
           .findFirst();
+    }
+
+    @Override
+    public Optional<AccrualCutoffRecord> findAccrualCutoff(AccrualCutoffId accrualCutoffId) {
+      return Optional.ofNullable(cutoffsById.get(accrualCutoffId));
     }
 
     @Override

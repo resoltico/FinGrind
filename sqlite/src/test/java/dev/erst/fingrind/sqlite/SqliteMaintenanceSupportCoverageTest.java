@@ -1,6 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -12,7 +11,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermission;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -145,63 +143,6 @@ class SqliteMaintenanceSupportCoverageTest {
   }
 
   @Test
-  void cleanupAbandonedStageArtifacts_returnsForParentlessOrMissingParentsAndDeletesMatchingFiles()
-      throws Exception {
-    assertDoesNotThrow(
-        () ->
-            SqliteBookMaintenanceFiles.cleanupAbandonedStageArtifacts(
-                Path.of("parentless.sqlite")));
-    assertDoesNotThrow(
-        () ->
-            SqliteBookMaintenanceFiles.cleanupAbandonedStageArtifacts(
-                tempDirectory.resolve("missing-parent").resolve("book.sqlite")));
-
-    Path parentDirectory = tempDirectory.resolve("cleanup-stage");
-    java.nio.file.Files.createDirectories(parentDirectory);
-    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(parentDirectory);
-    Path basePath = parentDirectory.resolve("book.sqlite");
-    Path backupStage = parentDirectory.resolve("book.sqlite.backup-one.sqlite");
-    Path backupKeyStage = parentDirectory.resolve("book.sqlite.backup-key-one.tmp");
-    Path restoreStage = parentDirectory.resolve("book.sqlite.restore-one.tmp");
-    Path previousStage = parentDirectory.resolve("book.sqlite.previous-one.sqlite");
-    Path unrelated = parentDirectory.resolve("book.sqlite.unrelated.txt");
-    java.nio.file.Files.writeString(backupStage, "backup");
-    java.nio.file.Files.writeString(backupKeyStage, "backup-key");
-    java.nio.file.Files.writeString(restoreStage, "restore");
-    java.nio.file.Files.writeString(previousStage, "previous");
-    java.nio.file.Files.writeString(unrelated, "keep");
-
-    SqliteBookMaintenanceFiles.cleanupAbandonedStageArtifacts(basePath);
-
-    assertFalse(java.nio.file.Files.exists(backupStage));
-    assertFalse(java.nio.file.Files.exists(backupKeyStage));
-    assertFalse(java.nio.file.Files.exists(restoreStage));
-    assertFalse(java.nio.file.Files.exists(previousStage));
-    assertTrue(java.nio.file.Files.exists(unrelated));
-  }
-
-  @Test
-  void cleanupAbandonedStageArtifacts_wrapsDirectoryListingFailures() {
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
-      AclFixturePath parentPath = fileSystem.path("\\cleanup");
-      parentPath.exists = true;
-      parentPath.regularFile = false;
-      parentPath.failNewDirectoryStreamWith(new IOException("cleanup-boom"));
-      AclFixturePath basePath = fileSystem.path("\\cleanup\\book.sqlite");
-      basePath.exists = true;
-      basePath.regularFile = true;
-
-      IllegalStateException exception =
-          assertThrows(
-              IllegalStateException.class,
-              () -> SqliteBookMaintenanceFiles.cleanupAbandonedStageArtifacts(basePath));
-
-      assertTrue(NullTestSupport.messageOf(exception).contains("stage artifacts"));
-      assertEquals("cleanup-boom", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
-    }
-  }
-
-  @Test
   void moveReplacing_usesTheDirectAtomicPathWhenSupported() throws Exception {
     Path sourcePath = tempDirectory.resolve("move-source.sqlite");
     Path targetPath = tempDirectory.resolve("move-target.sqlite");
@@ -211,80 +152,6 @@ class SqliteMaintenanceSupportCoverageTest {
 
     assertFalse(java.nio.file.Files.exists(sourcePath));
     assertEquals("moved", java.nio.file.Files.readString(targetPath));
-  }
-
-  @Test
-  void materialize_rejectsExistingKeyFiles() {
-    Path keyFilePath = tempDirectory.resolve("existing.key");
-    assertDoesNotThrowIo(() -> java.nio.file.Files.writeString(keyFilePath, "existing"));
-    try (SqliteBookPassphrase bookPassphrase =
-        SqliteBookPassphrase.fromUtf8Bytes(
-            "existing-key", "secret".getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
-      IllegalArgumentException exception =
-          assertThrows(
-              IllegalArgumentException.class,
-              () -> SqliteBookKeyFile.materialize(keyFilePath, bookPassphrase));
-      assertTrue(NullTestSupport.messageOf(exception).contains("already exists"));
-    }
-  }
-
-  @Test
-  void materialize_deletesCreatedKeyFilesWhenWriteFails() {
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
-      AclFixturePath parentPath = fileSystem.path("\\keys");
-      parentPath.exists = true;
-      parentPath.regularFile = false;
-      parentPath.posixPermissions =
-          Set.of(
-              PosixFilePermission.OWNER_READ,
-              PosixFilePermission.OWNER_WRITE,
-              PosixFilePermission.OWNER_EXECUTE);
-      AclFixturePath keyFilePath = fileSystem.path("\\keys\\backup.key");
-      keyFilePath.failNewByteChannelAfter(1, new IOException("write-boom"));
-
-      try (SqliteBookPassphrase bookPassphrase =
-          SqliteBookPassphrase.fromUtf8Bytes(
-              "materialize-failure", "secret".getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
-        IllegalStateException exception =
-            assertThrows(
-                IllegalStateException.class,
-                () -> SqliteBookKeyFile.materialize(keyFilePath, bookPassphrase));
-
-        assertTrue(NullTestSupport.messageOf(exception).contains("backup key file"));
-        assertEquals("write-boom", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
-        assertFalse(keyFilePath.exists);
-      }
-    }
-  }
-
-  @Test
-  void materialize_leavesNoArtifactWhenSecureFileCreationFailsBeforeCreationCompletes() {
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
-      AclFixturePath parentPath = fileSystem.path("\\keys");
-      parentPath.exists = true;
-      parentPath.regularFile = false;
-      parentPath.posixPermissions =
-          Set.of(
-              PosixFilePermission.OWNER_READ,
-              PosixFilePermission.OWNER_WRITE,
-              PosixFilePermission.OWNER_EXECUTE);
-      AclFixturePath keyFilePath = fileSystem.path("\\keys\\create-failure.key");
-      keyFilePath.failNewByteChannelWith(new IOException("create-boom"));
-
-      try (SqliteBookPassphrase bookPassphrase =
-          SqliteBookPassphrase.fromUtf8Bytes(
-              "materialize-create-failure",
-              "secret".getBytes(java.nio.charset.StandardCharsets.UTF_8))) {
-        IllegalStateException exception =
-            assertThrows(
-                IllegalStateException.class,
-                () -> SqliteBookKeyFile.materialize(keyFilePath, bookPassphrase));
-
-        assertTrue(NullTestSupport.messageOf(exception).contains("backup key file"));
-        assertEquals("create-boom", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
-        assertFalse(keyFilePath.exists);
-      }
-    }
   }
 
   @Test
@@ -321,19 +188,5 @@ class SqliteMaintenanceSupportCoverageTest {
     } catch (IllegalAccessException | NoSuchMethodException exception) {
       throw new LinkageError("Failed to bind SQLite maintenance helper: " + methodName, exception);
     }
-  }
-
-  private static void assertDoesNotThrowIo(IoAction action) {
-    try {
-      action.run();
-    } catch (IOException exception) {
-      throw new IllegalStateException("Unexpected I/O failure in test setup.", exception);
-    }
-  }
-
-  /** Minimal checked-I/O action used by local test setup helpers. */
-  @FunctionalInterface
-  private interface IoAction {
-    void run() throws IOException;
   }
 }

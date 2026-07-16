@@ -14,6 +14,7 @@ public record AccountLedgerReport(
     DeclaredAccount account,
     EffectiveDateRange effectiveDateRange,
     PostingCoverage postingCoverage,
+    AccountLedgerPagination pagination,
     List<CurrencyBalance> openingBalances,
     List<AccountLedgerEntry> entries,
     List<CurrencyBalance> closingBalances) {
@@ -23,6 +24,7 @@ public record AccountLedgerReport(
       DeclaredAccount account,
       EffectiveDateRange effectiveDateRange,
       PostingCoverage postingCoverage,
+      AccountLedgerPagination pagination,
       List<CurrencyBalance> openingBalances,
       List<AccountLedgerEntry> entries,
       List<CurrencyBalance> closingBalances) {
@@ -30,6 +32,7 @@ public record AccountLedgerReport(
     this.account = Objects.requireNonNull(account, "account");
     this.effectiveDateRange = Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
     this.postingCoverage = Objects.requireNonNull(postingCoverage, "postingCoverage");
+    this.pagination = Objects.requireNonNull(pagination, "pagination");
     this.openingBalances =
         ContractDescriptorValidation.copyList(openingBalances, "openingBalances");
     this.entries = ContractDescriptorValidation.copyList(entries, "entries");

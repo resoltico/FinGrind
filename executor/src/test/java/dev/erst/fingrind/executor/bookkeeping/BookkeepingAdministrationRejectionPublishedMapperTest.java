@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountNodeKind;
+import dev.erst.fingrind.core.AccountRegistryDependency;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -108,6 +109,24 @@ class BookkeepingAdministrationRejectionPublishedMapperTest {
             new CloseTargetAccountCandidateAmbiguous(
                 FinancialPositionLineClassification.RESULT_HOLDING,
                 List.of(new AccountCode("3200"), new AccountCode("3210")))));
+  }
+
+  @Test
+  void mapperProjectsAccountRegistryLifecycleRejectionsIntoPublicContract() {
+    AccountCode accountCode = new AccountCode("1000");
+
+    assertEquals(
+        new dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection
+            .AccountHasDependents(
+            accountCode,
+            List.of(
+                AccountRegistryDependency.POSTINGS, AccountRegistryDependency.TAX_REGISTRATIONS)),
+        BookkeepingAdministrationRejectionPublishedMapper.toPublished(
+            new AccountRegistryLifecycleRejection.AccountHasDependents(
+                accountCode,
+                List.of(
+                    AccountRegistryDependency.POSTINGS,
+                    AccountRegistryDependency.TAX_REGISTRATIONS))));
   }
 
   private static MethodHandle publishedAccountStructureRejectionHandle() {

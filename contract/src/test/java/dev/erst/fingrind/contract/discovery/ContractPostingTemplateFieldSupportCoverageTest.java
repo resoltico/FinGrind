@@ -77,6 +77,16 @@ class ContractPostingTemplateFieldSupportCoverageTest {
         null,
         null,
         null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
         null);
   }
 

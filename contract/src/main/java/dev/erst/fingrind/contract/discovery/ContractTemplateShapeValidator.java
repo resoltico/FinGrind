@@ -22,6 +22,7 @@ final class ContractTemplateShapeValidator {
       ContractPlanTemplates.@Nullable EnsureBookTemplateDescriptor ensureBook,
       ContractTemplates.@Nullable PostingRequestTemplateDescriptor posting,
       ContractTemplates.@Nullable DeclareAccountTemplateDescriptor declareAccount,
+      ContractTemplates.@Nullable DeclareTaxRegistrationTemplateDescriptor declareTaxRegistration,
       ContractPlanTemplates.@Nullable LedgerPlanQueryTemplateDescriptor query,
       ContractPlanTemplates.@Nullable LedgerAssertionTemplateDescriptor assertion,
       @Nullable String postingId) {
@@ -29,6 +30,11 @@ final class ContractTemplateShapeValidator {
     requirePresence(kind, "ensureBook", ensureBook, requirements.openBook());
     requirePresence(kind, "posting", posting, requirements.posting());
     requirePresence(kind, "declareAccount", declareAccount, requirements.declareAccount());
+    requirePresence(
+        kind,
+        "declareTaxRegistration",
+        declareTaxRegistration,
+        requirements.declareTaxRegistration());
     requirePresence(kind, "query", query, requirements.query());
     requirePresence(kind, "assertion", assertion, requirements.assertion());
     requirePresence(kind, "postingId", postingId, requirements.postingId());

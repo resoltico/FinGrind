@@ -7,8 +7,11 @@ import java.util.Objects;
 public enum AccountRole implements WireValue {
   CASH,
   INVENTORY,
+  PREPAID_EXPENSE,
   RECEIVABLE,
   PAYABLE,
+  DEFERRED_REVENUE,
+  ACCRUED_EXPENSE,
   REVENUE,
   EXPENSE,
   EQUITY_CONTRIBUTED,
@@ -18,18 +21,7 @@ public enum AccountRole implements WireValue {
 
   /** Returns whether this role participates in typed event anchoring. */
   public boolean anchorRole() {
-    return switch (this) {
-      case CASH,
-          INVENTORY,
-          RECEIVABLE,
-          PAYABLE,
-          REVENUE,
-          EXPENSE,
-          EQUITY_CONTRIBUTED,
-          EQUITY_DRAWS ->
-          true;
-      case SETTLEMENT_ADJUNCT, AUX -> false;
-    };
+    return this != SETTLEMENT_ADJUNCT && this != AUX;
   }
 
   @Override

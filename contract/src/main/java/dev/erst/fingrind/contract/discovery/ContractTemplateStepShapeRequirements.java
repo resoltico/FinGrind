@@ -5,6 +5,7 @@ record ContractTemplateStepShapeRequirements(
     ContractTemplateFieldPresence openBook,
     ContractTemplateFieldPresence posting,
     ContractTemplateFieldPresence declareAccount,
+    ContractTemplateFieldPresence declareTaxRegistration,
     ContractTemplateFieldPresence query,
     ContractTemplateFieldPresence assertion,
     ContractTemplateFieldPresence postingId,

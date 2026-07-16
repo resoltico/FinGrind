@@ -19,4 +19,9 @@ final class CliPublicPaths {
   static String redactedValue(PublicPathHint pathHint) {
     return Objects.requireNonNull(pathHint, "pathHint").value();
   }
+
+  /** Returns the canonical real path string for machine-readable CLI output. */
+  static String absoluteValue(Path path) {
+    return Objects.requireNonNull(path, "path").toAbsolutePath().normalize().toString();
+  }
 }

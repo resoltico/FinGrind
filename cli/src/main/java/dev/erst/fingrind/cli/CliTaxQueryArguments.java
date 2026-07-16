@@ -17,16 +17,19 @@ import org.jspecify.annotations.Nullable;
 final class CliTaxQueryArguments {
   private static final CliBookArgumentParser.CommandArgumentSpec LIST_TAX_REGISTRATIONS_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
-          List.of(ProtocolOptions.LIMIT, ProtocolOptions.CURSOR, ProtocolOptions.OUTPUT),
-          List.of(ProtocolOptions.WITH_CONTEXT));
+          List.of(
+              ProtocolOptions.ReportQuery.LIMIT,
+              ProtocolOptions.ReportQuery.CURSOR,
+              ProtocolOptions.Presentation.OUTPUT),
+          List.of(ProtocolOptions.Presentation.WITH_CONTEXT));
   private static final CliBookArgumentParser.CommandArgumentSpec TAX_OBLIGATION_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
-              ProtocolOptions.TAX_REGISTRATION_ID,
-              ProtocolOptions.PERIOD_START,
-              ProtocolOptions.PERIOD_END,
-              ProtocolOptions.OUTPUT,
-              ProtocolOptions.PDF_OUT),
+              ProtocolOptions.Request.TAX_REGISTRATION_ID,
+              ProtocolOptions.DateRange.PERIOD_START,
+              ProtocolOptions.DateRange.PERIOD_END,
+              ProtocolOptions.Presentation.OUTPUT,
+              ProtocolOptions.Presentation.PDF_OUT),
           List.of());
 
   private CliTaxQueryArguments() {}
@@ -57,56 +60,59 @@ final class CliTaxQueryArguments {
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.TAX_REGISTRATION_ID.equals(argument)) {
+      if (ProtocolOptions.Request.TAX_REGISTRATION_ID.equals(argument)) {
         taxRegistrationIdValue =
             CliSingleValueOptionRequirements.requireSingleTextOption(
-                taxRegistrationIdValue, ProtocolOptions.TAX_REGISTRATION_ID, argumentIterator);
+                taxRegistrationIdValue,
+                ProtocolOptions.Request.TAX_REGISTRATION_ID,
+                argumentIterator);
         continue;
       }
-      if (ProtocolOptions.PERIOD_START.equals(argument)) {
+      if (ProtocolOptions.DateRange.PERIOD_START.equals(argument)) {
         effectiveDateFrom =
             CliSingleValueOptionRequirements.requireSingleDateOption(
-                effectiveDateFrom, ProtocolOptions.PERIOD_START, argumentIterator);
+                effectiveDateFrom, ProtocolOptions.DateRange.PERIOD_START, argumentIterator);
         continue;
       }
-      if (ProtocolOptions.PERIOD_END.equals(argument)) {
+      if (ProtocolOptions.DateRange.PERIOD_END.equals(argument)) {
         effectiveDateTo =
             CliSingleValueOptionRequirements.requireSingleDateOption(
-                effectiveDateTo, ProtocolOptions.PERIOD_END, argumentIterator);
+                effectiveDateTo, ProtocolOptions.DateRange.PERIOD_END, argumentIterator);
         continue;
       }
-      if (ProtocolOptions.OUTPUT.equals(argument)) {
-        outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
+      if (ProtocolOptions.Presentation.OUTPUT.equals(argument)) {
+        outputMode = CliReportOptionArguments.requireReportOutputMode(outputMode, argumentIterator);
         continue;
       }
       pdfOutPath = CliOptionModes.requirePdfOutPath(pdfOutPath, argumentIterator);
     }
     if (taxRegistrationIdValue == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.TAX_REGISTRATION_ID,
-          "A " + ProtocolOptions.TAX_REGISTRATION_ID + " argument is required.");
+          ProtocolOptions.Request.TAX_REGISTRATION_ID,
+          "A " + ProtocolOptions.Request.TAX_REGISTRATION_ID + " argument is required.");
     }
     if (effectiveDateFrom == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.PERIOD_START,
-          "A " + ProtocolOptions.PERIOD_START + " argument is required.");
+          ProtocolOptions.DateRange.PERIOD_START,
+          "A " + ProtocolOptions.DateRange.PERIOD_START + " argument is required.");
     }
     if (effectiveDateTo == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.PERIOD_END, "A " + ProtocolOptions.PERIOD_END + " argument is required.");
+          ProtocolOptions.DateRange.PERIOD_END,
+          "A " + ProtocolOptions.DateRange.PERIOD_END + " argument is required.");
     }
     CliArgumentValueParser.requireOrderedDateRange(
         effectiveDateFrom,
         effectiveDateTo,
-        ProtocolOptions.PERIOD_START,
-        ProtocolOptions.PERIOD_END);
+        ProtocolOptions.DateRange.PERIOD_START,
+        ProtocolOptions.DateRange.PERIOD_END);
     String requiredTaxRegistrationIdValue = taxRegistrationIdValue;
     LocalDate requiredEffectiveDateFrom = effectiveDateFrom;
     LocalDate requiredEffectiveDateTo = effectiveDateTo;
     return new TaxObligation(
         parsedArguments.bookAccess(),
         CliArgumentValueParser.requireValidArgument(
-            ProtocolOptions.TAX_REGISTRATION_ID,
+            ProtocolOptions.Request.TAX_REGISTRATION_ID,
             () ->
                 new TaxObligationQuery(
                     new TaxRegistrationId(requiredTaxRegistrationIdValue),

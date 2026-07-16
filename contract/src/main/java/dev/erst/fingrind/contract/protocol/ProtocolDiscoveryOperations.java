@@ -79,7 +79,7 @@ final class ProtocolDiscoveryOperations {
             List.of(
                 ProtocolRequestTemplateTopics.syntax(),
                 "["
-                    + ProtocolOptions.BOOK_TEMPLATE_ID
+                    + ProtocolOptions.BookDefinition.TEMPLATE_ID
                     + " <"
                     + String.join("|", dev.erst.fingrind.core.BookTemplateId.wireValues())
                     + ">]"),
@@ -99,7 +99,7 @@ final class ProtocolDiscoveryOperations {
                         .formatted(
                             OperationId.PRINT_REQUEST_TEMPLATE.wireName(),
                             OperationId.RECORD_SALE_SETTLED.wireName(),
-                            ProtocolOptions.BOOK_TEMPLATE_ID)),
+                            ProtocolOptions.BookDefinition.TEMPLATE_ID)),
                 ProtocolExampleStep.command(
                     "fingrind %s declare-account > declare-account.json"
                         .formatted(OperationId.PRINT_REQUEST_TEMPLATE.wireName())),
@@ -112,7 +112,7 @@ final class ProtocolDiscoveryOperations {
             List.of("--print-plan-template"),
             List.of(),
             ExecutionMode.RAW_JSON,
-            "Print the canonical minimal AI-agent ledger plan scaffold JSON document.",
+            "Print the canonical atomic tax-setup ledger plan scaffold JSON document.",
             List.of(
                 ProtocolExampleStep.command(
                     "fingrind %s > plan.json"

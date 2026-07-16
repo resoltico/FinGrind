@@ -16,16 +16,20 @@ import org.jspecify.annotations.Nullable;
 /** Parses discovery-style CLI commands that do not target a selected book. */
 final class CliDiscoveryArguments {
   private static final List<String> HELP_OPTIONS =
-      List.of(ProtocolOptions.OUTPUT, ProtocolOptions.DETAIL, ProtocolOptions.CATEGORY);
+      List.of(
+          ProtocolOptions.Presentation.OUTPUT,
+          ProtocolOptions.Discovery.DETAIL,
+          ProtocolOptions.Discovery.CATEGORY);
   private static final List<String> COMMAND_HELP_OPTIONS =
-      List.of(ProtocolOptions.OUTPUT, ProtocolOptions.DETAIL);
+      List.of(ProtocolOptions.Presentation.OUTPUT, ProtocolOptions.Discovery.DETAIL);
   private static final List<String> CAPABILITIES_OPTIONS =
       List.of(
-          ProtocolOptions.OUTPUT,
-          ProtocolOptions.DETAIL,
-          ProtocolOptions.FOCUS,
-          ProtocolOptions.CATEGORY);
-  private static final List<String> SIMPLE_DISCOVERY_OPTIONS = List.of(ProtocolOptions.OUTPUT);
+          ProtocolOptions.Presentation.OUTPUT,
+          ProtocolOptions.Discovery.DETAIL,
+          ProtocolOptions.Discovery.FOCUS,
+          ProtocolOptions.Discovery.CATEGORY);
+  private static final List<String> SIMPLE_DISCOVERY_OPTIONS =
+      List.of(ProtocolOptions.Presentation.OUTPUT);
 
   private CliDiscoveryArguments() {}
 
@@ -37,19 +41,19 @@ final class CliDiscoveryArguments {
     ListIterator<String> argumentIterator = arguments.listIterator(1);
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.OUTPUT.equals(argument)) {
+      if (ProtocolOptions.Presentation.OUTPUT.equals(argument)) {
         outputMode =
             CliOptionModes.requireOutputMode(
                 outputMode,
-                CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Presentation.OUTPUT),
                 CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
         continue;
       }
-      if (ProtocolOptions.DETAIL.equals(argument)) {
+      if (ProtocolOptions.Discovery.DETAIL.equals(argument)) {
         detail = CliOptionModes.requireDiscoveryDetail(detail, argumentIterator);
         continue;
       }
-      if (ProtocolOptions.CATEGORY.equals(argument)) {
+      if (ProtocolOptions.Discovery.CATEGORY.equals(argument)) {
         category = CliOptionModes.requireOperationCategory(category, argumentIterator);
         continue;
       }
@@ -65,8 +69,8 @@ final class CliDiscoveryArguments {
     requireJsonDiscoverySelections(detail, category, null, resolvedOutputMode);
     if (commandTopic != null && category != null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.CATEGORY,
-          ProtocolOptions.CATEGORY
+          ProtocolOptions.Discovery.CATEGORY,
+          ProtocolOptions.Discovery.CATEGORY
               + " applies only to top-level help discovery. Remove it when one command topic is selected.");
     }
     return new Help(
@@ -83,15 +87,15 @@ final class CliDiscoveryArguments {
     ListIterator<String> argumentIterator = arguments.listIterator(2);
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.OUTPUT.equals(argument)) {
+      if (ProtocolOptions.Presentation.OUTPUT.equals(argument)) {
         outputMode =
             CliOptionModes.requireOutputMode(
                 outputMode,
-                CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Presentation.OUTPUT),
                 CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
         continue;
       }
-      if (ProtocolOptions.DETAIL.equals(argument)) {
+      if (ProtocolOptions.Discovery.DETAIL.equals(argument)) {
         detail = CliOptionModes.requireDiscoveryDetail(detail, argumentIterator);
         continue;
       }
@@ -142,11 +146,12 @@ final class CliDiscoveryArguments {
     ListIterator<String> argumentIterator = arguments.listIterator(1);
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.BOOK_TEMPLATE_ID.equals(argument)) {
+      if (ProtocolOptions.BookDefinition.TEMPLATE_ID.equals(argument)) {
         bookTemplateId =
             CliOptionValues.parseBookTemplateIdOption(
-                CliOptionValues.requireValue(argumentIterator, ProtocolOptions.BOOK_TEMPLATE_ID),
-                ProtocolOptions.BOOK_TEMPLATE_ID);
+                CliOptionValues.requireValue(
+                    argumentIterator, ProtocolOptions.BookDefinition.TEMPLATE_ID),
+                ProtocolOptions.BookDefinition.TEMPLATE_ID);
         continue;
       }
       if (commandTopic != null) {
@@ -157,7 +162,7 @@ final class CliDiscoveryArguments {
       }
       if (argument.startsWith("-")) {
         throw CliArgumentValueParser.unsupportedArgument(
-            argument, List.of(ProtocolOptions.BOOK_TEMPLATE_ID));
+            argument, List.of(ProtocolOptions.BookDefinition.TEMPLATE_ID));
       }
       commandTopic = CliDiscoveryRequestTemplateTopics.requireTopic(argument);
     }
@@ -185,13 +190,13 @@ final class CliDiscoveryArguments {
     ListIterator<String> argumentIterator = arguments.listIterator(1);
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (!ProtocolOptions.OUTPUT.equals(argument)) {
+      if (!ProtocolOptions.Presentation.OUTPUT.equals(argument)) {
         throw CliArgumentValueParser.unsupportedArgument(argument, SIMPLE_DISCOVERY_OPTIONS);
       }
       outputMode =
           CliOptionModes.requireOutputMode(
               outputMode,
-              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Presentation.OUTPUT),
               CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
     }
     return commandFactory.create(CliOptionModes.resolvedDiscoveryOutputMode(outputMode));
@@ -215,23 +220,23 @@ final class CliDiscoveryArguments {
     ListIterator<String> argumentIterator = arguments.listIterator(1);
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.OUTPUT.equals(argument)) {
+      if (ProtocolOptions.Presentation.OUTPUT.equals(argument)) {
         outputMode =
             CliOptionModes.requireOutputMode(
                 outputMode,
-                CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Presentation.OUTPUT),
                 CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
         continue;
       }
-      if (ProtocolOptions.DETAIL.equals(argument)) {
+      if (ProtocolOptions.Discovery.DETAIL.equals(argument)) {
         detail = CliOptionModes.requireDiscoveryDetail(detail, argumentIterator);
         continue;
       }
-      if (ProtocolOptions.FOCUS.equals(argument)) {
+      if (ProtocolOptions.Discovery.FOCUS.equals(argument)) {
         focus = CliOptionModes.requireDiscoveryFocus(focus, argumentIterator);
         continue;
       }
-      if (ProtocolOptions.CATEGORY.equals(argument)) {
+      if (ProtocolOptions.Discovery.CATEGORY.equals(argument)) {
         category = CliOptionModes.requireOperationCategory(category, argumentIterator);
         continue;
       }
@@ -253,10 +258,10 @@ final class CliDiscoveryArguments {
       DiscoveryFocus resolvedFocus) {
     if (category != null && focus != null && resolvedFocus != DiscoveryFocus.COMMANDS) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.CATEGORY,
-          ProtocolOptions.CATEGORY
+          ProtocolOptions.Discovery.CATEGORY,
+          ProtocolOptions.Discovery.CATEGORY
               + " requires "
-              + ProtocolOptions.FOCUS
+              + ProtocolOptions.Discovery.FOCUS
               + " commands on the capabilities surface.");
     }
   }
@@ -273,15 +278,15 @@ final class CliDiscoveryArguments {
       return;
     }
     throw CliArgumentValueParser.invalid(
-        ProtocolOptions.OUTPUT,
-        ProtocolOptions.DETAIL
+        ProtocolOptions.Presentation.OUTPUT,
+        ProtocolOptions.Discovery.DETAIL
             + ", "
-            + ProtocolOptions.FOCUS
+            + ProtocolOptions.Discovery.FOCUS
             + ", and "
-            + ProtocolOptions.CATEGORY
+            + ProtocolOptions.Discovery.CATEGORY
             + " are supported only when the resolved output mode is json. "
             + "Add "
-            + ProtocolOptions.OUTPUT
+            + ProtocolOptions.Presentation.OUTPUT
             + " json or omit the JSON-only discovery selectors"
             + ".");
   }

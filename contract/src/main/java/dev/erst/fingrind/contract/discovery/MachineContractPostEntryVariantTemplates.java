@@ -7,8 +7,6 @@ import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.JournalLine;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /** Variant template builders for post-entry request shapes. */
@@ -29,71 +27,15 @@ final class MachineContractPostEntryVariantTemplates {
               "cash", JournalLine.EntrySide.DEBIT, new MonetaryAmount("EUR", "1000")),
           new ContractTemplates.JournalLineTemplateDescriptor(
               "service-revenue", JournalLine.EntrySide.CREDIT, new MonetaryAmount("EUR", "1000")));
-  private static final Map<BookkeepingEntryKind, TemplateBuilder> TEMPLATES =
-      Map.ofEntries(
-          Map.entry(
-              BookkeepingEntryKind.DIRECT_JOURNAL,
-              ignoredBookTemplateId -> directJournalTemplate()),
-          Map.entry(
-              BookkeepingEntryKind.SALE_SETTLED,
-              MachineContractPostEntryTypedVariantTemplates::saleSettledTemplate),
-          Map.entry(
-              BookkeepingEntryKind.SALE_ON_CREDIT,
-              MachineContractPostEntryTypedVariantTemplates::saleOnCreditTemplate),
-          Map.entry(
-              BookkeepingEntryKind.PURCHASE_SETTLED,
-              MachineContractPostEntryTypedVariantTemplates::purchaseSettledTemplate),
-          Map.entry(
-              BookkeepingEntryKind.PURCHASE_ON_CREDIT,
-              MachineContractPostEntryTypedVariantTemplates::purchaseOnCreditTemplate),
-          Map.entry(
-              BookkeepingEntryKind.INVENTORY_CAPITALIZATION_SETTLED,
-              MachineContractPostEntryTypedVariantTemplates
-                  ::inventoryCapitalizationSettledTemplate),
-          Map.entry(
-              BookkeepingEntryKind.INVENTORY_CAPITALIZATION_ON_CREDIT,
-              MachineContractPostEntryTypedVariantTemplates
-                  ::inventoryCapitalizationOnCreditTemplate),
-          Map.entry(
-              BookkeepingEntryKind.INVENTORY_WRITE_DOWN,
-              MachineContractPostEntryTypedVariantTemplates::inventoryWriteDownTemplate),
-          Map.entry(
-              BookkeepingEntryKind.INVENTORY_SHRINKAGE,
-              MachineContractPostEntryTypedVariantTemplates::inventoryShrinkageTemplate),
-          Map.entry(
-              BookkeepingEntryKind.INVENTORY_COUNT_INCREASE,
-              MachineContractPostEntryTypedVariantTemplates::inventoryCountIncreaseTemplate),
-          Map.entry(
-              BookkeepingEntryKind.EXPENSE_SETTLED,
-              MachineContractPostEntryTypedVariantTemplates::expenseSettledTemplate),
-          Map.entry(
-              BookkeepingEntryKind.EXPENSE_ON_CREDIT,
-              MachineContractPostEntryTypedVariantTemplates::expenseOnCreditTemplate),
-          Map.entry(
-              BookkeepingEntryKind.RECEIPT,
-              MachineContractPostEntryTypedVariantTemplates::receiptTemplate),
-          Map.entry(
-              BookkeepingEntryKind.PAYMENT,
-              MachineContractPostEntryTypedVariantTemplates::paymentTemplate),
-          Map.entry(
-              BookkeepingEntryKind.OWNER_CONTRIBUTION,
-              MachineContractPostEntryTypedVariantTemplates::ownerContributionTemplate),
-          Map.entry(
-              BookkeepingEntryKind.OWNER_WITHDRAWAL,
-              MachineContractPostEntryTypedVariantTemplates::ownerWithdrawalTemplate),
-          Map.entry(
-              BookkeepingEntryKind.OPENING_POSITION,
-              ignoredBookTemplateId -> openingPositionTemplate()),
-          Map.entry(BookkeepingEntryKind.REVERSAL, ignoredBookTemplateId -> reversalTemplate()));
 
   private MachineContractPostEntryVariantTemplates() {}
 
   static ContractTemplates.PostingRequestTemplateDescriptor template(
       BookkeepingEntryKind entryKind, @Nullable BookTemplateId bookTemplateId) {
-    return Objects.requireNonNull(TEMPLATES.get(entryKind), "entryKind").build(bookTemplateId);
+    return MachineContractPostEntryTemplateCatalog.template(entryKind, bookTemplateId);
   }
 
-  private static ContractTemplates.PostingRequestTemplateDescriptor directJournalTemplate() {
+  static ContractTemplates.PostingRequestTemplateDescriptor directJournalTemplate() {
     return new ContractTemplates.PostingRequestTemplateDescriptor(
         BookkeepingEntryKind.DIRECT_JOURNAL,
         SAMPLE_EFFECTIVE_DATE,
@@ -118,10 +60,20 @@ final class MachineContractPostEntryVariantTemplates {
         null,
         evidenceTemplate(BookkeepingEntryKind.DIRECT_JOURNAL),
         provenanceTemplate(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
         null);
   }
 
-  private static ContractTemplates.PostingRequestTemplateDescriptor openingPositionTemplate() {
+  static ContractTemplates.PostingRequestTemplateDescriptor openingPositionTemplate() {
     return new ContractTemplates.PostingRequestTemplateDescriptor(
         BookkeepingEntryKind.OPENING_POSITION,
         SAMPLE_EFFECTIVE_DATE,
@@ -150,10 +102,20 @@ final class MachineContractPostEntryVariantTemplates {
                 "owner-capital", JournalLine.EntrySide.CREDIT, new MonetaryAmount("EUR", "1000"))),
         evidenceTemplate(BookkeepingEntryKind.OPENING_POSITION),
         provenanceTemplate(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
         null);
   }
 
-  private static ContractTemplates.PostingRequestTemplateDescriptor reversalTemplate() {
+  static ContractTemplates.PostingRequestTemplateDescriptor reversalTemplate() {
     return new ContractTemplates.PostingRequestTemplateDescriptor(
         BookkeepingEntryKind.REVERSAL,
         SAMPLE_EFFECTIVE_DATE,
@@ -179,7 +141,17 @@ final class MachineContractPostEntryVariantTemplates {
         evidenceTemplate(BookkeepingEntryKind.REVERSAL),
         provenanceTemplate(),
         new ContractReversalTemplates.ReversalTemplateDescriptor(
-            "018f0000-0000-7000-8000-000000000001", "operator-correction"));
+            "018f0000-0000-7000-8000-000000000001", "operator-correction"),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null);
   }
 
   static ContractTemplates.PostingRequestTemplateDescriptor roleAmountTemplate(
@@ -216,6 +188,63 @@ final class MachineContractPostEntryVariantTemplates {
         null,
         evidenceTemplate(entryKind),
         provenanceTemplate(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null);
+  }
+
+  static ContractTemplates.PostingRequestTemplateDescriptor accrualCutoffTemplate(
+      BookkeepingEntryKind entryKind,
+      @Nullable String cashAccountCode,
+      @Nullable String revenueAccountCode,
+      @Nullable String expenseAccountCode,
+      String accrualCutoffId,
+      @Nullable String prepaymentAssetAccountCode,
+      @Nullable String deferredRevenueAccountCode,
+      @Nullable String accruedExpenseLiabilityAccountCode,
+      ContractTemplates.@Nullable RecognitionIntervalTemplateDescriptor recognitionInterval) {
+    return new ContractTemplates.PostingRequestTemplateDescriptor(
+        entryKind,
+        SAMPLE_EFFECTIVE_DATE,
+        cashAccountCode,
+        null,
+        null,
+        revenueAccountCode,
+        null,
+        expenseAccountCode,
+        null,
+        null,
+        null,
+        null,
+        new MonetaryAmount("EUR", "1000"),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        evidenceTemplate(entryKind),
+        provenanceTemplate(),
+        null,
+        accrualCutoffId,
+        prepaymentAssetAccountCode,
+        deferredRevenueAccountCode,
+        accruedExpenseLiabilityAccountCode,
+        recognitionInterval,
+        null,
+        null,
+        null,
+        null,
         null);
   }
 
@@ -255,13 +284,5 @@ final class MachineContractPostEntryVariantTemplates {
         SAMPLE_IDEMPOTENCY_KEY,
         SAMPLE_CAUSATION_ID,
         null);
-  }
-
-  /** Variant-specific template builder for one posting-request kind. */
-  @FunctionalInterface
-  private interface TemplateBuilder {
-    /** Builds one posting-request template for the selected doctrine, when applicable. */
-    ContractTemplates.PostingRequestTemplateDescriptor build(
-        @Nullable BookTemplateId bookTemplateId);
   }
 }

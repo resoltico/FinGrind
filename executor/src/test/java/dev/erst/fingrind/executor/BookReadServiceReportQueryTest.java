@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPagination;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
@@ -147,7 +148,11 @@ class BookReadServiceReportQueryTest {
           new AccountLedgerResult.Rejected(new BookQueryRejection.BookNotInitialized()),
           service.accountLedger(
               new AccountLedgerQuery(
-                  CASH_ACCOUNT.accountCode(), EffectiveDateRange.unbounded(), allPostingKinds())));
+                  CASH_ACCOUNT.accountCode(),
+                  EffectiveDateRange.unbounded(),
+                  allPostingKinds(),
+                  50,
+                  Optional.empty())));
     }
     try (InMemoryBookSession bookSession = initializedBook()) {
       BookReadService service = readService(bookSession);
@@ -157,7 +162,11 @@ class BookReadServiceReportQueryTest {
               new BookQueryRejection.UnknownAccount(CASH_ACCOUNT.accountCode())),
           service.accountLedger(
               new AccountLedgerQuery(
-                  CASH_ACCOUNT.accountCode(), EffectiveDateRange.unbounded(), allPostingKinds())));
+                  CASH_ACCOUNT.accountCode(),
+                  EffectiveDateRange.unbounded(),
+                  allPostingKinds(),
+                  50,
+                  Optional.empty())));
     }
   }
 
@@ -177,6 +186,7 @@ class BookReadServiceReportQueryTest {
                   CASH_ACCOUNT,
                   EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE),
                   allPostingKinds(),
+                  AccountLedgerPagination.firstPage(50),
                   List.of(currencyBalance("0", "0", "0", BalanceSide.ZERO)),
                   List.of(
                       new AccountLedgerEntry(
@@ -186,7 +196,12 @@ class BookReadServiceReportQueryTest {
                           BalanceSide.DEBIT)),
                   List.of(EUR_DEBIT_BALANCE))),
           service.accountLedger(
-              new AccountLedgerQuery(CASH_ACCOUNT.accountCode(), EFFECTIVE_DATE, EFFECTIVE_DATE)));
+              new AccountLedgerQuery(
+                  CASH_ACCOUNT.accountCode(),
+                  EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE),
+                  allPostingKinds(),
+                  50,
+                  Optional.empty())));
     }
   }
 

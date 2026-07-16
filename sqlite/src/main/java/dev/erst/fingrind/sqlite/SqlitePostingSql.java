@@ -70,8 +70,6 @@ final class SqlitePostingSql {
       SqlitePostingIntegritySql.FIND_LATE_OPENING_BALANCE_POSTING;
   static final String FIND_OPENING_BALANCE_NOMINAL_ACCOUNT =
       SqlitePostingIntegritySql.FIND_OPENING_BALANCE_NOMINAL_ACCOUNT;
-  static final String FIND_JOURNAL_LINE_ON_INACTIVE_ACCOUNT =
-      SqlitePostingIntegritySql.FIND_JOURNAL_LINE_ON_INACTIVE_ACCOUNT;
   static final String FIND_POSTING_RECORDED_AFTER_CLOSED_PERIOD =
       SqlitePostingIntegritySql.FIND_POSTING_RECORDED_AFTER_CLOSED_PERIOD;
   static final String FIND_UNLINKED_PERIOD_RESULT_TRANSFER_POSTING =
@@ -127,6 +125,10 @@ final class SqlitePostingSql {
 
   static String listPostingsForAccountLedger(AccountLedgerCriteria query) {
     return SqlitePostingQuerySql.listPostingsForAccountLedger(query);
+  }
+
+  static String loadAccountLedgerPriorBalances(AccountLedgerCriteria query) {
+    return SqlitePostingQuerySql.loadAccountLedgerPriorBalances(query);
   }
 
   private SqlitePostingSql() {}

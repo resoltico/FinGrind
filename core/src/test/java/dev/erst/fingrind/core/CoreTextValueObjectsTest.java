@@ -348,11 +348,14 @@ class CoreTextValueObjectsTest {
         List.of(
             "CURRENT_ASSET",
             "INVENTORY",
+            "PREPAID_EXPENSE",
             "NONCURRENT_ASSET",
             "TRADE_RECEIVABLE",
             "CURRENT_LIABILITY",
             "NONCURRENT_LIABILITY",
             "TRADE_PAYABLE",
+            "DEFERRED_REVENUE",
+            "ACCRUED_EXPENSE",
             "EQUITY_CONTRIBUTION",
             "EQUITY_WITHDRAWAL",
             "RESULT_HOLDING",
@@ -364,11 +367,14 @@ class CoreTextValueObjectsTest {
         List.of(
             "CURRENT_ASSET",
             "INVENTORY",
+            "PREPAID_EXPENSE",
             "NONCURRENT_ASSET",
             "TRADE_RECEIVABLE",
             "CURRENT_LIABILITY",
             "NONCURRENT_LIABILITY",
             "TRADE_PAYABLE",
+            "DEFERRED_REVENUE",
+            "ACCRUED_EXPENSE",
             "EQUITY_CONTRIBUTION",
             "EQUITY_WITHDRAWAL",
             "RESULT_HOLDING",
@@ -386,6 +392,8 @@ class CoreTextValueObjectsTest {
         AccountType.ASSET, FinancialPositionLineClassification.CURRENT_ASSET.accountType());
     assertEquals(AccountType.ASSET, FinancialPositionLineClassification.INVENTORY.accountType());
     assertEquals(
+        AccountType.ASSET, FinancialPositionLineClassification.PREPAID_EXPENSE.accountType());
+    assertEquals(
         AccountType.ASSET, FinancialPositionLineClassification.NONCURRENT_ASSET.accountType());
     assertEquals(
         AccountType.ASSET, FinancialPositionLineClassification.TRADE_RECEIVABLE.accountType());
@@ -396,6 +404,10 @@ class CoreTextValueObjectsTest {
         FinancialPositionLineClassification.NONCURRENT_LIABILITY.accountType());
     assertEquals(
         AccountType.LIABILITY, FinancialPositionLineClassification.TRADE_PAYABLE.accountType());
+    assertEquals(
+        AccountType.LIABILITY, FinancialPositionLineClassification.DEFERRED_REVENUE.accountType());
+    assertEquals(
+        AccountType.LIABILITY, FinancialPositionLineClassification.ACCRUED_EXPENSE.accountType());
     assertEquals(
         AccountType.EQUITY, FinancialPositionLineClassification.EQUITY_CONTRIBUTION.accountType());
     assertEquals(

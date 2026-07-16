@@ -12,7 +12,8 @@ import org.jspecify.annotations.Nullable;
 /** Parses request-bound posting mutation commands. */
 final class CliPostingMutationArguments {
   private static final CliBookArgumentParser.CommandArgumentSpec OUTPUT_ONLY_ARGUMENTS =
-      CliBookArgumentParser.commandArgumentSpec(List.of(ProtocolOptions.OUTPUT), List.of());
+      CliBookArgumentParser.commandArgumentSpec(
+          List.of(ProtocolOptions.Presentation.OUTPUT), List.of());
 
   private CliPostingMutationArguments() {}
 
@@ -22,54 +23,6 @@ final class CliPostingMutationArguments {
 
   static CliCommand parsePostEntryCommand(List<String> arguments) {
     return parseRequestBoundOutputCommand(arguments, PostEntry::new);
-  }
-
-  static CliCommand parseRecordSaleSettledCommand(List<String> arguments) {
-    return parseRecordEntryCommand(arguments, OperationId.RECORD_SALE_SETTLED);
-  }
-
-  static CliCommand parseRecordSaleOnCreditCommand(List<String> arguments) {
-    return parseRecordEntryCommand(arguments, OperationId.RECORD_SALE_ON_CREDIT);
-  }
-
-  static CliCommand parseRecordPurchaseSettledCommand(List<String> arguments) {
-    return parseRecordEntryCommand(arguments, OperationId.RECORD_PURCHASE_SETTLED);
-  }
-
-  static CliCommand parseRecordPurchaseOnCreditCommand(List<String> arguments) {
-    return parseRecordEntryCommand(arguments, OperationId.RECORD_PURCHASE_ON_CREDIT);
-  }
-
-  static CliCommand parseRecordExpenseSettledCommand(List<String> arguments) {
-    return parseRecordEntryCommand(arguments, OperationId.RECORD_EXPENSE_SETTLED);
-  }
-
-  static CliCommand parseRecordExpenseOnCreditCommand(List<String> arguments) {
-    return parseRecordEntryCommand(arguments, OperationId.RECORD_EXPENSE_ON_CREDIT);
-  }
-
-  static CliCommand parseRecordReceiptCommand(List<String> arguments) {
-    return parseRecordEntryCommand(arguments, OperationId.RECORD_RECEIPT);
-  }
-
-  static CliCommand parseRecordPaymentCommand(List<String> arguments) {
-    return parseRecordEntryCommand(arguments, OperationId.RECORD_PAYMENT);
-  }
-
-  static CliCommand parseRecordOwnerContributionCommand(List<String> arguments) {
-    return parseRecordEntryCommand(arguments, OperationId.RECORD_OWNER_CONTRIBUTION);
-  }
-
-  static CliCommand parseRecordOwnerWithdrawalCommand(List<String> arguments) {
-    return parseRecordEntryCommand(arguments, OperationId.RECORD_OWNER_WITHDRAWAL);
-  }
-
-  static CliCommand parseRecordOpeningPositionCommand(List<String> arguments) {
-    return parseRecordEntryCommand(arguments, OperationId.RECORD_OPENING_POSITION);
-  }
-
-  static CliCommand parseRecordReversalCommand(List<String> arguments) {
-    return parseRecordEntryCommand(arguments, OperationId.RECORD_REVERSAL);
   }
 
   static CliCommand parseRecordEntryCommand(List<String> arguments, OperationId operationId) {
@@ -90,7 +43,7 @@ final class CliPostingMutationArguments {
       outputMode =
           CliOptionModes.requireOutputMode(
               outputMode,
-              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Presentation.OUTPUT),
               CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
     }
     return commandFactory.create(

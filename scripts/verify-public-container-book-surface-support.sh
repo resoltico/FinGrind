@@ -134,7 +134,7 @@ verify_mounted_book_surface() {
     seed_public_fixture
 
     mounted_container_run "${image_ref}" \
-        generate-book-key-file --book-key-file /work/book.key >/dev/null
+        generate-book-key-file --new-book-key-file /work/book.key >/dev/null
     mounted_container_run "${image_ref}" \
         open-book \
         --book-file /work/book.sqlite \

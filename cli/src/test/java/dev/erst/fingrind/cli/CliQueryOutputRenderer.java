@@ -22,9 +22,12 @@ import dev.erst.fingrind.contract.reportmodel.TrialBalanceReportModelBuilder;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.core.BookIdentity;
 import java.nio.file.Path;
+import java.time.Instant;
 
-/** Test-only compatibility façade for legacy query-output assertions. */
+/** Test-only renderer for query-output assertions. */
 final class CliQueryOutputRenderer {
+  private static final Instant GENERATED_AT = Instant.EPOCH;
+
   private CliQueryOutputRenderer() {}
 
   static String renderBookInspectionText(Path bookFilePath, BookInspection inspection) {
@@ -56,7 +59,8 @@ final class CliQueryOutputRenderer {
   }
 
   static String renderAccountBalanceCsv(AccountBalanceSnapshot snapshot) {
-    return CliAccountBalanceOutputRenderer.renderCsv(snapshot);
+    return CliSemanticReportCsvRenderer.render(
+        CliReportPayloadMapper.accountBalance(snapshot, GENERATED_AT));
   }
 
   static String renderTrialBalanceText(TrialBalanceReport report) {
@@ -64,7 +68,8 @@ final class CliQueryOutputRenderer {
   }
 
   static String renderTrialBalanceCsv(TrialBalanceReport report) {
-    return CliReportCsvRenderer.renderTrialBalance(report);
+    return CliSemanticReportCsvRenderer.render(
+        CliReportPayloadMapper.trialBalance(report, GENERATED_AT));
   }
 
   static String renderAccountLedgerText(AccountLedgerReport report) {
@@ -72,7 +77,8 @@ final class CliQueryOutputRenderer {
   }
 
   static String renderAccountLedgerCsv(AccountLedgerReport report) {
-    return CliReportCsvRenderer.renderAccountLedger(report);
+    return CliSemanticReportCsvRenderer.render(
+        CliReportPayloadMapper.accountLedger(report, GENERATED_AT));
   }
 
   static String renderPeriodSummaryText(PeriodSummaryReport report) {
@@ -80,7 +86,8 @@ final class CliQueryOutputRenderer {
   }
 
   static String renderPeriodSummaryCsv(PeriodSummaryReport report) {
-    return CliReportCsvRenderer.renderPeriodSummary(report);
+    return CliSemanticReportCsvRenderer.render(
+        CliReportPayloadMapper.periodSummary(report, GENERATED_AT));
   }
 
   static String renderFinancialPositionText(FinancialPositionReport report) {
@@ -88,7 +95,8 @@ final class CliQueryOutputRenderer {
   }
 
   static String renderFinancialPositionCsv(FinancialPositionReport report) {
-    return CliReportCsvRenderer.renderFinancialPosition(report);
+    return CliSemanticReportCsvRenderer.render(
+        CliReportPayloadMapper.financialPosition(report, GENERATED_AT));
   }
 
   static String renderIncomeStatementText(IncomeStatementReport report) {
@@ -96,7 +104,8 @@ final class CliQueryOutputRenderer {
   }
 
   static String renderIncomeStatementCsv(IncomeStatementReport report) {
-    return CliReportCsvRenderer.renderIncomeStatement(report);
+    return CliSemanticReportCsvRenderer.render(
+        CliReportPayloadMapper.incomeStatement(report, GENERATED_AT));
   }
 
   static String renderCashFlowStatementText(CashFlowStatementReport report) {
@@ -104,7 +113,8 @@ final class CliQueryOutputRenderer {
   }
 
   static String renderCashFlowStatementCsv(CashFlowStatementReport report) {
-    return CliReportCsvRenderer.renderCashFlowStatement(report);
+    return CliSemanticReportCsvRenderer.render(
+        CliReportPayloadMapper.cashFlowStatement(report, GENERATED_AT));
   }
 
   static String renderChangesInEquityText(ChangesInEquityReport report) {
@@ -112,6 +122,7 @@ final class CliQueryOutputRenderer {
   }
 
   static String renderChangesInEquityCsv(ChangesInEquityReport report) {
-    return CliReportCsvRenderer.renderChangesInEquity(report);
+    return CliSemanticReportCsvRenderer.render(
+        CliReportPayloadMapper.changesInEquity(report, GENERATED_AT));
   }
 }

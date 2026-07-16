@@ -27,6 +27,10 @@ final class BookkeepingEntryScalarValidationSupport {
     return amount;
   }
 
+  static MonetaryAmount requireNonNegativeAmount(MonetaryAmount amount, String fieldName) {
+    return Objects.requireNonNull(amount, fieldName);
+  }
+
   static QuantityText requirePositiveQuantityText(QuantityText quantity, String fieldName) {
     Objects.requireNonNull(quantity, fieldName);
     if (quantity.isZero()) {

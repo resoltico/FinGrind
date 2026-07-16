@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.60.0"
 domain: CORE
-updated: "2026-07-11"
+updated: "2026-07-14"
 route:
   keywords: [fingrind, core, journal, money, positive-money, posting-kind, posting-origin-kind, posting-coverage, reporting-period, request-provenance, currency-balance, normal-balance]
   questions: ["how does a journal entry work in fingrind", "where are money and posting primitives documented", "which doc file covers RequestProvenance", "what ledger primitives are in the fingrind core module"]
@@ -325,9 +325,10 @@ public interface BookkeepingEntrySurface
   `BookkeepingEntrySurface`, giving every caller-authored variant one consistent derived view
 - Boundary: callers may bypass the typed business-event commands only through `DirectJournal`; no
   parallel recipe taxonomy survives on the public write surface
-- Adjuncts: `Receipt` and `Payment` may carry one optional settlement-side adjunct, while typed
-  sale and expense variants may carry owned tax and eligible foreign-exchange facts before
-  FinGrind expands the canonical journal
+- Adjuncts: `Receipt` and `Payment` may carry one optional settlement-side adjunct; typed sale,
+  purchase, inventory-capitalization, and expense variants may carry one owned tax selector; and
+  eligible typed variants may carry foreign-exchange facts before FinGrind expands the canonical
+  journal
 
 ## `PostingKind`
 

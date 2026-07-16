@@ -2,7 +2,6 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
-import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import java.nio.file.Path;
 import java.util.List;
@@ -34,26 +33,12 @@ final class CliBookAccessOutputRenderer {
         "Book Initialized", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
-  static String renderRekeyBookText(
-      RekeyBookResult.Rekeyed rekeyed, BookAccess.PassphraseSource replacementPassphraseSource) {
+  static String renderRekeyBookText(RekeyBookResult.Rekeyed rekeyed, Path newBookKeyFilePath) {
     List<List<String>> rows = new java.util.ArrayList<>();
     rows.add(List.of("Book file", CliTextDisplay.path(rekeyed.bookFilePath())));
-    rows.add(
-        List.of(
-            "Replacement secret source", displayPassphraseSourceKind(replacementPassphraseSource)));
-    if (replacementPassphraseSource instanceof BookAccess.PassphraseSource.KeyFile keyFile) {
-      rows.add(List.of("Replacement key file", CliTextDisplay.path(keyFile.bookKeyFilePath())));
-    }
+    rows.add(List.of("New book key file", CliTextDisplay.path(newBookKeyFilePath)));
     return CliTextFormat.renderTitledBlock(
         "Book Rekeyed", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
-  }
-
-  private static String displayPassphraseSourceKind(BookAccess.PassphraseSource passphraseSource) {
-    return switch (passphraseSource) {
-      case BookAccess.PassphraseSource.KeyFile _ -> "Key file";
-      case BookAccess.PassphraseSource.StandardInput _ -> "Standard input";
-      case BookAccess.PassphraseSource.InteractivePrompt _ -> "Interactive prompt";
-    };
   }
 
   private static void appendTightenedParentRows(

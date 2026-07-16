@@ -1,64 +1,53 @@
 package dev.erst.fingrind.contract.workflow;
 
-import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.core.WireValue;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Stream;
 
-/** Stable journal-visible kinds emitted by ledger-plan execution. */
-public enum LedgerJournalKind implements WireValue {
-  ENSURE_BOOK("ensure-book"),
-  DECLARE_ACCOUNT(OperationId.DECLARE_ACCOUNT),
-  PREFLIGHT_ENTRY(OperationId.PREFLIGHT_ENTRY),
-  RECORD_SALE_SETTLED(OperationId.RECORD_SALE_SETTLED),
-  RECORD_SALE_ON_CREDIT(OperationId.RECORD_SALE_ON_CREDIT),
-  RECORD_PURCHASE_SETTLED(OperationId.RECORD_PURCHASE_SETTLED),
-  RECORD_PURCHASE_ON_CREDIT(OperationId.RECORD_PURCHASE_ON_CREDIT),
-  RECORD_INVENTORY_CAPITALIZATION_SETTLED(OperationId.RECORD_INVENTORY_CAPITALIZATION_SETTLED),
-  RECORD_INVENTORY_CAPITALIZATION_ON_CREDIT(OperationId.RECORD_INVENTORY_CAPITALIZATION_ON_CREDIT),
-  RECORD_INVENTORY_WRITE_DOWN(OperationId.RECORD_INVENTORY_WRITE_DOWN),
-  RECORD_INVENTORY_SHRINKAGE(OperationId.RECORD_INVENTORY_SHRINKAGE),
-  RECORD_INVENTORY_COUNT_INCREASE(OperationId.RECORD_INVENTORY_COUNT_INCREASE),
-  RECORD_EXPENSE_SETTLED(OperationId.RECORD_EXPENSE_SETTLED),
-  RECORD_EXPENSE_ON_CREDIT(OperationId.RECORD_EXPENSE_ON_CREDIT),
-  RECORD_RECEIPT(OperationId.RECORD_RECEIPT),
-  RECORD_PAYMENT(OperationId.RECORD_PAYMENT),
-  RECORD_OWNER_CONTRIBUTION(OperationId.RECORD_OWNER_CONTRIBUTION),
-  RECORD_OWNER_WITHDRAWAL(OperationId.RECORD_OWNER_WITHDRAWAL),
-  RECORD_OPENING_POSITION(OperationId.RECORD_OPENING_POSITION),
-  RECORD_REVERSAL(OperationId.RECORD_REVERSAL),
-  POST_ENTRY(OperationId.POST_ENTRY),
-  INSPECT_BOOK(OperationId.INSPECT_BOOK),
-  LIST_ACCOUNTS(OperationId.LIST_ACCOUNTS),
-  GET_POSTING(OperationId.GET_POSTING),
-  LIST_POSTINGS(OperationId.LIST_POSTINGS),
-  ACCOUNT_BALANCE(OperationId.ACCOUNT_BALANCE),
-  ASSERT("assert"),
-  PLAN_BOUNDARY("plan-boundary");
-
-  private final String wireValue;
-
-  LedgerJournalKind(String wireValue) {
-    this.wireValue = Objects.requireNonNull(wireValue, "wireValue");
-  }
-
-  LedgerJournalKind(OperationId operationId) {
-    this(Objects.requireNonNull(operationId, "operationId").wireName());
-  }
-
-  @Override
-  public String wireValue() {
-    return wireValue;
-  }
-
+/**
+ * Stable journal-visible kind for one ledger-plan journal entry.
+ *
+ * <p>Every standard journal kind is the corresponding canonical ledger-step kind. Plan-boundary is
+ * the only journal-only kind.
+ */
+public sealed interface LedgerJournalKind extends WireValue
+    permits LedgerStepKind, LedgerJournalKind.BoundaryKind {
   /** Returns every stable public journal-kind wire value in declaration order. */
-  public static List<String> wireValues() {
-    return WireValue.wireValues(LedgerJournalKind.class);
+  static List<String> wireValues() {
+    return Stream.concat(
+            LedgerStepKind.wireValues().stream(), Stream.of(BoundaryKind.PLAN_BOUNDARY.wireValue()))
+        .toList();
   }
 
   /** Parses one stable public journal-kind wire value. */
-  public static LedgerJournalKind fromWireValue(String wireValue) {
-    return WireValue.fromWireValue(
-        LedgerJournalKind.class, wireValue, "Unsupported ledger journal kind");
+  static LedgerJournalKind fromWireValue(String wireValue) {
+    Objects.requireNonNull(wireValue, "wireValue");
+    for (LedgerStepKind kind : LedgerStepKind.values()) {
+      if (kind.wireValue().equals(wireValue)) {
+        return kind;
+      }
+    }
+    if (BoundaryKind.PLAN_BOUNDARY.wireValue().equals(wireValue)) {
+      return BoundaryKind.PLAN_BOUNDARY;
+    }
+    throw new IllegalArgumentException("Unsupported ledger journal kind: " + wireValue);
+  }
+
+  /** Journal-only plan execution boundary marker. */
+  enum BoundaryKind implements LedgerJournalKind {
+    PLAN_BOUNDARY("plan-boundary");
+
+    private final String wireValue;
+
+    BoundaryKind(String wireValue) {
+      this.wireValue = wireValue;
+    }
+
+    @Override
+    public String wireValue() {
+      return wireValue;
+    }
   }
 }

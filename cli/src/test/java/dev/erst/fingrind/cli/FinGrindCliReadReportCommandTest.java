@@ -191,7 +191,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "exportFamily,rowId,parentRowId,relationKind");
+        "family,reportPeriod,accountCode,accountName,accountType,normalBalance,active");
     assertCommandOutputContains(
         new String[] {
           "account-ledger",
@@ -219,7 +219,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "exportFamily,rowId,parentRowId,relationKind");
+        "family,recordScope,accountCode,accountName,accountType,normalBalance,active");
     assertCommandOutputContains(
         new String[] {
           "inventory-valuation",
@@ -233,7 +233,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "inventory-valuation");
+        "family,inventoryAccountCode,inventoryAccountName,unitOfMeasure,quantityScale");
   }
 
   @Test
@@ -349,7 +349,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
           "--output",
           "csv"
         },
-        "exportFamily,rowId,parentRowId,relationKind");
+        "family,reportPeriod,sectionKind,lineCode,lineName,lineType");
     assertCommandOutputContains(
         new String[] {
           "changes-in-equity",
@@ -458,7 +458,9 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock())
             .run(args);
     assertEquals(0, exitCode);
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains(expectedFragment));
+    String output = outputStream.toString(StandardCharsets.UTF_8);
+    assertTrue(
+        output.contains(expectedFragment), () -> "Missing: " + expectedFragment + "\n" + output);
   }
 
   /** Minimal workflow stub that only serves deterministic report rejections. */
@@ -471,7 +473,7 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
 
     @Override
     public ContractDecision<RekeyBookResult> rekeyBook(
-        BookAccess bookAccess, BookAccess.PassphraseSource replacementPassphraseSource) {
+        BookAccess bookAccess, Path newBookKeyFilePath) {
       throw new AssertionError("rekeyBook should not be called in this test");
     }
 
@@ -483,7 +485,11 @@ class FinGrindCliReadReportCommandTest extends FinGrindCliTestSupport {
 
     @Override
     public ContractDecision<RestoreBookResult> restoreBook(
-        Path bookFilePath, Path bookKeyFilePath, Path backupFilePath, Path backupKeyFilePath) {
+        Path bookFilePath,
+        Path newBookKeyFilePath,
+        Path backupFilePath,
+        Path backupKeyFilePath,
+        boolean replaceExistingBook) {
       throw new AssertionError("restoreBook should not be called in this test");
     }
 

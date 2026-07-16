@@ -43,11 +43,11 @@ final class CliCloseCommandArgumentSupport {
                 CliOptionValues.requireValue(argumentIterator, requiredOption), requiredOption);
         continue;
       }
-      if (ProtocolOptions.OUTPUT.equals(argument)) {
+      if (ProtocolOptions.Presentation.OUTPUT.equals(argument)) {
         outputMode =
             CliOptionModes.requireOutputMode(
                 outputMode,
-                CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Presentation.OUTPUT),
                 CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
         continue;
       }

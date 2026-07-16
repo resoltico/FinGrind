@@ -11,6 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.json.CliEntrySemanticsViolationPayload;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
@@ -21,6 +22,7 @@ import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountNodeKind;
+import dev.erst.fingrind.core.AccountRegistryDependency;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyUnit;
@@ -74,6 +76,19 @@ class CliRejectionPayloadMapperTest {
                 Optional.empty())),
         "existing taxonomy",
         CliRejectionJsonModels.AccountTaxonomyConflictDetails.class);
+    assertHint(
+        new AccountRegistryLifecycleRejection.AccountNotFound(new AccountCode("3200")),
+        "declare-account",
+        CliRejectionJsonModels.AccountCodeDetails.class);
+    assertHint(
+        new AccountRegistryLifecycleRejection.AccountHasDependents(
+            new AccountCode("3200"), List.of(AccountRegistryDependency.POSTINGS)),
+        "current definition and active state",
+        CliRejectionJsonModels.AccountDependenciesDetails.class);
+    assertHint(
+        new AccountRegistryLifecycleRejection.AccountBalanceNotZero(new AccountCode("3200")),
+        "current balance to zero",
+        CliRejectionJsonModels.AccountCodeDetails.class);
     assertHint(
         new CloseTargetAccountCandidateMissing(
             FinancialPositionLineClassification.RESULT_HOLDING, List.of()),

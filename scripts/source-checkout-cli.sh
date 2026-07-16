@@ -14,4 +14,4 @@ readonly wrapper_entrypoint="${script_dir}/source-checkout-cli-entrypoint.sh"
 # shellcheck source=/dev/null
 source "${wrapper_entrypoint}"
 
-fg_cli_wrapper_launch_source_checkout "${BASH_SOURCE[0]}" "$@"
+fg_cli_wrapper_launch_source_checkout "./scripts/source-checkout-cli.sh" "$@"

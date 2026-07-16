@@ -1,6 +1,8 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPagination;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
 import dev.erst.fingrind.contract.bookkeeping.PeriodCurrencySummary;
@@ -57,11 +59,21 @@ public final class BookkeepingReadReportPublishedLanguageTranslator {
         BookkeepingPublishedLanguageTranslator.toPublished(view.account()),
         view.effectiveDateRange(),
         view.postingCoverage(),
+        new AccountLedgerPagination(
+            view.limit(),
+            view.cursor().map(BookkeepingReadReportPublishedLanguageTranslator::toPublished),
+            view.nextCursor().map(BookkeepingReadReportPublishedLanguageTranslator::toPublished)),
         normalizedOpeningLedgerBalances(bookIdentity, view),
         view.entries().stream()
             .map(BookkeepingReadReportPublishedLanguageTranslator::toPublished)
             .toList(),
         normalizedClosingLedgerBalances(bookIdentity, view));
+  }
+
+  private static AccountLedgerPageCursor toPublished(AccountLedgerCursor cursor) {
+    Objects.requireNonNull(cursor, "cursor");
+    return new AccountLedgerPageCursor(
+        cursor.effectiveDate(), cursor.recordedAt(), cursor.postingId());
   }
 
   /** Projects one local period-summary view back into the public published language. */

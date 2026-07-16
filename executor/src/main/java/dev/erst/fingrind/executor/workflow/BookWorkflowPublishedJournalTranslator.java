@@ -121,6 +121,8 @@ final class BookWorkflowPublishedJournalTranslator {
       case BookWorkflowStep.EnsureBook _ -> LedgerJournalStep.standard(LedgerStepKind.ENSURE_BOOK);
       case BookWorkflowStep.DeclareAccount _ ->
           LedgerJournalStep.standard(LedgerStepKind.DECLARE_ACCOUNT);
+      case BookWorkflowStep.DeclareTaxRegistration _ ->
+          LedgerJournalStep.standard(LedgerStepKind.DECLARE_TAX_REGISTRATION);
       case BookWorkflowStep.PreflightEntry _ ->
           LedgerJournalStep.standard(LedgerStepKind.PREFLIGHT_ENTRY);
       case BookWorkflowStep.PostEntry postEntry ->
@@ -135,7 +137,7 @@ final class BookWorkflowPublishedJournalTranslator {
           LedgerJournalStep.standard(LedgerStepKind.LIST_POSTINGS);
       case BookWorkflowStep.AccountBalance _ ->
           LedgerJournalStep.standard(LedgerStepKind.ACCOUNT_BALANCE);
-      case BookWorkflowStep.Assert assertion ->
+      case BookWorkflowAssertionStep assertion ->
           LedgerJournalStep.assertion(assertionKind(assertion.assertion()));
     };
   }

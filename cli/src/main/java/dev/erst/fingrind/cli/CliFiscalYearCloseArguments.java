@@ -7,10 +7,10 @@ import java.util.List;
 /** Parses CLI arguments for `fiscal-year-close`. */
 final class CliFiscalYearCloseArguments {
   private static final List<String> FISCAL_YEAR_CLOSE_OPTIONS =
-      List.of(ProtocolOptions.YEAR, ProtocolOptions.OUTPUT);
+      List.of(ProtocolOptions.DateRange.YEAR, ProtocolOptions.Presentation.OUTPUT);
   private static final CliBookArgumentParser.CommandArgumentSpec FISCAL_YEAR_CLOSE_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
-          List.of(ProtocolOptions.YEAR, ProtocolOptions.OUTPUT), List.of());
+          List.of(ProtocolOptions.DateRange.YEAR, ProtocolOptions.Presentation.OUTPUT), List.of());
 
   private CliFiscalYearCloseArguments() {}
 
@@ -30,7 +30,7 @@ final class CliFiscalYearCloseArguments {
     CliCloseCommandArgumentSupport.ParsedCloseArgument<Integer> parsedArgument =
         CliCloseCommandArgumentSupport.parseSingleRequiredOption(
             commandArguments,
-            ProtocolOptions.YEAR,
+            ProtocolOptions.DateRange.YEAR,
             FISCAL_YEAR_CLOSE_OPTIONS,
             CliOptionValues::parseYearOption);
     return new ParsedFiscalYearCloseArguments(

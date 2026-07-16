@@ -26,6 +26,15 @@ final class BookAdministrationRejectionDescriptors {
                   BookAdministrationRejection.AccountTaxonomyConflict.class,
                   Descriptor.ACCOUNT_TAXONOMY_CONFLICT),
               Map.entry(
+                  AccountRegistryLifecycleRejection.AccountNotFound.class,
+                  Descriptor.ACCOUNT_NOT_FOUND),
+              Map.entry(
+                  AccountRegistryLifecycleRejection.AccountHasDependents.class,
+                  Descriptor.ACCOUNT_HAS_DEPENDENTS),
+              Map.entry(
+                  AccountRegistryLifecycleRejection.AccountBalanceNotZero.class,
+                  Descriptor.ACCOUNT_BALANCE_NOT_ZERO),
+              Map.entry(
                   BookAdministrationRejection.ParentAccountMissing.class,
                   Descriptor.PARENT_ACCOUNT_MISSING),
               Map.entry(
@@ -107,6 +116,12 @@ final class BookAdministrationRejectionDescriptors {
     ACCOUNT_TYPE_CONFLICT,
     /** Descriptor for conflicting immutable account taxonomy declarations. */
     ACCOUNT_TAXONOMY_CONFLICT,
+    /** Descriptor for an account lifecycle request naming no declared account. */
+    ACCOUNT_NOT_FOUND,
+    /** Descriptor for lifecycle changes blocked by durable account relationships. */
+    ACCOUNT_HAS_DEPENDENTS,
+    /** Descriptor for account retirement blocked by a non-zero balance. */
+    ACCOUNT_BALANCE_NOT_ZERO,
     /** Descriptor for missing requested parent accounts. */
     PARENT_ACCOUNT_MISSING,
     /** Descriptor for inactive requested parent accounts. */

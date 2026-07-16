@@ -14,8 +14,17 @@ final class SqliteNativeErrors {
     String resultName = resultName(resultCode);
     String errorString =
         errorString(resultCode, sqliteApi.sqlite3Errstr(), SqliteNativeBootstrap.strlen());
-    String message = errorString.equals(resultName) ? resultName : resultName + ": " + errorString;
-    return new SqliteNativeException(resultCode, message);
+    return new SqliteNativeException(resultCode, failureMessage(resultName, errorString));
+  }
+
+  static SqliteNativeException failure(int resultCode, @Nullable MemorySegment databaseHandle) {
+    String resultName = resultName(resultCode);
+    String errorMessage = errorMessage(databaseHandle);
+    return new SqliteNativeException(resultCode, failureMessage(resultName, errorMessage));
+  }
+
+  static String failureMessage(String resultName, String detail) {
+    return detail.equals(resultName) ? resultName : resultName + ": " + detail;
   }
 
   static String errorMessage(@Nullable MemorySegment databaseHandle) {

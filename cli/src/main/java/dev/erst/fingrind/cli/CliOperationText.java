@@ -17,7 +17,7 @@ final class CliOperationText {
     return "Rerun "
         + listPostings
         + " without "
-        + ProtocolOptions.CURSOR
+        + ProtocolOptions.ReportQuery.CURSOR
         + ", or pass the opaque nextCursor value returned by a prior successful "
         + listPostings
         + " response.";
@@ -28,7 +28,7 @@ final class CliOperationText {
     return "Rerun "
         + listAccounts
         + " without "
-        + ProtocolOptions.CURSOR
+        + ProtocolOptions.ReportQuery.CURSOR
         + ", or pass the opaque nextCursor value returned by a prior successful "
         + listAccounts
         + " response.";
@@ -39,7 +39,7 @@ final class CliOperationText {
     return "Rerun "
         + listTaxRegistrations
         + " without "
-        + ProtocolOptions.CURSOR
+        + ProtocolOptions.ReportQuery.CURSOR
         + ", or pass the opaque nextCursor value returned by a prior successful "
         + listTaxRegistrations
         + " response.";

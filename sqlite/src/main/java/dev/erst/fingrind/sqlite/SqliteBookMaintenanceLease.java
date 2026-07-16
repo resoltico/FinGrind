@@ -2,7 +2,6 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -95,12 +94,10 @@ final class SqliteBookMaintenanceLease {
   }
 
   private static ContractFailureException activeMaintenanceFailure(Path normalizedArtifactPath) {
-    PublicPathHint artifactHint = PublicPathHint.fromPath(normalizedArtifactPath);
     return new ContractFailureException(
-        ContractErrors.Descriptor.BOOK_MAINTENANCE_IN_PROGRESS.failure(
-            "Book access refused because one active FinGrind maintenance workflow holds "
-                + artifactHint.value()
-                + ".",
+        ContractErrors.Descriptor.BOOK_MAINTENANCE_IN_PROGRESS.failureAt(
+            normalizedArtifactPath,
+            "Book access refused because one active FinGrind maintenance workflow holds the selected protected book.",
             "Wait for the active maintenance workflow to finish, or clear the abandoned maintenance state through the dedicated maintenance and recovery commands before rerunning this command.",
             null));
   }
@@ -112,6 +109,7 @@ final class SqliteBookMaintenanceLease {
   static void releaseLeaseArtifactQuietly(Path leasePath) {
     SqliteFileCleanup.deleteQuietly(
         leasePath,
+        "deleting one SQLite maintenance lease artifact",
         (ignoredAction, exception) ->
             SqliteBestEffort.reportCleanupFailure(
                 "deleting one SQLite maintenance lease artifact", exception));

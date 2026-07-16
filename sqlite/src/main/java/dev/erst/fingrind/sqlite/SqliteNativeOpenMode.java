@@ -5,7 +5,8 @@ enum SqliteNativeOpenMode {
   // SQLite defines these sqlite3_open_v2 flags as stable C constants.
   READ_ONLY(0x00000001),
   READ_WRITE_EXISTING(0x00000002),
-  READ_WRITE_CREATE(0x00000002 | 0x00000004);
+  READ_WRITE_CREATE(0x00000002 | 0x00000004),
+  READ_WRITE_CREATE_EXCLUSIVE(0x00000002 | 0x00000004 | 0x00000010);
 
   private final int flags;
 

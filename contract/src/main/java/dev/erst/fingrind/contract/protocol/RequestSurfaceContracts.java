@@ -23,6 +23,11 @@ final class RequestSurfaceContracts {
     return Stream.of(
             directAndSalesEntryKindFacts(),
             InventoryRequestSurfaceContracts.purchaseEntryKindFacts(),
+            AccrualCutoffRequestSurfaceContracts.entryKindFacts(),
+            FixedAssetRequestSurfaceContracts.entryKindFacts(),
+            FinancingRequestSurfaceContracts.entryKindFacts(),
+            RealizedForeignExchangeRequestSurfaceContracts.entryKindFacts(),
+            LatvianPayrollRequestSurfaceContracts.entryKindFacts(),
             expenseAndSettlementEntryKindFacts(),
             InventoryRequestSurfaceContracts.maintenanceEntryKindFacts(),
             ownerAndTerminalEntryKindFacts())
@@ -204,7 +209,7 @@ final class RequestSurfaceContracts {
             "Owner-withdrawal writes debit one equity withdrawal account and credit one cash-and-cash-equivalent asset account."),
         entryKindFacts(
             BookkeepingEntryKind.OPENING_POSITION,
-            ProtocolPostingRequestFieldSets.openingPositionFields(),
+            ProtocolPostingRequestFieldSets.fieldsFor(BookkeepingEntryKind.OPENING_POSITION),
             Set.of(),
             sourceDocumentTypes(
                 SourceDocumentTypePolicyMode.PATTERN_ONLY,

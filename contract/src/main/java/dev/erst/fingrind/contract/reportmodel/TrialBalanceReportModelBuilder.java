@@ -76,7 +76,8 @@ public final class TrialBalanceReportModelBuilder
     }
     return new ReportModel(
         dev.erst.fingrind.contract.protocol.OperationId.TRIAL_BALANCE.wireName(),
-        "Trial Balance",
+        ReportModelSupport.reportTitle(
+            dev.erst.fingrind.contract.protocol.OperationId.TRIAL_BALANCE),
         ReportModel.Orientation.LANDSCAPE,
         ReportModelSupport.context(
             report.bookIdentity(),

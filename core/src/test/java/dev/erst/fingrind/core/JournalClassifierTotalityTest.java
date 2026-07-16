@@ -23,17 +23,20 @@ import org.junit.jupiter.params.provider.MethodSource;
 class JournalClassifierTotalityTest {
   private static final LocalDate EFFECTIVE_DATE = LocalDate.parse("2026-04-07");
   private static final Map<String, AccountRole> ACCOUNT_ROLES =
-      Map.of(
-          "cash", AccountRole.CASH,
-          "inventory", AccountRole.INVENTORY,
-          "receivable", AccountRole.RECEIVABLE,
-          "payable", AccountRole.PAYABLE,
-          "revenue", AccountRole.REVENUE,
-          "expense", AccountRole.EXPENSE,
-          "equity-contributed", AccountRole.EQUITY_CONTRIBUTED,
-          "equity-draws", AccountRole.EQUITY_DRAWS,
-          "adjunct", AccountRole.SETTLEMENT_ADJUNCT,
-          "aux", AccountRole.AUX);
+      Map.ofEntries(
+          Map.entry("cash", AccountRole.CASH),
+          Map.entry("inventory", AccountRole.INVENTORY),
+          Map.entry("prepaid-expense", AccountRole.PREPAID_EXPENSE),
+          Map.entry("receivable", AccountRole.RECEIVABLE),
+          Map.entry("payable", AccountRole.PAYABLE),
+          Map.entry("deferred-revenue", AccountRole.DEFERRED_REVENUE),
+          Map.entry("accrued-expense", AccountRole.ACCRUED_EXPENSE),
+          Map.entry("revenue", AccountRole.REVENUE),
+          Map.entry("expense", AccountRole.EXPENSE),
+          Map.entry("equity-contributed", AccountRole.EQUITY_CONTRIBUTED),
+          Map.entry("equity-draws", AccountRole.EQUITY_DRAWS),
+          Map.entry("adjunct", AccountRole.SETTLEMENT_ADJUNCT),
+          Map.entry("aux", AccountRole.AUX));
 
   @ParameterizedTest(name = "{0}")
   @MethodSource("structuralRows")
@@ -256,7 +259,173 @@ class JournalClassifierTotalityTest {
                 java.util.Optional.of(EconomicEventClass.SETTLED_SALE)));
   }
 
+  @Test
+  void classify_validatesEveryAssertedAccrualCutoffEventAgainstItsOwnedAnchorSignature() {
+    assertAssertedAccrualCutoffEvent(
+        EconomicEventClass.PREPAYMENT,
+        journal(
+            line("prepaid-expense", EntrySide.DEBIT, "100.00"),
+            line("cash", EntrySide.CREDIT, "100.00")));
+    assertAssertedAccrualCutoffEvent(
+        EconomicEventClass.DEFERRED_REVENUE,
+        journal(
+            line("cash", EntrySide.DEBIT, "100.00"),
+            line("deferred-revenue", EntrySide.CREDIT, "100.00")));
+    assertAssertedAccrualCutoffEvent(
+        EconomicEventClass.ACCRUED_EXPENSE,
+        journal(
+            line("expense", EntrySide.DEBIT, "100.00"),
+            line("accrued-expense", EntrySide.CREDIT, "100.00")));
+    assertAssertedAccrualCutoffEvent(
+        EconomicEventClass.ACCRUAL_CUTOFF_RECOGNITION,
+        journal(
+            line("expense", EntrySide.DEBIT, "100.00"),
+            line("prepaid-expense", EntrySide.CREDIT, "100.00")));
+    assertAssertedAccrualCutoffEvent(
+        EconomicEventClass.ACCRUED_EXPENSE_SETTLEMENT,
+        journal(
+            line("accrued-expense", EntrySide.DEBIT, "100.00"),
+            line("cash", EntrySide.CREDIT, "100.00")));
+  }
+
+  @Test
+  void classify_validatesEveryAssertedLatvianPayrollEventAgainstItsOwnedAnchorSignature() {
+    assertAssertedLatvianPayrollEvent(
+        EconomicEventClass.LATVIAN_MONTHLY_PAYROLL,
+        journal(
+            line("expense", EntrySide.DEBIT, "100.00"), line("aux", EntrySide.CREDIT, "100.00")));
+    assertAssertedLatvianPayrollEvent(
+        EconomicEventClass.LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT,
+        journal(line("aux", EntrySide.DEBIT, "100.00"), line("cash", EntrySide.CREDIT, "100.00")));
+    assertAssertedLatvianPayrollEvent(
+        EconomicEventClass.LATVIAN_PAYROLL_STATE_REMITTANCE,
+        journal(line("aux", EntrySide.DEBIT, "100.00"), line("cash", EntrySide.CREDIT, "100.00")));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            JournalClassifier.classify(
+                journal(
+                    line("cash", EntrySide.DEBIT, "100.00"),
+                    line("revenue", EntrySide.CREDIT, "100.00")),
+                JournalClassifierTotalityTest::accountRoleForFixture,
+                EvidenceClass.OTHER,
+                StructuralContext.ordinary(),
+                java.util.Optional.of(EconomicEventClass.LATVIAN_MONTHLY_PAYROLL)));
+  }
+
+  @Test
+  void classify_validatesEveryAssertedLifecycleEventAgainstItsOwnedAnchorSignature() {
+    assertAssertedLifecycleEvent(
+        EconomicEventClass.FIXED_ASSET_CAPITALIZATION,
+        journal(line("aux", EntrySide.DEBIT, "100.00"), line("cash", EntrySide.CREDIT, "100.00")));
+    assertAssertedLifecycleEvent(
+        EconomicEventClass.FIXED_ASSET_DEPRECIATION,
+        journal(
+            line("expense", EntrySide.DEBIT, "100.00"), line("aux", EntrySide.CREDIT, "100.00")));
+    assertAssertedLifecycleEvent(
+        EconomicEventClass.FIXED_ASSET_DISPOSAL,
+        journal(line("cash", EntrySide.DEBIT, "100.00"), line("aux", EntrySide.CREDIT, "100.00")));
+    assertAssertedLifecycleEvent(
+        EconomicEventClass.FIXED_ASSET_DISPOSAL,
+        journal(
+            line("cash", EntrySide.DEBIT, "100.00"), line("revenue", EntrySide.CREDIT, "100.00")));
+    assertAssertedLifecycleEvent(
+        EconomicEventClass.FIXED_ASSET_DISPOSAL,
+        journal(
+            line("cash", EntrySide.DEBIT, "100.00"),
+            line("expense", EntrySide.DEBIT, "100.00"),
+            line("aux", EntrySide.CREDIT, "200.00")));
+    assertAssertedLifecycleEvent(
+        EconomicEventClass.FINANCING_BORROWING,
+        journal(line("cash", EntrySide.DEBIT, "100.00"), line("aux", EntrySide.CREDIT, "100.00")));
+    assertAssertedLifecycleEvent(
+        EconomicEventClass.FINANCING_PRINCIPAL_REPAYMENT,
+        journal(line("aux", EntrySide.DEBIT, "100.00"), line("cash", EntrySide.CREDIT, "100.00")));
+    assertAssertedLifecycleEvent(
+        EconomicEventClass.FINANCING_INTEREST_ACCRUAL,
+        journal(
+            line("expense", EntrySide.DEBIT, "100.00"), line("aux", EntrySide.CREDIT, "100.00")));
+    assertAssertedLifecycleEvent(
+        EconomicEventClass.FINANCING_INTEREST_ACCRUAL,
+        journal(line("aux", EntrySide.DEBIT, "100.00"), line("aux", EntrySide.CREDIT, "100.00")));
+    assertAssertedLifecycleEvent(
+        EconomicEventClass.FINANCING_INTEREST_PAYMENT,
+        journal(line("aux", EntrySide.DEBIT, "100.00"), line("cash", EntrySide.CREDIT, "100.00")));
+    assertAssertedLifecycleEvent(
+        EconomicEventClass.FOREIGN_CURRENCY_OBLIGATION,
+        journal(
+            line("receivable", EntrySide.DEBIT, "100.00"),
+            line("revenue", EntrySide.CREDIT, "100.00")));
+    assertAssertedLifecycleEvent(
+        EconomicEventClass.REALIZED_FOREIGN_EXCHANGE_SETTLEMENT,
+        journal(
+            line("cash", EntrySide.DEBIT, "100.00"),
+            line("receivable", EntrySide.CREDIT, "90.00"),
+            line("revenue", EntrySide.CREDIT, "10.00")));
+    assertAssertedLifecycleEvent(
+        EconomicEventClass.REALIZED_FOREIGN_EXCHANGE_SETTLEMENT,
+        journal(
+            line("cash", EntrySide.DEBIT, "90.00"),
+            line("expense", EntrySide.DEBIT, "10.00"),
+            line("receivable", EntrySide.CREDIT, "100.00")));
+    assertAssertedLifecycleEvent(
+        EconomicEventClass.REALIZED_FOREIGN_EXCHANGE_SETTLEMENT,
+        journal(
+            line("cash", EntrySide.DEBIT, "100.00"),
+            line("receivable", EntrySide.CREDIT, "100.00")));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            JournalClassifier.classify(
+                journal(
+                    line("cash", EntrySide.DEBIT, "100.00"),
+                    line("payable", EntrySide.CREDIT, "100.00")),
+                JournalClassifierTotalityTest::accountRoleForFixture,
+                EvidenceClass.OTHER,
+                StructuralContext.ordinary(),
+                java.util.Optional.of(EconomicEventClass.FIXED_ASSET_DISPOSAL)));
+  }
+
   private static void assertAssertedInventoryEvent(
+      EconomicEventClass expectedEventClass, JournalEntry journalEntry) {
+    ClassificationResult result =
+        JournalClassifier.classify(
+            journalEntry,
+            JournalClassifierTotalityTest::accountRoleForFixture,
+            EvidenceClass.OTHER,
+            StructuralContext.ordinary(),
+            java.util.Optional.of(expectedEventClass));
+    assertEquals(expectedEventClass, result.eventClass());
+    assertEquals(Set.of(expectedEventClass), result.containedTypedEvents());
+  }
+
+  private static void assertAssertedAccrualCutoffEvent(
+      EconomicEventClass expectedEventClass, JournalEntry journalEntry) {
+    ClassificationResult result =
+        JournalClassifier.classify(
+            journalEntry,
+            JournalClassifierTotalityTest::accountRoleForFixture,
+            EvidenceClass.OTHER,
+            StructuralContext.ordinary(),
+            java.util.Optional.of(expectedEventClass));
+    assertEquals(expectedEventClass, result.eventClass());
+    assertEquals(Set.of(expectedEventClass), result.containedTypedEvents());
+  }
+
+  private static void assertAssertedLatvianPayrollEvent(
+      EconomicEventClass expectedEventClass, JournalEntry journalEntry) {
+    ClassificationResult result =
+        JournalClassifier.classify(
+            journalEntry,
+            JournalClassifierTotalityTest::accountRoleForFixture,
+            EvidenceClass.OTHER,
+            StructuralContext.ordinary(),
+            java.util.Optional.of(expectedEventClass));
+    assertEquals(expectedEventClass, result.eventClass());
+    assertEquals(Set.of(expectedEventClass), result.containedTypedEvents());
+  }
+
+  private static void assertAssertedLifecycleEvent(
       EconomicEventClass expectedEventClass, JournalEntry journalEntry) {
     ClassificationResult result =
         JournalClassifier.classify(
@@ -325,6 +494,42 @@ class JournalClassifierTotalityTest {
                 line("inventory", EntrySide.DEBIT, "10.00"),
                 line("payable", EntrySide.CREDIT, "10.00")),
             EconomicEventClass.CREDIT_PURCHASE),
+        Arguments.of(
+            "prepayment",
+            journal(
+                line("prepaid-expense", EntrySide.DEBIT, "10.00"),
+                line("cash", EntrySide.CREDIT, "10.00")),
+            EconomicEventClass.PREPAYMENT),
+        Arguments.of(
+            "deferred revenue",
+            journal(
+                line("cash", EntrySide.DEBIT, "10.00"),
+                line("deferred-revenue", EntrySide.CREDIT, "10.00")),
+            EconomicEventClass.DEFERRED_REVENUE),
+        Arguments.of(
+            "accrued expense",
+            journal(
+                line("expense", EntrySide.DEBIT, "10.00"),
+                line("accrued-expense", EntrySide.CREDIT, "10.00")),
+            EconomicEventClass.ACCRUED_EXPENSE),
+        Arguments.of(
+            "prepayment recognition",
+            journal(
+                line("expense", EntrySide.DEBIT, "10.00"),
+                line("prepaid-expense", EntrySide.CREDIT, "10.00")),
+            EconomicEventClass.ACCRUAL_CUTOFF_RECOGNITION),
+        Arguments.of(
+            "deferred-revenue recognition",
+            journal(
+                line("deferred-revenue", EntrySide.DEBIT, "10.00"),
+                line("revenue", EntrySide.CREDIT, "10.00")),
+            EconomicEventClass.ACCRUAL_CUTOFF_RECOGNITION),
+        Arguments.of(
+            "accrued-expense settlement",
+            journal(
+                line("accrued-expense", EntrySide.DEBIT, "10.00"),
+                line("cash", EntrySide.CREDIT, "10.00")),
+            EconomicEventClass.ACCRUED_EXPENSE_SETTLEMENT),
         Arguments.of(
             "settled expense",
             journal(

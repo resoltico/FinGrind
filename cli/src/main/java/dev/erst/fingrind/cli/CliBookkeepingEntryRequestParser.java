@@ -33,7 +33,10 @@ final class CliBookkeepingEntryRequestParser {
   }
 
   private static BookkeepingEntry.DirectJournal readDirectJournalEntry(ObjectNode rootNode) {
-    rejectUnexpectedFields(rootNode, null, ProtocolPostingRequestFieldSets.journalDirectFields());
+    rejectUnexpectedFields(
+        rootNode,
+        null,
+        ProtocolPostingRequestFieldSets.fieldsFor(BookkeepingEntryKind.DIRECT_JOURNAL));
     return new BookkeepingEntry.DirectJournal(
         CliBookkeepingEntryStructureParser.readAdministrativeJournalEntry(rootNode),
         CliBookkeepingEntryNestedParser.optionalForeignExchange(rootNode));

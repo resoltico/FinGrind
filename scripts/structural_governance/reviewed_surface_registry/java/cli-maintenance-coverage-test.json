@@ -7,8 +7,8 @@
   "reviewedRoleName": "cli-maintenance-coverage-test",
   "budgetVarianceReason": "The maintenance coverage matrix exceeds the default test-suite budget until maintenance command families are split further.",
   "approval": {
-    "physicalLines": 1048,
-    "logicalLines": 966,
+    "physicalLines": 1040,
+    "logicalLines": 959,
     "importLikeLines": 24,
     "nestedTypes": 0,
     "functions": 13,

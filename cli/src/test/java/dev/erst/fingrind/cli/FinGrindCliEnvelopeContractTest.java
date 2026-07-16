@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.runtime.ContractResponseCatalog;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
@@ -66,13 +67,13 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
     Path bookKeyFilePath = tempDirectory.resolve("generated-book-key").resolve("entity.book-key");
 
     JsonNode success =
-        runJsonCommand("generate-book-key-file", "--book-key-file", bookKeyFilePath.toString());
+        runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFilePath.toString());
     assertSuccessEnvelope(success);
     assertSingleArtifact(success, ProtocolArtifactOutput.bookKeyFileFormat(), bookKeyFilePath);
 
     JsonNode failure = runJsonDiagnosticsCommandExpectingExit(1, "generate-book-key-file");
     assertErrorDiagnosticsEnvelope(failure, "invalid-request");
-    assertEquals("--book-key-file", failure.path("argument").stringValue());
+    assertEquals("--new-book-key-file", failure.path("argument").stringValue());
   }
 
   @Test
@@ -86,19 +87,39 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
         "Acme Studio",
         success.path("payload").path("bookIdentity").path("entityName").stringValue());
 
+    JsonNode occupiedDestination =
+        runJsonDiagnosticsCommandExpectingExit(
+            7, openBookKeyFileArguments(bookFilePath, bookKeyFilePath));
+    assertErrorDiagnosticsEnvelope(occupiedDestination, "book-destination-occupied");
+    assertEquals("--book-file", occupiedDestination.path("argument").stringValue());
+
+    Path missingBookFilePath = tempDirectory.resolve("admin-contract").resolve("missing.sqlite");
+    Path missingBookKeyFilePath = writeBookKey(missingBookFilePath);
+    Path declarationRequestFile =
+        writeNamedRequest(
+            "admin-contract-declare-account.json", declareAccountJson("1000", "Cash", "DEBIT"));
     JsonNode rejection =
         runJsonDiagnosticsCommandExpectingExit(
-            2, openBookKeyFileArguments(bookFilePath, bookKeyFilePath));
+            2,
+            "declare-account",
+            "--book-file",
+            missingBookFilePath.toString(),
+            "--book-key-file",
+            missingBookKeyFilePath.toString(),
+            "--request-file",
+            declarationRequestFile.toString());
     assertRejectedEnvelope(rejection);
 
+    Path invalidBookFilePath = tempDirectory.resolve("admin-contract").resolve("invalid.sqlite");
+    Path invalidBookKeyFilePath = writeBookKey(invalidBookFilePath);
     JsonNode failure =
         runJsonDiagnosticsCommandExpectingExit(
             1,
             "open-book",
             "--book-file",
-            bookFilePath.toString(),
+            invalidBookFilePath.toString(),
             "--book-key-file",
-            bookKeyFilePath.toString());
+            invalidBookKeyFilePath.toString());
     assertErrorEnvelope(failure);
     assertEquals("--entity-name", failure.path("argument").stringValue());
   }
@@ -319,7 +340,7 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
             replacementBookKeyFilePath.toString(),
             "--backup-file",
             backupBookFilePath.toString(),
-            "--backup-key-file",
+            "--new-backup-key-file",
             backupBookKeyFilePath.toString());
     assertSuccessEnvelope(backupBook);
     assertArtifactList(
@@ -335,7 +356,7 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
             "restore-book",
             "--book-file",
             restoredBookFilePath.toString(),
-            "--book-key-file",
+            "--new-book-key-file",
             root.resolve("restored").resolve("entity.book-key").toString(),
             "--backup-file",
             backupBookFilePath.toString(),
@@ -355,7 +376,7 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
     Path generatedBookKeyPath = root.resolve("secrets").resolve("generated.book-key");
     JsonNode generatedBookKey =
         runJsonCommand(
-            "generate-book-key-file", "--book-key-file", generatedBookKeyPath.toString());
+            "generate-book-key-file", "--new-book-key-file", generatedBookKeyPath.toString());
     assertSuccessEnvelope(generatedBookKey);
     assertSingleArtifact(
         generatedBookKey, ProtocolArtifactOutput.bookKeyFileFormat(), generatedBookKeyPath);
@@ -512,7 +533,7 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
 
   private Path runSuccessSweepRekey(Path bookFilePath, Path currentBookKeyFilePath)
       throws IOException {
-    Path replacementBookKeyFilePath = writeNamedBookKey("success-sweep-rotated.key", "rotated-key");
+    Path replacementBookKeyFilePath = tempDirectory.resolve("success-sweep-rotated.key");
     JsonNode rekeyedBook =
         runJsonCommand(
             "rekey-book",
@@ -619,6 +640,8 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
             OperationId.DELETE_REKEY_ROLLBACK,
             OperationId.RESTORE_REKEY_ROLLBACK,
             OperationId.DECLARE_ACCOUNT,
+            OperationId.AMEND_ACCOUNT,
+            OperationId.RETIRE_ACCOUNT,
             OperationId.DECLARE_TAX_REGISTRATION,
             OperationId.INTERIM_RESULT_SWEEP,
             OperationId.FISCAL_YEAR_CLOSE,
@@ -634,6 +657,11 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
             OperationId.PERIOD_SUMMARY,
             OperationId.FINANCIAL_POSITION,
             OperationId.INVENTORY_VALUATION,
+            OperationId.ACCRUAL_CUTOFF_SCHEDULE,
+            OperationId.FIXED_ASSET_REGISTER,
+            OperationId.FINANCING_REGISTER,
+            OperationId.REALIZED_FOREIGN_EXCHANGE_REGISTER,
+            OperationId.LATVIAN_PAYROLL_REGISTER,
             OperationId.INCOME_STATEMENT,
             OperationId.CASH_FLOW_STATEMENT,
             OperationId.CHANGES_IN_EQUITY,
@@ -648,6 +676,23 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
             OperationId.RECORD_INVENTORY_WRITE_DOWN,
             OperationId.RECORD_INVENTORY_SHRINKAGE,
             OperationId.RECORD_INVENTORY_COUNT_INCREASE,
+            OperationId.RECORD_PREPAYMENT,
+            OperationId.RECORD_DEFERRED_REVENUE,
+            OperationId.RECORD_ACCRUED_EXPENSE,
+            OperationId.RECORD_ACCRUAL_CUTOFF_RECOGNITION,
+            OperationId.RECORD_ACCRUED_EXPENSE_SETTLEMENT,
+            OperationId.RECORD_LATVIAN_MONTHLY_PAYROLL,
+            OperationId.RECORD_LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT,
+            OperationId.RECORD_LATVIAN_PAYROLL_STATE_REMITTANCE,
+            OperationId.RECORD_FIXED_ASSET_CAPITALIZATION,
+            OperationId.RECORD_FIXED_ASSET_DEPRECIATION,
+            OperationId.RECORD_FIXED_ASSET_DISPOSAL,
+            OperationId.RECORD_FINANCING_BORROWING,
+            OperationId.RECORD_FINANCING_PRINCIPAL_REPAYMENT,
+            OperationId.RECORD_FINANCING_INTEREST_ACCRUAL,
+            OperationId.RECORD_FINANCING_INTEREST_PAYMENT,
+            OperationId.RECORD_FOREIGN_CURRENCY_OBLIGATION,
+            OperationId.RECORD_REALIZED_FOREIGN_EXCHANGE_SETTLEMENT,
             OperationId.RECORD_EXPENSE_SETTLED,
             OperationId.RECORD_EXPENSE_ON_CREDIT,
             OperationId.RECORD_RECEIPT,
@@ -670,6 +715,7 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
     assertTrue(envelope.path("payload").isObject());
     assertTrue(envelope.path("code").isMissingNode());
     assertTrue(envelope.path("message").isMissingNode());
+    assertTrue(envelope.path("category").isMissingNode());
   }
 
   private static void assertNonArtifactSuccess(JsonNode envelope) {
@@ -681,6 +727,9 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
     assertEquals("rejected", envelope.path("status").stringValue());
     assertTrue(envelope.path("code").isTextual());
     assertTrue(envelope.path("message").isTextual());
+    assertEquals(
+        ContractResponseCatalog.failureCategoryFor(envelope.path("code").stringValue()).wireValue(),
+        envelope.path("category").stringValue());
     assertTrue(envelope.path("artifacts").isMissingNode());
   }
 
@@ -688,6 +737,9 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
     assertEquals("error", envelope.path("status").stringValue());
     assertTrue(envelope.path("code").isTextual());
     assertTrue(envelope.path("message").isTextual());
+    assertEquals(
+        ContractResponseCatalog.failureCategoryFor(envelope.path("code").stringValue()).wireValue(),
+        envelope.path("category").stringValue());
     assertTrue(envelope.path("artifacts").isMissingNode());
   }
 
@@ -769,7 +821,7 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
       JsonNode actualArtifact = envelope.path("artifacts").get(index);
       assertEquals(expectedArtifact.format(), actualArtifact.path("format").stringValue());
       assertEquals(
-          CliPublicPaths.redactedValue(expectedArtifact.path()),
+          CliPublicPaths.absoluteValue(expectedArtifact.path()),
           actualArtifact.path("path").stringValue());
     }
   }

@@ -1,6 +1,6 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 
@@ -12,30 +12,27 @@ public sealed interface RekeyRollbackResult
         RekeyRollbackResult.Rejected {
 
   /** Successful inspection outcome listing every matching sibling rollback artifact. */
-  record Inspected(PublicPathHint bookFilePath, List<PublicPathHint> rollbackArtifactPaths)
+  record Inspected(Path bookFilePath, List<Path> rollbackArtifactPaths)
       implements RekeyRollbackResult {
     public Inspected {
-      Objects.requireNonNull(bookFilePath, "bookFilePath");
-      rollbackArtifactPaths =
-          List.copyOf(Objects.requireNonNull(rollbackArtifactPaths, "rollbackArtifactPaths"));
+      bookFilePath = normalizedPath(bookFilePath, "bookFilePath");
+      rollbackArtifactPaths = normalizedPaths(rollbackArtifactPaths, "rollbackArtifactPaths");
     }
   }
 
   /** Successful rollback-copy restore outcome. */
-  record Restored(PublicPathHint bookFilePath, PublicPathHint rollbackArtifactPath)
-      implements RekeyRollbackResult {
+  record Restored(Path bookFilePath, Path rollbackArtifactPath) implements RekeyRollbackResult {
     public Restored {
-      Objects.requireNonNull(bookFilePath, "bookFilePath");
-      Objects.requireNonNull(rollbackArtifactPath, "rollbackArtifactPath");
+      bookFilePath = normalizedPath(bookFilePath, "bookFilePath");
+      rollbackArtifactPath = normalizedPath(rollbackArtifactPath, "rollbackArtifactPath");
     }
   }
 
   /** Successful rollback-copy deletion outcome. */
-  record Deleted(PublicPathHint bookFilePath, PublicPathHint rollbackArtifactPath)
-      implements RekeyRollbackResult {
+  record Deleted(Path bookFilePath, Path rollbackArtifactPath) implements RekeyRollbackResult {
     public Deleted {
-      Objects.requireNonNull(bookFilePath, "bookFilePath");
-      Objects.requireNonNull(rollbackArtifactPath, "rollbackArtifactPath");
+      bookFilePath = normalizedPath(bookFilePath, "bookFilePath");
+      rollbackArtifactPath = normalizedPath(rollbackArtifactPath, "rollbackArtifactPath");
     }
   }
 
@@ -44,5 +41,15 @@ public sealed interface RekeyRollbackResult
     public Rejected {
       Objects.requireNonNull(rejection, "rejection");
     }
+  }
+
+  private static Path normalizedPath(Path path, String name) {
+    return Objects.requireNonNull(path, name).toAbsolutePath().normalize();
+  }
+
+  private static List<Path> normalizedPaths(List<Path> paths, String name) {
+    return List.copyOf(Objects.requireNonNull(paths, name)).stream()
+        .map(path -> normalizedPath(path, name + " entry"))
+        .toList();
   }
 }

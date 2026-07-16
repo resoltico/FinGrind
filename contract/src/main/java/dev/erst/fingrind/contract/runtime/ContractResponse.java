@@ -134,18 +134,45 @@ public final class ContractResponse {
     }
   }
 
+  /** Exhaustive transport category for one published non-success response. */
+  public enum FailureCategory implements WireValue {
+    STRUCTURAL_INVALID("structural-invalid"),
+    DOMAIN_SEMANTIC("domain-semantic"),
+    PRECONDITION("precondition"),
+    UNSUPPORTED_SELECTION("unsupported-selection"),
+    INTERNAL("internal");
+
+    private final String wireValue;
+
+    FailureCategory(String wireValue) {
+      this.wireValue = ContractDescriptorValidation.requireText(wireValue, "wireValue");
+    }
+
+    /** Returns the stable machine token for this failure category. */
+    @Override
+    public String wireValue() {
+      return wireValue;
+    }
+  }
+
   /** One stable machine error descriptor. */
   public record ErrorDescriptor(
-      String code, int exitCode, String description, List<FieldDescriptor> detailFields)
+      String code,
+      FailureCategory category,
+      int exitCode,
+      String description,
+      List<FieldDescriptor> detailFields)
       implements ResponseDescriptorType {
     /** Creates one error descriptor with no structured detail payload. */
-    public ErrorDescriptor(String code, int exitCode, String description) {
-      this(code, exitCode, description, List.of());
+    public ErrorDescriptor(
+        String code, FailureCategory category, int exitCode, String description) {
+      this(code, category, exitCode, description, List.of());
     }
 
     /** Validates the structured error descriptor payload. */
     public ErrorDescriptor {
       code = ContractDescriptorValidation.requireText(code, "code");
+      category = ContractDescriptorValidation.requireValue(category, "category");
       if (exitCode < 0) {
         throw new IllegalArgumentException("exitCode must not be negative.");
       }
@@ -204,18 +231,20 @@ public final class ContractResponse {
   /** One stable machine rejection descriptor. */
   public record RejectionDescriptor(
       String code,
+      FailureCategory category,
       String description,
       List<FieldDescriptor> detailFields,
       List<RejectionDescriptor> detailRejections)
       implements ResponseDescriptorType {
     /** Creates one rejection descriptor with no structured detail payload. */
-    public RejectionDescriptor(String code, String description) {
-      this(code, description, List.of(), List.of());
+    public RejectionDescriptor(String code, FailureCategory category, String description) {
+      this(code, category, description, List.of(), List.of());
     }
 
     /** Validates the structured rejection descriptor payload. */
     public RejectionDescriptor {
       code = ContractDescriptorValidation.requireText(code, "code");
+      category = ContractDescriptorValidation.requireValue(category, "category");
       description = ContractDescriptorValidation.requireText(description, "description");
       detailFields = ContractDescriptorValidation.copyList(detailFields, "detailFields");
       detailRejections =

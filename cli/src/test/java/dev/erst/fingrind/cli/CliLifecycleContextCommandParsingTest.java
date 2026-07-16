@@ -1,0 +1,57 @@
+package dev.erst.fingrind.cli;
+
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+
+import dev.erst.fingrind.contract.protocol.OperationId;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+
+/** Covers public parsing for every owned lifecycle register command. */
+class CliLifecycleContextCommandParsingTest {
+  private static final List<String> BOOK_ARGUMENTS =
+      List.of("--book-file", "book.sqlite", "--book-key-file", "book.key");
+
+  @Test
+  void parse_registerCommands_acceptsTheirScopedQueryOptionsAndTextOutput() {
+    assertInstanceOf(
+        FixedAssetRegister.class,
+        CliCommandParsingRegistry.parse(
+            OperationId.FIXED_ASSET_REGISTER,
+            commandArguments("fixed-asset-register", "--as-of", "2026-07-01", "--output", "text")));
+    assertInstanceOf(
+        FinancingRegister.class,
+        CliCommandParsingRegistry.parse(
+            OperationId.FINANCING_REGISTER,
+            commandArguments("financing-register", "--output", "text")));
+    assertInstanceOf(
+        RealizedForeignExchangeRegister.class,
+        CliCommandParsingRegistry.parse(
+            OperationId.REALIZED_FOREIGN_EXCHANGE_REGISTER,
+            commandArguments("realized-foreign-exchange-register", "--output", "text")));
+  }
+
+  @Test
+  void parse_registerCommands_acceptsPdfArtifacts() {
+    assertInstanceOf(
+        FixedAssetRegister.class,
+        CliFixedAssetRegisterArguments.parseFixedAssetRegisterCommand(
+            commandArguments("fixed-asset-register", "--pdf-out", "fixed-assets.pdf")));
+    assertInstanceOf(
+        FinancingRegister.class,
+        CliFinancingRegisterArguments.parseFinancingRegisterCommand(
+            commandArguments("financing-register", "--pdf-out", "financing.pdf")));
+    assertInstanceOf(
+        RealizedForeignExchangeRegister.class,
+        CliRealizedForeignExchangeRegisterArguments.parseRealizedForeignExchangeRegisterCommand(
+            commandArguments(
+                "realized-foreign-exchange-register", "--pdf-out", "realized-fx.pdf")));
+  }
+
+  private static List<String> commandArguments(String command, String... commandArguments) {
+    List<String> arguments = new java.util.ArrayList<>();
+    arguments.add(command);
+    arguments.addAll(BOOK_ARGUMENTS);
+    arguments.addAll(List.of(commandArguments));
+    return List.copyOf(arguments);
+  }
+}

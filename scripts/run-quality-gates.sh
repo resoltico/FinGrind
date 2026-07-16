@@ -35,7 +35,7 @@ print_usage() {
         '  1. ./scripts/verify-repo-hygiene.sh' \
         '  2. ./scripts/verify-jacoco-artifacts.sh' \
         '  3. ./scripts/verify-structural-governance.sh --surface build-logic-kotlin --surface gradle-kts --surface json-resource --surface markdown-docs --surface python-support --surface sqlite-sql' \
-        '  4. ./gradlew check coverage' \
+        '  4. ./gradlew check coverage --rerun-tasks' \
         '  5. ./gradlew -p gradle/build-logic check' \
         '  6. ./scripts/verify-build-logic-plugin-jar.sh' \
         '' \
@@ -102,6 +102,8 @@ prepare_python_runtime_env
     --surface markdown-docs \
     --surface python-support \
     --surface sqlite-sql
-"${gradlew}" check coverage "$@"
+# Targeted test execution replaces JaCoCo data while Gradle can still consider the full test task
+# up to date. A quality gate must always measure a complete fresh test execution.
+"${gradlew}" check coverage --rerun-tasks "$@"
 "${gradlew}" -p "${build_logic_dir}" check "$@"
 "${build_logic_plugin_jar_verifier}"

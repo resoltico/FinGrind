@@ -99,7 +99,7 @@ final class SqliteRuntimeProbeSupport {
     String libraryMode = libraryModeSupplier.get();
     SqliteRuntimeProvenance runtimeProvenance = runtimeProvenanceSupplier.get();
     String loadedLibraryPath =
-        SqliteRuntime.publicLoadedLibraryPath(loadedLibraryPathSupplier.get());
+        SqliteRuntime.absoluteLoadedLibraryPath(loadedLibraryPathSupplier.get());
     SqliteRuntimeArtifactEvidence runtimeArtifactEvidence =
         SqliteRuntime.artifactEvidence(loadedLibraryPathSupplier.get());
     String loadedSqliteVersion = null;

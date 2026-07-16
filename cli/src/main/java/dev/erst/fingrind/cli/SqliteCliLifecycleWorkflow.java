@@ -6,18 +6,23 @@ import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
+import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.BookAccess.PassphraseSource;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.ProtectedBookMaintenanceService;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingRequestPublishedLanguageTranslator;
 import dev.erst.fingrind.sqlite.SqliteAdministrationSessions;
-import dev.erst.fingrind.sqlite.SqliteBookSessionMode;
 import dev.erst.fingrind.sqlite.SqlitePassphraseIntent;
 import dev.erst.fingrind.sqlite.SqliteProtectedBookMaintenanceStore;
-import dev.erst.fingrind.sqlite.SqliteRekeySessions;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.Objects;
@@ -39,12 +44,13 @@ final class SqliteCliLifecycleWorkflow implements CliBookLifecycleWorkflow {
 
   @Override
   public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess, OpenBookCommand command) {
+    ContractFailure destinationFailure = occupiedBookDestinationFailure(bookAccess.bookFilePath());
+    if (destinationFailure != null) {
+      return ContractDecision.rejected(destinationFailure);
+    }
     return SqliteCliWorkflowSessions.withAdministrationSession(
-        SqliteAdministrationSessions.openResolved(
-            bookAccess,
-            SqliteBookSessionMode.READ_WRITE_CREATE,
-            passphraseResolver,
-            SqlitePassphraseIntent.NEW_SECRET),
+        SqliteAdministrationSessions.openNewBookResolved(
+            bookAccess, passphraseResolver, SqlitePassphraseIntent.NEW_SECRET),
         bookSession ->
             BookkeepingPublishedLanguageTranslator.toPublished(
                 new BookAdministrationService(bookSession, bookSession, bookSession, clock)
@@ -52,15 +58,23 @@ final class SqliteCliLifecycleWorkflow implements CliBookLifecycleWorkflow {
                         BookkeepingRequestPublishedLanguageTranslator.fromPublished(command))));
   }
 
+  private static @Nullable ContractFailure occupiedBookDestinationFailure(Path bookFilePath) {
+    Path normalizedBookFilePath = bookFilePath.toAbsolutePath().normalize();
+    if (!Files.exists(normalizedBookFilePath, LinkOption.NOFOLLOW_LINKS)) {
+      return null;
+    }
+    return ContractErrors.Descriptor.BOOK_DESTINATION_OCCUPIED.failure(
+        "The selected --book-file destination already exists; "
+            + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
+            + " will not access or replace it.",
+        "Choose a missing --book-file destination before opening a new book.",
+        ProtocolBookAccessOptions.BOOK_FILE);
+  }
+
   @Override
   public ContractDecision<RekeyBookResult> rekeyBook(
-      BookAccess bookAccess, PassphraseSource replacementPassphraseSource) {
-    return SqliteCliWorkflowSessions.withRekeySession(
-        SqliteRekeySessions.openResolved(
-            bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
-        bookSession ->
-            bookSession.rekeyBook(
-                replacementPassphraseSource, passphraseResolver, clock.instant()));
+      BookAccess bookAccess, Path newBookKeyFilePath) {
+    return maintenanceService.rekeyBook(bookAccess, newBookKeyFilePath);
   }
 
   @Override
@@ -71,9 +85,13 @@ final class SqliteCliLifecycleWorkflow implements CliBookLifecycleWorkflow {
 
   @Override
   public ContractDecision<RestoreBookResult> restoreBook(
-      Path bookFilePath, Path bookKeyFilePath, Path backupFilePath, Path backupKeyFilePath) {
+      Path bookFilePath,
+      Path newBookKeyFilePath,
+      Path backupFilePath,
+      Path backupKeyFilePath,
+      boolean replaceExistingBook) {
     return maintenanceService.restoreBook(
-        bookFilePath, bookKeyFilePath, backupFilePath, backupKeyFilePath);
+        bookFilePath, newBookKeyFilePath, backupFilePath, backupKeyFilePath, replaceExistingBook);
   }
 
   @Override

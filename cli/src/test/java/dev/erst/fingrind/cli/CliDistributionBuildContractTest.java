@@ -736,6 +736,8 @@ class CliDistributionBuildContractTest {
     assertTrue(powerShellLauncher.contains("New-StagedCliArgumentsFile"));
     assertTrue(powerShellLauncher.contains("$PSScriptRoot"));
     assertTrue(powerShellLauncher.contains("$scriptInvocationArguments = @($args)"));
+    assertTrue(powerShellLauncher.contains("$PSCommandPath"));
+    assertTrue(powerShellLauncher.contains("-Ddev.erst.fingrind.invocation=$invocationLabel"));
     assertFalse(powerShellLauncher.contains("$MyInvocation.MyCommand.Path"));
     assertFalse(powerShellLauncher.contains("& $runtimeJava @javaArguments"));
     assertFalse(powerShellLauncher.contains("ConvertFrom-Json"));

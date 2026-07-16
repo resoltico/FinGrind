@@ -44,7 +44,6 @@ readonly launcher_wrapper_common_ps1="${repo_root}/scripts/source-checkout-cli-c
 readonly raw_java_wrapper="${repo_root}/scripts/direct-java-cli.sh"
 readonly raw_java_wrapper_ps1="${repo_root}/scripts/direct-java-cli.ps1"
 readonly gradle_wrapper_support_ps1="${repo_root}/scripts/gradle-wrapper-support.ps1"
-readonly repo_tmp_dir="${repo_root}/tmp"
 
 [[ -f "${contract_values_reader}" ]] || die "missing contract-values reader"
 [[ -f "${launcher_contract_test_support}" ]] || die "missing source-checkout launcher test support helper"
@@ -90,8 +89,10 @@ readonly source_checkout_runtime_manifest="$(
     fg_gradle_source_checkout_runtime_manifest_path "${repo_root}" 'cli' "${is_darwin}"
 )"
 
-mkdir -p "${repo_tmp_dir}"
-tmp_dir="$(mktemp -d "${repo_tmp_dir}/source-checkout-launcher.XXXXXX")"
+# Generated-secret publication requires a filesystem with an atomic no-replace primitive. The
+# source checkout may be on a network volume without that guarantee, so this disposable runtime
+# fixture uses the operating system's local temporary filesystem; it is never a worktree.
+tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-source-checkout-launcher.XXXXXX")"
 cleanup() {
     chmod -R u+rwx "${tmp_dir}" 2>/dev/null || true
     rm -rf "${tmp_dir}" 2>/dev/null || true
@@ -154,6 +155,8 @@ raw_jar_open_stderr="${tmp_dir}/raw-jar-open.err"
 stale_runtime_help_stdout="${tmp_dir}/stale-runtime-help.out"
 stale_runtime_help_stderr="${tmp_dir}/stale-runtime-help.err"
 stale_runtime_probe="${tmp_dir}/stale-runtime-probe"
+corrupt_runtime_jar_help_stdout="${tmp_dir}/corrupt-runtime-jar-help.out"
+corrupt_runtime_jar_help_stderr="${tmp_dir}/corrupt-runtime-jar-help.err"
 
 readonly book_file="${tmp_dir}/Nested Dir/Books/ledger launcher.db"
 readonly key_file="${tmp_dir}/Keys/book key.txt"
@@ -300,8 +303,19 @@ progress 'source-checkout stale-runtime refresh'
 grep -Fq 'steps[].posting.evidence.sourceDocuments[].documentDate' "${stale_runtime_help_stdout}" || die \
     "source-checkout launcher stale-runtime refresh did not publish the nested posting evidence structure"
 
+printf 'not a jar\n' >"${raw_jar}"
+progress 'source-checkout corrupt-jar refresh'
+"${launcher_wrapper}" help execute-plan --output text >"${corrupt_runtime_jar_help_stdout}" \
+    2>"${corrupt_runtime_jar_help_stderr}" || die \
+    "source-checkout launcher did not self-refresh after JAR corruption"
+
+[[ ! -s "${corrupt_runtime_jar_help_stderr}" ]] || die \
+    "source-checkout launcher corrupt-JAR refresh wrote diagnostics"
+grep -Fq 'steps[].posting.evidence.sourceDocuments[].documentDate' "${corrupt_runtime_jar_help_stdout}" || die \
+    "source-checkout launcher corrupt-JAR refresh did not restore the prepared application"
+
 progress 'source-checkout key generation'
-"${launcher_wrapper}" generate-book-key-file --book-key-file "${key_file}" --output json >"${key_stdout}" 2>"${key_stderr}" ||
+"${launcher_wrapper}" generate-book-key-file --new-book-key-file "${key_file}" --output json >"${key_stdout}" 2>"${key_stderr}" ||
     die "source-checkout launcher key generation failed"
 
 [[ ! -s "${key_stderr}" ]] || die "source-checkout launcher key generation wrote diagnostics"

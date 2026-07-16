@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPagination;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
@@ -138,6 +139,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             cashAccount,
             EffectiveDateRange.unbounded(),
             allPostingKinds(),
+            AccountLedgerPagination.firstPage(50),
             List.of(eurDebitBalance),
             List.of(
                 new AccountLedgerEntry(
@@ -171,7 +173,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeAccountBalanceResult(
                 new AccountBalanceResult.Reported(balanceSnapshot),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "exportFamily,rowId,parentRowId,relationKind");
+        "family,accountCode,accountName,accountType,normalBalance,active,currencyCode,debitTotalCurrencyCode");
     assertWriterOutput(
         writer ->
             writer.writeTrialBalanceResult(
@@ -189,7 +191,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeTrialBalanceResult(
                 new TrialBalanceResult.Reported(trialBalanceReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "exportFamily,rowId,parentRowId,relationKind");
+        "family,reportPeriod,accountCode,accountName,accountType,normalBalance,active,currencyCode");
     assertWriterOutput(
         writer ->
             writer.writeAccountLedgerResult(
@@ -207,7 +209,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writeAccountLedgerResult(
                 new AccountLedgerResult.Reported(accountLedgerReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "exportFamily,rowId,parentRowId,relationKind");
+        "family,accountCode,postingId,effectiveDate,movementCurrencyCode,debitTotalCurrencyCode");
     assertWriterOutput(
         writer ->
             writer.writePeriodSummaryResult(
@@ -225,7 +227,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             writer.writePeriodSummaryResult(
                 new PeriodSummaryResult.Reported(periodSummaryReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "exportFamily,rowId,parentRowId,relationKind");
+        "family,recordScope,accountCode,accountName,accountType,normalBalance,active,currencyCode");
   }
 
   @Test

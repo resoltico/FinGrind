@@ -9,7 +9,8 @@ public enum TemporalScopeArchetype {
   THROUGH_DATE,
   FISCAL_YEAR_LABEL,
   AS_OF_DATE,
-  INVENTORY_AS_OF_DATE;
+  INVENTORY_AS_OF_DATE,
+  ACCRUAL_CUTOFF_AS_OF_DATE;
 
   /** Returns the stable wire value for this temporal-scope archetype. */
   public String wireValue() {
@@ -20,6 +21,7 @@ public enum TemporalScopeArchetype {
       case FISCAL_YEAR_LABEL -> "fiscal-year-label";
       case AS_OF_DATE -> "as-of-date";
       case INVENTORY_AS_OF_DATE -> "inventory-as-of-date";
+      case ACCRUAL_CUTOFF_AS_OF_DATE -> "accrual-cutoff-as-of-date";
     };
   }
 
@@ -31,6 +33,7 @@ public enum TemporalScopeArchetype {
         THROUGH_DATE.wireValue(),
         FISCAL_YEAR_LABEL.wireValue(),
         AS_OF_DATE.wireValue(),
-        INVENTORY_AS_OF_DATE.wireValue());
+        INVENTORY_AS_OF_DATE.wireValue(),
+        ACCRUAL_CUTOFF_AS_OF_DATE.wireValue());
   }
 }

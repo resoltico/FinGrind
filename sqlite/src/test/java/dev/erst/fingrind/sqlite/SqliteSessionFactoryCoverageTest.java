@@ -2,11 +2,10 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
@@ -93,6 +92,22 @@ class SqliteSessionFactoryCoverageTest extends SqlitePostingFactStoreTestSupport
       assertFalse(planExecutionStore.inspectBook().initialized());
     }
     assertFalse(Files.exists(missingPlanBookPath));
+  }
+
+  @Test
+  void administrationNewBookFactoryUsesTheExclusiveCreationMode() {
+    Path bookPath = tempDirectory.resolve("administration-new-book.sqlite");
+    BookAccess newBookAccess = bookAccess(bookPath);
+
+    try (SqliteAdministrationSession session =
+        SqliteAdministrationSessions.openNewBookResolved(
+                newBookAccess, keyFileResolver(), SqlitePassphraseIntent.EXISTING_SECRET)
+            .requireAccepted()) {
+      assertEquals(
+          SqliteStoreAccessMode.READ_WRITE_CREATE_EXCLUSIVE,
+          SqliteCapabilitySessions.storeOf(session).accessMode());
+      assertFalse(session.inspectBook().initialized());
+    }
   }
 
   @Test
@@ -199,17 +214,6 @@ class SqliteSessionFactoryCoverageTest extends SqlitePostingFactStoreTestSupport
             .requireAccepted()) {
       assertTrue(session.inspectBook().initialized());
     }
-
-    try (SqliteRekeySession session =
-        SqliteRekeySessions.open(bookAccess, resolver, SqlitePassphraseIntent.EXISTING_SECRET)) {
-      assertNotNull(session);
-    }
-    try (SqliteRekeySession session =
-        SqliteRekeySessions.openResolved(
-                bookAccess, resolver, SqlitePassphraseIntent.EXISTING_SECRET)
-            .requireAccepted()) {
-      assertNotNull(session);
-    }
   }
 
   private static SqlitePassphraseResolver keyFileResolver() {
@@ -228,7 +232,7 @@ class SqliteSessionFactoryCoverageTest extends SqlitePostingFactStoreTestSupport
       BookAccess.PassphraseSource source) {
     return ContractErrors.Descriptor.INVALID_BOOK_PASSPHRASE_SOURCE.failure(
         "SQLite same-package file-backed stores require a "
-            + ProtocolOptions.BOOK_KEY_FILE
+            + ProtocolBookAccessOptions.BOOK_KEY_FILE
             + " access selection, not "
             + source.optionName()
             + ".",

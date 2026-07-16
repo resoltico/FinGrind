@@ -12,11 +12,10 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
 import dev.erst.fingrind.executor.spi.StagedBookReplacement;
 import java.io.IOException;
-import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.lang.invoke.VarHandle;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -74,6 +73,29 @@ abstract class SqliteProtectedBookMaintenanceStoreCoverageTestSupport
           throw new AssertionError(
               "Expected one verified book but got " + verificationFailure.failure());
     };
+  }
+
+  protected static ProtectedBookMaintenanceStore.PreparedPairPublication prepareBackupPair(
+      SqliteProtectedBookMaintenanceStore store, Path backupFilePath, Path backupKeyFilePath) {
+    return store.preparePairPublication(
+        backupKeyFilePath,
+        backupFilePath,
+        RestoredBookTargetPolicy.REQUIRE_ABSENT,
+        ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+        ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET);
+  }
+
+  protected static ProtectedBookMaintenanceStore.PreparedPairPublication prepareRestoredBookPair(
+      SqliteProtectedBookMaintenanceStore store,
+      Path restoredBookPath,
+      Path restoredBookKeyPath,
+      RestoredBookTargetPolicy targetPolicy) {
+    return store.preparePairPublication(
+        restoredBookKeyPath,
+        restoredBookPath,
+        targetPolicy,
+        ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET,
+        ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET);
   }
 
   protected static ProtectedBookMaintenanceStore.LeaseAcquisition acquireLiveArtifactLease(
@@ -171,8 +193,28 @@ abstract class SqliteProtectedBookMaintenanceStoreCoverageTestSupport
 
   protected static StagedBookReplacement newStagedReplacement(
       Path stagedBookPath, Path targetBookPath, @Nullable Path previousTargetBackupPath) {
+    ensureFixtureParent(stagedBookPath);
+    if (previousTargetBackupPath != null) {
+      ensureFixtureParent(previousTargetBackupPath);
+    }
     return new SqliteStagedBookReplacement(
-        stagedBookPath, targetBookPath, previousTargetBackupPath);
+        SqliteOwnedStagedArtifact.recordExisting(targetBookPath, stagedBookPath),
+        targetBookPath,
+        previousTargetBackupPath == null
+            ? null
+            : SqliteOwnedStagedArtifact.recordExisting(targetBookPath, previousTargetBackupPath));
+  }
+
+  private static void ensureFixtureParent(Path path) {
+    Path parent = path.getParent();
+    if (parent == null) {
+      return;
+    }
+    try {
+      Files.createDirectories(parent);
+    } catch (IOException exception) {
+      throw new AssertionError("Unable to create one maintenance-stage fixture parent.", exception);
+    }
   }
 
   protected static SqliteStagedRestoredBookPair newStagedRestoredBookPair(
@@ -180,39 +222,16 @@ abstract class SqliteProtectedBookMaintenanceStoreCoverageTestSupport
       Path finalBookPath,
       Path stagedBookKeyFilePath,
       Path finalBookKeyFilePath,
-      @Nullable Path previousBookFilePath,
-      @Nullable Path previousBookKeyFilePath,
       SqliteBookPassphrase restoredPassphrase) {
-    try {
-      MethodHandles.Lookup lookup =
-          MethodHandles.privateLookupIn(SqliteStagedRestoredBookPair.class, MethodHandles.lookup());
-      MethodHandle constructor =
-          lookup.findConstructor(
-              SqliteStagedRestoredBookPair.class,
-              MethodType.methodType(
-                  void.class,
-                  Path.class,
-                  Path.class,
-                  Path.class,
-                  Path.class,
-                  Path.class,
-                  Path.class,
-                  SqliteBookPassphrase.class,
-                  SqliteProtectedBookVerificationSupport.class));
-      return (SqliteStagedRestoredBookPair)
-          constructor.invokeWithArguments(
-              stagedBookPath,
-              finalBookPath,
-              stagedBookKeyFilePath,
-              finalBookKeyFilePath,
-              previousBookFilePath,
-              previousBookKeyFilePath,
-              restoredPassphrase,
-              VERIFICATION_SUPPORT);
-    } catch (Throwable exception) {
-      throw new LinkageError(
-          "Failed to instantiate one staged restored-book pair test fixture.", exception);
-    }
+    return SqliteStagedRestoredBookPairFactory.create(
+        new SqliteStagedProtectedBookPairArtifacts(
+            SqliteOwnedStagedArtifact.recordExisting(finalBookPath, stagedBookPath),
+            finalBookPath,
+            SqliteOwnedStagedArtifact.recordExisting(finalBookKeyFilePath, stagedBookKeyFilePath),
+            finalBookKeyFilePath),
+        RestoredBookTargetPolicy.REPLACE_SELECTED,
+        restoredPassphrase,
+        VERIFICATION_SUPPORT);
   }
 
   protected static void setPrivateField(Object target, String fieldName, @Nullable Object value) {
@@ -225,7 +244,7 @@ abstract class SqliteProtectedBookMaintenanceStoreCoverageTestSupport
               lookup.findVarHandle(target.getClass(), fieldName, SqliteBookPassphrase.class);
           field.set(target, value);
         }
-        case "backupFilePublished", "backupKeyFilePublished" -> {
+        case "backupFilePublished", "backupKeyFilePublished", "bookKeyFilePublished" -> {
           VarHandle field = lookup.findVarHandle(target.getClass(), fieldName, boolean.class);
           field.set(
               target,

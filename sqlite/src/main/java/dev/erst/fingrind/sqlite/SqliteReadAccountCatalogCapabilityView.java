@@ -17,24 +17,24 @@ interface SqliteReadAccountCatalogCapabilityView
   @Override
   default Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
     storeThreadOwner().requireOwnerThread();
-    return storeReadOperations().findAccount(accountCode);
+    return storeReadOperations().accountCatalog().findAccount(accountCode);
   }
 
   @Override
   default Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
     storeThreadOwner().requireOwnerThread();
-    return storeReadOperations().findAccounts(accountCodes);
+    return storeReadOperations().accountCatalog().findAccounts(accountCodes);
   }
 
   @Override
   default List<RegisteredAccount> allAccounts() {
     storeThreadOwner().requireOwnerThread();
-    return storeReadOperations().allAccounts();
+    return storeReadOperations().accountCatalog().allAccounts();
   }
 
   @Override
   default AccountRegistryPage listAccounts(AccountRegistryQuery query) {
     storeThreadOwner().requireOwnerThread();
-    return storeReadOperations().listAccounts(query);
+    return storeReadOperations().accountCatalog().listAccounts(query);
   }
 }

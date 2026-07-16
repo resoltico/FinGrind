@@ -49,7 +49,6 @@ final class MachineContractRequestShapesCatalog {
         null,
         null,
         null,
-        MachineContractLedgerPlanSchemas.descriptor(
-            MachineContractTemplatesCatalog.planTemplate().canonicalPostingTemplate().entryKind()));
+        MachineContractLedgerPlanSchemas.descriptor());
   }
 }

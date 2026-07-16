@@ -23,7 +23,7 @@ class BookTemplateAccountsTest {
             BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL);
 
     assertEquals(7, service.size());
-    assertEquals(12, accrual.size());
+    assertEquals(15, accrual.size());
     assertTrue(
         service.stream()
             .anyMatch(
@@ -56,6 +56,24 @@ class BookTemplateAccountsTest {
             .accountTaxonomy()
             .profitAndLossLineClassification()
             .orElseThrow());
+    assertEquals(
+        FinancialPositionLineClassification.PREPAID_EXPENSE,
+        declaration(accrual, "prepaid-expense")
+            .accountTaxonomy()
+            .financialPositionLineClassification()
+            .orElseThrow());
+    assertEquals(
+        FinancialPositionLineClassification.DEFERRED_REVENUE,
+        declaration(accrual, "deferred-revenue")
+            .accountTaxonomy()
+            .financialPositionLineClassification()
+            .orElseThrow());
+    assertEquals(
+        FinancialPositionLineClassification.ACCRUED_EXPENSE,
+        declaration(accrual, "accrued-expense")
+            .accountTaxonomy()
+            .financialPositionLineClassification()
+            .orElseThrow());
   }
 
   @Test
@@ -67,7 +85,7 @@ class BookTemplateAccountsTest {
             BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING_ACCRUAL);
 
     assertEquals(13, cashTrading.size());
-    assertEquals(17, accrualTrading.size());
+    assertEquals(20, accrualTrading.size());
     assertEquals(
         FinancialPositionLineClassification.INVENTORY,
         declaration(cashTrading, "inventory")

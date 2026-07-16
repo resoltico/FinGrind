@@ -28,13 +28,12 @@ class CliRecordingWorkflow extends CliBookWorkflowAdapter {
   private final List<BookAccess> openBookAccesses = new ArrayList<>();
   private final List<OpenBookCommand> openBookCommands = new ArrayList<>();
   private final List<BookAccess> rekeyBookAccesses = new ArrayList<>();
-  private final List<BookAccess.PassphraseSource> rekeyReplacementPassphraseSources =
-      new ArrayList<>();
+  private final List<Path> newRekeyBookKeyFilePaths = new ArrayList<>();
   private final List<BookAccess> backupBookAccesses = new ArrayList<>();
   private final List<Path> backupFilePaths = new ArrayList<>();
   private final List<Path> backupBookKeyFilePaths = new ArrayList<>();
   private final List<Path> restoreBookFilePaths = new ArrayList<>();
-  private final List<Path> restoreBookKeyFilePaths = new ArrayList<>();
+  private final List<Path> newRestoreBookKeyFilePaths = new ArrayList<>();
   private final List<Path> restoreBackupFilePaths = new ArrayList<>();
   private final List<Path> restoreBackupBookKeyFilePaths = new ArrayList<>();
   private final List<Path> inspectRekeyRollbackBookFilePaths = new ArrayList<>();
@@ -94,9 +93,9 @@ class CliRecordingWorkflow extends CliBookWorkflowAdapter {
 
   @Override
   public ContractDecision<RekeyBookResult> rekeyBook(
-      BookAccess bookAccess, PassphraseSource replacementPassphraseSource) {
+      BookAccess bookAccess, Path newBookKeyFilePath) {
     rekeyBookAccesses.add(bookAccess);
-    rekeyReplacementPassphraseSources.add(replacementPassphraseSource);
+    newRekeyBookKeyFilePaths.add(newBookKeyFilePath);
     return CliWorkflowDoubleSupport.accepted(rekeyBookResult);
   }
 
@@ -111,9 +110,13 @@ class CliRecordingWorkflow extends CliBookWorkflowAdapter {
 
   @Override
   public ContractDecision<RestoreBookResult> restoreBook(
-      Path bookFilePath, Path bookKeyFilePath, Path backupFilePath, Path backupBookKeyFilePath) {
+      Path bookFilePath,
+      Path newBookKeyFilePath,
+      Path backupFilePath,
+      Path backupBookKeyFilePath,
+      boolean replaceExistingBook) {
     restoreBookFilePaths.add(bookFilePath);
-    restoreBookKeyFilePaths.add(bookKeyFilePath);
+    newRestoreBookKeyFilePaths.add(newBookKeyFilePath);
     restoreBackupFilePaths.add(backupFilePath);
     restoreBackupBookKeyFilePaths.add(backupBookKeyFilePath);
     return CliWorkflowDoubleSupport.accepted(restoreBookResult);
@@ -198,8 +201,8 @@ class CliRecordingWorkflow extends CliBookWorkflowAdapter {
     return rekeyBookAccesses;
   }
 
-  List<BookAccess.PassphraseSource> rekeyReplacementPassphraseSources() {
-    return rekeyReplacementPassphraseSources;
+  List<Path> newRekeyBookKeyFilePaths() {
+    return newRekeyBookKeyFilePaths;
   }
 
   List<BookAccess> backupBookAccesses() {

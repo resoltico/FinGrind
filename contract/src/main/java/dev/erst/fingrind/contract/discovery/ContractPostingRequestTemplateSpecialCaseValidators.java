@@ -22,9 +22,9 @@ final class ContractPostingRequestTemplateSpecialCaseValidators {
         ContractPostingRequestTemplateFieldSupport.TemplateTextField.EXPENSE,
         ContractPostingRequestTemplateFieldSupport.TemplateTextField.EQUITY);
     ContractPostingRequestTemplateFieldSupport.forbidInventoryMaintenanceFields(fields, "journal");
-    ContractPostingTemplateFieldRules.forbidAmount(fields.amount(), "journal");
-    ContractPostingTemplateFieldRules.forbidQuantity(fields.quantity(), "journal");
-    ContractPostingTemplateFieldRules.forbidUnitCost(fields.unitCost(), "journal");
+    ContractPostingTemplateScalarFieldRules.forbidAmount(fields.amount(), "journal");
+    ContractPostingTemplateScalarFieldRules.forbidQuantity(fields.quantity(), "journal");
+    ContractPostingTemplateScalarFieldRules.forbidUnitCost(fields.unitCost(), "journal");
     ContractPostingRequestTemplateFieldSupport.requireNoSettlementAdjunct(fields, "journal");
     ContractPostingTemplateFieldRules.forbidTax(fields.tax(), "journal");
     ContractPostingTemplateFieldRules.forbidOpeningBalances(fields.openingBalances());
@@ -50,9 +50,9 @@ final class ContractPostingRequestTemplateSpecialCaseValidators {
     ContractPostingRequestTemplateFieldSupport.forbidInventoryMaintenanceFields(
         fields, "openingPosition");
     ContractPostingTemplateFieldRules.forbidLines(fields.lines());
-    ContractPostingTemplateFieldRules.forbidAmount(fields.amount(), "openingPosition");
-    ContractPostingTemplateFieldRules.forbidQuantity(fields.quantity(), "openingPosition");
-    ContractPostingTemplateFieldRules.forbidUnitCost(fields.unitCost(), "openingPosition");
+    ContractPostingTemplateScalarFieldRules.forbidAmount(fields.amount(), "openingPosition");
+    ContractPostingTemplateScalarFieldRules.forbidQuantity(fields.quantity(), "openingPosition");
+    ContractPostingTemplateScalarFieldRules.forbidUnitCost(fields.unitCost(), "openingPosition");
     ContractPostingRequestTemplateFieldSupport.validateInventoryRelief(
         fields.inventoryRelief(),
         "openingPosition",
@@ -79,9 +79,9 @@ final class ContractPostingRequestTemplateSpecialCaseValidators {
         ContractPostingRequestTemplateFieldSupport.TemplateTextField.EXPENSE,
         ContractPostingRequestTemplateFieldSupport.TemplateTextField.EQUITY);
     ContractPostingRequestTemplateFieldSupport.forbidInventoryMaintenanceFields(fields, "reversal");
-    ContractPostingTemplateFieldRules.forbidAmount(fields.amount(), "reversal");
-    ContractPostingTemplateFieldRules.forbidQuantity(fields.quantity(), "reversal");
-    ContractPostingTemplateFieldRules.forbidUnitCost(fields.unitCost(), "reversal");
+    ContractPostingTemplateScalarFieldRules.forbidAmount(fields.amount(), "reversal");
+    ContractPostingTemplateScalarFieldRules.forbidQuantity(fields.quantity(), "reversal");
+    ContractPostingTemplateScalarFieldRules.forbidUnitCost(fields.unitCost(), "reversal");
     ContractPostingRequestTemplateFieldSupport.validateInventoryRelief(
         fields.inventoryRelief(),
         "reversal",
@@ -111,9 +111,9 @@ final class ContractPostingRequestTemplateSpecialCaseValidators {
         ContractPostingRequestTemplateFieldSupport.TemplateTextField.WRITE_DOWN_LOSS,
         ContractPostingRequestTemplateFieldSupport.TemplateTextField.COUNT_GAIN,
         ContractPostingRequestTemplateFieldSupport.TemplateTextField.EQUITY);
-    ContractPostingTemplateFieldRules.forbidAmount(fields.amount(), "inventoryShrinkage");
-    ContractPostingTemplateFieldRules.requirePositiveQuantity(fields.quantity());
-    ContractPostingTemplateFieldRules.forbidUnitCost(fields.unitCost(), "inventoryShrinkage");
+    ContractPostingTemplateScalarFieldRules.forbidAmount(fields.amount(), "inventoryShrinkage");
+    ContractPostingTemplateScalarFieldRules.requirePositiveQuantity(fields.quantity());
+    ContractPostingTemplateScalarFieldRules.forbidUnitCost(fields.unitCost(), "inventoryShrinkage");
     ContractPostingRequestTemplateFieldSupport.validateInventoryRelief(
         fields.inventoryRelief(),
         "inventoryShrinkage",

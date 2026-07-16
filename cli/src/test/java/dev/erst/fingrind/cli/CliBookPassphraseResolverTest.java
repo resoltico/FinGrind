@@ -12,7 +12,6 @@ import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
-import dev.erst.fingrind.sqlite.SqliteBookKeyFile;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
 import java.io.ByteArrayInputStream;
@@ -53,9 +52,6 @@ class CliBookPassphraseResolverTest {
                     Path.of("book.sqlite"), new BookAccess.PassphraseSource.KeyFile(keyFile)))
             .requireAccepted()) {
       assertEquals("key file", passphrase.sourceDescription());
-      assertEquals(
-          "swordfish",
-          materializedPassphraseText(tempDirectory.resolve("resolved-key-file.key"), passphrase));
     }
   }
 
@@ -73,9 +69,6 @@ class CliBookPassphraseResolverTest {
                     Path.of("book.sqlite"), BookAccess.PassphraseSource.StandardInput.INSTANCE))
             .requireAccepted()) {
       assertEquals("standard input", passphrase.sourceDescription());
-      assertEquals(
-          "stdin-passphrase",
-          materializedPassphraseText(tempDirectory.resolve("resolved-stdin.key"), passphrase));
     }
   }
 
@@ -179,9 +172,6 @@ class CliBookPassphraseResolverTest {
                 new BookAccess(bookPath, BookAccess.PassphraseSource.InteractivePrompt.INSTANCE))
             .requireAccepted()) {
       assertEquals("interactive prompt", passphrase.sourceDescription());
-      assertEquals(
-          "prompt-passphrase",
-          materializedPassphraseText(tempDirectory.resolve("resolved-prompt.key"), passphrase));
     }
   }
 
@@ -289,10 +279,6 @@ class CliBookPassphraseResolverTest {
                 CliBookPassphraseResolver.PromptStyle.CONFIRMED_NEW_SECRET)
             .requireAccepted()) {
       assertEquals("interactive prompt", passphrase.sourceDescription());
-      assertEquals(
-          "confirmed-secret",
-          materializedPassphraseText(
-              tempDirectory.resolve("resolved-confirmed-prompt.key"), passphrase));
     }
   }
 
@@ -698,12 +684,6 @@ class CliBookPassphraseResolverTest {
   private static void writeSecureString(Path keyFile, String content) throws IOException {
     SqliteBookKeyFileGenerator.generate(keyFile);
     Files.writeString(keyFile, content, StandardCharsets.UTF_8);
-  }
-
-  private static String materializedPassphraseText(Path keyFile, SqliteBookPassphrase passphrase)
-      throws IOException {
-    SqliteBookKeyFile.materialize(keyFile, passphrase);
-    return Files.readString(keyFile, StandardCharsets.UTF_8);
   }
 
   private static Supplier<@Nullable CliPromptingConsole> promptingConsoleSupplier(String password) {

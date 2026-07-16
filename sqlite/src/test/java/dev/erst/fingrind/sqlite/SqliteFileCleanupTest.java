@@ -44,6 +44,7 @@ class SqliteFileCleanupTest {
           () ->
               SqliteFileCleanup.deleteQuietly(
                   failingPath,
+                  "deleting one temporary SQLite maintenance path",
                   (action, exception) -> {
                     capturedAction.set(action);
                     capturedException.set(exception);

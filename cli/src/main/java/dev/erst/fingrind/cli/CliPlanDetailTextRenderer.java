@@ -16,56 +16,12 @@ final class CliPlanDetailTextRenderer {
 
   static String renderStepData(CliPlanJsonModels.LedgerStepDataPayload dataPayload) {
     return switch (Objects.requireNonNull(dataPayload, "dataPayload")) {
-      case CliPlanJsonModels.EnsureBookStepDataPayload ensureBook ->
-          CliTextFormat.renderKeyValueBlock(
-              List.of(
-                  List.of("Initialized at", ensureBook.initializedAt()),
-                  List.of("Entity name", ensureBook.entityName()),
-                  List.of("Functional currency", ensureBook.functionalCurrency()),
-                  List.of("Fiscal year start", ensureBook.fiscalYearStart())));
-      case CliPlanJsonModels.AccountDeclarationStepDataPayload accountDeclaration ->
-          CliPlanBookkeepingTextRenderer.renderDeclaredAccount(
-              accountDeclaration.outcome(), accountDeclaration.account());
-      case CliPlanJsonModels.PreflightEntryStepDataPayload preflightEntry ->
-          CliTextFormat.renderKeyValueBlock(
-              List.of(
-                  List.of("Idempotency key", preflightEntry.idempotencyKey()),
-                  List.of("Effective date", preflightEntry.effectiveDate())));
-      case CliPlanJsonModels.CommittedEntryStepDataPayload committedEntry ->
-          CliTextFormat.renderKeyValueBlock(
-              List.of(
-                  List.of("Posting id", committedEntry.postingId()),
-                  List.of("Idempotency key", committedEntry.idempotencyKey()),
-                  List.of("Effective date", committedEntry.effectiveDate()),
-                  List.of("Recorded at", committedEntry.recordedAt())));
-      case CliPlanJsonModels.BookInspectionStepDataPayload inspection ->
-          CliTextFormat.renderKeyValueBlock(
-              List.of(
-                  List.of("State", CliTextDisplay.wireLabel(inspection.state())),
-                  List.of(
-                      "Initialized",
-                      CliQueryScopeText.displayBooleanLabel(inspection.initialized())),
-                  List.of(
-                      "Compatible with current binary",
-                      CliQueryScopeText.displayBooleanLabel(
-                          inspection.compatibleWithCurrentBinary()))));
-      case CliPlanJsonModels.AccountPageStepDataPayload accountPage ->
-          CliPlanBookkeepingTextRenderer.renderAccountPage(accountPage);
-      case CliPlanJsonModels.PostingStepDataPayload posting ->
-          CliPlanBookkeepingTextRenderer.renderPosting(posting.posting());
-      case CliPlanJsonModels.PostingPageStepDataPayload postingPage ->
-          CliPlanBookkeepingTextRenderer.renderPostingPage(postingPage);
-      case CliPlanJsonModels.AccountBalanceStepDataPayload accountBalance ->
-          CliPlanBookkeepingTextRenderer.renderAccountBalance(accountBalance);
-      case CliPlanJsonModels.AccountCodeAssertionStepDataPayload accountCodeAssertion ->
-          CliTextFormat.renderKeyValueBlock(
-              List.of(List.of("Account code", accountCodeAssertion.accountCode())));
-      case CliPlanJsonModels.PostingIdAssertionStepDataPayload postingIdAssertion ->
-          CliTextFormat.renderKeyValueBlock(
-              List.of(List.of("Posting id", postingIdAssertion.postingId())));
-      case CliPlanJsonModels.PlanBoundaryStepDataPayload boundary ->
-          CliTextFormat.renderKeyValueBlock(
-              List.of(List.of("Checkpoint", CliTextDisplay.wireLabel(boundary.checkpoint()))));
+      case CliPlanJsonModels.LedgerAdministrativeStepDataPayload administrative ->
+          CliPlanAdministrativeTextRenderer.renderStepData(administrative);
+      case CliPlanJsonModels.LedgerBookkeepingStepDataPayload bookkeeping ->
+          CliPlanBookkeepingTextRenderer.renderStepData(bookkeeping);
+      case CliPlanJsonModels.LedgerControlStepDataPayload control ->
+          CliPlanControlTextRenderer.renderStepData(control);
     };
   }
 

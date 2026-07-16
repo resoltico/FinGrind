@@ -5,6 +5,7 @@ import dev.erst.fingrind.contract.reportmodel.ReportModel;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
@@ -29,7 +30,11 @@ record CliConfiguredReportHandler<QUERY, RESULT, REPORTED>(
   @FunctionalInterface
   interface ResultWriter<RESULT> {
     /** Publishes one resolved report result and any exported artifact path. */
-    void write(RESULT result, OutputMode outputMode, @Nullable Path exportedArtifactPath);
+    void write(
+        RESULT result,
+        OutputMode outputMode,
+        @Nullable Path exportedArtifactPath,
+        Instant generatedAt);
   }
 
   /** Resolves one report-family workflow call for the selected book and query. */

@@ -24,8 +24,8 @@ public interface BookkeepingEntrySurface {
   /**
    * Returns the caller-derivable journal skeleton implied by this entry variant.
    *
-   * <p>Sale entries with inventory relief, tax-bearing entries, and reversals require
-   * executor-owned resolution facts before the completed journal can be derived.
+   * <p>Costed sales, tax-bearing entries, payroll settlements, and reversals require executor-owned
+   * resolution facts before the completed journal can be derived.
    */
   default JournalEntry journalEntry() {
     return BookkeepingEntrySurfaceSupport.journalEntry((BookkeepingEntry) this);

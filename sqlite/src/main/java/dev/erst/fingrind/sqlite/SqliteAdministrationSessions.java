@@ -54,4 +54,14 @@ public final class SqliteAdministrationSessions {
             bookAccess, sessionMode, passphraseResolver, passphraseIntent),
         SqliteCapabilitySessions::administration);
   }
+
+  /** Resolves one administration session that creates only an absent new book destination. */
+  public static ContractDecision<SqliteAdministrationSession> openNewBookResolved(
+      BookAccess bookAccess,
+      SqlitePassphraseResolver passphraseResolver,
+      SqlitePassphraseIntent passphraseIntent) {
+    return SqliteBookSessions.project(
+        SqliteBookSessions.openNewBookResolved(bookAccess, passphraseResolver, passphraseIntent),
+        SqliteCapabilitySessions::administration);
+  }
 }

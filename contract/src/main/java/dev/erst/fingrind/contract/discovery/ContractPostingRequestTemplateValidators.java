@@ -1,11 +1,16 @@
 package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.discovery.ContractFinancingTemplates.FinancingTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractFixedAssetTemplates.FixedAssetTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractLatvianPayrollTemplates.MonthlyPayrollTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractLatvianPayrollTemplates.PayrollSettlementTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractRealizedForeignExchangeTemplates.RealizedForeignExchangeTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractReversalTemplates.ReversalTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractSettlementTemplates.SettlementAdjunctTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractSettlementTemplates.TaxSelectionTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.JournalLineTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.OpeningBalanceTemplateDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractTemplates.SettlementAdjunctTemplateDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractTemplates.TaxSelectionTemplateDescriptor;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
 import java.util.Map;
@@ -14,134 +19,6 @@ import org.jspecify.annotations.Nullable;
 
 /** Posting-template validator owner for the discovery contract namespace. */
 final class ContractPostingRequestTemplateValidators {
-  private static final RoleAmountTemplateValidationRule SALE_SETTLED_RULE =
-      new RoleAmountTemplateValidationRule(
-          "saleSettled",
-          ContractPostingRequestTemplateFieldSupport.InventoryReliefPolicy.OPTIONAL,
-          false,
-          true,
-          true,
-          List.of(
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.CASH,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.REVENUE),
-          List.of(
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.RECEIVABLE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.PAYABLE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.INVENTORY,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.EXPENSE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.EQUITY));
-  private static final RoleAmountTemplateValidationRule SALE_ON_CREDIT_RULE =
-      new RoleAmountTemplateValidationRule(
-          "saleOnCredit",
-          ContractPostingRequestTemplateFieldSupport.InventoryReliefPolicy.OPTIONAL,
-          false,
-          false,
-          true,
-          List.of(
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.RECEIVABLE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.REVENUE),
-          List.of(
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.CASH,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.PAYABLE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.INVENTORY,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.EXPENSE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.EQUITY));
-  private static final RoleAmountTemplateValidationRule EXPENSE_SETTLED_RULE =
-      new RoleAmountTemplateValidationRule(
-          "expenseSettled",
-          ContractPostingRequestTemplateFieldSupport.InventoryReliefPolicy.FORBIDDEN,
-          false,
-          true,
-          true,
-          List.of(
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.CASH,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.EXPENSE),
-          List.of(
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.RECEIVABLE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.PAYABLE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.REVENUE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.INVENTORY,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.EQUITY));
-  private static final RoleAmountTemplateValidationRule EXPENSE_ON_CREDIT_RULE =
-      new RoleAmountTemplateValidationRule(
-          "expenseOnCredit",
-          ContractPostingRequestTemplateFieldSupport.InventoryReliefPolicy.FORBIDDEN,
-          false,
-          false,
-          true,
-          List.of(
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.EXPENSE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.PAYABLE),
-          List.of(
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.CASH,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.RECEIVABLE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.REVENUE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.INVENTORY,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.EQUITY));
-  private static final RoleAmountTemplateValidationRule RECEIPT_RULE =
-      new RoleAmountTemplateValidationRule(
-          "receipt",
-          ContractPostingRequestTemplateFieldSupport.InventoryReliefPolicy.FORBIDDEN,
-          true,
-          false,
-          false,
-          List.of(
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.CASH,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.RECEIVABLE),
-          List.of(
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.PAYABLE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.REVENUE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.INVENTORY,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.EXPENSE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.EQUITY));
-  private static final RoleAmountTemplateValidationRule PAYMENT_RULE =
-      new RoleAmountTemplateValidationRule(
-          "payment",
-          ContractPostingRequestTemplateFieldSupport.InventoryReliefPolicy.FORBIDDEN,
-          true,
-          false,
-          false,
-          List.of(
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.CASH,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.PAYABLE),
-          List.of(
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.RECEIVABLE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.REVENUE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.INVENTORY,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.EXPENSE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.EQUITY));
-  private static final RoleAmountTemplateValidationRule OWNER_CONTRIBUTION_RULE =
-      new RoleAmountTemplateValidationRule(
-          "ownerContribution",
-          ContractPostingRequestTemplateFieldSupport.InventoryReliefPolicy.FORBIDDEN,
-          false,
-          true,
-          false,
-          List.of(
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.CASH,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.EQUITY),
-          List.of(
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.RECEIVABLE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.PAYABLE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.REVENUE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.INVENTORY,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.EXPENSE));
-  private static final RoleAmountTemplateValidationRule OWNER_WITHDRAWAL_RULE =
-      new RoleAmountTemplateValidationRule(
-          "ownerWithdrawal",
-          ContractPostingRequestTemplateFieldSupport.InventoryReliefPolicy.FORBIDDEN,
-          false,
-          true,
-          false,
-          List.of(
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.CASH,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.EQUITY),
-          List.of(
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.RECEIVABLE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.PAYABLE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.REVENUE,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.INVENTORY,
-              ContractPostingRequestTemplateFieldSupport.TemplateTextField.EXPENSE));
   private static final Map<BookkeepingEntryKind, PostingTemplateValidator> VALIDATORS =
       validators();
 
@@ -152,7 +29,45 @@ final class ContractPostingRequestTemplateValidators {
       PostingTemplateFields fields,
       @Nullable ReversalTemplateDescriptor reversal) {
     Objects.requireNonNull(entryKind, "entryKind");
+    validateAccrualAndPayrollFieldEligibility(entryKind, fields);
+    validateLifecycleFieldEligibility(entryKind, fields);
     Objects.requireNonNull(VALIDATORS.get(entryKind), "entryKind").validate(fields, reversal);
+  }
+
+  private static void validateAccrualAndPayrollFieldEligibility(
+      BookkeepingEntryKind entryKind, PostingTemplateFields fields) {
+    if (!isAccrualCutoffEntryKind(entryKind)) {
+      ContractAccrualCutoffPostingRequestTemplateValidators.requireNoAccrualCutoffFields(
+          fields, entryKind.wireValue());
+    }
+    if (entryKind != BookkeepingEntryKind.LATVIAN_MONTHLY_PAYROLL
+        && fields.latvianMonthlyPayroll() != null) {
+      throw new IllegalArgumentException(
+          "latvianMonthlyPayroll must be absent for " + entryKind.wireValue() + ".");
+    }
+    if (entryKind != BookkeepingEntryKind.LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT
+        && entryKind != BookkeepingEntryKind.LATVIAN_PAYROLL_STATE_REMITTANCE
+        && fields.latvianPayrollSettlement() != null) {
+      throw new IllegalArgumentException(
+          "latvianPayrollSettlement must be absent for " + entryKind.wireValue() + ".");
+    }
+  }
+
+  private static void validateLifecycleFieldEligibility(
+      BookkeepingEntryKind entryKind, PostingTemplateFields fields) {
+    if (!isFixedAssetEntryKind(entryKind) && fields.fixedAsset() != null) {
+      throw new IllegalArgumentException(
+          "fixedAsset must be absent for " + entryKind.wireValue() + ".");
+    }
+    if (!isFinancingEntryKind(entryKind) && fields.financing() != null) {
+      throw new IllegalArgumentException(
+          "financing must be absent for " + entryKind.wireValue() + ".");
+    }
+    if (!isRealizedForeignExchangeEntryKind(entryKind)
+        && fields.realizedForeignExchange() != null) {
+      throw new IllegalArgumentException(
+          "realizedForeignExchange must be absent for " + entryKind.wireValue() + ".");
+    }
   }
 
   static void validateRoleAmountTemplate(
@@ -160,9 +75,9 @@ final class ContractPostingRequestTemplateValidators {
       @Nullable ReversalTemplateDescriptor reversal,
       RoleAmountTemplateValidationRule rule) {
     ContractPostingRequestTemplateFieldSupport.requireTextFields(fields, rule.requiredFields());
-    ContractPostingTemplateFieldRules.requirePositiveAmount(fields.amount());
-    ContractPostingTemplateFieldRules.forbidQuantity(fields.quantity(), rule.owner());
-    ContractPostingTemplateFieldRules.forbidUnitCost(fields.unitCost(), rule.owner());
+    ContractPostingTemplateScalarFieldRules.requirePositiveAmount(fields.amount());
+    ContractPostingTemplateScalarFieldRules.forbidQuantity(fields.quantity(), rule.owner());
+    ContractPostingTemplateScalarFieldRules.forbidUnitCost(fields.unitCost(), rule.owner());
     ContractPostingRequestTemplateFieldSupport.validateInventoryRelief(
         fields.inventoryRelief(), rule.owner(), rule.inventoryReliefPolicy());
     ContractPostingRequestTemplateFieldSupport.forbidTextFields(fields, rule.forbiddenFields());
@@ -190,9 +105,9 @@ final class ContractPostingRequestTemplateValidators {
     ContractPostingRequestTemplateFieldSupport.forbidTextFields(fields, rule.forbiddenFields());
     ContractPostingRequestTemplateFieldSupport.forbidInventoryMaintenanceFields(
         fields, rule.owner());
-    ContractPostingTemplateFieldRules.forbidAmount(fields.amount(), rule.owner());
-    ContractPostingTemplateFieldRules.requirePositiveQuantity(fields.quantity());
-    ContractPostingTemplateFieldRules.requirePositiveUnitCost(fields.unitCost());
+    ContractPostingTemplateScalarFieldRules.forbidAmount(fields.amount(), rule.owner());
+    ContractPostingTemplateScalarFieldRules.requirePositiveQuantity(fields.quantity());
+    ContractPostingTemplateScalarFieldRules.requirePositiveUnitCost(fields.unitCost());
     ContractPostingRequestTemplateFieldSupport.validateInventoryRelief(
         fields.inventoryRelief(),
         rule.owner(),
@@ -237,7 +152,17 @@ final class ContractPostingRequestTemplateValidators {
       @Nullable ForeignExchangeTemplateDescriptor foreignExchange,
       @Nullable TaxSelectionTemplateDescriptor tax,
       @Nullable List<JournalLineTemplateDescriptor> lines,
-      @Nullable List<OpeningBalanceTemplateDescriptor> openingBalances) {}
+      @Nullable List<OpeningBalanceTemplateDescriptor> openingBalances,
+      @Nullable String accrualCutoffId,
+      @Nullable String prepaymentAssetAccountCode,
+      @Nullable String deferredRevenueAccountCode,
+      @Nullable String accruedExpenseLiabilityAccountCode,
+      ContractTemplates.@Nullable RecognitionIntervalTemplateDescriptor recognitionInterval,
+      @Nullable MonthlyPayrollTemplateDescriptor latvianMonthlyPayroll,
+      @Nullable PayrollSettlementTemplateDescriptor latvianPayrollSettlement,
+      @Nullable FixedAssetTemplateDescriptor fixedAsset,
+      @Nullable FinancingTemplateDescriptor financing,
+      @Nullable RealizedForeignExchangeTemplateDescriptor realizedForeignExchange) {}
 
   /** Variant-specific validation contract for one posting-template kind. */
   @FunctionalInterface
@@ -269,18 +194,29 @@ final class ContractPostingRequestTemplateValidators {
     validators.put(
         BookkeepingEntryKind.DIRECT_JOURNAL,
         ContractPostingRequestTemplateSpecialCaseValidators::validateDirectJournalTemplate);
-    validators.put(BookkeepingEntryKind.SALE_SETTLED, roleAmountValidator(SALE_SETTLED_RULE));
-    validators.put(BookkeepingEntryKind.SALE_ON_CREDIT, roleAmountValidator(SALE_ON_CREDIT_RULE));
+    validators.putAll(ContractStandardPostingRequestTemplateValidators.validators());
     validators.putAll(ContractInventoryPostingRequestTemplateValidators.validators());
-    validators.put(BookkeepingEntryKind.EXPENSE_SETTLED, roleAmountValidator(EXPENSE_SETTLED_RULE));
+    validators.putAll(ContractAccrualCutoffPostingRequestTemplateValidators.validators());
     validators.put(
-        BookkeepingEntryKind.EXPENSE_ON_CREDIT, roleAmountValidator(EXPENSE_ON_CREDIT_RULE));
-    validators.put(BookkeepingEntryKind.RECEIPT, roleAmountValidator(RECEIPT_RULE));
-    validators.put(BookkeepingEntryKind.PAYMENT, roleAmountValidator(PAYMENT_RULE));
+        BookkeepingEntryKind.FIXED_ASSET_CAPITALIZATION,
+        ContractFixedAssetPostingRequestTemplateValidators::validateCapitalizationTemplate);
     validators.put(
-        BookkeepingEntryKind.OWNER_CONTRIBUTION, roleAmountValidator(OWNER_CONTRIBUTION_RULE));
+        BookkeepingEntryKind.FIXED_ASSET_DEPRECIATION,
+        ContractFixedAssetPostingRequestTemplateValidators::validateDepreciationTemplate);
     validators.put(
-        BookkeepingEntryKind.OWNER_WITHDRAWAL, roleAmountValidator(OWNER_WITHDRAWAL_RULE));
+        BookkeepingEntryKind.FIXED_ASSET_DISPOSAL,
+        ContractFixedAssetPostingRequestTemplateValidators::validateDisposalTemplate);
+    validators.putAll(ContractFinancingPostingRequestTemplateValidators.validators());
+    validators.putAll(ContractRealizedForeignExchangePostingRequestTemplateValidators.validators());
+    validators.put(
+        BookkeepingEntryKind.LATVIAN_MONTHLY_PAYROLL,
+        ContractLatvianPayrollPostingRequestTemplateValidators::validateMonthlyPayrollTemplate);
+    validators.put(
+        BookkeepingEntryKind.LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT,
+        ContractLatvianPayrollPostingRequestTemplateValidators::validateSettlementTemplate);
+    validators.put(
+        BookkeepingEntryKind.LATVIAN_PAYROLL_STATE_REMITTANCE,
+        ContractLatvianPayrollPostingRequestTemplateValidators::validateSettlementTemplate);
     validators.put(
         BookkeepingEntryKind.OPENING_POSITION,
         ContractPostingRequestTemplateSpecialCaseValidators::validateOpeningPositionTemplate);
@@ -288,5 +224,42 @@ final class ContractPostingRequestTemplateValidators {
         BookkeepingEntryKind.REVERSAL,
         ContractPostingRequestTemplateSpecialCaseValidators::validateReversalTemplate);
     return Map.copyOf(validators);
+  }
+
+  private static boolean isAccrualCutoffEntryKind(BookkeepingEntryKind entryKind) {
+    return switch (entryKind) {
+      case PREPAYMENT,
+          DEFERRED_REVENUE,
+          ACCRUED_EXPENSE,
+          ACCRUAL_CUTOFF_RECOGNITION,
+          ACCRUED_EXPENSE_SETTLEMENT ->
+          true;
+      default -> false;
+    };
+  }
+
+  private static boolean isFixedAssetEntryKind(BookkeepingEntryKind entryKind) {
+    return switch (entryKind) {
+      case FIXED_ASSET_CAPITALIZATION, FIXED_ASSET_DEPRECIATION, FIXED_ASSET_DISPOSAL -> true;
+      default -> false;
+    };
+  }
+
+  private static boolean isFinancingEntryKind(BookkeepingEntryKind entryKind) {
+    return switch (entryKind) {
+      case FINANCING_BORROWING,
+          FINANCING_PRINCIPAL_REPAYMENT,
+          FINANCING_INTEREST_ACCRUAL,
+          FINANCING_INTEREST_PAYMENT ->
+          true;
+      default -> false;
+    };
+  }
+
+  private static boolean isRealizedForeignExchangeEntryKind(BookkeepingEntryKind entryKind) {
+    return switch (entryKind) {
+      case FOREIGN_CURRENCY_OBLIGATION, REALIZED_FOREIGN_EXCHANGE_SETTLEMENT -> true;
+      default -> false;
+    };
   }
 }

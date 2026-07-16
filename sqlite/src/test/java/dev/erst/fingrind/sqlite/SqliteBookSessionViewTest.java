@@ -9,8 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPagination;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
-import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.core.AccountCode;
@@ -143,14 +143,12 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
         SqliteReportingPeriodCloseSession reportingPeriodCloseSession =
             SqliteCapabilitySessions.reportingPeriodClose(postingFactStore);
         SqlitePlanExecutionSession planExecutionSession =
-            SqliteCapabilitySessions.planExecution(postingFactStore);
-        SqliteRekeySession rekeySession = SqliteCapabilitySessions.rekey(postingFactStore)) {
+            SqliteCapabilitySessions.planExecution(postingFactStore)) {
       assertNotNull(administrationSession);
       assertNotNull(readSession);
       assertNotNull(postingSession);
       assertNotNull(reportingPeriodCloseSession);
       assertNotNull(planExecutionSession);
-      assertNotNull(rekeySession);
       assertNotNull((BookAdministrationStore) administrationSession);
       assertNotNull((BookkeepingReadStore) readSession);
       assertNotNull((PostingValidationStore) postingSession);
@@ -162,7 +160,6 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
       assertNotSame(postingFactStore, postingSession);
       assertNotSame(postingFactStore, reportingPeriodCloseSession);
       assertNotSame(postingFactStore, planExecutionSession);
-      assertNotSame(postingFactStore, rekeySession);
       assertEquals(postingFactStore.inspectBook(), administrationSession.inspectBook());
       assertEquals(postingFactStore.inspectBook(), readSession.inspectBook());
     }
@@ -429,6 +426,7 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
               publishedAccount(revenueAccount),
               EffectiveDateRange.unbounded(),
               dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
+              AccountLedgerPagination.firstPage(50),
               List.of(),
               List.of(
                   new AccountLedgerEntry(
@@ -448,7 +446,9 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
                       new AccountLedgerCriteria(
                           new AccountCode("2000"),
                           EffectiveDateRange.unbounded(),
-                          dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS),
+                          dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
+                          50,
+                          Optional.empty()),
                       revenueAccount)));
       assertEquals(
           postingFactStore.periodSummary(
@@ -483,7 +483,9 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
               IllegalStateException.class,
               () ->
                   postingFactStore.accountLedger(
-                      AccountLedgerCriteria.unbounded(new AccountCode("1000")), cashAccount));
+                      SqliteStoreTestIntrospectionSupport.accountLedgerCriteria(
+                          new AccountCode("1000"), null, null),
+                      cashAccount));
       IllegalStateException periodSummaryFailure =
           assertThrows(
               IllegalStateException.class,
@@ -613,9 +615,13 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
           readSession.trialBalance(trialBalanceCriteria));
       assertEquals(
           postingFactStore.accountLedger(
-              AccountLedgerCriteria.unbounded(new AccountCode("2000")), revenueAccount),
+              SqliteStoreTestIntrospectionSupport.accountLedgerCriteria(
+                  new AccountCode("2000"), null, null),
+              revenueAccount),
           readSession.accountLedger(
-              AccountLedgerCriteria.unbounded(new AccountCode("2000")), revenueAccount));
+              SqliteStoreTestIntrospectionSupport.accountLedgerCriteria(
+                  new AccountCode("2000"), null, null),
+              revenueAccount));
       PeriodSummaryCriteria oneDaySummary =
           new PeriodSummaryCriteria(LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07"));
       assertEquals(
@@ -647,9 +653,13 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
           postingSession.trialBalance(trialBalanceCriteria));
       assertEquals(
           postingFactStore.accountLedger(
-              AccountLedgerCriteria.unbounded(new AccountCode("2000")), revenueAccount),
+              SqliteStoreTestIntrospectionSupport.accountLedgerCriteria(
+                  new AccountCode("2000"), null, null),
+              revenueAccount),
           postingSession.accountLedger(
-              AccountLedgerCriteria.unbounded(new AccountCode("2000")), revenueAccount));
+              SqliteStoreTestIntrospectionSupport.accountLedgerCriteria(
+                  new AccountCode("2000"), null, null),
+              revenueAccount));
       assertEquals(
           postingFactStore.periodSummary(oneDaySummary),
           postingSession.periodSummary(oneDaySummary));
@@ -719,11 +729,6 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
           new InterimResultSweepOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
           interimResultSweepOnMissingBook());
-      assertEquals(
-          new dev.erst.fingrind.contract.bookkeeping.RekeyBookResult.Rejected(
-              new dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection
-                  .BookNotInitialized()),
-          rekeyOnMissingBook().requireAccepted());
     }
 
     assertThrows(
@@ -752,23 +757,6 @@ class SqliteBookSessionViewTest extends SqlitePostingFactStoreTestSupport {
                   Instant.parse("2026-04-07T10:15:30Z"), java.time.ZoneOffset.UTC))
           .interimResultSweep(
               new ReportingPeriod(LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07")));
-    }
-  }
-
-  private ContractDecision<dev.erst.fingrind.contract.bookkeeping.RekeyBookResult>
-      rekeyOnMissingBook() {
-    Path missingBookPath = tempDirectory.resolve("capability-rekey-missing.sqlite");
-    BookAccess.PassphraseSource replacementSource =
-        BookAccess.PassphraseSource.StandardInput.INSTANCE;
-    try (SqlitePostingFactStore missingStore = openStore(bookAccess(missingBookPath));
-        SqliteRekeySession rekeySession = SqliteCapabilitySessions.rekey(missingStore)) {
-      return rekeySession.rekeyBook(
-          replacementSource,
-          (resolvedBookPath, passphraseSource, intent) ->
-              ContractDecision.accepted(
-                  SqliteBookPassphrase.fromCharacters(
-                      "capability-wrapper replacement", "rotated-key".toCharArray())),
-          Instant.parse("2026-04-09T10:15:30Z"));
     }
   }
 

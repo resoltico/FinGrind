@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
 import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
@@ -38,7 +39,31 @@ class FinGrindCliDiscoveryMetadataCommandTest extends FinGrindCliDiscoveryComman
     assertCapabilitiesRequestShapes(payload);
     assertCapabilitiesRequestInput(payload);
     assertCapabilitiesResponseModel(payload);
+    JsonNode capabilityCatalog = payload.path("fullContract").path("capabilityCatalog");
+    assertEquals("business-event-posting", capabilityCatalog.get(0).path("id").stringValue());
+    assertEquals("implemented", capabilityCatalog.get(0).path("status").stringValue());
+    assertEquals("inventory", capabilityCatalog.get(3).path("id").stringValue());
+    assertEquals("partial", capabilityCatalog.get(3).path("status").stringValue());
+    assertTrue(capabilityCatalog.get(3).has("operativeBoundary"));
     assertFalse(payload.has("environment"));
+  }
+
+  @Test
+  void run_returnsFocusedCapabilityCatalog() throws Exception {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+
+    int exitCode =
+        cli.run(new String[] {"capabilities", "--focus", "capability-catalog", "--output", "json"});
+
+    assertEquals(0, exitCode);
+    JsonNode payload =
+        new ObjectMapper().readTree(outputStream.toString(StandardCharsets.UTF_8)).path("payload");
+    assertEquals("capability-catalog", payload.path("focus").stringValue());
+    assertEquals(
+        "inventory",
+        payload.path("data").path("capabilityCatalog").get(3).path("id").stringValue());
   }
 
   @Test
@@ -82,7 +107,7 @@ class FinGrindCliDiscoveryMetadataCommandTest extends FinGrindCliDiscoveryComman
         cli.run(
             new String[] {
               "generate-book-key-file",
-              "--book-key-file",
+              "--new-book-key-file",
               keyFilePath.toString(),
               "--output",
               "json"
@@ -97,7 +122,7 @@ class FinGrindCliDiscoveryMetadataCommandTest extends FinGrindCliDiscoveryComman
         ProtocolArtifactOutput.bookKeyFileFormat(),
         envelope.path("artifacts").get(0).path("format").stringValue());
     assertEquals(
-        CliPublicPaths.redactedValue(keyFilePath),
+        CliPublicPaths.absoluteValue(keyFilePath),
         envelope.path("artifacts").get(0).path("path").stringValue());
     assertEquals("base64url-no-padding", payload.path("encoding").stringValue());
     assertEquals(256, payload.path("entropyBits").asInt());
@@ -116,7 +141,7 @@ class FinGrindCliDiscoveryMetadataCommandTest extends FinGrindCliDiscoveryComman
         cli.run(
             new String[] {
               "generate-book-key-file",
-              "--book-key-file",
+              "--new-book-key-file",
               keyFilePath.toString(),
               "--output",
               "json"
@@ -124,7 +149,7 @@ class FinGrindCliDiscoveryMetadataCommandTest extends FinGrindCliDiscoveryComman
     assertEquals(7, exitCode);
     JsonNode failureEnvelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals(
-        ContractErrors.Descriptor.BOOK_KEY_FILE_ALREADY_EXISTS.code(),
+        ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED.code(),
         failureEnvelope.path("code").stringValue());
     assertTrue(failureEnvelope.path("message").stringValue().contains("already exists"));
   }
@@ -145,21 +170,41 @@ class FinGrindCliDiscoveryMetadataCommandTest extends FinGrindCliDiscoveryComman
   }
 
   @Test
-  void run_printsPlanTemplateForAgentWorkflows() throws Exception {
+  void run_printsTaxSelectorForTaxCapablePostingTemplates() throws Exception {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+
+    int exitCode = cli.run(new String[] {"print-request-template", "record-sale-settled"});
+
+    assertEquals(0, exitCode);
+    JsonNode template = new ObjectMapper().readTree(outputStream.toString(StandardCharsets.UTF_8));
+    assertEquals(
+        ScaffoldPlaceholders.TAX_REGISTRATION_ID,
+        template.path("tax").path("taxRegistrationId").stringValue());
+    assertEquals(
+        ScaffoldPlaceholders.OUTPUT_TAX_CODE, template.path("tax").path("taxCode").stringValue());
+  }
+
+  @Test
+  void run_printsAtomicTaxSetupPlanTemplate() throws Exception {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
     int exitCode = cli.run(new String[] {"print-plan-template"});
     assertEquals(0, exitCode);
     JsonNode json = new ObjectMapper().readTree(outputStream.toString(StandardCharsets.UTF_8));
-    assertEquals("plan-1", json.path("planId").stringValue());
+    assertEquals("tax-setup", json.path("planId").stringValue());
     assertFalse(json.has("executionPolicy"));
     assertEquals("ensure-book", json.path("steps").get(0).path("stepId").stringValue());
-    assertEquals("assert-cash-balance", json.path("steps").get(2).path("stepId").stringValue());
+    assertEquals("declare-tax-payable", json.path("steps").get(1).path("stepId").stringValue());
+    assertEquals("declare-account", json.path("steps").get(1).path("kind").stringValue());
+    assertEquals("declare-tax-recoverable", json.path("steps").get(2).path("stepId").stringValue());
+    assertEquals("declare-account", json.path("steps").get(2).path("kind").stringValue());
     assertEquals(
-        "assert-account-balance",
-        json.path("steps").get(2).path("assertion").path("kind").stringValue());
-    assertTrue(json.path("steps").get(2).has("assertion"));
-    assertFalse(json.path("steps").get(2).has("accountBalanceAssertion"));
+        "declare-tax-registration", json.path("steps").get(3).path("stepId").stringValue());
+    assertEquals("declare-tax-registration", json.path("steps").get(3).path("kind").stringValue());
+    assertTrue(json.path("steps").get(3).has("declareTaxRegistration"));
+    assertFalse(json.toString().contains("\"posting\""));
   }
 }

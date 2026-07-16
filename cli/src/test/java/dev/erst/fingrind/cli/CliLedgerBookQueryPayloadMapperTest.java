@@ -114,6 +114,84 @@ class CliLedgerBookQueryPayloadMapperTest {
   }
 
   @Test
+  void postingPayload_mapsDurableLatvianMonthlyPayrollFactsFromLedgerFacts() {
+    var payload =
+        CliLedgerBookQueryPayloadMapper.postingPayload(
+            postingFacts(
+                "LATVIAN_MONTHLY_PAYROLL",
+                List.of(
+                    LedgerFact.text("entryKind", "LATVIAN_MONTHLY_PAYROLL"),
+                    LedgerFact.group(
+                        "latvianMonthlyPayroll",
+                        List.of(
+                            LedgerFact.text("payrollRunId", "payroll-run-2026-07-employee-001"),
+                            LedgerFact.text("employeeReference", "employee-001"),
+                            LedgerFact.text("payrollMonth", "2026-07"),
+                            LedgerFact.text("wageExpenseAccountCode", "5000"),
+                            LedgerFact.text("employerSocialContributionExpenseAccountCode", "5010"),
+                            LedgerFact.text("netWagesPayableAccountCode", "2200"),
+                            LedgerFact.text("employeeSocialContributionPayableAccountCode", "2210"),
+                            LedgerFact.text("employerSocialContributionPayableAccountCode", "2220"),
+                            LedgerFact.text("personalIncomeTaxPayableAccountCode", "2230"),
+                            LedgerFact.money("grossWages", new MonetaryAmount("EUR", "200000")),
+                            LedgerFact.money(
+                                "employeeSocialContribution", new MonetaryAmount("EUR", "21000")),
+                            LedgerFact.money(
+                                "employerSocialContribution", new MonetaryAmount("EUR", "47180")),
+                            LedgerFact.money(
+                                "monthlyNonTaxableMinimum", new MonetaryAmount("EUR", "55000")),
+                            LedgerFact.money(
+                                "personalIncomeTax", new MonetaryAmount("EUR", "31620")),
+                            LedgerFact.money("netWages", new MonetaryAmount("EUR", "147380")))))));
+
+    var payroll =
+        Objects.requireNonNull(Objects.requireNonNull(payload.entry()).latvianMonthlyPayroll());
+    assertEquals("payroll-run-2026-07-employee-001", payroll.payrollRunId());
+    assertEquals("employee-001", payroll.employeeReference());
+    assertEquals("200000", payroll.grossWages().minorUnits());
+    assertEquals(
+        "147380", Objects.requireNonNull(payroll.resolvedCalculation()).netWages().minorUnits());
+  }
+
+  @Test
+  void postingPayload_mapsDurableLatvianPayrollSettlementFactsFromLedgerFacts() {
+    var payload =
+        CliLedgerBookQueryPayloadMapper.postingPayload(
+            postingFacts(
+                "LATVIAN_PAYROLL_STATE_REMITTANCE",
+                List.of(
+                    LedgerFact.text("entryKind", "LATVIAN_PAYROLL_STATE_REMITTANCE"),
+                    LedgerFact.group(
+                        "latvianPayrollSettlement",
+                        List.of(
+                            LedgerFact.text("settlementKind", "STATE_REMITTANCE"),
+                            LedgerFact.text("payrollRunId", "payroll-run-2026-07-employee-001"),
+                            LedgerFact.text("cashAccountCode", "1000"),
+                            LedgerFact.text("netWagesPayableAccountCode", "2200"),
+                            LedgerFact.text("employeeSocialContributionPayableAccountCode", "2210"),
+                            LedgerFact.text("employerSocialContributionPayableAccountCode", "2220"),
+                            LedgerFact.text("personalIncomeTaxPayableAccountCode", "2230"),
+                            LedgerFact.money("netWages", new MonetaryAmount("EUR", "147380")),
+                            LedgerFact.money(
+                                "employeeSocialContribution", new MonetaryAmount("EUR", "21000")),
+                            LedgerFact.money(
+                                "employerSocialContribution", new MonetaryAmount("EUR", "47180")),
+                            LedgerFact.money(
+                                "personalIncomeTax", new MonetaryAmount("EUR", "31620")))))));
+
+    var settlement =
+        Objects.requireNonNull(Objects.requireNonNull(payload.entry()).latvianPayrollSettlement());
+    assertEquals("STATE_REMITTANCE", settlement.settlementKind());
+    assertEquals("payroll-run-2026-07-employee-001", settlement.payrollRunId());
+    assertEquals("1000", settlement.cashAccountCode());
+    assertEquals(
+        "47180",
+        Objects.requireNonNull(settlement.resolvedSettlement())
+            .employerSocialContribution()
+            .minorUnits());
+  }
+
+  @Test
   void accountPayload_mapsInventoryUnitOfMeasureFacts() {
     var payload =
         CliLedgerBookQueryPayloadMapper.accountPayload(

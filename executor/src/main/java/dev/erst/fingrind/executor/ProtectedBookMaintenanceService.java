@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -36,9 +37,25 @@ public final class ProtectedBookMaintenanceService {
 
   /** Restores one verified encrypted-book backup pair onto one live FinGrind book path. */
   public ContractDecision<RestoreBookResult> restoreBook(
-      Path bookFilePath, Path bookKeyFilePath, Path backupFilePath, Path backupKeyFilePath) {
+      Path bookFilePath,
+      Path newBookKeyFilePath,
+      Path backupFilePath,
+      Path backupKeyFilePath,
+      boolean replaceExistingBook) {
     return toPublishedRestore(
-        workflow.restoreBook(bookFilePath, bookKeyFilePath, backupFilePath, backupKeyFilePath));
+        workflow.restoreBook(
+            bookFilePath,
+            newBookKeyFilePath,
+            backupFilePath,
+            backupKeyFilePath,
+            replaceExistingBook));
+  }
+
+  /** Rekeys one verified protected book under one generated absent-target key file. */
+  public ContractDecision<RekeyBookResult> rekeyBook(
+      BookAccess bookAccess, Path newBookKeyFilePath) {
+    return toPublishedRekey(
+        workflow.rekeyBook(ProtectedBookAccess.fromPublished(bookAccess), newBookKeyFilePath));
   }
 
   /** Inspects stale sibling rollback artifacts for the selected book path without side effects. */
@@ -79,6 +96,16 @@ public final class ProtectedBookMaintenanceService {
 
   private static ContractDecision<RestoreBookResult> toPublishedRestore(
       MaintenanceDecision<dev.erst.fingrind.executor.maintenance.ProtectedBookRestoreOutcome>
+          decision) {
+    return decision.fold(
+        outcome ->
+            ContractDecision.accepted(
+                ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(outcome)),
+        failure -> ContractDecision.rejected(failure.toContractFailure()));
+  }
+
+  private static ContractDecision<RekeyBookResult> toPublishedRekey(
+      MaintenanceDecision<dev.erst.fingrind.executor.maintenance.ProtectedBookRekeyOutcome>
           decision) {
     return decision.fold(
         outcome ->

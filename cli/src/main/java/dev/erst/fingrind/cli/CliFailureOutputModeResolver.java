@@ -19,9 +19,20 @@ final class CliFailureOutputModeResolver {
     if (args.length == 0) {
       return defaultOutputMode(CliOutputModeDefaults.OutputSurface.DISCOVERY);
     }
+    ExplicitOutputSelection explicitOutputSelection = explicitOutputMode(args);
+    if (explicitOutputSelection.invalidSelection()) {
+      return defaultOutputMode(CliOutputModeDefaults.OutputSurface.DISCOVERY);
+    }
+    if (explicitOutputSelection.rawValue() != null) {
+      try {
+        return OutputMode.fromWireValue(explicitOutputSelection.rawValue());
+      } catch (IllegalArgumentException exception) {
+        return defaultOutputMode(CliOutputModeDefaults.OutputSurface.DISCOVERY);
+      }
+    }
     Optional<ProtocolOperation> operation = ProtocolCatalog.findByToken(args[0]);
     if (operation.isEmpty()) {
-      return OutputMode.JSON;
+      return defaultOutputMode(CliOutputModeDefaults.OutputSurface.DISCOVERY);
     }
     OperationId resolvedOperationId =
         isCommandSpecificHelp(args) ? OperationId.HELP : operation.orElseThrow().id();
@@ -29,19 +40,7 @@ final class CliFailureOutputModeResolver {
     if (supportedModes.isEmpty()) {
       return OutputMode.JSON;
     }
-    ExplicitOutputSelection explicitOutputSelection = explicitOutputMode(args);
-    if (explicitOutputSelection.invalidSelection()) {
-      return OutputMode.JSON;
-    }
-    if (explicitOutputSelection.rawValue() == null) {
-      return defaultOutputMode(outputSurface(resolvedOperationId));
-    }
-    try {
-      OutputMode outputMode = OutputMode.fromWireValue(explicitOutputSelection.rawValue());
-      return supportedModes.contains(outputMode) ? outputMode : OutputMode.JSON;
-    } catch (IllegalArgumentException exception) {
-      return OutputMode.JSON;
-    }
+    return defaultOutputMode(outputSurface(resolvedOperationId));
   }
 
   private static boolean isCommandSpecificHelp(String[] args) {
@@ -51,7 +50,7 @@ final class CliFailureOutputModeResolver {
   private static ExplicitOutputSelection explicitOutputMode(String[] args) {
     int outputIndex = -1;
     for (int index = 1; index < args.length; index++) {
-      if (!ProtocolOptions.OUTPUT.equals(args[index])) {
+      if (!ProtocolOptions.Presentation.OUTPUT.equals(args[index])) {
         continue;
       }
       if (outputIndex >= 0 || index + 1 >= args.length) {

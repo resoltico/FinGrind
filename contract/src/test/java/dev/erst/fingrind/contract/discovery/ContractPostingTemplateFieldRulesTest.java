@@ -6,9 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.discovery.ContractReversalTemplates.ReversalTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractSettlementTemplates.TaxSelectionTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.JournalLineTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.OpeningBalanceTemplateDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractTemplates.TaxSelectionTemplateDescriptor;
 import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
 import dev.erst.fingrind.core.JournalLine;
 import java.util.List;
@@ -53,11 +53,12 @@ class ContractPostingTemplateFieldRulesTest {
         ContractPostingTemplateFieldRules.requireText("cashAccountCode", "fieldName"));
     assertEquals(
         new MonetaryAmount("EUR", "1250"),
-        ContractPostingTemplateFieldRules.requirePositiveAmount(new MonetaryAmount("EUR", "1250")));
-    assertEquals("3", ContractPostingTemplateFieldRules.requirePositiveQuantity("3"));
+        ContractPostingTemplateScalarFieldRules.requirePositiveAmount(
+            new MonetaryAmount("EUR", "1250")));
+    assertEquals("3", ContractPostingTemplateScalarFieldRules.requirePositiveQuantity("3"));
     assertEquals(
         new MonetaryAmount("EUR", "995"),
-        ContractPostingTemplateFieldRules.requirePositiveUnitCost(
+        ContractPostingTemplateScalarFieldRules.requirePositiveUnitCost(
             new MonetaryAmount("EUR", "995")));
 
     assertEquals(
@@ -70,47 +71,49 @@ class ContractPostingTemplateFieldRulesTest {
         "amount must not be null.",
         assertThrows(
                 IllegalArgumentException.class,
-                () -> ContractPostingTemplateFieldRules.requirePositiveAmount(null))
+                () -> ContractPostingTemplateScalarFieldRules.requirePositiveAmount(null))
             .getMessage());
     assertEquals(
         "amount must carry one positive minor-unit value.",
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    ContractPostingTemplateFieldRules.requirePositiveAmount(
+                    ContractPostingTemplateScalarFieldRules.requirePositiveAmount(
                         new MonetaryAmount("EUR", "0")))
             .getMessage());
     assertEquals(
         "quantity must not be null.",
         assertThrows(
                 IllegalArgumentException.class,
-                () -> ContractPostingTemplateFieldRules.requirePositiveQuantity(null))
+                () -> ContractPostingTemplateScalarFieldRules.requirePositiveQuantity(null))
             .getMessage());
     assertEquals(
         "quantity must carry one positive quantity.",
         assertThrows(
                 IllegalArgumentException.class,
-                () -> ContractPostingTemplateFieldRules.requirePositiveQuantity("0"))
+                () -> ContractPostingTemplateScalarFieldRules.requirePositiveQuantity("0"))
             .getMessage());
     assertEquals(
         "unitCost must not be null.",
         assertThrows(
                 IllegalArgumentException.class,
-                () -> ContractPostingTemplateFieldRules.requirePositiveUnitCost(null))
+                () -> ContractPostingTemplateScalarFieldRules.requirePositiveUnitCost(null))
             .getMessage());
     assertEquals(
         "unitCost must carry one positive minor-unit value.",
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    ContractPostingTemplateFieldRules.requirePositiveUnitCost(
+                    ContractPostingTemplateScalarFieldRules.requirePositiveUnitCost(
                         new MonetaryAmount("EUR", "0")))
             .getMessage());
 
     assertDoesNotThrow(() -> ContractPostingTemplateFieldRules.forbidText(null, "fieldName"));
-    assertDoesNotThrow(() -> ContractPostingTemplateFieldRules.forbidAmount(null, "sale"));
-    assertDoesNotThrow(() -> ContractPostingTemplateFieldRules.forbidQuantity(null, "purchase"));
-    assertDoesNotThrow(() -> ContractPostingTemplateFieldRules.forbidUnitCost(null, "purchase"));
+    assertDoesNotThrow(() -> ContractPostingTemplateScalarFieldRules.forbidAmount(null, "sale"));
+    assertDoesNotThrow(
+        () -> ContractPostingTemplateScalarFieldRules.forbidQuantity(null, "purchase"));
+    assertDoesNotThrow(
+        () -> ContractPostingTemplateScalarFieldRules.forbidUnitCost(null, "purchase"));
     assertDoesNotThrow(() -> ContractPostingTemplateFieldRules.forbidLines(null));
     assertDoesNotThrow(() -> ContractPostingTemplateFieldRules.forbidOpeningBalances(null));
     assertDoesNotThrow(() -> ContractPostingTemplateFieldRules.forbidTax(null, "sale"));
@@ -128,21 +131,21 @@ class ContractPostingTemplateFieldRulesTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    ContractPostingTemplateFieldRules.forbidAmount(
+                    ContractPostingTemplateScalarFieldRules.forbidAmount(
                         new MonetaryAmount("EUR", "100"), "sale"))
             .getMessage());
     assertEquals(
         "quantity must be absent for purchase.",
         assertThrows(
                 IllegalArgumentException.class,
-                () -> ContractPostingTemplateFieldRules.forbidQuantity("2", "purchase"))
+                () -> ContractPostingTemplateScalarFieldRules.forbidQuantity("2", "purchase"))
             .getMessage());
     assertEquals(
         "unitCost must be absent for purchase.",
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    ContractPostingTemplateFieldRules.forbidUnitCost(
+                    ContractPostingTemplateScalarFieldRules.forbidUnitCost(
                         new MonetaryAmount("EUR", "100"), "purchase"))
             .getMessage());
     assertEquals(

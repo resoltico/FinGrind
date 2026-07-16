@@ -41,13 +41,13 @@ interface SqliteReportingPeriodCloseCapabilityView
   @Override
   default List<RegisteredAccount> allAccounts() {
     storeThreadOwner().requireOwnerThread();
-    return storeReadOperations().allAccounts();
+    return storeReadOperations().accountCatalog().allAccounts();
   }
 
   @Override
   default AccountRegistryPage listAccounts(AccountRegistryQuery query) {
     storeThreadOwner().requireOwnerThread();
-    return storeReadOperations().listAccounts(query);
+    return storeReadOperations().accountCatalog().listAccounts(query);
   }
 
   @Override

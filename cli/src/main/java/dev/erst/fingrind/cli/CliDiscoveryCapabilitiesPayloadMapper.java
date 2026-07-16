@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesSliceJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryRequestInputSliceJsonModels;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
@@ -51,7 +52,7 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
               detail,
               selections.focus(),
               selections.category(),
-              new CliDiscoveryCommonJsonModels.CapabilitiesRequestInputSlicePayload(
+              new CliDiscoveryRequestInputSliceJsonModels.CapabilitiesRequestInputSlicePayload(
                   CliDiscoveryCapabilitiesOverviewPayloadMapper.requestInputCompactPayload(
                       capabilitiesDescriptor),
                   detail == DiscoveryDetail.FULL ? capabilitiesDescriptor.requestInput() : null),
@@ -74,6 +75,15 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
               new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesKernelSlicePayload(
                   capabilitiesDescriptor.bookkeepingKernel()),
               focusHints(detail));
+      case CAPABILITY_CATALOG ->
+          focusedSlicePayload(
+              capabilitiesDescriptor,
+              detail,
+              selections.focus(),
+              selections.category(),
+              new CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesCatalogSlicePayload(
+                  capabilitiesDescriptor.capabilityCatalog()),
+              capabilityCatalogHints());
       case RESPONSE_CONTRACT ->
           focusedSlicePayload(
               capabilitiesDescriptor,
@@ -219,6 +229,11 @@ final class CliDiscoveryCapabilitiesPayloadMapper {
         "Run '"
             + CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
             + "' for a placeholder-first request scaffold.");
+  }
+
+  private static List<String> capabilityCatalogHints() {
+    return List.of(
+        "Each entry is a canonical published scope fact; partial entries carry their operative boundary.");
   }
 
   private static ProtocolSuccessPayload responseContractSlicePayload(

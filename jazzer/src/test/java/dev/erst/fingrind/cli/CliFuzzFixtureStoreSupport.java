@@ -11,6 +11,7 @@ import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
+import dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
@@ -20,6 +21,7 @@ import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
+import dev.erst.fingrind.executor.bookkeeping.AccountRetirementOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
@@ -110,6 +112,16 @@ final class CliFuzzFixtureStoreSupport {
     @Override
     public AccountDeclarationOutcome declareAccount(
         AccountDeclaration declaration, Instant declaredAt) {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public AccountAmendmentOutcome amendAccount(AccountDeclaration amendment, Instant amendedAt) {
+      throw new UnsupportedOperationException("not used");
+    }
+
+    @Override
+    public AccountRetirementOutcome retireAccount(AccountCode accountCode, Instant retiredAt) {
       throw new UnsupportedOperationException("not used");
     }
 

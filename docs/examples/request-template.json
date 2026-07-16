@@ -7,6 +7,10 @@
     "currencyCode" : "EUR",
     "minorUnits" : "1000"
   },
+  "tax" : {
+    "taxRegistrationId" : "replace-before-commit-tax-registration-id",
+    "taxCode" : "replace-before-commit-output-tax-code"
+  },
   "evidence" : {
     "sourceDocuments" : [ {
       "sourceDocumentId" : "replace-before-commit-source-document-id",

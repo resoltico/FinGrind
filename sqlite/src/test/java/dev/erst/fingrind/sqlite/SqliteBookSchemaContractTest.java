@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.MachineContract;
+import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -63,7 +64,9 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
             IllegalStateException.class,
             () -> SqliteBookSchemaBootstrap.ensureParentDirectory(Path.of("/")));
     assertInvalidBookFilePathFailure(
-        exception, "Book path must resolve against a writable parent directory.");
+        exception,
+        Path.of("/"),
+        "The FinGrind protected-book path does not satisfy the filesystem contract.");
   }
 
   @Test
@@ -144,6 +147,8 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
     String schema = schemaResourceText();
     assertEquals(PostingKind.wireValues(), schemaAllowlist(schema, "posting_kind"));
     assertEquals(PostingOriginKind.wireValues(), schemaAllowlist(schema, "posting_origin_kind"));
+    assertEquals(
+        ForeignExchangeTreatmentKind.wireValues(), schemaAllowlist(schema, "treatment_kind"));
     assertEquals(PostingKind.wireValues(), publishedPostingKinds());
     assertEquals(PostingOriginKind.wireValues(), publishedPostingOriginKinds());
   }

@@ -1,16 +1,19 @@
 package dev.erst.fingrind.sqlite;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.Optional;
@@ -24,11 +27,13 @@ class SqliteStoreAccessModeAndStateModelTest extends SqliteStoreLifecycleTestSup
     assertEquals(1, SqliteStoreAccessMode.READ_ONLY.queryOnlyPragmaValue());
     assertEquals(0, SqliteStoreAccessMode.READ_WRITE_EXISTING.queryOnlyPragmaValue());
     assertEquals(0, SqliteStoreAccessMode.READ_WRITE_CREATE.queryOnlyPragmaValue());
+    assertEquals(0, SqliteStoreAccessMode.READ_WRITE_CREATE_EXCLUSIVE.queryOnlyPragmaValue());
     assertEquals(0, SqliteStoreAccessMode.PLAN_EXECUTION.queryOnlyPragmaValue());
     assertThrows(
         IllegalStateException.class, SqliteStoreAccessMode.READ_ONLY::requireWritableMutation);
     assertDoesNotThrow(SqliteStoreAccessMode.READ_WRITE_EXISTING::requireWritableMutation);
     assertDoesNotThrow(SqliteStoreAccessMode.READ_WRITE_CREATE::requireWritableMutation);
+    assertDoesNotThrow(SqliteStoreAccessMode.READ_WRITE_CREATE_EXCLUSIVE::requireWritableMutation);
     assertDoesNotThrow(SqliteStoreAccessMode.PLAN_EXECUTION::requireWritableMutation);
     assertThrows(
         IllegalStateException.class,
@@ -37,10 +42,14 @@ class SqliteStoreAccessModeAndStateModelTest extends SqliteStoreLifecycleTestSup
         IllegalStateException.class,
         SqliteStoreAccessMode.READ_WRITE_EXISTING::requireWritableInitialization);
     assertDoesNotThrow(SqliteStoreAccessMode.READ_WRITE_CREATE::requireWritableInitialization);
+    assertDoesNotThrow(
+        SqliteStoreAccessMode.READ_WRITE_CREATE_EXCLUSIVE::requireWritableInitialization);
     assertDoesNotThrow(SqliteStoreAccessMode.PLAN_EXECUTION::requireWritableInitialization);
     assertTrue(SqliteStoreAccessMode.READ_ONLY.defersMissingBookOpen());
     assertTrue(SqliteStoreAccessMode.READ_WRITE_EXISTING.defersMissingBookOpen());
     assertFalse(SqliteStoreAccessMode.READ_WRITE_CREATE.defersMissingBookOpen());
+    assertFalse(SqliteStoreAccessMode.READ_WRITE_CREATE_EXCLUSIVE.defersMissingBookOpen());
+    assertTrue(SqliteStoreAccessMode.READ_WRITE_CREATE_EXCLUSIVE.requiresAbsentNewBookTarget());
     assertTrue(SqliteStoreAccessMode.PLAN_EXECUTION.defersMissingBookOpen());
     Path existingBookPath = tempDirectory.resolve("read-write-existing.sqlite");
     initializeBookOnDisk(existingBookPath);
@@ -91,6 +100,27 @@ class SqliteStoreAccessModeAndStateModelTest extends SqliteStoreLifecycleTestSup
           "This FinGrind SQLite session cannot initialize or create a book file.",
           exception.getMessage());
     }
+  }
+
+  @Test
+  void exclusiveNewBookOpen_rejectsAnAlreadyAppearedTargetWithoutOpeningOrChangingIt()
+      throws Exception {
+    Path bookPath = tempDirectory.resolve("exclusive-create-race.sqlite");
+    byte[] foreignContent =
+        "foreign-book-content".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    Files.write(bookPath, foreignContent);
+
+    try (SqliteBookPassphrase passphrase =
+        SqliteBookPassphrase.fromCharacters("exclusive new book", TEST_BOOK_KEY.toCharArray())) {
+      dev.erst.fingrind.contract.runtime.ContractFailure rejection =
+          SqlitePostingFactStore.openResolved(
+                  bookPath, passphrase, SqliteStoreAccessMode.READ_WRITE_CREATE_EXCLUSIVE)
+              .requireRejected();
+
+      assertEquals(ContractErrors.Descriptor.BOOK_DESTINATION_OCCUPIED, rejection.descriptor());
+    }
+
+    assertArrayEquals(foreignContent, Files.readAllBytes(bookPath));
   }
 
   @Test

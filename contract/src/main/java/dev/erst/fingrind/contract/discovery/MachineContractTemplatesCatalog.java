@@ -1,14 +1,12 @@
 package dev.erst.fingrind.contract.discovery;
 
-import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
-import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOperation;
 import dev.erst.fingrind.contract.protocol.ProtocolPostingRequestTopics;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
@@ -66,29 +64,30 @@ final class MachineContractTemplatesCatalog {
         null,
         FinancialPositionLineClassification.CURRENT_ASSET,
         null,
-        CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT);
+        CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT,
+        null);
   }
 
   static ContractTemplates.DeclareTaxRegistrationTemplateDescriptor
       declareTaxRegistrationTemplate() {
     return new ContractTemplates.DeclareTaxRegistrationTemplateDescriptor(
-        "replace-before-commit-tax-registration-id",
+        ScaffoldPlaceholders.TAX_REGISTRATION_ID,
         "Replace Before Commit Tax Registration",
-        new dev.erst.fingrind.contract.tax.TaxJurisdiction("<ISO-3166-alpha-2>"),
-        "replace-before-commit-registration-number",
+        new dev.erst.fingrind.contract.tax.TaxJurisdiction(ScaffoldPlaceholders.TAX_JURISDICTION),
+        ScaffoldPlaceholders.TAX_REGISTRATION_NUMBER,
         "tax-payable-vat",
         "tax-recoverable-vat",
         dev.erst.fingrind.contract.tax.TaxObligationFrequency.MONTHLY,
         20,
         List.of(
             new ContractTemplates.DeclareTaxCodeTemplateDescriptor(
-                "replace-before-commit-output-tax-code",
+                ScaffoldPlaceholders.OUTPUT_TAX_CODE,
                 "Replace Before Commit Output Tax Code",
                 0,
                 dev.erst.fingrind.contract.tax.TaxInclusionMode.EXCLUSIVE,
                 dev.erst.fingrind.contract.tax.TaxApplicationKind.OUTPUT_SALE),
             new ContractTemplates.DeclareTaxCodeTemplateDescriptor(
-                "replace-before-commit-input-tax-code",
+                ScaffoldPlaceholders.INPUT_TAX_CODE,
                 "Replace Before Commit Input Tax Code",
                 0,
                 dev.erst.fingrind.contract.tax.TaxInclusionMode.EXCLUSIVE,
@@ -97,7 +96,7 @@ final class MachineContractTemplatesCatalog {
 
   static ContractPlanTemplates.LedgerPlanTemplateDescriptor planTemplate() {
     return new ContractPlanTemplates.LedgerPlanTemplateDescriptor(
-        "plan-1",
+        "tax-setup",
         List.of(
             new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
                 "ensure-book",
@@ -108,31 +107,55 @@ final class MachineContractTemplatesCatalog {
                 null,
                 null,
                 null,
-                null),
-            new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-                OperationId.RECORD_SALE_SETTLED.wireName(),
-                LedgerStepKind.RECORD_SALE_SETTLED,
-                null,
-                MachineContractPostEntryVariantSchemas.template(BookkeepingEntryKind.SALE_SETTLED),
-                null,
-                null,
                 null,
                 null),
             new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-                "assert-cash-balance",
-                LedgerStepKind.ASSERT,
+                "declare-tax-payable",
+                LedgerStepKind.DECLARE_ACCOUNT,
                 null,
                 null,
-                null,
-                null,
-                new ContractPlanTemplates.LedgerAssertionTemplateDescriptor(
-                    LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
-                    "cash",
+                new ContractTemplates.DeclareAccountTemplateDescriptor(
+                    "tax-payable-vat",
+                    "VAT Payable",
+                    AccountType.LIABILITY,
+                    AccountNodeKind.POSTABLE,
+                    null,
+                    FinancialPositionLineClassification.CURRENT_LIABILITY,
                     null,
                     null,
-                    new MonetaryAmount("EUR", "1000"),
-                    BalanceSide.DEBIT,
                     null),
+                null,
+                null,
+                null,
+                null),
+            new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
+                "declare-tax-recoverable",
+                LedgerStepKind.DECLARE_ACCOUNT,
+                null,
+                null,
+                new ContractTemplates.DeclareAccountTemplateDescriptor(
+                    "tax-recoverable-vat",
+                    "VAT Recoverable",
+                    AccountType.ASSET,
+                    AccountNodeKind.POSTABLE,
+                    null,
+                    FinancialPositionLineClassification.CURRENT_ASSET,
+                    null,
+                    CashFlowAssetClassification.NON_CASH,
+                    null),
+                null,
+                null,
+                null,
+                null),
+            new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
+                ProtocolCatalog.operationName(OperationId.DECLARE_TAX_REGISTRATION),
+                LedgerStepKind.DECLARE_TAX_REGISTRATION,
+                null,
+                null,
+                null,
+                declareTaxRegistrationTemplate(),
+                null,
+                null,
                 null)));
   }
 
@@ -150,7 +173,8 @@ final class MachineContractTemplatesCatalog {
           requiredPostingEntryKind(selectedOperation));
     }
     return switch (operationId) {
-      case DECLARE_ACCOUNT -> MachineContractRequestShapesCatalog.declareAccountRequestShapes();
+      case DECLARE_ACCOUNT, AMEND_ACCOUNT ->
+          MachineContractRequestShapesCatalog.declareAccountRequestShapes();
       case DECLARE_TAX_REGISTRATION ->
           MachineContractRequestShapesCatalog.declareTaxRegistrationRequestShapes();
       case EXECUTE_PLAN -> MachineContractRequestShapesCatalog.ledgerPlanRequestShapes();
@@ -179,7 +203,10 @@ final class MachineContractTemplatesCatalog {
     if (selectedOperation == null) {
       return null;
     }
-    return selectedOperation.id() == OperationId.DECLARE_ACCOUNT ? declareAccountTemplate() : null;
+    return switch (selectedOperation.id()) {
+      case DECLARE_ACCOUNT, AMEND_ACCOUNT -> declareAccountTemplate();
+      default -> null;
+    };
   }
 
   static ContractTemplates.@Nullable DeclareTaxRegistrationTemplateDescriptor

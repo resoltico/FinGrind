@@ -6,6 +6,7 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireValue;
 
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
+import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
@@ -108,12 +109,12 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
       status = requireValue(status, "status");
       startedAt = requireText(startedAt, "startedAt");
       finishedAt = requireText(finishedAt, "finishedAt");
-      if (kind == LedgerJournalKind.ASSERT) {
+      if (kind == LedgerStepKind.ASSERT) {
         Objects.requireNonNull(detailKind, "detailKind");
       } else if (detailKind != null) {
         throw new IllegalArgumentException("detailKind must be absent unless kind is ASSERT.");
       }
-      if (kind == LedgerJournalKind.PLAN_BOUNDARY) {
+      if (kind == LedgerJournalKind.BoundaryKind.PLAN_BOUNDARY) {
         Objects.requireNonNull(boundaryCheckpoint, "boundaryCheckpoint");
       } else if (boundaryCheckpoint != null) {
         throw new IllegalArgumentException(
@@ -128,7 +129,7 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
         throw new IllegalArgumentException(
             "failure is required when step status is REJECTED or ASSERTION_FAILED.");
       }
-      if (status == LedgerStepStatus.ASSERTION_FAILED && kind != LedgerJournalKind.ASSERT) {
+      if (status == LedgerStepStatus.ASSERTION_FAILED && kind != LedgerStepKind.ASSERT) {
         throw new IllegalArgumentException(
             "ASSERTION_FAILED steps must carry the ASSERT journal kind.");
       }
@@ -145,22 +146,35 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
 
   /** Tagged union for typed execute-plan journal step payloads. */
   sealed interface LedgerStepDataPayload
+      permits LedgerAdministrativeStepDataPayload,
+          LedgerBookkeepingStepDataPayload,
+          LedgerControlStepDataPayload {}
+
+  /** Administrative setup facts in one execute-plan journal step. */
+  sealed interface LedgerAdministrativeStepDataPayload extends LedgerStepDataPayload
       permits EnsureBookStepDataPayload,
           AccountDeclarationStepDataPayload,
-          PreflightEntryStepDataPayload,
+          TaxRegistrationDeclarationStepDataPayload {}
+
+  /** Bookkeeping and read facts in one execute-plan journal step. */
+  sealed interface LedgerBookkeepingStepDataPayload extends LedgerStepDataPayload
+      permits PreflightEntryStepDataPayload,
           CommittedEntryStepDataPayload,
           BookInspectionStepDataPayload,
           AccountPageStepDataPayload,
           PostingStepDataPayload,
           PostingPageStepDataPayload,
-          AccountBalanceStepDataPayload,
-          AccountCodeAssertionStepDataPayload,
+          AccountBalanceStepDataPayload {}
+
+  /** Assertion and transaction-boundary facts in one execute-plan journal step. */
+  sealed interface LedgerControlStepDataPayload extends LedgerStepDataPayload
+      permits AccountCodeAssertionStepDataPayload,
           PostingIdAssertionStepDataPayload,
           PlanBoundaryStepDataPayload {}
 
   record EnsureBookStepDataPayload(
       String initializedAt, String entityName, String functionalCurrency, String fiscalYearStart)
-      implements LedgerStepDataPayload {
+      implements LedgerAdministrativeStepDataPayload {
     public EnsureBookStepDataPayload {
       initializedAt = requireText(initializedAt, "initializedAt");
       entityName = requireText(entityName, "entityName");
@@ -170,15 +184,24 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
   }
 
   record AccountDeclarationStepDataPayload(String outcome, DeclaredAccountPayload account)
-      implements LedgerStepDataPayload {
+      implements LedgerAdministrativeStepDataPayload {
     public AccountDeclarationStepDataPayload {
       outcome = requireText(outcome, "outcome");
       account = requireValue(account, "account");
     }
   }
 
+  record TaxRegistrationDeclarationStepDataPayload(
+      String outcome, CliTaxJsonModels.DeclaredTaxRegistrationPayload taxRegistration)
+      implements LedgerAdministrativeStepDataPayload {
+    public TaxRegistrationDeclarationStepDataPayload {
+      outcome = requireText(outcome, "outcome");
+      taxRegistration = requireValue(taxRegistration, "taxRegistration");
+    }
+  }
+
   record PreflightEntryStepDataPayload(String idempotencyKey, String effectiveDate)
-      implements LedgerStepDataPayload {
+      implements LedgerBookkeepingStepDataPayload {
     public PreflightEntryStepDataPayload {
       idempotencyKey = requireText(idempotencyKey, "idempotencyKey");
       effectiveDate = requireText(effectiveDate, "effectiveDate");
@@ -187,7 +210,7 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
 
   record CommittedEntryStepDataPayload(
       String postingId, String idempotencyKey, String effectiveDate, String recordedAt)
-      implements LedgerStepDataPayload {
+      implements LedgerBookkeepingStepDataPayload {
     public CommittedEntryStepDataPayload {
       postingId = requireText(postingId, "postingId");
       idempotencyKey = requireText(idempotencyKey, "idempotencyKey");
@@ -198,7 +221,7 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
 
   record BookInspectionStepDataPayload(
       String state, boolean initialized, boolean compatibleWithCurrentBinary)
-      implements LedgerStepDataPayload {
+      implements LedgerBookkeepingStepDataPayload {
     public BookInspectionStepDataPayload {
       state = requireText(state, "state");
     }
@@ -210,7 +233,7 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
       @Nullable String nextCursor,
       boolean hasMore,
       List<DeclaredAccountPayload> accounts)
-      implements LedgerStepDataPayload {
+      implements LedgerBookkeepingStepDataPayload {
     public AccountPageStepDataPayload {
       if (count < 0) {
         throw new IllegalArgumentException("count must be non-negative.");
@@ -232,7 +255,8 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
     }
   }
 
-  record PostingStepDataPayload(PostingPayload posting) implements LedgerStepDataPayload {
+  record PostingStepDataPayload(PostingPayload posting)
+      implements LedgerBookkeepingStepDataPayload {
     public PostingStepDataPayload {
       posting = requireValue(posting, "posting");
     }
@@ -244,7 +268,7 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
       @Nullable String nextCursor,
       boolean hasMore,
       List<PostingSummaryPayload> postings)
-      implements LedgerStepDataPayload {
+      implements LedgerBookkeepingStepDataPayload {
     public PostingPageStepDataPayload {
       if (count < 0) {
         throw new IllegalArgumentException("count must be non-negative.");
@@ -272,7 +296,7 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
       @Nullable String effectiveDateTo,
       int bucketCount,
       List<BalanceBucketPayload> balances)
-      implements LedgerStepDataPayload {
+      implements LedgerBookkeepingStepDataPayload {
     public AccountBalanceStepDataPayload {
       account = requireValue(account, "account");
       effectiveDateFrom = requireOptionalText(effectiveDateFrom, "effectiveDateFrom");
@@ -287,19 +311,21 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
     }
   }
 
-  record AccountCodeAssertionStepDataPayload(String accountCode) implements LedgerStepDataPayload {
+  record AccountCodeAssertionStepDataPayload(String accountCode)
+      implements LedgerControlStepDataPayload {
     public AccountCodeAssertionStepDataPayload {
       accountCode = requireText(accountCode, "accountCode");
     }
   }
 
-  record PostingIdAssertionStepDataPayload(String postingId) implements LedgerStepDataPayload {
+  record PostingIdAssertionStepDataPayload(String postingId)
+      implements LedgerControlStepDataPayload {
     public PostingIdAssertionStepDataPayload {
       postingId = requireText(postingId, "postingId");
     }
   }
 
-  record PlanBoundaryStepDataPayload(String checkpoint) implements LedgerStepDataPayload {
+  record PlanBoundaryStepDataPayload(String checkpoint) implements LedgerControlStepDataPayload {
     public PlanBoundaryStepDataPayload {
       checkpoint = requireText(checkpoint, "checkpoint");
     }

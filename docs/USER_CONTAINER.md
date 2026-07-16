@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.60.0"
 domain: USER_CONTAINER
-updated: "2026-07-11"
+updated: "2026-07-12"
 route:
   keywords: [fingrind, container, docker, ghcr, mounted workspace, book key file]
   questions: ["how do i run fingrind in docker", "what is the fingrind container image", "how do i mount a book into the fingrind container"]
@@ -50,7 +50,7 @@ host Java install. Any inherited `FINGRIND_SQLITE_LIBRARY` override is ignored.
 Create the key and book inside the mounted working directory:
 
 ```bash
-fingrind generate-book-key-file --book-key-file ./secrets/acme.book-key
+fingrind generate-book-key-file --new-book-key-file ./secrets/acme.book-key
 fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
   --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE \
   --accounting-basis CASH \

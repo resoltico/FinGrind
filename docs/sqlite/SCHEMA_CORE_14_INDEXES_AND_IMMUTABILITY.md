@@ -9,9 +9,15 @@ updated: "2026-07-11"
 
 **Purpose**: Lookup indexes plus append-only triggers for durable rows that never mutate in place.
 **Source of truth**: [`book_schema.sql`](../../sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql)
-**Generation**: This page is rendered from the canonical schema file by `scripts/render-sqlite-schema-doc.py`. **Coverage**: All durable indexes and append-only reject-update/reject-delete triggers.
+**Generation**: This page is rendered from the canonical schema file by `scripts/render-sqlite-schema-doc.py`. **Coverage**: Schema-tail lookup indexes and append-only reject-update/reject-delete triggers.
 
 ```sql
+create index if not exists latvian_payroll_run_by_employee_month
+on latvian_payroll_run (employee_reference, payroll_month, payroll_run_id);
+
+create index if not exists latvian_payroll_settlement_by_run_kind
+on latvian_payroll_settlement (payroll_run_id, settlement_kind, effective_date, origin_posting_id);
+
 create index if not exists posting_fact_by_prior_posting_id
 on posting_fact (prior_posting_id);
 
@@ -32,6 +38,9 @@ on inventory_movement (inventory_account, effective_date, account_sequence);
 
 create index if not exists inventory_movement_by_posting_id
 on inventory_movement (posting_id, inventory_account, account_sequence);
+
+create index if not exists accrual_cutoff_application_by_cutoff_horizon
+on accrual_cutoff_application (accrual_cutoff_id, effective_date, application_posting_id);
 
 create index if not exists audit_event_by_recorded_at
 on audit_event (recorded_at, audit_event_order);

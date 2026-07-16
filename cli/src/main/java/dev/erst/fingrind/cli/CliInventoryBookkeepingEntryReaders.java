@@ -8,11 +8,25 @@ import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.protocol.ProtocolInventoryPostingRequestFieldSets;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import tools.jackson.databind.node.ObjectNode;
 
 /** Reads typed inventory acquisition and maintenance request payloads. */
 final class CliInventoryBookkeepingEntryReaders {
   private CliInventoryBookkeepingEntryReaders() {}
+
+  static BookkeepingEntry read(ObjectNode rootNode, BookkeepingEntryKind entryKind) {
+    return switch (entryKind) {
+      case PURCHASE_SETTLED -> readPurchaseSettledEntry(rootNode);
+      case PURCHASE_ON_CREDIT -> readPurchaseOnCreditEntry(rootNode);
+      case INVENTORY_CAPITALIZATION_SETTLED -> readInventoryCapitalizationSettledEntry(rootNode);
+      case INVENTORY_CAPITALIZATION_ON_CREDIT -> readInventoryCapitalizationOnCreditEntry(rootNode);
+      case INVENTORY_WRITE_DOWN -> readInventoryWriteDownEntry(rootNode);
+      case INVENTORY_SHRINKAGE -> readInventoryShrinkageEntry(rootNode);
+      case INVENTORY_COUNT_INCREASE -> readInventoryCountIncreaseEntry(rootNode);
+      default -> throw new IllegalArgumentException("Expected an inventory entry kind.");
+    };
+  }
 
   static BookkeepingEntry.PurchaseSettled readPurchaseSettledEntry(ObjectNode rootNode) {
     rejectUnexpectedFields(

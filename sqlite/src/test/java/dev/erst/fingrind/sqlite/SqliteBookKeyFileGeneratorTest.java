@@ -6,10 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -76,6 +77,32 @@ class SqliteBookKeyFileGeneratorTest {
   }
 
   @Test
+  void generate_recoversAnOwnedInterruptedStageWithoutDeletingAnUnownedLookalike()
+      throws Exception {
+    Path keyFile = tempDirectory.resolve("recovered.book-key");
+    SqliteOwnedStagedArtifact interruptedStage =
+        SqliteOwnedStagedArtifact.create(keyFile, ".generated-key-", ".tmp");
+    Files.writeString(interruptedStage.stagedPath(), "interrupted", StandardCharsets.UTF_8);
+    Path unownedLookalike =
+        keyFile.resolveSibling(keyFile.getFileName() + ".generated-key-unowned.tmp");
+    Files.writeString(unownedLookalike, "unowned", StandardCharsets.UTF_8);
+
+    SqliteBookKeyFileGenerator.generate(keyFile, deterministicRandom());
+
+    assertTrue(Files.isRegularFile(keyFile));
+    assertFalse(Files.exists(interruptedStage.stagedPath()));
+    assertTrue(Files.exists(unownedLookalike));
+    try (Stream<Path> siblings = Files.list(tempDirectory)) {
+      assertFalse(
+          siblings.anyMatch(
+              path ->
+                  path.getFileName()
+                      .toString()
+                      .startsWith(".recovered.book-key.fingrind-maintenance-stage-")));
+    }
+  }
+
+  @Test
   void generate_rejectsExistingKeyFiles() throws Exception {
     Path keyFile = tempDirectory.resolve("existing.book-key");
     SqliteBookKeyFileGenerator.generate(keyFile, deterministicRandom());
@@ -85,6 +112,17 @@ class SqliteBookKeyFileGeneratorTest {
     assertTrue(
         NullTestSupport.messageOf(exception)
             .contains("already exists and will not be overwritten"));
+  }
+
+  @Test
+  void generateDecision_rejectsOneRootTargetWithoutAttemptingParentStageRecovery() {
+    ContractDecision<GeneratedBookKeyFile> decision =
+        SqliteBookKeyFileGenerator.generateDecision(Path.of("/"), deterministicRandom());
+
+    ContractFailureException exception =
+        assertThrows(ContractFailureException.class, decision::requireAccepted);
+    assertEquals(
+        ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED, exception.failure().descriptor());
   }
 
   @Test
@@ -151,7 +189,8 @@ class SqliteBookKeyFileGeneratorTest {
                       throw new IOException("simulated materialization failure");
                     }));
     assertTrue(
-        NullTestSupport.messageOf(exception).contains(PublicPathHint.fromPath(keyFile).value()));
+        NullTestSupport.messageOf(exception)
+            .contains(keyFile.toAbsolutePath().normalize().toString()));
     assertEquals(
         "simulated materialization failure",
         NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
@@ -211,8 +250,32 @@ class SqliteBookKeyFileGeneratorTest {
                     .requireAccepted());
 
     assertTrue(
-        NullTestSupport.messageOf(exception).contains(PublicPathHint.fromPath(keyFile).value()));
+        NullTestSupport.messageOf(exception)
+            .contains(keyFile.toAbsolutePath().normalize().toString()));
     assertEquals("parent boom", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
+    assertFalse(Files.exists(keyFile));
+  }
+
+  @Test
+  void generateDecision_preservesAnAbsentTargetWhenStageCreationRejects() throws Exception {
+    Path keyFile = tempDirectory.resolve("rejected-stage.book-key");
+
+    ContractDecision<GeneratedBookKeyFile> decision =
+        SqliteBookKeyFileGenerator.generateDecision(
+            keyFile,
+            deterministicRandom(),
+            (normalizedPath, encodedPassphrase) -> {
+              throw new AssertionError("The materializer must not run after stage rejection.");
+            },
+            SqliteBookKeyFileGenerator::ensureParentDirectory,
+            stagedPath ->
+                ContractDecision.rejected(
+                    ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.failure(
+                        "stage rejected", "repair the staged target", "--new-book-key-file")));
+
+    ContractFailureException exception =
+        assertThrows(ContractFailureException.class, decision::requireAccepted);
+    assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, exception.failure().descriptor());
     assertFalse(Files.exists(keyFile));
   }
 
@@ -255,8 +318,9 @@ class SqliteBookKeyFileGeneratorTest {
     List<String> cleanupReports = new ArrayList<>();
     assertDoesNotThrow(
         () ->
-            SqliteBookKeyFileGenerator.deleteQuietly(
+            SqliteFileCleanup.deleteQuietly(
                 nonEmptyDirectory,
+                "deleting one partially created book-key path",
                 (action, exception) ->
                     cleanupReports.add(action + "|" + exception.getClass().getSimpleName())));
     assertTrue(Files.exists(nonEmptyDirectory));
@@ -273,7 +337,7 @@ class SqliteBookKeyFileGeneratorTest {
           lockedDirectory,
           Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_EXECUTE));
       try {
-        assertDoesNotThrow(() -> SqliteBookKeyFileGenerator.deleteQuietly(lockedFile));
+        assertDoesNotThrow(() -> SqliteFileCleanup.deleteQuietly(lockedFile));
         assertTrue(Files.exists(lockedFile));
       } finally {
         Files.setPosixFilePermissions(lockedDirectory, originalPermissions);

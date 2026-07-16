@@ -10,6 +10,8 @@ import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
 import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
+import dev.erst.fingrind.executor.spi.TaxAdministrationStore;
+import dev.erst.fingrind.executor.workflow.BookWorkflowExecutionDependencies;
 import dev.erst.fingrind.executor.workflow.BookWorkflowExecutionResult;
 import dev.erst.fingrind.executor.workflow.BookWorkflowExecutionService;
 import dev.erst.fingrind.executor.workflow.BookWorkflowPublishedLanguageTranslator;
@@ -28,17 +30,20 @@ public final class LedgerPlanService {
       BookkeepingReadStore readStore,
       PostingValidationStore validationStore,
       PostingCommitStore commitStore,
+      TaxAdministrationStore taxAdministrationStore,
       PostingIdGenerator postingIdGenerator,
       Clock clock) {
     this.workflowExecutionService =
         new BookWorkflowExecutionService(
             Objects.requireNonNull(transactionStore, "transactionStore"),
-            Objects.requireNonNull(administrationStore, "administrationStore"),
-            Objects.requireNonNull(accountCatalogStore, "accountCatalogStore"),
-            Objects.requireNonNull(readStore, "readStore"),
-            Objects.requireNonNull(validationStore, "validationStore"),
-            Objects.requireNonNull(commitStore, "commitStore"),
-            Objects.requireNonNull(postingIdGenerator, "postingIdGenerator"),
+            new BookWorkflowExecutionDependencies(
+                Objects.requireNonNull(administrationStore, "administrationStore"),
+                Objects.requireNonNull(accountCatalogStore, "accountCatalogStore"),
+                Objects.requireNonNull(readStore, "readStore"),
+                Objects.requireNonNull(validationStore, "validationStore"),
+                Objects.requireNonNull(commitStore, "commitStore"),
+                Objects.requireNonNull(taxAdministrationStore, "taxAdministrationStore"),
+                Objects.requireNonNull(postingIdGenerator, "postingIdGenerator")),
             Objects.requireNonNull(clock, "clock"));
   }
 

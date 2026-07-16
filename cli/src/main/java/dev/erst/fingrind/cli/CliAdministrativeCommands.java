@@ -41,14 +41,11 @@ record OpenBook(
 }
 
 /** Administrative CLI commands that create or reconfigure book state. */
-record RekeyBook(
-    BookAccess bookAccess,
-    BookAccess.PassphraseSource replacementPassphraseSource,
-    OutputMode outputMode)
+record RekeyBook(BookAccess bookAccess, Path newBookKeyFilePath, OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
   RekeyBook {
     Objects.requireNonNull(bookAccess, "bookAccess");
-    Objects.requireNonNull(replacementPassphraseSource, "replacementPassphraseSource");
+    Objects.requireNonNull(newBookKeyFilePath, "newBookKeyFilePath");
     Objects.requireNonNull(outputMode, "outputMode");
   }
 
@@ -56,7 +53,7 @@ record RekeyBook(
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
-        .runRekeyBookCommand(bookAccess, replacementPassphraseSource, outputMode);
+        .runRekeyBookCommand(bookAccess, newBookKeyFilePath, outputMode);
   }
 }
 
@@ -82,14 +79,15 @@ record BackupBook(
 /** Administrative CLI command that restores one encrypted-book backup pair. */
 record RestoreBook(
     Path bookFilePath,
-    Path bookKeyFilePath,
+    Path newBookKeyFilePath,
     Path backupFilePath,
     Path backupKeyFilePath,
+    boolean replaceExistingBook,
     OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
   RestoreBook {
     Objects.requireNonNull(bookFilePath, "bookFilePath");
-    Objects.requireNonNull(bookKeyFilePath, "bookKeyFilePath");
+    Objects.requireNonNull(newBookKeyFilePath, "newBookKeyFilePath");
     Objects.requireNonNull(backupFilePath, "backupFilePath");
     Objects.requireNonNull(backupKeyFilePath, "backupKeyFilePath");
     Objects.requireNonNull(outputMode, "outputMode");
@@ -100,7 +98,12 @@ record RestoreBook(
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
         .runRestoreBookCommand(
-            bookFilePath, bookKeyFilePath, backupFilePath, backupKeyFilePath, outputMode);
+            bookFilePath,
+            newBookKeyFilePath,
+            backupFilePath,
+            backupKeyFilePath,
+            replaceExistingBook,
+            outputMode);
   }
 }
 
@@ -178,6 +181,42 @@ final class DeclareAccount extends CliBookRequestOutputModeCommand {
     return executionContext
         .administrative()
         .runDeclareAccountCommand(bookAccess, requestFile, outputMode);
+  }
+}
+
+/** Administrative CLI command that replaces one unreferenced account definition. */
+final class AmendAccount extends CliBookRequestOutputModeCommand {
+  AmendAccount(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
+    super(bookAccess, requestFile, outputMode);
+  }
+
+  @Override
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      Path requestFile,
+      OutputMode outputMode) {
+    return executionContext
+        .administrative()
+        .runAmendAccountCommand(bookAccess, requestFile, outputMode);
+  }
+}
+
+/** Administrative CLI command that retires one account from ordinary authored use. */
+final class RetireAccount extends CliBookRequestOutputModeCommand {
+  RetireAccount(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
+    super(bookAccess, requestFile, outputMode);
+  }
+
+  @Override
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      Path requestFile,
+      OutputMode outputMode) {
+    return executionContext
+        .administrative()
+        .runRetireAccountCommand(bookAccess, requestFile, outputMode);
   }
 }
 

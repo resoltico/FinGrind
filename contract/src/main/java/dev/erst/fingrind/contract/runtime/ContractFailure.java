@@ -11,7 +11,8 @@ public record ContractFailure(
     ContractErrors.Descriptor descriptor,
     String message,
     @Nullable String hint,
-    @Nullable String argument) {
+    @Nullable String argument,
+    @Nullable ContractFailurePaths paths) {
   /** Validates one deterministic contract failure payload. */
   public ContractFailure {
     descriptor = requireValue(descriptor, "descriptor");

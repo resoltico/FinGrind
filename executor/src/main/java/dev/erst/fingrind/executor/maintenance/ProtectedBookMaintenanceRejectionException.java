@@ -14,6 +14,13 @@ public final class ProtectedBookMaintenanceRejectionException extends RuntimeExc
     this.rejection = rejection;
   }
 
+  /** Creates the control-flow exception while retaining the storage failure that triggered it. */
+  public ProtectedBookMaintenanceRejectionException(
+      ProtectedBookMaintenanceRejection rejection, Throwable cause) {
+    super(Objects.requireNonNull(rejection, "rejection").toString(), cause);
+    this.rejection = rejection;
+  }
+
   /** Returns the deterministic maintenance rejection carried by this control-flow exception. */
   public ProtectedBookMaintenanceRejection rejection() {
     return rejection;

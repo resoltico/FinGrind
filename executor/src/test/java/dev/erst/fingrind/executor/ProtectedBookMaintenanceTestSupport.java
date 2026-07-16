@@ -3,7 +3,6 @@ package dev.erst.fingrind.executor;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.executor.maintenance.MaintenanceCompletion;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
@@ -14,6 +13,8 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditKind;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.PreparedPairPublication;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import dev.erst.fingrind.executor.spi.StagedBookReplacement;
 import dev.erst.fingrind.executor.spi.StagedRestoredBookPair;
@@ -54,13 +55,17 @@ final class ProtectedBookMaintenanceTestSupport {
     return tempDirectory.resolve(relativePath).toAbsolutePath().normalize();
   }
 
-  static PublicPathHint hint(Path path) {
-    return PublicPathHint.fromPath(path);
+  static Path hint(Path path) {
+    return path.toAbsolutePath().normalize();
   }
 
   static ContractFailure internalError(String argument) {
     return new ContractFailure(
-        ContractErrors.Descriptor.INTERNAL_ERROR, "maintenance failure", "retry later", argument);
+        ContractErrors.Descriptor.INTERNAL_ERROR,
+        "maintenance failure",
+        "retry later",
+        argument,
+        null);
   }
 
   static void touch(Path path) {
@@ -85,8 +90,23 @@ record RecordedAudit(Path bookPath, Instant recordedAt, Enum<?> auditKind) {
   }
 }
 
-/** Deterministic protected-book maintenance store fixture for service-path tests. */
-final class FakeMaintenanceStore implements ProtectedBookMaintenanceStore {
+/** Mutable staging controls and observations shared by protected-book maintenance fixtures. */
+final class MaintenanceStagingState {
+  final List<RestoredBookTargetPolicy> restoredBookTargetPolicies = new ArrayList<>();
+  @Nullable MaintenanceDecision<StagedRestoredBookPair> restoredPairFailure;
+  @Nullable MaintenanceDecision<ProtectedBookMaintenanceStore.BookVerification>
+      restoredPairVerification;
+  @Nullable ProtectedBookMaintenanceRejection backupPairCommitRejection;
+  @Nullable ProtectedBookMaintenanceRejection restoredPairCommitRejection;
+  @Nullable RuntimeException interruptedPairRecoveryFailure;
+  int interruptedPairRecoveryRequests;
+  @Nullable RuntimeException restoredPairCommitRuntimeFailure;
+  boolean restoredPairCommitted;
+  boolean restoredPairClosed;
+}
+
+/** Shared deterministic SPI fixture mechanics for protected-book maintenance service tests. */
+abstract class FakeMaintenanceStoreBase implements ProtectedBookMaintenanceStore {
   final Map<Path, List<Path>> rollbackArtifacts = new ConcurrentHashMap<>();
   final Map<Path, List<Path>> bookBlockingArtifacts = new ConcurrentHashMap<>();
   final Map<Path, List<Path>> backupBlockingArtifacts = new ConcurrentHashMap<>();
@@ -95,6 +115,8 @@ final class FakeMaintenanceStore implements ProtectedBookMaintenanceStore {
   final Set<Path> busyExistingArtifacts = ConcurrentHashMap.newKeySet();
   final List<RecordedAudit> recordedAudits = new ArrayList<>();
   final List<RecordedAudit> compensatedAudits = new ArrayList<>();
+  final List<ProtectedBookAccess> verificationRequests = new ArrayList<>();
+  final MaintenanceStagingState staging = new MaintenanceStagingState();
   @Nullable MaintenanceDecision<StagedBackupPair> stageBackupFailure;
   @Nullable MaintenanceDecision<MaintenanceCompletion> appendAuditFailure;
   @Nullable MaintenanceDecision<MaintenanceCompletion> compensateAuditFailure;
@@ -119,6 +141,69 @@ final class FakeMaintenanceStore implements ProtectedBookMaintenanceStore {
   public Path normalize(Path path, String argumentName) {
     Objects.requireNonNull(path, argumentName);
     return normalized(path);
+  }
+
+  @Override
+  public PreparedPairPublication preparePairPublication(
+      Path normalizedSecretTargetPath,
+      Path normalizedBookTargetPath,
+      RestoredBookTargetPolicy bookTargetPolicy,
+      ProtectedBookMaintenanceArtifactRole bookArtifactRole,
+      ProtectedBookMaintenanceArtifactRole secretArtifactRole) {
+    Path checkedSecretTargetPath = normalized(normalizedSecretTargetPath);
+    Path checkedBookTargetPath = normalized(normalizedBookTargetPath);
+    RestoredBookTargetPolicy checkedBookTargetPolicy =
+        Objects.requireNonNull(bookTargetPolicy, "bookTargetPolicy");
+    ProtectedBookMaintenanceArtifactRole checkedBookArtifactRole =
+        Objects.requireNonNull(bookArtifactRole, "bookArtifactRole");
+    ProtectedBookMaintenanceArtifactRole checkedSecretArtifactRole =
+        Objects.requireNonNull(secretArtifactRole, "secretArtifactRole");
+    LeaseAcquisition bookLeaseAcquisition =
+        acquireManagedArtifactLease(checkedBookTargetPath, checkedBookArtifactRole);
+    if (bookLeaseAcquisition instanceof LeaseBusy leaseBusy) {
+      throw new ProtectedBookMaintenanceRejectionException(
+          new ProtectedBookMaintenanceRejection.ArtifactBusy(
+              checkedBookArtifactRole, leaseBusy.artifactPath()));
+    }
+    try (HeldLease ignoredBookTargetLease = (HeldLease) bookLeaseAcquisition) {
+      LeaseAcquisition secretLeaseAcquisition =
+          acquireManagedArtifactLease(checkedSecretTargetPath, checkedSecretArtifactRole);
+      if (secretLeaseAcquisition instanceof LeaseBusy leaseBusy) {
+        throw new ProtectedBookMaintenanceRejectionException(
+            new ProtectedBookMaintenanceRejection.ArtifactBusy(
+                checkedSecretArtifactRole, leaseBusy.artifactPath()));
+      }
+      try (HeldLease ignoredSecretTargetLease = (HeldLease) secretLeaseAcquisition) {
+        staging.interruptedPairRecoveryRequests++;
+        if (staging.interruptedPairRecoveryFailure != null) {
+          throw staging.interruptedPairRecoveryFailure;
+        }
+        if (checkedBookTargetPolicy == RestoredBookTargetPolicy.REQUIRE_ABSENT
+            && Files.exists(checkedBookTargetPath)) {
+          throw new ProtectedBookMaintenanceRejectionException(
+              occupiedPairBookTargetRejection(checkedBookArtifactRole, checkedBookTargetPath));
+        }
+        if (Files.exists(checkedSecretTargetPath)) {
+          throw new ProtectedBookMaintenanceRejectionException(
+              new ProtectedBookMaintenanceRejection.SecretTargetOccupied(checkedSecretTargetPath));
+        }
+      }
+    }
+    return new FakePreparedPairPublication(
+        checkedBookTargetPath, checkedSecretTargetPath, checkedBookTargetPolicy);
+  }
+
+  private static ProtectedBookMaintenanceRejection occupiedPairBookTargetRejection(
+      ProtectedBookMaintenanceArtifactRole artifactRole, Path bookTargetPath) {
+    return switch (artifactRole) {
+      case BACKUP_TARGET ->
+          new ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists(bookTargetPath);
+      case LIVE_BOOK, RESTORED_TARGET ->
+          new ProtectedBookMaintenanceRejection.BookDestinationOccupied(bookTargetPath);
+      case BACKUP_SOURCE, BACKUP_KEY_TARGET, ROLLBACK_ARTIFACT ->
+          throw new IllegalArgumentException(
+              "An absent protected-book target cannot use artifact role " + artifactRole + ".");
+    };
   }
 
   @Override
@@ -158,6 +243,7 @@ final class FakeMaintenanceStore implements ProtectedBookMaintenanceStore {
   @Override
   public MaintenanceDecision<BookVerification> verifyInitializedBook(
       ProtectedBookAccess bookAccess, ProtectedBookMaintenanceArtifactRole artifactRole) {
+    verificationRequests.add(bookAccess);
     if (verifyInitializedBookRejection != null) {
       throw new ProtectedBookMaintenanceRejectionException(verifyInitializedBookRejection);
     }
@@ -167,60 +253,12 @@ final class FakeMaintenanceStore implements ProtectedBookMaintenanceStore {
   }
 
   @Override
-  public MaintenanceDecision<StagedBackupPair> stageBackupPair(
-      VerifiedBook sourceBook,
-      Path normalizedBackupFilePath,
-      Path normalizedBackupBookKeyFilePath) {
-    if (stageBackupFailure != null) {
-      return stageBackupFailure;
-    }
-    BookVerification stagedBackupVerification =
-        switch (verifications.getOrDefault(
-            normalized(normalizedBackupFilePath),
-            MaintenanceDecision.accepted(
-                new FakeVerifiedBook(normalized(normalizedBackupFilePath))))) {
-          case MaintenanceDecision.Accepted<BookVerification>(BookVerification verification) ->
-              verification;
-          case MaintenanceDecision.Failed<BookVerification>(MaintenanceFailure failure) ->
-              throw new AssertionError(
-                  "Expected accepted staged-backup verification but got " + failure);
-        };
-    return MaintenanceDecision.accepted(new FakeStagedBackupPair(stagedBackupVerification));
-  }
-
-  @Override
   public MaintenanceDecision<BookVerification> verifyInitializedReplica(
       Path normalizedReplicaBookPath, VerifiedBook sourceBook) {
     Objects.requireNonNull(sourceBook, "sourceBook");
     return verifications.getOrDefault(
         normalized(normalizedReplicaBookPath),
         MaintenanceDecision.accepted(new FakeVerifiedBook(normalized(normalizedReplicaBookPath))));
-  }
-
-  @Override
-  public MaintenanceDecision<StagedRestoredBookPair> stageRestoredBookPair(
-      VerifiedBook sourceBook, Path normalizedBookFilePath, Path normalizedBookKeyFilePath) {
-    Objects.requireNonNull(sourceBook, "sourceBook");
-    Objects.requireNonNull(normalizedBookFilePath, "normalizedBookFilePath");
-    Objects.requireNonNull(normalizedBookKeyFilePath, "normalizedBookKeyFilePath");
-    if (stageReplacementRejection != null) {
-      throw new ProtectedBookMaintenanceRejectionException(stageReplacementRejection);
-    }
-    Path stagedBookPath =
-        stagedReplacementPath != null
-            ? normalized(stagedReplacementPath)
-            : normalized(normalizedBookFilePath);
-    stagedReplacementPath = null;
-    BookVerification stagedRestoredVerification =
-        switch (verifications.getOrDefault(
-            stagedBookPath, MaintenanceDecision.accepted(new FakeVerifiedBook(stagedBookPath)))) {
-          case MaintenanceDecision.Accepted<BookVerification>(BookVerification verification) ->
-              verification;
-          case MaintenanceDecision.Failed<BookVerification>(MaintenanceFailure failure) ->
-              throw new AssertionError(
-                  "Expected accepted staged-restore verification but got " + failure);
-        };
-    return MaintenanceDecision.accepted(new FakeStagedRestoredBookPair(stagedRestoredVerification));
   }
 
   @Override
@@ -282,10 +320,10 @@ final class FakeMaintenanceStore implements ProtectedBookMaintenanceStore {
   }
 
   /** Deterministic verified-book fixture that carries one normalized artifact path only. */
-  private static final class FakeVerifiedBook implements VerifiedBook {
+  static final class FakeVerifiedBook implements VerifiedBook {
     private final Path artifactPath;
 
-    private FakeVerifiedBook(Path artifactPath) {
+    FakeVerifiedBook(Path artifactPath) {
       this.artifactPath = artifactPath;
     }
 
@@ -315,34 +353,12 @@ final class FakeMaintenanceStore implements ProtectedBookMaintenanceStore {
     public void close() {}
   }
 
-  /** Deterministic staged-backup fixture that can publish or fail on demand. */
-  private final class FakeStagedBackupPair implements StagedBackupPair {
-    private final BookVerification backupVerification;
-
-    private FakeStagedBackupPair(BookVerification backupVerification) {
-      this.backupVerification = backupVerification;
-    }
-
+  /** Deterministic preflight fixture that carries its selected pair-publication authority. */
+  private record FakePreparedPairPublication(
+      Path bookTargetPath, Path secretTargetPath, RestoredBookTargetPolicy bookTargetPolicy)
+      implements PreparedPairPublication {
     @Override
-    public MaintenanceDecision<BookVerification> verifyInitializedBackup() {
-      return MaintenanceDecision.accepted(backupVerification);
-    }
-
-    @Override
-    public void commit() {
-      if (failBackupPairCommit) {
-        throw new IllegalStateException("backup pair publish failed");
-      }
-      lastStagedBackupPairCommitted = true;
-    }
-
-    @Override
-    public void rollback() {}
-
-    @Override
-    public void close() {
-      lastStagedBackupPairClosed = true;
-    }
+    public void close() {}
   }
 
   /** Deterministic staged-replacement fixture for restore-style maintenance flows. */
@@ -356,29 +372,6 @@ final class FakeMaintenanceStore implements ProtectedBookMaintenanceStore {
     @Override
     public Path stagedBookPath() {
       return stagedBookPath;
-    }
-
-    @Override
-    public void commit() {}
-
-    @Override
-    public void rollback() {}
-
-    @Override
-    public void close() {}
-  }
-
-  /** Deterministic staged-restored-book fixture that can verify and publish on demand. */
-  private static final class FakeStagedRestoredBookPair implements StagedRestoredBookPair {
-    private final BookVerification restoredVerification;
-
-    private FakeStagedRestoredBookPair(BookVerification restoredVerification) {
-      this.restoredVerification = restoredVerification;
-    }
-
-    @Override
-    public MaintenanceDecision<BookVerification> verifyInitializedRestoredBook() {
-      return MaintenanceDecision.accepted(restoredVerification);
     }
 
     @Override
@@ -407,6 +400,122 @@ final class FakeMaintenanceStore implements ProtectedBookMaintenanceStore {
     @Override
     public void close() {
       lastRollbackDeletionClosed = true;
+    }
+  }
+}
+
+/** Deterministic protected-book maintenance store fixture for service-path tests. */
+final class FakeMaintenanceStore extends FakeMaintenanceStoreBase {
+  @Override
+  public MaintenanceDecision<StagedBackupPair> stageBackupPair(
+      VerifiedBook sourceBook, PreparedPairPublication preparedPairPublication) {
+    Objects.requireNonNull(sourceBook, "sourceBook");
+    Path normalizedBackupFilePath = preparedPairPublication.bookTargetPath();
+    if (stageBackupFailure != null) {
+      return stageBackupFailure;
+    }
+    BookVerification stagedBackupVerification =
+        switch (verifications.getOrDefault(
+            normalized(normalizedBackupFilePath),
+            MaintenanceDecision.accepted(
+                new FakeVerifiedBook(normalized(normalizedBackupFilePath))))) {
+          case MaintenanceDecision.Accepted<BookVerification>(BookVerification verification) ->
+              verification;
+          case MaintenanceDecision.Failed<BookVerification>(MaintenanceFailure failure) ->
+              throw new AssertionError(
+                  "Expected accepted staged-backup verification but got " + failure);
+        };
+    return MaintenanceDecision.accepted(new FakeStagedBackupPair(stagedBackupVerification));
+  }
+
+  @Override
+  public MaintenanceDecision<StagedRestoredBookPair> stageRestoredBookPair(
+      VerifiedBook sourceBook, PreparedPairPublication preparedPairPublication) {
+    Objects.requireNonNull(sourceBook, "sourceBook");
+    Path normalizedBookFilePath = preparedPairPublication.bookTargetPath();
+    staging.restoredBookTargetPolicies.add(preparedPairPublication.bookTargetPolicy());
+    if (staging.restoredPairFailure != null) {
+      return staging.restoredPairFailure;
+    }
+    if (stageReplacementRejection != null) {
+      throw new ProtectedBookMaintenanceRejectionException(stageReplacementRejection);
+    }
+    Path stagedBookPath =
+        stagedReplacementPath != null
+            ? normalized(stagedReplacementPath)
+            : normalized(normalizedBookFilePath);
+    stagedReplacementPath = null;
+    MaintenanceDecision<BookVerification> restoredVerification =
+        staging.restoredPairVerification != null
+            ? staging.restoredPairVerification
+            : verifications.getOrDefault(
+                stagedBookPath, MaintenanceDecision.accepted(new FakeVerifiedBook(stagedBookPath)));
+    return MaintenanceDecision.accepted(new FakeStagedRestoredBookPair(restoredVerification));
+  }
+
+  /** Deterministic staged-backup fixture that can publish or fail on demand. */
+  private final class FakeStagedBackupPair implements StagedBackupPair {
+    private final BookVerification backupVerification;
+
+    private FakeStagedBackupPair(BookVerification backupVerification) {
+      this.backupVerification = backupVerification;
+    }
+
+    @Override
+    public MaintenanceDecision<BookVerification> verifyInitializedBackup() {
+      return MaintenanceDecision.accepted(backupVerification);
+    }
+
+    @Override
+    public void commit() {
+      if (staging.backupPairCommitRejection != null) {
+        throw new ProtectedBookMaintenanceRejectionException(staging.backupPairCommitRejection);
+      }
+      if (failBackupPairCommit) {
+        throw new IllegalStateException("backup pair publish failed");
+      }
+      lastStagedBackupPairCommitted = true;
+    }
+
+    @Override
+    public void rollback() {}
+
+    @Override
+    public void close() {
+      lastStagedBackupPairClosed = true;
+    }
+  }
+
+  /** Deterministic staged-restored-book fixture that can verify and publish on demand. */
+  private final class FakeStagedRestoredBookPair implements StagedRestoredBookPair {
+    private final MaintenanceDecision<BookVerification> restoredVerification;
+
+    private FakeStagedRestoredBookPair(MaintenanceDecision<BookVerification> restoredVerification) {
+      this.restoredVerification = restoredVerification;
+    }
+
+    @Override
+    public MaintenanceDecision<BookVerification> verifyInitializedRestoredBook() {
+      return restoredVerification;
+    }
+
+    @Override
+    public void commit() {
+      if (staging.restoredPairCommitRejection != null) {
+        throw new ProtectedBookMaintenanceRejectionException(staging.restoredPairCommitRejection);
+      }
+      if (staging.restoredPairCommitRuntimeFailure != null) {
+        throw staging.restoredPairCommitRuntimeFailure;
+      }
+      staging.restoredPairCommitted = true;
+    }
+
+    @Override
+    public void rollback() {}
+
+    @Override
+    public void close() {
+      staging.restoredPairClosed = true;
     }
   }
 }

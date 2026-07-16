@@ -19,6 +19,12 @@ import java.util.Optional;
 /** Shared posting delegation defaults for SQLite capability wrappers. */
 interface SqlitePostingCapabilityView extends SqlitePostingSession, SqliteReadCapabilityView {
   @Override
+  default java.util.Optional<dev.erst.fingrind.executor.bookkeeping.AccrualCutoffRecord>
+      findAccrualCutoff(dev.erst.fingrind.contract.bookkeeping.AccrualCutoffId accrualCutoffId) {
+    return SqliteReadCapabilityView.super.findAccrualCutoff(accrualCutoffId);
+  }
+
+  @Override
   default java.util.Optional<dev.erst.fingrind.executor.bookkeeping.InventoryAccountState>
       findInventoryAccountState(dev.erst.fingrind.core.AccountCode inventoryAccountCode) {
     return SqliteReadCapabilityView.super.findInventoryAccountState(inventoryAccountCode);
@@ -45,6 +51,20 @@ interface SqlitePostingCapabilityView extends SqlitePostingSession, SqliteReadCa
       AccountDeclaration declaration, Instant declaredAt) {
     storeThreadOwner().requireOwnerThread();
     return storeMutationOperations().declareAccount(declaration, declaredAt);
+  }
+
+  @Override
+  default dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome amendAccount(
+      AccountDeclaration amendment, Instant amendedAt) {
+    storeThreadOwner().requireOwnerThread();
+    return storeMutationOperations().amendAccount(amendment, amendedAt);
+  }
+
+  @Override
+  default dev.erst.fingrind.executor.bookkeeping.AccountRetirementOutcome retireAccount(
+      dev.erst.fingrind.core.AccountCode accountCode, Instant retiredAt) {
+    storeThreadOwner().requireOwnerThread();
+    return storeMutationOperations().retireAccount(accountCode, retiredAt);
   }
 
   @Override

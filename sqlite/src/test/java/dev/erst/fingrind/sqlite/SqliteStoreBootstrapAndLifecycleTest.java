@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -112,7 +114,10 @@ class SqliteStoreBootstrapAndLifecycleTest extends SqliteStoreLifecycleTestSuppo
                       throw new java.io.IOException("boom");
                     }));
 
-    assertInvalidBookFilePathFailure(exception, "boom");
+    assertInvalidBookFilePathFailure(
+        exception,
+        bookPath,
+        "The FinGrind protected-book path does not satisfy the filesystem contract.");
   }
 
   @Test
@@ -231,6 +236,65 @@ class SqliteStoreBootstrapAndLifecycleTest extends SqliteStoreLifecycleTestSuppo
               .contains("Failed to open SQLite book connection. SQLITE_ERROR: open-boom"),
           () -> NullTestSupport.messageOf(firstFailure));
       assertSame(firstFailure, repeatedFailure);
+    }
+  }
+
+  @Test
+  void lifecycleOpenRejectsAnExclusiveDestinationThatBecomesOccupiedDuringOpen() {
+    Path bookPath = tempDirectory.resolve("exclusive-open-race.sqlite");
+    SqliteStoreContext context =
+        new SqliteStoreContext(
+            bookPath,
+            SqliteStoreAccessMode.READ_WRITE_CREATE_EXCLUSIVE,
+            SqliteNativeBootstrap::api) {
+          @Override
+          SqliteNativeDatabase openConfiguredDatabase(SqliteBookPassphrase bookPassphrase) {
+            try {
+              Files.writeString(bookPath, "external contender");
+            } catch (java.io.IOException exception) {
+              throw new AssertionError(
+                  "Unable to create the exclusive-open race fixture.", exception);
+            }
+            throw new SqliteNativeException(SqliteNativeResultCode.code("ERROR"), "exclusive race");
+          }
+        };
+    try (SqliteSessionSecret sessionSecret =
+        new SqliteSessionSecret(
+            SqliteBookPassphrase.fromCharacters(
+                "exclusive open race", TEST_BOOK_KEY.toCharArray()))) {
+      SqliteStoreLifecycle lifecycle = new SqliteStoreLifecycle(context, sessionSecret);
+
+      ContractFailureException rejection =
+          assertThrows(ContractFailureException.class, lifecycle::database);
+
+      assertEquals(
+          ContractErrors.Descriptor.BOOK_DESTINATION_OCCUPIED, rejection.failure().descriptor());
+    }
+  }
+
+  @Test
+  void lifecycleOpenKeepsAnExclusiveNativeFailureWhenTheDestinationRemainsAbsent() {
+    Path bookPath = tempDirectory.resolve("exclusive-open-native-failure.sqlite");
+    SqliteStoreContext context =
+        new SqliteStoreContext(
+            bookPath,
+            SqliteStoreAccessMode.READ_WRITE_CREATE_EXCLUSIVE,
+            SqliteNativeBootstrap::api) {
+          @Override
+          SqliteNativeDatabase openConfiguredDatabase(SqliteBookPassphrase bookPassphrase) {
+            throw new SqliteNativeException(
+                SqliteNativeResultCode.code("ERROR"), "exclusive failure");
+          }
+        };
+    try (SqliteSessionSecret sessionSecret =
+        new SqliteSessionSecret(
+            SqliteBookPassphrase.fromCharacters(
+                "exclusive native failure", TEST_BOOK_KEY.toCharArray()))) {
+      SqliteStoreLifecycle lifecycle = new SqliteStoreLifecycle(context, sessionSecret);
+
+      assertInstanceOf(
+          SqliteStorageFailureException.class,
+          assertThrows(IllegalStateException.class, lifecycle::database));
     }
   }
 

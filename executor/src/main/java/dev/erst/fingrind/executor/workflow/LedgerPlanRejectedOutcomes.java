@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor.workflow;
 
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.tax.TaxDeclarationRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingQueryRejection;
@@ -32,5 +33,11 @@ public final class LedgerPlanRejectedOutcomes {
   public static LedgerPlanStepOutcome postingRejection(PostingRejection rejection) {
     return new LedgerPlanStepOutcome.Rejected(
         LedgerPlanWorkflowFailureMapper.postingFailure(rejection));
+  }
+
+  /** Converts one tax-registration declaration rejection into the local workflow outcome model. */
+  public static LedgerPlanStepOutcome taxDeclarationRejection(TaxDeclarationRejection rejection) {
+    return new LedgerPlanStepOutcome.Rejected(
+        LedgerPlanWorkflowFailureMapper.taxDeclarationFailure(rejection));
   }
 }

@@ -461,9 +461,11 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
           postingFactStore.accountLedger(
               new AccountLedgerCriteria(
                   new AccountCode("2000"),
-                  LocalDate.parse("2026-04-07"),
-                  LocalDate.parse("2026-04-07"),
-                  PostingCoverage.NON_CLOSING_POSTINGS),
+                  dev.erst.fingrind.core.EffectiveDateRange.of(
+                      LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07")),
+                  PostingCoverage.NON_CLOSING_POSTINGS,
+                  50,
+                  Optional.empty()),
               revenueAccount);
       assertEquals(PostingCoverage.NON_CLOSING_POSTINGS, accountLedger.postingCoverage());
       assertEquals(1, accountLedger.entries().size());

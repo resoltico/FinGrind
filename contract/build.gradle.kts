@@ -89,6 +89,7 @@ tasks.register<JavaExec>("syncUserInstallDocs") {
 }
 
 tasks.named<Test>("test") {
+    systemProperty("fingrind.repository.root", rootProject.layout.projectDirectory.asFile.absolutePath)
     inputs.file(rootProject.layout.projectDirectory.file("README.md"))
         .withPathSensitivity(PathSensitivity.RELATIVE)
     inputs.file(rootProject.layout.projectDirectory.file("CHANGELOG.md"))

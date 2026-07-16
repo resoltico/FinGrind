@@ -36,17 +36,17 @@ class CliSurfacePolicyBranchCoverageTest extends CliFixtureSupport {
             List.of());
 
     String populatedText = CliAccountBalanceOutputRenderer.renderText(populatedSnapshot);
-    String populatedCsv = CliAccountBalanceOutputRenderer.renderCsv(populatedSnapshot);
+    String populatedCsv = CliQueryOutputRenderer.renderAccountBalanceCsv(populatedSnapshot);
     String emptyText = CliAccountBalanceOutputRenderer.renderText(emptySnapshot);
-    String emptyCsv = CliReportCsvRenderer.renderAccountBalance(emptySnapshot);
+    String emptyCsv = CliQueryOutputRenderer.renderAccountBalanceCsv(emptySnapshot);
 
     assertTrue(populatedText.contains("Account Balance"));
     assertTrue(populatedText.contains("Cash [1000]"), populatedText);
     assertTrue(populatedText.contains("Debit total"), populatedText);
-    assertEquals(populatedCsv, CliReportCsvRenderer.renderAccountBalance(populatedSnapshot));
-    assertTrue(populatedCsv.contains("balance"), populatedCsv);
+    assertEquals(populatedCsv, CliQueryOutputRenderer.renderAccountBalanceCsv(populatedSnapshot));
+    assertTrue(populatedCsv.contains("debitTotalMinorUnits"), populatedCsv);
     assertTrue(emptyText.contains("No balances matched the selected scope."), emptyText);
-    assertTrue(emptyCsv.contains("scope-empty"), emptyCsv);
+    assertEquals(1, emptyCsv.lines().count(), emptyCsv);
   }
 
   @Test
@@ -55,7 +55,20 @@ class CliSurfacePolicyBranchCoverageTest extends CliFixtureSupport {
     assertTrue(
         CliTrialBalanceSurfacePolicy.hasComparativeData(trialBalanceWithComparativeDataOnly()));
     assertFalse(CliTrialBalanceSurfacePolicy.hasCurrent(trialBalanceWithComparativeDataOnly()));
+    assertFalse(CliTrialBalanceSurfacePolicy.hasComparative(trialBalanceWithNoData()));
     assertTrue(CliTrialBalanceSurfacePolicy.hasCurrent(trialBalanceWithCurrentTotalsOnly()));
+    assertTrue(CliTrialBalanceSurfacePolicy.hasCurrent(trialBalanceWithCurrentRowsOnly()));
+    assertTrue(
+        CliTrialBalanceSurfacePolicy.hasComparative(trialBalanceWithComparativeTotalsOnly()));
+    assertTrue(
+        CliTrialBalanceSurfacePolicy.hasComparative(trialBalanceWithComparativeReferenceOnly()));
+
+    assertTrue(
+        CliStatementSectionSurfacePolicy.hasComparativeReference(
+            EffectiveDateRange.from(LocalDate.parse("2025-04-01"))));
+    assertTrue(
+        CliStatementSectionSurfacePolicy.hasComparativeReference(
+            EffectiveDateRange.to(LocalDate.parse("2025-04-30"))));
 
     assertFalse(
         CliStatementSectionSurfacePolicy.hasRenderableFinancialPositionSection(
@@ -127,6 +140,69 @@ class CliSurfacePolicyBranchCoverageTest extends CliFixtureSupport {
         List.of(),
         List.of(),
         true);
+  }
+
+  private static TrialBalanceReport trialBalanceWithNoData() {
+    return new TrialBalanceReport(
+        bookIdentity(),
+        Optional.of(LocalDate.parse("2026-04-30")),
+        Optional.of(LocalDate.parse("2026-04-30")),
+        EffectiveDateRange.unbounded(),
+        allPostingKinds(),
+        List.of(),
+        List.of(),
+        true,
+        List.of(),
+        List.of(),
+        true);
+  }
+
+  private static TrialBalanceReport trialBalanceWithCurrentRowsOnly() {
+    TrialBalanceReport sample = trialBalanceWithComparativeDataOnly();
+    return new TrialBalanceReport(
+        sample.bookIdentity(),
+        sample.effectiveDateAsOf(),
+        sample.resolvedEffectiveDateAsOf(),
+        sample.comparativeEffectiveDateRange(),
+        sample.postingCoverage(),
+        sample.comparativeRows(),
+        List.of(),
+        sample.comparativeBalanced(),
+        List.of(),
+        List.of(),
+        sample.balanced());
+  }
+
+  private static TrialBalanceReport trialBalanceWithComparativeTotalsOnly() {
+    TrialBalanceReport sample = trialBalanceWithComparativeDataOnly();
+    return new TrialBalanceReport(
+        sample.bookIdentity(),
+        sample.effectiveDateAsOf(),
+        sample.resolvedEffectiveDateAsOf(),
+        sample.comparativeEffectiveDateRange(),
+        sample.postingCoverage(),
+        List.of(),
+        List.of(),
+        sample.comparativeBalanced(),
+        List.of(),
+        List.of(eurDebitBalance()),
+        sample.balanced());
+  }
+
+  private static TrialBalanceReport trialBalanceWithComparativeReferenceOnly() {
+    TrialBalanceReport sample = trialBalanceWithComparativeDataOnly();
+    return new TrialBalanceReport(
+        sample.bookIdentity(),
+        sample.effectiveDateAsOf(),
+        sample.resolvedEffectiveDateAsOf(),
+        EffectiveDateRange.from(LocalDate.parse("2025-04-01")),
+        sample.postingCoverage(),
+        List.of(),
+        List.of(),
+        sample.comparativeBalanced(),
+        List.of(),
+        List.of(),
+        sample.balanced());
   }
 
   private static ChangesInEquityReport changesInEquityWithDataOnly() {

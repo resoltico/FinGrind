@@ -137,6 +137,10 @@ final class CliLedgerBookQueryPayloadMapper {
         CliLedgerFactAccess.optionalGroupFacts(facts, "inventoryRelief");
     @Nullable List<LedgerFact> settlementAdjunctFacts =
         CliLedgerFactAccess.optionalGroupFacts(facts, "settlementAdjunct");
+    @Nullable List<LedgerFact> latvianMonthlyPayrollFacts =
+        CliLedgerFactAccess.optionalGroupFacts(facts, "latvianMonthlyPayroll");
+    @Nullable List<LedgerFact> latvianPayrollSettlementFacts =
+        CliLedgerFactAccess.optionalGroupFacts(facts, "latvianPayrollSettlement");
     List<CliOpeningBalancePayload> openingBalances =
         CliLedgerFactAccess.groupedFacts(facts, "openingBalance").stream()
             .map(CliLedgerBookQueryPayloadMapper::openingBalancePayload)
@@ -173,7 +177,55 @@ final class CliLedgerBookQueryPayloadMapper {
         null,
         reversalFacts == null ? null : reversalPayload(reversalFacts),
         openingBalances.isEmpty() ? null : openingBalances,
+        null,
+        null,
+        latvianMonthlyPayrollFacts == null
+            ? null
+            : latvianMonthlyPayrollPayload(latvianMonthlyPayrollFacts),
+        latvianPayrollSettlementFacts == null
+            ? null
+            : latvianPayrollSettlementPayload(latvianPayrollSettlementFacts),
         null);
+  }
+
+  private static CliPostingEntryPayload.LatvianMonthlyPayrollPayload latvianMonthlyPayrollPayload(
+      List<LedgerFact> facts) {
+    return new CliPostingEntryPayload.LatvianMonthlyPayrollPayload(
+        CliLedgerFactAccess.requiredTextFact(facts, "payrollRunId"),
+        CliLedgerFactAccess.requiredTextFact(facts, "employeeReference"),
+        CliLedgerFactAccess.requiredTextFact(facts, "payrollMonth"),
+        CliLedgerFactAccess.requiredTextFact(facts, "wageExpenseAccountCode"),
+        CliLedgerFactAccess.requiredTextFact(facts, "employerSocialContributionExpenseAccountCode"),
+        CliLedgerFactAccess.requiredTextFact(facts, "netWagesPayableAccountCode"),
+        CliLedgerFactAccess.requiredTextFact(facts, "employeeSocialContributionPayableAccountCode"),
+        CliLedgerFactAccess.requiredTextFact(facts, "employerSocialContributionPayableAccountCode"),
+        CliLedgerFactAccess.requiredTextFact(facts, "personalIncomeTaxPayableAccountCode"),
+        CliLedgerFactAccess.requiredMoneyFact(facts, "grossWages"),
+        new CliPostingEntryPayload.ResolvedLatvianMonthlyPayrollCalculationPayload(
+            CliLedgerFactAccess.requiredMoneyFact(facts, "employeeSocialContribution"),
+            CliLedgerFactAccess.requiredMoneyFact(facts, "employerSocialContribution"),
+            CliLedgerFactAccess.requiredMoneyFact(facts, "monthlyNonTaxableMinimum"),
+            CliLedgerFactAccess.requiredMoneyFact(facts, "personalIncomeTax"),
+            CliLedgerFactAccess.requiredMoneyFact(facts, "netWages")));
+  }
+
+  private static CliPostingEntryPayload.LatvianPayrollSettlementPayload
+      latvianPayrollSettlementPayload(List<LedgerFact> facts) {
+    return new CliPostingEntryPayload.LatvianPayrollSettlementPayload(
+        CliLedgerFactAccess.requiredTextFact(facts, "settlementKind"),
+        CliLedgerFactAccess.requiredTextFact(facts, "payrollRunId"),
+        CliLedgerFactAccess.requiredTextFact(facts, "cashAccountCode"),
+        new CliPostingEntryPayload.ResolvedLatvianPayrollSettlementPayload(
+            CliLedgerFactAccess.requiredTextFact(facts, "netWagesPayableAccountCode"),
+            CliLedgerFactAccess.requiredTextFact(
+                facts, "employeeSocialContributionPayableAccountCode"),
+            CliLedgerFactAccess.requiredTextFact(
+                facts, "employerSocialContributionPayableAccountCode"),
+            CliLedgerFactAccess.requiredTextFact(facts, "personalIncomeTaxPayableAccountCode"),
+            CliLedgerFactAccess.requiredMoneyFact(facts, "netWages"),
+            CliLedgerFactAccess.requiredMoneyFact(facts, "employeeSocialContribution"),
+            CliLedgerFactAccess.requiredMoneyFact(facts, "employerSocialContribution"),
+            CliLedgerFactAccess.requiredMoneyFact(facts, "personalIncomeTax")));
   }
 
   private static CliOpeningBalancePayload openingBalancePayload(List<LedgerFact> facts) {

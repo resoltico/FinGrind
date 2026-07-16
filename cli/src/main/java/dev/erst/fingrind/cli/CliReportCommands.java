@@ -2,12 +2,17 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffScheduleQuery;
 import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
+import dev.erst.fingrind.contract.bookkeeping.FinancingRegisterQuery;
+import dev.erst.fingrind.contract.bookkeeping.FixedAssetRegisterQuery;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementQuery;
 import dev.erst.fingrind.contract.bookkeeping.InventoryValuationQuery;
+import dev.erst.fingrind.contract.bookkeeping.LatvianPayrollRegisterQuery;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryQuery;
+import dev.erst.fingrind.contract.bookkeeping.RealizedForeignExchangeRegisterQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.tax.TaxObligationQuery;
@@ -24,7 +29,10 @@ final class AccountBalance extends CliBookQueryReportCommand<AccountBalanceQuery
       BookAccess bookAccess,
       AccountBalanceQuery query,
       CliReportOutput output) {
-    return executionContext.report().runAccountBalanceCommand(bookAccess, query, output);
+    return executionContext
+        .report()
+        .runConfiguredReportCommand(
+            bookAccess, query, output, executionContext.report().handlers().accountBalance());
   }
 }
 
@@ -40,7 +48,10 @@ final class TrialBalance extends CliBookQueryReportCommand<TrialBalanceQuery> {
       BookAccess bookAccess,
       TrialBalanceQuery query,
       CliReportOutput output) {
-    return executionContext.report().runTrialBalanceCommand(bookAccess, query, output);
+    return executionContext
+        .report()
+        .runConfiguredReportCommand(
+            bookAccess, query, output, executionContext.report().handlers().trialBalance());
   }
 }
 
@@ -56,7 +67,10 @@ final class AccountLedger extends CliBookQueryReportCommand<AccountLedgerQuery> 
       BookAccess bookAccess,
       AccountLedgerQuery query,
       CliReportOutput output) {
-    return executionContext.report().runAccountLedgerCommand(bookAccess, query, output);
+    return executionContext
+        .report()
+        .runConfiguredReportCommand(
+            bookAccess, query, output, executionContext.report().handlers().accountLedger());
   }
 }
 
@@ -72,7 +86,10 @@ final class PeriodSummary extends CliBookQueryReportCommand<PeriodSummaryQuery> 
       BookAccess bookAccess,
       PeriodSummaryQuery query,
       CliReportOutput output) {
-    return executionContext.report().runPeriodSummaryCommand(bookAccess, query, output);
+    return executionContext
+        .report()
+        .runConfiguredReportCommand(
+            bookAccess, query, output, executionContext.report().handlers().periodSummary());
   }
 }
 
@@ -88,7 +105,10 @@ final class FinancialPosition extends CliBookQueryReportCommand<FinancialPositio
       BookAccess bookAccess,
       FinancialPositionQuery query,
       CliReportOutput output) {
-    return executionContext.report().runFinancialPositionCommand(bookAccess, query, output);
+    return executionContext
+        .report()
+        .runConfiguredReportCommand(
+            bookAccess, query, output, executionContext.report().handlers().financialPosition());
   }
 }
 
@@ -104,7 +124,10 @@ final class IncomeStatement extends CliBookQueryReportCommand<IncomeStatementQue
       BookAccess bookAccess,
       IncomeStatementQuery query,
       CliReportOutput output) {
-    return executionContext.report().runIncomeStatementCommand(bookAccess, query, output);
+    return executionContext
+        .report()
+        .runConfiguredReportCommand(
+            bookAccess, query, output, executionContext.report().handlers().incomeStatement());
   }
 }
 
@@ -124,6 +147,108 @@ final class InventoryValuation extends CliBookQueryReportCommand<InventoryValuat
   }
 }
 
+/** Report command that projects durable accrual cut-off lifecycle balances. */
+final class AccrualCutoffSchedule extends CliBookQueryReportCommand<AccrualCutoffScheduleQuery> {
+  AccrualCutoffSchedule(
+      BookAccess bookAccess, AccrualCutoffScheduleQuery query, CliReportOutput output) {
+    super(bookAccess, query, output);
+  }
+
+  @Override
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      AccrualCutoffScheduleQuery query,
+      CliReportOutput output) {
+    return executionContext.report().runAccrualCutoffScheduleCommand(bookAccess, query, output);
+  }
+}
+
+/** Report command that projects the durable fixed-asset lifecycle register. */
+final class FixedAssetRegister extends CliBookQueryReportCommand<FixedAssetRegisterQuery> {
+  FixedAssetRegister(BookAccess bookAccess, FixedAssetRegisterQuery query, CliReportOutput output) {
+    super(bookAccess, query, output);
+  }
+
+  @Override
+  protected int executeCommand(
+      CliExecutionContext context,
+      BookAccess bookAccess,
+      FixedAssetRegisterQuery query,
+      CliReportOutput output) {
+    return context.report().runFixedAssetRegisterCommand(bookAccess, query, output);
+  }
+}
+
+/** Report command that projects durable financing principal and interest state. */
+final class FinancingRegister extends CliBookQueryReportCommand<FinancingRegisterQuery> {
+  FinancingRegister(BookAccess bookAccess, FinancingRegisterQuery query, CliReportOutput output) {
+    super(bookAccess, query, output);
+  }
+
+  @Override
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      FinancingRegisterQuery query,
+      CliReportOutput output) {
+    return executionContext
+        .report()
+        .runConfiguredReportCommand(
+            bookAccess,
+            query,
+            output,
+            CliOperationalReportCommandHandlers.financingRegister(
+                executionContext.report().handlers().readWorkflow(),
+                executionContext.report().handlers().responseWriter()));
+  }
+}
+
+/** Report command that projects durable foreign-currency obligation and settlement state. */
+final class RealizedForeignExchangeRegister
+    extends CliBookQueryReportCommand<RealizedForeignExchangeRegisterQuery> {
+  RealizedForeignExchangeRegister(
+      BookAccess bookAccess, RealizedForeignExchangeRegisterQuery query, CliReportOutput output) {
+    super(bookAccess, query, output);
+  }
+
+  @Override
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      RealizedForeignExchangeRegisterQuery query,
+      CliReportOutput output) {
+    return executionContext
+        .report()
+        .runConfiguredReportCommand(
+            bookAccess,
+            query,
+            output,
+            CliOperationalReportCommandHandlers.realizedForeignExchangeRegister(
+                executionContext.report().handlers().readWorkflow(),
+                executionContext.report().handlers().responseWriter()));
+  }
+}
+
+/**
+ * Report CLI command that projects immutable Latvian payroll calculations and settlement lineage.
+ */
+final class LatvianPayrollRegister extends CliBookQueryReportCommand<LatvianPayrollRegisterQuery> {
+  LatvianPayrollRegister(
+      BookAccess bookAccess, LatvianPayrollRegisterQuery query, CliReportOutput output) {
+    super(bookAccess, query, output);
+  }
+
+  @Override
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      LatvianPayrollRegisterQuery query,
+      CliReportOutput output) {
+    return executionContext.report().runLatvianPayrollRegisterCommand(bookAccess, query, output);
+  }
+}
+
 /** Report CLI commands that can render to terminal output or a PDF file. */
 final class CashFlowStatement extends CliBookQueryReportCommand<CashFlowStatementQuery> {
   CashFlowStatement(BookAccess bookAccess, CashFlowStatementQuery query, CliReportOutput output) {
@@ -136,7 +261,10 @@ final class CashFlowStatement extends CliBookQueryReportCommand<CashFlowStatemen
       BookAccess bookAccess,
       CashFlowStatementQuery query,
       CliReportOutput output) {
-    return executionContext.report().runCashFlowStatementCommand(bookAccess, query, output);
+    return executionContext
+        .report()
+        .runConfiguredReportCommand(
+            bookAccess, query, output, executionContext.report().handlers().cashFlowStatement());
   }
 }
 
@@ -152,7 +280,10 @@ final class ChangesInEquity extends CliBookQueryReportCommand<ChangesInEquityQue
       BookAccess bookAccess,
       ChangesInEquityQuery query,
       CliReportOutput output) {
-    return executionContext.report().runChangesInEquityCommand(bookAccess, query, output);
+    return executionContext
+        .report()
+        .runConfiguredReportCommand(
+            bookAccess, query, output, executionContext.report().handlers().changesInEquity());
   }
 }
 
@@ -168,6 +299,9 @@ final class TaxObligation extends CliBookQueryReportCommand<TaxObligationQuery> 
       BookAccess bookAccess,
       TaxObligationQuery query,
       CliReportOutput output) {
-    return executionContext.report().runTaxObligationCommand(bookAccess, query, output);
+    return executionContext
+        .report()
+        .runConfiguredReportCommand(
+            bookAccess, query, output, executionContext.report().handlers().taxObligation());
   }
 }

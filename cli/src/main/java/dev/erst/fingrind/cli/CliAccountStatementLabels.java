@@ -19,6 +19,7 @@ final class CliAccountStatementLabels {
           Map.ofEntries(
               Map.entry(FinancialPositionLineClassification.CURRENT_ASSET, "Current asset"),
               Map.entry(FinancialPositionLineClassification.INVENTORY, "Inventory"),
+              Map.entry(FinancialPositionLineClassification.PREPAID_EXPENSE, "Prepaid expense"),
               Map.entry(FinancialPositionLineClassification.NONCURRENT_ASSET, "Non-current asset"),
               Map.entry(FinancialPositionLineClassification.TRADE_RECEIVABLE, "Trade receivable"),
               Map.entry(FinancialPositionLineClassification.CURRENT_LIABILITY, "Current liability"),
@@ -26,6 +27,8 @@ final class CliAccountStatementLabels {
                   FinancialPositionLineClassification.NONCURRENT_LIABILITY,
                   "Non-current liability"),
               Map.entry(FinancialPositionLineClassification.TRADE_PAYABLE, "Trade payable"),
+              Map.entry(FinancialPositionLineClassification.DEFERRED_REVENUE, "Deferred revenue"),
+              Map.entry(FinancialPositionLineClassification.ACCRUED_EXPENSE, "Accrued expense"),
               Map.entry(
                   FinancialPositionLineClassification.EQUITY_CONTRIBUTION, "Contributed capital"),
               Map.entry(FinancialPositionLineClassification.EQUITY_WITHDRAWAL, "Distributions"),

@@ -130,6 +130,28 @@ function Test-FinGrindCliWrapperRuntimeFreshness {
     return $true
 }
 
+function Test-FinGrindCliWrapperRawJar {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RawJar,
+
+        [Parameter(Mandatory = $true)]
+        [pscustomobject]$RuntimeManifest
+    )
+
+    if (-not (Test-Path -LiteralPath $RawJar -PathType Leaf)) {
+        return $false
+    }
+    $javaBinDirectory = Split-Path -Parent $RuntimeManifest.JavaExecutable
+    $javaExtension = [System.IO.Path]::GetExtension($RuntimeManifest.JavaExecutable)
+    $jarExecutable = Join-Path $javaBinDirectory ("jar" + $javaExtension)
+    if (-not (Test-Path -LiteralPath $jarExecutable -PathType Leaf)) {
+        return $false
+    }
+    & $jarExecutable "--list" "--file" $RawJar *> $null
+    return $LASTEXITCODE -eq 0
+}
+
 function Invoke-FinGrindCliWrapperRefreshLock {
     param(
         [Parameter(Mandatory = $true)]
@@ -191,7 +213,9 @@ function Invoke-FinGrindEnsureCliWrapperRuntime {
                     -ManifestPath $Context.SourceCheckoutRuntimeManifest `
                     -RuntimeInputPaths $runtimeManifest.RuntimeInputPaths
             ) {
-                return $runtimeManifest
+                if (Test-FinGrindCliWrapperRawJar -RawJar $Context.RawJar -RuntimeManifest $runtimeManifest) {
+                    return $runtimeManifest
+                }
             }
             $forceRerun = $true
         }
@@ -218,7 +242,9 @@ function Invoke-FinGrindEnsureCliWrapperRuntime {
                         -ManifestPath $Context.SourceCheckoutRuntimeManifest `
                         -RuntimeInputPaths $runtimeManifest.RuntimeInputPaths
                 ) {
-                    return
+                    if (Test-FinGrindCliWrapperRawJar -RawJar $Context.RawJar -RuntimeManifest $runtimeManifest) {
+                        return
+                    }
                 }
                 $forceRerun = $true
             }
@@ -240,20 +266,21 @@ function Invoke-FinGrindEnsureCliWrapperRuntime {
         }
     }
 
-    if (-not (Test-Path -LiteralPath $Context.RawJar -PathType Leaf)) {
+    $runtimeManifest = Read-FinGrindSourceCheckoutRuntimeManifest `
+        -ManifestPath $Context.SourceCheckoutRuntimeManifest `
+        -MissingMessage $RuntimeManifestMissingMessage `
+        -StaleMessage $RuntimeManifestStaleMessage
+    if (-not (Test-FinGrindCliWrapperRawJar -RawJar $Context.RawJar -RuntimeManifest $runtimeManifest)) {
         $gradleCommandHint =
             if (Get-FinGrindIsWindowsHost) {
                 ".\\gradlew.bat"
             } else {
                 "./gradlew"
             }
-        throw "missing $ArtifactLabel at $($Context.RawJar); run $gradleCommandHint $($GradleTasks -join ' ')"
+        throw "missing or invalid $ArtifactLabel at $($Context.RawJar); run $gradleCommandHint $($GradleTasks -join ' ')"
     }
 
-    return Read-FinGrindSourceCheckoutRuntimeManifest `
-        -ManifestPath $Context.SourceCheckoutRuntimeManifest `
-        -MissingMessage $RuntimeManifestMissingMessage `
-        -StaleMessage $RuntimeManifestStaleMessage
+    return $runtimeManifest
 }
 
 function Invoke-FinGrindCliWrapper {
@@ -267,6 +294,9 @@ function Invoke-FinGrindCliWrapper {
         [Parameter(Mandatory = $true)]
         [string]$RuntimeDistribution,
 
+        [Parameter(Mandatory = $true)]
+        [string]$InvocationLabel,
+
         [Parameter()]
         [string[]]$Arguments = @()
     )
@@ -276,6 +306,7 @@ function Invoke-FinGrindCliWrapper {
         "--add-opens=java.base/java.nio=$($RuntimeManifest.NativeAccessModule)" `
         "--add-exports=java.base/sun.nio=$($RuntimeManifest.NativeAccessModule)" `
         "-Dfingrind.runtime.distribution=$RuntimeDistribution" `
+        "-Ddev.erst.fingrind.invocation=$InvocationLabel" `
         "-Dfingrind.source-checkout.root=$($Context.RepoRoot)" `
         "-Dfingrind.source-checkout.build-root=$($Context.RootBuildDir)" `
         --module-path $Context.RawJar `

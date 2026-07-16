@@ -1,6 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.core.BookIdentity;
@@ -34,21 +33,10 @@ final class SqliteStoreMutationOperations {
 
   private final SqliteStoreContext context;
   private final SqliteStoreLifecycle lifecycle;
-  private final SqliteRekeyService rekeyService;
   private final PostingAcceptancePolicy postingAcceptancePolicy;
   private final SqliteStoreAdministrationMutationOperations administrationOperations;
+  private final SqliteStoreAccountRegistryMutationOperations accountRegistryOperations;
   private final SqliteClosingMutationOperations closingOperations;
-
-  SqliteStoreMutationOperations(SqliteStoreContext context, SqliteStoreLifecycle lifecycle) {
-    this(context, lifecycle, SqliteCommitFaultHook.NONE, PostingAcceptancePolicy.currentKernel());
-  }
-
-  SqliteStoreMutationOperations(
-      SqliteStoreContext context,
-      SqliteStoreLifecycle lifecycle,
-      SqliteCommitFaultHook commitFaultHook) {
-    this(context, lifecycle, commitFaultHook, PostingAcceptancePolicy.currentKernel());
-  }
 
   SqliteStoreMutationOperations(
       SqliteStoreContext context,
@@ -57,11 +45,12 @@ final class SqliteStoreMutationOperations {
       PostingAcceptancePolicy postingAcceptancePolicy) {
     this.context = Objects.requireNonNull(context, "context");
     this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
-    this.rekeyService = new SqliteRekeyService(context, lifecycle);
     this.postingAcceptancePolicy =
         Objects.requireNonNull(postingAcceptancePolicy, "postingAcceptancePolicy");
     this.administrationOperations =
         new SqliteStoreAdministrationMutationOperations(context, lifecycle);
+    this.accountRegistryOperations =
+        new SqliteStoreAccountRegistryMutationOperations(context, lifecycle);
     this.closingOperations =
         new SqliteClosingMutationOperations(
             context,
@@ -79,7 +68,17 @@ final class SqliteStoreMutationOperations {
 
   dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome declareAccount(
       dev.erst.fingrind.executor.bookkeeping.AccountDeclaration declaration, Instant declaredAt) {
-    return administrationOperations.declareAccount(declaration, declaredAt);
+    return accountRegistryOperations.declareAccount(declaration, declaredAt);
+  }
+
+  dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome amendAccount(
+      dev.erst.fingrind.executor.bookkeeping.AccountDeclaration amendment, Instant amendedAt) {
+    return accountRegistryOperations.amendAccount(amendment, amendedAt);
+  }
+
+  dev.erst.fingrind.executor.bookkeeping.AccountRetirementOutcome retireAccount(
+      dev.erst.fingrind.core.AccountCode accountCode, Instant retiredAt) {
+    return accountRegistryOperations.retireAccount(accountCode, retiredAt);
   }
 
   DeclareTaxRegistrationResult declareTaxRegistration(
@@ -178,10 +177,6 @@ final class SqliteStoreMutationOperations {
       PostingIdGenerator postingIdGenerator) {
     return closingOperations.fiscalYearClose(
         reportingPeriod, bookIdentity, planner, currentUtcDate, closedAt, postingIdGenerator);
-  }
-
-  RekeyBookResult rekeyBook(SqliteBookPassphrase replacementPassphrase, Instant rekeyedAt) {
-    return rekeyService.rekeyBook(replacementPassphrase, rekeyedAt);
   }
 
   private <T> T withBorrowedDatabase(BorrowedDatabaseAction<T> action) {

@@ -10,7 +10,9 @@ final class RequestSurfaceTemporalContracts {
     return List.of(
         new RequestSurfaceFacts.TemporalScopeFacts(
             TemporalScopeArchetype.RANGED_FILTER,
-            List.of(ProtocolOptions.EFFECTIVE_DATE_FROM, ProtocolOptions.EFFECTIVE_DATE_TO),
+            List.of(
+                ProtocolOptions.DateRange.EFFECTIVE_DATE_FROM,
+                ProtocolOptions.DateRange.EFFECTIVE_DATE_TO),
             "Effective date range",
             "Effective date from",
             "Effective date to",
@@ -22,7 +24,7 @@ final class RequestSurfaceTemporalContracts {
             "no-postings"),
         new RequestSurfaceFacts.TemporalScopeFacts(
             TemporalScopeArchetype.BOUNDED_PERIOD,
-            List.of(ProtocolOptions.PERIOD_START, ProtocolOptions.PERIOD_END),
+            List.of(ProtocolOptions.DateRange.PERIOD_START, ProtocolOptions.DateRange.PERIOD_END),
             "Reporting period",
             "Period start",
             "Period end",
@@ -34,7 +36,7 @@ final class RequestSurfaceTemporalContracts {
             "selected-date"),
         new RequestSurfaceFacts.TemporalScopeFacts(
             TemporalScopeArchetype.THROUGH_DATE,
-            List.of(ProtocolOptions.THROUGH),
+            List.of(ProtocolOptions.DateRange.THROUGH),
             "Reporting period",
             "Derived period start",
             "Through date",
@@ -46,7 +48,7 @@ final class RequestSurfaceTemporalContracts {
             "selected-date"),
         new RequestSurfaceFacts.TemporalScopeFacts(
             TemporalScopeArchetype.FISCAL_YEAR_LABEL,
-            List.of(ProtocolOptions.YEAR),
+            List.of(ProtocolOptions.DateRange.YEAR),
             "Reporting period",
             "Fiscal year start",
             "Fiscal year end",
@@ -58,7 +60,7 @@ final class RequestSurfaceTemporalContracts {
             "selected-fiscal-year-label"),
         new RequestSurfaceFacts.TemporalScopeFacts(
             TemporalScopeArchetype.AS_OF_DATE,
-            List.of(ProtocolOptions.EFFECTIVE_DATE_AS_OF),
+            List.of(ProtocolOptions.DateRange.EFFECTIVE_DATE_AS_OF),
             "As of",
             "As of",
             "As of",
@@ -70,7 +72,7 @@ final class RequestSurfaceTemporalContracts {
             "no-postings"),
         new RequestSurfaceFacts.TemporalScopeFacts(
             TemporalScopeArchetype.INVENTORY_AS_OF_DATE,
-            List.of(ProtocolOptions.AS_OF),
+            List.of(ProtocolOptions.DateRange.AS_OF),
             "Inventory valuation as of",
             "As of",
             "As of",
@@ -79,7 +81,19 @@ final class RequestSurfaceTemporalContracts {
             "book-start",
             "current-inventory-ledger-horizon",
             "latest-inventory-movement-effective-date",
-            "no-inventory-movements"));
+            "no-inventory-movements"),
+        new RequestSurfaceFacts.TemporalScopeFacts(
+            TemporalScopeArchetype.ACCRUAL_CUTOFF_AS_OF_DATE,
+            List.of(ProtocolOptions.DateRange.AS_OF),
+            "Accrual cut-offs as of",
+            "As of",
+            "As of",
+            "Point-in-time effective-date cutoff for durable accrual cut-off aggregates. Supply --as-of to pin the cutoff explicitly, or omit it to include every durable cut-off lifecycle fact in the selected book.",
+            "selected-date",
+            "book-start",
+            "current-accrual-cut-off-horizon",
+            "latest-accrual-cut-off-application-effective-date",
+            "no-accrual-cut-offs"));
   }
 
   static List<RequestSurfaceFacts.CommandTemporalScopeFacts> commandTemporalScopes() {
@@ -109,6 +123,8 @@ final class RequestSurfaceTemporalContracts {
         new RequestSurfaceFacts.CommandTemporalScopeFacts(
             OperationId.FINANCIAL_POSITION, TemporalScopeArchetype.AS_OF_DATE),
         new RequestSurfaceFacts.CommandTemporalScopeFacts(
-            OperationId.INVENTORY_VALUATION, TemporalScopeArchetype.INVENTORY_AS_OF_DATE));
+            OperationId.INVENTORY_VALUATION, TemporalScopeArchetype.INVENTORY_AS_OF_DATE),
+        new RequestSurfaceFacts.CommandTemporalScopeFacts(
+            OperationId.ACCRUAL_CUTOFF_SCHEDULE, TemporalScopeArchetype.ACCRUAL_CUTOFF_AS_OF_DATE));
   }
 }

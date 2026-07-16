@@ -7,8 +7,8 @@
   "reviewedRoleName": "cli-recording-workflow-test-support",
   "budgetVarianceReason": "The recording workflow support owner exceeds the default test-suite budget until bookkeeping, maintenance, and reporting capture families are split further.",
   "approval": {
-    "physicalLines": 303,
-    "logicalLines": 260,
+    "physicalLines": 306,
+    "logicalLines": 263,
     "importLikeLines": 22,
     "nestedTypes": 0,
     "functions": 40,

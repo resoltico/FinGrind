@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor.maintenance;
 
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
+import dev.erst.fingrind.contract.runtime.ContractFailurePaths;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
@@ -10,7 +11,8 @@ public record MaintenanceFailure(
     ContractErrors.Descriptor descriptor,
     String message,
     @Nullable String hint,
-    @Nullable String argument) {
+    @Nullable String argument,
+    @Nullable ContractFailurePaths paths) {
   public MaintenanceFailure {
     Objects.requireNonNull(descriptor, "descriptor");
     Objects.requireNonNull(message, "message");
@@ -20,11 +22,15 @@ public record MaintenanceFailure(
   public static MaintenanceFailure fromContractFailure(ContractFailure failure) {
     Objects.requireNonNull(failure, "failure");
     return new MaintenanceFailure(
-        failure.descriptor(), failure.message(), failure.hint(), failure.argument());
+        failure.descriptor(),
+        failure.message(),
+        failure.hint(),
+        failure.argument(),
+        failure.paths());
   }
 
   /** Projects this local maintenance failure back into the published contract failure shape. */
   public ContractFailure toContractFailure() {
-    return new ContractFailure(descriptor, message, hint, argument);
+    return new ContractFailure(descriptor, message, hint, argument, paths);
   }
 }

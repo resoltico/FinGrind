@@ -10,13 +10,13 @@ final class ProtocolCatalogFacts {
       new BookModelFacts(
           "one SQLite file equals one book",
           "one book belongs to one accounting entity",
-          ProtocolOptions.BOOK_FILE + " may point anywhere on the OS filesystem",
+          ProtocolBookAccessOptions.BOOK_FILE + " may point anywhere on the OS filesystem",
           "every book-bound command requires exactly one explicit passphrase source via "
-              + ProtocolOptions.BOOK_KEY_FILE
+              + ProtocolBookAccessOptions.BOOK_KEY_FILE
               + ", "
-              + ProtocolOptions.BOOK_PASSPHRASE_STDIN
+              + ProtocolBookAccessOptions.BOOK_PASSPHRASE_STDIN
               + ", or "
-              + ProtocolOptions.BOOK_PASSPHRASE_PROMPT,
+              + ProtocolBookAccessOptions.BOOK_PASSPHRASE_PROMPT,
           "books must be opened explicitly before any posting or account declaration",
           "every posting line must reference a declared active account",
           "single-functional-currency-per-book");

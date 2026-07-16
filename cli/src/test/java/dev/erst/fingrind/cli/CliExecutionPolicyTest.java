@@ -35,7 +35,7 @@ class CliExecutionPolicyTest {
   }
 
   @Test
-  void failureExitCode_prefersKnownContractDescriptorsAndFallsBackToRuntimeFailure() {
+  void failureExitCode_usesThePublishedErrorDescriptor() {
     assertEquals(
         5,
         CliExecutionPolicy.failureExitCode(
@@ -45,8 +45,9 @@ class CliExecutionPolicyTest {
                 null,
                 null)));
     assertEquals(
-        CliExecutionPolicy.runtimeFailureExitCode(),
-        CliExecutionPolicy.failureExitCode(new CliFailure("unknown-code", "boom", null, null)));
+        70,
+        CliExecutionPolicy.failureExitCode(
+            new CliFailure("internal-error", "Internal error.", null, null)));
     assertEquals(1, CliExecutionPolicy.invalidInvocationExitCode());
     assertFalse(
         CliExecutionPolicy.interactivePromptOutputFailure(

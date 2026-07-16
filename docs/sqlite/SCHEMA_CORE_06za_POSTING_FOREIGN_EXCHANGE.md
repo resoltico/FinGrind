@@ -17,7 +17,6 @@ create table if not exists posting_foreign_exchange (
     treatment_kind text not null check (
         treatment_kind in (
             'SPOT_TRANSACTION',
-            'REALIZED_SETTLEMENT',
             'UNREALIZED_REMEASUREMENT'
         )
     ),
@@ -70,7 +69,7 @@ create table if not exists posting_foreign_exchange (
 create trigger if not exists posting_foreign_exchange_validate_origin_on_insert
 before insert on posting_foreign_exchange
 begin
-    select raise(fail, 'posting_foreign_exchange requires DIRECT_JOURNAL, SALE_SETTLED, SALE_ON_CREDIT, PURCHASE_SETTLED, PURCHASE_ON_CREDIT, INVENTORY_CAPITALIZATION_SETTLED, INVENTORY_CAPITALIZATION_ON_CREDIT, EXPENSE_SETTLED, EXPENSE_ON_CREDIT, OWNER_CONTRIBUTION, OWNER_WITHDRAWAL, or REVERSAL posting origin.')
+    select raise(fail, 'posting_foreign_exchange requires one foreign-exchange-capable posting origin.')
     where exists (
         select 1
         from posting_fact
@@ -88,6 +87,8 @@ begin
                 'EXPENSE_ON_CREDIT',
                 'OWNER_CONTRIBUTION',
                 'OWNER_WITHDRAWAL',
+                'FOREIGN_CURRENCY_OBLIGATION',
+                'REALIZED_FOREIGN_EXCHANGE_SETTLEMENT',
                 'REVERSAL'
             )
     );

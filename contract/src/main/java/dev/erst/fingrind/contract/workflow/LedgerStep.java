@@ -8,6 +8,7 @@ import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.core.PostingId;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -16,6 +17,7 @@ import org.jspecify.annotations.Nullable;
 public sealed interface LedgerStep
     permits LedgerStep.EnsureBook,
         LedgerStep.DeclareAccount,
+        LedgerStep.DeclareTaxRegistration,
         LedgerStep.PreflightEntry,
         LedgerStep.PostEntry,
         LedgerStep.InspectBook,
@@ -73,6 +75,21 @@ public sealed interface LedgerStep
     @Override
     public LedgerStepKind kind() {
       return LedgerStepKind.DECLARE_ACCOUNT;
+    }
+  }
+
+  /** Declares one tax registration inside the plan transaction. */
+  record DeclareTaxRegistration(LedgerStepId stepId, DeclareTaxRegistrationCommand command)
+      implements LedgerStep {
+    /** Validates the step. */
+    public DeclareTaxRegistration {
+      requireStepId(stepId);
+      Objects.requireNonNull(command, "command");
+    }
+
+    @Override
+    public LedgerStepKind kind() {
+      return LedgerStepKind.DECLARE_TAX_REGISTRATION;
     }
   }
 

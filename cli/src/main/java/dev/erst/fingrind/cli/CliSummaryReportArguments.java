@@ -22,55 +22,55 @@ final class CliSummaryReportArguments {
   private static final CliBookArgumentParser.CommandArgumentSpec TRIAL_BALANCE_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
-              ProtocolOptions.EFFECTIVE_DATE_AS_OF,
-              ProtocolOptions.COMPARATIVE,
-              ProtocolOptions.POSTING_COVERAGE,
-              ProtocolOptions.OUTPUT,
-              ProtocolOptions.PDF_OUT),
+              ProtocolOptions.DateRange.EFFECTIVE_DATE_AS_OF,
+              ProtocolOptions.ReportQuery.COMPARATIVE,
+              ProtocolOptions.ReportQuery.POSTING_COVERAGE,
+              ProtocolOptions.Presentation.OUTPUT,
+              ProtocolOptions.Presentation.PDF_OUT),
           List.of());
   private static final CliBookArgumentParser.CommandArgumentSpec PERIOD_SUMMARY_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
-              ProtocolOptions.PERIOD_START,
-              ProtocolOptions.PERIOD_END,
-              ProtocolOptions.POSTING_COVERAGE,
-              ProtocolOptions.OUTPUT,
-              ProtocolOptions.PDF_OUT),
+              ProtocolOptions.DateRange.PERIOD_START,
+              ProtocolOptions.DateRange.PERIOD_END,
+              ProtocolOptions.ReportQuery.POSTING_COVERAGE,
+              ProtocolOptions.Presentation.OUTPUT,
+              ProtocolOptions.Presentation.PDF_OUT),
           List.of());
   private static final CliBookArgumentParser.CommandArgumentSpec FINANCIAL_POSITION_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
-              ProtocolOptions.EFFECTIVE_DATE_AS_OF,
-              ProtocolOptions.COMPARATIVE,
-              ProtocolOptions.OUTPUT,
-              ProtocolOptions.PDF_OUT),
+              ProtocolOptions.DateRange.EFFECTIVE_DATE_AS_OF,
+              ProtocolOptions.ReportQuery.COMPARATIVE,
+              ProtocolOptions.Presentation.OUTPUT,
+              ProtocolOptions.Presentation.PDF_OUT),
           List.of());
   private static final CliBookArgumentParser.CommandArgumentSpec INCOME_STATEMENT_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
-              ProtocolOptions.PERIOD_START,
-              ProtocolOptions.PERIOD_END,
-              ProtocolOptions.COMPARATIVE,
-              ProtocolOptions.OUTPUT,
-              ProtocolOptions.PDF_OUT),
+              ProtocolOptions.DateRange.PERIOD_START,
+              ProtocolOptions.DateRange.PERIOD_END,
+              ProtocolOptions.ReportQuery.COMPARATIVE,
+              ProtocolOptions.Presentation.OUTPUT,
+              ProtocolOptions.Presentation.PDF_OUT),
           List.of());
   private static final CliBookArgumentParser.CommandArgumentSpec CHANGES_IN_EQUITY_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
-              ProtocolOptions.PERIOD_START,
-              ProtocolOptions.PERIOD_END,
-              ProtocolOptions.COMPARATIVE,
-              ProtocolOptions.OUTPUT,
-              ProtocolOptions.PDF_OUT),
+              ProtocolOptions.DateRange.PERIOD_START,
+              ProtocolOptions.DateRange.PERIOD_END,
+              ProtocolOptions.ReportQuery.COMPARATIVE,
+              ProtocolOptions.Presentation.OUTPUT,
+              ProtocolOptions.Presentation.PDF_OUT),
           List.of());
   private static final CliBookArgumentParser.CommandArgumentSpec CASH_FLOW_STATEMENT_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
-              ProtocolOptions.PERIOD_START,
-              ProtocolOptions.PERIOD_END,
-              ProtocolOptions.COMPARATIVE,
-              ProtocolOptions.OUTPUT,
-              ProtocolOptions.PDF_OUT),
+              ProtocolOptions.DateRange.PERIOD_START,
+              ProtocolOptions.DateRange.PERIOD_END,
+              ProtocolOptions.ReportQuery.COMPARATIVE,
+              ProtocolOptions.Presentation.OUTPUT,
+              ProtocolOptions.Presentation.PDF_OUT),
           List.of());
 
   private CliSummaryReportArguments() {}
@@ -86,26 +86,26 @@ final class CliSummaryReportArguments {
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.EFFECTIVE_DATE_AS_OF.equals(argument)) {
+      if (ProtocolOptions.DateRange.EFFECTIVE_DATE_AS_OF.equals(argument)) {
         effectiveDateTo =
-            CliReportArguments.requireDateOption(
-                effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_AS_OF);
+            CliReportOptionArguments.requireDateOption(
+                effectiveDateTo, argumentIterator, ProtocolOptions.DateRange.EFFECTIVE_DATE_AS_OF);
         continue;
       }
-      if (ProtocolOptions.POSTING_COVERAGE.equals(argument)) {
+      if (ProtocolOptions.ReportQuery.POSTING_COVERAGE.equals(argument)) {
         postingCoverage = CliOptionModes.requirePostingCoverage(postingCoverage, argumentIterator);
         continue;
       }
-      if (ProtocolOptions.COMPARATIVE.equals(argument)) {
+      if (ProtocolOptions.ReportQuery.COMPARATIVE.equals(argument)) {
         comparativeSelection =
-            CliReportArguments.requireComparativeSelection(
+            CliReportOptionArguments.requireComparativeSelection(
                 comparativeSelection,
                 argumentIterator,
-                CliReportArguments.ComparativeArgumentShape.AS_OF);
+                CliReportOptionArguments.ComparativeArgumentShape.AS_OF);
         continue;
       }
-      if (ProtocolOptions.OUTPUT.equals(argument)) {
-        outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
+      if (ProtocolOptions.Presentation.OUTPUT.equals(argument)) {
+        outputMode = CliReportOptionArguments.requireReportOutputMode(outputMode, argumentIterator);
         continue;
       }
       pdfOutPath = CliOptionModes.requirePdfOutPath(pdfOutPath, argumentIterator);
@@ -118,7 +118,7 @@ final class CliSummaryReportArguments {
     return new TrialBalance(
         parsedArguments.bookAccess(),
         CliArgumentValueParser.requireValidArgument(
-            ProtocolOptions.EFFECTIVE_DATE_AS_OF,
+            ProtocolOptions.DateRange.EFFECTIVE_DATE_AS_OF,
             () ->
                 new TrialBalanceQuery(
                     Optional.ofNullable(resolvedEffectiveDateTo),
@@ -138,36 +138,37 @@ final class CliSummaryReportArguments {
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.PERIOD_START.equals(argument)) {
+      if (ProtocolOptions.DateRange.PERIOD_START.equals(argument)) {
         effectiveDateFrom =
-            CliReportArguments.requireDateOption(
-                effectiveDateFrom, argumentIterator, ProtocolOptions.PERIOD_START);
+            CliReportOptionArguments.requireDateOption(
+                effectiveDateFrom, argumentIterator, ProtocolOptions.DateRange.PERIOD_START);
         continue;
       }
-      if (ProtocolOptions.PERIOD_END.equals(argument)) {
+      if (ProtocolOptions.DateRange.PERIOD_END.equals(argument)) {
         effectiveDateTo =
-            CliReportArguments.requireDateOption(
-                effectiveDateTo, argumentIterator, ProtocolOptions.PERIOD_END);
+            CliReportOptionArguments.requireDateOption(
+                effectiveDateTo, argumentIterator, ProtocolOptions.DateRange.PERIOD_END);
         continue;
       }
-      if (ProtocolOptions.POSTING_COVERAGE.equals(argument)) {
+      if (ProtocolOptions.ReportQuery.POSTING_COVERAGE.equals(argument)) {
         postingCoverage = CliOptionModes.requirePostingCoverage(postingCoverage, argumentIterator);
         continue;
       }
-      if (ProtocolOptions.OUTPUT.equals(argument)) {
-        outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
+      if (ProtocolOptions.Presentation.OUTPUT.equals(argument)) {
+        outputMode = CliReportOptionArguments.requireReportOutputMode(outputMode, argumentIterator);
         continue;
       }
       pdfOutPath = CliOptionModes.requirePdfOutPath(pdfOutPath, argumentIterator);
     }
     if (effectiveDateFrom == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.PERIOD_START,
-          "A " + ProtocolOptions.PERIOD_START + " argument is required.");
+          ProtocolOptions.DateRange.PERIOD_START,
+          "A " + ProtocolOptions.DateRange.PERIOD_START + " argument is required.");
     }
     if (effectiveDateTo == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.PERIOD_END, "A " + ProtocolOptions.PERIOD_END + " argument is required.");
+          ProtocolOptions.DateRange.PERIOD_END,
+          "A " + ProtocolOptions.DateRange.PERIOD_END + " argument is required.");
     }
     LocalDate requiredEffectiveDateFrom = effectiveDateFrom;
     LocalDate requiredEffectiveDateTo = effectiveDateTo;
@@ -176,8 +177,8 @@ final class CliSummaryReportArguments {
     CliArgumentValueParser.requireOrderedDateRange(
         requiredEffectiveDateFrom,
         requiredEffectiveDateTo,
-        ProtocolOptions.PERIOD_START,
-        ProtocolOptions.PERIOD_END);
+        ProtocolOptions.DateRange.PERIOD_START,
+        ProtocolOptions.DateRange.PERIOD_END);
     return new PeriodSummary(
         parsedArguments.bookAccess(),
         new PeriodSummaryQuery(
@@ -195,22 +196,22 @@ final class CliSummaryReportArguments {
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.EFFECTIVE_DATE_AS_OF.equals(argument)) {
+      if (ProtocolOptions.DateRange.EFFECTIVE_DATE_AS_OF.equals(argument)) {
         effectiveDateTo =
-            CliReportArguments.requireDateOption(
-                effectiveDateTo, argumentIterator, ProtocolOptions.EFFECTIVE_DATE_AS_OF);
+            CliReportOptionArguments.requireDateOption(
+                effectiveDateTo, argumentIterator, ProtocolOptions.DateRange.EFFECTIVE_DATE_AS_OF);
         continue;
       }
-      if (ProtocolOptions.COMPARATIVE.equals(argument)) {
+      if (ProtocolOptions.ReportQuery.COMPARATIVE.equals(argument)) {
         comparativeSelection =
-            CliReportArguments.requireComparativeSelection(
+            CliReportOptionArguments.requireComparativeSelection(
                 comparativeSelection,
                 argumentIterator,
-                CliReportArguments.ComparativeArgumentShape.AS_OF);
+                CliReportOptionArguments.ComparativeArgumentShape.AS_OF);
         continue;
       }
-      if (ProtocolOptions.OUTPUT.equals(argument)) {
-        outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
+      if (ProtocolOptions.Presentation.OUTPUT.equals(argument)) {
+        outputMode = CliReportOptionArguments.requireReportOutputMode(outputMode, argumentIterator);
         continue;
       }
       pdfOutPath = CliOptionModes.requirePdfOutPath(pdfOutPath, argumentIterator);
@@ -273,48 +274,49 @@ final class CliSummaryReportArguments {
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.PERIOD_START.equals(argument)) {
+      if (ProtocolOptions.DateRange.PERIOD_START.equals(argument)) {
         effectiveDateFrom =
-            CliReportArguments.requireDateOption(
-                effectiveDateFrom, argumentIterator, ProtocolOptions.PERIOD_START);
+            CliReportOptionArguments.requireDateOption(
+                effectiveDateFrom, argumentIterator, ProtocolOptions.DateRange.PERIOD_START);
         continue;
       }
-      if (ProtocolOptions.PERIOD_END.equals(argument)) {
+      if (ProtocolOptions.DateRange.PERIOD_END.equals(argument)) {
         effectiveDateTo =
-            CliReportArguments.requireDateOption(
-                effectiveDateTo, argumentIterator, ProtocolOptions.PERIOD_END);
+            CliReportOptionArguments.requireDateOption(
+                effectiveDateTo, argumentIterator, ProtocolOptions.DateRange.PERIOD_END);
         continue;
       }
-      if (ProtocolOptions.COMPARATIVE.equals(argument)) {
+      if (ProtocolOptions.ReportQuery.COMPARATIVE.equals(argument)) {
         comparativeSelection =
-            CliReportArguments.requireComparativeSelection(
+            CliReportOptionArguments.requireComparativeSelection(
                 comparativeSelection,
                 argumentIterator,
-                CliReportArguments.ComparativeArgumentShape.PERIOD);
+                CliReportOptionArguments.ComparativeArgumentShape.PERIOD);
         continue;
       }
-      if (ProtocolOptions.OUTPUT.equals(argument)) {
-        outputMode = CliReportArguments.requireReportOutputMode(outputMode, argumentIterator);
+      if (ProtocolOptions.Presentation.OUTPUT.equals(argument)) {
+        outputMode = CliReportOptionArguments.requireReportOutputMode(outputMode, argumentIterator);
         continue;
       }
       pdfOutPath = CliOptionModes.requirePdfOutPath(pdfOutPath, argumentIterator);
     }
     if (effectiveDateFrom == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.PERIOD_START,
-          "A " + ProtocolOptions.PERIOD_START + " argument is required.");
+          ProtocolOptions.DateRange.PERIOD_START,
+          "A " + ProtocolOptions.DateRange.PERIOD_START + " argument is required.");
     }
     if (effectiveDateTo == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.PERIOD_END, "A " + ProtocolOptions.PERIOD_END + " argument is required.");
+          ProtocolOptions.DateRange.PERIOD_END,
+          "A " + ProtocolOptions.DateRange.PERIOD_END + " argument is required.");
     }
     LocalDate requiredEffectiveDateFrom = effectiveDateFrom;
     LocalDate requiredEffectiveDateTo = effectiveDateTo;
     CliArgumentValueParser.requireOrderedDateRange(
         requiredEffectiveDateFrom,
         requiredEffectiveDateTo,
-        ProtocolOptions.PERIOD_START,
-        ProtocolOptions.PERIOD_END);
+        ProtocolOptions.DateRange.PERIOD_START,
+        ProtocolOptions.DateRange.PERIOD_END);
     CliReportOutput resolvedOutput = CliOptionModes.resolvedReportOutput(outputMode, pdfOutPath);
     ComparativeSelection resolvedComparativeSelection =
         comparativeSelection == null ? ComparativeSelection.none() : comparativeSelection;

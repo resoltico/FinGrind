@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
@@ -24,6 +25,9 @@ class BookAdministrationRejectionTest {
             "book-contains-schema",
             "account-type-conflict",
             "account-taxonomy-conflict",
+            "account-not-found",
+            "account-has-dependents",
+            "account-balance-not-zero",
             "parent-account-missing",
             "parent-account-inactive",
             "parent-account-type-conflict",
@@ -64,6 +68,16 @@ class BookAdministrationRejectionTest {
                         Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.RESULT_HOLDING),
                         Optional.empty()))),
+            BookAdministrationRejection.wireCode(
+                new AccountRegistryLifecycleRejection.AccountNotFound(
+                    new dev.erst.fingrind.core.AccountCode("1000"))),
+            BookAdministrationRejection.wireCode(
+                new AccountRegistryLifecycleRejection.AccountHasDependents(
+                    new dev.erst.fingrind.core.AccountCode("1000"),
+                    List.of(dev.erst.fingrind.core.AccountRegistryDependency.POSTINGS))),
+            BookAdministrationRejection.wireCode(
+                new AccountRegistryLifecycleRejection.AccountBalanceNotZero(
+                    new dev.erst.fingrind.core.AccountCode("1000"))),
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.ParentAccountMissing(
                     new dev.erst.fingrind.core.AccountCode("1100"),
@@ -148,6 +162,9 @@ class BookAdministrationRejectionTest {
             "book-contains-schema",
             "account-type-conflict",
             "account-taxonomy-conflict",
+            "account-not-found",
+            "account-has-dependents",
+            "account-balance-not-zero",
             "parent-account-missing",
             "parent-account-inactive",
             "parent-account-type-conflict",

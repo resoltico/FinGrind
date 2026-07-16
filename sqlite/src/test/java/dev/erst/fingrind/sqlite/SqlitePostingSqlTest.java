@@ -15,6 +15,7 @@ import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCursor;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
@@ -101,25 +102,61 @@ class SqlitePostingSqlTest {
                 Optional.of(LocalDate.parse("2026-04-30"))));
     String unboundedLedger =
         SqlitePostingSql.listPostingsForAccountLedger(
-            AccountLedgerCriteria.unbounded(new AccountCode("1000")));
+            SqliteStoreTestIntrospectionSupport.accountLedgerCriteria(
+                new AccountCode("1000"), null, null));
     String nonClosingLedger =
         SqlitePostingSql.listPostingsForAccountLedger(
-            AccountLedgerCriteria.unbounded(
-                new AccountCode("1000"), PostingCoverage.NON_CLOSING_POSTINGS));
+            new AccountLedgerCriteria(
+                new AccountCode("1000"),
+                EffectiveDateRange.unbounded(),
+                PostingCoverage.NON_CLOSING_POSTINGS,
+                50,
+                Optional.empty()));
     String lowerBoundLedger =
         SqlitePostingSql.listPostingsForAccountLedger(
             new AccountLedgerCriteria(
-                new AccountCode("1000"), LocalDate.parse("2026-04-01"), null));
+                new AccountCode("1000"),
+                EffectiveDateRange.of(LocalDate.parse("2026-04-01"), null),
+                PostingCoverage.ALL_POSTING_KINDS,
+                50,
+                Optional.empty()));
     String upperBoundLedger =
         SqlitePostingSql.listPostingsForAccountLedger(
             new AccountLedgerCriteria(
-                new AccountCode("1000"), null, LocalDate.parse("2026-04-30")));
+                new AccountCode("1000"),
+                EffectiveDateRange.of(null, LocalDate.parse("2026-04-30")),
+                PostingCoverage.ALL_POSTING_KINDS,
+                50,
+                Optional.empty()));
     String boundedLedger =
         SqlitePostingSql.listPostingsForAccountLedger(
             new AccountLedgerCriteria(
                 new AccountCode("1000"),
-                LocalDate.parse("2026-04-01"),
-                LocalDate.parse("2026-04-30")));
+                EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+                PostingCoverage.ALL_POSTING_KINDS,
+                50,
+                Optional.empty()));
+    AccountLedgerCriteria cursorCriteria =
+        new AccountLedgerCriteria(
+            new AccountCode("1000"),
+            EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS,
+            50,
+            Optional.of(
+                new AccountLedgerCursor(
+                    LocalDate.parse("2026-04-15"),
+                    Instant.parse("2026-04-15T12:00:00Z"),
+                    new PostingId("posting-1"))));
+    String cursorLedger = SqlitePostingSql.listPostingsForAccountLedger(cursorCriteria);
+    String priorBalanceLedger = SqlitePostingSql.loadAccountLedgerPriorBalances(cursorCriteria);
+    String unboundedNonClosingPriorBalanceLedger =
+        SqlitePostingSql.loadAccountLedgerPriorBalances(
+            new AccountLedgerCriteria(
+                new AccountCode("1000"),
+                EffectiveDateRange.unbounded(),
+                PostingCoverage.NON_CLOSING_POSTINGS,
+                50,
+                cursorCriteria.cursor()));
 
     assertFalse(unfilteredTrialBalance.contains("posting_fact.effective_date <= ?"));
     assertTrue(filteredTrialBalance.contains(" and posting_fact.effective_date <= ?"));
@@ -135,6 +172,23 @@ class SqlitePostingSqlTest {
     assertTrue(upperBoundLedger.contains(" and effective_date <= ?"));
     assertTrue(boundedLedger.contains(" and effective_date >= ?"));
     assertTrue(boundedLedger.contains(" and effective_date <= ?"));
+    assertTrue(cursorLedger.contains("effective_date > ?"));
+    assertTrue(cursorLedger.contains("order by effective_date, recorded_at, posting_id limit ?"));
+    assertTrue(priorBalanceLedger.contains("effective_date < ?"));
+    assertTrue(priorBalanceLedger.contains("group by journal_line.currency_code"));
+    assertTrue(unboundedNonClosingPriorBalanceLedger.contains(NON_CLOSING_POSTING_KIND_FILTER));
+    assertFalse(unboundedNonClosingPriorBalanceLedger.contains("effective_date >= ?"));
+    assertFalse(unboundedNonClosingPriorBalanceLedger.contains("effective_date <= ?"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            SqlitePostingSql.loadAccountLedgerPriorBalances(
+                new AccountLedgerCriteria(
+                    new AccountCode("1000"),
+                    EffectiveDateRange.unbounded(),
+                    PostingCoverage.ALL_POSTING_KINDS,
+                    50,
+                    Optional.empty())));
   }
 
   @Test

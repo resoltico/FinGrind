@@ -113,7 +113,15 @@ public sealed interface TaxQueryRejection
     }
 
     private ContractResponse.RejectionDescriptor descriptor() {
-      return ContractRejectionDescriptors.descriptor(code, description, detailFields());
+      return ContractRejectionDescriptors.descriptor(code, category(), description, detailFields());
+    }
+
+    private ContractResponse.FailureCategory category() {
+      return switch (this) {
+        case BOOK_NOT_INITIALIZED -> ContractResponse.FailureCategory.PRECONDITION;
+        case UNKNOWN_TAX_REGISTRATION, OBLIGATION_PERIOD_MISMATCH ->
+            ContractResponse.FailureCategory.DOMAIN_SEMANTIC;
+      };
     }
 
     abstract List<ContractResponse.FieldDescriptor> detailFields();

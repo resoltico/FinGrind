@@ -1,7 +1,5 @@
 """Canonical schema-doc section ownership for the SQLite schema renderer."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 
@@ -169,64 +167,60 @@ SECTIONS = [
         domain="SQLITE_SCHEMA_CORE_AUDIT_EVENTS",
     ),
     SchemaSection(
+        key="accrual-cutoff",
+        file_name="SCHEMA_CORE_13z_ACCRUAL_CUTOFF.md",
+        title="SQLite Schema: Accrual Cut-off Aggregate",
+        purpose="Durable origins for accrual-basis prepayments, deferred revenue, and accrued expenses.",
+        coverage="`accrual_cutoff` and origin-account and origin-posting validation triggers.",
+        domain="SQLITE_SCHEMA_CORE_ACCRUAL_CUTOFF",
+    ),
+    SchemaSection(
+        key="accrual-cutoff-applications",
+        file_name="SCHEMA_CORE_13za_ACCRUAL_CUTOFF_APPLICATIONS.md",
+        title="SQLite Schema: Accrual Cut-off Applications",
+        purpose="Append-only recognition, settlement, and compensating-reversal facts for accrual cut-offs.",
+        coverage="`accrual_cutoff_application`, lifecycle application validation, and accrual-cut-off append-only triggers.",
+        domain="SQLITE_SCHEMA_CORE_ACCRUAL_CUTOFF_APPLICATIONS",
+    ),
+    SchemaSection(
+        key="fixed-assets",
+        file_name="SCHEMA_CORE_13zb_FIXED_ASSETS.md",
+        title="SQLite Schema: Fixed-Asset Lifecycle",
+        purpose="Immutable fixed-asset capitalizations plus depreciation and disposal applications.",
+        coverage="`fixed_asset`, `fixed_asset_application`, compensating reversal links, and lifecycle validation/append-only triggers.",
+        domain="SQLITE_SCHEMA_CORE_FIXED_ASSETS",
+    ),
+    SchemaSection(
+        key="financing",
+        file_name="SCHEMA_CORE_13zc_FINANCING.md",
+        title="SQLite Schema: Financing Lifecycle",
+        purpose="Immutable borrowing arrangements plus principal and interest applications.",
+        coverage="`financing_arrangement`, `financing_application`, compensating reversal links, and lifecycle validation/append-only triggers.",
+        domain="SQLITE_SCHEMA_CORE_FINANCING",
+    ),
+    SchemaSection(
+        key="realized-foreign-exchange",
+        file_name="SCHEMA_CORE_13zd_REALIZED_FOREIGN_EXCHANGE.md",
+        title="SQLite Schema: Realized Foreign-Exchange Settlement",
+        purpose="Foreign-currency receivable obligations and their one-time realized-settlement facts.",
+        coverage="`foreign_currency_obligation`, `foreign_currency_obligation_settlement`, compensating reversal links, and lifecycle validation/append-only triggers.",
+        domain="SQLITE_SCHEMA_CORE_REALIZED_FOREIGN_EXCHANGE",
+    ),
+    SchemaSection(
+        key="latvian-payroll",
+        file_name="SCHEMA_CORE_13ze_LATVIAN_PAYROLL.md",
+        title="SQLite Schema: Latvian Payroll Lifecycle",
+        purpose="Immutable Latvian monthly-payroll runs, obligation settlements, and compensating reversals.",
+        coverage="`latvian_payroll_run`, `latvian_payroll_settlement`, their reversal links, and lifecycle validation/append-only triggers.",
+        domain="SQLITE_SCHEMA_CORE_LATVIAN_PAYROLL",
+    ),
+    SchemaSection(
         key="indexes-and-immutability",
         file_name="SCHEMA_CORE_14_INDEXES_AND_IMMUTABILITY.md",
         title="SQLite Schema: Indexes And Immutability",
         purpose="Lookup indexes plus append-only triggers for durable rows that never mutate in place.",
-        coverage="All durable indexes and append-only reject-update/reject-delete triggers.",
+        coverage="Schema-tail lookup indexes and append-only reject-update/reject-delete triggers.",
         domain="SQLITE_SCHEMA_CORE_INDEXES_AND_IMMUTABILITY",
     ),
 ]
 SECTION_BY_KEY = {section.key: section for section in SECTIONS}
-
-TABLE_SECTION_BY_NAME = {
-    "book_meta": "foundation",
-    "book_identity": "foundation",
-    "account": "account-table",
-    "tax_registration": "tax-registration",
-    "tax_registration_code": "tax-registration",
-    "posting_fact": "posting-fact",
-    "posting_source_document": "posting-source-document",
-    "posting_approval": "posting-approval",
-    "posting_foreign_exchange": "posting-foreign-exchange",
-    "posting_applied_tax": "posting-applied-tax",
-    "journal_line": "journal-lines",
-    "inventory_movement": "inventory-movement",
-    "inventory_on_hand": "inventory-on-hand",
-    "interim_result_sweep": "interim-result-sweep-core",
-    "interim_result_sweep_total": "interim-result-sweep-links",
-    "interim_result_sweep_posting": "interim-result-sweep-links",
-    "fiscal_year_close": "fiscal-year-close-table",
-    "fiscal_year_close_posting": "fiscal-year-close-links",
-    "audit_event": "audit-events",
-}
-
-TRIGGER_SECTION_BY_PREFIX = (
-    ("account_validate_", "account-rules"),
-    ("account_reject_", "account-rules"),
-    ("tax_registration_validate_", "tax-registration"),
-    ("tax_registration_reject_", "tax-registration"),
-    ("posting_fact_validate_", "posting-fact-admission"),
-    ("posting_fact_reject_", "indexes-and-immutability"),
-    ("posting_foreign_exchange_validate_", "posting-foreign-exchange"),
-    ("posting_foreign_exchange_reject_", "posting-foreign-exchange"),
-    ("posting_applied_tax_validate_", "posting-applied-tax"),
-    ("posting_applied_tax_reject_", "posting-applied-tax"),
-    ("journal_line_validate_", "journal-lines"),
-    ("journal_line_reject_", "indexes-and-immutability"),
-    ("inventory_movement_validate_", "inventory-movement"),
-    ("inventory_movement_reject_", "indexes-and-immutability"),
-    ("inventory_on_hand_validate_", "inventory-on-hand"),
-    ("book_identity_reject_", "indexes-and-immutability"),
-    ("interim_result_sweep_validate_", "interim-result-sweep-core"),
-    ("interim_result_sweep_reject_", "indexes-and-immutability"),
-    ("interim_result_sweep_total_reject_", "indexes-and-immutability"),
-    ("interim_result_sweep_posting_validate_", "interim-result-sweep-links"),
-    ("interim_result_sweep_posting_reject_", "indexes-and-immutability"),
-    ("fiscal_year_close_validate_", "fiscal-year-close-target-rules"),
-    ("fiscal_year_close_reject_", "indexes-and-immutability"),
-    ("fiscal_year_close_posting_validate_", "fiscal-year-close-links"),
-    ("fiscal_year_close_posting_reject_", "indexes-and-immutability"),
-    ("audit_event_validate_", "audit-events"),
-    ("audit_event_reject_", "indexes-and-immutability"),
-)

@@ -1,8 +1,10 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.AmendAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.RetireAccountCommand;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
@@ -53,6 +55,24 @@ final class CliRequestReader {
         CliPostingRequestParser::readDeclareAccountCommand);
   }
 
+  /** Reads one account-amendment request from a JSON file or standard input. */
+  AmendAccountCommand readAmendAccountCommand(Path requestFile) {
+    return parseRequest(
+        requestFile,
+        CliJsonRequestHints.amendAccountRequestHint(),
+        OperationId.AMEND_ACCOUNT,
+        CliPostingRequestParser::readAmendAccountCommand);
+  }
+
+  /** Reads one account-retirement request from a JSON file or standard input. */
+  RetireAccountCommand readRetireAccountCommand(Path requestFile) {
+    return parseRequest(
+        requestFile,
+        CliJsonRequestHints.retireAccountRequestHint(),
+        OperationId.RETIRE_ACCOUNT,
+        CliPostingRequestParser::readRetireAccountCommand);
+  }
+
   /** Reads one tax-registration declaration request from a JSON file or standard input. */
   DeclareTaxRegistrationCommand readDeclareTaxRegistrationCommand(Path requestFile) {
     return parseRequest(
@@ -77,8 +97,10 @@ final class CliRequestReader {
       @org.jspecify.annotations.Nullable OperationId templateOperation,
       Function<tools.jackson.databind.node.ObjectNode, T> parser) {
     try {
-      return parser.apply(
-          CliJsonStructureAccess.requireRootObject(readRootNode(requestFile, requestHint)));
+      tools.jackson.databind.node.ObjectNode rootNode =
+          CliJsonStructureAccess.requireRootObject(readRootNode(requestFile, requestHint));
+      CliRequestPlaceholderValues.rejectReservedScaffoldValues(rootNode);
+      return parser.apply(rootNode);
     } catch (CliRequestException exception) {
       throw exception;
     } catch (JournalEntryValidationException exception) {
@@ -142,7 +164,7 @@ final class CliRequestReader {
   }
 
   private byte[] readRequestBytes(Path requestFile) throws IOException {
-    if (ProtocolOptions.STDIN_TOKEN.equals(requestFile.toString())) {
+    if (ProtocolOptions.Request.STDIN_TOKEN.equals(requestFile.toString())) {
       return readBoundedBytes(inputStream);
     }
     try (InputStream requestStream = Files.newInputStream(requestFile)) {

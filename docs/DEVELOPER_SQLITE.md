@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.60.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-07-11"
+updated: "2026-07-12"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -29,8 +29,9 @@ That means:
 - there is no default database location
 - every book-bound command requires `--book-file` plus exactly one of `--book-key-file`,
   `--book-passphrase-stdin`, or `--book-passphrase-prompt`
-- `rekey-book` also requires exactly one replacement passphrase source and rotates an existing
-  initialized book without introducing a compatibility layer
+- `rekey-book` reads one current passphrase source and generates one fresh destination secret at
+  an absent `--new-book-key-file` target; it stages and verifies the re-encrypted copy before
+  atomically replacing the selected book
 - key files remain the automation-friendly route; stdin and interactive prompt are the supported
   non-file routes
 - key files must use POSIX owner-only permissions (`0400` or `0600`) on macOS/Linux or a
@@ -44,20 +45,34 @@ That means:
   default `sqleet` / `chacha20` cipher
 - duplicate idempotency is enforced within the selected book, not globally across files
 - one canonical current schema defines every newly initialized book
-- the current supported book format is `43`, owned by `BookFormatContract`
+- the current supported book format is `44`, owned by `BookFormatContract`
 - accepted posting facts persist first-class accounting evidence through
   `posting_source_document` and `posting_approval` child tables keyed by posting id
 - `inspect-book` exposes one explicit hard-break migration policy for the active format line:
   no in-place upgrade path, no older-format acceptance, and no newer-format acceptance
 - FinGrind is in an alpha hard-break line, so schema evolution replaces the current model
   directly and older formats are rejected instead of being migrated in place
-- `backup-book` exports one verified encrypted backup pair; `restore-book` verifies that backup
-  pair before replacing the live book path, re-encrypts the restored live book under the selected
-  destination `--book-key-file`, and requires that destination key to reopen the restored live
-  book; `inspect-rekey-rollback` reports stale same-directory rollback artifacts;
+- `backup-book` exports one verified encrypted backup pair under an independently generated
+  `--new-backup-key-file`; `restore-book` verifies that backup pair before replacing the live book
+  path, re-encrypts the restored live book under an absent generated `--new-book-key-file`, and
+  requires `--replace-existing-book` before replacing a live book path; `inspect-rekey-rollback`
+  reports stale same-directory rollback artifacts;
   `restore-rekey-rollback` rewinds one interrupted rekey from one selected rollback artifact; and
   `delete-rekey-rollback` removes one stale rollback artifact without touching the live book path
   after verifying one initialized live book and recording one encrypted in-book maintenance audit
+- every generated-secret and protected-book stage records its exact final target and staged file
+  before the stage is created; recovery first proves that a published generated key is the exact file
+  named by an owned durable stage before it can inspect the companion book, so a foreign key is
+  neither inspected nor mutated; it then reclaims only proven interrupted residue, never a file
+  selected merely by a sibling-name pattern; backup targets, non-replacing restore targets, and new
+  generated-key targets are held under durable maintenance leases and atomically reserved before
+  source verification, so a concurrent maintenance attempt cannot scavenge, replace, or be mistaken
+  for that operation's destination; `open-book` likewise uses exclusive SQLite creation after its
+  early destination check; before both final artifacts are committed, an
+  interrupted publication reclaims its generated key before secondary stage cleanup and reports the
+  failed operation as `storage-runtime-failure`; after both final artifacts are committed, a later
+  stage cleanup failure is best-effort diagnostic work and cannot recast the successful pair as a
+  failed operation
 - legacy plaintext books and other encryption variants are out of scope for the current
   foundation
 
@@ -69,8 +84,7 @@ through [`SqliteBookSessions`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/
 [`SqliteReadSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteReadSession.java),
 [`SqlitePostingSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingSession.java),
 [`SqliteReportingPeriodCloseSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteReportingPeriodCloseSession.java),
-[`SqlitePlanExecutionSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePlanExecutionSession.java),
-and [`SqliteRekeySession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteRekeySession.java).
+[`SqlitePlanExecutionSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePlanExecutionSession.java).
 The package-private backing implementation remains
 [`SqlitePostingFactStore`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingFactStore.java).
 
@@ -176,7 +190,6 @@ The SQLite adapter is split into focused collaborators:
   [`SqlitePostingSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePostingSession.java),
   [`SqliteReportingPeriodCloseSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteReportingPeriodCloseSession.java),
   [`SqlitePlanExecutionSession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqlitePlanExecutionSession.java),
-  [`SqliteRekeySession`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteRekeySession.java),
   [`SqliteBookSessionMode`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSessionMode.java),
   and [`SqliteBookSessions`](../sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteBookSessions.java):
   stable public workflow-shaped session views and factory for CLI, tooling, and fuzz harnesses
@@ -270,12 +283,15 @@ The SQLite adapter is split into focused collaborators:
 - initialized FinGrind books are stamped with a fixed `pragma application_id` and
   `pragma user_version`, and foreign or unsupported SQLite files are rejected before ordinary book
   reads proceed
-- `rekey-book` creates one same-directory rollback copy, rotates the passphrase through the native
-  SQLite rekey path, reopens the book, revalidates the replacement passphrase before the command
-  reports success, and restores the pre-rekey file automatically if that verification fails
+- `rekey-book` creates one same-directory rollback copy, rekeys a staged copy through the native
+  SQLite rekey path under a generated destination secret, verifies that staged copy, then
+  atomically replaces the selected live book only after verification succeeds
 - if a process crash or forced stop interrupts rekey cleanup, the stale same-directory
   `*.rekey-rollback-*.sqlite` artifact remains on disk under the old ciphertext until an operator
   inspects or removes it; later opens warn when they detect that stale artifact
+- backup, restore, rekey, and key-generation workflows clean up their active stages and recover a
+  forced-stop residue only when its durable ownership record validates the exact target and stage
+  path; filename-shaped siblings without that record remain untouched
 - posting validation is shared between application preflight and transactional SQLite commit, so
   book lifecycle, account-state, duplicate-idempotency, and reversal-lineage rules do not drift
   between the two paths
@@ -304,7 +320,7 @@ The SQLite adapter is split into focused collaborators:
   `environment.sqlite.runtime.status`,
   `environment.sqlite.runtime.runtimeProvenance`,
   `environment.sqlite.runtime.runtimeTrustBasis`,
-  `environment.sqlite.runtime.loadedLibraryPath` as a redacted public path hint,
+  `environment.sqlite.runtime.loadedLibraryPath` as a canonical absolute path,
   `environment.sqlite.runtime.loadedSqliteVersion`,
   `environment.sqlite.runtime.loadedSqlite3mcVersion`,
   `environment.sqlite.runtime.loadedSqliteSourceId`,
@@ -354,15 +370,14 @@ The posting seam distinguishes ordinary domain outcomes from true runtime failur
 - FinGrind calls `sqlite3_key()` immediately after `sqlite3_open_v2()`
 - FinGrind calls `sqlite3_rekey()` for `rekey-book` instead of routing replacement secrets through
   SQL text
-- `rekey-book` preserves one same-directory rollback copy until replacement-passphrase validation
-  succeeds, so verification failures restore the pre-rekey file instead of leaving an unverified
-  rotated book behind
+- `rekey-book` preserves one same-directory rollback copy until staged-copy verification succeeds,
+  so verification failures leave the selected live book unchanged
 - crash-interrupted rekeys can leave that rollback artifact on disk; later opens warn about the
   stale encrypted copy so operators can decide whether to recover or delete it
 - `backup-book` is the supported operator export path for a closed book and emits one verified
-  encrypted backup pair; `restore-book` verifies that pair before replacing the live book path,
-  re-encrypts the restored live book under the selected destination `--book-key-file`, and no
-  longer leaves the restored live book on the backup key
+  encrypted backup pair under an independently generated backup key; `restore-book` verifies that
+  pair before replacing the live book path, requires explicit replacement consent for an existing
+  live book, and re-encrypts the restored live book under a new destination key
 - same-book multi-session access is allowed, but one writer holding `begin immediate` will block
   another writer until SQLite's busy timeout expires and the second writer fails with one busy or
   locked result instead of silently interleaving journal mutations

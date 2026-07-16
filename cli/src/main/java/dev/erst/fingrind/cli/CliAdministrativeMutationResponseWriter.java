@@ -1,14 +1,16 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliAdministrationJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.AmendAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.bookkeeping.RetireAccountResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import java.nio.file.Path;
@@ -20,9 +22,11 @@ import java.util.function.Function;
 /** Renders administrative CLI mutation results through the shared output channel. */
 final class CliAdministrativeMutationResponseWriter {
   private final CliOutputChannel outputChannel;
+  private final CliAccountRegistryMutationResponseWriter accountRegistryWriter;
 
   CliAdministrativeMutationResponseWriter(CliOutputChannel outputChannel) {
     this.outputChannel = Objects.requireNonNull(outputChannel, "outputChannel");
+    this.accountRegistryWriter = new CliAccountRegistryMutationResponseWriter(outputChannel);
   }
 
   void writeOpenBookResult(
@@ -37,7 +41,7 @@ final class CliAdministrativeMutationResponseWriter {
                   outputChannel.writeEnvelope(
                       CliEnvelopeMapper.successEnvelope(
                           new CliAdministrationJsonModels.OpenBookPayload(
-                              CliPublicPaths.redactedValue(bookFilePath),
+                              CliPublicPaths.absoluteValue(bookFilePath),
                               opened.initializedAt().toString(),
                               CliAdministrativeMutationPayloadSupport
                                   .tightenedParentDirectoryPayloads(tightenedParentDirectories),
@@ -89,9 +93,7 @@ final class CliAdministrativeMutationResponseWriter {
   }
 
   void writeRekeyBookResult(
-      RekeyBookResult result,
-      BookAccess.PassphraseSource replacementPassphraseSource,
-      OutputMode outputMode) {
+      RekeyBookResult result, java.nio.file.Path newBookKeyFilePath, OutputMode outputMode) {
     switch (result) {
       case RekeyBookResult.Rekeyed rekeyed ->
           outputMode.run(
@@ -99,78 +101,28 @@ final class CliAdministrativeMutationResponseWriter {
                   outputChannel.writeEnvelope(
                       CliEnvelopeMapper.successEnvelope(
                           new CliAdministrationJsonModels.RekeyBookPayload(
-                              CliPublicPaths.redactedValue(rekeyed.bookFilePath()),
-                              CliAdministrativeMutationPayloadSupport
-                                  .replacementPassphraseSourceKind(replacementPassphraseSource)),
-                          CliAdministrativeMutationPayloadSupport.replacementPassphraseArtifacts(
-                              replacementPassphraseSource))),
+                              CliPublicPaths.absoluteValue(rekeyed.bookFilePath()),
+                              CliPublicPaths.absoluteValue(newBookKeyFilePath)),
+                          CliEnvelopeMapper.successArtifacts(
+                              CliEnvelopeMapper.successArtifact(
+                                  ProtocolArtifactOutput.bookKeyFileFormat(),
+                                  newBookKeyFilePath)))),
               () ->
                   outputChannel.writeText(
-                      CliBookAccessOutputRenderer.renderRekeyBookText(
-                          rekeyed, replacementPassphraseSource)),
+                      CliBookAccessOutputRenderer.renderRekeyBookText(rekeyed, newBookKeyFilePath)),
               () -> {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(OperationId.REKEY_BOOK));
               });
       case RekeyBookResult.Rejected rejected ->
           outputChannel.writeRejectedEnvelope(
-              CliRejectionPayloadMapper.administrationRejectedEnvelope(
-                  OperationId.REKEY_BOOK, rejected.rejection()),
+              CliMaintenanceRejectionPayloadMapper.rejectedEnvelope(rejected.rejection()),
               outputMode);
     }
   }
 
   void writeDeclareAccountResult(DeclareAccountResult result, OutputMode outputMode) {
-    switch (result) {
-      case DeclareAccountResult.Declared declared ->
-          writeMutationSuccess(
-              OperationId.DECLARE_ACCOUNT,
-              "declared",
-              declared.account(),
-              account ->
-                  CliAdministrativeMutationPayloadSupport.declareAccountPayload(
-                      "declared", account),
-              (outcome, account) ->
-                  CliMutationOutputRenderer.renderAccountDeclarationText(outcome, account),
-              outputMode);
-      case DeclareAccountResult.Reactivated reactivated ->
-          writeMutationSuccess(
-              OperationId.DECLARE_ACCOUNT,
-              "reactivated",
-              reactivated.account(),
-              account ->
-                  CliAdministrativeMutationPayloadSupport.declareAccountPayload(
-                      "reactivated", account),
-              (outcome, account) ->
-                  CliMutationOutputRenderer.renderAccountDeclarationText(outcome, account),
-              outputMode);
-      case DeclareAccountResult.Renamed renamed ->
-          writeMutationSuccess(
-              OperationId.DECLARE_ACCOUNT,
-              "renamed",
-              renamed.account(),
-              account ->
-                  CliAdministrativeMutationPayloadSupport.declareAccountPayload("renamed", account),
-              (outcome, account) ->
-                  CliMutationOutputRenderer.renderAccountDeclarationText(outcome, account),
-              outputMode);
-      case DeclareAccountResult.Unchanged unchanged ->
-          writeMutationSuccess(
-              OperationId.DECLARE_ACCOUNT,
-              "unchanged",
-              unchanged.account(),
-              account ->
-                  CliAdministrativeMutationPayloadSupport.declareAccountPayload(
-                      "unchanged", account),
-              (outcome, account) ->
-                  CliMutationOutputRenderer.renderAccountDeclarationText(outcome, account),
-              outputMode);
-      case DeclareAccountResult.Rejected rejected ->
-          outputChannel.writeRejectedEnvelope(
-              CliRejectionPayloadMapper.administrationRejectedEnvelope(
-                  OperationId.DECLARE_ACCOUNT, rejected.rejection()),
-              outputMode);
-    }
+    accountRegistryWriter.writeDeclareAccountResult(result, outputMode);
   }
 
   void writeDeclareTaxRegistrationResult(
@@ -208,6 +160,14 @@ final class CliAdministrativeMutationResponseWriter {
               CliRejectionPayloadMapper.taxDeclarationRejectedEnvelope(rejected.rejection()),
               outputMode);
     }
+  }
+
+  void writeAmendAccountResult(AmendAccountResult result, OutputMode outputMode) {
+    accountRegistryWriter.writeAmendAccountResult(result, outputMode);
+  }
+
+  void writeRetireAccountResult(RetireAccountResult result, OutputMode outputMode) {
+    accountRegistryWriter.writeRetireAccountResult(result, outputMode);
   }
 
   private <T> void writeMutationSuccess(

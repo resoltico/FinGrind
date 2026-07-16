@@ -124,4 +124,31 @@ public record RegisteredAccount(
     }
     return new AccountDeclarationOutcome.Unchanged(existingAccount);
   }
+
+  /**
+   * Replaces the amendable account definition while retaining its durable identity and lifecycle.
+   */
+  public static RegisteredAccount amend(
+      RegisteredAccount existingAccount, AccountDeclaration amendment) {
+    Objects.requireNonNull(existingAccount, "existingAccount");
+    Objects.requireNonNull(amendment, "amendment");
+    if (!existingAccount.accountCode().equals(amendment.accountCode())) {
+      throw new IllegalArgumentException(
+          "Account amendments must retain the durable account code.");
+    }
+    return new RegisteredAccount(
+        existingAccount.accountCode(),
+        amendment.accountName(),
+        amendment.accountType(),
+        amendment.accountTaxonomy(),
+        amendment.unitOfMeasure(),
+        existingAccount.active(),
+        existingAccount.declaredAt());
+  }
+
+  /** Retires the account without erasing its durable identity or history. */
+  public RegisteredAccount retire() {
+    return new RegisteredAccount(
+        accountCode, accountName, accountType, accountTaxonomy, unitOfMeasure, false, declaredAt);
+  }
 }

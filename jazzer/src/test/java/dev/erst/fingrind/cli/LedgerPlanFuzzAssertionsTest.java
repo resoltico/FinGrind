@@ -13,7 +13,6 @@ import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;
 import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
-import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
 import dev.erst.fingrind.contract.workflow.LedgerJournalStep;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanId;
@@ -534,7 +533,7 @@ class LedgerPlanFuzzAssertionsTest {
             IllegalArgumentException.class,
             () ->
                 LedgerPlanListQueryAssertions.expectedListQueryGroupName(
-                    LedgerJournalKind.ENSURE_BOOK));
+                    LedgerStepKind.ENSURE_BOOK));
     assertTrue(String.valueOf(wrongListQueryKind.getMessage()).contains("list-query journal kind"));
   }
 

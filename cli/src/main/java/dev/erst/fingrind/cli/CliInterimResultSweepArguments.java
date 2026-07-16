@@ -8,10 +8,11 @@ import java.util.List;
 /** Parses CLI arguments for `interim-result-sweep`. */
 final class CliInterimResultSweepArguments {
   private static final List<String> INTERIM_RESULT_SWEEP_OPTIONS =
-      List.of(ProtocolOptions.THROUGH, ProtocolOptions.OUTPUT);
+      List.of(ProtocolOptions.DateRange.THROUGH, ProtocolOptions.Presentation.OUTPUT);
   private static final CliBookArgumentParser.CommandArgumentSpec INTERIM_RESULT_SWEEP_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
-          List.of(ProtocolOptions.THROUGH, ProtocolOptions.OUTPUT), List.of());
+          List.of(ProtocolOptions.DateRange.THROUGH, ProtocolOptions.Presentation.OUTPUT),
+          List.of());
 
   private CliInterimResultSweepArguments() {}
 
@@ -32,7 +33,7 @@ final class CliInterimResultSweepArguments {
     CliCloseCommandArgumentSupport.ParsedCloseArgument<LocalDate> parsedArgument =
         CliCloseCommandArgumentSupport.parseSingleRequiredOption(
             commandArguments,
-            ProtocolOptions.THROUGH,
+            ProtocolOptions.DateRange.THROUGH,
             INTERIM_RESULT_SWEEP_OPTIONS,
             CliOptionValues::parseLocalDateOption);
     return new ParsedInterimResultSweepArguments(

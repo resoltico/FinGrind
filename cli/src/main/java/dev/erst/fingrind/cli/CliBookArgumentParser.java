@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import java.nio.file.Path;
@@ -52,23 +53,24 @@ final class CliBookArgumentParser {
     }
     if (argumentValues.bookFilePath == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BOOK_FILE, "A " + ProtocolOptions.BOOK_FILE + " argument is required.");
+          ProtocolBookAccessOptions.BOOK_FILE,
+          "A " + ProtocolBookAccessOptions.BOOK_FILE + " argument is required.");
     }
     if (argumentValues.passphraseSourceKind == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BOOK_KEY_FILE,
+          ProtocolBookAccessOptions.BOOK_KEY_FILE,
           "Exactly one book passphrase source is required: "
-              + ProtocolOptions.BOOK_KEY_FILE
+              + ProtocolBookAccessOptions.BOOK_KEY_FILE
               + " <path>, "
-              + ProtocolOptions.BOOK_PASSPHRASE_STDIN
+              + ProtocolBookAccessOptions.BOOK_PASSPHRASE_STDIN
               + ", or "
-              + ProtocolOptions.BOOK_PASSPHRASE_PROMPT
+              + ProtocolBookAccessOptions.BOOK_PASSPHRASE_PROMPT
               + ".");
     }
     if (mode.acceptsRequestFile() && argumentValues.requestFile == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.REQUEST_FILE,
-          "A " + ProtocolOptions.REQUEST_FILE + " argument is required.");
+          ProtocolOptions.Request.FILE,
+          "A " + ProtocolOptions.Request.FILE + " argument is required.");
     }
     BookAccess.PassphraseSource passphraseSource =
         CliBookPassphraseParser.passphraseSource(
@@ -89,33 +91,36 @@ final class CliBookArgumentParser {
       String argument,
       ListIterator<String> argumentIterator) {
     switch (argument) {
-      case ProtocolOptions.BOOK_FILE -> {
+      case ProtocolBookAccessOptions.BOOK_FILE -> {
         if (argumentValues.bookFilePath != null) {
           throw CliArgumentValueParser.invalid(
-              ProtocolOptions.BOOK_FILE, "Duplicate argument: " + ProtocolOptions.BOOK_FILE);
+              ProtocolBookAccessOptions.BOOK_FILE,
+              "Duplicate argument: " + ProtocolBookAccessOptions.BOOK_FILE);
         }
         argumentValues.bookFilePath =
-            CliOptionValues.requirePathOptionValue(argumentIterator, ProtocolOptions.BOOK_FILE);
+            CliOptionValues.requirePathOptionValue(
+                argumentIterator, ProtocolBookAccessOptions.BOOK_FILE);
       }
-      case ProtocolOptions.BOOK_KEY_FILE -> {
+      case ProtocolBookAccessOptions.BOOK_KEY_FILE -> {
         argumentValues.passphraseSourceKind =
             CliBookPassphraseParser.requireSinglePassphraseSource(
                 argumentValues.passphraseSourceKind,
                 CliBookPassphraseParser.PassphraseSourceKind.KEY_FILE);
         argumentValues.bookKeyFilePath =
-            CliOptionValues.requirePathOptionValue(argumentIterator, ProtocolOptions.BOOK_KEY_FILE);
+            CliOptionValues.requirePathOptionValue(
+                argumentIterator, ProtocolBookAccessOptions.BOOK_KEY_FILE);
       }
-      case ProtocolOptions.BOOK_PASSPHRASE_STDIN ->
+      case ProtocolBookAccessOptions.BOOK_PASSPHRASE_STDIN ->
           argumentValues.passphraseSourceKind =
               CliBookPassphraseParser.requireSinglePassphraseSource(
                   argumentValues.passphraseSourceKind,
                   CliBookPassphraseParser.PassphraseSourceKind.STANDARD_INPUT);
-      case ProtocolOptions.BOOK_PASSPHRASE_PROMPT ->
+      case ProtocolBookAccessOptions.BOOK_PASSPHRASE_PROMPT ->
           argumentValues.passphraseSourceKind =
               CliBookPassphraseParser.requireSinglePassphraseSource(
                   argumentValues.passphraseSourceKind,
                   CliBookPassphraseParser.PassphraseSourceKind.INTERACTIVE_PROMPT);
-      case ProtocolOptions.REQUEST_FILE ->
+      case ProtocolOptions.Request.FILE ->
           applyRequestFileArgument(argumentValues, mode, commandArgumentSpec, argumentIterator);
       default ->
           applyCommandArgument(
@@ -130,14 +135,14 @@ final class CliBookArgumentParser {
       ListIterator<String> argumentIterator) {
     if (!mode.acceptsRequestFile()) {
       throw CliArgumentValueParser.unsupportedArgument(
-          ProtocolOptions.REQUEST_FILE, supportedArguments(mode, commandArgumentSpec));
+          ProtocolOptions.Request.FILE, supportedArguments(mode, commandArgumentSpec));
     }
     if (argumentValues.requestFile != null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.REQUEST_FILE, "Duplicate argument: " + ProtocolOptions.REQUEST_FILE);
+          ProtocolOptions.Request.FILE, "Duplicate argument: " + ProtocolOptions.Request.FILE);
     }
     argumentValues.requestFile =
-        CliOptionValues.requirePathOptionValue(argumentIterator, ProtocolOptions.REQUEST_FILE);
+        CliOptionValues.requirePathOptionValue(argumentIterator, ProtocolOptions.Request.FILE);
   }
 
   private static void applyCommandArgument(
@@ -231,13 +236,13 @@ final class CliBookArgumentParser {
       BookArgumentMode mode, @Nullable CommandArgumentSpec commandArgumentSpec) {
     List<String> requiredArguments =
         List.of(
-            ProtocolOptions.BOOK_FILE,
-            ProtocolOptions.BOOK_KEY_FILE,
-            ProtocolOptions.BOOK_PASSPHRASE_STDIN,
-            ProtocolOptions.BOOK_PASSPHRASE_PROMPT);
+            ProtocolBookAccessOptions.BOOK_FILE,
+            ProtocolBookAccessOptions.BOOK_KEY_FILE,
+            ProtocolBookAccessOptions.BOOK_PASSPHRASE_STDIN,
+            ProtocolBookAccessOptions.BOOK_PASSPHRASE_PROMPT);
     List<String> supportedArguments = new ArrayList<>(requiredArguments);
     if (mode.acceptsRequestFile()) {
-      supportedArguments.add(ProtocolOptions.REQUEST_FILE);
+      supportedArguments.add(ProtocolOptions.Request.FILE);
     }
     if (mode.collectsCommandArguments() && commandArgumentSpec != null) {
       supportedArguments.addAll(commandArgumentSpec.options().keySet());

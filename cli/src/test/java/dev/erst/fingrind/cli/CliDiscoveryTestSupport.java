@@ -120,7 +120,7 @@ final class CliDiscoveryTestSupport {
       EnvironmentSqliteDescriptor.RuntimeState runtime) {
     return new EnvironmentDescriptor(
         new EnvironmentRuntimeDescriptor(
-            ProtocolCatalog.distribution().bundleRuntimeDistribution(), OutputMode.TEXT, null),
+            ProtocolCatalog.distribution().bundleRuntimeDistribution(), OutputMode.TEXT),
         new EnvironmentPublicationDescriptor(
             ProtocolCatalog.distribution().publicCliDistribution(),
             List.of(PublicCliBundleTarget.MACOS_AARCH64, PublicCliBundleTarget.WINDOWS_X86_64),

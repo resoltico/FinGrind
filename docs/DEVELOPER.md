@@ -2,7 +2,7 @@
 afad: "4.0"
 version: "0.60.0"
 domain: DEVELOPER
-updated: "2026-07-11"
+updated: "2026-07-12"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -35,6 +35,7 @@ Companion documents:
 - [DEVELOPER_DOCUMENTATION.md](./DEVELOPER_DOCUMENTATION.md)
 - [DEVELOPER_DISTRIBUTION.md](./DEVELOPER_DISTRIBUTION.md)
 - [DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md)
+- [DEVELOPER_CI.md](./DEVELOPER_CI.md)
 - [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md)
 - [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md)
 - [DEVELOPER_RELEASE_PUBLICATION.md](./DEVELOPER_RELEASE_PUBLICATION.md)
@@ -181,14 +182,15 @@ FinGrind's current public model is:
   stored, while `normalBalance` is derived from `accountType` plus classification doctrine
 - every posting line references a declared active account
 - the canonical book schema uses SQLite `STRICT` tables and opened handles disable `trusted_schema`
-- the current supported on-disk format is `25`, owned by `BookFormatContract`
+- the current supported on-disk format is `44`, owned by `BookFormatContract`
 - `inspect-book` publishes one explicit hard-break migration policy for the active format line:
   no in-place upgrade path, no older-format acceptance, and no newer-format acceptance
 - FinGrind is in an alpha hard-break line, so schema evolution advances by replacing the current
   model and rejecting non-matching book formats instead of carrying compatibility shims
-- maintenance workflows are explicit: `backup-book` exports one verified encrypted backup pair,
-  `restore-book` verifies that pair before replacing a live book path and the restored live book
-  then reuses the backup pair's key file, `inspect-rekey-rollback` reports stale same-directory
+- maintenance workflows are explicit: `backup-book` exports one verified encrypted backup pair
+  under an independently generated backup key, `restore-book` verifies that pair before replacing
+  a live book path only with explicit replacement consent and re-encrypts the restored live book
+  under a new destination key, `inspect-rekey-rollback` reports stale same-directory
   rollback artifacts, `restore-rekey-rollback` rewinds one interrupted rekey from one selected
   rollback artifact, and `delete-rekey-rollback` removes one stale rollback artifact without
   touching the live book path after verifying one initialized live book with one explicit
@@ -522,21 +524,8 @@ The repository ships four workflow files and one release-blocking CI graph:
    and administrator bypass availability for the repository owner so the protected release/publication workflow is not deadlocked
    by a self-review requirement.
 
-**Path-based devcontainer gate theory.** The devcontainer gate validates the contributor
-*environment*, not application code. Application code changes are already proven by `check` and
-the published bundle-smoke matrix. Running the full Docker build-and-validate cycle on every PR
-regardless of what changed wastes 15-20 minutes per run. The gate therefore fires only when the
-environment itself changes — specifically when any of these paths are touched:
-
-- `.devcontainer/` — the Dockerfile and `devcontainer.json`
-- `scripts/validate-devcontainer.sh`
-- `scripts/devcontainer-prepare-user-home.sh`
-- `scripts/repo-verification-lock-support.sh`
-- `scripts/python-runtime-support.sh`
-
-A `devcontainer-changes` detection job computes the diff before the gate is evaluated. When no
-relevant files changed, `devcontainer` is skipped. A skipped result is a correct, intended
-outcome, not a coverage gap.
+The devcontainer gate's path-based trigger theory lives in
+[DEVELOPER_CI.md](./DEVELOPER_CI.md).
 
 All CI runners use pinned runner images (`ubuntu-24.04`, `windows-2022`) rather than the floating
 `ubuntu-latest` / `windows-latest` labels, so runner image updates cannot silently change the
@@ -594,6 +583,8 @@ Public API reference lives in:
 - [DOC_02_Application.md](./DOC_02_Application.md)
 - [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md)
 - [DOC_02_AdministrationAndReports.md](./DOC_02_AdministrationAndReports.md)
+- [DOC_02_AccountRegistryLifecycle.md](./DOC_02_AccountRegistryLifecycle.md)
+- [DOC_02_BookMaintenanceContracts.md](./DOC_02_BookMaintenanceContracts.md)
 - [DOC_02_PostingAndLedgerPlans.md](./DOC_02_PostingAndLedgerPlans.md)
 - [DOC_03_BookSessionsAndAdapters.md](./DOC_03_BookSessionsAndAdapters.md)
 - [DOC_04_CliAndPdfAdapters.md](./DOC_04_CliAndPdfAdapters.md)

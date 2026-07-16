@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
@@ -80,6 +81,17 @@ final class CliAdministrationRejectionPayloadMapper {
     }
     if (rejection instanceof BookAdministrationRejection.AccountTaxonomyConflict) {
       return "Keep the existing taxonomy for this account, or choose a different accountCode for an account with different hierarchy or statement classification.";
+    }
+    if (rejection instanceof AccountRegistryLifecycleRejection.AccountNotFound) {
+      return "Use "
+          + DECLARE_ACCOUNT_OPERATION
+          + " to declare the account first, or correct accountCode before retrying the lifecycle command.";
+    }
+    if (rejection instanceof AccountRegistryLifecycleRejection.AccountHasDependents) {
+      return "Keep the account's current definition and active state until its postings, tax registrations, and child-account relationships no longer depend on it.";
+    }
+    if (rejection instanceof AccountRegistryLifecycleRejection.AccountBalanceNotZero) {
+      return "Bring the account's current balance to zero through ordinary accounting activity before retiring it.";
     }
     if (rejection instanceof BookAdministrationRejection.ParentAccountMissing) {
       return "Declare the requested parent account first, or remove parentAccountCode and rerun "
@@ -215,6 +227,16 @@ final class CliAdministrationRejectionPayloadMapper {
               conflict.accountCode().value(),
               taxonomyDetails(conflict.existingAccountTaxonomy()),
               taxonomyDetails(conflict.requestedAccountTaxonomy()));
+      case AccountRegistryLifecycleRejection.AccountNotFound missing ->
+          new CliRejectionJsonModels.AccountCodeDetails(missing.accountCode().value());
+      case AccountRegistryLifecycleRejection.AccountHasDependents dependents ->
+          new CliRejectionJsonModels.AccountDependenciesDetails(
+              dependents.accountCode().value(),
+              dependents.dependencies().stream()
+                  .map(dependency -> dependency.wireValue())
+                  .toList());
+      case AccountRegistryLifecycleRejection.AccountBalanceNotZero balance ->
+          new CliRejectionJsonModels.AccountCodeDetails(balance.accountCode().value());
       case BookAdministrationRejection.ParentAccountMissing conflict ->
           new CliRejectionJsonModels.ParentAccountDetails(
               conflict.accountCode().value(), conflict.parentAccountCode().value());

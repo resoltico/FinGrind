@@ -57,6 +57,7 @@ import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.executor.spi.ReportingPeriodCloseStore;
 import dev.erst.fingrind.executor.spi.StoredRequestPosting;
+import dev.erst.fingrind.executor.spi.TaxAdministrationStore;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -114,9 +115,10 @@ final class LedgerPlanServiceTestSupport {
           T extends
               LedgerPlanTransaction & dev.erst.fingrind.executor.spi.AccountCatalogStore
                   & BookAdministrationStore & BookkeepingReadStore & PostingValidationStore
-                  & PostingCommitStore>
+                  & PostingCommitStore & TaxAdministrationStore>
       LedgerPlanService service(T bookSession) {
     return new LedgerPlanService(
+        bookSession,
         bookSession,
         bookSession,
         bookSession,
@@ -237,6 +239,7 @@ final class LedgerPlanServiceTestSupport {
           PostingCommitStore,
           ReportingPeriodCloseStore,
           AccountCatalogStore,
+          TaxAdministrationStore,
           AutoCloseable {}
 
   /**
@@ -262,6 +265,24 @@ final class LedgerPlanServiceTestSupport {
     public AccountDeclarationOutcome declareAccount(
         AccountDeclaration declaration, Instant declaredAt) {
       return delegate.declareAccount(declaration, declaredAt);
+    }
+
+    @Override
+    public dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome amendAccount(
+        AccountDeclaration amendment, Instant amendedAt) {
+      return delegate.amendAccount(amendment, amendedAt);
+    }
+
+    @Override
+    public dev.erst.fingrind.executor.bookkeeping.AccountRetirementOutcome retireAccount(
+        AccountCode accountCode, Instant retiredAt) {
+      return delegate.retireAccount(accountCode, retiredAt);
+    }
+
+    @Override
+    public dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult declareTaxRegistration(
+        dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand command, Instant declaredAt) {
+      return delegate.declareTaxRegistration(command, declaredAt);
     }
 
     @Override

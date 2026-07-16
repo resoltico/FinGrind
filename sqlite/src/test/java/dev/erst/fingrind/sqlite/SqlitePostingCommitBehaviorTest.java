@@ -220,7 +220,10 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
                       bookIdentity(),
                       dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
                           bookIdentity().bookDoctrine())));
-      assertInvalidBookFilePathFailure(exception, "non-directory entry or symlink");
+      assertInvalidBookFilePathFailure(
+          exception,
+          fileParent.resolve("entity.sqlite"),
+          "The FinGrind protected-book path cannot use a parent path that already exists as a non-directory entry or symlink.");
     }
   }
 
@@ -246,7 +249,10 @@ class SqlitePostingCommitBehaviorTest extends SqlitePostingFactStoreTestSupport 
           assertThrows(
               IllegalStateException.class,
               () -> postingFactStore.findExistingPosting(new IdempotencyKey("missing-idem")));
-      assertInvalidBookFilePathFailure(exception, "must resolve to a regular non-symlink file");
+      assertInvalidBookFilePathFailure(
+          exception,
+          databasePath,
+          "The FinGrind protected-book path must resolve to a regular non-symlink file.");
     }
   }
 

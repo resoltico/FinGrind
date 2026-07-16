@@ -1,12 +1,6 @@
 package dev.erst.fingrind.executor.workflow;
 
-import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
-import dev.erst.fingrind.executor.spi.AccountCatalogStore;
-import dev.erst.fingrind.executor.spi.BookAdministrationStore;
-import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
-import dev.erst.fingrind.executor.spi.PostingCommitStore;
-import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -23,24 +17,21 @@ public final class BookWorkflowExecutionService {
   /** Creates one local workflow execution service. */
   public BookWorkflowExecutionService(
       LedgerPlanTransaction transactionStore,
-      BookAdministrationStore administrationStore,
-      AccountCatalogStore accountCatalogStore,
-      BookkeepingReadStore readStore,
-      PostingValidationStore validationStore,
-      PostingCommitStore commitStore,
-      PostingIdGenerator postingIdGenerator,
+      BookWorkflowExecutionDependencies dependencies,
       Clock clock) {
     this.transactionStore = Objects.requireNonNull(transactionStore, "transactionStore");
     this.clock = Objects.requireNonNull(clock, "clock");
+    Objects.requireNonNull(dependencies, "dependencies");
     this.stepExecutor =
         new LedgerPlanStepExecutor(
-            Objects.requireNonNull(administrationStore, "administrationStore"),
-            Objects.requireNonNull(accountCatalogStore, "accountCatalogStore"),
-            Objects.requireNonNull(readStore, "readStore"),
-            Objects.requireNonNull(validationStore, "validationStore"),
-            Objects.requireNonNull(commitStore, "commitStore"),
-            postingIdGenerator,
-            Objects.requireNonNull(clock));
+            dependencies.administrationStore(),
+            dependencies.accountCatalogStore(),
+            dependencies.readStore(),
+            dependencies.validationStore(),
+            dependencies.commitStore(),
+            dependencies.taxAdministrationStore(),
+            dependencies.postingIdGenerator(),
+            clock);
   }
 
   /** Executes one local workflow plan atomically. */

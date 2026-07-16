@@ -58,14 +58,40 @@ public final class SqliteBookSessions {
       SqliteBookSessionMode sessionMode,
       SqlitePassphraseResolver passphraseResolver,
       SqlitePassphraseIntent passphraseIntent) {
+    return openResolvedStore(
+        bookAccess,
+        toStoreAccessMode(Objects.requireNonNull(sessionMode, "sessionMode")),
+        passphraseResolver,
+        passphraseIntent);
+  }
+
+  /** Resolves a new-book session that atomically refuses an existing destination. */
+  static ContractDecision<SqlitePostingFactStore> openNewBookResolved(
+      BookAccess bookAccess,
+      SqlitePassphraseResolver passphraseResolver,
+      SqlitePassphraseIntent passphraseIntent) {
+    return openResolvedStore(
+        bookAccess,
+        SqliteStoreAccessMode.READ_WRITE_CREATE_EXCLUSIVE,
+        passphraseResolver,
+        passphraseIntent);
+  }
+
+  private static ContractDecision<SqlitePostingFactStore> openResolvedStore(
+      BookAccess bookAccess,
+      SqliteStoreAccessMode accessMode,
+      SqlitePassphraseResolver passphraseResolver,
+      SqlitePassphraseIntent passphraseIntent) {
     Objects.requireNonNull(bookAccess, "bookAccess");
+    Objects.requireNonNull(accessMode, "accessMode");
     Objects.requireNonNull(passphraseResolver, "passphraseResolver");
     Objects.requireNonNull(passphraseIntent, "passphraseIntent");
     return passphraseResolver
         .resolve(bookAccess, passphraseIntent)
         .fold(
             bookPassphrase ->
-                openResolvedStore(bookAccess.bookFilePath(), bookPassphrase, sessionMode),
+                SqlitePostingFactStore.openResolved(
+                    bookAccess.bookFilePath(), bookPassphrase, accessMode),
             ContractDecision::rejected);
   }
 

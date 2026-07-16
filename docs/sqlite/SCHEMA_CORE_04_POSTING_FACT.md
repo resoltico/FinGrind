@@ -35,6 +35,23 @@ create table if not exists posting_fact (
             'INVENTORY_WRITE_DOWN',
             'INVENTORY_SHRINKAGE',
             'INVENTORY_COUNT_INCREASE',
+            'PREPAYMENT',
+            'DEFERRED_REVENUE',
+            'ACCRUED_EXPENSE',
+            'ACCRUAL_CUTOFF_RECOGNITION',
+            'ACCRUED_EXPENSE_SETTLEMENT',
+            'LATVIAN_MONTHLY_PAYROLL',
+            'LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT',
+            'LATVIAN_PAYROLL_STATE_REMITTANCE',
+            'FIXED_ASSET_CAPITALIZATION',
+            'FIXED_ASSET_DEPRECIATION',
+            'FIXED_ASSET_DISPOSAL',
+            'FINANCING_BORROWING',
+            'FINANCING_PRINCIPAL_REPAYMENT',
+            'FINANCING_INTEREST_ACCRUAL',
+            'FINANCING_INTEREST_PAYMENT',
+            'FOREIGN_CURRENCY_OBLIGATION',
+            'REALIZED_FOREIGN_EXCHANGE_SETTLEMENT',
             'EXPENSE_SETTLED',
             'EXPENSE_ON_CREDIT',
             'RECEIPT',
@@ -189,6 +206,15 @@ create table if not exists posting_fact (
                 'INVENTORY_CAPITALIZATION_SETTLED',
                 'INVENTORY_CAPITALIZATION_ON_CREDIT',
                 'INVENTORY_WRITE_DOWN',
+                'FIXED_ASSET_CAPITALIZATION',
+                'FIXED_ASSET_DEPRECIATION',
+                'FIXED_ASSET_DISPOSAL',
+                'FINANCING_BORROWING',
+                'FINANCING_PRINCIPAL_REPAYMENT',
+                'FINANCING_INTEREST_ACCRUAL',
+                'FINANCING_INTEREST_PAYMENT',
+                'FOREIGN_CURRENCY_OBLIGATION',
+                'REALIZED_FOREIGN_EXCHANGE_SETTLEMENT',
                 'EXPENSE_SETTLED',
                 'EXPENSE_ON_CREDIT',
                 'OWNER_CONTRIBUTION',
@@ -200,6 +226,24 @@ create table if not exists posting_fact (
             and entry_amount_currency_code is not null
             and entry_amount_minor is not null
             and entry_adjunct_amount_minor is null
+            and entry_unit_cost_currency_code is null
+            and entry_unit_cost_minor is null
+        )
+        or (
+            posting_origin_kind in (
+                'PREPAYMENT',
+                'DEFERRED_REVENUE',
+                'ACCRUED_EXPENSE',
+                'ACCRUAL_CUTOFF_RECOGNITION',
+                'ACCRUED_EXPENSE_SETTLEMENT'
+            )
+            and entry_primary_debit_account_code is not null
+            and entry_primary_credit_account_code is not null
+            and entry_adjunct_account_code is null
+            and entry_amount_currency_code is not null
+            and entry_amount_minor is not null
+            and entry_adjunct_amount_minor is null
+            and entry_quantity is null
             and entry_unit_cost_currency_code is null
             and entry_unit_cost_minor is null
         )
@@ -238,6 +282,15 @@ create table if not exists posting_fact (
                 'INVENTORY_CAPITALIZATION_SETTLED',
                 'INVENTORY_CAPITALIZATION_ON_CREDIT',
                 'INVENTORY_WRITE_DOWN',
+                'FIXED_ASSET_CAPITALIZATION',
+                'FIXED_ASSET_DEPRECIATION',
+                'FIXED_ASSET_DISPOSAL',
+                'FINANCING_BORROWING',
+                'FINANCING_PRINCIPAL_REPAYMENT',
+                'FINANCING_INTEREST_ACCRUAL',
+                'FINANCING_INTEREST_PAYMENT',
+                'FOREIGN_CURRENCY_OBLIGATION',
+                'REALIZED_FOREIGN_EXCHANGE_SETTLEMENT',
                 'EXPENSE_SETTLED',
                 'EXPENSE_ON_CREDIT',
                 'OWNER_CONTRIBUTION',
@@ -273,7 +326,10 @@ create table if not exists posting_fact (
                 'OPENING_POSITION',
                 'REVERSAL',
                 'INTERIM_RESULT_SWEEP',
-                'FISCAL_YEAR_CLOSE'
+                'FISCAL_YEAR_CLOSE',
+                'LATVIAN_MONTHLY_PAYROLL',
+                'LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT',
+                'LATVIAN_PAYROLL_STATE_REMITTANCE'
             )
             and entry_primary_debit_account_code is null
             and entry_primary_credit_account_code is null

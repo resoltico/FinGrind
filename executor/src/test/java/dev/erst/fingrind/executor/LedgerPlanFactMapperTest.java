@@ -8,6 +8,18 @@ import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
+import dev.erst.fingrind.contract.tax.TaxApplicationKind;
+import dev.erst.fingrind.contract.tax.TaxCode;
+import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
+import dev.erst.fingrind.contract.tax.TaxCodeName;
+import dev.erst.fingrind.contract.tax.TaxInclusionMode;
+import dev.erst.fingrind.contract.tax.TaxJurisdiction;
+import dev.erst.fingrind.contract.tax.TaxObligationFrequency;
+import dev.erst.fingrind.contract.tax.TaxRate;
+import dev.erst.fingrind.contract.tax.TaxRegistrationId;
+import dev.erst.fingrind.contract.tax.TaxRegistrationName;
+import dev.erst.fingrind.contract.tax.TaxRegistrationNumber;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountNodeKind;
@@ -132,6 +144,39 @@ class LedgerPlanFactMapperTest {
                                                         && "reason".equals(text.name())
                                                         && "operator reversal"
                                                             .equals(text.value())))));
+  }
+
+  @Test
+  void taxRegistrationFacts_preserveAnOptionalRegistrationNumber() {
+    DeclaredTaxRegistration registration =
+        new DeclaredTaxRegistration(
+            new TaxRegistrationId("vat-lv"),
+            new TaxRegistrationName("Latvia VAT"),
+            new TaxJurisdiction("LV"),
+            new TaxRegistrationNumber("LV40001234567"),
+            new AccountCode("2100"),
+            new AccountCode("1300"),
+            TaxObligationFrequency.MONTHLY,
+            20,
+            List.of(
+                new TaxCodeDefinition(
+                    new TaxCode("vat-standard-sale"),
+                    new TaxCodeName("VAT Standard Sale"),
+                    new TaxRate(210_000),
+                    TaxInclusionMode.EXCLUSIVE,
+                    TaxApplicationKind.OUTPUT_SALE)),
+            FIXED_INSTANT);
+
+    List<BookWorkflowFact> facts =
+        LedgerPlanFactMapper.taxRegistrationFacts("updated", registration);
+
+    assertTrue(
+        facts.stream()
+            .anyMatch(
+                fact ->
+                    fact instanceof BookWorkflowFact.Text text
+                        && "registrationNumber".equals(text.name())
+                        && "LV40001234567".equals(text.value())));
   }
 
   @Test

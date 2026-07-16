@@ -10,6 +10,41 @@ import org.jspecify.annotations.Nullable;
 final class CliPlanBookkeepingTextRenderer {
   private CliPlanBookkeepingTextRenderer() {}
 
+  static String renderStepData(CliPlanJsonModels.LedgerBookkeepingStepDataPayload dataPayload) {
+    return switch (dataPayload) {
+      case CliPlanJsonModels.PreflightEntryStepDataPayload preflightEntry ->
+          CliTextFormat.renderKeyValueBlock(
+              List.of(
+                  List.of("Idempotency key", preflightEntry.idempotencyKey()),
+                  List.of("Effective date", preflightEntry.effectiveDate())));
+      case CliPlanJsonModels.CommittedEntryStepDataPayload committedEntry ->
+          CliTextFormat.renderKeyValueBlock(
+              List.of(
+                  List.of("Posting id", committedEntry.postingId()),
+                  List.of("Idempotency key", committedEntry.idempotencyKey()),
+                  List.of("Effective date", committedEntry.effectiveDate()),
+                  List.of("Recorded at", committedEntry.recordedAt())));
+      case CliPlanJsonModels.BookInspectionStepDataPayload inspection ->
+          CliTextFormat.renderKeyValueBlock(
+              List.of(
+                  List.of("State", CliTextDisplay.wireLabel(inspection.state())),
+                  List.of(
+                      "Initialized",
+                      CliQueryScopeText.displayBooleanLabel(inspection.initialized())),
+                  List.of(
+                      "Compatible with current binary",
+                      CliQueryScopeText.displayBooleanLabel(
+                          inspection.compatibleWithCurrentBinary()))));
+      case CliPlanJsonModels.AccountPageStepDataPayload accountPage ->
+          renderAccountPage(accountPage);
+      case CliPlanJsonModels.PostingStepDataPayload posting -> renderPosting(posting.posting());
+      case CliPlanJsonModels.PostingPageStepDataPayload postingPage ->
+          renderPostingPage(postingPage);
+      case CliPlanJsonModels.AccountBalanceStepDataPayload accountBalance ->
+          renderAccountBalance(accountBalance);
+    };
+  }
+
   static String renderDeclaredAccount(
       String outcome, CliBookQueryJsonModels.DeclaredAccountPayload account) {
     List<List<String>> rows = new ArrayList<>();

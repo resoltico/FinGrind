@@ -12,6 +12,7 @@ import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesSliceJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryHelpJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryRequestInputSliceJsonModels;
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
@@ -111,6 +112,29 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
     assertEquals(MachineContract.protocolVersion(), full.protocolVersion());
     assertEquals(DiscoveryFocus.OVERVIEW, full.focus());
     assertNotNull(full.fullContract());
+    assertEquals(
+        capabilitiesDescriptor.capabilityCatalog(), full.fullContract().capabilityCatalog());
+  }
+
+  @Test
+  void capabilitiesPayload_mapsCanonicalCapabilityCatalogSlice() {
+    CapabilitiesDescriptor capabilitiesDescriptor = MachineContract.capabilities(identity());
+
+    CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesSlicePayload slice =
+        assertInstanceOf(
+            CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesSlicePayload.class,
+            CliDiscoveryPayloadMapper.capabilitiesPayload(
+                capabilitiesDescriptor,
+                DiscoveryDetail.FULL,
+                new CliDiscoverySelections(DiscoveryFocus.CAPABILITY_CATALOG, null)));
+
+    CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesCatalogSlicePayload catalog =
+        assertInstanceOf(
+            CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesCatalogSlicePayload.class,
+            slice.data());
+    assertEquals(DiscoveryFocus.CAPABILITY_CATALOG, slice.focus());
+    assertEquals(capabilitiesDescriptor.capabilityCatalog(), catalog.capabilityCatalog());
+    assertTrue(slice.nextHints().getFirst().contains("operative boundary"));
   }
 
   @Test
@@ -285,16 +309,17 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
         storage.data());
     assertTrue(storage.nextHints().getFirst().contains("environment --output json"));
 
-    CliDiscoveryCommonJsonModels.CapabilitiesRequestInputSlicePayload compactRequestInput =
-        assertInstanceOf(
-            CliDiscoveryCommonJsonModels.CapabilitiesRequestInputSlicePayload.class,
-            requestInputCompact.data());
+    CliDiscoveryRequestInputSliceJsonModels.CapabilitiesRequestInputSlicePayload
+        compactRequestInput =
+            assertInstanceOf(
+                CliDiscoveryRequestInputSliceJsonModels.CapabilitiesRequestInputSlicePayload.class,
+                requestInputCompact.data());
     assertNull(compactRequestInput.fullRequestInput());
     assertTrue(requestInputCompact.nextHints().getFirst().contains("print-request-template"));
 
-    CliDiscoveryCommonJsonModels.CapabilitiesRequestInputSlicePayload fullRequestInput =
+    CliDiscoveryRequestInputSliceJsonModels.CapabilitiesRequestInputSlicePayload fullRequestInput =
         assertInstanceOf(
-            CliDiscoveryCommonJsonModels.CapabilitiesRequestInputSlicePayload.class,
+            CliDiscoveryRequestInputSliceJsonModels.CapabilitiesRequestInputSlicePayload.class,
             requestInputFull.data());
     assertNotNull(fullRequestInput.fullRequestInput());
 
@@ -388,7 +413,8 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
             canonical.reversals(),
             canonical.preflight(),
             canonical.currencyModel(),
-            canonical.bookkeepingKernel());
+            canonical.bookkeepingKernel(),
+            canonical.capabilityCatalog());
 
     CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesSlicePayload payload =
         assertInstanceOf(

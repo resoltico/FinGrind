@@ -436,7 +436,74 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
   }
 
   @Test
-  void canonicalStrictSchema_rejectsInactiveAccountAndOpeningBalanceNominalUsage() {
+  void canonicalStrictSchema_preservesAccountDefinitionsAndIdentities() {
+    Path databasePath = tempDirectory.resolve("posted-account-definition.sqlite");
+    assertDoesNotThrow(
+        () ->
+            withStandaloneDatabase(
+                bookAccess(databasePath),
+                database -> {
+                  SqliteBookSchemaBootstrap.initializeBook(database);
+                  insertCanonicalInitializedBookMetadata(database);
+                  insertAccountRow(
+                      database, "1000", "Cash", "ASSET", "DEBIT", 1, "2026-04-07T10:15:30Z");
+                  insertAccountRow(
+                      database,
+                      "3000",
+                      "Owner Capital",
+                      "EQUITY",
+                      "CREDIT",
+                      1,
+                      "2026-04-07T10:15:30Z");
+                  insertAccountRow(
+                      database,
+                      "1100",
+                      "Unposted Cash Reserve",
+                      "ASSET",
+                      "DEBIT",
+                      1,
+                      "2026-04-07T10:15:30Z");
+                  insertPostingFactRow(
+                      database, "posting-account-lifecycle", "idem-account-lifecycle");
+                  insertJournalLineRow(
+                      database, "posting-account-lifecycle", 0, "1000", "DEBIT", "EUR", 1000);
+                  insertJournalLineRow(
+                      database, "posting-account-lifecycle", 1, "3000", "CREDIT", "EUR", 1000);
+
+                  SqliteNativeException postedAccountAmendment =
+                      assertThrows(
+                          SqliteNativeException.class,
+                          () ->
+                              database.executeStatement(
+                                  "update account set account_name = 'Renamed cash' where account_code = '1000'"));
+                  assertEquals(
+                      SqliteNativeResultCode.code("CONSTRAINT_TRIGGER"),
+                      postedAccountAmendment.resultCode());
+                  assertEquals(
+                      "Cash",
+                      queryText(
+                          database,
+                          "select account_name from account where account_code = '1000'"));
+
+                  SqliteNativeException accountDeletion =
+                      assertThrows(
+                          SqliteNativeException.class,
+                          () ->
+                              database.executeStatement(
+                                  "delete from account where account_code = '1100'"));
+                  assertEquals(
+                      SqliteNativeResultCode.code("CONSTRAINT_TRIGGER"),
+                      accountDeletion.resultCode());
+                  assertEquals(
+                      "Unposted Cash Reserve",
+                      queryText(
+                          database,
+                          "select account_name from account where account_code = '1100'"));
+                }));
+  }
+
+  @Test
+  void canonicalStrictSchema_enforcesInactiveAccountAndOpeningBalanceJournalLineRules() {
     Path inactiveAccountPath = tempDirectory.resolve("inactive-account-journal-line.sqlite");
     assertDoesNotThrow(
         () ->
@@ -468,6 +535,31 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                       inactiveAccountLine.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_TRIGGER", inactiveAccountLine.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from journal_line"));
+
+                  insertPostingFactRow(database, "posting-prior", "idem-prior");
+                  insertPostingFactRow(
+                      database,
+                      "posting-historical-reversal",
+                      "STANDARD",
+                      "2026-04-07",
+                      "2026-04-07T10:15:31Z",
+                      new PostingFactSqlLiterals(
+                          "actor-reversal",
+                          "AGENT",
+                          "command-reversal",
+                          "idem-reversal",
+                          "cause-reversal",
+                          "null",
+                          "'historical correction'",
+                          SourceChannel.CLI.wireValue(),
+                          "'posting-prior'"));
+                  insertJournalLineRow(
+                      database, "posting-historical-reversal", 0, "1100", "CREDIT", "EUR", 1000);
+                  assertEquals(
+                      1,
+                      queryInt(
+                          database,
+                          "select count(*) from journal_line where posting_id = 'posting-historical-reversal'"));
                 }));
 
     Path nominalOpeningBalancePath = tempDirectory.resolve("opening-balance-nominal.sqlite");

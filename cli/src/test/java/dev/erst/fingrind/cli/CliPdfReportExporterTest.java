@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPagination;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
@@ -375,6 +376,7 @@ class CliPdfReportExporterTest {
         new EffectiveDateRange.Bounded(
             LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
         CliIoFixtureSupport.allPostingKinds(),
+        AccountLedgerPagination.firstPage(50),
         List.of(balance("EUR", "0.00", "0.00", "0.00", BalanceSide.ZERO)),
         List.of(
             new dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry(

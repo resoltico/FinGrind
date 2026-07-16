@@ -69,4 +69,20 @@ class CliOutputChannelTest {
     assertTrue(rendered.contains("\"status\":\"rejected\""), rendered);
     assertTrue(rendered.contains("\"code\":\"idempotency-key-conflict\""), rendered);
   }
+
+  @Test
+  void writeDiagnosticEnvelope_preservesNonEnvelopeDiagnosticRecords() {
+    ByteArrayOutputStream diagnostics = new ByteArrayOutputStream();
+    CliOutputChannel outputChannel =
+        new CliOutputChannel(
+            new PrintStream(new ByteArrayOutputStream(), true, StandardCharsets.UTF_8),
+            new PrintStream(diagnostics, true, StandardCharsets.UTF_8));
+
+    outputChannel.writeDiagnosticEnvelope(
+        new CliFailure("invalid-request", "Unsupported argument.", null, "--bogus"));
+
+    String rendered = diagnostics.toString(StandardCharsets.UTF_8);
+    assertTrue(rendered.contains("\"code\":\"invalid-request\""), rendered);
+    assertTrue(rendered.contains("\"argument\":\"--bogus\""), rendered);
+  }
 }

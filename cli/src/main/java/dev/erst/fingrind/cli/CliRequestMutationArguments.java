@@ -10,10 +10,12 @@ import org.jspecify.annotations.Nullable;
 /** Parses non-posting request-bound mutation commands such as declare-account and execute-plan. */
 final class CliRequestMutationArguments {
   private static final CliBookArgumentParser.CommandArgumentSpec OUTPUT_ONLY_ARGUMENTS =
-      CliBookArgumentParser.commandArgumentSpec(List.of(ProtocolOptions.OUTPUT), List.of());
+      CliBookArgumentParser.commandArgumentSpec(
+          List.of(ProtocolOptions.Presentation.OUTPUT), List.of());
   private static final CliBookArgumentParser.CommandArgumentSpec EXECUTE_PLAN_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
-          List.of(ProtocolOptions.OUTPUT, ProtocolOptions.RESULT_DETAIL), List.of());
+          List.of(ProtocolOptions.Presentation.OUTPUT, ProtocolOptions.Discovery.RESULT_DETAIL),
+          List.of());
 
   private CliRequestMutationArguments() {}
 
@@ -27,7 +29,7 @@ final class CliRequestMutationArguments {
       outputMode =
           CliOptionModes.requireOutputMode(
               outputMode,
-              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Presentation.OUTPUT),
               CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
     }
     return new DeclareAccount(
@@ -46,13 +48,31 @@ final class CliRequestMutationArguments {
       outputMode =
           CliOptionModes.requireOutputMode(
               outputMode,
-              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Presentation.OUTPUT),
               CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
     }
     return new DeclareTaxRegistration(
         parsedArguments.bookAccess(),
         parsedArguments.optionalRequestFile().orElseThrow(),
         CliOptionModes.resolvedOutputMode(outputMode));
+  }
+
+  static CliCommand parseAmendAccountCommand(List<String> arguments) {
+    CliBookArgumentParser.ParsedBookArguments parsedArguments =
+        CliBookArgumentParser.parseRequestBoundCommandArguments(arguments, OUTPUT_ONLY_ARGUMENTS);
+    return new AmendAccount(
+        parsedArguments.bookAccess(),
+        parsedArguments.optionalRequestFile().orElseThrow(),
+        parseOutputMode(parsedArguments.commandArguments()));
+  }
+
+  static CliCommand parseRetireAccountCommand(List<String> arguments) {
+    CliBookArgumentParser.ParsedBookArguments parsedArguments =
+        CliBookArgumentParser.parseRequestBoundCommandArguments(arguments, OUTPUT_ONLY_ARGUMENTS);
+    return new RetireAccount(
+        parsedArguments.bookAccess(),
+        parsedArguments.optionalRequestFile().orElseThrow(),
+        parseOutputMode(parsedArguments.commandArguments()));
   }
 
   static CliCommand parseExecutePlanCommand(List<String> arguments) {
@@ -63,11 +83,11 @@ final class CliRequestMutationArguments {
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.OUTPUT.equals(argument)) {
+      if (ProtocolOptions.Presentation.OUTPUT.equals(argument)) {
         outputMode =
             CliOptionModes.requireOutputMode(
                 outputMode,
-                CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Presentation.OUTPUT),
                 CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
         continue;
       }
@@ -78,5 +98,19 @@ final class CliRequestMutationArguments {
         parsedArguments.optionalRequestFile().orElseThrow(),
         CliOptionModes.resolvedOutputMode(outputMode),
         resultDetail == null ? PlanResultDetail.SUMMARY : resultDetail);
+  }
+
+  private static OutputMode parseOutputMode(List<String> commandArguments) {
+    @Nullable OutputMode outputMode = null;
+    ListIterator<String> argumentIterator = commandArguments.listIterator();
+    while (argumentIterator.hasNext()) {
+      argumentIterator.next();
+      outputMode =
+          CliOptionModes.requireOutputMode(
+              outputMode,
+              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Presentation.OUTPUT),
+              CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
+    }
+    return CliOptionModes.resolvedOutputMode(outputMode);
   }
 }

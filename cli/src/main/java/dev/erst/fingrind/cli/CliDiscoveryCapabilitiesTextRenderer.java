@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
+import dev.erst.fingrind.contract.protocol.CapabilityCatalogEntry;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.StorageEngine;
 
@@ -60,12 +61,33 @@ final class CliDiscoveryCapabilitiesTextRenderer {
                         + OperationId.TRIAL_BALANCE.wireName()),
                 java.util.List.of("PDF-capable reports", pdfCapableReportSummary())),
             CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
+    String capabilityScope =
+        CliTextFormat.renderKeyValueBlock(
+            capabilitiesDescriptor.capabilityCatalog().stream()
+                .map(
+                    entry ->
+                        java.util.List.of(
+                            entry.id() + " (" + displayCapabilityStatus(entry) + ")",
+                            displayCapabilityScope(entry)))
+                .toList(),
+            CliDiscoveryTextSupport.TEXT_WRAP_WIDTH);
     return CliTextFormat.renderTitledBlock(
         "FinGrind Capabilities",
         CliDiscoveryTextSupport.joinSections(
             header,
             CliDiscoveryTextSupport.section("Operator Overview", operatorOverview),
+            CliDiscoveryTextSupport.section("Capability Scope", capabilityScope),
             CliDiscoveryTextSupport.section("Next Steps", operatorNextSteps)));
+  }
+
+  private static String displayCapabilityStatus(CapabilityCatalogEntry entry) {
+    return entry.status().name().toLowerCase(java.util.Locale.ROOT).replace('_', '-');
+  }
+
+  private static String displayCapabilityScope(CapabilityCatalogEntry entry) {
+    return entry.operativeBoundary() == null
+        ? entry.scopeStatement()
+        : entry.scopeStatement() + " Boundary: " + entry.operativeBoundary();
   }
 
   private static String displayKernelScope(String scope) {

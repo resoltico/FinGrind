@@ -1,6 +1,8 @@
 package dev.erst.fingrind.executor.workflow;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
+import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
 import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -66,6 +68,46 @@ public final class LedgerPlanFactMapper {
     facts.add(BookWorkflowFact.flag("active", account.active()));
     facts.add(BookWorkflowFact.text("declaredAt", account.declaredAt().toString()));
     return List.copyOf(facts);
+  }
+
+  /** Expands one declared tax registration into workflow-owned machine facts. */
+  public static List<BookWorkflowFact> taxRegistrationFacts(
+      String outcome, DeclaredTaxRegistration registration) {
+    List<BookWorkflowFact> facts = new ArrayList<>();
+    facts.add(BookWorkflowFact.text("outcome", outcome));
+    facts.add(BookWorkflowFact.text("taxRegistrationId", registration.taxRegistrationId().value()));
+    facts.add(
+        BookWorkflowFact.text("taxRegistrationName", registration.taxRegistrationName().value()));
+    facts.add(BookWorkflowFact.text("jurisdiction", registration.jurisdiction().value()));
+    if (registration.registrationNumber() != null) {
+      facts.add(
+          BookWorkflowFact.text("registrationNumber", registration.registrationNumber().value()));
+    }
+    facts.add(
+        BookWorkflowFact.text("payableAccountCode", registration.payableAccountCode().value()));
+    facts.add(
+        BookWorkflowFact.text(
+            "recoverableAccountCode", registration.recoverableAccountCode().value()));
+    facts.add(
+        BookWorkflowFact.text(
+            "obligationFrequency", registration.obligationFrequency().wireValue()));
+    facts.add(
+        BookWorkflowFact.count("dueDaysAfterPeriodEnd", registration.dueDaysAfterPeriodEnd()));
+    facts.add(BookWorkflowFact.count("taxCodeCount", registration.taxCodes().size()));
+    registration
+        .taxCodes()
+        .forEach(taxCode -> facts.add(BookWorkflowFact.group("taxCode", taxCodeFacts(taxCode))));
+    facts.add(BookWorkflowFact.text("declaredAt", registration.declaredAt().toString()));
+    return List.copyOf(facts);
+  }
+
+  private static List<BookWorkflowFact> taxCodeFacts(TaxCodeDefinition taxCode) {
+    return List.of(
+        BookWorkflowFact.text("taxCode", taxCode.taxCode().value()),
+        BookWorkflowFact.text("taxCodeName", taxCode.taxCodeName().value()),
+        BookWorkflowFact.count("ratePartsPerMillion", taxCode.rate().partsPerMillionOfWhole()),
+        BookWorkflowFact.text("inclusionMode", taxCode.inclusionMode().wireValue()),
+        BookWorkflowFact.text("applicationKind", taxCode.applicationKind().wireValue()));
   }
 
   /** Expands one paginated account-registry result into workflow-owned machine facts. */

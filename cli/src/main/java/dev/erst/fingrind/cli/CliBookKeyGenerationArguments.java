@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import java.nio.file.Path;
 import java.util.List;
@@ -11,7 +12,9 @@ import org.jspecify.annotations.Nullable;
 final class CliBookKeyGenerationArguments {
   private static final List<String> GENERATE_BOOK_KEY_FILE_OPTIONS =
       List.of(
-          ProtocolOptions.BOOK_KEY_FILE, ProtocolOptions.TIGHTEN_PARENTS, ProtocolOptions.OUTPUT);
+          ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
+          ProtocolOptions.BookDefinition.TIGHTEN_PARENTS,
+          ProtocolOptions.Presentation.OUTPUT);
 
   private CliBookKeyGenerationArguments() {}
 
@@ -23,23 +26,24 @@ final class CliBookKeyGenerationArguments {
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
       switch (argument) {
-        case ProtocolOptions.BOOK_KEY_FILE -> {
+        case ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE -> {
           if (bookKeyFilePath != null) {
             throw CliArgumentValueParser.invalid(
-                ProtocolOptions.BOOK_KEY_FILE,
-                "Duplicate argument: " + ProtocolOptions.BOOK_KEY_FILE);
+                ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
+                "Duplicate argument: " + ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE);
           }
           bookKeyFilePath =
               CliOptionValues.requirePathOptionValue(
-                  argumentIterator, ProtocolOptions.BOOK_KEY_FILE);
+                  argumentIterator, ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE);
         }
-        case ProtocolOptions.OUTPUT ->
+        case ProtocolOptions.Presentation.OUTPUT ->
             outputMode =
                 CliOptionModes.requireOutputMode(
                     outputMode,
-                    CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                    CliOptionValues.requireValue(
+                        argumentIterator, ProtocolOptions.Presentation.OUTPUT),
                     CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
-        case ProtocolOptions.TIGHTEN_PARENTS -> tightenParents = true;
+        case ProtocolOptions.BookDefinition.TIGHTEN_PARENTS -> tightenParents = true;
         default ->
             throw CliArgumentValueParser.unsupportedArgument(
                 argument, GENERATE_BOOK_KEY_FILE_OPTIONS);
@@ -47,8 +51,8 @@ final class CliBookKeyGenerationArguments {
     }
     if (bookKeyFilePath == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BOOK_KEY_FILE,
-          "A " + ProtocolOptions.BOOK_KEY_FILE + " argument is required.");
+          ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
+          "A " + ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE + " argument is required.");
     }
     return new GenerateBookKeyFile(
         bookKeyFilePath, tightenParents, CliOptionModes.resolvedOutputMode(outputMode));

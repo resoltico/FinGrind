@@ -380,7 +380,9 @@ class CliReportArgumentParsingTest {
                   "--account-code",
                   "1000",
                   "--limit",
-                  "10"
+                  "10",
+                  "--limit",
+                  "20"
                 }));
     assertThrows(
         CliArgumentsException.class,

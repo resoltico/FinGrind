@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract;
 
 import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -47,7 +48,8 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
             new BookMaintenanceRejection.ArtifactBusy(
                 BookMaintenanceArtifactRole.LIVE_BOOK, hint(bookFile)),
             new BookMaintenanceRejection.BackupDestinationAlreadyExists(hint(backupFile)),
-            new BookMaintenanceRejection.BackupKeyFileAlreadyExists(hint(backupKeyFile)),
+            new BookMaintenanceRejection.SecretTargetOccupied(hint(backupKeyFile)),
+            new BookMaintenanceRejection.BookDestinationOccupied(hint(bookFile)),
             new BookMaintenanceRejection.ArtifactVerificationFailed(
                 BookMaintenanceArtifactRole.BACKUP_SOURCE,
                 hint(backupFile),
@@ -65,13 +67,32 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 Collectors.toUnmodifiableMap(
                     ContractResponse.RejectionDescriptor::code, descriptor -> descriptor));
 
-    assertEquals(12, descriptorsByCode.size());
+    assertEquals(13, descriptorsByCode.size());
     for (BookMaintenanceRejection rejection : rejections) {
       String code = BookMaintenanceRejection.wireCode(rejection);
       ContractResponse.RejectionDescriptor descriptor = descriptorsByCode.get(code);
       assertTrue(descriptor != null, () -> "Missing descriptor for code " + code);
       assertTrue(!descriptor.description().isBlank(), () -> "Blank description for " + code);
     }
+    assertFalse(
+        descriptorsByCode.values().stream()
+            .flatMap(descriptor -> descriptor.detailFields().stream())
+            .anyMatch(field -> field.description().contains("Redacted public hint")));
+    assertTrue(
+        descriptorsByCode.values().stream()
+            .flatMap(descriptor -> descriptor.detailFields().stream())
+            .filter(
+                field ->
+                    List.of(
+                            "bookFile",
+                            "backupFile",
+                            "artifactPath",
+                            "secretTarget",
+                            "rollbackArtifact",
+                            "blockingArtifacts",
+                            "rollbackArtifacts")
+                        .contains(field.name()))
+            .allMatch(field -> field.description().startsWith("Canonical absolute")));
   }
 
   @Test
@@ -130,7 +151,10 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
         () -> new BookMaintenanceRejection.BackupDestinationAlreadyExists(nullOf()));
     assertThrows(
         NullPointerException.class,
-        () -> new BookMaintenanceRejection.BackupKeyFileAlreadyExists(nullOf()));
+        () -> new BookMaintenanceRejection.SecretTargetOccupied(nullOf()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new BookMaintenanceRejection.BookDestinationOccupied(nullOf()));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -287,7 +311,8 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
             "parent-owner-access-required",
             "parent-owner-only-required",
             "target-must-be-regular-non-symlink-file",
-            "unsupported-secure-filesystem"),
+            "unsupported-secure-filesystem",
+            "atomic-secret-publication-unsupported"),
         BookMaintenancePathFailure.wireValues());
     assertEquals(
         "missing-parent-directory",
@@ -306,6 +331,9 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
     assertEquals(
         "unsupported-secure-filesystem",
         BookMaintenancePathFailure.UNSUPPORTED_SECURE_FILESYSTEM.wireValue());
+    assertEquals(
+        "atomic-secret-publication-unsupported",
+        BookMaintenancePathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED.wireValue());
 
     assertIterableEquals(
         List.of(
@@ -385,7 +413,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
     assertThrows(IllegalArgumentException.class, () -> new PublicPathHint("books/acme.sqlite"));
   }
 
-  private static PublicPathHint hint(Path path) {
-    return PublicPathHint.fromPath(path);
+  private static Path hint(Path path) {
+    return path.toAbsolutePath().normalize();
   }
 }

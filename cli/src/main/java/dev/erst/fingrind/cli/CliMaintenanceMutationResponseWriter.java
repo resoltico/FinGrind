@@ -8,7 +8,7 @@ import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 
@@ -170,12 +170,12 @@ final class CliMaintenanceMutationResponseWriter {
     }
   }
 
-  private static String absolutePath(PublicPathHint pathHint) {
-    return CliPublicPaths.redactedValue(pathHint);
+  private static String absolutePath(Path path) {
+    return CliPublicPaths.absoluteValue(path);
   }
 
   private static List<CliEnvelopeJsonModels.SuccessArtifact> rollbackArtifacts(
-      List<PublicPathHint> rollbackArtifactPaths) {
+      List<Path> rollbackArtifactPaths) {
     if (rollbackArtifactPaths.isEmpty()) {
       return List.of();
     }

@@ -4,10 +4,13 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalT
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireValue;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
+import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.ContractResponseCatalog;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import java.util.HashSet;
 import java.util.List;
@@ -37,7 +40,34 @@ public interface CliEnvelopeJsonModels {
       @Nullable String argument,
       @Nullable String idempotencyKey,
       @Nullable EnvelopeDetails details,
-      @Nullable List<SuccessArtifact> artifacts) {
+      @Nullable List<SuccessArtifact> artifacts,
+      @Nullable String path,
+      @Nullable List<String> relatedPaths) {
+    /** Retains the ordinary envelope construction form when no failure carries filesystem paths. */
+    public Envelope(
+        ProtocolEnvelopeStatus status,
+        @Nullable T payload,
+        @Nullable String code,
+        @Nullable String message,
+        @Nullable String hint,
+        @Nullable String argument,
+        @Nullable String idempotencyKey,
+        @Nullable EnvelopeDetails details,
+        @Nullable List<SuccessArtifact> artifacts) {
+      this(
+          status,
+          payload,
+          code,
+          message,
+          hint,
+          argument,
+          idempotencyKey,
+          details,
+          artifacts,
+          null,
+          null);
+    }
+
     public Envelope {
       status = requireValue(status, "status");
       code = requireOptionalText(code, "code");
@@ -46,6 +76,8 @@ public interface CliEnvelopeJsonModels {
       argument = requireOptionalText(argument, "argument");
       idempotencyKey = requireOptionalText(idempotencyKey, "idempotencyKey");
       artifacts = artifacts == null ? null : java.util.List.copyOf(artifacts);
+      path = requireOptionalText(path, "path");
+      relatedPaths = relatedPaths == null ? null : java.util.List.copyOf(relatedPaths);
       if (artifacts != null) {
         if (artifacts.isEmpty()) {
           throw new IllegalArgumentException("artifacts must not be empty when present.");
@@ -62,12 +94,15 @@ public interface CliEnvelopeJsonModels {
         requireAbsent(argument, "argument");
         requireAbsent(idempotencyKey, "idempotencyKey");
         requireAbsent(details, "details");
+        requireAbsent(path, "path");
+        requireAbsent(relatedPaths, "relatedPaths");
       } else if (status == ProtocolEnvelopeStatus.REJECTED) {
         validateNonSuccessPayload(status, payload);
         code = requireText(java.util.Objects.requireNonNull(code, "code"), "code");
         message = requireText(java.util.Objects.requireNonNull(message, "message"), "message");
         requireAbsent(argument, "argument");
         requireAbsent(artifacts, "artifacts");
+        validateFailurePaths(path, relatedPaths);
         if (details != null && !(details instanceof CliRejectionJsonModels.RejectionDetails)) {
           throw new IllegalArgumentException("Rejected envelopes only admit rejection details.");
         }
@@ -77,10 +112,34 @@ public interface CliEnvelopeJsonModels {
         message = requireText(java.util.Objects.requireNonNull(message, "message"), "message");
         requireAbsent(idempotencyKey, "idempotencyKey");
         requireAbsent(artifacts, "artifacts");
+        validateFailurePaths(path, relatedPaths);
         if (details != null && !(details instanceof CliErrorJsonModels.ErrorDetails)) {
           throw new IllegalArgumentException("Error envelopes only admit error details.");
         }
       }
+    }
+
+    /** Returns the single taxonomy category for every non-success envelope. */
+    @JsonProperty("category")
+    public ContractResponse.@Nullable FailureCategory category() {
+      return status == ProtocolEnvelopeStatus.OK
+          ? null
+          : ContractResponseCatalog.failureCategoryFor(
+              java.util.Objects.requireNonNull(code, "code"));
+    }
+  }
+
+  private static void validateFailurePaths(
+      @Nullable String path, @Nullable List<String> relatedPaths) {
+    if (path == null) {
+      requireAbsent(relatedPaths, "relatedPaths");
+      return;
+    }
+    if (relatedPaths == null) {
+      throw new IllegalArgumentException("relatedPaths must be present when path is present.");
+    }
+    for (String relatedPath : relatedPaths) {
+      requireText(relatedPath, "relatedPaths element");
     }
   }
 

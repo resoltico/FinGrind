@@ -85,7 +85,7 @@ final class SqliteBookDirectorySecurity {
           normalizedBookPath,
           SqliteCallerPathFailure.PARENT_PATH_COLLISION,
           "The FinGrind SQLite book path requires a real parent directory: "
-              + SqliteBookFilesystemSupport.redactedPath(parentDirectory));
+              + SqliteBookFilesystemSupport.absolutePath(parentDirectory));
     }
     if (SqliteBookFilesystemSupport.supportsPosix(parentDirectory)) {
       requireSecurePosixDirectory(normalizedBookPath, parentDirectory);
@@ -115,14 +115,14 @@ final class SqliteBookDirectorySecurity {
           normalizedBookPath,
           SqliteCallerPathFailure.PARENT_OWNER_ACCESS_REQUIRED,
           "The FinGrind SQLite book parent directory must be owner-writable and owner-searchable: "
-              + SqliteBookFilesystemSupport.redactedPath(parentDirectory));
+              + SqliteBookFilesystemSupport.absolutePath(parentDirectory));
     }
     if (!POSIX_BOOK_DIRECTORY_PERMISSIONS.containsAll(permissions)) {
       throw new SqliteCallerPathContractException(
           normalizedBookPath,
           SqliteCallerPathFailure.PARENT_OWNER_ONLY_REQUIRED,
           "The FinGrind SQLite book parent directory must already use owner-only permissions: "
-              + SqliteBookFilesystemSupport.redactedPath(parentDirectory));
+              + SqliteBookFilesystemSupport.absolutePath(parentDirectory));
     }
   }
 
@@ -141,7 +141,7 @@ final class SqliteBookDirectorySecurity {
           normalizedBookPath,
           SqliteCallerPathFailure.PARENT_OWNER_ACCESS_REQUIRED,
           "The FinGrind SQLite book parent directory ACL must grant the directory owner traversal and write access: "
-              + SqliteBookFilesystemSupport.redactedPath(parentDirectory));
+              + SqliteBookFilesystemSupport.absolutePath(parentDirectory));
     }
     acl.stream()
         .filter(entry -> entry.type() == AclEntryType.ALLOW)
@@ -157,7 +157,7 @@ final class SqliteBookDirectorySecurity {
                   normalizedBookPath,
                   SqliteCallerPathFailure.PARENT_OWNER_ONLY_REQUIRED,
                   "The FinGrind SQLite book parent directory ACL must grant book-directory access only to the directory owner: "
-                      + SqliteBookFilesystemSupport.redactedPath(parentDirectory)
+                      + SqliteBookFilesystemSupport.absolutePath(parentDirectory)
                       + " grants access to a non-owner principal.");
             });
   }

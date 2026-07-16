@@ -65,28 +65,22 @@ fg_cli_wrapper_initialize() {
 fg_cli_wrapper_prepare_runtime_if_needed() {
     local prepare_failure_message=$1
     local force_rerun=false
-    if [[ -f "${fg_cli_wrapper_raw_jar}" ]] \
-        && fg_cli_wrapper_runtime_manifest_is_usable \
+    if fg_cli_wrapper_raw_jar_is_usable \
         && fg_cli_wrapper_runtime_inputs_are_fresh; then
         return 0
     fi
     # A corrupted or stale manifest must force a real refresh instead of relying on Gradle's
     # up-to-date checks, which only see that the output path exists.
-    if [[ -f "${fg_cli_wrapper_raw_jar}" ]] \
-        && ( ! fg_cli_wrapper_runtime_manifest_is_usable \
-            || ! fg_cli_wrapper_runtime_inputs_are_fresh ); then
+    if [[ -f "${fg_cli_wrapper_raw_jar}" ]]; then
         force_rerun=true
     fi
     acquire_lock
-    if [[ -f "${fg_cli_wrapper_raw_jar}" ]] \
-        && fg_cli_wrapper_runtime_manifest_is_usable \
+    if fg_cli_wrapper_raw_jar_is_usable \
         && fg_cli_wrapper_runtime_inputs_are_fresh; then
         cleanup_lock
         return 0
     fi
-    if [[ -f "${fg_cli_wrapper_raw_jar}" ]] \
-        && ( ! fg_cli_wrapper_runtime_manifest_is_usable \
-            || ! fg_cli_wrapper_runtime_inputs_are_fresh ); then
+    if [[ -f "${fg_cli_wrapper_raw_jar}" ]]; then
         force_rerun=true
     fi
     if ! (
@@ -106,7 +100,7 @@ fg_cli_wrapper_prepare_runtime_if_needed() {
 fg_cli_wrapper_verify_raw_jar() {
     local missing_message=$1
 
-    [[ -f "${fg_cli_wrapper_raw_jar}" ]] || fg_cli_wrapper_die "${missing_message}"
+    fg_cli_wrapper_raw_jar_is_usable || fg_cli_wrapper_die "${missing_message}"
 }
 
 fg_cli_wrapper_load_runtime_manifest() {
@@ -130,6 +124,16 @@ fg_cli_wrapper_runtime_manifest_is_usable() {
     (( ${#fg_cli_wrapper_runtime_input_paths[@]} > 0 )) || return 1
     [[ -x "${fg_cli_wrapper_java_executable}" ]] || return 1
     return 0
+}
+
+fg_cli_wrapper_raw_jar_is_usable() {
+    local jar_executable=''
+
+    [[ -f "${fg_cli_wrapper_raw_jar}" ]] || return 1
+    fg_cli_wrapper_runtime_manifest_is_usable || return 1
+    jar_executable="${fg_cli_wrapper_java_executable%/java}/jar"
+    [[ -x "${jar_executable}" ]] || return 1
+    "${jar_executable}" --list --file "${fg_cli_wrapper_raw_jar}" >/dev/null 2>&1
 }
 
 fg_cli_wrapper_runtime_inputs_are_fresh() {
@@ -201,12 +205,15 @@ fg_cli_wrapper_parse_runtime_manifest() {
 fg_cli_wrapper_exec_java() {
     local runtime_distribution=$1
     shift
+    local invocation_label=$1
+    shift
 
     exec "${fg_cli_wrapper_java_executable}" \
         "--enable-native-access=${fg_cli_wrapper_native_access_module}" \
         "--add-opens=java.base/java.nio=${fg_cli_wrapper_native_access_module}" \
         "--add-exports=java.base/sun.nio=${fg_cli_wrapper_native_access_module}" \
         "-Dfingrind.runtime.distribution=${runtime_distribution}" \
+        "-Ddev.erst.fingrind.invocation=${invocation_label}" \
         "-Dfingrind.source-checkout.root=${fg_cli_wrapper_repo_root}" \
         "-Dfingrind.source-checkout.build-root=${fg_cli_wrapper_root_build_dir}" \
         --module-path "${fg_cli_wrapper_raw_jar}" \

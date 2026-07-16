@@ -1,14 +1,29 @@
 from __future__ import annotations
 
-from .account_ledger_csv_contract import ACCOUNT_LEDGER_CSV_HEADER
-from .account_ledger_row_assertions import (
-    assert_counterpart_row,
-    assert_entry_row,
-    assert_source_document_row,
-)
+from typing import Final
+
 from .csv_support import parse_csv_rows
 from .models import ReleaseSmokeConfig
-from .support import require
+from .support import require, require_match
+
+ACCOUNT_LEDGER_CSV_HEADER: Final[list[str]] = [
+    "family",
+    "accountCode",
+    "postingId",
+    "effectiveDate",
+    "movementCurrencyCode",
+    "debitTotalCurrencyCode",
+    "debitTotalMinorUnits",
+    "creditTotalCurrencyCode",
+    "creditTotalMinorUnits",
+    "netAmountCurrencyCode",
+    "netAmountMinorUnits",
+    "balanceSide",
+    "runningNetAmountCurrencyCode",
+    "runningNetAmountMinorUnits",
+    "runningBalanceSide",
+]
+POSTING_ID_PATTERN: Final[str] = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
 
 
 def assert_account_ledger_csv(config: ReleaseSmokeConfig, account_ledger_csv_output: str) -> None:
@@ -21,95 +36,72 @@ def assert_account_ledger_csv(config: ReleaseSmokeConfig, account_ledger_csv_out
         f"{config.label} account-ledger CSV output did not render the expected header",
     )
     require(
-        rows
-        and all(
-            row["exportFamily"] == "account-ledger"
-            and row["recordKind"] == "account-ledger"
-            and row["accountCode"] == config.starter_cash_account_code
-            and row["accountName"] == config.starter_cash_account_name
-            and row["accountType"] == "ASSET"
-            and row["normalBalance"] == "DEBIT"
-            and row["active"] == "true"
-            for row in rows
-        ),
-        f"{config.label} account-ledger CSV output did not stay anchored to the shared report family",
+        len(rows) == 2,
+        f"{config.label} account-ledger CSV output did not render one row per posting",
     )
-    summary_rows = [row for row in rows if row["relationKind"] == "ledger-summary"]
     require(
-        len(summary_rows) == 1,
-        f"{config.label} account-ledger CSV output did not render exactly one summary row",
+        [row["effectiveDate"] for row in rows] == ["2026-04-07", "2026-04-08"],
+        f"{config.label} account-ledger CSV output was not ordered by effective date",
     )
-    summary = summary_rows[0]
-    require(
-        summary["rowId"] == f"ledger-summary:{config.starter_cash_account_code}:EUR"
-        and summary["parentRowId"] == ""
-        and summary["effectiveDateFrom"] == "2026-04-07"
-        and summary["effectiveDateTo"] == "2026-04-08"
-        and summary["currencyCode"] == config.functional_currency
-        and summary["openingDebitTotal"] == "0.00"
-        and summary["openingCreditTotal"] == "0.00"
-        and summary["openingNetAmount"] == "0.00"
-        and summary["openingBalanceSide"] == "ZERO"
-        and summary["closingDebitTotal"] == "10.00"
-        and summary["closingCreditTotal"] == "4.00"
-        and summary["closingNetAmount"] == "6.00"
-        and summary["closingBalanceSide"] == "DEBIT",
-        f"{config.label} account-ledger CSV summary row did not render the expected horizon and balances",
-    )
-    entry_rows = [row for row in rows if row["relationKind"] == "entry"]
-    require(
-        len(entry_rows) == 2,
-        f"{config.label} account-ledger CSV output did not render exactly two ledger entry rows",
-    )
-    sale_entry = next(row for row in entry_rows if row["postingOriginKind"] == "SALE_SETTLED")
-    expense_entry = next(row for row in entry_rows if row["postingOriginKind"] == "EXPENSE_SETTLED")
-    assert_entry_row(
+    _assert_ledger_row(
         config,
-        sale_entry,
+        rows[0],
         effective_date="2026-04-07",
-        debit_amount="10.00",
-        credit_amount="0.00",
-        running_net_amount="10.00",
+        debit_minor_units="1000",
+        credit_minor_units="0",
+        net_minor_units="1000",
+        balance_side="DEBIT",
+        running_net_minor_units="1000",
         running_balance_side="DEBIT",
-        row_name="sale ledger entry row",
+        row_name="sale ledger row",
     )
-    assert_entry_row(
+    _assert_ledger_row(
         config,
-        expense_entry,
+        rows[1],
         effective_date="2026-04-08",
-        debit_amount="0.00",
-        credit_amount="4.00",
-        running_net_amount="6.00",
+        debit_minor_units="0",
+        credit_minor_units="400",
+        net_minor_units="400",
+        balance_side="CREDIT",
+        running_net_minor_units="600",
         running_balance_side="DEBIT",
-        row_name="expense ledger entry row",
+        row_name="expense ledger row",
     )
-    assert_counterpart_row(
-        config,
-        rows,
-        sale_entry,
-        expected_counterpart=config.starter_revenue_account_code,
-        row_name="sale counterpart row",
+
+
+def _assert_ledger_row(
+    config: ReleaseSmokeConfig,
+    row: dict[str, str],
+    *,
+    effective_date: str,
+    debit_minor_units: str,
+    credit_minor_units: str,
+    net_minor_units: str,
+    balance_side: str,
+    running_net_minor_units: str,
+    running_balance_side: str,
+    row_name: str,
+) -> None:
+    currency = config.functional_currency
+    require(
+        row["family"] == "account-ledger"
+        and row["accountCode"] == config.starter_cash_account_code
+        and row["effectiveDate"] == effective_date
+        and row["movementCurrencyCode"] == currency
+        and row["debitTotalCurrencyCode"] == currency
+        and row["debitTotalMinorUnits"] == debit_minor_units
+        and row["creditTotalCurrencyCode"] == currency
+        and row["creditTotalMinorUnits"] == credit_minor_units
+        and row["netAmountCurrencyCode"] == currency
+        and row["netAmountMinorUnits"] == net_minor_units
+        and row["balanceSide"] == balance_side
+        and row["runningNetAmountCurrencyCode"] == currency
+        and row["runningNetAmountMinorUnits"] == running_net_minor_units
+        and row["runningBalanceSide"] == running_balance_side,
+        f"{config.label} account-ledger CSV output did not render the expected values for the {row_name}",
     )
-    assert_counterpart_row(
-        config,
-        rows,
-        expense_entry,
-        expected_counterpart=config.expense_supplement_account_code,
-        row_name="expense counterpart row",
-    )
-    assert_source_document_row(
-        config,
-        rows,
-        sale_entry,
-        expected_source_document_id=f"{config.actor_prefix}-sale-document-1",
-        expected_source_document_type="cash-receipt",
-        row_name="sale source-document row",
-    )
-    assert_source_document_row(
-        config,
-        rows,
-        expense_entry,
-        expected_source_document_id=f"{config.actor_prefix}-expense-document-1",
-        expected_source_document_type="expense-receipt",
-        row_name="expense source-document row",
+    require_match(
+        row["postingId"],
+        POSTING_ID_PATTERN,
+        f"{config.label} account-ledger CSV output did not render a canonical posting identifier for the {row_name}",
     )

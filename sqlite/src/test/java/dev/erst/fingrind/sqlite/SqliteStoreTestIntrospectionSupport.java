@@ -40,6 +40,7 @@ import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
@@ -142,13 +143,18 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
   }
 
   static void assertInvalidBookFilePathFailure(
-      IllegalStateException exception, String detailFragment) {
+      IllegalStateException exception, Path expectedPath, String expectedMessage) {
     assertTrue(exception instanceof ContractFailureException);
     ContractFailureException contractFailureException = (ContractFailureException) exception;
     assertEquals(
         ContractErrors.Descriptor.INVALID_BOOK_FILE_PATH,
         contractFailureException.failure().descriptor());
-    assertTrue(contractFailureException.failure().message().contains(detailFragment));
+    assertEquals(expectedMessage, contractFailureException.failure().message());
+    var paths = Objects.requireNonNull(contractFailureException.failure().paths());
+    Path canonicalPath = expectedPath.toAbsolutePath().normalize();
+    assertEquals(canonicalPath, paths.path());
+    assertEquals(List.of(), paths.relatedPaths());
+    assertFalse(contractFailureException.failure().message().contains(canonicalPath.toString()));
     String hint = Objects.requireNonNull(contractFailureException.failure().hint());
     assertTrue(hint.contains("regular non-symlink protected-book path"));
     assertTrue(hint.contains("private owner-only parent directory"));
@@ -202,7 +208,12 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
       AccountCode accountCode,
       @org.jspecify.annotations.Nullable LocalDate effectiveDateFrom,
       @org.jspecify.annotations.Nullable LocalDate effectiveDateTo) {
-    return new AccountLedgerCriteria(accountCode, effectiveDateFrom, effectiveDateTo);
+    return new AccountLedgerCriteria(
+        accountCode,
+        dev.erst.fingrind.core.EffectiveDateRange.of(effectiveDateFrom, effectiveDateTo),
+        dev.erst.fingrind.core.PostingCoverage.ALL_POSTING_KINDS,
+        50,
+        Optional.empty());
   }
 
   static PeriodSummaryCriteria periodSummaryCriteria(

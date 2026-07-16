@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPagination;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.CashFlowRow;
@@ -246,6 +247,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         account,
         EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
         allPostingKinds(),
+        AccountLedgerPagination.firstPage(50),
         List.of(balance),
         List.of(
             new AccountLedgerEntry(postingFact, balance, money("EUR", "6.00"), BalanceSide.DEBIT)),
@@ -259,6 +261,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         account,
         EffectiveDateRange.unbounded(),
         allPostingKinds(),
+        AccountLedgerPagination.firstPage(50),
         List.of(),
         List.of(
             new AccountLedgerEntry(
@@ -336,6 +339,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         new dev.erst.fingrind.core.EffectiveDateRange.Bounded(
             LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
         allPostingKinds(),
+        AccountLedgerPagination.firstPage(50),
         List.of(CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "0.00"))),
         List.of(),
         List.of(CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00"))));

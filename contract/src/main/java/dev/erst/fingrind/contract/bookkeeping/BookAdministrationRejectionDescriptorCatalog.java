@@ -9,18 +9,20 @@ import java.util.Objects;
 
 /** Published descriptor catalog for book-administration rejection types. */
 final class BookAdministrationRejectionDescriptorCatalog {
-  private static final Map<BookAdministrationRejectionDescriptors.Descriptor, Definition>
+  private static final Map<
+          BookAdministrationRejectionDescriptors.Descriptor,
+          BookAdministrationRejectionDescriptorDefinition>
       DEFINITIONS_BY_DESCRIPTOR =
           Map.ofEntries(
               Map.entry(
                   BookAdministrationRejectionDescriptors.Descriptor.BOOK_ALREADY_INITIALIZED,
-                  definition(
+                  preconditionDefinition(
                       "book-already-initialized",
                       "Book initialization refused because the selected book is already initialized.",
                       List.of())),
               Map.entry(
                   BookAdministrationRejectionDescriptors.Descriptor.BOOK_NOT_INITIALIZED,
-                  definition(
+                  preconditionDefinition(
                       "administration-book-not-initialized",
                       "Administration command refused because the selected book does not exist or has not been initialized with "
                           + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
@@ -28,7 +30,7 @@ final class BookAdministrationRejectionDescriptorCatalog {
                       List.of())),
               Map.entry(
                   BookAdministrationRejectionDescriptors.Descriptor.BOOK_CONTAINS_SCHEMA,
-                  definition(
+                  preconditionDefinition(
                       "book-contains-schema",
                       "Book initialization refused because the selected SQLite file already contains schema objects.",
                       List.of())),
@@ -62,6 +64,36 @@ final class BookAdministrationRejectionDescriptorCatalog {
                           detailField(
                               "requestedAccountTaxonomy",
                               "Conflicting taxonomy that the caller attempted to declare.")))),
+              Map.entry(
+                  BookAdministrationRejectionDescriptors.Descriptor.ACCOUNT_NOT_FOUND,
+                  preconditionDefinition(
+                      "account-not-found",
+                      "Account lifecycle command refused because accountCode is not declared in the selected book.",
+                      List.of(
+                          detailField(
+                              "accountCode",
+                              "Requested accountCode that is not declared in the selected book.")))),
+              Map.entry(
+                  BookAdministrationRejectionDescriptors.Descriptor.ACCOUNT_HAS_DEPENDENTS,
+                  preconditionDefinition(
+                      "account-has-dependents",
+                      "Account lifecycle command refused because durable relationships still depend on this account.",
+                      List.of(
+                          detailField(
+                              "accountCode",
+                              "Requested accountCode whose lifecycle change is blocked."),
+                          detailField(
+                              "dependencies",
+                              "Durable relationship kinds that must be removed or moved before amendment or retirement.")))),
+              Map.entry(
+                  BookAdministrationRejectionDescriptors.Descriptor.ACCOUNT_BALANCE_NOT_ZERO,
+                  preconditionDefinition(
+                      "account-balance-not-zero",
+                      "Account retirement refused because the account has a non-zero current balance.",
+                      List.of(
+                          detailField(
+                              "accountCode",
+                              "Requested accountCode whose current balance must be zero before retirement.")))),
               Map.entry(
                   BookAdministrationRejectionDescriptors.Descriptor.PARENT_ACCOUNT_MISSING,
                   definition(
@@ -267,25 +299,42 @@ final class BookAdministrationRejectionDescriptorCatalog {
 
   private static ContractResponse.RejectionDescriptor descriptor(
       BookAdministrationRejectionDescriptors.Descriptor descriptor) {
-    Definition definition = definition(descriptor);
+    BookAdministrationRejectionDescriptorDefinition definition = definition(descriptor);
     return new ContractResponse.RejectionDescriptor(
-        definition.code(), definition.description(), definition.detailFields(), List.of());
+        definition.code(),
+        definition.category(),
+        definition.description(),
+        definition.detailFields(),
+        List.of());
   }
 
-  private static Definition definition(
+  private static BookAdministrationRejectionDescriptorDefinition definition(
       BookAdministrationRejectionDescriptors.Descriptor descriptor) {
     return Objects.requireNonNull(DEFINITIONS_BY_DESCRIPTOR.get(descriptor), "definition");
   }
 
-  private static Definition definition(
+  private static BookAdministrationRejectionDescriptorDefinition definition(
       String code, String description, List<ContractResponse.FieldDescriptor> detailFields) {
-    return new Definition(code, description, List.copyOf(detailFields));
+    return definition(
+        ContractResponse.FailureCategory.DOMAIN_SEMANTIC, code, description, detailFields);
+  }
+
+  private static BookAdministrationRejectionDescriptorDefinition preconditionDefinition(
+      String code, String description, List<ContractResponse.FieldDescriptor> detailFields) {
+    return definition(
+        ContractResponse.FailureCategory.PRECONDITION, code, description, detailFields);
+  }
+
+  private static BookAdministrationRejectionDescriptorDefinition definition(
+      ContractResponse.FailureCategory category,
+      String code,
+      String description,
+      List<ContractResponse.FieldDescriptor> detailFields) {
+    return new BookAdministrationRejectionDescriptorDefinition(
+        category, code, description, List.copyOf(detailFields));
   }
 
   private static ContractResponse.FieldDescriptor detailField(String name, String description) {
     return new ContractResponse.FieldDescriptor(name, description);
   }
-
-  private record Definition(
-      String code, String description, List<ContractResponse.FieldDescriptor> detailFields) {}
 }

@@ -3,10 +3,17 @@ package dev.erst.fingrind.executor.bookkeeping;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffBookkeepingEntryVariants;
+import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffId;
+import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffRecognitionInterval;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.InventoryRelief;
+import dev.erst.fingrind.contract.bookkeeping.LatvianPayrollBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct;
+import dev.erst.fingrind.contract.payroll.LatvianPayrollEmployeeReference;
+import dev.erst.fingrind.contract.payroll.LatvianPayrollMonth;
+import dev.erst.fingrind.contract.payroll.LatvianPayrollRunId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -14,6 +21,7 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -194,6 +202,136 @@ class RequestFingerprintCallerAuthoredEntryWriterTest {
     assertContains(canonical, "callerAuthoredEntry.inventoryRelief.inventoryAccountCode=1400");
     assertContains(canonical, "callerAuthoredEntry.inventoryRelief.costOfSalesAccountCode=5000");
     assertContains(canonical, "callerAuthoredEntry.inventoryRelief.quantity=1");
+  }
+
+  @Test
+  void append_keepsDirectJournalsAndReversalsFreeOfTypedFields() {
+    StringBuilder directJournal = new StringBuilder();
+    RequestFingerprintTypedEntryWriter.append(
+        directJournal,
+        new BookkeepingEntry.DirectJournal(
+            new JournalEntry(
+                LocalDate.parse("2026-04-07"),
+                List.of(
+                    new JournalLine(
+                        new AccountCode("1000"),
+                        JournalLine.EntrySide.DEBIT,
+                        dev.erst.fingrind.core.Money.parse("EUR", "10.00")),
+                    new JournalLine(
+                        new AccountCode("4000"),
+                        JournalLine.EntrySide.CREDIT,
+                        dev.erst.fingrind.core.Money.parse("EUR", "10.00")))),
+            null));
+    StringBuilder reversal = new StringBuilder();
+    RequestFingerprintTypedEntryWriter.append(
+        reversal,
+        new BookkeepingEntry.Reversal(
+            LocalDate.parse("2026-04-07"),
+            new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
+                new ReversalReference(new PostingId("posting-1")),
+                new ReversalReason("operator reversal")),
+            null,
+            null));
+
+    assertTrue(directJournal.isEmpty());
+    assertTrue(reversal.isEmpty());
+  }
+
+  @Test
+  void append_canonicalizesEveryAccrualCutoffLifecycleRequest() {
+    AccrualCutoffId cutoffId = new AccrualCutoffId("accrual-cutoff-2026-04");
+    AccrualCutoffRecognitionInterval interval =
+        new AccrualCutoffRecognitionInterval(
+            LocalDate.parse("2026-04-07"), LocalDate.parse("2026-05-31"));
+
+    String prepayment =
+        canonical(
+            new AccrualCutoffBookkeepingEntryVariants.Prepayment(
+                LocalDate.parse("2026-04-07"),
+                cutoffId,
+                new AccountCode("1410"),
+                new AccountCode("5000"),
+                new AccountCode("1000"),
+                new MonetaryAmount("EUR", "1000"),
+                interval));
+    String deferredRevenue =
+        canonical(
+            new AccrualCutoffBookkeepingEntryVariants.DeferredRevenue(
+                LocalDate.parse("2026-04-07"),
+                cutoffId,
+                new AccountCode("1000"),
+                new AccountCode("2200"),
+                new AccountCode("4000"),
+                new MonetaryAmount("EUR", "1000"),
+                interval));
+    String accruedExpense =
+        canonical(
+            new AccrualCutoffBookkeepingEntryVariants.AccruedExpense(
+                LocalDate.parse("2026-04-07"),
+                cutoffId,
+                new AccountCode("5000"),
+                new AccountCode("2100"),
+                new MonetaryAmount("EUR", "1000")));
+    String recognition =
+        canonical(
+            new AccrualCutoffBookkeepingEntryVariants.AccrualCutoffRecognition(
+                LocalDate.parse("2026-04-15"), cutoffId, new MonetaryAmount("EUR", "250"), null));
+    String settlement =
+        canonical(
+            new AccrualCutoffBookkeepingEntryVariants.AccruedExpenseSettlement(
+                LocalDate.parse("2026-04-15"),
+                cutoffId,
+                new AccountCode("1000"),
+                new MonetaryAmount("EUR", "250"),
+                null));
+
+    assertContains(prepayment, "callerAuthoredEntry.accrualCutoffId=accrual-cutoff-2026-04");
+    assertContains(prepayment, "callerAuthoredEntry.prepaymentAssetAccountCode=1410");
+    assertContains(prepayment, "callerAuthoredEntry.recognitionInterval.endDate=2026-05-31");
+    assertContains(deferredRevenue, "callerAuthoredEntry.deferredRevenueAccountCode=2200");
+    assertContains(deferredRevenue, "callerAuthoredEntry.revenueAccountCode=4000");
+    assertContains(accruedExpense, "callerAuthoredEntry.accruedExpenseLiabilityAccountCode=2100");
+    assertContains(recognition, "callerAuthoredEntry.amountMinorUnits=250");
+    assertFalse(recognition.contains("callerAuthoredEntry.cashAccountCode="));
+    assertContains(settlement, "callerAuthoredEntry.cashAccountCode=1000");
+  }
+
+  @Test
+  void append_canonicalizesEveryLatvianMonthlyPayrollRequest() {
+    LatvianPayrollRunId payrollRunId = new LatvianPayrollRunId("payroll-2026-07-employee-1");
+    String monthlyPayroll =
+        canonical(
+            new LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll(
+                LocalDate.parse("2026-07-31"),
+                payrollRunId,
+                new LatvianPayrollEmployeeReference("employee-1"),
+                new LatvianPayrollMonth(YearMonth.of(2026, 7)),
+                new AccountCode("5000"),
+                new AccountCode("5010"),
+                new AccountCode("2200"),
+                new AccountCode("2210"),
+                new AccountCode("2220"),
+                new AccountCode("2230"),
+                new MonetaryAmount("EUR", "200000"),
+                null));
+    String netWages =
+        canonical(
+            new LatvianPayrollBookkeepingEntryVariants.NetWageSettlement(
+                LocalDate.parse("2026-07-31"), payrollRunId, new AccountCode("1000"), null));
+    String stateRemittance =
+        canonical(
+            new LatvianPayrollBookkeepingEntryVariants.StateRemittance(
+                LocalDate.parse("2026-07-31"), payrollRunId, new AccountCode("1000"), null));
+
+    assertContains(monthlyPayroll, "callerAuthoredEntry.payrollRunId=payroll-2026-07-employee-1");
+    assertContains(monthlyPayroll, "callerAuthoredEntry.employeeReference=employee-1");
+    assertContains(monthlyPayroll, "callerAuthoredEntry.payrollMonth=2026-07");
+    assertContains(monthlyPayroll, "callerAuthoredEntry.amountCurrency=EUR");
+    assertContains(monthlyPayroll, "callerAuthoredEntry.amountMinorUnits=200000");
+    assertContains(netWages, "callerAuthoredEntry.settlementKind=NET_WAGES");
+    assertContains(netWages, "callerAuthoredEntry.cashAccountCode=1000");
+    assertContains(stateRemittance, "callerAuthoredEntry.settlementKind=STATE_REMITTANCE");
+    assertContains(stateRemittance, "callerAuthoredEntry.payrollRunId=payroll-2026-07-employee-1");
   }
 
   private static String canonical(BookkeepingEntry entry) {

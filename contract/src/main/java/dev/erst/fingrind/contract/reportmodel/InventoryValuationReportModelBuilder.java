@@ -56,7 +56,7 @@ public final class InventoryValuationReportModelBuilder
     }
     return new ReportModel(
         REPORT_FAMILY,
-        "Inventory Valuation",
+        ReportModelSupport.reportTitle(OperationId.INVENTORY_VALUATION),
         ReportModel.Orientation.LANDSCAPE,
         ReportModelSupport.context(
             report.bookIdentity(),

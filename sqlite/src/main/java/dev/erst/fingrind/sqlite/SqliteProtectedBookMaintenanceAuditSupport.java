@@ -57,10 +57,10 @@ final class SqliteProtectedBookMaintenanceAuditSupport {
   static BookAuditEvent maintenanceAuditEvent(
       ProtectedBookMaintenanceAuditKind auditKind, Instant recordedAt) {
     return switch (auditKind) {
-      case BACKUP_CREATED ->
-          new BookAuditEvent(recordedAt, BookAuditEventKind.BACKUP_CREATED, null, null, null);
       case BACKUP_RESTORED ->
           new BookAuditEvent(recordedAt, BookAuditEventKind.BACKUP_RESTORED, null, null, null);
+      case BOOK_REKEYED ->
+          new BookAuditEvent(recordedAt, BookAuditEventKind.BOOK_REKEYED, null, null, null);
       case REKEY_ROLLBACK_RESTORED ->
           new BookAuditEvent(
               recordedAt, BookAuditEventKind.REKEY_ROLLBACK_RESTORED, null, null, null);
@@ -73,9 +73,6 @@ final class SqliteProtectedBookMaintenanceAuditSupport {
   static BookAuditEvent maintenanceAuditCompensationEvent(
       ProtectedBookMaintenanceAuditCompensationKind auditKind, Instant recordedAt) {
     return switch (auditKind) {
-      case BACKUP_CREATED ->
-          new BookAuditEvent(
-              recordedAt, BookAuditEventKind.BACKUP_CREATED_COMPENSATED, null, null, null);
       case REKEY_ROLLBACK_DELETED ->
           new BookAuditEvent(
               recordedAt, BookAuditEventKind.REKEY_ROLLBACK_DELETED_COMPENSATED, null, null, null);

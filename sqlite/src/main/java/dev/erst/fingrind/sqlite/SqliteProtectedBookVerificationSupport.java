@@ -1,7 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.runtime.ContractErrors;
-import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.BookVerification;
@@ -11,7 +10,7 @@ import java.util.Objects;
 
 /** Owns protected-book verification mapping for SQLite-backed maintenance flows. */
 final class SqliteProtectedBookVerificationSupport {
-  MaintenanceDecision<BookVerification> verifyResolvedBook(
+  BookVerification verifyResolvedBook(
       Path normalizedBookPath, SqliteBookPassphrase bookPassphrase) {
     Objects.requireNonNull(normalizedBookPath, "normalizedBookPath");
     Objects.requireNonNull(bookPassphrase, "bookPassphrase");
@@ -68,14 +67,13 @@ final class SqliteProtectedBookVerificationSupport {
     return ProtectedBookVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED;
   }
 
-  private MaintenanceDecision<BookVerification> inspectOpenedBook(
+  private BookVerification inspectOpenedBook(
       Path normalizedBookPath, SqliteReadSession bookSession, SqliteBookPassphrase bookPassphrase) {
     try (SqliteReadSession ignored = bookSession) {
       BookLifecycleInspection inspection = bookSession.inspectBook();
       return switch (inspection) {
         case BookLifecycleInspection.Initialized _ ->
-            MaintenanceDecision.accepted(
-                new SqliteVerifiedBook(normalizedBookPath, bookPassphrase));
+            new SqliteVerifiedBook(normalizedBookPath, bookPassphrase);
         case BookLifecycleInspection.Missing _ ->
             verificationFailure(
                 normalizedBookPath, bookPassphrase, ProtectedBookVerificationFailure.MISSING);
@@ -89,12 +87,11 @@ final class SqliteProtectedBookVerificationSupport {
     }
   }
 
-  private static MaintenanceDecision<BookVerification> verificationFailure(
+  private static BookVerification verificationFailure(
       Path normalizedBookPath,
       SqliteBookPassphrase bookPassphrase,
       ProtectedBookVerificationFailure verificationFailure) {
     bookPassphrase.close();
-    return MaintenanceDecision.accepted(
-        new VerificationFailure(normalizedBookPath, verificationFailure));
+    return new VerificationFailure(normalizedBookPath, verificationFailure);
   }
 }

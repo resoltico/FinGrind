@@ -29,25 +29,26 @@ final class CliFailureMapper {
     if (exception instanceof CliArtifactOutputExistsException outputExistsException) {
       return new CliFailure(
           ContractErrors.Descriptor.ARTIFACT_OUTPUT_ALREADY_EXISTS.code(),
-          message(outputExistsException),
+          "The requested artifact destination already exists and will not be overwritten.",
           "Choose a missing "
               + outputExistsException.artifactOptionName()
               + " destination or remove the existing artifact before rerunning the command.",
-          outputExistsException.artifactOptionName());
+          outputExistsException.artifactOptionName(),
+          outputExistsException.outputPath());
     }
     if (exception instanceof CliPdfExportException pdfExportException) {
       return new CliFailure(
           ContractErrors.Descriptor.PDF_EXPORT_FAILURE.code(),
-          message(pdfExportException),
+          "Failed to write the PDF export.",
           "Inspect the selected --pdf-out destination, its parent directory permissions, and the available filesystem space, then rerun the command.",
-          "--pdf-out");
+          "--pdf-out",
+          pdfExportException.outputPath());
     }
-    String message = message(exception);
     return switch (SqliteFailureClassifier.classify(exception)) {
       case MANAGED_RUNTIME ->
           new CliFailure(
               ContractErrors.Descriptor.MANAGED_RUNTIME_FAILURE.code(),
-              message,
+              "The managed FinGrind runtime could not be verified.",
               "Run a supported FinGrind launcher surface: the extracted published Linux bundle launcher (bin/fingrind), the published container image, or from a local source checkout run ./gradlew :cli:prepareSourceCheckoutCliRuntime and rerun the generated launcher or developer direct-Java wrapper from that checkout.",
               null);
       case PERSISTENCE_INVARIANT ->
@@ -55,7 +56,7 @@ final class CliFailureMapper {
       case STORAGE ->
           new CliFailure(
               ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE.code(),
-              message,
+              "The selected protected book could not be opened or updated.",
               "Inspect the selected book file path, chosen book passphrase source, initialization state, filesystem permissions, and the SQLite runtime message, then rerun after fixing the underlying storage problem.",
               null);
       case OTHER -> null;
@@ -92,10 +93,6 @@ final class CliFailureMapper {
       return baseHint;
     }
     return additionalContext + " " + baseHint;
-  }
-
-  private static String message(Exception exception) {
-    return Objects.requireNonNullElse(exception.getMessage(), "CLI command failed.");
   }
 
   private static String requireErrorId(String errorId) {

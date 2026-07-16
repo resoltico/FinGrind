@@ -2,10 +2,10 @@
 afad: "4.0"
 version: "0.60.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-07-11"
+updated: "2026-07-15"
 route:
-  keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7, tax-selection, applied-tax]
-  questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented", "where is tax selection versus applied tax documented"]
+  keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7, tax-selection, applied-tax, fixed-assets, financing, realized-foreign-exchange]
+  questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented", "where is tax selection versus applied tax documented", "where are fixed asset financing and realized foreign exchange posting models documented"]
 ---
 
 # Posting And Ledger Plan Reference
@@ -44,11 +44,9 @@ public enum BookkeepingEntryKind
 
 - Direct journal: `DirectJournal` carries one caller-authored `JournalEntry` for the raw escape
   hatch
-- Typed business events: `SaleSettled`, `SaleOnCredit`, `PurchaseSettled`, `PurchaseOnCredit`,
-  `InventoryCapitalizationSettled`, `InventoryCapitalizationOnCredit`, `InventoryWriteDown`,
-  `InventoryShrinkage`, `InventoryCountIncrease`, `ExpenseSettled`, `ExpenseOnCredit`, `Receipt`,
-  `Payment`, `OwnerContribution`, and `OwnerWithdrawal` preserve caller-authored event facts that
-  FinGrind translates into one canonical journal entry
+- Typed business events: standard, inventory, accrual cut-off, fixed-asset, financing,
+  realized-foreign-exchange, and Latvian payroll sealed families preserve caller-authored event
+  facts that FinGrind translates into one canonical journal entry
 - Distinct forms: `OpeningPosition` establishes a book's opening balances, while `Reversal`
   identifies and negates an existing posting; neither represents a new economic event
 - Shared view: `BookkeepingEntrySurface` owns the derived accessors that every caller-authored
@@ -56,6 +54,50 @@ public enum BookkeepingEntryKind
   `postingOriginKind()`, `postingLineage()`, `lines()`, and optional foreign-exchange facts
 - Purpose: keep the business-event-first write language explicit without introducing a second write
   kernel
+
+## `StandardBookkeepingEntryVariants`
+
+`StandardBookkeepingEntryVariants` is the sealed typed-entry family for ordinary sales,
+purchases, expenses, receipts, payments, and owner transfers outside the inventory and accrual
+cut-off bounded contexts.
+
+```java
+public sealed interface StandardBookkeepingEntryVariants extends TypedBookkeepingEntry
+```
+
+- Purpose: let admission, account resolution, and request-fingerprint code dispatch ordinary
+  business events without matching inventory or accrual-cut-off variants
+- Boundary: inventory, accrual-cut-off, fixed-asset, financing, realized-foreign-exchange, and
+  payroll event families remain separately sealed because they own additional state, lifecycle,
+  and accounting invariants
+
+## `FixedAssetBookkeepingEntryVariants`, `FinancingBookkeepingEntryVariants`, And `RealizedForeignExchangeBookkeepingEntryVariants`
+
+These three separately sealed typed-entry families own lifecycle facts that cannot be represented
+truthfully by a generic journal recipe.
+
+```java
+public sealed interface FixedAssetBookkeepingEntryVariants extends TypedBookkeepingEntry
+public sealed interface FinancingBookkeepingEntryVariants extends TypedBookkeepingEntry
+public sealed interface RealizedForeignExchangeBookkeepingEntryVariants extends TypedBookkeepingEntry
+```
+
+- Fixed assets: capitalization names the asset and its straight-line schedule; depreciation and
+  disposal identify the retained asset. The executor resolves depreciation and disposal gain or
+  loss from durable lifecycle facts, while `fixed-asset-register` exposes the reconciliation view.
+  The [Fixed Assets ADR](./ADR_FIXED_ASSETS.md) defines the boundary and links the IAS 16 primary
+  source; it is not an IAS 16 compliance claim.
+- Financing: borrowing creates the arrangement, and later principal repayment, interest accrual,
+  and interest payment identify it. The executor preserves principal and unpaid-interest bounds,
+  while `financing-register` reconciles the arrangement. The
+  [Financing ADR](./ADR_FINANCING.md) defines the boundary and links the IFRS 9 primary source; it
+  is not an IFRS 9 compliance claim.
+- Realized foreign exchange: foreign-currency receivable origination and settlement retain the
+  caller's quote evidence while the executor derives the realized result. The
+  `realized-foreign-exchange-register` reconciles the retained carrying amount and settlement.
+  The [Realized Foreign Exchange ADR](./ADR_REALIZED_FOREIGN_EXCHANGE.md) defines the boundary and
+  links IAS 21 and the ECB reference-rate source; it does not select a rate source or assert IAS
+  21 compliance.
 
 ## `PostEntryCommand`
 
@@ -199,10 +241,10 @@ public final class PostEntryCommandTranslator
 
 - Purpose: keep business-event-to-posting translation owned at the application boundary instead of
   leaking it into the CLI, request loaders, or posting service
-- Current scope: direct journals pass through unchanged, while the settled sale, sale-on-credit,
-  settled expense, expense-on-credit, receipt, payment, owner contribution, owner withdrawal,
-  opening-position, and reversal families translate into the exact canonical journal and durable
-  posting origin they claim
+- Current scope: direct journals pass through unchanged, while standard, inventory,
+  accrual-cut-off, fixed-asset, financing, realized-foreign-exchange, payroll, opening-position,
+  and reversal families translate into the exact canonical journal and durable posting origin they
+  claim
 
 ## `ResolvedJournal`
 
@@ -296,9 +338,9 @@ public final class InventoryAdmissionPolicy
 public static final class InventoryAdmissionPolicy.InventoryAdmissionFailure
 ```
 
-- `PostEntryResolutionSupport`: runs tax resolution, reversal resolution, and executor-owned
-  inventory costing plus admission in one owner-controlled sequence so callers do not compose
-  partial semantic pipelines themselves
+- `PostEntryResolutionSupport`: runs tax resolution, reversal resolution, executor-owned inventory
+  costing, and lifecycle-context resolution plus admission in one owner-controlled sequence so
+  callers do not compose partial semantic pipelines themselves
 - `PostEntryResolutionSupport.ResolutionOutcome`: returns both the resolved entry plus any
   deterministic rejection reached during that resolution pass
 - `InventoryPostingResolution`: packages one resolved entry together with the exact inventory
@@ -431,9 +473,13 @@ public record LedgerPlan(LedgerPlanId planId, List<LedgerStep> steps)
 public sealed interface LedgerStep
 ```
 
-- Families: `EnsureBook`, `DeclareAccount`, `PreflightEntry`, `PostEntry`, `InspectBook`,
-  `ListAccounts`, `GetPosting`, `ListPostings`, `AccountBalance`, `Assert`
+- Families: `EnsureBook`, `DeclareAccount`, `DeclareTaxRegistration`, `PreflightEntry`,
+  `PostEntry`, `InspectBook`, `ListAccounts`, `GetPosting`, `ListPostings`, `AccountBalance`,
+  `Assert`
 - Purpose: keep plan execution exhaustively typed instead of routing through maps
+- Tax setup: `DeclareTaxRegistration` keeps account declaration and tax registration as separate
+  ordered plan effects, so a plan can set up both prerequisite accounts and the registration in
+  one atomic transaction without making tax registration own account creation
 - Surface: committed posting steps publish the typed `record-*` workflow kinds when the nested
   `PostEntryCommand` carries one business entry, while raw direct-journal fallback stays on the
   `post-entry` kind
@@ -556,11 +602,11 @@ public enum LedgerFactKind implements WireValue
 
 ## `LedgerStepKind`, `LedgerJournalKind`, `LedgerAssertionKind`, `LedgerBoundaryCheckpoint`, `LedgerStepStatus`, And `LedgerPlanStatus`
 
-These enums own the stable ledger-plan wire vocabulary.
+These types own the stable ledger-plan wire vocabulary.
 
 ```java
 public enum LedgerStepKind
-public enum LedgerJournalKind
+public sealed interface LedgerJournalKind
 public enum LedgerAssertionKind
 public enum LedgerBoundaryCheckpoint
 public enum LedgerStepStatus
@@ -568,10 +614,12 @@ public enum LedgerPlanStatus
 ```
 
 - Purpose: keep plan/journal tokens compiler-owned and renderer-independent
+- Ownership: every standard `LedgerJournalKind` is its canonical `LedgerStepKind`; only the
+  journal-only `plan-boundary` marker is represented by `LedgerJournalKind.BoundaryKind`
 - Surface: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
   vocabulary
 
-## `LedgerJournalStep`, `LedgerJournalEntry`, `LedgerExecutionJournal`, `LedgerStepFailure`, And `LedgerPlanResult`
+## `LedgerJournalStep`, `LedgerJournalEntry`, `LedgerExecutionJournal`, `LedgerStepFailure`, `LedgerPlanFailure`, And `LedgerPlanResult`
 
 These types carry the durable execution record returned by `execute-plan`.
 
@@ -580,14 +628,18 @@ public sealed interface LedgerJournalStep
 public sealed interface LedgerJournalEntry
 public record LedgerExecutionJournal(...)
 public record LedgerStepFailure(String code, String message, List<LedgerFact> facts)
+public enum LedgerPlanFailure
 public sealed interface LedgerPlanResult
 ```
 
 - Purpose: return one plan-level result plus one per-step journal that agents can inspect safely
+- `LedgerPlanFailure` owns plan-outcome codes and their explicit status/category descriptors so
+  unexpected plan failures remain published contract vocabulary rather than renderer-local strings
 - Structure: `LedgerJournalStep` owns the canonical journal kind; assertion entries may attach
   `detailKind`, committed business-entry journal steps publish the corresponding `record-*` kind,
-  raw direct-journal fallback stays `post-entry`, and unexpected begin, initialization-check,
-  commit, or rollback failures use the dedicated `plan-boundary` kind plus a
+  raw direct-journal fallback stays `post-entry`, tax-registration steps publish the declared
+  registration snapshot as typed data, and unexpected begin, initialization-check, commit, or
+  rollback failures use the dedicated `plan-boundary` kind plus a
   `boundaryCheckpoint`
 - Bound: `LedgerPlan` accepts at most 100 steps, which bounds full journal responses
 - Boundary: these are published workflow protocol outputs; executor keeps a separate local

@@ -13,14 +13,14 @@ class ForeignExchangeContractTypesTest {
   @Test
   void treatmentKind_publishesStableWireValuesAndParsing() {
     assertEquals(
-        List.of("SPOT_TRANSACTION", "REALIZED_SETTLEMENT", "UNREALIZED_REMEASUREMENT"),
+        List.of("SPOT_TRANSACTION", "UNREALIZED_REMEASUREMENT"),
         ForeignExchangeTreatmentKind.wireValues());
     assertEquals(
-        ForeignExchangeTreatmentKind.REALIZED_SETTLEMENT,
-        ForeignExchangeTreatmentKind.fromWireValue("REALIZED_SETTLEMENT"));
+        ForeignExchangeTreatmentKind.UNREALIZED_REMEASUREMENT,
+        ForeignExchangeTreatmentKind.fromWireValue("UNREALIZED_REMEASUREMENT"));
     assertThrows(
         IllegalArgumentException.class,
-        () -> ForeignExchangeTreatmentKind.fromWireValue("spot-settlement"));
+        () -> ForeignExchangeTreatmentKind.fromWireValue("REALIZED_SETTLEMENT"));
   }
 
   @Test

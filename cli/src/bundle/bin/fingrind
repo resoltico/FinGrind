@@ -20,6 +20,7 @@ readonly app_home="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly runtime_java="${app_home}/runtime/bin/java"
 readonly application_jar="${app_home}/lib/app/fingrind.jar"
 readonly application_module='dev.erst.fingrind.cli/dev.erst.fingrind.cli.App'
+readonly invocation_label="$0"
 
 if [[ ! -x "${runtime_java}" ]]; then
     printf 'error: missing bundled Java runtime at %s\n' "${runtime_java}" >&2
@@ -41,6 +42,7 @@ exec "${runtime_java}" \
     -D{{sqliteBundleHomeSystemProperty}}="${app_home}" \
     -Dfingrind.runtime.distribution={{bundleRuntimeDistribution}} \
     -Dfingrind.runtime.bundle-target={{bundleClassifier}} \
+    -Ddev.erst.fingrind.invocation="${invocation_label}" \
     --module-path "${application_jar}" \
     --module "${application_module}" \
     "$@"

@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.ProtocolForeignExchangeRequestFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
 import dev.erst.fingrind.core.ActorType;
@@ -33,6 +34,8 @@ final class MachineContractPostEntrySchemas {
         MachineContractSchemaSupport.requestFieldDescriptors(
             MachineContractPostEntryNestedFieldSpecs.openingBalanceFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
+            MachineContractPostEntryNestedFieldSpecs.recognitionIntervalFields()),
+        MachineContractSchemaSupport.requestFieldDescriptors(
             MachineContractPostEntryForeignExchangeFieldSpecs.foreignExchangeFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
             MachineContractPostEntryForeignExchangeFieldSpecs.quotedRateFields()),
@@ -63,7 +66,7 @@ final class MachineContractPostEntrySchemas {
             new ContractRequestShapes.EnumVocabularyDescriptor(
                 ProtocolPostEntryFields.JournalLine.SIDE, JournalLine.EntrySide.wireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
-                ProtocolPostEntryFields.ForeignExchange.TREATMENT_KIND,
+                ProtocolForeignExchangeRequestFields.ForeignExchange.TREATMENT_KIND,
                 ForeignExchangeTreatmentKind.wireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
                 ProtocolPostEntryFields.Provenance.ACTOR_TYPE, ActorType.wireValues()),
@@ -87,6 +90,11 @@ final class MachineContractPostEntrySchemas {
             facts
                 .requiredTopLevelFields()
                 .contains(ProtocolPostEntryFields.TopLevel.OPENING_BALANCES)),
+        nestedFieldDescriptors(
+            MachineContractPostEntryNestedFieldSpecs.recognitionIntervalFields(),
+            facts
+                .requiredTopLevelFields()
+                .contains(ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL)),
         nestedFieldDescriptors(
             MachineContractPostEntryForeignExchangeFieldSpecs.foreignExchangeFields(),
             facts
@@ -196,7 +204,7 @@ final class MachineContractPostEntrySchemas {
                 new ContractRequestShapes.EnumVocabularyDescriptor(
                     ProtocolPostEntryFields.JournalLine.SIDE, JournalLine.EntrySide.wireValues()),
                 new ContractRequestShapes.EnumVocabularyDescriptor(
-                    ProtocolPostEntryFields.ForeignExchange.TREATMENT_KIND,
+                    ProtocolForeignExchangeRequestFields.ForeignExchange.TREATMENT_KIND,
                     ForeignExchangeTreatmentKind.wireValues()),
                 new ContractRequestShapes.EnumVocabularyDescriptor(
                     ProtocolPostEntryFields.Provenance.ACTOR_TYPE, ActorType.wireValues()),
@@ -207,7 +215,8 @@ final class MachineContractPostEntrySchemas {
         .contains(ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE)) {
       enumVocabularies.removeIf(
           vocabulary ->
-              ProtocolPostEntryFields.ForeignExchange.TREATMENT_KIND.equals(vocabulary.name()));
+              ProtocolForeignExchangeRequestFields.ForeignExchange.TREATMENT_KIND.equals(
+                  vocabulary.name()));
     }
     if (!facts.sourceDocumentTypes().acceptedValues().isEmpty()) {
       enumVocabularies.add(

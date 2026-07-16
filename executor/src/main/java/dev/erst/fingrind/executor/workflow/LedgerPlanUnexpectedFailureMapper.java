@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.workflow;
 
+import dev.erst.fingrind.contract.workflow.LedgerPlanFailure;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +21,9 @@ final class LedgerPlanUnexpectedFailureMapper {
         finishedAt,
         facts,
         new BookWorkflowFailure(
-            "unexpected-step-failure", unexpectedExecutionFailureMessage(step, failure), facts));
+            LedgerPlanFailure.UNEXPECTED_STEP_FAILURE.code(),
+            unexpectedExecutionFailureMessage(step, failure),
+            facts));
   }
 
   static BookWorkflowJournalEntry.Rejected unexpectedPlanFailure(
@@ -63,7 +66,7 @@ final class LedgerPlanUnexpectedFailureMapper {
         finishedAt,
         List.of(),
         new BookWorkflowFailure(
-            "unexpected-plan-failure",
+            LedgerPlanFailure.UNEXPECTED_PLAN_FAILURE.code(),
             unexpectedPlanFailureMessage(checkpoint, triggerStepId, failure),
             failureFacts));
   }

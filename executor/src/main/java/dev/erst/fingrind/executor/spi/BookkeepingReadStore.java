@@ -8,4 +8,9 @@ public interface BookkeepingReadStore
         PostingLookupStore,
         PostingHistoryStore,
         InventoryValuationStore,
+        AccrualCutoffLookupStore,
+        FinancingLookupStore,
+        FixedAssetLookupStore,
+        LatvianPayrollLookupStore,
+        RealizedForeignExchangeLookupStore,
         BookkeepingReportStore {}

@@ -22,8 +22,8 @@ class CliMutationArgumentValidationTest extends CliArgumentParsingTestSupport {
             () -> CliArguments.parse(new String[] {"generate-book-key-file"}));
 
     assertEquals("invalid-request", exception.code());
-    assertEquals("--book-key-file", exception.argument());
-    assertEquals("A --book-key-file argument is required.", exception.getMessage());
+    assertEquals("--new-book-key-file", exception.argument());
+    assertEquals("A --new-book-key-file argument is required.", exception.getMessage());
   }
 
   @Test
@@ -35,15 +35,15 @@ class CliMutationArgumentValidationTest extends CliArgumentParsingTestSupport {
                 CliArguments.parse(
                     new String[] {
                       "generate-book-key-file",
-                      "--book-key-file",
+                      "--new-book-key-file",
                       "first.key",
-                      "--book-key-file",
+                      "--new-book-key-file",
                       "second.key"
                     }));
 
     assertEquals("invalid-request", exception.code());
-    assertEquals("--book-key-file", exception.argument());
-    assertEquals("Duplicate argument: --book-key-file", exception.getMessage());
+    assertEquals("--new-book-key-file", exception.argument());
+    assertEquals("Duplicate argument: --new-book-key-file", exception.getMessage());
   }
 
   @Test
@@ -54,7 +54,7 @@ class CliMutationArgumentValidationTest extends CliArgumentParsingTestSupport {
             () ->
                 CliArguments.parse(
                     new String[] {
-                      "generate-book-key-file", "--book-key-file", "entity.key", "--extra"
+                      "generate-book-key-file", "--new-book-key-file", "entity.key", "--extra"
                     }));
 
     assertEquals("invalid-request", exception.code());
@@ -269,6 +269,11 @@ class CliMutationArgumentValidationTest extends CliArgumentParsingTestSupport {
     assertRecordEntry("record-owner-contribution");
     assertRecordEntry("record-owner-withdrawal");
     assertRecordEntry("record-opening-position");
+    assertRecordEntry("record-prepayment");
+    assertRecordEntry("record-deferred-revenue");
+    assertRecordEntry("record-accrued-expense");
+    assertRecordEntry("record-accrual-cutoff-recognition");
+    assertRecordEntry("record-accrued-expense-settlement");
   }
 
   private void assertRecordEntry(String commandName) {

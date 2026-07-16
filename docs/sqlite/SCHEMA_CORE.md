@@ -37,6 +37,12 @@ Each companion page embeds the exact canonical SQL for one schema responsibility
 - [SCHEMA_CORE_11_FISCAL_YEAR_CLOSE_TARGET_RULES.md](./SCHEMA_CORE_11_FISCAL_YEAR_CLOSE_TARGET_RULES.md): Capital, result-holding, and retained-accumulated target-account validation.
 - [SCHEMA_CORE_12_FISCAL_YEAR_CLOSE_LINKS.md](./SCHEMA_CORE_12_FISCAL_YEAR_CLOSE_LINKS.md): Generated fiscal-year-close posting linkage and posting-side invariants.
 - [SCHEMA_CORE_13_AUDIT_EVENTS.md](./SCHEMA_CORE_13_AUDIT_EVENTS.md): Append-only audit-event storage for lifecycle, posting, and close-operation facts.
+- [SCHEMA_CORE_13z_ACCRUAL_CUTOFF.md](./SCHEMA_CORE_13z_ACCRUAL_CUTOFF.md): Durable origins for accrual-basis prepayments, deferred revenue, and accrued expenses.
+- [SCHEMA_CORE_13za_ACCRUAL_CUTOFF_APPLICATIONS.md](./SCHEMA_CORE_13za_ACCRUAL_CUTOFF_APPLICATIONS.md): Append-only recognition, settlement, and compensating-reversal facts for accrual cut-offs.
+- [SCHEMA_CORE_13zb_FIXED_ASSETS.md](./SCHEMA_CORE_13zb_FIXED_ASSETS.md): Immutable fixed-asset capitalizations plus depreciation and disposal applications.
+- [SCHEMA_CORE_13zc_FINANCING.md](./SCHEMA_CORE_13zc_FINANCING.md): Immutable borrowing arrangements plus principal and interest applications.
+- [SCHEMA_CORE_13zd_REALIZED_FOREIGN_EXCHANGE.md](./SCHEMA_CORE_13zd_REALIZED_FOREIGN_EXCHANGE.md): Foreign-currency receivable obligations and their one-time realized-settlement facts.
+- [SCHEMA_CORE_13ze_LATVIAN_PAYROLL.md](./SCHEMA_CORE_13ze_LATVIAN_PAYROLL.md): Immutable Latvian monthly-payroll runs, obligation settlements, and compensating reversals.
 - [SCHEMA_CORE_14_INDEXES_AND_IMMUTABILITY.md](./SCHEMA_CORE_14_INDEXES_AND_IMMUTABILITY.md): Lookup indexes plus append-only triggers for durable rows that never mutate in place.
 
 ## Runtime Integrity Semantics
@@ -48,9 +54,9 @@ Each companion page embeds the exact canonical SQL for one schema responsibility
 ## Schema Posture
 
 - `application_id`: `1179079236`
-- `user_version`: `39`
-- Canonical durable tables: `book_meta`, `book_identity`, `account`, `tax_registration`, `tax_registration_code`, `posting_fact`, `posting_source_document`, `posting_approval`, `posting_applied_tax`, `posting_foreign_exchange`, `journal_line`, `inventory_movement`, `inventory_on_hand`, `interim_result_sweep`, `interim_result_sweep_total`, `interim_result_sweep_posting`, `fiscal_year_close`, `fiscal_year_close_posting`, `audit_event`
-- Canonical durable indexes: `posting_fact_by_prior_posting_id`, `posting_fact_by_effective_recorded_posting`, `tax_registration_code_by_registration_id`, `posting_applied_tax_by_tax_registration_id`, `journal_line_by_account_code`, `inventory_movement_by_account_replay`, `inventory_movement_by_posting_id`, `audit_event_by_recorded_at`, `interim_result_sweep_by_effective_date_to`, `interim_result_sweep_total_by_currency`, `interim_result_sweep_posting_by_posting_id`, `fiscal_year_close_by_effective_date_to`, `fiscal_year_close_posting_by_posting_id`, `posting_fact_one_reversal_per_target`
+- `user_version`: `46`
+- Canonical durable tables: `book_meta`, `book_identity`, `account`, `tax_registration`, `tax_registration_code`, `posting_fact`, `posting_source_document`, `posting_approval`, `posting_applied_tax`, `posting_foreign_exchange`, `journal_line`, `inventory_movement`, `inventory_on_hand`, `interim_result_sweep`, `interim_result_sweep_total`, `interim_result_sweep_posting`, `fiscal_year_close`, `fiscal_year_close_posting`, `audit_event`, `accrual_cutoff`, `accrual_cutoff_application`, `fixed_asset`, `fixed_asset_application`, `fixed_asset_reversal`, `fixed_asset_application_reversal`, `financing_arrangement`, `financing_application`, `financing_arrangement_reversal`, `financing_application_reversal`, `foreign_currency_obligation`, `foreign_currency_obligation_settlement`, `foreign_currency_obligation_reversal`, `foreign_currency_obligation_settlement_reversal`, `latvian_payroll_run`, `latvian_payroll_run_reversal`, `latvian_payroll_settlement`, `latvian_payroll_settlement_reversal`
+- Canonical durable indexes: `latvian_payroll_run_by_employee_month`, `latvian_payroll_settlement_by_run_kind`, `posting_fact_by_prior_posting_id`, `posting_fact_by_effective_recorded_posting`, `tax_registration_code_by_registration_id`, `posting_applied_tax_by_tax_registration_id`, `journal_line_by_account_code`, `inventory_movement_by_account_replay`, `inventory_movement_by_posting_id`, `accrual_cutoff_application_by_cutoff_horizon`, `audit_event_by_recorded_at`, `interim_result_sweep_by_effective_date_to`, `interim_result_sweep_total_by_currency`, `interim_result_sweep_posting_by_posting_id`, `fiscal_year_close_by_effective_date_to`, `fiscal_year_close_posting_by_posting_id`, `posting_fact_one_reversal_per_target`
 - There is no schema version table.
 - There are no migration files.
 - The current public line rejects non-matching book formats instead of upgrading them in place.

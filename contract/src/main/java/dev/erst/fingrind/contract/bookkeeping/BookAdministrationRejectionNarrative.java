@@ -62,6 +62,18 @@ final class BookAdministrationRejectionNarrative {
       case BookAdministrationRejection.AccountTaxonomyConflict accountTaxonomyConflict ->
           "Account '%s' already exists with a different immutable hierarchy or statement taxonomy."
               .formatted(accountTaxonomyConflict.accountCode().value());
+      case AccountRegistryLifecycleRejection.AccountNotFound missing ->
+          "Account '%s' is not declared in this book.".formatted(missing.accountCode().value());
+      case AccountRegistryLifecycleRejection.AccountHasDependents dependents ->
+          "Account '%s' cannot change lifecycle while durable dependents remain: %s."
+              .formatted(
+                  dependents.accountCode().value(),
+                  dependents.dependencies().stream()
+                      .map(dependency -> dependency.wireValue())
+                      .collect(Collectors.joining(", ")));
+      case AccountRegistryLifecycleRejection.AccountBalanceNotZero balance ->
+          "Account '%s' cannot retire because its current balance is not zero."
+              .formatted(balance.accountCode().value());
       case BookAdministrationRejection.ParentAccountMissing rejectionMissing ->
           "Account '%s' names parent account '%s', but that parent account is not declared in this book."
               .formatted(

@@ -27,9 +27,28 @@ import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
+import java.util.Map;
+import java.util.Objects;
 
 /** Shared command and persisted-posting fixtures for posting-route reachability contracts. */
 public final class PostingRouteReachabilityScenarioFactory {
+  private static final Map<AccountRole, JournalLine.EntrySide>
+      OPERATIONAL_ADJUSTMENT_CANDIDATE_SIDES =
+          Map.ofEntries(
+              Map.entry(AccountRole.PAYABLE, JournalLine.EntrySide.CREDIT),
+              Map.entry(AccountRole.DEFERRED_REVENUE, JournalLine.EntrySide.CREDIT),
+              Map.entry(AccountRole.ACCRUED_EXPENSE, JournalLine.EntrySide.CREDIT),
+              Map.entry(AccountRole.EXPENSE, JournalLine.EntrySide.CREDIT),
+              Map.entry(AccountRole.EQUITY_DRAWS, JournalLine.EntrySide.CREDIT),
+              Map.entry(AccountRole.AUX, JournalLine.EntrySide.DEBIT),
+              Map.entry(AccountRole.CASH, JournalLine.EntrySide.DEBIT),
+              Map.entry(AccountRole.INVENTORY, JournalLine.EntrySide.DEBIT),
+              Map.entry(AccountRole.PREPAID_EXPENSE, JournalLine.EntrySide.DEBIT),
+              Map.entry(AccountRole.RECEIVABLE, JournalLine.EntrySide.DEBIT),
+              Map.entry(AccountRole.REVENUE, JournalLine.EntrySide.DEBIT),
+              Map.entry(AccountRole.EQUITY_CONTRIBUTED, JournalLine.EntrySide.DEBIT),
+              Map.entry(AccountRole.SETTLEMENT_ADJUNCT, JournalLine.EntrySide.DEBIT));
+
   private PostingRouteReachabilityScenarioFactory() {}
 
   /** Builds an opening-balance command for one reachability cell. */
@@ -191,10 +210,9 @@ public final class PostingRouteReachabilityScenarioFactory {
 
   private static JournalLine.EntrySide candidateSideForOperationalAdjustment(
       RequestSurfaceFacts.ReachabilityCellFacts cell) {
-    return switch (AccountRole.from(cell.accountType(), taxonomy(cell))) {
-      case PAYABLE, EXPENSE, EQUITY_DRAWS -> JournalLine.EntrySide.CREDIT;
-      case AUX, CASH, INVENTORY, RECEIVABLE, REVENUE, EQUITY_CONTRIBUTED, SETTLEMENT_ADJUNCT ->
-          JournalLine.EntrySide.DEBIT;
-    };
+    AccountRole accountRole = AccountRole.from(cell.accountType(), taxonomy(cell));
+    return Objects.requireNonNull(
+        OPERATIONAL_ADJUSTMENT_CANDIDATE_SIDES.get(accountRole),
+        () -> "No operational-adjustment side is registered for account role " + accountRole + ".");
   }
 }

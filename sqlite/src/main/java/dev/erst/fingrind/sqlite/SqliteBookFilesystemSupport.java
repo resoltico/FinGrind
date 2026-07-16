@@ -1,10 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.nio.file.Path;
 import java.util.Objects;
 
-/** Shared filesystem and redaction support for protected SQLite book artifacts. */
+/** Shared filesystem and machine-diagnostic support for protected SQLite book artifacts. */
 final class SqliteBookFilesystemSupport {
   private static final String POSIX_VIEW = "posix";
   private static final String ACL_VIEW = "acl";
@@ -36,17 +35,17 @@ final class SqliteBookFilesystemSupport {
           normalizedBookPath,
           SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY,
           "The FinGrind SQLite book path must resolve to a file beneath a parent directory: "
-              + redactedPath(normalizedBookPath));
+              + absolutePath(normalizedBookPath));
     }
     return parentDirectory;
   }
 
   static String unsupportedSecureFilesystemMessage(Path path) {
     return "The FinGrind SQLite book file must live on a filesystem that supports POSIX owner-only permissions or Windows owner-only ACLs: "
-        + redactedPath(path);
+        + absolutePath(path);
   }
 
-  static String redactedPath(Path path) {
-    return PublicPathHint.fromPath(path).value();
+  static String absolutePath(Path path) {
+    return SqliteMachinePaths.absoluteValue(path);
   }
 }

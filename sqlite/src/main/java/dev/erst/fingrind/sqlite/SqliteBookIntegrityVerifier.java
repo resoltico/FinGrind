@@ -75,8 +75,6 @@ final class SqliteBookIntegrityVerifier {
         && !SqliteStatementQueries.existsRow(
             activeDatabase, SqlitePostingSql.FIND_OPENING_BALANCE_NOMINAL_ACCOUNT, statement -> {})
         && !SqliteStatementQueries.existsRow(
-            activeDatabase, SqlitePostingSql.FIND_JOURNAL_LINE_ON_INACTIVE_ACCOUNT, statement -> {})
-        && !SqliteStatementQueries.existsRow(
             activeDatabase,
             SqlitePostingSql.FIND_POSTING_RECORDED_AFTER_CLOSED_PERIOD,
             statement -> {})

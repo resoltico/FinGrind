@@ -8,7 +8,6 @@ import dev.erst.fingrind.contract.discovery.WorkflowStepDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.contract.protocol.ProtocolExampleStep;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentRuntimeDescriptor;
 import java.util.ArrayList;
@@ -65,7 +64,6 @@ final class CliDiscoveryHelpTextRenderer {
         "FinGrind Help",
         CliDiscoveryTextSupport.joinSections(
             header,
-            keyFilePathGuidanceSection(),
             CliDiscoveryTextSupport.section("Quick Start", firstSuccessfulRun),
             CliDiscoveryTextSupport.section("Reference", reference),
             CliDiscoveryTextSupport.section("Command Catalog", commandFamilies)));
@@ -106,7 +104,6 @@ final class CliDiscoveryHelpTextRenderer {
         "FinGrind",
         CliDiscoveryTextSupport.joinSections(
             header,
-            keyFilePathGuidanceSection(),
             CliDiscoveryTextSupport.section("Shortcuts", shortcuts),
             CliDiscoveryTextSupport.section("Command Catalog", commandFamilies)));
   }
@@ -246,22 +243,8 @@ final class CliDiscoveryHelpTextRenderer {
     return "Step " + (index + 1);
   }
 
-  private static String keyFilePathGuidanceSection() {
-    return keyFilePathGuidanceSection(keyFilePathGuidance());
-  }
-
   static String keyFilePathGuidanceSection(String guidance) {
     return guidance.isBlank() ? "" : CliDiscoveryTextSupport.section("Key-File Path", guidance);
-  }
-
-  private static String keyFilePathGuidance() {
-    return ProtocolCatalog.operation(OperationId.GENERATE_BOOK_KEY_FILE).exampleSteps().stream()
-        .filter(ProtocolExampleStep.Note.class::isInstance)
-        .map(ProtocolExampleStep.Note.class::cast)
-        .map(ProtocolExampleStep.Note::text)
-        .findFirst()
-        .map(note -> CliTextFormat.wrap(note, CliDiscoveryTextSupport.TEXT_WRAP_WIDTH))
-        .orElse("");
   }
 
   private static String joinCommandNames(List<CommandDescriptor> commands) {
@@ -269,10 +252,7 @@ final class CliDiscoveryHelpTextRenderer {
   }
 
   private static String defaultOutputLabel(EnvironmentRuntimeDescriptor runtimeDescriptor) {
-    String mode = runtimeDescriptor.defaultOutputMode().wireValue();
-    return runtimeDescriptor.defaultOutputModeSource() == null
-        ? mode + " (built in)"
-        : mode + " via " + runtimeDescriptor.defaultOutputModeSource();
+    return runtimeDescriptor.defaultOutputMode().wireValue() + " (built in)";
   }
 
   private static CommandCatalogDescriptor groupedCommands(List<CommandDescriptor> commands) {

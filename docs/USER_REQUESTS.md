@@ -2,10 +2,10 @@
 afad: "4.0"
 version: "0.60.0"
 domain: OPERATOR_REQUESTS
-updated: "2026-07-11"
+updated: "2026-07-15"
 route:
-  keywords: [fingrind, request-json, provenance, reversal, idempotency, ledger-plan, execute-plan, posting-shape, account-declaration]
-  questions: ["what request json does fingrind accept", "what ledger plan shape does execute-plan accept", "what posting request fields does fingrind accept"]
+  keywords: [fingrind, request-json, provenance, reversal, idempotency, accrual-cutoff, fixed-assets, financing, realized-foreign-exchange, prepayment, deferred-revenue, accrued-expense, ledger-plan, execute-plan, tax-setup, account-declaration, account-lifecycle]
+  questions: ["what request json does fingrind accept", "how do i record a fixed asset or depreciation", "how do i record financing interest", "how do i settle a foreign-currency receivable", "how do i record a prepayment or deferred revenue", "how do i settle an accrued expense", "what ledger plan shape does execute-plan accept", "how do i amend or retire an account in fingrind", "what posting request fields does fingrind accept"]
 ---
 
 # Request Shape Guide
@@ -17,13 +17,16 @@ The checked-in `docs/examples/*.json` fixtures mentioned below exist only in a s
 The public release bundle does not ship those repo paths.
 
 Book-bound commands pair these JSON payloads with `--book-file` plus exactly one passphrase
-source. When the selected book parent directory does not exist, `open-book` creates it with
-owner-only protection; when it already exists, FinGrind requires it to remain owner-only:
+source. `open-book` requires an absent `--book-file` destination and rejects an existing path
+before resolving its selected key or accessing its contents. When the selected book parent directory
+does not exist, `open-book` creates it with owner-only protection; when it already exists, FinGrind
+requires it to remain owner-only:
 - `--book-key-file` with a UTF-8 passphrase file protected by POSIX owner-only permissions
   (`0400` or `0600`) on macOS/Linux or a Windows owner-only ACL on Windows; its containing
   directory must also remain owner-only, and the public examples keep this file under a separate
-  `./secrets/` tree rather than beside the book. `generate-book-key-file` creates a missing
-  parent directory with owner-only protection and rejects a pre-existing non-private parent
+  `./secrets/` tree rather than beside the book. `generate-book-key-file --new-book-key-file`
+  creates a missing parent directory with owner-only protection, requires atomic no-replace
+  publication support from the target filesystem, and rejects a pre-existing non-private parent
   directory
 - `--book-passphrase-stdin` with one UTF-8 passphrase payload up to 4096 bytes from standard
   input
@@ -35,9 +38,21 @@ owner-only protection; when it already exists, FinGrind requires it to remain ow
 Every request JSON document must fit within FinGrind's `1048576`-byte UTF-8 payload limit whether
 it comes from `--request-file <path>` or `--request-file -`.
 
-`rekey-book` reuses those current-book routes and additionally requires exactly one replacement
-passphrase source: `--new-book-key-file`, `--new-book-passphrase-stdin`, or
-`--new-book-passphrase-prompt`.
+`rekey-book` reuses those current-book routes and creates a fresh generated secret at an absent
+`--new-book-key-file` target. `backup-book` likewise creates an independent secret at an absent
+`--new-backup-key-file` target. `restore-book` reads the backup through `--backup-key-file` and
+creates its destination secret through `--new-book-key-file`; it requires
+`--replace-existing-book` when the selected `--book-file` already exists, and without that
+option it refuses a destination that appears before final publication.
+
+Every generated-secret target also requires a filesystem that can publish an absent staged secret
+without replacement. FinGrind rejects a target that lacks that atomic no-replace primitive rather
+than risking a partial or clobbering write.
+
+Once a maintenance pair reaches its publication boundary, its declared final book and key artifacts
+are successful. If filesystem I/O later prevents removal of FinGrind-owned internal staging evidence,
+FinGrind records that cleanup failure without recasting the completed maintenance operation as a
+failure.
 
 ## Posting Request Shape
 
@@ -72,10 +87,49 @@ cash-and-cash-equivalent asset account on cash-basis books and must not contain 
 declared account resolves to the inventory role. Inventory quantity and carrying-cost changes use
 the corresponding typed inventory command exclusively.
 
+On accrual-basis books, prepayments, deferred revenue, and accrued expenses use their own typed
+cut-off commands. A prepayment or deferred-revenue request declares one cut-off id, the temporary
+balance account, its recognition account, an amount, and an inclusive recognition interval.
+An accrued-expense request declares one cut-off id, the expense account, the accrued-expense
+liability, and an amount. Recognition and settlement commands reference that durable id and an
+exact amount; FinGrind derives the account pair from the aggregate rather than accepting a
+replacement journal. These manual lifecycle events do not compose with tax or foreign-exchange
+facts and do not infer periodic allocation.
+
+Fixed assets use `record-fixed-asset-capitalization`, `record-fixed-asset-depreciation`, and
+`record-fixed-asset-disposal`. Capitalization supplies the asset id, cost, cash account, asset
+accounts, gain/loss accounts, and a straight-line depreciation schedule. Depreciation supplies the
+asset id only; FinGrind derives the admissible period amount and retained account facts. Disposal
+supplies the asset id, cash account, and proceeds; FinGrind derives carrying value and any gain or
+loss. A disposed asset remains in the register with its carrying amount immediately before disposal
+and explicit disposal state, while the disposal posting removes it from the general ledger. The model is a strict cost-model register, not a lease, impairment, revaluation, tax, or
+statutory-reporting engine. Read [ADR_FIXED_ASSETS.md](./ADR_FIXED_ASSETS.md) and its linked
+[IAS 16 primary source](https://www.ifrs.org/issued-standards/list-of-standards/ias-16-property-plant-and-equipment/) before choosing accounting policy.
+
+Financing uses `record-financing-borrowing`, `record-financing-principal-repayment`,
+`record-financing-interest-accrual`, and `record-financing-interest-payment`. A borrowing supplies
+the arrangement id, cash account, principal-liability account, interest-payable account, and
+principal amount. Later commands identify the retained arrangement and supply the relevant cash,
+expense, and exact principal or interest amount; FinGrind derives the remaining obligation from
+durable facts. The model is nominal principal plus exact stated interest only. It does not provide
+effective-interest measurement, amortized cost, fees, covenants, maturity schedules, or refinancing.
+Read [ADR_FINANCING.md](./ADR_FINANCING.md) and its linked
+[IFRS 9 primary source](https://www.ifrs.org/issued-standards/list-of-standards/ifrs-9-financial-instruments/) before applying it to a financial instrument.
+
+Realized foreign exchange uses `record-foreign-currency-obligation` and
+`record-realized-foreign-exchange-settlement`. The obligation supplies its durable id, receivable,
+revenue, realized-gain, and realized-loss accounts plus the retained foreign-exchange facts. The
+settlement supplies that id, cash account, and settlement foreign-exchange facts; FinGrind derives
+the realized gain or loss from the retained carrying amount. This model does not remeasure open
+balances, translate financial statements, hedge, or source rates. Read
+[ADR_REALIZED_FOREIGN_EXCHANGE.md](./ADR_REALIZED_FOREIGN_EXCHANGE.md), its linked
+[IAS 21 primary source](https://www.ifrs.org/issued-standards/list-of-standards/ias-21-the-effects-of-changes-in-foreign-exchange-rates/), and the
+[European Central Bank reference-rate source](https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html) before treating a rate as suitable evidence.
+
 The packaged CLI can surface the same request-shape truth without leaving the terminal:
 `help record-sale-settled`, `help post-entry`, `help declare-account`, and `help execute-plan` inline one
-canonical template plus the accepted fields and enum vocabularies for their `--request-file`
-payloads. On trading-template sale commands, that help also publishes `inventoryRelief` as a
+canonical template or starter-plan outline plus the accepted fields and enum vocabularies for their
+`--request-file` payloads. On trading-template sale commands, that help also publishes `inventoryRelief` as a
 conditional field whose description explains when it becomes required. On `execute-plan`, the
 posting model remains nested under the ledger-plan request shape rather than surfacing as a second
 top-level posting document. When you need the raw scaffold bytes directly, `print-request-template`
@@ -84,6 +138,13 @@ accepts `declare-account` plus every posting-shaped topic:
 `record-purchase-settled`, `record-purchase-on-credit`, `record-inventory-capitalization-settled`,
 `record-inventory-capitalization-on-credit`, `record-inventory-write-down`,
 `record-inventory-shrinkage`, `record-inventory-count-increase`, `record-expense-settled`,
+`record-prepayment`, `record-deferred-revenue`, `record-accrued-expense`,
+`record-accrual-cutoff-recognition`, `record-accrued-expense-settlement`,
+`record-fixed-asset-capitalization`, `record-fixed-asset-depreciation`,
+`record-fixed-asset-disposal`, `record-financing-borrowing`,
+`record-financing-principal-repayment`, `record-financing-interest-accrual`,
+`record-financing-interest-payment`, `record-foreign-currency-obligation`,
+`record-realized-foreign-exchange-settlement`,
 `record-expense-on-credit`, `record-receipt`, `record-payment`, `record-owner-contribution`,
 `record-owner-withdrawal`, `record-opening-position`, `record-reversal`, and
 `declare-tax-registration`.
@@ -112,6 +173,18 @@ Current posting-request rules:
 - `INVENTORY_WRITE_DOWN` is admitted only on `OWNER_MANAGED_TRADING` books and requires `inventoryAccountCode`, `writeDownLossAccountCode`, and `amount`; the amount cannot exceed the exact carrying-cost pool
 - `INVENTORY_SHRINKAGE` is admitted only on `OWNER_MANAGED_TRADING` books and requires `inventoryAccountCode`, `shrinkageLossAccountCode`, and `quantity`; FinGrind derives the loss from the exact pool and rejects an insufficient quantity
 - `INVENTORY_COUNT_INCREASE` is admitted only on `OWNER_MANAGED_TRADING` books and requires `inventoryAccountCode`, `countGainAccountCode`, `quantity`, and `unitCost`
+- `PREPAYMENT` is admitted only on accrual-basis books and requires `accrualCutoffId`, `prepaidExpenseAccountCode`, `expenseAccountCode`, `cashAccountCode`, `amount`, and an inclusive `recognitionInterval`
+- `DEFERRED_REVENUE` is admitted only on accrual-basis books and requires `accrualCutoffId`, `cashAccountCode`, `deferredRevenueAccountCode`, `revenueAccountCode`, `amount`, and an inclusive `recognitionInterval`
+- `ACCRUED_EXPENSE` is admitted only on accrual-basis books and requires `accrualCutoffId`, `expenseAccountCode`, `accruedExpenseAccountCode`, and `amount`
+- `ACCRUAL_CUTOFF_RECOGNITION` is admitted only for an existing prepayment or deferred-revenue cut-off, requires `accrualCutoffId` plus `amount`, must fall inside the declared inclusive recognition interval, and cannot exceed the remaining temporary balance
+- `ACCRUED_EXPENSE_SETTLEMENT` is admitted only for an existing accrued-expense cut-off, requires `accrualCutoffId`, `cashAccountCode`, and `amount`, and cannot exceed the remaining unpaid liability
+- cut-off origin, recognition, and settlement entries reject `taxSelection` and `foreignExchange`; periodic allocation remains operator-authored rather than inferred
+- `FIXED_ASSET_CAPITALIZATION` requires `fixedAssetId`, `cashAccountCode`, and the fixed-asset fact block containing the asset, accumulated-depreciation, depreciation-expense, disposal-gain, and disposal-loss accounts, cost, and straight-line depreciation schedule
+- `FIXED_ASSET_DEPRECIATION` requires only `fixedAssetId`; FinGrind derives the period depreciation and retained account facts from the capitalized asset
+- `FIXED_ASSET_DISPOSAL` requires `fixedAssetId`, `cashAccountCode`, and fixed-asset proceeds; FinGrind derives carrying value and the disposal gain or loss
+- `FINANCING_BORROWING` requires `cashAccountCode` plus a financing block containing the arrangement id, principal-liability account, interest-payable account, and principal amount
+- `FINANCING_PRINCIPAL_REPAYMENT` requires `cashAccountCode` plus the retained arrangement id and principal amount; `FINANCING_INTEREST_ACCRUAL` requires the arrangement id, interest-expense account, and interest amount; `FINANCING_INTEREST_PAYMENT` requires `cashAccountCode`, the arrangement id, and interest amount
+- `FOREIGN_CURRENCY_OBLIGATION` requires receivable and revenue accounts, a realized-foreign-exchange block with obligation id and gain/loss accounts, and `foreignExchange`; `REALIZED_FOREIGN_EXCHANGE_SETTLEMENT` requires `cashAccountCode`, the retained obligation id, and `foreignExchange`, while FinGrind derives the realized gain or loss
 - `EXPENSE_SETTLED` requires `expenseAccountCode`, `cashAccountCode`, and `amount`
 - `EXPENSE_ON_CREDIT` requires `expenseAccountCode`, `payableAccountCode`, and `amount`
 - `RECEIPT` requires `cashAccountCode`, `receivableAccountCode`, and `amount`
@@ -145,12 +218,16 @@ Current posting-request rules:
 - every direct `DIRECT_JOURNAL` entry is rejected when debit-credit netting reduces every referenced account to zero, because that request would record no durable account movement
 - every journal-line amount, every top-level `amount`, and every `openingBalances[].amount` must use the selected book's functional currency
 - `foreignExchange` is optional for `DIRECT_JOURNAL`, settled and on-credit sales, purchases,
-  capitalizations, and expenses, `OWNER_CONTRIBUTION`, `OWNER_WITHDRAWAL`, and `REVERSAL`, and
+  capitalizations, expenses, `OWNER_CONTRIBUTION`, `OWNER_WITHDRAWAL`, and `REVERSAL`; it is
+  required for `FOREIGN_CURRENCY_OBLIGATION` and `REALIZED_FOREIGN_EXCHANGE_SETTLEMENT`; and it
   must be absent for `RECEIPT`, `PAYMENT`, and `OPENING_POSITION`
 - `foreignExchange` requires `transactionAmount`, `functionalAmount`, `quotedRate`, and
   `treatmentKind`
 - `foreignExchange.quotedRate` requires `transactionCurrencyAmount`,
   `functionalCurrencyAmount`, `quotedOn`, and `quoteSource`
+- `foreignExchange.quotedRate` is retained evidence, not a rate selected or endorsed by FinGrind;
+  preserve the source and date that the entity's policy requires. For euro reference-rate evidence,
+  use the [European Central Bank reference-rate source](https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html), noting that the ECB publishes those rates for information and discourages transaction use. See [DOC_00_PrimarySources.md](./DOC_00_PrimarySources.md) before treating any reference rate as applicable to a transaction, tax, or reporting policy.
 - `foreignExchange.transactionAmount` and
   `foreignExchange.quotedRate.transactionCurrencyAmount` must share one distinct non-functional
   currency
@@ -172,6 +249,7 @@ Current posting-request rules:
 - `reversal.priorPostingId` must already exist in the selected book
 - `reversal.priorPostingId` must not identify one posting whose own lineage is already `REVERSAL`
 - a reversal requires one exact line-by-line negation of the target posting and only one reversal is allowed per target
+- a reversal of a cut-off origin, recognition, or settlement also records a compensating immutable lifecycle fact; it cannot predate the aggregate lifecycle horizon, and an origin can be reversed only after its active applications have been reversed
 - `OPENING_POSITION` may touch only `ASSET`, `LIABILITY`, or `EQUITY` accounts
 - `OPENING_POSITION` is accepted only before the first committed posting exists in the selected book, so all adoption balances must be seeded inside one opening-only window
 - `requestShapes.bookkeepingEntry.reachabilityMatrix[]` is the canonical per-classification truth for which declared-account cells are opening-reachable, operational-journal-reachable, or reversal-reachable; the built-in `RESULT_HOLDING` classification remains opening-reachable but is reserved from caller-authored standard journals and reversals
@@ -243,6 +321,17 @@ Current account-declaration rules:
 - redeclaring an existing account with a different chart parent or declared taxonomy is
   rejected
 
+## Account Registry Lifecycle
+
+`amend-account` accepts the same account-definition shape as `declare-account`, but it is only
+admitted for an account with no postings, no tax-registration binding, and no child account. It
+replaces the definition while preserving the account code and original `declaredAt` timestamp.
+`retire-account` accepts `{ "accountCode": "..." }`. Retirement requires a zero current balance
+and no live tax-registration or child-account binding; it prevents new ordinary authored postings
+without deleting the account or its journal history. A historical `record-reversal` can still use a
+retired account because it negates a retained posting rather than creating a new ordinary use.
+There is no delete-account request or command.
+
 ## Ledger-Plan Request Shape
 
 Inspect the canonical AI-agent scaffold:
@@ -257,9 +346,10 @@ Or, in a source checkout, inspect the checked-in runnable example:
 cat docs/examples/ledger-plan-request.json
 ```
 
-The default ledger-plan scaffold and the primary runnable plan example both use a typed
-`SALE_SETTLED` posting step. Raw direct-journal plans remain available when a caller needs full
-line-level control.
+The default ledger-plan scaffold is an atomic tax setup: it initializes the book, declares the
+required VAT payable and recoverable accounts, then declares the tax registration. A direct
+`declare-tax-registration` command remains pure and never creates those accounts implicitly. Raw
+direct-journal and posting steps remain available in custom plans when the caller needs them.
 
 Current ledger-plan rules:
 - top-level fields are `planId` and `steps`
@@ -274,6 +364,9 @@ Current ledger-plan rules:
   response payloads
 - `declare-account` uses nested `declareAccount`, which has the same shape and inventory-account
   `unitOfMeasure` rule as the standalone `declare-account` request
+- `declare-tax-registration` uses nested `declareTaxRegistration`; its payable and recoverable
+  account codes must refer to compatible accounts already present in the book or declared by an
+  earlier plan step
 - `preflight-entry`, every committed `record-*` step, and raw `post-entry` use nested `posting`,
   which has the same shape as the normal posting request, including required
   `evidence.sourceDocuments[]` and `evidence.approvals[]`
@@ -291,9 +384,9 @@ Current ledger-plan rules:
 - `assert-account-balance` assertions accept `accountCode`, optional `effectiveDateFrom`,
   optional `effectiveDateTo`, typed `netAmount`, and `balanceSide`
 - unknown fields are rejected at every object level
-- `print-plan-template` emits the canonical `execute-plan` scaffold shape as one placeholder-first
-  workflow with one minimal settled-sale posting step; replace the placeholder evidence and
-  provenance values before real-world use
+- `print-plan-template` emits the canonical `execute-plan` tax-setup scaffold with its ordered
+  account and registration declarations; replace the placeholder tax-registration and tax-code
+  values before real-world use
 - execution semantics are not request knobs: plans are atomic, halt on first failed step, return
   one bounded aggregate summary by default, and return one complete journal when
   `--result-detail full` is selected; ordinary business steps keep their canonical `kind`,
@@ -303,6 +396,8 @@ Current ledger-plan rules:
 - unexpected transaction-boundary failures such as begin, commit, or rollback problems are mapped
   into the terminal rejected journal step instead of escaping as an untyped plan exception
 - plan-journal steps now carry typed `data` records instead of generic fact bags
+- successful `declare-tax-registration` journal steps emit the declared tax-registration snapshot,
+  including its account bindings and ordered tax-code catalog
 - money-bearing plan-journal `data` fields use objects carrying `currencyCode` and `minorUnits`
 - successful `list-accounts` journal steps emit `count`, `pageLimit`, optional `nextCursor`,
   `hasMore`, and repeated typed `accounts[]`
@@ -326,11 +421,11 @@ exception: its `REJECTED` and `ASSERTION_FAILED` outcomes are primary result env
 | Field | Accepted Values |
 |:------|:----------------|
 | `lines[].side` | `DEBIT`, `CREDIT` |
-| `foreignExchange.treatmentKind` | `SPOT_TRANSACTION`, `REALIZED_SETTLEMENT`, `UNREALIZED_REMEASUREMENT` |
+| `foreignExchange.treatmentKind` | `SPOT_TRANSACTION`, `UNREALIZED_REMEASUREMENT` |
 | `provenance.actorType` | `PERSON`, `SYSTEM`, `AGENT` |
 | `accountType` | `ASSET`, `LIABILITY`, `EQUITY`, `REVENUE`, `EXPENSE` |
 | `accountNodeKind` | `POSTABLE`, `HEADER` |
-| `financialPositionLineClassification` | `CURRENT_ASSET`, `INVENTORY`, `NONCURRENT_ASSET`, `TRADE_RECEIVABLE`, `CURRENT_LIABILITY`, `NONCURRENT_LIABILITY`, `TRADE_PAYABLE`, `EQUITY_CONTRIBUTION`, `EQUITY_WITHDRAWAL`, `RESULT_HOLDING`, `RETAINED_ACCUMULATED`, `RESERVE`, `OTHER_EQUITY` |
+| `financialPositionLineClassification` | `CURRENT_ASSET`, `INVENTORY`, `PREPAID_EXPENSE`, `NONCURRENT_ASSET`, `TRADE_RECEIVABLE`, `CURRENT_LIABILITY`, `NONCURRENT_LIABILITY`, `TRADE_PAYABLE`, `DEFERRED_REVENUE`, `ACCRUED_EXPENSE`, `EQUITY_CONTRIBUTION`, `EQUITY_WITHDRAWAL`, `RESULT_HOLDING`, `RETAINED_ACCUMULATED`, `RESERVE`, `OTHER_EQUITY` |
 | `profitAndLossLineClassification` | `OPERATING_REVENUE`, `SALES_DISCOUNT_ALLOWANCE`, `OTHER_REVENUE`, `FINANCE_INCOME`, `COST_OF_SALES`, `OPERATING_EXPENSE`, `DEPRECIATION_AND_AMORTIZATION`, `SETTLEMENT_FEE`, `BAD_DEBT_WRITE_OFF`, `FINANCE_EXPENSE`, `OTHER_EXPENSE` |
 
 `lines[].side` is input polarity for one journal line. Response-side `balanceSide` is a derived net orientation for grouped balances, running balances, and report totals; it is not a second writable posting-line field.

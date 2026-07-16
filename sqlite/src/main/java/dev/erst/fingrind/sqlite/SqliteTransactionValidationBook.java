@@ -8,14 +8,10 @@ import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.InventoryMovementKind;
-import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.core.Quantity;
-import dev.erst.fingrind.core.WeightedAverageCostingMath;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.InventoryAccountState;
 import dev.erst.fingrind.executor.bookkeeping.InventoryMovementRecord;
-import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.StoredRequestPosting;
@@ -26,18 +22,18 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
-/** Transaction-scoped validation view that rechecks posting invariants inside SQLite writes. */
-final class SqliteTransactionValidationBook implements PostingValidationStore {
-  private final SqliteNativeDatabase activeDatabase;
+/** Transaction-scoped validation queries that recheck posting invariants inside SQLite writes. */
+final class SqliteTransactionValidationQueries {
+  final SqliteNativeDatabase activeDatabase;
   private final SqlitePostingReader postingReader;
   private final boolean operationalInitializedWorkflowGate;
 
-  SqliteTransactionValidationBook(
+  SqliteTransactionValidationQueries(
       SqliteNativeDatabase activeDatabase, SqlitePostingReader postingReader) {
     this(activeDatabase, postingReader, false);
   }
 
-  SqliteTransactionValidationBook(
+  SqliteTransactionValidationQueries(
       SqliteNativeDatabase activeDatabase,
       SqlitePostingReader postingReader,
       boolean operationalInitializedWorkflowGate) {
@@ -46,8 +42,7 @@ final class SqliteTransactionValidationBook implements PostingValidationStore {
     this.operationalInitializedWorkflowGate = operationalInitializedWorkflowGate;
   }
 
-  @Override
-  public BookLifecycleInspection inspectBook() {
+  BookLifecycleInspection inspectBook() {
     try {
       SqliteBookStateSnapshot snapshot =
           SqliteBookContract.BOOK_STATE_READER.snapshot(activeDatabase);
@@ -57,8 +52,7 @@ final class SqliteTransactionValidationBook implements PostingValidationStore {
     }
   }
 
-  @Override
-  public boolean allowsInitializedWorkflow() {
+  boolean allowsInitializedWorkflow() {
     try {
       SqliteBookStateSnapshot snapshot =
           SqliteStoreOperations.retryTransientLockFailures(
@@ -81,8 +75,7 @@ final class SqliteTransactionValidationBook implements PostingValidationStore {
     }
   }
 
-  @Override
-  public BookIdentity requireInitializedBookIdentity() {
+  BookIdentity requireInitializedBookIdentity() {
     try {
       return SqliteStoreOperations.retryTransientLockFailures(
           () ->
@@ -96,13 +89,11 @@ final class SqliteTransactionValidationBook implements PostingValidationStore {
     }
   }
 
-  @Override
-  public Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
+  Optional<RegisteredAccount> findAccount(AccountCode accountCode) {
     return Optional.ofNullable(findAccounts(Set.of(accountCode)).get(accountCode));
   }
 
-  @Override
-  public Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
+  Map<AccountCode, RegisteredAccount> findAccounts(Set<AccountCode> accountCodes) {
     try {
       return SqliteAccountStatementQueries.findAccounts(activeDatabase, accountCodes);
     } catch (SqliteNativeException exception) {
@@ -110,52 +101,32 @@ final class SqliteTransactionValidationBook implements PostingValidationStore {
     }
   }
 
-  @Override
-  public Optional<InventoryAccountState> findInventoryAccountState(
-      AccountCode inventoryAccountCode) {
+  Optional<InventoryAccountState> findInventoryAccountState(AccountCode inventoryAccountCode) {
     Objects.requireNonNull(inventoryAccountCode, "inventoryAccountCode");
     Optional<RegisteredAccount> account = findAccount(inventoryAccountCode);
     if (account.isEmpty() || account.orElseThrow().unitOfMeasure() == null) {
       return Optional.empty();
     }
     try {
-      return SqliteStatementQueries.queryWithStatement(
-          activeDatabase,
-          SqliteInventoryCostingSql.LOAD_INVENTORY_ON_HAND_BY_ACCOUNT,
-          statement -> {
-            statement.bindText(1, inventoryAccountCode.value());
-            if (statement.step() == SqliteNativeResultCode.code("DONE")) {
-              return Optional.empty();
-            }
-            var unitOfMeasure = Objects.requireNonNull(account.orElseThrow().unitOfMeasure());
-            InventoryAccountState state =
-                new InventoryAccountState(
-                    new WeightedAverageCostingMath.InventoryPool(
-                        Quantity.ofScaledUnits(
-                            unitOfMeasure.quantityScale(), statement.columnLong(0)),
-                        Money.ofMinorUnits(
-                            requireInitializedBookIdentity().functionalCurrency(),
-                            statement.columnLong(1))),
-                    Optional.of(
-                        CanonicalTemporalText.parseLocalDate(
-                            SqlitePostingMapper.requiredText(statement, 2),
-                            "inventoryOnHand.lastMovementDate")));
-            if (statement.step() != SqliteNativeResultCode.code("DONE")) {
-              throw new IllegalStateException(
-                  "SQLite inventory_on_hand query returned more than one row for account "
-                      + inventoryAccountCode.value()
-                      + ".");
-            }
-            return Optional.of(state);
-          });
+      return SqliteTransactionInventoryValidationLookup.findState(
+          activeDatabase, account.orElseThrow(), requireInitializedBookIdentity());
     } catch (SqliteNativeException exception) {
       throw SqliteStoreOperations.sqliteFailure(
           "Failed to query SQLite inventory state.", exception);
     }
   }
 
-  @Override
-  public List<InventoryMovementRecord> inventoryMovements(PostingId postingId) {
+  Optional<dev.erst.fingrind.executor.bookkeeping.AccrualCutoffRecord> findAccrualCutoff(
+      dev.erst.fingrind.contract.bookkeeping.AccrualCutoffId accrualCutoffId) {
+    try {
+      return SqliteAccrualCutoffStatementQueries.findCutoff(activeDatabase, accrualCutoffId);
+    } catch (SqliteNativeException exception) {
+      throw SqliteStoreOperations.sqliteFailure(
+          "Failed to query SQLite accrual cut-off.", exception);
+    }
+  }
+
+  List<InventoryMovementRecord> inventoryMovements(PostingId postingId) {
     Objects.requireNonNull(postingId, "postingId");
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqliteInventoryCostingSql.LOAD_INVENTORY_MOVEMENTS_BY_POSTING_ID)) {
@@ -179,9 +150,7 @@ final class SqliteTransactionValidationBook implements PostingValidationStore {
     }
   }
 
-  @Override
-  public Optional<DeclaredTaxRegistration> findTaxRegistration(
-      TaxRegistrationId taxRegistrationId) {
+  Optional<DeclaredTaxRegistration> findTaxRegistration(TaxRegistrationId taxRegistrationId) {
     try {
       return SqliteTaxStatementQueries.findOneTaxRegistration(activeDatabase, taxRegistrationId);
     } catch (SqliteNativeException exception) {
@@ -189,8 +158,7 @@ final class SqliteTransactionValidationBook implements PostingValidationStore {
     }
   }
 
-  @Override
-  public Optional<StoredRequestPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
+  Optional<StoredRequestPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
     try {
       return postingReader.findOneStoredRequestPosting(
           activeDatabase,
@@ -201,21 +169,18 @@ final class SqliteTransactionValidationBook implements PostingValidationStore {
     }
   }
 
-  @Override
-  public Optional<CommittedPosting> findPosting(PostingId postingId) {
+  Optional<CommittedPosting> findPosting(PostingId postingId) {
     return findPostingWithBinder(
         SqlitePostingSql.FIND_POSTING_BY_ID, statement -> statement.bindText(1, postingId.value()));
   }
 
-  @Override
-  public Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
+  Optional<CommittedPosting> findReversalFor(PostingId priorPostingId) {
     return findPostingWithBinder(
         SqlitePostingSql.FIND_REVERSAL_FOR,
         statement -> statement.bindText(1, priorPostingId.value()));
   }
 
-  @Override
-  public List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
+  List<CommittedPosting> postings(EffectiveDateRange effectiveDateRange) {
     Objects.requireNonNull(effectiveDateRange, "effectiveDateRange");
     try {
       return postingReader.loadCommittedPostings(
@@ -236,8 +201,7 @@ final class SqliteTransactionValidationBook implements PostingValidationStore {
     }
   }
 
-  @Override
-  public Optional<LocalDate> earliestPostingEffectiveDate() {
+  Optional<LocalDate> earliestPostingEffectiveDate() {
     try {
       return SqliteStatementQueries.loadOptionalText(
               activeDatabase,
@@ -249,8 +213,7 @@ final class SqliteTransactionValidationBook implements PostingValidationStore {
     }
   }
 
-  @Override
-  public Optional<LocalDate> transferredThroughEffectiveDate() {
+  Optional<LocalDate> transferredThroughEffectiveDate() {
     try {
       return SqliteStatementQueries.loadOptionalText(
               activeDatabase,
@@ -271,5 +234,44 @@ final class SqliteTransactionValidationBook implements PostingValidationStore {
     } catch (SqliteNativeException exception) {
       throw SqliteStoreOperations.sqliteFailure("Failed to query SQLite book.", exception);
     }
+  }
+}
+
+/** Posting-validation adapter over transaction-scoped SQLite query implementations. */
+final class SqliteTransactionValidationBook implements SqliteTransactionValidationCapabilityView {
+  private final SqliteTransactionValidationQueries validationQueries;
+  private final SqliteTransactionLifecycleValidationQueries lifecycleContextQueries;
+  private final SqliteTransactionValidationPayrollQueries payrollQueries;
+
+  SqliteTransactionValidationBook(
+      SqliteNativeDatabase activeDatabase, SqlitePostingReader postingReader) {
+    this(activeDatabase, postingReader, false);
+  }
+
+  SqliteTransactionValidationBook(
+      SqliteNativeDatabase activeDatabase,
+      SqlitePostingReader postingReader,
+      boolean operationalInitializedWorkflowGate) {
+    validationQueries =
+        new SqliteTransactionValidationQueries(
+            activeDatabase, postingReader, operationalInitializedWorkflowGate);
+    lifecycleContextQueries = new SqliteTransactionLifecycleValidationQueries(activeDatabase);
+    payrollQueries = new SqliteTransactionValidationPayrollQueries(activeDatabase);
+  }
+
+  static SqliteTransactionValidationBook requireOwner(Object capabilityView) {
+    return (SqliteTransactionValidationBook) capabilityView;
+  }
+
+  SqliteTransactionValidationQueries validationQueries() {
+    return validationQueries;
+  }
+
+  SqliteTransactionLifecycleValidationQueries lifecycleContextQueries() {
+    return lifecycleContextQueries;
+  }
+
+  SqliteTransactionValidationPayrollQueries payrollQueries() {
+    return payrollQueries;
   }
 }

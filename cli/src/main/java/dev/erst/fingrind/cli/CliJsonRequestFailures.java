@@ -1,7 +1,6 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.runtime.ContractErrors;
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.nio.file.AccessDeniedException;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
@@ -40,7 +39,10 @@ final class CliJsonRequestFailures {
         ContractErrors.Descriptor.INVALID_REQUEST.code(),
         requestTransportFailureMessage(requestFile, exception),
         requestTransportFailureHint(requestFile, exception),
-        exception);
+        exception,
+        null,
+        null,
+        requestPath(requestFile));
   }
 
   static CliRequestException duplicateObjectKeyFailure(String hint) {
@@ -97,7 +99,7 @@ final class CliJsonRequestFailures {
 
   private static String requestTransportFailureMessage(Path requestFile, Exception exception) {
     if (exception instanceof CliRequestPayloadTooLargeException tooLargeException) {
-      if (dev.erst.fingrind.contract.protocol.ProtocolOptions.STDIN_TOKEN.equals(
+      if (dev.erst.fingrind.contract.protocol.ProtocolOptions.Request.STDIN_TOKEN.equals(
           requestFile.toString())) {
         return "Request JSON from standard input exceeded the supported "
             + tooLargeException.maxBytes()
@@ -105,21 +107,19 @@ final class CliJsonRequestFailures {
       }
       return "Request file exceeded the supported "
           + tooLargeException.maxBytes()
-          + "-byte UTF-8 limit: "
-          + publicPath(requestFile)
-          + ".";
+          + "-byte UTF-8 limit.";
     }
-    if (dev.erst.fingrind.contract.protocol.ProtocolOptions.STDIN_TOKEN.equals(
+    if (dev.erst.fingrind.contract.protocol.ProtocolOptions.Request.STDIN_TOKEN.equals(
         requestFile.toString())) {
       return "Failed to read request JSON from standard input.";
     }
     if (exception instanceof NoSuchFileException) {
-      return "Request file does not exist: " + publicPath(requestFile) + ".";
+      return "Request file does not exist.";
     }
     if (exception instanceof AccessDeniedException) {
-      return "Request file is not readable: " + publicPath(requestFile) + ".";
+      return "Request file is not readable.";
     }
-    return "Failed to read request file: " + publicPath(requestFile) + ".";
+    return "Failed to read request file.";
   }
 
   private static String requestTransportFailureHint(Path requestFile, Exception exception) {
@@ -128,7 +128,7 @@ final class CliJsonRequestFailures {
           + tooLargeException.maxBytes()
           + "-byte UTF-8 limit, or split the work into smaller request documents.";
     }
-    if (dev.erst.fingrind.contract.protocol.ProtocolOptions.STDIN_TOKEN.equals(
+    if (dev.erst.fingrind.contract.protocol.ProtocolOptions.Request.STDIN_TOKEN.equals(
         requestFile.toString())) {
       return "Provide a readable JSON document on standard input, or pass --request-file <path> to read it from a file.";
     }
@@ -154,7 +154,10 @@ final class CliJsonRequestFailures {
     }
   }
 
-  private static String publicPath(Path path) {
-    return PublicPathHint.fromPath(path).value();
+  private static @Nullable Path requestPath(Path requestFile) {
+    return dev.erst.fingrind.contract.protocol.ProtocolOptions.Request.STDIN_TOKEN.equals(
+            requestFile.toString())
+        ? null
+        : requestFile;
   }
 }

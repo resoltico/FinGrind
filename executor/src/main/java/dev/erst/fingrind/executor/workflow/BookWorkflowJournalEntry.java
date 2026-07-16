@@ -85,7 +85,7 @@ public sealed interface BookWorkflowJournalEntry
     public AssertionFailed {
       requireCommon(stepId, descriptor, startedAt, finishedAt, facts);
       if (!(descriptor instanceof BookWorkflowJournalDescriptor.Step descriptorStep)
-          || !(descriptorStep.step() instanceof BookWorkflowStep.Assert)) {
+          || !(descriptorStep.step() instanceof BookWorkflowAssertionStep)) {
         throw new IllegalArgumentException(
             "Assertion-failed workflow journal entries must describe an assertion step.");
       }

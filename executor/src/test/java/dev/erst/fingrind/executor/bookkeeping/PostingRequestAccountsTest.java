@@ -2,9 +2,16 @@ package dev.erst.fingrind.executor.bookkeeping;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffBookkeepingEntryVariants;
+import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffId;
+import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffRecognitionInterval;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.FixedAssetBookkeepingEntryVariants;
+import dev.erst.fingrind.contract.bookkeeping.FixedAssetId;
 import dev.erst.fingrind.contract.bookkeeping.InventoryRelief;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.bookkeeping.ResolvedAccrualCutoffApplication;
+import dev.erst.fingrind.contract.bookkeeping.ResolvedFixedAssetDepreciation;
 import dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountingEvidence;
@@ -24,6 +31,7 @@ import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -364,6 +372,124 @@ class PostingRequestAccountsTest {
                         new ReversalReason("operator reversal")),
                     null,
                     null))));
+  }
+
+  @Test
+  void fixedAssetRequestAccounts_waitForExecutorResolvedDepreciationFacts() {
+    Set<AccountCode> accounts = new LinkedHashSet<>();
+    FixedAssetId fixedAssetId = new FixedAssetId("office-desk");
+
+    PostingRequestFixedAssetAccounts.add(
+        accounts, new FixedAssetBookkeepingEntryVariants.Depreciation(date(), fixedAssetId, null));
+    assertEquals(Set.of(), accounts);
+
+    PostingRequestFixedAssetAccounts.add(
+        accounts,
+        new FixedAssetBookkeepingEntryVariants.Depreciation(
+            date(),
+            fixedAssetId,
+            new ResolvedFixedAssetDepreciation(
+                account("5000"), account("1601"), new MonetaryAmount("EUR", "1000"))));
+    assertEquals(Set.of(account("5000"), account("1601")), accounts);
+  }
+
+  @Test
+  void requestedAccounts_extractsEveryAccrualCutoffLifecycleAccountShape() {
+    AccrualCutoffId cutoffId = new AccrualCutoffId("accrual-cutoff-2026-04");
+    AccrualCutoffRecognitionInterval interval =
+        new AccrualCutoffRecognitionInterval(
+            LocalDate.parse("2026-04-07"), LocalDate.parse("2026-05-31"));
+    ResolvedAccrualCutoffApplication prepaymentRecognition =
+        new ResolvedAccrualCutoffApplication(
+            dev.erst.fingrind.core.AccrualCutoffKind.PREPAYMENT,
+            dev.erst.fingrind.core.AccrualCutoffApplicationKind.RECOGNITION,
+            account("5000"),
+            account("1410"));
+    ResolvedAccrualCutoffApplication accruedExpenseSettlement =
+        new ResolvedAccrualCutoffApplication(
+            dev.erst.fingrind.core.AccrualCutoffKind.ACCRUED_EXPENSE,
+            dev.erst.fingrind.core.AccrualCutoffApplicationKind.SETTLEMENT,
+            account("2100"),
+            account("1000"));
+
+    List<RequestCase> requestCases =
+        List.of(
+            new RequestCase(
+                "prepayment",
+                callerRequest(
+                    new AccrualCutoffBookkeepingEntryVariants.Prepayment(
+                        date(),
+                        cutoffId,
+                        account("1410"),
+                        account("5000"),
+                        account("1000"),
+                        new MonetaryAmount("EUR", "1000"),
+                        interval)),
+                Set.of(account("1410"), account("5000"), account("1000"))),
+            new RequestCase(
+                "deferred-revenue",
+                callerRequest(
+                    new AccrualCutoffBookkeepingEntryVariants.DeferredRevenue(
+                        date(),
+                        cutoffId,
+                        account("1000"),
+                        account("2200"),
+                        account("4000"),
+                        new MonetaryAmount("EUR", "1000"),
+                        interval)),
+                Set.of(account("1000"), account("2200"), account("4000"))),
+            new RequestCase(
+                "accrued-expense",
+                callerRequest(
+                    new AccrualCutoffBookkeepingEntryVariants.AccruedExpense(
+                        date(),
+                        cutoffId,
+                        account("5000"),
+                        account("2100"),
+                        new MonetaryAmount("EUR", "1000"))),
+                Set.of(account("5000"), account("2100"))),
+            new RequestCase(
+                "unresolved-recognition",
+                callerRequest(
+                    new AccrualCutoffBookkeepingEntryVariants.AccrualCutoffRecognition(
+                        date(), cutoffId, new MonetaryAmount("EUR", "1000"), null)),
+                Set.of()),
+            new RequestCase(
+                "resolved-recognition",
+                callerRequest(
+                    new AccrualCutoffBookkeepingEntryVariants.AccrualCutoffRecognition(
+                        date(),
+                        cutoffId,
+                        new MonetaryAmount("EUR", "1000"),
+                        prepaymentRecognition)),
+                Set.of(account("5000"), account("1410"))),
+            new RequestCase(
+                "unresolved-settlement",
+                callerRequest(
+                    new AccrualCutoffBookkeepingEntryVariants.AccruedExpenseSettlement(
+                        date(),
+                        cutoffId,
+                        account("1000"),
+                        new MonetaryAmount("EUR", "1000"),
+                        null)),
+                Set.of(account("1000"))),
+            new RequestCase(
+                "resolved-settlement",
+                callerRequest(
+                    new AccrualCutoffBookkeepingEntryVariants.AccruedExpenseSettlement(
+                        date(),
+                        cutoffId,
+                        account("1000"),
+                        new MonetaryAmount("EUR", "1000"),
+                        accruedExpenseSettlement)),
+                Set.of(account("2100"), account("1000"))));
+
+    for (RequestCase requestCase : requestCases) {
+      assertEquals(
+          requestCase.expectedAccounts(),
+          PostingRequestAccounts.requestedAccounts(requestCase.postingRequest()),
+          requestCase.name());
+    }
   }
 
   private static PostingCommand callerRequest(BookkeepingEntry entry) {

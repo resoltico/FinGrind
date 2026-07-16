@@ -3,6 +3,8 @@ package dev.erst.fingrind.executor.workflow;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
+import dev.erst.fingrind.contract.tax.TaxDeclarationRejection;
+import dev.erst.fingrind.contract.workflow.LedgerPlanFailure;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
@@ -65,12 +67,26 @@ final class LedgerPlanWorkflowFailureMapper {
         LedgerPlanWorkflowPostingFailureFacts.postingRejectionFacts(publishedRejection));
   }
 
+  static BookWorkflowFailure taxDeclarationFailure(TaxDeclarationRejection rejection) {
+    Objects.requireNonNull(rejection, "rejection");
+    return switch (rejection) {
+      case TaxDeclarationRejection.BookNotInitialized _ ->
+          new BookWorkflowFailure(
+              TaxDeclarationRejection.wireCode(rejection), missingBookMessage(), List.of());
+      case TaxDeclarationRejection.DefinitionViolations violations ->
+          new BookWorkflowFailure(
+              TaxDeclarationRejection.wireCode(rejection),
+              "The tax registration definition contains one or more invalid facts.",
+              List.of(BookWorkflowFact.count("violationCount", violations.violations().size())));
+    };
+  }
+
   static BookWorkflowFailure ensureBookIdentityConflict(
       BookIdentity existingBookIdentity, BookIdentity requestedBookIdentity) {
     Objects.requireNonNull(existingBookIdentity, "existingBookIdentity");
     Objects.requireNonNull(requestedBookIdentity, "requestedBookIdentity");
     return new BookWorkflowFailure(
-        "ensure-book-identity-conflict",
+        LedgerPlanFailure.ENSURE_BOOK_IDENTITY_CONFLICT.code(),
         "The selected book is already initialized with a different book identity.",
         List.of(
             BookWorkflowFact.text("existingEntityName", existingBookIdentity.entityName().value()),

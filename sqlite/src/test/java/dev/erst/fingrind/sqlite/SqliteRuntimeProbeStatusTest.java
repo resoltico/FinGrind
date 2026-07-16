@@ -88,38 +88,52 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
     assertEquals("boom", SqliteRuntime.failureDetail(new IllegalStateException("boom")));
     assertEquals("RuntimeException", SqliteRuntime.failureDetail(new RuntimeException()));
     assertEquals(
-        "Library load failed at <redacted>/libsqlite3.dylib.",
+        "Library load failed at /tmp/libsqlite3.dylib.",
         SqliteRuntime.failureDetail(
             new IllegalStateException("Library load failed at /tmp/libsqlite3.dylib.")));
   }
 
   @Test
-  void failureDetail_redactsPathTokensWithoutDiscardingTrailingPunctuation() {
+  void failureDetail_preservesMachineDiagnosticPaths() {
     assertEquals(
-        "Library load failed at <redacted>/libsqlite3.dylib).",
+        "Library load failed at /tmp/libsqlite3.dylib).",
         SqliteRuntime.failureDetail(
             new IllegalStateException("Library load failed at /tmp/libsqlite3.dylib).")));
     assertEquals(
-        "Diagnostics referenced <redacted>/bundle and <redacted>/sqlite3.dll].",
+        "Diagnostics referenced /opt/fingrind/bundle and C:\\sqlite\\sqlite3.dll].",
         SqliteRuntime.failureDetail(
             new IllegalStateException(
                 "Diagnostics referenced /opt/fingrind/bundle and C:\\sqlite\\sqlite3.dll].")));
     assertEquals(
-        "Artifacts landed at <redacted>/sqlite3.dll, <redacted>/sqlite3.dll; and <redacted>/sqlite3.dll:",
+        "Artifacts landed at /tmp/sqlite3.dll, /tmp/sqlite3.dll; and /tmp/sqlite3.dll:",
         SqliteRuntime.failureDetail(
             new IllegalStateException(
                 "Artifacts landed at /tmp/sqlite3.dll, /tmp/sqlite3.dll; and /tmp/sqlite3.dll:")));
   }
 
   @Test
-  void publicLoadedLibraryPath_redactsDirectoriesAndRejectsBlankValues() {
-    assertEquals("libsqlite3.dylib", SqliteRuntime.publicLoadedLibraryPath("libsqlite3.dylib"));
-    assertEquals("/tmp/", SqliteRuntime.publicLoadedLibraryPath("/tmp/"));
+  void absoluteLoadedLibraryPath_preservesAbsolutePathsAndResolvesRelativeValues() {
     assertEquals(
-        "<redacted>/sqlite3.dll", SqliteRuntime.publicLoadedLibraryPath("C:\\sqlite\\sqlite3.dll"));
+        Path.of("libsqlite3.dylib").toAbsolutePath().normalize().toString(),
+        SqliteRuntime.absoluteLoadedLibraryPath("libsqlite3.dylib"));
+    assertEquals(
+        Path.of("x").toAbsolutePath().normalize().toString(),
+        SqliteRuntime.absoluteLoadedLibraryPath("x"));
+    assertEquals("/tmp", SqliteRuntime.absoluteLoadedLibraryPath("/tmp/"));
+    assertEquals(
+        "C:\\sqlite\\sqlite3.dll",
+        SqliteRuntime.absoluteLoadedLibraryPath("C:\\sqlite\\sqlite3.dll"));
+    assertEquals(
+        "C:/sqlite/sqlite3.dll", SqliteRuntime.absoluteLoadedLibraryPath("C:/sqlite/sqlite3.dll"));
+    assertEquals(
+        Path.of("C:sqlite3.dll").toAbsolutePath().normalize().toString(),
+        SqliteRuntime.absoluteLoadedLibraryPath("C:sqlite3.dll"));
+    assertEquals(
+        "\\\\server\\share\\sqlite3.dll",
+        SqliteRuntime.absoluteLoadedLibraryPath("\\\\server\\share\\sqlite3.dll"));
     IllegalArgumentException exception =
         assertThrows(
-            IllegalArgumentException.class, () -> SqliteRuntime.publicLoadedLibraryPath("   "));
+            IllegalArgumentException.class, () -> SqliteRuntime.absoluteLoadedLibraryPath("   "));
     assertEquals("loadedLibraryPath must not be blank.", exception.getMessage());
   }
 
@@ -140,20 +154,12 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
 
     SqliteRuntimeArtifactEvidence evidence = artifactEvidence(libraryPath.toString());
     assertNotNull(evidence);
-    assertEquals("<redacted>/toolchain-fingerprint.json", evidence.toolchainFingerprintPath());
-    assertEquals("<redacted>/build-contract.json", evidence.buildContractPath());
+    assertEquals(
+        toolchainFingerprintPath.toAbsolutePath().normalize().toString(),
+        evidence.toolchainFingerprintPath());
+    assertEquals(
+        buildContractPath.toAbsolutePath().normalize().toString(), evidence.buildContractPath());
     assertNull(artifactEvidence("libsqlite3.so.0"));
-  }
-
-  @Test
-  void trailingPunctuationStart_handlesAbsentPresentAndAllPunctuationSuffixes() {
-    assertEquals(
-        "/tmp/libsqlite3.dylib".length(),
-        SqliteRuntime.trailingPunctuationStart("/tmp/libsqlite3.dylib"));
-    assertEquals(
-        "/tmp/libsqlite3.dylib".length(),
-        SqliteRuntime.trailingPunctuationStart("/tmp/libsqlite3.dylib)]."));
-    assertEquals(0, SqliteRuntime.trailingPunctuationStart("]]."));
   }
 
   @Test
@@ -217,7 +223,7 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
     assertEquals(SqliteRuntimeProvenance.BUNDLE_MANAGED, runtimeProbe.runtimeProvenance());
     assertEquals(
         SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY, runtimeProbe.runtimeTrustBasis());
-    assertRedactedLoadedLibraryPath(runtimeProbe.loadedLibraryPath());
+    assertEquals("/tmp/libsqlite3.dylib", runtimeProbe.loadedLibraryPath());
     assertEquals("3.51.0", runtimeProbe.loadedSqliteVersion());
     assertEquals("2.3.6", runtimeProbe.loadedSqlite3mcVersion());
     assertEquals(SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID, runtimeProbe.loadedSqliteSourceId());
@@ -242,7 +248,7 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
     assertEquals(SqliteRuntimeProvenance.BUNDLE_MANAGED, runtimeProbe.runtimeProvenance());
     assertEquals(
         SqliteRuntimeTrustBasis.BUNDLE_SIDECAR_CONSISTENCY, runtimeProbe.runtimeTrustBasis());
-    assertRedactedLoadedLibraryPath(runtimeProbe.loadedLibraryPath());
+    assertEquals("/tmp/libsqlite3.dylib", runtimeProbe.loadedLibraryPath());
     assertNull(runtimeProbe.loadedSqliteVersion());
     assertNull(runtimeProbe.loadedSqlite3mcVersion());
     assertNull(runtimeProbe.loadedSqliteSourceId());
@@ -924,12 +930,6 @@ class SqliteRuntimeProbeStatusTest extends SqliteNativeBridgeTestSupport {
 
   private static String requireLoadedLibraryPath(SqliteRuntime.Probe runtimeProbe) {
     return Objects.requireNonNull(runtimeProbe.loadedLibraryPath());
-  }
-
-  private static void assertRedactedLoadedLibraryPath(@Nullable String loadedLibraryPath) {
-    String normalized = Objects.requireNonNull(loadedLibraryPath);
-    assertTrue(normalized.endsWith("/libsqlite3.dylib"));
-    assertFalse(normalized.contains("/tmp/"));
   }
 
   private static String requireIssue(SqliteRuntime.Probe runtimeProbe) {

@@ -1,7 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import static dev.erst.fingrind.sqlite.SqliteBookKeyFileSecuritySupport.redactedPath;
-
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
@@ -65,7 +63,7 @@ final class SqliteBookKeyFileArtifactSecurity {
       return;
     }
     throw new IllegalStateException(
-        SqliteBookKeyFileSecuritySupport.unsupportedSecureFilesystemMessage(normalizedPath));
+        SqliteBookKeyFileSecuritySupport.unsupportedSecureFilesystemMessage());
   }
 
   static ContractDecision<Path> requireSecureKeyFile(Path bookKeyFilePath) {
@@ -80,13 +78,12 @@ final class SqliteBookKeyFileArtifactSecurity {
       if (Files.notExists(bookKeyFilePath, LinkOption.NOFOLLOW_LINKS)) {
         return ContractDecision.rejected(
             SqliteBookKeyFileSecuritySupport.invalidBookKeyFile(
-                "The FinGrind book key file does not exist: " + redactedPath(bookKeyFilePath)));
+                bookKeyFilePath, "The FinGrind book key file does not exist."));
       }
       if (!Files.isRegularFile(bookKeyFilePath, LinkOption.NOFOLLOW_LINKS)) {
         return ContractDecision.rejected(
             SqliteBookKeyFileSecuritySupport.invalidBookKeyFile(
-                "The FinGrind book key file must be a regular non-symlink file: "
-                    + redactedPath(bookKeyFilePath)));
+                bookKeyFilePath, "The FinGrind book key file must be a regular non-symlink file."));
       }
       Path parentDirectory =
           SqliteBookKeyFileSecuritySupport.requireKeyFileParentDirectory(bookKeyFilePath);
@@ -104,9 +101,9 @@ final class SqliteBookKeyFileArtifactSecurity {
           SqliteBookKeyFileSecuritySupport.unsupportedSecureFilesystem(bookKeyFilePath, exception));
     } catch (IOException exception) {
       return ContractDecision.rejected(
-          ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.failure(
-              "Failed to inspect the FinGrind book key file permissions: "
-                  + redactedPath(bookKeyFilePath),
+          ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.failureAt(
+              bookKeyFilePath,
+              "Failed to inspect the FinGrind book key file permissions.",
               "Inspect the selected book key file path, permissions, and filesystem accessibility, then rerun the command.",
               null));
     }
@@ -128,8 +125,8 @@ final class SqliteBookKeyFileArtifactSecurity {
         permissions,
         PosixFilePermission.OWNER_READ,
         POSIX_KEY_FILE_PERMISSIONS,
-        "The FinGrind book key file must be owner-readable: ",
-        "The FinGrind book key file must use owner-only permissions (0400 or 0600): ");
+        "The FinGrind book key file must be owner-readable.",
+        "The FinGrind book key file must use owner-only permissions (0400 or 0600).");
   }
 
   private static ContractDecision<Path> requireSecureAcl(
@@ -139,7 +136,7 @@ final class SqliteBookKeyFileArtifactSecurity {
         security,
         ACL_READ_PERMISSIONS,
         ACL_SECRET_ACCESS_PERMISSIONS,
-        "The FinGrind book key file ACL must grant the file owner read access: ",
-        "The FinGrind book key file ACL must grant secret access only to the file owner: ");
+        "The FinGrind book key file ACL must grant the file owner read access.",
+        "The FinGrind book key file ACL must grant secret access only to the file owner.");
   }
 }

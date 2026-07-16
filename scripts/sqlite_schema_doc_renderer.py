@@ -8,9 +8,9 @@ from pathlib import Path
 from sqlite_schema_doc_catalog import (
     SECTION_BY_KEY,
     SECTIONS,
-    TABLE_SECTION_BY_NAME,
-    TRIGGER_SECTION_BY_PREFIX,
 )
+from sqlite_schema_doc_table_sections import TABLE_SECTION_BY_NAME
+from sqlite_schema_doc_trigger_sections import TRIGGER_SECTION_BY_PREFIX
 
 TABLE_PATTERN = re.compile(r"create table if not exists ([a-z_][a-z0-9_]*)\s*\(", re.IGNORECASE)
 INDEX_PATTERN = re.compile(
@@ -218,6 +218,11 @@ def separator_for_sql_statements(statement: str, next_statement: str | None) -> 
         return ""
     if sql_statement_kind(statement) == "pragma" and sql_statement_kind(next_statement) == "pragma":
         return "\n"
+    if (
+        sql_statement_kind(statement) == "inline-trigger"
+        and sql_statement_kind(next_statement) == "inline-trigger"
+    ):
+        return "\n"
     if sql_statement_kind(next_statement) in {"trigger-body", "trigger-end"}:
         return "\n"
     if sql_statement_kind(statement) in {"trigger-open", "trigger-body"}:
@@ -230,6 +235,8 @@ def sql_statement_kind(statement: str) -> str:
     if lower_statement.startswith("pragma "):
         return "pragma"
     if lower_statement.startswith("create trigger"):
+        if lower_statement.endswith(" end;"):
+            return "inline-trigger"
         return "trigger-open"
     if lower_statement == "end;":
         return "trigger-end"

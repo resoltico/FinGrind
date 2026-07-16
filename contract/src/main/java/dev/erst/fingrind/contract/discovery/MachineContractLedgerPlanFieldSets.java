@@ -19,6 +19,7 @@ final class MachineContractLedgerPlanFieldSets {
         MachineContractLedgerPlanStepPayloadFieldSpecs.conditionalEnsureBookField(),
         MachineContractLedgerPlanStepPayloadFieldSpecs.conditionalPostingField(),
         MachineContractLedgerPlanStepPayloadFieldSpecs.conditionalDeclareAccountField(),
+        MachineContractLedgerPlanStepPayloadFieldSpecs.conditionalDeclareTaxRegistrationField(),
         MachineContractLedgerPlanStepPayloadFieldSpecs.conditionalQueryField(),
         MachineContractLedgerPlanStepPayloadFieldSpecs.conditionalAssertionField(),
         MachineContractLedgerPlanStepPayloadFieldSpecs.conditionalPostingIdField());

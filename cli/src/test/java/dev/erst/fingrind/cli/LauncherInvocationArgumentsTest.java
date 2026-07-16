@@ -38,7 +38,7 @@ class LauncherInvocationArgumentsTest {
     Path argumentsFile = tempDir.resolve("launcher-arguments.json");
     Files.writeString(
         argumentsFile,
-        "[\"generate-book-key-file\",\"--book-key-file\",\""
+        "[\"generate-book-key-file\",\"--new-book-key-file\",\""
             + tempDir.resolve("workspace odd").resolve("Rīga büro").resolve("--entity.key")
             + "\"]\n");
 
@@ -48,7 +48,7 @@ class LauncherInvocationArgumentsTest {
             .resolve(new String[] {"help"});
 
     assertEquals("generate-book-key-file", resolved[0]);
-    assertEquals("--book-key-file", resolved[1]);
+    assertEquals("--new-book-key-file", resolved[1]);
     assertEquals(
         tempDir.resolve("workspace odd").resolve("Rīga büro").resolve("--entity.key").toString(),
         resolved[2]);

@@ -21,14 +21,14 @@ final class CliOpenBookArguments {
   private static final CliBookArgumentParser.CommandArgumentSpec OPEN_BOOK_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
-              ProtocolOptions.ENTITY_NAME,
-              ProtocolOptions.BOOK_TEMPLATE_ID,
-              ProtocolOptions.ACCOUNTING_BASIS,
-              ProtocolOptions.INVENTORY_COSTING,
-              ProtocolOptions.FUNCTIONAL_CURRENCY,
-              ProtocolOptions.FISCAL_YEAR_START,
-              ProtocolOptions.OUTPUT),
-          List.of(ProtocolOptions.TIGHTEN_PARENTS));
+              ProtocolOptions.BookDefinition.ENTITY_NAME,
+              ProtocolOptions.BookDefinition.TEMPLATE_ID,
+              ProtocolOptions.BookDefinition.ACCOUNTING_BASIS,
+              ProtocolOptions.BookDefinition.INVENTORY_COSTING,
+              ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
+              ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
+              ProtocolOptions.Presentation.OUTPUT),
+          List.of(ProtocolOptions.BookDefinition.TIGHTEN_PARENTS));
 
   private CliOpenBookArguments() {}
 
@@ -63,64 +63,70 @@ final class CliOpenBookArguments {
       String argument,
       ListIterator<String> argumentIterator) {
     switch (argument) {
-      case ProtocolOptions.ENTITY_NAME ->
+      case ProtocolOptions.BookDefinition.ENTITY_NAME ->
           argumentValues.entityName =
               CliOptionValues.parseBookEntityNameOption(
-                  CliOptionValues.requireValue(argumentIterator, ProtocolOptions.ENTITY_NAME),
-                  ProtocolOptions.ENTITY_NAME);
-      case ProtocolOptions.BOOK_TEMPLATE_ID ->
+                  CliOptionValues.requireValue(
+                      argumentIterator, ProtocolOptions.BookDefinition.ENTITY_NAME),
+                  ProtocolOptions.BookDefinition.ENTITY_NAME);
+      case ProtocolOptions.BookDefinition.TEMPLATE_ID ->
           argumentValues.bookTemplateId =
               CliOptionValues.parseBookTemplateIdOption(
-                  CliOptionValues.requireValue(argumentIterator, ProtocolOptions.BOOK_TEMPLATE_ID),
-                  ProtocolOptions.BOOK_TEMPLATE_ID);
-      case ProtocolOptions.ACCOUNTING_BASIS ->
+                  CliOptionValues.requireValue(
+                      argumentIterator, ProtocolOptions.BookDefinition.TEMPLATE_ID),
+                  ProtocolOptions.BookDefinition.TEMPLATE_ID);
+      case ProtocolOptions.BookDefinition.ACCOUNTING_BASIS ->
           argumentValues.accountingBasis =
               CliOptionValues.parseAccountingBasisOption(
-                  CliOptionValues.requireValue(argumentIterator, ProtocolOptions.ACCOUNTING_BASIS),
-                  ProtocolOptions.ACCOUNTING_BASIS);
-      case ProtocolOptions.INVENTORY_COSTING ->
+                  CliOptionValues.requireValue(
+                      argumentIterator, ProtocolOptions.BookDefinition.ACCOUNTING_BASIS),
+                  ProtocolOptions.BookDefinition.ACCOUNTING_BASIS);
+      case ProtocolOptions.BookDefinition.INVENTORY_COSTING ->
           argumentValues.inventoryCostingDoctrine =
               CliOptionValues.parseInventoryCostingDoctrineOption(
-                  CliOptionValues.requireValue(argumentIterator, ProtocolOptions.INVENTORY_COSTING),
-                  ProtocolOptions.INVENTORY_COSTING);
-      case ProtocolOptions.FUNCTIONAL_CURRENCY ->
+                  CliOptionValues.requireValue(
+                      argumentIterator, ProtocolOptions.BookDefinition.INVENTORY_COSTING),
+                  ProtocolOptions.BookDefinition.INVENTORY_COSTING);
+      case ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY ->
           argumentValues.functionalCurrency =
               CliOptionValues.parseCurrencyUnitOption(
                   CliOptionValues.requireValue(
-                      argumentIterator, ProtocolOptions.FUNCTIONAL_CURRENCY),
-                  ProtocolOptions.FUNCTIONAL_CURRENCY);
-      case ProtocolOptions.FISCAL_YEAR_START ->
+                      argumentIterator, ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY),
+                  ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY);
+      case ProtocolOptions.BookDefinition.FISCAL_YEAR_START ->
           argumentValues.fiscalYearStart =
               CliOptionValues.parseFiscalYearStartOption(
-                  CliOptionValues.requireValue(argumentIterator, ProtocolOptions.FISCAL_YEAR_START),
-                  ProtocolOptions.FISCAL_YEAR_START);
-      case ProtocolOptions.OUTPUT ->
+                  CliOptionValues.requireValue(
+                      argumentIterator, ProtocolOptions.BookDefinition.FISCAL_YEAR_START),
+                  ProtocolOptions.BookDefinition.FISCAL_YEAR_START);
+      case ProtocolOptions.Presentation.OUTPUT ->
           argumentValues.outputMode =
               CliOptionModes.requireOutputMode(
                   argumentValues.outputMode,
-                  CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                  CliOptionValues.requireValue(
+                      argumentIterator, ProtocolOptions.Presentation.OUTPUT),
                   CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
-      case ProtocolOptions.TIGHTEN_PARENTS -> argumentValues.tightenParents = true;
+      case ProtocolOptions.BookDefinition.TIGHTEN_PARENTS -> argumentValues.tightenParents = true;
       default ->
           throw CliArgumentValueParser.unsupportedArgument(
               argument,
               List.of(
-                  ProtocolOptions.ENTITY_NAME,
-                  ProtocolOptions.BOOK_TEMPLATE_ID,
-                  ProtocolOptions.ACCOUNTING_BASIS,
-                  ProtocolOptions.INVENTORY_COSTING,
-                  ProtocolOptions.FUNCTIONAL_CURRENCY,
-                  ProtocolOptions.FISCAL_YEAR_START,
-                  ProtocolOptions.TIGHTEN_PARENTS,
-                  ProtocolOptions.OUTPUT));
+                  ProtocolOptions.BookDefinition.ENTITY_NAME,
+                  ProtocolOptions.BookDefinition.TEMPLATE_ID,
+                  ProtocolOptions.BookDefinition.ACCOUNTING_BASIS,
+                  ProtocolOptions.BookDefinition.INVENTORY_COSTING,
+                  ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
+                  ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
+                  ProtocolOptions.BookDefinition.TIGHTEN_PARENTS,
+                  ProtocolOptions.Presentation.OUTPUT));
     }
   }
 
   private static BookEntityName requireEntityName(@Nullable BookEntityName entityName) {
     if (entityName == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.ENTITY_NAME,
-          "A " + ProtocolOptions.ENTITY_NAME + " argument is required.");
+          ProtocolOptions.BookDefinition.ENTITY_NAME,
+          "A " + ProtocolOptions.BookDefinition.ENTITY_NAME + " argument is required.");
     }
     return entityName;
   }
@@ -128,8 +134,8 @@ final class CliOpenBookArguments {
   private static BookTemplateId requireBookTemplateId(@Nullable BookTemplateId bookTemplateId) {
     if (bookTemplateId == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BOOK_TEMPLATE_ID,
-          "A " + ProtocolOptions.BOOK_TEMPLATE_ID + " argument is required.");
+          ProtocolOptions.BookDefinition.TEMPLATE_ID,
+          "A " + ProtocolOptions.BookDefinition.TEMPLATE_ID + " argument is required.");
     }
     return bookTemplateId;
   }
@@ -137,8 +143,8 @@ final class CliOpenBookArguments {
   private static AccountingBasis requireAccountingBasis(@Nullable AccountingBasis accountingBasis) {
     if (accountingBasis == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.ACCOUNTING_BASIS,
-          "A " + ProtocolOptions.ACCOUNTING_BASIS + " argument is required.");
+          ProtocolOptions.BookDefinition.ACCOUNTING_BASIS,
+          "A " + ProtocolOptions.BookDefinition.ACCOUNTING_BASIS + " argument is required.");
     }
     return accountingBasis;
   }
@@ -152,7 +158,7 @@ final class CliOpenBookArguments {
           bookTemplateId, accountingBasis, argumentValues.inventoryCostingDoctrine);
     } catch (IllegalArgumentException exception) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.INVENTORY_COSTING,
+          ProtocolOptions.BookDefinition.INVENTORY_COSTING,
           java.util.Objects.requireNonNullElse(
               exception.getMessage(), "Invalid inventory costing doctrine."),
           exception);
@@ -162,8 +168,8 @@ final class CliOpenBookArguments {
   private static CurrencyUnit requireFunctionalCurrency(@Nullable CurrencyUnit functionalCurrency) {
     if (functionalCurrency == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.FUNCTIONAL_CURRENCY,
-          "A " + ProtocolOptions.FUNCTIONAL_CURRENCY + " argument is required.");
+          ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
+          "A " + ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY + " argument is required.");
     }
     return functionalCurrency;
   }
@@ -171,8 +177,8 @@ final class CliOpenBookArguments {
   private static FiscalYearStart requireFiscalYearStart(@Nullable FiscalYearStart fiscalYearStart) {
     if (fiscalYearStart == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.FISCAL_YEAR_START,
-          "A " + ProtocolOptions.FISCAL_YEAR_START + " argument is required.");
+          ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
+          "A " + ProtocolOptions.BookDefinition.FISCAL_YEAR_START + " argument is required.");
     }
     return fiscalYearStart;
   }

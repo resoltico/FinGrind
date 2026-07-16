@@ -2,7 +2,9 @@ package dev.erst.fingrind.contract.runtime;
 
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 
-/** Redacted evidence that identifies the loaded managed-SQLite provenance sidecars. */
+/**
+ * Canonical absolute-path evidence that identifies the loaded managed-SQLite provenance sidecars.
+ */
 public record SqliteRuntimeArtifactEvidence(
     String toolchainFingerprintPath,
     String toolchainFingerprintSha256,

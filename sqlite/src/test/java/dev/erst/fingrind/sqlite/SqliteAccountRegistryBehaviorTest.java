@@ -260,7 +260,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
   }
 
   @Test
-  void mutationWriterUpsertAccount_preservesImmutableTypeAndTaxonomyAndUpdatesTimestamp() {
+  void mutationWriterUpsertAccount_preservesImmutableTypeTaxonomyAndDeclarationTimestamp() {
     Path databasePath = tempDirectory.resolve("upsert-account-columns.sqlite");
     assertDoesNotThrow(
         () ->
@@ -268,7 +268,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
                 staticBookAccess(databasePath),
                 database -> {
                   SqliteBookSchemaBootstrap.initializeBook(database);
-                  SqliteMutationWriter.upsertAccount(
+                  SqliteAccountRegistryMutationWriter.upsertAccount(
                       database,
                       registeredAccount(
                           new AccountCode("1000"),
@@ -277,7 +277,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
                           NormalBalance.DEBIT,
                           true,
                           Instant.parse("2026-04-07T10:15:30Z")));
-                  SqliteMutationWriter.upsertAccount(
+                  SqliteAccountRegistryMutationWriter.upsertAccount(
                       database,
                       registeredAccount(
                           new AccountCode("1000"),
@@ -285,7 +285,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
                           dev.erst.fingrind.core.AccountType.REVENUE,
                           NormalBalance.CREDIT,
                           true,
-                          Instant.parse("2026-04-08T10:15:30Z")));
+                          Instant.parse("2026-04-07T10:15:30Z")));
                   assertEquals(
                       "Cash Renamed",
                       queryText(
@@ -302,7 +302,7 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
                           database,
                           "select account_type from account where account_code = '1000'"));
                   assertEquals(
-                      "2026-04-08T10:15:30Z",
+                      "2026-04-07T10:15:30Z",
                       queryText(
                           database, "select declared_at from account where account_code = '1000'"));
                 }));

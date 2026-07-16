@@ -87,7 +87,7 @@ def assert_bridge_invocation_contracts(
     output, exit_code = run_cli_allow_failure(
         config,
         "generate-book-key-file",
-        "--book-key-file",
+        "--new-book-key-file",
         unicode_argument,
     )
     assert exit_code == 0
@@ -145,7 +145,7 @@ def assert_pdf_report_contracts(
         trial_balance_text_output=standard_trial_balance_text,
         pdf_stdout=pdf_export_stdout(str(pdf_local_path)),
         pdf_stderr="",
-        account_ledger_csv_output=structured_account_ledger_csv("bridge"),
+        account_ledger_csv_output=structured_account_ledger_csv(),
         period_summary_text_output=standard_period_summary_text,
     )
 
@@ -180,6 +180,6 @@ def assert_pdf_report_contracts(
         trial_balance_text_output=standard_trial_balance_text,
         pdf_stdout=pdf_export_stdout("/workdir/reports odd/trial balance [bridge].pdf"),
         pdf_stderr="",
-        account_ledger_csv_output=structured_account_ledger_csv("bridge"),
+        account_ledger_csv_output=structured_account_ledger_csv(),
         period_summary_text_output=standard_period_summary_text,
     )

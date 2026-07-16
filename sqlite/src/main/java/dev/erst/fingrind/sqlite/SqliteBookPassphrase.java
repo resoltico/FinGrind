@@ -5,6 +5,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.nio.charset.CharsetEncoder;
+import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.BiFunction;
@@ -118,6 +119,12 @@ public final class SqliteBookPassphrase implements AutoCloseable {
   /** Returns one independent owned passphrase instance with copied UTF-8 bytes. */
   SqliteBookPassphrase copy() {
     return fromUtf8Bytes(sourceDescription, utf8BytesCopy());
+  }
+
+  /** Returns whether this and the supplied owned secret contain the same normalized bytes. */
+  boolean hasSameSecretAs(SqliteBookPassphrase other) {
+    Objects.requireNonNull(other, "other");
+    return MessageDigest.isEqual(utf8Bytes, other.utf8Bytes);
   }
 
   @Override

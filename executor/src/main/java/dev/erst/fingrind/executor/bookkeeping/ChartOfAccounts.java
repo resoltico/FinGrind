@@ -121,6 +121,7 @@ public final class ChartOfAccounts {
     List<AccountCode> activeCandidates =
         accountsByCode.values().stream()
             .filter(RegisteredAccount::active)
+            .filter(account -> !account.accountCode().equals(declaration.accountCode()))
             .filter(
                 account ->
                     account

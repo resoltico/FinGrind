@@ -1,5 +1,5 @@
 pragma application_id = 1179079236;
-pragma user_version = 39;
+pragma user_version = 46;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -142,11 +142,14 @@ create table if not exists account (
         or financial_position_line_classification in (
             'CURRENT_ASSET',
             'INVENTORY',
+            'PREPAID_EXPENSE',
             'NONCURRENT_ASSET',
             'TRADE_RECEIVABLE',
             'CURRENT_LIABILITY',
             'NONCURRENT_LIABILITY',
             'TRADE_PAYABLE',
+            'DEFERRED_REVENUE',
+            'ACCRUED_EXPENSE',
             'EQUITY_CONTRIBUTION',
             'EQUITY_WITHDRAWAL',
             'RESULT_HOLDING',
@@ -254,7 +257,11 @@ create table if not exists account (
         (
             account_type = 'ASSET'
             and financial_position_line_classification in (
-                'CURRENT_ASSET', 'INVENTORY', 'NONCURRENT_ASSET', 'TRADE_RECEIVABLE'
+                'CURRENT_ASSET',
+                'INVENTORY',
+                'PREPAID_EXPENSE',
+                'NONCURRENT_ASSET',
+                'TRADE_RECEIVABLE'
             )
             and cash_flow_asset_classification in ('CASH_AND_CASH_EQUIVALENT', 'NON_CASH')
             and profit_and_loss_line_classification is null
@@ -263,7 +270,11 @@ create table if not exists account (
         (
             account_type = 'LIABILITY'
             and financial_position_line_classification in (
-                'CURRENT_LIABILITY', 'NONCURRENT_LIABILITY', 'TRADE_PAYABLE'
+                'CURRENT_LIABILITY',
+                'NONCURRENT_LIABILITY',
+                'TRADE_PAYABLE',
+                'DEFERRED_REVENUE',
+                'ACCRUED_EXPENSE'
             )
             and cash_flow_asset_classification is null
             and profit_and_loss_line_classification is null
@@ -377,20 +388,127 @@ begin
     );
 end;
 
-create trigger if not exists account_reject_immutable_update
+create trigger if not exists account_validate_lifecycle_update
 before update on account
-when
-    old.account_type <> new.account_type
-    or old.account_node_kind <> new.account_node_kind
-    or coalesce(old.parent_account_code, '') <> coalesce(new.parent_account_code, '')
-    or coalesce(old.financial_position_line_classification, '')
-    <> coalesce(new.financial_position_line_classification, '')
-    or coalesce(old.cash_flow_asset_classification, '')
-    <> coalesce(new.cash_flow_asset_classification, '')
-    or coalesce(old.profit_and_loss_line_classification, '')
-    <> coalesce(new.profit_and_loss_line_classification, '')
 begin
-    select raise(fail, 'account immutable declaration fields cannot change.');
+    select raise(fail, 'account code and declared-at are immutable.')
+    where
+        old.account_code <> new.account_code
+        or old.declared_at <> new.declared_at;
+    select raise(fail, 'account definition has dependents.')
+    where
+        (
+            old.account_name <> new.account_name
+            or old.account_type <> new.account_type
+            or old.account_node_kind <> new.account_node_kind
+            or coalesce(old.parent_account_code, '') <> coalesce(new.parent_account_code, '')
+            or coalesce(old.financial_position_line_classification, '')
+            <> coalesce(new.financial_position_line_classification, '')
+            or coalesce(old.cash_flow_asset_classification, '')
+            <> coalesce(new.cash_flow_asset_classification, '')
+            or coalesce(old.profit_and_loss_line_classification, '')
+            <> coalesce(new.profit_and_loss_line_classification, '')
+            or coalesce(old.unit_of_measure, '') <> coalesce(new.unit_of_measure, '')
+            or coalesce(old.quantity_scale, -1) <> coalesce(new.quantity_scale, -1)
+        )
+        and (
+            exists (select 1 from journal_line where account_code = old.account_code)
+            or exists (
+                select 1
+                from tax_registration
+                where payable_account_code = old.account_code
+                    or recoverable_account_code = old.account_code
+            )
+            or exists (select 1 from account where parent_account_code = old.account_code)
+        );
+    select raise(fail, 'retired accounts must have zero current balance.')
+    where
+        old.active = 1
+        and new.active = 0
+        and exists (
+            select 1
+            from journal_line
+            where account_code = old.account_code
+            group by currency_code
+            having sum(case entry_side when 'DEBIT' then amount_minor else -amount_minor end) <> 0
+        );
+    select raise(fail, 'retired accounts must have no live operational bindings.')
+    where
+        old.active = 1
+        and new.active = 0
+        and (
+            exists (
+                select 1
+                from tax_registration
+                where payable_account_code = old.account_code
+                    or recoverable_account_code = old.account_code
+            )
+            or exists (select 1 from account where parent_account_code = old.account_code)
+        );
+end;
+
+create trigger if not exists account_validate_parent_on_update
+before update on account
+when new.parent_account_code is not null
+begin
+    select raise(fail, 'account parent must be active.')
+    where exists (
+        select 1
+        from account as parent
+        where
+            parent.account_code = new.parent_account_code
+            and parent.active = 0
+    );
+    select raise(fail, 'account parent must share the child account type.')
+    where exists (
+        select 1
+        from account as parent
+        where
+            parent.account_code = new.parent_account_code
+            and parent.account_type <> new.account_type
+    );
+    select raise(fail, 'account parent must be a header node.')
+    where exists (
+        select 1
+        from account as parent
+        where
+            parent.account_code = new.parent_account_code
+            and parent.account_node_kind <> 'HEADER'
+    );
+    select raise(fail, 'account parent must share the child statement classification.')
+    where exists (
+        select 1
+        from account as parent
+        where
+            parent.account_code = new.parent_account_code
+            and (
+                coalesce(parent.financial_position_line_classification, '')
+                    <> coalesce(new.financial_position_line_classification, '')
+                or coalesce(parent.cash_flow_asset_classification, '')
+                    <> coalesce(new.cash_flow_asset_classification, '')
+                or coalesce(parent.profit_and_loss_line_classification, '')
+                    <> coalesce(new.profit_and_loss_line_classification, '')
+            )
+    );
+    with recursive ancestors (account_code, parent_account_code) as (
+        select
+            account_seed.account_code,
+            account_seed.parent_account_code
+        from account as account_seed
+        where account_seed.account_code = new.parent_account_code
+        union all
+        select
+            account.account_code,
+            account.parent_account_code
+        from account
+        inner join ancestors on account.account_code = ancestors.parent_account_code
+    )
+    select raise(fail, 'account hierarchy cycle.')
+    where exists (
+        select 1
+        from ancestors
+        where ancestors.account_code = new.account_code
+    );
 end;
 
 create trigger if not exists account_reject_delete
@@ -576,6 +694,23 @@ create table if not exists posting_fact (
             'INVENTORY_WRITE_DOWN',
             'INVENTORY_SHRINKAGE',
             'INVENTORY_COUNT_INCREASE',
+            'PREPAYMENT',
+            'DEFERRED_REVENUE',
+            'ACCRUED_EXPENSE',
+            'ACCRUAL_CUTOFF_RECOGNITION',
+            'ACCRUED_EXPENSE_SETTLEMENT',
+            'LATVIAN_MONTHLY_PAYROLL',
+            'LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT',
+            'LATVIAN_PAYROLL_STATE_REMITTANCE',
+            'FIXED_ASSET_CAPITALIZATION',
+            'FIXED_ASSET_DEPRECIATION',
+            'FIXED_ASSET_DISPOSAL',
+            'FINANCING_BORROWING',
+            'FINANCING_PRINCIPAL_REPAYMENT',
+            'FINANCING_INTEREST_ACCRUAL',
+            'FINANCING_INTEREST_PAYMENT',
+            'FOREIGN_CURRENCY_OBLIGATION',
+            'REALIZED_FOREIGN_EXCHANGE_SETTLEMENT',
             'EXPENSE_SETTLED',
             'EXPENSE_ON_CREDIT',
             'RECEIPT',
@@ -730,6 +865,15 @@ create table if not exists posting_fact (
                 'INVENTORY_CAPITALIZATION_SETTLED',
                 'INVENTORY_CAPITALIZATION_ON_CREDIT',
                 'INVENTORY_WRITE_DOWN',
+                'FIXED_ASSET_CAPITALIZATION',
+                'FIXED_ASSET_DEPRECIATION',
+                'FIXED_ASSET_DISPOSAL',
+                'FINANCING_BORROWING',
+                'FINANCING_PRINCIPAL_REPAYMENT',
+                'FINANCING_INTEREST_ACCRUAL',
+                'FINANCING_INTEREST_PAYMENT',
+                'FOREIGN_CURRENCY_OBLIGATION',
+                'REALIZED_FOREIGN_EXCHANGE_SETTLEMENT',
                 'EXPENSE_SETTLED',
                 'EXPENSE_ON_CREDIT',
                 'OWNER_CONTRIBUTION',
@@ -741,6 +885,24 @@ create table if not exists posting_fact (
             and entry_amount_currency_code is not null
             and entry_amount_minor is not null
             and entry_adjunct_amount_minor is null
+            and entry_unit_cost_currency_code is null
+            and entry_unit_cost_minor is null
+        )
+        or (
+            posting_origin_kind in (
+                'PREPAYMENT',
+                'DEFERRED_REVENUE',
+                'ACCRUED_EXPENSE',
+                'ACCRUAL_CUTOFF_RECOGNITION',
+                'ACCRUED_EXPENSE_SETTLEMENT'
+            )
+            and entry_primary_debit_account_code is not null
+            and entry_primary_credit_account_code is not null
+            and entry_adjunct_account_code is null
+            and entry_amount_currency_code is not null
+            and entry_amount_minor is not null
+            and entry_adjunct_amount_minor is null
+            and entry_quantity is null
             and entry_unit_cost_currency_code is null
             and entry_unit_cost_minor is null
         )
@@ -779,6 +941,15 @@ create table if not exists posting_fact (
                 'INVENTORY_CAPITALIZATION_SETTLED',
                 'INVENTORY_CAPITALIZATION_ON_CREDIT',
                 'INVENTORY_WRITE_DOWN',
+                'FIXED_ASSET_CAPITALIZATION',
+                'FIXED_ASSET_DEPRECIATION',
+                'FIXED_ASSET_DISPOSAL',
+                'FINANCING_BORROWING',
+                'FINANCING_PRINCIPAL_REPAYMENT',
+                'FINANCING_INTEREST_ACCRUAL',
+                'FINANCING_INTEREST_PAYMENT',
+                'FOREIGN_CURRENCY_OBLIGATION',
+                'REALIZED_FOREIGN_EXCHANGE_SETTLEMENT',
                 'EXPENSE_SETTLED',
                 'EXPENSE_ON_CREDIT',
                 'OWNER_CONTRIBUTION',
@@ -814,7 +985,10 @@ create table if not exists posting_fact (
                 'OPENING_POSITION',
                 'REVERSAL',
                 'INTERIM_RESULT_SWEEP',
-                'FISCAL_YEAR_CLOSE'
+                'FISCAL_YEAR_CLOSE',
+                'LATVIAN_MONTHLY_PAYROLL',
+                'LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT',
+                'LATVIAN_PAYROLL_STATE_REMITTANCE'
             )
             and entry_primary_debit_account_code is null
             and entry_primary_credit_account_code is null
@@ -1078,7 +1252,6 @@ create table if not exists posting_foreign_exchange (
     treatment_kind text not null check (
         treatment_kind in (
             'SPOT_TRANSACTION',
-            'REALIZED_SETTLEMENT',
             'UNREALIZED_REMEASUREMENT'
         )
     ),
@@ -1131,7 +1304,7 @@ create table if not exists posting_foreign_exchange (
 create trigger if not exists posting_foreign_exchange_validate_origin_on_insert
 before insert on posting_foreign_exchange
 begin
-    select raise(fail, 'posting_foreign_exchange requires DIRECT_JOURNAL, SALE_SETTLED, SALE_ON_CREDIT, PURCHASE_SETTLED, PURCHASE_ON_CREDIT, INVENTORY_CAPITALIZATION_SETTLED, INVENTORY_CAPITALIZATION_ON_CREDIT, EXPENSE_SETTLED, EXPENSE_ON_CREDIT, OWNER_CONTRIBUTION, OWNER_WITHDRAWAL, or REVERSAL posting origin.')
+    select raise(fail, 'posting_foreign_exchange requires one foreign-exchange-capable posting origin.')
     where exists (
         select 1
         from posting_fact
@@ -1149,6 +1322,8 @@ begin
                 'EXPENSE_ON_CREDIT',
                 'OWNER_CONTRIBUTION',
                 'OWNER_WITHDRAWAL',
+                'FOREIGN_CURRENCY_OBLIGATION',
+                'REALIZED_FOREIGN_EXCHANGE_SETTLEMENT',
                 'REVERSAL'
             )
     );
@@ -1215,6 +1390,12 @@ begin
         where
             account.account_code = new.account_code
             and account.active = 0
+    )
+    and not exists (
+        select 1
+        from posting_fact
+        where posting_fact.posting_id = new.posting_id
+            and posting_fact.prior_posting_id is not null
     );
     select raise(fail, 'journal-line accounts must be postable.')
     where exists (
@@ -1992,6 +2173,8 @@ create table if not exists audit_event (
             'ACCOUNT_DECLARED',
             'ACCOUNT_REACTIVATED',
             'ACCOUNT_RENAMED',
+            'ACCOUNT_AMENDED',
+            'ACCOUNT_RETIRED',
             'POSTING_COMMITTED',
             'POSTING_REVERSED',
             'BOOK_REKEYED',
@@ -2028,7 +2211,13 @@ create table if not exists audit_event (
         )
         or
         (
-            event_kind in ('ACCOUNT_DECLARED', 'ACCOUNT_REACTIVATED', 'ACCOUNT_RENAMED')
+            event_kind in (
+                'ACCOUNT_DECLARED',
+                'ACCOUNT_REACTIVATED',
+                'ACCOUNT_RENAMED',
+                'ACCOUNT_AMENDED',
+                'ACCOUNT_RETIRED'
+            )
             and account_code is not null
             and posting_id is null
             and close_operation_order is null
@@ -2078,6 +2267,1275 @@ begin
         );
 end;
 
+create table if not exists accrual_cutoff (
+    accrual_cutoff_id text primary key check (
+        length(accrual_cutoff_id) between 1 and 120
+        and accrual_cutoff_id glob '[a-z0-9]*'
+        and accrual_cutoff_id not glob '*[^a-z0-9-]*'
+        and accrual_cutoff_id not like '-%'
+        and accrual_cutoff_id not like '%-'
+        and accrual_cutoff_id not like '%--%'
+    ),
+    kind text not null check (kind in ('PREPAYMENT', 'DEFERRED_REVENUE', 'ACCRUED_EXPENSE')),
+    origin_posting_id text not null unique references posting_fact (posting_id),
+    originated_on text not null,
+    cutoff_account_code text not null references account (account_code),
+    recognition_account_code text not null references account (account_code),
+    amount_currency_code text not null check (amount_currency_code glob '[A-Z][A-Z][A-Z]'),
+    original_amount_minor integer not null check (original_amount_minor > 0),
+    recognition_start_date text,
+    recognition_end_date text,
+    check (
+        (
+            kind in ('PREPAYMENT', 'DEFERRED_REVENUE')
+            and recognition_start_date is not null
+            and recognition_end_date is not null
+            and recognition_start_date <= recognition_end_date
+            and originated_on <= recognition_start_date
+        )
+        or (
+            kind = 'ACCRUED_EXPENSE'
+            and recognition_start_date is null
+            and recognition_end_date is null
+        )
+    )
+) strict;
+
+create trigger if not exists accrual_cutoff_validate_origin_on_insert
+before insert on accrual_cutoff
+begin
+    select raise(fail, 'accrual_cutoff origin posting must be the matching typed cut-off event.')
+    where not exists (
+        select 1
+        from posting_fact
+        where posting_fact.posting_id = new.origin_posting_id
+            and posting_fact.effective_date = new.originated_on
+            and posting_fact.entry_amount_currency_code = new.amount_currency_code
+            and posting_fact.entry_amount_minor = new.original_amount_minor
+            and (
+                (
+                    new.kind = 'PREPAYMENT'
+                    and posting_fact.posting_origin_kind = 'PREPAYMENT'
+                    and posting_fact.entry_primary_debit_account_code = new.cutoff_account_code
+                )
+                or (
+                    new.kind = 'DEFERRED_REVENUE'
+                    and posting_fact.posting_origin_kind = 'DEFERRED_REVENUE'
+                    and posting_fact.entry_primary_credit_account_code = new.cutoff_account_code
+                )
+                or (
+                    new.kind = 'ACCRUED_EXPENSE'
+                    and posting_fact.posting_origin_kind = 'ACCRUED_EXPENSE'
+                    and posting_fact.entry_primary_debit_account_code = new.recognition_account_code
+                    and posting_fact.entry_primary_credit_account_code = new.cutoff_account_code
+                )
+            )
+    );
+    select raise(fail, 'prepayment cut-offs require a prepayment asset and expense account.')
+    where new.kind = 'PREPAYMENT'
+        and (
+            not exists (
+                select 1 from account
+                where account_code = new.cutoff_account_code
+                    and account_type = 'ASSET'
+                    and financial_position_line_classification = 'PREPAID_EXPENSE'
+            )
+            or not exists (
+                select 1 from account
+                where account_code = new.recognition_account_code
+                    and account_type = 'EXPENSE'
+            )
+        );
+    select raise(fail, 'prepayment cut-offs require a declared cash credit account.')
+    where new.kind = 'PREPAYMENT'
+        and not exists (
+            select 1
+            from posting_fact
+            inner join account on account.account_code = posting_fact.entry_primary_credit_account_code
+            where posting_fact.posting_id = new.origin_posting_id
+                and account.account_type = 'ASSET'
+                and account.cash_flow_asset_classification = 'CASH_AND_CASH_EQUIVALENT'
+        );
+    select raise(fail, 'deferred-revenue cut-offs require a deferred-revenue liability and revenue account.')
+    where new.kind = 'DEFERRED_REVENUE'
+        and (
+            not exists (
+                select 1 from account
+                where account_code = new.cutoff_account_code
+                    and account_type = 'LIABILITY'
+                    and financial_position_line_classification = 'DEFERRED_REVENUE'
+            )
+            or not exists (
+                select 1 from account
+                where account_code = new.recognition_account_code
+                    and account_type = 'REVENUE'
+            )
+        );
+    select raise(fail, 'deferred-revenue cut-offs require a declared cash debit account.')
+    where new.kind = 'DEFERRED_REVENUE'
+        and not exists (
+            select 1
+            from posting_fact
+            inner join account on account.account_code = posting_fact.entry_primary_debit_account_code
+            where posting_fact.posting_id = new.origin_posting_id
+                and account.account_type = 'ASSET'
+                and account.cash_flow_asset_classification = 'CASH_AND_CASH_EQUIVALENT'
+        );
+    select raise(fail, 'accrued-expense cut-offs require an accrued-expense liability and expense account.')
+    where new.kind = 'ACCRUED_EXPENSE'
+        and (
+            not exists (
+                select 1 from account
+                where account_code = new.cutoff_account_code
+                    and account_type = 'LIABILITY'
+                    and financial_position_line_classification = 'ACCRUED_EXPENSE'
+            )
+            or not exists (
+                select 1 from account
+                where account_code = new.recognition_account_code
+                    and account_type = 'EXPENSE'
+            )
+        );
+end;
+
+create table if not exists accrual_cutoff_application (
+    application_posting_id text primary key references posting_fact (posting_id),
+    accrual_cutoff_id text not null references accrual_cutoff (accrual_cutoff_id),
+    application_kind text not null check (application_kind in ('RECOGNITION', 'SETTLEMENT', 'ORIGIN_REVERSAL', 'APPLICATION_REVERSAL')),
+    effective_date text not null,
+    amount_currency_code text not null check (amount_currency_code glob '[A-Z][A-Z][A-Z]'),
+    amount_minor integer not null check (amount_minor <> 0)
+) strict;
+
+create trigger if not exists accrual_cutoff_application_validate_on_insert
+before insert on accrual_cutoff_application
+begin
+    select raise(fail, 'accrual_cutoff_application must use the cut-off currency.')
+    where exists (
+        select 1
+        from accrual_cutoff
+        where accrual_cutoff_id = new.accrual_cutoff_id
+            and amount_currency_code <> new.amount_currency_code
+    );
+    select raise(fail, 'accrual_cutoff_application posting facts must match the application facts.')
+    where not exists (
+        select 1
+        from posting_fact
+        where posting_fact.posting_id = new.application_posting_id
+            and posting_fact.effective_date = new.effective_date
+            and (
+                new.application_kind in ('ORIGIN_REVERSAL', 'APPLICATION_REVERSAL')
+                or (
+                    posting_fact.entry_amount_currency_code = new.amount_currency_code
+                    and posting_fact.entry_amount_minor = abs(new.amount_minor)
+                )
+            )
+    );
+    select raise(fail, 'accrual_cutoff_application must use the matching typed application event and accounts.')
+    where not exists (
+        select 1
+        from accrual_cutoff
+        inner join posting_fact on posting_fact.posting_id = new.application_posting_id
+        where accrual_cutoff.accrual_cutoff_id = new.accrual_cutoff_id
+            and (
+                (
+                    new.application_kind = 'RECOGNITION'
+                    and accrual_cutoff.kind = 'PREPAYMENT'
+                    and posting_fact.posting_origin_kind = 'ACCRUAL_CUTOFF_RECOGNITION'
+                    and posting_fact.entry_primary_debit_account_code = accrual_cutoff.recognition_account_code
+                    and posting_fact.entry_primary_credit_account_code = accrual_cutoff.cutoff_account_code
+                )
+                or (
+                    new.application_kind = 'RECOGNITION'
+                    and accrual_cutoff.kind = 'DEFERRED_REVENUE'
+                    and posting_fact.posting_origin_kind = 'ACCRUAL_CUTOFF_RECOGNITION'
+                    and posting_fact.entry_primary_debit_account_code = accrual_cutoff.cutoff_account_code
+                    and posting_fact.entry_primary_credit_account_code = accrual_cutoff.recognition_account_code
+                )
+                or (
+                    new.application_kind = 'SETTLEMENT'
+                    and accrual_cutoff.kind = 'ACCRUED_EXPENSE'
+                    and posting_fact.posting_origin_kind = 'ACCRUED_EXPENSE_SETTLEMENT'
+                    and posting_fact.entry_primary_debit_account_code = accrual_cutoff.cutoff_account_code
+                )
+                or (
+                    new.application_kind = 'ORIGIN_REVERSAL'
+                    and posting_fact.posting_origin_kind = 'REVERSAL'
+                    and posting_fact.prior_posting_id = accrual_cutoff.origin_posting_id
+                )
+                or (
+                    new.application_kind = 'APPLICATION_REVERSAL'
+                    and posting_fact.posting_origin_kind = 'REVERSAL'
+                    and exists (
+                        select 1
+                        from accrual_cutoff_application original_application
+                        where original_application.application_posting_id = posting_fact.prior_posting_id
+                            and original_application.accrual_cutoff_id = accrual_cutoff.accrual_cutoff_id
+                            and original_application.application_kind in ('RECOGNITION', 'SETTLEMENT')
+                            and original_application.amount_currency_code = new.amount_currency_code
+                            and original_application.amount_minor = -new.amount_minor
+                    )
+                )
+            )
+    );
+    select raise(fail, 'accrual_cutoff_application must not precede its origin posting.')
+    where exists (
+        select 1
+        from accrual_cutoff
+        where accrual_cutoff_id = new.accrual_cutoff_id
+            and new.effective_date < originated_on
+    );
+    select raise(fail, 'accrual_cutoff_application must append in non-decreasing effective-date order.')
+    where exists (
+        select 1
+        from accrual_cutoff_application
+        where accrual_cutoff_id = new.accrual_cutoff_id
+            and effective_date > new.effective_date
+    );
+    select raise(fail, 'accrual cut-off recognition must remain inside its declared inclusive interval.')
+    where exists (
+        select 1
+        from accrual_cutoff
+        where accrual_cutoff_id = new.accrual_cutoff_id
+            and new.application_kind = 'RECOGNITION'
+            and (
+                new.effective_date < recognition_start_date
+                or new.effective_date > recognition_end_date
+            )
+    );
+    select raise(fail, 'accrued-expense settlement requires a declared cash credit account.')
+    where exists (
+        select 1
+        from accrual_cutoff
+        where accrual_cutoff.accrual_cutoff_id = new.accrual_cutoff_id
+            and accrual_cutoff.kind = 'ACCRUED_EXPENSE'
+            and new.application_kind = 'SETTLEMENT'
+    )
+    and not exists (
+        select 1
+        from posting_fact
+        inner join account on account.account_code = posting_fact.entry_primary_credit_account_code
+        where posting_fact.posting_id = new.application_posting_id
+            and account.account_type = 'ASSET'
+            and account.cash_flow_asset_classification = 'CASH_AND_CASH_EQUIVALENT'
+    );
+    select raise(fail, 'accrual_cutoff_application amount must not exceed the remaining cut-off amount.')
+    where exists (
+        select 1
+        from accrual_cutoff
+        where accrual_cutoff_id = new.accrual_cutoff_id
+            and original_amount_minor < (
+                new.amount_minor + coalesce((
+                    select sum(amount_minor)
+                    from accrual_cutoff_application
+                    where accrual_cutoff_id = new.accrual_cutoff_id
+                ), 0)
+            )
+    );
+    select raise(fail, 'accrual_cutoff_application amount must not make the applied cut-off amount negative.')
+    where exists (
+        select 1
+        from accrual_cutoff
+        where accrual_cutoff_id = new.accrual_cutoff_id
+            and 0 > (
+                new.amount_minor + coalesce((
+                    select sum(amount_minor)
+                    from accrual_cutoff_application
+                    where accrual_cutoff_id = new.accrual_cutoff_id
+                ), 0)
+            )
+    );
+end;
+
+create trigger if not exists accrual_cutoff_reject_update
+before update on accrual_cutoff
+begin
+    select raise(fail, 'accrual_cutoff rows are append-only.');
+end;
+
+create trigger if not exists accrual_cutoff_reject_delete
+before delete on accrual_cutoff
+begin
+    select raise(fail, 'accrual_cutoff rows are append-only.');
+end;
+
+create trigger if not exists accrual_cutoff_application_reject_update
+before update on accrual_cutoff_application
+begin
+    select raise(fail, 'accrual_cutoff_application rows are append-only.');
+end;
+
+create trigger if not exists accrual_cutoff_application_reject_delete
+before delete on accrual_cutoff_application
+begin
+    select raise(fail, 'accrual_cutoff_application rows are append-only.');
+end;
+
+create table if not exists fixed_asset (
+    fixed_asset_id text primary key check (
+        length(fixed_asset_id) between 1 and 120
+        and fixed_asset_id glob '[a-z0-9]*'
+        and fixed_asset_id not glob '*[^a-z0-9-]*'
+        and fixed_asset_id not like '-%'
+        and fixed_asset_id not like '%-'
+        and fixed_asset_id not like '%--%'
+    ),
+    origin_posting_id text not null unique references posting_fact (posting_id),
+    capitalized_on text not null,
+    asset_account_code text not null references account (account_code),
+    accumulated_depreciation_account_code text not null references account (account_code),
+    depreciation_expense_account_code text not null references account (account_code),
+    disposal_gain_account_code text not null references account (account_code),
+    disposal_loss_account_code text not null references account (account_code),
+    currency_code text not null check (currency_code glob '[A-Z][A-Z][A-Z]'),
+    cost_minor integer not null check (cost_minor > 0),
+    residual_value_minor integer not null check (residual_value_minor >= 0 and residual_value_minor < cost_minor),
+    in_service_date text not null check (in_service_date >= capitalized_on),
+    useful_life_months integer not null check (useful_life_months between 1 and 1200),
+    check (
+        asset_account_code <> accumulated_depreciation_account_code
+        and asset_account_code <> depreciation_expense_account_code
+        and asset_account_code <> disposal_gain_account_code
+        and asset_account_code <> disposal_loss_account_code
+        and accumulated_depreciation_account_code <> depreciation_expense_account_code
+        and accumulated_depreciation_account_code <> disposal_gain_account_code
+        and accumulated_depreciation_account_code <> disposal_loss_account_code
+        and depreciation_expense_account_code <> disposal_gain_account_code
+        and depreciation_expense_account_code <> disposal_loss_account_code
+        and disposal_gain_account_code <> disposal_loss_account_code
+    )
+) strict;
+
+create table if not exists fixed_asset_application (
+    application_posting_id text primary key references posting_fact (posting_id),
+    fixed_asset_id text not null references fixed_asset (fixed_asset_id),
+    application_kind text not null check (application_kind in ('DEPRECIATION', 'DISPOSAL')),
+    effective_date text not null,
+    currency_code text not null check (currency_code glob '[A-Z][A-Z][A-Z]'),
+    amount_minor integer not null check (amount_minor >= 0)
+) strict;
+
+create trigger if not exists fixed_asset_validate_origin_on_insert
+before insert on fixed_asset
+begin
+    select raise(fail, 'fixed_asset origin must be the matching typed capitalization posting.')
+    where not exists (
+        select 1 from posting_fact
+        where posting_id = new.origin_posting_id
+            and posting_origin_kind = 'FIXED_ASSET_CAPITALIZATION'
+            and effective_date = new.capitalized_on
+            and entry_amount_currency_code = new.currency_code
+            and entry_amount_minor = new.cost_minor
+    );
+    select raise(fail, 'fixed_asset accounts must use the required asset, expense, revenue, expense taxonomy.')
+    where
+        not exists (select 1 from account where account_code = new.asset_account_code and account_type = 'ASSET' and financial_position_line_classification = 'NONCURRENT_ASSET' and cash_flow_asset_classification = 'NON_CASH')
+        or not exists (select 1 from account where account_code = new.accumulated_depreciation_account_code and account_type = 'ASSET' and financial_position_line_classification = 'NONCURRENT_ASSET' and cash_flow_asset_classification = 'NON_CASH')
+        or not exists (select 1 from account where account_code = new.depreciation_expense_account_code and account_type = 'EXPENSE')
+        or not exists (select 1 from account where account_code = new.disposal_gain_account_code and account_type = 'REVENUE')
+        or not exists (select 1 from account where account_code = new.disposal_loss_account_code and account_type = 'EXPENSE');
+end;
+
+create trigger if not exists fixed_asset_application_validate_on_insert
+before insert on fixed_asset_application
+begin
+    select raise(fail, 'fixed_asset_application must use the fixed asset currency.')
+    where exists (select 1 from fixed_asset where fixed_asset_id = new.fixed_asset_id and currency_code <> new.currency_code);
+    select raise(fail, 'fixed_asset_application must use the matching typed posting kind.')
+    where not exists (
+        select 1 from posting_fact
+        where posting_id = new.application_posting_id and effective_date = new.effective_date
+            and ((new.application_kind = 'DEPRECIATION' and posting_origin_kind = 'FIXED_ASSET_DEPRECIATION')
+                or (new.application_kind = 'DISPOSAL' and posting_origin_kind = 'FIXED_ASSET_DISPOSAL'))
+    );
+    select raise(fail, 'fixed_asset depreciation must match retained typed posting facts.')
+    where new.application_kind = 'DEPRECIATION' and not exists (
+        select 1 from posting_fact
+        where posting_id = new.application_posting_id
+            and entry_amount_currency_code = new.currency_code
+            and entry_amount_minor = new.amount_minor
+    );
+    select raise(fail, 'fixed_asset_application must not precede the asset lifecycle horizon.')
+    where exists (select 1 from fixed_asset where fixed_asset_id = new.fixed_asset_id and new.effective_date < capitalized_on)
+        or exists (select 1 from fixed_asset_application where fixed_asset_id = new.fixed_asset_id and effective_date > new.effective_date);
+    select raise(fail, 'fixed_asset depreciation must not exceed depreciable cost.')
+    where new.application_kind = 'DEPRECIATION' and exists (
+        select 1 from fixed_asset where fixed_asset_id = new.fixed_asset_id and new.amount_minor + coalesce((
+            select sum(amount_minor) from fixed_asset_application
+            where fixed_asset_id = new.fixed_asset_id and application_kind = 'DEPRECIATION'
+                and not exists (
+                    select 1 from fixed_asset_application_reversal reversal
+                    where reversal.application_posting_id = fixed_asset_application.application_posting_id
+                )
+        ), 0) > cost_minor - residual_value_minor
+    );
+    select raise(fail, 'fixed_asset accepts at most one disposal.')
+    where new.application_kind = 'DISPOSAL' and exists (
+        select 1 from fixed_asset_application
+        where fixed_asset_id = new.fixed_asset_id and application_kind = 'DISPOSAL'
+            and not exists (
+                select 1 from fixed_asset_application_reversal reversal
+                where reversal.application_posting_id = fixed_asset_application.application_posting_id
+            )
+    );
+    select raise(fail, 'fixed_asset disposal must use the immutable carrying amount.')
+    where new.application_kind = 'DISPOSAL' and not exists (
+        select 1
+        from fixed_asset asset
+        where asset.fixed_asset_id = new.fixed_asset_id
+            and new.amount_minor = asset.cost_minor - coalesce((
+                select sum(application.amount_minor)
+                from fixed_asset_application application
+                where application.fixed_asset_id = asset.fixed_asset_id
+                    and application.application_kind = 'DEPRECIATION'
+                    and not exists (
+                        select 1 from fixed_asset_application_reversal reversal
+                        where reversal.application_posting_id = application.application_posting_id
+                    )
+            ), 0)
+    );
+end;
+
+create trigger if not exists fixed_asset_reject_update before update on fixed_asset begin select raise(fail, 'fixed_asset rows are append-only.'); end;
+create trigger if not exists fixed_asset_reject_delete before delete on fixed_asset begin select raise(fail, 'fixed_asset rows are append-only.'); end;
+create trigger if not exists fixed_asset_application_reject_update before update on fixed_asset_application begin select raise(fail, 'fixed_asset_application rows are append-only.'); end;
+create trigger if not exists fixed_asset_application_reject_delete before delete on fixed_asset_application begin select raise(fail, 'fixed_asset_application rows are append-only.'); end;
+
+create table if not exists fixed_asset_reversal (
+    reversal_posting_id text primary key references posting_fact (posting_id),
+    fixed_asset_id text not null unique references fixed_asset (fixed_asset_id)
+) strict;
+
+create table if not exists fixed_asset_application_reversal (
+    reversal_posting_id text primary key references posting_fact (posting_id),
+    application_posting_id text not null unique references fixed_asset_application (application_posting_id)
+) strict;
+
+create trigger if not exists fixed_asset_reversal_validate_on_insert
+before insert on fixed_asset_reversal
+begin
+    select raise(fail, 'fixed_asset reversal must negate its capitalization posting.')
+    where not exists (
+        select 1 from fixed_asset
+        inner join posting_fact on posting_fact.posting_id = new.reversal_posting_id
+        where fixed_asset.fixed_asset_id = new.fixed_asset_id
+            and posting_fact.posting_origin_kind = 'REVERSAL'
+            and posting_fact.prior_posting_id = fixed_asset.origin_posting_id
+    );
+    select raise(fail, 'fixed_asset capitalization cannot be reversed while active lifecycle applications remain.')
+    where exists (
+        select 1 from fixed_asset_application application
+        where application.fixed_asset_id = new.fixed_asset_id
+            and not exists (
+                select 1 from fixed_asset_application_reversal reversal
+                where reversal.application_posting_id = application.application_posting_id
+            )
+    );
+end;
+
+create trigger if not exists fixed_asset_application_reversal_validate_on_insert
+before insert on fixed_asset_application_reversal
+begin
+    select raise(fail, 'fixed_asset application reversal must negate its application posting.')
+    where not exists (
+        select 1 from fixed_asset_application application
+        inner join posting_fact on posting_fact.posting_id = new.reversal_posting_id
+        where application.application_posting_id = new.application_posting_id
+            and posting_fact.posting_origin_kind = 'REVERSAL'
+            and posting_fact.prior_posting_id = application.application_posting_id
+    );
+end;
+
+create trigger if not exists fixed_asset_reversal_reject_update before update on fixed_asset_reversal begin select raise(fail, 'fixed_asset_reversal rows are append-only.'); end;
+create trigger if not exists fixed_asset_reversal_reject_delete before delete on fixed_asset_reversal begin select raise(fail, 'fixed_asset_reversal rows are append-only.'); end;
+create trigger if not exists fixed_asset_application_reversal_reject_update before update on fixed_asset_application_reversal begin select raise(fail, 'fixed_asset_application_reversal rows are append-only.'); end;
+create trigger if not exists fixed_asset_application_reversal_reject_delete before delete on fixed_asset_application_reversal begin select raise(fail, 'fixed_asset_application_reversal rows are append-only.'); end;
+
+create table if not exists financing_arrangement (
+    financing_arrangement_id text primary key check (
+        length(financing_arrangement_id) between 1 and 120
+        and financing_arrangement_id glob '[a-z0-9]*'
+        and financing_arrangement_id not glob '*[^a-z0-9-]*'
+        and financing_arrangement_id not like '-%'
+        and financing_arrangement_id not like '%-'
+        and financing_arrangement_id not like '%--%'
+    ),
+    origin_posting_id text not null unique references posting_fact (posting_id),
+    originated_on text not null,
+    principal_liability_account_code text not null references account (account_code),
+    interest_payable_account_code text not null references account (account_code),
+    currency_code text not null check (currency_code glob '[A-Z][A-Z][A-Z]'),
+    original_principal_minor integer not null check (original_principal_minor > 0),
+    check (principal_liability_account_code <> interest_payable_account_code)
+) strict;
+
+create table if not exists financing_application (
+    application_posting_id text primary key references posting_fact (posting_id),
+    financing_arrangement_id text not null references financing_arrangement (financing_arrangement_id),
+    application_kind text not null check (application_kind in ('PRINCIPAL_REPAYMENT', 'INTEREST_ACCRUAL', 'INTEREST_PAYMENT')),
+    effective_date text not null,
+    currency_code text not null check (currency_code glob '[A-Z][A-Z][A-Z]'),
+    amount_minor integer not null check (amount_minor > 0)
+) strict;
+
+create table if not exists financing_arrangement_reversal (
+    reversal_posting_id text primary key references posting_fact (posting_id),
+    financing_arrangement_id text not null unique references financing_arrangement (financing_arrangement_id)
+) strict;
+
+create table if not exists financing_application_reversal (
+    reversal_posting_id text primary key references posting_fact (posting_id),
+    application_posting_id text not null unique references financing_application (application_posting_id)
+) strict;
+
+create trigger if not exists financing_arrangement_validate_origin_on_insert
+before insert on financing_arrangement
+begin
+    select raise(fail, 'financing_arrangement origin must be the matching typed borrowing posting.')
+    where not exists (
+        select 1 from posting_fact
+        where posting_id = new.origin_posting_id and posting_origin_kind = 'FINANCING_BORROWING'
+            and effective_date = new.originated_on and entry_amount_currency_code = new.currency_code
+            and entry_amount_minor = new.original_principal_minor
+    );
+    select raise(fail, 'financing_arrangement requires liability accounts.')
+    where not exists (select 1 from account where account_code = new.principal_liability_account_code and account_type = 'LIABILITY')
+        or not exists (select 1 from account where account_code = new.interest_payable_account_code and account_type = 'LIABILITY' and financial_position_line_classification = 'CURRENT_LIABILITY');
+end;
+
+create trigger if not exists financing_application_validate_on_insert
+before insert on financing_application
+begin
+    select raise(fail, 'financing_application must use the arrangement currency.')
+    where exists (select 1 from financing_arrangement where financing_arrangement_id = new.financing_arrangement_id and currency_code <> new.currency_code);
+    select raise(fail, 'financing_application must use the matching typed posting kind.')
+    where not exists (
+        select 1 from posting_fact
+        where posting_id = new.application_posting_id and effective_date = new.effective_date
+            and ((new.application_kind = 'PRINCIPAL_REPAYMENT' and posting_origin_kind = 'FINANCING_PRINCIPAL_REPAYMENT')
+                or (new.application_kind = 'INTEREST_ACCRUAL' and posting_origin_kind = 'FINANCING_INTEREST_ACCRUAL')
+                or (new.application_kind = 'INTEREST_PAYMENT' and posting_origin_kind = 'FINANCING_INTEREST_PAYMENT'))
+    );
+    select raise(fail, 'financing_application must match retained typed posting facts.')
+    where not exists (
+        select 1 from posting_fact
+        where posting_id = new.application_posting_id
+            and entry_amount_currency_code = new.currency_code
+            and entry_amount_minor = new.amount_minor
+    );
+    select raise(fail, 'financing_application must not precede the arrangement lifecycle horizon.')
+    where exists (select 1 from financing_arrangement where financing_arrangement_id = new.financing_arrangement_id and new.effective_date < originated_on)
+        or exists (select 1 from financing_application where financing_arrangement_id = new.financing_arrangement_id and effective_date > new.effective_date);
+    select raise(fail, 'financing principal repayment must not exceed principal outstanding.')
+    where new.application_kind = 'PRINCIPAL_REPAYMENT' and exists (
+        select 1 from financing_arrangement where financing_arrangement_id = new.financing_arrangement_id and new.amount_minor + coalesce((
+            select sum(amount_minor) from financing_application
+            where financing_arrangement_id = new.financing_arrangement_id
+                and application_kind = 'PRINCIPAL_REPAYMENT'
+                and not exists (
+                    select 1 from financing_application_reversal reversal
+                    where reversal.application_posting_id = financing_application.application_posting_id
+                )
+        ), 0) > original_principal_minor
+    );
+    select raise(fail, 'financing interest payment must not exceed accrued interest.')
+    where new.application_kind = 'INTEREST_PAYMENT' and new.amount_minor > coalesce((
+        select sum(case when application_kind = 'INTEREST_ACCRUAL' then amount_minor else -amount_minor end)
+        from financing_application
+        where financing_arrangement_id = new.financing_arrangement_id
+            and application_kind in ('INTEREST_ACCRUAL', 'INTEREST_PAYMENT')
+            and not exists (
+                select 1 from financing_application_reversal reversal
+                where reversal.application_posting_id = financing_application.application_posting_id
+            )
+    ), 0);
+end;
+
+create trigger if not exists financing_arrangement_reversal_validate_on_insert
+before insert on financing_arrangement_reversal
+begin
+    select raise(fail, 'financing arrangement reversal must negate its borrowing posting.')
+    where not exists (
+        select 1
+        from financing_arrangement arrangement
+        inner join posting_fact reversal on reversal.posting_id = new.reversal_posting_id
+        where arrangement.financing_arrangement_id = new.financing_arrangement_id
+            and reversal.posting_origin_kind = 'REVERSAL'
+            and reversal.prior_posting_id = arrangement.origin_posting_id
+    );
+    select raise(fail, 'financing borrowing cannot be reversed while active lifecycle applications remain.')
+    where exists (
+        select 1
+        from financing_application application
+        where application.financing_arrangement_id = new.financing_arrangement_id
+            and not exists (
+                select 1 from financing_application_reversal reversal
+                where reversal.application_posting_id = application.application_posting_id
+            )
+    );
+end;
+
+create trigger if not exists financing_application_reversal_validate_on_insert
+before insert on financing_application_reversal
+begin
+    select raise(fail, 'financing application reversal must negate its lifecycle posting.')
+    where not exists (
+        select 1
+        from financing_application application
+        inner join posting_fact reversal on reversal.posting_id = new.reversal_posting_id
+        where application.application_posting_id = new.application_posting_id
+            and reversal.posting_origin_kind = 'REVERSAL'
+            and reversal.prior_posting_id = application.application_posting_id
+    );
+end;
+
+create trigger if not exists financing_arrangement_reject_update before update on financing_arrangement begin select raise(fail, 'financing_arrangement rows are append-only.'); end;
+create trigger if not exists financing_arrangement_reject_delete before delete on financing_arrangement begin select raise(fail, 'financing_arrangement rows are append-only.'); end;
+create trigger if not exists financing_application_reject_update before update on financing_application begin select raise(fail, 'financing_application rows are append-only.'); end;
+create trigger if not exists financing_application_reject_delete before delete on financing_application begin select raise(fail, 'financing_application rows are append-only.'); end;
+create trigger if not exists financing_arrangement_reversal_reject_update before update on financing_arrangement_reversal begin select raise(fail, 'financing_arrangement_reversal rows are append-only.'); end;
+create trigger if not exists financing_arrangement_reversal_reject_delete before delete on financing_arrangement_reversal begin select raise(fail, 'financing_arrangement_reversal rows are append-only.'); end;
+create trigger if not exists financing_application_reversal_reject_update before update on financing_application_reversal begin select raise(fail, 'financing_application_reversal rows are append-only.'); end;
+create trigger if not exists financing_application_reversal_reject_delete before delete on financing_application_reversal begin select raise(fail, 'financing_application_reversal rows are append-only.'); end;
+
+create table if not exists foreign_currency_obligation (
+    foreign_currency_obligation_id text primary key check (
+        length(foreign_currency_obligation_id) between 1 and 120
+        and foreign_currency_obligation_id glob '[a-z0-9]*'
+        and foreign_currency_obligation_id not glob '*[^a-z0-9-]*'
+        and foreign_currency_obligation_id not like '-%'
+        and foreign_currency_obligation_id not like '%-'
+        and foreign_currency_obligation_id not like '%--%'
+    ),
+    origin_posting_id text not null unique references posting_fact (posting_id),
+    originated_on text not null,
+    receivable_account_code text not null references account (account_code),
+    realized_gain_account_code text not null references account (account_code),
+    realized_loss_account_code text not null references account (account_code),
+    transaction_currency_code text not null check (transaction_currency_code glob '[A-Z][A-Z][A-Z]'),
+    transaction_amount_minor integer not null check (transaction_amount_minor > 0),
+    functional_currency_code text not null check (functional_currency_code glob '[A-Z][A-Z][A-Z]'),
+    functional_carrying_amount_minor integer not null check (functional_carrying_amount_minor > 0),
+    check (transaction_currency_code <> functional_currency_code and receivable_account_code <> realized_gain_account_code and receivable_account_code <> realized_loss_account_code and realized_gain_account_code <> realized_loss_account_code)
+) strict;
+
+create table if not exists foreign_currency_obligation_settlement (
+    settlement_posting_id text primary key references posting_fact (posting_id),
+    foreign_currency_obligation_id text not null references foreign_currency_obligation (foreign_currency_obligation_id),
+    effective_date text not null,
+    functional_currency_code text not null check (functional_currency_code glob '[A-Z][A-Z][A-Z]'),
+    functional_settlement_amount_minor integer not null check (functional_settlement_amount_minor > 0)
+) strict;
+
+create table if not exists foreign_currency_obligation_reversal (
+    reversal_posting_id text primary key references posting_fact (posting_id),
+    foreign_currency_obligation_id text not null unique references foreign_currency_obligation (foreign_currency_obligation_id)
+) strict;
+
+create table if not exists foreign_currency_obligation_settlement_reversal (
+    reversal_posting_id text primary key references posting_fact (posting_id),
+    settlement_posting_id text not null unique references foreign_currency_obligation_settlement (settlement_posting_id)
+) strict;
+
+create trigger if not exists foreign_currency_obligation_validate_origin_on_insert
+before insert on foreign_currency_obligation
+begin
+    select raise(fail, 'foreign_currency_obligation origin must be the matching typed receivable posting.')
+    where not exists (select 1 from posting_fact where posting_id = new.origin_posting_id and posting_origin_kind = 'FOREIGN_CURRENCY_OBLIGATION' and effective_date = new.originated_on);
+    select raise(fail, 'foreign_currency_obligation must match retained posting foreign-exchange facts.')
+    where not exists (select 1 from posting_foreign_exchange where posting_id = new.origin_posting_id and transaction_currency_code = new.transaction_currency_code and transaction_amount_minor = new.transaction_amount_minor and functional_currency_code = new.functional_currency_code and functional_amount_minor = new.functional_carrying_amount_minor);
+    select raise(fail, 'foreign_currency_obligation requires receivable, revenue, and expense accounts.')
+    where not exists (select 1 from account where account_code = new.receivable_account_code and account_type = 'ASSET' and financial_position_line_classification = 'TRADE_RECEIVABLE')
+        or not exists (select 1 from account where account_code = new.realized_gain_account_code and account_type = 'REVENUE')
+        or not exists (select 1 from account where account_code = new.realized_loss_account_code and account_type = 'EXPENSE');
+end;
+
+create trigger if not exists foreign_currency_obligation_settlement_validate_on_insert
+before insert on foreign_currency_obligation_settlement
+begin
+    select raise(fail, 'foreign_currency obligation settlement must use the matching typed settlement posting.')
+    where not exists (select 1 from posting_fact where posting_id = new.settlement_posting_id and posting_origin_kind = 'REALIZED_FOREIGN_EXCHANGE_SETTLEMENT' and effective_date = new.effective_date);
+    select raise(fail, 'foreign_currency obligation settlement must use the retained functional currency.')
+    where exists (select 1 from foreign_currency_obligation where foreign_currency_obligation_id = new.foreign_currency_obligation_id and functional_currency_code <> new.functional_currency_code);
+    select raise(fail, 'foreign_currency obligation settlement must match retained transaction and functional foreign-exchange facts.')
+    where not exists (
+        select 1
+        from foreign_currency_obligation obligation
+        inner join posting_foreign_exchange foreign_exchange
+            on foreign_exchange.posting_id = new.settlement_posting_id
+        where obligation.foreign_currency_obligation_id = new.foreign_currency_obligation_id
+            and foreign_exchange.transaction_currency_code = obligation.transaction_currency_code
+            and foreign_exchange.transaction_amount_minor = obligation.transaction_amount_minor
+            and foreign_exchange.functional_currency_code = new.functional_currency_code
+            and foreign_exchange.functional_amount_minor = new.functional_settlement_amount_minor
+    );
+    select raise(fail, 'foreign_currency obligation settlement must not precede its origin.')
+    where exists (select 1 from foreign_currency_obligation where foreign_currency_obligation_id = new.foreign_currency_obligation_id and new.effective_date < originated_on);
+    select raise(fail, 'foreign_currency obligation settlement must not precede its lifecycle horizon.')
+    where exists (
+        select 1
+        from foreign_currency_obligation_settlement settlement
+        where settlement.foreign_currency_obligation_id = new.foreign_currency_obligation_id
+            and settlement.effective_date > new.effective_date
+    );
+    select raise(fail, 'foreign_currency obligation accepts only one active settlement.')
+    where exists (
+        select 1
+        from foreign_currency_obligation_settlement settlement
+        where settlement.foreign_currency_obligation_id = new.foreign_currency_obligation_id
+            and not exists (
+                select 1 from foreign_currency_obligation_settlement_reversal reversal
+                where reversal.settlement_posting_id = settlement.settlement_posting_id
+            )
+    );
+end;
+
+create trigger if not exists foreign_currency_obligation_reversal_validate_on_insert
+before insert on foreign_currency_obligation_reversal
+begin
+    select raise(fail, 'foreign_currency obligation reversal must negate its receivable posting.')
+    where not exists (
+        select 1
+        from foreign_currency_obligation obligation
+        inner join posting_fact reversal on reversal.posting_id = new.reversal_posting_id
+        where obligation.foreign_currency_obligation_id = new.foreign_currency_obligation_id
+            and reversal.posting_origin_kind = 'REVERSAL'
+            and reversal.prior_posting_id = obligation.origin_posting_id
+    );
+    select raise(fail, 'foreign_currency obligation cannot be reversed while an active settlement remains.')
+    where exists (
+        select 1
+        from foreign_currency_obligation_settlement settlement
+        where settlement.foreign_currency_obligation_id = new.foreign_currency_obligation_id
+            and not exists (
+                select 1 from foreign_currency_obligation_settlement_reversal reversal
+                where reversal.settlement_posting_id = settlement.settlement_posting_id
+            )
+    );
+end;
+
+create trigger if not exists foreign_currency_obligation_settlement_reversal_validate_on_insert
+before insert on foreign_currency_obligation_settlement_reversal
+begin
+    select raise(fail, 'foreign_currency obligation settlement reversal must negate its settlement posting.')
+    where not exists (
+        select 1
+        from foreign_currency_obligation_settlement settlement
+        inner join posting_fact reversal on reversal.posting_id = new.reversal_posting_id
+        where settlement.settlement_posting_id = new.settlement_posting_id
+            and reversal.posting_origin_kind = 'REVERSAL'
+            and reversal.prior_posting_id = settlement.settlement_posting_id
+    );
+end;
+
+create trigger if not exists foreign_currency_obligation_reject_update before update on foreign_currency_obligation begin select raise(fail, 'foreign_currency_obligation rows are append-only.'); end;
+create trigger if not exists foreign_currency_obligation_reject_delete before delete on foreign_currency_obligation begin select raise(fail, 'foreign_currency_obligation rows are append-only.'); end;
+create trigger if not exists foreign_currency_obligation_settlement_reject_update before update on foreign_currency_obligation_settlement begin select raise(fail, 'foreign_currency_obligation_settlement rows are append-only.'); end;
+create trigger if not exists foreign_currency_obligation_settlement_reject_delete before delete on foreign_currency_obligation_settlement begin select raise(fail, 'foreign_currency_obligation_settlement rows are append-only.'); end;
+create trigger if not exists foreign_currency_obligation_reversal_reject_update before update on foreign_currency_obligation_reversal begin select raise(fail, 'foreign_currency_obligation_reversal rows are append-only.'); end;
+create trigger if not exists foreign_currency_obligation_reversal_reject_delete before delete on foreign_currency_obligation_reversal begin select raise(fail, 'foreign_currency_obligation_reversal rows are append-only.'); end;
+create trigger if not exists foreign_currency_obligation_settlement_reversal_reject_update before update on foreign_currency_obligation_settlement_reversal begin select raise(fail, 'foreign_currency_obligation_settlement_reversal rows are append-only.'); end;
+create trigger if not exists foreign_currency_obligation_settlement_reversal_reject_delete before delete on foreign_currency_obligation_settlement_reversal begin select raise(fail, 'foreign_currency_obligation_settlement_reversal rows are append-only.'); end;
+
+create table if not exists latvian_payroll_run (
+    payroll_run_id text primary key check (
+        length(payroll_run_id) between 1 and 120
+        and payroll_run_id glob '[a-z0-9]*'
+        and payroll_run_id not glob '*[^a-z0-9-]*'
+        and payroll_run_id not like '-%'
+        and payroll_run_id not like '%-'
+        and payroll_run_id not like '%--%'
+    ),
+    origin_posting_id text not null unique references posting_fact (posting_id),
+    employee_reference text not null check (
+        length(employee_reference) between 1 and 120
+        and employee_reference glob '[a-z0-9]*'
+        and employee_reference not glob '*[^a-z0-9-]*'
+        and employee_reference not like '-%'
+        and employee_reference not like '%-'
+        and employee_reference not like '%--%'
+    ),
+    payroll_month text not null check (
+        payroll_month glob '2026-[0-1][0-9]'
+        and payroll_month between '2026-01' and '2026-12'
+    ),
+    effective_date text not null check (
+        effective_date = date(payroll_month || '-01', '+1 month', '-1 day')
+    ),
+    wage_expense_account_code text not null references account (account_code),
+    employer_social_expense_account_code text not null references account (account_code),
+    net_wages_payable_account_code text not null references account (account_code),
+    employee_social_payable_account_code text not null references account (account_code),
+    employer_social_payable_account_code text not null references account (account_code),
+    personal_income_tax_payable_account_code text not null references account (account_code),
+    currency_code text not null check (currency_code = 'EUR'),
+    gross_wages_minor integer not null check (gross_wages_minor between 1 and 877500),
+    employee_social_contribution_minor integer not null check (employee_social_contribution_minor >= 0),
+    employer_social_contribution_minor integer not null check (employer_social_contribution_minor >= 0),
+    non_taxable_minimum_minor integer not null check (non_taxable_minimum_minor >= 0),
+    personal_income_tax_minor integer not null check (personal_income_tax_minor >= 0),
+    net_wages_minor integer not null check (net_wages_minor > 0),
+    check (
+        employee_social_contribution_minor = (gross_wages_minor * 105000 + 500000) / 1000000
+        and employer_social_contribution_minor = (gross_wages_minor * 235900 + 500000) / 1000000
+        and non_taxable_minimum_minor = min(55000, gross_wages_minor - employee_social_contribution_minor)
+        and personal_income_tax_minor = (
+            ((gross_wages_minor - employee_social_contribution_minor - non_taxable_minimum_minor) * 255000 + 500000) / 1000000
+        )
+        and net_wages_minor = gross_wages_minor - employee_social_contribution_minor - personal_income_tax_minor
+    ),
+    check (
+        wage_expense_account_code <> employer_social_expense_account_code
+        and wage_expense_account_code <> net_wages_payable_account_code
+        and wage_expense_account_code <> employee_social_payable_account_code
+        and wage_expense_account_code <> employer_social_payable_account_code
+        and wage_expense_account_code <> personal_income_tax_payable_account_code
+        and employer_social_expense_account_code <> net_wages_payable_account_code
+        and employer_social_expense_account_code <> employee_social_payable_account_code
+        and employer_social_expense_account_code <> employer_social_payable_account_code
+        and employer_social_expense_account_code <> personal_income_tax_payable_account_code
+        and net_wages_payable_account_code <> employee_social_payable_account_code
+        and net_wages_payable_account_code <> employer_social_payable_account_code
+        and net_wages_payable_account_code <> personal_income_tax_payable_account_code
+        and employee_social_payable_account_code <> employer_social_payable_account_code
+        and employee_social_payable_account_code <> personal_income_tax_payable_account_code
+        and employer_social_payable_account_code <> personal_income_tax_payable_account_code
+    )
+) strict;
+
+create table if not exists latvian_payroll_run_reversal (
+    reversal_posting_id text primary key references posting_fact (posting_id),
+    payroll_run_id text not null unique references latvian_payroll_run (payroll_run_id)
+) strict;
+
+create trigger if not exists latvian_payroll_run_validate_on_insert
+before insert on latvian_payroll_run
+begin
+    select raise(fail, 'latvian_payroll_run requires an EUR functional-currency book.')
+    where not exists (
+        select 1 from book_identity where functional_currency_code = 'EUR'
+    );
+    select raise(fail, 'latvian_payroll_run origin must be the matching typed payroll posting.')
+    where not exists (
+        select 1
+        from posting_fact
+        where posting_id = new.origin_posting_id
+            and posting_origin_kind = 'LATVIAN_MONTHLY_PAYROLL'
+            and effective_date = new.effective_date
+    );
+    select raise(fail, 'latvian_payroll_run may have only one active run per employee and month.')
+    where exists (
+        select 1
+        from latvian_payroll_run existing_run
+        where existing_run.employee_reference = new.employee_reference
+            and existing_run.payroll_month = new.payroll_month
+            and not exists (
+                select 1
+                from latvian_payroll_run_reversal existing_reversal
+                where existing_reversal.payroll_run_id = existing_run.payroll_run_id
+            )
+    );
+    select raise(fail, 'latvian_payroll_run requires two expense accounts and four current liabilities.')
+    where
+        not exists (
+            select 1 from account
+            where account_code = new.wage_expense_account_code and account_type = 'EXPENSE'
+        )
+        or not exists (
+            select 1 from account
+            where account_code = new.employer_social_expense_account_code and account_type = 'EXPENSE'
+        )
+        or exists (
+            select 1
+            from account
+            where account_code in (
+                new.net_wages_payable_account_code,
+                new.employee_social_payable_account_code,
+                new.employer_social_payable_account_code,
+                new.personal_income_tax_payable_account_code
+            )
+            and (
+                account_type <> 'LIABILITY'
+                or financial_position_line_classification <> 'CURRENT_LIABILITY'
+            )
+        )
+        or 4 <> (
+            select count(*)
+            from account
+            where account_code in (
+                new.net_wages_payable_account_code,
+                new.employee_social_payable_account_code,
+                new.employer_social_payable_account_code,
+                new.personal_income_tax_payable_account_code
+            )
+                and account_type = 'LIABILITY'
+                and financial_position_line_classification = 'CURRENT_LIABILITY'
+        );
+    select raise(fail, 'latvian_payroll_run journal must exactly match its resolved component facts.')
+    where exists (
+        select 1
+        from journal_line
+        where posting_id = new.origin_posting_id
+            and not (
+                (account_code = new.wage_expense_account_code and entry_side = 'DEBIT' and currency_code = new.currency_code and amount_minor = new.gross_wages_minor)
+                or (new.employer_social_contribution_minor > 0 and account_code = new.employer_social_expense_account_code and entry_side = 'DEBIT' and currency_code = new.currency_code and amount_minor = new.employer_social_contribution_minor)
+                or (account_code = new.net_wages_payable_account_code and entry_side = 'CREDIT' and currency_code = new.currency_code and amount_minor = new.net_wages_minor)
+                or (new.employee_social_contribution_minor > 0 and account_code = new.employee_social_payable_account_code and entry_side = 'CREDIT' and currency_code = new.currency_code and amount_minor = new.employee_social_contribution_minor)
+                or (new.employer_social_contribution_minor > 0 and account_code = new.employer_social_payable_account_code and entry_side = 'CREDIT' and currency_code = new.currency_code and amount_minor = new.employer_social_contribution_minor)
+                or (new.personal_income_tax_minor > 0 and account_code = new.personal_income_tax_payable_account_code and entry_side = 'CREDIT' and currency_code = new.currency_code and amount_minor = new.personal_income_tax_minor)
+            )
+    )
+    or not exists (
+        select 1 from journal_line
+        where posting_id = new.origin_posting_id
+            and account_code = new.wage_expense_account_code
+            and entry_side = 'DEBIT'
+            and currency_code = new.currency_code
+            and amount_minor = new.gross_wages_minor
+    )
+    or not exists (
+        select 1 from journal_line
+        where posting_id = new.origin_posting_id
+            and account_code = new.net_wages_payable_account_code
+            and entry_side = 'CREDIT'
+            and currency_code = new.currency_code
+            and amount_minor = new.net_wages_minor
+    )
+    or (
+        new.employee_social_contribution_minor > 0
+        and not exists (
+            select 1 from journal_line
+            where posting_id = new.origin_posting_id
+                and account_code = new.employee_social_payable_account_code
+                and entry_side = 'CREDIT'
+                and currency_code = new.currency_code
+                and amount_minor = new.employee_social_contribution_minor
+        )
+    )
+    or (
+        new.employer_social_contribution_minor > 0
+        and (
+            not exists (
+                select 1 from journal_line
+                where posting_id = new.origin_posting_id
+                    and account_code = new.employer_social_expense_account_code
+                    and entry_side = 'DEBIT'
+                    and currency_code = new.currency_code
+                    and amount_minor = new.employer_social_contribution_minor
+            )
+            or not exists (
+                select 1 from journal_line
+                where posting_id = new.origin_posting_id
+                    and account_code = new.employer_social_payable_account_code
+                    and entry_side = 'CREDIT'
+                    and currency_code = new.currency_code
+                    and amount_minor = new.employer_social_contribution_minor
+            )
+        )
+    )
+    or (
+        new.personal_income_tax_minor > 0
+        and not exists (
+            select 1 from journal_line
+            where posting_id = new.origin_posting_id
+                and account_code = new.personal_income_tax_payable_account_code
+                and entry_side = 'CREDIT'
+                and currency_code = new.currency_code
+                and amount_minor = new.personal_income_tax_minor
+        )
+    );
+end;
+
+create trigger if not exists latvian_payroll_run_reversal_validate_on_insert
+before insert on latvian_payroll_run_reversal
+begin
+    select raise(fail, 'latvian_payroll_run reversal must negate its originating payroll posting.')
+    where not exists (
+        select 1
+        from latvian_payroll_run
+        inner join posting_fact on posting_fact.posting_id = new.reversal_posting_id
+        where latvian_payroll_run.payroll_run_id = new.payroll_run_id
+            and posting_fact.posting_origin_kind = 'REVERSAL'
+            and posting_fact.prior_posting_id = latvian_payroll_run.origin_posting_id
+    );
+    select raise(fail, 'latvian_payroll_run reversal requires every active payroll settlement to be reversed first.')
+    where exists (
+        select 1
+        from latvian_payroll_settlement
+        where latvian_payroll_settlement.payroll_run_id = new.payroll_run_id
+            and not exists (
+                select 1
+                from latvian_payroll_settlement_reversal
+                where latvian_payroll_settlement_reversal.origin_posting_id = latvian_payroll_settlement.origin_posting_id
+            )
+    );
+end;
+
+create trigger if not exists latvian_payroll_run_reject_update
+before update on latvian_payroll_run
+begin
+    select raise(fail, 'latvian_payroll_run rows are append-only.');
+end;
+
+create trigger if not exists latvian_payroll_run_reject_delete
+before delete on latvian_payroll_run
+begin
+    select raise(fail, 'latvian_payroll_run rows are append-only.');
+end;
+
+create trigger if not exists latvian_payroll_run_reversal_reject_update
+before update on latvian_payroll_run_reversal
+begin
+    select raise(fail, 'latvian_payroll_run_reversal rows are append-only.');
+end;
+
+create trigger if not exists latvian_payroll_run_reversal_reject_delete
+before delete on latvian_payroll_run_reversal
+begin
+    select raise(fail, 'latvian_payroll_run_reversal rows are append-only.');
+end;
+
+create table if not exists latvian_payroll_settlement (
+    origin_posting_id text primary key references posting_fact (posting_id),
+    payroll_run_id text not null references latvian_payroll_run (payroll_run_id),
+    settlement_kind text not null check (settlement_kind in ('NET_WAGES', 'STATE_REMITTANCE')),
+    effective_date text not null,
+    cash_account_code text not null references account (account_code)
+) strict;
+
+create table if not exists latvian_payroll_settlement_reversal (
+    reversal_posting_id text primary key references posting_fact (posting_id),
+    origin_posting_id text not null unique references latvian_payroll_settlement (origin_posting_id)
+) strict;
+
+create trigger if not exists latvian_payroll_settlement_validate_on_insert
+before insert on latvian_payroll_settlement
+begin
+    select raise(fail, 'latvian_payroll_settlement requires one active payroll run.')
+    where not exists (
+        select 1
+        from latvian_payroll_run
+        where payroll_run_id = new.payroll_run_id
+            and not exists (
+                select 1
+                from latvian_payroll_run_reversal
+                where latvian_payroll_run_reversal.payroll_run_id = latvian_payroll_run.payroll_run_id
+            )
+    );
+    select raise(fail, 'latvian_payroll_settlement effective date cannot precede its payroll run.')
+    where exists (
+        select 1
+        from latvian_payroll_run
+        where payroll_run_id = new.payroll_run_id
+            and new.effective_date < effective_date
+    );
+    select raise(fail, 'latvian_payroll_settlement origin must be the matching typed payroll-settlement posting.')
+    where not exists (
+        select 1
+        from posting_fact
+        where posting_id = new.origin_posting_id
+            and effective_date = new.effective_date
+            and (
+                (new.settlement_kind = 'NET_WAGES' and posting_origin_kind = 'LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT')
+                or (new.settlement_kind = 'STATE_REMITTANCE' and posting_origin_kind = 'LATVIAN_PAYROLL_STATE_REMITTANCE')
+            )
+    );
+    select raise(fail, 'latvian_payroll_settlement requires a cash-and-cash-equivalent asset account.')
+    where not exists (
+        select 1
+        from account
+        where account_code = new.cash_account_code
+            and account_type = 'ASSET'
+            and cash_flow_asset_classification = 'CASH_AND_CASH_EQUIVALENT'
+    );
+    select raise(fail, 'latvian_payroll_settlement may have only one active settlement per payroll obligation.')
+    where exists (
+        select 1
+        from latvian_payroll_settlement existing_settlement
+        where existing_settlement.payroll_run_id = new.payroll_run_id
+            and existing_settlement.settlement_kind = new.settlement_kind
+            and not exists (
+                select 1
+                from latvian_payroll_settlement_reversal existing_reversal
+                where existing_reversal.origin_posting_id = existing_settlement.origin_posting_id
+            )
+    );
+    select raise(fail, 'latvian_payroll_settlement journal must exactly match its immutable payroll obligation.')
+    where exists (
+        select 1
+        from journal_line
+        inner join latvian_payroll_run on latvian_payroll_run.payroll_run_id = new.payroll_run_id
+        where posting_id = new.origin_posting_id
+            and not (
+                (new.settlement_kind = 'NET_WAGES'
+                    and account_code = latvian_payroll_run.net_wages_payable_account_code
+                    and entry_side = 'DEBIT'
+                    and journal_line.currency_code = latvian_payroll_run.currency_code
+                    and amount_minor = latvian_payroll_run.net_wages_minor)
+                or (new.settlement_kind = 'NET_WAGES'
+                    and account_code = new.cash_account_code
+                    and entry_side = 'CREDIT'
+                    and journal_line.currency_code = latvian_payroll_run.currency_code
+                    and amount_minor = latvian_payroll_run.net_wages_minor)
+                or (new.settlement_kind = 'STATE_REMITTANCE'
+                    and latvian_payroll_run.employee_social_contribution_minor > 0
+                    and account_code = latvian_payroll_run.employee_social_payable_account_code
+                    and entry_side = 'DEBIT'
+                    and journal_line.currency_code = latvian_payroll_run.currency_code
+                    and amount_minor = latvian_payroll_run.employee_social_contribution_minor)
+                or (new.settlement_kind = 'STATE_REMITTANCE'
+                    and latvian_payroll_run.employer_social_contribution_minor > 0
+                    and account_code = latvian_payroll_run.employer_social_payable_account_code
+                    and entry_side = 'DEBIT'
+                    and journal_line.currency_code = latvian_payroll_run.currency_code
+                    and amount_minor = latvian_payroll_run.employer_social_contribution_minor)
+                or (new.settlement_kind = 'STATE_REMITTANCE'
+                    and latvian_payroll_run.personal_income_tax_minor > 0
+                    and account_code = latvian_payroll_run.personal_income_tax_payable_account_code
+                    and entry_side = 'DEBIT'
+                    and journal_line.currency_code = latvian_payroll_run.currency_code
+                    and amount_minor = latvian_payroll_run.personal_income_tax_minor)
+                or (new.settlement_kind = 'STATE_REMITTANCE'
+                    and account_code = new.cash_account_code
+                    and entry_side = 'CREDIT'
+                    and journal_line.currency_code = latvian_payroll_run.currency_code
+                    and amount_minor = latvian_payroll_run.employee_social_contribution_minor + latvian_payroll_run.employer_social_contribution_minor + latvian_payroll_run.personal_income_tax_minor)
+            )
+    )
+    or not exists (
+        select 1
+        from journal_line
+        inner join latvian_payroll_run on latvian_payroll_run.payroll_run_id = new.payroll_run_id
+        where posting_id = new.origin_posting_id
+            and (
+                (new.settlement_kind = 'NET_WAGES'
+                    and account_code = latvian_payroll_run.net_wages_payable_account_code
+                    and entry_side = 'DEBIT'
+                    and journal_line.currency_code = latvian_payroll_run.currency_code
+                    and amount_minor = latvian_payroll_run.net_wages_minor)
+                or (new.settlement_kind = 'STATE_REMITTANCE'
+                    and account_code = new.cash_account_code
+                    and entry_side = 'CREDIT'
+                    and journal_line.currency_code = latvian_payroll_run.currency_code
+                    and amount_minor = latvian_payroll_run.employee_social_contribution_minor + latvian_payroll_run.employer_social_contribution_minor + latvian_payroll_run.personal_income_tax_minor)
+            )
+    )
+    or (
+        new.settlement_kind = 'NET_WAGES'
+        and not exists (
+            select 1
+            from journal_line
+            inner join latvian_payroll_run on latvian_payroll_run.payroll_run_id = new.payroll_run_id
+            where posting_id = new.origin_posting_id
+                and account_code = new.cash_account_code
+                and entry_side = 'CREDIT'
+                and journal_line.currency_code = latvian_payroll_run.currency_code
+                and amount_minor = latvian_payroll_run.net_wages_minor
+        )
+    )
+    or (
+        new.settlement_kind = 'STATE_REMITTANCE'
+        and exists (
+            select 1
+            from latvian_payroll_run
+            where payroll_run_id = new.payroll_run_id
+                and employee_social_contribution_minor > 0
+        )
+        and not exists (
+            select 1
+            from journal_line
+            inner join latvian_payroll_run on latvian_payroll_run.payroll_run_id = new.payroll_run_id
+            where posting_id = new.origin_posting_id
+                and account_code = latvian_payroll_run.employee_social_payable_account_code
+                and entry_side = 'DEBIT'
+                and journal_line.currency_code = latvian_payroll_run.currency_code
+                and amount_minor = latvian_payroll_run.employee_social_contribution_minor
+        )
+    )
+    or (
+        new.settlement_kind = 'STATE_REMITTANCE'
+        and exists (
+            select 1
+            from latvian_payroll_run
+            where payroll_run_id = new.payroll_run_id
+                and employer_social_contribution_minor > 0
+        )
+        and not exists (
+            select 1
+            from journal_line
+            inner join latvian_payroll_run on latvian_payroll_run.payroll_run_id = new.payroll_run_id
+            where posting_id = new.origin_posting_id
+                and account_code = latvian_payroll_run.employer_social_payable_account_code
+                and entry_side = 'DEBIT'
+                and journal_line.currency_code = latvian_payroll_run.currency_code
+                and amount_minor = latvian_payroll_run.employer_social_contribution_minor
+        )
+    )
+    or (
+        new.settlement_kind = 'STATE_REMITTANCE'
+        and exists (
+            select 1
+            from latvian_payroll_run
+            where payroll_run_id = new.payroll_run_id
+                and personal_income_tax_minor > 0
+        )
+        and not exists (
+            select 1
+            from journal_line
+            inner join latvian_payroll_run on latvian_payroll_run.payroll_run_id = new.payroll_run_id
+            where posting_id = new.origin_posting_id
+                and account_code = latvian_payroll_run.personal_income_tax_payable_account_code
+                and entry_side = 'DEBIT'
+                and journal_line.currency_code = latvian_payroll_run.currency_code
+                and amount_minor = latvian_payroll_run.personal_income_tax_minor
+        )
+    );
+end;
+
+create trigger if not exists latvian_payroll_settlement_reversal_validate_on_insert
+before insert on latvian_payroll_settlement_reversal
+begin
+    select raise(fail, 'latvian_payroll_settlement reversal must negate its originating payroll settlement posting.')
+    where not exists (
+        select 1
+        from latvian_payroll_settlement
+        inner join posting_fact on posting_fact.posting_id = new.reversal_posting_id
+        where latvian_payroll_settlement.origin_posting_id = new.origin_posting_id
+            and posting_fact.posting_origin_kind = 'REVERSAL'
+            and posting_fact.prior_posting_id = latvian_payroll_settlement.origin_posting_id
+    );
+end;
+
+create trigger if not exists latvian_payroll_settlement_reject_update
+before update on latvian_payroll_settlement
+begin
+    select raise(fail, 'latvian_payroll_settlement rows are append-only.');
+end;
+
+create trigger if not exists latvian_payroll_settlement_reject_delete
+before delete on latvian_payroll_settlement
+begin
+    select raise(fail, 'latvian_payroll_settlement rows are append-only.');
+end;
+
+create trigger if not exists latvian_payroll_settlement_reversal_reject_update
+before update on latvian_payroll_settlement_reversal
+begin
+    select raise(fail, 'latvian_payroll_settlement_reversal rows are append-only.');
+end;
+
+create trigger if not exists latvian_payroll_settlement_reversal_reject_delete
+before delete on latvian_payroll_settlement_reversal
+begin
+    select raise(fail, 'latvian_payroll_settlement_reversal rows are append-only.');
+end;
+
+create index if not exists latvian_payroll_run_by_employee_month
+on latvian_payroll_run (employee_reference, payroll_month, payroll_run_id);
+
+create index if not exists latvian_payroll_settlement_by_run_kind
+on latvian_payroll_settlement (payroll_run_id, settlement_kind, effective_date, origin_posting_id);
+
 create index if not exists posting_fact_by_prior_posting_id
 on posting_fact (prior_posting_id);
 
@@ -2098,6 +3556,9 @@ on inventory_movement (inventory_account, effective_date, account_sequence);
 
 create index if not exists inventory_movement_by_posting_id
 on inventory_movement (posting_id, inventory_account, account_sequence);
+
+create index if not exists accrual_cutoff_application_by_cutoff_horizon
+on accrual_cutoff_application (accrual_cutoff_id, effective_date, application_posting_id);
 
 create index if not exists audit_event_by_recorded_at
 on audit_event (recorded_at, audit_event_order);

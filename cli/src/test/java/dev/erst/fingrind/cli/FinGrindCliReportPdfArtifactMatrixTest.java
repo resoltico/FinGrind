@@ -69,7 +69,7 @@ class FinGrindCliReportPdfArtifactMatrixTest extends CliReportPdfArtifactCommand
           envelope.path("artifacts").get(0).path("format").stringValue(),
           spec.commandName());
       assertEquals(
-          CliPublicPaths.redactedValue(pdfOutputPath),
+          CliPublicPaths.absoluteValue(pdfOutputPath),
           envelope.path("artifacts").get(0).path("path").stringValue(),
           spec.commandName());
       assertTrue(envelope.path("code").isMissingNode(), spec.commandName());

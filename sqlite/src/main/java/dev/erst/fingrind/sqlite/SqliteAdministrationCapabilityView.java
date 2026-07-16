@@ -47,6 +47,20 @@ interface SqliteAdministrationCapabilityView
   }
 
   @Override
+  default dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome amendAccount(
+      AccountDeclaration amendment, Instant amendedAt) {
+    storeThreadOwner().requireOwnerThread();
+    return storeMutationOperations().amendAccount(amendment, amendedAt);
+  }
+
+  @Override
+  default dev.erst.fingrind.executor.bookkeeping.AccountRetirementOutcome retireAccount(
+      dev.erst.fingrind.core.AccountCode accountCode, Instant retiredAt) {
+    storeThreadOwner().requireOwnerThread();
+    return storeMutationOperations().retireAccount(accountCode, retiredAt);
+  }
+
+  @Override
   default DeclareTaxRegistrationResult declareTaxRegistration(
       DeclareTaxRegistrationCommand command, Instant declaredAt) {
     storeThreadOwner().requireOwnerThread();

@@ -21,7 +21,8 @@ public final class AccountBalanceReportModelBuilder
   public static ReportModel buildModel(AccountBalanceSnapshot snapshot) {
     return new ReportModel(
         dev.erst.fingrind.contract.protocol.OperationId.ACCOUNT_BALANCE.wireName(),
-        "Account Balance",
+        ReportModelSupport.reportTitle(
+            dev.erst.fingrind.contract.protocol.OperationId.ACCOUNT_BALANCE),
         ReportModel.Orientation.PORTRAIT,
         ReportModelSupport.context(
             snapshot.bookIdentity(),

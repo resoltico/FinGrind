@@ -2,7 +2,6 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -11,7 +10,7 @@ import java.nio.file.attribute.AclFileAttributeView;
 import java.util.Objects;
 import java.util.Set;
 
-/** Shared filesystem, redaction, and contract-failure support for book-key security. */
+/** Shared filesystem, machine-diagnostic, and contract-failure support for book-key security. */
 final class SqliteBookKeyFileSecuritySupport {
   static final String POSIX_OWNER_READ_WRITE_DESCRIPTOR = "0600";
   static final String WINDOWS_OWNER_ONLY_ACL_DESCRIPTOR = "owner-only-acl";
@@ -27,7 +26,7 @@ final class SqliteBookKeyFileSecuritySupport {
     if (supportsAcl(normalizedPath)) {
       return WINDOWS_OWNER_ONLY_ACL_DESCRIPTOR;
     }
-    throw new IllegalArgumentException(unsupportedSecureFilesystemMessage(normalizedPath));
+    throw new IllegalArgumentException(unsupportedSecureFilesystemMessage());
   }
 
   static void requireSupportedSecureFilesystem(Path normalizedPath) {
@@ -35,7 +34,7 @@ final class SqliteBookKeyFileSecuritySupport {
       throw new SqliteCallerPathContractException(
           normalizedPath,
           SqliteCallerPathFailure.UNSUPPORTED_SECURE_FILESYSTEM,
-          unsupportedSecureFilesystemMessage(normalizedPath));
+          unsupportedSecureFilesystemMessage());
     }
   }
 
@@ -56,12 +55,9 @@ final class SqliteBookKeyFileSecuritySupport {
     return view;
   }
 
-  static ContractFailure invalidBookKeyFile(String message) {
-    return invalidBookKeyFile(message, generalKeyFileHint());
-  }
-
-  static ContractFailure invalidBookKeyFile(String message, String hint) {
-    return ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.failure(message, hint, null);
+  static ContractFailure invalidBookKeyFile(Path path, String message) {
+    return ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.failureAt(
+        path, message, generalKeyFileHint(), null);
   }
 
   static String generalKeyFileHint() {
@@ -70,12 +66,11 @@ final class SqliteBookKeyFileSecuritySupport {
 
   static ContractFailure unsupportedSecureFilesystem(Path path, RuntimeException cause) {
     Objects.requireNonNull(cause, "cause");
-    return invalidBookKeyFile(unsupportedSecureFilesystemMessage(path));
+    return invalidBookKeyFile(path, unsupportedSecureFilesystemMessage());
   }
 
-  static String unsupportedSecureFilesystemMessage(Path path) {
-    return "The FinGrind book key file must live on a filesystem that supports POSIX owner-only permissions or Windows owner-only ACLs: "
-        + redactedPath(path);
+  static String unsupportedSecureFilesystemMessage() {
+    return "The FinGrind book key file must live on a filesystem that supports POSIX owner-only permissions or Windows owner-only ACLs.";
   }
 
   static Path requireKeyFileParentDirectory(Path bookKeyFilePath) {
@@ -84,21 +79,15 @@ final class SqliteBookKeyFileSecuritySupport {
       throw new SqliteCallerPathContractException(
           bookKeyFilePath,
           SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY,
-          "The FinGrind book key file must resolve beneath a parent directory: "
-              + redactedPath(bookKeyFilePath));
+          "The FinGrind book key file must resolve beneath a parent directory.");
     }
     if (!Files.isDirectory(parentDirectory, LinkOption.NOFOLLOW_LINKS)) {
       throw new SqliteCallerPathContractException(
           bookKeyFilePath,
           SqliteCallerPathFailure.PARENT_PATH_COLLISION,
-          "The FinGrind book key file must resolve beneath a real parent directory: "
-              + redactedPath(bookKeyFilePath));
+          "The FinGrind book key file must resolve beneath a real parent directory.");
     }
     return parentDirectory;
-  }
-
-  static String redactedPath(Path path) {
-    return PublicPathHint.fromPath(path).value();
   }
 
   static boolean containsAny(

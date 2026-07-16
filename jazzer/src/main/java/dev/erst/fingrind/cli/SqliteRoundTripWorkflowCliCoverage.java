@@ -15,10 +15,12 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightAccepted;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ComparativeSelection;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
@@ -95,7 +97,7 @@ final class SqliteRoundTripWorkflowCliCoverage {
         (writers, result, mode) -> writers.query().writeTrialBalanceResult(result, mode),
         primaryAccount.value());
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-        readWorkflow.accountLedger(bookAccess, AccountLedgerQuery.unbounded(primaryAccount)),
+        readWorkflow.accountLedger(bookAccess, unboundedAccountLedgerQuery(primaryAccount)),
         OutputMode.TEXT,
         (writers, result, mode) -> writers.query().writeAccountLedgerResult(result, mode),
         primaryAccount.value());
@@ -119,7 +121,7 @@ final class SqliteRoundTripWorkflowCliCoverage {
         "unknown-account");
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
         readWorkflow.accountLedger(
-            bookAccess, AccountLedgerQuery.unbounded(new AccountCode("9999"))),
+            bookAccess, unboundedAccountLedgerQuery(new AccountCode("9999"))),
         OutputMode.CSV,
         (writers, result, mode) -> writers.query().writeAccountLedgerResult(result, mode),
         "unknown-account");
@@ -187,6 +189,15 @@ final class SqliteRoundTripWorkflowCliCoverage {
         (writers, result, mode) -> writers.mutation().writePostEntryResult(result, mode),
         committed.postingId().value());
     return committed;
+  }
+
+  private static AccountLedgerQuery unboundedAccountLedgerQuery(AccountCode accountCode) {
+    return new AccountLedgerQuery(
+        accountCode,
+        EffectiveDateRange.unbounded(),
+        PostingCoverage.ALL_POSTING_KINDS,
+        ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT,
+        Optional.empty());
   }
 
   private static void exerciseDerivedReversalScenarios(

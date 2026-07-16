@@ -73,7 +73,7 @@ class MachineContractPostEntryVariantTemplateCoverageTest {
 
   @Test
   void postingTemplateValidators_rejectSettlementAdjunctOnEntryKindsThatDoNotOwnIt() {
-    ContractTemplates.SettlementAdjunctTemplateDescriptor settlementAdjunct =
+    ContractSettlementTemplates.SettlementAdjunctTemplateDescriptor settlementAdjunct =
         MachineContractPostEntryVariantTemplateTestSupport.settlementAdjunct();
 
     for (Map.Entry<BookkeepingEntryKind, String> rejection :
@@ -97,12 +97,63 @@ class MachineContractPostEntryVariantTemplateCoverageTest {
   }
 
   @Test
+  void payrollTemplateValidationRejectsMissingAndMisplacedPayrollFactBlocks() {
+    ContractPostingRequestTemplateValidators.PostingTemplateFields emptyFields =
+        MachineContractPostEntryVariantTemplateTestSupport.canonicalFields(
+            BookkeepingEntryKind.REVERSAL, null);
+    ContractPostingRequestTemplateValidators.PostingTemplateFields monthlyPayrollFields =
+        MachineContractPostEntryVariantTemplateTestSupport.canonicalFields(
+            BookkeepingEntryKind.LATVIAN_MONTHLY_PAYROLL, null);
+    ContractPostingRequestTemplateValidators.PostingTemplateFields settlementFields =
+        MachineContractPostEntryVariantTemplateTestSupport.canonicalFields(
+            BookkeepingEntryKind.LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT, null);
+
+    assertEquals(
+        "latvianMonthlyPayroll must be present for LATVIAN_MONTHLY_PAYROLL.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    ContractPostingRequestTemplateValidators.validate(
+                        BookkeepingEntryKind.LATVIAN_MONTHLY_PAYROLL, emptyFields, null))
+            .getMessage());
+    assertEquals(
+        "latvianPayrollSettlement must be present for Latvian payroll settlements.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    ContractPostingRequestTemplateValidators.validate(
+                        BookkeepingEntryKind.LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT,
+                        emptyFields,
+                        null))
+            .getMessage());
+    assertEquals(
+        "latvianMonthlyPayroll must be absent for SALE_SETTLED.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    ContractPostingRequestTemplateValidators.validate(
+                        BookkeepingEntryKind.SALE_SETTLED, monthlyPayrollFields, null))
+            .getMessage());
+    assertEquals(
+        "latvianPayrollSettlement must be absent for SALE_SETTLED.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    ContractPostingRequestTemplateValidators.validate(
+                        BookkeepingEntryKind.SALE_SETTLED, settlementFields, null))
+            .getMessage());
+    assertEquals(
+        Map.of("payrollRunId", "payroll-lv-2026-01-employee-001"),
+        Objects.requireNonNull(settlementFields.latvianPayrollSettlement()).requestFields());
+  }
+
+  @Test
   void settlementAdjunctTemplateDescriptor_rejectsNonPositiveAmounts() {
     IllegalArgumentException zeroAmount =
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                new ContractTemplates.SettlementAdjunctTemplateDescriptor(
+                new ContractSettlementTemplates.SettlementAdjunctTemplateDescriptor(
                     "settlement-clearing", new MonetaryAmount("EUR", "0")));
 
     assertEquals("amount must carry one positive minor-unit value.", zeroAmount.getMessage());

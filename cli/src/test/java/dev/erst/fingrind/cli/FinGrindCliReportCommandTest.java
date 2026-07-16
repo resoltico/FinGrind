@@ -100,7 +100,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
     var envelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("pdf", envelope.path("artifacts").get(0).path("format").stringValue());
     assertEquals(
-        CliPublicPaths.redactedValue(pdfOutputPath),
+        CliPublicPaths.absoluteValue(pdfOutputPath),
         envelope.path("artifacts").get(0).path("path").stringValue());
     assertEquals("", diagnosticsStream.toString(StandardCharsets.UTF_8));
   }

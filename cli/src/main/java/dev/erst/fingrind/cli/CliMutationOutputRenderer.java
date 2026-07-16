@@ -121,6 +121,8 @@ final class CliMutationOutputRenderer {
       case "declared" -> "Account Declared";
       case "reactivated" -> "Account Reactivated";
       case "renamed" -> "Account Renamed";
+      case "amended" -> "Account Amended";
+      case "retired" -> "Account Retired";
       case "unchanged" -> "Account Unchanged";
       default -> "Account Updated";
     };

@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPagination;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
@@ -29,6 +30,7 @@ import dev.erst.fingrind.contract.bookkeeping.TrialBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
@@ -98,8 +100,10 @@ class ReportingContractTypesTest {
     AccountLedgerQuery accountLedgerQuery =
         new AccountLedgerQuery(
             CASH_ACCOUNT.accountCode(),
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"));
+            EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS,
+            ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT,
+            Optional.empty());
     AccountLedgerEntry accountLedgerEntry =
         new AccountLedgerEntry(
             postingFact("posting-1", "idem-1"),
@@ -112,6 +116,8 @@ class ReportingContractTypesTest {
             CASH_ACCOUNT,
             accountLedgerQuery.effectiveDateRange(),
             PostingCoverage.ALL_POSTING_KINDS,
+            new AccountLedgerPagination(
+                accountLedgerQuery.limit(), accountLedgerQuery.cursor(), Optional.empty()),
             List.of(),
             List.of(accountLedgerEntry),
             List.of(EUR_DEBIT_BALANCE));
@@ -255,12 +261,20 @@ class ReportingContractTypesTest {
         NullPointerException.class,
         () ->
             new AccountLedgerQuery(
-                nullOf(), EffectiveDateRange.unbounded(), PostingCoverage.ALL_POSTING_KINDS));
+                nullOf(),
+                EffectiveDateRange.unbounded(),
+                PostingCoverage.ALL_POSTING_KINDS,
+                ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT,
+                Optional.empty()));
     assertThrows(
         NullPointerException.class,
         () ->
             new AccountLedgerQuery(
-                CASH_ACCOUNT.accountCode(), nullOf(), PostingCoverage.ALL_POSTING_KINDS));
+                CASH_ACCOUNT.accountCode(),
+                nullOf(),
+                PostingCoverage.ALL_POSTING_KINDS,
+                ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT,
+                Optional.empty()));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -269,6 +283,10 @@ class ReportingContractTypesTest {
                 nullOf(),
                 EffectiveDateRange.unbounded(),
                 PostingCoverage.ALL_POSTING_KINDS,
+                new AccountLedgerPagination(
+                    ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT,
+                    Optional.empty(),
+                    Optional.empty()),
                 List.of(),
                 List.of(),
                 List.of()));
@@ -380,7 +398,7 @@ class ReportingContractTypesTest {
             "Wrong key", "Use the correct key file.", "--book-key-file");
     ContractDecision<String> accepted = ContractDecision.accepted("ok");
     ContractDecision<String> rejected = ContractDecision.rejected(withoutCause);
-    assertEquals(18, descriptors.size());
+    assertEquals(19, descriptors.size());
     assertEquals("unknown-command", descriptors.getFirst().code());
     assertTrue(
         descriptors.stream()
@@ -434,7 +452,8 @@ class ReportingContractTypesTest {
         "Expected a rejected contract decision.",
         assertThrows(IllegalStateException.class, accepted::requireRejected).getMessage());
     assertThrows(
-        NullPointerException.class, () -> new ContractFailure(nullOf(), "message", null, null));
+        NullPointerException.class,
+        () -> new ContractFailure(nullOf(), "message", null, null, null));
     assertThrows(NullPointerException.class, () -> ContractDecision.accepted(nullOf()));
     assertThrows(NullPointerException.class, () -> accepted.fold(nullOf(), ignored -> "rejected"));
     assertThrows(NullPointerException.class, () -> accepted.fold(value -> value, nullOf()));

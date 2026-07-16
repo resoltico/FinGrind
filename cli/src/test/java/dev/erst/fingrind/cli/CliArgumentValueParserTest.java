@@ -1,7 +1,6 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -47,19 +46,6 @@ class CliArgumentValueParserTest {
         "Unsupported argument: --rt. Did you mean --cat?",
         CliArgumentValueParser.unsupportedArgument("--rt", List.of("--rate", "--cat"))
             .getMessage());
-  }
-
-  @Test
-  void invalidEnvironmentSelection_recommendsAcceptedValues() {
-    CliArgumentsException exception =
-        CliArgumentValueParser.invalidEnvironmentSelection(
-            "FINGRIND_DEFAULT_OUTPUT",
-            "Unsupported configured output.",
-            new IllegalArgumentException("bad"));
-
-    assertEquals("FINGRIND_DEFAULT_OUTPUT", exception.argument());
-    assertTrue(exception.hint().contains("Unset FINGRIND_DEFAULT_OUTPUT"));
-    assertTrue(exception.hint().contains("json, text"));
   }
 
   @Test

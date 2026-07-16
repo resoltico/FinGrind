@@ -394,6 +394,11 @@ abstract class AbstractInMemoryReportingPeriodCloseSession extends AbstractInMem
         Map.copyOf(taxRegistrationsById),
         Map.copyOf(postingsByIdempotencyKey),
         Map.copyOf(postingsByPostingId),
+        inventoryMovementsByPostingId.entrySet().stream()
+            .collect(
+                java.util.stream.Collectors.toUnmodifiableMap(
+                    Map.Entry::getKey, entry -> List.copyOf(entry.getValue()))),
+        Map.copyOf(inventoryStateByAccount),
         Map.copyOf(reversalsByPriorPostingId),
         List.copyOf(transferredPeriodResults),
         List.copyOf(closedFiscalYears));
@@ -411,6 +416,10 @@ abstract class AbstractInMemoryReportingPeriodCloseSession extends AbstractInMem
     postingsByIdempotencyKey.putAll(snapshot.postingsByIdempotencyKey());
     postingsByPostingId.clear();
     postingsByPostingId.putAll(snapshot.postingsByPostingId());
+    inventoryMovementsByPostingId.clear();
+    inventoryMovementsByPostingId.putAll(snapshot.inventoryMovementsByPostingId());
+    inventoryStateByAccount.clear();
+    inventoryStateByAccount.putAll(snapshot.inventoryStateByAccount());
     reversalsByPriorPostingId.clear();
     reversalsByPriorPostingId.putAll(snapshot.reversalsByPriorPostingId());
     transferredPeriodResults.clear();

@@ -1,6 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.executor.spi.StagedBookReplacement;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -12,53 +11,47 @@ import org.jspecify.annotations.Nullable;
 
 /** Reversible staged replacement that delays the live swap until commit. */
 final class SqliteStagedBookReplacement implements StagedBookReplacement {
-  private final Path stagedBookPath;
+  private final SqliteOwnedStagedArtifact stagedBook;
   private final Path targetBookPath;
-  private final @Nullable Path previousTargetBackupPath;
+  private final @Nullable SqliteOwnedStagedArtifact previousTargetBackup;
   private boolean finished;
 
   SqliteStagedBookReplacement(
-      Path stagedBookPath, Path targetBookPath, @Nullable Path previousTargetBackupPath) {
-    this.stagedBookPath = Objects.requireNonNull(stagedBookPath, "stagedBookPath");
+      SqliteOwnedStagedArtifact stagedBook,
+      Path targetBookPath,
+      @Nullable SqliteOwnedStagedArtifact previousTargetBackup) {
+    this.stagedBook = Objects.requireNonNull(stagedBook, "stagedBook");
     this.targetBookPath = Objects.requireNonNull(targetBookPath, "targetBookPath");
-    this.previousTargetBackupPath = previousTargetBackupPath;
+    this.previousTargetBackup = previousTargetBackup;
   }
 
   static SqliteStagedBookReplacement create(
       Path normalizedSourceBookPath, Path normalizedTargetBookPath) {
-    @Nullable Path stagedReplacementPath = null;
-    @Nullable Path previousTargetBackupPath = null;
+    @Nullable SqliteOwnedStagedArtifact stagedReplacement = null;
+    @Nullable SqliteOwnedStagedArtifact previousTargetBackup = null;
     try {
       SqliteBookFileSecurity.ensureSecureParentDirectory(normalizedTargetBookPath);
-      SqliteBookMaintenanceFiles.cleanupAbandonedStageArtifacts(normalizedTargetBookPath);
-      Path targetParentDirectory =
-          Objects.requireNonNull(
-              normalizedTargetBookPath.getParent(), "normalizedTargetBookPath parent");
-      String targetFileName =
-          Objects.requireNonNull(
-                  normalizedTargetBookPath.getFileName(), "normalizedTargetBookPath fileName")
-              .toString();
-      stagedReplacementPath =
-          Files.createTempFile(targetParentDirectory, targetFileName + ".restore-", ".tmp");
+      SqliteOwnedStagedArtifact.recoverFor(normalizedTargetBookPath);
+      stagedReplacement =
+          SqliteOwnedStagedArtifact.create(normalizedTargetBookPath, ".restore-", ".tmp");
       Files.copy(
           normalizedSourceBookPath,
-          stagedReplacementPath,
+          stagedReplacement.stagedPath(),
           StandardCopyOption.REPLACE_EXISTING,
           StandardCopyOption.COPY_ATTRIBUTES);
-      SqliteBookFileSecurity.hardenBookArtifacts(stagedReplacementPath);
+      SqliteBookFileSecurity.hardenBookArtifacts(stagedReplacement.stagedPath());
       if (Files.exists(normalizedTargetBookPath, LinkOption.NOFOLLOW_LINKS)) {
-        SqliteProtectedBookStagingSupport.requireRegularNonSymlinkFile(normalizedTargetBookPath);
-        previousTargetBackupPath =
-            Files.createTempFile(targetParentDirectory, targetFileName + ".previous-", ".sqlite");
+        SqliteProtectedBookStagingFiles.requireRegularNonSymlinkFile(normalizedTargetBookPath);
+        previousTargetBackup =
+            SqliteOwnedStagedArtifact.create(normalizedTargetBookPath, ".previous-", ".sqlite");
       }
       return new SqliteStagedBookReplacement(
-          stagedReplacementPath, normalizedTargetBookPath, previousTargetBackupPath);
+          stagedReplacement, normalizedTargetBookPath, previousTargetBackup);
     } catch (IOException exception) {
-      SqliteProtectedBookStagingSupport.deleteQuietlyIfPresent(stagedReplacementPath);
-      SqliteProtectedBookStagingSupport.deleteQuietlyIfPresent(previousTargetBackupPath);
+      SqliteOwnedStagedArtifact.discardAll(stagedReplacement, previousTargetBackup);
       throw new IllegalStateException(
           "Failed to stage the FinGrind SQLite book replacement at "
-              + PublicPathHint.fromPath(normalizedTargetBookPath).value()
+              + SqliteMachinePaths.absoluteValue(normalizedTargetBookPath)
               + ".",
           exception);
     }
@@ -66,7 +59,7 @@ final class SqliteStagedBookReplacement implements StagedBookReplacement {
 
   @Override
   public Path stagedBookPath() {
-    return stagedBookPath;
+    return stagedBook.stagedPath();
   }
 
   @Override
@@ -76,19 +69,20 @@ final class SqliteStagedBookReplacement implements StagedBookReplacement {
     }
     try {
       if (Files.exists(targetBookPath, LinkOption.NOFOLLOW_LINKS)) {
-        SqliteProtectedBookStagingSupport.moveReplacing(
+        SqliteProtectedBookPublicationSupport.moveReplacing(
             targetBookPath,
-            Objects.requireNonNull(previousTargetBackupPath, "previousTargetBackupPath"));
+            Objects.requireNonNull(previousTargetBackup, "previousTargetBackup").stagedPath());
       }
-      SqliteProtectedBookStagingSupport.moveReplacing(stagedBookPath, targetBookPath);
-      SqliteProtectedBookStagingSupport.deleteQuietlyIfPresent(previousTargetBackupPath);
+      SqliteProtectedBookPublicationSupport.moveReplacing(stagedBook.stagedPath(), targetBookPath);
+      discardStagedArtifacts();
       finished = true;
     } catch (IOException exception) {
       if (!Files.exists(targetBookPath, LinkOption.NOFOLLOW_LINKS)
-          && previousTargetBackupPath != null
-          && Files.exists(previousTargetBackupPath, LinkOption.NOFOLLOW_LINKS)) {
+          && previousTargetBackup != null
+          && Files.exists(previousTargetBackup.stagedPath(), LinkOption.NOFOLLOW_LINKS)) {
         try {
-          SqliteProtectedBookStagingSupport.moveReplacing(previousTargetBackupPath, targetBookPath);
+          SqliteProtectedBookPublicationSupport.moveReplacing(
+              previousTargetBackup.stagedPath(), targetBookPath);
         } catch (IOException restoreException) {
           SqliteBestEffort.reportCleanupFailure(
               "restoring one previous protected book after replacement commit failure",
@@ -97,7 +91,7 @@ final class SqliteStagedBookReplacement implements StagedBookReplacement {
       }
       throw new IllegalStateException(
           "Failed to commit the staged FinGrind SQLite replacement at "
-              + PublicPathHint.fromPath(targetBookPath).value()
+              + SqliteMachinePaths.absoluteValue(targetBookPath)
               + ".",
           exception);
     }
@@ -108,8 +102,7 @@ final class SqliteStagedBookReplacement implements StagedBookReplacement {
     if (finished) {
       return;
     }
-    SqliteBookKeyFileGenerator.deleteQuietly(stagedBookPath);
-    SqliteProtectedBookStagingSupport.deleteQuietlyIfPresent(previousTargetBackupPath);
+    discardStagedArtifacts();
     finished = true;
   }
 
@@ -117,6 +110,13 @@ final class SqliteStagedBookReplacement implements StagedBookReplacement {
   public void close() {
     if (!finished) {
       rollback();
+    }
+  }
+
+  private void discardStagedArtifacts() {
+    stagedBook.discard();
+    if (previousTargetBackup != null) {
+      previousTargetBackup.discard();
     }
   }
 }

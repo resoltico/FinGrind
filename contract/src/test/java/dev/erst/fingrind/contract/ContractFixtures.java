@@ -263,9 +263,7 @@ final class ContractFixtures {
   static EnvironmentDescriptor environmentDescriptor() {
     return new EnvironmentDescriptor(
         new EnvironmentRuntimeDescriptor(
-            ProtocolCatalog.distribution().sourceCheckoutRuntimeDistribution(),
-            OutputMode.TEXT,
-            null),
+            ProtocolCatalog.distribution().sourceCheckoutRuntimeDistribution(), OutputMode.TEXT),
         new EnvironmentPublicationDescriptor(
             ProtocolCatalog.distribution().publicCliDistribution(),
             ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),

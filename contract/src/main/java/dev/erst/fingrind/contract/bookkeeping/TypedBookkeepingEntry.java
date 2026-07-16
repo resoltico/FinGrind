@@ -7,14 +7,10 @@ package dev.erst.fingrind.contract.bookkeeping;
  * supplied journal, a collection of opening facts, or a reference to prior facts respectively.
  */
 public sealed interface TypedBookkeepingEntry extends BookkeepingEntry
-    permits BookkeepingEntry.SaleSettled,
-        BookkeepingEntry.SaleOnCredit,
-        BookkeepingEntry.PurchaseSettled,
-        BookkeepingEntry.PurchaseOnCredit,
+    permits StandardBookkeepingEntryVariants,
         InventoryBookkeepingEntryVariants,
-        BookkeepingEntry.ExpenseSettled,
-        BookkeepingEntry.ExpenseOnCredit,
-        BookkeepingEntry.Receipt,
-        BookkeepingEntry.Payment,
-        BookkeepingEntry.OwnerContribution,
-        BookkeepingEntry.OwnerWithdrawal {}
+        AccrualCutoffBookkeepingEntryVariants,
+        LatvianPayrollBookkeepingEntryVariants,
+        FixedAssetBookkeepingEntryVariants,
+        FinancingBookkeepingEntryVariants,
+        RealizedForeignExchangeBookkeepingEntryVariants {}

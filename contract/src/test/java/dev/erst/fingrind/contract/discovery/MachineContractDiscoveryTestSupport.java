@@ -21,7 +21,7 @@ final class MachineContractDiscoveryTestSupport {
 
   static EnvironmentDescriptor environment(RuntimeDistribution runtimeDistribution) {
     return new EnvironmentDescriptor(
-        new EnvironmentRuntimeDescriptor(runtimeDistribution, OutputMode.TEXT, null),
+        new EnvironmentRuntimeDescriptor(runtimeDistribution, OutputMode.TEXT),
         new EnvironmentPublicationDescriptor(
             ProtocolCatalog.distribution().publicCliDistribution(),
             ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),

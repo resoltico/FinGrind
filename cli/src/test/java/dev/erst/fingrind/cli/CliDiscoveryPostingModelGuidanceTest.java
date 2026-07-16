@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
+import dev.erst.fingrind.contract.discovery.ContractSettlementTemplates;
 import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.ForeignExchangeTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
@@ -203,7 +204,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
     assertFalse(
         templatePublishesField(
             ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE, openingPositionTemplate));
-    assertFalse(templatePublishesField(ProtocolPostEntryFields.TopLevel.TAX, saleTemplate));
+    assertTrue(templatePublishesField(ProtocolPostEntryFields.TopLevel.TAX, saleTemplate));
     assertTrue(
         templatePublishesField(
             ProtocolPostEntryFields.TopLevel.TAX, saleTemplateWithOwnedNestedFacts));
@@ -222,6 +223,51 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
     assertTrue(templatePublishesField(ProtocolPostEntryFields.TopLevel.REVERSAL, reversalTemplate));
     assertFalse(templatePublishesField(ProtocolPostEntryFields.TopLevel.REVERSAL, saleTemplate));
     assertFalse(templatePublishesField("foreignField", saleTemplate));
+  }
+
+  @Test
+  void templatePublishesField_coversAccrualCutoffFields() {
+    ContractTemplates.PostingRequestTemplateDescriptor saleTemplate =
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED));
+    ContractTemplates.PostingRequestTemplateDescriptor prepaymentTemplate =
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_PREPAYMENT));
+    ContractTemplates.PostingRequestTemplateDescriptor deferredRevenueTemplate =
+        Objects.requireNonNull(
+            MachineContract.requestTemplate(OperationId.RECORD_DEFERRED_REVENUE));
+    ContractTemplates.PostingRequestTemplateDescriptor accruedExpenseTemplate =
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_ACCRUED_EXPENSE));
+
+    assertTrue(
+        templatePublishesField(
+            ProtocolPostEntryFields.TopLevel.ACCRUAL_CUTOFF_ID, prepaymentTemplate));
+    assertFalse(
+        templatePublishesField(ProtocolPostEntryFields.TopLevel.ACCRUAL_CUTOFF_ID, saleTemplate));
+    assertTrue(
+        templatePublishesField(
+            ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL, prepaymentTemplate));
+    assertFalse(
+        templatePublishesField(
+            ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL, accruedExpenseTemplate));
+    assertTrue(
+        templatePublishesField(
+            ProtocolPostEntryFields.TopLevel.PREPAYMENT_ASSET_ACCOUNT_CODE, prepaymentTemplate));
+    assertFalse(
+        templatePublishesField(
+            ProtocolPostEntryFields.TopLevel.PREPAYMENT_ASSET_ACCOUNT_CODE, saleTemplate));
+    assertTrue(
+        templatePublishesField(
+            ProtocolPostEntryFields.TopLevel.DEFERRED_REVENUE_ACCOUNT_CODE,
+            deferredRevenueTemplate));
+    assertFalse(
+        templatePublishesField(
+            ProtocolPostEntryFields.TopLevel.DEFERRED_REVENUE_ACCOUNT_CODE, saleTemplate));
+    assertTrue(
+        templatePublishesField(
+            ProtocolPostEntryFields.TopLevel.ACCRUED_EXPENSE_LIABILITY_ACCOUNT_CODE,
+            accruedExpenseTemplate));
+    assertFalse(
+        templatePublishesField(
+            ProtocolPostEntryFields.TopLevel.ACCRUED_EXPENSE_LIABILITY_ACCOUNT_CODE, saleTemplate));
   }
 
   @Test
@@ -382,7 +428,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postingModel =
         postingModelWithForbiddenFields(ledgerPlanShape.postingModel());
     ContractTemplates.PostingRequestTemplateDescriptor postingTemplate =
-        Objects.requireNonNull(executePlanHelp.planTemplate()).canonicalPostingTemplate();
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED));
 
     List<String> labels =
         CliDiscoveryPostingModelGuidance.supplementalPostingModelRows(
@@ -402,6 +448,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
     assertFalse(labels.contains("steps[].posting.evidence.sourceDocuments[].sourceDocumentType"));
     assertFalse(labels.contains("steps[].posting.forbiddenTopLevel"), labels.toString());
     assertFalse(labels.contains("steps[].posting.lines[].forbiddenLine"), labels.toString());
+    assertTrue(labels.contains("steps[].posting.recognitionInterval.startDate"), labels.toString());
   }
 
   @Test
@@ -448,37 +495,69 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
   }
 
   @Test
-  void
-      renderRequestGuidance_executePlanUsesOnlyPrimaryLedgerStructureWhenNoSupplementalRowsExist() {
-    HelpDescriptor executePlanHelp =
+  void supplementalRows_fallBackToPublishedFacts_andCanonicalRowsSkipMissingOrForbiddenFields() {
+    HelpDescriptor preflightHelp =
         MachineContract.help(
             CliDiscoveryTestSupport.identity(),
             CliDiscoveryTestSupport.environment(),
-            OperationId.EXECUTE_PLAN);
-    ContractRequestShapes.RequestShapesDescriptor requestShapes =
-        Objects.requireNonNull(executePlanHelp.requestShapes());
-    ContractRequestShapes.LedgerPlanRequestShapeDescriptor ledgerPlanShape =
-        Objects.requireNonNull(requestShapes.ledgerPlan());
-    ContractTemplates.PostingRequestTemplateDescriptor postingTemplate =
-        Objects.requireNonNull(executePlanHelp.planTemplate()).canonicalPostingTemplate();
-    ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor trimmedPostingModel =
-        canonicalOnlyPostingModel(ledgerPlanShape.postingModel(), postingTemplate);
+            OperationId.PREFLIGHT_ENTRY);
+    ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postingModel =
+        Objects.requireNonNull(
+            Objects.requireNonNull(preflightHelp.requestShapes()).bookkeepingEntry());
+    ContractTemplates.PostingRequestTemplateDescriptor saleTemplate =
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED));
+    ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor withoutSaleSemantics =
+        postingModelWithoutSelectedEntryKind(postingModel, saleTemplate);
 
-    assertTrue(
+    ContractRequestShapes.EntryKindSemanticsDescriptor fallback =
+        CliDiscoveryPostingFieldDescriptions.selectedEntryKindOrPublishedFallback(
+            withoutSaleSemantics, saleTemplate);
+    assertEquals(saleTemplate.entryKind(), fallback.entryKind());
+    assertTrue(fallback.requiredTopLevelFields().contains("cashAccountCode"));
+    assertFalse(
         CliDiscoveryPostingModelGuidance.supplementalPostingModelRows(
-                trimmedPostingModel, postingTemplate, "steps[].posting.")
-            .isEmpty());
+                withoutSaleSemantics, saleTemplate, "")
+            .stream()
+            .map(List::getFirst)
+            .anyMatch("cashAccountCode"::equals));
 
-    String rendered =
-        CliDiscoveryCommandGuidance.renderRequestGuidance(
-            helpDescriptorWithLedgerPlanPostingModel(
-                executePlanHelp, requestShapes, ledgerPlanShape, trimmedPostingModel),
-            OperationId.EXECUTE_PLAN);
+    List<List<String>> rows = new ArrayList<>();
+    CliDiscoveryPostingModelRowSupport.appendTopLevelRows(
+        rows,
+        List.of(
+            new ContractRequestShapes.RequestFieldDescriptor(
+                "entryKind", RequestFieldPresence.REQUIRED, "Entry kind."),
+            new ContractRequestShapes.RequestFieldDescriptor(
+                "amount", RequestFieldPresence.FORBIDDEN, "Amount.")),
+        "",
+        postingModel,
+        saleTemplate,
+        CliDiscoveryPostingFieldDescriptions.selectedEntryKind(postingModel, saleTemplate));
 
-    assertTrue(rendered.contains("Plan structure"), rendered);
-    assertTrue(rendered.contains("steps[].posting.cashAccountCode"), rendered);
-    assertFalse(rendered.contains("steps[].posting.expenseAccountCode"), rendered);
-    assertFalse(rendered.contains("steps[].posting.lines[].accountCode"), rendered);
+    assertEquals(List.of("entryKind"), rows.stream().map(List::getFirst).toList());
+  }
+
+  @Test
+  void supplementalRows_doNotDuplicateCanonicalRecognitionInterval() {
+    HelpDescriptor preflightHelp =
+        MachineContract.help(
+            CliDiscoveryTestSupport.identity(),
+            CliDiscoveryTestSupport.environment(),
+            OperationId.PREFLIGHT_ENTRY);
+    ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postingModel =
+        Objects.requireNonNull(
+            Objects.requireNonNull(preflightHelp.requestShapes()).bookkeepingEntry());
+    ContractTemplates.PostingRequestTemplateDescriptor prepaymentTemplate =
+        Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_PREPAYMENT));
+
+    List<String> labels =
+        CliDiscoveryPostingModelGuidance.supplementalPostingModelRows(
+                postingModel, prepaymentTemplate, "")
+            .stream()
+            .map(List::getFirst)
+            .toList();
+
+    assertFalse(labels.contains("recognitionInterval.startDate"), labels.toString());
   }
 
   @Test
@@ -499,6 +578,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
             postEntryShape.topLevelFields(),
             postEntryShape.lineFields(),
             postEntryShape.openingBalanceFields(),
+            postEntryShape.recognitionIntervalFields(),
             postEntryShape.foreignExchangeFields(),
             postEntryShape.quotedRateFields(),
             postEntryShape.taxFields(),
@@ -674,12 +754,23 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
                 "2026-04-25",
                 "ECB daily reference rate"),
             ForeignExchangeTreatmentKind.SPOT_TRANSACTION),
-        new ContractTemplates.TaxSelectionTemplateDescriptor("vat-lv", "vat-standard-sale"),
+        new ContractSettlementTemplates.TaxSelectionTemplateDescriptor(
+            "vat-lv", "vat-standard-sale"),
         saleTemplate.lines(),
         saleTemplate.openingBalances(),
         saleTemplate.evidence(),
         saleTemplate.provenance(),
-        saleTemplate.reversal());
+        saleTemplate.reversal(),
+        saleTemplate.accrualCutoffId(),
+        saleTemplate.prepaymentAssetAccountCode(),
+        saleTemplate.deferredRevenueAccountCode(),
+        saleTemplate.accruedExpenseLiabilityAccountCode(),
+        saleTemplate.recognitionInterval(),
+        saleTemplate.latvianMonthlyPayroll(),
+        saleTemplate.latvianPayrollSettlement(),
+        saleTemplate.fixedAsset(),
+        saleTemplate.financing(),
+        saleTemplate.realizedForeignExchange());
   }
 
   private static ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor
@@ -695,6 +786,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
             new ContractRequestShapes.RequestFieldDescriptor(
                 "forbiddenLine", RequestFieldPresence.FORBIDDEN, "ignored")),
         postEntryShape.openingBalanceFields(),
+        postEntryShape.recognitionIntervalFields(),
         postEntryShape.foreignExchangeFields(),
         postEntryShape.quotedRateFields(),
         postEntryShape.taxFields(),
@@ -711,26 +803,25 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
   }
 
   private static ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor
-      canonicalOnlyPostingModel(
+      postingModelWithoutSelectedEntryKind(
           ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape,
           ContractTemplates.PostingRequestTemplateDescriptor postingTemplate) {
-    ContractRequestShapes.EntryKindSemanticsDescriptor selectedEntryKind =
-        CliDiscoveryPostingFieldDescriptions.selectedEntryKind(postEntryShape, postingTemplate);
     return new ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor(
-        postEntryShape.topLevelFields().stream()
-            .filter(field -> selectedEntryKind.requiredTopLevelFields().contains(field.name()))
-            .toList(),
-        List.of(),
-        List.of(),
-        List.of(),
-        List.of(),
-        List.of(),
+        postEntryShape.topLevelFields(),
+        postEntryShape.lineFields(),
+        postEntryShape.openingBalanceFields(),
+        postEntryShape.recognitionIntervalFields(),
+        postEntryShape.foreignExchangeFields(),
+        postEntryShape.quotedRateFields(),
+        postEntryShape.taxFields(),
         postEntryShape.evidenceFields(),
         postEntryShape.sourceDocumentFields(),
         postEntryShape.approvalFields(),
         postEntryShape.provenanceFields(),
-        List.of(),
-        List.of(selectedEntryKind),
+        postEntryShape.reversalFields(),
+        postEntryShape.entryKindSemantics().stream()
+            .filter(entryKind -> entryKind.entryKind() != postingTemplate.entryKind())
+            .toList(),
         postEntryShape.reachabilityMatrix(),
         postEntryShape.evidenceRequirement(),
         postEntryShape.enumVocabularies(),
@@ -764,6 +855,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
         postEntryShape.topLevelFields(),
         postEntryShape.lineFields(),
         postEntryShape.openingBalanceFields(),
+        postEntryShape.recognitionIntervalFields(),
         postEntryShape.foreignExchangeFields(),
         postEntryShape.quotedRateFields(),
         postEntryShape.taxFields(),
@@ -803,48 +895,6 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
             requestShapes.declareAccount(),
             requestShapes.declareTaxRegistration(),
             requestShapes.ledgerPlan()),
-        baseHelp.requestTemplate(),
-        baseHelp.declareAccountTemplate(),
-        baseHelp.declareTaxRegistrationTemplate(),
-        baseHelp.planTemplate(),
-        baseHelp.commands(),
-        baseHelp.quickStart(),
-        baseHelp.exitCodes(),
-        baseHelp.preflight(),
-        baseHelp.currencyModel());
-  }
-
-  private static HelpDescriptor helpDescriptorWithLedgerPlanPostingModel(
-      HelpDescriptor baseHelp,
-      ContractRequestShapes.RequestShapesDescriptor requestShapes,
-      ContractRequestShapes.LedgerPlanRequestShapeDescriptor ledgerPlanShape,
-      ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postingModel) {
-    return new HelpDescriptor(
-        baseHelp.application(),
-        baseHelp.version(),
-        baseHelp.protocolVersion(),
-        baseHelp.description(),
-        baseHelp.usage(),
-        baseHelp.bookModel(),
-        baseHelp.bookkeepingKernel(),
-        new ContractRequestShapes.RequestShapesDescriptor(
-            requestShapes.schemaDialect(),
-            requestShapes.bookkeepingEntry(),
-            requestShapes.declareAccount(),
-            requestShapes.declareTaxRegistration(),
-            new ContractRequestShapes.LedgerPlanRequestShapeDescriptor(
-                ledgerPlanShape.topLevelFields(),
-                ledgerPlanShape.stepFields(),
-                ledgerPlanShape.queryFields(),
-                ledgerPlanShape.assertionFields(),
-                postingModel,
-                ledgerPlanShape.administrationStepKinds(),
-                ledgerPlanShape.queryStepKinds(),
-                ledgerPlanShape.writeStepKinds(),
-                ledgerPlanShape.assertStepKind(),
-                ledgerPlanShape.assertionKinds(),
-                ledgerPlanShape.execution(),
-                ledgerPlanShape.schema())),
         baseHelp.requestTemplate(),
         baseHelp.declareAccountTemplate(),
         baseHelp.declareTaxRegistrationTemplate(),

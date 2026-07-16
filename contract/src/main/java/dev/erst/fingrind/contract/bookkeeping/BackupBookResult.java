@@ -1,6 +1,6 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
+import java.nio.file.Path;
 import java.util.Objects;
 
 /** Result family for exporting one closed encrypted-book backup pair. */
@@ -8,15 +8,12 @@ public sealed interface BackupBookResult
     permits BackupBookResult.BackedUp, BackupBookResult.Rejected {
 
   /** Successful encrypted-book backup outcome. */
-  record BackedUp(
-      PublicPathHint bookFilePath,
-      PublicPathHint backupFilePath,
-      PublicPathHint backupBookKeyFilePath)
+  record BackedUp(Path bookFilePath, Path backupFilePath, Path backupBookKeyFilePath)
       implements BackupBookResult {
     public BackedUp {
-      Objects.requireNonNull(bookFilePath, "bookFilePath");
-      Objects.requireNonNull(backupFilePath, "backupFilePath");
-      Objects.requireNonNull(backupBookKeyFilePath, "backupBookKeyFilePath");
+      bookFilePath = normalizedPath(bookFilePath, "bookFilePath");
+      backupFilePath = normalizedPath(backupFilePath, "backupFilePath");
+      backupBookKeyFilePath = normalizedPath(backupBookKeyFilePath, "backupBookKeyFilePath");
     }
   }
 
@@ -25,5 +22,9 @@ public sealed interface BackupBookResult
     public Rejected {
       Objects.requireNonNull(rejection, "rejection");
     }
+  }
+
+  private static Path normalizedPath(Path path, String name) {
+    return Objects.requireNonNull(path, name).toAbsolutePath().normalize();
   }
 }

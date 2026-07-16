@@ -82,20 +82,6 @@ final class CliArgumentValueParser {
         CliInvocationText.helpSyntaxHint());
   }
 
-  static CliArgumentsException invalidEnvironmentSelection(
-      String environmentVariable, String message, Throwable cause) {
-    return new CliArgumentsException(
-        ContractErrors.Descriptor.INVALID_REQUEST.code(),
-        environmentVariable,
-        message,
-        "Unset "
-            + environmentVariable
-            + " or set it to "
-            + String.join(", ", "json", "text")
-            + ", then rerun the command.",
-        cause);
-  }
-
   static CliArgumentsException unsupportedArgument(String argument, List<String> supportedOptions) {
     return invalid(argument, unsupportedArgumentMessage(argument, supportedOptions));
   }

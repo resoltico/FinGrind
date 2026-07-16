@@ -1,93 +1,47 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.StagedRestoredBookPair;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
-import java.nio.file.Path;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /** Staged restored live-book pair that publishes one re-encrypted book and key file together. */
 final class SqliteStagedRestoredBookPair implements StagedRestoredBookPair {
-  private final Path stagedBookFilePath;
-  private final Path finalBookFilePath;
-  private final Path stagedBookKeyFilePath;
-  private final Path finalBookKeyFilePath;
-  private final @Nullable Path previousBookFilePath;
-  private final @Nullable Path previousBookKeyFilePath;
+  private final SqliteOwnedStagedArtifact stagedBookFile;
+  private final SqliteOwnedStagedArtifact stagedBookKeyFile;
   private final SqliteProtectedBookVerificationSupport verificationSupport;
+  private final SqliteRestoredBookPairPublication publication;
   private @Nullable SqliteBookPassphrase restoredPassphrase;
+  private boolean bookKeyFilePublished;
   private boolean finished;
 
-  private SqliteStagedRestoredBookPair(
-      Path stagedBookFilePath,
-      Path finalBookFilePath,
-      Path stagedBookKeyFilePath,
-      Path finalBookKeyFilePath,
-      @Nullable Path previousBookFilePath,
-      @Nullable Path previousBookKeyFilePath,
-      SqliteBookPassphrase restoredPassphrase,
-      SqliteProtectedBookVerificationSupport verificationSupport) {
-    this.stagedBookFilePath = Objects.requireNonNull(stagedBookFilePath, "stagedBookFilePath");
-    this.finalBookFilePath = Objects.requireNonNull(finalBookFilePath, "finalBookFilePath");
-    this.stagedBookKeyFilePath =
-        Objects.requireNonNull(stagedBookKeyFilePath, "stagedBookKeyFilePath");
-    this.finalBookKeyFilePath =
-        Objects.requireNonNull(finalBookKeyFilePath, "finalBookKeyFilePath");
-    this.previousBookFilePath = previousBookFilePath;
-    this.previousBookKeyFilePath = previousBookKeyFilePath;
-    this.restoredPassphrase = Objects.requireNonNull(restoredPassphrase, "restoredPassphrase");
+  SqliteStagedRestoredBookPair(
+      SqliteStagedProtectedBookPairArtifacts artifacts,
+      byte[] restoredPassphraseBytes,
+      SqliteProtectedBookVerificationSupport verificationSupport,
+      SqliteRestoredBookPairPublication publication) {
+    SqliteStagedProtectedBookPairArtifacts checkedArtifacts =
+        Objects.requireNonNull(artifacts, "artifacts");
+    this.stagedBookFile = checkedArtifacts.stagedBookFile();
+    this.stagedBookKeyFile = checkedArtifacts.stagedSecretFile();
+    this.restoredPassphrase =
+        SqliteBookPassphrase.fromUtf8Bytes(
+            "staged restored-book passphrase",
+            Objects.requireNonNull(restoredPassphraseBytes, "restoredPassphraseBytes"));
     this.verificationSupport = Objects.requireNonNull(verificationSupport, "verificationSupport");
-  }
-
-  static SqliteStagedRestoredBookPair create(
-      Path stagedBookFilePath,
-      Path finalBookFilePath,
-      Path stagedBookKeyFilePath,
-      Path finalBookKeyFilePath,
-      SqliteBookPassphrase restoredPassphrase,
-      SqliteProtectedBookVerificationSupport verificationSupport) {
-    @Nullable Path previousBookFilePath = null;
-    @Nullable Path previousBookKeyFilePath = null;
-    try {
-      if (Files.exists(finalBookFilePath, LinkOption.NOFOLLOW_LINKS)) {
-        SqliteProtectedBookStagingSupport.requireRegularNonSymlinkFile(finalBookFilePath);
-        previousBookFilePath =
-            SqliteProtectedBookStagingSupport.createStagedSibling(
-                finalBookFilePath, ".previous-", ".sqlite");
-      }
-      if (Files.exists(finalBookKeyFilePath, LinkOption.NOFOLLOW_LINKS)) {
-        SqliteProtectedBookStagingSupport.requireRegularNonSymlinkFile(finalBookKeyFilePath);
-        previousBookKeyFilePath =
-            SqliteProtectedBookStagingSupport.createStagedSibling(
-                finalBookKeyFilePath, ".previous-key-", ".tmp");
-      }
-      return new SqliteStagedRestoredBookPair(
-          stagedBookFilePath,
-          finalBookFilePath,
-          stagedBookKeyFilePath,
-          finalBookKeyFilePath,
-          previousBookFilePath,
-          previousBookKeyFilePath,
-          restoredPassphrase,
-          verificationSupport);
-    } catch (RuntimeException exception) {
-      SqliteProtectedBookStagingSupport.deleteQuietlyIfPresent(previousBookFilePath);
-      SqliteProtectedBookStagingSupport.deleteQuietlyIfPresent(previousBookKeyFilePath);
-      restoredPassphrase.close();
-      throw exception;
-    }
+    this.publication = Objects.requireNonNull(publication, "publication");
   }
 
   @Override
   public MaintenanceDecision<ProtectedBookMaintenanceStore.BookVerification>
       verifyInitializedRestoredBook() {
-    return verificationSupport.verifyResolvedBook(
-        stagedBookFilePath, currentRestoredPassphrase().copy());
+    return MaintenanceDecision.accepted(
+        verificationSupport.verifyResolvedBook(
+            stagedBookFile.stagedPath(), currentRestoredPassphrase().copy()));
   }
 
   @Override
@@ -96,29 +50,63 @@ final class SqliteStagedRestoredBookPair implements StagedRestoredBookPair {
       return;
     }
     try {
-      moveTargetIfPresent(finalBookFilePath, previousBookFilePath);
-      moveTargetIfPresent(finalBookKeyFilePath, previousBookKeyFilePath);
-      SqliteProtectedBookStagingSupport.moveReplacing(stagedBookFilePath, finalBookFilePath);
-      SqliteProtectedBookStagingSupport.moveReplacing(stagedBookKeyFilePath, finalBookKeyFilePath);
-      SqliteBookFileSecurity.hardenBookArtifacts(finalBookFilePath);
-      SqliteBookFileSecurity.hardenOwnerOnlyFile(finalBookKeyFilePath);
-      deleteQuietlyIfPresent(previousBookFilePath);
-      deleteQuietlyIfPresent(previousBookKeyFilePath);
+      stagedBookFile.requireIntactFor(publication.bookTargetPath());
+      stagedBookKeyFile.requireIntactFor(publication.secretTargetPath());
+      publication.publishSecret(stagedBookKeyFile);
+      bookKeyFilePublished = true;
+      publication.publishBook(stagedBookFile);
       closeUnusedPassphrase();
-      finished = true;
+    } catch (SqliteGeneratedSecretTargetOccupiedException exception) {
+      try {
+        finishAfterFailedPublication();
+      } finally {
+        closeUnusedPassphrase();
+      }
+      throw new ProtectedBookMaintenanceRejectionException(
+          new ProtectedBookMaintenanceRejection.SecretTargetOccupied(exception.targetPath()),
+          exception);
+    } catch (SqliteCallerPathContractException exception) {
+      try {
+        finishAfterFailedPublication();
+      } finally {
+        closeUnusedPassphrase();
+      }
+      throw new ProtectedBookMaintenanceRejectionException(
+          SqliteCallerPathFailureMapper.maintenanceRejection(
+              dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole
+                  .RESTORED_TARGET,
+              exception),
+          exception);
+    } catch (java.nio.file.FileAlreadyExistsException exception) {
+      try {
+        finishAfterFailedPublication();
+      } finally {
+        closeUnusedPassphrase();
+      }
+      throw new ProtectedBookMaintenanceRejectionException(
+          new ProtectedBookMaintenanceRejection.BookDestinationOccupied(
+              publication.bookTargetPath()),
+          exception);
     } catch (IOException exception) {
-      restoreOriginalTarget(finalBookKeyFilePath, previousBookKeyFilePath);
-      restoreOriginalTarget(finalBookFilePath, previousBookFilePath);
-      SqliteProtectedBookStagingSupport.deleteQuietlyIfPresent(stagedBookFilePath);
-      SqliteProtectedBookStagingSupport.deleteQuietlyIfPresent(stagedBookKeyFilePath);
-      closeUnusedPassphrase();
-      finished = true;
+      try {
+        finishAfterFailedPublication();
+      } finally {
+        closeUnusedPassphrase();
+      }
       throw new IllegalStateException(
           "Failed to publish the restored FinGrind live-book pair at "
-              + PublicPathHint.fromPath(finalBookFilePath).value()
+              + SqliteMachinePaths.absoluteValue(publication.bookTargetPath())
               + ".",
           exception);
+    } catch (RuntimeException exception) {
+      try {
+        finishAfterFailedPublication();
+      } finally {
+        closeUnusedPassphrase();
+      }
+      throw exception;
     }
+    finishAfterSuccessfulPublication();
   }
 
   @Override
@@ -126,12 +114,12 @@ final class SqliteStagedRestoredBookPair implements StagedRestoredBookPair {
     if (finished) {
       return;
     }
-    SqliteProtectedBookStagingSupport.deleteQuietlyIfPresent(stagedBookFilePath);
-    SqliteProtectedBookStagingSupport.deleteQuietlyIfPresent(stagedBookKeyFilePath);
-    SqliteProtectedBookStagingSupport.deleteQuietlyIfPresent(previousBookFilePath);
-    SqliteProtectedBookStagingSupport.deleteQuietlyIfPresent(previousBookKeyFilePath);
-    closeUnusedPassphrase();
-    finished = true;
+    try {
+      rollbackInterruptedPair();
+    } finally {
+      closeUnusedPassphrase();
+      finished = true;
+    }
   }
 
   @Override
@@ -139,6 +127,61 @@ final class SqliteStagedRestoredBookPair implements StagedRestoredBookPair {
     if (!finished) {
       rollback();
     }
+  }
+
+  private void rollbackInterruptedPair() {
+    if (bookKeyFilePublished) {
+      SqliteProtectedBookPublicationRecovery.removePublishedSecretIfOwned(
+          publication.secretTargetPath(),
+          stagedBookKeyFile,
+          "rolling back one interrupted generated restored-book key publication");
+    }
+    try {
+      stagedBookFile.discard();
+    } finally {
+      try {
+        stagedBookKeyFile.discard();
+      } finally {
+        closeReservations();
+      }
+    }
+  }
+
+  private void finishAfterSuccessfulPublication() {
+    try {
+      discardCommittedStages();
+    } catch (RuntimeException cleanupFailure) {
+      // A restored or rekeyed pair is committed at publication and cannot safely be rolled back
+      // here.
+      SqliteBestEffort.reportCleanupFailure(
+          "discarding owned stages after protected-book pair publication", cleanupFailure);
+    } finally {
+      finished = true;
+    }
+  }
+
+  private void discardCommittedStages() {
+    try {
+      stagedBookFile.discard();
+    } finally {
+      try {
+        stagedBookKeyFile.discard();
+      } finally {
+        closeReservations();
+      }
+    }
+  }
+
+  private void finishAfterFailedPublication() {
+    try {
+      rollbackInterruptedPair();
+    } catch (RuntimeException cleanupFailure) {
+      finished = true;
+      throw new IllegalStateException(
+          "Failed to roll back the staged FinGrind restored-book pair; durable owned stages remain for recovery.",
+          cleanupFailure);
+    }
+    finished = true;
   }
 
   private SqliteBookPassphrase currentRestoredPassphrase() {
@@ -152,28 +195,7 @@ final class SqliteStagedRestoredBookPair implements StagedRestoredBookPair {
     }
   }
 
-  private static void moveTargetIfPresent(Path finalPath, @Nullable Path previousPath)
-      throws IOException {
-    if (Files.exists(finalPath, LinkOption.NOFOLLOW_LINKS)) {
-      SqliteProtectedBookStagingSupport.moveReplacing(
-          finalPath, Objects.requireNonNull(previousPath, "previousPath"));
-    }
-  }
-
-  private static void restoreOriginalTarget(Path finalPath, @Nullable Path previousPath) {
-    try {
-      if (previousPath != null && Files.exists(previousPath, LinkOption.NOFOLLOW_LINKS)) {
-        SqliteProtectedBookStagingSupport.moveReplacing(previousPath, finalPath);
-        return;
-      }
-      SqliteProtectedBookStagingSupport.deleteQuietlyIfPresent(finalPath);
-    } catch (IOException restoreFailure) {
-      SqliteBestEffort.reportCleanupFailure(
-          "restoring one previously published restore target after commit failure", restoreFailure);
-    }
-  }
-
-  private static void deleteQuietlyIfPresent(@Nullable Path path) {
-    SqliteProtectedBookStagingSupport.deleteQuietlyIfPresent(path);
+  private void closeReservations() {
+    publication.closeReservations();
   }
 }

@@ -10,12 +10,13 @@ public sealed interface RekeyBookResult permits RekeyBookResult.Rekeyed, RekeyBo
   record Rekeyed(Path bookFilePath) implements RekeyBookResult {
     /** Validates the selected book path. */
     public Rekeyed {
-      Objects.requireNonNull(bookFilePath, "bookFilePath");
+      bookFilePath =
+          Objects.requireNonNull(bookFilePath, "bookFilePath").toAbsolutePath().normalize();
     }
   }
 
   /** Deterministic refusal for rekey-book. */
-  record Rejected(BookAdministrationRejection rejection) implements RekeyBookResult {
+  record Rejected(BookMaintenanceRejection rejection) implements RekeyBookResult {
     /** Validates the deterministic rejection payload. */
     public Rejected {
       Objects.requireNonNull(rejection, "rejection");

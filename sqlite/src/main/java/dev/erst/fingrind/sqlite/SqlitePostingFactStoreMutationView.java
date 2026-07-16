@@ -1,8 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
-import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
@@ -16,11 +13,9 @@ import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Objects;
 
 /** Mutation surface over one SQLite posting-fact store. */
 interface SqlitePostingFactStoreMutationView {
@@ -29,9 +24,6 @@ interface SqlitePostingFactStoreMutationView {
 
   /** Returns the mutation operations owner for this store. */
   SqliteStoreMutationOperations storeMutationOperations();
-
-  /** Returns the authoritative protected-book path for this store. */
-  Path storeBookPath();
 
   /** Initializes a previously unopened protected book. */
   default BookOpeningOutcome openBook(
@@ -88,28 +80,5 @@ interface SqlitePostingFactStoreMutationView {
     return storeMutationOperations()
         .fiscalYearClose(
             reportingPeriod, bookIdentity, planner, currentUtcDate, closedAt, postingIdGenerator);
-  }
-
-  /** Rekeys the protected book with a replacement passphrase. */
-  default RekeyBookResult rekeyBook(SqliteBookPassphrase replacementPassphrase, Instant rekeyedAt) {
-    storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().rekeyBook(replacementPassphrase, rekeyedAt);
-  }
-
-  /** Resolves a replacement passphrase from logical access metadata before rekeying. */
-  default ContractDecision<RekeyBookResult> rekeyBook(
-      BookAccess.PassphraseSource replacementPassphraseSource,
-      SqlitePassphraseResolver passphraseResolver,
-      Instant rekeyedAt) {
-    storeThreadOwner().requireOwnerThread();
-    Objects.requireNonNull(replacementPassphraseSource, "replacementPassphraseSource");
-    Objects.requireNonNull(passphraseResolver, "passphraseResolver");
-    Objects.requireNonNull(rekeyedAt, "rekeyedAt");
-    return passphraseResolver
-        .resolve(storeBookPath(), replacementPassphraseSource, SqlitePassphraseIntent.NEW_SECRET)
-        .fold(
-            replacementPassphrase ->
-                ContractDecision.accepted(rekeyBook(replacementPassphrase, rekeyedAt)),
-            ContractDecision::rejected);
   }
 }

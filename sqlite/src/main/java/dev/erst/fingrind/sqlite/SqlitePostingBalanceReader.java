@@ -10,6 +10,8 @@ import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCursor;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -73,6 +75,26 @@ final class SqlitePostingBalanceReader {
       }
     }
     return List.copyOf(totals);
+  }
+
+  List<CurrencyBalance> loadAccountLedgerPriorBalances(
+      SqliteNativeDatabase activeDatabase, AccountLedgerCriteria query) {
+    if (query.cursor().isEmpty()) {
+      return List.of();
+    }
+    List<CurrencyBalance> balances = new ArrayList<>();
+    try (SqliteNativeStatement statement =
+        activeDatabase.prepare(SqlitePostingSql.loadAccountLedgerPriorBalances(query))) {
+      bindAccountLedgerPriorBalances(statement, query);
+      while (statement.step() == SqliteNativeResultCode.code("ROW")) {
+        balances.add(
+            BalanceMath.currencyBalance(
+                SqlitePersistedMoneyCodec.readCurrencyUnit(statement, 0),
+                statement.columnLong(1),
+                statement.columnLong(2)));
+      }
+    }
+    return List.copyOf(balances);
   }
 
   static List<CurrencyUnit> orderedCurrencyCodes(Iterable<CurrencyUnit> currencyCodes) {
@@ -141,6 +163,39 @@ final class SqlitePostingBalanceReader {
           CanonicalTemporalText.formatLocalDate(
               query.effectiveDateRange().effectiveDateTo().orElseThrow()));
     }
+  }
+
+  private static void bindAccountLedgerPriorBalances(
+      SqliteNativeStatement statement, AccountLedgerCriteria query) {
+    int bindIndex = 1;
+    statement.bindText(bindIndex, query.accountCode().value());
+    bindIndex++;
+    if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
+      statement.bindText(
+          bindIndex,
+          CanonicalTemporalText.formatLocalDate(
+              query.effectiveDateRange().effectiveDateFrom().orElseThrow()));
+      bindIndex++;
+    }
+    if (query.effectiveDateRange().effectiveDateTo().isPresent()) {
+      statement.bindText(
+          bindIndex,
+          CanonicalTemporalText.formatLocalDate(
+              query.effectiveDateRange().effectiveDateTo().orElseThrow()));
+      bindIndex++;
+    }
+    AccountLedgerCursor cursor = query.cursor().orElseThrow();
+    statement.bindText(bindIndex, CanonicalTemporalText.formatLocalDate(cursor.effectiveDate()));
+    bindIndex++;
+    statement.bindText(bindIndex, CanonicalTemporalText.formatLocalDate(cursor.effectiveDate()));
+    bindIndex++;
+    statement.bindText(bindIndex, CanonicalTemporalText.formatUtcInstant(cursor.recordedAt()));
+    bindIndex++;
+    statement.bindText(bindIndex, CanonicalTemporalText.formatLocalDate(cursor.effectiveDate()));
+    bindIndex++;
+    statement.bindText(bindIndex, CanonicalTemporalText.formatUtcInstant(cursor.recordedAt()));
+    bindIndex++;
+    statement.bindText(bindIndex, cursor.postingId().value());
   }
 
   private static JournalLine.EntrySide readEntrySide(SqliteNativeStatement statement) {

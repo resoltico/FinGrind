@@ -6,6 +6,8 @@ import static dev.erst.fingrind.executor.BookReadServiceTestSupport.FIXED_INSTAN
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityQuery;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionQuery;
@@ -59,6 +61,25 @@ class BookReadQueryTranslatorTest {
                 new PostingHistoryCursor(
                     EFFECTIVE_DATE, FIXED_INSTANT, new PostingId("posting-1")))),
         BookReadQueryTranslator.fromPublished(postingsQuery));
+    AccountLedgerQuery ledgerQuery =
+        new AccountLedgerQuery(
+            CASH_ACCOUNT.accountCode(),
+            EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE),
+            PostingCoverage.NON_CLOSING_POSTINGS,
+            25,
+            Optional.of(
+                new AccountLedgerPageCursor(
+                    EFFECTIVE_DATE, FIXED_INSTANT, new PostingId("posting-1"))));
+    assertEquals(
+        new AccountLedgerCriteria(
+            CASH_ACCOUNT.accountCode(),
+            EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE),
+            PostingCoverage.NON_CLOSING_POSTINGS,
+            25,
+            Optional.of(
+                new dev.erst.fingrind.executor.bookkeeping.AccountLedgerCursor(
+                    EFFECTIVE_DATE, FIXED_INSTANT, new PostingId("posting-1")))),
+        BookReadQueryTranslator.fromPublished(ledgerQuery));
   }
 
   @Test
@@ -108,35 +129,15 @@ class BookReadQueryTranslatorTest {
             EFFECTIVE_DATE,
             EFFECTIVE_DATE,
             PostingCoverage.NON_CLOSING_POSTINGS));
-    assertEquals(
-        new AccountLedgerCriteria(
-            CASH_ACCOUNT.accountCode(),
-            EffectiveDateRange.unbounded(),
-            PostingCoverage.NON_CLOSING_POSTINGS),
-        AccountLedgerCriteria.unbounded(
-            CASH_ACCOUNT.accountCode(), PostingCoverage.NON_CLOSING_POSTINGS));
-    assertEquals(
-        new AccountLedgerCriteria(
-            CASH_ACCOUNT.accountCode(),
-            EffectiveDateRange.unbounded(),
-            PostingCoverage.ALL_POSTING_KINDS),
-        AccountLedgerCriteria.unbounded(CASH_ACCOUNT.accountCode()));
-    assertEquals(
+    AccountLedgerCriteria ledgerCriteria =
         new AccountLedgerCriteria(
             CASH_ACCOUNT.accountCode(),
             EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE),
-            PostingCoverage.ALL_POSTING_KINDS),
-        new AccountLedgerCriteria(CASH_ACCOUNT.accountCode(), EFFECTIVE_DATE, EFFECTIVE_DATE));
-    assertEquals(
-        new AccountLedgerCriteria(
-            CASH_ACCOUNT.accountCode(),
-            EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE),
-            PostingCoverage.NON_CLOSING_POSTINGS),
-        new AccountLedgerCriteria(
-            CASH_ACCOUNT.accountCode(),
-            EFFECTIVE_DATE,
-            EFFECTIVE_DATE,
-            PostingCoverage.NON_CLOSING_POSTINGS));
+            PostingCoverage.NON_CLOSING_POSTINGS,
+            ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT,
+            Optional.empty());
+    assertEquals(ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT, ledgerCriteria.limit());
+    assertEquals(Optional.empty(), ledgerCriteria.cursor());
     assertEquals(
         new PostingHistoryQuery(
             Optional.of(CASH_ACCOUNT.accountCode()),
@@ -178,5 +179,23 @@ class BookReadQueryTranslatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> new PeriodSummaryCriteria(EFFECTIVE_DATE.plusDays(1), EFFECTIVE_DATE));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new AccountLedgerCriteria(
+                CASH_ACCOUNT.accountCode(),
+                EffectiveDateRange.unbounded(),
+                PostingCoverage.ALL_POSTING_KINDS,
+                ProtocolInteractionLimits.PAGE_LIMIT_MIN - 1,
+                Optional.empty()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new AccountLedgerCriteria(
+                CASH_ACCOUNT.accountCode(),
+                EffectiveDateRange.unbounded(),
+                PostingCoverage.ALL_POSTING_KINDS,
+                ProtocolInteractionLimits.PAGE_LIMIT_MAX + 1,
+                Optional.empty()));
   }
 }

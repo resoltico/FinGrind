@@ -5,8 +5,6 @@ import dev.erst.fingrind.core.AccountRole;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
-import dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.AccountExpectation;
-import dev.erst.fingrind.executor.PostEntryRoleAccountExpectations.DistinctAccountPair;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAccountSemanticsViolations;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
@@ -23,10 +21,23 @@ final class PostEntryRoleAccountValidationSupport {
       Map<AccountCode, RegisteredAccount> accounts,
       String selectorField,
       String selectorValue,
-      DistinctAccountPair distinctPair,
-      AccountExpectation... expectations) {
-    requireDistinctRoleAccounts(violations, selectorField, selectorValue, distinctPair);
-    for (AccountExpectation expectation : expectations) {
+      PostEntryDistinctAccountPair distinctPair,
+      PostEntryAccountExpectation... expectations) {
+    validate(
+        violations, accounts, selectorField, selectorValue, List.of(distinctPair), expectations);
+  }
+
+  static void validate(
+      List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
+      Map<AccountCode, RegisteredAccount> accounts,
+      String selectorField,
+      String selectorValue,
+      List<PostEntryDistinctAccountPair> distinctPairs,
+      PostEntryAccountExpectation... expectations) {
+    for (PostEntryDistinctAccountPair distinctPair : distinctPairs) {
+      requireDistinctRoleAccounts(violations, selectorField, selectorValue, distinctPair);
+    }
+    for (PostEntryAccountExpectation expectation : expectations) {
       validateExpectation(violations, accounts, selectorField, selectorValue, expectation);
     }
   }
@@ -36,7 +47,7 @@ final class PostEntryRoleAccountValidationSupport {
       Map<AccountCode, RegisteredAccount> accounts,
       String selectorField,
       String selectorValue,
-      @Nullable AccountExpectation expectation) {
+      @Nullable PostEntryAccountExpectation expectation) {
     if (expectation == null) {
       return;
     }
@@ -48,7 +59,7 @@ final class PostEntryRoleAccountValidationSupport {
       Map<AccountCode, RegisteredAccount> accounts,
       String selectorField,
       String selectorValue,
-      AccountExpectation expectation) {
+      PostEntryAccountExpectation expectation) {
     if (expectation.expectedAccountType() != null) {
       requireAccountType(
           violations,
@@ -95,7 +106,7 @@ final class PostEntryRoleAccountValidationSupport {
       List<BookkeepingPostingRejection.EntrySemanticsViolation> violations,
       String selectorField,
       String selectorValue,
-      DistinctAccountPair distinctPair) {
+      PostEntryDistinctAccountPair distinctPair) {
     if (!distinctPair.firstAccountCode().equals(distinctPair.secondAccountCode())) {
       return;
     }

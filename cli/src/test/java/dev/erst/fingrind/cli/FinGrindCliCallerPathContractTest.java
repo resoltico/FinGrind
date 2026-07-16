@@ -10,7 +10,6 @@ import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -106,7 +105,7 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
         runStandardCli(
             new String[] {
               "generate-book-key-file",
-              "--book-key-file",
+              "--new-book-key-file",
               keyFilePath.toString(),
               "--output",
               "text"
@@ -181,7 +180,7 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
         runStandardCli(
             new String[] {
               "generate-book-key-file",
-              "--book-key-file",
+              "--new-book-key-file",
               keyFilePath.toString(),
               "--tighten-parents",
               "--output",
@@ -193,7 +192,7 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
     JsonNode envelope = CliJsonObjectMappers.configuredObjectMapper().readTree(observed.stdout());
     assertEquals("ok", envelope.path("status").stringValue(), observed.stdout());
     assertEquals(
-        CliPublicPaths.redactedValue(looseSecretsDirectory),
+        CliPublicPaths.absoluteValue(looseSecretsDirectory),
         envelope.path("payload").path("tightenedParentDirectories").get(0).stringValue(),
         observed.stdout());
     assertTrue(Files.exists(keyFilePath));
@@ -240,7 +239,7 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
     JsonNode envelope = CliJsonObjectMappers.configuredObjectMapper().readTree(observed.stdout());
     assertEquals("ok", envelope.path("status").stringValue(), observed.stdout());
     assertEquals(
-        CliPublicPaths.redactedValue(looseBooksDirectory),
+        CliPublicPaths.absoluteValue(looseBooksDirectory),
         envelope.path("payload").path("tightenedParentDirectories").get(0).stringValue(),
         observed.stdout());
     assertTrue(Files.exists(bookFilePath));
@@ -265,7 +264,7 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
         runStandardCli(
             new String[] {
               "generate-book-key-file",
-              "--book-key-file",
+              "--new-book-key-file",
               keyFilePath.toString(),
               "--tighten-parents",
               "--output",
@@ -288,7 +287,7 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
         runStandardCli(
             new String[] {
               "generate-book-key-file",
-              "--book-key-file",
+              "--new-book-key-file",
               missingKeyFilePath.toString(),
               "--output",
               "text"
@@ -297,7 +296,7 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
         runStandardCli(
             new String[] {
               "generate-book-key-file",
-              "--book-key-file",
+              "--new-book-key-file",
               missingKeyFilePath.toString(),
               "--output",
               "json"
@@ -306,11 +305,21 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
     assertTextFailure(textObserved, 6, ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.code());
     assertTrue(
         textObserved.stderr().contains("already exists as a non-directory"), textObserved.stderr());
+    String absoluteKeyFile = CliPublicPaths.absoluteValue(missingKeyFilePath);
+    assertTrue(textObserved.stderr().contains("<redacted>"), textObserved.stderr());
+    assertFalse(textObserved.stderr().contains(absoluteKeyFile), textObserved.stderr());
     assertFalse(textObserved.stderr().contains("internal-error"), textObserved.stderr());
     assertJsonFailure(
         jsonObserved, 6, "error", ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.code());
     assertTrue(
         jsonObserved.stderr().contains("already exists as a non-directory"), jsonObserved.stderr());
+    JsonNode jsonEnvelope =
+        CliJsonObjectMappers.configuredObjectMapper().readTree(jsonObserved.stderr());
+    assertEquals(absoluteKeyFile, jsonEnvelope.path("path").stringValue());
+    assertEquals(0, jsonEnvelope.path("relatedPaths").size());
+    assertFalse(
+        jsonEnvelope.path("message").stringValue().contains(absoluteKeyFile),
+        jsonObserved.stderr());
     assertFalse(jsonObserved.stderr().contains("internal-error"), jsonObserved.stderr());
   }
 
@@ -327,7 +336,7 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
                 new BackupBookResult.Rejected(
                     new BookMaintenanceRejection.ArtifactPathInvalid(
                         BookMaintenanceArtifactRole.BACKUP_TARGET,
-                        PublicPathHint.fromPath(backupFilePath),
+                        backupFilePath,
                         BookMaintenancePathFailure.PARENT_OWNER_ONLY_REQUIRED)));
           }
         };
@@ -343,7 +352,7 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
               "book.key",
               "--backup-file",
               "backup/entity.sqlite",
-              "--backup-key-file",
+              "--new-backup-key-file",
               "backup/entity.key",
               "--output",
               "json"
@@ -363,14 +372,15 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
           @Override
           public dev.erst.fingrind.contract.runtime.ContractDecision<RestoreBookResult> restoreBook(
               Path bookFilePath,
-              Path bookKeyFilePath,
+              Path newBookKeyFilePath,
               Path backupFilePath,
-              Path backupKeyFilePath) {
+              Path backupKeyFilePath,
+              boolean replaceExistingBook) {
             return accepted(
                 new RestoreBookResult.Rejected(
                     new BookMaintenanceRejection.ArtifactPathInvalid(
                         BookMaintenanceArtifactRole.RESTORED_TARGET,
-                        PublicPathHint.fromPath(bookFilePath),
+                        bookFilePath,
                         BookMaintenancePathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE)));
           }
         };
@@ -382,7 +392,7 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
               "restore-book",
               "--book-file",
               "book.sqlite",
-              "--book-key-file",
+              "--new-book-key-file",
               "book.key",
               "--backup-file",
               "backup/entity.sqlite",

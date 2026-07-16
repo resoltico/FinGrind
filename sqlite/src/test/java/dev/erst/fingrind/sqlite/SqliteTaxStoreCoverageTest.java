@@ -143,11 +143,14 @@ class SqliteTaxStoreCoverageTest extends SqlitePostingFactStoreTestSupport {
       postingFactStore.openBook(INITIALIZED_AT, bookIdentity(), List.of());
       declareTaxPostingAccounts(postingFactStore);
 
-      assertEquals(List.of(), postingFactStore.storeReadOperations().allTaxRegistrations());
+      assertEquals(
+          List.of(),
+          postingFactStore.storeReadOperations().taxRegistrations().allTaxRegistrations());
       assertEquals(
           Optional.empty(),
           postingFactStore
               .storeReadOperations()
+              .taxRegistrations()
               .findTaxRegistration(new TaxRegistrationId("missing-tax")));
       assertEquals(List.of(), readSession.postings(EffectiveDateRange.unbounded()));
       assertEquals(Optional.empty(), readSession.earliestPostingEffectiveDate());
@@ -233,6 +236,7 @@ class SqliteTaxStoreCoverageTest extends SqlitePostingFactStoreTestSupport {
       TaxRegistrationPage secondPage =
           postingFactStore
               .storeReadOperations()
+              .taxRegistrations()
               .listTaxRegistrations(new ListTaxRegistrationsQuery(1, firstPage.nextCursor()));
       assertEquals(List.of(latviaUpdated.registration()), secondPage.registrations());
       assertEquals(Optional.empty(), secondPage.nextCursor());

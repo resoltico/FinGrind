@@ -23,6 +23,7 @@ import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.DiscoveryFocus;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
+import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -476,7 +477,7 @@ class CliJsonModelValidationTest {
             List.of(
                 new CliPlanJsonModels.LedgerJournalEntryPayload(
                     "step-1",
-                    LedgerJournalKind.ENSURE_BOOK,
+                    LedgerStepKind.ENSURE_BOOK,
                     null,
                     null,
                     LedgerStepStatus.SUCCEEDED,
@@ -550,7 +551,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliPlanJsonModels.LedgerJournalEntryPayload(
                 "step-1",
-                LedgerJournalKind.ENSURE_BOOK,
+                LedgerStepKind.ENSURE_BOOK,
                 null,
                 null,
                 LedgerStepStatus.SUCCEEDED,
@@ -563,7 +564,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliPlanJsonModels.LedgerJournalEntryPayload(
                 "step-1",
-                LedgerJournalKind.ENSURE_BOOK,
+                LedgerStepKind.ENSURE_BOOK,
                 null,
                 null,
                 LedgerStepStatus.REJECTED,
@@ -630,7 +631,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliPlanJsonModels.LedgerJournalEntryPayload(
                 "step-1",
-                LedgerJournalKind.ENSURE_BOOK,
+                LedgerStepKind.ENSURE_BOOK,
                 LedgerAssertionKind.ACCOUNT_DECLARED,
                 null,
                 LedgerStepStatus.SUCCEEDED,
@@ -643,7 +644,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliPlanJsonModels.LedgerJournalEntryPayload(
                 "step-1",
-                LedgerJournalKind.PLAN_BOUNDARY,
+                LedgerJournalKind.BoundaryKind.PLAN_BOUNDARY,
                 null,
                 null,
                 LedgerStepStatus.REJECTED,
@@ -656,7 +657,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliPlanJsonModels.LedgerJournalEntryPayload(
                 "step-1",
-                LedgerJournalKind.ENSURE_BOOK,
+                LedgerStepKind.ENSURE_BOOK,
                 null,
                 LedgerBoundaryCheckpoint.BEGIN,
                 LedgerStepStatus.SUCCEEDED,
@@ -669,7 +670,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliPlanJsonModels.LedgerJournalEntryPayload(
                 "step-1",
-                LedgerJournalKind.ENSURE_BOOK,
+                LedgerStepKind.ENSURE_BOOK,
                 null,
                 null,
                 LedgerStepStatus.ASSERTION_FAILED,
@@ -711,9 +712,10 @@ class CliJsonModelValidationTest {
         assertInstanceOf(CliErrorJsonModels.InvalidRequestDetails.class, failure.details())
             .violations());
     assertThrows(IllegalArgumentException.class, () -> new CliFailure(" ", "message", null, null));
-    assertThrows(IllegalArgumentException.class, () -> new CliFailure("code", " ", null, null));
-    CliFailure blankOptionalFields = new CliFailure("code", "message", " ", " ");
-    assertEquals("code", blankOptionalFields.code());
+    assertThrows(
+        IllegalArgumentException.class, () -> new CliFailure("invalid-request", " ", null, null));
+    CliFailure blankOptionalFields = new CliFailure("invalid-request", "message", " ", " ");
+    assertEquals("invalid-request", blankOptionalFields.code());
     assertEquals("message", blankOptionalFields.message());
     assertEquals(null, blankOptionalFields.hint());
     assertEquals(null, blankOptionalFields.argument());

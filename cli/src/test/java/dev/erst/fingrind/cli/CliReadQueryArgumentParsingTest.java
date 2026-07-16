@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
@@ -42,6 +43,65 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
     assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
     assertEquals(Path.of("book.key"), assertKeyFileSource(command.bookAccess()).bookKeyFilePath());
     assertEquals(new ListAccountsQuery(50, Optional.empty()), command.query());
+  }
+
+  @Test
+  void parse_accountLedgerAcceptsAValidatedKeysetWindowWhileAccountBalanceRejectsIt() {
+    AccountLedgerPageCursor cursor =
+        new AccountLedgerPageCursor(
+            LocalDate.parse("2026-04-07"),
+            Instant.parse("2026-04-07T12:00:00Z"),
+            new PostingId("posting-1"));
+    AccountLedger command =
+        assertInstanceOf(
+            AccountLedger.class,
+            CliArguments.parse(
+                new String[] {
+                  "account-ledger",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--account-code",
+                  "1000",
+                  "--limit",
+                  "1",
+                  "--cursor",
+                  cursor.wireValue()
+                }));
+
+    assertEquals(1, command.query().limit());
+    assertEquals(Optional.of(cursor), command.query().cursor());
+    assertThrows(
+        CliArgumentsException.class,
+        () ->
+            CliArguments.parse(
+                new String[] {
+                  "account-balance",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--account-code",
+                  "1000",
+                  "--limit",
+                  "1"
+                }));
+    assertThrows(
+        CliArgumentsException.class,
+        () ->
+            CliArguments.parse(
+                new String[] {
+                  "account-ledger",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "book.key",
+                  "--account-code",
+                  "1000",
+                  "--cursor",
+                  "not-a-cursor"
+                }));
   }
 
   @Test
@@ -330,7 +390,12 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
     assertEquals(Path.of("reports/trial-balance.pdf"), trialBalance.output().pdfOutPath());
     assertEquals(
         new AccountLedgerQuery(
-            new AccountCode("1000"), LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+            new AccountCode("1000"),
+            dev.erst.fingrind.core.EffectiveDateRange.of(
+                LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+            PostingCoverage.ALL_POSTING_KINDS,
+            50,
+            Optional.empty()),
         accountLedger.query());
     assertEquals(OutputMode.TEXT, accountLedger.output().outputMode());
     assertEquals(Path.of("reports/cash-ledger.pdf"), accountLedger.output().pdfOutPath());
@@ -635,9 +700,11 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
     assertEquals(
         new AccountLedgerQuery(
             new AccountCode("1000"),
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"),
-            PostingCoverage.NON_CLOSING_POSTINGS),
+            dev.erst.fingrind.core.EffectiveDateRange.of(
+                LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+            PostingCoverage.NON_CLOSING_POSTINGS,
+            50,
+            Optional.empty()),
         accountLedger.query());
     assertEquals(
         new PeriodSummaryQuery(

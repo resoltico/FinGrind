@@ -1,12 +1,12 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseCommand;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.BookAccess.PassphraseSource;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
@@ -26,6 +26,7 @@ final class CliAdministrativeCommandExecutor {
   private final CliFailureResponseWriter failureWriter;
   private final CliBookLifecycleWorkflow lifecycleWorkflow;
   private final CliBookMutationWorkflow mutationWorkflow;
+  private final CliAccountRegistryMutationActions accountRegistryCommands;
 
   CliAdministrativeCommandExecutor(
       CliRequestReader requestReader,
@@ -38,6 +39,9 @@ final class CliAdministrativeCommandExecutor {
     this.failureWriter = Objects.requireNonNull(failureWriter, "failureWriter");
     this.lifecycleWorkflow = Objects.requireNonNull(lifecycleWorkflow, "lifecycleWorkflow");
     this.mutationWorkflow = Objects.requireNonNull(mutationWorkflow, "mutationWorkflow");
+    this.accountRegistryCommands =
+        new CliAccountRegistryMutationActions(
+            this.requestReader, this.responseWriter, this.failureWriter, this.mutationWorkflow);
   }
 
   int runGenerateBookKeyFileCommand(
@@ -72,14 +76,28 @@ final class CliAdministrativeCommandExecutor {
     if (promptFailure.isPresent()) {
       return promptFailure.orElseThrow();
     }
-    return CliCommandOutcomeWriter.writeResolvedResult(
-        lifecycleWorkflow.openBook(bookAccess, command),
-        result ->
-            responseWriter.writeOpenBookResult(
-                bookAccess.bookFilePath(), tightenedParentDirectories, result, outputMode),
-        CliAdministrativeExitCodes::exitCodeFor,
-        failureWriter,
-        outputMode);
+    return lifecycleWorkflow
+        .openBook(bookAccess, command)
+        .fold(
+            result -> {
+              responseWriter.writeOpenBookResult(
+                  bookAccess.bookFilePath(), tightenedParentDirectories, result, outputMode);
+              return CliAdministrativeExitCodes.exitCodeFor(result);
+            },
+            failure -> {
+              CliFailure cliFailure =
+                  failure.descriptor() == ContractErrors.Descriptor.BOOK_DESTINATION_OCCUPIED
+                      ? new CliFailure(
+                          failure.code(),
+                          failure.message(),
+                          failure.hint(),
+                          failure.argument(),
+                          bookAccess.bookFilePath(),
+                          List.of())
+                      : CliFailureMapper.contractFailure(failure);
+              failureWriter.writeFailure(cliFailure, outputMode);
+              return CliExecutionPolicy.contractFailureExitCode(failure);
+            });
   }
 
   private static List<Path> tightenedBookKeyParentDirectories(
@@ -93,9 +111,7 @@ final class CliAdministrativeCommandExecutor {
           .toList();
     } catch (IOException exception) {
       throw new IllegalStateException(
-          "Failed to tighten the existing book-key parent directory: "
-              + CliPublicPaths.redactedValue(bookKeyFilePath),
-          exception);
+          "Failed to tighten the existing book-key parent directory.", exception);
     }
   }
 
@@ -109,17 +125,13 @@ final class CliAdministrativeCommandExecutor {
           .toList();
     } catch (IOException exception) {
       throw new IllegalStateException(
-          "Failed to tighten the existing book parent directory: "
-              + CliPublicPaths.redactedValue(bookFilePath),
-          exception);
+          "Failed to tighten the existing book parent directory.", exception);
     }
   }
 
-  int runRekeyBookCommand(
-      BookAccess bookAccess, PassphraseSource replacementPassphraseSource, OutputMode outputMode) {
+  int runRekeyBookCommand(BookAccess bookAccess, Path newBookKeyFilePath, OutputMode outputMode) {
     Optional<Integer> promptFailure =
-        CliExecutionPolicy.interactivePromptOutputFailure(
-                outputMode, bookAccess.passphraseSource(), replacementPassphraseSource)
+        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
             .map(
                 failure ->
                     CliCommandOutcomeWriter.writeDeterministicFailure(
@@ -128,9 +140,8 @@ final class CliAdministrativeCommandExecutor {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
-        lifecycleWorkflow.rekeyBook(bookAccess, replacementPassphraseSource),
-        result ->
-            responseWriter.writeRekeyBookResult(result, replacementPassphraseSource, outputMode),
+        lifecycleWorkflow.rekeyBook(bookAccess, newBookKeyFilePath),
+        result -> responseWriter.writeRekeyBookResult(result, newBookKeyFilePath, outputMode),
         CliAdministrativeExitCodes::exitCodeFor,
         failureWriter,
         outputMode);
@@ -160,13 +171,18 @@ final class CliAdministrativeCommandExecutor {
 
   int runRestoreBookCommand(
       Path bookFilePath,
-      Path bookKeyFilePath,
+      Path newBookKeyFilePath,
       Path backupFilePath,
       Path backupKeyFilePath,
+      boolean replaceExistingBook,
       OutputMode outputMode) {
     return CliCommandOutcomeWriter.writeResolvedResult(
         lifecycleWorkflow.restoreBook(
-            bookFilePath, bookKeyFilePath, backupFilePath, backupKeyFilePath),
+            bookFilePath,
+            newBookKeyFilePath,
+            backupFilePath,
+            backupKeyFilePath,
+            replaceExistingBook),
         result -> responseWriter.writeRestoreBookResult(result, outputMode),
         CliAdministrativeExitCodes::exitCodeFor,
         failureWriter,
@@ -225,22 +241,7 @@ final class CliAdministrativeCommandExecutor {
   }
 
   int runDeclareAccountCommand(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
-    Optional<Integer> promptFailure =
-        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
-            .map(
-                failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, failureWriter, outputMode));
-    if (promptFailure.isPresent()) {
-      return promptFailure.orElseThrow();
-    }
-    DeclareAccountCommand command = requestReader.readDeclareAccountCommand(requestFile);
-    return CliCommandOutcomeWriter.writeResolvedResult(
-        mutationWorkflow.declareAccount(bookAccess, command),
-        result -> responseWriter.writeDeclareAccountResult(result, outputMode),
-        CliAdministrativeExitCodes::exitCodeFor,
-        failureWriter,
-        outputMode);
+    return accountRegistryCommands.runDeclareAccountCommand(bookAccess, requestFile, outputMode);
   }
 
   int runDeclareTaxRegistrationCommand(
@@ -262,6 +263,14 @@ final class CliAdministrativeCommandExecutor {
         CliAdministrativeExitCodes::exitCodeFor,
         failureWriter,
         outputMode);
+  }
+
+  int runAmendAccountCommand(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
+    return accountRegistryCommands.runAmendAccountCommand(bookAccess, requestFile, outputMode);
+  }
+
+  int runRetireAccountCommand(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
+    return accountRegistryCommands.runRetireAccountCommand(bookAccess, requestFile, outputMode);
   }
 
   int runInterimResultSweepCommand(

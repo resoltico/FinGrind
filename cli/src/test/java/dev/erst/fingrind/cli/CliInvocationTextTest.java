@@ -153,9 +153,34 @@ class CliInvocationTextTest {
         CliInvocationText.launcherCommandForCurrentRuntime(
             null, "Linux", unnamedModule, "fingrind.txt"));
     assertEquals(
-        "fingrind",
+        "java --enable-native-access=dev.erst.fingrind.cli"
+            + " --add-opens=java.base/java.nio=dev.erst.fingrind.cli"
+            + " --add-exports=java.base/sun.nio=dev.erst.fingrind.cli --module-path fingrind.jar"
+            + " --module dev.erst.fingrind.cli/dev.erst.fingrind.cli.App",
         CliInvocationText.launcherCommandForCurrentRuntime(
             null, "Linux", Object.class.getModule(), "fingrind.jar"));
+  }
+
+  @Test
+  void rewriteInvocationPrefix_prefersLauncherSuppliedInvocationAndRejectsBlankLabels() {
+    String originalInvocation = System.getProperty(FinGrindCli.INVOCATION_PROPERTY);
+    try {
+      System.clearProperty(FinGrindCli.INVOCATION_PROPERTY);
+      CliInvocationText.rewriteInvocationPrefix("fingrind help");
+
+      System.setProperty(FinGrindCli.INVOCATION_PROPERTY, "./custom-fingrind");
+      assertEquals(
+          "./custom-fingrind help", CliInvocationText.rewriteInvocationPrefix("fingrind help"));
+
+      System.setProperty(FinGrindCli.INVOCATION_PROPERTY, "   ");
+      CliInvocationText.rewriteInvocationPrefix("fingrind help");
+    } finally {
+      if (originalInvocation == null) {
+        System.clearProperty(FinGrindCli.INVOCATION_PROPERTY);
+      } else {
+        System.setProperty(FinGrindCli.INVOCATION_PROPERTY, originalInvocation);
+      }
+    }
   }
 
   @Test

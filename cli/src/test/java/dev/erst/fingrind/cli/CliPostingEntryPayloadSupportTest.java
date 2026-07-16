@@ -7,19 +7,27 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
+import dev.erst.fingrind.cli.json.CliFixedAssetPostingJsonModels;
 import dev.erst.fingrind.cli.json.CliForeignExchangeJsonModels;
 import dev.erst.fingrind.cli.json.CliPostingEntryPayload;
 import dev.erst.fingrind.cli.json.CliTaxJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.InventoryRelief;
+import dev.erst.fingrind.contract.bookkeeping.LatvianPayrollBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.ResolvedInventoryCosting;
+import dev.erst.fingrind.contract.bookkeeping.ResolvedLatvianPayrollSettlement;
 import dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct;
 import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
 import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
 import dev.erst.fingrind.contract.fx.QuotedExchangeRate;
+import dev.erst.fingrind.contract.payroll.LatvianMonthlyPayrollCalculation;
+import dev.erst.fingrind.contract.payroll.LatvianPayrollEmployeeReference;
+import dev.erst.fingrind.contract.payroll.LatvianPayrollMonth;
+import dev.erst.fingrind.contract.payroll.LatvianPayrollRunId;
+import dev.erst.fingrind.contract.payroll.LatvianPayrollSettlementKind;
 import dev.erst.fingrind.contract.tax.AppliedTax;
 import dev.erst.fingrind.contract.tax.TaxApplicationKind;
 import dev.erst.fingrind.contract.tax.TaxCode;
@@ -186,7 +194,12 @@ class CliPostingEntryPayloadSupportTest {
                 NullTestSupport.nullOf(CliBookQueryJsonModels.ReversalPayload.class),
                 NullTestSupport.<List<dev.erst.fingrind.cli.json.CliOpeningBalancePayload>>nullOf(),
                 NullTestSupport.nullOf(
-                    CliPostingEntryPayload.ResolvedInventoryCostingPayload.class)));
+                    CliPostingEntryPayload.ResolvedInventoryCostingPayload.class),
+                NullTestSupport.nullOf(CliPostingEntryPayload.AccrualCutoffPayload.class),
+                NullTestSupport.nullOf(CliPostingEntryPayload.LatvianMonthlyPayrollPayload.class),
+                NullTestSupport.nullOf(
+                    CliPostingEntryPayload.LatvianPayrollSettlementPayload.class),
+                NullTestSupport.nullOf(CliFixedAssetPostingJsonModels.FixedAssetPayload.class)));
 
     assertTrue(rendered.contains("Resolved tax code name"));
     assertTrue(rendered.contains("VAT Nonrecoverable Expense"));
@@ -223,7 +236,12 @@ class CliPostingEntryPayloadSupportTest {
                 NullTestSupport.nullOf(CliBookQueryJsonModels.ReversalPayload.class),
                 List.of(),
                 NullTestSupport.nullOf(
-                    CliPostingEntryPayload.ResolvedInventoryCostingPayload.class)));
+                    CliPostingEntryPayload.ResolvedInventoryCostingPayload.class),
+                NullTestSupport.nullOf(CliPostingEntryPayload.AccrualCutoffPayload.class),
+                NullTestSupport.nullOf(CliPostingEntryPayload.LatvianMonthlyPayrollPayload.class),
+                NullTestSupport.nullOf(
+                    CliPostingEntryPayload.LatvianPayrollSettlementPayload.class),
+                NullTestSupport.nullOf(CliFixedAssetPostingJsonModels.FixedAssetPayload.class)));
 
     assertTrue(openingFacts.contains("Opening balances"));
     assertTrue(openingFacts.contains("1000"));
@@ -312,6 +330,137 @@ class CliPostingEntryPayloadSupportTest {
     assertTrue(rendered.contains("Derived quantity relieved"));
     assertTrue(rendered.contains("Moving-average unit cost (informational)"));
     assertTrue(rendered.contains("8.33"));
+  }
+
+  @Test
+  void entryPayload_andRenderedFacts_preserveExecutorResolvedLatvianPayrollFacts() {
+    LatvianPayrollRunId runId = new LatvianPayrollRunId("payroll-run-2026-07-employee-001");
+    LatvianMonthlyPayrollCalculation calculation =
+        new LatvianMonthlyPayrollCalculation(
+            money("2000.00"),
+            money("210.00"),
+            money("471.80"),
+            money("550.00"),
+            money("316.20"),
+            money("1473.80"));
+    CliPostingEntryPayload monthlyPayroll =
+        entryPayload(
+            new LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll(
+                LocalDate.parse("2026-07-31"),
+                runId,
+                new LatvianPayrollEmployeeReference("employee-001"),
+                LatvianPayrollMonth.parse("2026-07"),
+                new AccountCode("5000"),
+                new AccountCode("5010"),
+                new AccountCode("2200"),
+                new AccountCode("2210"),
+                new AccountCode("2220"),
+                new AccountCode("2230"),
+                new MonetaryAmount("EUR", "200000"),
+                calculation));
+    ResolvedLatvianPayrollSettlement settlement =
+        new ResolvedLatvianPayrollSettlement(
+            LatvianPayrollSettlementKind.NET_WAGES,
+            runId,
+            new AccountCode("1000"),
+            new AccountCode("2200"),
+            new AccountCode("2210"),
+            new AccountCode("2220"),
+            new AccountCode("2230"),
+            calculation.netWages(),
+            calculation.employeeSocialContribution(),
+            calculation.employerSocialContribution(),
+            calculation.personalIncomeTax());
+    CliPostingEntryPayload netWageSettlement =
+        entryPayload(
+            new LatvianPayrollBookkeepingEntryVariants.NetWageSettlement(
+                LocalDate.parse("2026-08-01"), runId, new AccountCode("1000"), settlement));
+    CliPostingEntryPayload stateRemittance =
+        entryPayload(
+            new LatvianPayrollBookkeepingEntryVariants.StateRemittance(
+                LocalDate.parse("2026-08-02"),
+                runId,
+                new AccountCode("1000"),
+                new ResolvedLatvianPayrollSettlement(
+                    LatvianPayrollSettlementKind.STATE_REMITTANCE,
+                    runId,
+                    new AccountCode("1000"),
+                    new AccountCode("2200"),
+                    new AccountCode("2210"),
+                    new AccountCode("2220"),
+                    new AccountCode("2230"),
+                    calculation.netWages(),
+                    calculation.employeeSocialContribution(),
+                    calculation.employerSocialContribution(),
+                    calculation.personalIncomeTax())));
+
+    var resolvedCalculation =
+        Objects.requireNonNull(monthlyPayroll.latvianMonthlyPayroll()).resolvedCalculation();
+    var netSettlement = Objects.requireNonNull(netWageSettlement.latvianPayrollSettlement());
+    var stateSettlement = Objects.requireNonNull(stateRemittance.latvianPayrollSettlement());
+
+    assertEquals("LATVIAN_MONTHLY_PAYROLL", monthlyPayroll.entryKind());
+    assertEquals(
+        "payroll-run-2026-07-employee-001", monthlyPayroll.latvianMonthlyPayroll().payrollRunId());
+    assertEquals("147380", Objects.requireNonNull(resolvedCalculation).netWages().minorUnits());
+    assertEquals("LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT", netWageSettlement.entryKind());
+    assertEquals("NET_WAGES", netSettlement.settlementKind());
+    assertEquals(
+        "147380",
+        Objects.requireNonNull(netSettlement.resolvedSettlement()).netWages().minorUnits());
+    assertEquals("LATVIAN_PAYROLL_STATE_REMITTANCE", stateRemittance.entryKind());
+    assertEquals("STATE_REMITTANCE", stateSettlement.settlementKind());
+    assertEquals(
+        "47180",
+        Objects.requireNonNull(stateSettlement.resolvedSettlement())
+            .employerSocialContribution()
+            .minorUnits());
+    assertTrue(
+        CliPostingEntryPayloadSupport.renderEntryFacts(monthlyPayroll)
+            .contains("Resolved net wages"));
+    assertTrue(
+        CliPostingEntryPayloadSupport.renderEntryFacts(netWageSettlement)
+            .contains("Resolved net wages"));
+    assertTrue(
+        CliPostingEntryPayloadSupport.renderEntryFacts(stateRemittance)
+            .contains("Payroll settlement kind"));
+  }
+
+  @Test
+  void entryPayload_andRenderedFacts_preserveUnresolvedLatvianPayrollCallerFacts() {
+    LatvianPayrollRunId runId = new LatvianPayrollRunId("payroll-run-2026-07-employee-001");
+    CliPostingEntryPayload monthlyPayroll =
+        entryPayload(
+            new LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll(
+                LocalDate.parse("2026-07-31"),
+                runId,
+                new LatvianPayrollEmployeeReference("employee-001"),
+                LatvianPayrollMonth.parse("2026-07"),
+                new AccountCode("5000"),
+                new AccountCode("5010"),
+                new AccountCode("2200"),
+                new AccountCode("2210"),
+                new AccountCode("2220"),
+                new AccountCode("2230"),
+                new MonetaryAmount("EUR", "200000"),
+                null));
+    CliPostingEntryPayload netWageSettlement =
+        entryPayload(
+            new LatvianPayrollBookkeepingEntryVariants.NetWageSettlement(
+                LocalDate.parse("2026-08-01"), runId, new AccountCode("1000"), null));
+
+    assertNull(
+        Objects.requireNonNull(monthlyPayroll.latvianMonthlyPayroll()).resolvedCalculation());
+    assertNull(
+        Objects.requireNonNull(netWageSettlement.latvianPayrollSettlement()).resolvedSettlement());
+    String monthlyText = CliPostingEntryPayloadSupport.renderEntryFacts(monthlyPayroll);
+    String settlementText = CliPostingEntryPayloadSupport.renderEntryFacts(netWageSettlement);
+    assertTrue(monthlyText.contains("Payroll run id"));
+    assertTrue(monthlyText.contains("Gross wages"));
+    assertFalse(monthlyText.contains("Resolved net wages"));
+    assertTrue(settlementText.contains("Payroll settlement kind"));
+    assertTrue(settlementText.contains("Payroll run id"));
+    assertFalse(settlementText.contains("Resolved net wages"));
   }
 
   @Test

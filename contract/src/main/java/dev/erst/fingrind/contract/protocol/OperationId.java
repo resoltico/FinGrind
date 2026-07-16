@@ -37,6 +37,10 @@ public enum OperationId implements WireValue {
   RESTORE_REKEY_ROLLBACK,
   /** Declares or reactivates one account. */
   DECLARE_ACCOUNT,
+  /** Replaces the definition of a never-posted, unreferenced account. */
+  AMEND_ACCOUNT,
+  /** Retires a zero-balance account from ordinary authored posting use. */
+  RETIRE_ACCOUNT,
   /** Declares or updates one owned tax registration. */
   DECLARE_TAX_REGISTRATION,
   /** Transfers one contiguous reporting period into the policy-selected result-holding account. */
@@ -67,6 +71,18 @@ public enum OperationId implements WireValue {
   FINANCIAL_POSITION,
   /** Computes exact per-account inventory carrying values from the inventory movement ledger. */
   INVENTORY_VALUATION,
+  /** Computes the durable schedule of prepayments, deferred revenue, and accrued expenses. */
+  ACCRUAL_CUTOFF_SCHEDULE,
+  /** Computes the durable register of fixed-asset lifecycle facts. */
+  FIXED_ASSET_REGISTER,
+  /** Computes the durable register of financing principal and interest lifecycle facts. */
+  FINANCING_REGISTER,
+  /**
+   * Computes the durable register of foreign-currency receivable and settlement lifecycle facts.
+   */
+  REALIZED_FOREIGN_EXCHANGE_REGISTER,
+  /** Computes the durable register of Latvian payroll calculations and settlement lineage. */
+  LATVIAN_PAYROLL_REGISTER,
   /** Computes one bounded income statement. */
   INCOME_STATEMENT,
   /** Computes one bounded cash-flow statement. */
@@ -95,6 +111,40 @@ public enum OperationId implements WireValue {
   RECORD_INVENTORY_SHRINKAGE,
   /** Commits one inventory count-increase entry. */
   RECORD_INVENTORY_COUNT_INCREASE,
+  /** Commits one cash-funded prepayment and its recognition schedule. */
+  RECORD_PREPAYMENT,
+  /** Commits one cash-funded deferred-revenue liability and its recognition schedule. */
+  RECORD_DEFERRED_REVENUE,
+  /** Commits one unpaid accrued expense. */
+  RECORD_ACCRUED_EXPENSE,
+  /** Recognizes one scheduled prepayment or deferred-revenue amount. */
+  RECORD_ACCRUAL_CUTOFF_RECOGNITION,
+  /** Settles one accrued-expense liability. */
+  RECORD_ACCRUED_EXPENSE_SETTLEMENT,
+  /** Commits one executor-resolved Latvian monthly payroll accrual. */
+  RECORD_LATVIAN_MONTHLY_PAYROLL,
+  /** Settles the exact net-wage obligation of the retained Latvian payroll run. */
+  RECORD_LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT,
+  /** Remits the exact state obligation of the retained Latvian payroll run. */
+  RECORD_LATVIAN_PAYROLL_STATE_REMITTANCE,
+  /** Capitalizes one fixed asset with its owned useful-life facts. */
+  RECORD_FIXED_ASSET_CAPITALIZATION,
+  /** Records one periodic depreciation amount against a fixed asset. */
+  RECORD_FIXED_ASSET_DEPRECIATION,
+  /** Disposes one fixed asset with its retained lifecycle lineage. */
+  RECORD_FIXED_ASSET_DISPOSAL,
+  /** Records one borrowing into a retained financing arrangement. */
+  RECORD_FINANCING_BORROWING,
+  /** Records one principal repayment against a retained financing arrangement. */
+  RECORD_FINANCING_PRINCIPAL_REPAYMENT,
+  /** Records one interest accrual against a retained financing arrangement. */
+  RECORD_FINANCING_INTEREST_ACCRUAL,
+  /** Records one interest payment against a retained financing arrangement. */
+  RECORD_FINANCING_INTEREST_PAYMENT,
+  /** Records one foreign-currency receivable with its functional carrying amount. */
+  RECORD_FOREIGN_CURRENCY_OBLIGATION,
+  /** Settles one retained foreign-currency obligation and derives realized gain or loss. */
+  RECORD_REALIZED_FOREIGN_EXCHANGE_SETTLEMENT,
   /** Commits one settled expense entry using the expense-first request language. */
   RECORD_EXPENSE_SETTLED,
   /** Commits one expense-on-credit entry using the expense-first request language. */
@@ -125,6 +175,37 @@ public enum OperationId implements WireValue {
           Map.entry(EconomicEventClass.INVENTORY_WRITE_DOWN, RECORD_INVENTORY_WRITE_DOWN),
           Map.entry(EconomicEventClass.INVENTORY_SHRINKAGE, RECORD_INVENTORY_SHRINKAGE),
           Map.entry(EconomicEventClass.INVENTORY_COUNT_INCREASE, RECORD_INVENTORY_COUNT_INCREASE),
+          Map.entry(EconomicEventClass.PREPAYMENT, RECORD_PREPAYMENT),
+          Map.entry(EconomicEventClass.DEFERRED_REVENUE, RECORD_DEFERRED_REVENUE),
+          Map.entry(EconomicEventClass.ACCRUED_EXPENSE, RECORD_ACCRUED_EXPENSE),
+          Map.entry(
+              EconomicEventClass.ACCRUAL_CUTOFF_RECOGNITION, RECORD_ACCRUAL_CUTOFF_RECOGNITION),
+          Map.entry(
+              EconomicEventClass.ACCRUED_EXPENSE_SETTLEMENT, RECORD_ACCRUED_EXPENSE_SETTLEMENT),
+          Map.entry(EconomicEventClass.LATVIAN_MONTHLY_PAYROLL, RECORD_LATVIAN_MONTHLY_PAYROLL),
+          Map.entry(
+              EconomicEventClass.LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT,
+              RECORD_LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT),
+          Map.entry(
+              EconomicEventClass.LATVIAN_PAYROLL_STATE_REMITTANCE,
+              RECORD_LATVIAN_PAYROLL_STATE_REMITTANCE),
+          Map.entry(
+              EconomicEventClass.FIXED_ASSET_CAPITALIZATION, RECORD_FIXED_ASSET_CAPITALIZATION),
+          Map.entry(EconomicEventClass.FIXED_ASSET_DEPRECIATION, RECORD_FIXED_ASSET_DEPRECIATION),
+          Map.entry(EconomicEventClass.FIXED_ASSET_DISPOSAL, RECORD_FIXED_ASSET_DISPOSAL),
+          Map.entry(EconomicEventClass.FINANCING_BORROWING, RECORD_FINANCING_BORROWING),
+          Map.entry(
+              EconomicEventClass.FINANCING_PRINCIPAL_REPAYMENT,
+              RECORD_FINANCING_PRINCIPAL_REPAYMENT),
+          Map.entry(
+              EconomicEventClass.FINANCING_INTEREST_ACCRUAL, RECORD_FINANCING_INTEREST_ACCRUAL),
+          Map.entry(
+              EconomicEventClass.FINANCING_INTEREST_PAYMENT, RECORD_FINANCING_INTEREST_PAYMENT),
+          Map.entry(
+              EconomicEventClass.FOREIGN_CURRENCY_OBLIGATION, RECORD_FOREIGN_CURRENCY_OBLIGATION),
+          Map.entry(
+              EconomicEventClass.REALIZED_FOREIGN_EXCHANGE_SETTLEMENT,
+              RECORD_REALIZED_FOREIGN_EXCHANGE_SETTLEMENT),
           Map.entry(EconomicEventClass.SETTLED_EXPENSE, RECORD_EXPENSE_SETTLED),
           Map.entry(EconomicEventClass.CREDIT_EXPENSE, RECORD_EXPENSE_ON_CREDIT),
           Map.entry(EconomicEventClass.AR_SETTLEMENT, RECORD_RECEIPT),

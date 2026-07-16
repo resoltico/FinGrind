@@ -90,6 +90,8 @@ class FinGrindCliDiscoveryHelpCommandTestSupport extends FinGrindCliDiscoveryCom
     assertContainsPrefixedFieldRows(
         help, postingModel.openingBalanceFields(), "steps[].posting.openingBalances[].");
     assertContainsPrefixedFieldRows(
+        help, postingModel.recognitionIntervalFields(), "steps[].posting.recognitionInterval.");
+    assertContainsPrefixedFieldRows(
         help, postingModel.foreignExchangeFields(), "steps[].posting.foreignExchange.");
     assertContainsPrefixedFieldRows(
         help, postingModel.quotedRateFields(), "steps[].posting.foreignExchange.quotedRate.");

@@ -13,43 +13,59 @@ final class CliMaintenanceFailureOutputRenderer {
       CliRejectionJsonModels.MaintenanceRejectionDetails rejectionDetails) {
     switch (rejectionDetails) {
       case CliRejectionJsonModels.BookFileDetails details ->
-          rows.add(List.of("Book file", details.bookFile()));
+          rows.add(List.of("Book file", redactedPath(details.bookFile())));
       case CliRejectionJsonModels.BookAndBackupFileDetails details -> {
-        rows.add(List.of("Book file", details.bookFile()));
-        rows.add(List.of("Backup file", details.backupFile()));
+        rows.add(List.of("Book file", redactedPath(details.bookFile())));
+        rows.add(List.of("Backup file", redactedPath(details.backupFile())));
       }
       case CliRejectionJsonModels.BlockingArtifactsDetails details -> {
-        rows.add(List.of("Book file", details.bookFile()));
-        rows.add(List.of("Blocking artifacts", CliTextFormat.joined(details.blockingArtifacts())));
+        rows.add(List.of("Book file", redactedPath(details.bookFile())));
+        rows.add(
+            List.of(
+                "Blocking artifacts",
+                CliTextFormat.joined(
+                    details.blockingArtifacts().stream()
+                        .map(CliMaintenanceFailureOutputRenderer::redactedPath)
+                        .toList())));
       }
       case CliArtifactPathFailureDetails details -> {
         rows.add(List.of("Artifact role", details.artifactRole()));
-        rows.add(List.of("Artifact path", details.artifactPath()));
+        rows.add(List.of("Artifact path", redactedPath(details.artifactPath())));
         rows.add(List.of("Path failure", details.pathFailure()));
       }
       case CliRejectionJsonModels.ArtifactBusyDetails details -> {
         rows.add(List.of("Artifact role", details.artifactRole()));
-        rows.add(List.of("Artifact path", details.artifactPath()));
+        rows.add(List.of("Artifact path", redactedPath(details.artifactPath())));
       }
       case CliRejectionJsonModels.BackupFileDetails details ->
-          rows.add(List.of("Backup file", details.backupFile()));
-      case CliRejectionJsonModels.BackupBookKeyFileDetails details ->
-          rows.add(List.of("Backup key file", details.backupBookKeyFile()));
+          rows.add(List.of("Backup file", redactedPath(details.backupFile())));
+      case CliRejectionJsonModels.SecretTargetDetails details ->
+          rows.add(List.of("Secret target", redactedPath(details.secretTarget())));
       case CliRejectionJsonModels.ArtifactVerificationFailureDetails details -> {
         rows.add(List.of("Artifact role", details.artifactRole()));
-        rows.add(List.of("Artifact path", details.artifactPath()));
+        rows.add(List.of("Artifact path", redactedPath(details.artifactPath())));
         rows.add(List.of("Verification failure", details.verificationFailure()));
       }
       case CliRejectionJsonModels.RollbackArtifactDetails details ->
-          rows.add(List.of("Rollback artifact", details.rollbackArtifact()));
+          rows.add(List.of("Rollback artifact", redactedPath(details.rollbackArtifact())));
       case CliRejectionJsonModels.RollbackArtifactMismatchDetails details -> {
-        rows.add(List.of("Book file", details.bookFile()));
-        rows.add(List.of("Rollback artifact", details.rollbackArtifact()));
+        rows.add(List.of("Book file", redactedPath(details.bookFile())));
+        rows.add(List.of("Rollback artifact", redactedPath(details.rollbackArtifact())));
       }
       case CliRejectionJsonModels.RollbackArtifactSelectionDetails details -> {
-        rows.add(List.of("Book file", details.bookFile()));
-        rows.add(List.of("Rollback artifacts", CliTextFormat.joined(details.rollbackArtifacts())));
+        rows.add(List.of("Book file", redactedPath(details.bookFile())));
+        rows.add(
+            List.of(
+                "Rollback artifacts",
+                CliTextFormat.joined(
+                    details.rollbackArtifacts().stream()
+                        .map(CliMaintenanceFailureOutputRenderer::redactedPath)
+                        .toList())));
       }
     }
+  }
+
+  private static String redactedPath(String absolutePath) {
+    return CliTextDisplay.path(java.nio.file.Path.of(absolutePath));
   }
 }

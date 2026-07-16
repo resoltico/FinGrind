@@ -92,11 +92,24 @@ final class CliInvocationText {
   }
 
   private static String launcherCommandForCurrentRuntime() {
+    String launcherInvocation = configuredInvocationLabel();
+    if (launcherInvocation != null) {
+      return launcherInvocation;
+    }
     return launcherCommandForCurrentRuntime(
         configuredRuntimeDistribution(),
         System.getProperty("os.name", ""),
         CliInvocationText.class.getModule(),
         currentCodeSourceFileName(CliInvocationText.class.getProtectionDomain().getCodeSource()));
+  }
+
+  private static @Nullable String configuredInvocationLabel() {
+    String configuredInvocation = System.getProperty(FinGrindCli.INVOCATION_PROPERTY);
+    if (configuredInvocation == null) {
+      return null;
+    }
+    String normalizedInvocation = configuredInvocation.strip();
+    return normalizedInvocation.isEmpty() ? null : normalizedInvocation;
   }
 
   static String launcherCommandForCurrentRuntime(
@@ -112,7 +125,7 @@ final class CliInvocationText {
       return launcherCommandFor(normalizedDistribution, osName);
     }
     String normalizedJarFileName = normalizeCodeSourceJarFileName(codeSourceFileName);
-    if (!launchModule.isNamed() && normalizedJarFileName != null) {
+    if (normalizedJarFileName != null) {
       return rawJarLauncherCommand(normalizedJarFileName);
     }
     return NEUTRAL_LAUNCHER_COMMAND;

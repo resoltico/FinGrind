@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
@@ -34,10 +35,10 @@ final class LedgerPlanListQueryAssertions {
   }
 
   static String expectedListQueryGroupName(LedgerJournalKind kind) {
-    if (kind == LedgerJournalKind.LIST_ACCOUNTS) {
+    if (kind == LedgerStepKind.LIST_ACCOUNTS) {
       return "account";
     }
-    if (kind == LedgerJournalKind.LIST_POSTINGS) {
+    if (kind == LedgerStepKind.LIST_POSTINGS) {
       return "posting";
     }
     throw new IllegalArgumentException(

@@ -67,7 +67,8 @@ public final class FinancialPositionReportModelBuilder
     }
     return new ReportModel(
         dev.erst.fingrind.contract.protocol.OperationId.FINANCIAL_POSITION.wireName(),
-        "Financial Position",
+        ReportModelSupport.reportTitle(
+            dev.erst.fingrind.contract.protocol.OperationId.FINANCIAL_POSITION),
         ReportModel.Orientation.LANDSCAPE,
         ReportModelSupport.context(
             report.bookIdentity(),

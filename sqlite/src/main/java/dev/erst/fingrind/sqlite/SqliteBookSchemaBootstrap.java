@@ -35,26 +35,23 @@ final class SqliteBookSchemaBootstrap {
     Path normalizedBookPath = bookPath.toAbsolutePath().normalize();
     Path parent = normalizedBookPath.getParent();
     if (parent == null) {
-      throw invalidBookFilePath(
-          normalizedBookPath,
-          new IllegalArgumentException(
-              "Book path must resolve against a writable parent directory."));
+      throw invalidBookFilePath(normalizedBookPath);
     }
     try {
       secureParentDirectoryEnsurer.ensure(normalizedBookPath);
     } catch (SqliteCallerPathContractException exception) {
       throw new ContractFailureException(
           SqliteCallerPathFailureMapper.invalidBookFilePath(exception));
-    } catch (IOException | IllegalArgumentException | IllegalStateException exception) {
-      throw invalidBookFilePath(normalizedBookPath, exception);
+    } catch (IOException | IllegalArgumentException | IllegalStateException ignored) {
+      throw invalidBookFilePath(normalizedBookPath);
     }
   }
 
-  private static ContractFailureException invalidBookFilePath(
-      Path normalizedBookPath, Exception exception) {
+  private static ContractFailureException invalidBookFilePath(Path normalizedBookPath) {
     return new ContractFailureException(
-        ContractErrors.Descriptor.INVALID_BOOK_FILE_PATH.failure(
-            SqliteBookFileSecuritySupport.invalidBookFilePathMessage(normalizedBookPath, exception),
+        ContractErrors.Descriptor.INVALID_BOOK_FILE_PATH.failureAt(
+            normalizedBookPath,
+            SqliteBookFileSecuritySupport.invalidBookFilePathMessage(),
             SqliteBookFileSecuritySupport.invalidBookFilePathHint(),
             null));
   }

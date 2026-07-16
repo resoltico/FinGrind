@@ -1,7 +1,9 @@
 package dev.erst.fingrind.executor.workflow;
 
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.PostingApplicationService;
+import dev.erst.fingrind.executor.TaxAdministrationService;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
@@ -17,6 +19,7 @@ import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
+import dev.erst.fingrind.executor.spi.TaxAdministrationStore;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -28,6 +31,7 @@ final class LedgerPlanStepExecutor {
   private final BookAdministrationService bookAdministrationService;
   private final BookkeepingReadService bookkeepingReadService;
   private final PostingApplicationService postingApplicationService;
+  private final TaxAdministrationService taxAdministrationService;
 
   LedgerPlanStepExecutor(
       BookAdministrationStore administrationStore,
@@ -35,6 +39,7 @@ final class LedgerPlanStepExecutor {
       BookkeepingReadStore readStore,
       PostingValidationStore validationStore,
       PostingCommitStore commitStore,
+      TaxAdministrationStore taxAdministrationStore,
       PostingIdGenerator postingIdGenerator,
       Clock clock) {
     Objects.requireNonNull(administrationStore, "administrationStore");
@@ -42,6 +47,7 @@ final class LedgerPlanStepExecutor {
     Objects.requireNonNull(readStore, "readStore");
     Objects.requireNonNull(validationStore, "validationStore");
     Objects.requireNonNull(commitStore, "commitStore");
+    Objects.requireNonNull(taxAdministrationStore, "taxAdministrationStore");
     Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
     this.clock = Objects.requireNonNull(clock, "clock");
     this.bookAdministrationService =
@@ -49,6 +55,8 @@ final class LedgerPlanStepExecutor {
     this.bookkeepingReadService = new BookkeepingReadService(readStore);
     this.postingApplicationService =
         new PostingApplicationService(validationStore, commitStore, postingIdGenerator, clock);
+    this.taxAdministrationService =
+        new TaxAdministrationService(readStore, readStore, taxAdministrationStore, clock);
   }
 
   BookLifecycleInspection inspectBook() {
@@ -67,6 +75,8 @@ final class LedgerPlanStepExecutor {
               ensureBookOutcome(ensureBook.bookIdentity());
           case BookWorkflowStep.DeclareAccount declareAccount ->
               declareAccountOutcome(declareAccount.command());
+          case BookWorkflowStep.DeclareTaxRegistration declareTaxRegistration ->
+              declareTaxRegistrationOutcome(declareTaxRegistration.command());
           case BookWorkflowStep.PreflightEntry preflightEntry -> preflightOutcome(preflightEntry);
           case BookWorkflowStep.PostEntry postEntry -> postEntryOutcome(postEntry);
           case BookWorkflowStep.InspectBook _ -> inspectBookOutcome();
@@ -75,7 +85,7 @@ final class LedgerPlanStepExecutor {
           case BookWorkflowStep.ListPostings listPostings -> listPostingsOutcome(listPostings);
           case BookWorkflowStep.AccountBalance accountBalance ->
               accountBalanceOutcome(accountBalance);
-          case BookWorkflowStep.Assert assertion -> assertionOutcome(assertion.assertion());
+          case BookWorkflowAssertionStep assertion -> assertionOutcome(assertion.assertion());
         };
     Instant finishedAt = Instant.now(clock);
     return switch (outcome) {
@@ -179,6 +189,23 @@ final class LedgerPlanStepExecutor {
               LedgerPlanFactMapper.accountDeclarationFacts("unchanged", unchanged.account()));
       case AccountDeclarationOutcome.Rejected rejected ->
           LedgerPlanRejectedOutcomes.administrationRejection(rejected.rejection());
+    };
+  }
+
+  private LedgerPlanStepOutcome declareTaxRegistrationOutcome(
+      dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand command) {
+    return switch (taxAdministrationService.declareTaxRegistration(command)) {
+      case DeclareTaxRegistrationResult.Declared declared ->
+          LedgerPlanStepOutcomes.stepSucceeded(
+              LedgerPlanFactMapper.taxRegistrationFacts("declared", declared.registration()));
+      case DeclareTaxRegistrationResult.Updated updated ->
+          LedgerPlanStepOutcomes.stepSucceeded(
+              LedgerPlanFactMapper.taxRegistrationFacts("updated", updated.registration()));
+      case DeclareTaxRegistrationResult.Unchanged unchanged ->
+          LedgerPlanStepOutcomes.stepSucceeded(
+              LedgerPlanFactMapper.taxRegistrationFacts("unchanged", unchanged.registration()));
+      case DeclareTaxRegistrationResult.Rejected rejected ->
+          LedgerPlanRejectedOutcomes.taxDeclarationRejection(rejected.rejection());
     };
   }
 

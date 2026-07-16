@@ -108,6 +108,7 @@ class MachineContractDiscoverySurfaceTest {
     assertEquals(MachineContract.protocolVersion(), version.protocolVersion());
     assertEquals(IDENTITY.description(), version.description());
     assertEquals(MachineContract.protocolVersion(), capabilities.protocolVersion());
+    assertEquals(ProtocolCatalog.domain().capabilities(), capabilities.capabilityCatalog());
     assertEquals("single-sqlite-file", capabilities.storage().bookBoundary());
     assertEquals(
         ProtocolCatalog.operations().size(),
@@ -204,7 +205,7 @@ class MachineContractDiscoverySurfaceTest {
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_REVERSAL))
             .entryKind());
     assertEquals("cash-reserve", MachineContract.declareAccountTemplate().accountCode());
-    assertEquals("plan-1", MachineContract.planTemplate().planId());
+    assertEquals("tax-setup", MachineContract.planTemplate().planId());
     assertNull(MachineContractTemplatesCatalog.requestShapesFor(null));
     assertNull(
         MachineContractTemplatesCatalog.requestShapesFor(
@@ -351,11 +352,9 @@ class MachineContractDiscoverySurfaceTest {
     assertNull(requestShapes.declareAccount());
     assertNotNull(requestShapes.ledgerPlan());
     assertNotNull(executePlanHelp.planTemplate());
-    assertEquals(
-        dev.erst.fingrind.core.BookkeepingEntryKind.SALE_SETTLED,
-        Objects.requireNonNull(executePlanHelp.planTemplate())
-            .canonicalPostingTemplate()
-            .entryKind());
+    assertEquals("tax-setup", Objects.requireNonNull(executePlanHelp.planTemplate()).planId());
+    assertFalse(
+        executePlanHelp.planTemplate().steps().stream().anyMatch(step -> step.posting() != null));
     assertTrue(
         recordComponentNames(LedgerPlanRequestShapeDescriptor.class).contains("postingModel"),
         () ->
@@ -521,7 +520,8 @@ class MachineContractDiscoverySurfaceTest {
         steps
             .generateKey()
             .text()
-            .startsWith("fingrind generate-book-key-file --book-key-file ./secrets/acme.book-key"));
+            .startsWith(
+                "fingrind generate-book-key-file --new-book-key-file ./secrets/acme.book-key"));
     assertTrue(steps.introNote().text().contains("fingrind is already on PATH"));
     assertPlaceholderRequestPreparation(steps);
   }
@@ -534,7 +534,7 @@ class MachineContractDiscoverySurfaceTest {
             .startsWith(
                 ProtocolCatalog.distribution()
                         .bundleLauncherCommand(PublicCliBundleTarget.LINUX_X86_64)
-                    + " generate-book-key-file --book-key-file ./secrets/acme.book-key"));
+                    + " generate-book-key-file --new-book-key-file ./secrets/acme.book-key"));
     assertTrue(steps.openBook().text().contains("--book-file ./books/acme.sqlite"));
     assertEquals(
         "cp ./quick-start-request.json ./request.json", steps.requestPreparationCommand().text());
@@ -550,7 +550,7 @@ class MachineContractDiscoverySurfaceTest {
             .text()
             .startsWith(
                 ProtocolCatalog.distribution().sourceCheckoutLauncherCommand(windows)
-                    + " generate-book-key-file --book-key-file "
+                    + " generate-book-key-file --new-book-key-file "
                     + bookKeyPath));
     assertRuntimeManagedQuickStartSteps(steps);
   }
@@ -563,7 +563,7 @@ class MachineContractDiscoverySurfaceTest {
             .text()
             .startsWith(
                 ProtocolCatalog.distribution().directJavaLauncherCommand(windows)
-                    + " generate-book-key-file --book-key-file "
+                    + " generate-book-key-file --new-book-key-file "
                     + bookKeyPath));
     assertRuntimeManagedQuickStartSteps(steps);
   }
@@ -575,7 +575,7 @@ class MachineContractDiscoverySurfaceTest {
             .text()
             .startsWith(
                 ProtocolCatalog.distribution().containerLauncherCommand()
-                    + " generate-book-key-file --book-key-file ./secrets/acme.book-key"));
+                    + " generate-book-key-file --new-book-key-file ./secrets/acme.book-key"));
     assertTrue(steps.introNote().text().contains("session-local fingrind wrapper"));
     assertPlaceholderRequestPreparation(steps);
   }

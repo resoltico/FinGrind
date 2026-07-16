@@ -15,6 +15,8 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdent
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPagination;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
 import dev.erst.fingrind.core.BalanceSide;
@@ -23,6 +25,7 @@ import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCursor;
 import dev.erst.fingrind.executor.bookkeeping.AccountLedgerView;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingReadReportPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.PeriodAccountActivityView;
@@ -83,6 +86,9 @@ class BookkeepingReadReportPublishedLanguageTranslatorTest {
             REGISTERED_CASH_ACCOUNT,
             EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE),
             PostingCoverage.ALL_POSTING_KINDS,
+            50,
+            Optional.empty(),
+            Optional.empty(),
             List.of(),
             List.of(),
             List.of());
@@ -106,6 +112,9 @@ class BookkeepingReadReportPublishedLanguageTranslatorTest {
             REGISTERED_CASH_ACCOUNT,
             EffectiveDateRange.of(LocalDate.MIN, null),
             PostingCoverage.ALL_POSTING_KINDS,
+            50,
+            Optional.empty(),
+            Optional.empty(),
             List.of(),
             List.of(),
             List.of());
@@ -129,6 +138,9 @@ class BookkeepingReadReportPublishedLanguageTranslatorTest {
             REGISTERED_CASH_ACCOUNT,
             EffectiveDateRange.unbounded(),
             PostingCoverage.ALL_POSTING_KINDS,
+            50,
+            Optional.empty(),
+            Optional.empty(),
             List.of(),
             List.of(),
             List.of());
@@ -152,6 +164,9 @@ class BookkeepingReadReportPublishedLanguageTranslatorTest {
             REGISTERED_CASH_ACCOUNT,
             EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE),
             PostingCoverage.ALL_POSTING_KINDS,
+            50,
+            Optional.empty(),
+            Optional.empty(),
             List.of(currencyBalance("3.00", "0.00", "3.00", BalanceSide.DEBIT)),
             List.of(),
             List.of(currencyBalance("13.00", "0.00", "13.00", BalanceSide.DEBIT)));
@@ -166,6 +181,57 @@ class BookkeepingReadReportPublishedLanguageTranslatorTest {
         BookkeepingReadReportPublishedLanguageTranslator.toPublished(
                 bookIdentity(), populatedLedger)
             .closingBalances());
+  }
+
+  @Test
+  void reportTranslator_publishesSuppliedAndNextAccountLedgerCursors() {
+    AccountLedgerCursor suppliedCursor =
+        AccountLedgerCursor.fromPosting(postingFact("posting-1", "idem-1"));
+    AccountLedgerCursor nextCursor =
+        AccountLedgerCursor.fromPosting(postingFact("posting-2", "idem-2"));
+    AccountLedgerView paginatedLedger =
+        new AccountLedgerView(
+            REGISTERED_CASH_ACCOUNT,
+            EffectiveDateRange.of(EFFECTIVE_DATE, EFFECTIVE_DATE),
+            PostingCoverage.ALL_POSTING_KINDS,
+            50,
+            Optional.of(suppliedCursor),
+            Optional.of(nextCursor),
+            List.of(),
+            List.of(),
+            List.of());
+
+    assertEquals(
+        new AccountLedgerPagination(
+            50,
+            Optional.of(
+                new AccountLedgerPageCursor(
+                    suppliedCursor.effectiveDate(),
+                    suppliedCursor.recordedAt(),
+                    suppliedCursor.postingId())),
+            Optional.of(
+                new AccountLedgerPageCursor(
+                    nextCursor.effectiveDate(), nextCursor.recordedAt(), nextCursor.postingId()))),
+        BookkeepingReadReportPublishedLanguageTranslator.toPublished(
+                bookIdentity(), paginatedLedger)
+            .pagination());
+  }
+
+  @Test
+  void accountLedgerView_rejectsANonpositivePageLimit() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new AccountLedgerView(
+                REGISTERED_CASH_ACCOUNT,
+                EffectiveDateRange.unbounded(),
+                PostingCoverage.ALL_POSTING_KINDS,
+                0,
+                Optional.empty(),
+                Optional.empty(),
+                List.of(),
+                List.of(),
+                List.of()));
   }
 
   @Test

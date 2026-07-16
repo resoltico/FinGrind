@@ -14,12 +14,17 @@ import dev.erst.fingrind.contract.tax.TaxJurisdiction;
 import dev.erst.fingrind.contract.tax.TaxObligationFrequency;
 import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.util.List;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 /** Coverage tests for the tax-registration discovery scaffold and validation owners. */
 class TaxDiscoveryTemplateCoverageTest {
+  private static final MethodHandle TAX_CODE_SCAFFOLD_VALUE = taxCodeScaffoldValueHandle();
+
   @Test
   void taxTemplateCatalogAndRequestShapes_publishCanonicalTaxSurface() {
     ContractTemplates.DeclareTaxRegistrationTemplateDescriptor template =
@@ -45,7 +50,10 @@ class TaxDiscoveryTemplateCoverageTest {
         TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE,
         template.taxCodes().getLast().applicationKind());
     assertEquals(template, MachineContract.declareTaxRegistrationTemplate());
-    assertNull(saleTemplate.tax());
+    assertEquals(
+        ScaffoldPlaceholders.TAX_REGISTRATION_ID,
+        Objects.requireNonNull(saleTemplate.tax()).taxRegistrationId());
+    assertEquals(ScaffoldPlaceholders.OUTPUT_TAX_CODE, saleTemplate.tax().taxCode());
     assertEquals(
         template,
         MachineContractTemplatesCatalog.declareTaxRegistrationTemplateFor(
@@ -78,6 +86,38 @@ class TaxDiscoveryTemplateCoverageTest {
                 ownerContributionDescriptor.taxFields(),
                 ProtocolPostEntryFields.Tax.TAX_REGISTRATION_ID)
             .presence());
+  }
+
+  @Test
+  void postingTemplates_publishTaxSelectorsExactlyWhenCanonicalFactsAllowTax() {
+    for (BookkeepingEntryKind entryKind : BookkeepingEntryKind.values()) {
+      ContractTemplates.PostingRequestTemplateDescriptor template =
+          MachineContractPostEntryVariantSchemas.template(entryKind);
+      boolean taxAllowed =
+          ProtocolCatalog.domain()
+              .requestSurface()
+              .bookkeepingEntryKind(entryKind)
+              .optionalTopLevelFields()
+              .contains(ProtocolPostEntryFields.TopLevel.TAX);
+
+      assertEquals(taxAllowed, template.tax() != null, entryKind.wireValue());
+      if (taxAllowed) {
+        assertEquals(
+            ScaffoldPlaceholders.TAX_REGISTRATION_ID,
+            Objects.requireNonNull(template.tax()).taxRegistrationId(),
+            entryKind.wireValue());
+        assertEquals(expectedTaxCodePlaceholder(entryKind), template.tax().taxCode());
+      }
+    }
+  }
+
+  @Test
+  void taxCodeScaffoldPolicy_rejectsAnUnmappedEntryKind() {
+    IllegalStateException rejection =
+        assertThrows(
+            IllegalStateException.class, () -> taxCodeScaffoldValue(BookkeepingEntryKind.RECEIPT));
+
+    assertEquals("No tax-selector scaffold policy is defined for RECEIPT.", rejection.getMessage());
   }
 
   @Test
@@ -144,7 +184,7 @@ class TaxDiscoveryTemplateCoverageTest {
             IllegalArgumentException.class,
             () ->
                 ContractPostingTemplateFieldRules.forbidTax(
-                    new ContractTemplates.TaxSelectionTemplateDescriptor(
+                    new ContractSettlementTemplates.TaxSelectionTemplateDescriptor(
                         "vat-lv", "vat-standard-sale"),
                     "ownerContribution"));
     assertEquals("tax must be absent for ownerContribution.", forbiddenTax.getMessage());
@@ -223,5 +263,43 @@ class TaxDiscoveryTemplateCoverageTest {
   private static ContractRequestShapes.RequestFieldDescriptor fieldNamed(
       List<ContractRequestShapes.RequestFieldDescriptor> fields, String name) {
     return fields.stream().filter(field -> name.equals(field.name())).findFirst().orElseThrow();
+  }
+
+  private static String expectedTaxCodePlaceholder(BookkeepingEntryKind entryKind) {
+    return switch (entryKind) {
+      case SALE_SETTLED, SALE_ON_CREDIT -> ScaffoldPlaceholders.OUTPUT_TAX_CODE;
+      case PURCHASE_SETTLED,
+          PURCHASE_ON_CREDIT,
+          INVENTORY_CAPITALIZATION_SETTLED,
+          INVENTORY_CAPITALIZATION_ON_CREDIT,
+          EXPENSE_SETTLED,
+          EXPENSE_ON_CREDIT ->
+          ScaffoldPlaceholders.INPUT_TAX_CODE;
+      default -> throw new AssertionError("Unexpected tax-capable entry kind: " + entryKind);
+    };
+  }
+
+  private static String taxCodeScaffoldValue(BookkeepingEntryKind entryKind) {
+    try {
+      return (String) TAX_CODE_SCAFFOLD_VALUE.invoke(entryKind);
+    } catch (RuntimeException exception) {
+      throw exception;
+    } catch (Error error) {
+      throw error;
+    } catch (Throwable throwable) {
+      throw new AssertionError("taxCodeScaffoldValue threw unexpectedly.", throwable);
+    }
+  }
+
+  private static MethodHandle taxCodeScaffoldValueHandle() {
+    try {
+      return MethodHandles.lookup()
+          .findStatic(
+              MachineContractPostEntryTaxTemplateSupport.class,
+              "taxCodeScaffoldValue",
+              MethodType.methodType(String.class, BookkeepingEntryKind.class));
+    } catch (ReflectiveOperationException exception) {
+      throw new LinkageError("Unable to access taxCodeScaffoldValue.", exception);
+    }
   }
 }

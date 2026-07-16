@@ -90,13 +90,12 @@ class SqliteProtectedBookVerificationSupportCoverageTest
         SqliteBookPassphrase.fromUtf8Bytes(
             "missing-inspection", "secret".getBytes(StandardCharsets.UTF_8))) {
       ProtectedBookMaintenanceStore.BookVerification verification =
-          acceptedValue(
-              invokeInspectOpenedBook(
-                  normalizedBookPath,
-                  readSession(
-                      () -> new BookLifecycleInspection.Missing(SqliteBookContract.FORMAT_VERSION),
-                      () -> sessionClosed.set(true)),
-                  bookPassphrase));
+          invokeInspectOpenedBook(
+              normalizedBookPath,
+              readSession(
+                  () -> new BookLifecycleInspection.Missing(SqliteBookContract.FORMAT_VERSION),
+                  () -> sessionClosed.set(true)),
+              bookPassphrase);
 
       assertVerificationFailure(
           verification, normalizedBookPath, ProtectedBookVerificationFailure.MISSING);
@@ -168,20 +167,12 @@ class SqliteProtectedBookVerificationSupportCoverageTest
     }
   }
 
-  private static dev.erst.fingrind.executor.maintenance.MaintenanceDecision<
-          ProtectedBookMaintenanceStore.BookVerification>
-      invokeInspectOpenedBook(
-          Path normalizedBookPath, SqliteReadSession session, SqliteBookPassphrase bookPassphrase) {
+  private static ProtectedBookMaintenanceStore.BookVerification invokeInspectOpenedBook(
+      Path normalizedBookPath, SqliteReadSession session, SqliteBookPassphrase bookPassphrase) {
     try {
-      @SuppressWarnings("unchecked")
-      dev.erst.fingrind.executor.maintenance.MaintenanceDecision<
-              ProtectedBookMaintenanceStore.BookVerification>
-          decision =
-              (dev.erst.fingrind.executor.maintenance.MaintenanceDecision<
-                      ProtectedBookMaintenanceStore.BookVerification>)
-                  INSPECT_OPENED_BOOK.invoke(
-                      VERIFICATION_SUPPORT, normalizedBookPath, session, bookPassphrase);
-      return decision;
+      return (ProtectedBookMaintenanceStore.BookVerification)
+          INSPECT_OPENED_BOOK.invoke(
+              VERIFICATION_SUPPORT, normalizedBookPath, session, bookPassphrase);
     } catch (RuntimeException runtimeException) {
       throw runtimeException;
     } catch (Error error) {
@@ -236,7 +227,7 @@ class SqliteProtectedBookVerificationSupportCoverageTest
           SqliteProtectedBookVerificationSupport.class,
           "inspectOpenedBook",
           MethodType.methodType(
-              dev.erst.fingrind.executor.maintenance.MaintenanceDecision.class,
+              ProtectedBookMaintenanceStore.BookVerification.class,
               Path.class,
               SqliteReadSession.class,
               SqliteBookPassphrase.class));

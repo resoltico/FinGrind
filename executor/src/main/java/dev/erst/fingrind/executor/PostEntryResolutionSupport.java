@@ -1,10 +1,16 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.executor.bookkeeping.AccrualCutoffAdmissionPolicy;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
+import dev.erst.fingrind.executor.bookkeeping.FinancingAdmissionPolicy;
+import dev.erst.fingrind.executor.bookkeeping.FixedAssetAdmissionPolicy;
 import dev.erst.fingrind.executor.bookkeeping.InventoryAdmissionPolicy;
 import dev.erst.fingrind.executor.bookkeeping.InventoryPostingResolution;
+import dev.erst.fingrind.executor.bookkeeping.LatvianPayrollAdmissionPolicy;
+import dev.erst.fingrind.executor.bookkeeping.LatvianPayrollSettlementAdmissionPolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
+import dev.erst.fingrind.executor.bookkeeping.RealizedForeignExchangeAdmissionPolicy;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,6 +18,18 @@ import java.util.Optional;
 public final class PostEntryResolutionSupport {
   private static final InventoryAdmissionPolicy INVENTORY_ADMISSION_POLICY =
       new InventoryAdmissionPolicy();
+  private static final AccrualCutoffAdmissionPolicy ACCRUAL_CUTOFF_ADMISSION_POLICY =
+      new AccrualCutoffAdmissionPolicy();
+  private static final LatvianPayrollAdmissionPolicy LATVIAN_PAYROLL_ADMISSION_POLICY =
+      new LatvianPayrollAdmissionPolicy();
+  private static final LatvianPayrollSettlementAdmissionPolicy
+      LATVIAN_PAYROLL_SETTLEMENT_ADMISSION_POLICY = new LatvianPayrollSettlementAdmissionPolicy();
+  private static final FixedAssetAdmissionPolicy FIXED_ASSET_ADMISSION_POLICY =
+      new FixedAssetAdmissionPolicy();
+  private static final FinancingAdmissionPolicy FINANCING_ADMISSION_POLICY =
+      new FinancingAdmissionPolicy();
+  private static final RealizedForeignExchangeAdmissionPolicy
+      REALIZED_FOREIGN_EXCHANGE_ADMISSION_POLICY = new RealizedForeignExchangeAdmissionPolicy();
 
   private PostEntryResolutionSupport() {}
 
@@ -52,12 +70,83 @@ public final class PostEntryResolutionSupport {
           InventoryPostingResolution.withoutInventory(resolvedEntry), reversalRejection);
     }
     BookkeepingEntry inventoryScopedEntry = resolvedReversalEntry(resolvedEntry, book);
-    try {
-      return new ResolutionOutcome(
-          INVENTORY_ADMISSION_POLICY.resolve(inventoryScopedEntry, book), Optional.empty());
-    } catch (InventoryAdmissionPolicy.InventoryAdmissionFailure failure) {
+    AccrualCutoffAdmissionPolicy.Resolution accrualCutoffResolution =
+        ACCRUAL_CUTOFF_ADMISSION_POLICY.resolve(
+            inventoryScopedEntry, book, inventoryScopedEntry.entryKind().wireValue());
+    if (accrualCutoffResolution.rejection().isPresent()) {
       return new ResolutionOutcome(
           InventoryPostingResolution.withoutInventory(inventoryScopedEntry),
+          accrualCutoffResolution.rejection());
+    }
+    BookkeepingEntry accrualCutoffScopedEntry =
+        java.util.Objects.requireNonNull(
+            accrualCutoffResolution.entry(), "accepted accrual cut-off resolution entry");
+    LatvianPayrollAdmissionPolicy.Resolution payrollResolution =
+        LATVIAN_PAYROLL_ADMISSION_POLICY.resolve(
+            accrualCutoffScopedEntry, book, accrualCutoffScopedEntry.entryKind().wireValue());
+    if (payrollResolution.rejection().isPresent()) {
+      return new ResolutionOutcome(
+          InventoryPostingResolution.withoutInventory(accrualCutoffScopedEntry),
+          payrollResolution.rejection());
+    }
+    BookkeepingEntry payrollScopedEntry =
+        java.util.Objects.requireNonNull(
+            payrollResolution.entry(), "accepted Latvian payroll resolution entry");
+    LatvianPayrollSettlementAdmissionPolicy.Resolution payrollSettlementResolution =
+        LATVIAN_PAYROLL_SETTLEMENT_ADMISSION_POLICY.resolve(
+            payrollScopedEntry, book, payrollScopedEntry.entryKind().wireValue());
+    if (payrollSettlementResolution.rejection().isPresent()) {
+      return new ResolutionOutcome(
+          InventoryPostingResolution.withoutInventory(payrollScopedEntry),
+          payrollSettlementResolution.rejection());
+    }
+    BookkeepingEntry payrollSettlementScopedEntry =
+        java.util.Objects.requireNonNull(
+            payrollSettlementResolution.entry(),
+            "accepted Latvian payroll settlement resolution entry");
+    FixedAssetAdmissionPolicy.Resolution fixedAssetResolution =
+        FIXED_ASSET_ADMISSION_POLICY.resolve(
+            payrollSettlementScopedEntry,
+            book,
+            payrollSettlementScopedEntry.entryKind().wireValue());
+    if (fixedAssetResolution.rejection().isPresent()) {
+      return new ResolutionOutcome(
+          InventoryPostingResolution.withoutInventory(payrollSettlementScopedEntry),
+          fixedAssetResolution.rejection());
+    }
+    BookkeepingEntry fixedAssetScopedEntry =
+        java.util.Objects.requireNonNull(
+            fixedAssetResolution.entry(), "accepted fixed-asset resolution entry");
+    FinancingAdmissionPolicy.Resolution financingResolution =
+        FINANCING_ADMISSION_POLICY.resolve(
+            fixedAssetScopedEntry, book, fixedAssetScopedEntry.entryKind().wireValue());
+    if (financingResolution.rejection().isPresent()) {
+      return new ResolutionOutcome(
+          InventoryPostingResolution.withoutInventory(fixedAssetScopedEntry),
+          financingResolution.rejection());
+    }
+    BookkeepingEntry financingScopedEntry =
+        java.util.Objects.requireNonNull(
+            financingResolution.entry(), "accepted financing resolution entry");
+    RealizedForeignExchangeAdmissionPolicy.Resolution realizedForeignExchangeResolution =
+        REALIZED_FOREIGN_EXCHANGE_ADMISSION_POLICY.resolve(
+            financingScopedEntry, book, financingScopedEntry.entryKind().wireValue());
+    if (realizedForeignExchangeResolution.rejection().isPresent()) {
+      return new ResolutionOutcome(
+          InventoryPostingResolution.withoutInventory(financingScopedEntry),
+          realizedForeignExchangeResolution.rejection());
+    }
+    BookkeepingEntry realizedForeignExchangeScopedEntry =
+        java.util.Objects.requireNonNull(
+            realizedForeignExchangeResolution.entry(),
+            "accepted realized-foreign-exchange resolution entry");
+    try {
+      return new ResolutionOutcome(
+          INVENTORY_ADMISSION_POLICY.resolve(realizedForeignExchangeScopedEntry, book),
+          Optional.empty());
+    } catch (InventoryAdmissionPolicy.InventoryAdmissionFailure failure) {
+      return new ResolutionOutcome(
+          InventoryPostingResolution.withoutInventory(realizedForeignExchangeScopedEntry),
           Optional.of(failure.rejection()));
     }
   }

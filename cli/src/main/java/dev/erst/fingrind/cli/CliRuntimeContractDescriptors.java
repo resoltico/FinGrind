@@ -31,9 +31,7 @@ final class CliRuntimeContractDescriptors {
         CliOutputModeDefaults.outputDefault(CliOutputModeDefaults.OutputSurface.SELECTABLE);
     return new EnvironmentDescriptor(
         new EnvironmentRuntimeDescriptor(
-            RuntimeDistribution.fromWireValue(runtimeDistribution),
-            outputDefault.mode(),
-            outputDefault.source()),
+            RuntimeDistribution.fromWireValue(runtimeDistribution), outputDefault.mode()),
         new EnvironmentPublicationDescriptor(
             ProtocolCatalog.distribution().publicCliDistribution(),
             ProtocolCatalog.distribution().supportedPublicCliBundleTargets(),

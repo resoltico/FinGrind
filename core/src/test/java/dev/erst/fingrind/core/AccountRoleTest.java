@@ -26,8 +26,11 @@ class AccountRoleTest {
         EnumSet.of(
             AccountRole.CASH,
             AccountRole.INVENTORY,
+            AccountRole.PREPAID_EXPENSE,
             AccountRole.RECEIVABLE,
             AccountRole.PAYABLE,
+            AccountRole.DEFERRED_REVENUE,
+            AccountRole.ACCRUED_EXPENSE,
             AccountRole.REVENUE,
             AccountRole.EXPENSE,
             AccountRole.EQUITY_CONTRIBUTED,
@@ -47,8 +50,11 @@ class AccountRoleTest {
         List.of(
             "CASH",
             "INVENTORY",
+            "PREPAID_EXPENSE",
             "RECEIVABLE",
             "PAYABLE",
+            "DEFERRED_REVENUE",
+            "ACCRUED_EXPENSE",
             "REVENUE",
             "EXPENSE",
             "EQUITY_CONTRIBUTED",
@@ -114,11 +120,17 @@ class AccountRoleTest {
     return Stream.of(
         Arguments.of(FinancialPositionLineClassification.CURRENT_ASSET, AccountRole.AUX),
         Arguments.of(FinancialPositionLineClassification.INVENTORY, AccountRole.INVENTORY),
+        Arguments.of(
+            FinancialPositionLineClassification.PREPAID_EXPENSE, AccountRole.PREPAID_EXPENSE),
         Arguments.of(FinancialPositionLineClassification.NONCURRENT_ASSET, AccountRole.AUX),
         Arguments.of(FinancialPositionLineClassification.TRADE_RECEIVABLE, AccountRole.RECEIVABLE),
         Arguments.of(FinancialPositionLineClassification.CURRENT_LIABILITY, AccountRole.AUX),
         Arguments.of(FinancialPositionLineClassification.NONCURRENT_LIABILITY, AccountRole.AUX),
         Arguments.of(FinancialPositionLineClassification.TRADE_PAYABLE, AccountRole.PAYABLE),
+        Arguments.of(
+            FinancialPositionLineClassification.DEFERRED_REVENUE, AccountRole.DEFERRED_REVENUE),
+        Arguments.of(
+            FinancialPositionLineClassification.ACCRUED_EXPENSE, AccountRole.ACCRUED_EXPENSE),
         Arguments.of(
             FinancialPositionLineClassification.EQUITY_CONTRIBUTION,
             AccountRole.EQUITY_CONTRIBUTED),

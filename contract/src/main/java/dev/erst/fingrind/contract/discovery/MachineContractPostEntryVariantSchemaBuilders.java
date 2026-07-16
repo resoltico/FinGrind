@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -12,25 +13,7 @@ import java.util.function.Supplier;
 /** Variant-specific schema builders for the post-entry request family. */
 final class MachineContractPostEntryVariantSchemaBuilders {
   private static final List<BookkeepingEntryKind> SCHEMA_ORDER =
-      List.of(
-          BookkeepingEntryKind.DIRECT_JOURNAL,
-          BookkeepingEntryKind.SALE_SETTLED,
-          BookkeepingEntryKind.SALE_ON_CREDIT,
-          BookkeepingEntryKind.PURCHASE_SETTLED,
-          BookkeepingEntryKind.PURCHASE_ON_CREDIT,
-          BookkeepingEntryKind.INVENTORY_CAPITALIZATION_SETTLED,
-          BookkeepingEntryKind.INVENTORY_CAPITALIZATION_ON_CREDIT,
-          BookkeepingEntryKind.INVENTORY_WRITE_DOWN,
-          BookkeepingEntryKind.INVENTORY_SHRINKAGE,
-          BookkeepingEntryKind.INVENTORY_COUNT_INCREASE,
-          BookkeepingEntryKind.EXPENSE_SETTLED,
-          BookkeepingEntryKind.EXPENSE_ON_CREDIT,
-          BookkeepingEntryKind.RECEIPT,
-          BookkeepingEntryKind.PAYMENT,
-          BookkeepingEntryKind.OWNER_CONTRIBUTION,
-          BookkeepingEntryKind.OWNER_WITHDRAWAL,
-          BookkeepingEntryKind.OPENING_POSITION,
-          BookkeepingEntryKind.REVERSAL);
+      List.of(BookkeepingEntryKind.values());
   private static final Map<BookkeepingEntryKind, Supplier<Map<String, Object>>> SCHEMAS =
       schemaBuilders();
 
@@ -38,65 +21,138 @@ final class MachineContractPostEntryVariantSchemaBuilders {
 
   private static Map<BookkeepingEntryKind, Supplier<Map<String, Object>>> schemaBuilders() {
     var schemas =
-        new java.util.EnumMap<BookkeepingEntryKind, Supplier<Map<String, Object>>>(
+        new EnumMap<BookkeepingEntryKind, Supplier<Map<String, Object>>>(
             BookkeepingEntryKind.class);
-    schemas.put(
+    schemas.putAll(baseSchemas());
+    schemas.putAll(standardSchemas());
+    schemas.putAll(inventorySchemas());
+    schemas.putAll(accrualCutoffSchemas());
+    schemas.putAll(fixedAssetSchemas());
+    schemas.putAll(financingSchemas());
+    schemas.putAll(realizedForeignExchangeSchemas());
+    schemas.putAll(latvianPayrollSchemas());
+    return Map.copyOf(schemas);
+  }
+
+  private static Map<BookkeepingEntryKind, Supplier<Map<String, Object>>> baseSchemas() {
+    return Map.of(
         BookkeepingEntryKind.DIRECT_JOURNAL,
-        MachineContractPostEntryVariantSchemaBuilders::journalDirectSchema);
-    schemas.put(
-        BookkeepingEntryKind.SALE_SETTLED,
-        MachineContractPostEntryTypedVariantSchemaBuilders::saleSettledSchema);
-    schemas.put(
-        BookkeepingEntryKind.SALE_ON_CREDIT,
-        MachineContractPostEntryTypedVariantSchemaBuilders::saleOnCreditSchema);
-    schemas.put(
-        BookkeepingEntryKind.PURCHASE_SETTLED,
-        MachineContractInventoryPostEntryVariantSchemaBuilders::purchaseSettledSchema);
-    schemas.put(
-        BookkeepingEntryKind.PURCHASE_ON_CREDIT,
-        MachineContractInventoryPostEntryVariantSchemaBuilders::purchaseOnCreditSchema);
-    schemas.put(
-        BookkeepingEntryKind.INVENTORY_CAPITALIZATION_SETTLED,
-        MachineContractInventoryPostEntryVariantSchemaBuilders
-            ::inventoryCapitalizationSettledSchema);
-    schemas.put(
-        BookkeepingEntryKind.INVENTORY_CAPITALIZATION_ON_CREDIT,
-        MachineContractInventoryPostEntryVariantSchemaBuilders
-            ::inventoryCapitalizationOnCreditSchema);
-    schemas.put(
-        BookkeepingEntryKind.INVENTORY_WRITE_DOWN,
-        MachineContractInventoryPostEntryVariantSchemaBuilders::inventoryWriteDownSchema);
-    schemas.put(
-        BookkeepingEntryKind.INVENTORY_SHRINKAGE,
-        MachineContractInventoryPostEntryVariantSchemaBuilders::inventoryShrinkageSchema);
-    schemas.put(
-        BookkeepingEntryKind.INVENTORY_COUNT_INCREASE,
-        MachineContractInventoryPostEntryVariantSchemaBuilders::inventoryCountIncreaseSchema);
-    schemas.put(
-        BookkeepingEntryKind.EXPENSE_SETTLED,
-        MachineContractPostEntryTypedVariantSchemaBuilders::expenseSettledSchema);
-    schemas.put(
-        BookkeepingEntryKind.EXPENSE_ON_CREDIT,
-        MachineContractPostEntryTypedVariantSchemaBuilders::expenseOnCreditSchema);
-    schemas.put(
-        BookkeepingEntryKind.RECEIPT,
-        MachineContractPostEntryTypedVariantSchemaBuilders::receiptSchema);
-    schemas.put(
-        BookkeepingEntryKind.PAYMENT,
-        MachineContractPostEntryTypedVariantSchemaBuilders::paymentSchema);
-    schemas.put(
-        BookkeepingEntryKind.OWNER_CONTRIBUTION,
-        MachineContractPostEntryTypedVariantSchemaBuilders::ownerContributionSchema);
-    schemas.put(
-        BookkeepingEntryKind.OWNER_WITHDRAWAL,
-        MachineContractPostEntryTypedVariantSchemaBuilders::ownerWithdrawalSchema);
-    schemas.put(
+        MachineContractPostEntryVariantSchemaBuilders::journalDirectSchema,
         BookkeepingEntryKind.OPENING_POSITION,
-        MachineContractPostEntryVariantSchemaBuilders::openingPositionSchema);
-    schemas.put(
+        MachineContractPostEntryVariantSchemaBuilders::openingPositionSchema,
         BookkeepingEntryKind.REVERSAL,
         MachineContractPostEntryVariantSchemaBuilders::reversalSchema);
-    return Map.copyOf(schemas);
+  }
+
+  private static Map<BookkeepingEntryKind, Supplier<Map<String, Object>>> standardSchemas() {
+    return Map.ofEntries(
+        Map.entry(
+            BookkeepingEntryKind.SALE_SETTLED,
+            MachineContractPostEntryTypedVariantSchemaBuilders::saleSettledSchema),
+        Map.entry(
+            BookkeepingEntryKind.SALE_ON_CREDIT,
+            MachineContractPostEntryTypedVariantSchemaBuilders::saleOnCreditSchema),
+        Map.entry(
+            BookkeepingEntryKind.EXPENSE_SETTLED,
+            MachineContractPostEntryTypedVariantSchemaBuilders::expenseSettledSchema),
+        Map.entry(
+            BookkeepingEntryKind.EXPENSE_ON_CREDIT,
+            MachineContractPostEntryTypedVariantSchemaBuilders::expenseOnCreditSchema),
+        Map.entry(
+            BookkeepingEntryKind.RECEIPT,
+            MachineContractPostEntryTypedVariantSchemaBuilders::receiptSchema),
+        Map.entry(
+            BookkeepingEntryKind.PAYMENT,
+            MachineContractPostEntryTypedVariantSchemaBuilders::paymentSchema),
+        Map.entry(
+            BookkeepingEntryKind.OWNER_CONTRIBUTION,
+            MachineContractPostEntryTypedVariantSchemaBuilders::ownerContributionSchema),
+        Map.entry(
+            BookkeepingEntryKind.OWNER_WITHDRAWAL,
+            MachineContractPostEntryTypedVariantSchemaBuilders::ownerWithdrawalSchema));
+  }
+
+  private static Map<BookkeepingEntryKind, Supplier<Map<String, Object>>> inventorySchemas() {
+    return Map.ofEntries(
+        Map.entry(
+            BookkeepingEntryKind.PURCHASE_SETTLED,
+            MachineContractInventoryPostEntryVariantSchemaBuilders::purchaseSettledSchema),
+        Map.entry(
+            BookkeepingEntryKind.PURCHASE_ON_CREDIT,
+            MachineContractInventoryPostEntryVariantSchemaBuilders::purchaseOnCreditSchema),
+        Map.entry(
+            BookkeepingEntryKind.INVENTORY_CAPITALIZATION_SETTLED,
+            MachineContractInventoryPostEntryVariantSchemaBuilders
+                ::inventoryCapitalizationSettledSchema),
+        Map.entry(
+            BookkeepingEntryKind.INVENTORY_CAPITALIZATION_ON_CREDIT,
+            MachineContractInventoryPostEntryVariantSchemaBuilders
+                ::inventoryCapitalizationOnCreditSchema),
+        Map.entry(
+            BookkeepingEntryKind.INVENTORY_WRITE_DOWN,
+            MachineContractInventoryPostEntryVariantSchemaBuilders::inventoryWriteDownSchema),
+        Map.entry(
+            BookkeepingEntryKind.INVENTORY_SHRINKAGE,
+            MachineContractInventoryPostEntryVariantSchemaBuilders::inventoryShrinkageSchema),
+        Map.entry(
+            BookkeepingEntryKind.INVENTORY_COUNT_INCREASE,
+            MachineContractInventoryPostEntryVariantSchemaBuilders::inventoryCountIncreaseSchema));
+  }
+
+  private static Map<BookkeepingEntryKind, Supplier<Map<String, Object>>> accrualCutoffSchemas() {
+    return Map.of(
+        BookkeepingEntryKind.PREPAYMENT,
+        MachineContractAccrualCutoffPostEntryVariantSchemaBuilders::prepaymentSchema,
+        BookkeepingEntryKind.DEFERRED_REVENUE,
+        MachineContractAccrualCutoffPostEntryVariantSchemaBuilders::deferredRevenueSchema,
+        BookkeepingEntryKind.ACCRUED_EXPENSE,
+        MachineContractAccrualCutoffPostEntryVariantSchemaBuilders::accruedExpenseSchema,
+        BookkeepingEntryKind.ACCRUAL_CUTOFF_RECOGNITION,
+        MachineContractAccrualCutoffPostEntryVariantSchemaBuilders::recognitionSchema,
+        BookkeepingEntryKind.ACCRUED_EXPENSE_SETTLEMENT,
+        MachineContractAccrualCutoffPostEntryVariantSchemaBuilders::settlementSchema);
+  }
+
+  private static Map<BookkeepingEntryKind, Supplier<Map<String, Object>>> fixedAssetSchemas() {
+    return Map.of(
+        BookkeepingEntryKind.FIXED_ASSET_CAPITALIZATION,
+        MachineContractFixedAssetPostEntryVariantSchemaBuilders::capitalizationSchema,
+        BookkeepingEntryKind.FIXED_ASSET_DEPRECIATION,
+        MachineContractFixedAssetPostEntryVariantSchemaBuilders::depreciationSchema,
+        BookkeepingEntryKind.FIXED_ASSET_DISPOSAL,
+        MachineContractFixedAssetPostEntryVariantSchemaBuilders::disposalSchema);
+  }
+
+  private static Map<BookkeepingEntryKind, Supplier<Map<String, Object>>> financingSchemas() {
+    return Map.of(
+        BookkeepingEntryKind.FINANCING_BORROWING,
+        MachineContractFinancingPostEntryVariantSchemaBuilders::borrowingSchema,
+        BookkeepingEntryKind.FINANCING_PRINCIPAL_REPAYMENT,
+        MachineContractFinancingPostEntryVariantSchemaBuilders::principalRepaymentSchema,
+        BookkeepingEntryKind.FINANCING_INTEREST_ACCRUAL,
+        MachineContractFinancingPostEntryVariantSchemaBuilders::interestAccrualSchema,
+        BookkeepingEntryKind.FINANCING_INTEREST_PAYMENT,
+        MachineContractFinancingPostEntryVariantSchemaBuilders::interestPaymentSchema);
+  }
+
+  private static Map<BookkeepingEntryKind, Supplier<Map<String, Object>>>
+      realizedForeignExchangeSchemas() {
+    return Map.of(
+        BookkeepingEntryKind.FOREIGN_CURRENCY_OBLIGATION,
+        MachineContractRealizedForeignExchangePostEntryVariantSchemaBuilders
+            ::foreignCurrencyObligationSchema,
+        BookkeepingEntryKind.REALIZED_FOREIGN_EXCHANGE_SETTLEMENT,
+        MachineContractRealizedForeignExchangePostEntryVariantSchemaBuilders::settlementSchema);
+  }
+
+  private static Map<BookkeepingEntryKind, Supplier<Map<String, Object>>> latvianPayrollSchemas() {
+    return Map.of(
+        BookkeepingEntryKind.LATVIAN_MONTHLY_PAYROLL,
+        MachineContractLatvianPayrollPostEntryVariantSchemaBuilders::monthlyPayrollSchema,
+        BookkeepingEntryKind.LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT,
+        MachineContractLatvianPayrollPostEntryVariantSchemaBuilders::netWageSettlementSchema,
+        BookkeepingEntryKind.LATVIAN_PAYROLL_STATE_REMITTANCE,
+        MachineContractLatvianPayrollPostEntryVariantSchemaBuilders::stateRemittanceSchema);
   }
 
   static Map<String, Object> postEntrySchema() {

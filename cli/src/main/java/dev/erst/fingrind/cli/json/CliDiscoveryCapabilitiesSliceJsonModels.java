@@ -5,6 +5,7 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalT
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireValue;
 
+import dev.erst.fingrind.contract.protocol.CapabilityCatalogEntry;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.DiscoveryFocus;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
@@ -60,6 +61,13 @@ public interface CliDiscoveryCapabilitiesSliceJsonModels extends CliDiscoveryCom
       implements ProtocolSuccessPayload {
     public CapabilitiesKernelSlicePayload {
       bookkeepingKernel = requireValue(bookkeepingKernel, "bookkeepingKernel");
+    }
+  }
+
+  record CapabilitiesCatalogSlicePayload(List<CapabilityCatalogEntry> capabilityCatalog)
+      implements ProtocolSuccessPayload {
+    public CapabilitiesCatalogSlicePayload {
+      capabilityCatalog = copyList(capabilityCatalog, "capabilityCatalog");
     }
   }
 

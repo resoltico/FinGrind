@@ -51,6 +51,8 @@ class CliDiscoveryHelpTextTestSupport {
     appendAcceptedFieldPaths(labels, postingModel.topLevelFields(), "");
     appendAcceptedFieldPaths(labels, postingModel.lineFields(), "lines[].");
     appendAcceptedFieldPaths(labels, postingModel.openingBalanceFields(), "openingBalances[].");
+    appendAcceptedFieldPaths(
+        labels, postingModel.recognitionIntervalFields(), "recognitionInterval.");
     appendAcceptedFieldPaths(labels, postingModel.foreignExchangeFields(), "foreignExchange.");
     appendAcceptedFieldPaths(
         labels, postingModel.quotedRateFields(), "foreignExchange.quotedRate.");
@@ -121,6 +123,8 @@ class CliDiscoveryHelpTextTestSupport {
         rendered, postingModel.lineFields(), "steps[].posting.lines[].");
     assertContainsPrefixedFieldRows(
         rendered, postingModel.openingBalanceFields(), "steps[].posting.openingBalances[].");
+    assertContainsPrefixedFieldRows(
+        rendered, postingModel.recognitionIntervalFields(), "steps[].posting.recognitionInterval.");
     assertContainsPrefixedFieldRows(
         rendered, postingModel.foreignExchangeFields(), "steps[].posting.foreignExchange.");
     assertContainsPrefixedFieldRows(
@@ -210,6 +214,16 @@ class CliDiscoveryHelpTextTestSupport {
                 "opening-equity", JournalLine.EntrySide.CREDIT, new MonetaryAmount("EUR", "1000"))),
         canonical.evidence(),
         canonical.provenance(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
         null);
   }
 

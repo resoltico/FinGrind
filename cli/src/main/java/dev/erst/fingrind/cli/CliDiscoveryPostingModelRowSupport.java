@@ -142,6 +142,9 @@ final class CliDiscoveryPostingModelRowSupport {
     if (templatePublishesRoleAccountField(fieldName, postingTemplate)) {
       return true;
     }
+    if (templatePublishesAccrualCutoffField(fieldName, postingTemplate)) {
+      return true;
+    }
     return switch (fieldName) {
       case ProtocolPostEntryFields.TopLevel.AMOUNT -> postingTemplate.amount() != null;
       case ProtocolPostEntryFields.TopLevel.QUANTITY -> postingTemplate.quantity() != null;
@@ -152,8 +155,19 @@ final class CliDiscoveryPostingModelRowSupport {
       case ProtocolPostEntryFields.TopLevel.LINES -> postingTemplate.lines() != null;
       case ProtocolPostEntryFields.TopLevel.OPENING_BALANCES ->
           postingTemplate.openingBalances() != null;
-      case ProtocolPostEntryFields.TopLevel.EVIDENCE -> true;
-      case ProtocolPostEntryFields.TopLevel.PROVENANCE -> true;
+      default -> false;
+    };
+  }
+
+  private static boolean templatePublishesAccrualCutoffField(
+      String fieldName, ContractTemplates.PostingRequestTemplateDescriptor postingTemplate) {
+    return switch (fieldName) {
+      case ProtocolPostEntryFields.TopLevel.ACCRUAL_CUTOFF_ID ->
+          postingTemplate.accrualCutoffId() != null;
+      case ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL ->
+          postingTemplate.recognitionInterval() != null;
+      case ProtocolPostEntryFields.TopLevel.EVIDENCE, ProtocolPostEntryFields.TopLevel.PROVENANCE ->
+          true;
       case ProtocolPostEntryFields.TopLevel.REVERSAL -> postingTemplate.reversal() != null;
       default -> false;
     };
@@ -168,6 +182,12 @@ final class CliDiscoveryPostingModelRowSupport {
           postingTemplate.revenueAccountCode() != null;
       case ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE ->
           postingTemplate.expenseAccountCode() != null;
+      case ProtocolPostEntryFields.TopLevel.PREPAYMENT_ASSET_ACCOUNT_CODE ->
+          postingTemplate.prepaymentAssetAccountCode() != null;
+      case ProtocolPostEntryFields.TopLevel.DEFERRED_REVENUE_ACCOUNT_CODE ->
+          postingTemplate.deferredRevenueAccountCode() != null;
+      case ProtocolPostEntryFields.TopLevel.ACCRUED_EXPENSE_LIABILITY_ACCOUNT_CODE ->
+          postingTemplate.accruedExpenseLiabilityAccountCode() != null;
       case ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE ->
           postingTemplate.equityAccountCode() != null;
       default -> false;

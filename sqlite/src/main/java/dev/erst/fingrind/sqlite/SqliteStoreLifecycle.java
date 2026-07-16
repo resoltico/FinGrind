@@ -1,6 +1,8 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.BookIdentity;
@@ -201,6 +203,17 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
       rememberTerminalFailure(new ContractFailureException(callerPathFailure));
       return ContractDecision.rejected(callerPathFailure);
     } catch (SqliteNativeException exception) {
+      if (context.accessMode().requiresAbsentNewBookTarget()
+          && Files.exists(context.bookPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
+        ContractFailure destinationFailure =
+            ContractErrors.Descriptor.BOOK_DESTINATION_OCCUPIED.failureAt(
+                context.bookPath(),
+                "The selected --book-file destination became occupied while FinGrind was creating it; it was not opened or replaced.",
+                "Choose a missing --book-file destination before opening a new book.",
+                ProtocolBookAccessOptions.BOOK_FILE);
+        rememberTerminalFailure(new ContractFailureException(destinationFailure));
+        return ContractDecision.rejected(destinationFailure);
+      }
       Optional<ContractFailure> authenticationFailure =
           SqliteStoreOperations.protectedBookVerificationFailure(exception);
       if (authenticationFailure.isPresent()) {

@@ -9,26 +9,9 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 
-/** Shared assertions for readable and structured cross-format report equivalence. */
+/** Shared assertions for human report projections. */
 final class ReportCrossFormatProjectionAssertions {
   private ReportCrossFormatProjectionAssertions() {}
-
-  static void assertStructuredFactsMatch(ReportModel model) throws IOException {
-    assertCsvFactsMatch(model);
-    assertJsonFactsMatch(model);
-  }
-
-  static void assertJsonFactsMatch(ReportModel model) throws IOException {
-    assertEquals(
-        ReportCrossFormatStructuredFacts.modelFacts(model),
-        ReportCrossFormatStructuredFacts.jsonFacts(JsonReportProjector.project(model)));
-  }
-
-  static void assertCsvFactsMatch(ReportModel model) {
-    assertEquals(
-        ReportCrossFormatStructuredFacts.modelFacts(model),
-        ReportCrossFormatCsvFacts.fromCsv(CsvReportProjector.render(model)));
-  }
 
   static void assertTextFactsMatch(ReportModel model, String rendered) {
     assertEquals(

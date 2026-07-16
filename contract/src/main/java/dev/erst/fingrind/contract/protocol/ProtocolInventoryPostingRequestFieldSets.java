@@ -4,40 +4,87 @@ import java.util.Set;
 
 /** Canonical post-entry request-field sets owned by inventory operations. */
 public final class ProtocolInventoryPostingRequestFieldSets {
+  private static final Set<String> PURCHASE_SETTLED_FIELDS =
+      ProtocolPostingRequestFieldSetSupport.typedEntryFields(
+          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.QUANTITY,
+          ProtocolPostEntryFields.TopLevel.UNIT_COST,
+          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
+          ProtocolPostEntryFields.TopLevel.TAX);
+  private static final Set<String> PURCHASE_ON_CREDIT_FIELDS =
+      ProtocolPostingRequestFieldSetSupport.typedEntryFields(
+          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.QUANTITY,
+          ProtocolPostEntryFields.TopLevel.UNIT_COST,
+          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
+          ProtocolPostEntryFields.TopLevel.TAX);
+  private static final Set<String> CAPITALIZATION_SETTLED_FIELDS =
+      ProtocolPostingRequestFieldSetSupport.typedEntryFields(
+          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.AMOUNT,
+          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
+          ProtocolPostEntryFields.TopLevel.TAX);
+  private static final Set<String> CAPITALIZATION_ON_CREDIT_FIELDS =
+      ProtocolPostingRequestFieldSetSupport.typedEntryFields(
+          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.AMOUNT,
+          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
+          ProtocolPostEntryFields.TopLevel.TAX);
+  private static final Set<String> WRITE_DOWN_FIELDS =
+      ProtocolPostingRequestFieldSetSupport.typedEntryFields(
+          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.WRITE_DOWN_LOSS_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.AMOUNT);
+  private static final Set<String> SHRINKAGE_FIELDS =
+      ProtocolPostingRequestFieldSetSupport.typedEntryFields(
+          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.SHRINKAGE_LOSS_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.QUANTITY);
+  private static final Set<String> COUNT_INCREASE_FIELDS =
+      ProtocolPostingRequestFieldSetSupport.typedEntryFields(
+          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.COUNT_GAIN_ACCOUNT_CODE,
+          ProtocolPostEntryFields.TopLevel.QUANTITY,
+          ProtocolPostEntryFields.TopLevel.UNIT_COST);
+
   private ProtocolInventoryPostingRequestFieldSets() {}
 
   /** Returns accepted fields for a settled inventory acquisition. */
   public static Set<String> purchaseSettledFields() {
-    return ProtocolPostingRequestFieldSets.PURCHASE_SETTLED_FIELDS;
+    return PURCHASE_SETTLED_FIELDS;
   }
 
   /** Returns accepted fields for a credit inventory acquisition. */
   public static Set<String> purchaseOnCreditFields() {
-    return ProtocolPostingRequestFieldSets.PURCHASE_ON_CREDIT_FIELDS;
+    return PURCHASE_ON_CREDIT_FIELDS;
   }
 
   /** Returns accepted fields for settled inventory capitalization. */
   public static Set<String> inventoryCapitalizationSettledFields() {
-    return ProtocolPostingRequestFieldSets.INVENTORY_CAPITALIZATION_SETTLED_FIELDS;
+    return CAPITALIZATION_SETTLED_FIELDS;
   }
 
   /** Returns accepted fields for credit inventory capitalization. */
   public static Set<String> inventoryCapitalizationOnCreditFields() {
-    return ProtocolPostingRequestFieldSets.INVENTORY_CAPITALIZATION_ON_CREDIT_FIELDS;
+    return CAPITALIZATION_ON_CREDIT_FIELDS;
   }
 
   /** Returns accepted fields for an inventory carrying-cost write-down. */
   public static Set<String> inventoryWriteDownFields() {
-    return ProtocolPostingRequestFieldSets.INVENTORY_WRITE_DOWN_FIELDS;
+    return WRITE_DOWN_FIELDS;
   }
 
   /** Returns accepted fields for an inventory quantity shrinkage. */
   public static Set<String> inventoryShrinkageFields() {
-    return ProtocolPostingRequestFieldSets.INVENTORY_SHRINKAGE_FIELDS;
+    return SHRINKAGE_FIELDS;
   }
 
   /** Returns accepted fields for an inventory quantity count increase. */
   public static Set<String> inventoryCountIncreaseFields() {
-    return ProtocolPostingRequestFieldSets.INVENTORY_COUNT_INCREASE_FIELDS;
+    return COUNT_INCREASE_FIELDS;
   }
 }

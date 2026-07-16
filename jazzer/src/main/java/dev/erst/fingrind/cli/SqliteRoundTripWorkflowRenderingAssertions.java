@@ -188,23 +188,27 @@ final class SqliteRoundTripWorkflowRenderingAssertions {
 
     void writeAccountBalanceResult(
         dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult result, OutputMode outputMode) {
-      reportWriter.writeAccountBalanceResult(result, outputMode, null);
+      reportWriter.writeAccountBalanceResult(result, outputMode, null, generatedAt());
     }
 
     void writeTrialBalanceResult(
         dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult result, OutputMode outputMode) {
-      reportWriter.writeTrialBalanceResult(result, outputMode, null);
+      reportWriter.writeTrialBalanceResult(result, outputMode, null, generatedAt());
     }
 
     void writeAccountLedgerResult(
         dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult result, OutputMode outputMode) {
-      reportWriter.writeAccountLedgerResult(result, outputMode, null);
+      reportWriter.writeAccountLedgerResult(result, outputMode, null, generatedAt());
     }
 
     void writePeriodSummaryResult(
         dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult result, OutputMode outputMode) {
-      reportWriter.writePeriodSummaryResult(result, outputMode, null);
+      reportWriter.writePeriodSummaryResult(result, outputMode, null, generatedAt());
     }
+  }
+
+  private static java.time.Instant generatedAt() {
+    return CliFuzzFixtures.fixedClock().instant();
   }
 
   /** Renders one accepted workflow result through the bounded CLI response writers. */

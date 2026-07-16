@@ -31,6 +31,10 @@ class ProtocolWireVocabularyTest {
     assertEquals("minimal", DiscoveryDetail.MINIMAL.toString());
     assertEquals("compact", DiscoveryDetail.COMPACT.toString());
     assertEquals("full", DiscoveryDetail.FULL.toString());
+    assertEquals(List.of("implemented", "partial", "excluded"), CapabilityStatus.wireValues());
+    assertEquals("implemented", CapabilityStatus.IMPLEMENTED.toString());
+    assertEquals("partial", CapabilityStatus.PARTIAL.toString());
+    assertEquals("excluded", CapabilityStatus.EXCLUDED.toString());
     assertEquals(
         List.of(
             "overview",
@@ -39,6 +43,7 @@ class ProtocolWireVocabularyTest {
             "request-input",
             "currency-model",
             "bookkeeping-kernel",
+            "capability-catalog",
             "response-contract"),
         DiscoveryFocus.wireValues());
     assertEquals("overview", DiscoveryFocus.OVERVIEW.toString());
@@ -87,8 +92,11 @@ class ProtocolWireVocabularyTest {
     assertEquals(DiscoveryDetail.MINIMAL, DiscoveryDetail.fromWireValue("minimal"));
     assertEquals(DiscoveryDetail.COMPACT, DiscoveryDetail.fromWireValue("compact"));
     assertEquals(DiscoveryDetail.FULL, DiscoveryDetail.fromWireValue("full"));
+    assertEquals(CapabilityStatus.PARTIAL, CapabilityStatus.fromWireValue("partial"));
     assertEquals(DiscoveryFocus.OVERVIEW, DiscoveryFocus.fromWireValue("overview"));
     assertEquals(DiscoveryFocus.COMMANDS, DiscoveryFocus.fromWireValue("commands"));
+    assertEquals(
+        DiscoveryFocus.CAPABILITY_CATALOG, DiscoveryFocus.fromWireValue("capability-catalog"));
     assertEquals(
         SqliteRuntimeProvenance.BUNDLE_MANAGED,
         SqliteRuntimeProvenance.fromWireValue("bundle-managed"));
@@ -121,6 +129,7 @@ class ProtocolWireVocabularyTest {
         IllegalArgumentException.class, () -> PlanFailurePolicy.fromWireValue("collect-all"));
     assertThrows(IllegalArgumentException.class, () -> PlanResultDetail.fromWireValue("verbose"));
     assertThrows(IllegalArgumentException.class, () -> DiscoveryDetail.fromWireValue("expanded"));
+    assertThrows(IllegalArgumentException.class, () -> CapabilityStatus.fromWireValue("available"));
     assertThrows(
         IllegalArgumentException.class, () -> DiscoveryFocus.fromWireValue("documentation"));
     assertThrows(

@@ -65,6 +65,7 @@ class ContractTemplatesValidationTest {
             "3000",
             FinancialPositionLineClassification.CURRENT_ASSET,
             null,
+            null,
             null);
 
     assertEquals("3000", template.parentAccountCode());
@@ -78,6 +79,7 @@ class ContractTemplatesValidationTest {
                 AccountNodeKind.POSTABLE,
                 "cash account",
                 FinancialPositionLineClassification.CURRENT_ASSET,
+                null,
                 null,
                 null));
   }
@@ -113,11 +115,12 @@ class ContractTemplatesValidationTest {
               null,
               null,
               null,
+              null,
               null);
           new ContractPlanTemplates.EnsureBookTemplateDescriptor(
               "Acme Trading", "OWNER_MANAGED_TRADING", "CASH", "WEIGHTED_AVERAGE", "EUR", "01-01");
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-              "inspect", LedgerStepKind.INSPECT_BOOK, null, null, null, null, null, null);
+              "inspect", LedgerStepKind.INSPECT_BOOK, null, null, null, null, null, null, null);
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "preflight",
               LedgerStepKind.PREFLIGHT_ENTRY,
@@ -126,9 +129,18 @@ class ContractTemplatesValidationTest {
               null,
               null,
               null,
+              null,
               null);
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-              "post", LedgerStepKind.POST_ENTRY, null, postingTemplate(), null, null, null, null);
+              "post",
+              LedgerStepKind.POST_ENTRY,
+              null,
+              postingTemplate(),
+              null,
+              null,
+              null,
+              null,
+              null);
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "declare",
               LedgerStepKind.DECLARE_ACCOUNT,
@@ -142,15 +154,36 @@ class ContractTemplatesValidationTest {
                   null,
                   FinancialPositionLineClassification.CURRENT_ASSET,
                   null,
+                  null,
                   null),
+              null,
               null,
               null,
               null);
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-              "list-accounts", LedgerStepKind.LIST_ACCOUNTS, null, null, null, null, null, null);
+              "declare-tax",
+              LedgerStepKind.DECLARE_TAX_REGISTRATION,
+              null,
+              null,
+              null,
+              MachineContractTemplatesCatalog.declareTaxRegistrationTemplate(),
+              null,
+              null,
+              null);
+          new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
+              "list-accounts",
+              LedgerStepKind.LIST_ACCOUNTS,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null);
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "list-postings",
               LedgerStepKind.LIST_POSTINGS,
+              null,
               null,
               null,
               null,
@@ -164,15 +197,25 @@ class ContractTemplatesValidationTest {
               null,
               null,
               null,
+              null,
               new ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor(
                   "1000", null, null, null, null),
               null,
               null);
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-              "get-posting", LedgerStepKind.GET_POSTING, null, null, null, null, null, "posting-1");
+              "get-posting",
+              LedgerStepKind.GET_POSTING,
+              null,
+              null,
+              null,
+              null,
+              null,
+              null,
+              "posting-1");
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "assert",
               LedgerStepKind.ASSERT,
+              null,
               null,
               null,
               null,
@@ -200,6 +243,7 @@ class ContractTemplatesValidationTest {
                 null,
                 null,
                 null,
+                null,
                 new ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor(
                     null, null, null, ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT, null),
                 null,
@@ -210,6 +254,7 @@ class ContractTemplatesValidationTest {
             new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
                 "missing-posting-id",
                 LedgerStepKind.GET_POSTING,
+                null,
                 null,
                 null,
                 null,
@@ -634,7 +679,8 @@ class ContractTemplatesValidationTest {
     ContractPostingRequestTemplateValidators.PostingTemplateFields fields =
         new ContractPostingRequestTemplateValidators.PostingTemplateFields(
             null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-            null, null, null, null, null);
+            null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+            null);
 
     assertThrows(
         NullPointerException.class,
@@ -665,6 +711,7 @@ class ContractTemplatesValidationTest {
                         LedgerStepKind.ENSURE_BOOK,
                         new ContractTemplateStepShapeRequirements(
                             ContractTemplateFieldPresence.REQUIRED,
+                            ContractTemplateFieldPresence.FORBIDDEN,
                             ContractTemplateFieldPresence.FORBIDDEN,
                             ContractTemplateFieldPresence.FORBIDDEN,
                             ContractTemplateFieldPresence.FORBIDDEN,
@@ -842,7 +889,17 @@ class ContractTemplatesValidationTest {
         shape.openingBalances(),
         evidenceTemplate(List.of()),
         provenanceTemplate(),
-        shape.reversal());
+        shape.reversal(),
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null);
   }
 
   private static ContractTemplates.ProvenanceTemplateDescriptor provenanceTemplate() {

@@ -174,6 +174,14 @@ class ReportModelBuilderCoverageTest {
                 cashAccount,
                 EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
                 PostingCoverage.NON_CLOSING_POSTINGS,
+                new dev.erst.fingrind.contract.bookkeeping.AccountLedgerPagination(
+                    50,
+                    java.util.Optional.empty(),
+                    java.util.Optional.of(
+                        new dev.erst.fingrind.contract.bookkeeping.AccountLedgerPageCursor(
+                            LocalDate.parse("2026-04-09"),
+                            java.time.Instant.parse("2026-04-09T10:15:30Z"),
+                            new dev.erst.fingrind.core.PostingId("posting-reversal")))),
                 List.of(ReportModelTestSupport.balance("EUR", "2.00", "0.00")),
                 List.of(
                     ReportModelTestSupport.accountLedgerEntry(
@@ -194,6 +202,8 @@ class ReportModelBuilderCoverageTest {
                 cashAccount,
                 EffectiveDateRange.unbounded(),
                 PostingCoverage.ALL_POSTING_KINDS,
+                new dev.erst.fingrind.contract.bookkeeping.AccountLedgerPagination(
+                    50, java.util.Optional.empty(), java.util.Optional.empty()),
                 List.of(ReportModelTestSupport.balance("EUR", "0.00", "0.00")),
                 List.of(),
                 List.of(ReportModelTestSupport.balance("EUR", "0.00", "0.00"))));
@@ -202,6 +212,11 @@ class ReportModelBuilderCoverageTest {
     assertTrue(
         populated.verdicts().stream()
             .anyMatch(verdict -> "Opening Balances".equals(verdict.label())));
+    assertTrue(
+        populated.verdicts().stream()
+            .anyMatch(
+                verdict ->
+                    "Next cursor".equals(verdict.label()) && !"(none)".equals(verdict.value())));
     assertTrue(
         empty.verdicts().stream()
             .anyMatch(

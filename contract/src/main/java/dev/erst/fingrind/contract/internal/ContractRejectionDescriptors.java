@@ -16,8 +16,12 @@ public final class ContractRejectionDescriptors {
 
   /** Creates one rejection descriptor with the standard empty nested-rejections shape. */
   public static ContractResponse.RejectionDescriptor descriptor(
-      String code, String description, List<ContractResponse.FieldDescriptor> detailFields) {
-    return new ContractResponse.RejectionDescriptor(code, description, detailFields, List.of());
+      String code,
+      ContractResponse.FailureCategory category,
+      String description,
+      List<ContractResponse.FieldDescriptor> detailFields) {
+    return new ContractResponse.RejectionDescriptor(
+        code, category, description, detailFields, List.of());
   }
 
   /** Projects one enum-backed static rejection catalog into public descriptor rows. */

@@ -4,6 +4,7 @@ import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -27,6 +28,7 @@ class ProtocolRequestFieldSetsTest {
             "ensureBook",
             "posting",
             "declareAccount",
+            "declareTaxRegistration",
             "query",
             "assertion",
             "postingId"),
@@ -57,6 +59,7 @@ class ProtocolRequestFieldSetsTest {
     assertEquals("ensureBook", ProtocolLedgerPlanFields.Step.ENSURE_BOOK);
     assertEquals("posting", ProtocolLedgerPlanFields.Step.POSTING);
     assertEquals("declareAccount", ProtocolLedgerPlanFields.Step.DECLARE_ACCOUNT);
+    assertEquals("declareTaxRegistration", ProtocolLedgerPlanFields.Step.DECLARE_TAX_REGISTRATION);
     assertEquals("query", ProtocolLedgerPlanFields.Step.QUERY);
     assertEquals("assertion", ProtocolLedgerPlanFields.Step.ASSERTION);
     assertEquals("postingId", ProtocolLedgerPlanFields.Step.POSTING_ID);
@@ -100,15 +103,48 @@ class ProtocolRequestFieldSetsTest {
             "receivableAccountCode",
             "payableAccountCode",
             "revenueAccountCode",
+            "accrualCutoffId",
+            "fixedAssetId",
+            "assetAccountCode",
+            "accumulatedDepreciationAccountCode",
+            "depreciationExpenseAccountCode",
+            "disposalGainAccountCode",
+            "disposalLossAccountCode",
+            "cost",
+            "depreciationSchedule",
+            "proceeds",
+            "financingArrangementId",
+            "principalLiabilityAccountCode",
+            "interestPayableAccountCode",
+            "interestExpenseAccountCode",
+            "principalAmount",
+            "interestAmount",
+            "foreignCurrencyObligationId",
+            "realizedGainAccountCode",
+            "realizedLossAccountCode",
+            "prepaymentAssetAccountCode",
+            "deferredRevenueAccountCode",
+            "accruedExpenseLiabilityAccountCode",
             "inventoryAccountCode",
             "expenseAccountCode",
             "writeDownLossAccountCode",
             "shrinkageLossAccountCode",
             "countGainAccountCode",
             "equityAccountCode",
+            "payrollRunId",
+            "employeeReference",
+            "payrollMonth",
+            "wageExpenseAccountCode",
+            "employerSocialContributionExpenseAccountCode",
+            "netWagesPayableAccountCode",
+            "employeeSocialContributionPayableAccountCode",
+            "employerSocialContributionPayableAccountCode",
+            "personalIncomeTaxPayableAccountCode",
+            "grossWages",
             "amount",
             "quantity",
             "unitCost",
+            "recognitionInterval",
             "inventoryRelief",
             "settlementAdjunct",
             "foreignExchange",
@@ -149,12 +185,16 @@ class ProtocolRequestFieldSetsTest {
     assertEquals(
         List.of("inventoryAccountCode", "costOfSalesAccountCode", "quantity"),
         ProtocolPostEntryFields.inventoryReliefFields());
-    assertEquals("transactionAmount", ProtocolPostEntryFields.ForeignExchange.TRANSACTION_AMOUNT);
-    assertEquals("quotedRate", ProtocolPostEntryFields.ForeignExchange.QUOTED_RATE);
+    assertEquals(
+        List.of("startDate", "endDate"), ProtocolPostEntryFields.recognitionIntervalFields());
+    assertEquals(
+        "transactionAmount",
+        ProtocolForeignExchangeRequestFields.ForeignExchange.TRANSACTION_AMOUNT);
+    assertEquals("quotedRate", ProtocolForeignExchangeRequestFields.ForeignExchange.QUOTED_RATE);
     assertEquals(
         "transactionCurrencyAmount",
-        ProtocolPostEntryFields.QuotedRate.TRANSACTION_CURRENCY_AMOUNT);
-    assertEquals("quoteSource", ProtocolPostEntryFields.QuotedRate.QUOTE_SOURCE);
+        ProtocolForeignExchangeRequestFields.QuotedRate.TRANSACTION_CURRENCY_AMOUNT);
+    assertEquals("quoteSource", ProtocolForeignExchangeRequestFields.QuotedRate.QUOTE_SOURCE);
     assertEquals("accountCode", ProtocolSharedRequestFields.ACCOUNT_CODE);
     assertEquals("currencyCode", ProtocolSharedRequestFields.CURRENCY_CODE);
     assertEquals("effectiveDateFrom", ProtocolSharedRequestFields.EFFECTIVE_DATE_FROM);
@@ -187,7 +227,7 @@ class ProtocolRequestFieldSetsTest {
   }
 
   @Test
-  void postingRequestFieldSetsFollowCanonicalRequestFieldOwners() {
+  void bookRequestFieldSetsFollowCanonicalRequestFieldOwners() {
     assertEquals(
         Set.of(
             "accountCode",
@@ -225,8 +265,18 @@ class ProtocolRequestFieldSetsTest {
         Set.copyOf(ProtocolPostEntryFields.topLevelFields()),
         ProtocolPostingRequestFieldSets.postEntryTopLevelFields());
     assertEquals(
+        Set.of("inServiceDate", "usefulLifeMonths", "residualValue"),
+        ProtocolPostingNestedFieldSets.fixedAssetDepreciationScheduleFields());
+  }
+
+  @Test
+  void standardAndInventoryPostingRequestFieldSetsFollowCanonicalOwners() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> ProtocolPostingRequestFieldSets.fieldsFor(BookkeepingEntryKind.PURCHASE_SETTLED));
+    assertEquals(
         Set.of("entryKind", "effectiveDate", "lines", "foreignExchange", "evidence", "provenance"),
-        ProtocolPostingRequestFieldSets.journalDirectFields());
+        ProtocolPostingRequestFieldSets.fieldsFor(BookkeepingEntryKind.DIRECT_JOURNAL));
     assertEquals(
         Set.of(
             "entryKind",
@@ -239,7 +289,7 @@ class ProtocolRequestFieldSetsTest {
             "tax",
             "evidence",
             "provenance"),
-        ProtocolPostingRequestFieldSets.saleSettledFields());
+        ProtocolPostingRequestFieldSets.fieldsFor(BookkeepingEntryKind.SALE_SETTLED));
     assertEquals(
         Set.of(
             "entryKind",
@@ -252,7 +302,7 @@ class ProtocolRequestFieldSetsTest {
             "tax",
             "evidence",
             "provenance"),
-        ProtocolPostingRequestFieldSets.saleOnCreditFields());
+        ProtocolPostingRequestFieldSets.fieldsFor(BookkeepingEntryKind.SALE_ON_CREDIT));
     assertEquals(
         Set.of(
             "entryKind",
@@ -334,6 +384,64 @@ class ProtocolRequestFieldSetsTest {
             "evidence",
             "provenance"),
         ProtocolInventoryPostingRequestFieldSets.inventoryCountIncreaseFields());
+  }
+
+  @Test
+  void accrualCutoffPostingRequestFieldSetsFollowCanonicalOwners() {
+    assertEquals(
+        Set.of(
+            "entryKind",
+            "effectiveDate",
+            "accrualCutoffId",
+            "prepaymentAssetAccountCode",
+            "expenseAccountCode",
+            "cashAccountCode",
+            "amount",
+            "recognitionInterval",
+            "evidence",
+            "provenance"),
+        ProtocolAccrualCutoffPostingRequestFieldSets.prepaymentFields());
+    assertEquals(
+        Set.of(
+            "entryKind",
+            "effectiveDate",
+            "accrualCutoffId",
+            "cashAccountCode",
+            "deferredRevenueAccountCode",
+            "revenueAccountCode",
+            "amount",
+            "recognitionInterval",
+            "evidence",
+            "provenance"),
+        ProtocolAccrualCutoffPostingRequestFieldSets.deferredRevenueFields());
+    assertEquals(
+        Set.of(
+            "entryKind",
+            "effectiveDate",
+            "accrualCutoffId",
+            "expenseAccountCode",
+            "accruedExpenseLiabilityAccountCode",
+            "amount",
+            "evidence",
+            "provenance"),
+        ProtocolAccrualCutoffPostingRequestFieldSets.accruedExpenseFields());
+    assertEquals(
+        Set.of("entryKind", "effectiveDate", "accrualCutoffId", "amount", "evidence", "provenance"),
+        ProtocolAccrualCutoffPostingRequestFieldSets.recognitionFields());
+    assertEquals(
+        Set.of(
+            "entryKind",
+            "effectiveDate",
+            "accrualCutoffId",
+            "cashAccountCode",
+            "amount",
+            "evidence",
+            "provenance"),
+        ProtocolAccrualCutoffPostingRequestFieldSets.settlementFields());
+  }
+
+  @Test
+  void ordinaryAndTerminalPostingRequestFieldSetsFollowCanonicalOwners() {
     assertEquals(
         Set.of(
             "entryKind",
@@ -345,7 +453,7 @@ class ProtocolRequestFieldSetsTest {
             "tax",
             "evidence",
             "provenance"),
-        ProtocolPostingRequestFieldSets.expenseSettledFields());
+        ProtocolPostingRequestFieldSets.fieldsFor(BookkeepingEntryKind.EXPENSE_SETTLED));
     assertEquals(
         Set.of(
             "entryKind",
@@ -357,7 +465,7 @@ class ProtocolRequestFieldSetsTest {
             "tax",
             "evidence",
             "provenance"),
-        ProtocolPostingRequestFieldSets.expenseOnCreditFields());
+        ProtocolPostingRequestFieldSets.fieldsFor(BookkeepingEntryKind.EXPENSE_ON_CREDIT));
     assertEquals(
         Set.of(
             "entryKind",
@@ -368,7 +476,7 @@ class ProtocolRequestFieldSetsTest {
             "settlementAdjunct",
             "evidence",
             "provenance"),
-        ProtocolPostingRequestFieldSets.receiptFields());
+        ProtocolPostingRequestFieldSets.fieldsFor(BookkeepingEntryKind.RECEIPT));
     assertEquals(
         Set.of(
             "entryKind",
@@ -379,7 +487,7 @@ class ProtocolRequestFieldSetsTest {
             "settlementAdjunct",
             "evidence",
             "provenance"),
-        ProtocolPostingRequestFieldSets.paymentFields());
+        ProtocolPostingRequestFieldSets.fieldsFor(BookkeepingEntryKind.PAYMENT));
     assertEquals(
         Set.of(
             "entryKind",
@@ -390,7 +498,7 @@ class ProtocolRequestFieldSetsTest {
             "foreignExchange",
             "evidence",
             "provenance"),
-        ProtocolPostingRequestFieldSets.ownerContributionFields());
+        ProtocolPostingRequestFieldSets.fieldsFor(BookkeepingEntryKind.OWNER_CONTRIBUTION));
     assertEquals(
         Set.of(
             "entryKind",
@@ -401,14 +509,14 @@ class ProtocolRequestFieldSetsTest {
             "foreignExchange",
             "evidence",
             "provenance"),
-        ProtocolPostingRequestFieldSets.ownerWithdrawalFields());
+        ProtocolPostingRequestFieldSets.fieldsFor(BookkeepingEntryKind.OWNER_WITHDRAWAL));
     assertEquals(
         Set.of("entryKind", "effectiveDate", "openingBalances", "evidence", "provenance"),
-        ProtocolPostingRequestFieldSets.openingPositionFields());
+        ProtocolPostingRequestFieldSets.fieldsFor(BookkeepingEntryKind.OPENING_POSITION));
     assertEquals(
         Set.of(
             "entryKind", "effectiveDate", "foreignExchange", "evidence", "provenance", "reversal"),
-        ProtocolPostingRequestFieldSets.reversalEntryFields());
+        ProtocolPostingRequestFieldSets.fieldsFor(BookkeepingEntryKind.REVERSAL));
   }
 
   @Test
@@ -425,6 +533,9 @@ class ProtocolRequestFieldSetsTest {
     assertEquals(
         Set.copyOf(ProtocolPostEntryFields.provenanceFields()),
         ProtocolPostingNestedFieldSets.provenanceFields());
+    assertEquals(
+        Set.copyOf(ProtocolPostEntryFields.recognitionIntervalFields()),
+        ProtocolPostingNestedFieldSets.recognitionIntervalFields());
     assertEquals(
         Set.copyOf(ProtocolPostEntryFields.journalLineFields()),
         ProtocolPostingNestedFieldSets.journalLineFields());

@@ -60,8 +60,7 @@ abstract class SqliteProtectedBookMaintenanceArtifactStore
     } catch (java.io.IOException exception) {
       throw new IllegalStateException(
           "Failed to inspect FinGrind SQLite rollback artifacts beside "
-              + dev.erst.fingrind.contract.runtime.PublicPathHint.fromPath(normalizedBookPath)
-                  .value()
+              + SqliteMachinePaths.absoluteValue(normalizedBookPath)
               + ".",
           exception);
     }
@@ -78,8 +77,7 @@ abstract class SqliteProtectedBookMaintenanceArtifactStore
   public StagedRollbackArtifactDeletion stageRollbackArtifactDeletion(
       Path normalizedRollbackArtifactPath) {
     try {
-      SqliteProtectedBookStagingSupport.requireRegularNonSymlinkFile(
-          normalizedRollbackArtifactPath);
+      SqliteProtectedBookStagingFiles.requireRegularNonSymlinkFile(normalizedRollbackArtifactPath);
       return SqliteStagedRollbackDeletion.create(normalizedRollbackArtifactPath);
     } catch (SqliteCallerPathContractException exception) {
       throw maintenanceRejection(ProtectedBookMaintenanceArtifactRole.ROLLBACK_ARTIFACT, exception);

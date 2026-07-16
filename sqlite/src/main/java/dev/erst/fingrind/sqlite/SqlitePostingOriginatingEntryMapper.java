@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
 import dev.erst.fingrind.contract.tax.AppliedTax;
 import dev.erst.fingrind.core.JournalEntry;
+import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import java.util.Objects;
@@ -27,6 +28,65 @@ final class SqlitePostingOriginatingEntryMapper {
     if (requiredPostingOriginKind == PostingOriginKind.OPENING_POSITION) {
       return SqliteOpeningPositionOriginatingEntryMapper.originatingEntry(
           activeDatabase, postingRow, journalEntry);
+    }
+    BookkeepingEntry payrollEntry =
+        SqliteLatvianPayrollOriginatingEntryMapper.originatingEntry(
+            activeDatabase,
+            new PostingId(
+                SqlitePostingMapper.requiredText(
+                    postingRow, SqlitePostingColumnIndexes.COL_POSTING_ID)),
+            requiredPostingOriginKind);
+    if (payrollEntry != null) {
+      return payrollEntry;
+    }
+    BookkeepingEntry accrualCutoffEntry =
+        SqliteAccrualCutoffOriginatingEntryMapper.originatingEntry(
+            activeDatabase,
+            new PostingId(
+                SqlitePostingMapper.requiredText(
+                    postingRow, SqlitePostingColumnIndexes.COL_POSTING_ID)),
+            postingRow,
+            journalEntry,
+            requiredPostingOriginKind);
+    if (accrualCutoffEntry != null) {
+      return accrualCutoffEntry;
+    }
+    BookkeepingEntry fixedAssetEntry =
+        SqliteFixedAssetOriginatingEntryMapper.originatingEntry(
+            activeDatabase,
+            new PostingId(
+                SqlitePostingMapper.requiredText(
+                    postingRow, SqlitePostingColumnIndexes.COL_POSTING_ID)),
+            postingRow,
+            journalEntry,
+            requiredPostingOriginKind);
+    if (fixedAssetEntry != null) {
+      return fixedAssetEntry;
+    }
+    BookkeepingEntry financingEntry =
+        SqliteFinancingOriginatingEntryMapper.originatingEntry(
+            activeDatabase,
+            new PostingId(
+                SqlitePostingMapper.requiredText(
+                    postingRow, SqlitePostingColumnIndexes.COL_POSTING_ID)),
+            postingRow,
+            journalEntry,
+            requiredPostingOriginKind);
+    if (financingEntry != null) {
+      return financingEntry;
+    }
+    BookkeepingEntry realizedForeignExchangeEntry =
+        SqliteRealizedForeignExchangeOriginatingEntryMapper.originatingEntry(
+            activeDatabase,
+            new PostingId(
+                SqlitePostingMapper.requiredText(
+                    postingRow, SqlitePostingColumnIndexes.COL_POSTING_ID)),
+            postingRow,
+            journalEntry,
+            requiredPostingOriginKind,
+            foreignExchangeDetails);
+    if (realizedForeignExchangeEntry != null) {
+      return realizedForeignExchangeEntry;
     }
     BookkeepingEntry salesEntry =
         SqliteSalesOriginatingEntryMapper.originatingEntry(

@@ -12,9 +12,13 @@ import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractDiscovery;
+import dev.erst.fingrind.contract.discovery.ContractFinancingTemplates;
+import dev.erst.fingrind.contract.discovery.ContractFixedAssetTemplates;
 import dev.erst.fingrind.contract.discovery.ContractPlanTemplates;
+import dev.erst.fingrind.contract.discovery.ContractRealizedForeignExchangeTemplates;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.ContractReversalTemplates;
+import dev.erst.fingrind.contract.discovery.ContractSettlementTemplates;
 import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.DescriptorNamespaceSupport;
 import dev.erst.fingrind.contract.discovery.ForeignExchangeTemplateDescriptor;
@@ -105,6 +109,23 @@ class ContractProtocolVocabularyTest {
             "INVENTORY_WRITE_DOWN",
             "INVENTORY_SHRINKAGE",
             "INVENTORY_COUNT_INCREASE",
+            "PREPAYMENT",
+            "DEFERRED_REVENUE",
+            "ACCRUED_EXPENSE",
+            "ACCRUAL_CUTOFF_RECOGNITION",
+            "ACCRUED_EXPENSE_SETTLEMENT",
+            "LATVIAN_MONTHLY_PAYROLL",
+            "LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT",
+            "LATVIAN_PAYROLL_STATE_REMITTANCE",
+            "FIXED_ASSET_CAPITALIZATION",
+            "FIXED_ASSET_DEPRECIATION",
+            "FIXED_ASSET_DISPOSAL",
+            "FINANCING_BORROWING",
+            "FINANCING_PRINCIPAL_REPAYMENT",
+            "FINANCING_INTEREST_ACCRUAL",
+            "FINANCING_INTEREST_PAYMENT",
+            "FOREIGN_CURRENCY_OBLIGATION",
+            "REALIZED_FOREIGN_EXCHANGE_SETTLEMENT",
             "EXPENSE_SETTLED",
             "EXPENSE_ON_CREDIT",
             "RECEIPT",
@@ -117,7 +138,7 @@ class ContractProtocolVocabularyTest {
     assertEquals(
         BookkeepingEntryKind.SALE_SETTLED, BookkeepingEntryKind.fromWireValue("SALE_SETTLED"));
     assertEquals(1_179_079_236, BookFormatContract.APPLICATION_ID);
-    assertEquals(39, BookFormatContract.FORMAT_VERSION);
+    assertEquals(46, BookFormatContract.FORMAT_VERSION);
     assertNotEquals(0, BookFormatContract.APPLICATION_ID);
     assertEquals(
         List.of(
@@ -195,7 +216,8 @@ class ContractProtocolVocabularyTest {
   @Test
   void descriptorNamespacesPublishTheirRecordInventories() {
     ContractResponse.RejectionDescriptor leafRejection =
-        new ContractResponse.RejectionDescriptor("code", "description");
+        new ContractResponse.RejectionDescriptor(
+            "code", ContractResponse.FailureCategory.DOMAIN_SEMANTIC, "description");
     assertEquals(
         List.of(
             ApplicationIdentity.class,
@@ -246,8 +268,8 @@ class ContractProtocolVocabularyTest {
     assertEquals(
         List.of(
             ContractTemplates.PostingRequestTemplateDescriptor.class,
-            ContractTemplates.TaxSelectionTemplateDescriptor.class,
-            ContractTemplates.SettlementAdjunctTemplateDescriptor.class,
+            ContractSettlementTemplates.TaxSelectionTemplateDescriptor.class,
+            ContractSettlementTemplates.SettlementAdjunctTemplateDescriptor.class,
             InventoryReliefTemplateDescriptor.class,
             ForeignExchangeTemplateDescriptor.class,
             QuotedExchangeRateTemplateDescriptor.class,
@@ -265,13 +287,23 @@ class ContractProtocolVocabularyTest {
             ContractPlanTemplates.EnsureBookTemplateDescriptor.class,
             ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor.class,
             ContractTemplates.DeclareAccountTemplateDescriptor.class,
-            ContractPlanTemplates.LedgerAssertionTemplateDescriptor.class),
+            ContractPlanTemplates.LedgerAssertionTemplateDescriptor.class,
+            ContractFixedAssetTemplates.FixedAssetTemplateDescriptor.class,
+            ContractFixedAssetTemplates.FixedAssetDepreciationScheduleTemplateDescriptor.class,
+            ContractFinancingTemplates.FinancingTemplateDescriptor.class,
+            ContractRealizedForeignExchangeTemplates.RealizedForeignExchangeTemplateDescriptor
+                .class),
         TemplateDescriptorType.descriptorTypes());
     assertEquals(
-        List.of(), new ContractResponse.ErrorDescriptor("code", 4, "description").detailFields());
+        List.of(),
+        new ContractResponse.ErrorDescriptor(
+                "code", ContractResponse.FailureCategory.PRECONDITION, 4, "description")
+            .detailFields());
     assertThrows(
         IllegalArgumentException.class,
-        () -> new ContractResponse.ErrorDescriptor("code", -1, "description"));
+        () ->
+            new ContractResponse.ErrorDescriptor(
+                "code", ContractResponse.FailureCategory.PRECONDITION, -1, "description"));
     assertEquals(List.of(), leafRejection.detailFields());
     assertEquals(List.of(), leafRejection.detailRejections());
   }
@@ -356,6 +388,16 @@ class ContractProtocolVocabularyTest {
                 evidenceTemplate(),
                 new ContractTemplates.ProvenanceTemplateDescriptor(
                     "actor-1", ActorType.PERSON, "command-1", "idem-1", "cause-1", null),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
                 null));
     assertThrows(
         IllegalArgumentException.class,
@@ -389,6 +431,16 @@ class ContractProtocolVocabularyTest {
                 evidenceTemplate(),
                 new ContractTemplates.ProvenanceTemplateDescriptor(
                     "actor-1", ActorType.PERSON, "command-1", "idem-1", "cause-1", null),
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
                 null));
     assertThrows(
         IllegalArgumentException.class,
@@ -406,7 +458,9 @@ class ContractProtocolVocabularyTest {
                     null,
                     FinancialPositionLineClassification.CURRENT_ASSET,
                     null,
+                    null,
                     null),
+                null,
                 null,
                 null,
                 null));
@@ -454,10 +508,9 @@ class ContractProtocolVocabularyTest {
             ProtocolArtifactOutput.pdf(),
             ProtocolArtifactOutput.bookFile(),
             ProtocolArtifactOutput.generatedBookKeyFile(),
-            ProtocolArtifactOutput.replacementBookKeyFile(),
-            ProtocolArtifactOutput.bookKeyFile(),
+            ProtocolArtifactOutput.newBookKeyFile(),
             ProtocolArtifactOutput.backupFile(),
-            ProtocolArtifactOutput.backupKeyFile(),
+            ProtocolArtifactOutput.newBackupKeyFile(),
             ProtocolArtifactOutput.rollbackBookFile(),
             ProtocolArtifactOutput.discoveredRollbackBookFile())
         .forEach(

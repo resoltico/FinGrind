@@ -88,7 +88,8 @@ final class CliPlanTextRenderer {
 
   private static String displayStepKind(LedgerJournalEntry step) {
     String base =
-        step.kind() == dev.erst.fingrind.contract.workflow.LedgerJournalKind.PLAN_BOUNDARY
+        step.kind()
+                == dev.erst.fingrind.contract.workflow.LedgerJournalKind.BoundaryKind.PLAN_BOUNDARY
             ? "Plan Boundary"
             : CliPlanDetailTextRenderer.displayLabel(step.kind().wireValue());
     if (step.detailKind() != null) {

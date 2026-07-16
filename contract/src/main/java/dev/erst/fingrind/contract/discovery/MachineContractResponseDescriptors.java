@@ -1,15 +1,9 @@
 package dev.erst.fingrind.contract.discovery;
 
-import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
-import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
-import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
-import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
-import dev.erst.fingrind.contract.tax.TaxDeclarationRejection;
-import dev.erst.fingrind.contract.tax.TaxQueryRejection;
+import dev.erst.fingrind.contract.runtime.ContractResponseCatalog;
 import java.util.List;
 
 /** Builds rejection and error response descriptors for the machine contract. */
@@ -28,12 +22,14 @@ final class MachineContractResponseDescriptors {
                 "Optional artifact metadata array that owns every successful artifact path published beside the primary payload.")),
         ProtocolCatalog.envelopes().rejectionStatus(),
         ProtocolCatalog.envelopes().errorStatus(),
-        rejectionDescriptors(),
-        ContractErrors.descriptors(),
+        ContractResponseCatalog.rejectionDescriptors(),
+        ContractResponseCatalog.errorDescriptors(),
         List.of(
             new ContractResponse.FieldDescriptor("status", "Literal rejection status."),
             liftedPlanOutcomePayloadField(),
             new ContractResponse.FieldDescriptor("code", "Stable machine rejection code."),
+            new ContractResponse.FieldDescriptor(
+                "category", "Explicit transport category for the published rejection code."),
             new ContractResponse.FieldDescriptor(
                 "message", "Plain-language explanation of the rejection."),
             new ContractResponse.FieldDescriptor(
@@ -43,6 +39,8 @@ final class MachineContractResponseDescriptors {
         List.of(
             new ContractResponse.FieldDescriptor("status", "Literal rejection status."),
             new ContractResponse.FieldDescriptor("code", "Stable machine rejection code."),
+            new ContractResponse.FieldDescriptor(
+                "category", "Explicit transport category for the published rejection code."),
             new ContractResponse.FieldDescriptor(
                 "message", "Plain-language explanation of the rejection."),
             new ContractResponse.FieldDescriptor(
@@ -56,6 +54,8 @@ final class MachineContractResponseDescriptors {
                 "status", "Literal runtime or invalid-request error status."),
             liftedPlanOutcomePayloadField(),
             new ContractResponse.FieldDescriptor("code", "Stable machine error code."),
+            new ContractResponse.FieldDescriptor(
+                "category", "Explicit transport category for the published error code."),
             new ContractResponse.FieldDescriptor(
                 "message", "Plain-language explanation of the error."),
             new ContractResponse.FieldDescriptor(
@@ -72,20 +72,5 @@ final class MachineContractResponseDescriptors {
         "Optional "
             + ProtocolCatalog.operationName(OperationId.EXECUTE_PLAN)
             + " outcome payload object published when a rejected or assertion-failed plan result still owns the primary operation body beside lifted top-level diagnostics.");
-  }
-
-  private static List<ContractResponse.RejectionDescriptor> rejectionDescriptors() {
-    return java.util.stream.Stream.concat(
-            java.util.stream.Stream.concat(
-                BookAdministrationRejection.descriptors().stream(),
-                java.util.stream.Stream.concat(
-                    BookMaintenanceRejection.descriptors().stream(),
-                    java.util.stream.Stream.concat(
-                        BookQueryRejection.descriptors().stream(),
-                        java.util.stream.Stream.concat(
-                            TaxDeclarationRejection.descriptors().stream(),
-                            TaxQueryRejection.descriptors().stream())))),
-            PostingRejection.descriptors().stream())
-        .toList();
   }
 }

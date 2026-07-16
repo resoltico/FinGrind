@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFile;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
 import dev.erst.fingrind.sqlite.SqliteBookPassphrase;
@@ -34,12 +33,8 @@ class CliFilesystemFixtureSupport {
 
   @TempDir protected Path tempDirectory;
 
-  protected static PublicPathHint hint(Path path) {
-    return PublicPathHint.fromPath(path);
-  }
-
-  protected static String publicHintValue(Path path) {
-    return hint(path).value().replace('\\', '/');
+  protected static Path hint(Path path) {
+    return path.toAbsolutePath().normalize();
   }
 
   @BeforeEach

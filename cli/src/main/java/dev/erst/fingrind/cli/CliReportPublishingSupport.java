@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliReportJsonModels;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.reportmodel.ReportModel;
 import java.nio.file.Path;
@@ -12,14 +13,13 @@ final class CliReportPublishingSupport {
   static void writeReportedModel(
       CliOutputChannel outputChannel,
       ReportModel reportModel,
-      String csvText,
+      CliReportJsonModels.ReportPayload reportPayload,
       OutputMode outputMode,
       @Nullable Path exportedArtifactPath) {
     outputMode.run(
         () ->
             outputChannel.writeEnvelope(
-                CliEnvelopeMapper.successEnvelope(
-                    JsonReportProjector.project(reportModel), exportedArtifactPath)),
+                CliEnvelopeMapper.successEnvelope(reportPayload, exportedArtifactPath)),
         () ->
             outputChannel.writeText(
                 exportedArtifactPath == null
@@ -30,7 +30,7 @@ final class CliReportPublishingSupport {
             throw new IllegalStateException(
                 "CSV stdout cannot be combined with --pdf-out after argument validation.");
           }
-          outputChannel.writeText(csvText);
+          outputChannel.writeText(CliSemanticReportCsvRenderer.render(reportPayload));
         });
   }
 }

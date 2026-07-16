@@ -99,6 +99,8 @@ class ProtocolCatalogTest {
             "delete-rekey-rollback",
             "restore-rekey-rollback",
             "declare-account",
+            "amend-account",
+            "retire-account",
             "declare-tax-registration",
             "interim-result-sweep",
             "fiscal-year-close"),
@@ -117,6 +119,11 @@ class ProtocolCatalogTest {
             "period-summary",
             "financial-position",
             "inventory-valuation",
+            "accrual-cutoff-schedule",
+            "fixed-asset-register",
+            "financing-register",
+            "realized-foreign-exchange-register",
+            "latvian-payroll-register",
             "income-statement",
             "cash-flow-statement",
             "changes-in-equity"),
@@ -134,6 +141,23 @@ class ProtocolCatalogTest {
             "record-inventory-write-down",
             "record-inventory-shrinkage",
             "record-inventory-count-increase",
+            "record-prepayment",
+            "record-deferred-revenue",
+            "record-accrued-expense",
+            "record-accrual-cutoff-recognition",
+            "record-accrued-expense-settlement",
+            "record-latvian-monthly-payroll",
+            "record-latvian-payroll-net-wage-settlement",
+            "record-latvian-payroll-state-remittance",
+            "record-fixed-asset-capitalization",
+            "record-fixed-asset-depreciation",
+            "record-fixed-asset-disposal",
+            "record-financing-borrowing",
+            "record-financing-principal-repayment",
+            "record-financing-interest-accrual",
+            "record-financing-interest-payment",
+            "record-foreign-currency-obligation",
+            "record-realized-foreign-exchange-settlement",
             "record-expense-settled",
             "record-expense-on-credit",
             "record-receipt",
@@ -251,11 +275,10 @@ class ProtocolCatalogTest {
     assertEquals("backup-file", ProtocolArtifactOutput.backupFileFormat());
     assertEquals("backup-key-file", ProtocolArtifactOutput.backupKeyFileFormat());
     assertEquals("rollback-book-file", ProtocolArtifactOutput.rollbackBookFileFormat());
-    assertEquals(
-        "--new-book-key-file <existing-path>",
-        ProtocolArtifactOutput.replacementBookKeyFile().option());
+    assertEquals("--new-book-key-file <path>", ProtocolArtifactOutput.newBookKeyFile().option());
     assertEquals("--book-file <path>", ProtocolArtifactOutput.bookFile().option());
-    assertEquals("--book-key-file <path>", ProtocolArtifactOutput.bookKeyFile().option());
+    assertEquals(
+        "--new-backup-key-file <path>", ProtocolArtifactOutput.newBackupKeyFile().option());
     assertEquals("--rollback-book-file <path>", ProtocolArtifactOutput.rollbackBookFile().option());
     assertEquals(
         "--book-file <path>", ProtocolArtifactOutput.discoveredRollbackBookFile().option());

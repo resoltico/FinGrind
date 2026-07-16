@@ -1,5 +1,7 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.AmendAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.AmendAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
@@ -9,6 +11,8 @@ import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepCommand;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.RetireAccountCommand;
+import dev.erst.fingrind.contract.bookkeeping.RetireAccountResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
@@ -21,6 +25,7 @@ import dev.erst.fingrind.executor.InterimResultSweepService;
 import dev.erst.fingrind.executor.LedgerPlanService;
 import dev.erst.fingrind.executor.TaxAdministrationService;
 import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
+import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingRequestPublishedLanguageTranslator;
 import dev.erst.fingrind.sqlite.SqliteAdministrationSessions;
@@ -56,6 +61,37 @@ final class SqliteCliMutationWorkflow implements CliBookMutationWorkflow {
                 new BookAdministrationService(bookSession, bookSession, bookSession, clock)
                     .declareAccount(
                         BookkeepingRequestPublishedLanguageTranslator.fromPublished(command))));
+  }
+
+  @Override
+  public ContractDecision<AmendAccountResult> amendAccount(
+      BookAccess bookAccess, AmendAccountCommand command) {
+    return SqliteCliWorkflowSessions.withAdministrationSession(
+        SqliteAdministrationSessions.openResolved(
+            bookAccess,
+            SqliteBookSessionMode.READ_WRITE_EXISTING,
+            passphraseResolver,
+            SqlitePassphraseIntent.EXISTING_SECRET),
+        bookSession ->
+            AccountRegistryPublishedLanguageTranslator.toPublished(
+                new BookAdministrationService(bookSession, bookSession, bookSession, clock)
+                    .amendAccount(
+                        AccountRegistryPublishedLanguageTranslator.fromPublished(command))));
+  }
+
+  @Override
+  public ContractDecision<RetireAccountResult> retireAccount(
+      BookAccess bookAccess, RetireAccountCommand command) {
+    return SqliteCliWorkflowSessions.withAdministrationSession(
+        SqliteAdministrationSessions.openResolved(
+            bookAccess,
+            SqliteBookSessionMode.READ_WRITE_EXISTING,
+            passphraseResolver,
+            SqlitePassphraseIntent.EXISTING_SECRET),
+        bookSession ->
+            AccountRegistryPublishedLanguageTranslator.toPublished(
+                new BookAdministrationService(bookSession, bookSession, bookSession, clock)
+                    .retireAccount(command.accountCode())));
   }
 
   @Override
@@ -112,6 +148,7 @@ final class SqliteCliMutationWorkflow implements CliBookMutationWorkflow {
                 : SqlitePassphraseIntent.EXISTING_SECRET),
         bookSession ->
             new LedgerPlanService(
+                    bookSession,
                     bookSession,
                     bookSession,
                     bookSession,

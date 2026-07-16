@@ -251,7 +251,55 @@ final class SqlitePostingQuerySql {
     if (query.effectiveDateRange().effectiveDateTo().isPresent()) {
       sql.append(" and effective_date <= ?");
     }
-    sql.append(" order by effective_date, recorded_at, posting_id");
+    if (query.cursor().isPresent()) {
+      sql.append(
+          """
+           and (
+               effective_date > ?
+               or (effective_date = ? and recorded_at > ?)
+               or (effective_date = ? and recorded_at = ? and posting_id > ?)
+           )
+          """);
+    }
+    sql.append(" order by effective_date, recorded_at, posting_id limit ?");
+    return sql.toString();
+  }
+
+  static String loadAccountLedgerPriorBalances(AccountLedgerCriteria query) {
+    if (query.cursor().isEmpty()) {
+      throw new IllegalArgumentException("Account-ledger prior balances require a page cursor.");
+    }
+    StringBuilder sql =
+        new StringBuilder(896)
+            .append(
+                """
+                select
+                    journal_line.currency_code,
+                    sum(case when journal_line.entry_side = 'DEBIT' then journal_line.amount_minor else 0 end) as debit_minor,
+                    sum(case when journal_line.entry_side = 'CREDIT' then journal_line.amount_minor else 0 end) as credit_minor
+                from journal_line
+                join posting_fact on posting_fact.posting_id = journal_line.posting_id
+                where journal_line.account_code = ?
+                """);
+    if (query.postingCoverage().isNonClosingOnly()) {
+      sql.append(" and").append(NON_CLOSING_POSTING_KIND_FILTER);
+    }
+    if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
+      sql.append(" and posting_fact.effective_date >= ?");
+    }
+    if (query.effectiveDateRange().effectiveDateTo().isPresent()) {
+      sql.append(" and posting_fact.effective_date <= ?");
+    }
+    sql.append(
+        """
+         and (
+             posting_fact.effective_date < ?
+             or (posting_fact.effective_date = ? and posting_fact.recorded_at < ?)
+             or (posting_fact.effective_date = ? and posting_fact.recorded_at = ? and posting_fact.posting_id <= ?)
+         )
+         group by journal_line.currency_code
+         order by journal_line.currency_code
+        """);
     return sql.toString();
   }
 }

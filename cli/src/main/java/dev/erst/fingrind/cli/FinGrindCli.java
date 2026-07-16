@@ -16,6 +16,7 @@ import java.util.UUID;
 final class FinGrindCli {
   static final String RUNTIME_DISTRIBUTION_PROPERTY = "fingrind.runtime.distribution";
   static final String RUNTIME_BUNDLE_TARGET_PROPERTY = "fingrind.runtime.bundle-target";
+  static final String INVOCATION_PROPERTY = "dev.erst.fingrind.invocation";
   static final String DIRECT_JAVA_RUNTIME_DISTRIBUTION =
       ProtocolCatalog.distribution().directJavaRuntimeDistribution().wireValue();
   static final String SOURCE_CHECKOUT_RUNTIME_DISTRIBUTION =
@@ -130,7 +131,7 @@ final class FinGrindCli {
         new CliQueryCommandExecutor(bookReadResponseWriter, failureWriter, resolvedReadWorkflow);
     CliReportCommandExecutor reportCommandExecutor =
         new CliReportCommandExecutor(
-            reportResponseWriter, failureWriter, resolvedReadWorkflow, pdfExporter);
+            reportResponseWriter, failureWriter, resolvedReadWorkflow, pdfExporter, resolvedClock);
     this.executionContext =
         new CliExecutionContext(
             administrativeCommandExecutor,

@@ -1,9 +1,11 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPagination;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityReport;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
@@ -34,30 +36,28 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
-/** Locks the empty-ledger CSV summary contract to the new rectangular row model. */
+/** Locks semantic report CSV tables to primary rows only. */
 class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
   @Test
-  void renderAccountLedgerCsv_emitsRectangularSummaryRowsWhenLedgerHasNoEntries() {
+  void renderAccountLedgerCsv_emitsOnlyTheHeaderWhenLedgerHasNoEntries() {
     String csv = CliQueryOutputRenderer.renderAccountLedgerCsv(sampleAccountLedgerReport());
     java.util.List<String> lines = csv.lines().toList();
 
-    assertTrue(lines.getFirst().startsWith("exportFamily,rowId,parentRowId,relationKind"));
-    assertTrue(csv.contains("ledger-summary:1000:EUR"));
-    assertTrue(csv.contains("No ledger entries matched the selected scope."));
-    int columnCount = csvFieldCount(lines.getFirst());
-    for (String line : lines) {
-      assertEquals(columnCount, csvFieldCount(line));
-    }
+    assertEquals(
+        "family,accountCode,postingId,effectiveDate,movementCurrencyCode,debitTotalCurrencyCode,debitTotalMinorUnits,creditTotalCurrencyCode,creditTotalMinorUnits,netAmountCurrencyCode,netAmountMinorUnits,balanceSide,runningNetAmountCurrencyCode,runningNetAmountMinorUnits,runningBalanceSide",
+        lines.getFirst());
+    assertEquals(1, lines.size());
   }
 
   @Test
-  void renderAccountLedgerCsv_fallsBackToBookCurrencyWhenNoBalanceBucketsCarryCurrency() {
+  void renderAccountLedgerCsv_doesNotInventABalanceRowWhenNoEntriesExist() {
     AccountLedgerReport emptyCurrencyReport =
         new AccountLedgerReport(
             bookIdentity(),
             declaredAccount("1000", "Cash", dev.erst.fingrind.core.NormalBalance.DEBIT),
             EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
             allPostingKinds(),
+            AccountLedgerPagination.firstPage(50),
             List.of(),
             List.of(),
             List.of());
@@ -65,12 +65,12 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
     String csv = CliQueryOutputRenderer.renderAccountLedgerCsv(emptyCurrencyReport);
     java.util.List<String> lines = csv.lines().toList();
 
-    assertTrue(lines.getFirst().startsWith("exportFamily,rowId,parentRowId,relationKind"));
-    assertEquals("EUR", CliCsvFormat.parseRow(lines.get(1)).get(12));
+    assertTrue(lines.getFirst().startsWith("family,accountCode,postingId,effectiveDate"));
+    assertEquals(1, lines.size());
   }
 
   @Test
-  void renderAccountLedgerCsv_emitsApprovalChildRowsWithoutPackedCells() {
+  void renderAccountLedgerCsv_exportsOnlyTheLedgerMovementRow() {
     DeclaredAccount cashAccount =
         declaredAccount(
             "1000",
@@ -113,6 +113,7 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
             cashAccount,
             EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
             allPostingKinds(),
+            AccountLedgerPagination.firstPage(50),
             List.of(CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "0.00"))),
             List.of(
                 new AccountLedgerEntry(
@@ -125,17 +126,14 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
     String csv = CliQueryOutputRenderer.renderAccountLedgerCsv(report);
     List<String> lines = csv.lines().toList();
 
-    assertTrue(csv.contains("ledger-counterpart:posting-approval-1:2000"));
-    assertTrue(csv.contains("ledger-source-document:posting-approval-1:document-ledger-approval"));
-    assertTrue(csv.contains("ledger-approval:posting-approval-1:approval-ledger-approval"));
-    int columnCount = csvFieldCount(lines.getFirst());
-    for (String line : lines) {
-      assertEquals(columnCount, csvFieldCount(line));
-    }
+    assertEquals(2, lines.size());
+    assertTrue(lines.getFirst().startsWith("family,accountCode,postingId,effectiveDate"));
+    assertTrue(csv.contains("account-ledger,1000,posting-approval-1,2026-04-07,EUR,EUR,1000"));
+    assertFalse(csv.contains("approval-ledger-approval"));
   }
 
   @Test
-  void renderFinancialPositionCsv_emitsExplicitEmptySectionRows() {
+  void renderFinancialPositionCsv_exportsOnlyDeclaredStatementRows() {
     CurrencyBalance assetBalance =
         CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00"));
     FinancialPositionReport report =
@@ -165,19 +163,14 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
     String csv = CliQueryOutputRenderer.renderFinancialPositionCsv(report);
     List<String> lines = csv.lines().toList();
 
-    assertTrue(lines.getFirst().startsWith("exportFamily,rowId,parentRowId,relationKind"));
-    assertTrue(csv.contains("financial-position-row:current:1000"));
-    assertTrue(csv.contains("financial-position-section-empty:current:LIABILITY"));
-    assertTrue(csv.contains("financial-position-section-total:current:ASSET:EUR"));
-    assertTrue(csv.contains("financial-position-section-total:current:EQUITY:EUR"));
-    int columnCount = csvFieldCount(lines.getFirst());
-    for (String line : lines) {
-      assertEquals(columnCount, csvFieldCount(line));
-    }
+    assertEquals(2, lines.size());
+    assertTrue(lines.getFirst().startsWith("family,reportPeriod,sectionKind,lineCode,lineName"));
+    assertTrue(csv.contains("financial-position,current,ASSET,1000,Cash,ASSET"));
+    assertFalse(csv.contains("LIABILITY"));
   }
 
   @Test
-  void renderChangesInEquityCsv_emitsEmptyRowsThroughTheMessageColumnOnly() {
+  void renderChangesInEquityCsv_emitsOnlyTheHeaderWhenThereAreNoRows() {
     ChangesInEquityReport report =
         new ChangesInEquityReport(
             bookIdentity(),
@@ -197,17 +190,7 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
     String csv = CliQueryOutputRenderer.renderChangesInEquityCsv(report);
     List<String> lines = csv.lines().toList();
 
-    assertTrue(lines.getFirst().startsWith("exportFamily,rowId,parentRowId,relationKind"));
-    assertTrue(csv.contains("changes-in-equity-report-empty:current:2026-04-01:2026-04-30"));
-    assertTrue(csv.contains("changes-in-equity-report-empty:comparative:2025-04-01:2025-04-30"));
-    assertTrue(csv.contains("No equity lines matched the selected scope."));
-    int columnCount = csvFieldCount(lines.getFirst());
-    for (String line : lines) {
-      assertEquals(columnCount, csvFieldCount(line));
-    }
-  }
-
-  private static int csvFieldCount(String line) {
-    return CliCsvFormat.csvFieldCount(line);
+    assertTrue(lines.getFirst().startsWith("family,reportPeriod,lineCode,lineName"));
+    assertEquals(1, lines.size());
   }
 }

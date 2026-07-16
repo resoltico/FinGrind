@@ -12,51 +12,11 @@ final class CliFailureOutputRenderer {
   private CliFailureOutputRenderer() {}
 
   static String renderFailureText(CliFailure failure) {
-    return renderTextDocument(
-        "Error",
-        failure.code(),
-        failure.message(),
-        failure.hint(),
-        failure.argument(),
-        null,
-        failure.details(),
-        null);
+    return renderTextDocument(TextDocument.failure("Error", failure));
   }
 
   static String renderDeterministicFailureText(CliFailure failure) {
-    return renderTextDocument(
-        "Rejected",
-        failure.code(),
-        failure.message(),
-        failure.hint(),
-        failure.argument(),
-        null,
-        failure.details(),
-        null);
-  }
-
-  static String renderWarningText(CliFailure failure) {
-    return renderTextDocument(
-        "Warning",
-        failure.code(),
-        failure.message(),
-        failure.hint(),
-        failure.argument(),
-        null,
-        failure.details(),
-        null);
-  }
-
-  static String renderInfoText(CliFailure failure) {
-    return renderTextDocument(
-        "Info",
-        failure.code(),
-        failure.message(),
-        failure.hint(),
-        failure.argument(),
-        null,
-        failure.details(),
-        null);
+    return renderTextDocument(TextDocument.failure("Rejected", failure));
   }
 
   static String renderRejectedText(
@@ -71,32 +31,24 @@ final class CliFailureOutputRenderer {
     if (dedicatedPostingText != null) {
       return dedicatedPostingText;
     }
-    return renderTextDocument("Rejected", code, message, hint, null, idempotencyKey, null, details);
+    return renderTextDocument(TextDocument.rejection(code, message, hint, idempotencyKey, details));
   }
 
-  private static String renderTextDocument(
-      String title,
-      String code,
-      String message,
-      @Nullable String hint,
-      @Nullable String argument,
-      @Nullable String idempotencyKey,
-      CliErrorJsonModels.@Nullable ErrorDetails details,
-      CliRejectionJsonModels.@Nullable RejectionDetails rejectionDetails) {
+  private static String renderTextDocument(TextDocument document) {
     List<List<String>> rows = new ArrayList<>();
-    rows.add(List.of("Code", code));
-    rows.add(List.of("Message", message));
-    if (idempotencyKey != null) {
-      rows.add(List.of("Idempotency key", idempotencyKey));
+    rows.add(List.of("Code", document.code()));
+    rows.add(List.of("Message", document.message()));
+    if (document.idempotencyKey() != null) {
+      rows.add(List.of("Idempotency key", document.idempotencyKey()));
     }
-    if (argument != null) {
-      rows.add(List.of("Argument", argument));
+    if (document.argument() != null) {
+      rows.add(List.of("Argument", document.argument()));
     }
-    if (hint != null) {
-      rows.add(List.of("Hint", hint));
+    if (document.hint() != null) {
+      rows.add(List.of("Hint", document.hint()));
     }
-    if (details != null) {
-      switch (details) {
+    if (document.details() != null) {
+      switch (document.details()) {
         case CliErrorJsonModels.InvalidJsonDetails invalidJsonDetails -> {
           rows.add(List.of("Parse message", invalidJsonDetails.parseMessage()));
           rows.add(
@@ -109,8 +61,60 @@ final class CliFailureOutputRenderer {
                 List.of("Violations", CliTextFormat.joined(invalidRequestDetails.violations())));
       }
     }
-    appendRejectionDetails(rows, rejectionDetails);
-    return CliTextFormat.renderTitledBlock(title, CliTextFormat.renderKeyValueBlock(rows));
+    if (document.pathFailure() != null) {
+      appendFailurePaths(rows, document.pathFailure());
+    }
+    appendRejectionDetails(rows, document.rejectionDetails());
+    return CliTextFormat.renderTitledBlock(
+        document.title(), CliTextFormat.renderKeyValueBlock(rows));
+  }
+
+  private record TextDocument(
+      String title,
+      String code,
+      String message,
+      @Nullable String hint,
+      @Nullable String argument,
+      @Nullable String idempotencyKey,
+      CliErrorJsonModels.@Nullable ErrorDetails details,
+      CliRejectionJsonModels.@Nullable RejectionDetails rejectionDetails,
+      @Nullable CliFailure pathFailure) {
+    static TextDocument failure(String title, CliFailure failure) {
+      return new TextDocument(
+          title,
+          failure.code(),
+          failure.message(),
+          failure.hint(),
+          failure.argument(),
+          null,
+          failure.details(),
+          null,
+          failure);
+    }
+
+    static TextDocument rejection(
+        String code,
+        String message,
+        @Nullable String hint,
+        @Nullable String idempotencyKey,
+        CliRejectionJsonModels.@Nullable RejectionDetails details) {
+      return new TextDocument(
+          "Rejected", code, message, hint, null, idempotencyKey, null, details, null);
+    }
+  }
+
+  private static void appendFailurePaths(List<List<String>> rows, CliFailure failure) {
+    if (failure.path() == null) {
+      return;
+    }
+    rows.add(List.of("Path", CliTextDisplay.path(failure.path())));
+    if (!failure.relatedPaths().isEmpty()) {
+      rows.add(
+          List.of(
+              "Related paths",
+              CliTextFormat.joined(
+                  failure.relatedPaths().stream().map(CliTextDisplay::path).toList())));
+    }
   }
 
   private static void appendRejectionDetails(
@@ -156,6 +160,12 @@ final class CliFailureOutputRenderer {
         rows.add(List.of("Account code", details.accountCode()));
         appendTaxonomyRows(rows, "Existing", details.existingAccountTaxonomy());
         appendTaxonomyRows(rows, "Requested", details.requestedAccountTaxonomy());
+      }
+      case CliRejectionJsonModels.AccountCodeDetails details ->
+          rows.add(List.of("Account code", details.accountCode()));
+      case CliRejectionJsonModels.AccountDependenciesDetails details -> {
+        rows.add(List.of("Account code", details.accountCode()));
+        rows.add(List.of("Durable dependencies", CliTextFormat.joined(details.dependencies())));
       }
       case CliRejectionJsonModels.ParentAccountDetails details -> {
         rows.add(List.of("Account code", details.accountCode()));

@@ -14,8 +14,10 @@ import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.AccountRetirementOutcome;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
 import java.time.Clock;
 import java.time.Instant;
@@ -118,6 +120,80 @@ class BookAdministrationServiceTest {
               new dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection
                   .ParentAccountMissing(new AccountCode("1010"), new AccountCode("9999"))),
           result);
+    }
+  }
+
+  @Test
+  void accountLifecycleCommands_rejectMissingBooksAndInvalidAmendmentsBeforeStoreMutation() {
+    AccountDeclaration amendment =
+        new AccountDeclaration(
+            new AccountCode("1010"),
+            new AccountName("Operating Cash"),
+            AccountType.ASSET,
+            accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT));
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      BookAdministrationService service =
+          new BookAdministrationService(bookSession, bookSession, bookSession, FIXED_CLOCK);
+
+      org.junit.jupiter.api.Assertions.assertInstanceOf(
+          AccountAmendmentOutcome.Rejected.class, service.amendAccount(amendment));
+      org.junit.jupiter.api.Assertions.assertInstanceOf(
+          AccountRetirementOutcome.Rejected.class, service.retireAccount(new AccountCode("1010")));
+      service.openBook(bookIdentity());
+
+      AccountAmendmentOutcome.Rejected invalid =
+          org.junit.jupiter.api.Assertions.assertInstanceOf(
+              AccountAmendmentOutcome.Rejected.class,
+              service.amendAccount(
+                  new AccountDeclaration(
+                      new AccountCode("1010"),
+                      new AccountName("Operating Cash"),
+                      AccountType.ASSET,
+                      new AccountTaxonomy(
+                          dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+                          java.util.Optional.of(new AccountCode("9999")),
+                          java.util.Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                          java.util.Optional.empty(),
+                          java.util.Optional.of(
+                              CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)))));
+
+      org.junit.jupiter.api.Assertions.assertInstanceOf(
+          dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection
+              .ParentAccountMissing.class,
+          invalid.rejection());
+    }
+  }
+
+  @Test
+  void accountLifecycleCommands_delegateAdmittedAmendmentAndRetirement() {
+    AccountCode accountCode = new AccountCode("1010");
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      BookAdministrationService service =
+          new BookAdministrationService(bookSession, bookSession, bookSession, FIXED_CLOCK);
+      service.openBook(bookIdentity());
+      service.declareAccount(
+          new AccountDeclaration(
+              accountCode,
+              new AccountName("Cash Reserve"),
+              AccountType.ASSET,
+              accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT)));
+
+      AccountAmendmentOutcome.Amended amended =
+          org.junit.jupiter.api.Assertions.assertInstanceOf(
+              AccountAmendmentOutcome.Amended.class,
+              service.amendAccount(
+                  new AccountDeclaration(
+                      accountCode,
+                      new AccountName("Operating Reserve"),
+                      AccountType.ASSET,
+                      accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT))));
+      AccountRetirementOutcome.Retired retired =
+          org.junit.jupiter.api.Assertions.assertInstanceOf(
+              AccountRetirementOutcome.Retired.class, service.retireAccount(accountCode));
+
+      org.junit.jupiter.api.Assertions.assertEquals(
+          "Operating Reserve", amended.account().accountName().value());
+      org.junit.jupiter.api.Assertions.assertFalse(retired.account().active());
     }
   }
 

@@ -223,7 +223,7 @@ exit 0
 PWSH
 
 cat >"${bridge_request_json}" <<'JSON'
-{"arguments":["generate-book-key-file","--book-key-file","/tmp/workspace odd/Rīga büro/bridge key.key"],"stdinText":"stdin through bridge\n"}
+{"arguments":["generate-book-key-file","--new-book-key-file","/tmp/workspace odd/Rīga büro/bridge key.key"],"stdinText":"stdin through bridge\n"}
 JSON
 
 bridge_output="$(
@@ -286,7 +286,7 @@ launcher_output="$(
         pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File \
             "${launcher_bundle_root}/bin/fingrind.ps1" \
             generate-book-key-file \
-            --book-key-file \
+            --new-book-key-file \
             '/tmp/workspace odd/Rīga büro/bridge key.key'
 )"
 python3 - <<'PY' "${launcher_output}"
@@ -296,7 +296,7 @@ import sys
 payload = json.loads(sys.argv[1])
 if payload["internalCliArgumentsFileEnv"] is None:
     raise SystemExit("fingrind.ps1 failed to hand staged CLI arguments to the JVM boundary")
-if payload["stagedArguments"][-3:] != ["generate-book-key-file", "--book-key-file", "/tmp/workspace odd/Rīga büro/bridge key.key"]:
+if payload["stagedArguments"][-3:] != ["generate-book-key-file", "--new-book-key-file", "/tmp/workspace odd/Rīga büro/bridge key.key"]:
     raise SystemExit("fingrind.ps1 lost the staged Unicode CLI arguments before the JVM boundary")
 if any(argument == "generate-book-key-file" for argument in payload["argv"]):
     raise SystemExit("fingrind.ps1 leaked staged CLI arguments back onto the native Java argv boundary")

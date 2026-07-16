@@ -300,34 +300,85 @@ abstract class AbstractInMemoryBookReadSession extends AbstractInMemoryReporting
                       .toList());
           Map<CurrencyUnit, InMemoryBookSessionSupport.Totals> runningTotals =
               InMemoryBookSessionSupport.totalsMap(openingBalances);
-          List<AccountLedgerEntryView> entries = new java.util.ArrayList<>();
-          orderedPostings.stream()
-              .filter(posting -> range.contains(posting.journalEntry().effectiveDate()))
+          List<dev.erst.fingrind.executor.bookkeeping.CommittedPosting> postingsInRange =
+              orderedPostings.stream()
+                  .filter(posting -> range.contains(posting.journalEntry().effectiveDate()))
+                  .toList();
+          List<dev.erst.fingrind.executor.bookkeeping.CommittedPosting> postingsBeforePage =
+              postingsInRange.stream()
+                  .filter(
+                      posting ->
+                          !InMemoryBookSessionSupport.matchesAccountLedgerCursor(
+                              posting, query.cursor()))
+                  .toList();
+          InMemoryBookSessionSupport.balancesFor(account, postingsBeforePage)
               .forEach(
-                  posting -> {
-                    CurrencyBalance movement =
-                        InMemoryBookSessionSupport.movementFor(account, posting);
-                    InMemoryBookSessionSupport.Totals totals =
-                        runningTotals.computeIfAbsent(
-                            movement.netAmount().currencyUnit(),
-                            ignored -> new InMemoryBookSessionSupport.Totals());
-                    totals.debit = Math.addExact(totals.debit, movement.debitTotal().minorUnits());
-                    totals.credit =
-                        Math.addExact(totals.credit, movement.creditTotal().minorUnits());
-                    CurrencyBalance runningBalance =
-                        InMemoryBookSessionSupport.balance(
-                            movement.netAmount().currencyUnit(), totals);
-                    entries.add(
-                        new AccountLedgerEntryView(
-                            posting,
-                            movement,
-                            runningBalance.netAmount(),
-                            runningBalance.balanceSide()));
-                  });
+                  balance ->
+                      runningTotals.merge(
+                          balance.netAmount().currencyUnit(),
+                          InMemoryBookSessionSupport.totalsFrom(balance),
+                          (left, right) -> {
+                            left.debit = Math.addExact(left.debit, right.debit);
+                            left.credit = Math.addExact(left.credit, right.credit);
+                            return left;
+                          }));
+          List<dev.erst.fingrind.executor.bookkeeping.CommittedPosting> pageCandidates =
+              postingsInRange.stream()
+                  .filter(
+                      posting ->
+                          InMemoryBookSessionSupport.matchesAccountLedgerCursor(
+                              posting, query.cursor()))
+                  .toList();
+          int pageEnd = Math.min(query.limit(), pageCandidates.size());
+          List<dev.erst.fingrind.executor.bookkeeping.CommittedPosting> pagePostings =
+              pageCandidates.subList(0, pageEnd);
+          List<AccountLedgerEntryView> entries = new java.util.ArrayList<>();
+          pagePostings.forEach(
+              posting -> {
+                CurrencyBalance movement = InMemoryBookSessionSupport.movementFor(account, posting);
+                InMemoryBookSessionSupport.Totals totals =
+                    runningTotals.computeIfAbsent(
+                        movement.netAmount().currencyUnit(),
+                        ignored -> new InMemoryBookSessionSupport.Totals());
+                totals.debit = Math.addExact(totals.debit, movement.debitTotal().minorUnits());
+                totals.credit = Math.addExact(totals.credit, movement.creditTotal().minorUnits());
+                CurrencyBalance runningBalance =
+                    InMemoryBookSessionSupport.balance(movement.netAmount().currencyUnit(), totals);
+                entries.add(
+                    new AccountLedgerEntryView(
+                        posting,
+                        movement,
+                        runningBalance.netAmount(),
+                        runningBalance.balanceSide()));
+              });
           List<CurrencyBalance> closingBalances =
-              InMemoryBookSessionSupport.balancesFromTotals(runningTotals);
+              InMemoryBookSessionSupport.balancesFor(
+                  account,
+                  orderedPostings.stream()
+                      .filter(
+                          posting ->
+                              query.effectiveDateRange().effectiveDateTo().stream()
+                                  .allMatch(
+                                      upperBound ->
+                                          !posting
+                                              .journalEntry()
+                                              .effectiveDate()
+                                              .isAfter(upperBound)))
+                      .toList());
           return new AccountLedgerView(
-              account, range, query.postingCoverage(), openingBalances, entries, closingBalances);
+              account,
+              range,
+              query.postingCoverage(),
+              query.limit(),
+              query.cursor(),
+              pageEnd < pageCandidates.size()
+                  ? Optional.of(
+                      dev.erst.fingrind.executor.bookkeeping.AccountLedgerCursor.fromPosting(
+                          pagePostings.getLast()))
+                  : Optional.empty(),
+              openingBalances,
+              entries,
+              closingBalances);
         });
   }
 

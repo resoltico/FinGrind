@@ -3,7 +3,7 @@ package dev.erst.fingrind.contract;
 import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -14,10 +14,13 @@ class RekeyBookResultTest {
   void variants_validateNonNullState() {
     RekeyBookResult.Rekeyed rekeyed = new RekeyBookResult.Rekeyed(Path.of("book.sqlite"));
     RekeyBookResult.Rejected rejected =
-        new RekeyBookResult.Rejected(new BookAdministrationRejection.BookNotInitialized());
-    org.junit.jupiter.api.Assertions.assertEquals(Path.of("book.sqlite"), rekeyed.bookFilePath());
+        new RekeyBookResult.Rejected(
+            new BookMaintenanceRejection.SecretTargetOccupied(Path.of("book.new-key")));
     org.junit.jupiter.api.Assertions.assertEquals(
-        new BookAdministrationRejection.BookNotInitialized(), rejected.rejection());
+        Path.of("book.sqlite").toAbsolutePath().normalize(), rekeyed.bookFilePath());
+    org.junit.jupiter.api.Assertions.assertEquals(
+        new BookMaintenanceRejection.SecretTargetOccupied(Path.of("book.new-key")),
+        rejected.rejection());
   }
 
   @Test

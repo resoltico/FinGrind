@@ -39,6 +39,16 @@ final class ContractPostingRequestTemplateFieldSupport {
     }
   }
 
+  static void forbidTextFieldsExcept(
+      ContractPostingRequestTemplateValidators.PostingTemplateFields fields,
+      List<TemplateTextField> admittedFields) {
+    for (TemplateTextField field : TemplateTextField.values()) {
+      if (!admittedFields.contains(field)) {
+        ContractPostingTemplateFieldRules.forbidText(field.value(fields), field.fieldName());
+      }
+    }
+  }
+
   static void requireNoSettlementAdjunct(
       ContractPostingRequestTemplateValidators.PostingTemplateFields fields, String owner) {
     if (fields.settlementAdjunct() != null) {

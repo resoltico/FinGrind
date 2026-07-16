@@ -3,16 +3,16 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
-/** Unit tests for {@link CliArguments}. */
+/** Tests the generated-key contract of the `rekey-book` argument parser. */
 class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
-
   @Test
-  void parse_returnsRekeyBookForKeyFilePassphraseSources() {
+  void parse_acceptsOneCurrentPassphraseSourceAndOneAbsentGeneratedKeyTarget() {
     RekeyBook command =
         assertInstanceOf(
             RekeyBook.class,
@@ -30,16 +30,12 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
     assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
     assertEquals(
         Path.of("current.key"), assertKeyFileSource(command.bookAccess()).bookKeyFilePath());
-    assertEquals(
-        Path.of("replacement.key"),
-        assertInstanceOf(
-                BookAccess.PassphraseSource.KeyFile.class, command.replacementPassphraseSource())
-            .bookKeyFilePath());
+    assertEquals(Path.of("replacement.key"), command.newBookKeyFilePath());
   }
 
   @Test
-  void parse_returnsRekeyBookForStandardInputAndPromptPassphraseSources() {
-    RekeyBook currentStandardInputCommand =
+  void parse_acceptsStandardInputOrPromptOnlyForTheCurrentPassphrase() {
+    RekeyBook standardInputCommand =
         assertInstanceOf(
             RekeyBook.class,
             CliArguments.parse(
@@ -48,126 +44,17 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "--book-file",
                   "book.sqlite",
                   "--book-passphrase-stdin",
-                  "--new-book-passphrase-prompt"
+                  "--new-book-key-file",
+                  "replacement.key"
                 }));
     assertEquals(
-        BookAccess.PassphraseSource.StandardInput.INSTANCE,
-        currentStandardInputCommand.bookAccess().passphraseSource());
-    assertEquals(
-        BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
-        currentStandardInputCommand.replacementPassphraseSource());
-
-    RekeyBook currentPromptCommand =
-        assertInstanceOf(
-            RekeyBook.class,
-            CliArguments.parse(
-                new String[] {
-                  "rekey-book",
-                  "--book-file",
-                  "book.sqlite",
-                  "--book-passphrase-prompt",
-                  "--new-book-passphrase-stdin"
-                }));
-    assertEquals(
-        BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
-        currentPromptCommand.bookAccess().passphraseSource());
-    assertEquals(
-        BookAccess.PassphraseSource.StandardInput.INSTANCE,
-        currentPromptCommand.replacementPassphraseSource());
+        dev.erst.fingrind.contract.runtime.BookAccess.PassphraseSource.StandardInput.INSTANCE,
+        standardInputCommand.bookAccess().passphraseSource());
   }
 
   @Test
-  void parse_returnsRekeyBookForKeyFileAndPromptPassphraseSources() {
-    RekeyBook command =
-        assertInstanceOf(
-            RekeyBook.class,
-            CliArguments.parse(
-                new String[] {
-                  "rekey-book",
-                  "--book-file",
-                  "book.sqlite",
-                  "--book-key-file",
-                  "current.key",
-                  "--new-book-passphrase-prompt"
-                }));
-
-    assertEquals(
-        Path.of("current.key"), assertKeyFileSource(command.bookAccess()).bookKeyFilePath());
-    assertEquals(
-        BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
-        command.replacementPassphraseSource());
-  }
-
-  @Test
-  void parse_rejectsDuplicateBookFileArgumentForRekeyCommand() {
-    CliArgumentsException exception =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliArguments.parse(
-                    new String[] {
-                      "rekey-book",
-                      "--book-file",
-                      "book-a.sqlite",
-                      "--book-key-file",
-                      "current.key",
-                      "--new-book-key-file",
-                      "replacement.key",
-                      "--book-file",
-                      "book-b.sqlite"
-                    }));
-
-    assertEquals("invalid-request", exception.code());
-    assertEquals("--book-file", exception.argument());
-    assertEquals("Duplicate argument: --book-file", exception.getMessage());
-  }
-
-  @Test
-  void parse_rejectsRekeyCommandWithoutCurrentPassphraseSource() {
-    CliArgumentsException exception =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliArguments.parse(
-                    new String[] {
-                      "rekey-book",
-                      "--book-file",
-                      "book.sqlite",
-                      "--new-book-key-file",
-                      "replacement.key"
-                    }));
-
-    assertEquals("invalid-request", exception.code());
-    assertEquals("--book-key-file", exception.argument());
-    assertEquals(
-        "Exactly one current book passphrase source is required: --book-key-file <path>,"
-            + " --book-passphrase-stdin, or --book-passphrase-prompt.",
-        exception.getMessage());
-  }
-
-  @Test
-  void parse_rejectsRekeyCommandWithoutBookFile() {
-    CliArgumentsException exception =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliArguments.parse(
-                    new String[] {
-                      "rekey-book",
-                      "--book-key-file",
-                      "current.key",
-                      "--new-book-key-file",
-                      "next.key"
-                    }));
-
-    assertEquals("invalid-request", exception.code());
-    assertEquals("--book-file", exception.argument());
-    assertEquals("A --book-file argument is required.", exception.getMessage());
-  }
-
-  @Test
-  void parse_rejectsRekeyCommandWithoutReplacementPassphraseSource() {
-    CliArgumentsException exception =
+  void parse_rejectsMissingOrDuplicateGeneratedKeyTarget() {
+    CliArgumentsException missing =
         assertThrows(
             CliArgumentsException.class,
             () ->
@@ -175,18 +62,9 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                     new String[] {
                       "rekey-book", "--book-file", "book.sqlite", "--book-key-file", "current.key"
                     }));
+    assertEquals("--new-book-key-file", missing.argument());
 
-    assertEquals("invalid-request", exception.code());
-    assertEquals("--new-book-key-file", exception.argument());
-    assertEquals(
-        "Exactly one new book passphrase source is required: --new-book-key-file <existing-path>,"
-            + " --new-book-passphrase-stdin, or --new-book-passphrase-prompt.",
-        exception.getMessage());
-  }
-
-  @Test
-  void parse_rejectsDuplicateReplacementRekeyPassphraseSources() {
-    CliArgumentsException duplicateKeyFile =
+    CliArgumentsException duplicate =
         assertThrows(
             CliArgumentsException.class,
             () ->
@@ -202,47 +80,59 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "--new-book-key-file",
                       "replacement-b.key"
                     }));
-    assertEquals("--new-book-key-file", duplicateKeyFile.argument());
-    assertEquals(
-        "Exactly one new book passphrase source is permitted per command.",
-        duplicateKeyFile.getMessage());
-
-    CliArgumentsException duplicateStandardInput =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliArguments.parse(
-                    new String[] {
-                      "rekey-book",
-                      "--book-file",
-                      "book.sqlite",
-                      "--book-key-file",
-                      "current.key",
-                      "--new-book-passphrase-stdin",
-                      "--new-book-passphrase-stdin"
-                    }));
-    assertEquals("--new-book-passphrase-stdin", duplicateStandardInput.argument());
-
-    CliArgumentsException duplicatePrompt =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliArguments.parse(
-                    new String[] {
-                      "rekey-book",
-                      "--book-file",
-                      "book.sqlite",
-                      "--book-key-file",
-                      "current.key",
-                      "--new-book-passphrase-prompt",
-                      "--new-book-passphrase-prompt"
-                    }));
-    assertEquals("--new-book-passphrase-prompt", duplicatePrompt.argument());
+    assertEquals("--new-book-key-file", duplicate.argument());
+    assertEquals("Duplicate argument: --new-book-key-file", duplicate.getMessage());
   }
 
   @Test
-  void parse_rejectsRekeyCommandWithSameCurrentAndReplacementKeyFilePaths() {
-    CliArgumentsException exception =
+  void parse_rejectsMissingBookFileAndCurrentPassphraseSource() {
+    CliArgumentsException missingBookFile =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "rekey-book",
+                      "--book-key-file",
+                      "current.key",
+                      "--new-book-key-file",
+                      "replacement.key"
+                    }));
+    assertEquals("--book-file", missingBookFile.argument());
+
+    CliArgumentsException missingCurrentPassphraseSource =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "rekey-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--new-book-key-file",
+                      "replacement.key"
+                    }));
+    assertEquals("--book-key-file", missingCurrentPassphraseSource.argument());
+  }
+
+  @Test
+  void parse_rejectsAReplacementPassphraseOptionAndAliasingTheCurrentKey() {
+    CliArgumentsException removedOption =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "rekey-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "current.key",
+                      "--new-book-passphrase-prompt"
+                    }));
+    assertEquals("--new-book-passphrase-prompt", removedOption.argument());
+
+    CliArgumentsException aliasedKey =
         assertThrows(
             CliArgumentsException.class,
             () ->
@@ -256,56 +146,9 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "--new-book-key-file",
                       "shared.key"
                     }));
-
-    assertEquals("invalid-request", exception.code());
-    assertEquals("--new-book-key-file", exception.argument());
-    assertEquals(
-        "--book-key-file and --new-book-key-file must not point to the same path.",
-        exception.getMessage());
-  }
-
-  @Test
-  void parse_rejectsUnsupportedRekeyArgument() {
-    CliArgumentsException exception =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliArguments.parse(
-                    new String[] {
-                      "rekey-book",
-                      "--book-file",
-                      "book.sqlite",
-                      "--book-key-file",
-                      "current.key",
-                      "--new-book-key-file",
-                      "next.key",
-                      "--wat"
-                    }));
-
-    assertEquals("invalid-request", exception.code());
-    assertEquals("--wat", exception.argument());
-    assertEquals("Unsupported argument: --wat", exception.getMessage());
-  }
-
-  @Test
-  void parse_rejectsUsingStandardInputForBothCurrentAndReplacementRekeyPassphrases() {
-    CliArgumentsException exception =
-        assertThrows(
-            CliArgumentsException.class,
-            () ->
-                CliArguments.parse(
-                    new String[] {
-                      "rekey-book",
-                      "--book-file",
-                      "book.sqlite",
-                      "--book-passphrase-stdin",
-                      "--new-book-passphrase-stdin"
-                    }));
-
-    assertEquals("invalid-request", exception.code());
-    assertEquals("--new-book-passphrase-stdin", exception.argument());
-    assertEquals(
-        "Standard input cannot supply both the current and new book passphrases.",
-        exception.getMessage());
+    assertEquals("--new-book-key-file", aliasedKey.argument());
+    assertEquals(ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED.code(), aliasedKey.code());
+    assertTrue(
+        java.util.Objects.requireNonNull(aliasedKey.getMessage()).contains("--book-key-file"));
   }
 }

@@ -15,8 +15,8 @@ class CliFailureOutputModeResolverTest {
   }
 
   @Test
-  void unknownCommandFallsBackToJson() {
-    assertEquals(OutputMode.JSON, CliFailureOutputModeResolver.resolve(new String[] {"no-such"}));
+  void unknownCommandDefaultsToText() {
+    assertEquals(OutputMode.TEXT, CliFailureOutputModeResolver.resolve(new String[] {"no-such"}));
   }
 
   @Test
@@ -35,24 +35,24 @@ class CliFailureOutputModeResolverTest {
   }
 
   @Test
-  void outputSelectionDefectsFallBackToJson() {
+  void outputSelectionDefectsDefaultToText() {
     assertEquals(
-        OutputMode.JSON,
+        OutputMode.TEXT,
         CliFailureOutputModeResolver.resolve(
             new String[] {"generate-book-key-file", "--output", "text", "--output", "json"}));
     assertEquals(
-        OutputMode.JSON,
+        OutputMode.TEXT,
         CliFailureOutputModeResolver.resolve(new String[] {"generate-book-key-file", "--output"}));
     assertEquals(
-        OutputMode.JSON,
+        OutputMode.TEXT,
         CliFailureOutputModeResolver.resolve(
             new String[] {"generate-book-key-file", "--output", "not-a-mode"}));
   }
 
   @Test
-  void unsupportedRequestedModeFallsBackToJson() {
+  void explicitValidOutputRemainsSelectedBeforeCommandSupportIsKnown() {
     assertEquals(
-        OutputMode.JSON,
+        OutputMode.CSV,
         CliFailureOutputModeResolver.resolve(new String[] {"get-posting", "--output", "csv"}));
   }
 

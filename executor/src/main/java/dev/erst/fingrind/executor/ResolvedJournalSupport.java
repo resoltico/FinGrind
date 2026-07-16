@@ -1,7 +1,6 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
-import dev.erst.fingrind.contract.bookkeeping.InventoryBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.ResolvedJournal;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRole;
@@ -99,19 +98,7 @@ final class ResolvedJournalSupport {
 
   private static Optional<dev.erst.fingrind.core.EconomicEventClass> assertedTypedEventClass(
       BookkeepingEntry entry) {
-    return switch (entry) {
-      case InventoryBookkeepingEntryVariants.InventoryCapitalizationSettled _ ->
-          Optional.of(dev.erst.fingrind.core.EconomicEventClass.INVENTORY_CAPITALIZATION);
-      case InventoryBookkeepingEntryVariants.InventoryCapitalizationOnCredit _ ->
-          Optional.of(dev.erst.fingrind.core.EconomicEventClass.INVENTORY_CAPITALIZATION);
-      case InventoryBookkeepingEntryVariants.InventoryWriteDown _ ->
-          Optional.of(dev.erst.fingrind.core.EconomicEventClass.INVENTORY_WRITE_DOWN);
-      case InventoryBookkeepingEntryVariants.InventoryShrinkage _ ->
-          Optional.of(dev.erst.fingrind.core.EconomicEventClass.INVENTORY_SHRINKAGE);
-      case InventoryBookkeepingEntryVariants.InventoryCountIncrease _ ->
-          Optional.of(dev.erst.fingrind.core.EconomicEventClass.INVENTORY_COUNT_INCREASE);
-      default -> Optional.empty();
-    };
+    return TypedEntryEventClassCatalog.classifierAssertedEventClass(entry.entryKind());
   }
 
   private static AccountRole accountRole(

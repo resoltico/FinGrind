@@ -8,10 +8,10 @@
   "budgetVarianceReason": "The runtime probe matrix exceeds the default test-suite budget until runtime-state families are split further.",
   "approval": {
     "physicalLines": 962,
-    "logicalLines": 925,
+    "logicalLines": 927,
     "importLikeLines": 23,
     "nestedTypes": 0,
-    "functions": 26,
+    "functions": 24,
     "fieldsPerTopLevelType": 0,
     "switchArmsPerMethod": 0,
     "methodLineSpan": 357,

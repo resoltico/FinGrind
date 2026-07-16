@@ -5,6 +5,7 @@ import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
+import dev.erst.fingrind.contract.runtime.ContractResponseCatalog;
 import java.util.Optional;
 
 /** Shared CLI execution policy for public failure exit codes and prompt restrictions. */
@@ -20,17 +21,7 @@ final class CliExecutionPolicy {
   }
 
   static int failureExitCode(CliFailure failure) {
-    String failureCode = failure.code();
-    for (ContractErrors.Descriptor descriptor : ContractErrors.Descriptor.values()) {
-      if (descriptor.code().equals(failureCode)) {
-        return descriptor.exitCode();
-      }
-    }
-    return runtimeFailureExitCode();
-  }
-
-  static int runtimeFailureExitCode() {
-    return 4;
+    return ContractResponseCatalog.errorDescriptorFor(failure.code()).exitCode();
   }
 
   static Optional<ContractFailure> interactivePromptOutputFailure(
@@ -44,7 +35,7 @@ final class CliExecutionPolicy {
             ContractErrors.Descriptor.UNSUPPORTED_OUTPUT_SELECTION.failure(
                 "Interactive passphrase prompting is only supported with --output text.",
                 "Rerun with --output text, or switch the passphrase source to --book-key-file or --book-passphrase-stdin before selecting one machine output mode.",
-                ProtocolOptions.OUTPUT));
+                ProtocolOptions.Presentation.OUTPUT));
       }
     }
     return Optional.empty();

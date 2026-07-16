@@ -17,33 +17,33 @@ final class CliPagedListWindowArguments {
     boolean withContext = false;
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.LIMIT.equals(argument)) {
+      if (ProtocolOptions.ReportQuery.LIMIT.equals(argument)) {
         limit =
             CliSingleValueOptionRequirements.requireSingleIntegerOption(
-                limit, ProtocolOptions.LIMIT, argumentIterator);
+                limit, ProtocolOptions.ReportQuery.LIMIT, argumentIterator);
         continue;
       }
-      if (ProtocolOptions.CURSOR.equals(argument)) {
+      if (ProtocolOptions.ReportQuery.CURSOR.equals(argument)) {
         cursor =
             CliSingleValueOptionRequirements.requireSingleTextOption(
-                cursor, ProtocolOptions.CURSOR, argumentIterator);
+                cursor, ProtocolOptions.ReportQuery.CURSOR, argumentIterator);
         continue;
       }
-      if (ProtocolOptions.WITH_CONTEXT.equals(argument)) {
+      if (ProtocolOptions.Presentation.WITH_CONTEXT.equals(argument)) {
         withContext = true;
         continue;
       }
       outputMode =
           CliOptionModes.requireOutputMode(
               outputMode,
-              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Presentation.OUTPUT),
               CliOptionModes.supportedOutputModes(
                   OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV));
     }
     return new ParsedListWindow(
         CliArgumentValueParser.requirePageLimit(
             limit == null ? ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT : limit,
-            ProtocolOptions.LIMIT),
+            ProtocolOptions.ReportQuery.LIMIT),
         cursor,
         CliOptionModes.resolvedOutputMode(outputMode),
         withContext);

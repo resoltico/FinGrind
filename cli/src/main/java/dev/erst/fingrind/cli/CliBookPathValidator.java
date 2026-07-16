@@ -18,19 +18,12 @@ final class CliBookPathValidator {
     CliStandardInputUsageRules.validateStandardInputUsage(passphraseSource, requestFile);
   }
 
-  static void validateDistinctRekeyPaths(
+  static void validateDistinctRekeyTarget(
       Path bookFilePath,
       BookAccess.PassphraseSource currentPassphraseSource,
-      BookAccess.PassphraseSource replacementPassphraseSource) {
-    CliBookPathCollisionRules.validateDistinctRekeyPaths(
-        bookFilePath, currentPassphraseSource, replacementPassphraseSource);
-  }
-
-  static void validateRekeyStandardInputUsage(
-      BookAccess.PassphraseSource currentPassphraseSource,
-      BookAccess.PassphraseSource replacementPassphraseSource) {
-    CliStandardInputUsageRules.validateRekeyStandardInputUsage(
-        currentPassphraseSource, replacementPassphraseSource);
+      Path newBookKeyFilePath) {
+    CliBookPathCollisionRules.validateDistinctRekeyTarget(
+        bookFilePath, currentPassphraseSource, newBookKeyFilePath);
   }
 
   static void validateDistinctBackupPaths(

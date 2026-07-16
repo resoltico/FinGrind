@@ -150,8 +150,11 @@ Current accounting-standards scope:
 - comparative windows and comparative payload data for those built-in statements are derived from
   one book's declared fiscal-year anchor through the built-in bookkeeping kernel
 - OCI, note/disclosure packages, and multi-currency translation remain separate future domains
-- tax, invoicing / receivables / payables, inventory, payroll, and group reporting remain adjacent
-  future contexts above the current kernel
+- tax registration and obligation reporting, credit-event flows, inventory costing, accrual cut-offs,
+  fixed assets, financing, realized foreign exchange, and the narrow Latvian monthly-payroll profile
+  are owned adjacent contexts above the current kernel
+- invoice allocation, tax determination and filing, additional payroll profiles, and group reporting
+  remain separate future contexts
 
 Adjacent future contexts implied by the current boundary may emerge later, but they are not
 published protocol seams until they own executable commands, state, storage, and tests.

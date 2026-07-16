@@ -22,21 +22,26 @@ final class CliLedgerStepDataPayloadMapper {
       if (isCommittedJournalKind(kind)) {
         return committedEntryStepDataPayload(entry.facts());
       }
-      if (kind == LedgerJournalKind.PREFLIGHT_ENTRY) {
+      if (kind == LedgerStepKind.PREFLIGHT_ENTRY) {
         return preflightEntryStepDataPayload(entry.facts());
       }
       if (isQueryJournalKind(kind)) {
         return queryStepDataPayload(entry);
       }
-      if (kind == LedgerJournalKind.ENSURE_BOOK) {
+      if (kind == LedgerStepKind.ENSURE_BOOK) {
         return ensureBookStepDataPayload(entry.facts());
       }
-      if (kind == LedgerJournalKind.DECLARE_ACCOUNT) {
+      if (kind == LedgerStepKind.DECLARE_ACCOUNT) {
         return new CliPlanJsonModels.AccountDeclarationStepDataPayload(
             CliLedgerFactAccess.requiredTextFact(entry.facts(), "outcome"),
             CliLedgerBookQueryPayloadMapper.accountPayload(entry.facts()));
       }
-      if (kind == LedgerJournalKind.ASSERT) {
+      if (kind == LedgerStepKind.DECLARE_TAX_REGISTRATION) {
+        return new CliPlanJsonModels.TaxRegistrationDeclarationStepDataPayload(
+            CliLedgerFactAccess.requiredTextFact(entry.facts(), "outcome"),
+            CliLedgerTaxRegistrationPayloadMapper.taxRegistrationPayload(entry.facts()));
+      }
+      if (kind == LedgerStepKind.ASSERT) {
         return assertionStepDataPayload(
             Objects.requireNonNull(entry.detailKind(), "detailKind"), entry.facts());
       }
@@ -48,15 +53,15 @@ final class CliLedgerStepDataPayloadMapper {
   }
 
   private static boolean isCommittedJournalKind(LedgerJournalKind kind) {
-    return kind != LedgerJournalKind.PLAN_BOUNDARY
-        && LedgerStepKind.valueOf(kind.name()).commitsPosting();
+    return kind instanceof LedgerStepKind stepKind && stepKind.commitsPosting();
   }
 
   private static boolean isQueryJournalKind(LedgerJournalKind kind) {
-    return switch (kind) {
-      case INSPECT_BOOK, LIST_ACCOUNTS, GET_POSTING, LIST_POSTINGS, ACCOUNT_BALANCE -> true;
-      default -> false;
-    };
+    return kind == LedgerStepKind.INSPECT_BOOK
+        || kind == LedgerStepKind.LIST_ACCOUNTS
+        || kind == LedgerStepKind.GET_POSTING
+        || kind == LedgerStepKind.LIST_POSTINGS
+        || kind == LedgerStepKind.ACCOUNT_BALANCE;
   }
 
   static CliPlanJsonModels.LedgerStepFailurePayload ledgerStepFailurePayload(
@@ -69,17 +74,17 @@ final class CliLedgerStepDataPayloadMapper {
 
   private static CliPlanJsonModels.LedgerStepDataPayload queryStepDataPayload(
       LedgerJournalEntry entry) {
-    if (entry.kind() == LedgerJournalKind.INSPECT_BOOK) {
+    if (entry.kind() == LedgerStepKind.INSPECT_BOOK) {
       return bookInspectionStepDataPayload(entry.facts());
     }
-    if (entry.kind() == LedgerJournalKind.LIST_ACCOUNTS) {
+    if (entry.kind() == LedgerStepKind.LIST_ACCOUNTS) {
       return accountPageStepDataPayload(entry.facts());
     }
-    if (entry.kind() == LedgerJournalKind.GET_POSTING) {
+    if (entry.kind() == LedgerStepKind.GET_POSTING) {
       return new CliPlanJsonModels.PostingStepDataPayload(
           CliLedgerBookQueryPayloadMapper.postingPayload(entry.facts()));
     }
-    if (entry.kind() == LedgerJournalKind.LIST_POSTINGS) {
+    if (entry.kind() == LedgerStepKind.LIST_POSTINGS) {
       return postingPageStepDataPayload(entry.facts());
     }
     return accountBalanceStepDataPayload(entry.facts());

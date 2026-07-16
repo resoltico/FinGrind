@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractPlanTemplates;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
@@ -118,7 +117,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
   }
 
   @Test
-  void renderHelpText_rendersTerseTopLevelSynopsisWithConfiguredOutputSource() {
+  void renderHelpText_rendersTerseTopLevelSynopsisWithBuiltInOutputDefault() {
     HelpDescriptor helpDescriptor =
         MachineContract.help(
             CliDiscoveryTestSupport.identity(), CliDiscoveryTestSupport.environment());
@@ -126,8 +125,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
         new EnvironmentDescriptor(
             new EnvironmentRuntimeDescriptor(
                 CliDiscoveryTestSupport.environment().runtime().runtimeDistribution(),
-                dev.erst.fingrind.contract.protocol.OutputMode.JSON,
-                "FINGRIND_DEFAULT_OUTPUT"),
+                dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
             CliDiscoveryTestSupport.environment().publication(),
             CliDiscoveryTestSupport.environment().storage(),
             CliDiscoveryTestSupport.environment().sqlite());
@@ -136,7 +134,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
     assertTrue(rendered.contains("FinGrind"));
     assertTrue(rendered.contains("Shortcuts"));
     assertTrue(rendered.contains("Full guide"));
-    assertTrue(rendered.contains("json via FINGRIND_DEFAULT_OUTPUT"));
+    assertTrue(rendered.contains("text (built in)"));
     assertFalse(rendered.contains("Quick Start"));
     assertFalse(rendered.contains("Reference"));
   }
@@ -414,48 +412,17 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
   }
 
   @Test
-  void renderHelpText_executePlanRejectsMissingOrAmbiguousCanonicalPostingScaffoldStep() {
-    HelpDescriptor executePlanCanonical =
+  void renderHelpText_executePlanDescribesTaxOnlyPlanWithoutAPostingScaffold() {
+    HelpDescriptor executePlan =
         MachineContract.help(
             CliDiscoveryTestSupport.identity(),
             CliDiscoveryTestSupport.environment(),
             OperationId.EXECUTE_PLAN);
-    ContractPlanTemplates.LedgerPlanTemplateDescriptor baseTemplate =
-        Objects.requireNonNull(executePlanCanonical.planTemplate());
-    ContractPlanTemplates.LedgerPlanTemplateDescriptor withoutCanonicalPosting =
-        new ContractPlanTemplates.LedgerPlanTemplateDescriptor(
-            baseTemplate.planId(),
-            baseTemplate.steps().stream().filter(step -> !step.kind().commitsPosting()).toList());
-    ContractPlanTemplates.LedgerPlanStepTemplateDescriptor canonicalPosting =
-        baseTemplate.canonicalPostingScaffoldStep();
-    ContractPlanTemplates.LedgerPlanTemplateDescriptor ambiguousTemplate =
-        new ContractPlanTemplates.LedgerPlanTemplateDescriptor(
-            baseTemplate.planId(),
-            java.util.stream.Stream.concat(
-                    baseTemplate.steps().stream(), java.util.stream.Stream.of(canonicalPosting))
-                .toList());
+    String rendered = renderHelpText(executePlan);
 
-    IllegalStateException missingFailure =
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                renderHelpText(
-                    helpDescriptorWithPlanTemplate(executePlanCanonical, withoutCanonicalPosting)));
-    IllegalStateException ambiguousFailure =
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                renderHelpText(
-                    helpDescriptorWithPlanTemplate(executePlanCanonical, ambiguousTemplate)));
-
-    assertTrue(
-        Objects.requireNonNull(missingFailure.getMessage())
-            .contains("canonical committed-posting scaffold"),
-        missingFailure::getMessage);
-    assertTrue(
-        Objects.requireNonNull(ambiguousFailure.getMessage())
-            .contains("canonical committed-posting scaffold"),
-        ambiguousFailure::getMessage);
+    assertTrue(rendered.contains("declareTaxRegistration"), rendered);
+    assertTrue(rendered.contains("tax-setup"), rendered);
+    assertTrue(rendered.contains("steps[].posting.entryKind"), rendered);
   }
 
   @Test
@@ -487,7 +454,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
 
     String rendered = renderHelpText(mutatedHelp);
 
-    assertTrue(rendered.contains("Canonical scaffold value: SALE_SETTLED."), rendered);
+    assertFalse(rendered.contains("Canonical scaffold value: SALE_SETTLED."), rendered);
     assertFalse(rendered.contains("Canonical scaffold value: OPENING_POSITION."), rendered);
     assertFalse(rendered.contains("Canonical scaffold value: DIRECT_JOURNAL."), rendered);
   }
@@ -526,7 +493,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
   }
 
   @Test
-  void renderHelpText_recordSaleAndExecutePlanShareTheSameOrderedAcceptedPostingModel() {
+  void renderHelpText_executePlanIncludesSaleFieldsWithoutBorrowingTheSaleScaffold() {
     HelpDescriptor recordSaleCanonical =
         MachineContract.help(
             CliDiscoveryTestSupport.identity(),
@@ -546,13 +513,6 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
     List<String> acceptedPostingLabels = acceptedPostingFieldPaths(postingModel);
     List<String> recordSaleAcceptedBlocks =
         extractRenderedFieldBlocks(recordSaleRendered, acceptedPostingLabels);
-    List<String> executePlanAcceptedBlocks =
-        normalizeNestedPostingBlocks(
-            extractRenderedFieldBlocks(
-                executePlanRendered,
-                acceptedPostingLabels.stream().map(label -> "steps[].posting." + label).toList()),
-            "steps[].posting.");
-
     assertAll(
         () ->
             assertEquals(
@@ -560,10 +520,11 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                 renderedFieldLabels(recordSaleAcceptedBlocks),
                 recordSaleRendered),
         () ->
-            assertEquals(
-                acceptedPostingLabels,
-                renderedFieldLabels(executePlanAcceptedBlocks),
-                executePlanRendered),
+            acceptedPostingLabels.forEach(
+                label ->
+                    assertTrue(
+                        executePlanRendered.contains("steps[].posting." + label),
+                        executePlanRendered)),
         () ->
             assertTrue(
                 normalizedFieldBlocks(recordSaleAcceptedBlocks)
@@ -571,19 +532,8 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                     .contains("Canonical scaffold value: SALE_SETTLED."),
                 recordSaleRendered),
         () ->
-            assertTrue(
-                normalizedFieldBlocks(executePlanAcceptedBlocks)
-                    .getFirst()
-                    .contains("Canonical scaffold value: SALE_SETTLED."),
-                executePlanRendered),
-        () ->
-            assertEquals(
-                normalizedFieldBlocks(recordSaleAcceptedBlocks),
-                normalizedFieldBlocks(executePlanAcceptedBlocks),
-                "record-sale-settled:\n"
-                    + recordSaleRendered
-                    + "\n\nexecute-plan:\n"
-                    + executePlanRendered));
+            assertFalse(
+                executePlanRendered.contains("Canonical scaffold value:"), executePlanRendered));
   }
 
   @Test

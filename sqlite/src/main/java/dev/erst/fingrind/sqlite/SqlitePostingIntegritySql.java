@@ -65,15 +65,6 @@ final class SqlitePostingIntegritySql {
       limit 1
       """;
 
-  static final String FIND_JOURNAL_LINE_ON_INACTIVE_ACCOUNT =
-      """
-      select journal_line.posting_id
-      from journal_line
-      inner join account on account.account_code = journal_line.account_code
-      where account.active = 0
-      limit 1
-      """;
-
   static final String FIND_POSTING_RECORDED_AFTER_CLOSED_PERIOD =
       """
       select posting_fact.posting_id

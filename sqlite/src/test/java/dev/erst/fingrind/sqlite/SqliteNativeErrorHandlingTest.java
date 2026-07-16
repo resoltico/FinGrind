@@ -57,6 +57,15 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void failureMessage_avoidsRepeatingAnIdenticalSQLiteResultName() {
+    assertEquals(
+        "SQLITE_CANTOPEN", SqliteNativeErrors.failureMessage("SQLITE_CANTOPEN", "SQLITE_CANTOPEN"));
+    assertEquals(
+        "SQLITE_CANTOPEN: unable to open database file",
+        SqliteNativeErrors.failureMessage("SQLITE_CANTOPEN", "unable to open database file"));
+  }
+
+  @Test
   void errorMessage_andSqliteVersion_coverDefaultConvenienceOverloads() throws Exception {
     Path bookPath = tempDirectory.resolve("error-message.sqlite");
     assertDoesNotThrow(

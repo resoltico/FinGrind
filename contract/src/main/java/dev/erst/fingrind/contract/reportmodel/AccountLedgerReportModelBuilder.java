@@ -37,6 +37,11 @@ public final class AccountLedgerReportModelBuilder
     verdicts.add(
         new ReportVerdict(
             "Closing Balances", ReportModelNarrative.joinedBalancesText(report.closingBalances())));
+    verdicts.add(new ReportVerdict("Page limit", Integer.toString(report.pagination().limit())));
+    verdicts.add(
+        new ReportVerdict(
+            "Next cursor",
+            report.pagination().nextCursor().map(cursor -> cursor.wireValue()).orElse("(none)")));
     verdicts.add(
         new ReportVerdict(
             "Outcome",
@@ -45,7 +50,8 @@ public final class AccountLedgerReportModelBuilder
                 : report.entries().size() + " ledger entries"));
     return new ReportModel(
         dev.erst.fingrind.contract.protocol.OperationId.ACCOUNT_LEDGER.wireName(),
-        "Account Ledger",
+        ReportModelSupport.reportTitle(
+            dev.erst.fingrind.contract.protocol.OperationId.ACCOUNT_LEDGER),
         ReportModel.Orientation.LANDSCAPE,
         ReportModelSupport.context(
             report.bookIdentity(),

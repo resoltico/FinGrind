@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import java.nio.file.Path;
 import java.util.List;
@@ -11,15 +12,18 @@ import org.jspecify.annotations.Nullable;
 final class CliBackupRestoreArguments {
   private static final List<String> RESTORE_BOOK_OPTIONS =
       List.of(
-          ProtocolOptions.BOOK_FILE,
-          ProtocolOptions.BOOK_KEY_FILE,
-          ProtocolOptions.BACKUP_FILE,
-          ProtocolOptions.BACKUP_KEY_FILE,
-          ProtocolOptions.OUTPUT);
+          ProtocolBookAccessOptions.BOOK_FILE,
+          ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
+          ProtocolBookAccessOptions.BACKUP_FILE,
+          ProtocolBookAccessOptions.BACKUP_KEY_FILE,
+          ProtocolBookAccessOptions.REPLACE_EXISTING_BOOK,
+          ProtocolOptions.Presentation.OUTPUT);
   private static final CliBookArgumentParser.CommandArgumentSpec BACKUP_BOOK_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(
-              ProtocolOptions.BACKUP_FILE, ProtocolOptions.BACKUP_KEY_FILE, ProtocolOptions.OUTPUT),
+              ProtocolBookAccessOptions.BACKUP_FILE,
+              ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE,
+              ProtocolOptions.Presentation.OUTPUT),
           List.of());
 
   private CliBackupRestoreArguments() {}
@@ -33,39 +37,41 @@ final class CliBackupRestoreArguments {
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      if (ProtocolOptions.BACKUP_FILE.equals(argument)) {
+      if (ProtocolBookAccessOptions.BACKUP_FILE.equals(argument)) {
         if (backupFilePath != null) {
           throw CliArgumentValueParser.invalid(
-              ProtocolOptions.BACKUP_FILE, "Duplicate argument: " + ProtocolOptions.BACKUP_FILE);
+              ProtocolBookAccessOptions.BACKUP_FILE,
+              "Duplicate argument: " + ProtocolBookAccessOptions.BACKUP_FILE);
         }
         backupFilePath =
-            CliOptionValues.requirePathOptionValue(argumentIterator, ProtocolOptions.BACKUP_FILE);
-      } else if (ProtocolOptions.BACKUP_KEY_FILE.equals(argument)) {
+            CliOptionValues.requirePathOptionValue(
+                argumentIterator, ProtocolBookAccessOptions.BACKUP_FILE);
+      } else if (ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE.equals(argument)) {
         if (backupBookKeyFilePath != null) {
           throw CliArgumentValueParser.invalid(
-              ProtocolOptions.BACKUP_KEY_FILE,
-              "Duplicate argument: " + ProtocolOptions.BACKUP_KEY_FILE);
+              ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE,
+              "Duplicate argument: " + ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE);
         }
         backupBookKeyFilePath =
             CliOptionValues.requirePathOptionValue(
-                argumentIterator, ProtocolOptions.BACKUP_KEY_FILE);
+                argumentIterator, ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE);
       } else {
         outputMode =
             CliOptionModes.requireOutputMode(
                 outputMode,
-                CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Presentation.OUTPUT),
                 CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
       }
     }
     if (backupFilePath == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BACKUP_FILE,
-          "A " + ProtocolOptions.BACKUP_FILE + " argument is required.");
+          ProtocolBookAccessOptions.BACKUP_FILE,
+          "A " + ProtocolBookAccessOptions.BACKUP_FILE + " argument is required.");
     }
     if (backupBookKeyFilePath == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BACKUP_KEY_FILE,
-          "A " + ProtocolOptions.BACKUP_KEY_FILE + " argument is required.");
+          ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE,
+          "A " + ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE + " argument is required.");
     }
     CliBookPathValidator.validateDistinctBackupPaths(
         parsedArguments.bookAccess().bookFilePath(),
@@ -87,33 +93,35 @@ final class CliBackupRestoreArguments {
     }
     if (argumentValues.bookFilePath == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BOOK_FILE, "A " + ProtocolOptions.BOOK_FILE + " argument is required.");
+          ProtocolBookAccessOptions.BOOK_FILE,
+          "A " + ProtocolBookAccessOptions.BOOK_FILE + " argument is required.");
     }
-    if (argumentValues.bookKeyFilePath == null) {
+    if (argumentValues.newBookKeyFilePath == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BOOK_KEY_FILE,
-          "A " + ProtocolOptions.BOOK_KEY_FILE + " argument is required.");
+          ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
+          "A " + ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE + " argument is required.");
     }
     if (argumentValues.backupFilePath == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BACKUP_FILE,
-          "A " + ProtocolOptions.BACKUP_FILE + " argument is required.");
+          ProtocolBookAccessOptions.BACKUP_FILE,
+          "A " + ProtocolBookAccessOptions.BACKUP_FILE + " argument is required.");
     }
     if (argumentValues.backupBookKeyFilePath == null) {
       throw CliArgumentValueParser.invalid(
-          ProtocolOptions.BACKUP_KEY_FILE,
-          "A " + ProtocolOptions.BACKUP_KEY_FILE + " argument is required.");
+          ProtocolBookAccessOptions.BACKUP_KEY_FILE,
+          "A " + ProtocolBookAccessOptions.BACKUP_KEY_FILE + " argument is required.");
     }
     CliBookPathValidator.validateDistinctRestorePaths(
         argumentValues.bookFilePath,
-        argumentValues.bookKeyFilePath,
+        argumentValues.newBookKeyFilePath,
         argumentValues.backupFilePath,
         argumentValues.backupBookKeyFilePath);
     return new RestoreBook(
         argumentValues.bookFilePath,
-        argumentValues.bookKeyFilePath,
+        argumentValues.newBookKeyFilePath,
         argumentValues.backupFilePath,
         argumentValues.backupBookKeyFilePath,
+        argumentValues.replaceExistingBook,
         CliOptionModes.resolvedOutputMode(argumentValues.outputMode));
   }
 
@@ -122,29 +130,44 @@ final class CliBackupRestoreArguments {
       String argument,
       ListIterator<String> argumentIterator) {
     switch (argument) {
-      case ProtocolOptions.BOOK_FILE ->
+      case ProtocolBookAccessOptions.BOOK_FILE ->
           argumentValues.bookFilePath =
               requireSingleRestorePath(
-                  argumentValues.bookFilePath, argumentIterator, ProtocolOptions.BOOK_FILE);
-      case ProtocolOptions.BOOK_KEY_FILE ->
-          argumentValues.bookKeyFilePath =
+                  argumentValues.bookFilePath,
+                  argumentIterator,
+                  ProtocolBookAccessOptions.BOOK_FILE);
+      case ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE ->
+          argumentValues.newBookKeyFilePath =
               requireSingleRestorePath(
-                  argumentValues.bookKeyFilePath, argumentIterator, ProtocolOptions.BOOK_KEY_FILE);
-      case ProtocolOptions.BACKUP_FILE ->
+                  argumentValues.newBookKeyFilePath,
+                  argumentIterator,
+                  ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE);
+      case ProtocolBookAccessOptions.BACKUP_FILE ->
           argumentValues.backupFilePath =
               requireSingleRestorePath(
-                  argumentValues.backupFilePath, argumentIterator, ProtocolOptions.BACKUP_FILE);
-      case ProtocolOptions.BACKUP_KEY_FILE ->
+                  argumentValues.backupFilePath,
+                  argumentIterator,
+                  ProtocolBookAccessOptions.BACKUP_FILE);
+      case ProtocolBookAccessOptions.BACKUP_KEY_FILE ->
           argumentValues.backupBookKeyFilePath =
               requireSingleRestorePath(
                   argumentValues.backupBookKeyFilePath,
                   argumentIterator,
-                  ProtocolOptions.BACKUP_KEY_FILE);
-      case ProtocolOptions.OUTPUT ->
+                  ProtocolBookAccessOptions.BACKUP_KEY_FILE);
+      case ProtocolBookAccessOptions.REPLACE_EXISTING_BOOK -> {
+        if (argumentValues.replaceExistingBook) {
+          throw CliArgumentValueParser.invalid(
+              ProtocolBookAccessOptions.REPLACE_EXISTING_BOOK,
+              "Duplicate argument: " + ProtocolBookAccessOptions.REPLACE_EXISTING_BOOK);
+        }
+        argumentValues.replaceExistingBook = true;
+      }
+      case ProtocolOptions.Presentation.OUTPUT ->
           argumentValues.outputMode =
               CliOptionModes.requireOutputMode(
                   argumentValues.outputMode,
-                  CliOptionValues.requireValue(argumentIterator, ProtocolOptions.OUTPUT),
+                  CliOptionValues.requireValue(
+                      argumentIterator, ProtocolOptions.Presentation.OUTPUT),
                   CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
       default -> throw CliArgumentValueParser.unsupportedArgument(argument, RESTORE_BOOK_OPTIONS);
     }
@@ -161,9 +184,10 @@ final class CliBackupRestoreArguments {
   /** Mutable parse accumulator for restore-book command options before validation. */
   private static final class RestoreBookArgumentValues {
     private @Nullable Path bookFilePath;
-    private @Nullable Path bookKeyFilePath;
+    private @Nullable Path newBookKeyFilePath;
     private @Nullable Path backupFilePath;
     private @Nullable Path backupBookKeyFilePath;
     private @Nullable OutputMode outputMode;
+    private boolean replaceExistingBook;
   }
 }

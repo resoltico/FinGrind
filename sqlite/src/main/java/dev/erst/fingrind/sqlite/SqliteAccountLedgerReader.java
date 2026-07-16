@@ -36,8 +36,11 @@ final class SqliteAccountLedgerReader {
       SqliteNativeDatabase activeDatabase, AccountLedgerCriteria query, RegisteredAccount account) {
     List<CurrencyBalance> openingBalances = openingBalances(activeDatabase, query, account);
     Map<CurrencyUnit, Long> runningTotals = signedRunningTotals(openingBalances);
+    applyBalances(
+        runningTotals, postingBalanceReader.loadAccountLedgerPriorBalances(activeDatabase, query));
     List<AccountLedgerEntryView> entries = new ArrayList<>();
-    for (CommittedPosting posting : postingsForAccountLedger(activeDatabase, query)) {
+    LedgerPage page = postingsForAccountLedger(activeDatabase, query);
+    for (CommittedPosting posting : page.postings()) {
       LedgerMovement movement = ledgerMovement(posting, account);
       long signedNet = Math.subtractExact(movement.debit, movement.credit);
       long runningSigned = runningTotals.merge(movement.currencyCode, signedNet, Math::addExact);
@@ -53,6 +56,9 @@ final class SqliteAccountLedgerReader {
         account,
         query.effectiveDateRange(),
         query.postingCoverage(),
+        query.limit(),
+        query.cursor(),
+        page.nextCursor(),
         openingBalances,
         entries,
         closingBalances(activeDatabase, query, account));
@@ -96,29 +102,60 @@ final class SqliteAccountLedgerReader {
         .balances();
   }
 
-  private List<CommittedPosting> postingsForAccountLedger(
+  private LedgerPage postingsForAccountLedger(
       SqliteNativeDatabase activeDatabase, AccountLedgerCriteria query) {
-    return postingReader.loadCommittedPostings(
-        activeDatabase,
-        SqlitePostingSql.listPostingsForAccountLedger(query),
-        statement -> {
-          int bindIndex = 1;
-          statement.bindText(bindIndex, query.accountCode().value());
-          bindIndex++;
-          if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
-            statement.bindText(
-                bindIndex,
-                CanonicalTemporalText.formatLocalDate(
-                    query.effectiveDateRange().effectiveDateFrom().orElseThrow()));
-            bindIndex++;
-          }
-          if (query.effectiveDateRange().effectiveDateTo().isPresent()) {
-            statement.bindText(
-                bindIndex,
-                CanonicalTemporalText.formatLocalDate(
-                    query.effectiveDateRange().effectiveDateTo().orElseThrow()));
-          }
-        });
+    List<CommittedPosting> postings =
+        postingReader.loadCommittedPostings(
+            activeDatabase,
+            SqlitePostingSql.listPostingsForAccountLedger(query),
+            statement -> bindAccountLedgerPage(statement, query));
+    boolean hasMore = postings.size() > query.limit();
+    List<CommittedPosting> pagePostings = hasMore ? postings.subList(0, query.limit()) : postings;
+    return new LedgerPage(
+        pagePostings,
+        hasMore
+            ? Optional.of(
+                dev.erst.fingrind.executor.bookkeeping.AccountLedgerCursor.fromPosting(
+                    pagePostings.getLast()))
+            : Optional.empty());
+  }
+
+  private static void bindAccountLedgerPage(
+      SqliteNativeStatement statement, AccountLedgerCriteria query) {
+    int bindIndex = 1;
+    statement.bindText(bindIndex, query.accountCode().value());
+    bindIndex++;
+    if (query.effectiveDateRange().effectiveDateFrom().isPresent()) {
+      statement.bindText(
+          bindIndex,
+          CanonicalTemporalText.formatLocalDate(
+              query.effectiveDateRange().effectiveDateFrom().orElseThrow()));
+      bindIndex++;
+    }
+    if (query.effectiveDateRange().effectiveDateTo().isPresent()) {
+      statement.bindText(
+          bindIndex,
+          CanonicalTemporalText.formatLocalDate(
+              query.effectiveDateRange().effectiveDateTo().orElseThrow()));
+      bindIndex++;
+    }
+    if (query.cursor().isPresent()) {
+      dev.erst.fingrind.executor.bookkeeping.AccountLedgerCursor cursor =
+          query.cursor().orElseThrow();
+      statement.bindText(bindIndex, CanonicalTemporalText.formatLocalDate(cursor.effectiveDate()));
+      bindIndex++;
+      statement.bindText(bindIndex, CanonicalTemporalText.formatLocalDate(cursor.effectiveDate()));
+      bindIndex++;
+      statement.bindText(bindIndex, CanonicalTemporalText.formatUtcInstant(cursor.recordedAt()));
+      bindIndex++;
+      statement.bindText(bindIndex, CanonicalTemporalText.formatLocalDate(cursor.effectiveDate()));
+      bindIndex++;
+      statement.bindText(bindIndex, CanonicalTemporalText.formatUtcInstant(cursor.recordedAt()));
+      bindIndex++;
+      statement.bindText(bindIndex, cursor.postingId().value());
+      bindIndex++;
+    }
+    statement.bindInt(bindIndex, query.limit() + 1);
   }
 
   private static LedgerMovement ledgerMovement(
@@ -154,9 +191,29 @@ final class SqliteAccountLedgerReader {
     return runningTotals;
   }
 
+  private static void applyBalances(
+      Map<CurrencyUnit, Long> runningTotals, List<CurrencyBalance> balances) {
+    for (CurrencyBalance balance : balances) {
+      long signedNet =
+          balance.balanceSide() == BalanceSide.DEBIT
+              ? balance.netAmount().minorUnits()
+              : -balance.netAmount().minorUnits();
+      runningTotals.merge(balance.netAmount().currencyUnit(), signedNet, Math::addExact);
+    }
+  }
+
   private record LedgerMovement(CurrencyUnit currencyCode, long debit, long credit) {
     private LedgerMovement {
       Objects.requireNonNull(currencyCode, "currencyCode");
+    }
+  }
+
+  private record LedgerPage(
+      List<CommittedPosting> postings,
+      Optional<dev.erst.fingrind.executor.bookkeeping.AccountLedgerCursor> nextCursor) {
+    private LedgerPage {
+      postings = List.copyOf(postings);
+      Objects.requireNonNull(nextCursor, "nextCursor");
     }
   }
 }

@@ -38,8 +38,11 @@ def assert_canonical_sale_fields(
         raise SystemExit(f"{label} did not seed the canonical revenue account")
     if document.get("amount") != {"currencyCode": "EUR", "minorUnits": "1000"}:
         raise SystemExit(f"{label} did not seed the canonical sale amount scaffold")
-    if "tax" in document:
-        raise SystemExit(f"{label} leaked optional tax selection into the minimal sale scaffold")
+    if document.get("tax") != {
+        "taxRegistrationId": "replace-before-commit-tax-registration-id",
+        "taxCode": "replace-before-commit-output-tax-code",
+    }:
+        raise SystemExit(f"{label} did not publish the canonical optional output-tax selector")
     if "foreignExchange" in document:
         raise SystemExit(
             f"{label} leaked optional foreign-exchange facts into the minimal sale scaffold"
@@ -70,7 +73,14 @@ def assert_request_template(
 
 
 def assert_plan_template(document: dict[str, object]) -> None:
-    ensure_book = document["steps"][0]["ensureBook"]
+    if document.get("planId") != "tax-setup":
+        raise SystemExit(
+            "source-checkout launcher plan template did not publish the tax-setup plan"
+        )
+    steps = document.get("steps")
+    if not isinstance(steps, list) or len(steps) != 4:
+        raise SystemExit("source-checkout launcher plan template did not publish four atomic steps")
+    ensure_book = steps[0]["ensureBook"]
     if "businessActivityTags" in ensure_book:
         raise SystemExit(
             "source-checkout launcher plan template leaked retired business activity tags"
@@ -79,35 +89,84 @@ def assert_plan_template(document: dict[str, object]) -> None:
         raise SystemExit(
             "source-checkout launcher plan template did not publish the canonical explicit accounting basis"
         )
-    post_entry = document["steps"][1]["posting"]
-    if post_entry["entryKind"] != "SALE_SETTLED":
+    payable = steps[1]
+    if payable.get("stepId") != "declare-tax-payable" or payable.get("kind") != "declare-account":
         raise SystemExit(
-            "source-checkout launcher plan template did not expose the canonical sale entry kind"
+            "source-checkout launcher plan template did not declare the VAT payable account"
         )
-    if "postingKind" in post_entry:
-        raise SystemExit("source-checkout launcher plan template leaked retired postingKind")
-    if post_entry.get("cashAccountCode") != "cash":
+    payable_account = payable.get("declareAccount")
+    if not isinstance(payable_account, dict):
         raise SystemExit(
-            "source-checkout launcher plan template did not seed the canonical cash account"
+            "source-checkout launcher plan template omitted the VAT payable account scaffold"
         )
-    if post_entry.get("revenueAccountCode") != "service-revenue":
+    if payable_account != {
+        "accountCode": "tax-payable-vat",
+        "accountName": "VAT Payable",
+        "accountType": "LIABILITY",
+        "accountNodeKind": "POSTABLE",
+        "financialPositionLineClassification": "CURRENT_LIABILITY",
+    }:
         raise SystemExit(
-            "source-checkout launcher plan template did not seed the canonical revenue account"
+            "source-checkout launcher plan template did not publish the canonical VAT payable taxonomy"
         )
-    if post_entry.get("amount") != {"currencyCode": "EUR", "minorUnits": "1000"}:
+    recoverable = steps[2]
+    if (
+        recoverable.get("stepId") != "declare-tax-recoverable"
+        or recoverable.get("kind") != "declare-account"
+    ):
         raise SystemExit(
-            "source-checkout launcher plan template did not seed the canonical sale amount"
+            "source-checkout launcher plan template did not declare the VAT recoverable account"
         )
-    if "tax" in post_entry:
+    recoverable_account = recoverable.get("declareAccount")
+    if not isinstance(recoverable_account, dict):
         raise SystemExit(
-            "source-checkout launcher plan template leaked optional tax selection into the minimal sale scaffold"
+            "source-checkout launcher plan template omitted the VAT recoverable account scaffold"
         )
-    if "foreignExchange" in post_entry:
+    if recoverable_account != {
+        "accountCode": "tax-recoverable-vat",
+        "accountName": "VAT Recoverable",
+        "accountType": "ASSET",
+        "accountNodeKind": "POSTABLE",
+        "financialPositionLineClassification": "CURRENT_ASSET",
+        "cashFlowAssetClassification": "NON_CASH",
+    }:
         raise SystemExit(
-            "source-checkout launcher plan template leaked optional foreign-exchange facts into the minimal sale scaffold"
+            "source-checkout launcher plan template did not publish the canonical VAT recoverable taxonomy"
         )
-    assertion = document["steps"][2]["assertion"]
-    if assertion["accountCode"] != "cash":
+    registration = steps[3]
+    if (
+        registration.get("stepId") != "declare-tax-registration"
+        or registration.get("kind") != "declare-tax-registration"
+    ):
         raise SystemExit(
-            "source-checkout launcher plan template did not target the seeded cash account"
+            "source-checkout launcher plan template did not declare the tax registration"
+        )
+    registration_scaffold = registration.get("declareTaxRegistration")
+    if not isinstance(registration_scaffold, dict):
+        raise SystemExit(
+            "source-checkout launcher plan template omitted the tax-registration scaffold"
+        )
+    if registration_scaffold.get("payableAccountCode") != "tax-payable-vat":
+        raise SystemExit(
+            "source-checkout launcher plan template did not bind the payable tax account"
+        )
+    if registration_scaffold.get("recoverableAccountCode") != "tax-recoverable-vat":
+        raise SystemExit(
+            "source-checkout launcher plan template did not bind the recoverable tax account"
+        )
+    if registration_scaffold.get("obligationFrequency") != "MONTHLY":
+        raise SystemExit(
+            "source-checkout launcher plan template did not publish the tax obligation frequency"
+        )
+    if registration_scaffold.get("dueDaysAfterPeriodEnd") != 20:
+        raise SystemExit(
+            "source-checkout launcher plan template did not publish the tax due-date scaffold"
+        )
+    tax_codes = registration_scaffold.get("taxCodes")
+    if not isinstance(tax_codes, list) or [
+        tax_code.get("applicationKind") if isinstance(tax_code, dict) else None
+        for tax_code in tax_codes
+    ] != ["OUTPUT_SALE", "INPUT_EXPENSE_RECOVERABLE"]:
+        raise SystemExit(
+            "source-checkout launcher plan template did not publish the output and recoverable-input tax scaffolds"
         )

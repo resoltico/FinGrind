@@ -23,6 +23,7 @@ plan-orchestration semantics.
 Use these files:
 - [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md): contract-owned protocol metadata, discovery descriptors, request/response shapes, and deterministic contract errors
 - [DOC_02_AdministrationAndReports.md](./DOC_02_AdministrationAndReports.md): administration DTOs, lifecycle inspection, queries, reports, and read-side rejections
+- [DOC_02_AccountRegistryLifecycle.md](./DOC_02_AccountRegistryLifecycle.md): account amendment, retirement, and durable-history lifecycle rules
 - [DOC_02_InventoryValuation.md](./DOC_02_InventoryValuation.md): point-in-time inventory valuation, exact cost-pool reporting, and costed-sale readback
 - [DOC_02_SharedReportModel.md](./DOC_02_SharedReportModel.md): shared report content types plus the family-specific builders that feed every JSON, text, CSV, and PDF report projection
 - [DOC_02_PostingAndLedgerPlans.md](./DOC_02_PostingAndLedgerPlans.md): posting commands, posting results, write-side rejections, ledger plans, plan journals, and executor write services

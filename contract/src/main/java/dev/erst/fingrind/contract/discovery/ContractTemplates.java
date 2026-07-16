@@ -1,13 +1,18 @@
 package dev.erst.fingrind.contract.discovery;
 
+import com.fasterxml.jackson.annotation.JsonUnwrapped;
+import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffRecognitionInterval;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.discovery.ContractFinancingTemplates.FinancingTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractFixedAssetTemplates.FixedAssetTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractLatvianPayrollTemplates.MonthlyPayrollTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractLatvianPayrollTemplates.PayrollSettlementTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractRealizedForeignExchangeTemplates.RealizedForeignExchangeTemplateDescriptor;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.tax.TaxApplicationKind;
-import dev.erst.fingrind.contract.tax.TaxCode;
 import dev.erst.fingrind.contract.tax.TaxInclusionMode;
 import dev.erst.fingrind.contract.tax.TaxJurisdiction;
 import dev.erst.fingrind.contract.tax.TaxObligationFrequency;
-import dev.erst.fingrind.contract.tax.TaxRegistrationId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountType;
@@ -19,11 +24,12 @@ import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.UnitOfMeasure;
+import java.time.LocalDate;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 /** Request template descriptor namespace for discovery commands. */
-public interface ContractTemplates extends ContractReversalTemplates {
+public interface ContractTemplates extends ContractReversalTemplates, ContractSettlementTemplates {
   public record PostingRequestTemplateDescriptor(
       BookkeepingEntryKind entryKind,
       String effectiveDate,
@@ -48,7 +54,17 @@ public interface ContractTemplates extends ContractReversalTemplates {
       @Nullable List<OpeningBalanceTemplateDescriptor> openingBalances,
       AccountingEvidenceTemplateDescriptor evidence,
       ProvenanceTemplateDescriptor provenance,
-      @Nullable ReversalTemplateDescriptor reversal)
+      @Nullable ReversalTemplateDescriptor reversal,
+      @Nullable String accrualCutoffId,
+      @Nullable String prepaymentAssetAccountCode,
+      @Nullable String deferredRevenueAccountCode,
+      @Nullable String accruedExpenseLiabilityAccountCode,
+      @Nullable RecognitionIntervalTemplateDescriptor recognitionInterval,
+      @JsonUnwrapped @Nullable MonthlyPayrollTemplateDescriptor latvianMonthlyPayroll,
+      @JsonUnwrapped @Nullable PayrollSettlementTemplateDescriptor latvianPayrollSettlement,
+      @JsonUnwrapped @Nullable FixedAssetTemplateDescriptor fixedAsset,
+      @JsonUnwrapped @Nullable FinancingTemplateDescriptor financing,
+      @JsonUnwrapped @Nullable RealizedForeignExchangeTemplateDescriptor realizedForeignExchange)
       implements TemplateDescriptorType {
     public PostingRequestTemplateDescriptor {
       var validated =
@@ -78,7 +94,17 @@ public interface ContractTemplates extends ContractReversalTemplates {
                   openingBalances,
                   evidence,
                   provenance,
-                  reversal));
+                  reversal,
+                  accrualCutoffId,
+                  prepaymentAssetAccountCode,
+                  deferredRevenueAccountCode,
+                  accruedExpenseLiabilityAccountCode,
+                  recognitionInterval,
+                  latvianMonthlyPayroll,
+                  latvianPayrollSettlement,
+                  fixedAsset,
+                  financing,
+                  realizedForeignExchange));
       entryKind = validated.entryKind();
       effectiveDate = validated.effectiveDate();
       cashAccountCode = validated.cashAccountCode();
@@ -103,30 +129,24 @@ public interface ContractTemplates extends ContractReversalTemplates {
       evidence = validated.evidence();
       provenance = validated.provenance();
       reversal = validated.reversal();
+      accrualCutoffId = validated.accrualCutoffId();
+      prepaymentAssetAccountCode = validated.prepaymentAssetAccountCode();
+      deferredRevenueAccountCode = validated.deferredRevenueAccountCode();
+      accruedExpenseLiabilityAccountCode = validated.accruedExpenseLiabilityAccountCode();
+      recognitionInterval = validated.recognitionInterval();
+      latvianMonthlyPayroll = validated.latvianMonthlyPayroll();
+      latvianPayrollSettlement = validated.latvianPayrollSettlement();
+      fixedAsset = validated.fixedAsset();
+      financing = validated.financing();
+      realizedForeignExchange = validated.realizedForeignExchange();
     }
   }
 
-  public record SettlementAdjunctTemplateDescriptor(String accountCode, MonetaryAmount amount)
-      implements TemplateDescriptorType {
-    public SettlementAdjunctTemplateDescriptor {
-      accountCode = ContractDescriptorValidation.requireText(accountCode, "accountCode");
-      new AccountCode(accountCode);
-      amount = ContractDescriptorValidation.requireValue(amount, "amount");
-      if (!amount.toMoney().isPositive()) {
-        throw new IllegalArgumentException("amount must carry one positive minor-unit value.");
-      }
-    }
-  }
-
-  public record TaxSelectionTemplateDescriptor(String taxRegistrationId, String taxCode)
-      implements TemplateDescriptorType {
-    public TaxSelectionTemplateDescriptor {
-      taxRegistrationId =
-          ContractDescriptorValidation.requireText(taxRegistrationId, "taxRegistrationId");
-      taxCode = ContractDescriptorValidation.requireText(taxCode, "taxCode");
-      ContractTemplateValidationSupport.validateLiveTextUnlessPlaceholder(
-          taxRegistrationId, TaxRegistrationId::new);
-      ContractTemplateValidationSupport.validateLiveTextUnlessPlaceholder(taxCode, TaxCode::new);
+  public record RecognitionIntervalTemplateDescriptor(String startDate, String endDate) {
+    public RecognitionIntervalTemplateDescriptor {
+      startDate = ContractDescriptorValidation.requireText(startDate, "startDate");
+      endDate = ContractDescriptorValidation.requireText(endDate, "endDate");
+      new AccrualCutoffRecognitionInterval(LocalDate.parse(startDate), LocalDate.parse(endDate));
     }
   }
 
@@ -237,28 +257,6 @@ public interface ContractTemplates extends ContractReversalTemplates {
       @Nullable CashFlowAssetClassification cashFlowAssetClassification,
       @Nullable UnitOfMeasure unitOfMeasure)
       implements TemplateDescriptorType {
-    /** Convenience constructor for non-inventory account declaration templates. */
-    public DeclareAccountTemplateDescriptor(
-        String accountCode,
-        String accountName,
-        AccountType accountType,
-        AccountNodeKind accountNodeKind,
-        @Nullable String parentAccountCode,
-        @Nullable FinancialPositionLineClassification financialPositionLineClassification,
-        @Nullable ProfitAndLossLineClassification profitAndLossLineClassification,
-        @Nullable CashFlowAssetClassification cashFlowAssetClassification) {
-      this(
-          accountCode,
-          accountName,
-          accountType,
-          accountNodeKind,
-          parentAccountCode,
-          financialPositionLineClassification,
-          profitAndLossLineClassification,
-          cashFlowAssetClassification,
-          null);
-    }
-
     public DeclareAccountTemplateDescriptor {
       var validated =
           ContractDeclarationTemplateValidationSupport.validateDeclareAccountTemplate(

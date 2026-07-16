@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliFixedAssetPostingJsonModels;
 import dev.erst.fingrind.cli.json.CliPostingEntryPayload;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +40,9 @@ final class CliPostingEntryTextRenderer {
     appendQuantityRows(summaryRows, entry);
     appendInventoryReliefRows(summaryRows, entry);
     appendResolvedInventoryCostingRows(summaryRows, entry);
+    appendAccrualCutoffRows(summaryRows, entry);
+    appendFixedAssetRows(summaryRows, entry);
+    CliLatvianPayrollPostingEntryTextRenderer.appendRows(summaryRows, entry);
     appendSettlementAdjunctRows(summaryRows, entry);
     appendForeignExchangeRows(summaryRows, entry);
     appendTaxSelectionRows(summaryRows, entry);
@@ -134,6 +138,112 @@ final class CliPostingEntryTextRenderer {
                     .resolvedInventoryCosting()
                     .roundedMovingAverageUnitCostProjection()
                     .toMoney())));
+  }
+
+  private static void appendAccrualCutoffRows(
+      List<List<String>> summaryRows, CliPostingEntryPayload entry) {
+    if (entry.accrualCutoff() == null) {
+      return;
+    }
+    CliPostingEntryPayload.AccrualCutoffPayload accrualCutoff = entry.accrualCutoff();
+    summaryRows.add(List.of("Accrual cut-off id", accrualCutoff.accrualCutoffId()));
+    appendOptionalSummaryRow(summaryRows, "Accrual cut-off kind", accrualCutoff.aggregateKind());
+    appendOptionalSummaryRow(
+        summaryRows, "Prepaid expense account", accrualCutoff.prepaymentAssetAccountCode());
+    appendOptionalSummaryRow(
+        summaryRows, "Deferred revenue account", accrualCutoff.deferredRevenueAccountCode());
+    appendOptionalSummaryRow(
+        summaryRows, "Accrued expense account", accrualCutoff.accruedExpenseLiabilityAccountCode());
+    if (accrualCutoff.recognitionInterval() != null) {
+      summaryRows.add(
+          List.of(
+              "Recognition interval",
+              accrualCutoff.recognitionInterval().startDate()
+                  + " through "
+                  + accrualCutoff.recognitionInterval().endDate()));
+    }
+    if (accrualCutoff.resolvedApplication() != null) {
+      summaryRows.add(
+          List.of(
+              "Resolved accrual application",
+              CliTextDisplay.wireLabel(accrualCutoff.resolvedApplication().applicationKind())));
+      summaryRows.add(
+          List.of(
+              "Resolved debit account", accrualCutoff.resolvedApplication().debitAccountCode()));
+      summaryRows.add(
+          List.of(
+              "Resolved credit account", accrualCutoff.resolvedApplication().creditAccountCode()));
+    }
+  }
+
+  private static void appendFixedAssetRows(
+      List<List<String>> summaryRows, CliPostingEntryPayload entry) {
+    if (entry.fixedAsset() == null) {
+      return;
+    }
+    CliFixedAssetPostingJsonModels.FixedAssetPayload fixedAsset = entry.fixedAsset();
+    summaryRows.add(List.of("Fixed asset id", fixedAsset.fixedAssetId()));
+    summaryRows.add(
+        List.of(
+            "Fixed-asset lifecycle event", CliTextDisplay.wireLabel(fixedAsset.lifecycleKind())));
+    appendOptionalSummaryRow(summaryRows, "Fixed-asset account", fixedAsset.assetAccountCode());
+    appendOptionalSummaryRow(
+        summaryRows,
+        "Accumulated depreciation account",
+        fixedAsset.accumulatedDepreciationAccountCode());
+    appendOptionalSummaryRow(
+        summaryRows, "Depreciation expense account", fixedAsset.depreciationExpenseAccountCode());
+    appendOptionalSummaryRow(
+        summaryRows, "Disposal gain account", fixedAsset.disposalGainAccountCode());
+    appendOptionalSummaryRow(
+        summaryRows, "Disposal loss account", fixedAsset.disposalLossAccountCode());
+    if (fixedAsset.cost() != null) {
+      summaryRows.add(
+          List.of("Capitalized cost", CliTextFormat.displayMoney(fixedAsset.cost().toMoney())));
+    }
+    if (fixedAsset.depreciationSchedule() != null) {
+      summaryRows.add(
+          List.of(
+              "Depreciation schedule",
+              fixedAsset.depreciationSchedule().inServiceDate()
+                  + ", "
+                  + fixedAsset.depreciationSchedule().usefulLifeMonths()
+                  + " months, residual "
+                  + CliTextFormat.displayMoney(
+                      fixedAsset.depreciationSchedule().residualValue().toMoney())));
+    }
+    if (fixedAsset.resolvedDepreciation() != null) {
+      summaryRows.add(
+          List.of(
+              "Derived depreciation",
+              CliTextFormat.displayMoney(fixedAsset.resolvedDepreciation().amount().toMoney())));
+      summaryRows.add(
+          List.of(
+              "Resolved depreciation debit account",
+              fixedAsset.resolvedDepreciation().depreciationExpenseAccountCode()));
+      summaryRows.add(
+          List.of(
+              "Resolved depreciation credit account",
+              fixedAsset.resolvedDepreciation().accumulatedDepreciationAccountCode()));
+    }
+    if (fixedAsset.resolvedDisposal() != null) {
+      summaryRows.add(
+          List.of(
+              "Resolved disposal carrying amount",
+              CliTextFormat.displayMoney(
+                  fixedAsset.resolvedDisposal().carryingAmount().toMoney())));
+      summaryRows.add(
+          List.of(
+              fixedAsset.resolvedDisposal().gain()
+                  ? "Derived disposal gain"
+                  : "Derived disposal loss",
+              CliTextFormat.displayMoney(
+                  fixedAsset.resolvedDisposal().gainOrLossAmount().toMoney())));
+      summaryRows.add(
+          List.of(
+              "Resolved gain-or-loss account",
+              fixedAsset.resolvedDisposal().gainOrLossAccountCode()));
+    }
   }
 
   private static void appendTaxSelectionRows(

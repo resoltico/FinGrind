@@ -1,95 +1,12 @@
 package dev.erst.fingrind.core;
 
-import dev.erst.fingrind.core.JournalLine.EntrySide;
 import java.util.EnumMap;
 import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
 /** Total semantic classifier over anchor-role incidence plus evidence and structural context. */
 public final class JournalClassifier {
-  private static final TypedSignature SETTLED_SALE =
-      new TypedSignature(
-          EconomicEventClass.SETTLED_SALE,
-          Set.of(
-              new AnchorEntry(AccountRole.CASH, EntrySide.DEBIT),
-              new AnchorEntry(AccountRole.REVENUE, EntrySide.CREDIT)));
-  private static final TypedSignature CREDIT_SALE =
-      new TypedSignature(
-          EconomicEventClass.CREDIT_SALE,
-          Set.of(
-              new AnchorEntry(AccountRole.RECEIVABLE, EntrySide.DEBIT),
-              new AnchorEntry(AccountRole.REVENUE, EntrySide.CREDIT)));
-  private static final TypedSignature SETTLED_PURCHASE =
-      new TypedSignature(
-          EconomicEventClass.SETTLED_PURCHASE,
-          Set.of(
-              new AnchorEntry(AccountRole.INVENTORY, EntrySide.DEBIT),
-              new AnchorEntry(AccountRole.CASH, EntrySide.CREDIT)));
-  private static final TypedSignature CREDIT_PURCHASE =
-      new TypedSignature(
-          EconomicEventClass.CREDIT_PURCHASE,
-          Set.of(
-              new AnchorEntry(AccountRole.INVENTORY, EntrySide.DEBIT),
-              new AnchorEntry(AccountRole.PAYABLE, EntrySide.CREDIT)));
-  private static final TypedSignature SETTLED_EXPENSE =
-      new TypedSignature(
-          EconomicEventClass.SETTLED_EXPENSE,
-          Set.of(
-              new AnchorEntry(AccountRole.EXPENSE, EntrySide.DEBIT),
-              new AnchorEntry(AccountRole.CASH, EntrySide.CREDIT)));
-  private static final TypedSignature CREDIT_EXPENSE =
-      new TypedSignature(
-          EconomicEventClass.CREDIT_EXPENSE,
-          Set.of(
-              new AnchorEntry(AccountRole.EXPENSE, EntrySide.DEBIT),
-              new AnchorEntry(AccountRole.PAYABLE, EntrySide.CREDIT)));
-  private static final TypedSignature AR_SETTLEMENT =
-      new TypedSignature(
-          EconomicEventClass.AR_SETTLEMENT,
-          Set.of(
-              new AnchorEntry(AccountRole.CASH, EntrySide.DEBIT),
-              new AnchorEntry(AccountRole.RECEIVABLE, EntrySide.CREDIT)));
-  private static final TypedSignature AP_SETTLEMENT =
-      new TypedSignature(
-          EconomicEventClass.AP_SETTLEMENT,
-          Set.of(
-              new AnchorEntry(AccountRole.PAYABLE, EntrySide.DEBIT),
-              new AnchorEntry(AccountRole.CASH, EntrySide.CREDIT)));
-  private static final TypedSignature OWNER_CONTRIBUTION =
-      new TypedSignature(
-          EconomicEventClass.OWNER_CONTRIBUTION,
-          Set.of(
-              new AnchorEntry(AccountRole.CASH, EntrySide.DEBIT),
-              new AnchorEntry(AccountRole.EQUITY_CONTRIBUTED, EntrySide.CREDIT)));
-  private static final TypedSignature OWNER_WITHDRAWAL =
-      new TypedSignature(
-          EconomicEventClass.OWNER_WITHDRAWAL,
-          Set.of(
-              new AnchorEntry(AccountRole.EQUITY_DRAWS, EntrySide.DEBIT),
-              new AnchorEntry(AccountRole.CASH, EntrySide.CREDIT)));
-  private static final Set<AnchorEntry> INVENTORY_EXPENSE_SIGNATURE =
-      Set.of(
-          new AnchorEntry(AccountRole.EXPENSE, EntrySide.DEBIT),
-          new AnchorEntry(AccountRole.INVENTORY, EntrySide.CREDIT));
-  private static final Set<AnchorEntry> INVENTORY_COUNT_INCREASE_SIGNATURE =
-      Set.of(
-          new AnchorEntry(AccountRole.INVENTORY, EntrySide.DEBIT),
-          new AnchorEntry(AccountRole.REVENUE, EntrySide.CREDIT));
-  private static final List<TypedSignature> TYPED_SIGNATURES =
-      List.of(
-          SETTLED_SALE,
-          CREDIT_SALE,
-          SETTLED_PURCHASE,
-          CREDIT_PURCHASE,
-          SETTLED_EXPENSE,
-          CREDIT_EXPENSE,
-          AR_SETTLEMENT,
-          AP_SETTLEMENT,
-          OWNER_CONTRIBUTION,
-          OWNER_WITHDRAWAL);
-
   private JournalClassifier() {}
 
   /** Resolves one declared account code into the account role used by classifier semantics. */
@@ -151,7 +68,7 @@ public final class JournalClassifier {
     }
     if (requiredAssertedTypedEventClass.isPresent()) {
       EconomicEventClass assertedEventClass = requiredAssertedTypedEventClass.orElseThrow();
-      requireAssertedTypedEventSignature(assertedEventClass, signature);
+      TypedJournalSignatureCatalog.requireCompatible(assertedEventClass, signature);
       return new ClassificationResult(
           assertedEventClass,
           signature,
@@ -160,9 +77,10 @@ public final class JournalClassifier {
           requiredEvidenceClass,
           requiredStructural);
     }
-    Set<EconomicEventClass> containedTypedEvents = containedTypedEvents(signature);
+    Set<EconomicEventClass> containedTypedEvents =
+        TypedJournalSignatureCatalog.containedEvents(signature);
     EconomicEventClass eventClass =
-        ifExactSingleton(signature, containedTypedEvents)
+        TypedJournalSignatureCatalog.exactSingleton(signature, containedTypedEvents)
             .orElseGet(
                 () ->
                     containedTypedEvents.isEmpty()
@@ -175,26 +93,6 @@ public final class JournalClassifier {
         requiredHasCashLine,
         requiredEvidenceClass,
         requiredStructural);
-  }
-
-  private static void requireAssertedTypedEventSignature(
-      EconomicEventClass assertedEventClass, Set<AnchorEntry> signature) {
-    boolean accepted =
-        switch (assertedEventClass) {
-          case INVENTORY_CAPITALIZATION ->
-              signature.equals(SETTLED_PURCHASE.anchorSignature)
-                  || signature.equals(CREDIT_PURCHASE.anchorSignature);
-          case INVENTORY_WRITE_DOWN, INVENTORY_SHRINKAGE ->
-              signature.equals(INVENTORY_EXPENSE_SIGNATURE);
-          case INVENTORY_COUNT_INCREASE -> signature.equals(INVENTORY_COUNT_INCREASE_SIGNATURE);
-          default -> false;
-        };
-    if (!accepted) {
-      throw new IllegalArgumentException(
-          "Asserted typed event "
-              + assertedEventClass.wireValue()
-              + " is incompatible with the resolved journal anchor signature.");
-    }
   }
 
   private static Set<AnchorEntry> anchorSignature(
@@ -232,52 +130,5 @@ public final class JournalClassifier {
         .map(JournalLine::accountCode)
         .map(accountRoleLookup::roleFor)
         .anyMatch(role -> role == AccountRole.CASH);
-  }
-
-  private static java.util.Optional<EconomicEventClass> ifExactSingleton(
-      Set<AnchorEntry> signature, Set<EconomicEventClass> containedTypedEvents) {
-    if (containedTypedEvents.size() != 1) {
-      return java.util.Optional.empty();
-    }
-    EconomicEventClass candidate = containedTypedEvents.iterator().next();
-    if (candidate == EconomicEventClass.SETTLED_SALE
-        && tradingSaleSignature(signature, SETTLED_SALE.anchorSignature)) {
-      return java.util.Optional.of(candidate);
-    }
-    if (candidate == EconomicEventClass.CREDIT_SALE
-        && tradingSaleSignature(signature, CREDIT_SALE.anchorSignature)) {
-      return java.util.Optional.of(candidate);
-    }
-    for (TypedSignature typedSignature : TYPED_SIGNATURES) {
-      if (typedSignature.eventClass == candidate
-          && typedSignature.anchorSignature.equals(signature)) {
-        return java.util.Optional.of(candidate);
-      }
-    }
-    return java.util.Optional.empty();
-  }
-
-  private static boolean tradingSaleSignature(
-      Set<AnchorEntry> signature, Set<AnchorEntry> saleSignature) {
-    return signature.size() == saleSignature.size() + 2
-        && signature.contains(new AnchorEntry(AccountRole.EXPENSE, EntrySide.DEBIT))
-        && signature.contains(new AnchorEntry(AccountRole.INVENTORY, EntrySide.CREDIT));
-  }
-
-  private static Set<EconomicEventClass> containedTypedEvents(Set<AnchorEntry> anchorSignature) {
-    Set<EconomicEventClass> contained = new LinkedHashSet<>();
-    for (TypedSignature typedSignature : TYPED_SIGNATURES) {
-      if (anchorSignature.containsAll(typedSignature.anchorSignature)) {
-        contained.add(typedSignature.eventClass);
-      }
-    }
-    return Set.copyOf(contained);
-  }
-
-  private record TypedSignature(EconomicEventClass eventClass, Set<AnchorEntry> anchorSignature) {
-    private TypedSignature {
-      Objects.requireNonNull(eventClass, "eventClass");
-      anchorSignature = Set.copyOf(Objects.requireNonNull(anchorSignature, "anchorSignature"));
-    }
   }
 }

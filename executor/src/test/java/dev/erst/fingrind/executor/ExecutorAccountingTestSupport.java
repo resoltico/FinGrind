@@ -38,9 +38,19 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 /** Shared test-only helpers for expressing declared-account fixtures through taxonomy owners. */
 public final class ExecutorAccountingTestSupport {
+  private static final Set<FinancialPositionLineClassification>
+      NON_CASH_ASSET_LINE_CLASSIFICATIONS =
+          Set.of(
+              FinancialPositionLineClassification.CURRENT_ASSET,
+              FinancialPositionLineClassification.NONCURRENT_ASSET,
+              FinancialPositionLineClassification.INVENTORY,
+              FinancialPositionLineClassification.PREPAID_EXPENSE,
+              FinancialPositionLineClassification.TRADE_RECEIVABLE);
+
   private ExecutorAccountingTestSupport() {}
 
   /** Returns the default taxonomy owner used by legacy balance-driven test fixtures. */
@@ -146,20 +156,9 @@ public final class ExecutorAccountingTestSupport {
       FinancialPositionLineClassification lineClassification) {
     Objects.requireNonNull(lineClassification, "lineClassification");
     Optional<CashFlowAssetClassification> cashFlowAssetClassification =
-        switch (lineClassification) {
-          case CURRENT_ASSET, NONCURRENT_ASSET, INVENTORY, TRADE_RECEIVABLE ->
-              Optional.of(CashFlowAssetClassification.NON_CASH);
-          case CURRENT_LIABILITY,
-              NONCURRENT_LIABILITY,
-              TRADE_PAYABLE,
-              EQUITY_CONTRIBUTION,
-              EQUITY_WITHDRAWAL,
-              RESULT_HOLDING,
-              RETAINED_ACCUMULATED,
-              RESERVE,
-              OTHER_EQUITY ->
-              Optional.empty();
-        };
+        NON_CASH_ASSET_LINE_CLASSIFICATIONS.contains(lineClassification)
+            ? Optional.of(CashFlowAssetClassification.NON_CASH)
+            : Optional.empty();
     return new AccountTaxonomy(
         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
         Optional.empty(),

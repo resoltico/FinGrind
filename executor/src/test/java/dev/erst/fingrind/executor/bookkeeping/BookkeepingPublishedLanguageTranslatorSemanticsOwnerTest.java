@@ -58,24 +58,105 @@ class BookkeepingPublishedLanguageTranslatorSemanticsOwnerTest {
           "opening-quantity-requires-inventory",
           "inventory-capitalization-requires-quantity-on-hand",
           "inventory-opening-carrying-cost-invalid",
-          "inventory-opening-must-be-first-movement");
+          "inventory-opening-must-be-first-movement",
+          "accrual-cutoff-requires-accrual-basis",
+          "accrual-cutoff-id-already-exists",
+          "accrual-cutoff-not-found",
+          "accrual-cutoff-application-kind-not-admitted",
+          "accrual-cutoff-application-outside-recognition-interval",
+          "accrual-cutoff-application-precedes-horizon",
+          "accrual-cutoff-application-exceeds-remaining-amount",
+          "accrual-cutoff-reversal-precedes-horizon",
+          "accrual-cutoff-origin-reversal-requires-zero-applications",
+          "latvian-payroll-requires-eur-book",
+          "latvian-payroll-profile-not-admitted",
+          "latvian-payroll-run-id-already-exists",
+          "latvian-payroll-employee-month-already-exists",
+          "latvian-payroll-run-not-found",
+          "latvian-payroll-run-reversed",
+          "latvian-payroll-settlement-precedes-run",
+          "latvian-payroll-settlement-already-exists",
+          "latvian-payroll-run-reversal-requires-settlements-reversed",
+          "latvian-payroll-settlement-reversal-precedes-settlement",
+          "latvian-payroll-run-reversal-precedes-run",
+          "fixed-asset-id-already-exists",
+          "fixed-asset-not-found",
+          "fixed-asset-already-disposed",
+          "fixed-asset-depreciation-precedes-in-service-date",
+          "fixed-asset-lifecycle-precedes-horizon",
+          "fixed-asset-fully-depreciated",
+          "fixed-asset-disposal-currency-mismatch",
+          "financing-arrangement-id-already-exists",
+          "financing-arrangement-not-found",
+          "financing-principal-repayment-exceeds-outstanding",
+          "financing-interest-payment-exceeds-accrued",
+          "financing-lifecycle-precedes-horizon",
+          "financing-currency-mismatch",
+          "foreign-currency-obligation-id-already-exists",
+          "foreign-currency-obligation-not-found",
+          "foreign-currency-obligation-already-settled",
+          "realized-foreign-exchange-settlement-precedes-lifecycle-horizon",
+          "realized-foreign-exchange-settlement-transaction-amount-mismatch",
+          "realized-foreign-exchange-settlement-functional-currency-mismatch");
   private static final List<Class<?>> ENTRY_SEMANTICS_OWNERS =
       List.of(
           BookkeepingAccountSemanticsViolations.class,
+          AccrualCutoffEntrySemanticsViolations.class,
           BookkeepingEvidenceSemanticsViolations.class,
           BookkeepingEntryModeSemanticsViolations.class,
           InventoryEntrySemanticsViolations.class,
           BookkeepingTaxSemanticsViolations.class);
-  private static final List<String> INVENTORY_ENGINE_OWNED_CODES =
+  private static final List<String> NON_FACTORY_OWNED_CODES =
       List.of(
           "inventory-capitalization-requires-quantity-on-hand",
           "inventory-opening-carrying-cost-invalid",
-          "inventory-opening-must-be-first-movement");
+          "inventory-opening-must-be-first-movement",
+          "accrual-cutoff-id-already-exists",
+          "accrual-cutoff-not-found",
+          "accrual-cutoff-application-kind-not-admitted",
+          "accrual-cutoff-application-outside-recognition-interval",
+          "accrual-cutoff-application-precedes-horizon",
+          "accrual-cutoff-application-exceeds-remaining-amount",
+          "accrual-cutoff-reversal-precedes-horizon",
+          "accrual-cutoff-origin-reversal-requires-zero-applications",
+          "latvian-payroll-requires-eur-book",
+          "latvian-payroll-profile-not-admitted",
+          "latvian-payroll-run-id-already-exists",
+          "latvian-payroll-employee-month-already-exists",
+          "latvian-payroll-run-not-found",
+          "latvian-payroll-run-reversed",
+          "latvian-payroll-settlement-precedes-run",
+          "latvian-payroll-settlement-already-exists",
+          "latvian-payroll-run-reversal-requires-settlements-reversed",
+          "latvian-payroll-settlement-reversal-precedes-settlement",
+          "latvian-payroll-run-reversal-precedes-run",
+          "fixed-asset-id-already-exists",
+          "fixed-asset-not-found",
+          "fixed-asset-already-disposed",
+          "fixed-asset-depreciation-precedes-in-service-date",
+          "fixed-asset-lifecycle-precedes-horizon",
+          "fixed-asset-fully-depreciated",
+          "fixed-asset-disposal-currency-mismatch",
+          "financing-arrangement-id-already-exists",
+          "financing-arrangement-not-found",
+          "financing-principal-repayment-exceeds-outstanding",
+          "financing-interest-payment-exceeds-accrued",
+          "financing-lifecycle-precedes-horizon",
+          "financing-currency-mismatch",
+          "foreign-currency-obligation-id-already-exists",
+          "foreign-currency-obligation-not-found",
+          "foreign-currency-obligation-already-settled",
+          "realized-foreign-exchange-settlement-precedes-lifecycle-horizon",
+          "realized-foreign-exchange-settlement-transaction-amount-mismatch",
+          "realized-foreign-exchange-settlement-functional-currency-mismatch");
   private static final Map<String, EntrySemanticsMethodInvoker> ENTRY_SEMANTICS_METHOD_INVOKERS =
       Map.ofEntries(
           Map.entry(
               "accountRoleMismatch",
               BookkeepingPublishedLanguageTranslatorSemanticsOwnerTest::invokeAccountRoleMismatch),
+          Map.entry(
+              "requiresAccrualBasis",
+              BookkeepingPublishedLanguageTranslatorSemanticsOwnerTest::invokeRequiresAccrualBasis),
           Map.entry(
               "accountTypeMismatch",
               BookkeepingPublishedLanguageTranslatorSemanticsOwnerTest::invokeAccountTypeMismatch),
@@ -192,7 +273,7 @@ class BookkeepingPublishedLanguageTranslatorSemanticsOwnerTest {
             .toList());
     assertEquals(
         ENTRY_SEMANTICS_CANONICAL_CODES.stream()
-            .filter(code -> !INVENTORY_ENGINE_OWNED_CODES.contains(code))
+            .filter(code -> !NON_FACTORY_OWNED_CODES.contains(code))
             .toList(),
         ENTRY_SEMANTICS_OWNERS.stream()
             .flatMap(owner -> Arrays.stream(owner.getDeclaredMethods()))
@@ -233,6 +314,12 @@ class BookkeepingPublishedLanguageTranslatorSemanticsOwnerTest {
             new AccountCode("1000"),
             AccountType.ASSET,
             AccountType.REVENUE);
+  }
+
+  private static BookkeepingPostingRejection.EntrySemanticsViolation invokeRequiresAccrualBasis(
+      Method method) throws ReflectiveOperationException {
+    return (BookkeepingPostingRejection.EntrySemanticsViolation)
+        method.invoke(null, "entryKind", "PREPAYMENT");
   }
 
   private static BookkeepingPostingRejection.EntrySemanticsViolation invokeAccountRoleMismatch(

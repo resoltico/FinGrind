@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.workflow;
 
+import dev.erst.fingrind.contract.workflow.LedgerPlanFailure;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -23,7 +24,8 @@ public final class LedgerPlanStepOutcomes {
   /** Creates one local assertion-failure outcome with the supplied workflow facts. */
   public static LedgerPlanStepOutcome assertionFailure(String message, BookWorkflowFact... facts) {
     return new LedgerPlanStepOutcome.AssertionFailed(
-        new BookWorkflowFailure("assertion-failed", message, List.of(facts)));
+        new BookWorkflowFailure(
+            LedgerPlanFailure.ASSERTION_FAILED.code(), message, List.of(facts)));
   }
 
   /** Chooses the public-facing missing-book code that matches the first workflow step family. */

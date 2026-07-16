@@ -17,7 +17,6 @@ import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
-import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -385,7 +384,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     String rekeyBookText =
         CliBookAccessOutputRenderer.renderRekeyBookText(
             new RekeyBookResult.Rekeyed(Path.of("office/report.sqlite")),
-            new BookAccess.PassphraseSource.KeyFile(Path.of("office/keys/rotated.key")));
+            Path.of("office/keys/rotated.key"));
     String declaredAccountText =
         CliMutationOutputRenderer.renderAccountDeclarationText("declared", cashAccount);
     String childAccountText =
@@ -409,8 +408,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(openBookText.contains("Functional currency"));
     assertTrue(openBookText.contains("Fiscal year start"));
     assertTrue(rekeyBookText.contains("Book Rekeyed"));
-    assertTrue(rekeyBookText.contains("Replacement secret source"));
-    assertTrue(rekeyBookText.contains("Replacement key file"));
+    assertTrue(rekeyBookText.contains("New book key file"));
     assertTrue(declaredAccountText.contains("Account Declared"));
     assertTrue(declaredAccountText.contains("Outcome"));
     assertTrue(declaredAccountText.contains("declared"));
@@ -474,14 +472,14 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
       String trialBalanceCsv) {
     assertTrue(accountBalanceText.contains("Account Balance"));
     assertTrue(accountBalanceText.contains("Effective date range"));
-    assertTrue(accountBalanceCsv.contains("exportFamily,rowId,parentRowId,relationKind"));
-    assertTrue(accountBalanceCsv.contains("account-balance:1000:EUR"));
+    assertTrue(accountBalanceCsv.contains("family,accountCode,accountName"));
+    assertTrue(accountBalanceCsv.contains("account-balance,1000,\"Cash, reserve\""));
     assertTrue(trialBalanceText.contains("Trial Balance"));
     assertTrue(trialBalanceText.contains("As of"));
     assertTrue(trialBalanceText.contains("Balance state"));
     assertTrue(trialBalanceText.contains("Imbalanced"));
-    assertTrue(trialBalanceCsv.contains("exportFamily,rowId,parentRowId,relationKind"));
-    assertTrue(trialBalanceCsv.contains("trial-balance-row:current:1000"));
+    assertTrue(trialBalanceCsv.contains("family,reportPeriod,accountCode"));
+    assertTrue(trialBalanceCsv.contains("trial-balance,current,1000,\"Cash, reserve\""));
   }
 
   private static void assertLedgerOutputSamples(
@@ -493,20 +491,18 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(accountLedgerText.contains("Account Ledger"));
     assertTrue(accountLedgerText.contains("Opening Balances"));
     assertTrue(accountLedgerText.contains("2000"));
-    assertTrue(accountLedgerCsv.contains("exportFamily,rowId,parentRowId,relationKind"));
-    assertTrue(accountLedgerCsv.contains("ledger-entry:posting-1"));
-    assertTrue(accountLedgerCsv.contains("ledger-counterpart:posting-1:2000"));
+    assertTrue(accountLedgerCsv.contains("family,accountCode,postingId"));
+    assertTrue(accountLedgerCsv.contains("account-ledger,1000,posting-1"));
     List<String> accountLedgerCsvLines = accountLedgerCsv.lines().toList();
     int accountLedgerCsvColumnCount = csvFieldCount(accountLedgerCsvLines.getFirst());
     for (String line : accountLedgerCsvLines) {
       assertEquals(accountLedgerCsvColumnCount, csvFieldCount(line));
     }
     assertTrue(selfLedgerText.contains("(self)"));
-    assertFalse(selfLedgerText.contains("(none)"));
     assertTrue(periodSummaryText.contains("Period Summary"));
     assertTrue(periodSummaryText.contains("Posting line count"));
-    assertTrue(periodSummaryCsv.contains("exportFamily,rowId,parentRowId,relationKind"));
-    assertTrue(periodSummaryCsv.contains("period-summary:account:2000:net"));
+    assertTrue(periodSummaryCsv.contains("family,recordScope,accountCode"));
+    assertTrue(periodSummaryCsv.contains("period-summary,activity,2000,Revenue"));
   }
 
   private static int csvFieldCount(String row) {

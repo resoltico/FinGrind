@@ -7,12 +7,13 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
 
 /** Shared repository and path helpers for split contract-lint tests. */
 class ProtocolContractRepositorySupport {
+  private static final String REPOSITORY_ROOT_PROPERTY = "fingrind.repository.root";
+
   protected final List<Path> productionJavaFiles() throws IOException {
     Path root = repositoryRoot();
     List<Path> files = new ArrayList<>();
@@ -54,10 +55,21 @@ class ProtocolContractRepositorySupport {
   }
 
   protected final Path repositoryRoot() {
-    Path directory = Path.of(System.getProperty("user.dir")).toAbsolutePath();
-    while (!Files.exists(
-        Objects.requireNonNull(directory, "directory").resolve("settings.gradle.kts"))) {
+    String configuredRoot = System.getProperty(REPOSITORY_ROOT_PROPERTY);
+    if (configuredRoot != null && !configuredRoot.isBlank()) {
+      Path repositoryRoot = Path.of(configuredRoot).toAbsolutePath().normalize();
+      if (!Files.isRegularFile(repositoryRoot.resolve("settings.gradle.kts"))) {
+        throw new IllegalStateException(
+            "Configured repository root does not contain settings.gradle.kts: " + repositoryRoot);
+      }
+      return repositoryRoot;
+    }
+    Path directory = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+    while (directory != null && !Files.isRegularFile(directory.resolve("settings.gradle.kts"))) {
       directory = directory.getParent();
+    }
+    if (directory == null) {
+      throw new IllegalStateException("Unable to locate repository root from user.dir.");
     }
     return directory;
   }

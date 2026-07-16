@@ -222,7 +222,7 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void run_openBookWithMissingKeyFile_redactsAbsolutePathFromPublicFailure() throws IOException {
+  void run_openBookWithMissingKeyFile_exposesCanonicalPathInJsonFailure() throws IOException {
     Path bookFilePath = tempDirectory.resolve("missing-key-books").resolve("entity.sqlite");
     Path missingKeyFile = tempDirectory.resolve("private-secrets").resolve("missing.key");
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
@@ -254,8 +254,10 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(
         ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.code(),
         failureEnvelope.path("code").stringValue());
-    assertTrue(outputText.contains(CliPublicPaths.redactedValue(missingKeyFile)));
-    assertFalse(outputText.contains(missingKeyFile.toAbsolutePath().normalize().toString()));
-    assertFalse(outputText.contains(tempDirectory.toAbsolutePath().normalize().toString()));
+    String absoluteKeyFile = CliPublicPaths.absoluteValue(missingKeyFile);
+    assertEquals(absoluteKeyFile, failureEnvelope.path("path").stringValue());
+    assertEquals(0, failureEnvelope.path("relatedPaths").size());
+    assertFalse(
+        failureEnvelope.path("message").stringValue().contains(absoluteKeyFile), outputText);
   }
 }

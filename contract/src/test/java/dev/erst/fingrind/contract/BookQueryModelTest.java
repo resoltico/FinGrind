@@ -10,6 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPagination;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
@@ -25,6 +27,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.core.AccountCode;
@@ -96,15 +99,27 @@ class BookQueryModelTest {
             LocalDate.parse("2026-04-01"),
             LocalDate.parse("2026-04-30"),
             PostingCoverage.NON_CLOSING_POSTINGS);
-    AccountLedgerQuery defaultLedgerQuery = AccountLedgerQuery.unbounded(new AccountCode("1000"));
+    AccountLedgerQuery defaultLedgerQuery =
+        new AccountLedgerQuery(
+            new AccountCode("1000"),
+            EffectiveDateRange.unbounded(),
+            PostingCoverage.ALL_POSTING_KINDS,
+            ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT,
+            Optional.empty());
     AccountLedgerQuery explicitLedgerQuery =
-        AccountLedgerQuery.unbounded(new AccountCode("1000"), PostingCoverage.NON_CLOSING_POSTINGS);
+        new AccountLedgerQuery(
+            new AccountCode("1000"),
+            EffectiveDateRange.unbounded(),
+            PostingCoverage.NON_CLOSING_POSTINGS,
+            ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT,
+            Optional.empty());
     AccountLedgerQuery explicitLedgerRangeQuery =
         new AccountLedgerQuery(
             new AccountCode("1000"),
-            LocalDate.parse("2026-04-01"),
-            LocalDate.parse("2026-04-30"),
-            PostingCoverage.NON_CLOSING_POSTINGS);
+            EffectiveDateRange.of(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30")),
+            PostingCoverage.NON_CLOSING_POSTINGS,
+            ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT,
+            Optional.empty());
 
     assertEquals(PostingCoverage.NON_CLOSING_POSTINGS, explicitBalanceQuery.postingCoverage());
     assertTrue(explicitBalanceQuery.effectiveDateFrom().isEmpty());
@@ -125,6 +140,67 @@ class BookQueryModelTest {
         Optional.of(LocalDate.parse("2026-04-01")), explicitLedgerRangeQuery.effectiveDateFrom());
     assertEquals(
         Optional.of(LocalDate.parse("2026-04-30")), explicitLedgerRangeQuery.effectiveDateTo());
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new AccountLedgerQuery(
+                new AccountCode("1000"),
+                EffectiveDateRange.unbounded(),
+                PostingCoverage.ALL_POSTING_KINDS,
+                ProtocolInteractionLimits.PAGE_LIMIT_MIN - 1,
+                Optional.empty()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new AccountLedgerQuery(
+                new AccountCode("1000"),
+                EffectiveDateRange.unbounded(),
+                PostingCoverage.ALL_POSTING_KINDS,
+                ProtocolInteractionLimits.PAGE_LIMIT_MAX + 1,
+                Optional.empty()));
+  }
+
+  @Test
+  void accountLedgerPageCursor_roundTripsStableWireValuesAndRejectsMalformedValues() {
+    AccountLedgerPageCursor cursor =
+        new AccountLedgerPageCursor(
+            LocalDate.parse("2026-04-08"),
+            Instant.parse("2026-04-08T10:15:30.123456789Z"),
+            new PostingId("posting-ledger-1"));
+
+    assertEquals(cursor, AccountLedgerPageCursor.fromWireValue(cursor.wireValue()));
+    assertThrows(NullPointerException.class, () -> AccountLedgerPageCursor.fromWireValue(nullOf()));
+    assertThrows(IllegalArgumentException.class, () -> AccountLedgerPageCursor.fromWireValue("%"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> AccountLedgerPageCursor.fromWireValue("not-a-ledger-cursor"));
+  }
+
+  @Test
+  void accountLedgerPagination_preservesBoundariesAndRejectsNonpositiveLimits() {
+    AccountLedgerPageCursor cursor =
+        new AccountLedgerPageCursor(
+            LocalDate.parse("2026-04-08"),
+            Instant.parse("2026-04-08T10:15:30.123456789Z"),
+            new PostingId("posting-ledger-1"));
+    AccountLedgerPagination pagination =
+        new AccountLedgerPagination(50, Optional.of(cursor), Optional.of(cursor));
+    AccountLedgerPagination firstPage = AccountLedgerPagination.firstPage(50);
+
+    assertEquals(Optional.of(cursor), pagination.cursor());
+    assertEquals(Optional.of(cursor), pagination.nextCursor());
+    assertEquals(50, firstPage.limit());
+    assertTrue(firstPage.cursor().isEmpty());
+    assertTrue(firstPage.nextCursor().isEmpty());
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new AccountLedgerPagination(0, Optional.empty(), Optional.empty()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new AccountLedgerPagination(1, nullOf(), Optional.empty()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new AccountLedgerPagination(1, Optional.empty(), nullOf()));
   }
 
   @Test

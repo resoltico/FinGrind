@@ -4,42 +4,28 @@ import dev.erst.fingrind.contract.runtime.SqliteRuntimeArtifactEvidence;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.jspecify.annotations.Nullable;
 
-/** Shared redaction and evidence helpers for public SQLite runtime inspection surfaces. */
+/** Shared machine-path and provenance-evidence helpers for SQLite runtime inspection surfaces. */
 final class SqliteRuntimePathEvidenceSupport {
-  private static final Pattern PATH_TOKEN = Pattern.compile("([A-Za-z]:\\\\[^\\s]+|/[^\\s]+)");
   private static final String TOOLCHAIN_FINGERPRINT_FILE_NAME = "toolchain-fingerprint.json";
   private static final String BUILD_CONTRACT_FILE_NAME = "build-contract.json";
 
   private SqliteRuntimePathEvidenceSupport() {}
 
   static String failureDetail(Throwable throwable) {
-    return redactPathDetails(
-        Objects.requireNonNullElse(throwable.getMessage(), throwable.getClass().getSimpleName()));
+    return Objects.requireNonNullElse(throwable.getMessage(), throwable.getClass().getSimpleName());
   }
 
-  static String publicLoadedLibraryPath(String loadedLibraryPath) {
+  static String absolutePath(String loadedLibraryPath) {
     String normalized = Objects.requireNonNull(loadedLibraryPath, "loadedLibraryPath").strip();
     if (normalized.isEmpty()) {
       throw new IllegalArgumentException("loadedLibraryPath must not be blank.");
     }
-    int lastSeparator = Math.max(normalized.lastIndexOf('/'), normalized.lastIndexOf('\\'));
-    if (lastSeparator < 0 || lastSeparator == normalized.length() - 1) {
+    if (isWindowsAbsolutePath(normalized) || normalized.startsWith("\\\\")) {
       return normalized;
     }
-    return "<redacted>/" + normalized.substring(lastSeparator + 1);
-  }
-
-  static int trailingPunctuationStart(String rawPath) {
-    String normalized = Objects.requireNonNull(rawPath, "rawPath");
-    int end = normalized.length();
-    while (end > 0 && isTrailingPunctuation(normalized.charAt(end - 1))) {
-      end--;
-    }
-    return end;
+    return Path.of(normalized).toAbsolutePath().normalize().toString();
   }
 
   static @Nullable SqliteRuntimeArtifactEvidence artifactEvidence(String loadedLibraryPath) {
@@ -54,34 +40,16 @@ final class SqliteRuntimePathEvidenceSupport {
       return null;
     }
     return new SqliteRuntimeArtifactEvidence(
-        publicLoadedLibraryPath(toolchainFingerprintPath.toString()),
+        absolutePath(toolchainFingerprintPath.toString()),
         SqliteManagedLibraryIdentity.actualSha256(toolchainFingerprintPath),
-        publicLoadedLibraryPath(buildContractPath.toString()),
+        absolutePath(buildContractPath.toString()),
         SqliteManagedLibraryIdentity.actualSha256(buildContractPath));
   }
 
-  private static String redactPathDetails(String message) {
-    Matcher matcher = PATH_TOKEN.matcher(Objects.requireNonNull(message, "message"));
-    StringBuffer redactedMessage = new StringBuffer();
-    while (matcher.find()) {
-      String rawPath = matcher.group(1);
-      int pathEnd = trailingPunctuationStart(rawPath);
-      String path = rawPath.substring(0, pathEnd);
-      String trailingPunctuation = rawPath.substring(pathEnd);
-      matcher.appendReplacement(
-          redactedMessage,
-          Matcher.quoteReplacement(publicLoadedLibraryPath(path) + trailingPunctuation));
-    }
-    matcher.appendTail(redactedMessage);
-    return redactedMessage.toString();
-  }
-
-  private static boolean isTrailingPunctuation(char candidate) {
-    return candidate == '.'
-        || candidate == ','
-        || candidate == ';'
-        || candidate == ':'
-        || candidate == ')'
-        || candidate == ']';
+  private static boolean isWindowsAbsolutePath(String candidate) {
+    return candidate.length() >= 3
+        && Character.isLetter(candidate.charAt(0))
+        && candidate.charAt(1) == ':'
+        && (candidate.charAt(2) == '/' || candidate.charAt(2) == '\\');
   }
 }

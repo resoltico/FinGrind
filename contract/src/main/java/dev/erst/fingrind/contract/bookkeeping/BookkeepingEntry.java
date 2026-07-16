@@ -13,13 +13,19 @@ import org.jspecify.annotations.Nullable;
 
 /** Public bookkeeping write model with one direct-journal path and typed entry variants. */
 public sealed interface BookkeepingEntry extends BookkeepingEntrySurface
-    permits BookkeepingEntry.DirectJournal,
-        TypedBookkeepingEntry,
-        BookkeepingEntry.OpeningPosition,
-        BookkeepingEntry.Reversal {
+    permits BookkeepingEntry.ScalarFactFree, TypedBookkeepingEntry {
+  /**
+   * Entry form whose durable projection has no generic account, amount, quantity, or unit-cost
+   * facts.
+   */
+  sealed interface ScalarFactFree extends BookkeepingEntry
+      permits BookkeepingEntry.DirectJournal,
+          BookkeepingEntry.OpeningPosition,
+          BookkeepingEntry.Reversal {}
+
   record DirectJournal(
       JournalEntry journalEntry, @Nullable ForeignExchangeDetails foreignExchangeDetails)
-      implements BookkeepingEntry {
+      implements ScalarFactFree {
     public DirectJournal {
       Objects.requireNonNull(journalEntry, "journalEntry");
       BookkeepingEntryForeignExchangeValidationSupport.requireDirectJournalForeignExchange(
@@ -42,7 +48,7 @@ public sealed interface BookkeepingEntry extends BookkeepingEntrySurface
       @Nullable ForeignExchangeDetails foreignExchangeDetails,
       @Nullable TaxSelection taxSelection,
       @Nullable AppliedTax appliedTax)
-      implements TypedBookkeepingEntry {
+      implements StandardBookkeepingEntryVariants {
     public SaleSettled {
       var state =
           BookkeepingEntryConstructionSupport.saleSettled(
@@ -74,7 +80,7 @@ public sealed interface BookkeepingEntry extends BookkeepingEntrySurface
       @Nullable ForeignExchangeDetails foreignExchangeDetails,
       @Nullable TaxSelection taxSelection,
       @Nullable AppliedTax appliedTax)
-      implements TypedBookkeepingEntry {
+      implements StandardBookkeepingEntryVariants {
     public SaleOnCredit {
       var state =
           BookkeepingEntryConstructionSupport.saleOnCredit(
@@ -107,7 +113,7 @@ public sealed interface BookkeepingEntry extends BookkeepingEntrySurface
       @Nullable ForeignExchangeDetails foreignExchangeDetails,
       @Nullable TaxSelection taxSelection,
       @Nullable AppliedTax appliedTax)
-      implements TypedBookkeepingEntry {
+      implements StandardBookkeepingEntryVariants {
     public PurchaseSettled {
       var state =
           BookkeepingEntryConstructionSupport.purchaseSettled(
@@ -139,7 +145,7 @@ public sealed interface BookkeepingEntry extends BookkeepingEntrySurface
       @Nullable ForeignExchangeDetails foreignExchangeDetails,
       @Nullable TaxSelection taxSelection,
       @Nullable AppliedTax appliedTax)
-      implements TypedBookkeepingEntry {
+      implements StandardBookkeepingEntryVariants {
     public PurchaseOnCredit {
       var state =
           BookkeepingEntryConstructionSupport.purchaseOnCredit(
@@ -170,7 +176,7 @@ public sealed interface BookkeepingEntry extends BookkeepingEntrySurface
       @Nullable ForeignExchangeDetails foreignExchangeDetails,
       @Nullable TaxSelection taxSelection,
       @Nullable AppliedTax appliedTax)
-      implements TypedBookkeepingEntry {
+      implements StandardBookkeepingEntryVariants {
     public ExpenseSettled {
       var state =
           BookkeepingEntryConstructionSupport.expenseSettled(
@@ -196,7 +202,7 @@ public sealed interface BookkeepingEntry extends BookkeepingEntrySurface
       @Nullable ForeignExchangeDetails foreignExchangeDetails,
       @Nullable TaxSelection taxSelection,
       @Nullable AppliedTax appliedTax)
-      implements TypedBookkeepingEntry {
+      implements StandardBookkeepingEntryVariants {
     public ExpenseOnCredit {
       var state =
           BookkeepingEntryConstructionSupport.expenseOnCredit(
@@ -221,7 +227,7 @@ public sealed interface BookkeepingEntry extends BookkeepingEntrySurface
       AccountCode receivableAccountCode,
       MonetaryAmount amount,
       @Nullable SettlementAdjunct settlementAdjunct)
-      implements TypedBookkeepingEntry {
+      implements StandardBookkeepingEntryVariants {
     public Receipt {
       var state =
           BookkeepingEntryCashMovementConstructionSupport.receipt(
@@ -239,7 +245,7 @@ public sealed interface BookkeepingEntry extends BookkeepingEntrySurface
       AccountCode cashAccountCode,
       MonetaryAmount amount,
       @Nullable SettlementAdjunct settlementAdjunct)
-      implements TypedBookkeepingEntry {
+      implements StandardBookkeepingEntryVariants {
     public Payment {
       var state =
           BookkeepingEntryCashMovementConstructionSupport.payment(
@@ -257,7 +263,7 @@ public sealed interface BookkeepingEntry extends BookkeepingEntrySurface
       AccountCode equityAccountCode,
       MonetaryAmount amount,
       @Nullable ForeignExchangeDetails foreignExchangeDetails)
-      implements TypedBookkeepingEntry {
+      implements StandardBookkeepingEntryVariants {
     public OwnerContribution {
       var state =
           BookkeepingEntryCashMovementConstructionSupport.ownerContribution(
@@ -275,7 +281,7 @@ public sealed interface BookkeepingEntry extends BookkeepingEntrySurface
       AccountCode cashAccountCode,
       MonetaryAmount amount,
       @Nullable ForeignExchangeDetails foreignExchangeDetails)
-      implements TypedBookkeepingEntry {
+      implements StandardBookkeepingEntryVariants {
     public OwnerWithdrawal {
       var state =
           BookkeepingEntryCashMovementConstructionSupport.ownerWithdrawal(
@@ -288,7 +294,7 @@ public sealed interface BookkeepingEntry extends BookkeepingEntrySurface
   }
 
   record OpeningPosition(LocalDate effectiveDate, List<OpeningAccountBalance> balances)
-      implements BookkeepingEntry {
+      implements ScalarFactFree {
     public OpeningPosition {
       effectiveDate = BookkeepingEntryScalarValidationSupport.requireEffectiveDate(effectiveDate);
       balances = BookkeepingEntryScalarValidationSupport.requireOpeningBalances(balances);
@@ -311,7 +317,7 @@ public sealed interface BookkeepingEntry extends BookkeepingEntrySurface
       PostingLineage.Reversal reversal,
       @Nullable ForeignExchangeDetails foreignExchangeDetails,
       @Nullable JournalEntry resolvedJournalEntry)
-      implements BookkeepingEntry {
+      implements ScalarFactFree {
     public Reversal {
       BookkeepingEntryReversalValidationSupport.requireResolvedReversal(
           effectiveDate, reversal, resolvedJournalEntry, foreignExchangeDetails);

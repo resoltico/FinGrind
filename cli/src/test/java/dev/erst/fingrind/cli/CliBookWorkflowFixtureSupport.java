@@ -8,6 +8,7 @@ import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
+import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.core.AccountCode;
@@ -50,19 +51,19 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
   protected static String[] openBookKeyFileArguments(Path bookFilePath, Path bookKeyFilePath) {
     return new String[] {
       "open-book",
-      ProtocolOptions.BOOK_FILE,
+      ProtocolBookAccessOptions.BOOK_FILE,
       bookFilePath.toString(),
-      ProtocolOptions.BOOK_KEY_FILE,
+      ProtocolBookAccessOptions.BOOK_KEY_FILE,
       bookKeyFilePath.toString(),
-      ProtocolOptions.ENTITY_NAME,
+      ProtocolOptions.BookDefinition.ENTITY_NAME,
       bookIdentity().entityName().value(),
-      ProtocolOptions.BOOK_TEMPLATE_ID,
+      ProtocolOptions.BookDefinition.TEMPLATE_ID,
       bookIdentity().bookDoctrine().bookTemplateId().wireValue(),
-      ProtocolOptions.ACCOUNTING_BASIS,
+      ProtocolOptions.BookDefinition.ACCOUNTING_BASIS,
       bookIdentity().bookDoctrine().accountingBasis().wireValue(),
-      ProtocolOptions.FUNCTIONAL_CURRENCY,
+      ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
-      ProtocolOptions.FISCAL_YEAR_START,
+      ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
       bookIdentity().fiscalYearStart().wireValue()
     };
   }
@@ -70,18 +71,18 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
   protected static String[] openBookStandardInputArguments(Path bookFilePath) {
     return new String[] {
       "open-book",
-      ProtocolOptions.BOOK_FILE,
+      ProtocolBookAccessOptions.BOOK_FILE,
       bookFilePath.toString(),
-      ProtocolOptions.BOOK_PASSPHRASE_STDIN,
-      ProtocolOptions.ENTITY_NAME,
+      ProtocolBookAccessOptions.BOOK_PASSPHRASE_STDIN,
+      ProtocolOptions.BookDefinition.ENTITY_NAME,
       bookIdentity().entityName().value(),
-      ProtocolOptions.BOOK_TEMPLATE_ID,
+      ProtocolOptions.BookDefinition.TEMPLATE_ID,
       bookIdentity().bookDoctrine().bookTemplateId().wireValue(),
-      ProtocolOptions.ACCOUNTING_BASIS,
+      ProtocolOptions.BookDefinition.ACCOUNTING_BASIS,
       bookIdentity().bookDoctrine().accountingBasis().wireValue(),
-      ProtocolOptions.FUNCTIONAL_CURRENCY,
+      ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
-      ProtocolOptions.FISCAL_YEAR_START,
+      ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
       bookIdentity().fiscalYearStart().wireValue()
     };
   }
@@ -89,20 +90,20 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
   protected static String[] openBookPromptArguments(Path bookFilePath) {
     return new String[] {
       "open-book",
-      ProtocolOptions.BOOK_FILE,
+      ProtocolBookAccessOptions.BOOK_FILE,
       bookFilePath.toString(),
-      ProtocolOptions.BOOK_PASSPHRASE_PROMPT,
-      ProtocolOptions.OUTPUT,
+      ProtocolBookAccessOptions.BOOK_PASSPHRASE_PROMPT,
+      ProtocolOptions.Presentation.OUTPUT,
       "text",
-      ProtocolOptions.ENTITY_NAME,
+      ProtocolOptions.BookDefinition.ENTITY_NAME,
       bookIdentity().entityName().value(),
-      ProtocolOptions.BOOK_TEMPLATE_ID,
+      ProtocolOptions.BookDefinition.TEMPLATE_ID,
       bookIdentity().bookDoctrine().bookTemplateId().wireValue(),
-      ProtocolOptions.ACCOUNTING_BASIS,
+      ProtocolOptions.BookDefinition.ACCOUNTING_BASIS,
       bookIdentity().bookDoctrine().accountingBasis().wireValue(),
-      ProtocolOptions.FUNCTIONAL_CURRENCY,
+      ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
-      ProtocolOptions.FISCAL_YEAR_START,
+      ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
       bookIdentity().fiscalYearStart().wireValue()
     };
   }

@@ -1,7 +1,9 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.AmendAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.RetireAccountCommand;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import tools.jackson.databind.node.ObjectNode;
@@ -17,6 +19,14 @@ final class CliPostingRequestParser {
 
   static DeclareAccountCommand readDeclareAccountCommand(ObjectNode rootNode) {
     return CliDeclareAccountRequestParser.readDeclareAccountCommand(rootNode);
+  }
+
+  static AmendAccountCommand readAmendAccountCommand(ObjectNode rootNode) {
+    return CliAmendAccountRequestParser.readAmendAccountCommand(rootNode);
+  }
+
+  static RetireAccountCommand readRetireAccountCommand(ObjectNode rootNode) {
+    return CliRetireAccountRequestParser.readRetireAccountCommand(rootNode);
   }
 
   static DeclareTaxRegistrationCommand readDeclareTaxRegistrationCommand(ObjectNode rootNode) {

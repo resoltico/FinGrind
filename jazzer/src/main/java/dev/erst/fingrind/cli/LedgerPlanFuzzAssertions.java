@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
@@ -88,7 +89,8 @@ public final class LedgerPlanFuzzAssertions {
 
   private static void assertJournalBounds(
       LedgerPlan plan, LedgerPlanStatus status, List<LedgerJournalEntry> journalSteps) {
-    boolean terminalBoundary = journalSteps.getLast().kind() == LedgerJournalKind.PLAN_BOUNDARY;
+    boolean terminalBoundary =
+        journalSteps.getLast().kind() == LedgerJournalKind.BoundaryKind.PLAN_BOUNDARY;
     int allowedJournalSteps = plan.steps().size() + (terminalBoundary ? 1 : 0);
     if (journalSteps.size() > allowedJournalSteps) {
       throw new IllegalStateException("Ledger plan journal exceeded the declared step count.");
@@ -104,7 +106,7 @@ public final class LedgerPlanFuzzAssertions {
     int declaredIndex = 0;
     for (int index = 0; index < journalSteps.size(); index++) {
       LedgerJournalEntry journalEntry = journalSteps.get(index);
-      if (journalEntry.kind() == LedgerJournalKind.PLAN_BOUNDARY) {
+      if (journalEntry.kind() == LedgerJournalKind.BoundaryKind.PLAN_BOUNDARY) {
         assertTerminalBoundary(index, journalSteps.size());
         continue;
       }
@@ -135,7 +137,7 @@ public final class LedgerPlanFuzzAssertions {
   }
 
   private static boolean isListQueryKind(LedgerJournalKind kind) {
-    return kind == LedgerJournalKind.LIST_ACCOUNTS || kind == LedgerJournalKind.LIST_POSTINGS;
+    return kind == LedgerStepKind.LIST_ACCOUNTS || kind == LedgerStepKind.LIST_POSTINGS;
   }
 
   private static void assertDeclaredStep(

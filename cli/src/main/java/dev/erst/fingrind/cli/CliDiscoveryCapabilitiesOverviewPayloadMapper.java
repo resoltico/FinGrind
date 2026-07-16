@@ -51,11 +51,11 @@ final class CliDiscoveryCapabilitiesOverviewPayloadMapper {
         "Use '"
             + CliInvocationText.commandExample(OperationId.CAPABILITIES)
             + " --output json "
-            + ProtocolOptions.FOCUS
+            + ProtocolOptions.Discovery.FOCUS
             + " commands' for category-filtered command families, or rerun with '"
             + CliInvocationText.commandExample(OperationId.CAPABILITIES)
             + " --output json "
-            + ProtocolOptions.DETAIL
+            + ProtocolOptions.Discovery.DETAIL
             + " full' for exhaustive schema, response, and doctrine details.");
   }
 
@@ -76,7 +76,7 @@ final class CliDiscoveryCapabilitiesOverviewPayloadMapper {
             "Rerun with '"
                 + CliInvocationText.commandExample(OperationId.CAPABILITIES)
                 + " --output json "
-                + ProtocolOptions.DETAIL
+                + ProtocolOptions.Discovery.DETAIL
                 + " full' when you need the exhaustive schema and response contract."),
         capabilitiesDescriptor);
   }

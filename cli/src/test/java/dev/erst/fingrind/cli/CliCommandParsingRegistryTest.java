@@ -95,4 +95,14 @@ class CliCommandParsingRegistryTest {
 
     assertEquals("Duplicate CLI parser registered for help", failure.getMessage());
   }
+
+  @Test
+  void writeParser_rejectsAnOperationOutsideTheWriteSurface() {
+    IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> CliCommandParsingRegistry.writeParser(OperationId.HELP));
+
+    assertEquals("No write-command parser is owned for help.", failure.getMessage());
+  }
 }
