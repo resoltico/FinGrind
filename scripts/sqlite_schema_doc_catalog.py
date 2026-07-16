@@ -211,8 +211,16 @@ SECTIONS = [
         file_name="SCHEMA_CORE_13ze_LATVIAN_PAYROLL_RUNS.md",
         title="SQLite Schema: Latvian Payroll Runs",
         purpose="Immutable Latvian monthly-payroll run origins and compensating reversals.",
-        coverage="`latvian_payroll_run`, `latvian_payroll_run_reversal`, and run validation/append-only triggers.",
+        coverage="`latvian_payroll_run`, `latvian_payroll_run_reversal`, and run validation triggers.",
         domain="SQLITE_SCHEMA_CORE_LATVIAN_PAYROLL_RUNS",
+    ),
+    SchemaSection(
+        key="latvian-payroll-run-immutability",
+        file_name="SCHEMA_CORE_13zea_LATVIAN_PAYROLL_RUN_IMMUTABILITY.md",
+        title="SQLite Schema: Latvian Payroll Run Immutability",
+        purpose="Append-only enforcement for Latvian monthly-payroll runs and their compensating reversals.",
+        coverage="Latvian payroll-run append-only reject-update/reject-delete triggers.",
+        domain="SQLITE_SCHEMA_CORE_LATVIAN_PAYROLL_RUN_IMMUTABILITY",
     ),
     SchemaSection(
         key="latvian-payroll-settlements",

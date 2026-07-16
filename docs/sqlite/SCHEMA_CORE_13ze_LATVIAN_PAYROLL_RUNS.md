@@ -9,7 +9,7 @@ updated: "2026-07-16"
 
 **Purpose**: Immutable Latvian monthly-payroll run origins and compensating reversals.
 **Source of truth**: [`book_schema.sql`](../../sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql)
-**Generation**: This page is rendered from the canonical schema file by `scripts/render-sqlite-schema-doc.py`. **Coverage**: `latvian_payroll_run`, `latvian_payroll_run_reversal`, and run validation/append-only triggers.
+**Generation**: This page is rendered from the canonical schema file by `scripts/render-sqlite-schema-doc.py`. **Coverage**: `latvian_payroll_run`, `latvian_payroll_run_reversal`, and run validation triggers.
 
 ```sql
 create table if not exists latvian_payroll_run (
@@ -244,29 +244,5 @@ begin
                 where latvian_payroll_settlement_reversal.origin_posting_id = latvian_payroll_settlement.origin_posting_id
             )
     );
-end;
-
-create trigger if not exists latvian_payroll_run_reject_update
-before update on latvian_payroll_run
-begin
-    select raise(fail, 'latvian_payroll_run rows are append-only.');
-end;
-
-create trigger if not exists latvian_payroll_run_reject_delete
-before delete on latvian_payroll_run
-begin
-    select raise(fail, 'latvian_payroll_run rows are append-only.');
-end;
-
-create trigger if not exists latvian_payroll_run_reversal_reject_update
-before update on latvian_payroll_run_reversal
-begin
-    select raise(fail, 'latvian_payroll_run_reversal rows are append-only.');
-end;
-
-create trigger if not exists latvian_payroll_run_reversal_reject_delete
-before delete on latvian_payroll_run_reversal
-begin
-    select raise(fail, 'latvian_payroll_run_reversal rows are append-only.');
 end;
 ```

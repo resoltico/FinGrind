@@ -43,6 +43,7 @@ Each companion page embeds the exact canonical SQL for one schema responsibility
 - [SCHEMA_CORE_13zc_FINANCING.md](./SCHEMA_CORE_13zc_FINANCING.md): Immutable borrowing arrangements plus principal and interest applications.
 - [SCHEMA_CORE_13zd_REALIZED_FOREIGN_EXCHANGE.md](./SCHEMA_CORE_13zd_REALIZED_FOREIGN_EXCHANGE.md): Foreign-currency receivable obligations and their one-time realized-settlement facts.
 - [SCHEMA_CORE_13ze_LATVIAN_PAYROLL_RUNS.md](./SCHEMA_CORE_13ze_LATVIAN_PAYROLL_RUNS.md): Immutable Latvian monthly-payroll run origins and compensating reversals.
+- [SCHEMA_CORE_13zea_LATVIAN_PAYROLL_RUN_IMMUTABILITY.md](./SCHEMA_CORE_13zea_LATVIAN_PAYROLL_RUN_IMMUTABILITY.md): Append-only enforcement for Latvian monthly-payroll runs and their compensating reversals.
 - [SCHEMA_CORE_13zf_LATVIAN_PAYROLL_SETTLEMENTS.md](./SCHEMA_CORE_13zf_LATVIAN_PAYROLL_SETTLEMENTS.md): Immutable Latvian payroll-obligation settlements and compensating reversals.
 - [SCHEMA_CORE_14_INDEXES_AND_IMMUTABILITY.md](./SCHEMA_CORE_14_INDEXES_AND_IMMUTABILITY.md): Lookup indexes plus append-only triggers for durable rows that never mutate in place.
 
