@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-07-11"
+updated: "2026-07-16"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -236,9 +236,8 @@ Treat staging as a handoff checkpoint, not a formality. Before committing:
 - repo-owned agent metadata such as `AGENTS.md` and `.codex/**` stays versioned in Git when it
   belongs to the release, but it remains `export-ignore`d from GitHub source archives and is not
   part of the public bundle or container asset set
-- all `docs/*.md` frontmatter `version:` fields equal the target release version
-- all touched `docs/*.md` frontmatter `updated:` fields equal the release date used in the
-  scripted sweep
+- all touched `docs/*.md` frontmatter fields equal the target release version and scripted release date
+- any ADR, capability catalog, scope document, or release-target guide describing the payload as unreleased states its release-truthful published status
 - all user-facing archive names, release examples, and version-pinned tests now reference the
   target release version
 - the rerun of `./check.sh` exits 0 after the version-bearing edits

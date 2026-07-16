@@ -89,6 +89,10 @@ if reconstructed_schema != schema_text:
 PY
 [[ -f "${fixture_root}/docs/sqlite/SCHEMA_CORE_01_FOUNDATION.md" ]] || die \
     "generated schema doc set is missing the foundation page"
+[[ -f "${fixture_root}/docs/sqlite/SCHEMA_CORE_13ze_LATVIAN_PAYROLL_RUNS.md" ]] || die \
+    "generated schema doc set is missing the Latvian payroll-runs page"
+[[ -f "${fixture_root}/docs/sqlite/SCHEMA_CORE_13zf_LATVIAN_PAYROLL_SETTLEMENTS.md" ]] || die \
+    "generated schema doc set is missing the Latvian payroll-settlements page"
 grep -Fq 'version: "9.9.9"' "${fixture_root}/docs/sqlite/SCHEMA_CORE_01_FOUNDATION.md" || die \
     "generated schema foundation page did not inherit the overview version frontmatter"
 grep -Fq 'updated: "2026-05-09"' "${fixture_root}/docs/sqlite/SCHEMA_CORE_01_FOUNDATION.md" || die \

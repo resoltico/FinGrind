@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: USER_CLI_OPERATIONAL_NOTES
-updated: "2026-07-15"
+updated: "2026-07-16"
 route:
   keywords: [fingrind, cli, diagnostics, book-key-file, passphrase, backup, restore, pagination, report-output, runtime]
   questions: ["how does fingrind protect book keys", "what diagnostics does fingrind return", "how do fingrind reports and runtime contracts work"]

@@ -254,6 +254,9 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
             }
 
             shadowJarTask.configure {
+                // The CLI is not a servlet container; these optional Commons Logging hooks require APIs it does not ship.
+                exclude("org/apache/commons/logging/impl/ServletContextCleaner.class")
+                exclude("org/apache/commons/logging/jakarta/ServletContextCleaner.class")
                 finalizedBy(writeSourceCheckoutRuntimeManifest)
             }
 

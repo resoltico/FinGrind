@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: SQLITE_SCHEMA_CORE
-updated: "2026-07-11"
+updated: "2026-07-16"
 route:
   keywords: [fingrind, sqlite, schema, book_meta, account, posting_fact, journal_line, audit_event, idempotency, canonical-schema, book-file, reversal]
   questions: ["what is the current fingrind sqlite schema", "which tables exist in the fingrind book file", "how is idempotency stored in the sqlite book", "what tables and indexes exist in a fingrind book"]
@@ -42,7 +42,8 @@ Each companion page embeds the exact canonical SQL for one schema responsibility
 - [SCHEMA_CORE_13zb_FIXED_ASSETS.md](./SCHEMA_CORE_13zb_FIXED_ASSETS.md): Immutable fixed-asset capitalizations plus depreciation and disposal applications.
 - [SCHEMA_CORE_13zc_FINANCING.md](./SCHEMA_CORE_13zc_FINANCING.md): Immutable borrowing arrangements plus principal and interest applications.
 - [SCHEMA_CORE_13zd_REALIZED_FOREIGN_EXCHANGE.md](./SCHEMA_CORE_13zd_REALIZED_FOREIGN_EXCHANGE.md): Foreign-currency receivable obligations and their one-time realized-settlement facts.
-- [SCHEMA_CORE_13ze_LATVIAN_PAYROLL.md](./SCHEMA_CORE_13ze_LATVIAN_PAYROLL.md): Immutable Latvian monthly-payroll runs, obligation settlements, and compensating reversals.
+- [SCHEMA_CORE_13ze_LATVIAN_PAYROLL_RUNS.md](./SCHEMA_CORE_13ze_LATVIAN_PAYROLL_RUNS.md): Immutable Latvian monthly-payroll run origins and compensating reversals.
+- [SCHEMA_CORE_13zf_LATVIAN_PAYROLL_SETTLEMENTS.md](./SCHEMA_CORE_13zf_LATVIAN_PAYROLL_SETTLEMENTS.md): Immutable Latvian payroll-obligation settlements and compensating reversals.
 - [SCHEMA_CORE_14_INDEXES_AND_IMMUTABILITY.md](./SCHEMA_CORE_14_INDEXES_AND_IMMUTABILITY.md): Lookup indexes plus append-only triggers for durable rows that never mutate in place.
 
 ## Runtime Integrity Semantics

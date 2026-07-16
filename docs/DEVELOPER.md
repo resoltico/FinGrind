@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: DEVELOPER
-updated: "2026-07-12"
+updated: "2026-07-16"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -240,16 +240,17 @@ Generated-state stance:
 | Java | 26 |
 | Python helper toolchain | Python 3.12 in CI, `uv` 0.11.25 as the repo-owned runner, plus helper-tool pins from `requirements-python-tools.txt` |
 | Gradle Wrapper | 9.6.1 |
-| Kotlin build logic | 2.4.0 in `gradle/build-logic`, emitting JVM 26 bytecode |
+| Kotlin build logic | 2.4.10 in `gradle/build-logic`, emitting JVM 26 bytecode |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
 | SQLite runtime | managed SQLite 3.53.3 / SQLite3 Multiple Ciphers 2.3.6 in public bundles, the published container image, the source-checkout wrapper, root Gradle, nested Jazzer, and CI; the developer direct-Java wrappers resolve that managed runtime only from a prepared checkout |
 | Jackson Databind | 3.2.0 |
-| JUnit Jupiter | 6.1.1 |
+| JUnit Jupiter | 6.1.2 |
+| Apache PDFBox | 3.0.8 |
 | Jazzer | 0.30.0 |
 | JaCoCo | stable `0.8.15`, pinned in the shared version catalog and verified against the published Maven Central GA jars before Gradle quality gates run |
-| PMD | 7.25.0 |
+| PMD | 7.26.0 |
 
-The build-logic Kotlin pin is now the stable `2.4.0` line.
+The build-logic Kotlin pin is `2.4.10`.
 
 ## Java 26 Feature Policy
 

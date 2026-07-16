@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: OPERATIONS
-updated: "2026-07-12"
+updated: "2026-07-16"
 route:
   keywords: [fingrind, ci, github-actions, devcontainer, gate]
   questions: ["when does the devcontainer workflow run", "why does the devcontainer gate skip"]

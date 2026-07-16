@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: ADR_ACCRUAL_CUTOFFS
-updated: "2026-07-14"
+updated: "2026-07-16"
 route:
   keywords: [fingrind, accrual cut-off, prepayment, accrued expense, deferred revenue, recognition schedule]
   questions: ["how does fingrind recognize a prepayment", "how does fingrind recognize deferred revenue", "what durable facts own an accrual cut-off"]
@@ -77,9 +77,9 @@ Financial position and income statement projections include the resulting ledger
 
 Accrual Cut-offs consumes declared account taxonomy and the protected-book posting service as upstream published language. It supplies typed cut-off postings to the bookkeeping kernel. Account Registry remains the owner of account lifecycle; Tax, Foreign Exchange, Receivables and Payables, Fixed Assets, Financing, and Payroll remain separate contexts.
 
-## Publication Gate
+## Publication Evidence
 
-This context is not published until all of these are present together:
+This context is published in `0.61.0` with all of these owned artifacts present together:
 - the typed commands and request contracts;
 - executor admission and journal-resolution behavior;
 - protected-book tables, foreign keys, checks, append-only triggers, and reconciliation;
@@ -87,4 +87,4 @@ This context is not published until all of these are present together:
 - rejection, lifecycle, persistence, cross-format, and end-to-end tests;
 - synchronized public scope, request, response, and discovery documentation.
 
-The capability is published only when these owned artifacts pass together; a partial request grammar or a ledger-only implementation is not publication.
+The published capability requires these owned artifacts to pass together; a partial request grammar or a ledger-only implementation is not publication.

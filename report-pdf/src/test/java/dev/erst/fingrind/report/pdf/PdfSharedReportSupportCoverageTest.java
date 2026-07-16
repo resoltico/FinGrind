@@ -165,7 +165,7 @@ class PdfSharedReportSupportCoverageTest {
 
     byte[] pdfBytes;
     try (PdfDocumentFactory.DocumentSession session =
-        new PdfDocumentFactory("FinGrind", "0.60.0")
+        new PdfDocumentFactory("FinGrind", "0.61.0")
             .create(
                 "Shared Support Coverage",
                 Instant.parse("2026-07-01T12:00:00Z"),
@@ -256,7 +256,7 @@ class PdfSharedReportSupportCoverageTest {
                     "empty", "Empty Section", List.of(), List.of(), List.of(), List.of())));
     String projectorText =
         extractedText(
-            new PdfReportService("FinGrind", "0.60.0", PdfReportFixtureSupport.CLOCK)
+            new PdfReportService("FinGrind", "0.61.0", PdfReportFixtureSupport.CLOCK)
                 .render(reportModel));
     assertFalse(projectorText.contains("Summary"), projectorText);
     assertTrue(projectorText.contains("Row Section"), projectorText);
@@ -266,7 +266,7 @@ class PdfSharedReportSupportCoverageTest {
 
     byte[] sectionBytes;
     try (PdfDocumentFactory.DocumentSession session =
-        new PdfDocumentFactory("FinGrind", "0.60.0")
+        new PdfDocumentFactory("FinGrind", "0.61.0")
             .create(
                 "Statement Sections",
                 Instant.parse("2026-07-01T12:00:00Z"),

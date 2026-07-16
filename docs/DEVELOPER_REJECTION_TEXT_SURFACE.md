@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: DEVELOPER_REJECTION_TEXT_SURFACE
-updated: "2026-07-11"
+updated: "2026-07-16"
 route:
   keywords: [rejection text surface, text rejection layout, violation sections, machine envelope, operator guidance, repair guidance]
   questions: ["how does FinGrind render posting rejection text after the lean machine-envelope break", "what text layout governs nested repairable rejection families", "what owns the slim posting rejection message and hint contract"]

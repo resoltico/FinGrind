@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: CONTRACT_EXECUTOR_INCOME_STATEMENT_PRESENTATION
-updated: "2026-07-11"
+updated: "2026-07-16"
 route:
   keywords: [fingrind, income-statement, gross-profit, multi-step, presentation, trading, report, csv, pdf, text]
   questions: ["where is the trading income statement presentation documented", "which doc covers IncomeStatementPresentationSupport", "where is gross profit modeled in fingrind"]

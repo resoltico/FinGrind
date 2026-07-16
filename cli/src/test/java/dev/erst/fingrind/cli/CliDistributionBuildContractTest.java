@@ -109,6 +109,11 @@ class CliDistributionBuildContractTest {
             repositoryRoot()
                 .resolve(
                     "gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/FinGrindCliDistributionPlugin.kt"));
+    String runtimeModuleDiscoveryContract =
+        Files.readString(
+            repositoryRoot()
+                .resolve(
+                    "contract/src/main/resources/dev/erst/fingrind/contract/protocol/runtime-module-discovery-contract.json"));
     String executionSurfaceConventions =
         Files.readString(
             repositoryRoot()
@@ -145,6 +150,7 @@ class CliDistributionBuildContractTest {
     assertCliBuildScriptDelegatesDistribution(buildScript);
     assertDistributionPluginOwnsDistributionContracts(
         distributionPlugin,
+        runtimeModuleDiscoveryContract,
         executionSurfaceConventions,
         dockerContextRegistration,
         pruneLegacyDockerBuildContextTask);
@@ -165,6 +171,7 @@ class CliDistributionBuildContractTest {
 
   private static void assertDistributionPluginOwnsDistributionContracts(
       String distributionPlugin,
+      String runtimeModuleDiscoveryContract,
       String executionSurfaceConventions,
       String dockerContextRegistration,
       String pruneLegacyDockerBuildContextTask) {
@@ -199,6 +206,14 @@ class CliDistributionBuildContractTest {
             "\"sqliteBundleHomeSystemProperty\" to sqliteBundleHomeSystemProperty"));
     assertTrue(distributionPlugin.contains("\"tokens\" to bundleTemplateProperties"));
     assertTrue(distributionPlugin.contains("dependsOn(shadowJarTask)"));
+    assertTrue(
+        distributionPlugin.contains(
+            "exclude(\"org/apache/commons/logging/impl/ServletContextCleaner.class\")"));
+    assertTrue(
+        distributionPlugin.contains(
+            "exclude(\"org/apache/commons/logging/jakarta/ServletContextCleaner.class\")"));
+    assertFalse(runtimeModuleDiscoveryContract.contains("javax.servlet."));
+    assertFalse(runtimeModuleDiscoveryContract.contains("jakarta.servlet."));
     assertTrue(distributionPlugin.contains("finalizedBy(writeSourceCheckoutRuntimeManifest)"));
     assertTrue(distributionPlugin.contains("javaExecutable.set(sourceCheckoutJavaLauncher.map"));
     assertTrue(distributionPlugin.contains("javaInstallationDirectory.set("));
