@@ -59,17 +59,21 @@ final class SqliteNativeBackups {
     }
 
     void copyAllRemainingPages() {
-      int resultCode =
-          SqliteNativeInvocation.invokeSqlite(
-              "Failed to copy a SQLite native backup.",
-              () ->
-                  SqliteNativeCallAdapter.adapt(
-                          SqliteNativeCalls.AddressIntToIntCall.class,
-                          sqliteApi.sqlite3BackupStep())
-                      .invoke(backupHandle, COPY_ALL_REMAINING_PAGES));
-      if (resultCode != SqliteNativeResultCode.code("DONE")) {
-        throw SqliteNativeErrors.failure(resultCode, sqliteApi);
-      }
+      SqliteStoreOperations.retryTransientLockFailures(
+          () -> {
+            int resultCode =
+                SqliteNativeInvocation.invokeSqlite(
+                    "Failed to copy a SQLite native backup.",
+                    () ->
+                        SqliteNativeCallAdapter.adapt(
+                                SqliteNativeCalls.AddressIntToIntCall.class,
+                                sqliteApi.sqlite3BackupStep())
+                            .invoke(backupHandle, COPY_ALL_REMAINING_PAGES));
+            if (resultCode != SqliteNativeResultCode.code("DONE")) {
+              throw SqliteNativeErrors.failure(resultCode, sqliteApi);
+            }
+            return Boolean.TRUE;
+          });
     }
 
     @Override
