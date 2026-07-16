@@ -17,7 +17,11 @@ class JazzerReplaySqliteBookRoundTripTest {
             CommittedRegressionSeedFixtures.sqliteBookRoundTrip("basic_valid.json")
                 .getBytes(UTF_8));
 
-    ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
+    ReplayOutcome.Success success =
+        assertInstanceOf(
+            ReplayOutcome.Success.class,
+            outcome,
+            () -> "Expected the valid SQLite round-trip replay to succeed, but got: " + outcome);
     assertEquals(
         new SqliteBookRoundTripReplayDetails(
             new ParsedPostingCommandDetails("2026-04-07", "idem-sqlite-1", 2, false),
