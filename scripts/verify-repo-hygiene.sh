@@ -34,13 +34,19 @@ resolve_script_dir() {
     cd -P -- "$(dirname -- "${source_path}")" && pwd
 }
 
-readonly script_dir="$(resolve_script_dir)"
-readonly default_repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
+script_dir="$(resolve_script_dir)"
+readonly script_dir
+default_repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
+readonly default_repo_root
 readonly support_script="${script_dir}/repo-hygiene-support.sh"
 
 [[ -f "${support_script}" ]] || die "missing repo hygiene support helper at ${support_script}"
 # shellcheck source=/dev/null
 source "${support_script}"
+
+# These sourced helpers publish their diagnostic text for the failure reporter.
+repo_owned_ref_output=''
+object_store_output=''
 
 repo_root="${default_repo_root}"
 report_local_state=false
@@ -128,7 +134,7 @@ while IFS= read -r git_lock_file; do
     git_lock_files+=("${git_lock_file}")
 done < <(
     for git_lock_root in "${git_lock_search_roots[@]}"; do
-        find "${git_lock_root}" -type f -name '*.lock' -print
+        repo_hygiene_list_git_coordination_locks "${git_lock_root}"
     done | LC_ALL=C sort -u
 )
 
