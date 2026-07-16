@@ -737,7 +737,8 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
       var failure = failedValue(store.stageBackupPair(bogusVerifiedBook, preparedPairPublication));
       assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, failure.descriptor());
       assertEquals(
-          SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_SOURCE_OPEN.failureMessage(),
+          SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_SOURCE_OPEN.failureMessage()
+              + " SQLite reported SQLITE_NOTADB.",
           failure.message());
       assertEquals("backupFilePath", failure.argument());
       assertEquals(

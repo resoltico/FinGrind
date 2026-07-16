@@ -79,6 +79,15 @@ final class SqliteProtectedBookStagingFiles {
     SqliteProtectedBookStagingSupport.StagingCheckpoint checkpoint() {
       return checkpoint;
     }
+
+    String publicFailureMessage() {
+      String prefix = checkpoint.failureMessage();
+      Throwable cause = getCause();
+      if (cause instanceof SqliteNativeException nativeFailure) {
+        return prefix + " SQLite reported " + nativeFailure.resultName() + ".";
+      }
+      return prefix;
+    }
   }
 
   /** Rekeys one private stage and hardens it only after SQLite has released its file handle. */

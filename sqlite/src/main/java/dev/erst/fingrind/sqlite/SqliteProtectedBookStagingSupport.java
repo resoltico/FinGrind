@@ -159,7 +159,8 @@ final class SqliteProtectedBookStagingSupport {
         return MaintenanceDecision.accepted(stagedBackupPair);
       } catch (SqliteProtectedBookStagingFiles.BackupExportFailure failure) {
         SqliteOwnedStagedArtifact.discardAll(stagedBackupFile, stagedBackupBookKeyFile);
-        return stagingFailure(normalizedBackupFilePath, "backupFilePath", failure.checkpoint());
+        return stagingFailure(
+            normalizedBackupFilePath, "backupFilePath", failure.publicFailureMessage());
       } catch (RuntimeException exception) {
         SqliteOwnedStagedArtifact.discardAll(stagedBackupFile, stagedBackupBookKeyFile);
         return stagingFailure(normalizedBackupFilePath, "backupFilePath", activeCheckpoint);
@@ -303,10 +304,15 @@ final class SqliteProtectedBookStagingSupport {
 
   private static <T> MaintenanceDecision<T> stagingFailure(
       Path artifactPath, String argumentName, StagingCheckpoint checkpoint) {
+    return stagingFailure(artifactPath, argumentName, checkpoint.failureMessage());
+  }
+
+  private static <T> MaintenanceDecision<T> stagingFailure(
+      Path artifactPath, String argumentName, String failureMessage) {
     return MaintenanceDecision.failed(
         new MaintenanceFailure(
             ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE,
-            checkpoint.failureMessage(),
+            failureMessage,
             "Inspect the selected filesystem path and retry after resolving the underlying storage problem.",
             argumentName,
             ContractFailurePaths.primary(artifactPath)));
