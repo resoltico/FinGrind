@@ -16,6 +16,7 @@ public final class AclFixturePath extends AclFixtureAbstractPath {
   public @Nullable AclFixtureView aclView;
   public @Nullable AclFileAttributeView overrideAclView;
   public Set<PosixFilePermission> posixPermissions = Set.of();
+  private byte[] content = new byte[0];
   private @Nullable IOException deleteIfExistsFailure;
   private boolean preserveExistingEntryOnDeleteIfExists;
   private final Deque<PlannedIOException> newByteChannelFailures = new ArrayDeque<>();
@@ -40,6 +41,14 @@ public final class AclFixturePath extends AclFixtureAbstractPath {
 
   public @Nullable AclFixtureView aclViewValue() {
     return aclView;
+  }
+
+  byte[] content() {
+    return content.clone();
+  }
+
+  void replaceContent(byte[] replacement) {
+    content = Objects.requireNonNull(replacement, "replacement").clone();
   }
 
   AclFixturePath failDeleteIfExistsWith(IOException exception) {

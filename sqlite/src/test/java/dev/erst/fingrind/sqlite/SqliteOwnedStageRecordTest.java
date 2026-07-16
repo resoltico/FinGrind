@@ -202,6 +202,43 @@ class SqliteOwnedStageRecordTest {
   }
 
   @Test
+  void record_retainsOwnershipWhileANativeCreatorMaterializesItsStage() throws Exception {
+    Path finalPath = finalPath();
+    SqliteOwnedStagedArtifact artifact =
+        SqliteOwnedStagedArtifact.create(finalPath, ".native-creator-", ".sqlite");
+
+    artifact.vacateForNativeMaterialization(finalPath);
+
+    assertFalse(Files.exists(artifact.stagedPath()));
+    assertEquals(1, SqliteOwnedStageRecord.findFor(finalPath).size());
+    Files.writeString(artifact.stagedPath(), "native database bytes");
+    artifact.requireIntactFor(finalPath);
+
+    artifact.discard();
+    assertTrue(SqliteOwnedStageRecord.findFor(finalPath).isEmpty());
+    assertThrows(
+        IllegalStateException.class, () -> artifact.vacateForNativeMaterialization(finalPath));
+  }
+
+  @Test
+  void record_reportsNativeMaterializationStageDeletionFailures() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
+      AclFixturePath finalPath = fileSystem.path("\\stages\\backup.sqlite");
+      AclFixturePath stagedPath = fileSystem.path("\\stages\\backup.stage");
+      stagedPath.exists = true;
+      stagedPath.regularFile = true;
+      SqliteOwnedStageRecord record = SqliteOwnedStageRecord.recordExisting(finalPath, stagedPath);
+      stagedPath.failDeleteIfExistsWith(new IOException("stage deletion failure"));
+
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class, () -> record.vacateForNativeMaterialization(finalPath));
+
+      assertTrue(NullTestSupport.messageOf(exception).contains("native materialization"));
+    }
+  }
+
+  @Test
   void record_reportsFilesystemCleanupAndDirectoryEnumerationFailures() {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
       AclFixturePath failingStage = fileSystem.path("\\cleanup\\stage.tmp");

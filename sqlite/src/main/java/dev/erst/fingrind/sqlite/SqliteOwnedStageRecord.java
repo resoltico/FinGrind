@@ -97,16 +97,27 @@ final class SqliteOwnedStageRecord {
   /** Requires the durable record and staged file to still prove this operation owns the stage. */
   void requireIntactFor(Path finalPath) {
     Path normalizedFinalPath = normalized(Objects.requireNonNull(finalPath, "finalPath"));
-    boolean recordMatches =
-        SqliteOwnedStageRecordCodec.read(recordPath, normalizedFinalPath)
-            .map(SqliteOwnedStageRecord::stagedPath)
-            .filter(stagedPath::equals)
-            .isPresent();
-    if (!recordMatches || !Files.isRegularFile(stagedPath, LinkOption.NOFOLLOW_LINKS)) {
+    requireRecordFor(normalizedFinalPath);
+    if (!Files.isRegularFile(stagedPath, LinkOption.NOFOLLOW_LINKS)) {
       throw new IllegalStateException(
           "The durable FinGrind maintenance-stage ownership record was altered before publication for "
               + SqliteMachinePaths.absoluteValue(normalizedFinalPath)
               + ".");
+    }
+  }
+
+  /** Leaves the durable ownership record in place while a native creator materializes the stage. */
+  void vacateForNativeMaterialization(Path finalPath) {
+    Path normalizedFinalPath = normalized(Objects.requireNonNull(finalPath, "finalPath"));
+    requireIntactFor(normalizedFinalPath);
+    try {
+      Files.delete(stagedPath);
+    } catch (IOException exception) {
+      throw new IllegalStateException(
+          "Failed to prepare the owned FinGrind maintenance stage for native materialization beside "
+              + SqliteMachinePaths.absoluteValue(normalizedFinalPath)
+              + ".",
+          exception);
     }
   }
 
@@ -138,6 +149,20 @@ final class SqliteOwnedStageRecord {
               + SqliteMachinePaths.absoluteValue(recordPath)
               + ".",
           exception);
+    }
+  }
+
+  private void requireRecordFor(Path normalizedFinalPath) {
+    boolean recordMatches =
+        SqliteOwnedStageRecordCodec.read(recordPath, normalizedFinalPath)
+            .map(SqliteOwnedStageRecord::stagedPath)
+            .filter(stagedPath::equals)
+            .isPresent();
+    if (!recordMatches) {
+      throw new IllegalStateException(
+          "The durable FinGrind maintenance-stage ownership record was altered before publication for "
+              + SqliteMachinePaths.absoluteValue(normalizedFinalPath)
+              + ".");
     }
   }
 
