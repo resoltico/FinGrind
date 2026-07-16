@@ -131,8 +131,8 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
             prepareBackupPair(store, backupFilePath, backupBookKeyFilePath);
         StagedBackupPair stagedBackupPair =
             acceptedValue(store.stageBackupPair(verifiedSourceBook, preparedPairPublication))) {
-      assertTrue(Files.exists(backupFilePath));
-      assertTrue(Files.exists(backupBookKeyFilePath));
+      assertFalse(Files.exists(backupFilePath));
+      assertFalse(Files.exists(backupBookKeyFilePath));
       assertInstanceOf(
           ProtectedBookMaintenanceStore.VerifiedBook.class,
           acceptedValue(stagedBackupPair.verifyInitializedBackup()));
@@ -786,8 +786,6 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
             prepareBackupPair(store, finalBackupFilePath, finalBackupKeyFilePath);
         StagedBackupPair stagedBackupPair =
             acceptedValue(store.stageBackupPair(verifiedSourceBook, preparedPairPublication))) {
-      Files.delete(finalBackupFilePath);
-      Files.delete(finalBackupKeyFilePath);
       Files.writeString(finalBackupFilePath, "published-backup");
       Files.writeString(finalBackupKeyFilePath, "published-key");
       setPrivateField(stagedBackupPair, "backupPassphrase", null);

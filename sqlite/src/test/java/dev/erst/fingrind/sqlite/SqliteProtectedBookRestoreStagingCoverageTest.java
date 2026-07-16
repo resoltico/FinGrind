@@ -243,7 +243,6 @@ class SqliteProtectedBookRestoreStagingCoverageTest
         StagedRestoredBookPair stagedRestoredBookPair =
             acceptedValue(
                 store.stageRestoredBookPair(verifiedSourceBook, preparedPairPublication))) {
-      Files.delete(restoredBookKeyPath);
       Files.writeString(restoredBookKeyPath, "occupied-secret");
       byte[] originalKey = Files.readAllBytes(restoredBookKeyPath);
 
@@ -279,7 +278,6 @@ class SqliteProtectedBookRestoreStagingCoverageTest
         StagedRestoredBookPair stagedRestoredBookPair =
             acceptedValue(
                 store.stageRestoredBookPair(verifiedSourceBook, preparedPairPublication))) {
-      Files.delete(restoredBookPath);
       Files.writeString(restoredBookPath, "unacknowledged live book");
       byte[] originalBook = Files.readAllBytes(restoredBookPath);
 

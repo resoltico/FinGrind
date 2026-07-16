@@ -62,8 +62,8 @@ class SqliteProtectedBookMaintenanceCrashRecoveryTest extends SqliteNativeBridge
     waitForSignal(helper, signalPath);
     killHelper(helper);
 
-    assertTrue(Files.exists(backupFilePath));
-    assertTrue(Files.exists(backupBookKeyFilePath));
+    assertFalse(Files.exists(backupFilePath));
+    assertFalse(Files.exists(backupBookKeyFilePath));
     assertStageArtifactsExist(backupFilePath, ".backup-", ".sqlite");
     assertStageArtifactsExist(backupBookKeyFilePath, ".backup-key-", ".tmp");
     assertOwnedStageRecordExists(backupFilePath);
@@ -177,8 +177,7 @@ class SqliteProtectedBookMaintenanceCrashRecoveryTest extends SqliteNativeBridge
     waitForSignal(helper, signalPath);
     killHelper(helper);
 
-    assertTrue(Files.exists(finalBookPath));
-    assertTrue(Files.exists(finalSecretPath));
+    assertExpectedPublishedTargetsAfterCrash(helperMode, finalBookPath, finalSecretPath);
     assertOwnedStageRecordExists(finalBookPath);
     assertOwnedStageRecordExists(finalSecretPath);
 
@@ -190,8 +189,8 @@ class SqliteProtectedBookMaintenanceCrashRecoveryTest extends SqliteNativeBridge
             ProtectedBookMaintenanceStore.RestoredBookTargetPolicy.REQUIRE_ABSENT,
             ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
             ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET)) {
-      assertTrue(Files.exists(finalBookPath));
-      assertTrue(Files.exists(finalSecretPath));
+      assertFalse(Files.exists(finalBookPath));
+      assertFalse(Files.exists(finalSecretPath));
     }
 
     assertFalse(Files.exists(finalBookPath));
@@ -210,6 +209,27 @@ class SqliteProtectedBookMaintenanceCrashRecoveryTest extends SqliteNativeBridge
           throw new AssertionError(
               "Expected one verified book but got " + verificationFailure.failure());
     };
+  }
+
+  private static void assertExpectedPublishedTargetsAfterCrash(
+      String helperMode, Path finalBookPath, Path finalSecretPath) {
+    switch (helperMode) {
+      case "publish-reserved-key" -> {
+        assertFalse(Files.exists(finalBookPath));
+        assertTrue(Files.exists(finalSecretPath));
+      }
+      case "publish-reserved-book" -> {
+        assertTrue(Files.exists(finalBookPath));
+        assertTrue(Files.exists(finalSecretPath));
+      }
+      case "prepare-pair" -> {
+        assertFalse(Files.exists(finalBookPath));
+        assertFalse(Files.exists(finalSecretPath));
+      }
+      default ->
+          throw new IllegalArgumentException(
+              "Unsupported reserved-pair helper mode: " + helperMode);
+    }
   }
 
   private static ProtectedBookAccess localAccess(BookAccess bookAccess) {

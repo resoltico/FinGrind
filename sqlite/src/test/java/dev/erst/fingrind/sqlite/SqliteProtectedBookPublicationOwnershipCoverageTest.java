@@ -43,7 +43,6 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
     try (SqliteOwnedDestinationReservation reservation =
         SqliteOwnedDestinationReservation.reserve(occupiedTarget)) {
       SqliteOwnedStagedArtifact staged = writeStage(occupiedTarget, ".stage-", ".tmp", "staged");
-      Files.delete(occupiedTarget);
       Files.writeString(occupiedTarget, "external");
       assertThrows(
           FileAlreadyExistsException.class,
@@ -56,9 +55,14 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
     try (SqliteOwnedDestinationReservation reservation =
         SqliteOwnedDestinationReservation.reserve(missingTarget)) {
       SqliteOwnedStagedArtifact staged = writeStage(missingTarget, ".stage-", ".tmp", "staged");
-      Files.delete(missingTarget);
       assertThrows(
-          IOException.class, () -> reservation.publishRetainingStage(staged, Files::createLink));
+          IOException.class,
+          () ->
+              reservation.publishRetainingStage(
+                  staged,
+                  (ignoredFinalPath, ignoredStagedPath) -> {
+                    throw new IOException("simulated publication I/O failure");
+                  }));
       staged.discard();
     }
   }
@@ -87,7 +91,6 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
         SqliteOwnedDestinationReservation.reserve(backupKeyTarget)) {
       SqliteOwnedStagedArtifact backupKeyStage =
           writeStage(backupKeyTarget, ".stage-", ".tmp", "backup-key");
-      Files.delete(backupKeyTarget);
       Files.writeString(backupKeyTarget, "external");
       SqliteBackupPairPublication backupPublication =
           new SqliteBackupPairPublication(
@@ -105,7 +108,6 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
         SqliteOwnedDestinationReservation.reserve(restoredKeyTarget)) {
       SqliteOwnedStagedArtifact restoredKeyStage =
           writeStage(restoredKeyTarget, ".stage-", ".tmp", "restored-key");
-      Files.delete(restoredKeyTarget);
       Files.writeString(restoredKeyTarget, "external");
       SqliteRestoredBookPairPublication restoredPublication =
           new SqliteRestoredBookPairPublication(
@@ -321,9 +323,8 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
       Path reservationStage = SqliteOwnedStageRecord.findFor(target).getFirst().stagedPath();
       Files.delete(reservationStage);
       reservation.close();
-      assertTrue(Files.exists(target));
+      assertFalse(Files.exists(target));
     }
-    Files.delete(target);
 
     Path discardedTarget = absentTarget("reservation/discarded-stage.key");
     SqliteOwnedStagedArtifact discardedStage =
