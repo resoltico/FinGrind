@@ -16,6 +16,7 @@ final class SqliteNativeApiBindings {
   private final SqliteFormatCalls formatCalls;
   private final SqliteStatementCalls statements;
   private final SqliteErrorCalls errors;
+  private final SqliteBackupCalls backups;
   private final MethodHandle sqlite3Shutdown;
 
   private SqliteNativeApiBindings(
@@ -23,11 +24,13 @@ final class SqliteNativeApiBindings {
       SqliteFormatCalls formatCalls,
       SqliteStatementCalls statements,
       SqliteErrorCalls errors,
+      SqliteBackupCalls backups,
       MethodHandle sqlite3Shutdown) {
     this.connections = connections;
     this.formatCalls = formatCalls;
     this.statements = statements;
     this.errors = errors;
+    this.backups = backups;
     this.sqlite3Shutdown = sqlite3Shutdown;
   }
 
@@ -37,6 +40,7 @@ final class SqliteNativeApiBindings {
         SqliteFormatCalls.bind(lookup),
         SqliteStatementCalls.bind(lookup),
         SqliteErrorCalls.bind(lookup),
+        SqliteBackupCalls.bind(lookup),
         downcall(lookup, "sqlite3_shutdown", FunctionDescriptor.of(ValueLayout.JAVA_INT)));
   }
 
@@ -83,7 +87,10 @@ final class SqliteNativeApiBindings {
         runtime.loadedSqlite3mcVersion(),
         runtime.loadedSourceId(),
         runtime.runtimeProvenance(),
-        runtime.loadedLibraryPath());
+        runtime.loadedLibraryPath(),
+        backups.sqlite3BackupInit(),
+        backups.sqlite3BackupStep(),
+        backups.sqlite3BackupFinish());
   }
 
   private record SqliteFormatCalls(
@@ -291,6 +298,33 @@ final class SqliteNativeApiBindings {
           downcall(
               lookup,
               "sqlite3_extended_errcode",
+              FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS)));
+    }
+  }
+
+  private record SqliteBackupCalls(
+      MethodHandle sqlite3BackupInit,
+      MethodHandle sqlite3BackupStep,
+      MethodHandle sqlite3BackupFinish) {
+    private static SqliteBackupCalls bind(SymbolLookup lookup) {
+      return new SqliteBackupCalls(
+          downcall(
+              lookup,
+              "sqlite3_backup_init",
+              FunctionDescriptor.of(
+                  ValueLayout.ADDRESS,
+                  ValueLayout.ADDRESS,
+                  ValueLayout.ADDRESS,
+                  ValueLayout.ADDRESS,
+                  ValueLayout.ADDRESS)),
+          downcall(
+              lookup,
+              "sqlite3_backup_step",
+              FunctionDescriptor.of(
+                  ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT)),
+          downcall(
+              lookup,
+              "sqlite3_backup_finish",
               FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS)));
     }
   }

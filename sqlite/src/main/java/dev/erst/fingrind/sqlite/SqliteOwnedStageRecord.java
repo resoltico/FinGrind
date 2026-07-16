@@ -106,21 +106,6 @@ final class SqliteOwnedStageRecord {
     }
   }
 
-  /** Leaves the durable ownership record in place while a native creator materializes the stage. */
-  void vacateForNativeMaterialization(Path finalPath) {
-    Path normalizedFinalPath = normalized(Objects.requireNonNull(finalPath, "finalPath"));
-    requireIntactFor(normalizedFinalPath);
-    try {
-      Files.delete(stagedPath);
-    } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Failed to prepare the owned FinGrind maintenance stage for native materialization beside "
-              + SqliteMachinePaths.absoluteValue(normalizedFinalPath)
-              + ".",
-          exception);
-    }
-  }
-
   void discard() {
     if (Files.exists(stagedPath, LinkOption.NOFOLLOW_LINKS)
         && !Files.isRegularFile(stagedPath, LinkOption.NOFOLLOW_LINKS)) {

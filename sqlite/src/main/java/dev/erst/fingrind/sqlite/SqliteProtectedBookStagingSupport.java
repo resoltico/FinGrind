@@ -105,8 +105,6 @@ final class SqliteProtectedBookStagingSupport {
       SqliteStagedBackupPair stagedBackupPair;
       try {
         checkpointListener.reached(StagingCheckpoint.BACKUP_EXPORT);
-        // VACUUM INTO owns database-file creation; the durable record retains stage ownership.
-        stagedBackupFile.vacateForNativeMaterialization(normalizedBackupFilePath);
         exportBackupUsingSqlite(
             normalizedBookPath, stagedBackupFile.stagedPath(), exportPassphrase);
         try (SqliteBookPassphrase stagedBackupPassphrase =

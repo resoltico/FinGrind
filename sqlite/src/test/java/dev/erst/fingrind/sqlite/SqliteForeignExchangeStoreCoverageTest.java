@@ -288,7 +288,10 @@ class SqliteForeignExchangeStoreCoverageTest extends SqlitePostingFactStoreTestS
             sqliteApi.loadedSqlite3mcVersion(),
             sqliteApi.loadedSourceId(),
             sqliteApi.runtimeProvenance(),
-            sqliteApi.loadedLibraryPath()));
+            sqliteApi.loadedLibraryPath(),
+            sqliteApi.sqlite3BackupInit(),
+            sqliteApi.sqlite3BackupStep(),
+            sqliteApi.sqlite3BackupFinish()));
   }
 
   private static SqliteStatementRedirectingDatabase redirectedDatabase(

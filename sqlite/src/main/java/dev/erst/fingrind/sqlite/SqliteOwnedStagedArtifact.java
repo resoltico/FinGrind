@@ -41,14 +41,6 @@ final class SqliteOwnedStagedArtifact {
     record.requireIntactFor(finalPath);
   }
 
-  /** Reserves ownership while allowing a native API to create the staged artifact itself. */
-  void vacateForNativeMaterialization(Path finalPath) {
-    if (released) {
-      throw new IllegalStateException("The FinGrind maintenance stage was already released.");
-    }
-    record.vacateForNativeMaterialization(finalPath);
-  }
-
   void discard() {
     if (released) {
       return;

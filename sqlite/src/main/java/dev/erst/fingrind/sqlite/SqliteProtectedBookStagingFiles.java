@@ -23,11 +23,16 @@ final class SqliteProtectedBookStagingFiles {
   static void exportBackupUsingSqlite(
       Path normalizedBookPath, Path stagedBackupFilePath, SqliteBookPassphrase sourcePassphrase) {
     try (SqliteBookPassphrase ignored = sourcePassphrase;
+        SqliteBookPassphrase stagedBackupPassphrase = sourcePassphrase.copy();
         SqliteNativeDatabase sourceDatabase =
             SqliteNativeConnections.openWithoutRollbackArtifactWarning(
-                normalizedBookPath, sourcePassphrase, SqliteNativeOpenMode.READ_WRITE_EXISTING)) {
-      sourceDatabase.executeStatement(
-          "vacuum into '" + escapeSqlLiteral(stagedBackupFilePath.toString()) + "'");
+                normalizedBookPath, sourcePassphrase, SqliteNativeOpenMode.READ_WRITE_EXISTING);
+        SqliteNativeDatabase stagedBackupDatabase =
+            SqliteNativeConnections.openWithoutRollbackArtifactWarning(
+                stagedBackupFilePath,
+                stagedBackupPassphrase,
+                SqliteNativeOpenMode.READ_WRITE_EXISTING)) {
+      SqliteNativeBackups.copyMainDatabase(sourceDatabase, stagedBackupDatabase);
       hardenBookArtifacts(stagedBackupFilePath);
     }
   }
@@ -98,10 +103,6 @@ final class SqliteProtectedBookStagingFiles {
       throw new IllegalStateException(
           "Failed to stage the generated FinGrind backup key artifact.", exception);
     }
-  }
-
-  static String escapeSqlLiteral(String value) {
-    return value.replace("'", "''");
   }
 
   static void deleteQuietlyIfPresent(@Nullable Path path) {
