@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
 /** Owns filesystem and native-SQLite mutations used while assembling protected-book stages. */
@@ -23,18 +24,61 @@ final class SqliteProtectedBookStagingFiles {
   static void exportBackupUsingSqlite(
       Path normalizedBookPath, Path stagedBackupFilePath, SqliteBookPassphrase sourcePassphrase) {
     try (SqliteBookPassphrase ignored = sourcePassphrase;
-        SqliteBookPassphrase stagedBackupPassphrase = sourcePassphrase.copy();
-        SqliteNativeDatabase sourceDatabase =
-            SqliteNativeConnections.openWithoutRollbackArtifactWarning(
-                normalizedBookPath, sourcePassphrase, SqliteNativeOpenMode.READ_ONLY);
-        SqliteNativeDatabase stagedBackupDatabase =
-            SqliteNativeConnections.openWithoutRollbackArtifactWarning(
-                stagedBackupFilePath,
-                stagedBackupPassphrase,
-                SqliteNativeOpenMode.READ_WRITE_EXISTING_STAGE)) {
-      SqliteNativeBackups.copyMainDatabase(sourceDatabase, stagedBackupDatabase);
+        SqliteBookPassphrase stagedBackupPassphrase = sourcePassphrase.copy()) {
+      try (SqliteNativeDatabase sourceDatabase =
+              runBackupStep(
+                  SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_SOURCE_OPEN,
+                  () ->
+                      SqliteNativeConnections.openWithoutRollbackArtifactWarning(
+                          normalizedBookPath, sourcePassphrase, SqliteNativeOpenMode.READ_ONLY));
+          SqliteNativeDatabase stagedBackupDatabase =
+              runBackupStep(
+                  SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_STAGE_OPEN,
+                  () ->
+                      SqliteNativeConnections.openWithoutRollbackArtifactWarning(
+                          stagedBackupFilePath,
+                          stagedBackupPassphrase,
+                          SqliteNativeOpenMode.READ_WRITE_EXISTING_STAGE))) {
+        runBackupStep(
+            SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_COPY,
+            () -> {
+              SqliteNativeBackups.copyMainDatabase(sourceDatabase, stagedBackupDatabase);
+              return null;
+            });
+      }
     }
-    hardenBookArtifacts(stagedBackupFilePath);
+    runBackupStep(
+        SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_HARDEN,
+        () -> {
+          hardenBookArtifacts(stagedBackupFilePath);
+          return null;
+        });
+  }
+
+  private static <T> T runBackupStep(
+      SqliteProtectedBookStagingSupport.StagingCheckpoint checkpoint, Supplier<T> operation) {
+    try {
+      return operation.get();
+    } catch (RuntimeException exception) {
+      throw new BackupExportFailure(checkpoint, exception);
+    }
+  }
+
+  /** Carries the public-safe boundary that failed during native backup export. */
+  static final class BackupExportFailure extends RuntimeException {
+    private static final long serialVersionUID = 1L;
+
+    private final SqliteProtectedBookStagingSupport.StagingCheckpoint checkpoint;
+
+    BackupExportFailure(
+        SqliteProtectedBookStagingSupport.StagingCheckpoint checkpoint, RuntimeException cause) {
+      super(cause);
+      this.checkpoint = checkpoint;
+    }
+
+    SqliteProtectedBookStagingSupport.StagingCheckpoint checkpoint() {
+      return checkpoint;
+    }
   }
 
   /** Rekeys one private stage and hardens it only after SQLite has released its file handle. */
