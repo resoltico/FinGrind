@@ -116,7 +116,7 @@ final class SqliteStoreOperations {
             + ".");
   }
 
-  static boolean isTransientLockFailure(SqliteNativeException exception) {
+  private static boolean isTransientLockFailure(SqliteNativeException exception) {
     return SqliteNativeResultCode.matchesAny(
         Objects.requireNonNull(exception, "exception").resultCode(),
         "BUSY",

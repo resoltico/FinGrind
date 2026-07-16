@@ -30,7 +30,7 @@ class SqliteNativeBackupsTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
-  void copyMainDatabase_rejectsCopyStepFailureAndStillFinishesTheNativeBackup() {
+  void copyMainDatabase_rejectsCopyStepFailureWithoutTouchingTheDestinationDuringBackup() {
     try (Arena arena = Arena.ofConfined()) {
       SqliteNativeApi sqliteApi =
           sqliteApi(
@@ -46,7 +46,7 @@ class SqliteNativeBackupsTest extends SqliteNativeBridgeTestSupport {
                   SqliteNativeBackups.copyMainDatabase(
                       database(arena, sqliteApi), database(arena, sqliteApi)));
 
-      assertEquals("SQLITE_CANTOPEN", exception.getMessage());
+      assertEquals("SQLITE_ERROR", exception.getMessage());
     }
   }
 

@@ -39,10 +39,24 @@ class SqliteOwnedStageRecordTest {
             .stagedPath());
     Path generatedStage = SqliteOwnedStageRecordCodec.stagedPath(finalPath, ".probe-", ".tmp");
     assertEquals(finalPath.getParent(), generatedStage.getParent());
-    assertTrue(generatedStage.getFileName().toString().startsWith("book.sqlite.probe-"));
+    assertTrue(generatedStage.getFileName().toString().startsWith(".fingrind-stage.probe-"));
     assertTrue(generatedStage.getFileName().toString().endsWith(".tmp"));
 
     record.discard();
+  }
+
+  @Test
+  void codec_keepsNativeSqliteStagesBoundedWhenFinalArtifactNamesAreLong() {
+    String finalFileName = "long-artifact-" + "x".repeat(200) + ".sqlite";
+    Path finalPath = tempDirectory.resolve(finalFileName);
+
+    Path stagedPath = SqliteOwnedStageRecordCodec.stagedPath(finalPath, ".backup-", ".sqlite");
+    String stagedFileName = stagedPath.getFileName().toString();
+
+    assertEquals(finalPath.getParent(), stagedPath.getParent());
+    assertFalse(stagedFileName.contains(finalFileName));
+    assertTrue(stagedFileName.startsWith(".fingrind-stage.backup-"));
+    assertTrue(stagedFileName.length() < 80);
   }
 
   @Test

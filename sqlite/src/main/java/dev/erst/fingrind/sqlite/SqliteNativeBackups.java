@@ -29,15 +29,10 @@ final class SqliteNativeBackups {
   /** Owns one initialized native backup handle so try-with-resources closes it exactly once. */
   private static final class NativeBackup implements AutoCloseable {
     private final MemorySegment backupHandle;
-    private final SqliteNativeDatabase destinationDatabase;
     private final SqliteNativeApi sqliteApi;
 
-    private NativeBackup(
-        MemorySegment backupHandle,
-        SqliteNativeDatabase destinationDatabase,
-        SqliteNativeApi sqliteApi) {
+    private NativeBackup(MemorySegment backupHandle, SqliteNativeApi sqliteApi) {
       this.backupHandle = backupHandle;
-      this.destinationDatabase = destinationDatabase;
       this.sqliteApi = sqliteApi;
     }
 
@@ -60,7 +55,7 @@ final class SqliteNativeBackups {
       if (backupHandle.equals(MemorySegment.NULL)) {
         throw destinationFailure(destinationDatabase, sqliteApi);
       }
-      return new NativeBackup(backupHandle, destinationDatabase, sqliteApi);
+      return new NativeBackup(backupHandle, sqliteApi);
     }
 
     void copyAllRemainingPages() {
@@ -75,11 +70,7 @@ final class SqliteNativeBackups {
                                 sqliteApi.sqlite3BackupStep())
                             .invoke(backupHandle, COPY_ALL_REMAINING_PAGES));
             if (resultCode != SqliteNativeResultCode.code("DONE")) {
-              SqliteNativeException stepFailure = SqliteNativeErrors.failure(resultCode, sqliteApi);
-              if (SqliteStoreOperations.isTransientLockFailure(stepFailure)) {
-                throw stepFailure;
-              }
-              throw destinationFailure(destinationDatabase, sqliteApi);
+              throw SqliteNativeErrors.failure(resultCode, sqliteApi);
             }
             return Boolean.TRUE;
           });

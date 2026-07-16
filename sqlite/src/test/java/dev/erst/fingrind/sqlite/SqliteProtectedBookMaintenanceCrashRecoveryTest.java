@@ -340,13 +340,11 @@ class SqliteProtectedBookMaintenanceCrashRecoveryTest extends SqliteNativeBridge
   private static void assertStageArtifactsExist(Path basePath, String infix, String suffix)
       throws IOException {
     Path parentDirectory = Objects.requireNonNull(basePath.getParent(), "basePath parent");
-    String baseName =
-        Objects.requireNonNull(basePath.getFileName(), "basePath fileName").toString();
     try (Stream<Path> siblings = Files.list(parentDirectory)) {
       assertTrue(
           siblings.anyMatch(
               path ->
-                  path.getFileName().toString().startsWith(baseName + infix)
+                  path.getFileName().toString().startsWith(".fingrind-stage" + infix)
                       && path.getFileName().toString().endsWith(suffix)),
           "Expected one abandoned stage artifact beside " + basePath + ".");
     }
