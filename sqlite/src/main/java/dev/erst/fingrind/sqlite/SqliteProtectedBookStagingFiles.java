@@ -31,10 +31,10 @@ final class SqliteProtectedBookStagingFiles {
             SqliteNativeConnections.openWithoutRollbackArtifactWarning(
                 stagedBackupFilePath,
                 stagedBackupPassphrase,
-                SqliteNativeOpenMode.READ_WRITE_EXISTING)) {
+                SqliteNativeOpenMode.READ_WRITE_EXISTING_STAGE)) {
       SqliteNativeBackups.copyMainDatabase(sourceDatabase, stagedBackupDatabase);
-      hardenBookArtifacts(stagedBackupFilePath);
     }
+    hardenBookArtifacts(stagedBackupFilePath);
   }
 
   static void rekeyBookCopy(
