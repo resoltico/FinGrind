@@ -1,6 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailurePaths;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
+import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import dev.erst.fingrind.executor.spi.StagedRestoredBookPair;
@@ -22,12 +25,22 @@ final class SqliteProtectedBookStagingSupport {
 
   /** Staging boundaries whose failures must leave final artifacts untouched. */
   enum StagingCheckpoint {
-    BACKUP_EXPORT,
-    BACKUP_SECRET_GENERATION,
-    BACKUP_REKEY,
-    RESTORE_COPY,
-    RESTORE_SECRET_GENERATION,
-    RESTORE_REKEY
+    BACKUP_EXPORT("Failed to export the encrypted FinGrind backup stage."),
+    BACKUP_SECRET_GENERATION("Failed to generate the FinGrind backup stage key."),
+    BACKUP_REKEY("Failed to re-encrypt the FinGrind backup stage."),
+    RESTORE_COPY("Failed to copy the encrypted FinGrind restored-book stage."),
+    RESTORE_SECRET_GENERATION("Failed to generate the FinGrind restored-book stage key."),
+    RESTORE_REKEY("Failed to re-encrypt the FinGrind restored-book stage.");
+
+    private final String failureMessage;
+
+    StagingCheckpoint(String failureMessage) {
+      this.failureMessage = failureMessage;
+    }
+
+    String failureMessage() {
+      return failureMessage;
+    }
   }
 
   private static final StagingCheckpointListener NO_OP_STAGING_CHECKPOINT_LISTENER =
@@ -103,10 +116,12 @@ final class SqliteProtectedBookStagingSupport {
                   normalizedBackupBookKeyFilePath, ".backup-key-", ".tmp")
               : preparedPublication.createSecretStage(".backup-key-", ".tmp");
       SqliteStagedBackupPair stagedBackupPair;
+      StagingCheckpoint activeCheckpoint = StagingCheckpoint.BACKUP_EXPORT;
       try {
         checkpointListener.reached(StagingCheckpoint.BACKUP_EXPORT);
         exportBackupUsingSqlite(
             normalizedBookPath, stagedBackupFile.stagedPath(), exportPassphrase);
+        activeCheckpoint = StagingCheckpoint.BACKUP_SECRET_GENERATION;
         try (SqliteBookPassphrase stagedBackupPassphrase =
             SqliteDistinctStagedSecret.generate(
                 stagedBackupBookKeyFile.stagedPath(),
@@ -114,6 +129,7 @@ final class SqliteProtectedBookStagingSupport {
                 StagingCheckpoint.BACKUP_SECRET_GENERATION,
                 checkpointListener,
                 stagedSecretGenerator)) {
+          activeCheckpoint = StagingCheckpoint.BACKUP_REKEY;
           checkpointListener.reached(StagingCheckpoint.BACKUP_REKEY);
           rekeyStagedBookCopy(
               stagedBackupFile.stagedPath(),
@@ -138,7 +154,7 @@ final class SqliteProtectedBookStagingSupport {
         return MaintenanceDecision.accepted(stagedBackupPair);
       } catch (RuntimeException exception) {
         SqliteOwnedStagedArtifact.discardAll(stagedBackupFile, stagedBackupBookKeyFile);
-        throw exception;
+        return stagingFailure(normalizedBackupFilePath, "backupFilePath", activeCheckpoint);
       }
     }
   }
@@ -218,54 +234,66 @@ final class SqliteProtectedBookStagingSupport {
           preparedPublication == null
               ? SqliteOwnedStagedArtifact.create(normalizedBookKeyFilePath, ".restore-key-", ".tmp")
               : preparedPublication.createSecretStage(".restore-key-", ".tmp");
-      checkpointListener.reached(StagingCheckpoint.RESTORE_COPY);
-      Files.copy(
-          normalizedSourceBookPath,
-          stagedBookFile.stagedPath(),
-          StandardCopyOption.REPLACE_EXISTING,
-          StandardCopyOption.COPY_ATTRIBUTES);
-      SqliteProtectedBookStagingFiles.hardenBookArtifacts(stagedBookFile.stagedPath());
-      try (SqliteBookPassphrase restoredPassphrase =
-          SqliteDistinctStagedSecret.generate(
-              stagedBookKeyFile.stagedPath(),
-              sourcePassphrase,
-              StagingCheckpoint.RESTORE_SECRET_GENERATION,
-              checkpointListener,
-              stagedSecretGenerator)) {
-        checkpointListener.reached(StagingCheckpoint.RESTORE_REKEY);
-        rekeyStagedBookCopy(
-            stagedBookFile.stagedPath(), sourcePassphrase.copy(), restoredPassphrase.copy());
-        SqlitePreparedPairPublication.@Nullable PublicationReservations reservations =
-            preparedPublication == null ? null : preparedPublication.transferReservations();
-        stagedRestoredBookPair =
-            SqliteStagedRestoredBookPairFactory.create(
-                new SqliteStagedProtectedBookPairArtifacts(
-                    stagedBookFile,
-                    normalizedBookFilePath,
-                    stagedBookKeyFile,
-                    normalizedBookKeyFilePath),
-                targetPolicy,
-                restoredPassphrase.utf8BytesCopy(),
-                verificationSupport,
-                new SqliteRestoredBookPairPublication.Operators(
-                    Files::createLink,
-                    Files::createLink,
-                    SqliteProtectedBookPublicationSupport::moveReplacing),
-                reservations == null ? null : reservations.bookReservation(),
-                reservations == null ? null : reservations.secretReservation());
+      StagingCheckpoint activeCheckpoint = StagingCheckpoint.RESTORE_COPY;
+      try {
+        checkpointListener.reached(activeCheckpoint);
+        Files.copy(
+            normalizedSourceBookPath,
+            stagedBookFile.stagedPath(),
+            StandardCopyOption.REPLACE_EXISTING,
+            StandardCopyOption.COPY_ATTRIBUTES);
+        SqliteProtectedBookStagingFiles.hardenBookArtifacts(stagedBookFile.stagedPath());
+        activeCheckpoint = StagingCheckpoint.RESTORE_SECRET_GENERATION;
+        try (SqliteBookPassphrase restoredPassphrase =
+            SqliteDistinctStagedSecret.generate(
+                stagedBookKeyFile.stagedPath(),
+                sourcePassphrase,
+                activeCheckpoint,
+                checkpointListener,
+                stagedSecretGenerator)) {
+          activeCheckpoint = StagingCheckpoint.RESTORE_REKEY;
+          checkpointListener.reached(activeCheckpoint);
+          rekeyStagedBookCopy(
+              stagedBookFile.stagedPath(), sourcePassphrase.copy(), restoredPassphrase.copy());
+          SqlitePreparedPairPublication.@Nullable PublicationReservations reservations =
+              preparedPublication == null ? null : preparedPublication.transferReservations();
+          stagedRestoredBookPair =
+              SqliteStagedRestoredBookPairFactory.create(
+                  new SqliteStagedProtectedBookPairArtifacts(
+                      stagedBookFile,
+                      normalizedBookFilePath,
+                      stagedBookKeyFile,
+                      normalizedBookKeyFilePath),
+                  targetPolicy,
+                  restoredPassphrase.utf8BytesCopy(),
+                  verificationSupport,
+                  new SqliteRestoredBookPairPublication.Operators(
+                      Files::createLink,
+                      Files::createLink,
+                      SqliteProtectedBookPublicationSupport::moveReplacing),
+                  reservations == null ? null : reservations.bookReservation(),
+                  reservations == null ? null : reservations.secretReservation());
+        }
+        return MaintenanceDecision.accepted(stagedRestoredBookPair);
+      } catch (IOException | RuntimeException exception) {
+        SqliteOwnedStagedArtifact.discardAll(stagedBookFile, stagedBookKeyFile);
+        return stagingFailure(normalizedBookFilePath, "bookFilePath", activeCheckpoint);
       }
-      return MaintenanceDecision.accepted(stagedRestoredBookPair);
-    } catch (IOException exception) {
-      SqliteOwnedStagedArtifact.discardAll(stagedBookFile, stagedBookKeyFile);
-      throw new IllegalStateException(
-          "Failed to stage the restored FinGrind live-book pair for "
-              + SqliteMachinePaths.absoluteValue(normalizedBookFilePath)
-              + ".",
-          exception);
     } catch (RuntimeException exception) {
       SqliteOwnedStagedArtifact.discardAll(stagedBookFile, stagedBookKeyFile);
       throw exception;
     }
+  }
+
+  private static <T> MaintenanceDecision<T> stagingFailure(
+      Path artifactPath, String argumentName, StagingCheckpoint checkpoint) {
+    return MaintenanceDecision.failed(
+        new MaintenanceFailure(
+            ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE,
+            checkpoint.failureMessage(),
+            "Inspect the selected filesystem path and retry after resolving the underlying storage problem.",
+            argumentName,
+            ContractFailurePaths.primary(artifactPath)));
   }
 
   /** Reclaims exact owned stages for direct fixture staging that has no pair reservation. */
