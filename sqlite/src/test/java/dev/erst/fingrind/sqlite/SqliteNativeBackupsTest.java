@@ -36,7 +36,8 @@ class SqliteNativeBackupsTest extends SqliteNativeBridgeTestSupport {
           sqliteApi(
               arena.allocate(1),
               SqliteNativeResultCode.code("ERROR"),
-              SqliteNativeResultCode.code("OK"));
+              SqliteNativeResultCode.code("OK"),
+              SqliteNativeResultCode.code("CANTOPEN"));
 
       SqliteNativeException exception =
           assertThrows(
@@ -45,7 +46,7 @@ class SqliteNativeBackupsTest extends SqliteNativeBridgeTestSupport {
                   SqliteNativeBackups.copyMainDatabase(
                       database(arena, sqliteApi), database(arena, sqliteApi)));
 
-      assertEquals("SQLITE_ERROR", exception.getMessage());
+      assertEquals("SQLITE_CANTOPEN", exception.getMessage());
     }
   }
 
@@ -59,6 +60,7 @@ class SqliteNativeBackupsTest extends SqliteNativeBridgeTestSupport {
           sqliteApi(
               arena.allocate(1),
               sequentialBackupStepHandle(backupStepResult),
+              SqliteNativeResultCode.code("OK"),
               SqliteNativeResultCode.code("OK"));
 
       SqliteNativeBackups.copyMainDatabase(database(arena, sqliteApi), database(arena, sqliteApi));
@@ -90,13 +92,26 @@ class SqliteNativeBackupsTest extends SqliteNativeBridgeTestSupport {
   private static SqliteNativeApi sqliteApi(
       MemorySegment backupHandle, int backupStepResult, int backupFinishResult) {
     return sqliteApi(
-        backupHandle,
-        constantMethodHandle(backupStepResult, MemorySegment.class, int.class),
-        backupFinishResult);
+        backupHandle, backupStepResult, backupFinishResult, SqliteNativeResultCode.code("OK"));
   }
 
   private static SqliteNativeApi sqliteApi(
-      MemorySegment backupHandle, MethodHandle backupStepHandle, int backupFinishResult) {
+      MemorySegment backupHandle,
+      int backupStepResult,
+      int backupFinishResult,
+      int destinationExtendedResultCode) {
+    return sqliteApi(
+        backupHandle,
+        constantMethodHandle(backupStepResult, MemorySegment.class, int.class),
+        backupFinishResult,
+        destinationExtendedResultCode);
+  }
+
+  private static SqliteNativeApi sqliteApi(
+      MemorySegment backupHandle,
+      MethodHandle backupStepHandle,
+      int backupFinishResult,
+      int destinationExtendedResultCode) {
     Object[] sqliteApiArguments = defaultSqliteApiArguments();
     sqliteApiArguments[SQLITE_API_ARGUMENT_BACKUP_INIT] =
         constantMethodHandle(
@@ -108,6 +123,8 @@ class SqliteNativeBackupsTest extends SqliteNativeBridgeTestSupport {
     sqliteApiArguments[SQLITE_API_ARGUMENT_BACKUP_STEP] = backupStepHandle;
     sqliteApiArguments[SQLITE_API_ARGUMENT_BACKUP_FINISH] =
         constantMethodHandle(backupFinishResult, MemorySegment.class);
+    sqliteApiArguments[SQLITE_API_ARGUMENT_EXTENDED_ERRCODE] =
+        constantMethodHandle(destinationExtendedResultCode, MemorySegment.class);
     return buildSqliteApi(sqliteApiArguments);
   }
 
