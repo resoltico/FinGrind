@@ -115,7 +115,7 @@ final class SqliteProtectedBookStagingSupport {
                 checkpointListener,
                 stagedSecretGenerator)) {
           checkpointListener.reached(StagingCheckpoint.BACKUP_REKEY);
-          rekeyBookCopy(
+          rekeyStagedBookCopy(
               stagedBackupFile.stagedPath(),
               sourcePassphrase.copy(),
               stagedBackupPassphrase.copy());
@@ -233,7 +233,7 @@ final class SqliteProtectedBookStagingSupport {
               checkpointListener,
               stagedSecretGenerator)) {
         checkpointListener.reached(StagingCheckpoint.RESTORE_REKEY);
-        rekeyBookCopy(
+        rekeyStagedBookCopy(
             stagedBookFile.stagedPath(), sourcePassphrase.copy(), restoredPassphrase.copy());
         SqlitePreparedPairPublication.@Nullable PublicationReservations reservations =
             preparedPublication == null ? null : preparedPublication.transferReservations();
@@ -280,12 +280,12 @@ final class SqliteProtectedBookStagingSupport {
         normalizedBookPath, stagedBackupFilePath, sourcePassphrase);
   }
 
-  static void rekeyBookCopy(
-      Path normalizedBookPath,
+  static void rekeyStagedBookCopy(
+      Path stagedBookPath,
       SqliteBookPassphrase sourcePassphrase,
       SqliteBookPassphrase replacementPassphrase) {
-    SqliteProtectedBookStagingFiles.rekeyBookCopy(
-        normalizedBookPath, sourcePassphrase, replacementPassphrase);
+    SqliteProtectedBookStagingFiles.rekeyStagedBookCopy(
+        stagedBookPath, sourcePassphrase, replacementPassphrase);
   }
 
   /** Resets one generated-secret stage using the supplied file deletion owner. */

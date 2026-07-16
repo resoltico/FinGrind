@@ -37,22 +37,23 @@ final class SqliteProtectedBookStagingFiles {
     hardenBookArtifacts(stagedBackupFilePath);
   }
 
-  static void rekeyBookCopy(
-      Path normalizedBookPath,
+  /** Rekeys one private stage and hardens it only after SQLite has released its file handle. */
+  static void rekeyStagedBookCopy(
+      Path stagedBookPath,
       SqliteBookPassphrase sourcePassphrase,
       SqliteBookPassphrase replacementPassphrase) {
     try (SqliteBookPassphrase ignoredSource = sourcePassphrase;
         SqliteBookPassphrase ignoredReplacement = replacementPassphrase;
         SqliteBookPassphrase resolvedSourcePassphrase = sourcePassphrase.copy();
         SqliteBookPassphrase resolvedReplacementPassphrase = replacementPassphrase.copy();
-        SqliteNativeDatabase sourceDatabase =
+        SqliteNativeDatabase stagedDatabase =
             SqliteNativeConnections.openWithoutRollbackArtifactWarning(
-                normalizedBookPath,
+                stagedBookPath,
                 resolvedSourcePassphrase,
-                SqliteNativeOpenMode.READ_WRITE_EXISTING)) {
-      SqliteNativeKeyConfiguration.rekey(sourceDatabase, resolvedReplacementPassphrase);
-      hardenBookArtifacts(normalizedBookPath);
+                SqliteNativeOpenMode.READ_WRITE_EXISTING_STAGE)) {
+      SqliteNativeKeyConfiguration.rekey(stagedDatabase, resolvedReplacementPassphrase);
     }
+    hardenBookArtifacts(stagedBookPath);
   }
 
   static void ensureSecureBackupFileParentDirectory(Path artifactPath) {
