@@ -25,15 +25,15 @@ final class ProtectedBookRekeyWorkflow {
     Path normalizedNewBookKeyFilePath = store.normalize(newBookKeyFilePath, "newBookKeyFilePath");
     ProtectedBookAccess normalizedAccess =
         new ProtectedBookAccess(normalizedBookPath, bookAccess.passphraseSource());
-    try (PreparedPairPublication preparedPublication =
-        store.preparePairPublication(
-            normalizedNewBookKeyFilePath,
-            normalizedBookPath,
-            RestoredBookTargetPolicy.REPLACE_SELECTED,
-            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
-            ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET)) {
-      return rekeyWithPreparedPublication(
-          normalizedAccess, normalizedBookPath, store, preparedPublication);
+    PreparedPairPublication preparedPublication;
+    try {
+      preparedPublication =
+          store.preparePairPublication(
+              normalizedNewBookKeyFilePath,
+              normalizedBookPath,
+              RestoredBookTargetPolicy.REPLACE_SELECTED,
+              ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+              ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET);
     } catch (ProtectedBookMaintenanceRejectionException exception) {
       return MaintenanceDecision.accepted(
           new ProtectedBookRekeyOutcome.Rejected(exception.rejection()));
@@ -41,6 +41,18 @@ final class ProtectedBookRekeyWorkflow {
       return support.storageFailure(
           normalizedNewBookKeyFilePath,
           "Failed to recover or prepare the FinGrind rekeyed-book pair publication.",
+          "newBookKeyFilePath");
+    }
+    try (preparedPublication) {
+      return rekeyWithPreparedPublication(
+          normalizedAccess, normalizedBookPath, store, preparedPublication);
+    } catch (ProtectedBookMaintenanceRejectionException exception) {
+      return MaintenanceDecision.accepted(
+          new ProtectedBookRekeyOutcome.Rejected(exception.rejection()));
+    } catch (RuntimeException workflowFailure) {
+      return support.storageFailure(
+          normalizedNewBookKeyFilePath,
+          "Failed to verify, stage, or publish the FinGrind rekeyed-book pair.",
           "newBookKeyFilePath");
     }
   }

@@ -26,15 +26,15 @@ final class ProtectedBookBackupWorkflow {
     Path normalizedBackupFilePath = store.normalize(backupFilePath, "backupFilePath");
     Path normalizedBackupBookKeyFilePath =
         store.normalize(backupBookKeyFilePath, "backupBookKeyFilePath");
-    try (PreparedPairPublication preparedPublication =
-        store.preparePairPublication(
-            normalizedBackupBookKeyFilePath,
-            normalizedBackupFilePath,
-            RestoredBookTargetPolicy.REQUIRE_ABSENT,
-            ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
-            ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET)) {
-      return backupWithPreparedPublication(
-          normalizedAccess, normalizedBookPath, store, preparedPublication);
+    PreparedPairPublication preparedPublication;
+    try {
+      preparedPublication =
+          store.preparePairPublication(
+              normalizedBackupBookKeyFilePath,
+              normalizedBackupFilePath,
+              RestoredBookTargetPolicy.REQUIRE_ABSENT,
+              ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+              ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET);
     } catch (ProtectedBookMaintenanceRejectionException exception) {
       return MaintenanceDecision.accepted(
           new ProtectedBookBackupOutcome.Rejected(exception.rejection()));
@@ -42,6 +42,18 @@ final class ProtectedBookBackupWorkflow {
       return support.storageFailure(
           normalizedBackupFilePath,
           "Failed to recover or prepare the FinGrind backup pair publication.",
+          "backupFilePath");
+    }
+    try (preparedPublication) {
+      return backupWithPreparedPublication(
+          normalizedAccess, normalizedBookPath, store, preparedPublication);
+    } catch (ProtectedBookMaintenanceRejectionException exception) {
+      return MaintenanceDecision.accepted(
+          new ProtectedBookBackupOutcome.Rejected(exception.rejection()));
+    } catch (RuntimeException workflowFailure) {
+      return support.storageFailure(
+          normalizedBackupFilePath,
+          "Failed to verify, stage, or publish the FinGrind backup pair.",
           "backupFilePath");
     }
   }

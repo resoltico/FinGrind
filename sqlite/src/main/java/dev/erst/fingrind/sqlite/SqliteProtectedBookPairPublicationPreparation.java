@@ -109,11 +109,7 @@ final class SqliteProtectedBookPairPublicationPreparation {
       return;
     }
     boolean publishedSecretIsOwned =
-        secretStages.stream()
-            .anyMatch(
-                stage ->
-                    SqliteProtectedBookPublicationRecovery.isSameOwnedStage(
-                        secretTargetPath, stage.stagedPath()));
+        secretStages.stream().anyMatch(stage -> isOwnedStageOrReservation(secretTargetPath, stage));
     if (!publishedSecretIsOwned) {
       discardRecoveredStages(secretStages);
       SqliteOwnedStagedArtifact.recoverFor(bookTargetPath);
@@ -237,10 +233,7 @@ final class SqliteProtectedBookPairPublicationPreparation {
   private static void removeOwnedCompanionBookIfPresent(Path bookTargetPath) {
     boolean publishedBookIsOwned =
         SqliteOwnedStageRecord.findFor(bookTargetPath).stream()
-            .anyMatch(
-                stage ->
-                    SqliteProtectedBookPublicationRecovery.isSameOwnedStage(
-                        bookTargetPath, stage.stagedPath()));
+            .anyMatch(stage -> isOwnedStageOrReservation(bookTargetPath, stage));
     if (publishedBookIsOwned) {
       SqliteProtectedBookPublicationRecovery.removeRecoveredArtifact(bookTargetPath);
     }
@@ -250,5 +243,13 @@ final class SqliteProtectedBookPairPublicationPreparation {
     for (SqliteOwnedStageRecord stage : stages) {
       stage.discard();
     }
+  }
+
+  private static boolean isOwnedStageOrReservation(
+      Path finalArtifactPath, SqliteOwnedStageRecord stage) {
+    return SqliteProtectedBookPublicationRecovery.isSameOwnedStage(
+            finalArtifactPath, stage.stagedPath())
+        || SqliteOwnedDestinationReservation.isReservationMarker(
+            finalArtifactPath, stage.stagedPath());
   }
 }
