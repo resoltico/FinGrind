@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: USER_CLI
-updated: "2026-07-15"
+updated: "2026-07-16"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan, declare-tax-registration, list-tax-registrations, tax-obligation, fixed-assets, financing, realized-foreign-exchange]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use", "how do I declare tax registrations or compute tax obligations in fingrind", "how do I record fixed assets financing or realized foreign exchange"]

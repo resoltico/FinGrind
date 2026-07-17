@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: INDEX_OWNED_LIFECYCLE_CONTEXTS
-updated: "2026-07-15"
+updated: "2026-07-16"
 route:
   keywords: [fingrind, API index, lifecycle contexts, accrual cut-offs, fixed assets, financing, realized foreign exchange]
   questions: ["where is a lifecycle context API type documented", "where is fixed-asset API documentation", "where are financing and FX register types documented"]

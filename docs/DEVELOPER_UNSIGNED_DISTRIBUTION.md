@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: DEVELOPER_UNSIGNED_DISTRIBUTION
-updated: "2026-07-11"
+updated: "2026-07-16"
 route:
   keywords: [fingrind, macos, windows, unsigned, attestation, checksum, quarantine, smartscreen, gatekeeper, powershell, notarization, authenticode]
   questions: ["how does fingrind publish unsigned macos and windows bundles", "does fingrind require apple notarization or authenticode", "what is the trust model for fingrind macos and windows downloads"]

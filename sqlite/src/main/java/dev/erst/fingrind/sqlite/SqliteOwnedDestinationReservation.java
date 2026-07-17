@@ -7,7 +7,10 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.Objects;
 
-/** Owns an absent final-artifact reservation until one staged artifact replaces it. */
+/**
+ * Owns one durable sidecar reservation while the final artifact path stays absent until
+ * publication.
+ */
 final class SqliteOwnedDestinationReservation implements AutoCloseable {
   private final Path finalPath;
   private final SqliteOwnedStagedArtifact reservationStage;
@@ -23,13 +26,11 @@ final class SqliteOwnedDestinationReservation implements AutoCloseable {
     Path checkedFinalPath = Objects.requireNonNull(finalPath, "finalPath");
     SqliteOwnedStagedArtifact reservationStage =
         SqliteOwnedStagedArtifact.create(checkedFinalPath, ".reservation-", ".claim");
-    try {
-      Files.createLink(checkedFinalPath, reservationStage.stagedPath());
-      return new SqliteOwnedDestinationReservation(checkedFinalPath, reservationStage);
-    } catch (IOException exception) {
+    if (Files.exists(checkedFinalPath, LinkOption.NOFOLLOW_LINKS)) {
       reservationStage.discard();
-      throw exception;
+      throw new FileAlreadyExistsException(checkedFinalPath.toString());
     }
+    return new SqliteOwnedDestinationReservation(checkedFinalPath, reservationStage);
   }
 
   Path finalPath() {
@@ -41,9 +42,7 @@ final class SqliteOwnedDestinationReservation implements AutoCloseable {
     return SqliteOwnedStagedArtifact.create(finalPath, infix, suffix);
   }
 
-  /**
-   * Replaces this exact reservation with a durable hard-link publication of the staged artifact.
-   */
+  /** Publishes the staged artifact with the sole atomic no-clobber claim on the final path. */
   void publishRetainingStage(
       SqliteOwnedStagedArtifact stagedArtifact,
       SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator linkCreator)
@@ -52,16 +51,9 @@ final class SqliteOwnedDestinationReservation implements AutoCloseable {
     Objects.requireNonNull(stagedArtifact, "stagedArtifact").requireIntactFor(finalPath);
     Objects.requireNonNull(linkCreator, "linkCreator");
     reservationStage.requireIntactFor(finalPath);
-    if (!isCurrentReservation()) {
-      if (Files.exists(finalPath, LinkOption.NOFOLLOW_LINKS)) {
-        throw new FileAlreadyExistsException(finalPath.toString());
-      }
-      throw new IOException(
-          "The FinGrind final-artifact reservation disappeared before publication: "
-              + SqliteMachinePaths.absoluteValue(finalPath)
-              + ".");
+    if (Files.exists(finalPath, LinkOption.NOFOLLOW_LINKS)) {
+      throw new FileAlreadyExistsException(finalPath.toString());
     }
-    Files.delete(finalPath);
     linkCreator.create(finalPath, stagedArtifact.stagedPath());
   }
 
@@ -71,24 +63,15 @@ final class SqliteOwnedDestinationReservation implements AutoCloseable {
       return;
     }
     try {
-      if (isCurrentReservation()) {
-        Files.delete(finalPath);
-      }
       reservationStage.discard();
       closed = true;
-    } catch (IOException exception) {
+    } catch (RuntimeException exception) {
       throw new IllegalStateException(
           "Failed to release one owned FinGrind destination reservation at "
               + SqliteMachinePaths.absoluteValue(finalPath)
               + ".",
           exception);
     }
-  }
-
-  private boolean isCurrentReservation() throws IOException {
-    return Files.isRegularFile(finalPath, LinkOption.NOFOLLOW_LINKS)
-        && Files.isRegularFile(reservationStage.stagedPath(), LinkOption.NOFOLLOW_LINKS)
-        && Files.isSameFile(finalPath, reservationStage.stagedPath());
   }
 
   private void requireOpen() {

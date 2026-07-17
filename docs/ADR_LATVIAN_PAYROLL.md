@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: ADR_LATVIAN_PAYROLL
-updated: "2026-07-15"
+updated: "2026-07-16"
 route:
   keywords: [fingrind, Latvian payroll, monthly payroll, payroll run, net wages, social insurance, personal income tax]
   questions: ["what Latvian payroll does FinGrind support", "how is a Latvian monthly payroll run calculated", "what payroll cases does FinGrind reject"]
@@ -78,9 +78,9 @@ The public typed write vocabulary is:
 
 `latvian-payroll-register` is the dedicated operational reconciliation report. It publishes each retained run, resolved statutory components, settlement state, and compensating-reversal lineage. General-ledger queries and built-in financial statements expose the resulting journal postings under their own report contexts; they do not calculate, allocate, or reconcile payroll facts.
 
-## Publication Gate
+## Publication Evidence
 
-The context is not published until all of these are present together:
+The context is published in `0.61.0` with all of these owned artifacts present together:
 - typed commands and request contracts that expose only supported facts;
 - executor-owned statutory resolution and deterministic rejection of unsupported profiles;
 - protected-book tables, foreign keys, checks, append-only triggers, and reconciliation;

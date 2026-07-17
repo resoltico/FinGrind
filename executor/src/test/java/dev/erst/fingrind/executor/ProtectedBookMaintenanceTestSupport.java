@@ -97,8 +97,10 @@ final class MaintenanceStagingState {
   @Nullable MaintenanceDecision<ProtectedBookMaintenanceStore.BookVerification>
       restoredPairVerification;
   @Nullable ProtectedBookMaintenanceRejection backupPairCommitRejection;
+  @Nullable ProtectedBookMaintenanceRejection preparedPairCloseRejection;
   @Nullable ProtectedBookMaintenanceRejection restoredPairCommitRejection;
   @Nullable RuntimeException interruptedPairRecoveryFailure;
+  @Nullable RuntimeException stagePairRuntimeFailure;
   int interruptedPairRecoveryRequests;
   @Nullable RuntimeException restoredPairCommitRuntimeFailure;
   boolean restoredPairCommitted;
@@ -190,7 +192,10 @@ abstract class FakeMaintenanceStoreBase implements ProtectedBookMaintenanceStore
       }
     }
     return new FakePreparedPairPublication(
-        checkedBookTargetPath, checkedSecretTargetPath, checkedBookTargetPolicy);
+        checkedBookTargetPath,
+        checkedSecretTargetPath,
+        checkedBookTargetPolicy,
+        staging.preparedPairCloseRejection);
   }
 
   private static ProtectedBookMaintenanceRejection occupiedPairBookTargetRejection(
@@ -355,10 +360,17 @@ abstract class FakeMaintenanceStoreBase implements ProtectedBookMaintenanceStore
 
   /** Deterministic preflight fixture that carries its selected pair-publication authority. */
   private record FakePreparedPairPublication(
-      Path bookTargetPath, Path secretTargetPath, RestoredBookTargetPolicy bookTargetPolicy)
+      Path bookTargetPath,
+      Path secretTargetPath,
+      RestoredBookTargetPolicy bookTargetPolicy,
+      @Nullable ProtectedBookMaintenanceRejection closeRejection)
       implements PreparedPairPublication {
     @Override
-    public void close() {}
+    public void close() {
+      if (closeRejection != null) {
+        throw new ProtectedBookMaintenanceRejectionException(closeRejection);
+      }
+    }
   }
 
   /** Deterministic staged-replacement fixture for restore-style maintenance flows. */
@@ -411,6 +423,9 @@ final class FakeMaintenanceStore extends FakeMaintenanceStoreBase {
       VerifiedBook sourceBook, PreparedPairPublication preparedPairPublication) {
     Objects.requireNonNull(sourceBook, "sourceBook");
     Path normalizedBackupFilePath = preparedPairPublication.bookTargetPath();
+    if (staging.stagePairRuntimeFailure != null) {
+      throw staging.stagePairRuntimeFailure;
+    }
     if (stageBackupFailure != null) {
       return stageBackupFailure;
     }
@@ -434,6 +449,9 @@ final class FakeMaintenanceStore extends FakeMaintenanceStoreBase {
     Objects.requireNonNull(sourceBook, "sourceBook");
     Path normalizedBookFilePath = preparedPairPublication.bookTargetPath();
     staging.restoredBookTargetPolicies.add(preparedPairPublication.bookTargetPolicy());
+    if (staging.stagePairRuntimeFailure != null) {
+      throw staging.stagePairRuntimeFailure;
+    }
     if (staging.restoredPairFailure != null) {
       return staging.restoredPairFailure;
     }

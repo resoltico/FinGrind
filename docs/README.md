@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-07-14"
+updated: "2026-07-16"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -162,5 +162,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [sqlite/SCHEMA_CORE_13zb_FIXED_ASSETS.md](./sqlite/SCHEMA_CORE_13zb_FIXED_ASSETS.md)
 - [sqlite/SCHEMA_CORE_13zc_FINANCING.md](./sqlite/SCHEMA_CORE_13zc_FINANCING.md)
 - [sqlite/SCHEMA_CORE_13zd_REALIZED_FOREIGN_EXCHANGE.md](./sqlite/SCHEMA_CORE_13zd_REALIZED_FOREIGN_EXCHANGE.md)
-- [sqlite/SCHEMA_CORE_13ze_LATVIAN_PAYROLL.md](./sqlite/SCHEMA_CORE_13ze_LATVIAN_PAYROLL.md)
+- [sqlite/SCHEMA_CORE_13ze_LATVIAN_PAYROLL_RUNS.md](./sqlite/SCHEMA_CORE_13ze_LATVIAN_PAYROLL_RUNS.md)
+- [sqlite/SCHEMA_CORE_13zea_LATVIAN_PAYROLL_RUN_IMMUTABILITY.md](./sqlite/SCHEMA_CORE_13zea_LATVIAN_PAYROLL_RUN_IMMUTABILITY.md)
+- [sqlite/SCHEMA_CORE_13zf_LATVIAN_PAYROLL_SETTLEMENTS.md](./sqlite/SCHEMA_CORE_13zf_LATVIAN_PAYROLL_SETTLEMENTS.md)
 - [sqlite/SCHEMA_CORE_14_INDEXES_AND_IMMUTABILITY.md](./sqlite/SCHEMA_CORE_14_INDEXES_AND_IMMUTABILITY.md)

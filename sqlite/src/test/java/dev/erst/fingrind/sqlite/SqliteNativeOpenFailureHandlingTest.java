@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.lang.foreign.Arena;
@@ -342,6 +343,29 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                       "Failed to close the SQLite native library bridge."
                           .equals(suppressed.getMessage()))
               .count());
+    }
+  }
+
+  @Test
+  void hardenOpenedDatabase_defersStageHardening() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"));
+        Arena arena = Arena.ofConfined()) {
+      AclFixturePath stagedPath = fileSystem.path("\\books\\staged-backup.sqlite");
+      SqliteBookFileSecurity.ensureSecureParentDirectory(stagedPath);
+      stagedPath.exists = true;
+      stagedPath.regularFile = true;
+      stagedPath.overrideAclView = throwingAclView("stage-harden-must-be-deferred");
+      try (SqliteNativeDatabase openedDatabase = new FixtureNativeDatabase(arena.allocate(1))) {
+        assertEquals(
+            SqliteNativeOpenMode.READ_WRITE_EXISTING.flags(),
+            SqliteNativeOpenMode.READ_WRITE_EXISTING_STAGE.flags());
+        assertSame(
+            openedDatabase,
+            hardenOpenedDatabase(
+                stagedPath.toAbsolutePath().normalize(),
+                openedDatabase,
+                SqliteNativeOpenMode.READ_WRITE_EXISTING_STAGE));
+      }
     }
   }
 
@@ -797,6 +821,16 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
       throw new LinkageError(
           "Failed to invoke SQLite native open-and-harden helper for tests.", throwable);
     }
+  }
+
+  /** Test double that does not own a real native connection handle. */
+  private static final class FixtureNativeDatabase extends SqliteNativeDatabase {
+    private FixtureNativeDatabase(MemorySegment databaseHandle) {
+      super(databaseHandle);
+    }
+
+    @Override
+    public void close() {}
   }
 
   private static void invokeConnectionSuppressCloseFailure(

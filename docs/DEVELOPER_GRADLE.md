@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-07-11"
+updated: "2026-07-16"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -149,8 +149,8 @@ the wrapper-owned project cache and poison coverage verification. The nested Jaz
 prunes each processed-resource destination directory before real resource syncs so renamed or
 removed committed seeds cannot linger in `jazzer-build/resources/` and skew replay or packaged
 corpus behavior away from `src/fuzz/resources`.
-Its own Kotlin compiler is now pinned explicitly in
-`gradle/build-logic/build.gradle.kts` at `2.4.0` so the shared build logic can compile
+Its own Kotlin compiler is pinned explicitly through
+`gradle/fingrind-build.properties` at `2.4.10` so the shared build logic can compile
 against Gradle's Kotlin DSL APIs while still emitting JVM 26 bytecode.
 
 The consumer scripts are intentionally thin now:
@@ -458,7 +458,7 @@ Review this setup periodically, especially after Gradle, Kotlin, SQLite, or Jazz
 
 - Does `gradle/build-logic` still compile and emit JVM 26 bytecode after the current Kotlin plugin pin?
 - Is the Gradle wrapper still on the current verified stable `9.5.x` line?
-- Is the build-logic Kotlin pin `2.4.0`, and does the included build still verify cleanly on the live 2.4.x line?
+- Is the build-logic Kotlin pin `2.4.10`, and does the included build still verify cleanly on the live 2.4.x line?
 - Has anyone reintroduced manual output wiping or disabled incremental compilation in
   `gradle/build-logic`, beyond the deliberate Jazzer source-set pruning that prevents orphaned
   cached classfiles?

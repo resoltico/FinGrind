@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: ADR_FINANCING
-updated: "2026-07-15"
+updated: "2026-07-16"
 route:
   keywords: [fingrind, financing, borrowing, principal repayment, interest accrual, financing register]
   questions: ["how does fingrind record a borrowing", "how does interest accrue in fingrind", "what owns a financing arrangement"]
@@ -12,7 +12,7 @@ route:
 
 ## Status
 
-Accepted for the unreleased integration line. Borrowing, principal repayment, interest accrual, interest payment, compensating reversals, and financing-register reporting are implemented together, but are not yet a public capability.
+Published in `0.61.0`. Borrowing, principal repayment, interest accrual, interest payment, compensating reversals, and financing-register reporting are one public capability with one owned lifecycle boundary.
 
 The release boundary records nominal principal and exact accrued interest. Leases, effective-interest amortization, fair-value measurement, covenant monitoring, tax withholding, and lender integrations remain outside this context.
 

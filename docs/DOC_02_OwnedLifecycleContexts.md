@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: OWNED_LIFECYCLE_CONTEXTS
-updated: "2026-07-15"
+updated: "2026-07-16"
 route:
   keywords: [fingrind, fixed assets, financing, realized foreign exchange, lifecycle contexts, register reports]
   questions: ["which lifecycle context owns fixed assets", "which types own financing", "how is realized foreign exchange represented"]
@@ -10,7 +10,7 @@ route:
 
 # Owned Lifecycle Contexts API Reference
 
-This reference documents the three independently owned lifecycle contexts in the unreleased integration line. They add typed business events, durable facts, admission rules, compensating reversals, and register reports to one protected book. Each context owns its aggregate state and invariants; neither a generic journal nor another context may recreate its lifecycle facts.
+This reference documents the three independently owned lifecycle contexts published in `0.61.0`. They add typed business events, durable facts, admission rules, compensating reversals, and register reports to one protected book. Each context owns its aggregate state and invariants; neither a generic journal nor another context may recreate its lifecycle facts.
 
 The business boundaries and primary-source caveats are recorded in [ADR_FIXED_ASSETS.md](./ADR_FIXED_ASSETS.md), [ADR_FINANCING.md](./ADR_FINANCING.md), and [ADR_REALIZED_FOREIGN_EXCHANGE.md](./ADR_REALIZED_FOREIGN_EXCHANGE.md). The relevant primary references are the IFRS Foundation's [IAS 16 material](https://www.ifrs.org/content/dam/ifrs/publications/pdf-standards/english/2022/issued/part-a/ias-16-property-plant-and-equipment.pdf?bypass=on), [IFRS 9 standard page](https://www.ifrs.org/issued-standards/list-of-standards/ifrs-9-financial-instruments/), and [IAS 21 material](https://www.ifrs.org/content/dam/ifrs/publications/pdf-standards/english/2021/issued/part-a/ias-21-the-effects-of-changes-in-foreign-exchange-rates.pdf). These contexts are deliberately narrower than those standards and must not be represented as general statutory-compliance engines.
 

@@ -89,6 +89,19 @@ if reconstructed_schema != schema_text:
 PY
 [[ -f "${fixture_root}/docs/sqlite/SCHEMA_CORE_01_FOUNDATION.md" ]] || die \
     "generated schema doc set is missing the foundation page"
+[[ -f "${fixture_root}/docs/sqlite/SCHEMA_CORE_13ze_LATVIAN_PAYROLL_RUNS.md" ]] || die \
+    "generated schema doc set is missing the Latvian payroll-runs page"
+[[ -f "${fixture_root}/docs/sqlite/SCHEMA_CORE_13zea_LATVIAN_PAYROLL_RUN_IMMUTABILITY.md" ]] || die \
+    "generated schema doc set is missing the Latvian payroll-run immutability page"
+[[ -f "${fixture_root}/docs/sqlite/SCHEMA_CORE_13zf_LATVIAN_PAYROLL_SETTLEMENTS.md" ]] || die \
+    "generated schema doc set is missing the Latvian payroll-settlements page"
+grep -Fq 'latvian_payroll_run_reject_update' \
+    "${fixture_root}/docs/sqlite/SCHEMA_CORE_13zea_LATVIAN_PAYROLL_RUN_IMMUTABILITY.md" || die \
+    "generated payroll-run immutability page is missing append-only triggers"
+if grep -Fq 'latvian_payroll_run_reject_update' \
+    "${fixture_root}/docs/sqlite/SCHEMA_CORE_13ze_LATVIAN_PAYROLL_RUNS.md"; then
+    die "generated Latvian payroll-runs page incorrectly owns append-only triggers"
+fi
 grep -Fq 'version: "9.9.9"' "${fixture_root}/docs/sqlite/SCHEMA_CORE_01_FOUNDATION.md" || die \
     "generated schema foundation page did not inherit the overview version frontmatter"
 grep -Fq 'updated: "2026-05-09"' "${fixture_root}/docs/sqlite/SCHEMA_CORE_01_FOUNDATION.md" || die \

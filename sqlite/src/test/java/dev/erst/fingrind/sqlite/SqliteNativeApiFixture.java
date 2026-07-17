@@ -100,7 +100,15 @@ final class SqliteNativeApiFixture {
       "2.3.6",
       SqliteRuntime.REQUIRED_SQLITE_SOURCE_ID,
       SqliteRuntimeProvenance.BUNDLE_MANAGED,
-      "/tmp/libsqlite3.dylib"
+      "/tmp/libsqlite3.dylib",
+      SqliteNativeHandleFixtures.constantMethodHandle(
+          MemorySegment.NULL,
+          MemorySegment.class,
+          MemorySegment.class,
+          MemorySegment.class,
+          MemorySegment.class),
+      SqliteNativeHandleFixtures.constantMethodHandle(0, MemorySegment.class, int.class),
+      SqliteNativeHandleFixtures.constantMethodHandle(0, MemorySegment.class)
     };
   }
 
@@ -138,6 +146,9 @@ final class SqliteNativeApiFixture {
         (String) sqliteApiArguments[29],
         (String) sqliteApiArguments[30],
         (SqliteRuntimeProvenance) sqliteApiArguments[31],
-        (String) sqliteApiArguments[32]);
+        (String) sqliteApiArguments[32],
+        (MethodHandle) sqliteApiArguments[33],
+        (MethodHandle) sqliteApiArguments[34],
+        (MethodHandle) sqliteApiArguments[35]);
   }
 }

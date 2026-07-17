@@ -39,7 +39,10 @@ record SqliteNativeApi(
     String loadedSqlite3mcVersion,
     String loadedSourceId,
     SqliteRuntimeProvenance runtimeProvenance,
-    String loadedLibraryPath) {
+    String loadedLibraryPath,
+    MethodHandle sqlite3BackupInit,
+    MethodHandle sqlite3BackupStep,
+    MethodHandle sqlite3BackupFinish) {
   SqliteNativeApi {
     Objects.requireNonNull(libraryArena, "libraryArena");
     Objects.requireNonNull(sqlite3OpenV2, "sqlite3OpenV2");
@@ -74,6 +77,9 @@ record SqliteNativeApi(
     Objects.requireNonNull(loadedSourceId, "loadedSourceId");
     Objects.requireNonNull(runtimeProvenance, "runtimeProvenance");
     Objects.requireNonNull(loadedLibraryPath, "loadedLibraryPath");
+    Objects.requireNonNull(sqlite3BackupInit, "sqlite3BackupInit");
+    Objects.requireNonNull(sqlite3BackupStep, "sqlite3BackupStep");
+    Objects.requireNonNull(sqlite3BackupFinish, "sqlite3BackupFinish");
     loadedVersion = loadedVersion.strip();
     loadedSqlite3mcVersion = loadedSqlite3mcVersion.strip();
     loadedSourceId = loadedSourceId.strip();

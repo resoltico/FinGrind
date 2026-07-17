@@ -39,6 +39,9 @@ class ProtectedBookMaintenanceDestinationSafetyTest {
     ContractFailure backupFailure =
         service(backupStore).backupBook(access(book), backup, backupKey).requireRejected();
     assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, backupFailure.descriptor());
+    assertEquals(
+        "Failed to recover or prepare the FinGrind backup pair publication.",
+        backupFailure.message());
     assertEquals(1, backupStore.staging.interruptedPairRecoveryRequests);
     assertTrue(backupStore.verificationRequests.isEmpty());
 
@@ -50,6 +53,9 @@ class ProtectedBookMaintenanceDestinationSafetyTest {
             .restoreBook(book, newBookKey, backup, backupKey, false)
             .requireRejected();
     assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, restoreFailure.descriptor());
+    assertEquals(
+        "Failed to recover or prepare the FinGrind restored-book pair publication.",
+        restoreFailure.message());
     assertEquals(1, restoreStore.staging.interruptedPairRecoveryRequests);
     assertTrue(restoreStore.verificationRequests.isEmpty());
 
@@ -59,6 +65,9 @@ class ProtectedBookMaintenanceDestinationSafetyTest {
     ContractFailure rekeyFailure =
         service(rekeyStore).rekeyBook(access(book), newBookKey).requireRejected();
     assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, rekeyFailure.descriptor());
+    assertEquals(
+        "Failed to recover or prepare the FinGrind rekeyed-book pair publication.",
+        rekeyFailure.message());
     assertEquals(1, rekeyStore.staging.interruptedPairRecoveryRequests);
     assertTrue(rekeyStore.verificationRequests.isEmpty());
   }
@@ -78,6 +87,8 @@ class ProtectedBookMaintenanceDestinationSafetyTest {
             .restoreBook(book, newBookKey, backup, backupKey, false)
             .requireRejected();
     assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, restoreFailure.descriptor());
+    assertEquals(
+        "Failed to publish the staged FinGrind restored-book pair.", restoreFailure.message());
     assertTrue(restoreStore.staging.restoredPairClosed);
 
     FakeMaintenanceStore rekeyStore = new FakeMaintenanceStore();
@@ -86,7 +97,90 @@ class ProtectedBookMaintenanceDestinationSafetyTest {
     ContractFailure rekeyFailure =
         service(rekeyStore).rekeyBook(access(book), newBookKey).requireRejected();
     assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, rekeyFailure.descriptor());
+    assertEquals(
+        "Failed to publish the staged FinGrind rekeyed book pair.", rekeyFailure.message());
     assertTrue(rekeyStore.staging.restoredPairClosed);
+  }
+
+  @Test
+  void stagingRuntimeFailureAfterPreparation_isTypedAtEachWorkflowBoundary() {
+    Path book = path(tempDirectory, "book.sqlite");
+    Path backup = path(tempDirectory, "backup.sqlite");
+    Path backupKey = path(tempDirectory, "backup.book-key");
+    Path newBookKey = path(tempDirectory, "book-new.book-key");
+
+    FakeMaintenanceStore backupStore = new FakeMaintenanceStore();
+    backupStore.staging.stagePairRuntimeFailure =
+        new IllegalStateException("backup staging failed");
+    ContractFailure backupFailure =
+        service(backupStore).backupBook(access(book), backup, backupKey).requireRejected();
+    assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, backupFailure.descriptor());
+    assertEquals(
+        "Failed to verify, stage, or publish the FinGrind backup pair.", backupFailure.message());
+
+    FakeMaintenanceStore restoreStore = new FakeMaintenanceStore();
+    restoreStore.staging.stagePairRuntimeFailure =
+        new IllegalStateException("restore staging failed");
+    ContractFailure restoreFailure =
+        service(restoreStore)
+            .restoreBook(book, newBookKey, backup, backupKey, false)
+            .requireRejected();
+    assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, restoreFailure.descriptor());
+    assertEquals(
+        "Failed to verify, stage, or publish the FinGrind restored-book pair.",
+        restoreFailure.message());
+
+    FakeMaintenanceStore rekeyStore = new FakeMaintenanceStore();
+    rekeyStore.staging.stagePairRuntimeFailure = new IllegalStateException("rekey staging failed");
+    ContractFailure rekeyFailure =
+        service(rekeyStore).rekeyBook(access(book), newBookKey).requireRejected();
+    assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, rekeyFailure.descriptor());
+    assertEquals(
+        "Failed to verify, stage, or publish the FinGrind rekeyed-book pair.",
+        rekeyFailure.message());
+  }
+
+  @Test
+  void preparedPublicationCloseRejection_remainsAWorkflowRejection() {
+    Path book = path(tempDirectory, "book.sqlite");
+    Path backup = path(tempDirectory, "backup.sqlite");
+    Path backupKey = path(tempDirectory, "backup.book-key");
+    Path newBookKey = path(tempDirectory, "book-new.book-key");
+
+    FakeMaintenanceStore backupStore = new FakeMaintenanceStore();
+    backupStore.staging.preparedPairCloseRejection =
+        new ProtectedBookMaintenanceRejection.SecretTargetOccupied(
+            backupStore.normalized(backupKey));
+    BackupBookResult.Rejected backupRejected =
+        assertInstanceOf(
+            BackupBookResult.Rejected.class,
+            service(backupStore).backupBook(access(book), backup, backupKey).requireAccepted());
+    assertInstanceOf(
+        BookMaintenanceRejection.SecretTargetOccupied.class, backupRejected.rejection());
+
+    FakeMaintenanceStore restoreStore = new FakeMaintenanceStore();
+    restoreStore.staging.preparedPairCloseRejection =
+        new ProtectedBookMaintenanceRejection.SecretTargetOccupied(
+            restoreStore.normalized(newBookKey));
+    RestoreBookResult.Rejected restoreRejected =
+        assertInstanceOf(
+            RestoreBookResult.Rejected.class,
+            service(restoreStore)
+                .restoreBook(book, newBookKey, backup, backupKey, false)
+                .requireAccepted());
+    assertInstanceOf(
+        BookMaintenanceRejection.SecretTargetOccupied.class, restoreRejected.rejection());
+
+    FakeMaintenanceStore rekeyStore = new FakeMaintenanceStore();
+    rekeyStore.staging.preparedPairCloseRejection =
+        new ProtectedBookMaintenanceRejection.SecretTargetOccupied(
+            rekeyStore.normalized(newBookKey));
+    RekeyBookResult.Rejected rekeyRejected =
+        assertInstanceOf(
+            RekeyBookResult.Rejected.class,
+            service(rekeyStore).rekeyBook(access(book), newBookKey).requireAccepted());
+    assertInstanceOf(
+        BookMaintenanceRejection.SecretTargetOccupied.class, rekeyRejected.rejection());
   }
 
   @Test

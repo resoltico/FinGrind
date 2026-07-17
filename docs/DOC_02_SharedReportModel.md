@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: CONTRACT_REPORT_MODEL
-updated: "2026-07-11"
+updated: "2026-07-16"
 scope:
   paths: ["contract/src/main/java/dev/erst/fingrind/contract/reportmodel"]
   symbols: ["ReportModel", "ReportCsvProjection", "InventoryValuationReportModelBuilder"]

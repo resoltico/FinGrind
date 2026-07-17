@@ -130,8 +130,8 @@ class SqliteGeneratedSecretTargetMaintenanceStoreTest
             ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
             ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET)) {
       assertFalse(Files.exists(interruptedSecret.stagedPath()));
-      assertTrue(Files.exists(finalBackupPath));
-      assertTrue(Files.exists(finalSecretPath));
+      assertFalse(Files.exists(finalBackupPath));
+      assertFalse(Files.exists(finalSecretPath));
     }
 
     assertFalse(Files.exists(finalBackupPath));
@@ -213,8 +213,8 @@ class SqliteGeneratedSecretTargetMaintenanceStoreTest
               ProtectedBookMaintenanceRejection.ArtifactBusy.class, concurrentAttempt.get());
       assertEquals(ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET, busy.artifactRole());
       assertEquals(finalBackupPath, busy.artifactPath());
-      assertTrue(Files.exists(finalBackupPath));
-      assertTrue(Files.exists(finalSecretPath));
+      assertFalse(Files.exists(finalBackupPath));
+      assertFalse(Files.exists(finalSecretPath));
       assertFalse(SqliteOwnedStageRecord.findFor(finalBackupPath).isEmpty());
       assertFalse(SqliteOwnedStageRecord.findFor(finalSecretPath).isEmpty());
     }

@@ -25,26 +25,48 @@ resolve_script_dir() {
     cd -P -- "$(dirname -- "${source_path}")" && pwd
 }
 
-readonly script_dir="$(resolve_script_dir)"
-readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
+script_dir="$(resolve_script_dir)"
+readonly script_dir
+repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
+readonly repo_root
 readonly verifier="${repo_root}/scripts/verify-repo-hygiene.sh"
 readonly cleaner="${repo_root}/scripts/clean-repo-hygiene.sh"
 
 [[ -x "${verifier}" ]] || die "missing executable repo hygiene verifier"
 [[ -x "${cleaner}" ]] || die "missing executable repo hygiene cleaner"
 
-mkdir -p "${repo_root}/tmp"
-fixture_root="$(mktemp -d "${repo_root}/tmp/repo-hygiene-fixture.XXXXXX")"
+readonly fixture_parent="${TMPDIR:-/tmp}"
+fixture_root="$(mktemp -d "${fixture_parent%/}/fingrind-repo-hygiene-fixture.XXXXXX")"
+fixture_git_dir="$(mktemp -d "${fixture_parent%/}/fingrind-repo-hygiene-gitdir.XXXXXX")"
+fixture_root="$(cd -P -- "${fixture_root}" && pwd)"
+fixture_git_dir="$(cd -P -- "${fixture_git_dir}" && pwd)"
 cleanup() {
-    rm -rf "${fixture_root}" 2>/dev/null || true
+    local cleanup_path
+    local cleanup_failed=false
+
+    for cleanup_path in "${fixture_root}" "${fixture_git_dir}"; do
+        [[ -e "${cleanup_path}" ]] || continue
+        if command -v chflags >/dev/null 2>&1; then
+            chflags -R nohidden,nouchg,noschg "${cleanup_path}" 2>/dev/null || true
+        fi
+        chmod -RN "${cleanup_path}" 2>/dev/null || true
+        chmod -R u+rwX "${cleanup_path}" 2>/dev/null || true
+        if ! rm -rf "${cleanup_path}" 2>/dev/null || [[ -e "${cleanup_path}" ]]; then
+            printf 'error: unable to remove repository hygiene fixture: %s\n' "${cleanup_path}" >&2
+            cleanup_failed=true
+        fi
+    done
+
+    [[ "${cleanup_failed}" == false ]]
 }
-trap cleanup EXIT
+trap 'cleanup || exit 1' EXIT
+rmdir "${fixture_git_dir}" || die "unable to reserve separate fixture Git metadata path"
 
 mkdir -p \
     "${fixture_root}/tmp/scratch" \
     "${fixture_root}/cli" \
     "${fixture_root}/scripts"
-git -C "${fixture_root}" init -q -b main
+git init -q -b main --separate-git-dir="${fixture_git_dir}" "${fixture_root}"
 git -C "${fixture_root}" config user.name 'Repo Hygiene Fixture'
 git -C "${fixture_root}" config user.email 'repo-hygiene-fixture@example.invalid'
 touch \
@@ -69,7 +91,8 @@ progress 'clean fixture root passes verification'
     "repo hygiene verifier should accept a clean fixture root"
 
 progress 'clean fixture root stays portable when git fsck lacks --no-references'
-readonly real_git="$(command -v git)"
+real_git="$(command -v git)"
+readonly real_git
 readonly shim_dir="${fixture_root}/tmp/git-shim"
 mkdir -p "${shim_dir}"
 cat > "${shim_dir}/git" <<'EOF'
@@ -209,6 +232,7 @@ report_elapsed_seconds=$((SECONDS - report_started_at))
 
 mkdir "${fixture_root}/2026-01-31"
 printf 'finder drift\n' > "${fixture_root}/.DS_Store"
+printf 'Git metadata must stay untouched\n' > "${fixture_git_dir}/.DS_Store"
 
 set +e
 failure_output="$("${verifier}" --repo-root "${fixture_root}" 2>&1)"
@@ -225,8 +249,11 @@ progress 'unexpected root entries are cleaned and reverified'
     "repo hygiene cleaner should remove empty unexpected entries and .DS_Store files"
 "${verifier}" --repo-root "${fixture_root}" || die \
     "repo hygiene verifier should pass after cleanup"
+[[ -f "${fixture_git_dir}/.DS_Store" ]] || die \
+    "repo hygiene cleaner should never traverse or alter Git metadata"
+rm -f "${fixture_git_dir}/.DS_Store"
 
-printf '' > "${fixture_root}/.git/index.lock"
+printf '' > "${fixture_git_dir}/index.lock"
 
 set +e
 lock_output="$("${verifier}" --repo-root "${fixture_root}" 2>&1)"
@@ -236,15 +263,60 @@ set -e
     "repo hygiene verifier should fail when Git coordination lock files are present"
 [[ "${lock_output}" == *'git coordination lock files are present'* ]] || die \
     "repo hygiene verifier did not report Git coordination lock files"
-[[ "${lock_output}" == *'.git/index.lock'* ]] || die \
+[[ "${lock_output}" == *"${fixture_git_dir}/index.lock"* ]] || die \
     "repo hygiene verifier did not report the Git index lock path"
-rm -f "${fixture_root}/.git/index.lock"
+rm -f "${fixture_git_dir}/index.lock"
 
 progress 'lock-file cleanup restores verifier success'
 "${verifier}" --repo-root "${fixture_root}" || die \
     "repo hygiene verifier should pass after removing the Git coordination lock file"
 
-printf 'warning: unreachable loose objects remain\n' > "${fixture_root}/.git/gc.log"
+mkdir -p \
+    "${fixture_git_dir}/refs/heads" \
+    "${fixture_git_dir}/logs/refs/heads" \
+    "${fixture_git_dir}/reftable"
+touch \
+    "${fixture_git_dir}/refs/heads/main.lock" \
+    "${fixture_git_dir}/refs/stash.lock" \
+    "${fixture_git_dir}/logs/refs/heads/main.lock" \
+    "${fixture_git_dir}/logs/refs/stash.lock" \
+    "${fixture_git_dir}/reftable/tables.list.lock"
+
+set +e
+bounded_lock_output="$("${verifier}" --repo-root "${fixture_root}" 2>&1)"
+bounded_lock_status=$?
+set -e
+[[ ${bounded_lock_status} -ne 0 ]] || die \
+    "repo hygiene verifier should fail when nested Git coordination lock files are present"
+for expected_lock_path in \
+    "${fixture_git_dir}/refs/heads/main.lock" \
+    "${fixture_git_dir}/refs/stash.lock" \
+    "${fixture_git_dir}/logs/refs/heads/main.lock" \
+    "${fixture_git_dir}/logs/refs/stash.lock" \
+    "${fixture_git_dir}/reftable/tables.list.lock"; do
+    [[ "${bounded_lock_output}" == *"${expected_lock_path}"* ]] || die \
+        "repo hygiene verifier did not report the nested Git coordination lock path ${expected_lock_path}"
+done
+rm -f \
+    "${fixture_git_dir}/refs/heads/main.lock" \
+    "${fixture_git_dir}/refs/stash.lock" \
+    "${fixture_git_dir}/logs/refs/heads/main.lock" \
+    "${fixture_git_dir}/logs/refs/stash.lock" \
+    "${fixture_git_dir}/reftable/tables.list.lock"
+
+progress 'nested lock cleanup restores verifier success'
+"${verifier}" --repo-root "${fixture_root}" || die \
+    "repo hygiene verifier should pass after removing nested Git coordination lock files"
+
+mkdir -p "${fixture_git_dir}/refs/codex/turn-diffs/captures"
+touch "${fixture_git_dir}/refs/codex/turn-diffs/captures/private.lock"
+
+progress 'Git-private ref namespaces do not participate in repository lock verification'
+"${verifier}" --repo-root "${fixture_root}" || die \
+    "repo hygiene verifier should ignore Git-private tool ref locks"
+rm -rf "${fixture_git_dir}/refs/codex"
+
+printf 'warning: unreachable loose objects remain\n' > "${fixture_git_dir}/gc.log"
 
 set +e
 gc_log_output="$("${verifier}" --repo-root "${fixture_root}" 2>&1)"
@@ -254,26 +326,15 @@ set -e
     "repo hygiene verifier should fail when Git housekeeping is suspended by gc.log"
 [[ "${gc_log_output}" == *'git housekeeping is suspended by a persisted gc.log'* ]] || die \
     "repo hygiene verifier did not report the persisted gc.log failure"
-[[ "${gc_log_output}" == *'.git/gc.log'* ]] || die \
+[[ "${gc_log_output}" == *"${fixture_git_dir}/gc.log"* ]] || die \
     "repo hygiene verifier did not report the gc.log path"
-rm -f "${fixture_root}/.git/gc.log"
+rm -f "${fixture_git_dir}/gc.log"
 
 progress 'gc.log cleanup restores verifier success'
 "${verifier}" --repo-root "${fixture_root}" || die \
     "repo hygiene verifier should pass after removing the persisted gc.log"
 
-mkdir -p "${fixture_root}/.git/refs/codex/turn-diffs/captures"
-chmod 000 "${fixture_root}/.git/refs/codex/turn-diffs/captures"
-set +e
-private_ref_output="$("${verifier}" --repo-root "${fixture_root}" 2>&1)"
-private_ref_status=$?
-set -e
-[[ ${private_ref_status} -eq 0 ]] || die \
-    "repo hygiene verifier should ignore protected Git-private ref namespaces"
-chmod 700 "${fixture_root}/.git/refs/codex/turn-diffs/captures"
-rm -rf "${fixture_root}/.git/refs/codex"
-
-printf 'not-an-oid\n' > "${fixture_root}/.git/refs/heads/broken"
+printf 'not-an-oid\n' > "${fixture_git_dir}/refs/heads/broken"
 set +e
 broken_ref_output="$("${verifier}" --repo-root "${fixture_root}" 2>&1)"
 broken_ref_status=$?
@@ -282,7 +343,7 @@ set -e
     "repo hygiene verifier should fail when a repo-owned ref is broken"
 [[ "${broken_ref_output}" == *'repo-owned Git reference verification failed'* ]] || die \
     "repo hygiene verifier did not report repo-owned ref verification failures"
-rm -f "${fixture_root}/.git/refs/heads/broken"
+rm -f "${fixture_git_dir}/refs/heads/broken"
 
 mkdir -p \
     "${fixture_root}/build/report" \
@@ -315,6 +376,62 @@ progress 'generated-state purge removes repo-owned build artifacts'
 [[ -d "${fixture_root}/.vscode" ]] || die "editor state should remain without --purge-tool-state"
 [[ -d "${fixture_root}/tmp" ]] || die "tmp root should remain without --purge-tmp"
 
+progress 'requested purge failure is reported as a failed cleanup'
+mkdir -p "${fixture_root}/build/blocked"
+real_rm="$(command -v rm)"
+readonly real_rm
+readonly failing_rm_dir="${fixture_root}/tmp/failing-rm"
+mkdir -p "${failing_rm_dir}"
+cat > "${failing_rm_dir}/rm" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly real_rm="${REAL_RM_PATH:?}"
+readonly failing_target="${FAILING_RM_TARGET:?}"
+
+for argument in "$@"; do
+    if [[ "${argument}" == "${failing_target}" ]]; then
+        printf 'injected remove failure for %s\n' "${failing_target}" >&2
+        exit 1
+    fi
+done
+
+exec "${real_rm}" "$@"
+EOF
+chmod +x "${failing_rm_dir}/rm"
+
+set +e
+cleanup_failure_output="$(
+        REAL_RM_PATH="${real_rm}" \
+        FAILING_RM_TARGET="${fixture_root}/build" \
+        PATH="${failing_rm_dir}:${PATH}" \
+        "${cleaner}" --repo-root "${fixture_root}" --purge-generated-state 2>&1
+)"
+cleanup_failure_status=$?
+set -e
+[[ ${cleanup_failure_status} -ne 0 ]] || die \
+    "repo hygiene cleaner should fail when requested generated-state cleanup is incomplete"
+[[ "${cleanup_failure_output}" == *'requested repository-local-state cleanup was incomplete'* ]] || die \
+    "repo hygiene cleaner did not report incomplete requested cleanup"
+rm -rf "${fixture_root}/build"
+
+progress 'Finder-artifact cleanup failure is reported as a failed cleanup'
+printf 'finder drift\n' > "${fixture_root}/.DS_Store"
+set +e
+finder_cleanup_failure_output="$(
+    REAL_RM_PATH="${real_rm}" \
+        FAILING_RM_TARGET="${fixture_root}/.DS_Store" \
+        PATH="${failing_rm_dir}:${PATH}" \
+        "${cleaner}" --repo-root "${fixture_root}" 2>&1
+)"
+finder_cleanup_failure_status=$?
+set -e
+[[ ${finder_cleanup_failure_status} -ne 0 ]] || die \
+    "repo hygiene cleaner should fail when Finder-artifact cleanup is incomplete"
+[[ "${finder_cleanup_failure_output}" == *'requested repository-local-state cleanup was incomplete'* ]] || die \
+    "repo hygiene cleaner did not report incomplete Finder-artifact cleanup"
+rm -f "${fixture_root}/.DS_Store"
+
 progress 'tool-state purge remains opt-in and explicit'
 "${cleaner}" --repo-root "${fixture_root}" --purge-tool-state >/dev/null || die \
     "repo hygiene cleaner should support explicit tool-state cleanup"
@@ -327,9 +444,9 @@ progress 'tmp purge remains opt-in and explicit'
     "repo hygiene cleaner should support explicit tmp cleanup"
 [[ ! -e "${fixture_root}/tmp" ]] || die "tmp root was not removed by --purge-tmp"
 
-mkdir -p "${fixture_root}/.git/objects/aa"
+mkdir -p "${fixture_git_dir}/objects/aa"
 printf 'corrupt loose object\n' > \
-    "${fixture_root}/.git/objects/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    "${fixture_git_dir}/objects/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 set +e
 corrupt_output="$("${verifier}" --repo-root "${fixture_root}" 2>&1)"
@@ -339,6 +456,6 @@ set -e
     "repo hygiene verifier should fail when the git object store is corrupt"
 [[ "${corrupt_output}" == *'git object-store verification failed'* ]] || die \
     "repo hygiene verifier did not report git object-store corruption"
-rm -f "${fixture_root}/.git/objects/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+rm -f "${fixture_git_dir}/objects/aa/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 printf 'repo hygiene verifier regression: success\n'

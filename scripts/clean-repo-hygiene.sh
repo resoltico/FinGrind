@@ -46,14 +46,56 @@ resolve_script_dir() {
 remove_path() {
     local target_path=$1
     [[ -e "${target_path}" || -L "${target_path}" ]] || return 0
+    if [[ ! -L "${target_path}" ]] && command -v chflags >/dev/null 2>&1; then
+        # macOS Git marks metadata directories hidden. Clear removable flags
+        # immediately before deletion so explicit scratch cleanup stays reliable
+        # on SMB-backed workspaces without following a local-state symlink.
+        chflags -R nohidden,nouchg,noschg "${target_path}" 2>/dev/null || true
+    fi
     rm -rf -- "${target_path}" 2>/dev/null || {
         warn "unable to remove ${target_path}"
         return 1
     }
 }
 
-readonly script_dir="$(resolve_script_dir)"
-readonly default_repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
+remove_finder_artifacts() {
+    local finder_artifacts_file
+    local finder_artifact
+    local cleanup_status=0
+
+    finder_artifacts_file="$(mktemp "${TMPDIR:-/tmp}/fingrind-finder-artifacts.XXXXXX")" || {
+        warn 'unable to allocate a Finder-artifact cleanup manifest'
+        return 1
+    }
+
+    # Git metadata is never checkout clutter. Exclude it so cleanup cannot
+    # enumerate private reference or object storage.
+    if ! find "${repo_root}" \
+        -path "${repo_root}/.git" -prune -o \
+        -name '.DS_Store' -type f -print0 >"${finder_artifacts_file}" 2>/dev/null; then
+        warn "unable to enumerate Finder artifacts beneath ${repo_root}"
+        cleanup_status=1
+    fi
+
+    while IFS= read -r -d '' finder_artifact; do
+        if ! rm -f -- "${finder_artifact}" 2>/dev/null; then
+            warn "unable to remove ${finder_artifact}"
+            cleanup_status=1
+        fi
+    done < "${finder_artifacts_file}"
+
+    if ! rm -f -- "${finder_artifacts_file}"; then
+        warn "unable to remove Finder-artifact cleanup manifest ${finder_artifacts_file}"
+        cleanup_status=1
+    fi
+
+    return "${cleanup_status}"
+}
+
+script_dir="$(resolve_script_dir)"
+readonly script_dir
+default_repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
+readonly default_repo_root
 readonly support_script="${script_dir}/repo-hygiene-support.sh"
 
 [[ -f "${support_script}" ]] || die "missing repo hygiene support helper at ${support_script}"
@@ -64,6 +106,7 @@ repo_root="${default_repo_root}"
 purge_generated_state=false
 purge_tool_state=false
 purge_tmp=false
+cleanup_failed=false
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -97,7 +140,9 @@ done
 repo_root="$(cd -P -- "${repo_root}" && pwd)"
 [[ -d "${repo_root}" ]] || die "repository root is not a directory: ${repo_root}"
 
-find "${repo_root}" -name '.DS_Store' -type f -delete 2>/dev/null || true
+if ! remove_finder_artifacts; then
+    cleanup_failed=true
+fi
 
 while IFS= read -r root_entry; do
     [[ -n "${root_entry}" ]] || continue
@@ -133,7 +178,9 @@ if [[ "${purge_generated_state}" == true ]]; then
         "${repo_root}/.local/tooling"
     )
     for generated_state_path in "${generated_state_paths[@]}"; do
-        remove_path "${generated_state_path}" || true
+        if ! remove_path "${generated_state_path}"; then
+            cleanup_failed=true
+        fi
     done
 fi
 
@@ -144,12 +191,20 @@ if [[ "${purge_tool_state}" == true ]]; then
         "${repo_root}/.vscode"
     )
     for tool_state_path in "${tool_state_paths[@]}"; do
-        remove_path "${tool_state_path}" || true
+        if ! remove_path "${tool_state_path}"; then
+            cleanup_failed=true
+        fi
     done
 fi
 
 if [[ "${purge_tmp}" == true ]]; then
-    remove_path "${repo_root}/tmp" || true
+    if ! remove_path "${repo_root}/tmp"; then
+        cleanup_failed=true
+    fi
+fi
+
+if [[ "${cleanup_failed}" == true ]]; then
+    die 'requested repository-local-state cleanup was incomplete'
 fi
 
 printf 'repo hygiene cleanup: success\n'

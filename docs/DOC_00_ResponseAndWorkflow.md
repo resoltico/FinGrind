@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: INDEX_RESPONSE_AND_WORKFLOW
-updated: "2026-07-14"
+updated: "2026-07-16"
 route:
   keywords: [fingrind, response, envelope, failure category, ledger plan, workflow, execution journal]
   questions: ["where is the fingrind response contract documented", "which doc covers LedgerPlanFailure", "which doc covers ContractResponseCatalog"]

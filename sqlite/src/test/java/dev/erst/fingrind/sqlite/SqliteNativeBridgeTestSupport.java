@@ -28,6 +28,9 @@ class SqliteNativeBridgeTestSupport {
   static final int SQLITE_API_ARGUMENT_LOADED_SQLITE3MC_VERSION = 29;
   static final int SQLITE_API_ARGUMENT_LOADED_SOURCE_ID = 30;
   static final int SQLITE_API_ARGUMENT_LOADED_LIBRARY_PATH = 32;
+  static final int SQLITE_API_ARGUMENT_BACKUP_INIT = 33;
+  static final int SQLITE_API_ARGUMENT_BACKUP_STEP = 34;
+  static final int SQLITE_API_ARGUMENT_BACKUP_FINISH = 35;
 
   protected SqliteNativeBridgeTestSupport() {}
 

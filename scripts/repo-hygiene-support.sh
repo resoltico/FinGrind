@@ -177,6 +177,68 @@ repo_hygiene_print_local_state_report() {
         done
 }
 
+repo_hygiene_list_git_coordination_locks() {
+    local git_metadata_root=$1
+    local metadata_lock_path
+    local direct_ref_lock_path
+    local coordination_directory
+    local -a repo_owned_ref_namespaces=(heads tags remotes notes replace bisect)
+    local -a metadata_lock_paths=(
+        HEAD.lock
+        index.lock
+        packed-refs.lock
+        config.lock
+        config.worktree.lock
+        shallow.lock
+        FETCH_HEAD.lock
+        ORIG_HEAD.lock
+    )
+    local -a direct_ref_lock_paths=(stash.lock)
+
+    # Git writes coordination locks alongside metadata and repository-owned refs.
+    # The caller supplies the active worktree's git_dir, so its own metadata locks
+    # are covered directly. Object storage and Git-private tool ref namespaces have
+    # separate owners, so never recurse through either from this release-safety check.
+    for metadata_lock_path in "${metadata_lock_paths[@]}"; do
+        [[ -f "${git_metadata_root}/${metadata_lock_path}" ]] &&
+            printf '%s\n' "${git_metadata_root}/${metadata_lock_path}"
+    done
+
+    if [[ -d "${git_metadata_root}/refs" ]]; then
+        for direct_ref_lock_path in "${direct_ref_lock_paths[@]}"; do
+            [[ -f "${git_metadata_root}/refs/${direct_ref_lock_path}" ]] &&
+                printf '%s\n' "${git_metadata_root}/refs/${direct_ref_lock_path}"
+        done
+        for coordination_directory in "${repo_owned_ref_namespaces[@]}"; do
+            [[ -d "${git_metadata_root}/refs/${coordination_directory}" ]] || continue
+            find "${git_metadata_root}/refs/${coordination_directory}" \
+                -type f \
+                -name '*.lock' \
+                -print
+        done
+    fi
+
+    if [[ -d "${git_metadata_root}/logs" ]]; then
+        [[ -f "${git_metadata_root}/logs/HEAD.lock" ]] &&
+            printf '%s\n' "${git_metadata_root}/logs/HEAD.lock"
+        for direct_ref_lock_path in "${direct_ref_lock_paths[@]}"; do
+            [[ -f "${git_metadata_root}/logs/refs/${direct_ref_lock_path}" ]] &&
+                printf '%s\n' "${git_metadata_root}/logs/refs/${direct_ref_lock_path}"
+        done
+        for coordination_directory in "${repo_owned_ref_namespaces[@]}"; do
+            [[ -d "${git_metadata_root}/logs/refs/${coordination_directory}" ]] || continue
+            find "${git_metadata_root}/logs/refs/${coordination_directory}" \
+                -type f \
+                -name '*.lock' \
+                -print
+        done
+    fi
+
+    if [[ -d "${git_metadata_root}/reftable" ]]; then
+        find "${git_metadata_root}/reftable" -type f -name '*.lock' -print
+    fi
+}
+
 repo_hygiene_verify_repo_owned_refs() {
     local repo_root=$1
     local error_file
@@ -231,7 +293,7 @@ repo_hygiene_git_fsck_supports_no_references() {
             --no-dangling \
             --no-progress \
             --connectivity-only \
-            HEAD^{commit} 2>&1 >/dev/null
+            'HEAD^{commit}' 2>&1 >/dev/null
     )" && return 0
 
     case "${probe_output}" in
@@ -275,6 +337,7 @@ repo_hygiene_run_git_fsck_with_heartbeat() {
     done
     wait "${fsck_pid}"
     local fsck_status=$?
+    # shellcheck disable=SC2034 # Sourced by verify-repo-hygiene.sh for failure output.
     object_store_output="$(cat "${output_file}")"
     rm -f "${output_file}"
     return "${fsck_status}"

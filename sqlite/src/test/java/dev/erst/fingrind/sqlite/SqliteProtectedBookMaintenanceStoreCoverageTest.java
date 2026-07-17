@@ -131,8 +131,8 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
             prepareBackupPair(store, backupFilePath, backupBookKeyFilePath);
         StagedBackupPair stagedBackupPair =
             acceptedValue(store.stageBackupPair(verifiedSourceBook, preparedPairPublication))) {
-      assertTrue(Files.exists(backupFilePath));
-      assertTrue(Files.exists(backupBookKeyFilePath));
+      assertFalse(Files.exists(backupFilePath));
+      assertFalse(Files.exists(backupBookKeyFilePath));
       assertInstanceOf(
           ProtectedBookMaintenanceStore.VerifiedBook.class,
           acceptedValue(stagedBackupPair.verifyInitializedBackup()));
@@ -734,9 +734,16 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
                 bogusSourcePath.toAbsolutePath().normalize(), bogusPassphrase.copy());
         ProtectedBookMaintenanceStore.PreparedPairPublication preparedPairPublication =
             prepareBackupPair(store, backupFilePath, backupKeyPath)) {
-      assertThrows(
-          RuntimeException.class,
-          () -> store.stageBackupPair(bogusVerifiedBook, preparedPairPublication));
+      var failure = failedValue(store.stageBackupPair(bogusVerifiedBook, preparedPairPublication));
+      assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, failure.descriptor());
+      assertEquals(
+          SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_SOURCE_OPEN.failureMessage()
+              + " SQLite reported SQLITE_NOTADB.",
+          failure.message());
+      assertEquals("backupFilePath", failure.argument());
+      assertEquals(
+          backupFilePath.toAbsolutePath().normalize(),
+          java.util.Objects.requireNonNull(failure.paths(), "failure paths").path());
     }
     try (var children =
         Files.list(java.util.Objects.requireNonNull(backupFilePath.getParent(), "backup parent"))) {
@@ -786,8 +793,6 @@ class SqliteProtectedBookMaintenanceStoreCoverageTest
             prepareBackupPair(store, finalBackupFilePath, finalBackupKeyFilePath);
         StagedBackupPair stagedBackupPair =
             acceptedValue(store.stageBackupPair(verifiedSourceBook, preparedPairPublication))) {
-      Files.delete(finalBackupFilePath);
-      Files.delete(finalBackupKeyFilePath);
       Files.writeString(finalBackupFilePath, "published-backup");
       Files.writeString(finalBackupKeyFilePath, "published-key");
       setPrivateField(stagedBackupPair, "backupPassphrase", null);

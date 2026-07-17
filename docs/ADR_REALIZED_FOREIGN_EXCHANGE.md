@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: ADR_REALIZED_FOREIGN_EXCHANGE
-updated: "2026-07-15"
+updated: "2026-07-16"
 route:
   keywords: [fingrind, realized foreign exchange, foreign-currency obligation, FX settlement, realized gain, realized loss]
   questions: ["how does fingrind record realized foreign exchange", "what owns a foreign-currency obligation", "how is an FX settlement derived"]
@@ -12,7 +12,7 @@ route:
 
 ## Status
 
-Accepted for the unreleased integration line. Typed foreign-currency receivable origination, one-time settlement, derived realized gain or loss, compensating reversals, and realized-foreign-exchange-register reporting are implemented together, but are not yet a public capability.
+Published in `0.61.0`. Typed foreign-currency receivable origination, one-time settlement, derived realized gain or loss, compensating reversals, and realized-foreign-exchange-register reporting are one public capability with one owned lifecycle boundary.
 
 The release boundary is limited to one foreign-currency receivable and one active settlement per retained obligation while all journal lines remain in the book's functional currency. Rate sourcing, remeasurement, translation of foreign operations, hedging, and mixed-currency journal lines remain outside this context.
 

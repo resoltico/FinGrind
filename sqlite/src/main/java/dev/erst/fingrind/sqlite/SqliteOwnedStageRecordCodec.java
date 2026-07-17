@@ -20,6 +20,7 @@ import java.util.function.Supplier;
 final class SqliteOwnedStageRecordCodec {
   private static final String RECORD_INFIX = ".fingrind-maintenance-stage-";
   private static final String RECORD_SUFFIX = ".owner";
+  private static final String STAGE_FILE_PREFIX = ".fingrind-stage";
   private static final String RECORD_MAGIC = "fingrind-maintenance-stage-v1";
   private static final String UUID_PATTERN =
       "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
@@ -28,10 +29,10 @@ final class SqliteOwnedStageRecordCodec {
 
   static Path stagedPath(Path finalPath, String infix, String suffix) {
     Path parent = Objects.requireNonNull(finalPath.getParent(), "finalPath parent");
-    String fileName =
-        Objects.requireNonNull(finalPath.getFileName(), "finalPath fileName").toString();
+    // SQLite may create a rollback-journal sidecar while materializing this file. Keeping the
+    // stage name independent of the user-selected artifact name preserves Windows path headroom.
     return parent.resolve(
-        fileName
+        STAGE_FILE_PREFIX
             + Objects.requireNonNull(infix, "infix")
             + UUID.randomUUID()
             + Objects.requireNonNull(suffix, "suffix"));

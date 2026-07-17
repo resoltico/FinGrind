@@ -33,17 +33,17 @@ final class ProtectedBookRestoreWorkflow {
               new ProtectedBookMaintenanceRejection.BackupSourceMatchesLiveBook(
                   normalizedBookPath, normalizedBackupFilePath)));
     }
-    try (PreparedPairPublication preparedPublication =
-        store.preparePairPublication(
-            normalizedNewBookKeyFilePath,
-            normalizedBookPath,
-            replaceExistingBook
-                ? RestoredBookTargetPolicy.REPLACE_SELECTED
-                : RestoredBookTargetPolicy.REQUIRE_ABSENT,
-            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
-            ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET)) {
-      return restoreWithPreparedPublication(
-          normalizedBackupFilePath, normalizedBackupKeyFilePath, store, preparedPublication);
+    PreparedPairPublication preparedPublication;
+    try {
+      preparedPublication =
+          store.preparePairPublication(
+              normalizedNewBookKeyFilePath,
+              normalizedBookPath,
+              replaceExistingBook
+                  ? RestoredBookTargetPolicy.REPLACE_SELECTED
+                  : RestoredBookTargetPolicy.REQUIRE_ABSENT,
+              ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+              ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET);
     } catch (ProtectedBookMaintenanceRejectionException exception) {
       return MaintenanceDecision.accepted(
           new ProtectedBookRestoreOutcome.Rejected(exception.rejection()));
@@ -51,6 +51,18 @@ final class ProtectedBookRestoreWorkflow {
       return support.storageFailure(
           normalizedBookPath,
           "Failed to recover or prepare the FinGrind restored-book pair publication.",
+          "bookFilePath");
+    }
+    try (preparedPublication) {
+      return restoreWithPreparedPublication(
+          normalizedBackupFilePath, normalizedBackupKeyFilePath, store, preparedPublication);
+    } catch (ProtectedBookMaintenanceRejectionException exception) {
+      return MaintenanceDecision.accepted(
+          new ProtectedBookRestoreOutcome.Rejected(exception.rejection()));
+    } catch (RuntimeException workflowFailure) {
+      return support.storageFailure(
+          normalizedBookPath,
+          "Failed to verify, stage, or publish the FinGrind restored-book pair.",
           "bookFilePath");
     }
   }

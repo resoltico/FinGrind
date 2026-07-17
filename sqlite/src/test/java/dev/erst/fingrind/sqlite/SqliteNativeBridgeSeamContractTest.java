@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 /** Guards the production SQLite bridge seam against raw-handle sprawl. */
 class SqliteNativeBridgeSeamContractTest {
   @Test
-  void productionBridgeLimitsDirectDatabaseHandleAndApiAccessToNativeStatementOwner()
+  void productionBridgeLimitsDirectDatabaseHandleAndApiAccessToDedicatedNativeOwners()
       throws IOException {
     Path sqliteMainSourceDirectory = sqliteMainSourceDirectory();
     List<String> directAccessOwners;
@@ -27,6 +27,7 @@ class SqliteNativeBridgeSeamContractTest {
 
     assertEquals(
         List.of(
+            "SqliteNativeBackups.java",
             "SqliteNativeDatabaseConfiguration.java",
             "SqliteNativeDatabaseDiagnostics.java",
             "SqliteNativeProtectedBookRuntime.java",

@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: ADR_FIXED_ASSETS
-updated: "2026-07-15"
+updated: "2026-07-16"
 route:
   keywords: [fingrind, fixed assets, capitalization, depreciation, disposal, fixed-asset register]
   questions: ["how does fingrind account for fixed assets", "what owns fixed-asset depreciation", "how does a fixed-asset disposal work"]
@@ -12,7 +12,7 @@ route:
 
 ## Status
 
-Accepted for the unreleased integration line. Fixed-asset capitalization, executor-resolved straight-line depreciation, disposal, compensating reversals, and fixed-asset-register reporting are implemented together, but are not yet a public capability.
+Published in `0.61.0`. Fixed-asset capitalization, executor-resolved straight-line depreciation, disposal, compensating reversals, and fixed-asset-register reporting are one public capability with one owned lifecycle boundary.
 
 The release boundary is a functional-currency cost model with one straight-line schedule per asset. Leases, impairment, revaluation, tax depreciation, and statutory external reporting remain outside this context.
 

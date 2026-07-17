@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
+import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import dev.erst.fingrind.executor.spi.StagedRestoredBookPair;
@@ -210,21 +212,24 @@ class SqliteProtectedBookStagingFaultInjectionTest
   }
 
   private static void assertStagingFailsAt(
-      SqliteProtectedBookStagingSupport.StagingCheckpoint checkpoint, Runnable stagingOperation) {
-    try {
-      stagingOperation.run();
-    } catch (InjectedStagingFailure exception) {
-      assertEquals(checkpoint, exception.checkpoint());
-      return;
-    }
-    throw new AssertionError("Expected staging failure at " + checkpoint + ".");
+      SqliteProtectedBookStagingSupport.StagingCheckpoint checkpoint,
+      java.util.function.Supplier<? extends MaintenanceDecision<?>> stagingOperation) {
+    MaintenanceFailure failure =
+        stagingOperation
+            .get()
+            .fold(
+                accepted -> {
+                  throw new AssertionError("Expected staging failure at " + checkpoint + ".");
+                },
+                failed -> failed);
+    assertEquals(checkpoint.failureMessage(), failure.message());
   }
 
   private static SqliteProtectedBookStagingSupport.StagingCheckpointListener failAt(
       SqliteProtectedBookStagingSupport.StagingCheckpoint expectedCheckpoint) {
     return checkpoint -> {
       if (checkpoint == expectedCheckpoint) {
-        throw new InjectedStagingFailure(checkpoint);
+        throw new InjectedStagingFailure();
       }
     };
   }
@@ -305,15 +310,5 @@ class SqliteProtectedBookStagingFaultInjectionTest
   /** Signals the selected test-only staging boundary. */
   private static final class InjectedStagingFailure extends RuntimeException {
     private static final long serialVersionUID = 1L;
-
-    private final SqliteProtectedBookStagingSupport.StagingCheckpoint checkpoint;
-
-    private InjectedStagingFailure(SqliteProtectedBookStagingSupport.StagingCheckpoint checkpoint) {
-      this.checkpoint = checkpoint;
-    }
-
-    private SqliteProtectedBookStagingSupport.StagingCheckpoint checkpoint() {
-      return checkpoint;
-    }
   }
 }

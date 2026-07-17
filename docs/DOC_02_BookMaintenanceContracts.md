@@ -1,8 +1,8 @@
 ---
 afad: "4.0"
-version: "0.60.0"
+version: "0.61.0"
 domain: BOOK_MAINTENANCE_CONTRACT
-updated: "2026-07-13"
+updated: "2026-07-16"
 route:
   keywords: [fingrind, maintenance, backup, restore, rekey, rollback, protected book, artifact, path, rejection, public path hint]
   questions: ["where are protected-book maintenance rejections documented", "how does fingrind report maintenance paths", "what is PublicPathHint", "which contract owns backup and restore path failures"]

@@ -60,7 +60,10 @@ final class SqliteNativeApiTestSupport {
         base.loadedSqlite3mcVersion(),
         base.loadedSourceId(),
         base.runtimeProvenance(),
-        base.loadedLibraryPath());
+        base.loadedLibraryPath(),
+        base.sqlite3BackupInit(),
+        base.sqlite3BackupStep(),
+        base.sqlite3BackupFinish());
   }
 
   private static SqliteNativeApi copy(
@@ -102,6 +105,9 @@ final class SqliteNativeApiTestSupport {
         base.loadedSqlite3mcVersion(),
         base.loadedSourceId(),
         base.runtimeProvenance(),
-        base.loadedLibraryPath());
+        base.loadedLibraryPath(),
+        base.sqlite3BackupInit(),
+        base.sqlite3BackupStep(),
+        base.sqlite3BackupFinish());
   }
 }
