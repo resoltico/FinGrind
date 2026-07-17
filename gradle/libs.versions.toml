@@ -11,7 +11,7 @@ nullaway = "0.13.7"
 google-java-format = "1.35.0"
 pmd = "7.26.0"
 archunit = "1.4.2"
-shadow = "9.5.1"
+shadow = "9.6.0"
 spotless = "8.8.0"
 
 [libraries]
