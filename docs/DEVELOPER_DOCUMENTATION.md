@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: DEVELOPER_DOCUMENTATION
-updated: "2026-07-16"
+updated: "2026-07-18"
 route:
   keywords: [documentation, afad, doc-spine, storefront-readme, docs-index, user-guides, reference-atoms, examples]
   questions: ["how is documentation organized in fingrind", "where should new docs go in fingrind", "how should api docs and user docs be split in fingrind"]
@@ -18,8 +18,9 @@ route:
 FinGrind uses a deliberately split documentation model:
 - root [README.md](../README.md): storefront, user-facing only
 - [README.md](./README.md) inside `docs/`: documentation index
-- `DOC_*.md`: AFAD-style reference atoms for the exported main-source public API plus the public
-  CLI launcher entrypoint, routed through `DOC_00_Index.md`
+- `DOC_*.md`: AFAD-style reference atoms for exported main-source public API, the public CLI
+  launcher entrypoint, and clearly marked normative next-format contracts, routed through
+  `DOC_00_Index.md`
 - other `docs/*.md`: auxiliary guides for users and contributors
 - `docs/examples/`: runnable JSON, text, and CSV examples used by user guides
 
@@ -33,7 +34,9 @@ and keep the old route only as a lightweight overview if compatibility is helpfu
 Put new material in the narrowest fitting place:
 - CLI usage, request flows, and copy-paste commands belong in user guides under `docs/`
 - build, testing, storage, and workflow material belongs in developer guides under `docs/`
-- public API state belongs in `DOC_*.md`, not in narrative guides
+- public API state and normative next-format protocol contracts belong in `DOC_*.md`, not in
+  narrative guides; an unreleased contract must say so explicitly and must never be presented as
+  current CLI or persisted-format behavior
 - nested public types in the reference spine use qualified symbol names such as `Outer.Inner`
 - CLI and PDF adapter entrypoints belong in the reference spine too; do not bury exported adapter
   surfaces in narrative docs
@@ -52,8 +55,8 @@ When behavior changes, update the matching docs in the same change:
 - when one reference file grows past a clean domain boundary, split it and update
   `docs/README.md`, contributor guides that list the reference spine, and any old overview file
   that now serves only as a router
-- keep the reference spine limited to main-source public surfaces; test fixtures do not belong in
-  `DOC_*.md`
+- keep the reference spine limited to main-source public surfaces and explicitly marked normative
+  next-format contracts; test fixtures do not belong in `DOC_*.md`
 - `docs/README.md` is the operator-facing documentation router and must list every checked-in
   top-level guide plus subdirectory schema/reference page that a contributor or operator is
   expected to discover from the docs tree

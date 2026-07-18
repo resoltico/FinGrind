@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: DEVELOPER
-updated: "2026-07-17"
+updated: "2026-07-18"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -591,6 +591,7 @@ Public API reference lives in:
 - [DOC_01_Core_LedgerAndPosting.md](./DOC_01_Core_LedgerAndPosting.md)
 - [DOC_02_Application.md](./DOC_02_Application.md)
 - [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md)
+- [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md)
 - [DOC_02_AdministrationAndReports.md](./DOC_02_AdministrationAndReports.md)
 - [DOC_02_AccountRegistryLifecycle.md](./DOC_02_AccountRegistryLifecycle.md)
 - [DOC_02_BookMaintenanceContracts.md](./DOC_02_BookMaintenanceContracts.md)
@@ -598,5 +599,4 @@ Public API reference lives in:
 - [DOC_03_BookSessionsAndAdapters.md](./DOC_03_BookSessionsAndAdapters.md)
 - [DOC_04_CliAndPdfAdapters.md](./DOC_04_CliAndPdfAdapters.md)
 
-That reference spine tracks main-source public surfaces plus the public CLI launcher entrypoint.
-`DOC_02_Application.md` is now the routing overview for the split contract/executor reference set, and `DOC_00_Index.md` routes every exported symbol to the narrower file that actually owns it. The spine does not route test fixtures.
+That reference spine tracks main-source public surfaces, the public CLI launcher entrypoint, and explicitly unreleased normative next-format contracts; `DOC_02_Application.md` routes the split contract/executor reference set, while `DOC_00_Index.md` routes exported symbols to their narrowest owning file and the spine excludes test fixtures.

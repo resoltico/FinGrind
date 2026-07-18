@@ -47,6 +47,10 @@ route:
   and runtime/distribution/storage facts; use
   [DOC_02_MachineContractAndDescriptors.md](./DOC_02_MachineContractAndDescriptors.md) for
   machine-contract assembly, discovery descriptors, templates, and deterministic failures.
+- Next-format attestation protocol:
+  use [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md) for
+  the normative feature-branch contract for the next hard-break protected-book format. It does not
+  describe a released CLI command or accepted book format.
 - Decimal-boundary design:
   use [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md) for the exact-money boundary,
   the exact-quantity boundary, and the future split between money, rates, percentages, exchange
@@ -85,6 +89,7 @@ route:
 | `DOC_01_DecimalBoundaries.md` | exact-money boundary, exact-quantity boundary, and future non-money decimal-domain rules |
 | `DOC_02_Application.md` | routing overview for the split `contract` and `executor` reference spine |
 | `DOC_02_ProtocolAndDiscovery.md` | exported `contract` protocol metadata, runtime/distribution facts, request-field vocabularies, and protected-book format owners |
+| `DOC_02_VerifiableOperationAttestation.md` | normative feature-branch contract for the next hard-break protected-book format, including operation attestations, quorum envelopes, backup manifests, receipts, and verifier vectors |
 | `DOC_02_MachineContractAndDescriptors.md` | exported machine-contract assembly, discovery descriptors, templates, workflow scaffolds, and deterministic contract-error owners |
 | `DOC_02_AdministrationAndReports.md` | exported administration/query/report models and exported `executor` administration and read services |
 | `DOC_02_AccountRegistryLifecycle.md` | exported account amendment and retirement commands, results, and durable-history lifecycle rules |

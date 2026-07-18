@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-07-17"
+updated: "2026-07-18"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -126,6 +126,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md)
 - [DOC_02_Application.md](./DOC_02_Application.md)
 - [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md)
+- [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md): normative feature-branch contract for the next hard-break protected-book format; it is not released CLI or book-format behavior
 - [DOC_02_MachineContractAndDescriptors.md](./DOC_02_MachineContractAndDescriptors.md)
 - [DOC_02_AdministrationAndReports.md](./DOC_02_AdministrationAndReports.md)
 - [DOC_02_AccountRegistryLifecycle.md](./DOC_02_AccountRegistryLifecycle.md)
