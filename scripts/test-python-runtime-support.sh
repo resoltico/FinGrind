@@ -127,6 +127,24 @@ grep -Fx "python=${preferred_stub_dir}/python3.12" "${preferred_inherited_log}" 
 grep -Fx "uv=${preferred_stub_dir}/uv" "${preferred_inherited_log}" >/dev/null || die \
     "prepare_python_runtime_env must preserve uv publication when inherited repo shims are present"
 
+mismatched_uv_stub_dir="${scenario_dir}/mismatched-uv"
+mkdir -p "${mismatched_uv_stub_dir}"
+ln -s "${preferred_stub_dir}/python3.12" "${mismatched_uv_stub_dir}/python3.12"
+cat > "${mismatched_uv_stub_dir}/uv" <<'EOF'
+#!/bin/bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'uv 0.11.28\n'
+    exit 0
+fi
+printf 'uv invoked unexpectedly\n' >&2
+exit 1
+EOF
+chmod +x "${mismatched_uv_stub_dir}/uv"
+mismatched_uv_log="${scenario_dir}/mismatched-uv.log"
+run_with_stub_path "${mismatched_uv_stub_dir}" "${mismatched_uv_log}"
+grep -Fx 'uv=missing' "${mismatched_uv_log}" >/dev/null || die \
+    "prepare_python_runtime_env must not abort or publish a mismatched uv launcher"
+
 uv_stub_dir="${scenario_dir}/uv-managed"
 mkdir -p "${uv_stub_dir}"
 cat > "${uv_stub_dir}/python3" <<'EOF'

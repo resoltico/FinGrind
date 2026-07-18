@@ -217,8 +217,7 @@ prepare_python_runtime_env() {
 
     if [[ -z "${ORG_GRADLE_PROJECT_fingrindUvExecutable:-}" ]]; then
         local uv_executable
-        uv_executable="$(uv_command_path)"
-        if [[ -n "${uv_executable}" ]]; then
+        if uv_executable="$(uv_command_path)"; then
             export ORG_GRADLE_PROJECT_fingrindUvExecutable="${uv_executable}"
         fi
     fi
