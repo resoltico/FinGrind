@@ -6,12 +6,11 @@ import dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
+import dev.erst.fingrind.contract.bookkeeping.ContraAccountInvalid;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
-import dev.erst.fingrind.core.AccountTaxonomy;
-import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /** Maps administrative bookkeeping rejections into CLI rejected envelopes. */
@@ -82,6 +81,11 @@ final class CliAdministrationRejectionPayloadMapper {
     if (rejection instanceof BookAdministrationRejection.AccountTaxonomyConflict) {
       return "Keep the existing taxonomy for this account, or choose a different accountCode for an account with different hierarchy or statement classification.";
     }
+    if (rejection instanceof ContraAccountInvalid) {
+      return "Choose an active postable contraOfAccountCode with the same accountType and statement taxonomy, then rerun "
+          + DECLARE_ACCOUNT_OPERATION
+          + ".";
+    }
     if (rejection instanceof AccountRegistryLifecycleRejection.AccountNotFound) {
       return "Use "
           + DECLARE_ACCOUNT_OPERATION
@@ -129,22 +133,22 @@ final class CliAdministrationRejectionPayloadMapper {
   private static String closeWindowHint(
       OperationId operationId, BookAdministrationRejection rejection) {
     if (rejection instanceof CloseTargetAccountCandidateMissing missing) {
-      String operation = closeOperation(operationId);
+      String operationRetry = operationRetryInstruction(operationId);
       return missing.inactiveCandidateAccountCodes().isEmpty()
           ? "Declare exactly one active equity account whose financialPositionLineClassification is "
               + missing.requiredFinancialPositionLineClassification().wireValue()
-              + ", then rerun "
-              + operation
+              + ", then "
+              + operationRetry
               + "."
           : "Reactivate one of the matching equity accounts or declare exactly one active replacement with financialPositionLineClassification "
               + missing.requiredFinancialPositionLineClassification().wireValue()
-              + ", then rerun "
-              + operation
+              + ", then "
+              + operationRetry
               + ".";
     }
     if (rejection instanceof CloseTargetAccountCandidateAmbiguous) {
-      return "Leave exactly one active equity account with the required closing classification for this book, then retry the declaration or rerun "
-          + closeOperation(operationId)
+      return "Leave exactly one active equity account with the required closing classification for this book, then "
+          + operationRetryInstruction(operationId)
           + ".";
     }
     if (rejection instanceof BookAdministrationRejection.InterimResultSweepMustStartAt conflict) {
@@ -216,55 +220,11 @@ final class CliAdministrationRejectionPayloadMapper {
 
   private static CliRejectionJsonModels.@org.jspecify.annotations.Nullable RejectionDetails
       accountDetails(BookAdministrationRejection rejection) {
-    return switch (rejection) {
-      case BookAdministrationRejection.AccountTypeConflict conflict ->
-          new CliRejectionJsonModels.AccountTypeConflictDetails(
-              conflict.accountCode().value(),
-              conflict.existingAccountType().wireValue(),
-              conflict.requestedAccountType().wireValue());
-      case BookAdministrationRejection.AccountTaxonomyConflict conflict ->
-          new CliRejectionJsonModels.AccountTaxonomyConflictDetails(
-              conflict.accountCode().value(),
-              taxonomyDetails(conflict.existingAccountTaxonomy()),
-              taxonomyDetails(conflict.requestedAccountTaxonomy()));
-      case AccountRegistryLifecycleRejection.AccountNotFound missing ->
-          new CliRejectionJsonModels.AccountCodeDetails(missing.accountCode().value());
-      case AccountRegistryLifecycleRejection.AccountHasDependents dependents ->
-          new CliRejectionJsonModels.AccountDependenciesDetails(
-              dependents.accountCode().value(),
-              dependents.dependencies().stream()
-                  .map(dependency -> dependency.wireValue())
-                  .toList());
-      case AccountRegistryLifecycleRejection.AccountBalanceNotZero balance ->
-          new CliRejectionJsonModels.AccountCodeDetails(balance.accountCode().value());
-      case BookAdministrationRejection.ParentAccountMissing conflict ->
-          new CliRejectionJsonModels.ParentAccountDetails(
-              conflict.accountCode().value(), conflict.parentAccountCode().value());
-      case BookAdministrationRejection.ParentAccountInactive conflict ->
-          new CliRejectionJsonModels.ParentAccountDetails(
-              conflict.accountCode().value(), conflict.parentAccountCode().value());
-      case BookAdministrationRejection.ParentAccountTypeConflict conflict ->
-          new CliRejectionJsonModels.ParentAccountTypeConflictDetails(
-              conflict.accountCode().value(),
-              conflict.requestedAccountType().wireValue(),
-              conflict.parentAccountCode().value(),
-              conflict.parentAccountType().wireValue());
-      case BookAdministrationRejection.ParentAccountNotHeader conflict ->
-          new CliRejectionJsonModels.ParentAccountNodeKindDetails(
-              conflict.accountCode().value(),
-              conflict.parentAccountCode().value(),
-              conflict.parentAccountNodeKind().wireValue());
-      case BookAdministrationRejection.ParentAccountTaxonomyConflict conflict ->
-          new CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails(
-              conflict.accountCode().value(),
-              taxonomyDetails(conflict.requestedAccountTaxonomy()),
-              conflict.parentAccountCode().value(),
-              taxonomyDetails(conflict.parentAccountTaxonomy()));
-      case BookAdministrationRejection.AccountHierarchyCycle conflict ->
-          new CliRejectionJsonModels.ParentAccountDetails(
-              conflict.accountCode().value(), conflict.parentAccountCode().value());
-      default -> null;
-    };
+    CliRejectionJsonModels.@Nullable RejectionDetails declaredDetails =
+        CliDeclaredAccountRejectionDetails.details(rejection);
+    return declaredDetails != null
+        ? declaredDetails
+        : CliAccountLifecycleRejectionDetails.details(rejection);
   }
 
   private static CliRejectionJsonModels.@org.jspecify.annotations.Nullable RejectionDetails
@@ -306,26 +266,12 @@ final class CliAdministrationRejectionPayloadMapper {
     };
   }
 
-  private static String closeOperation(OperationId operationId) {
-    return switch (Objects.requireNonNull(operationId, "operationId")) {
-      case INTERIM_RESULT_SWEEP -> INTERIM_RESULT_SWEEP_OPERATION;
-      case FISCAL_YEAR_CLOSE -> FISCAL_YEAR_CLOSE_OPERATION;
-      default -> throw new IllegalArgumentException("Unsupported close operation: " + operationId);
+  private static String operationRetryInstruction(OperationId operationId) {
+    return switch (operationId) {
+      case DECLARE_ACCOUNT -> "retry the account declaration";
+      case INTERIM_RESULT_SWEEP -> "rerun " + INTERIM_RESULT_SWEEP_OPERATION;
+      case FISCAL_YEAR_CLOSE -> "rerun " + FISCAL_YEAR_CLOSE_OPERATION;
+      default -> "retry " + ProtocolCatalog.operationName(operationId);
     };
-  }
-
-  private static CliRejectionJsonModels.AccountTaxonomyDetails taxonomyDetails(
-      AccountTaxonomy accountTaxonomy) {
-    return new CliRejectionJsonModels.AccountTaxonomyDetails(
-        accountTaxonomy.nodeKind().wireValue(),
-        accountTaxonomy.parentAccountCode().map(accountCode -> accountCode.value()).orElse(null),
-        accountTaxonomy
-            .financialPositionLineClassification()
-            .map(classification -> classification.wireValue())
-            .orElse(null),
-        accountTaxonomy
-            .profitAndLossLineClassification()
-            .map(classification -> classification.wireValue())
-            .orElse(null));
   }
 }

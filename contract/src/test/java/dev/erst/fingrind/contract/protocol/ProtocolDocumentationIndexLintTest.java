@@ -19,7 +19,7 @@ class ProtocolDocumentationIndexLintTest extends ProtocolContractDocumentationSu
   private static final Pattern RELATIVE_DOC_LINK_PATTERN =
       Pattern.compile("\\]\\(\\./([^)]+\\.md)\\)");
   private static final Pattern VERSION_FRONTMATTER_PATTERN =
-      Pattern.compile("^---\\Rafad: \"4\\.0\"\\Rversion: \"([^\"]+)\"", Pattern.MULTILINE);
+      Pattern.compile("^---\\Rafad: \"5\\.0\\.1\"\\Rversion: \"([^\"]+)\"", Pattern.MULTILINE);
 
   @Test
   void documentationIndexListsAllReferenceAtoms() throws IOException {
@@ -117,8 +117,8 @@ class ProtocolDocumentationIndexLintTest extends ProtocolContractDocumentationSu
     Set<String> violations = new LinkedHashSet<>();
     for (Path document : actualDocumentationPaths()) {
       String text = Files.readString(document);
-      if (!text.startsWith("---\nafad: \"4.0\"")) {
-        violations.add(relativeDocumentationPath(document) + " must declare afad: \"4.0\".");
+      if (!text.startsWith("---\nafad: \"5.0.1\"")) {
+        violations.add(relativeDocumentationPath(document) + " must declare afad: \"5.0.1\".");
       }
     }
 

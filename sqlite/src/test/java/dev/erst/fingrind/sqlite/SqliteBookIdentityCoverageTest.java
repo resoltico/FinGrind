@@ -51,7 +51,8 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                   costing_doctrine,
                   functional_currency_code,
                   fiscal_year_start_month,
-                  fiscal_year_start_day
+                  fiscal_year_start_day,
+                  book_start_effective_date
               ) values (
                   1,
                   'Acme Studio',
@@ -63,7 +64,8 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                   null,
                   'EUR',
                   1,
-                  1
+                  1,
+                  '2026-01-01'
               )
               """);
           assertEquals(
@@ -72,7 +74,8 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
                       new EntityProfile(new BookEntityName("Acme Studio")),
                       BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
                       CurrencyUnit.of("EUR"),
-                      FiscalYearStart.parse("01-01"))),
+                      FiscalYearStart.parse("01-01"),
+                      java.time.LocalDate.parse("2026-01-01"))),
               SqliteStatementQueries.loadBookIdentity(database));
         });
   }
@@ -135,7 +138,8 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
             new EntityProfile(new BookEntityName("Acme Studio")),
             BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
             CurrencyUnit.of("EUR"),
-            FiscalYearStart.parse("01-01"));
+            FiscalYearStart.parse("01-01"),
+            java.time.LocalDate.parse("2026-01-01"));
     withStandaloneDatabase(
         bookAccess(bookPath),
         database -> {
@@ -161,7 +165,8 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
             new EntityProfile(new BookEntityName("Acme Service Accrual")),
             BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL,
             CurrencyUnit.of("EUR"),
-            FiscalYearStart.parse("01-01"));
+            FiscalYearStart.parse("01-01"),
+            java.time.LocalDate.parse("2026-01-01"));
     withStandaloneDatabase(
         bookAccess(bookPath),
         database -> {
@@ -182,7 +187,8 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
             new EntityProfile(new BookEntityName("Acme Trading")),
             BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING,
             CurrencyUnit.of("EUR"),
-            FiscalYearStart.parse("01-01"));
+            FiscalYearStart.parse("01-01"),
+            java.time.LocalDate.parse("2026-01-01"));
     withStandaloneDatabase(
         bookAccess(bookPath),
         database -> {
@@ -209,7 +215,8 @@ class SqliteBookIdentityCoverageTest extends SqlitePostingFactStoreTestSupport {
             new EntityProfile(new BookEntityName("Registered Studio")),
             BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
             CurrencyUnit.of("EUR"),
-            FiscalYearStart.parse("01-01"));
+            FiscalYearStart.parse("01-01"),
+            java.time.LocalDate.parse("2026-01-01"));
     withStandaloneDatabase(
         bookAccess(bookPath),
         database -> {

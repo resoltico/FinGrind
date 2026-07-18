@@ -86,13 +86,19 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
                 SqliteCommitFaultHook.NONE,
                 PostingAcceptancePolicy.currentKernel());
         LatvianMonthlyPayrollCalculation calculation =
-            LatvianMonthlyPayroll2026.calculate(PAYROLL_MONTH, Money.parse("EUR", "2000.00"));
+            LatvianMonthlyPayroll2026.calculate(
+                PAYROLL_MONTH,
+                Money.parse("EUR", "2000.00"),
+                dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+                    .taxBookWithNoDependantsFor2026());
         LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll monthlyPayroll =
             new LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll(
                 LocalDate.parse("2026-06-30"),
                 RUN_ID,
                 new LatvianPayrollEmployeeReference("employee-001"),
                 PAYROLL_MONTH,
+                dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+                    .taxBookWithNoDependantsFor2026(),
                 WAGE_EXPENSE,
                 EMPLOYER_SOCIAL_EXPENSE,
                 NET_WAGES_PAYABLE,
@@ -310,6 +316,7 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
         AccountType.ASSET,
         new AccountTaxonomy(
             AccountNodeKind.POSTABLE,
+            Optional.empty(),
             Optional.empty(),
             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
             Optional.empty(),

@@ -1,14 +1,15 @@
 package dev.erst.fingrind.contract;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractPlanTemplates;
 import dev.erst.fingrind.contract.discovery.MachineContract;
+import dev.erst.fingrind.contract.discovery.PlanTemplateTopic;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.PlanFailurePolicy;
@@ -19,11 +20,12 @@ import java.util.List;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
-/** Unit tests for machine-contract tax-setup plan publication. */
+/** Unit tests for machine-contract topic-specific ledger-plan publication. */
 class MachineContractPlanTemplateTest {
   @Test
-  void planTemplatePublishesAtomicTaxSetupInDependencyOrder() {
-    ContractPlanTemplates.LedgerPlanTemplateDescriptor template = MachineContract.planTemplate();
+  void taxSetupPlanTemplatePublishesAtomicTaxSetupInDependencyOrder() {
+    ContractPlanTemplates.LedgerPlanTemplateDescriptor template =
+        MachineContract.planTemplate(PlanTemplateTopic.TAX_SETUP);
 
     assertEquals("tax-setup", template.planId());
     assertEquals(
@@ -69,10 +71,11 @@ class MachineContractPlanTemplateTest {
   }
 
   @Test
-  void planTemplateDoesNotInventARequiredPostingScaffold() {
+  void generalPlanTemplateIncludesARepresentativePostingWorkflow() {
     ContractPlanTemplates.LedgerPlanTemplateDescriptor template = MachineContract.planTemplate();
 
-    assertFalse(template.steps().stream().anyMatch(step -> step.posting() != null));
+    assertEquals("general-workflow", template.planId());
+    assertTrue(template.steps().stream().anyMatch(step -> step.posting() != null));
     CapabilitiesDescriptor capabilities =
         MachineContract.capabilities(new ApplicationIdentity("FinGrind", "0.57.0", "test"));
     assertEquals(PlanTransactionMode.ATOMIC, capabilities.planExecution().transactionMode());
@@ -83,5 +86,38 @@ class MachineContractPlanTemplateTest {
     assertNotNull(ledgerPlan);
     assertTrue(ledgerPlan.assertionKinds().contains(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS));
     assertEquals(LedgerStepKind.ASSERT, ledgerPlan.assertStepKind());
+  }
+
+  @Test
+  void lifecycleSetupPlanTemplatesDeclareEveryRequiredAccountWithTaxonomy() {
+    ContractPlanTemplates.LedgerPlanTemplateDescriptor fixedAssets =
+        MachineContract.planTemplate(PlanTemplateTopic.FIXED_ASSET_SETUP);
+    ContractPlanTemplates.LedgerPlanTemplateDescriptor financing =
+        MachineContract.planTemplate(PlanTemplateTopic.FINANCING_SETUP);
+
+    assertEquals("fixed-asset-setup", fixedAssets.planId());
+    assertEquals(
+        "delivery-van",
+        Objects.requireNonNull(fixedAssets.steps().get(1).declareAccount()).accountCode());
+    assertEquals(
+        "delivery-van",
+        Objects.requireNonNull(fixedAssets.steps().get(2).declareAccount()).contraOfAccountCode());
+    assertEquals("financing-setup", financing.planId());
+    assertEquals(
+        "term-loan-principal",
+        Objects.requireNonNull(financing.steps().get(1).declareAccount()).accountCode());
+    assertEquals(
+        FinancialPositionLineClassification.NONCURRENT_LIABILITY,
+        Objects.requireNonNull(financing.steps().get(1).declareAccount())
+            .financialPositionLineClassification());
+  }
+
+  @Test
+  void planTemplateTopicsHaveOneStableWireVocabulary() {
+    assertEquals(
+        List.of("general", "tax-setup", "fixed-asset-setup", "financing-setup"),
+        PlanTemplateTopic.wireNames());
+    assertEquals(PlanTemplateTopic.TAX_SETUP, PlanTemplateTopic.requireWireName("tax-setup"));
+    assertThrows(IllegalArgumentException.class, () -> PlanTemplateTopic.requireWireName("tax"));
   }
 }

@@ -6,50 +6,50 @@ import java.util.Set;
 public final class ProtocolInventoryPostingRequestFieldSets {
   private static final Set<String> PURCHASE_SETTLED_FIELDS =
       ProtocolPostingRequestFieldSetSupport.typedEntryFields(
-          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.QUANTITY,
-          ProtocolPostEntryFields.TopLevel.UNIT_COST,
-          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
-          ProtocolPostEntryFields.TopLevel.TAX);
+          ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Inventory.QUANTITY,
+          ProtocolBusinessEventFields.Inventory.UNIT_COST,
+          ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE,
+          ProtocolBusinessEventFields.Core.TAX);
   private static final Set<String> PURCHASE_ON_CREDIT_FIELDS =
       ProtocolPostingRequestFieldSetSupport.typedEntryFields(
-          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.QUANTITY,
-          ProtocolPostEntryFields.TopLevel.UNIT_COST,
-          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
-          ProtocolPostEntryFields.TopLevel.TAX);
+          ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.PAYABLE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Inventory.QUANTITY,
+          ProtocolBusinessEventFields.Inventory.UNIT_COST,
+          ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE,
+          ProtocolBusinessEventFields.Core.TAX);
   private static final Set<String> CAPITALIZATION_SETTLED_FIELDS =
       ProtocolPostingRequestFieldSetSupport.typedEntryFields(
-          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.AMOUNT,
-          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
-          ProtocolPostEntryFields.TopLevel.TAX);
+          ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.AMOUNT,
+          ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE,
+          ProtocolBusinessEventFields.Core.TAX);
   private static final Set<String> CAPITALIZATION_ON_CREDIT_FIELDS =
       ProtocolPostingRequestFieldSetSupport.typedEntryFields(
-          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.AMOUNT,
-          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
-          ProtocolPostEntryFields.TopLevel.TAX);
+          ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.PAYABLE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.AMOUNT,
+          ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE,
+          ProtocolBusinessEventFields.Core.TAX);
   private static final Set<String> WRITE_DOWN_FIELDS =
       ProtocolPostingRequestFieldSetSupport.typedEntryFields(
-          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.WRITE_DOWN_LOSS_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.AMOUNT);
+          ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Inventory.WRITE_DOWN_LOSS_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.AMOUNT);
   private static final Set<String> SHRINKAGE_FIELDS =
       ProtocolPostingRequestFieldSetSupport.typedEntryFields(
-          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.SHRINKAGE_LOSS_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.QUANTITY);
+          ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Inventory.SHRINKAGE_LOSS_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Inventory.QUANTITY);
   private static final Set<String> COUNT_INCREASE_FIELDS =
       ProtocolPostingRequestFieldSetSupport.typedEntryFields(
-          ProtocolPostEntryFields.TopLevel.INVENTORY_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.COUNT_GAIN_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.QUANTITY,
-          ProtocolPostEntryFields.TopLevel.UNIT_COST);
+          ProtocolBusinessEventFields.Inventory.INVENTORY_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Inventory.COUNT_GAIN_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Inventory.QUANTITY,
+          ProtocolBusinessEventFields.Inventory.UNIT_COST);
 
   private ProtocolInventoryPostingRequestFieldSets() {}
 

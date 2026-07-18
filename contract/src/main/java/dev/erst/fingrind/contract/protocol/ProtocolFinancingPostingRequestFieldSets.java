@@ -6,26 +6,26 @@ import java.util.Set;
 public final class ProtocolFinancingPostingRequestFieldSets {
   private static final Set<String> BORROWING_FIELDS =
       ProtocolPostingRequestFieldSetSupport.typedEntryFields(
-          ProtocolPostEntryFields.TopLevel.FINANCING_ARRANGEMENT_ID,
-          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.PRINCIPAL_LIABILITY_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.INTEREST_PAYABLE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.PRINCIPAL_AMOUNT);
+          ProtocolBusinessEventFields.Financing.FINANCING_ARRANGEMENT_ID,
+          ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Financing.PRINCIPAL_LIABILITY_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Financing.INTEREST_PAYABLE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Financing.PRINCIPAL_AMOUNT);
   private static final Set<String> PRINCIPAL_REPAYMENT_FIELDS =
       ProtocolPostingRequestFieldSetSupport.typedEntryFields(
-          ProtocolPostEntryFields.TopLevel.FINANCING_ARRANGEMENT_ID,
-          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.PRINCIPAL_AMOUNT);
+          ProtocolBusinessEventFields.Financing.FINANCING_ARRANGEMENT_ID,
+          ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Financing.PRINCIPAL_AMOUNT);
   private static final Set<String> INTEREST_ACCRUAL_FIELDS =
       ProtocolPostingRequestFieldSetSupport.typedEntryFields(
-          ProtocolPostEntryFields.TopLevel.FINANCING_ARRANGEMENT_ID,
-          ProtocolPostEntryFields.TopLevel.INTEREST_EXPENSE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.INTEREST_AMOUNT);
+          ProtocolBusinessEventFields.Financing.FINANCING_ARRANGEMENT_ID,
+          ProtocolBusinessEventFields.Financing.INTEREST_EXPENSE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Financing.INTEREST_AMOUNT);
   private static final Set<String> INTEREST_PAYMENT_FIELDS =
       ProtocolPostingRequestFieldSetSupport.typedEntryFields(
-          ProtocolPostEntryFields.TopLevel.FINANCING_ARRANGEMENT_ID,
-          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.INTEREST_AMOUNT);
+          ProtocolBusinessEventFields.Financing.FINANCING_ARRANGEMENT_ID,
+          ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Financing.INTEREST_AMOUNT);
 
   private ProtocolFinancingPostingRequestFieldSets() {}
 

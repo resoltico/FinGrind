@@ -21,7 +21,8 @@ class CliBookIdentityDisplayTest {
             new EntityProfile(new BookEntityName("Acme Studio")),
             BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
             CurrencyUnit.of("EUR"),
-            FiscalYearStart.parse("01-01"));
+            FiscalYearStart.parse("01-01"),
+            java.time.LocalDate.parse("2026-01-01"));
 
     assertEquals(
         List.of(
@@ -29,7 +30,8 @@ class CliBookIdentityDisplayTest {
             List.of("Seed template", "Owner-managed service seed template"),
             List.of("Accounting basis", "Cash basis"),
             List.of("Functional currency", "EUR"),
-            List.of("Fiscal year start", "01-01")),
+            List.of("Fiscal year start", "01-01"),
+            List.of("Book start effective date", "2026-01-01")),
         CliBookIdentityDisplay.summaryRows(bookIdentity));
     assertEquals(
         List.of(
@@ -37,7 +39,8 @@ class CliBookIdentityDisplayTest {
             List.of("Seed template", "Owner-managed service seed template"),
             List.of("Accounting basis", "Cash basis"),
             List.of("Functional currency", "EUR"),
-            List.of("Fiscal year start", "01-01")),
+            List.of("Fiscal year start", "01-01"),
+            List.of("Book start effective date", "2026-01-01")),
         CliBookIdentityDisplay.contextRows(bookIdentity));
     assertEquals(
         List.of("Accounting kernel", "Internal management bookkeeping"),
@@ -57,7 +60,8 @@ class CliBookIdentityDisplayTest {
             new EntityProfile(new BookEntityName("Acme Trading")),
             BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING,
             CurrencyUnit.of("EUR"),
-            FiscalYearStart.parse("01-01"));
+            FiscalYearStart.parse("01-01"),
+            java.time.LocalDate.parse("2026-01-01"));
 
     assertTrue(
         CliBookIdentityDisplay.detailRows(bookIdentity)

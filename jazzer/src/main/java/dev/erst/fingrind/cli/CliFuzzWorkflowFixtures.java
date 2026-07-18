@@ -27,6 +27,7 @@ import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.executor.spi.PostingLookupStore;
 import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import dev.erst.fingrind.executor.spi.TaxAdministrationStore;
+import java.time.LocalDate;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -45,7 +46,8 @@ public final class CliFuzzWorkflowFixtures {
         new EntityProfile(new BookEntityName("Acme Studio")),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         Objects.requireNonNull(functionalCurrency, "functionalCurrency"),
-        FiscalYearStart.parse("01-01"));
+        FiscalYearStart.parse("01-01"),
+        LocalDate.parse("2026-01-01"));
   }
 
   /** Returns the canonical open-book command used by workflow and replay setup. */

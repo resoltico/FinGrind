@@ -13,6 +13,8 @@ final class SqliteAccountLifecycleSql {
       """;
   static final String ACCOUNT_HAS_CHILDREN =
       "select 1 from account where parent_account_code = ? limit 1";
+  static final String ACCOUNT_HAS_CONTRA_ACCOUNTS =
+      "select 1 from account where contra_of_account_code = ? limit 1";
   static final String ACCOUNT_HAS_NON_ZERO_BALANCE =
       """
       select 1
@@ -30,6 +32,7 @@ final class SqliteAccountLifecycleSql {
           account_type = ?,
           account_node_kind = ?,
           parent_account_code = ?,
+          contra_of_account_code = ?,
           financial_position_line_classification = ?,
           cash_flow_asset_classification = ?,
           profit_and_loss_line_classification = ?,

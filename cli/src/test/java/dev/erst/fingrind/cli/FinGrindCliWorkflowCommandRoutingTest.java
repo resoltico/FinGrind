@@ -11,7 +11,6 @@ import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepCommand;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
-import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
@@ -58,7 +57,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(
+            listedAccounts(
                 accountPage(
                     List.of(
                         declaredAccount(
@@ -179,7 +178,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
+            listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             CliPostEntryResultFixtures.committed(
@@ -236,7 +235,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
+            listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             CliPostEntryResultFixtures.committed(
@@ -432,7 +431,7 @@ class FinGrindCliWorkflowCommandRoutingTest extends FinGrindCliTestSupport {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
+            listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             CliPostEntryResultFixtures.committed(

@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-07-16"
+updated: "2026-07-17"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -61,7 +61,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json): deterministic invalid cursor error example
 - [examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json): deterministic protected-book verification failure example
 - [examples/interactive-prompt-unavailable-error.txt](./examples/interactive-prompt-unavailable-error.txt): deterministic non-interactive prompt failure example
-- [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): checked-in source-copy companion for the `print-plan-template` atomic tax-setup ledger-plan scaffold
+- [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): checked-in source-copy companion for the default `print-plan-template` general ledger-plan scaffold
 - [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): primary runnable `execute-plan` request that establishes tax accounts and a tax registration atomically
 - [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json): follow-on `execute-plan` request that pages the initialized account registry
 - [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json): example committed ledger-plan response with `resultDetail: "full"` and a per-step journal
@@ -88,6 +88,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DEVELOPER_UNSIGNED_DISTRIBUTION.md](./DEVELOPER_UNSIGNED_DISTRIBUTION.md): current unsigned macOS and Windows bundle policy, the quarantine and Mark-of-the-Web gates, and the checksum-plus-attestation trust model
 - [DEVELOPER_DOCUMENTATION.md](./DEVELOPER_DOCUMENTATION.md): documentation placement, maintenance, and reference-spine rules
 - [DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md): contributor Docker posture, smoke workflow, and runtime-container boundaries
+- [DEVELOPER_ARCHITECTURE.md](./DEVELOPER_ARCHITECTURE.md): independent architecture module, enforced dependency direction, and responsibility-boundary rules
 - [DEVELOPER_CI.md](./DEVELOPER_CI.md): CI gate topology and path-based devcontainer workflow policy
 - [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md): Gradle architecture, included build logic, wrapper policy, and nested Jazzer build structure
 - [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md): host Java 26 setup and wrapper-first contributor posture
@@ -115,6 +116,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DOC_00_BookkeepingRead.md](./DOC_00_BookkeepingRead.md)
 - [DOC_00_InventoryCosting.md](./DOC_00_InventoryCosting.md)
 - [DOC_00_OwnedLifecycleContexts.md](./DOC_00_OwnedLifecycleContexts.md)
+- [DOC_00_PostingAndRejections.md](./DOC_00_PostingAndRejections.md)
 - [DOC_00_ProtectedBookMaintenance.md](./DOC_00_ProtectedBookMaintenance.md)
 - [DOC_00_ResponseAndWorkflow.md](./DOC_00_ResponseAndWorkflow.md)
 - [DOC_01_Core.md](./DOC_01_Core.md)
@@ -140,7 +142,8 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [sqlite/SCHEMA_CORE.md](./sqlite/SCHEMA_CORE.md)
 - [sqlite/SCHEMA_CORE_01_FOUNDATION.md](./sqlite/SCHEMA_CORE_01_FOUNDATION.md)
 - [sqlite/SCHEMA_CORE_02_ACCOUNT_TABLE.md](./sqlite/SCHEMA_CORE_02_ACCOUNT_TABLE.md)
-- [sqlite/SCHEMA_CORE_03_ACCOUNT_RULES.md](./sqlite/SCHEMA_CORE_03_ACCOUNT_RULES.md)
+- [sqlite/SCHEMA_CORE_03_ACCOUNT_DECLARATION_RULES.md](./sqlite/SCHEMA_CORE_03_ACCOUNT_DECLARATION_RULES.md)
+- [sqlite/SCHEMA_CORE_03a_ACCOUNT_LIFECYCLE_RULES.md](./sqlite/SCHEMA_CORE_03a_ACCOUNT_LIFECYCLE_RULES.md)
 - [sqlite/SCHEMA_CORE_03z_TAX_REGISTRATION.md](./sqlite/SCHEMA_CORE_03z_TAX_REGISTRATION.md)
 - [sqlite/SCHEMA_CORE_04_POSTING_FACT.md](./sqlite/SCHEMA_CORE_04_POSTING_FACT.md)
 - [sqlite/SCHEMA_CORE_04z_POSTING_FACT_ADMISSION.md](./sqlite/SCHEMA_CORE_04z_POSTING_FACT_ADMISSION.md)

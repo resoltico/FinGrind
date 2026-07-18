@@ -1,5 +1,5 @@
 pragma application_id = 1179079236;
-pragma user_version = 46;
+pragma user_version = 50;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -97,6 +97,36 @@ create table if not exists book_identity (
     fiscal_year_start_day integer not null check (
         fiscal_year_start_day between 1 and 31
     ),
+    book_start_effective_date text not null check (
+        book_start_effective_date glob '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+        and substr(book_start_effective_date, 6, 2) between '01' and '12'
+        and (
+            (
+                substr(book_start_effective_date, 6, 2) in ('01', '03', '05', '07', '08', '10', '12')
+                and substr(book_start_effective_date, 9, 2) between '01' and '31'
+            )
+            or (
+                substr(book_start_effective_date, 6, 2) in ('04', '06', '09', '11')
+                and substr(book_start_effective_date, 9, 2) between '01' and '30'
+            )
+            or (
+                substr(book_start_effective_date, 6, 2) = '02'
+                and (
+                    substr(book_start_effective_date, 9, 2) between '01' and '28'
+                    or (
+                        substr(book_start_effective_date, 9, 2) = '29'
+                        and (
+                            cast(substr(book_start_effective_date, 1, 4) as integer) % 400 = 0
+                            or (
+                                cast(substr(book_start_effective_date, 1, 4) as integer) % 4 = 0
+                                and cast(substr(book_start_effective_date, 1, 4) as integer) % 100 <> 0
+                            )
+                        )
+                    )
+                )
+            )
+        )
+    ),
     check (
         (
             fiscal_year_start_month in (1, 3, 5, 7, 8, 10, 12)
@@ -137,6 +167,7 @@ create table if not exists account (
     ),
     account_node_kind text not null check (account_node_kind in ('HEADER', 'POSTABLE')),
     parent_account_code text references account (account_code),
+    contra_of_account_code text references account (account_code),
     financial_position_line_classification text check (
         financial_position_line_classification is null
         or financial_position_line_classification in (
@@ -239,7 +270,8 @@ create table if not exists account (
         and substr(declared_at, 18, 2) between '00' and '59'
     ),
     check (
-        parent_account_code is null or parent_account_code <> account_code
+        (parent_account_code is null or parent_account_code <> account_code)
+        and (contra_of_account_code is null or contra_of_account_code <> account_code)
     ),
     check (
         (
@@ -388,6 +420,50 @@ begin
     );
 end;
 
+create trigger if not exists account_validate_contra_on_insert
+before insert on account
+when new.contra_of_account_code is not null
+begin
+    select raise(fail, 'contra account must be postable.')
+    where new.account_node_kind <> 'POSTABLE';
+    select raise(fail, 'contra account target must be active.')
+    where exists (
+        select 1 from account as target
+        where target.account_code = new.contra_of_account_code and target.active = 0
+    );
+    select raise(fail, 'contra account target must be postable.')
+    where exists (
+        select 1 from account as target
+        where target.account_code = new.contra_of_account_code and target.account_node_kind <> 'POSTABLE'
+    );
+    select raise(fail, 'contra account target must not itself be a contra account.')
+    where exists (
+        select 1 from account as target
+        where target.account_code = new.contra_of_account_code and target.contra_of_account_code is not null
+    );
+    select raise(fail, 'contra account target must share the account type.')
+    where exists (
+        select 1 from account as target
+        where target.account_code = new.contra_of_account_code and target.account_type <> new.account_type
+    );
+    select raise(fail, 'contra account target must have a compatible statement taxonomy.')
+    where exists (
+        select 1 from account as target
+        where target.account_code = new.contra_of_account_code and (
+            not (
+                target.account_type = 'REVENUE'
+                and target.profit_and_loss_line_classification = 'OPERATING_REVENUE'
+                and new.profit_and_loss_line_classification = 'SALES_DISCOUNT_ALLOWANCE'
+            )
+            and (
+                coalesce(target.financial_position_line_classification, '') <> coalesce(new.financial_position_line_classification, '')
+                or coalesce(target.cash_flow_asset_classification, '') <> coalesce(new.cash_flow_asset_classification, '')
+                or coalesce(target.profit_and_loss_line_classification, '') <> coalesce(new.profit_and_loss_line_classification, '')
+            )
+        )
+    );
+end;
+
 create trigger if not exists account_validate_lifecycle_update
 before update on account
 begin
@@ -402,6 +478,7 @@ begin
             or old.account_type <> new.account_type
             or old.account_node_kind <> new.account_node_kind
             or coalesce(old.parent_account_code, '') <> coalesce(new.parent_account_code, '')
+            or coalesce(old.contra_of_account_code, '') <> coalesce(new.contra_of_account_code, '')
             or coalesce(old.financial_position_line_classification, '')
             <> coalesce(new.financial_position_line_classification, '')
             or coalesce(old.cash_flow_asset_classification, '')
@@ -420,6 +497,7 @@ begin
                     or recoverable_account_code = old.account_code
             )
             or exists (select 1 from account where parent_account_code = old.account_code)
+            or exists (select 1 from account where contra_of_account_code = old.account_code)
         );
     select raise(fail, 'retired accounts must have zero current balance.')
     where
@@ -444,7 +522,52 @@ begin
                     or recoverable_account_code = old.account_code
             )
             or exists (select 1 from account where parent_account_code = old.account_code)
+            or exists (select 1 from account where contra_of_account_code = old.account_code)
         );
+end;
+
+create trigger if not exists account_validate_contra_on_update
+before update on account
+when new.contra_of_account_code is not null
+begin
+    select raise(fail, 'contra account must be postable.')
+    where new.account_node_kind <> 'POSTABLE';
+    select raise(fail, 'contra account target must be active.')
+    where exists (
+        select 1 from account as target
+        where target.account_code = new.contra_of_account_code and target.active = 0
+    );
+    select raise(fail, 'contra account target must be postable.')
+    where exists (
+        select 1 from account as target
+        where target.account_code = new.contra_of_account_code and target.account_node_kind <> 'POSTABLE'
+    );
+    select raise(fail, 'contra account target must not itself be a contra account.')
+    where exists (
+        select 1 from account as target
+        where target.account_code = new.contra_of_account_code and target.contra_of_account_code is not null
+    );
+    select raise(fail, 'contra account target must share the account type.')
+    where exists (
+        select 1 from account as target
+        where target.account_code = new.contra_of_account_code and target.account_type <> new.account_type
+    );
+    select raise(fail, 'contra account target must have a compatible statement taxonomy.')
+    where exists (
+        select 1 from account as target
+        where target.account_code = new.contra_of_account_code and (
+            not (
+                target.account_type = 'REVENUE'
+                and target.profit_and_loss_line_classification = 'OPERATING_REVENUE'
+                and new.profit_and_loss_line_classification = 'SALES_DISCOUNT_ALLOWANCE'
+            )
+            and (
+                coalesce(target.financial_position_line_classification, '') <> coalesce(new.financial_position_line_classification, '')
+                or coalesce(target.cash_flow_asset_classification, '') <> coalesce(new.cash_flow_asset_classification, '')
+                or coalesce(target.profit_and_loss_line_classification, '') <> coalesce(new.profit_and_loss_line_classification, '')
+            )
+        )
+    );
 end;
 
 create trigger if not exists account_validate_parent_on_update
@@ -3059,6 +3182,8 @@ create table if not exists latvian_payroll_run (
         payroll_month glob '2026-[0-1][0-9]'
         and payroll_month between '2026-01' and '2026-12'
     ),
+    tax_book_held_at_employer integer not null check (tax_book_held_at_employer in (0, 1)),
+    dependant_count integer not null check (dependant_count >= 0),
     effective_date text not null check (
         effective_date = date(payroll_month || '-01', '+1 month', '-1 day')
     ),
@@ -3076,6 +3201,9 @@ create table if not exists latvian_payroll_run (
     personal_income_tax_minor integer not null check (personal_income_tax_minor >= 0),
     net_wages_minor integer not null check (net_wages_minor > 0),
     check (
+        tax_book_held_at_employer = 1
+        and dependant_count = 0
+        and
         employee_social_contribution_minor = (gross_wages_minor * 105000 + 500000) / 1000000
         and employer_social_contribution_minor = (gross_wages_minor * 235900 + 500000) / 1000000
         and non_taxable_minimum_minor = min(55000, gross_wages_minor - employee_social_contribution_minor)

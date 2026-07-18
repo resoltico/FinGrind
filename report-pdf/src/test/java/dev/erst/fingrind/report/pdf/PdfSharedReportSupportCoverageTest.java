@@ -219,6 +219,7 @@ class PdfSharedReportSupportCoverageTest {
                 "Cash basis",
                 "EUR",
                 "01-01",
+                "2026-01-01",
                 "All posting kinds",
                 null,
                 null,
@@ -326,6 +327,9 @@ class PdfSharedReportSupportCoverageTest {
       AccountType accountType, List<List<String>> rows, List<CurrencyBalance> totals) {}
 
   /** Minimal synthetic font that forces the descriptor-missing ascent fallback path. */
+  // PDFBox keeps this deprecated abstract member on PDFontLike, so every minimal test double must
+  // implement it.
+  @SuppressWarnings("deprecation")
   private static final class DescriptorlessFont extends PDFont {
     private DescriptorlessFont() {
       super(new COSDictionary());

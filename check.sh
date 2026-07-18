@@ -21,6 +21,9 @@
 # exit status. The script emits per-stage finish lines with durations plus one final plain-language
 # result line and one machine-readable summary line:
 # [CHECK-SUMMARY] status=<success|failure> stage=<stage-id> exit_code=<n> total_elapsed_seconds=<n>
+# It also emits one [CHECK-REPORT] record for every executed stage plus a bounded, tool-scoped
+# [CHECK-WARNING] manifest and [CHECK-WARNING-SUMMARY]. These records deliberately do not scrape
+# arbitrary warning or error text because release-surface negative tests exercise expected failures.
 #
 # Usage: ./check.sh [supported gradle options]
 

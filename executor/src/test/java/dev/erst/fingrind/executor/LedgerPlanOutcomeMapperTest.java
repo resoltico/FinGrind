@@ -11,6 +11,7 @@ import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
@@ -361,12 +362,14 @@ class LedgerPlanOutcomeMapperTest {
         new AccountTaxonomy(
             dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
             Optional.empty(),
+            Optional.empty(),
             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
             Optional.empty(),
             Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
     AccountTaxonomy requestedTaxonomy =
         new AccountTaxonomy(
             dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+            Optional.empty(),
             Optional.empty(),
             Optional.of(FinancialPositionLineClassification.NONCURRENT_ASSET),
             Optional.empty(),
@@ -527,7 +530,7 @@ class LedgerPlanOutcomeMapperTest {
   }
 
   @Test
-  void publishedPostingRejection_projectsFutureDateAndEmptyFactVariants() {
+  void publishedPostingRejection_projectsDateBoundaryAndEmptyFactVariants() {
     var bookNotInitialized =
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanRejectedOutcomes.postingRejection(new PostingRejection.BookNotInitialized());
@@ -540,6 +543,11 @@ class LedgerPlanOutcomeMapperTest {
             LedgerPlanRejectedOutcomes.postingRejection(
                 new PostingRejection.PostingEffectiveDateInFuture(
                     LocalDate.parse("2026-04-08"), LocalDate.parse("2026-04-07")));
+    var beforeBookStart =
+        (LedgerPlanStepOutcome.Rejected)
+            LedgerPlanRejectedOutcomes.postingRejection(
+                new PostingEffectiveDateBeforeBookStart(
+                    LocalDate.parse("2026-01-01"), LocalDate.parse("2026-01-02")));
 
     assertEquals("posting-book-not-initialized", bookNotInitialized.failure().code());
     assertEquals(List.of(), bookNotInitialized.failure().facts());
@@ -551,6 +559,12 @@ class LedgerPlanOutcomeMapperTest {
             BookWorkflowFact.text("attemptedEffectiveDate", "2026-04-08"),
             BookWorkflowFact.text("currentUtcDate", "2026-04-07")),
         futureDate.failure().facts());
+    assertEquals("posting-effective-date-before-book-start", beforeBookStart.failure().code());
+    assertEquals(
+        List.of(
+            BookWorkflowFact.text("attemptedEffectiveDate", "2026-01-01"),
+            BookWorkflowFact.text("bookStartEffectiveDate", "2026-01-02")),
+        beforeBookStart.failure().facts());
   }
 
   @Test

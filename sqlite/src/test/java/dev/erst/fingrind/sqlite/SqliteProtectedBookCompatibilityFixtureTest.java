@@ -23,7 +23,9 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-/** Compatibility and restore coverage for committed protected-book fixtures. */
+/**
+ * Current-format, unsupported-format, and restore coverage for committed protected-book fixtures.
+ */
 class SqliteProtectedBookCompatibilityFixtureTest extends SqlitePostingFactStoreTestSupport {
   private static final String CURRENT_DEFAULT_FIXTURE_RESOURCE =
       "/dev/erst/fingrind/sqlite/fixtures/current-default-protected-book.sqlite";

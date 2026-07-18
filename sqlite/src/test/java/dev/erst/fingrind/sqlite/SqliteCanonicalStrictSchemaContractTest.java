@@ -191,7 +191,8 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                                       costing_doctrine,
                                       functional_currency_code,
                                       fiscal_year_start_month,
-                                      fiscal_year_start_day
+                                      fiscal_year_start_day,
+                                      book_start_effective_date
                                   ) values (
                                       1,
                                       'Acme Studio',
@@ -203,7 +204,8 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                                       null,
                                       'EUR',
                                       2,
-                                      30
+                                      30,
+                                      '2026-01-01'
                                   )
                                   """));
                   assertEquals(

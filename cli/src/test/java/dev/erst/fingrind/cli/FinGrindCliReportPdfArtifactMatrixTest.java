@@ -96,8 +96,8 @@ class FinGrindCliReportPdfArtifactMatrixTest extends CliReportPdfArtifactCommand
       assertEquals("", result.outputText(), spec.commandName());
       JsonNode envelope = readJson(result.diagnosticsText());
       assertEquals("rejected", envelope.path("status").stringValue(), spec.commandName());
-      assertTrue(envelope.path("code").isTextual(), spec.commandName());
-      assertTrue(envelope.path("message").isTextual(), spec.commandName());
+      assertTrue(envelope.path("code").isString(), spec.commandName());
+      assertTrue(envelope.path("message").isString(), spec.commandName());
       assertTrue(envelope.path("artifacts").isMissingNode(), spec.commandName());
       assertFalse(Files.exists(pdfOutputPath), spec.commandName());
     }

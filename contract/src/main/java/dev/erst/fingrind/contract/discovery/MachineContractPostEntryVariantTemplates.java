@@ -30,13 +30,13 @@ final class MachineContractPostEntryVariantTemplates {
 
   private MachineContractPostEntryVariantTemplates() {}
 
-  static ContractTemplates.PostingRequestTemplateDescriptor template(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template(
       BookkeepingEntryKind entryKind, @Nullable BookTemplateId bookTemplateId) {
     return MachineContractPostEntryTemplateCatalog.template(entryKind, bookTemplateId);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor directJournalTemplate() {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor directJournalTemplate() {
+    return new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
         BookkeepingEntryKind.DIRECT_JOURNAL,
         SAMPLE_EFFECTIVE_DATE,
         null,
@@ -73,8 +73,9 @@ final class MachineContractPostEntryVariantTemplates {
         null);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor openingPositionTemplate() {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
+      openingPositionTemplate() {
+    return new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
         BookkeepingEntryKind.OPENING_POSITION,
         SAMPLE_EFFECTIVE_DATE,
         null,
@@ -115,8 +116,8 @@ final class MachineContractPostEntryVariantTemplates {
         null);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor reversalTemplate() {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor reversalTemplate() {
+    return new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
         BookkeepingEntryKind.REVERSAL,
         SAMPLE_EFFECTIVE_DATE,
         null,
@@ -154,7 +155,7 @@ final class MachineContractPostEntryVariantTemplates {
         null);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor roleAmountTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor roleAmountTemplate(
       BookkeepingEntryKind entryKind,
       @Nullable String cashAccountCode,
       @Nullable String receivableAccountCode,
@@ -164,7 +165,7 @@ final class MachineContractPostEntryVariantTemplates {
       @Nullable String expenseAccountCode,
       @Nullable String equityAccountCode,
       @Nullable InventoryReliefTemplateDescriptor inventoryRelief) {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+    return new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
         entryKind,
         SAMPLE_EFFECTIVE_DATE,
         cashAccountCode,
@@ -201,7 +202,7 @@ final class MachineContractPostEntryVariantTemplates {
         null);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor accrualCutoffTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor accrualCutoffTemplate(
       BookkeepingEntryKind entryKind,
       @Nullable String cashAccountCode,
       @Nullable String revenueAccountCode,
@@ -211,7 +212,7 @@ final class MachineContractPostEntryVariantTemplates {
       @Nullable String deferredRevenueAccountCode,
       @Nullable String accruedExpenseLiabilityAccountCode,
       ContractTemplates.@Nullable RecognitionIntervalTemplateDescriptor recognitionInterval) {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+    return new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
         entryKind,
         SAMPLE_EFFECTIVE_DATE,
         cashAccountCode,

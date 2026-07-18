@@ -26,6 +26,7 @@ public final class ContractRequestShapes {
           RequestShapesDescriptor,
           BookkeepingEntryRequestShapeDescriptor,
           DeclareAccountRequestShapeDescriptor,
+          RetireAccountRequestShapeDescriptor,
           DeclareTaxRegistrationRequestShapeDescriptor,
           LedgerPlanRequestShapeDescriptor,
           EntryKindSemanticsDescriptor,
@@ -85,6 +86,7 @@ public final class ContractRequestShapes {
       String schemaDialect,
       @Nullable BookkeepingEntryRequestShapeDescriptor bookkeepingEntry,
       @Nullable DeclareAccountRequestShapeDescriptor declareAccount,
+      @Nullable RetireAccountRequestShapeDescriptor retireAccount,
       @Nullable DeclareTaxRegistrationRequestShapeDescriptor declareTaxRegistration,
       @Nullable LedgerPlanRequestShapeDescriptor ledgerPlan)
       implements RequestShapeDescriptorType {
@@ -164,6 +166,17 @@ public final class ContractRequestShapes {
     }
   }
 
+  /** Descriptor for the minimal account-retirement request shape. */
+  public record RetireAccountRequestShapeDescriptor(
+      List<RequestFieldDescriptor> topLevelFields, Map<String, Object> schema)
+      implements RequestShapeDescriptorType {
+    /** Validates one account-retirement request-shape descriptor payload. */
+    public RetireAccountRequestShapeDescriptor {
+      topLevelFields = ContractDescriptorValidation.copyList(topLevelFields, "topLevelFields");
+      schema = ContractDescriptorValidation.copySchemaMap(schema, "schema");
+    }
+  }
+
   /** Descriptor for the declare-tax-registration request shape. */
   public record DeclareTaxRegistrationRequestShapeDescriptor(
       List<RequestFieldDescriptor> topLevelFields,
@@ -220,6 +233,7 @@ public final class ContractRequestShapes {
       List<String> requiredTopLevelFields,
       List<String> optionalTopLevelFields,
       List<String> forbiddenTopLevelFields,
+      List<RequestFieldDescriptor> variantFields,
       List<String> requiredSourceDocumentFields,
       String sourceDocumentTypeMode,
       List<String> acceptedSourceDocumentTypes,
@@ -235,6 +249,7 @@ public final class ContractRequestShapes {
           ContractDescriptorValidation.copyList(optionalTopLevelFields, "optionalTopLevelFields");
       forbiddenTopLevelFields =
           ContractDescriptorValidation.copyList(forbiddenTopLevelFields, "forbiddenTopLevelFields");
+      variantFields = ContractDescriptorValidation.copyList(variantFields, "variantFields");
       requiredSourceDocumentFields =
           ContractDescriptorValidation.copyList(
               requiredSourceDocumentFields, "requiredSourceDocumentFields");

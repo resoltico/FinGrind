@@ -187,24 +187,30 @@ class FinGrindCliDiscoveryMetadataCommandTest extends FinGrindCliDiscoveryComman
   }
 
   @Test
-  void run_printsAtomicTaxSetupPlanTemplate() throws Exception {
+  void run_printsGeneralPlanTemplateAndExplicitTaxSetupTemplate() throws Exception {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
     int exitCode = cli.run(new String[] {"print-plan-template"});
     assertEquals(0, exitCode);
     JsonNode json = new ObjectMapper().readTree(outputStream.toString(StandardCharsets.UTF_8));
-    assertEquals("tax-setup", json.path("planId").stringValue());
+    assertEquals("general-workflow", json.path("planId").stringValue());
     assertFalse(json.has("executionPolicy"));
     assertEquals("ensure-book", json.path("steps").get(0).path("stepId").stringValue());
-    assertEquals("declare-tax-payable", json.path("steps").get(1).path("stepId").stringValue());
-    assertEquals("declare-account", json.path("steps").get(1).path("kind").stringValue());
-    assertEquals("declare-tax-recoverable", json.path("steps").get(2).path("stepId").stringValue());
-    assertEquals("declare-account", json.path("steps").get(2).path("kind").stringValue());
+    assertEquals("record-sale-settled", json.path("steps").get(1).path("stepId").stringValue());
+    assertEquals("record-sale-settled", json.path("steps").get(1).path("kind").stringValue());
+    assertTrue(json.path("steps").get(1).has("posting"));
+
+    outputStream.reset();
+    exitCode = cli.run(new String[] {"print-plan-template", "tax-setup"});
+    assertEquals(0, exitCode);
+    JsonNode taxSetup = new ObjectMapper().readTree(outputStream.toString(StandardCharsets.UTF_8));
+    assertEquals("tax-setup", taxSetup.path("planId").stringValue());
     assertEquals(
-        "declare-tax-registration", json.path("steps").get(3).path("stepId").stringValue());
-    assertEquals("declare-tax-registration", json.path("steps").get(3).path("kind").stringValue());
-    assertTrue(json.path("steps").get(3).has("declareTaxRegistration"));
-    assertFalse(json.toString().contains("\"posting\""));
+        "declare-tax-registration", taxSetup.path("steps").get(3).path("stepId").stringValue());
+    assertEquals(
+        "declare-tax-registration", taxSetup.path("steps").get(3).path("kind").stringValue());
+    assertTrue(taxSetup.path("steps").get(3).has("declareTaxRegistration"));
+    assertFalse(taxSetup.toString().contains("\"posting\""));
   }
 }

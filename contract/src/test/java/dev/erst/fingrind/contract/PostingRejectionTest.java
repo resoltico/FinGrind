@@ -13,6 +13,7 @@ import dev.erst.fingrind.contract.bookkeeping.InventoryQuantityBelowZero;
 import dev.erst.fingrind.contract.bookkeeping.InventoryWriteDownExceedsCarryingCost;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostingAccrualCutoffRejectionSemantics;
+import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.contract.bookkeeping.PostingInventoryRejectionSemantics;
 import dev.erst.fingrind.contract.bookkeeping.PostingLatvianPayrollRejectionSemantics;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
@@ -173,18 +174,21 @@ class PostingRejectionTest {
           "fixed-asset-lifecycle-precedes-horizon",
           "fixed-asset-fully-depreciated",
           "fixed-asset-disposal-currency-mismatch",
+          "fixed-asset-capitalization-reversal-requires-applications-reversed",
           "financing-arrangement-id-already-exists",
           "financing-arrangement-not-found",
           "financing-principal-repayment-exceeds-outstanding",
           "financing-interest-payment-exceeds-accrued",
           "financing-lifecycle-precedes-horizon",
           "financing-currency-mismatch",
+          "financing-borrowing-reversal-requires-applications-reversed",
           "foreign-currency-obligation-id-already-exists",
           "foreign-currency-obligation-not-found",
           "foreign-currency-obligation-already-settled",
           "realized-foreign-exchange-settlement-precedes-lifecycle-horizon",
           "realized-foreign-exchange-settlement-transaction-amount-mismatch",
-          "realized-foreign-exchange-settlement-functional-currency-mismatch");
+          "realized-foreign-exchange-settlement-functional-currency-mismatch",
+          "foreign-currency-obligation-reversal-requires-settlement-reversed");
   private static final List<String> ACCOUNT_STATE_CANONICAL_CODES =
       List.of(
           "unknown-account",
@@ -205,6 +209,7 @@ class PostingRejectionTest {
             "entry-semantics-violations",
             "account-state-violations",
             "idempotency-key-conflict",
+            "posting-effective-date-before-book-start",
             "posting-effective-date-in-future",
             "book-functional-currency-mismatch",
             "closed-period-violation",
@@ -230,6 +235,10 @@ class PostingRejectionTest {
                 new PostingRejection.AccountStateViolations(
                     List.of(new PostingRejection.UnknownAccount(new AccountCode("1000"))))),
             PostingRejection.wireCode(new PostingRejection.IdempotencyKeyConflict()),
+            PostingRejection.wireCode(
+                new PostingEffectiveDateBeforeBookStart(
+                    java.time.LocalDate.parse("2025-12-31"),
+                    java.time.LocalDate.parse("2026-01-01"))),
             PostingRejection.wireCode(
                 new PostingRejection.PostingEffectiveDateInFuture(
                     java.time.LocalDate.parse("2026-05-02"),
@@ -310,6 +319,7 @@ class PostingRejectionTest {
             "entry-semantics-violations",
             "account-state-violations",
             "idempotency-key-conflict",
+            "posting-effective-date-before-book-start",
             "posting-effective-date-in-future",
             "book-functional-currency-mismatch",
             "closed-period-violation",

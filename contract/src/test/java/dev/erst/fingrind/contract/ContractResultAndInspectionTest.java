@@ -14,7 +14,9 @@ import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
@@ -69,7 +71,10 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
         new BookAdministrationRejection.BookNotInitialized(),
         new DeclareAccountResult.Rejected(new BookAdministrationRejection.BookNotInitialized())
             .rejection());
-    assertEquals(accountPage, new ListAccountsResult.Listed(accountPage).page());
+    assertEquals(
+        accountPage,
+        new ListAccountsResult.Listed(new ListAccountsQuery(50, Optional.empty()), accountPage)
+            .page());
     assertEquals(
         new BookQueryRejection.BookNotInitialized(),
         new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized()).rejection());
@@ -85,7 +90,12 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
         new AccountBalanceResult.Rejected(
                 new BookQueryRejection.UnknownAccount(new AccountCode("9999")))
             .rejection());
-    assertEquals(postingPage, new ListPostingsResult.Listed(postingPage).page());
+    assertEquals(
+        postingPage,
+        new ListPostingsResult.Listed(
+                new ListPostingsQuery(Optional.empty(), null, null, 50, Optional.empty()),
+                postingPage)
+            .page());
     assertEquals(
         new BookQueryRejection.BookNotInitialized(),
         new ListPostingsResult.Rejected(new BookQueryRejection.BookNotInitialized()).rejection());

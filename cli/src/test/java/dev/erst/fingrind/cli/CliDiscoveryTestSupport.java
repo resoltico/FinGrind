@@ -91,6 +91,7 @@ final class CliDiscoveryTestSupport {
         requestShapes.bookkeepingEntry(),
         new ContractRequestShapes.DeclareAccountRequestShapeDescriptor(
             declareAccount.topLevelFields(), List.of(), declareAccount.schema()),
+        requestShapes.retireAccount(),
         requestShapes.declareTaxRegistration(),
         requestShapes.ledgerPlan());
   }

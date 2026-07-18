@@ -81,7 +81,8 @@ class CoreTextValueObjectsTest {
             entityProfile,
             BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
             functionalCurrency,
-            fiscalYearStart);
+            fiscalYearStart,
+            java.time.LocalDate.parse("2026-01-01"));
 
     assertEquals(entityName, bookIdentity.entityName());
     assertEquals(
@@ -94,10 +95,17 @@ class CoreTextValueObjectsTest {
                 nullOf(),
                 BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
                 functionalCurrency,
-                fiscalYearStart));
+                fiscalYearStart,
+                java.time.LocalDate.parse("2026-01-01")));
     assertThrows(
         NullPointerException.class,
-        () -> new BookIdentity(entityProfile, nullOf(), functionalCurrency, fiscalYearStart));
+        () ->
+            new BookIdentity(
+                entityProfile,
+                nullOf(),
+                functionalCurrency,
+                fiscalYearStart,
+                java.time.LocalDate.parse("2026-01-01")));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -105,7 +113,8 @@ class CoreTextValueObjectsTest {
                 entityProfile,
                 BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
                 nullOf(),
-                fiscalYearStart));
+                fiscalYearStart,
+                java.time.LocalDate.parse("2026-01-01")));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -113,6 +122,16 @@ class CoreTextValueObjectsTest {
                 entityProfile,
                 BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
                 functionalCurrency,
+                nullOf(),
+                java.time.LocalDate.parse("2026-01-01")));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new BookIdentity(
+                entityProfile,
+                BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
+                functionalCurrency,
+                fiscalYearStart,
                 nullOf()));
   }
 

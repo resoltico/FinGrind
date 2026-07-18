@@ -5,6 +5,7 @@ import dev.erst.fingrind.cli.json.CliEntrySemanticsViolationPayload;
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AccountStateViolationDetail;
+import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
 import dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal;
@@ -52,6 +53,10 @@ final class CliPostingRejectionPayloadMapper {
               violations.violations().stream()
                   .map(CliPostingRejectionPayloadMapper::entrySemanticsViolationPayload)
                   .toList());
+      case PostingEffectiveDateBeforeBookStart beforeBookStart ->
+          new CliRejectionJsonModels.PostingEffectiveDateBeforeBookStartDetails(
+              beforeBookStart.attemptedEffectiveDate().toString(),
+              beforeBookStart.bookStartEffectiveDate().toString());
       case PostingRejection.PostingEffectiveDateInFuture futureDate ->
           new CliRejectionJsonModels.PostingEffectiveDateInFutureDetails(
               futureDate.attemptedEffectiveDate().toString(),

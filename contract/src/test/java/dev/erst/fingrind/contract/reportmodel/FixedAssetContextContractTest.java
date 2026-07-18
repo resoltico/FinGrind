@@ -187,6 +187,9 @@ class FixedAssetContextContractTest {
     assertEquals(
         "laptop-2026-001", model.sections().getFirst().rows().getFirst().cells().getFirst());
     assertEquals("1000", csv.rows().getFirst().get(csv.headers().indexOf("costMinorUnits")));
+    assertEquals(
+        "800",
+        csv.rows().getFirst().get(csv.headers().indexOf("carryingAmountAtDisposalMinorUnits")));
     assertSame(report, reported.reported());
     assertNull(reported.rejection());
     assertNull(rejected.reported());
@@ -214,6 +217,26 @@ class FixedAssetContextContractTest {
     assertThrows(IllegalArgumentException.class, () -> registerRow(1, usd("200"), money("800")));
     assertThrows(IllegalArgumentException.class, () -> registerRow(1, money("200"), usd("800")));
     assertThrows(IllegalArgumentException.class, () -> registerRow(1, money("200"), money("799")));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            fixedAssetRegisterRow(
+                money("800"),
+                Optional.of(money("800")),
+                Optional.of(EFFECTIVE_DATE.plusMonths(3))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            fixedAssetRegisterRow(
+                money("0"), Optional.of(usd("800")), Optional.of(EFFECTIVE_DATE.plusMonths(3))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            fixedAssetRegisterRow(
+                money("0"), Optional.empty(), Optional.of(EFFECTIVE_DATE.plusMonths(3))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> fixedAssetRegisterRow(money("800"), Optional.of(money("800")), Optional.empty()));
   }
 
   private static FixedAssetBookkeepingEntryVariants.Capitalization capitalization() {
@@ -259,6 +282,16 @@ class FixedAssetContextContractTest {
   }
 
   private static FixedAssetRegisterRow registerRow(Optional<LocalDate> disposedOn) {
+    return fixedAssetRegisterRow(
+        disposedOn.isPresent() ? money("0") : money("800"),
+        disposedOn.map(ignored -> money("800")),
+        disposedOn);
+  }
+
+  private static FixedAssetRegisterRow fixedAssetRegisterRow(
+      MonetaryAmount carryingAmount,
+      Optional<MonetaryAmount> carryingAmountAtDisposal,
+      Optional<LocalDate> disposedOn) {
     return new FixedAssetRegisterRow(
         assetId(),
         EFFECTIVE_DATE,
@@ -266,7 +299,8 @@ class FixedAssetContextContractTest {
         ACCUMULATED_DEPRECIATION,
         money("1000"),
         money("200"),
-        money("800"),
+        carryingAmount,
+        carryingAmountAtDisposal,
         new FixedAssetDepreciationSchedule(EFFECTIVE_DATE, 60, money("100")),
         1,
         Optional.of(EFFECTIVE_DATE.plusMonths(1)),
@@ -283,6 +317,7 @@ class FixedAssetContextContractTest {
         money("1000"),
         accumulatedDepreciation,
         carryingAmount,
+        Optional.empty(),
         new FixedAssetDepreciationSchedule(EFFECTIVE_DATE, 60, money("100")),
         periodsApplied,
         Optional.of(EFFECTIVE_DATE),

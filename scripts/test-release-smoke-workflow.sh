@@ -59,6 +59,9 @@ grep -Fq 'release_smoke_workflow.runner import main' "${workflow_py}" || die \
 grep -Fq 'operation_ids["capabilities"], "--output", "json", "--detail", "full"' \
     "${workflow_package_dir}/discovery_checks.py" || die \
     "release smoke runtime verification no longer requests the full capabilities contract"
+grep -Fq 'payload_field(plan_template, "planId") == "general-workflow"' \
+    "${workflow_package_dir}/discovery_checks.py" || die \
+    "release smoke template verification no longer requires the canonical general workflow"
 grep -Fq 'required_mapping(payload, "fullContract")' \
     "${workflow_package_dir}/discovery_assertions.py" || die \
     "release smoke assertions no longer require the full capabilities contract envelope"
@@ -85,6 +88,12 @@ if grep -Fq 'required_mapping(payload, "responseModel")' \
 fi
 grep -Fq '"--effective-date-as-of"' "${workflow_package_dir}/query_checks.py" || die \
     "release smoke query verification no longer uses the canonical trial-balance as-of flag"
+grep -Fq 'list-postings continuation page did not preserve the accepted cursor' \
+    "${workflow_package_dir}/pagination_checks.py" || die \
+    "release smoke query verification no longer distinguishes accepted and continuation cursors"
+grep -Fq 'list-postings terminal page unexpectedly emitted payload.nextCursor' \
+    "${workflow_package_dir}/pagination_checks.py" || die \
+    "release smoke query verification no longer checks terminal pagination shape"
 if grep -Fq 'instead of 2' "${workflow_package_dir}/request_failure_checks.py"; then
     die "release smoke failure verification still hardcodes retired exit-code expectations"
 fi

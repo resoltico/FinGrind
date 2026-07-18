@@ -11,6 +11,7 @@ import dev.erst.fingrind.core.EffectiveDateHorizonPolicy;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -122,19 +123,17 @@ public final class PostingApplicationService {
         command.requestProvenance().idempotencyKey(), rejection);
   }
 
-  private boolean bookNotInitialized() {
-    return !(validationStore.inspectBook() instanceof BookLifecycleInspection.Initialized);
-  }
-
   private java.util.Optional<PostingRejection> applicationRejectionFor(PostEntryCommand command) {
-    if (bookNotInitialized()) {
+    BookLifecycleInspection inspection = validationStore.inspectBook();
+    if (!(inspection instanceof BookLifecycleInspection.Initialized initialized)) {
       return java.util.Optional.of(
           BookkeepingPublishedLanguageTranslator.toPublished(
               new BookkeepingPostingRejection.BookNotInitialized()));
     }
-    java.util.Optional<PostingRejection> futureDateRejection = futureDateRejectionFor(command);
-    if (futureDateRejection.isPresent()) {
-      return futureDateRejection;
+    java.util.Optional<PostingRejection> effectiveDateRejection =
+        effectiveDateRejectionFor(command, initialized.bookStartDate());
+    if (effectiveDateRejection.isPresent()) {
+      return effectiveDateRejection;
     }
     java.util.Optional<PostingRejection> semanticsRejection =
         entryAcceptancePolicy
@@ -169,7 +168,14 @@ public final class PostingApplicationService {
         entry, evidence, validationStore.findAccounts(semanticContext.referencedAccounts()));
   }
 
-  private java.util.Optional<PostingRejection> futureDateRejectionFor(PostEntryCommand command) {
+  private java.util.Optional<PostingRejection> effectiveDateRejectionFor(
+      PostEntryCommand command, java.time.LocalDate bookStartEffectiveDate) {
+    if (command.entry().effectiveDate().isBefore(bookStartEffectiveDate)) {
+      return java.util.Optional.of(
+          BookkeepingPublishedLanguageTranslator.toPublished(
+              new BookkeepingPostingEffectiveDateBeforeBookStart(
+                  command.entry().effectiveDate(), bookStartEffectiveDate)));
+    }
     try {
       EffectiveDateHorizonPolicy.requireNotAfterToday(command.entry().effectiveDate(), clock);
       return java.util.Optional.empty();

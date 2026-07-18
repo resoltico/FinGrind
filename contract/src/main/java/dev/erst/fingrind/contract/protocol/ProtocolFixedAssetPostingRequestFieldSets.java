@@ -6,23 +6,23 @@ import java.util.Set;
 public final class ProtocolFixedAssetPostingRequestFieldSets {
   private static final Set<String> CAPITALIZATION_FIELDS =
       ProtocolPostingRequestFieldSetSupport.typedEntryFields(
-          ProtocolPostEntryFields.TopLevel.FIXED_ASSET_ID,
-          ProtocolPostEntryFields.TopLevel.ASSET_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.ACCUMULATED_DEPRECIATION_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.DEPRECIATION_EXPENSE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.DISPOSAL_GAIN_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.DISPOSAL_LOSS_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.COST,
-          ProtocolPostEntryFields.TopLevel.DEPRECIATION_SCHEDULE);
+          ProtocolBusinessEventFields.FixedAsset.FIXED_ASSET_ID,
+          ProtocolBusinessEventFields.FixedAsset.ASSET_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.FixedAsset.ACCUMULATED_DEPRECIATION_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.FixedAsset.DEPRECIATION_EXPENSE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.FixedAsset.DISPOSAL_GAIN_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.FixedAsset.DISPOSAL_LOSS_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.FixedAsset.COST,
+          ProtocolBusinessEventFields.FixedAsset.DEPRECIATION_SCHEDULE);
   private static final Set<String> DEPRECIATION_FIELDS =
       ProtocolPostingRequestFieldSetSupport.typedEntryFields(
-          ProtocolPostEntryFields.TopLevel.FIXED_ASSET_ID);
+          ProtocolBusinessEventFields.FixedAsset.FIXED_ASSET_ID);
   private static final Set<String> DISPOSAL_FIELDS =
       ProtocolPostingRequestFieldSetSupport.typedEntryFields(
-          ProtocolPostEntryFields.TopLevel.FIXED_ASSET_ID,
-          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.PROCEEDS);
+          ProtocolBusinessEventFields.FixedAsset.FIXED_ASSET_ID,
+          ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.FixedAsset.PROCEEDS);
 
   private ProtocolFixedAssetPostingRequestFieldSets() {}
 

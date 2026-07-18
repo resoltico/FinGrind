@@ -1,5 +1,5 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: USER_CONTAINER
 updated: "2026-07-16"
@@ -54,7 +54,7 @@ fingrind generate-book-key-file --new-book-key-file ./secrets/acme.book-key
 fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
   --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE \
   --accounting-basis CASH \
-  --functional-currency EUR --fiscal-year-start 01-01
+  --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01
 ```
 
 Create the request scaffold locally:

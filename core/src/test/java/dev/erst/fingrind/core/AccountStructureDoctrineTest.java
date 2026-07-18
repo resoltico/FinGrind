@@ -97,4 +97,50 @@ class AccountStructureDoctrineTest {
             AccountStructureDoctrine.parentChildHierarchyCompatible(
                 AccountType.ASSET, parentAssetHeader, nullOf()));
   }
+
+  @Test
+  void contraRelationshipCompatible_preservesTheDeclaredStatementMeaning() {
+    AccountTaxonomy operatingRevenue =
+        nominalTaxonomy(
+            AccountNodeKind.POSTABLE, ProfitAndLossLineClassification.OPERATING_REVENUE);
+    AccountTaxonomy salesDiscountAllowance =
+        nominalTaxonomy(
+            AccountNodeKind.POSTABLE, ProfitAndLossLineClassification.SALES_DISCOUNT_ALLOWANCE);
+    AccountTaxonomy otherRevenue =
+        nominalTaxonomy(AccountNodeKind.POSTABLE, ProfitAndLossLineClassification.OTHER_REVENUE);
+    AccountTaxonomy currentAsset =
+        assetTaxonomy(
+            AccountNodeKind.POSTABLE,
+            FinancialPositionLineClassification.CURRENT_ASSET,
+            CashFlowAssetClassification.NON_CASH);
+
+    assertTrue(
+        AccountStructureDoctrine.contraRelationshipCompatible(
+            AccountType.REVENUE, operatingRevenue, salesDiscountAllowance));
+    assertFalse(
+        AccountStructureDoctrine.contraRelationshipCompatible(
+            AccountType.REVENUE, operatingRevenue, otherRevenue));
+    assertFalse(
+        AccountStructureDoctrine.contraRelationshipCompatible(
+            AccountType.REVENUE, otherRevenue, salesDiscountAllowance));
+    assertTrue(
+        AccountStructureDoctrine.contraRelationshipCompatible(
+            AccountType.ASSET, currentAsset, currentAsset));
+
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            AccountStructureDoctrine.contraRelationshipCompatible(
+                nullOf(), operatingRevenue, salesDiscountAllowance));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            AccountStructureDoctrine.contraRelationshipCompatible(
+                AccountType.REVENUE, nullOf(), salesDiscountAllowance));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            AccountStructureDoctrine.contraRelationshipCompatible(
+                AccountType.REVENUE, operatingRevenue, nullOf()));
+  }
 }

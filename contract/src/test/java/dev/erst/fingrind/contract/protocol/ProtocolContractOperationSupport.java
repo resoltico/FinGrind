@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.discovery.PlanTemplateTopic;
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
 import dev.erst.fingrind.contract.discovery.WorkflowSurface;
 import dev.erst.fingrind.contract.runtime.BookInspection;
@@ -185,6 +186,7 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
                 "windows-2022",
                 "windows-latest",
                 "report-pdf"));
+    ids.addAll(PlanTemplateTopic.wireNames());
     ids.addAll(BookInspection.Status.wireValues());
     ids.addAll(CapabilityCatalog.entries().stream().map(CapabilityCatalogEntry::id).toList());
     ids.addAll(BookMigrationPolicyMode.wireValues());

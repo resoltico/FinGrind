@@ -1,5 +1,5 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: DEVELOPER_SQLITE
 updated: "2026-07-16"
@@ -45,7 +45,7 @@ That means:
   default `sqleet` / `chacha20` cipher
 - duplicate idempotency is enforced within the selected book, not globally across files
 - one canonical current schema defines every newly initialized book
-- the current supported book format is `44`, owned by `BookFormatContract`
+- the current supported book format is `50`, owned by `BookFormatContract`
 - accepted posting facts persist first-class accounting evidence through
   `posting_source_document` and `posting_approval` child tables keyed by posting id
 - `inspect-book` exposes one explicit hard-break migration policy for the active format line:

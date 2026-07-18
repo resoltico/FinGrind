@@ -588,7 +588,9 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
       "--functional-currency",
       tradingBookIdentity().functionalCurrency().code(),
       "--fiscal-year-start",
-      tradingBookIdentity().fiscalYearStart().wireValue()
+      tradingBookIdentity().fiscalYearStart().wireValue(),
+      "--book-start-effective-date",
+      tradingBookIdentity().bookStartEffectiveDate().toString()
     };
   }
 
@@ -611,7 +613,9 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
       "--functional-currency",
       tradingBookIdentity().functionalCurrency().code(),
       "--fiscal-year-start",
-      tradingBookIdentity().fiscalYearStart().wireValue()
+      tradingBookIdentity().fiscalYearStart().wireValue(),
+      "--book-start-effective-date",
+      tradingBookIdentity().bookStartEffectiveDate().toString()
     };
   }
 

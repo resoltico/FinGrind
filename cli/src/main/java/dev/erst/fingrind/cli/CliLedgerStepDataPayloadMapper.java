@@ -96,7 +96,8 @@ final class CliLedgerStepDataPayloadMapper {
         CliLedgerFactAccess.requiredTextFact(facts, "initializedAt"),
         CliLedgerFactAccess.requiredTextFact(facts, "entityName"),
         CliLedgerFactAccess.requiredTextFact(facts, "functionalCurrency"),
-        CliLedgerFactAccess.requiredTextFact(facts, "fiscalYearStart"));
+        CliLedgerFactAccess.requiredTextFact(facts, "fiscalYearStart"),
+        CliLedgerFactAccess.requiredTextFact(facts, "bookStartEffectiveDate"));
   }
 
   private static CliPlanJsonModels.PreflightEntryStepDataPayload preflightEntryStepDataPayload(

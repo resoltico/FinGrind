@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.protocol.OperationId;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -124,6 +125,8 @@ class CliPostEntryRequestReaderEvidenceValidationTest extends CliRequestReaderTe
     assertEquals(
         "Scaffold placeholder must be replaced before submission: sourceDocuments[0].sourceDocumentId",
         exception.getMessage());
-    assertEquals(CliJsonRequestHints.postEntryRequestHint(), exception.failure().hint());
+    assertEquals(
+        CliJsonRequestHints.postEntryRequestHint(OperationId.PREFLIGHT_ENTRY),
+        exception.failure().hint());
   }
 }

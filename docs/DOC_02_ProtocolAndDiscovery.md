@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-07-16"
+updated: "2026-07-17"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, tax-setup, declare-tax-registration, amend-account, retire-account, tax-obligation]
   questions: ["where is protocol metadata documented in fingrind", "where is the tax setup request surface documented", "where are account lifecycle commands documented"]
@@ -506,15 +506,15 @@ public final class ProtocolLedgerPlanFields
 
 - Purpose: prevent request parsing, templates, capabilities, and docs from carrying divergent
   field-name registries
-- `ProtocolOpenBookFields`: owns the nested `entityName`, `functionalCurrency`, and
-  `fiscalYearStart` field names for explicit book initialization
+- `ProtocolOpenBookFields`: owns the nested `entityName`, `functionalCurrency`, `fiscalYearStart`,
+  and `bookStartEffectiveDate` field names for explicit book initialization
 - `ProtocolDeclareAccountFields`: owns the top-level account-declaration field names, including
   the conditional nested `unitOfMeasure` object used only by inventory-account declarations
 - `ProtocolDeclareAccountFields.UnitOfMeasure`: owns the nested `token` and `quantityScale` field
   names for that inventory unit-of-measure object
 - `ProtocolTaxRegistrationFields` and nested `.TaxCode` own the canonical top-level and declared
   tax-code field names for `declare-tax-registration`
-- `ProtocolPostEntryFields.TopLevel`, `.SettlementAdjunct`, `.ForeignExchange`, `.QuotedRate`,
+- `ProtocolPostEntryFields.SettlementAdjunct`, `.ForeignExchange`, `.QuotedRate`,
   `.InventoryRelief`, `.Tax`, `.JournalLine`, `.OpeningBalance`, `.Provenance`, and `.Reversal`
   group the canonical posting-request field families by JSON object scope; foreign-currency
   business events carry one nested `foreignExchange` object with one nested `quotedRate` object,
@@ -547,6 +547,24 @@ public final class ProtocolLedgerPlanRequestFieldSets
   objects, including journal lines, evidence, tax selectors, and foreign-exchange fact bundles;
   `ProtocolLedgerPlanRequestFieldSets` owns ledger-plan top-level, step, query, and assertion
   objects
+
+## `ProtocolBusinessEventFields`, `ProtocolBusinessEventFields.Core`, `ProtocolBusinessEventFields.AccrualCutoff`, `ProtocolBusinessEventFields.FixedAsset`, `ProtocolBusinessEventFields.Financing`, `ProtocolBusinessEventFields.RealizedForeignExchange`, `ProtocolBusinessEventFields.Inventory`, And `ProtocolBusinessEventFields.LatvianPayroll`
+
+`ProtocolBusinessEventFields` is the canonical namespace for top-level posting facts. Its nested
+owners group each field by the business event whose meaning it carries rather than by a generic
+transport wrapper.
+
+```java
+public interface ProtocolBusinessEventFields
+```
+
+- `Core`: fields shared by more than one posting family, including event identity, dates,
+  settlement, foreign exchange, tax, evidence, provenance, and reversal
+- `AccrualCutoff`, `FixedAsset`, `Financing`, and `RealizedForeignExchange`: fields owned by their
+  respective lifecycle contexts
+- `Inventory`: quantity, unit-cost, account, and inventory-relief facts for the inventory context
+- `LatvianPayroll`: the narrow payroll-run identity, withholding, account-role, and gross-wage
+  facts used by the owned Latvian payroll context
 - Current declare-account line: the accepted top-level field set includes `unitOfMeasure`, while
   the narrower declare-account schema and parser-owning validation layer enforce the
   inventory-only requiredness of that nested object
@@ -661,7 +679,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 46`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 50`
 
 ## `ProtectedBookFormatContract`
 

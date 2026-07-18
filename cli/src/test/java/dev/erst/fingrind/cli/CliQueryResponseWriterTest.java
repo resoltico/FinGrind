@@ -193,8 +193,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     CliResponseWriter listPostingsWriter =
         new CliResponseWriter(utf8PrintStream(listPostingsOutput));
     listPostingsWriter.writeListPostingsResult(
-        new ListPostingsResult.Listed(
-            postingPage(List.of(postingFact), 10, java.util.Optional.empty())));
+        listedPostings(postingPage(List.of(postingFact), 10, java.util.Optional.empty())));
     ByteArrayOutputStream listPostingsRejectionOutput = new ByteArrayOutputStream();
     CliResponseWriter listPostingsRejectionWriter =
         new CliResponseWriter(utf8PrintStream(listPostingsRejectionOutput));
@@ -214,6 +213,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertJsonContains(inspectionOutput, "\"entityName\":\"Acme Studio\"");
     assertJsonContains(inspectionOutput, "\"functionalCurrency\":\"EUR\"");
     assertJsonContains(inspectionOutput, "\"fiscalYearStart\":\"01-01\"");
+    assertJsonContains(inspectionOutput, "\"bookStartEffectiveDate\":\"2026-01-01\"");
     assertJsonContains(missingInspectionOutput, "\"canInitializeWithOpenBook\":true");
     assertFalse(
         missingInspectionOutput.toString(StandardCharsets.UTF_8).contains("\"initializedAt\""));
@@ -235,6 +235,43 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
   }
 
   @Test
+  void nonReportReadQueries_shareTheCanonicalMachinePayloadSpine() throws IOException {
+    PostingFact postingFact = postingFact();
+
+    ByteArrayOutputStream accountOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(accountOutput))
+        .writeListAccountsResult(
+            listedAccounts(accountPage(List.of(declaredCashAccount()), 10, Optional.empty())),
+            OutputMode.JSON);
+    assertCanonicalQueryPayload(readJson(accountOutput), "list-accounts", "accounts");
+
+    ByteArrayOutputStream postingOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(postingOutput))
+        .writeListPostingsResult(
+            listedPostings(postingPage(List.of(postingFact), 10, Optional.empty())),
+            OutputMode.JSON);
+    assertCanonicalQueryPayload(readJson(postingOutput), "list-postings", "postings");
+
+    ByteArrayOutputStream detailsOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(detailsOutput))
+        .writeGetPostingResult(foundPosting(postingFact), OutputMode.JSON);
+    assertCanonicalQueryPayload(readJson(detailsOutput), "get-posting", "posting");
+
+    ByteArrayOutputStream registrationOutput = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(registrationOutput))
+        .writeListTaxRegistrationsResult(
+            listedTaxRegistrations(
+                new TaxRegistrationPage(
+                    bookIdentity(),
+                    List.of(declaredTaxRegistration("LV40001234567")),
+                    10,
+                    Optional.empty())),
+            OutputMode.JSON);
+    assertCanonicalQueryPayload(
+        readJson(registrationOutput), "list-tax-registrations", "registrations");
+  }
+
+  @Test
   void writeQueryResults_supportTextAndCsvOutputModes() {
     PostingFact postingFact = postingFact();
     AccountBalanceSnapshot balanceSnapshot =
@@ -248,7 +285,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     ByteArrayOutputStream postingRegisterTextOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(postingRegisterTextOutput))
         .writeListPostingsResult(
-            new ListPostingsResult.Listed(postingPage(List.of(postingFact), 10, Optional.empty())),
+            listedPostings(postingPage(List.of(postingFact), 10, Optional.empty())),
             OutputMode.TEXT);
     String postingRegisterText = postingRegisterTextOutput.toString(StandardCharsets.UTF_8);
     assertTrue(postingRegisterText.contains("Accounts"));
@@ -260,7 +297,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     ByteArrayOutputStream postingRegisterCsvOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(postingRegisterCsvOutput))
         .writeListPostingsResult(
-            new ListPostingsResult.Listed(postingPage(List.of(postingFact), 10, Optional.empty())),
+            listedPostings(postingPage(List.of(postingFact), 10, Optional.empty())),
             OutputMode.CSV);
     String postingRegisterCsv = postingRegisterCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
@@ -295,6 +332,20 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(balanceCsv.contains("account-balance,1000,Cash,ASSET,DEBIT,true,EUR,EUR,1000"));
   }
 
+  private static void assertCanonicalQueryPayload(
+      JsonNode envelope, String family, String recordsField) {
+    JsonNode payload = envelope.path("payload");
+    assertEquals("ok", envelope.path("status").stringValue());
+    assertEquals(family, payload.path("family").stringValue());
+    assertTrue(payload.has("bookIdentity"), payload.toString());
+    assertTrue(payload.has("resolvedQuery"), payload.toString());
+    assertTrue(payload.has("generatedAt"), payload.toString());
+    assertTrue(payload.has(recordsField), payload.toString());
+    assertFalse(payload.has("context"), payload.toString());
+    assertFalse(payload.has("limit"), payload.toString());
+    assertFalse(payload.has("nextCursor"), payload.toString());
+  }
+
   @Test
   void writeTaxQueryResults_supportSuccessAndRejectionOutputModes() throws IOException {
     DeclaredTaxRegistration registrationWithoutNumber = declaredTaxRegistration(null);
@@ -311,16 +362,14 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
 
     ByteArrayOutputStream emptyTextOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(emptyTextOutput))
-        .writeListTaxRegistrationsResult(
-            new ListTaxRegistrationsResult.Listed(emptyPage), OutputMode.TEXT);
+        .writeListTaxRegistrationsResult(listedTaxRegistrations(emptyPage), OutputMode.TEXT);
     String emptyText = emptyTextOutput.toString(StandardCharsets.UTF_8);
     assertTrue(emptyText.contains("No tax registrations matched the selected scope."), emptyText);
     assertTrue(emptyText.contains(emptyCursor.wireValue()), emptyText);
 
     ByteArrayOutputStream listedTextOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(listedTextOutput))
-        .writeListTaxRegistrationsResult(
-            new ListTaxRegistrationsResult.Listed(listedPage), OutputMode.TEXT);
+        .writeListTaxRegistrationsResult(listedTaxRegistrations(listedPage), OutputMode.TEXT);
     String listedText = listedTextOutput.toString(StandardCharsets.UTF_8);
     assertTrue(listedText.contains("Tax Registrations"), listedText);
     assertTrue(listedText.contains("vat-lv"), listedText);
@@ -329,7 +378,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     ByteArrayOutputStream listedJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(listedJsonOutput))
         .writeListTaxRegistrationsResult(
-            new ListTaxRegistrationsResult.Listed(
+            listedTaxRegistrations(
                 new TaxRegistrationPage(
                     bookIdentity(), List.of(registrationWithoutNumber), 10, Optional.empty())),
             OutputMode.JSON);
@@ -400,7 +449,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     ByteArrayOutputStream postingRegisterTextOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(postingRegisterTextOutput))
         .writeListPostingsResult(
-            new ListPostingsResult.Listed(postingPage(List.of(postingFact), 10, Optional.empty())),
+            listedPostings(postingPage(List.of(postingFact), 10, Optional.empty())),
             OutputMode.TEXT);
     String postingRegisterText = postingRegisterTextOutput.toString(StandardCharsets.UTF_8);
     assertFalse(postingRegisterText.contains("Approvals"));
@@ -409,7 +458,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     ByteArrayOutputStream postingRegisterCsvOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(postingRegisterCsvOutput))
         .writeListPostingsResult(
-            new ListPostingsResult.Listed(postingPage(List.of(postingFact), 10, Optional.empty())),
+            listedPostings(postingPage(List.of(postingFact), 10, Optional.empty())),
             OutputMode.CSV);
     String postingRegisterCsv = postingRegisterCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(postingRegisterCsv.contains("document-idem-1"));
@@ -837,6 +886,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertEquals("CASH", payload.path("bookIdentity").path("accountingBasis").stringValue());
     assertEquals("EUR", payload.path("bookIdentity").path("functionalCurrency").stringValue());
     assertEquals("01-01", payload.path("bookIdentity").path("fiscalYearStart").stringValue());
+    assertEquals(
+        "2026-01-01", payload.path("bookIdentity").path("bookStartEffectiveDate").stringValue());
   }
 
   @Test

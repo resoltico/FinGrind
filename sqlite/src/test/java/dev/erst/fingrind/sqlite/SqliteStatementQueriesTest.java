@@ -92,24 +92,34 @@ class SqliteStatementQueriesTest extends SqlitePostingFactStoreTestSupport {
                               SqlitePostingSql.FIND_BOOK_IDENTITY_CORE,
                               """
                               select
-                                  'Acme Studio',
-                                  'internal-management-bookkeeping-kernel',
-                                  'NON_STATUTORY_INTERNAL_MANAGEMENT',
-                                  'OWNER_MANAGED_SINGLE_ENTITY',
-                                  'OWNER_MANAGED_SERVICE',
-                                  'EUR',
-                                  1,
-                                  1
+                                  entity_name,
+                                  accounting_kernel_profile,
+                                  accounting_basis,
+                                  accounting_framework_position,
+                                  entity_form,
+                                  book_template_id,
+                                  costing_doctrine,
+                                  functional_currency_code,
+                                  fiscal_year_start_month,
+                                  fiscal_year_start_day,
+                                  book_start_effective_date
+                              from book_identity
+                              where singleton_id = 1
                               union all
                               select
-                                  'Acme Studio',
-                                  'internal-management-bookkeeping-kernel',
-                                  'NON_STATUTORY_INTERNAL_MANAGEMENT',
-                                  'OWNER_MANAGED_SINGLE_ENTITY',
-                                  'OWNER_MANAGED_SERVICE',
-                                  'EUR',
-                                  1,
-                                  1
+                                  entity_name,
+                                  accounting_kernel_profile,
+                                  accounting_basis,
+                                  accounting_framework_position,
+                                  entity_form,
+                                  book_template_id,
+                                  costing_doctrine,
+                                  functional_currency_code,
+                                  fiscal_year_start_month,
+                                  fiscal_year_start_day,
+                                  book_start_effective_date
+                              from book_identity
+                              where singleton_id = 1
                               """)));
           assertEquals(
               "SQLite book identity core query returned more than one row.",
@@ -145,7 +155,8 @@ class SqliteStatementQueriesTest extends SqlitePostingFactStoreTestSupport {
                                   'WEIGHTED_AVERAGE' as costing_doctrine,
                                   functional_currency_code,
                                   fiscal_year_start_month,
-                                  fiscal_year_start_day
+                                  fiscal_year_start_day,
+                                  book_start_effective_date
                               from book_identity
                               where singleton_id = 1
                               limit 1

@@ -170,6 +170,24 @@ class CliReportResponseWriterCoverageTest extends CliResponseWriterTestSupport {
 
     assertEquals(0, CliReportExitCodes.exitCodeFor(new FixedAssetRegisterResult.Reported(report)));
     assertFalse(readJson(jsonOutput).path("payload").has("tabularCsvProjection"));
+    assertEquals(
+        "0",
+        readJson(jsonOutput)
+            .path("payload")
+            .path("rows")
+            .get(0)
+            .path("carryingAmount")
+            .path("minorUnits")
+            .asString());
+    assertEquals(
+        "11000",
+        readJson(jsonOutput)
+            .path("payload")
+            .path("rows")
+            .get(0)
+            .path("carryingAmountAtDisposal")
+            .path("minorUnits")
+            .asString());
     assertTrue(textOutput.toString(StandardCharsets.UTF_8).contains("asset-vehicle-001"));
     assertEquals(
         CliSemanticReportCsvRenderer.render(

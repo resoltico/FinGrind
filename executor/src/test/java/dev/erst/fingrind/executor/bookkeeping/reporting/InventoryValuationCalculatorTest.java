@@ -198,6 +198,7 @@ class InventoryValuationCalculatorTest {
         new AccountTaxonomy(
             AccountNodeKind.POSTABLE,
             Optional.empty(),
+            Optional.empty(),
             Optional.of(FinancialPositionLineClassification.INVENTORY),
             Optional.empty(),
             Optional.of(CashFlowAssetClassification.NON_CASH)),
@@ -214,6 +215,7 @@ class InventoryValuationCalculatorTest {
         new AccountTaxonomy(
             AccountNodeKind.POSTABLE,
             Optional.empty(),
+            Optional.empty(),
             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
             Optional.empty(),
             Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)),
@@ -226,6 +228,7 @@ class InventoryValuationCalculatorTest {
         new EntityProfile(new BookEntityName("Acme Trading")),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING,
         EUR,
-        FiscalYearStart.parse("01-01"));
+        FiscalYearStart.parse("01-01"),
+        java.time.LocalDate.parse("2026-01-01"));
   }
 }

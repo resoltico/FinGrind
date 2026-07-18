@@ -12,6 +12,7 @@ final class AccountDoctrineTestSupport {
     return new AccountTaxonomy(
         nodeKind,
         Optional.empty(),
+        Optional.empty(),
         Optional.of(financialPositionLineClassification),
         Optional.empty(),
         financialPositionLineClassification.accountType() == AccountType.ASSET
@@ -26,6 +27,7 @@ final class AccountDoctrineTestSupport {
     return new AccountTaxonomy(
         nodeKind,
         Optional.empty(),
+        Optional.empty(),
         Optional.of(financialPositionLineClassification),
         Optional.empty(),
         Optional.of(cashFlowAssetClassification));
@@ -34,6 +36,11 @@ final class AccountDoctrineTestSupport {
   static AccountTaxonomy nominalTaxonomy(
       AccountNodeKind nodeKind, ProfitAndLossLineClassification profitAndLossLineClassification) {
     return new AccountTaxonomy(
-        nodeKind, Optional.empty(), Optional.empty(), Optional.of(profitAndLossLineClassification));
+        nodeKind,
+        Optional.empty(),
+        Optional.empty(),
+        Optional.empty(),
+        Optional.of(profitAndLossLineClassification),
+        Optional.empty());
   }
 }

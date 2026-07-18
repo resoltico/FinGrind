@@ -67,7 +67,7 @@ import sys
 
 required = tuple(int(part) for part in sys.argv[1].split("."))
 current = sys.version_info[: len(required)]
-raise SystemExit(0 if current >= required else 1)
+raise SystemExit(0 if current == required else 1)
 PY
 }
 
@@ -80,7 +80,16 @@ default_uv_bootstrap_python() {
 }
 
 uv_command_path() {
-    python_runtime_command_path uv
+    local uv_executable
+    uv_executable="$(python_runtime_command_path uv)"
+    [[ -n "${uv_executable}" ]] || return 1
+    local uv_version
+    uv_version="$("${uv_executable}" --version 2>/dev/null || true)"
+    case "${uv_version}" in
+        "uv $(fingrind_required_uv_version)"|"uv $(fingrind_required_uv_version) "*) ;;
+        *) return 1 ;;
+    esac
+    printf '%s\n' "${uv_executable}"
 }
 
 python_runtime_bootstrap_hint() {
@@ -95,7 +104,7 @@ resolve_system_python_runtime() {
     local required_version=$1
     local candidate_path
     local candidate
-    for candidate in python3.13 python3.12 python3 python; do
+    for candidate in python3.12 python3 python; do
         candidate_path="$(python_runtime_command_path "${candidate}")"
         if [[ -n "${candidate_path}" ]] && python_runtime_version_satisfies "${candidate_path}" "${required_version}"; then
             printf '%s\n' "${candidate_path}"
@@ -157,7 +166,7 @@ resolve_repo_python_runtime() {
             printf '%s\n' "${FINGRIND_PYTHON_EXECUTABLE}"
             return 0
         fi
-        printf 'error: FINGRIND_PYTHON_EXECUTABLE=%s does not satisfy Python %s+\n' \
+        printf 'error: FINGRIND_PYTHON_EXECUTABLE=%s does not match exact Python %s\n' \
             "${FINGRIND_PYTHON_EXECUTABLE}" \
             "${required_version}" >&2
         return 1
@@ -177,7 +186,7 @@ resolve_repo_python_runtime() {
         return 0
     fi
 
-    printf 'error: no Python %s+ runtime is available for repo-owned tooling. %s\n' \
+    printf 'error: no exact Python %s runtime is available for repo-owned tooling. %s\n' \
         "${required_version}" \
         "$(python_runtime_bootstrap_hint)" >&2
     return 1
@@ -197,7 +206,7 @@ prepare_python_runtime_env() {
         resolved_python="$(resolve_repo_python_runtime "${required_python_version}")" || return 1
     fi
     if ! python_runtime_version_satisfies "${resolved_python}" "${required_python_version}"; then
-        printf 'error: resolved Python runtime %s does not satisfy Python %s+\n' \
+        printf 'error: resolved Python runtime %s does not match exact Python %s\n' \
             "${resolved_python}" \
             "${required_python_version}" >&2
         return 1

@@ -143,6 +143,12 @@ final class BookLifecycleReportService {
         dev.erst.fingrind.contract.bookkeeping.MonetaryAmount.of(asset.cost()),
         dev.erst.fingrind.contract.bookkeeping.MonetaryAmount.of(asset.accumulatedDepreciation()),
         dev.erst.fingrind.contract.bookkeeping.MonetaryAmount.of(asset.carryingAmount()),
+        asset
+            .disposedOn()
+            .map(
+                ignored ->
+                    dev.erst.fingrind.contract.bookkeeping.MonetaryAmount.of(
+                        asset.carryingAmountBeforeDisposal())),
         asset.depreciationSchedule(),
         asset.depreciationPeriodsApplied(),
         asset.latestLifecycleEffectiveDate(),

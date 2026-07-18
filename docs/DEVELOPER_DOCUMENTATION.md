@@ -1,5 +1,5 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: DEVELOPER_DOCUMENTATION
 updated: "2026-07-16"

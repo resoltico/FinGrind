@@ -1,5 +1,5 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: USER_EXAMPLES
 updated: "2026-07-16"
@@ -50,7 +50,7 @@ fingrind \
   --book-template-id OWNER_MANAGED_SERVICE \
   --accounting-basis CASH \
   --functional-currency EUR \
-  --fiscal-year-start 01-01 \
+  --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 \
   \
   --book-passphrase-prompt
 ```
@@ -96,7 +96,7 @@ cat ./secrets/acme.book-key | \
     --book-template-id OWNER_MANAGED_SERVICE \
     --accounting-basis CASH \
     --functional-currency EUR \
-    --fiscal-year-start 01-01 \
+    --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 \
     \
     --book-passphrase-stdin
 ```
@@ -104,7 +104,7 @@ cat ./secrets/acme.book-key | \
 On Windows PowerShell, the same stdin route is:
 
 ```powershell
-Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-passphrase-stdin
+Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 --book-passphrase-stdin
 ```
 
 ## Initialize One Book
@@ -117,7 +117,7 @@ fingrind \
   --book-template-id OWNER_MANAGED_SERVICE \
   --accounting-basis CASH \
   --functional-currency EUR \
-  --fiscal-year-start 01-01 \
+  --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 \
   \
   --book-key-file ./secrets/acme.book-key
 ```
@@ -125,7 +125,7 @@ fingrind \
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"/workspace/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","accountingKernelProfile":"internal-management-bookkeeping-kernel","accountingBasis":"CASH","accountingFrameworkPosition":"NON_STATUTORY_INTERNAL_MANAGEMENT","entityForm":"OWNER_MANAGED_SINGLE_ENTITY","bookTemplateId":"OWNER_MANAGED_SERVICE","functionalCurrency":"EUR","fiscalYearStart":"01-01"}}}
+{"status":"ok","payload":{"bookFile":"/workspace/books/acme.sqlite","initializedAt":"2026-05-17T02:03:45.725027Z","bookIdentity":{"entityName":"Acme Studio","accountingKernelProfile":"internal-management-bookkeeping-kernel","accountingBasis":"CASH","accountingFrameworkPosition":"NON_STATUTORY_INTERNAL_MANAGEMENT","entityForm":"OWNER_MANAGED_SINGLE_ENTITY","bookTemplateId":"OWNER_MANAGED_SERVICE","functionalCurrency":"EUR","fiscalYearStart":"01-01","bookStartEffectiveDate":"2026-01-01"}}}
 ```
 
 That initialized book starts from the explicitly selected owner-managed service seed template with
@@ -399,9 +399,9 @@ One example committed response is checked in at
 This example uses the sale-first request language with `cashAccountCode`, `revenueAccountCode`,
 and one exact positive `amount`.
 
-## Run One Atomic Ledger Plan
+## Generate Or Run A Ledger Plan
 
-Generate the canonical plan scaffold:
+Generate the general plan scaffold:
 
 ```bash
 fingrind \
@@ -410,11 +410,21 @@ fingrind \
 
 Like `print-request-template`, this scaffold uses the same canonical content as the checked-in
 [examples/ledger-plan-template.json](./examples/ledger-plan-template.json) companion example.
-It initializes the book, declares the payable and recoverable VAT accounts, then declares the
-registration in one transaction. Replace the tax-registration identity and tax-code placeholder
-values before real-world use. The example is structural, not a Latvian VAT determination: verify
-registration, rate, deduction, place-of-supply, invoice, and filing treatment against the primary
-sources listed in [DOC_00_PrimarySources.md](./DOC_00_PrimarySources.md).
+It initializes the book and contains one placeholder-first sale. Replace every placeholder before
+real-world use.
+
+Generate a context-specific atomic setup only when its prerequisites are needed:
+
+```bash
+fingrind print-plan-template tax-setup > ./tax-setup-plan.json
+fingrind print-plan-template fixed-asset-setup > ./fixed-asset-setup-plan.json
+fingrind print-plan-template financing-setup > ./financing-setup-plan.json
+```
+
+The tax setup declares payable and recoverable accounts before its tax registration. It is
+structural, not a Latvian VAT determination: verify registration, rate, deduction,
+place-of-supply, invoice, and filing treatment against the primary sources listed in
+[DOC_00_PrimarySources.md](./DOC_00_PrimarySources.md).
 
 Or execute the checked-in runnable example plan directly against a fresh book:
 
@@ -445,7 +455,7 @@ account creation inside `declare-tax-registration`.
 and the full execution journal.
 
 Checked-in plan examples:
-- [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): checked-in source-copy companion for the canonical tax-setup plan scaffold
+- [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): checked-in source-copy companion for the general plan scaffold
 - [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): primary runnable plan example that creates the tax setup atomically
 - [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json): follow-on plan that pages the initialized account registry
 - [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json)

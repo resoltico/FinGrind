@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: USER_CLI
-updated: "2026-07-16"
+updated: "2026-07-17"
 route:
   keywords: [fingrind, cli, commands, exit-codes, java26, sqlite, sqlite3mc, ffm, request-file, book-file, book-key-file, book-passphrase-stdin, book-passphrase-prompt, inspect-book, list-accounts, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, print-plan-template, execute-plan, declare-tax-registration, list-tax-registrations, tax-obligation, fixed-assets, financing, realized-foreign-exchange]
   questions: ["how do I run the fingrind cli", "what commands does fingrind expose", "how do I inspect a fingrind book before mutating it", "how do I page declared accounts in fingrind", "how do I run an AI-agent ledger plan in fingrind", "what exit codes does the fingrind cli use", "how do I declare tax registrations or compute tax obligations in fingrind", "how do I record fixed assets financing or realized foreign exchange"]
@@ -74,12 +74,13 @@ caller-submittable posting shape.
 `preflight-entry` keeps the full published posting-request family, while `post-entry` emits the raw
 `DIRECT_JOURNAL` scaffold only, and that raw path still has to move at least one declared
 cash-and-cash-equivalent asset account while rejecting any inventory account line.
-`print-plan-template` returns one raw JSON ledger-plan scaffold that initializes the book, declares
-the required VAT payable and recoverable accounts with their required taxonomies, and declares the
-tax registration in the same transaction. Adjust the entity, registration, and tax-code facts to
-your business before execution. Posting scaffolds expose their optional tax block from the same
-field-contract metadata that validates a submitted request. Idempotency keys are single-use per
-book once one posting commits successfully.
+`print-plan-template` returns one raw JSON ledger-plan scaffold. With no topic it emits the
+general workflow scaffold; `tax-setup`, `fixed-asset-setup`, and `financing-setup` select the
+corresponding atomic prerequisite-account setup. Adjust every placeholder and business fact before
+execution. The tax setup declares its payable and recoverable accounts before it declares the tax
+registration, while a direct `declare-tax-registration` command remains pure. Posting scaffolds
+expose their optional tax block from the same field-contract metadata that validates a submitted
+request. Idempotency keys are single-use per book once one posting commits successfully.
 `generate-book-key-file` creates one new owner-only key file that contains a generated passphrase.
 The easiest path is one missing private parent directory that FinGrind can create securely, or one
 existing parent directory that you have already tightened to owner-only permissions.
@@ -111,7 +112,10 @@ publication boundary, the command reports `storage-runtime-failure` rather than 
 or rejection. Fix the filesystem problem before retrying; the durable owner record lets the next
 relevant maintenance command recover only FinGrind's own stage.
 `declare-account` inserts or reactivates one account in the selected book, with immutable
-`accountType`, immutable declared taxonomy, and derived `normalBalance`. Asset accounts also
+`accountType`, immutable declared taxonomy, and derived `normalBalance`. An optional
+`contraOfAccountCode` names the postable account this account reduces; it must have the same type
+and compatible statement classification, and its derived normal balance is the opposite of that
+target. Asset accounts also
 declare `cashFlowAssetClassification` so FinGrind can distinguish cash and cash-equivalent assets
 from non-cash assets. Inventory accounts additionally require one nested
 `unitOfMeasure { token, quantityScale }` object, while non-inventory accounts must not carry
@@ -203,7 +207,7 @@ The same full descriptor publishes the canonical ordered `capabilityCatalog`; us
 `capabilities --output json --focus capability-catalog` when automation needs only the published
 capability scope and operative boundaries for partial capabilities.
 Discovery JSON payloads from `help`, `capabilities`, and `version` also publish one
-`protocolVersion` field. The current hard-break line is `"28"`.
+`protocolVersion` field. The current hard-break line is `"32"`.
 Commands that advertise `--output` default successful stdout to text. A per-command `--output ...`
 flag selects a supported alternative.
 Discovery, administration, write, and query/report commands can render operator-facing
@@ -244,8 +248,8 @@ The command table below is generated from the canonical protocol catalog and con
     <tr><td><code>version</code></td><td><code>--version</code></td><td><code>[--output &lt;json|text&gt;]</code></td><td>Print application identity, version, and description.</td></tr>
     <tr><td><code>capabilities</code></td><td>none</td><td><code>[--output &lt;json|text&gt;]</code><br><code>[--detail &lt;minimal|compact|full&gt; (json only)]</code><br><code>[--focus &lt;overview|commands|storage|request-input|currency-model|bookkeeping-kernel|capability-catalog|response-contract&gt; (json only)]</code><br><code>[--category &lt;discovery|administration|query|write&gt; (json only)]</code></td><td>Print the canonical machine-readable contract for commands, request shapes, and responses.</td></tr>
     <tr><td><code>environment</code></td><td>none</td><td><code>[--output &lt;json|text&gt;]</code></td><td>Print live runtime, distribution, and SQLite provenance facts for this launcher instance.</td></tr>
-    <tr><td><code>print-request-template</code></td><td><code>--print-request-template</code></td><td><code>[post-entry|preflight-entry|record-sale-settled|record-sale-on-credit|record-purchase-settled|record-purchase-on-credit|record-inventory-capitalization-settled|record-inventory-capitalization-on-credit|record-inventory-write-down|record-inventory-shrinkage|record-inventory-count-increase|record-prepayment|record-deferred-revenue|record-accrued-expense|record-accrual-cutoff-recognition|record-accrued-expense-settlement|record-latvian-monthly-payroll|record-latvian-payroll-net-wage-settlement|record-latvian-payroll-state-remittance|record-fixed-asset-capitalization|record-fixed-asset-depreciation|record-fixed-asset-disposal|record-financing-borrowing|record-financing-principal-repayment|record-financing-interest-accrual|record-financing-interest-payment|record-foreign-currency-obligation|record-realized-foreign-exchange-settlement|record-expense-settled|record-expense-on-credit|record-receipt|record-payment|record-owner-contribution|record-owner-withdrawal|record-opening-position|record-reversal|declare-account|amend-account|declare-tax-registration]</code><br><code>[--book-template-id &lt;OWNER_MANAGED_SERVICE|OWNER_MANAGED_TRADING&gt;]</code></td><td>Print the canonical minimal request scaffold JSON document for a request-file command.</td></tr>
-    <tr><td><code>print-plan-template</code></td><td><code>--print-plan-template</code></td><td>none</td><td>Print the canonical atomic tax-setup ledger plan scaffold JSON document.</td></tr>
+    <tr><td><code>print-request-template</code></td><td><code>--print-request-template</code></td><td><code>[post-entry|preflight-entry|record-sale-settled|record-sale-on-credit|record-purchase-settled|record-purchase-on-credit|record-inventory-capitalization-settled|record-inventory-capitalization-on-credit|record-inventory-write-down|record-inventory-shrinkage|record-inventory-count-increase|record-prepayment|record-deferred-revenue|record-accrued-expense|record-accrual-cutoff-recognition|record-accrued-expense-settlement|record-latvian-monthly-payroll|record-latvian-payroll-net-wage-settlement|record-latvian-payroll-state-remittance|record-fixed-asset-capitalization|record-fixed-asset-depreciation|record-fixed-asset-disposal|record-financing-borrowing|record-financing-principal-repayment|record-financing-interest-accrual|record-financing-interest-payment|record-foreign-currency-obligation|record-realized-foreign-exchange-settlement|record-expense-settled|record-expense-on-credit|record-receipt|record-payment|record-owner-contribution|record-owner-withdrawal|record-opening-position|record-reversal|declare-account|amend-account|retire-account|declare-tax-registration]</code><br><code>[--book-template-id &lt;OWNER_MANAGED_SERVICE|OWNER_MANAGED_TRADING&gt;]</code></td><td>Print the canonical minimal request scaffold JSON document for a request-file command.</td></tr>
+    <tr><td><code>print-plan-template</code></td><td><code>--print-plan-template</code></td><td><code>[general|tax-setup|fixed-asset-setup|financing-setup]</code></td><td>Print a topic-specific executable ledger-plan scaffold JSON document.</td></tr>
     <tr><td><code>generate-book-key-file</code></td><td>none</td><td><code>--new-book-key-file &lt;path&gt;</code><br><code>[--tighten-parents]</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Create a new owner-only UTF-8 book key file with a generated high-entropy passphrase.</td></tr>
     <tr><td><code>open-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--entity-name &lt;text&gt;</code><br><code>--book-template-id &lt;OWNER_MANAGED_SERVICE|OWNER_MANAGED_TRADING&gt;</code><br><code>--accounting-basis &lt;CASH|ACCRUAL&gt;</code><br><code>[--inventory-costing &lt;WEIGHTED_AVERAGE&gt;] (required for OWNER_MANAGED_TRADING)</code><br><code>--functional-currency &lt;currency-code&gt;</code><br><code>--fiscal-year-start &lt;MM-DD&gt;</code><br><code>[--tighten-parents]</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Initialize a new book file with the canonical schema, selected seed template, explicit accounting basis, and the inventory costing doctrine required by trading templates.</td></tr>
     <tr><td><code>rekey-book</code></td><td>none</td><td><code>--book-file &lt;path&gt;</code><br><code>--book-key-file &lt;path&gt; | --book-passphrase-stdin | --book-passphrase-prompt</code><br><code>--new-book-key-file &lt;path&gt;</code><br><code>[--output &lt;json|text&gt;]</code></td><td>Re-encrypt an existing book under a newly generated, absent-target key file.</td></tr>

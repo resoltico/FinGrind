@@ -29,6 +29,7 @@ final class TradingInventorySeedAccounts {
             AccountNodeKind.POSTABLE,
             Optional.empty(),
             Optional.empty(),
+            Optional.empty(),
             Optional.of(ProfitAndLossLineClassification.OTHER_REVENUE),
             Optional.empty()));
   }
@@ -40,6 +41,7 @@ final class TradingInventorySeedAccounts {
         AccountType.EXPENSE,
         new AccountTaxonomy(
             AccountNodeKind.POSTABLE,
+            Optional.empty(),
             Optional.empty(),
             Optional.empty(),
             Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE),

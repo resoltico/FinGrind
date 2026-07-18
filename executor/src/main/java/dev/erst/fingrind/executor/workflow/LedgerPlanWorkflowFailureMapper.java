@@ -95,6 +95,9 @@ final class LedgerPlanWorkflowFailureMapper {
             BookWorkflowFact.text(
                 "existingFiscalYearStart", existingBookIdentity.fiscalYearStart().wireValue()),
             BookWorkflowFact.text(
+                "existingBookStartEffectiveDate",
+                existingBookIdentity.bookStartEffectiveDate().toString()),
+            BookWorkflowFact.text(
                 "existingBookTemplateId",
                 existingBookIdentity.bookDoctrine().bookTemplateId().wireValue()),
             BookWorkflowFact.text(
@@ -103,6 +106,9 @@ final class LedgerPlanWorkflowFailureMapper {
                 "requestedFunctionalCurrency", requestedBookIdentity.functionalCurrency().code()),
             BookWorkflowFact.text(
                 "requestedFiscalYearStart", requestedBookIdentity.fiscalYearStart().wireValue()),
+            BookWorkflowFact.text(
+                "requestedBookStartEffectiveDate",
+                requestedBookIdentity.bookStartEffectiveDate().toString()),
             BookWorkflowFact.text(
                 "requestedBookTemplateId",
                 requestedBookIdentity.bookDoctrine().bookTemplateId().wireValue())));

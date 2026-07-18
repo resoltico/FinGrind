@@ -1,7 +1,7 @@
 package dev.erst.fingrind.contract.discovery;
 
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import org.jspecify.annotations.Nullable;
 
@@ -9,14 +9,14 @@ import org.jspecify.annotations.Nullable;
 final class MachineContractPostEntryTaxTemplateSupport {
   private MachineContractPostEntryTaxTemplateSupport() {}
 
-  static ContractTemplates.PostingRequestTemplateDescriptor withOptionalTaxSelection(
-      ContractTemplates.PostingRequestTemplateDescriptor template) {
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor withOptionalTaxSelection(
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template) {
     ContractSettlementTemplates.TaxSelectionTemplateDescriptor tax =
         taxSelectionTemplate(template.entryKind());
     if (tax == null) {
       return template;
     }
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+    return new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
         template.entryKind(),
         template.effectiveDate(),
         template.cashAccountCode(),
@@ -59,7 +59,7 @@ final class MachineContractPostEntryTaxTemplateSupport {
         .requestSurface()
         .bookkeepingEntryKind(entryKind)
         .optionalTopLevelFields()
-        .contains(ProtocolPostEntryFields.TopLevel.TAX)) {
+        .contains(ProtocolBusinessEventFields.Core.TAX)) {
       return null;
     }
     return new ContractSettlementTemplates.TaxSelectionTemplateDescriptor(

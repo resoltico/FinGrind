@@ -7,7 +7,7 @@ import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffBookkeepingEntryVaria
 import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffId;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.protocol.ProtocolAccrualCutoffPostingRequestFieldSets;
-import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import tools.jackson.databind.node.ObjectNode;
@@ -33,9 +33,10 @@ final class CliAccrualCutoffBookkeepingEntryReaders {
     return new AccrualCutoffBookkeepingEntryVariants.Prepayment(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         accrualCutoffId(rootNode),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.PREPAYMENT_ASSET_ACCOUNT_CODE),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE),
+        accountCode(
+            rootNode, ProtocolBusinessEventFields.AccrualCutoff.PREPAYMENT_ASSET_ACCOUNT_CODE),
+        accountCode(rootNode, ProtocolBusinessEventFields.Inventory.EXPENSE_ACCOUNT_CODE),
+        accountCode(rootNode, ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(rootNode),
         CliBookkeepingEntryNestedParser.requiredRecognitionInterval(rootNode));
   }
@@ -47,9 +48,10 @@ final class CliAccrualCutoffBookkeepingEntryReaders {
     return new AccrualCutoffBookkeepingEntryVariants.DeferredRevenue(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         accrualCutoffId(rootNode),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.DEFERRED_REVENUE_ACCOUNT_CODE),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE),
+        accountCode(rootNode, ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE),
+        accountCode(
+            rootNode, ProtocolBusinessEventFields.AccrualCutoff.DEFERRED_REVENUE_ACCOUNT_CODE),
+        accountCode(rootNode, ProtocolBusinessEventFields.Core.REVENUE_ACCOUNT_CODE),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(rootNode),
         CliBookkeepingEntryNestedParser.requiredRecognitionInterval(rootNode));
   }
@@ -61,9 +63,10 @@ final class CliAccrualCutoffBookkeepingEntryReaders {
     return new AccrualCutoffBookkeepingEntryVariants.AccruedExpense(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         accrualCutoffId(rootNode),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE),
+        accountCode(rootNode, ProtocolBusinessEventFields.Inventory.EXPENSE_ACCOUNT_CODE),
         accountCode(
-            rootNode, ProtocolPostEntryFields.TopLevel.ACCRUED_EXPENSE_LIABILITY_ACCOUNT_CODE),
+            rootNode,
+            ProtocolBusinessEventFields.AccrualCutoff.ACCRUED_EXPENSE_LIABILITY_ACCOUNT_CODE),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(rootNode));
   }
 
@@ -85,14 +88,14 @@ final class CliAccrualCutoffBookkeepingEntryReaders {
     return new AccrualCutoffBookkeepingEntryVariants.AccruedExpenseSettlement(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         accrualCutoffId(rootNode),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE),
+        accountCode(rootNode, ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(rootNode),
         null);
   }
 
   private static AccrualCutoffId accrualCutoffId(ObjectNode rootNode) {
     return new AccrualCutoffId(
-        requiredText(rootNode, ProtocolPostEntryFields.TopLevel.ACCRUAL_CUTOFF_ID));
+        requiredText(rootNode, ProtocolBusinessEventFields.AccrualCutoff.ACCRUAL_CUTOFF_ID));
   }
 
   private static AccountCode accountCode(ObjectNode rootNode, String fieldName) {

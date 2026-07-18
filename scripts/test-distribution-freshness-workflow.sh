@@ -25,11 +25,9 @@ resolve_script_dir() {
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly dependabot_config="${repo_root}/.github/dependabot.yml"
-readonly wrapper_workflow="${repo_root}/.github/workflows/gradle-wrapper-validation.yml"
 readonly freshness_workflow="${repo_root}/.github/workflows/distribution-freshness.yml"
 
 [[ -f "${dependabot_config}" ]] || die "missing Dependabot config at ${dependabot_config}"
-[[ -f "${wrapper_workflow}" ]] || die "missing wrapper validation workflow at ${wrapper_workflow}"
 [[ -f "${freshness_workflow}" ]] || die "missing distribution freshness workflow at ${freshness_workflow}"
 
 grep -Fq 'package-ecosystem: "pip"' "${dependabot_config}" || die \
@@ -40,11 +38,6 @@ grep -Fq 'package-ecosystem: "gradle"' "${dependabot_config}" || die \
     "Dependabot no longer tracks Gradle dependencies"
 grep -Fq 'directory: "/jazzer"' "${dependabot_config}" || die \
     "Dependabot no longer tracks the Jazzer Gradle surface separately"
-
-grep -Fq 'concurrency:' "${wrapper_workflow}" || die \
-    "wrapper validation workflow no longer uses a concurrency group"
-grep -Fq 'cancel-in-progress: true' "${wrapper_workflow}" || die \
-    "wrapper validation workflow no longer cancels superseded runs"
 
 grep -Fq 'name: Distribution freshness' "${freshness_workflow}" || die \
     "distribution freshness workflow no longer advertises the weekly canary"
@@ -74,5 +67,17 @@ grep -Fq './scripts/bundle-smoke.sh --execution-surface compatibility-floor' "${
     "distribution freshness workflow no longer re-proves the rebuilt Linux bundle on the compatibility floor"
 grep -Fq './scripts/docker-smoke.sh' "${freshness_workflow}" || die \
     "distribution freshness workflow no longer smoke-tests the Docker publication surface"
+grep -Fq 'report-failed-canary:' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer owns scheduled-canary failure escalation"
+grep -Fq "always() && github.event_name == 'schedule' && failure()" "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer limits issue escalation to failed scheduled runs"
+grep -Fq 'issues: write' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer grants its escalation owner issue-write permission"
+grep -Fq "readonly issue_title='Distribution freshness canary failure'" "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer owns one stable canary failure issue"
+grep -Fq 'gh issue create' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer creates an actionable failure issue"
+grep -Fq 'gh issue comment' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer updates an existing failure issue"
 
 printf 'distribution freshness workflow regression: success\n'

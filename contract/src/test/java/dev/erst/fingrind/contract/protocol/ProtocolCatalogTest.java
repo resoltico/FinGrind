@@ -171,6 +171,18 @@ class ProtocolCatalogTest {
   }
 
   @Test
+  void payrollOperationalNoteNamesEveryCallerAuthoredWithholdingAdmissionFact() {
+    String note =
+        ProtocolCatalog.operation(OperationId.RECORD_LATVIAN_MONTHLY_PAYROLL)
+            .exampleSteps()
+            .getLast()
+            .text();
+
+    assertTrue(note.contains("taxBookHeldAtEmployer"), note);
+    assertTrue(note.contains("dependantCount"), note);
+  }
+
+  @Test
   void protocolDescriptorRecords_rejectBlankTextAndNullCollectionsWithContext() {
     ProtocolOperation operation =
         new ProtocolOperation(
@@ -473,6 +485,33 @@ class ProtocolCatalogTest {
     assertEquals(List.of(OutputMode.JSON, OutputMode.TEXT), executePlan.outputModes());
     assertFalse(printRequestTemplate.options().contains("[--output <json>]"));
     assertTrue(executePlan.options().contains("[--output <json|text>]"));
+  }
+
+  @Test
+  void operationDefinitionLeavesOrdinaryUsageOptionsUnbracketed() {
+    ProtocolOperation withOption =
+        ProtocolOperationDefinitions.operation(
+            OperationId.HELP,
+            OperationCategory.DISCOVERY,
+            "Help",
+            List.of(),
+            List.of("--example <value>"),
+            ExecutionMode.JSON_ENVELOPE,
+            "Test-only descriptor.",
+            List.of());
+    ProtocolOperation withoutOptions =
+        ProtocolOperationDefinitions.operation(
+            OperationId.HELP,
+            OperationCategory.DISCOVERY,
+            "Help",
+            List.of(),
+            List.of(),
+            ExecutionMode.JSON_ENVELOPE,
+            "Test-only descriptor.",
+            List.of());
+
+    assertEquals("fingrind help --example <value>", withOption.usage());
+    assertEquals("fingrind help", withoutOptions.usage());
   }
 
   @Test

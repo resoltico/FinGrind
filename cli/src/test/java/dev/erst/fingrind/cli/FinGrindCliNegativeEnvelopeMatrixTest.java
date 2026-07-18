@@ -704,8 +704,8 @@ class FinGrindCliNegativeEnvelopeMatrixTest extends CliPublicDocsContractSupport
 
   private static void assertRejectedEnvelope(JsonNode envelope) {
     assertEquals("rejected", envelope.path("status").stringValue());
-    assertTrue(envelope.path("code").isTextual());
-    assertTrue(envelope.path("message").isTextual());
+    assertTrue(envelope.path("code").isString());
+    assertTrue(envelope.path("message").isString());
     assertEquals(
         ContractResponseCatalog.failureCategoryFor(envelope.path("code").stringValue()).wireValue(),
         envelope.path("category").stringValue());
@@ -721,7 +721,7 @@ class FinGrindCliNegativeEnvelopeMatrixTest extends CliPublicDocsContractSupport
   private static void assertErrorDiagnosticsEnvelope(JsonNode envelope, String expectedCode) {
     assertEquals("error", envelope.path("status").stringValue());
     assertEquals(expectedCode, envelope.path("code").stringValue());
-    assertTrue(envelope.path("message").isTextual());
+    assertTrue(envelope.path("message").isString());
     assertEquals(
         ContractResponseCatalog.failureCategoryFor(expectedCode).wireValue(),
         envelope.path("category").stringValue());
@@ -796,8 +796,7 @@ class FinGrindCliNegativeEnvelopeMatrixTest extends CliPublicDocsContractSupport
 
   private static dev.erst.fingrind.contract.bookkeeping.ListAccountsResult
       contractListAccountsResult() {
-    return new dev.erst.fingrind.contract.bookkeeping.ListAccountsResult.Listed(
-        accountPage(List.of(), 50, java.util.Optional.empty()));
+    return listedAccounts(accountPage(List.of(), 50, java.util.Optional.empty()));
   }
 
   private static dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult

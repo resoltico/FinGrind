@@ -235,6 +235,7 @@ class ProtocolRequestFieldSetsTest {
             "accountType",
             "accountNodeKind",
             "parentAccountCode",
+            "contraOfAccountCode",
             "financialPositionLineClassification",
             "profitAndLossLineClassification",
             "cashFlowAssetClassification",
@@ -259,7 +260,8 @@ class ProtocolRequestFieldSetsTest {
             "accountingBasis",
             "inventoryCosting",
             "functionalCurrency",
-            "fiscalYearStart"),
+            "fiscalYearStart",
+            "bookStartEffectiveDate"),
         ProtocolBookRequestFieldSets.openBookFields());
     assertEquals(
         Set.copyOf(ProtocolPostEntryFields.topLevelFields()),

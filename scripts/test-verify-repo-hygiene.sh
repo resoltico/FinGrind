@@ -64,6 +64,7 @@ rmdir "${fixture_git_dir}" || die "unable to reserve separate fixture Git metada
 
 mkdir -p \
     "${fixture_root}/tmp/scratch" \
+    "${fixture_root}/architecture" \
     "${fixture_root}/cli" \
     "${fixture_root}/scripts"
 git init -q -b main --separate-git-dir="${fixture_git_dir}" "${fixture_root}"

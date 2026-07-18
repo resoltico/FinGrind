@@ -24,11 +24,13 @@ resolve_script_dir() {
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly workflow_file="${repo_root}/.github/workflows/ci.yml"
+readonly devcontainer_dockerfile="${repo_root}/.devcontainer/Dockerfile"
 readonly developer_devcontainer_doc="${repo_root}/docs/DEVELOPER_DEVCONTAINER.md"
 readonly developer_docker_doc="${repo_root}/docs/DEVELOPER_DOCKER.md"
 readonly developer_jazzer_doc="${repo_root}/docs/DEVELOPER_JAZZER_OPERATIONS.md"
 
 [[ -f "${workflow_file}" ]] || die "missing CI workflow at ${workflow_file}"
+[[ -f "${devcontainer_dockerfile}" ]] || die "missing contributor devcontainer Dockerfile at ${devcontainer_dockerfile}"
 [[ -f "${developer_devcontainer_doc}" ]] || die \
     "missing contributor devcontainer doc at ${developer_devcontainer_doc}"
 [[ -f "${developer_docker_doc}" ]] || die "missing Docker doc at ${developer_docker_doc}"
@@ -52,5 +54,8 @@ grep -Fq 'docker build --pull -f .devcontainer/Dockerfile -t fingrind-fuzz-dev:l
     "Jazzer operations doc no longer documents the Docker-only contributor-image build step"
 grep -Fq 'When the gate is skipped' "${developer_devcontainer_doc}" || die \
     "developer devcontainer doc no longer explains the Gate skip contract"
+if grep -Fq 'ca-certificates \\' "${devcontainer_dockerfile}"; then
+    die "contributor devcontainer redundantly reinstalls ca-certificates already supplied by its base image"
+fi
 
 printf 'devcontainer workflow regression: success\n'

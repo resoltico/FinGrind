@@ -1,11 +1,11 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: OPERATOR_RESPONSES
-updated: "2026-07-16"
+updated: "2026-07-17"
 route:
-  keywords: [fingrind, response-json, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, output-mode, capabilities, execute-plan, tax-setup, amend-account, retire-account, report-output]
-  questions: ["what response envelopes does fingrind return", "what does inspect-book return", "how does list-accounts pagination work in fingrind", "what execute-plan response does fingrind return", "what do amend-account and retire-account return", "what report payloads does fingrind return"]
+  keywords: [fingrind, response-json, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, fixed-asset-register, output-mode, capabilities, execute-plan, tax-setup, amend-account, retire-account, report-output]
+  questions: ["what response envelopes does fingrind return", "what does inspect-book return", "how does list-accounts pagination work in fingrind", "what execute-plan response does fingrind return", "what do amend-account and retire-account return", "what does fixed asset register return", "what report payloads does fingrind return"]
 ---
 
 # Response And Output Guide
@@ -19,7 +19,7 @@ payloads returned by the CLI.
 
 | Output | Returned By | Fields |
 |:-------|:------------|:-------|
-| success envelope | `help`, `version`, `capabilities`, `environment`, `generate-book-key-file`, `open-book`, `rekey-book`, `backup-book`, `restore-book`, `inspect-rekey-rollback`, `restore-rekey-rollback`, `delete-rekey-rollback`, `declare-account`, `amend-account`, `retire-account`, `declare-tax-registration`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`, `accrual-cutoff-schedule`, `latvian-payroll-register`, `income-statement`, `cash-flow-statement`, `changes-in-equity`, `tax-obligation` | `status`, `payload`, optional `artifacts[]` |
+| success envelope | `help`, `version`, `capabilities`, `environment`, `generate-book-key-file`, `open-book`, `rekey-book`, `backup-book`, `restore-book`, `inspect-rekey-rollback`, `restore-rekey-rollback`, `delete-rekey-rollback`, `declare-account`, `amend-account`, `retire-account`, `declare-tax-registration`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`, `accrual-cutoff-schedule`, `fixed-asset-register`, `financing-register`, `realized-foreign-exchange-register`, `latvian-payroll-register`, `income-statement`, `cash-flow-statement`, `changes-in-equity`, `tax-obligation` | `status`, `payload`, optional `artifacts[]` |
 | raw request document | `print-request-template`, `print-plan-template` | canonical posting-request, declare-account-request, declare-tax-registration-request, or AI-agent ledger-plan scaffold JSON |
 | `ok` | successful `preflight-entry` | `status`, `payload.idempotencyKey`, `payload.effectiveDate`, `payload.resolvedJournal` |
 | `ok` | successful typed `record-*` command, `post-entry`, or `record-reversal` | `status`, `payload.postingId`, `payload.idempotencyKey`, `payload.effectiveDate`, `payload.recordedAt`, `payload.idempotentReplay`, `payload.resolvedJournal` |
@@ -34,11 +34,11 @@ Every non-success JSON envelope carries `category` with exactly one of `structur
 Dynamic fields:
 - `capabilities.payload` is stable unless the public command contract or runtime surface changes
 - discovery JSON payloads from `help`, `capabilities`, and `version` publish
-  `payload.protocolVersion`, and the current hard-break line is `"28"`
+  `payload.protocolVersion`, and the current hard-break line is `"32"`
 - `docs/examples/request-template.json` and `docs/examples/ledger-plan-template.json` are
   checked-in source-copy companions for `print-request-template` and `print-plan-template`; they
-  publish the minimal settled-sale request scaffold and the placeholder-first atomic tax-setup
-  plan scaffold respectively
+  publish the minimal settled-sale request scaffold and the placeholder-first general ledger-plan
+  scaffold respectively; named plan topics emit the tax, fixed-asset, and financing setup scaffolds
 - `generate-book-key-file --new-book-key-file` publishes its result through `artifacts[]`, the
   canonical successful artifact publication surface;
   each JSON entry carries `format` plus one canonical absolute `path`, and generated key files currently
@@ -48,7 +48,8 @@ Dynamic fields:
 - `open-book.payload.initializedAt` is stamped from the FinGrind clock
 - `open-book.payload.bookIdentity.entityName`, `.accountingKernelProfile`,
   `.accountingBasis`, `.accountingFrameworkPosition`, `.entityForm`, `.bookTemplateId`,
-  `.functionalCurrency`, and `.fiscalYearStart` echo the persisted initialized-book identity
+  `.functionalCurrency`, `.fiscalYearStart`, and `.bookStartEffectiveDate` echo the persisted
+  initialized-book identity
 - `open-book.payload.bookIdentity.bookTemplateId` currently publishes either
   `OWNER_MANAGED_SERVICE` or `OWNER_MANAGED_TRADING`, while `.accountingBasis` distinguishes
   the cash-basis and accrual charts within the selected template family
@@ -61,8 +62,10 @@ Dynamic fields:
 - `retire-account.payload.outcome` is `retired` or `unchanged`; a retired account remains visible
   in history and can appear in a later historical reversal
 - `inspect-book.payload.bookFile` is the canonical absolute path for the selected book
-- `list-accounts` exposes `limit` plus an optional opaque `nextCursor`
-- `list-postings` exposes `limit` plus an optional opaque `nextCursor`
+- `list-accounts`, `list-postings`, `list-tax-registrations`, and `get-posting` use the shared
+  query-result spine: `family`, `bookIdentity`, `resolvedQuery`, `generatedAt`, and their
+  family-specific facts; every paginated collection keeps the accepted cursor in
+  `resolvedQuery.cursor` and emits a top-level `nextCursor` only when a further page exists
 - `account-ledger.payload.resolvedQuery.pagination` always publishes the accepted `limit` and
   `cursor` (`null` for the first page); `account-ledger.payload.nextCursor` is present only when a
   further page exists
@@ -74,7 +77,7 @@ Dynamic fields:
 - `committed.payload.recordedAt` is stamped from the FinGrind commit clock, not caller input
 - `committed.payload.idempotentReplay` is true exactly when the submitted normalized request matched one already committed posting
 - `committed.payload.resolvedJournal` publishes the exact expanded journal plus semantic classification attached to the committed posting result
-- `get-posting.payload.posting.entry.latvianMonthlyPayroll.resolvedCalculation` publishes the exact executor-resolved contribution, tax, and net-wage facts retained with one Latvian payroll run
+- `get-posting.payload.posting.entry.latvianMonthlyPayroll.resolvedCalculation` publishes the exact executor-resolved contribution, tax, and net-wage facts retained with one Latvian payroll run, including the explicit `taxBookHeldAtEmployer` and `dependantCount` profile facts
 - `get-posting.payload.posting.entry.latvianPayrollSettlement.resolvedSettlement` publishes the exact executor-resolved liability accounts and payment components retained with one Latvian payroll settlement
 - `latvian-payroll-register.payload` publishes every retained payroll run, including an unsettled run or a run and settlement that later received compensating reversals; the register is an operational reconciliation report, not an EDS filing
 - `payload.resultDetail` echoes whether the caller requested `summary` or `full`
@@ -84,7 +87,8 @@ Dynamic fields:
   FinGrind execution clock when `--result-detail full` is selected
 - plan-journal steps carry typed `data` records rather than generic fact arrays
 - successful `ensure-book` plan steps emit `initializedAt`, `entityName`, `functionalCurrency`,
-  and `fiscalYearStart`; the persisted initialized-book identity also carries
+  `fiscalYearStart`, and `bookStartEffectiveDate`; the persisted initialized-book identity also
+  carries
   `accountingKernelProfile`, `accountingBasis`, `accountingFrameworkPosition`, `entityForm`, and
   `bookTemplateId`
 - successful `declare-account` plan steps emit `outcome` plus `account`, using the shared
@@ -205,6 +209,7 @@ Shared initialized-book identity payload:
 - `bookTemplateId`
 - `functionalCurrency`
 - `fiscalYearStart`
+- `bookStartEffectiveDate`, the immutable earliest effective date for accepted postings
 
 Shared declared-account payload:
 - `accountCode`
@@ -212,6 +217,7 @@ Shared declared-account payload:
 - `accountType`
 - `accountNodeKind`
 - optional `parentAccountCode`
+- optional `contraOfAccountCode`, identifying the active account whose statement line this account reduces
 - optional `financialPositionLineClassification`
 - optional `cashFlowAssetClassification`
 - optional `profitAndLossLineClassification`
@@ -275,6 +281,12 @@ Shared posting summary payload:
 
 Every response-side money object reuses the same exact money shape with `currencyCode` and
 `minorUnits`.
+
+Fixed-asset-register row payload:
+
+- `cost`, `accumulatedDepreciation`, and `carryingAmount`, where `carryingAmount` is current and is zero after disposal
+- optional `carryingAmountAtDisposal`, present exactly for a disposed row and preserving its immutable pre-disposal amount
+- `capitalizedOn`, schedule fields, lifecycle dates, and optional `disposedOn`
 
 ## Book Initialization Responses
 
@@ -348,24 +360,34 @@ selected artifact and therefore require the current book passphrase source.
 - `artifacts[]`, where the current entry uses `format: "rollback-book-file"`
 
 `list-accounts` success returns:
-- `payload.context.bookIdentity`, using the shared initialized-book identity payload
-- `payload.limit`
-- optional `payload.nextCursor`
+- `payload.family` as `list-accounts`
+- `payload.bookIdentity`, using the shared initialized-book identity payload
+- `payload.resolvedQuery.limit` and the accepted opaque `payload.resolvedQuery.cursor`
+- optional top-level `payload.nextCursor` only when another page exists
+- `payload.generatedAt`
 - `payload.accounts[]`, where each entry uses the shared declared-account payload
 
+`list-tax-registrations` success returns:
+- `payload.family` as `list-tax-registrations`
+- `payload.bookIdentity`, using the shared initialized-book identity payload
+- `payload.resolvedQuery.limit` and the accepted opaque `payload.resolvedQuery.cursor`
+- optional top-level `payload.nextCursor` only when another page exists
+- `payload.generatedAt`
+- `payload.registrations[]`, where each entry uses the shared declared-tax-registration payload
+
 `get-posting` success returns:
-- `payload.context.bookIdentity`, using the shared initialized-book identity payload
+- `payload.family` as `get-posting`
+- `payload.bookIdentity`, using the shared initialized-book identity payload
+- `payload.resolvedQuery.postingId`
+- `payload.generatedAt`
 - `payload.posting`, using the shared posting payload
 
 `list-postings` success returns:
-- `payload.context.bookIdentity`, using the shared initialized-book identity payload
-- optional `payload.context.accountCodeFilter`
-- optional `payload.context.effectiveDateFrom`
-- optional `payload.context.effectiveDateFromMeaning`
-- optional `payload.context.effectiveDateTo`
-- optional `payload.context.effectiveDateToMeaning`
-- `payload.limit`
-- optional `payload.nextCursor`
+- `payload.family` as `list-postings`
+- `payload.bookIdentity`, using the shared initialized-book identity payload
+- `payload.resolvedQuery.accountCodeFilter`, date bounds, `limit`, and accepted opaque `cursor`
+- optional top-level `payload.nextCursor` only when another page exists
+- `payload.generatedAt`
 - `payload.postings[]`, where each entry uses the shared posting summary payload
 
 ## Report Responses

@@ -1,5 +1,5 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: USER_ENTRY_WORKFLOWS
 updated: "2026-07-16"
@@ -172,7 +172,7 @@ fingrind \
   --book-template-id OWNER_MANAGED_SERVICE \
   --accounting-basis CASH \
   --functional-currency EUR \
-  --fiscal-year-start 01-01 \
+  --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 \
   \
   --book-passphrase-prompt
 ```

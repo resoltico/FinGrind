@@ -115,7 +115,7 @@ public final class PostingAccrualCutoffRejectionSemantics {
 
   /** Returns one refusal for a reversal that would break the aggregate's durable date horizon. */
   public static PostingRejection.EntrySemanticsViolation reversalPrecedesHorizon(
-      String selectorValue,
+      dev.erst.fingrind.core.BookkeepingEntryKind entryKind,
       AccrualCutoffId accrualCutoffId,
       LocalDate effectiveDate,
       LocalDate horizonEffectiveDate) {
@@ -124,7 +124,7 @@ public final class PostingAccrualCutoffRejectionSemantics {
             "effectiveDate",
             "entryKind '%s' uses effectiveDate '%s' before the lifecycle horizon '%s' for accrualCutoffId '%s'."
                 .formatted(
-                    requireSelectorValue(selectorValue),
+                    Objects.requireNonNull(entryKind, "entryKind").wireValue(),
                     Objects.requireNonNull(effectiveDate, "effectiveDate"),
                     Objects.requireNonNull(horizonEffectiveDate, "horizonEffectiveDate"),
                     requireId(accrualCutoffId).value()))
@@ -133,12 +133,14 @@ public final class PostingAccrualCutoffRejectionSemantics {
 
   /** Returns one refusal for an origin reversal while lifecycle applications remain active. */
   public static PostingRejection.EntrySemanticsViolation originReversalRequiresZeroApplications(
-      String selectorValue, AccrualCutoffId accrualCutoffId) {
+      dev.erst.fingrind.core.BookkeepingEntryKind entryKind, AccrualCutoffId accrualCutoffId) {
     return violation(
             "accrual-cutoff-origin-reversal-requires-zero-applications",
             "reversal.priorPostingId",
             "entryKind '%s' cannot reverse the origin for accrualCutoffId '%s' while recognition or settlement applications remain active."
-                .formatted(requireSelectorValue(selectorValue), requireId(accrualCutoffId).value()))
+                .formatted(
+                    Objects.requireNonNull(entryKind, "entryKind").wireValue(),
+                    requireId(accrualCutoffId).value()))
         .toPostingRejection();
   }
 

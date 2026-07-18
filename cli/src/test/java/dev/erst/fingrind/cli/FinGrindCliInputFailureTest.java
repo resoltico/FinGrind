@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
-import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
@@ -43,7 +42,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
+            listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             CliPostEntryResultFixtures.committed(
@@ -105,7 +104,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
+            listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             CliPostEntryResultFixtures.committed(
@@ -170,7 +169,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
+            listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             CliPostEntryResultFixtures.committed(
@@ -231,7 +230,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
+            listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             CliPostEntryResultFixtures.committed(
@@ -312,7 +311,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
+            listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             CliPostEntryResultFixtures.committed(
@@ -389,7 +388,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
+            listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             CliPostEntryResultFixtures.committed(
@@ -447,7 +446,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
+            listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             CliPostEntryResultFixtures.committed(
@@ -505,7 +504,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
+            listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             CliPostEntryResultFixtures.committed(
@@ -539,6 +538,10 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
               "EUR",
               "--fiscal-year-start",
               "01-01",
+              "--book-start-effective-date",
+              "2026-01-01",
+              "--book-start-effective-date",
+              "2026-01-01",
               "--output",
               "text",
               "--bogus"
@@ -565,7 +568,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
+            listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             CliPostEntryResultFixtures.committed(

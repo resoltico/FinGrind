@@ -156,6 +156,8 @@ def assert_open_book(args: argparse.Namespace) -> int:
         raise SystemExit(f"{args.label} open-book returned the wrong functional currency")
     if book_identity["fiscalYearStart"] != args.fiscal_year_start:
         raise SystemExit(f"{args.label} open-book returned the wrong fiscal year start")
+    if book_identity["bookStartEffectiveDate"] != args.book_start_effective_date:
+        raise SystemExit(f"{args.label} open-book returned the wrong book start effective date")
     return 0
 
 
@@ -249,6 +251,7 @@ def build_parser() -> argparse.ArgumentParser:
     open_book.add_argument("--accounting-basis", required=True)
     open_book.add_argument("--functional-currency", required=True)
     open_book.add_argument("--fiscal-year-start", required=True)
+    open_book.add_argument("--book-start-effective-date", required=True)
     open_book.set_defaults(handler=assert_open_book)
 
     failure = subparsers.add_parser("assert-runtime-failure-envelope")

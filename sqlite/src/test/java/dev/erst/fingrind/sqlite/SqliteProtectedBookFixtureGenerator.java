@@ -26,9 +26,7 @@ import java.util.Objects;
 import java.util.Optional;
 import tools.jackson.databind.json.JsonMapper;
 
-/**
- * Regenerates the committed protected-book compatibility fixture from the current SQLite contract.
- */
+/** Regenerates the committed protected-book fixture family from the current SQLite contract. */
 public final class SqliteProtectedBookFixtureGenerator {
   private static final Instant INITIALIZED_AT = Instant.parse("2026-04-07T10:15:30Z");
   private static final String CURRENT_DEFAULT_FIXTURE_NAME =

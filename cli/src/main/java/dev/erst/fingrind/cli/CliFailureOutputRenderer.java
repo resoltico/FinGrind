@@ -161,6 +161,11 @@ final class CliFailureOutputRenderer {
         appendTaxonomyRows(rows, "Existing", details.existingAccountTaxonomy());
         appendTaxonomyRows(rows, "Requested", details.requestedAccountTaxonomy());
       }
+      case CliRejectionJsonModels.ContraAccountDetails details -> {
+        rows.add(List.of("Account code", details.accountCode()));
+        rows.add(List.of("Contra account code", details.contraOfAccountCode()));
+        rows.add(List.of("Contra relationship", details.violation()));
+      }
       case CliRejectionJsonModels.AccountCodeDetails details ->
           rows.add(List.of("Account code", details.accountCode()));
       case CliRejectionJsonModels.AccountDependenciesDetails details -> {

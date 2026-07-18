@@ -292,7 +292,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             "--limit",
             "10");
     assertPostingIdsContain(listing.path("payload").path("postings"), postingId, reversalPostingId);
-    JsonNode rawPlanTemplate = runRawJsonCommand("print-plan-template");
+    JsonNode rawPlanTemplate = runRawJsonCommand("print-plan-template", "tax-setup");
     assertEquals("tax-setup", rawPlanTemplate.path("planId").stringValue());
     assertEquals(
         "declare-tax-registration",

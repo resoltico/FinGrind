@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
+import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
@@ -218,6 +219,11 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
     assertEquals(
         PostingLifecycleStatus.IDEMPOTENCY_KEY_CONFLICT,
         PostingLifecycleStatusMapper.forRejection(new PostingRejection.IdempotencyKeyConflict()));
+    assertEquals(
+        PostingLifecycleStatus.POSTING_EFFECTIVE_DATE_BEFORE_BOOK_START,
+        PostingLifecycleStatusMapper.forRejection(
+            new PostingEffectiveDateBeforeBookStart(
+                java.time.LocalDate.parse("2026-06-29"), java.time.LocalDate.parse("2026-06-30"))));
     assertEquals(
         PostingLifecycleStatus.POSTING_EFFECTIVE_DATE_IN_FUTURE,
         PostingLifecycleStatusMapper.forRejection(

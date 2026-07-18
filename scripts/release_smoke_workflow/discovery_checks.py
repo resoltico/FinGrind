@@ -92,8 +92,8 @@ def verify_help_and_template_surfaces(
         f"{config.label} print-plan-template output was not valid JSON",
     )
     require(
-        payload_field(plan_template, "planId") == "tax-setup",
-        f"{config.label} print-plan-template did not publish the canonical planId scaffold",
+        payload_field(plan_template, "planId") == "general-workflow",
+        f"{config.label} print-plan-template did not publish the canonical general-workflow scaffold",
     )
     require(
         payload_field(plan_template, "steps", 0, "stepId") == "ensure-book",

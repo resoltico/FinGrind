@@ -433,7 +433,8 @@ class BookQueryModelTest {
 
   @Test
   void resultRecords_rejectNullPayloads() {
-    assertThrows(NullPointerException.class, () -> new ListAccountsResult.Listed(nullOf()));
+    assertThrows(
+        NullPointerException.class, () -> new ListAccountsResult.Listed(nullOf(), nullOf()));
     assertThrows(NullPointerException.class, () -> new ListAccountsResult.Rejected(nullOf()));
     assertThrows(
         NullPointerException.class,
@@ -441,7 +442,8 @@ class BookQueryModelTest {
             new GetPostingResult.Found(
                 ContractFixtures.bookIdentity(), nullOf(), Optional.empty()));
     assertThrows(NullPointerException.class, () -> new GetPostingResult.Rejected(nullOf()));
-    assertThrows(NullPointerException.class, () -> new ListPostingsResult.Listed(nullOf()));
+    assertThrows(
+        NullPointerException.class, () -> new ListPostingsResult.Listed(nullOf(), nullOf()));
     assertThrows(NullPointerException.class, () -> new ListPostingsResult.Rejected(nullOf()));
     assertThrows(NullPointerException.class, () -> new AccountBalanceResult.Reported(nullOf()));
     assertThrows(NullPointerException.class, () -> new AccountBalanceResult.Rejected(nullOf()));

@@ -41,6 +41,7 @@ final class SqlitePostingReadWriteSql {
           account_type,
           account_node_kind,
           parent_account_code,
+          contra_of_account_code,
           financial_position_line_classification,
           cash_flow_asset_classification,
           profit_and_loss_line_classification,
@@ -198,6 +199,7 @@ final class SqlitePostingReadWriteSql {
           account_type,
           account_node_kind,
           parent_account_code,
+          contra_of_account_code,
           financial_position_line_classification,
           cash_flow_asset_classification,
           profit_and_loss_line_classification,
@@ -205,7 +207,7 @@ final class SqlitePostingReadWriteSql {
           quantity_scale,
           active,
           declared_at
-      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       on conflict (account_code) do update set
           account_name = excluded.account_name,
           active = excluded.active,

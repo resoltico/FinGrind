@@ -26,6 +26,9 @@ final class BookAdministrationRejectionDescriptors {
                   BookAdministrationRejection.AccountTaxonomyConflict.class,
                   Descriptor.ACCOUNT_TAXONOMY_CONFLICT),
               Map.entry(
+                  dev.erst.fingrind.contract.bookkeeping.ContraAccountInvalid.class,
+                  Descriptor.CONTRA_ACCOUNT_INVALID),
+              Map.entry(
                   AccountRegistryLifecycleRejection.AccountNotFound.class,
                   Descriptor.ACCOUNT_NOT_FOUND),
               Map.entry(
@@ -116,6 +119,8 @@ final class BookAdministrationRejectionDescriptors {
     ACCOUNT_TYPE_CONFLICT,
     /** Descriptor for conflicting immutable account taxonomy declarations. */
     ACCOUNT_TAXONOMY_CONFLICT,
+    /** Descriptor for an invalid contra-account relationship. */
+    CONTRA_ACCOUNT_INVALID,
     /** Descriptor for an account lifecycle request naming no declared account. */
     ACCOUNT_NOT_FOUND,
     /** Descriptor for lifecycle changes blocked by durable account relationships. */

@@ -24,6 +24,8 @@ class CliLatvianPayrollBookkeepingEntryReadersTest extends CliRequestReaderTestS
                   "payrollRunId": "payroll-run-2026-07-employee-001",
                   "employeeReference": "employee-001",
                   "payrollMonth": "2026-07",
+                  "taxBookHeldAtEmployer": true,
+                  "dependantCount": 0,
                   "wageExpenseAccountCode": "5000",
                   "employerSocialContributionExpenseAccountCode": "5010",
                   "netWagesPayableAccountCode": "2200",

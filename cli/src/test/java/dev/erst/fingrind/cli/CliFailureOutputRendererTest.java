@@ -157,6 +157,15 @@ class CliFailureOutputRendererTest {
         "Requested profit-and-loss classification",
         "OPERATING_EXPENSE");
     assertRenderedRejection(
+        new CliRejectionJsonModels.ContraAccountDetails(
+            "4090", "4000", "statement-taxonomy-mismatch"),
+        "Account code",
+        "4090",
+        "Contra account code",
+        "4000",
+        "Contra relationship",
+        "statement-taxonomy-mismatch");
+    assertRenderedRejection(
         new CliRejectionJsonModels.ParentAccountDetails("4100", "4000"),
         "Account code",
         "4100",
@@ -198,6 +207,13 @@ class CliFailureOutputRendererTest {
         "Functional currency",
         "Attempted currency",
         "USD");
+    assertRenderedRejection(
+        new CliRejectionJsonModels.PostingEffectiveDateBeforeBookStartDetails(
+            "2026-06-29", "2026-06-30"),
+        "Attempted effective date",
+        "2026-06-29",
+        "Book start effective date",
+        "2026-06-30");
     assertRenderedRejection(
         new CliRejectionJsonModels.PostingEffectiveDateInFutureDetails("2026-07-01", "2026-06-30"),
         "Attempted effective date",
@@ -349,6 +365,28 @@ class CliFailureOutputRendererTest {
     assertTrue(rendered.contains("invoice does not prove cash receipt"));
     assertFalse(rendered.contains("Hint"));
     assertFalse(rendered.contains("Idempotency key"));
+  }
+
+  @Test
+  void renderRejectedText_rendersPayrollProfileFactsWithoutAFragmentedSentence() {
+    String rendered =
+        CliFailureOutputRenderer.renderRejectedText(
+            "entry-semantics-violations",
+            "Posting rejected with 1 entry-semantics issue.",
+            null,
+            null,
+            new CliRejectionJsonModels.EntrySemanticsViolationsDetails(
+                List.of(
+                    new CliEntrySemanticsViolationPayload(
+                        "latvian-payroll-profile-not-admitted",
+                        "taxBookHeldAtEmployer",
+                        "entryKind 'LATVIAN_MONTHLY_PAYROLL' does not admit taxBookHeldAtEmployer 'false'.",
+                        "latvian-payroll-profile",
+                        "Use EUR gross wages up to EUR 8,775.00, a 2026 payroll month, taxBookHeldAtEmployer true, and dependantCount 0; record any other case in an owned context that admits it."))));
+
+    assertTrue(rendered.contains("does not admit taxBookHeldAtEmployer 'false'."), rendered);
+    assertTrue(rendered.contains("taxBookHeldAtEmployer true"), rendered);
+    assertFalse(rendered.contains("false.."), rendered);
   }
 
   @Test

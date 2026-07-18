@@ -14,20 +14,20 @@ final class MachineContractRealizedForeignExchangePostEntryVariantTemplates {
 
   private MachineContractRealizedForeignExchangePostEntryVariantTemplates() {}
 
-  static ContractTemplates.PostingRequestTemplateDescriptor foreignCurrencyObligationTemplate(
-      @Nullable BookTemplateId ignoredBookTemplateId) {
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
+      foreignCurrencyObligationTemplate(@Nullable BookTemplateId bookTemplateId) {
     return template(
         BookkeepingEntryKind.FOREIGN_CURRENCY_OBLIGATION,
         null,
-        "trade-receivables",
-        "service-revenue",
+        "accounts-receivable",
+        MachineContractPostEntryVariantTemplates.salesRevenueAccountCode(bookTemplateId),
         new RealizedForeignExchangeTemplateDescriptor(
             SAMPLE_OBLIGATION_ID, "realized-fx-gain", "realized-fx-loss"),
         foreignExchange("120000", "110000"));
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor settlementTemplate(
-      @Nullable BookTemplateId ignoredBookTemplateId) {
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor settlementTemplate(
+      @Nullable BookTemplateId bookTemplateId) {
     return template(
         BookkeepingEntryKind.REALIZED_FOREIGN_EXCHANGE_SETTLEMENT,
         "cash",
@@ -37,14 +37,14 @@ final class MachineContractRealizedForeignExchangePostEntryVariantTemplates {
         foreignExchange("120000", "115000"));
   }
 
-  private static ContractTemplates.PostingRequestTemplateDescriptor template(
+  private static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template(
       BookkeepingEntryKind entryKind,
       @Nullable String cashAccountCode,
       @Nullable String receivableAccountCode,
       @Nullable String revenueAccountCode,
       RealizedForeignExchangeTemplateDescriptor realizedForeignExchange,
       ForeignExchangeTemplateDescriptor foreignExchange) {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+    return new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
         entryKind,
         SAMPLE_EFFECTIVE_DATE,
         cashAccountCode,

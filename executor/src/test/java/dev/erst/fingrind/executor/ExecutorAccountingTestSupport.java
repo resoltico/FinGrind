@@ -60,6 +60,7 @@ public final class ExecutorAccountingTestSupport {
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
               Optional.empty(),
               Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
@@ -67,26 +68,34 @@ public final class ExecutorAccountingTestSupport {
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
+              Optional.empty(),
               Optional.empty());
       case EQUITY ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+              Optional.empty(),
               Optional.empty());
       case REVENUE ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
+              Optional.empty());
       case EXPENSE ->
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
+              Optional.empty(),
+              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE),
+              Optional.empty());
     };
   }
 
@@ -162,6 +171,7 @@ public final class ExecutorAccountingTestSupport {
     return new AccountTaxonomy(
         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
         Optional.empty(),
+        Optional.empty(),
         Optional.of(lineClassification),
         Optional.empty(),
         cashFlowAssetClassification);
@@ -177,7 +187,9 @@ public final class ExecutorAccountingTestSupport {
         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
         Optional.empty(),
         Optional.empty(),
-        Optional.of(lineClassification));
+        Optional.empty(),
+        Optional.of(lineClassification),
+        Optional.empty());
   }
 
   /** Builds one published declared-account snapshot from a legacy normal-balance fixture. */
@@ -257,7 +269,8 @@ public final class ExecutorAccountingTestSupport {
         new EntityProfile(new BookEntityName("Acme Studio")),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"));
+        FiscalYearStart.parse("01-01"),
+        java.time.LocalDate.parse("2026-01-01"));
   }
 
   /**

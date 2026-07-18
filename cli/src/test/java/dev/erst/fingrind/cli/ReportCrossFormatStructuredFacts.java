@@ -52,14 +52,14 @@ final class ReportCrossFormatStructuredFacts {
     appendJsonVerdictFacts(facts, "summary", root.path("verdicts"));
     appendJsonContextFacts(facts, root.path("context"));
     for (JsonNode section : root.path("sections")) {
-      String sectionKey = section.path("key").asText();
-      String sectionTitle = section.path("title").asText();
+      String sectionKey = section.path("key").asString();
+      String sectionTitle = section.path("title").asString();
       facts.add(sectionTitleFact(sectionKey, sectionTitle));
       appendJsonVerdictFacts(facts, sectionKey, section.path("verdicts"));
       appendJsonTableFacts(
           facts, sectionKey, "table", section.path("columns"), section.path("rows"));
       for (JsonNode totals : section.path("totals")) {
-        String totalsTitle = totals.path("title").asText();
+        String totalsTitle = totals.path("title").asString();
         facts.add(totalsTitleFact(sectionKey, totalsTitle));
         appendJsonTableFacts(
             facts, sectionKey, totalsTitle, totals.path("columns"), totals.path("rows"));
@@ -151,7 +151,8 @@ final class ReportCrossFormatStructuredFacts {
       Set<String> facts, String sectionKey, JsonNode verdicts) {
     for (JsonNode verdict : verdicts) {
       facts.add(
-          verdictFact(sectionKey, verdict.path("label").asText(), verdict.path("value").asText()));
+          verdictFact(
+              sectionKey, verdict.path("label").asString(), verdict.path("value").asString()));
     }
   }
 
@@ -161,6 +162,8 @@ final class ReportCrossFormatStructuredFacts {
     appendJsonOptionalContextFact(facts, context, "Accounting basis", "accountingBasis");
     appendJsonOptionalContextFact(facts, context, "Functional currency", "functionalCurrency");
     appendJsonOptionalContextFact(facts, context, "Fiscal year start", "fiscalYearStart");
+    appendJsonOptionalContextFact(
+        facts, context, "Book start effective date", "bookStartEffectiveDate");
     appendJsonOptionalContextFact(facts, context, "Posting coverage", "postingCoverage");
     appendJsonOptionalContextFact(facts, context, "Period start", "periodStart");
     appendJsonOptionalContextFact(facts, context, "Period end", "periodEnd");
@@ -179,7 +182,7 @@ final class ReportCrossFormatStructuredFacts {
       Set<String> facts, JsonNode context, String label, String fieldName) {
     JsonNode value = context.path(fieldName);
     if (!value.isMissingNode() && !value.isNull()) {
-      facts.add(verdictFact("context", label, value.asText()));
+      facts.add(verdictFact("context", label, value.asString()));
     }
   }
 
@@ -188,11 +191,11 @@ final class ReportCrossFormatStructuredFacts {
     List<String> columnKeys = new ArrayList<>();
     int columnIndex = 0;
     for (JsonNode column : columns) {
-      String columnKey = column.path("key").asText();
+      String columnKey = column.path("key").asString();
       columnKeys.add(columnKey);
       facts.add(
           columnFact(
-              sectionKey, blockTitle, columnIndex, columnKey, column.path("title").asText()));
+              sectionKey, blockTitle, columnIndex, columnKey, column.path("title").asString()));
       columnIndex++;
     }
     int rowIndex = 0;
@@ -206,7 +209,7 @@ final class ReportCrossFormatStructuredFacts {
                 rowIndex,
                 index,
                 columnKeys.get(index),
-                cells.path(index).asText()));
+                cells.path(index).asString()));
       }
       rowIndex++;
     }

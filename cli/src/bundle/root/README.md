@@ -29,7 +29,7 @@ Quick start:
 1. Run `${bundleLauncherCommand} help`
 2. Let FinGrind create `./secrets/` and `./books/` securely, or keep any existing `./secrets/` and `./books/` directories owner-only before you reuse them
 3. Run `${bundleLauncherCommand} generate-book-key-file --new-book-key-file ./secrets/entity.book-key`
-4. Run `${bundleLauncherCommand} open-book --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01`
+4. Run `${bundleLauncherCommand} open-book --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01`
 5. Run `${bundleLauncherCommand} list-accounts --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --limit 10` to inspect the seeded accounts
 6. Copy the bundled first-sale sample with `cp ./quick-start-request.json ./request.json`
 7. Edit `./request.json` and replace the sample evidence and provenance values before real-world use

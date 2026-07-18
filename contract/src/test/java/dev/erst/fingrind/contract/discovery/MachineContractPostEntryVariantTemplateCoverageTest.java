@@ -19,7 +19,7 @@ class MachineContractPostEntryVariantTemplateCoverageTest {
   @Test
   void variantTemplatesAndOperationMappings_coverEveryPublishedPostingKind() {
     for (BookkeepingEntryKind entryKind : BookkeepingEntryKind.values()) {
-      ContractTemplates.PostingRequestTemplateDescriptor template =
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template =
           MachineContractPostEntryVariantSchemas.template(entryKind);
 
       MachineContractPostEntryVariantTemplateTestSupport.assertCanonicalTemplate(
@@ -40,10 +40,10 @@ class MachineContractPostEntryVariantTemplateCoverageTest {
 
   @Test
   void tradingSaleTemplates_publishInventoryReliefAndTradingRevenueLabels() {
-    ContractTemplates.PostingRequestTemplateDescriptor settledTradingTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor settledTradingTemplate =
         MachineContractPostEntryVariantSchemas.template(
             BookkeepingEntryKind.SALE_SETTLED, BookTemplateId.OWNER_MANAGED_TRADING);
-    ContractTemplates.PostingRequestTemplateDescriptor creditTradingTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor creditTradingTemplate =
         MachineContractPostEntryVariantSchemas.template(
             BookkeepingEntryKind.SALE_ON_CREDIT, BookTemplateId.OWNER_MANAGED_TRADING);
 
@@ -54,6 +54,21 @@ class MachineContractPostEntryVariantTemplateCoverageTest {
     assertEquals("inventory", settledTradingTemplate.inventoryRelief().inventoryAccountCode());
     assertEquals(
         "cost-of-sales", settledTradingTemplate.inventoryRelief().costOfSalesAccountCode());
+  }
+
+  @Test
+  void foreignCurrencyObligationTemplates_useTheSelectedTemplateRevenueAndCanonicalReceivable() {
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor serviceTemplate =
+        MachineContractPostEntryVariantSchemas.template(
+            BookkeepingEntryKind.FOREIGN_CURRENCY_OBLIGATION, BookTemplateId.OWNER_MANAGED_SERVICE);
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor tradingTemplate =
+        MachineContractPostEntryVariantSchemas.template(
+            BookkeepingEntryKind.FOREIGN_CURRENCY_OBLIGATION, BookTemplateId.OWNER_MANAGED_TRADING);
+
+    assertEquals("accounts-receivable", serviceTemplate.receivableAccountCode());
+    assertEquals("service-revenue", serviceTemplate.revenueAccountCode());
+    assertEquals("accounts-receivable", tradingTemplate.receivableAccountCode());
+    assertEquals("sales-revenue", tradingTemplate.revenueAccountCode());
   }
 
   @Test

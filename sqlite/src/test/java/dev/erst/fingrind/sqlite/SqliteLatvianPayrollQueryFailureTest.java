@@ -110,6 +110,27 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
   }
 
   @Test
+  void statementQueries_rejectEachUnsupportedRetainedWithholdingProfileFact() throws Exception {
+    Path bookPath = tempDirectory.resolve("payroll-query-unsupported-profile.sqlite");
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          try (SqliteStatementRedirectingDatabase unsupportedProfileDatabase =
+              redirectedDatabase(
+                  database,
+                  SqliteLatvianPayrollSql.FIND_RUN_BY_ID,
+                  unsupportedWithholdingProfileRunRowSql())) {
+            assertUnsupportedWithholdingProfile(unsupportedProfileDatabase);
+          }
+          try (SqliteStatementRedirectingDatabase unsupportedDependantCountDatabase =
+              redirectedDatabase(
+                  database, SqliteLatvianPayrollSql.FIND_RUN_BY_ID, runRowSql(1, 1))) {
+            assertUnsupportedWithholdingProfile(unsupportedDependantCountDatabase);
+          }
+        });
+  }
+
+  @Test
   void originatingEntryMapper_rejectsMissingDurablePayrollFacts() {
     Path bookPath = tempDirectory.resolve("payroll-originating-entry-facts.sqlite");
     withStandaloneDatabase(
@@ -218,6 +239,17 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
     assertTrue(NullTestSupport.messageOf(exception).contains(expectedMessage));
   }
 
+  private static void assertUnsupportedWithholdingProfile(
+      SqliteStatementRedirectingDatabase unsupportedProfileDatabase) {
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () -> SqliteLatvianPayrollStatementQueries.findRun(unsupportedProfileDatabase, RUN_ID));
+    assertEquals(
+        "Stored Latvian payroll run has unsupported withholding-profile facts.",
+        failure.getMessage());
+  }
+
   private static String noRowsSql() {
     return "select 'unreachable' where ?1 is not null and 0";
   }
@@ -226,12 +258,22 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
     return runRowSql() + " union all " + runRowSql();
   }
 
+  private static String unsupportedWithholdingProfileRunRowSql() {
+    return runRowSql(0, 0);
+  }
+
   private static String runRowSql() {
+    return runRowSql(1, 0);
+  }
+
+  private static String runRowSql(long taxBookHeldAtEmployer, long dependantCount) {
     return """
         select
             'payroll-run-2026-06-employee-001',
             'employee-001',
             '2026-06',
+            %d,
+            %d,
             '2026-06-30',
             'payroll-wage-expense',
             'payroll-employer-social-expense',
@@ -249,7 +291,8 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
             'payroll-run-posting',
             null
         where ?1 is not null
-        """;
+        """
+        .formatted(taxBookHeldAtEmployer, dependantCount);
   }
 
   private static String duplicateSettlementRowsSql() {

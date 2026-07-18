@@ -69,6 +69,9 @@ internal fun Project.configureJavaCoverageConventions() {
             ?: throw IllegalStateException(
                 "FinGrind Java conventions require a Java main source set for JaCoCo configuration.",
             )
+    if (mainSourceSet.allJava.files.isEmpty()) {
+        return
+    }
     val jacocoXmlReport = layout.buildDirectory.file("reports/jacoco/test/jacocoTestReport.xml")
     tasks.named<JacocoReport>("jacocoTestReport") {
         dependsOn(testTasks)

@@ -125,4 +125,9 @@ final class MachineContractScalarSchemas {
         "maximum",
         ProtocolInteractionLimits.PAGE_LIMIT_MAX);
   }
+
+  static Map<String, Object> nonNegativeIntegerSchema(String description) {
+    return MachineContractSchemaSupport.orderedMap(
+        "type", "integer", "description", description, "minimum", 0);
+  }
 }

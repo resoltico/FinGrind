@@ -12,6 +12,7 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
+import dev.erst.fingrind.core.ContraAccountRelationshipViolation;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.NormalBalance;
 import java.time.Instant;
@@ -75,6 +76,62 @@ class ChartOfAccountsTest {
                 new AccountName("Child Cash"),
                 AccountType.ASSET,
                 currentAssetTaxonomy(Optional.of(new AccountCode("1010"))))));
+  }
+
+  @Test
+  void validateConstrainsContraRelationshipsToActiveCompatiblePostableNonContraTargets() {
+    assertContraViolation(
+        ChartOfAccounts.of(List.of()),
+        contraDeclaration("1000", "1000", AccountType.ASSET, currentAssetContraTaxonomy("1000")),
+        ContraAccountRelationshipViolation.SELF_REFERENCE);
+    assertContraViolation(
+        ChartOfAccounts.of(List.of()),
+        contraDeclaration("1090", "1010", AccountType.ASSET, currentAssetContraTaxonomy("1010")),
+        ContraAccountRelationshipViolation.TARGET_MISSING);
+    assertContraViolation(
+        ChartOfAccounts.of(List.of(assetAccount("1010", Optional.empty(), false))),
+        contraDeclaration("1090", "1010", AccountType.ASSET, currentAssetContraTaxonomy("1010")),
+        ContraAccountRelationshipViolation.TARGET_INACTIVE);
+    assertContraViolation(
+        ChartOfAccounts.of(List.of(assetHeaderAccount("1010", Optional.empty(), true))),
+        contraDeclaration("1090", "1010", AccountType.ASSET, currentAssetContraTaxonomy("1010")),
+        ContraAccountRelationshipViolation.TARGET_NOT_POSTABLE);
+    assertContraViolation(
+        ChartOfAccounts.of(
+            List.of(
+                registeredAccount(
+                    new AccountCode("1010"),
+                    new AccountName("Existing Contra Asset"),
+                    AccountType.ASSET,
+                    currentAssetContraTaxonomy("1000"),
+                    true,
+                    DECLARED_AT))),
+        contraDeclaration("1090", "1010", AccountType.ASSET, currentAssetContraTaxonomy("1010")),
+        ContraAccountRelationshipViolation.TARGET_IS_CONTRA);
+    assertContraViolation(
+        ChartOfAccounts.of(
+            List.of(
+                registeredAccount(
+                    new AccountCode("2010"),
+                    new AccountName("Trade Payables"),
+                    AccountType.LIABILITY,
+                    financialPositionTaxonomy(
+                        FinancialPositionLineClassification.CURRENT_LIABILITY),
+                    true,
+                    DECLARED_AT))),
+        contraDeclaration("1090", "2010", AccountType.ASSET, currentAssetContraTaxonomy("2010")),
+        ContraAccountRelationshipViolation.ACCOUNT_TYPE_MISMATCH);
+    assertContraViolation(
+        ChartOfAccounts.of(List.of(assetAccount("1010", Optional.empty(), true))),
+        contraDeclaration("1090", "1010", AccountType.ASSET, nonCurrentAssetContraTaxonomy("1010")),
+        ContraAccountRelationshipViolation.STATEMENT_TAXONOMY_MISMATCH);
+
+    assertEquals(
+        Optional.empty(),
+        ChartOfAccounts.of(List.of(assetAccount("1010", Optional.empty(), true)))
+            .validate(
+                contraDeclaration(
+                    "1090", "1010", AccountType.ASSET, currentAssetContraTaxonomy("1010"))));
   }
 
   @Test
@@ -269,7 +326,9 @@ class ChartOfAccountsTest {
                 new AccountTaxonomy(
                     dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     Optional.empty(),
+                    Optional.empty(),
                     Optional.of(FinancialPositionLineClassification.RESULT_HOLDING),
+                    Optional.empty(),
                     Optional.empty()))));
   }
 
@@ -289,7 +348,9 @@ class ChartOfAccountsTest {
                         new AccountTaxonomy(
                             dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                             Optional.empty(),
+                            Optional.empty(),
                             Optional.of(FinancialPositionLineClassification.RESULT_HOLDING),
+                            Optional.empty(),
                             Optional.empty())))
                 .orElseThrow());
 
@@ -338,9 +399,54 @@ class ChartOfAccountsTest {
     return new AccountTaxonomy(
         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
         parentAccountCode,
+        Optional.empty(),
         Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
         Optional.empty(),
         Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
+  }
+
+  private static AccountTaxonomy currentAssetContraTaxonomy(String contraOfAccountCode) {
+    return new AccountTaxonomy(
+        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+        Optional.empty(),
+        Optional.of(new AccountCode(contraOfAccountCode)),
+        Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+        Optional.empty(),
+        Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
+  }
+
+  private static AccountTaxonomy nonCurrentAssetContraTaxonomy(String contraOfAccountCode) {
+    return new AccountTaxonomy(
+        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+        Optional.empty(),
+        Optional.of(new AccountCode(contraOfAccountCode)),
+        Optional.of(FinancialPositionLineClassification.NONCURRENT_ASSET),
+        Optional.empty(),
+        Optional.of(CashFlowAssetClassification.NON_CASH));
+  }
+
+  private static AccountDeclaration contraDeclaration(
+      String accountCode,
+      String contraOfAccountCode,
+      AccountType accountType,
+      AccountTaxonomy accountTaxonomy) {
+    assertEquals(
+        new AccountCode(contraOfAccountCode), accountTaxonomy.contraOfAccountCode().orElseThrow());
+    return new AccountDeclaration(
+        new AccountCode(accountCode),
+        new AccountName("Contra account " + accountCode),
+        accountType,
+        accountTaxonomy);
+  }
+
+  private static void assertContraViolation(
+      ChartOfAccounts chart,
+      AccountDeclaration declaration,
+      ContraAccountRelationshipViolation expectedViolation) {
+    assertEquals(
+        expectedViolation,
+        assertInstanceOf(ContraAccountInvalid.class, chart.validate(declaration).orElseThrow())
+            .violation());
   }
 
   private static AccountTaxonomy currentAssetHeaderTaxonomy(
@@ -348,6 +454,7 @@ class ChartOfAccountsTest {
     return new AccountTaxonomy(
         dev.erst.fingrind.core.AccountNodeKind.HEADER,
         parentAccountCode,
+        Optional.empty(),
         Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
         Optional.empty(),
         Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
@@ -357,6 +464,7 @@ class ChartOfAccountsTest {
     return new AccountTaxonomy(
         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
         parentAccountCode,
+        Optional.empty(),
         Optional.of(FinancialPositionLineClassification.NONCURRENT_ASSET),
         Optional.empty(),
         Optional.of(CashFlowAssetClassification.NON_CASH));

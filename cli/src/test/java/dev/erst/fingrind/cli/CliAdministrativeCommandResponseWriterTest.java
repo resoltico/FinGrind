@@ -444,6 +444,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     assertJsonContains(json, "\"entityName\":\"Acme Studio\"");
     assertJsonContains(json, "\"functionalCurrency\":\"EUR\"");
     assertJsonContains(json, "\"fiscalYearStart\":\"01-01\"");
+    assertJsonContains(json, "\"bookStartEffectiveDate\":\"2026-01-01\"");
   }
 
   @Test
@@ -476,7 +477,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         successEnvelope.path("artifacts").get(0).path("format").stringValue());
     assertEquals(
         Path.of("keys/rotated.key").toAbsolutePath().normalize().toString().replace('\\', '/'),
-        successEnvelope.path("artifacts").get(0).path("path").asText().replace('\\', '/'));
+        successEnvelope.path("artifacts").get(0).path("path").asString().replace('\\', '/'));
     ByteArrayOutputStream rejectionOutput = new ByteArrayOutputStream();
     CliResponseWriter rejectionWriter = new CliResponseWriter(utf8PrintStream(rejectionOutput));
     rejectionWriter.writeRekeyBookResult(
@@ -616,7 +617,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     assertEquals("rollback-artifact-selection-required", json.path("code").stringValue());
     assertEquals(
         CliPublicPaths.absoluteValue(Path.of("books/entity.sqlite")),
-        json.path("details").path("bookFile").asText().replace('\\', '/'));
+        json.path("details").path("bookFile").asString().replace('\\', '/'));
     assertEquals(2, json.path("details").path("rollbackArtifacts").size());
   }
 
@@ -639,7 +640,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
         envelope.path("artifacts").get(0).path("format").stringValue());
     assertEquals(
         CliPublicPaths.absoluteValue(Path.of("books/entity.rekey-rollback.sqlite")),
-        envelope.path("artifacts").get(0).path("path").asText().replace('\\', '/'));
+        envelope.path("artifacts").get(0).path("path").asString().replace('\\', '/'));
   }
 
   @Test
@@ -784,7 +785,7 @@ class CliAdministrativeCommandResponseWriterTest extends CliResponseWriterTestSu
     ByteArrayOutputStream listSuccessOutput = new ByteArrayOutputStream();
     CliResponseWriter listSuccessWriter = new CliResponseWriter(utf8PrintStream(listSuccessOutput));
     listSuccessWriter.writeListAccountsResult(
-        new ListAccountsResult.Listed(
+        listedAccounts(
             accountPage(java.util.List.of(declaredAccount), 50, java.util.Optional.empty())));
     String declareSuccessJson = declareSuccessOutput.toString(StandardCharsets.UTF_8);
     assertJsonContains(declareSuccessJson, "\"accountName\":\"Cash\"");

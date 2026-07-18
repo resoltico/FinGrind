@@ -1,5 +1,6 @@
 package dev.erst.fingrind.jazzer.support;
 
+import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.jazzer.tool.PostingLifecycleStatus;
 import java.util.Objects;
@@ -27,6 +28,9 @@ public final class PostingLifecycleStatusMapper {
   }
 
   private static PostingLifecycleStatus detailedStatus(PostingRejection rejection) {
+    if (rejection instanceof PostingEffectiveDateBeforeBookStart) {
+      return PostingLifecycleStatus.POSTING_EFFECTIVE_DATE_BEFORE_BOOK_START;
+    }
     if (rejection instanceof PostingRejection.PostingEffectiveDateInFuture) {
       return PostingLifecycleStatus.POSTING_EFFECTIVE_DATE_IN_FUTURE;
     }

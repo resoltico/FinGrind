@@ -3,7 +3,7 @@ package dev.erst.fingrind.contract.discovery;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
-import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import org.junit.jupiter.api.Test;
 
 /** Protects machine-discovery prose from retaining a partial enumeration of entry kinds. */
@@ -12,7 +12,7 @@ class MachineContractPostEntryFieldSpecsTest {
   void entryKindDescription_pointsToTheLiveVariantContractInsteadOfAStalePartialList() {
     String description =
         MachineContractPostEntryFieldSpecs.topLevelFields().stream()
-            .filter(field -> ProtocolPostEntryFields.TopLevel.ENTRY_KIND.equals(field.name()))
+            .filter(field -> ProtocolBusinessEventFields.Core.ENTRY_KIND.equals(field.name()))
             .findFirst()
             .orElseThrow()
             .description();

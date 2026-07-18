@@ -37,6 +37,7 @@ class CliLifecycleContextCsvProjectionTest {
                     money("12000"),
                     money("0"),
                     money("12000"),
+                    Optional.empty(),
                     new FixedAssetDepreciationSchedule(
                         LocalDate.parse("2026-06-01"), 60, money("0")),
                     0,

@@ -10,10 +10,11 @@ public sealed interface ListAccountsResult
   /** Folds the closed result family without transport-layer pattern switching. */
   <T> T fold(Function<Listed, T> listedMapper, Function<Rejected, T> rejectedMapper);
 
-  /** Success result carrying the current registry snapshot. */
-  record Listed(AccountPage page) implements ListAccountsResult {
-    /** Validates the listed-account snapshot. */
+  /** Success result carrying the accepted query and current registry page. */
+  record Listed(ListAccountsQuery query, AccountPage page) implements ListAccountsResult {
+    /** Validates the accepted account query and listed-account snapshot. */
     public Listed {
+      Objects.requireNonNull(query, "query");
       Objects.requireNonNull(page, "page");
     }
 

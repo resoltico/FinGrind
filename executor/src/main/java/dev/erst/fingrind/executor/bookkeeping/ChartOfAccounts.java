@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountStructureDoctrine;
+import dev.erst.fingrind.core.ContraAccountRelationshipViolation;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -52,6 +53,11 @@ public final class ChartOfAccounts {
         singularFinancialPositionClassificationConflict(declaration);
     if (singularClassificationConflict.isPresent()) {
       return singularClassificationConflict;
+    }
+    Optional<BookkeepingAdministrationRejection> contraAccountConflict =
+        contraAccountConflict(declaration);
+    if (contraAccountConflict.isPresent()) {
+      return contraAccountConflict;
     }
     Optional<AccountCode> parentAccountCode = declaration.accountTaxonomy().parentAccountCode();
     if (parentAccountCode.isEmpty()) {
@@ -107,6 +113,54 @@ public final class ChartOfAccounts {
               childAccountCode, requiredParentAccountCode));
     }
     return Optional.empty();
+  }
+
+  private Optional<BookkeepingAdministrationRejection> contraAccountConflict(
+      AccountDeclaration declaration) {
+    Optional<AccountCode> declaredContraOf = declaration.accountTaxonomy().contraOfAccountCode();
+    if (declaredContraOf.isEmpty()) {
+      return Optional.empty();
+    }
+    AccountCode accountCode = declaration.accountCode();
+    AccountCode targetCode = declaredContraOf.orElseThrow();
+    if (accountCode.equals(targetCode)) {
+      return contraRejection(
+          accountCode, targetCode, ContraAccountRelationshipViolation.SELF_REFERENCE);
+    }
+    RegisteredAccount target = accountsByCode.get(targetCode);
+    if (target == null) {
+      return contraRejection(
+          accountCode, targetCode, ContraAccountRelationshipViolation.TARGET_MISSING);
+    }
+    if (!target.active()) {
+      return contraRejection(
+          accountCode, targetCode, ContraAccountRelationshipViolation.TARGET_INACTIVE);
+    }
+    if (!target.accountTaxonomy().nodeKind().allowsPosting()) {
+      return contraRejection(
+          accountCode, targetCode, ContraAccountRelationshipViolation.TARGET_NOT_POSTABLE);
+    }
+    if (target.accountTaxonomy().contraOfAccountCode().isPresent()) {
+      return contraRejection(
+          accountCode, targetCode, ContraAccountRelationshipViolation.TARGET_IS_CONTRA);
+    }
+    if (target.accountType() != declaration.accountType()) {
+      return contraRejection(
+          accountCode, targetCode, ContraAccountRelationshipViolation.ACCOUNT_TYPE_MISMATCH);
+    }
+    if (!AccountStructureDoctrine.contraRelationshipCompatible(
+        declaration.accountType(), target.accountTaxonomy(), declaration.accountTaxonomy())) {
+      return contraRejection(
+          accountCode, targetCode, ContraAccountRelationshipViolation.STATEMENT_TAXONOMY_MISMATCH);
+    }
+    return Optional.empty();
+  }
+
+  private static Optional<BookkeepingAdministrationRejection> contraRejection(
+      AccountCode accountCode,
+      AccountCode contraOfAccountCode,
+      ContraAccountRelationshipViolation violation) {
+    return Optional.of(new ContraAccountInvalid(accountCode, contraOfAccountCode, violation));
   }
 
   private Optional<BookkeepingAdministrationRejection>

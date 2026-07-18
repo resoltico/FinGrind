@@ -105,7 +105,8 @@ final class FinGrindCli {
     CliDiscoveryResponseWriter discoveryResponseWriter =
         new CliDiscoveryResponseWriter(outputChannel);
     CliMutationResponseWriter mutationResponseWriter = new CliMutationResponseWriter(outputChannel);
-    CliBookReadResponseWriter bookReadResponseWriter = new CliBookReadResponseWriter(outputChannel);
+    CliBookReadResponseWriter bookReadResponseWriter =
+        new CliBookReadResponseWriter(outputChannel, resolvedClock);
     CliReportResponseWriter reportResponseWriter = new CliReportResponseWriter(outputChannel);
     CliPlanResponseWriter planResponseWriter = new CliPlanResponseWriter(outputChannel);
     CliPdfReportExporter pdfExporter =

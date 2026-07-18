@@ -40,7 +40,7 @@ final class MachineContractQuickStarts {
                         ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
                         paths.bookKeyFile())),
             WorkflowStepDescriptor.command(
-                "%s %s --book-file %s --book-key-file %s --entity-name \"Acme Studio\" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01"
+                "%s %s --book-file %s --book-key-file %s --entity-name \"Acme Studio\" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01"
                     .formatted(
                         launcherCommand(surface),
                         ProtocolCatalog.operationName(OperationId.OPEN_BOOK),

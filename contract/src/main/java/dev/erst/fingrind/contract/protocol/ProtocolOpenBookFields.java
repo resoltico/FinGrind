@@ -8,6 +8,7 @@ public final class ProtocolOpenBookFields {
   public static final String INVENTORY_COSTING = "inventoryCosting";
   public static final String FUNCTIONAL_CURRENCY = "functionalCurrency";
   public static final String FISCAL_YEAR_START = "fiscalYearStart";
+  public static final String BOOK_START_EFFECTIVE_DATE = "bookStartEffectiveDate";
 
   private ProtocolOpenBookFields() {}
 }

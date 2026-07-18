@@ -89,7 +89,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "bookTemplateId": "OWNER_MANAGED_TRADING",
                       "accountingBasis": "CASH",
                       "functionalCurrency": "EUR",
-                      "fiscalYearStart": "01-01"
+                      "fiscalYearStart": "01-01",
+                      "bookStartEffectiveDate": "2026-01-01"
                     }
                   }]
                 }
@@ -110,7 +111,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "accountingBasis": "CASH",
                       "inventoryCosting": "WEIGHTED_AVERAGE",
                       "functionalCurrency": "EUR",
-                      "fiscalYearStart": "01-01"
+                      "fiscalYearStart": "01-01",
+                      "bookStartEffectiveDate": "2026-01-01"
                     }
                   }]
                 }
@@ -131,7 +133,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "accountingBasis": "CASH",
                       "inventoryCosting": "WEIGHTED_AVERAGE",
                       "functionalCurrency": "EUR",
-                      "fiscalYearStart": "01-01"
+                      "fiscalYearStart": "01-01",
+                      "bookStartEffectiveDate": "2026-01-01"
                     }
                   }]
                 }
@@ -627,6 +630,32 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
   }
 
   @Test
+  void requiredBoolean_acceptsBooleanAndRejectsMissingOrNonBooleanValues() throws IOException {
+    var rootNode =
+        CliJsonStructureAccess.requireRootObject(
+            CliJsonObjectMappers.configuredObjectMapper()
+                .readTree("{\"enabled\":true,\"explicitNull\":null,\"text\":\"true\"}"));
+
+    assertTrue(CliJsonFieldAccess.requiredBoolean(rootNode, "enabled"));
+    IllegalArgumentException missing =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> CliJsonFieldAccess.requiredBoolean(rootNode, "missing"));
+    IllegalArgumentException nonBoolean =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> CliJsonFieldAccess.requiredBoolean(rootNode, "text"));
+    IllegalArgumentException explicitNull =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> CliJsonFieldAccess.requiredBoolean(rootNode, "explicitNull"));
+
+    assertEquals("Missing required field: missing", missing.getMessage());
+    assertEquals("Field must be a boolean: text", nonBoolean.getMessage());
+    assertEquals("Missing required field: explicitNull", explicitNull.getMessage());
+  }
+
+  @Test
   void readLedgerPlan_rejectsRetiredBusinessActivityTagsField() {
     CliRequestReader arrayFieldReader =
         new CliRequestReader(
@@ -642,7 +671,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                         "entityName": "Acme Studio",
                         "businessActivityTags": ["translation-services"],
                         "functionalCurrency": "EUR",
-                        "fiscalYearStart": "01-01"
+                        "fiscalYearStart": "01-01",
+                        "bookStartEffectiveDate": "2026-01-01"
                       }
                     }
                   ]
@@ -663,7 +693,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                         "entityName": "Acme Studio",
                         "businessActivityTags": null,
                         "functionalCurrency": "EUR",
-                        "fiscalYearStart": "01-01"
+                        "fiscalYearStart": "01-01",
+                        "bookStartEffectiveDate": "2026-01-01"
                       }
                     }
                   ]
@@ -701,7 +732,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                         "bookTemplateId": "OWNER_MANAGED_SERVICE",
                         "accountingBasis": "CASH",
                         "functionalCurrency": "EUR",
-                        "fiscalYearStart": "01-01"
+                        "fiscalYearStart": "01-01",
+                        "bookStartEffectiveDate": "2026-01-01"
                       }
                     }
                   ]
@@ -730,7 +762,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                           "registrations": []
                         },
                         "functionalCurrency": "EUR",
-                        "fiscalYearStart": "01-01"
+                        "fiscalYearStart": "01-01",
+                        "bookStartEffectiveDate": "2026-01-01"
                       }
                     }
                   ]

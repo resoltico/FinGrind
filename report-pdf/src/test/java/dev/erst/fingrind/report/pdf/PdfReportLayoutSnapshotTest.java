@@ -60,25 +60,25 @@ class PdfReportLayoutSnapshotTest {
             new ReportSnapshotCase(
                 "account-balance",
                 PdfReportLayoutFixtureModels.sampleAccountBalanceModel(),
-                "fc00ff00fffffffef800f800ff007ffe00000000000000000000000000000000")),
+                "fc00ff00fffffffee800fc00ef00fffe00000000000000000000000000000000")),
         Map.entry(
             "trial-balance",
             new ReportSnapshotCase(
                 "trial-balance",
                 PdfReportLayoutFixtureModels.sampleTrialBalanceModel(),
-                "c0000000e000fffefffefffee000f000fffefffefffed000d000c000f0000000")),
+                "c0000000e000fffefffefffee000f000fffefffefffed000d000c000d0000000")),
         Map.entry(
             "account-ledger",
             new ReportSnapshotCase(
                 "account-ledger",
                 PdfReportLayoutFixtureModels.sampleAccountLedgerModel(),
-                "e000c000f800fc00fffefffefffffffef800e000f000e000e000fffe00000000")),
+                "e000c000f800fc00fffefffefffffffef800c000f000f000c000fffe00000000")),
         Map.entry(
             "period-summary",
             new ReportSnapshotCase(
                 "period-summary",
                 PdfReportLayoutFixtureModels.samplePeriodSummaryModel(),
-                "e000c000e000c000fffffffffffffffefffef800e000f0007ffe000000000000")),
+                "e000c000e000c000fffffffffffffffefffed800c000f000fffe000000000000")),
         Map.entry(
             "financial-position",
             new ReportSnapshotCase(

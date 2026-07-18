@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
-import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
@@ -402,6 +401,7 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
                     postEntryShape.enumVocabularies(),
                     postEntryShape.schema()),
                 requestShapes.declareAccount(),
+                requestShapes.retireAccount(),
                 requestShapes.declareTaxRegistration(),
                 requestShapes.ledgerPlan()),
             baseHelp.requestTemplate(),
@@ -675,7 +675,7 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(accountPage(java.util.List.of(), 50, Optional.empty())),
+            listedAccounts(accountPage(java.util.List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             CliPostEntryResultFixtures.committed(

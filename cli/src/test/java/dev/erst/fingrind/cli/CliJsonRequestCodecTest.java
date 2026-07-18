@@ -8,7 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
+import dev.erst.fingrind.contract.protocol.ProtocolRequestTemplateTopics;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.AccessDeniedException;
@@ -22,6 +24,20 @@ import tools.jackson.core.io.ContentReference;
 
 /** Unit tests for {@link CliJsonRequestCodec}. */
 class CliJsonRequestCodecTest {
+  @Test
+  void postEntryRequestHints_bindEveryTemplateTopicToItsOwnScaffoldAndHelpSurface() {
+    for (OperationId operation : ProtocolRequestTemplateTopics.topics()) {
+      String hint = CliJsonRequestHints.postEntryRequestHint(operation);
+
+      assertTrue(
+          hint.contains("print-request-template " + operation.wireName()),
+          operation.wireName() + ": " + hint);
+      assertTrue(
+          hint.contains("help " + operation.wireName() + " --output json --detail full"),
+          operation.wireName() + ": " + hint);
+    }
+  }
+
   @Test
   void requestPlaceholderValues_rejectNestedScaffoldValuesAndKeepRealValues() throws Exception {
     var mapper = CliJsonObjectMappers.configuredObjectMapper();
@@ -282,12 +298,15 @@ class CliJsonRequestCodecTest {
               FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION, System.getProperty("os.name", ""));
 
       assertTrue(
-          CliJsonRequestHints.postEntryRequestHint()
-              .contains(bundleLauncher + " print-request-template"));
+          CliJsonRequestHints.postEntryRequestHint(OperationId.RECORD_FINANCING_BORROWING)
+              .contains(bundleLauncher + " print-request-template record-financing-borrowing"));
       assertTrue(
-          CliJsonRequestHints.postEntryRequestHint()
-              .contains(bundleLauncher + " help post-entry --output json --detail full"));
-      assertFalse(CliJsonRequestHints.postEntryRequestHint().contains("request-input"));
+          CliJsonRequestHints.postEntryRequestHint(OperationId.RECORD_FINANCING_BORROWING)
+              .contains(
+                  bundleLauncher + " help record-financing-borrowing --output json --detail full"));
+      assertFalse(
+          CliJsonRequestHints.postEntryRequestHint(OperationId.RECORD_FINANCING_BORROWING)
+              .contains("request-input"));
       assertTrue(
           CliJsonRequestHints.ledgerPlanRequestHint()
               .contains(bundleLauncher + " print-plan-template"));

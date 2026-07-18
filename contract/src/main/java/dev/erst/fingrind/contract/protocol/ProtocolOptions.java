@@ -53,6 +53,7 @@ public final class ProtocolOptions {
     public static final String TIGHTEN_PARENTS = "--tighten-parents";
     public static final String FUNCTIONAL_CURRENCY = "--functional-currency";
     public static final String FISCAL_YEAR_START = "--fiscal-year-start";
+    public static final String BOOK_START_EFFECTIVE_DATE = "--book-start-effective-date";
 
     private BookDefinition() {}
   }

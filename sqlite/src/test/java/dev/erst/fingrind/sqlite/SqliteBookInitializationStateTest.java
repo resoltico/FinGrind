@@ -7,11 +7,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.BookDoctrine;
+import dev.erst.fingrind.core.BookDoctrines;
+import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.EntityProfile;
+import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
@@ -20,8 +29,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /** Unit and integration tests for {@link SqlitePostingFactStore}. */
 class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSupport {
@@ -183,6 +195,38 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
     }
   }
 
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("builtInDoctrines")
+  void openBook_initializesEveryBuiltInTemplateAndBasisCombination(BookDoctrine doctrine) {
+    Path databasePath =
+        tempDirectory.resolve(
+            doctrine.bookTemplateId().wireValue()
+                + "-"
+                + doctrine.accountingBasis().wireValue()
+                + ".sqlite");
+    BookIdentity identity =
+        new BookIdentity(
+            new EntityProfile(new BookEntityName("Acme Studio")),
+            doctrine,
+            CurrencyUnit.of("EUR"),
+            FiscalYearStart.parse("01-01"),
+            java.time.LocalDate.parse("2026-01-01"));
+
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
+      BookOpeningOutcome outcome =
+          postingFactStore.openBook(
+              Instant.parse("2026-04-07T10:15:30Z"),
+              identity,
+              BookTemplateAccounts.declarations(doctrine));
+
+      BookOpeningOutcome.Opened opened =
+          org.junit.jupiter.api.Assertions.assertInstanceOf(
+              BookOpeningOutcome.Opened.class, outcome);
+      assertEquals(identity, opened.bookIdentity());
+      assertTrue(postingFactStore.inspectBook().initialized());
+    }
+  }
+
   @Test
   void schemaOnlyBook_isRejectedAsIncompleteFinGrindBook() {
     Path databasePath = tempDirectory.resolve("schema-only.sqlite");
@@ -335,6 +379,69 @@ class SqliteBookInitializationStateTest extends SqlitePostingFactStoreTestSuppor
           NullTestSupport.messageOf(exception).contains("Failed to initialize SQLite book."));
       setStoreDatabase(postingFactStore, null);
     }
+  }
+
+  @Test
+  void exclusiveOpenBook_failureRemovesOnlyItsOwnedBookArtifacts() throws Exception {
+    Path bookPath = tempDirectory.resolve("failed-exclusive-open.sqlite");
+    BookDoctrine doctrine = BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL;
+    BookIdentity identity =
+        new BookIdentity(
+            new EntityProfile(new BookEntityName("Acme Studio")),
+            doctrine,
+            CurrencyUnit.of("EUR"),
+            FiscalYearStart.parse("01-01"),
+            java.time.LocalDate.parse("2026-01-01"));
+    var invalidSeedChart = new ArrayList<>(BookTemplateAccounts.declarations(doctrine));
+    AccountDeclaration salesDiscountAllowance =
+        invalidSeedChart.stream()
+            .filter(
+                declaration ->
+                    declaration.accountCode().equals(new AccountCode("sales-discount-allowance")))
+            .findFirst()
+            .orElseThrow();
+    var taxonomy = salesDiscountAllowance.accountTaxonomy();
+    invalidSeedChart.set(
+        invalidSeedChart.indexOf(salesDiscountAllowance),
+        new AccountDeclaration(
+            salesDiscountAllowance.accountCode(),
+            salesDiscountAllowance.accountName(),
+            salesDiscountAllowance.accountType(),
+            new dev.erst.fingrind.core.AccountTaxonomy(
+                taxonomy.nodeKind(),
+                taxonomy.parentAccountCode(),
+                Optional.of(new AccountCode("missing-revenue")),
+                taxonomy.financialPositionLineClassification(),
+                taxonomy.profitAndLossLineClassification(),
+                taxonomy.cashFlowAssetClassification()),
+            salesDiscountAllowance.unitOfMeasure()));
+
+    try (SqliteBookPassphrase passphrase =
+            SqliteBookPassphrase.fromCharacters(
+                "failed exclusive initialization", TEST_BOOK_KEY.toCharArray());
+        SqlitePostingFactStore postingFactStore =
+            SqlitePostingFactStore.openResolved(
+                    bookPath, passphrase, SqliteStoreAccessMode.READ_WRITE_CREATE_EXCLUSIVE)
+                .requireAccepted()) {
+      assertThrows(
+          IllegalStateException.class,
+          () ->
+              postingFactStore.openBook(
+                  Instant.parse("2026-04-07T10:15:30Z"), identity, invalidSeedChart));
+    }
+
+    assertFalse(Files.exists(bookPath));
+    assertFalse(Files.exists(bookPath.resolveSibling(bookPath.getFileName() + "-journal")));
+    assertFalse(Files.exists(bookPath.resolveSibling(bookPath.getFileName() + "-wal")));
+    assertFalse(Files.exists(bookPath.resolveSibling(bookPath.getFileName() + "-shm")));
+  }
+
+  private static java.util.stream.Stream<BookDoctrine> builtInDoctrines() {
+    return java.util.stream.Stream.of(
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING_ACCRUAL);
   }
 
   @Test

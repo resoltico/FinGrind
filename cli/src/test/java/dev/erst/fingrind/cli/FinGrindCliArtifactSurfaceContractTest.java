@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
-import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
@@ -134,7 +133,7 @@ class FinGrindCliArtifactSurfaceContractTest extends CliPublicDocsContractSuppor
     assertTrue(restoreEnvelope.path("payload").path("bookKeyFile").isMissingNode());
     assertEquals(
         CliPublicPaths.absoluteValue(hint(restoredBookKeyFilePath)),
-        restoreEnvelope.path("payload").path("bookKeyFilePath").asText());
+        restoreEnvelope.path("payload").path("bookKeyFilePath").asString());
 
     RecordingWorkflow inspectRollbackWorkflow = contractWorkflow();
     inspectRollbackWorkflow.setRekeyRollbackResult(
@@ -364,7 +363,7 @@ class FinGrindCliArtifactSurfaceContractTest extends CliPublicDocsContractSuppor
                 NormalBalance.DEBIT,
                 true,
                 Instant.parse("2026-04-07T12:00:00Z"))),
-        new ListAccountsResult.Listed(accountPage(List.of(), 50, java.util.Optional.empty())),
+        listedAccounts(accountPage(List.of(), 50, java.util.Optional.empty())),
         CliPostEntryResultFixtures.preflightAccepted(
             new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
         CliPostEntryResultFixtures.committed(

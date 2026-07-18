@@ -13,7 +13,8 @@ final class MachineContractLifecyclePostEntryTemplateAssertions {
   private MachineContractLifecyclePostEntryTemplateAssertions() {}
 
   static void assertTemplate(
-      BookkeepingEntryKind entryKind, ContractTemplates.PostingRequestTemplateDescriptor template) {
+      BookkeepingEntryKind entryKind,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template) {
     switch (entryKind) {
       case FIXED_ASSET_CAPITALIZATION, FIXED_ASSET_DEPRECIATION, FIXED_ASSET_DISPOSAL ->
           assertFixedAssetTemplate(entryKind, template);
@@ -29,7 +30,8 @@ final class MachineContractLifecyclePostEntryTemplateAssertions {
   }
 
   private static void assertFixedAssetTemplate(
-      BookkeepingEntryKind entryKind, ContractTemplates.PostingRequestTemplateDescriptor template) {
+      BookkeepingEntryKind entryKind,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template) {
     ContractFixedAssetTemplates.FixedAssetTemplateDescriptor fixedAsset =
         Objects.requireNonNull(template.fixedAsset());
     assertEquals("delivery-van-001", fixedAsset.fixedAssetId());
@@ -58,7 +60,8 @@ final class MachineContractLifecyclePostEntryTemplateAssertions {
   }
 
   private static void assertFinancingTemplate(
-      BookkeepingEntryKind entryKind, ContractTemplates.PostingRequestTemplateDescriptor template) {
+      BookkeepingEntryKind entryKind,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template) {
     ContractFinancingTemplates.FinancingTemplateDescriptor financing =
         Objects.requireNonNull(template.financing());
     assertEquals("term-loan-001", financing.financingArrangementId());
@@ -86,14 +89,15 @@ final class MachineContractLifecyclePostEntryTemplateAssertions {
   }
 
   private static void assertRealizedForeignExchangeTemplate(
-      BookkeepingEntryKind entryKind, ContractTemplates.PostingRequestTemplateDescriptor template) {
+      BookkeepingEntryKind entryKind,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template) {
     ContractRealizedForeignExchangeTemplates.RealizedForeignExchangeTemplateDescriptor context =
         Objects.requireNonNull(template.realizedForeignExchange());
     assertEquals("customer-invoice-usd-001", context.foreignCurrencyObligationId());
     assertNotNull(template.foreignExchange());
     switch (entryKind) {
       case FOREIGN_CURRENCY_OBLIGATION -> {
-        assertEquals("trade-receivables", template.receivableAccountCode());
+        assertEquals("accounts-receivable", template.receivableAccountCode());
         assertEquals("service-revenue", template.revenueAccountCode());
         assertEquals("realized-fx-gain", context.realizedGainAccountCode());
         assertEquals("realized-fx-loss", context.realizedLossAccountCode());

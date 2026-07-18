@@ -41,10 +41,12 @@ def main() -> int:
     overview_path = docs_root / "SCHEMA_CORE.md"
     schema_path = repo_root / "sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.sql"
 
-    frontmatter, version, updated = read_overview_metadata(overview_path)
+    frontmatter, afad, version, updated = read_overview_metadata(overview_path)
     schema_text = read_schema_text(schema_path)
     statements = split_sql_statements(schema_text)
-    rendered_documents = render_documents(docs_root, frontmatter, version, updated, statements)
+    rendered_documents = render_documents(
+        docs_root, frontmatter, afad, version, updated, statements
+    )
     unexpected_generated = discover_unexpected_generated(docs_root, rendered_documents)
 
     if arguments.check:
@@ -56,7 +58,7 @@ def main() -> int:
     return 0
 
 
-def read_overview_metadata(overview_path: Path) -> tuple[str, str, str]:
+def read_overview_metadata(overview_path: Path) -> tuple[str, str, str, str]:
     if not overview_path.is_file():
         raise SystemExit(f"error: missing schema document at {overview_path}")
     existing_overview = overview_path.read_text(encoding="utf-8")
@@ -65,11 +67,14 @@ def read_overview_metadata(overview_path: Path) -> tuple[str, str, str]:
         raise SystemExit(f"error: {overview_path} is missing AFAD frontmatter")
     frontmatter = frontmatter_match.group(0)
     frontmatter_fields = dict(FRONTMATTER_FIELD_PATTERN.findall(frontmatter))
+    afad = frontmatter_fields.get("afad")
     version = frontmatter_fields.get("version")
     updated = frontmatter_fields.get("updated")
-    if version is None or updated is None:
-        raise SystemExit(f"error: {overview_path} is missing version or updated frontmatter keys")
-    return frontmatter, version, updated
+    if afad is None or version is None or updated is None:
+        raise SystemExit(
+            f"error: {overview_path} is missing afad, version, or updated frontmatter keys"
+        )
+    return frontmatter, afad, version, updated
 
 
 def read_schema_text(schema_path: Path) -> str:

@@ -46,6 +46,9 @@ class CliDiscoveryCommandExecutorTest {
     String amendAccountTemplate =
         CliWireJson.prettyJsonText(
             CliDiscoveryCommandExecutor.requestTemplateFor(OperationId.AMEND_ACCOUNT, null));
+    String retireAccountTemplate =
+        CliWireJson.prettyJsonText(
+            CliDiscoveryCommandExecutor.requestTemplateFor(OperationId.RETIRE_ACCOUNT, null));
     String declareTaxRegistrationTemplate =
         CliWireJson.prettyJsonText(
             CliDiscoveryCommandExecutor.requestTemplateFor(
@@ -57,6 +60,8 @@ class CliDiscoveryCommandExecutorTest {
     assertTrue(declareAccountTemplate.contains("\"accountCode\""));
     assertTrue(declareAccountTemplate.contains("\"accountNodeKind\""));
     assertEquals(declareAccountTemplate, amendAccountTemplate);
+    assertTrue(retireAccountTemplate.contains("\"accountCode\""));
+    assertFalse(retireAccountTemplate.contains("\"accountNodeKind\""));
     assertTrue(declareTaxRegistrationTemplate.contains("\"taxRegistrationId\""));
     assertTrue(declareTaxRegistrationTemplate.contains("\"obligationFrequency\""));
     assertTrue(

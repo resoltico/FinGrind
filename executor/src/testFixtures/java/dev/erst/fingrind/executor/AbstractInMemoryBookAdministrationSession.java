@@ -49,7 +49,8 @@ abstract class AbstractInMemoryBookAdministrationSession
           new EntityProfile(new BookEntityName("FinGrind Test Entity")),
           BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
           CurrencyUnit.of("USD"),
-          new FiscalYearStart(1, 1));
+          new FiscalYearStart(1, 1),
+          java.time.LocalDate.parse("2026-01-01"));
 
   @Override
   public BookLifecycleInspection inspectBook() {

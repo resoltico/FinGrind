@@ -24,6 +24,7 @@ import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal;
@@ -141,6 +142,38 @@ class PostingApplicationServicePreflightTest {
   }
 
   @Test
+  void preflight_rejectsEffectiveDatesBeforeImmutableBookStartBeforeSemanticValidation() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      PostingApplicationService applicationService = applicationService(bookSession);
+      PostEntryCommand command =
+          new PostEntryCommand(
+              new BookkeepingEntry.SaleSettled(
+                  LocalDate.parse("2025-12-31"),
+                  new AccountCode("1000"),
+                  new AccountCode("2000"),
+                  MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                  null,
+                  null,
+                  null,
+                  null,
+                  null),
+              generatedEvidence("idem-before-book-start", "cash-receipt"),
+              requestProvenance("idem-before-book-start"),
+              SourceChannel.CLI);
+
+      PostEntryResult result = applicationService.preflight(command);
+
+      assertEquals(
+          preflightRejected(
+              new IdempotencyKey("idem-before-book-start"),
+              new PostingEffectiveDateBeforeBookStart(
+                  LocalDate.parse("2025-12-31"), LocalDate.parse("2026-01-01"))),
+          result);
+    }
+  }
+
+  @Test
   void preflight_returnsResolvedJournalForTaxedSettledSale() {
     try (InMemoryBookSession bookSession = initializedBook()) {
       declareDefaultAccounts(bookSession);
@@ -174,7 +207,8 @@ class PostingApplicationServicePreflightTest {
               new EntityProfile(new BookEntityName("Acme Studio")),
               BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING,
               dev.erst.fingrind.core.CurrencyUnit.of("EUR"),
-              FiscalYearStart.parse("01-01")),
+              FiscalYearStart.parse("01-01"),
+              java.time.LocalDate.parse("2026-01-01")),
           List.of());
       bookSession.declareAccount(
           new AccountCode("1000"),

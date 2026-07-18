@@ -12,7 +12,7 @@ final class MachineContractInventoryPostEntryVariantTemplates {
 
   private MachineContractInventoryPostEntryVariantTemplates() {}
 
-  static ContractTemplates.PostingRequestTemplateDescriptor purchaseTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor purchaseTemplate(
       BookkeepingEntryKind entryKind,
       @Nullable String cashAccountCode,
       @Nullable String receivableAccountCode,
@@ -21,7 +21,7 @@ final class MachineContractInventoryPostEntryVariantTemplates {
       @Nullable String inventoryAccountCode,
       @Nullable String expenseAccountCode,
       @Nullable String equityAccountCode) {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+    return new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
         entryKind,
         SAMPLE_EFFECTIVE_DATE,
         cashAccountCode,
@@ -58,12 +58,12 @@ final class MachineContractInventoryPostEntryVariantTemplates {
         null);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor roleAmountTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor roleAmountTemplate(
       BookkeepingEntryKind entryKind,
       @Nullable String cashAccountCode,
       @Nullable String payableAccountCode,
       @Nullable String writeDownLossAccountCode) {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+    return new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
         entryKind,
         SAMPLE_EFFECTIVE_DATE,
         cashAccountCode,
@@ -100,9 +100,9 @@ final class MachineContractInventoryPostEntryVariantTemplates {
         null);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor shrinkageTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor shrinkageTemplate(
       BookkeepingEntryKind entryKind) {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+    return new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
         entryKind,
         SAMPLE_EFFECTIVE_DATE,
         null,
@@ -139,9 +139,9 @@ final class MachineContractInventoryPostEntryVariantTemplates {
         null);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor countIncreaseTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor countIncreaseTemplate(
       BookkeepingEntryKind entryKind) {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+    return new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
         entryKind,
         SAMPLE_EFFECTIVE_DATE,
         null,

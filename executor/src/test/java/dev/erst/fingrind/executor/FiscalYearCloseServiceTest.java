@@ -116,6 +116,30 @@ class FiscalYearCloseServiceTest {
   }
 
   @Test
+  void fiscalYearClose_derivesThePartialFirstFiscalYearSegmentFromBookStart() {
+    BookIdentity baseline = bookIdentity();
+    BookIdentity midYearBook =
+        new BookIdentity(
+            baseline.entityProfile(),
+            baseline.bookDoctrine(),
+            baseline.functionalCurrency(),
+            baseline.fiscalYearStart(),
+            LocalDate.parse("2026-07-01"));
+    BookLifecycleInspection.Initialized inspection =
+        new BookLifecycleInspection.Initialized(1001, 1, 1, FIXED_INSTANT, midYearBook);
+    RecordingStore store = new RecordingStore();
+    FiscalYearCloseService service =
+        new FiscalYearCloseService(
+            () -> inspection, store, () -> new PostingId("generated-1"), FIXED_CLOCK);
+
+    service.fiscalYearClose(FISCAL_YEAR_LABEL);
+
+    assertEquals(
+        new ReportingPeriod(LocalDate.parse("2026-07-01"), LocalDate.parse("2026-12-31")),
+        store.reportingPeriod);
+  }
+
+  @Test
   void fiscalYearClose_reportingPeriodOverloadPassesExplicitWindowIntoStore() {
     RecordingStore store = new RecordingStore();
     PostingIdGenerator postingIdGenerator = () -> new PostingId("generated-1");

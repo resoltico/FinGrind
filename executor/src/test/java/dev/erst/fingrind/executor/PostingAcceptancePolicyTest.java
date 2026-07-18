@@ -144,6 +144,7 @@ class PostingAcceptancePolicyTest {
             new AccountTaxonomy(
                 AccountNodeKind.HEADER,
                 Optional.empty(),
+                Optional.empty(),
                 Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                 Optional.empty(),
                 Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)),

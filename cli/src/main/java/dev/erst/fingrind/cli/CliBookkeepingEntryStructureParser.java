@@ -10,6 +10,7 @@ import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.QuantityText;
 import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostingNestedFieldSets;
 import dev.erst.fingrind.core.AccountCode;
@@ -29,7 +30,7 @@ final class CliBookkeepingEntryStructureParser {
   static JournalEntry readAdministrativeJournalEntry(ObjectNode rootNode) {
     return new JournalEntry(
         requiredEffectiveDate(rootNode),
-        readLines(requiredArray(rootNode, ProtocolPostEntryFields.TopLevel.LINES)));
+        readLines(requiredArray(rootNode, ProtocolBusinessEventFields.Core.LINES)));
   }
 
   static List<BookkeepingEntry.OpeningPosition.OpeningAccountBalance> readOpeningBalances(
@@ -69,14 +70,14 @@ final class CliBookkeepingEntryStructureParser {
     return CanonicalTemporalText.parseLocalDate(
         CliRequestPlaceholderValues.requiredRealText(
             rootNode,
-            ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
+            ProtocolBusinessEventFields.Core.EFFECTIVE_DATE,
             ScaffoldPlaceholders.EFFECTIVE_DATE,
             null),
-        ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE);
+        ProtocolBusinessEventFields.Core.EFFECTIVE_DATE);
   }
 
   static MonetaryAmount requiredPositiveAmount(ObjectNode rootNode) {
-    return requiredPositiveAmount(rootNode, ProtocolPostEntryFields.TopLevel.AMOUNT);
+    return requiredPositiveAmount(rootNode, ProtocolBusinessEventFields.Core.AMOUNT);
   }
 
   /** Reads one required positive monetary field into the typed bookkeeping request model. */
@@ -85,7 +86,7 @@ final class CliBookkeepingEntryStructureParser {
   }
 
   static QuantityText requiredPositiveQuantity(ObjectNode rootNode) {
-    return new QuantityText(requiredText(rootNode, ProtocolPostEntryFields.TopLevel.QUANTITY));
+    return new QuantityText(requiredText(rootNode, ProtocolBusinessEventFields.Inventory.QUANTITY));
   }
 
   private static @org.jspecify.annotations.Nullable QuantityText optionalQuantity(
@@ -99,7 +100,7 @@ final class CliBookkeepingEntryStructureParser {
   static MonetaryAmount requiredPositiveUnitCost(ObjectNode rootNode) {
     return MonetaryAmount.of(
         CliJsonMoneyParser.requiredPositiveMoney(
-                rootNode, ProtocolPostEntryFields.TopLevel.UNIT_COST)
+                rootNode, ProtocolBusinessEventFields.Inventory.UNIT_COST)
             .money());
   }
 

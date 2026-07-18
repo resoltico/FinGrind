@@ -42,7 +42,8 @@ final class SqliteStatementQueries {
       @org.jspecify.annotations.Nullable String costingDoctrine,
       String functionalCurrencyCode,
       int fiscalYearStartMonth,
-      int fiscalYearStartDay) {}
+      int fiscalYearStartDay,
+      String bookStartEffectiveDate) {}
 
   private SqliteStatementQueries() {}
 
@@ -166,7 +167,9 @@ final class SqliteStatementQueries {
             new EntityProfile(new BookEntityName(coreRow.entityName())),
             bookDoctrine,
             CurrencyUnit.of(coreRow.functionalCurrencyCode()),
-            new FiscalYearStart(coreRow.fiscalYearStartMonth(), coreRow.fiscalYearStartDay())));
+            new FiscalYearStart(coreRow.fiscalYearStartMonth(), coreRow.fiscalYearStartDay()),
+            CanonicalTemporalText.parseLocalDate(
+                coreRow.bookStartEffectiveDate(), "bookIdentity.bookStartEffectiveDate")));
   }
 
   static int querySingleInt(SqliteNativeDatabase activeDatabase, String sql) {
@@ -263,7 +266,8 @@ final class SqliteStatementQueries {
                   statement.columnText(6),
                   SqlitePostingMapper.requiredText(statement, 7),
                   SqlitePostingMapper.requiredInt(statement, 8),
-                  SqlitePostingMapper.requiredInt(statement, 9));
+                  SqlitePostingMapper.requiredInt(statement, 9),
+                  SqlitePostingMapper.requiredText(statement, 10));
           if (statement.step() != SqliteNativeResultCode.code("DONE")) {
             throw new IllegalStateException(
                 "SQLite book identity core query returned more than one row.");

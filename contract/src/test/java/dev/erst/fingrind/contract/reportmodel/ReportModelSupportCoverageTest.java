@@ -100,8 +100,8 @@ class ReportModelSupportCoverageTest {
     assertEquals("left", labelColumn.alignment().wireValue());
     assertEquals("right", valueColumn.alignment().wireValue());
     assertEquals("landscape", model.orientation().wireValue());
-    assertEquals(12, context.rows().size());
-    assertEquals(5, minimalContext.rows().size());
+    assertEquals(13, context.rows().size());
+    assertEquals(6, minimalContext.rows().size());
     assertTrue(totalsFreeSection.totals().isEmpty());
     assertTrue(ReportStatementModelSupport.hasRenderableContent(List.of("row"), List.of()));
     assertTrue(ReportStatementModelSupport.hasRenderableContent(List.of(), List.of("total")));

@@ -1,5 +1,5 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: ADR_REALIZED_FOREIGN_EXCHANGE
 updated: "2026-07-16"
@@ -37,4 +37,4 @@ The typed commands are `record-foreign-currency-obligation` and `record-realized
 
 ## Publication Condition
 
-Publication requires typed commands, reversal-aware storage that binds settlement facts to the retained transaction and functional foreign-exchange facts, executor resolution, request contracts and templates, register reporting, end-to-end tests, and protected-book format `46`. Earlier book formats are rejected rather than upgraded in place. The release-boundary contract test verifies this condition against the public operation registry and this ADR.
+Publication requires typed commands, reversal-aware storage that binds settlement facts to the retained transaction and functional foreign-exchange facts, executor resolution, request contracts and templates, register reporting, end-to-end tests, and protected-book format `50`. Earlier book formats are rejected rather than upgraded in place. The release-boundary contract test verifies this condition against the public operation registry and this ADR.

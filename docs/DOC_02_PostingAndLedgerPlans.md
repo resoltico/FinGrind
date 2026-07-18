@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-07-16"
+updated: "2026-07-18"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7, tax-selection, applied-tax, fixed-assets, financing, realized-foreign-exchange]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented", "where is tax selection versus applied tax documented", "where are fixed asset financing and realized foreign exchange posting models documented"]
@@ -411,6 +411,20 @@ public final class BookkeepingPublishedLanguageTranslator
   and local rejection families back into the published protocol surface instead of letting
   transport DTOs become the local working model
 
+## `BookkeepingPostingEffectiveDateBeforeBookStart`
+
+`BookkeepingPostingEffectiveDateBeforeBookStart` is the local temporal refusal that preserves the
+attempted effective date and immutable book start until publication into the contract rejection
+family.
+
+```java
+public record BookkeepingPostingEffectiveDateBeforeBookStart(...)
+```
+
+- Boundary: it belongs to local posting validation and is translated directly into
+  `PostingEffectiveDateBeforeBookStart`; no transport concern or historical-format fallback is
+  introduced at this boundary
+
 ## `BookkeepingAccountSemanticsViolations`, `BookkeepingEvidenceSemanticsViolations`, `BookkeepingEntryModeSemanticsViolations`, And `BookkeepingTaxSemanticsViolations`
 
 These four bookkeeping-owned namespaces split entry-semantics violations by account doctrine,
@@ -762,3 +776,13 @@ public final class PostingRejectionSemantics
   one reversal requires one fresh operational entry instead of a reversal-of-reversal redo
 - `PostingRejectionSemantics`: build canonical non-inventory account-type, classification,
   evidence, and economic-nullity violations plus the referenced-account set used to evaluate them
+
+## `PostingEffectiveDateBeforeBookStart`
+
+`PostingEffectiveDateBeforeBookStart` is the published temporal refusal for an attempted posting
+before immutable book start. It keeps the attempted effective date and immutable book-start date
+machine-distinguishable for repair guidance and plan failure facts.
+
+```java
+public record PostingEffectiveDateBeforeBookStart(...)
+```

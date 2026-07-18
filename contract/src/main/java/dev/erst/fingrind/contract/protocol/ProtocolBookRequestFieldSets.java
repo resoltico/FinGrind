@@ -11,6 +11,7 @@ public final class ProtocolBookRequestFieldSets {
           ProtocolDeclareAccountFields.ACCOUNT_TYPE,
           ProtocolDeclareAccountFields.ACCOUNT_NODE_KIND,
           ProtocolDeclareAccountFields.PARENT_ACCOUNT_CODE,
+          ProtocolDeclareAccountFields.CONTRA_OF_ACCOUNT_CODE,
           ProtocolDeclareAccountFields.FINANCIAL_POSITION_LINE_CLASSIFICATION,
           ProtocolDeclareAccountFields.PROFIT_AND_LOSS_LINE_CLASSIFICATION,
           ProtocolDeclareAccountFields.CASH_FLOW_ASSET_CLASSIFICATION,
@@ -33,7 +34,8 @@ public final class ProtocolBookRequestFieldSets {
           ProtocolOpenBookFields.ACCOUNTING_BASIS,
           ProtocolOpenBookFields.INVENTORY_COSTING,
           ProtocolOpenBookFields.FUNCTIONAL_CURRENCY,
-          ProtocolOpenBookFields.FISCAL_YEAR_START);
+          ProtocolOpenBookFields.FISCAL_YEAR_START,
+          ProtocolOpenBookFields.BOOK_START_EFFECTIVE_DATE);
 
   private ProtocolBookRequestFieldSets() {}
 

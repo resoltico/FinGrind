@@ -284,13 +284,13 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
     int exitCode = invocation.getAsInt();
     assertEquals(2, exitCode);
     tools.jackson.databind.JsonNode envelope = readJson(outputStream);
-    assertEquals("error", envelope.path("status").textValue());
-    assertEquals("unsupported-output-selection", envelope.path("code").textValue());
+    assertEquals("error", envelope.path("status").stringValue());
+    assertEquals("unsupported-output-selection", envelope.path("code").stringValue());
     assertEquals(
         "Interactive passphrase prompting is only supported with --output text.",
-        envelope.path("message").textValue());
-    assertTrue(envelope.path("hint").textValue().contains("--output text"));
-    assertEquals("--output", envelope.path("argument").textValue());
+        envelope.path("message").stringValue());
+    assertTrue(envelope.path("hint").stringValue().contains("--output text"));
+    assertEquals("--output", envelope.path("argument").stringValue());
     outputStream.reset();
   }
 }

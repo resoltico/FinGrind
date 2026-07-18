@@ -1,7 +1,7 @@
 package dev.erst.fingrind.contract.discovery;
 
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
@@ -18,18 +18,18 @@ final class MachineContractPostEntryTypedVariantSchemaBuilders {
         "Settled sale entry that debits a cash account and credits a revenue account.",
         true,
         requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
             "Declared cash account debited by this settled sale."),
         requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.REVENUE_ACCOUNT_CODE,
             "Declared revenue account credited by this settled sale."),
         null,
         MachineContractFieldSpec.optional(
-            ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF,
+            ProtocolBusinessEventFields.Inventory.INVENTORY_RELIEF,
             "Optional inventory-relief facts for this sale. Trading-template books require this object so one sale request carries both revenue and cost-of-sales recognition.",
             MachineContractPostEntryComponentSchemas.inventoryReliefSchema()),
         MachineContractFieldSpec.optional(
-            ProtocolPostEntryFields.TopLevel.TAX,
+            ProtocolBusinessEventFields.Core.TAX,
             "Optional declared tax selector that resolves this settled sale through an owned tax registration.",
             MachineContractPostEntryComponentSchemas.taxSchema()));
   }
@@ -40,18 +40,18 @@ final class MachineContractPostEntryTypedVariantSchemaBuilders {
         "Sale-on-credit entry that debits a trade receivable account and credits a revenue account.",
         true,
         requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.RECEIVABLE_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.RECEIVABLE_ACCOUNT_CODE,
             "Declared trade receivable account debited by this sale-on-credit."),
         requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.REVENUE_ACCOUNT_CODE,
             "Declared revenue account credited by this sale-on-credit."),
         null,
         MachineContractFieldSpec.optional(
-            ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF,
+            ProtocolBusinessEventFields.Inventory.INVENTORY_RELIEF,
             "Optional inventory-relief facts for this sale-on-credit. Trading-template books require this object so one sale request carries both revenue and cost-of-sales recognition.",
             MachineContractPostEntryComponentSchemas.inventoryReliefSchema()),
         MachineContractFieldSpec.optional(
-            ProtocolPostEntryFields.TopLevel.TAX,
+            ProtocolBusinessEventFields.Core.TAX,
             "Optional declared tax selector that resolves this sale-on-credit through an owned tax registration.",
             MachineContractPostEntryComponentSchemas.taxSchema()));
   }
@@ -62,14 +62,14 @@ final class MachineContractPostEntryTypedVariantSchemaBuilders {
         "Settled expense entry that debits an expense account and credits a cash account.",
         true,
         requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Inventory.EXPENSE_ACCOUNT_CODE,
             "Declared expense account debited by this settled expense."),
         requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
             "Declared cash account credited by this settled expense."),
         null,
         MachineContractFieldSpec.optional(
-            ProtocolPostEntryFields.TopLevel.TAX,
+            ProtocolBusinessEventFields.Core.TAX,
             "Optional declared tax selector that resolves this settled expense through an owned tax registration.",
             MachineContractPostEntryComponentSchemas.taxSchema()));
   }
@@ -80,14 +80,14 @@ final class MachineContractPostEntryTypedVariantSchemaBuilders {
         "Expense-on-credit entry that debits an expense account and credits a trade payable account.",
         true,
         requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Inventory.EXPENSE_ACCOUNT_CODE,
             "Declared expense account debited by this expense-on-credit."),
         requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.PAYABLE_ACCOUNT_CODE,
             "Declared trade payable account credited by this expense-on-credit."),
         null,
         MachineContractFieldSpec.optional(
-            ProtocolPostEntryFields.TopLevel.TAX,
+            ProtocolBusinessEventFields.Core.TAX,
             "Optional declared tax selector that resolves this expense-on-credit through an owned tax registration.",
             MachineContractPostEntryComponentSchemas.taxSchema()));
   }
@@ -98,13 +98,13 @@ final class MachineContractPostEntryTypedVariantSchemaBuilders {
         "Receipt entry that settles a trade receivable into cash and may carry a settlement adjunct.",
         false,
         requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
             "Declared cash account debited by this receipt."),
         requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.RECEIVABLE_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.RECEIVABLE_ACCOUNT_CODE,
             "Declared trade receivable account credited by this receipt."),
         MachineContractFieldSpec.optional(
-            ProtocolPostEntryFields.TopLevel.SETTLEMENT_ADJUNCT,
+            ProtocolBusinessEventFields.Core.SETTLEMENT_ADJUNCT,
             "Optional settlement adjunct used by this receipt.",
             MachineContractPostEntryComponentSchemas.settlementAdjunctSchema()));
   }
@@ -115,13 +115,13 @@ final class MachineContractPostEntryTypedVariantSchemaBuilders {
         "Payment entry that settles a trade payable from cash and may carry a settlement adjunct.",
         false,
         requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.PAYABLE_ACCOUNT_CODE,
             "Declared trade payable account debited by this payment."),
         requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
             "Declared cash account credited by this payment."),
         MachineContractFieldSpec.optional(
-            ProtocolPostEntryFields.TopLevel.SETTLEMENT_ADJUNCT,
+            ProtocolBusinessEventFields.Core.SETTLEMENT_ADJUNCT,
             "Optional settlement adjunct used by this payment.",
             MachineContractPostEntryComponentSchemas.settlementAdjunctSchema()));
   }
@@ -132,10 +132,10 @@ final class MachineContractPostEntryTypedVariantSchemaBuilders {
         "Owner-contribution entry that debits an asset cash account and credits an equity account.",
         true,
         requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
             "Declared cash account debited by this owner contribution."),
         requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.EQUITY_ACCOUNT_CODE,
             "Declared equity account credited by this owner contribution."),
         null);
   }
@@ -146,10 +146,10 @@ final class MachineContractPostEntryTypedVariantSchemaBuilders {
         "Owner-withdrawal entry that debits an equity account and credits an asset cash account.",
         true,
         requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.EQUITY_ACCOUNT_CODE,
             "Declared equity account debited by this owner withdrawal."),
         requiredAccountField(
-            ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
+            ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
             "Declared cash account credited by this owner withdrawal."),
         null);
   }
@@ -177,7 +177,7 @@ final class MachineContractPostEntryTypedVariantSchemaBuilders {
     if (includeForeignExchange) {
       fields.add(
           MachineContractFieldSpec.optional(
-              ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
+              ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE,
               "Optional owned foreign-exchange facts for a transaction-currency event translated into book functional currency.",
               MachineContractPostEntryComponentSchemas.foreignExchangeSchema()));
     }

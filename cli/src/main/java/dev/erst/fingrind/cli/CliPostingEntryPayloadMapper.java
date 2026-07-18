@@ -76,6 +76,8 @@ final class CliPostingEntryPayloadMapper {
                       payroll.payrollRunId().value(),
                       payroll.employeeReference().value(),
                       payroll.payrollMonth().wireValue(),
+                      payroll.withholdingProfile().taxBookHeldAtEmployer(),
+                      payroll.withholdingProfile().dependantCount(),
                       payroll.wageExpenseAccountCode().value(),
                       payroll.employerSocialContributionExpenseAccountCode().value(),
                       payroll.netWagesPayableAccountCode().value(),

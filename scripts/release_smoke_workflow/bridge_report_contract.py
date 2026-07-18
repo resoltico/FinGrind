@@ -139,7 +139,6 @@ def assert_pdf_report_contracts(
     )
     assert_operator_queries_and_reports(
         bundle_config,
-        list_postings_second_page_output='{"commandId":"bridge-sale"}\n',
         list_postings_text_output=standard_list_postings_text,
         account_balance_text_output=standard_account_balance_text,
         trial_balance_text_output=standard_trial_balance_text,
@@ -174,7 +173,6 @@ def assert_pdf_report_contracts(
     )
     assert_operator_queries_and_reports(
         docker_config,
-        list_postings_second_page_output='{"commandId":"bridge-sale"}\n',
         list_postings_text_output=standard_list_postings_text,
         account_balance_text_output=standard_account_balance_text,
         trial_balance_text_output=standard_trial_balance_text,

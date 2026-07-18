@@ -1,11 +1,11 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: OPERATOR_REQUESTS
-updated: "2026-07-16"
+updated: "2026-07-17"
 route:
-  keywords: [fingrind, request-json, provenance, reversal, idempotency, accrual-cutoff, fixed-assets, financing, realized-foreign-exchange, prepayment, deferred-revenue, accrued-expense, ledger-plan, execute-plan, tax-setup, account-declaration, account-lifecycle]
-  questions: ["what request json does fingrind accept", "how do i record a fixed asset or depreciation", "how do i record financing interest", "how do i settle a foreign-currency receivable", "how do i record a prepayment or deferred revenue", "how do i settle an accrued expense", "what ledger plan shape does execute-plan accept", "how do i amend or retire an account in fingrind", "what posting request fields does fingrind accept"]
+  keywords: [fingrind, request-json, provenance, reversal, idempotency, accrual-cutoff, fixed-assets, financing, realized-foreign-exchange, latvian-payroll, prepayment, deferred-revenue, accrued-expense, ledger-plan, execute-plan, tax-setup, account-declaration, account-lifecycle]
+  questions: ["what request json does fingrind accept", "how do i record a fixed asset or depreciation", "how do i record financing interest", "how do i settle a foreign-currency receivable", "how do i record Latvian monthly payroll", "how do i record a prepayment or deferred revenue", "how do i settle an accrued expense", "what ledger plan shape does execute-plan accept", "how do i amend or retire an account in fingrind", "what posting request fields does fingrind accept"]
 ---
 
 # Request Shape Guide
@@ -101,8 +101,8 @@ Fixed assets use `record-fixed-asset-capitalization`, `record-fixed-asset-deprec
 accounts, gain/loss accounts, and a straight-line depreciation schedule. Depreciation supplies the
 asset id only; FinGrind derives the admissible period amount and retained account facts. Disposal
 supplies the asset id, cash account, and proceeds; FinGrind derives carrying value and any gain or
-loss. A disposed asset remains in the register with its carrying amount immediately before disposal
-and explicit disposal state, while the disposal posting removes it from the general ledger. The model is a strict cost-model register, not a lease, impairment, revaluation, tax, or
+loss. A disposed asset remains in the register with zero current carrying amount, explicit disposal
+state, and its exact pre-disposal amount in `carryingAmountAtDisposal`, while the disposal posting removes it from the general ledger. The model is a strict cost-model register, not a lease, impairment, revaluation, tax, or
 statutory-reporting engine. Read [ADR_FIXED_ASSETS.md](./ADR_FIXED_ASSETS.md) and its linked
 [IAS 16 primary source](https://www.ifrs.org/issued-standards/list-of-standards/ias-16-property-plant-and-equipment/) before choosing accounting policy.
 
@@ -126,6 +126,16 @@ balances, translate financial statements, hedge, or source rates. Read
 [IAS 21 primary source](https://www.ifrs.org/issued-standards/list-of-standards/ias-21-the-effects-of-changes-in-foreign-exchange-rates/), and the
 [European Central Bank reference-rate source](https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html) before treating a rate as suitable evidence.
 
+Latvian monthly payroll uses `record-latvian-monthly-payroll`. It requires `payrollRunId`,
+`employeeReference`, `payrollMonth`, EUR `grossWages`, six declared account roles, evidence,
+provenance, and an explicit withholding profile: `taxBookHeldAtEmployer: true` and
+`dependantCount: 0`. Those facts are not defaults. FinGrind rejects any other payroll-tax-book or
+dependant profile rather than applying the EUR 550 monthly non-taxable minimum silently. The two
+settlement commands identify the retained run and derive the exact open net-wage or state-remittance
+obligation. Read [DOC_02_LatvianPayroll.md](./DOC_02_LatvianPayroll.md) and
+[DOC_00_PrimarySources.md](./DOC_00_PrimarySources.md) before use; this context does not determine
+employment status, file with EDS, or perform annual reconciliation.
+
 The packaged CLI can surface the same request-shape truth without leaving the terminal:
 `help record-sale-settled`, `help post-entry`, `help declare-account`, and `help execute-plan` inline one
 canonical template or starter-plan outline plus the accepted fields and enum vocabularies for their
@@ -145,9 +155,11 @@ accepts `declare-account` plus every posting-shaped topic:
 `record-financing-principal-repayment`, `record-financing-interest-accrual`,
 `record-financing-interest-payment`, `record-foreign-currency-obligation`,
 `record-realized-foreign-exchange-settlement`,
+`record-latvian-monthly-payroll`, `record-latvian-payroll-net-wage-settlement`,
+`record-latvian-payroll-state-remittance`,
 `record-expense-on-credit`, `record-receipt`, `record-payment`, `record-owner-contribution`,
 `record-owner-withdrawal`, `record-opening-position`, `record-reversal`, and
-`declare-tax-registration`.
+`declare-tax-registration`, `amend-account`, and `retire-account`.
 
 Current posting-request rules:
 - all top-level date, enum, identifier, and provenance fields are JSON strings
@@ -185,6 +197,7 @@ Current posting-request rules:
 - `FINANCING_BORROWING` requires `cashAccountCode` plus a financing block containing the arrangement id, principal-liability account, interest-payable account, and principal amount
 - `FINANCING_PRINCIPAL_REPAYMENT` requires `cashAccountCode` plus the retained arrangement id and principal amount; `FINANCING_INTEREST_ACCRUAL` requires the arrangement id, interest-expense account, and interest amount; `FINANCING_INTEREST_PAYMENT` requires `cashAccountCode`, the arrangement id, and interest amount
 - `FOREIGN_CURRENCY_OBLIGATION` requires receivable and revenue accounts, a realized-foreign-exchange block with obligation id and gain/loss accounts, and `foreignExchange`; `REALIZED_FOREIGN_EXCHANGE_SETTLEMENT` requires `cashAccountCode`, the retained obligation id, and `foreignExchange`, while FinGrind derives the realized gain or loss
+- `LATVIAN_MONTHLY_PAYROLL` requires `payrollRunId`, `employeeReference`, `payrollMonth`, EUR `grossWages`, `taxBookHeldAtEmployer: true`, `dependantCount: 0`, and the six published account-role fields; other withholding profiles are outside this bounded context and are rejected rather than approximated
 - `EXPENSE_SETTLED` requires `expenseAccountCode`, `cashAccountCode`, and `amount`
 - `EXPENSE_ON_CREDIT` requires `expenseAccountCode`, `payableAccountCode`, and `amount`
 - `RECEIPT` requires `cashAccountCode`, `receivableAccountCode`, and `amount`
@@ -207,8 +220,8 @@ Current posting-request rules:
 - on command-scoped `requestShapes.bookkeepingEntry` payloads, the selected `sourceDocumentType`
   policy is published directly on `sourceDocumentFields[]` and on the embedded executable schema;
   the full-family descriptor also keeps `sourceDocumentTypeMode`,
-  `acceptedSourceDocumentTypes`, and `sourceDocumentTypeSemantics` on
-  `entryKindSemantics[]`
+  `acceptedSourceDocumentTypes`, `sourceDocumentTypeSemantics`, and described entry-specific
+  `variantFields[]` on `entryKindSemantics[]`
 - `evidence.approvals` is required as an array and may be empty
 - every `evidence.approvals[]` entry requires `approvalId`, `approvalType`, `approverId`, `approverType`, `decision`, and `approvedAt`
 - `lines[].accountCode` must start with an ASCII letter or digit, may then contain only ASCII letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 255 characters
@@ -300,6 +313,9 @@ Current account-declaration rules:
 - `unitOfMeasure.quantityScale` must be an integer between `0` and `9` inclusive
 - `parentAccountCode` is optional and declares one explicit chart parent when this account belongs
   under another declared account
+- `contraOfAccountCode` is optional and declares the postable account this account reduces; the
+  target must exist, be active, use the same `accountType` and compatible statement classification,
+  and cannot itself be a contra account
 - `accountCode` must start with an ASCII letter or digit, may then contain only ASCII letters,
   digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 255 characters
 - `accountCode` is an opaque book-local identifier today; FinGrind does not infer account class or
@@ -320,6 +336,8 @@ Current account-declaration rules:
 - redeclaring an existing account with a different `accountType` is rejected
 - redeclaring an existing account with a different chart parent or declared taxonomy is
   rejected
+- redeclaring an existing account with a different `contraOfAccountCode` is rejected after its
+  first declaration
 
 ## Account Registry Lifecycle
 
@@ -346,10 +364,13 @@ Or, in a source checkout, inspect the checked-in runnable example:
 cat docs/examples/ledger-plan-request.json
 ```
 
-The default ledger-plan scaffold is an atomic tax setup: it initializes the book, declares the
-required VAT payable and recoverable accounts, then declares the tax registration. A direct
-`declare-tax-registration` command remains pure and never creates those accounts implicitly. Raw
-direct-journal and posting steps remain available in custom plans when the caller needs them.
+The default ledger-plan scaffold is a general workflow: it initializes a book and contains one
+placeholder-first settled sale. `print-plan-template tax-setup`, `print-plan-template
+fixed-asset-setup`, and `print-plan-template financing-setup` emit atomic setup plans for those
+respective contexts. The tax setup declares the required payable and recoverable accounts before it
+declares the tax registration; a direct `declare-tax-registration` command remains pure and never
+creates prerequisite accounts implicitly. Raw direct-journal and posting steps remain available in
+custom plans when the caller needs them.
 
 Current ledger-plan rules:
 - top-level fields are `planId` and `steps`
@@ -358,7 +379,9 @@ Current ledger-plan rules:
 - `ensure-book` is allowed only as the first step when a plan initializes a book
 - every step requires `stepId` and `kind`
 - `ensure-book` uses nested `ensureBook`, which requires `entityName`, `bookTemplateId`,
-  `accountingBasis`, `functionalCurrency`, and `fiscalYearStart`; `bookTemplateId` currently
+  `accountingBasis`, `functionalCurrency`, `fiscalYearStart`, and `bookStartEffectiveDate`;
+  `bookStartEffectiveDate` is an ISO-8601 calendar date and becomes the immutable earliest
+  posting effective date for the book. `bookTemplateId` currently
   accepts `OWNER_MANAGED_SERVICE` or `OWNER_MANAGED_TRADING`, `accountingBasis` accepts `CASH`
   or `ACCRUAL`, and the runtime persists the built-in doctrine facts and echoes them back in
   response payloads
@@ -384,9 +407,9 @@ Current ledger-plan rules:
 - `assert-account-balance` assertions accept `accountCode`, optional `effectiveDateFrom`,
   optional `effectiveDateTo`, typed `netAmount`, and `balanceSide`
 - unknown fields are rejected at every object level
-- `print-plan-template` emits the canonical `execute-plan` tax-setup scaffold with its ordered
-  account and registration declarations; replace the placeholder tax-registration and tax-code
-  values before real-world use
+- `print-plan-template` emits the canonical general `execute-plan` scaffold; supply one of the
+  named setup topics when a tax, fixed-asset, or financing context needs its atomic prerequisite
+  account declarations, and replace every placeholder before real-world use
 - execution semantics are not request knobs: plans are atomic, halt on first failed step, return
   one bounded aggregate summary by default, and return one complete journal when
   `--result-detail full` is selected; ordinary business steps keep their canonical `kind`,

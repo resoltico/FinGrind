@@ -9,11 +9,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountNodeKind;
+import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceMath;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.ComparativeSelection;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
@@ -95,6 +98,46 @@ class BookkeepingReportingServiceCoverageTest {
     assertTrue(
         BookkeepingReportingService.CHANGES_IN_EQUITY_ROW_ORDER.compare(eurEquityRow, usdEquityRow)
             < 0);
+  }
+
+  @Test
+  void statementRowFactory_projectsDeclaredContraAccountsIntoBothStatementFamilies() {
+    RegisteredAccount assetContra =
+        new RegisteredAccount(
+            new AccountCode("1090"),
+            new AccountName("Cash Overdraft Allowance"),
+            AccountType.ASSET,
+            new AccountTaxonomy(
+                AccountNodeKind.POSTABLE,
+                Optional.empty(),
+                Optional.of(new AccountCode("1000")),
+                Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                Optional.empty(),
+                Optional.of(CashFlowAssetClassification.NON_CASH)),
+            true,
+            FIXED_INSTANT);
+    RegisteredAccount revenueContra =
+        new RegisteredAccount(
+            new AccountCode("4090"),
+            new AccountName("Sales Discount Allowance"),
+            AccountType.REVENUE,
+            new AccountTaxonomy(
+                AccountNodeKind.POSTABLE,
+                Optional.empty(),
+                Optional.of(new AccountCode("4000")),
+                Optional.empty(),
+                Optional.of(ProfitAndLossLineClassification.SALES_DISCOUNT_ALLOWANCE),
+                Optional.empty()),
+            true,
+            FIXED_INSTANT);
+
+    FinancialPositionRowView financialPosition =
+        ReportingRowViewFactory.financialPositionRow(totals(assetContra, "EUR", 0L, 100L));
+    IncomeStatementRowView incomeStatement =
+        ReportingRowViewFactory.incomeStatementRow(totals(revenueContra, "EUR", 100L, 0L));
+
+    assertEquals(Optional.of("1000"), financialPosition.contraOfLineCode());
+    assertEquals(Optional.of("4000"), incomeStatement.contraOfLineCode());
   }
 
   @Test
@@ -231,7 +274,8 @@ class BookkeepingReportingServiceCoverageTest {
             new EntityProfile(new BookEntityName("Shifted Year Shop")),
             BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
             CurrencyUnit.of("EUR"),
-            FiscalYearStart.parse("02-29"));
+            FiscalYearStart.parse("02-29"),
+            java.time.LocalDate.parse("2026-01-01"));
     CoverageBookStore store =
         new CoverageBookStore(
             new BookLifecycleInspection.Initialized(
@@ -428,6 +472,7 @@ class BookkeepingReportingServiceCoverageTest {
     return new FinancialPositionRowView(
         lineCode,
         lineName,
+        Optional.empty(),
         lineType,
         Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
         StatementLineKind.DECLARED_ACCOUNT,
@@ -439,6 +484,7 @@ class BookkeepingReportingServiceCoverageTest {
     return new IncomeStatementRowView(
         lineCode,
         lineName,
+        Optional.empty(),
         lineType,
         ProfitAndLossLineClassification.OPERATING_REVENUE,
         StatementLineKind.DECLARED_ACCOUNT,

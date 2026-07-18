@@ -138,7 +138,8 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
                                 'WEIGHTED_AVERAGE' as costing_doctrine,
                                 functional_currency_code,
                                 fiscal_year_start_month,
-                                fiscal_year_start_day
+                                fiscal_year_start_day,
+                                book_start_effective_date
                             from book_identity
                             where singleton_id = 1
                             limit 1

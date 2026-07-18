@@ -9,6 +9,7 @@ public final class ProtocolDeclareAccountFields {
   public static final String ACCOUNT_TYPE = "accountType";
   public static final String ACCOUNT_NODE_KIND = "accountNodeKind";
   public static final String PARENT_ACCOUNT_CODE = "parentAccountCode";
+  public static final String CONTRA_OF_ACCOUNT_CODE = "contraOfAccountCode";
   public static final String FINANCIAL_POSITION_LINE_CLASSIFICATION =
       "financialPositionLineClassification";
   public static final String PROFIT_AND_LOSS_LINE_CLASSIFICATION =

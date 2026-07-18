@@ -76,7 +76,7 @@ class FinGrindCliWorkflowRejectionTest extends FinGrindCliTestSupport {
                     NormalBalance.DEBIT,
                     true,
                     Instant.parse("2026-04-07T12:00:00Z"))),
-            new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
+            listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
             CliPostEntryResultFixtures.committed(

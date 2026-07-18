@@ -3,6 +3,10 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
@@ -11,6 +15,9 @@ import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookInspection;
+import dev.erst.fingrind.contract.tax.ListTaxRegistrationsQuery;
+import dev.erst.fingrind.contract.tax.ListTaxRegistrationsResult;
+import dev.erst.fingrind.contract.tax.TaxRegistrationPage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
@@ -33,7 +40,8 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
         new EntityProfile(new BookEntityName("Acme Studio")),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"));
+        FiscalYearStart.parse("01-01"),
+        java.time.LocalDate.parse("2026-01-01"));
   }
 
   protected static BookIdentity tradingBookIdentity() {
@@ -41,7 +49,8 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
         new EntityProfile(new BookEntityName("Acme Studio")),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING,
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"));
+        FiscalYearStart.parse("01-01"),
+        java.time.LocalDate.parse("2026-01-01"));
   }
 
   protected static OpenBookCommand openBookCommand() {
@@ -64,7 +73,9 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
       ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
-      bookIdentity().fiscalYearStart().wireValue()
+      bookIdentity().fiscalYearStart().wireValue(),
+      ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE,
+      bookIdentity().bookStartEffectiveDate().toString()
     };
   }
 
@@ -83,7 +94,9 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
       ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
-      bookIdentity().fiscalYearStart().wireValue()
+      bookIdentity().fiscalYearStart().wireValue(),
+      ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE,
+      bookIdentity().bookStartEffectiveDate().toString()
     };
   }
 
@@ -104,7 +117,9 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
       ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
       bookIdentity().functionalCurrency().code(),
       ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
-      bookIdentity().fiscalYearStart().wireValue()
+      bookIdentity().fiscalYearStart().wireValue(),
+      ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE,
+      bookIdentity().bookStartEffectiveDate().toString()
     };
   }
 
@@ -184,6 +199,24 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
         limit,
         nextCursor,
         java.util.Map.of());
+  }
+
+  protected static ListAccountsResult.Listed listedAccounts(AccountPage page) {
+    return new ListAccountsResult.Listed(
+        new ListAccountsQuery(page.limit(), Optional.empty()), page);
+  }
+
+  protected static ListPostingsResult.Listed listedPostings(PostingPage page) {
+    return new ListPostingsResult.Listed(
+        new ListPostingsQuery(
+            page.accountCodeFilter(), page.effectiveDateRange(), page.limit(), Optional.empty()),
+        page);
+  }
+
+  protected static ListTaxRegistrationsResult.Listed listedTaxRegistrations(
+      TaxRegistrationPage page) {
+    return new ListTaxRegistrationsResult.Listed(
+        new ListTaxRegistrationsQuery(page.limit(), Optional.empty()), page);
   }
 
   protected static GetPostingResult.Found foundPosting(PostingFact postingFact) {

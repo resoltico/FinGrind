@@ -115,6 +115,11 @@ final class LedgerPlanAdministrationFailureSupport {
               BookWorkflowFact.group(
                   "requestedAccountTaxonomy",
                   accountTaxonomyFacts(conflict.requestedAccountTaxonomy())));
+      case dev.erst.fingrind.contract.bookkeeping.ContraAccountInvalid conflict ->
+          List.of(
+              BookWorkflowFact.text("accountCode", conflict.accountCode().value()),
+              BookWorkflowFact.text("contraOfAccountCode", conflict.contraOfAccountCode().value()),
+              BookWorkflowFact.text("violation", conflict.violation().wireValue()));
       case BookAdministrationRejection.ParentAccountMissing conflict ->
           List.of(
               BookWorkflowFact.text("accountCode", conflict.accountCode().value()),
@@ -179,6 +184,11 @@ final class LedgerPlanAdministrationFailureSupport {
         .ifPresent(
             accountCode ->
                 facts.add(BookWorkflowFact.text("parentAccountCode", accountCode.value())));
+    accountTaxonomy
+        .contraOfAccountCode()
+        .ifPresent(
+            accountCode ->
+                facts.add(BookWorkflowFact.text("contraOfAccountCode", accountCode.value())));
     accountTaxonomy
         .financialPositionLineClassification()
         .ifPresent(

@@ -48,33 +48,36 @@ final class SqliteAccountRegistryMutationWriter {
         account.accountTaxonomy().parentAccountCode().map(AccountCode::value).orElse(null));
     statement.bindText(
         firstParameter + 4,
+        account.accountTaxonomy().contraOfAccountCode().map(AccountCode::value).orElse(null));
+    statement.bindText(
+        firstParameter + 5,
         account
             .accountTaxonomy()
             .financialPositionLineClassification()
             .map(value -> value.wireValue())
             .orElse(null));
     statement.bindText(
-        firstParameter + 5,
+        firstParameter + 6,
         account
             .accountTaxonomy()
             .cashFlowAssetClassification()
             .map(value -> value.wireValue())
             .orElse(null));
     statement.bindText(
-        firstParameter + 6,
+        firstParameter + 7,
         account
             .accountTaxonomy()
             .profitAndLossLineClassification()
             .map(value -> value.wireValue())
             .orElse(null));
     statement.bindText(
-        firstParameter + 7,
+        firstParameter + 8,
         account.unitOfMeasure() == null ? null : account.unitOfMeasure().token());
     if (account.unitOfMeasure() == null) {
-      statement.bindNull(firstParameter + 8);
+      statement.bindNull(firstParameter + 9);
     } else {
-      statement.bindInt(firstParameter + 8, account.unitOfMeasure().quantityScale());
+      statement.bindInt(firstParameter + 9, account.unitOfMeasure().quantityScale());
     }
-    return firstParameter + 9;
+    return firstParameter + 10;
   }
 }

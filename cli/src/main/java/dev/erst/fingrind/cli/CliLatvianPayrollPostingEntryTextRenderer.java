@@ -21,6 +21,11 @@ final class CliLatvianPayrollPostingEntryTextRenderer {
     summaryRows.add(List.of("Payroll run id", payroll.payrollRunId()));
     summaryRows.add(List.of("Employee reference", payroll.employeeReference()));
     summaryRows.add(List.of("Payroll month", payroll.payrollMonth()));
+    summaryRows.add(
+        List.of(
+            "Payroll tax book held at employer", payroll.taxBookHeldAtEmployer() ? "Yes" : "No"));
+    summaryRows.add(
+        List.of("Eligible dependant count", Integer.toString(payroll.dependantCount())));
     summaryRows.add(List.of("Wage expense account", payroll.wageExpenseAccountCode()));
     summaryRows.add(
         List.of(

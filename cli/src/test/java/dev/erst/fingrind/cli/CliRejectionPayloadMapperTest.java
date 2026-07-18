@@ -16,6 +16,8 @@ import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
+import dev.erst.fingrind.contract.bookkeeping.ContraAccountInvalid;
+import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.contract.discovery.MachineContract;
@@ -25,6 +27,7 @@ import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRegistryDependency;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.ContraAccountRelationshipViolation;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
@@ -67,15 +70,26 @@ class CliRejectionPayloadMapperTest {
             new AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.empty(),
+                Optional.empty(),
                 Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+                Optional.empty(),
                 Optional.empty()),
             new AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.empty(),
+                Optional.empty(),
                 Optional.of(FinancialPositionLineClassification.RESULT_HOLDING),
+                Optional.empty(),
                 Optional.empty())),
         "existing taxonomy",
         CliRejectionJsonModels.AccountTaxonomyConflictDetails.class);
+    assertHint(
+        new ContraAccountInvalid(
+            new AccountCode("4090"),
+            new AccountCode("4000"),
+            ContraAccountRelationshipViolation.STATEMENT_TAXONOMY_MISMATCH),
+        "same accountType and statement taxonomy",
+        CliRejectionJsonModels.ContraAccountDetails.class);
     assertHint(
         new AccountRegistryLifecycleRejection.AccountNotFound(new AccountCode("3200")),
         "declare-account",
@@ -168,13 +182,17 @@ class CliRejectionPayloadMapperTest {
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.of(new AccountCode("4050")),
                 Optional.empty(),
-                Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE)),
+                Optional.empty(),
+                Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE),
+                Optional.empty()),
             new AccountCode("4000"),
             new AccountTaxonomy(
                 dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                 Optional.empty(),
                 Optional.empty(),
-                Optional.of(ProfitAndLossLineClassification.COST_OF_SALES))),
+                Optional.empty(),
+                Optional.of(ProfitAndLossLineClassification.COST_OF_SALES),
+                Optional.empty())),
         "same statement-classification family",
         CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails.class);
     assertHint(
@@ -197,12 +215,16 @@ class CliRejectionPayloadMapperTest {
                 new AccountTaxonomy(
                     dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     Optional.empty(),
+                    Optional.empty(),
                     Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+                    Optional.empty(),
                     Optional.empty()),
                 new AccountTaxonomy(
                     dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     Optional.empty(),
+                    Optional.empty(),
                     Optional.of(FinancialPositionLineClassification.RESULT_HOLDING),
+                    Optional.empty(),
                     Optional.empty())));
     var resultHoldingMissingEnvelope =
         administrationRejectedEnvelope(
@@ -331,12 +353,16 @@ class CliRejectionPayloadMapperTest {
                     dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     Optional.of(new AccountCode("4000")),
                     Optional.empty(),
-                    Optional.of(ProfitAndLossLineClassification.COST_OF_SALES)),
+                    Optional.empty(),
+                    Optional.of(ProfitAndLossLineClassification.COST_OF_SALES),
+                    Optional.empty()),
                 new AccountTaxonomy(
                     dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                     Optional.of(new AccountCode("4050")),
                     Optional.empty(),
-                    Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE))));
+                    Optional.empty(),
+                    Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE),
+                    Optional.empty())));
 
     CliRejectionJsonModels.AccountTaxonomyConflictDetails taxonomyDetails =
         assertInstanceOf(
@@ -365,6 +391,11 @@ class CliRejectionPayloadMapperTest {
             "idem-future",
             new PostingRejection.PostingEffectiveDateInFuture(
                 LocalDate.parse("2026-07-01"), LocalDate.parse("2026-06-30")));
+    var postingBeforeBookStart =
+        CliRejectionPayloadMapper.postingRejectedEnvelope(
+            "idem-before-start",
+            new PostingEffectiveDateBeforeBookStart(
+                LocalDate.parse("2026-06-29"), LocalDate.parse("2026-06-30")));
     var openingBalanceWindowClosed =
         CliRejectionPayloadMapper.postingRejectedEnvelope(
             "idem-window",
@@ -396,6 +427,13 @@ class CliRejectionPayloadMapperTest {
             postingFutureDate.details());
     assertEquals("2026-07-01", futureDateDetails.attemptedEffectiveDate());
     assertEquals("2026-06-30", futureDateDetails.currentUtcDate());
+    CliRejectionJsonModels.PostingEffectiveDateBeforeBookStartDetails beforeBookStartDetails =
+        assertInstanceOf(
+            CliRejectionJsonModels.PostingEffectiveDateBeforeBookStartDetails.class,
+            postingBeforeBookStart.details());
+    assertEquals("2026-06-29", beforeBookStartDetails.attemptedEffectiveDate());
+    assertEquals("2026-06-30", beforeBookStartDetails.bookStartEffectiveDate());
+    assertTrue(Objects.requireNonNull(postingBeforeBookStart.hint()).contains("on or after"));
     assertNotNull(openingBalanceWindowClosed.hint());
     assertTrue(openingBalanceWindowClosed.hint().contains("window closed with STANDARD"));
 
@@ -676,18 +714,36 @@ class CliRejectionPayloadMapperTest {
   }
 
   @Test
-  void administrationRejectedEnvelope_rejectsUnsupportedCloseOperationId() {
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                CliAdministrationRejectionPayloadMapper.rejectedEnvelope(
-                    OperationId.DECLARE_ACCOUNT,
-                    new CloseTargetAccountCandidateMissing(
-                        FinancialPositionLineClassification.RESULT_HOLDING, List.of())));
+  void administrationRejectedEnvelope_usesAccountRetryForCloseTargetRejectionsOnDeclareAccount() {
+    var missing =
+        CliAdministrationRejectionPayloadMapper.rejectedEnvelope(
+            OperationId.DECLARE_ACCOUNT,
+            new CloseTargetAccountCandidateMissing(
+                FinancialPositionLineClassification.RESULT_HOLDING, List.of()));
+    var ambiguous =
+        CliAdministrationRejectionPayloadMapper.rejectedEnvelope(
+            OperationId.DECLARE_ACCOUNT,
+            new CloseTargetAccountCandidateAmbiguous(
+                FinancialPositionLineClassification.RESULT_HOLDING,
+                List.of(new AccountCode("result-holding"), new AccountCode("3200"))));
 
-    assertEquals(
-        "Unsupported close operation: " + OperationId.DECLARE_ACCOUNT, exception.getMessage());
+    assertEquals("close-target-account-candidate-missing", missing.code());
+    assertTrue(Objects.requireNonNull(missing.hint()).contains("retry the account declaration"));
+    assertEquals("close-target-account-candidate-ambiguous", ambiguous.code());
+    assertTrue(Objects.requireNonNull(ambiguous.hint()).contains("retry the account declaration"));
+  }
+
+  @Test
+  void
+      administrationRejectedEnvelope_usesTheOriginatingAccountOperationForOtherCloseTargetRejections() {
+    var envelope =
+        CliAdministrationRejectionPayloadMapper.rejectedEnvelope(
+            OperationId.AMEND_ACCOUNT,
+            new CloseTargetAccountCandidateMissing(
+                FinancialPositionLineClassification.RETAINED_ACCUMULATED, List.of()));
+
+    assertEquals("close-target-account-candidate-missing", envelope.code());
+    assertTrue(Objects.requireNonNull(envelope.hint()).contains("retry amend-account"));
   }
 
   private static void assertHint(

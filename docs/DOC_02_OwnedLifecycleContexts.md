@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: OWNED_LIFECYCLE_CONTEXTS
-updated: "2026-07-16"
+updated: "2026-07-17"
 route:
   keywords: [fingrind, fixed assets, financing, realized foreign exchange, lifecycle contexts, register reports]
   questions: ["which lifecycle context owns fixed assets", "which types own financing", "how is realized foreign exchange represented"]
@@ -50,7 +50,7 @@ public sealed interface FixedAssetRegisterResult
 public final class FixedAssetRegisterReportModelBuilder
 ```
 
-`fixed-asset-register` projects retained cost, accumulated depreciation, carrying value, lifecycle dates, and disposal state through the shared report model. `--as-of` is an inclusive effective-date boundary, not a database-revision selector.
+`fixed-asset-register` projects retained cost, accumulated depreciation, current carrying value, lifecycle dates, and disposal state through the shared report model. A disposed row has zero current `carryingAmount` and requires `carryingAmountAtDisposal` for its exact immutable pre-disposal value; active rows omit that historical field. `--as-of` is an inclusive effective-date boundary, not a database-revision selector.
 
 ## `FinancingArrangementId`, `FinancingArrangementRecord`, `FinancingLookupStore`, `FinancingAdmissionPolicy`, And `FinancingAdmissionPolicy.Resolution`
 
@@ -124,3 +124,18 @@ public final class RealizedForeignExchangeRegisterReportModelBuilder
 ## Durable Boundary
 
 All three contexts persist append-only lifecycle facts that are tied to their originating posting facts. SQLite independently rejects invalid ordering, duplicate terminal applications, and fact mutations; executor admission is the first defense, while register reports replay retained facts. Historical reversal is compensating only: no context edits or deletes its business history in place.
+
+## `PostingFixedAssetRejectionSemantics`, `PostingFinancingRejectionSemantics`, And `PostingRealizedForeignExchangeRejectionSemantics`
+
+These contract-owned helpers publish the deterministic rejection vocabulary for reversing an
+originating lifecycle fact while a dependent application remains active.
+
+```java
+public final class PostingFixedAssetRejectionSemantics
+public final class PostingFinancingRejectionSemantics
+public final class PostingRealizedForeignExchangeRejectionSemantics
+```
+
+Each helper names the affected aggregate on `reversal.priorPostingId` and retains its own context's
+language: fixed-asset applications, financing applications, or foreign-currency settlement. The
+three contexts do not share a generic lifecycle-reversal fallback.

@@ -337,7 +337,7 @@ progress 'source-checkout open-book'
     --book-template-id "${book_template_id}" \
     --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
-    --fiscal-year-start "${fiscal_year_start}" \
+    --fiscal-year-start "${fiscal_year_start}" --book-start-effective-date 2026-01-01 \
     --output json >"${open_stdout}" 2>"${open_stderr}" ||
     die "source-checkout launcher open-book failed"
 
@@ -353,7 +353,7 @@ python3 "${launcher_contract_test_support}" \
     --entity-name "${entity_name}" \
     --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
-    --fiscal-year-start "${fiscal_year_start}"
+    --fiscal-year-start "${fiscal_year_start}" --book-start-effective-date 2026-01-01
 
 [[ -f "${raw_jar}" ]] || die "missing developer application JAR"
 
@@ -408,7 +408,7 @@ progress 'direct-java open-book'
     --book-template-id "${book_template_id}" \
     --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
-    --fiscal-year-start "${fiscal_year_start}" \
+    --fiscal-year-start "${fiscal_year_start}" --book-start-effective-date 2026-01-01 \
     --output json >"${raw_open_stdout}" 2>"${raw_open_stderr}" ||
     die "developer direct-Java open-book failed"
 
@@ -420,7 +420,7 @@ python3 "${launcher_contract_test_support}" \
     --entity-name "${entity_name}" \
     --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
-    --fiscal-year-start "${fiscal_year_start}"
+    --fiscal-year-start "${fiscal_year_start}" --book-start-effective-date 2026-01-01
 
 progress 'raw java -jar help surface'
 java -jar "${raw_jar}" help --output text >"${raw_jar_help_stdout}" 2>"${raw_jar_help_stderr}" ||
@@ -461,7 +461,7 @@ java -jar "${raw_jar}" \
     --book-template-id "${book_template_id}" \
     --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
-    --fiscal-year-start "${fiscal_year_start}" \
+    --fiscal-year-start "${fiscal_year_start}" --book-start-effective-date 2026-01-01 \
     --output json >"${raw_jar_open_stdout}" 2>"${raw_jar_open_stderr}"
 raw_jar_open_exit=$?
 set -e

@@ -44,6 +44,8 @@ final class CliBookIdentityDisplay {
     }
     rows.add(List.of("Functional currency", bookIdentity.functionalCurrency().code()));
     rows.add(List.of("Fiscal year start", bookIdentity.fiscalYearStart().wireValue()));
+    rows.add(
+        List.of("Book start effective date", bookIdentity.bookStartEffectiveDate().toString()));
     return List.copyOf(rows);
   }
 
@@ -67,6 +69,8 @@ final class CliBookIdentityDisplay {
     }
     rows.add(List.of("Functional currency", bookIdentity.functionalCurrency().code()));
     rows.add(List.of("Fiscal year start", bookIdentity.fiscalYearStart().wireValue()));
+    rows.add(
+        List.of("Book start effective date", bookIdentity.bookStartEffectiveDate().toString()));
     return List.copyOf(rows);
   }
 

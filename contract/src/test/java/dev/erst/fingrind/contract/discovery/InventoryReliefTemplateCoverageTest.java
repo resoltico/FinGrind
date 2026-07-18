@@ -7,7 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
-import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -174,24 +174,24 @@ class InventoryReliefTemplateCoverageTest {
         RequestFieldPresence.CONDITIONAL,
         fieldNamed(
                 settledSaleDescriptor.topLevelFields(),
-                ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF)
+                ProtocolBusinessEventFields.Inventory.INVENTORY_RELIEF)
             .presence());
     assertEquals(
         RequestFieldPresence.CONDITIONAL,
         fieldNamed(
                 creditSaleDescriptor.topLevelFields(),
-                ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF)
+                ProtocolBusinessEventFields.Inventory.INVENTORY_RELIEF)
             .presence());
     assertEquals(
         RequestFieldPresence.FORBIDDEN,
         fieldNamed(
                 purchaseDescriptor.topLevelFields(),
-                ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF)
+                ProtocolBusinessEventFields.Inventory.INVENTORY_RELIEF)
             .presence());
     assertTrue(
         fieldNamed(
                 settledSaleDescriptor.topLevelFields(),
-                ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF)
+                ProtocolBusinessEventFields.Inventory.INVENTORY_RELIEF)
             .description()
             .contains("Trading-template sale requests require this object"));
   }
@@ -207,7 +207,7 @@ class InventoryReliefTemplateCoverageTest {
                     boolean.class, BookkeepingEntryKind.class, MachineContractFieldSpec.class));
     MachineContractFieldSpec inventoryReliefField =
         MachineContractFieldSpec.conditional(
-            ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF,
+            ProtocolBusinessEventFields.Inventory.INVENTORY_RELIEF,
             "inventory-relief coverage",
             java.util.Map.of("type", "object"));
     MachineContractFieldSpec unrelatedConditionalField =

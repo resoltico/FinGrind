@@ -118,7 +118,8 @@ class LedgerPlanServiceEnsureBookCoverageTest {
         new EntityProfile(new BookEntityName("Other Studio")),
         doctrine,
         CurrencyUnit.of("USD"),
-        FiscalYearStart.parse("04-01"));
+        FiscalYearStart.parse("04-01"),
+        java.time.LocalDate.parse("2026-01-01"));
   }
 
   /**

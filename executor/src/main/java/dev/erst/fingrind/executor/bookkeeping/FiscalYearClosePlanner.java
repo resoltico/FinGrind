@@ -64,12 +64,18 @@ public final class FiscalYearClosePlanner {
         reportingPeriod, bookIdentity, currentUtcDate, transferredThroughEffectiveDate);
   }
 
-  /** Derives the reporting period for the fiscal year identified by the selected label. */
+  /** Derives the admissible fiscal-year segment identified by the selected label. */
   public ReportingPeriod reportingPeriod(BookIdentity bookIdentity, int fiscalYearLabel) {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
-    return new ReportingPeriod(
-        bookIdentity.fiscalYearStart().labeledFiscalYearStart(fiscalYearLabel),
-        bookIdentity.fiscalYearStart().labeledFiscalYearEnd(fiscalYearLabel));
+    LocalDate fiscalYearStart =
+        bookIdentity.fiscalYearStart().labeledFiscalYearStart(fiscalYearLabel);
+    LocalDate fiscalYearEnd = bookIdentity.fiscalYearStart().labeledFiscalYearEnd(fiscalYearLabel);
+    LocalDate effectiveDateFrom =
+        bookIdentity.bookStartEffectiveDate().isAfter(fiscalYearStart)
+                && !bookIdentity.bookStartEffectiveDate().isAfter(fiscalYearEnd)
+            ? bookIdentity.bookStartEffectiveDate()
+            : fiscalYearStart;
+    return new ReportingPeriod(effectiveDateFrom, fiscalYearEnd);
   }
 
   /** Plans one fiscal-year close, including any unswept remainder inside the selected year. */

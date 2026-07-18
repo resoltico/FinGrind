@@ -25,10 +25,10 @@ class PostingLatvianPayrollRejectionSemanticsTest {
         "USD");
     assertViolation(
         PostingLatvianPayrollRejectionSemantics.profileNotAdmitted(
-            SELECTOR, "grossWages", "gross wages above the supported threshold"),
+            SELECTOR, "grossWages", "grossWages '8775.01'"),
         "latvian-payroll-profile-not-admitted",
         "grossWages",
-        "gross wages above the supported threshold");
+        "grossWages '8775.01'");
     assertViolation(
         PostingLatvianPayrollRejectionSemantics.runIdAlreadyExists(SELECTOR, RUN_ID),
         "latvian-payroll-run-id-already-exists",

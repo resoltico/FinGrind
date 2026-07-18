@@ -40,7 +40,7 @@ final class CliShellCommandFormat {
     int currentWidth = firstWidth;
     for (String token : tokens) {
       if (currentLine.isEmpty()) {
-        appendShellToken(currentLine, token, currentWidth, lines);
+        currentLine.append(token);
         continue;
       }
       if (currentLine.length() + 1 + token.length() <= currentWidth) {
@@ -50,7 +50,7 @@ final class CliShellCommandFormat {
       lines.add(currentLine + " \\");
       currentLine.setLength(0);
       currentWidth = nextWidth;
-      appendShellToken(currentLine, token, currentWidth, lines);
+      currentLine.append(token);
     }
     lines.add(currentLine.toString());
     StringBuilder rendered = new StringBuilder(firstPrefix).append(lines.getFirst());
@@ -58,20 +58,6 @@ final class CliShellCommandFormat {
       rendered.append(TEXT_LINE_SEPARATOR).append(nextPrefix).append(lines.get(index));
     }
     return rendered.toString();
-  }
-
-  private static void appendShellToken(
-      StringBuilder currentLine, String token, int width, List<String> completedLines) {
-    List<String> tokenParts = CliTextWrap.splitLongToken(token, Math.max(1, width));
-    for (String tokenPart : tokenParts) {
-      if (currentLine.isEmpty()) {
-        currentLine.append(tokenPart);
-      } else {
-        completedLines.add(currentLine + " \\");
-        currentLine.setLength(0);
-        currentLine.append(tokenPart);
-      }
-    }
   }
 
   private static int availableShellWidth(int width, String prefix) {

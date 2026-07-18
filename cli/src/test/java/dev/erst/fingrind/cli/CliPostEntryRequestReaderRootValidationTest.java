@@ -2,10 +2,13 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.protocol.OperationId;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link CliRequestReader}. */
@@ -119,5 +122,23 @@ class CliPostEntryRequestReaderRootValidationTest extends CliRequestReaderTestSu
             CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
 
     assertEquals("Request JSON document must be an object.", exception.getMessage());
+  }
+
+  @Test
+  void readPostEntryCommand_pointsTypedRequestFailuresToTheirOwnScaffoldAndHelp() {
+    CliRequestReader requestReader =
+        new CliRequestReader(new ByteArrayInputStream("{}".getBytes(StandardCharsets.UTF_8)));
+
+    CliRequestException exception =
+        assertThrows(
+            CliRequestException.class,
+            () ->
+                requestReader.readPostEntryCommand(
+                    Path.of("-"), OperationId.RECORD_FINANCING_BORROWING));
+
+    String hint = Objects.requireNonNull(exception.failure().hint());
+    assertTrue(hint.contains("print-request-template record-financing-borrowing"), hint);
+    assertTrue(hint.contains("help record-financing-borrowing --output json --detail full"), hint);
+    assertTrue(!hint.contains("help post-entry --output json --detail full"), hint);
   }
 }

@@ -75,7 +75,8 @@ final class ContractFixtures {
         new EntityProfile(new BookEntityName("Acme Studio")),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"));
+        FiscalYearStart.parse("01-01"),
+        LocalDate.parse("2026-01-01"));
   }
 
   static OpenBookCommand openBookCommand() {
@@ -115,6 +116,7 @@ final class ContractFixtures {
           new AccountTaxonomy(
               AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
               Optional.empty(),
               Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
@@ -122,12 +124,14 @@ final class ContractFixtures {
           new AccountTaxonomy(
               AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
               Optional.empty(),
               Optional.empty());
       case EQUITY ->
           new AccountTaxonomy(
               AccountNodeKind.POSTABLE,
+              Optional.empty(),
               Optional.empty(),
               Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
               Optional.empty(),
@@ -137,11 +141,13 @@ final class ContractFixtures {
               AccountNodeKind.POSTABLE,
               Optional.empty(),
               Optional.empty(),
+              Optional.empty(),
               Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
               Optional.empty());
       case EXPENSE ->
           new AccountTaxonomy(
               AccountNodeKind.POSTABLE,
+              Optional.empty(),
               Optional.empty(),
               Optional.empty(),
               Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE),

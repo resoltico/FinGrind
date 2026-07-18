@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
@@ -13,12 +14,16 @@ import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
+import dev.erst.fingrind.contract.bookkeeping.ContraAccountInvalid;
+import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountRegistryDependency;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.ContraAccountRelationshipViolation;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
 import java.time.LocalDate;
@@ -41,6 +46,11 @@ class RejectionNarrativeTest {
             .contains("schema objects"));
     assertTrue(
         RejectionNarrative.message(
+                new PostingEffectiveDateBeforeBookStart(
+                    LocalDate.parse("2025-12-31"), LocalDate.parse("2026-01-01")))
+            .contains("immutable accounting start"));
+    assertTrue(
+        RejectionNarrative.message(
                 new BookAdministrationRejection.AccountTypeConflict(
                     new AccountCode("1000"), AccountType.ASSET, AccountType.LIABILITY))
             .contains("account type"));
@@ -51,14 +61,39 @@ class RejectionNarrativeTest {
                     new AccountTaxonomy(
                         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.of(new AccountCode("3000")),
+                        Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+                        Optional.empty(),
                         Optional.empty()),
                     new AccountTaxonomy(
                         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.of(new AccountCode("3010")),
+                        Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.RESULT_HOLDING),
+                        Optional.empty(),
                         Optional.empty())))
             .contains("immutable hierarchy or statement taxonomy"));
+    assertTrue(
+        RejectionNarrative.message(
+                new ContraAccountInvalid(
+                    new AccountCode("4010"),
+                    new AccountCode("4000"),
+                    ContraAccountRelationshipViolation.ACCOUNT_TYPE_MISMATCH))
+            .contains("account-type-mismatch"));
+    assertTrue(
+        RejectionNarrative.message(
+                new AccountRegistryLifecycleRejection.AccountNotFound(new AccountCode("9999")))
+            .contains("9999"));
+    assertTrue(
+        RejectionNarrative.message(
+                new AccountRegistryLifecycleRejection.AccountHasDependents(
+                    new AccountCode("1000"), List.of(AccountRegistryDependency.POSTINGS)))
+            .contains("postings"));
+    assertTrue(
+        RejectionNarrative.message(
+                new AccountRegistryLifecycleRejection.AccountBalanceNotZero(
+                    new AccountCode("1000")))
+            .contains("not zero"));
     assertTrue(
         RejectionNarrative.message(
                 new BookAdministrationRejection.ParentAccountMissing(
@@ -91,13 +126,17 @@ class RejectionNarrativeTest {
                     new AccountTaxonomy(
                         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.of(new AccountCode("1000")),
+                        Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                        Optional.empty(),
                         Optional.empty()),
                     new AccountCode("1000"),
                     new AccountTaxonomy(
                         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.empty(),
+                        Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.NONCURRENT_ASSET),
+                        Optional.empty(),
                         Optional.empty())))
             .contains("statement-classification family"));
     assertTrue(
@@ -401,6 +440,11 @@ class RejectionNarrativeTest {
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(new PostingRejection.IdempotencyKeyConflict()))
             .contains("exact same normalized request"));
+    assertEquals(
+        "Use an effective date on or after this book's immutable accounting start date '2026-01-01'.",
+        RejectionNarrative.hint(
+            new PostingEffectiveDateBeforeBookStart(
+                LocalDate.parse("2025-12-31"), LocalDate.parse("2026-01-01"))));
     assertEquals(
         "Use an effective date on or before the current UTC date.",
         RejectionNarrative.hint(

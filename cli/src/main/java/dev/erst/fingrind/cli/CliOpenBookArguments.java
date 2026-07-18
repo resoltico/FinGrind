@@ -12,6 +12,7 @@ import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.InventoryCostingDoctrine;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.ListIterator;
 import org.jspecify.annotations.Nullable;
@@ -27,6 +28,7 @@ final class CliOpenBookArguments {
               ProtocolOptions.BookDefinition.INVENTORY_COSTING,
               ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
               ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
+              ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE,
               ProtocolOptions.Presentation.OUTPUT),
           List.of(ProtocolOptions.BookDefinition.TIGHTEN_PARENTS));
 
@@ -44,7 +46,8 @@ final class CliOpenBookArguments {
                 new EntityProfile(requireEntityName(argumentValues.entityName)),
                 resolveBookDoctrine(argumentValues),
                 requireFunctionalCurrency(argumentValues.functionalCurrency),
-                requireFiscalYearStart(argumentValues.fiscalYearStart))),
+                requireFiscalYearStart(argumentValues.fiscalYearStart),
+                requireBookStartEffectiveDate(argumentValues.bookStartEffectiveDate))),
         argumentValues.tightenParents,
         CliOptionModes.resolvedOutputMode(argumentValues.outputMode));
   }
@@ -99,6 +102,12 @@ final class CliOpenBookArguments {
                   CliOptionValues.requireValue(
                       argumentIterator, ProtocolOptions.BookDefinition.FISCAL_YEAR_START),
                   ProtocolOptions.BookDefinition.FISCAL_YEAR_START);
+      case ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE ->
+          argumentValues.bookStartEffectiveDate =
+              CliOptionValues.parseLocalDateOption(
+                  CliOptionValues.requireValue(
+                      argumentIterator, ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE),
+                  ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE);
       case ProtocolOptions.Presentation.OUTPUT ->
           argumentValues.outputMode =
               CliOptionModes.requireOutputMode(
@@ -117,6 +126,7 @@ final class CliOpenBookArguments {
                   ProtocolOptions.BookDefinition.INVENTORY_COSTING,
                   ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
                   ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
+                  ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE,
                   ProtocolOptions.BookDefinition.TIGHTEN_PARENTS,
                   ProtocolOptions.Presentation.OUTPUT));
     }
@@ -183,6 +193,18 @@ final class CliOpenBookArguments {
     return fiscalYearStart;
   }
 
+  private static LocalDate requireBookStartEffectiveDate(
+      @Nullable LocalDate bookStartEffectiveDate) {
+    if (bookStartEffectiveDate == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE,
+          "A "
+              + ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE
+              + " argument is required.");
+    }
+    return bookStartEffectiveDate;
+  }
+
   /** Accumulates one parsed open-book argument set before required-field resolution runs. */
   static final class OpenBookArgumentValues {
     private @Nullable BookEntityName entityName;
@@ -191,6 +213,7 @@ final class CliOpenBookArguments {
     private @Nullable InventoryCostingDoctrine inventoryCostingDoctrine;
     private @Nullable CurrencyUnit functionalCurrency;
     private @Nullable FiscalYearStart fiscalYearStart;
+    private @Nullable LocalDate bookStartEffectiveDate;
     private @Nullable OutputMode outputMode;
     private boolean tightenParents;
   }

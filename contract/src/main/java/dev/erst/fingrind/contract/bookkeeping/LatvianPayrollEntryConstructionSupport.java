@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.payroll.LatvianMonthlyPayrollCalculation;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollEmployeeReference;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollMonth;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollRunId;
+import dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile;
 import dev.erst.fingrind.core.AccountCode;
 import java.time.LocalDate;
 import java.util.HashSet;
@@ -19,6 +20,7 @@ final class LatvianPayrollEntryConstructionSupport {
       LatvianPayrollRunId payrollRunId,
       LatvianPayrollEmployeeReference employeeReference,
       LatvianPayrollMonth payrollMonth,
+      LatvianPayrollWithholdingProfile withholdingProfile,
       AccountCode wageExpenseAccountCode,
       AccountCode employerSocialContributionExpenseAccountCode,
       AccountCode netWagesPayableAccountCode,
@@ -33,6 +35,7 @@ final class LatvianPayrollEntryConstructionSupport {
       LatvianPayrollRunId payrollRunId,
       LatvianPayrollEmployeeReference employeeReference,
       LatvianPayrollMonth payrollMonth,
+      LatvianPayrollWithholdingProfile withholdingProfile,
       AccountCode wageExpenseAccountCode,
       AccountCode employerSocialContributionExpenseAccountCode,
       AccountCode netWagesPayableAccountCode,
@@ -56,6 +59,8 @@ final class LatvianPayrollEntryConstructionSupport {
         BookkeepingEntryScalarValidationSupport.requireEffectiveDate(input.effectiveDate());
     LatvianPayrollMonth requiredPayrollMonth =
         Objects.requireNonNull(input.payrollMonth(), "payrollMonth");
+    LatvianPayrollWithholdingProfile requiredWithholdingProfile =
+        Objects.requireNonNull(input.withholdingProfile(), "withholdingProfile");
     if (!requiredEffectiveDate.equals(requiredPayrollMonth.value().atEndOfMonth())) {
       throw new IllegalArgumentException("effectiveDate must equal the final day of payrollMonth.");
     }
@@ -95,11 +100,17 @@ final class LatvianPayrollEntryConstructionSupport {
       throw new IllegalArgumentException(
           "resolvedCalculation.grossWages must equal the caller-authored grossWages.");
     }
+    if (input.resolvedCalculation() != null
+        && !input.resolvedCalculation().withholdingProfile().equals(requiredWithholdingProfile)) {
+      throw new IllegalArgumentException(
+          "resolvedCalculation.withholdingProfile must equal the caller-authored withholdingProfile.");
+    }
     return new MonthlyPayrollState(
         requiredEffectiveDate,
         Objects.requireNonNull(input.payrollRunId(), "payrollRunId"),
         Objects.requireNonNull(input.employeeReference(), "employeeReference"),
         requiredPayrollMonth,
+        requiredWithholdingProfile,
         requiredWageExpenseAccountCode,
         requiredEmployerSocialContributionExpenseAccountCode,
         requiredNetWagesPayableAccountCode,

@@ -83,6 +83,10 @@ EOF
 chmod +x "${preferred_stub_dir}/python3"
 cat > "${preferred_stub_dir}/uv" <<'EOF'
 #!/bin/bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'uv 0.11.25\n'
+    exit 0
+fi
 printf 'uv invoked unexpectedly\n' >&2
 exit 1
 EOF
@@ -94,7 +98,7 @@ grep -Fx "shim=${scenario_dir}/preferred-shims" "${preferred_log}" >/dev/null &&
 grep -F "python3-command=" "${preferred_log}" >/dev/null || die \
     "prepare_python_runtime_env must publish the shell-visible python3 command"
 grep -Fx "python=${preferred_stub_dir}/python3.12" "${preferred_log}" >/dev/null || die \
-    "prepare_python_runtime_env must prefer an on-path Python 3.12+ interpreter"
+    "prepare_python_runtime_env must prefer an on-path exact Python 3.12 interpreter"
 grep -Fx "uv=${preferred_stub_dir}/uv" "${preferred_log}" >/dev/null || die \
     "prepare_python_runtime_env must publish the on-path uv launcher when available"
 STUB_PATH="${preferred_stub_dir}" ORIGINAL_PATH="${PATH}" PYTHON_RUNTIME_SUPPORT="${python_runtime_support}" bash <<'EOF'
@@ -119,7 +123,7 @@ grep -Fx "shim=${preferred_inherited_shims_dir}" "${preferred_inherited_log}" >/
 grep -Fx "python3-command=${preferred_inherited_shims_dir}/python3" "${preferred_inherited_log}" >/dev/null || die \
     "prepare_python_runtime_env must restore repo shim precedence ahead of ambient PATH entries"
 grep -Fx "python=${preferred_stub_dir}/python3.12" "${preferred_inherited_log}" >/dev/null || die \
-    "prepare_python_runtime_env must keep preferring the qualifying on-path Python 3.12+ interpreter when reusing inherited shims"
+    "prepare_python_runtime_env must keep preferring the on-path exact Python 3.12 interpreter when reusing inherited shims"
 grep -Fx "uv=${preferred_stub_dir}/uv" "${preferred_inherited_log}" >/dev/null || die \
     "prepare_python_runtime_env must preserve uv publication when inherited repo shims are present"
 
@@ -140,7 +144,7 @@ printf 'unexpected ambient python3 stub\n' >&2
 exit 1
 EOF
 chmod +x "${uv_stub_dir}/python3"
-for interpreter_name in python3.13 python3.12 python; do
+for interpreter_name in python3.12 python; do
     cat > "${uv_stub_dir}/${interpreter_name}" <<'EOF'
 #!/bin/bash
 if [[ "${1:-}" == "-" ]]; then
@@ -156,7 +160,11 @@ cat > "${uv_stub_dir}/uv" <<EOF
 #!/bin/bash
 set -euo pipefail
 printf '%s\n' "\$*" >> "${scenario_dir}/uv.log"
-case "\$1 \$2" in
+case "\${1:-} \${2:-}" in
+    "--version ")
+        printf 'uv 0.11.25\n'
+        exit 0
+        ;;
     "python find")
         if [[ "\${3:-}" == "3.12" ]]; then
             if [[ -f "${scenario_dir}/python-installed.flag" ]]; then
@@ -194,7 +202,7 @@ run_with_stub_path "${uv_stub_dir}" "${uv_log_output}"
 grep -F "python3-command=" "${uv_log_output}" >/dev/null || die \
     "prepare_python_runtime_env must publish the shell-visible python3 command for uv-managed fallback"
 grep -Fx "python=${scenario_dir}/managed-python3.12" "${uv_log_output}" >/dev/null || die \
-    "prepare_python_runtime_env must fall back to a uv-managed Python 3.12+ runtime"
+    "prepare_python_runtime_env must fall back to an exact uv-managed Python 3.12 runtime"
 grep -Fx "uv=${uv_stub_dir}/uv" "${uv_log_output}" >/dev/null || die \
     "prepare_python_runtime_env must publish the uv launcher used for managed Python fallback"
 grep -Fx 'python install 3.12' "${scenario_dir}/uv.log" >/dev/null || die \

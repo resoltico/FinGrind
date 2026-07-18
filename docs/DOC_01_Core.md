@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: CORE
-updated: "2026-07-16"
+updated: "2026-07-17"
 route:
   keywords: [fingrind, core, account-code, account-name, accounting-basis, account-taxonomy, cash-flow-asset-classification, book-doctrine, currency-unit, quantity, unit-of-measure, inventory-costing, weighted-average, idempotency, temporal-text, fiscal-year-start, reachability]
   questions: ["what core value types does fingrind expose", "where do the core accounting invariants live", "how does account doctrine work in fingrind", "what account and identity primitives are in the fingrind core module", "where are quantity and weighted-average inventory costing primitives documented"]
@@ -218,15 +218,16 @@ public record BookIdentity(
     EntityProfile entityProfile,
     BookDoctrine bookDoctrine,
     CurrencyUnit functionalCurrency,
-    FiscalYearStart fiscalYearStart)
+    FiscalYearStart fiscalYearStart,
+    LocalDate bookStartEffectiveDate)
 ```
 
-- Purpose: couple entity profile, persisted doctrine, functional currency, and fiscal-year anchor
-  as one typed bookkeeping fact for one initialized book
+- Purpose: couple entity profile, persisted doctrine, functional currency, fiscal-year anchor, and
+  immutable earliest posting effective date as one typed bookkeeping fact for one initialized book
 - Surface: `entityName()` keeps the most common identity fact accessible without unwrapping the
   full entity profile
-- Validation: rejects `null` entity profile, doctrine, functional currency, and fiscal-year
-  start
+- Validation: rejects `null` entity profile, doctrine, functional currency, fiscal-year start, and
+  book start effective date
 
 ## `AccountingKernelProfileId`
 
@@ -276,8 +277,9 @@ public enum AccountType implements WireValue {
 ## Polarity Ownership
 
 There is no standalone polarity-side field in the current kernel. Declared classification owns
-polarity through `AccountTaxonomyDoctrine`, so the stored account contract carries `accountType` plus
-taxonomy and derives `normalBalance()` from that combination.
+polarity through `AccountTaxonomyDoctrine`, so the stored account contract carries `accountType`,
+taxonomy, and an optional `contraOfAccountCode`; a valid contra account derives the opposite normal
+balance of the account it reduces.
 
 ## `AccountNodeKind`
 
@@ -421,7 +423,22 @@ public final class AccountTaxonomyDoctrine
 - Surface: `validate(...)`, `normalBalance(...)`, and `cashAndCashEquivalent(...)`
 - Doctrine: balance-sheet accounts require one `FinancialPositionLineClassification`; asset
   accounts additionally require one `CashFlowAssetClassification`; nominal accounts require one
-  `ProfitAndLossLineClassification` and forbid balance-sheet taxonomy fields
+  `ProfitAndLossLineClassification` and forbid balance-sheet taxonomy fields; a contra relationship
+  requires a postable, active target with the same account type and compatible classification
+
+## `ContraAccountRelationshipViolation`
+
+`ContraAccountRelationshipViolation` is the closed public vocabulary that states why a declared
+contra-account relationship cannot preserve the chart's meaning.
+
+```java
+public enum ContraAccountRelationshipViolation
+```
+
+- Purpose: let the account registry reject an invalid contra relationship with a precise,
+  machine-readable reason instead of reducing the failure to an untyped account conflict
+- Values: self-reference, missing or inactive target, non-postable target, contra target,
+  incompatible account type, and incompatible statement taxonomy
 
 ## `AccountStructureDoctrine`
 

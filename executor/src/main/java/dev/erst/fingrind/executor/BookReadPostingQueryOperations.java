@@ -45,6 +45,7 @@ final class BookReadPostingQueryOperations {
     return switch (bookkeepingReadService.listPostings(publishedQuery)) {
       case BookkeepingReadOutcome.Reported<PostingHistoryPage> reported ->
           new ListPostingsResult.Listed(
+              query,
               BookReadPostingBacklinkProjection.withReversalBacklinks(
                   bookStore,
                   BookkeepingReadPagePublishedLanguageTranslator.toPublished(

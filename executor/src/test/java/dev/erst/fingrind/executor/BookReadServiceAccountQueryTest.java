@@ -180,6 +180,7 @@ class BookReadServiceAccountQueryTest {
       BookReadService service = readService(bookSession);
       assertEquals(
           new ListAccountsResult.Listed(
+              new ListAccountsQuery(50, Optional.empty()),
               accountPage(List.of(CASH_ACCOUNT, REVENUE_ACCOUNT), 50, Optional.empty())),
           service.listAccounts(new ListAccountsQuery(50, Optional.empty())));
     }
@@ -232,6 +233,7 @@ class BookReadServiceAccountQueryTest {
       BookReadService service = readService(bookSession);
       assertEquals(
           new ListPostingsResult.Listed(
+              new ListPostingsQuery(Optional.empty(), null, null, 20, Optional.empty()),
               postingPage(
                   Optional.empty(),
                   dev.erst.fingrind.core.EffectiveDateRange.unbounded(),
@@ -242,6 +244,8 @@ class BookReadServiceAccountQueryTest {
               new ListPostingsQuery(Optional.empty(), null, null, 20, Optional.empty())));
       assertEquals(
           new ListPostingsResult.Listed(
+              new ListPostingsQuery(
+                  Optional.of(CASH_ACCOUNT.accountCode()), null, null, 20, Optional.empty()),
               postingPage(
                   Optional.of(CASH_ACCOUNT.accountCode()),
                   dev.erst.fingrind.core.EffectiveDateRange.unbounded(),
@@ -266,6 +270,7 @@ class BookReadServiceAccountQueryTest {
 
       assertEquals(
           new ListPostingsResult.Listed(
+              new ListPostingsQuery(Optional.empty(), null, null, 20, Optional.empty()),
               new PostingPage(
                   bookIdentity(),
                   Optional.empty(),

@@ -49,20 +49,21 @@ final class SqlitePostingColumnIndexes {
   static final int COL_ACCOUNT_TYPE = 2;
   static final int COL_ACCOUNT_NODE_KIND = 3;
   static final int COL_ACCOUNT_PARENT_ACCOUNT_CODE = 4;
-  static final int COL_ACCOUNT_FINANCIAL_POSITION_LINE_CLASSIFICATION = 5;
-  static final int COL_ACCOUNT_CASH_FLOW_ASSET_CLASSIFICATION = 6;
-  static final int COL_ACCOUNT_PROFIT_AND_LOSS_LINE_CLASSIFICATION = 7;
-  static final int COL_ACCOUNT_UNIT_OF_MEASURE = 8;
-  static final int COL_ACCOUNT_QUANTITY_SCALE = 9;
-  static final int COL_ACCOUNT_ACTIVE = 10;
-  static final int COL_ACCOUNT_DECLARED_AT = 11;
-  static final int COL_REPORT_POSTING_ID = 12;
-  static final int COL_REPORT_ENTRY_SIDE = 13;
-  static final int COL_REPORT_CURRENCY_CODE = 14;
-  static final int COL_REPORT_AMOUNT_MINOR = 15;
-  static final int COL_TOTAL_CURRENCY_CODE = 12;
-  static final int COL_TOTAL_DEBIT_MINOR = 13;
-  static final int COL_TOTAL_CREDIT_MINOR = 14;
+  static final int COL_ACCOUNT_CONTRA_OF_ACCOUNT_CODE = 5;
+  static final int COL_ACCOUNT_FINANCIAL_POSITION_LINE_CLASSIFICATION = 6;
+  static final int COL_ACCOUNT_CASH_FLOW_ASSET_CLASSIFICATION = 7;
+  static final int COL_ACCOUNT_PROFIT_AND_LOSS_LINE_CLASSIFICATION = 8;
+  static final int COL_ACCOUNT_UNIT_OF_MEASURE = 9;
+  static final int COL_ACCOUNT_QUANTITY_SCALE = 10;
+  static final int COL_ACCOUNT_ACTIVE = 11;
+  static final int COL_ACCOUNT_DECLARED_AT = 12;
+  static final int COL_REPORT_POSTING_ID = 13;
+  static final int COL_REPORT_ENTRY_SIDE = 14;
+  static final int COL_REPORT_CURRENCY_CODE = 15;
+  static final int COL_REPORT_AMOUNT_MINOR = 16;
+  static final int COL_TOTAL_CURRENCY_CODE = 13;
+  static final int COL_TOTAL_DEBIT_MINOR = 14;
+  static final int COL_TOTAL_CREDIT_MINOR = 15;
 
   private SqlitePostingColumnIndexes() {}
 }

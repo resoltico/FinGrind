@@ -15,6 +15,7 @@ import dev.erst.fingrind.contract.discovery.ContractDiscovery;
 import dev.erst.fingrind.contract.discovery.ContractFinancingTemplates;
 import dev.erst.fingrind.contract.discovery.ContractFixedAssetTemplates;
 import dev.erst.fingrind.contract.discovery.ContractPlanTemplates;
+import dev.erst.fingrind.contract.discovery.ContractPostingRequestTemplates;
 import dev.erst.fingrind.contract.discovery.ContractRealizedForeignExchangeTemplates;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.ContractReversalTemplates;
@@ -138,7 +139,7 @@ class ContractProtocolVocabularyTest {
     assertEquals(
         BookkeepingEntryKind.SALE_SETTLED, BookkeepingEntryKind.fromWireValue("SALE_SETTLED"));
     assertEquals(1_179_079_236, BookFormatContract.APPLICATION_ID);
-    assertEquals(46, BookFormatContract.FORMAT_VERSION);
+    assertEquals(50, BookFormatContract.FORMAT_VERSION);
     assertNotEquals(0, BookFormatContract.APPLICATION_ID);
     assertEquals(
         List.of(
@@ -242,6 +243,7 @@ class ContractProtocolVocabularyTest {
             ContractRequestShapes.RequestShapesDescriptor.class,
             ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor.class,
             ContractRequestShapes.DeclareAccountRequestShapeDescriptor.class,
+            ContractRequestShapes.RetireAccountRequestShapeDescriptor.class,
             ContractRequestShapes.DeclareTaxRegistrationRequestShapeDescriptor.class,
             ContractRequestShapes.LedgerPlanRequestShapeDescriptor.class,
             ContractRequestShapes.EntryKindSemanticsDescriptor.class,
@@ -267,7 +269,7 @@ class ContractProtocolVocabularyTest {
         ContractResponse.descriptorTypes());
     assertEquals(
         List.of(
-            ContractTemplates.PostingRequestTemplateDescriptor.class,
+            ContractPostingRequestTemplates.PostingRequestTemplateDescriptor.class,
             ContractSettlementTemplates.TaxSelectionTemplateDescriptor.class,
             ContractSettlementTemplates.SettlementAdjunctTemplateDescriptor.class,
             InventoryReliefTemplateDescriptor.class,
@@ -287,6 +289,7 @@ class ContractProtocolVocabularyTest {
             ContractPlanTemplates.EnsureBookTemplateDescriptor.class,
             ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor.class,
             ContractTemplates.DeclareAccountTemplateDescriptor.class,
+            ContractTemplates.RetireAccountTemplateDescriptor.class,
             ContractPlanTemplates.LedgerAssertionTemplateDescriptor.class,
             ContractFixedAssetTemplates.FixedAssetTemplateDescriptor.class,
             ContractFixedAssetTemplates.FixedAssetDepreciationScheduleTemplateDescriptor.class,
@@ -361,7 +364,7 @@ class ContractProtocolVocabularyTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new ContractTemplates.PostingRequestTemplateDescriptor(
+            new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
                 BookkeepingEntryKind.SALE_SETTLED,
                 "2026-04-25",
                 "1000",
@@ -402,7 +405,7 @@ class ContractProtocolVocabularyTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new ContractTemplates.PostingRequestTemplateDescriptor(
+            new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
                 BookkeepingEntryKind.REVERSAL,
                 "2026-04-25",
                 null,
@@ -455,6 +458,7 @@ class ContractProtocolVocabularyTest {
                     "Cash",
                     AccountType.ASSET,
                     AccountNodeKind.POSTABLE,
+                    null,
                     null,
                     FinancialPositionLineClassification.CURRENT_ASSET,
                     null,

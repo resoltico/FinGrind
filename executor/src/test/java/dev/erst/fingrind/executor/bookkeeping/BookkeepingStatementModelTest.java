@@ -81,6 +81,7 @@ class BookkeepingStatementModelTest {
             new AccountTaxonomy(
                 AccountNodeKind.POSTABLE,
                 Optional.of(new AccountCode("1099")),
+                Optional.empty(),
                 Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                 Optional.empty(),
                 Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT)));
@@ -142,6 +143,7 @@ class BookkeepingStatementModelTest {
     AccountTaxonomy inventoryTaxonomy =
         new AccountTaxonomy(
             AccountNodeKind.POSTABLE,
+            Optional.empty(),
             Optional.empty(),
             Optional.of(FinancialPositionLineClassification.INVENTORY),
             Optional.empty(),
@@ -378,6 +380,7 @@ class BookkeepingStatementModelTest {
                         new FinancialPositionRowView(
                             "1000",
                             "Cash",
+                            Optional.empty(),
                             AccountType.ASSET,
                             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                             StatementLineKind.DECLARED_ACCOUNT,
@@ -392,6 +395,7 @@ class BookkeepingStatementModelTest {
                         new IncomeStatementRowView(
                             "4000",
                             "Revenue",
+                            Optional.empty(),
                             AccountType.REVENUE,
                             ProfitAndLossLineClassification.OPERATING_REVENUE,
                             StatementLineKind.DECLARED_ACCOUNT,

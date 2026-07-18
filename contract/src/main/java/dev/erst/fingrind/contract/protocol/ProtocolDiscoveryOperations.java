@@ -110,12 +110,15 @@ final class ProtocolDiscoveryOperations {
             OperationCategory.DISCOVERY,
             "Print Plan Template",
             List.of("--print-plan-template"),
-            List.of(),
+            List.of("[general|tax-setup|fixed-asset-setup|financing-setup]"),
             ExecutionMode.RAW_JSON,
-            "Print the canonical atomic tax-setup ledger plan scaffold JSON document.",
+            "Print a topic-specific executable ledger-plan scaffold JSON document.",
             List.of(
                 ProtocolExampleStep.command(
                     "fingrind %s > plan.json"
+                        .formatted(OperationId.PRINT_PLAN_TEMPLATE.wireName())),
+                ProtocolExampleStep.command(
+                    "fingrind %s fixed-asset-setup > fixed-asset-setup.json"
                         .formatted(OperationId.PRINT_PLAN_TEMPLATE.wireName())),
                 ProtocolExampleStep.note(
                     "The emitted plan is a placeholder-first scaffold. Replace every replace-before-commit token before submitting it to a live book."))));

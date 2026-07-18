@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: SQLITE_SCHEMA_CORE_ACCRUAL_CUTOFF_APPLICATIONS
-updated: "2026-07-16"
+updated: "2026-07-17"
 ---
 
 # SQLite Schema: Accrual Cut-off Applications

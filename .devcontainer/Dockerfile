@@ -26,7 +26,6 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     } \
     && retry apt-get update \
     && retry apt-get install -y --no-install-recommends \
-        ca-certificates \
         curl \
         fontconfig \
         fonts-dejavu \

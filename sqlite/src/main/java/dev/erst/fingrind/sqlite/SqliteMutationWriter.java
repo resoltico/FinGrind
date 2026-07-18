@@ -43,6 +43,8 @@ final class SqliteMutationWriter {
       statement.bindText(8, bookIdentity.functionalCurrency().code());
       statement.bindInt(9, bookIdentity.fiscalYearStart().month());
       statement.bindInt(10, bookIdentity.fiscalYearStart().day());
+      statement.bindText(
+          11, CanonicalTemporalText.formatLocalDate(bookIdentity.bookStartEffectiveDate()));
       statement.step();
     }
   }

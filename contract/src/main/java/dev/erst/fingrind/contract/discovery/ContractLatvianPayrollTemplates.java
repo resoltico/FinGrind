@@ -13,6 +13,8 @@ public interface ContractLatvianPayrollTemplates {
       String payrollRunId,
       String employeeReference,
       String payrollMonth,
+      boolean taxBookHeldAtEmployer,
+      int dependantCount,
       String wageExpenseAccountCode,
       String employerSocialContributionExpenseAccountCode,
       String netWagesPayableAccountCode,
@@ -25,6 +27,8 @@ public interface ContractLatvianPayrollTemplates {
       employeeReference =
           ContractDescriptorValidation.requireText(employeeReference, "employeeReference");
       payrollMonth = ContractDescriptorValidation.requireText(payrollMonth, "payrollMonth");
+      new dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile(
+          taxBookHeldAtEmployer, dependantCount);
       wageExpenseAccountCode =
           ContractDescriptorValidation.requireText(
               wageExpenseAccountCode, "wageExpenseAccountCode");

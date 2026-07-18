@@ -524,7 +524,9 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
                     "--functional-currency",
                     tradingBookIdentity().functionalCurrency().code(),
                     "--fiscal-year-start",
-                    tradingBookIdentity().fiscalYearStart().wireValue())));
+                    tradingBookIdentity().fiscalYearStart().wireValue(),
+                    "--book-start-effective-date",
+                    tradingBookIdentity().bookStartEffectiveDate().toString())));
   }
 
   private void declareAccount(Path bookFilePath, Path bookKeyFilePath, Path requestFile) {

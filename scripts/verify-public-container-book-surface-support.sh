@@ -54,6 +54,7 @@ Seed template       : Owner-managed service seed template
 Accounting basis    : Cash basis
 Functional currency : EUR
 Fiscal year start   : 01-01
+Book start effective date : 2026-01-01
 Posting coverage    : All posting kinds
 As of               : 2026-04-08
 TEXT
@@ -143,7 +144,7 @@ verify_mounted_book_surface() {
         --book-template-id OWNER_MANAGED_SERVICE \
         --accounting-basis CASH \
         --functional-currency "${fixture_functional_currency}" \
-        --fiscal-year-start "${fixture_fiscal_year_start}" >/dev/null
+        --fiscal-year-start "${fixture_fiscal_year_start}" --book-start-effective-date 2026-01-01 >/dev/null
     mounted_container_run "${image_ref}" \
         declare-account --book-file /work/book.sqlite --book-key-file /work/book.key --request-file /work/declare-bank.json >/dev/null
     mounted_container_run "${image_ref}" \

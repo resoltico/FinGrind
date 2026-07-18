@@ -41,6 +41,13 @@ public final class LedgerPlanFactMapper {
                 facts.add(BookWorkflowFact.text("parentAccountCode", parentAccountCode.value())));
     account
         .accountTaxonomy()
+        .contraOfAccountCode()
+        .ifPresent(
+            contraOfAccountCode ->
+                facts.add(
+                    BookWorkflowFact.text("contraOfAccountCode", contraOfAccountCode.value())));
+    account
+        .accountTaxonomy()
         .financialPositionLineClassification()
         .ifPresent(
             classification ->

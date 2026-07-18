@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.discovery.ContractPostingRequestTemplates.PostingRequestTemplateDescriptor;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.core.BalanceSide;
@@ -20,7 +21,7 @@ final class ContractTemplateShapeValidator {
   static void validateStepShape(
       LedgerStepKind kind,
       ContractPlanTemplates.@Nullable EnsureBookTemplateDescriptor ensureBook,
-      ContractTemplates.@Nullable PostingRequestTemplateDescriptor posting,
+      @Nullable PostingRequestTemplateDescriptor posting,
       ContractTemplates.@Nullable DeclareAccountTemplateDescriptor declareAccount,
       ContractTemplates.@Nullable DeclareTaxRegistrationTemplateDescriptor declareTaxRegistration,
       ContractPlanTemplates.@Nullable LedgerPlanQueryTemplateDescriptor query,

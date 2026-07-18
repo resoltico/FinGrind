@@ -9,6 +9,44 @@ Historical release notes older than `0.31.0` live in:
 
 ## [Unreleased]
 
+### Added
+
+- Added first-class contra-account taxonomy. A declared account can now identify the active postable account it reduces; the relationship is validated as a same-type, compatible-statement relationship, normal balance follows the contra role, account readback publishes `contraOfAccountCode`, and financial statements present the row as a reduction of its named account.
+- Added discoverable `retire-account` request scaffolding and named atomic setup plans for tax, fixed assets, and financing. Each setup plan declares the exact prerequisite account taxonomy before it declares or uses the bounded-context facts, while the default `print-plan-template` remains a general executable workflow.
+- Added an explicit Latvian monthly-payroll withholding profile to every payroll request, retained payroll run, plan fact, and readback. The supported 2026 calculation admits only `taxBookHeldAtEmployer: true` with `dependantCount: 0` and rejects all other profiles rather than assuming their tax treatment.
+- Added an independent `architecture` verification module. It imports the production class graph once per test run and protects the core-to-contract-to-executor-to-adapter-to-CLI dependency direction, CLI naming boundaries, and the exclusion of filesystem path hints from machine JSON payloads.
+
+### Changed
+
+- Hard-broke the protected-book format to `50` and made `bookStartEffectiveDate` an immutable
+  initialization fact. Every posting now refuses dates before that boundary, interim-result sweeps
+  use it as their exact earliest admissible date, and the first fiscal-year close covers the valid
+  partial fiscal segment when a book starts mid-year. Older protected-book formats are rejected;
+  no migration or compatibility layer is provided.
+- Hard-broke the fixed-asset register contract so `carryingAmount` is always the live carrying
+  amount and therefore zero after disposal. Disposed rows now publish the immutable
+  `carryingAmountAtDisposal` reconciliation value separately across JSON, CSV, text, and PDF.
+- Hard-broke the protected-book contract to format `49` and the CLI protocol to `31`. Earlier protected-book formats remain incompatible; account taxonomy now carries explicit contra-account truth, payroll runs retain explicit withholding-profile facts, selected entry-kind semantics publish described `variantFields`, and query responses use one machine envelope shape.
+- Changed every non-report query success payload, including account, posting, and tax-registration collections, to publish `family`, `bookIdentity`, `resolvedQuery`, and `generatedAt` beside its family records. `resolvedQuery.cursor` now records only the accepted cursor, while a top-level optional `nextCursor` announces a further page.
+- Changed fixed-asset and financing onboarding from implicit prerequisite-account repair to executable setup plans with their declared taxonomy. Realized-foreign-exchange request scaffolds now derive receivable and revenue account codes from the selected book template.
+- Changed verification observability and merge safety. The canonical `check.sh` gate now emits one structured report per executed stage and a bounded Java-compiler warning manifest, Gradle wrapper integrity validation is a dependency of the required GitHub `Gate`, and the parallel published-bundle matrix reads rather than races to write Gradle cache entries.
+
+### Fixed
+
+- Fixed malformed typed-request recovery so every operation points to its own request scaffold and
+  canonical help command. Fixed payroll discovery notes to name both supported withholding-profile
+  facts, and made the pinned `uv` plus exact Python helper-tool runtime contract fail before Gradle
+  receives an incompatible interpreter.
+- Fixed lifecycle reversals for fixed assets, financing, and realized foreign exchange so an origin with active dependent applications or settlements is rejected by the executor with a named domain refusal before SQLite. Durable triggers remain backstops and no longer surface this accounting precondition as a runtime storage failure.
+- Fixed account presentation so accumulated depreciation and other valid contra accounts no longer publish as ordinary wrong-sided peers of the account they reduce.
+- Fixed built-in book initialization across all template and basis combinations. The sales-discount allowance now derives its contra account from the selected template's canonical revenue account, while durable validation continues to require compatible contra taxonomy for every other relationship. Failed exclusive `open-book` initialization now removes only its uninitialized book artifact and SQLite sidecars, so the destination can be safely retried without deleting a pre-existing or concurrently created file.
+- Fixed request discovery and documentation gaps for `retire-account`, fixed-asset setup, financing setup, template-specific foreign-exchange account codes, Latvian payroll withholding assumptions, and the shared non-report query envelope.
+- Fixed reversal lifecycle rejections to render the actual typed bookkeeping entry kind rather than the literal field name `entryKind`, and fixed Latvian payroll profile rejections to name the rejected field and value with a grammatical repair action.
+- Fixed launcher-path rendering so long absolute invocations remain intact copyable tokens and capability lists do not repeat the launcher path for every PDF-capable report.
+- Fixed advisory verification drift. Scheduled distribution-freshness failures now create one actionable GitHub issue or update the existing open issue with the latest failed run, while manual canary reruns remain issue-free.
+- Fixed recurring Java compilation noise. FinGrind now requests concrete deprecation locations from the compiler and documents the only two unavoidable PDFBox test-double overrides at their source rather than emitting anonymous deprecation notices from a green gate.
+- Fixed contributor-container build noise by removing the redundant ca-certificates installation from the pinned devcontainer base image, which already supplies the certificate bundle.
+
 ## [0.61.0] - 2026-07-16
 
 ### Added

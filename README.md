@@ -4,7 +4,7 @@ FinGrind is a command-line bookkeeping tool for one accounting entity in one pro
 
 - One protected SQLite book and generated key file per accounting entity
 - Typed sales, purchases, inventory maintenance, expenses, fixed assets, financing, realized foreign exchange, Latvian monthly payroll, accrual cut-offs, settlements, owner transactions, opening positions, and reversals with provenance and idempotency
-- Atomic tax setup plans, explicit account amendment and retirement rules, per-book tax registrations, tax-obligation reporting, and reporting-period close commands
+- Atomic tax, fixed-asset, and financing setup plans; explicit account amendment, retirement, and contra-account rules; per-book tax registrations; tax-obligation reporting; and reporting-period close commands
 - Trial balance, account balance and ledger, period summary, financial position, income statement, cash-flow statement, changes in equity, inventory valuation, accrual-cutoff schedule, fixed-asset, financing, and realized-foreign-exchange register outputs in text, JSON, CSV, or PDF, with keyset pagination for account-ledger and collection queries
 - A retained Latvian payroll register in text, JSON, CSV, and PDF, including payroll runs, settlements, and compensating-reversal lineage
 - Explicit backup, restore, rekey, and interrupted-rekey recovery commands
@@ -24,7 +24,8 @@ fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acm
   --book-template-id OWNER_MANAGED_SERVICE \
   --accounting-basis CASH \
   --functional-currency EUR \
-  --fiscal-year-start 01-01
+  --fiscal-year-start 01-01 \
+  --book-start-effective-date 2026-01-01
 
 fingrind list-accounts --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
   --limit 10
@@ -45,7 +46,7 @@ On an accrual-basis book, `record-prepayment`, `record-deferred-revenue`, and `r
 
 `record-fixed-asset-capitalization`, `record-fixed-asset-depreciation`, and `record-fixed-asset-disposal` maintain a durable straight-line cost-model register. `record-financing-borrowing`, `record-financing-principal-repayment`, `record-financing-interest-accrual`, and `record-financing-interest-payment` retain nominal-principal and stated-interest history. `record-foreign-currency-obligation` plus `record-realized-foreign-exchange-settlement` retain one receivable and derive its realized gain or loss. Review the [fixed-asset](docs/ADR_FIXED_ASSETS.md), [financing](docs/ADR_FINANCING.md), and [realized-FX](docs/ADR_REALIZED_FOREIGN_EXCHANGE.md) boundaries and primary authorities before use.
 
-For the deliberately narrow Latvian 2026 payroll profile, `record-latvian-monthly-payroll` derives the admitted payroll components from gross EUR wages, and its settlement commands discharge only the retained obligations. `latvian-payroll-register` retains each run, settlement, and reversal lineage for reconciliation. Review [the supported-profile and authority-source reference](docs/DOC_02_LatvianPayroll.md) before use; FinGrind does not determine a worker's legal status or submit statutory filings.
+For the deliberately narrow Latvian 2026 payroll profile, `record-latvian-monthly-payroll` requires explicit `taxBookHeldAtEmployer: true` and `dependantCount: 0` facts alongside gross EUR wages; it rejects other withholding profiles rather than assuming them. Its settlement commands discharge only retained obligations, and `latvian-payroll-register` retains each run, settlement, and reversal lineage for reconciliation. Review [the supported-profile and authority-source reference](docs/DOC_02_LatvianPayroll.md) before use; FinGrind does not determine a worker's legal status or submit statutory filings.
 
 Humans should begin with `fingrind help`. Automation should begin with `fingrind capabilities --output json`.
 
@@ -88,13 +89,14 @@ EUR      |   EUR 10.00 |    EUR 10.00 |   EUR 0.00 | Zero
 
 Context
 -------
-Entity              : Acme Studio
-Seed template       : Owner-managed service seed template
-Accounting basis    : Cash basis
-Functional currency : EUR
-Fiscal year start   : 01-01
-Posting coverage    : All posting kinds
-As of               : 2026-04-07
+Entity                    : Acme Studio
+Seed template             : Owner-managed service seed template
+Accounting basis          : Cash basis
+Functional currency       : EUR
+Fiscal year start         : 01-01
+Book start effective date : 2026-01-01
+Posting coverage          : All posting kinds
+As of                     : 2026-04-07
 ```
 
 ## Documentation

@@ -23,6 +23,11 @@ final class LedgerPlanLatvianPayrollEntryFactMapper {
                     BookWorkflowFact.text("payrollRunId", payroll.payrollRunId().value()),
                     BookWorkflowFact.text("employeeReference", payroll.employeeReference().value()),
                     BookWorkflowFact.text("payrollMonth", payroll.payrollMonth().wireValue()),
+                    BookWorkflowFact.flag(
+                        "taxBookHeldAtEmployer",
+                        payroll.withholdingProfile().taxBookHeldAtEmployer()),
+                    BookWorkflowFact.count(
+                        "dependantCount", payroll.withholdingProfile().dependantCount()),
                     BookWorkflowFact.text(
                         "wageExpenseAccountCode", payroll.wageExpenseAccountCode().value()),
                     BookWorkflowFact.text(

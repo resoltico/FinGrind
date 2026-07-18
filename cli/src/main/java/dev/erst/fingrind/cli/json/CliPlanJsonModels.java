@@ -173,13 +173,18 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
           PlanBoundaryStepDataPayload {}
 
   record EnsureBookStepDataPayload(
-      String initializedAt, String entityName, String functionalCurrency, String fiscalYearStart)
+      String initializedAt,
+      String entityName,
+      String functionalCurrency,
+      String fiscalYearStart,
+      String bookStartEffectiveDate)
       implements LedgerAdministrativeStepDataPayload {
     public EnsureBookStepDataPayload {
       initializedAt = requireText(initializedAt, "initializedAt");
       entityName = requireText(entityName, "entityName");
       functionalCurrency = requireText(functionalCurrency, "functionalCurrency");
       fiscalYearStart = requireText(fiscalYearStart, "fiscalYearStart");
+      bookStartEffectiveDate = requireText(bookStartEffectiveDate, "bookStartEffectiveDate");
     }
   }
 

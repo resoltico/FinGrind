@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract.reportmodel;
 
 import dev.erst.fingrind.contract.bookkeeping.FixedAssetRegisterReport;
 import dev.erst.fingrind.contract.bookkeeping.FixedAssetRegisterRow;
+import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import java.util.ArrayList;
 import java.util.List;
@@ -24,6 +25,8 @@ public final class FixedAssetRegisterReportModelBuilder
           "accumulatedDepreciationMinorUnits",
           "carryingAmountCurrencyCode",
           "carryingAmountMinorUnits",
+          "carryingAmountAtDisposalCurrencyCode",
+          "carryingAmountAtDisposalMinorUnits",
           "inServiceDate",
           "usefulLifeMonths",
           "residualValueCurrencyCode",
@@ -59,6 +62,8 @@ public final class FixedAssetRegisterReportModelBuilder
                   ReportModelSupport.rightColumn(
                       "accumulatedDepreciation", "Accumulated depreciation"),
                   ReportModelSupport.rightColumn("carryingAmount", "Carrying value"),
+                  ReportModelSupport.rightColumn(
+                      "carryingAmountAtDisposal", "Carrying before disposal"),
                   ReportModelSupport.leftColumn("disposedOn", "Disposed")),
               FixedAssetRegisterReportModelBuilder::row,
               FixedAssetRegisterReportModelBuilder::csvProjection);
@@ -83,6 +88,7 @@ public final class FixedAssetRegisterReportModelBuilder
         ReportModelDisplay.displayAmount(r.cost()),
         ReportModelDisplay.displayAmount(r.accumulatedDepreciation()),
         ReportModelDisplay.displayAmount(r.carryingAmount()),
+        r.carryingAmountAtDisposal().map(ReportModelDisplay::displayAmount).orElse(""),
         r.disposedOn().map(Object::toString).orElse("Active"));
   }
 
@@ -93,6 +99,8 @@ public final class FixedAssetRegisterReportModelBuilder
           List.of(
               REPORT_FAMILY,
               REPORT_FAMILY + ":scope-empty",
+              "",
+              "",
               "",
               "",
               "",
@@ -129,6 +137,8 @@ public final class FixedAssetRegisterReportModelBuilder
         r.accumulatedDepreciation().minorUnits(),
         r.carryingAmount().currencyCode(),
         r.carryingAmount().minorUnits(),
+        r.carryingAmountAtDisposal().map(MonetaryAmount::currencyCode).orElse(""),
+        r.carryingAmountAtDisposal().map(MonetaryAmount::minorUnits).orElse(""),
         r.depreciationSchedule().inServiceDate().toString(),
         Integer.toString(r.depreciationSchedule().usefulLifeMonths()),
         r.depreciationSchedule().residualValue().currencyCode(),

@@ -28,6 +28,28 @@ final class BookTemplateSeedAccountFactory {
         new AccountTaxonomy(
             AccountNodeKind.POSTABLE,
             Optional.empty(),
+            Optional.empty(),
+            financialPositionLineClassification,
+            profitAndLossLineClassification,
+            cashFlowAssetClassification));
+  }
+
+  static AccountDeclaration contraPostable(
+      String code,
+      String name,
+      AccountType accountType,
+      String contraOfAccountCode,
+      Optional<FinancialPositionLineClassification> financialPositionLineClassification,
+      Optional<CashFlowAssetClassification> cashFlowAssetClassification,
+      Optional<ProfitAndLossLineClassification> profitAndLossLineClassification) {
+    return new AccountDeclaration(
+        new AccountCode(code),
+        new AccountName(name),
+        accountType,
+        new AccountTaxonomy(
+            AccountNodeKind.POSTABLE,
+            Optional.empty(),
+            Optional.of(new AccountCode(contraOfAccountCode)),
             financialPositionLineClassification,
             profitAndLossLineClassification,
             cashFlowAssetClassification));

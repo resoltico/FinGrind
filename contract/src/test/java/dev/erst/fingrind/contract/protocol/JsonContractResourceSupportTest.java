@@ -30,7 +30,7 @@ class JsonContractResourceSupportTest {
     JsonNode alpha = JsonContractResourceSupport.nullableField(document, "alpha");
     assertEquals("one", JsonContractResourceSupport.requireText(document, "alpha"));
     assertNotNull(alpha);
-    assertEquals("one", alpha.asText());
+    assertEquals("one", alpha.asString());
     assertEquals(
         List.of("x", "y"), JsonContractResourceSupport.optionalStringArray(document, "values"));
     assertThrows(

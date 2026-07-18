@@ -6,8 +6,8 @@ import static dev.erst.fingrind.cli.CliJsonStructureAccess.rejectUnexpectedField
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.FinancingArrangementId;
 import dev.erst.fingrind.contract.bookkeeping.FinancingBookkeepingEntryVariants;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.ProtocolFinancingPostingRequestFieldSets;
-import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import tools.jackson.databind.node.ObjectNode;
@@ -32,11 +32,12 @@ final class CliFinancingBookkeepingEntryReaders {
     return new FinancingBookkeepingEntryVariants.Borrowing(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         financingArrangementId(rootNode),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.PRINCIPAL_LIABILITY_ACCOUNT_CODE),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.INTEREST_PAYABLE_ACCOUNT_CODE),
+        accountCode(rootNode, ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE),
+        accountCode(
+            rootNode, ProtocolBusinessEventFields.Financing.PRINCIPAL_LIABILITY_ACCOUNT_CODE),
+        accountCode(rootNode, ProtocolBusinessEventFields.Financing.INTEREST_PAYABLE_ACCOUNT_CODE),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(
-            rootNode, ProtocolPostEntryFields.TopLevel.PRINCIPAL_AMOUNT));
+            rootNode, ProtocolBusinessEventFields.Financing.PRINCIPAL_AMOUNT));
   }
 
   static FinancingBookkeepingEntryVariants.PrincipalRepayment readPrincipalRepayment(
@@ -46,9 +47,9 @@ final class CliFinancingBookkeepingEntryReaders {
     return new FinancingBookkeepingEntryVariants.PrincipalRepayment(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         financingArrangementId(rootNode),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE),
+        accountCode(rootNode, ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(
-            rootNode, ProtocolPostEntryFields.TopLevel.PRINCIPAL_AMOUNT),
+            rootNode, ProtocolBusinessEventFields.Financing.PRINCIPAL_AMOUNT),
         null);
   }
 
@@ -59,9 +60,9 @@ final class CliFinancingBookkeepingEntryReaders {
     return new FinancingBookkeepingEntryVariants.InterestAccrual(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         financingArrangementId(rootNode),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.INTEREST_EXPENSE_ACCOUNT_CODE),
+        accountCode(rootNode, ProtocolBusinessEventFields.Financing.INTEREST_EXPENSE_ACCOUNT_CODE),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(
-            rootNode, ProtocolPostEntryFields.TopLevel.INTEREST_AMOUNT),
+            rootNode, ProtocolBusinessEventFields.Financing.INTEREST_AMOUNT),
         null);
   }
 
@@ -72,15 +73,15 @@ final class CliFinancingBookkeepingEntryReaders {
     return new FinancingBookkeepingEntryVariants.InterestPayment(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         financingArrangementId(rootNode),
-        accountCode(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE),
+        accountCode(rootNode, ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(
-            rootNode, ProtocolPostEntryFields.TopLevel.INTEREST_AMOUNT),
+            rootNode, ProtocolBusinessEventFields.Financing.INTEREST_AMOUNT),
         null);
   }
 
   private static FinancingArrangementId financingArrangementId(ObjectNode rootNode) {
     return new FinancingArrangementId(
-        requiredText(rootNode, ProtocolPostEntryFields.TopLevel.FINANCING_ARRANGEMENT_ID));
+        requiredText(rootNode, ProtocolBusinessEventFields.Financing.FINANCING_ARRANGEMENT_ID));
   }
 
   private static AccountCode accountCode(ObjectNode rootNode, String fieldName) {

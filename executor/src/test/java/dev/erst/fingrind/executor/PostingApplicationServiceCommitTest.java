@@ -29,6 +29,7 @@ import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal;
@@ -107,6 +108,45 @@ class PostingApplicationServiceCommitTest {
 
       assertEquals(
           commitRejected(new IdempotencyKey("idem-1"), new PostingRejection.BookNotInitialized()),
+          result);
+    }
+  }
+
+  @Test
+  void commit_rejectsEffectiveDatesBeforeImmutableBookStartBeforeGeneratingPostingId() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      PostingApplicationService applicationService =
+          new PostingApplicationService(
+              bookSession,
+              bookSession,
+              () -> {
+                throw new AssertionError("postingIdGenerator should not be called");
+              },
+              FIXED_CLOCK);
+      PostEntryCommand command =
+          new PostEntryCommand(
+              new BookkeepingEntry.SaleSettled(
+                  LocalDate.parse("2025-12-31"),
+                  new AccountCode("1000"),
+                  new AccountCode("2000"),
+                  MonetaryAmount.of(Money.parse("EUR", "10.00")),
+                  null,
+                  null,
+                  null,
+                  null,
+                  null),
+              generatedEvidence("idem-before-book-start", "cash-receipt"),
+              requestProvenance("idem-before-book-start"),
+              SourceChannel.CLI);
+
+      PostEntryResult result = applicationService.commit(command);
+
+      assertEquals(
+          commitRejected(
+              new IdempotencyKey("idem-before-book-start"),
+              new PostingEffectiveDateBeforeBookStart(
+                  LocalDate.parse("2025-12-31"), LocalDate.parse("2026-01-01"))),
           result);
     }
   }

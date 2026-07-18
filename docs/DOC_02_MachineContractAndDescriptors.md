@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: CONTRACT_DISCOVERY
-updated: "2026-07-16"
+updated: "2026-07-17"
 route:
   keywords: [fingrind, machine-contract, discovery, request-shapes, response-shapes, templates, workflow, contract-errors]
   questions: ["where is MachineContract documented", "where are request and response descriptor types documented", "where are discovery templates and workflow descriptors documented"]
@@ -40,8 +40,9 @@ public final class MachineContract
   valid payload from the CLI alone, and typed `record-*` help narrows that payload guidance to the
   selected business-event variant instead of restating the full union write shape
 - Template behavior: `requestTemplate()` emits deterministic placeholder-first request documents,
-  and `planTemplate()` emits the canonical atomic tax-setup plan with ordered account and
-  registration declarations. The CLI raw-template commands route both help snippets and
+  and `planTemplate()` emits the canonical general workflow. Topic-selected `planTemplate(...)`
+  emits atomic tax, fixed-asset, or financing setup plans with their prerequisite account
+  declarations. The CLI raw-template commands route both help snippets and
   `print-request-template` / `print-plan-template` through the same canonical serializer so
   machine fixtures remain byte-identical to live command output and the checked-in public examples
   stay semantically aligned without drifting away from the placeholder scaffold contract
@@ -125,8 +126,10 @@ public final class ContractTemplates
 - `ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor` publishes the nested request
   `foreignExchangeFields`, `quotedRateFields`, and `taxFields` inventories beside the
   journal-line, opening-balance, evidence, provenance, and reversal families
-- `ContractRequestShapes.EntryKindSemanticsDescriptor` publishes one entry kind's required and
-  forbidden top-level fields plus the canonical `sourceDocumentType` policy for that entry kind
+- `ContractRequestShapes.EntryKindSemanticsDescriptor` publishes one entry kind's required,
+  optional, and forbidden top-level fields, described entry-specific `variantFields`, and the
+  canonical `sourceDocumentType` policy for that entry kind; the selected command's human help
+  projects those same field descriptors rather than maintaining a separate field list
 - `ContractRequestShapes.EvidenceRequirementDescriptor` publishes the non-negotiable source-document
   minimum for every bookkeeping-entry request
 - `RequestFieldPresence` is the stable request-field presence vocabulary shared by request-shape
@@ -181,6 +184,37 @@ public interface ContractSettlementTemplates
   identifiers while preserving documented scaffold placeholders
 - Boundary: these reusable nested template facts are separate from `ContractTemplates`, which
   remains the owner of the complete posting-template shape
+
+## `ContractPostingRequestTemplates`, `ContractRequestShapes.RetireAccountRequestShapeDescriptor`, And `ContractTemplates.RetireAccountTemplateDescriptor`
+
+`ContractPostingRequestTemplates` owns the complete typed caller-authored posting scaffold. Its
+`PostingRequestTemplateDescriptor` replaces the former nested template owner so that reusable
+posting blocks compose through a single public contract root. `RetireAccountRequestShapeDescriptor`
+and `RetireAccountTemplateDescriptor` publish the minimal account-retirement request shape and
+scaffold as first-class discovery facts.
+
+```java
+public interface ContractPostingRequestTemplates
+public record ContractRequestShapes.RetireAccountRequestShapeDescriptor(...)
+public record ContractTemplates.RetireAccountTemplateDescriptor(String accountCode)
+```
+
+The retirement descriptors contain only the declared account code. Whether retirement is
+admissible remains an Account Registry lifecycle decision based on the current balance and durable
+references; the descriptor never implies that account history can be deleted.
+
+## `PlanTemplateTopic`
+
+`PlanTemplateTopic` is the closed vocabulary for the `--topic` value accepted by
+`print-plan-template`. Its values such as `tax-setup`, `fixed-asset-setup`, and `financing-setup`
+are template selectors, not independently invocable commands.
+
+```java
+public enum PlanTemplateTopic
+```
+
+The enum owns stable topic wire names and parsing. `MachineContract` uses the selected topic to
+publish one executable atomic ledger-plan scaffold.
 
 ## `ContractFixedAssetTemplates`, `ContractFinancingTemplates`, And `ContractRealizedForeignExchangeTemplates`
 

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.tax.TaxApplicationKind;
@@ -29,7 +30,7 @@ class TaxDiscoveryTemplateCoverageTest {
   void taxTemplateCatalogAndRequestShapes_publishCanonicalTaxSurface() {
     ContractTemplates.DeclareTaxRegistrationTemplateDescriptor template =
         MachineContractTemplatesCatalog.declareTaxRegistrationTemplate();
-    ContractTemplates.PostingRequestTemplateDescriptor saleTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor saleTemplate =
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_SALE_SETTLED));
 
     assertEquals("replace-before-commit-tax-registration-id", template.taxRegistrationId());
@@ -91,14 +92,14 @@ class TaxDiscoveryTemplateCoverageTest {
   @Test
   void postingTemplates_publishTaxSelectorsExactlyWhenCanonicalFactsAllowTax() {
     for (BookkeepingEntryKind entryKind : BookkeepingEntryKind.values()) {
-      ContractTemplates.PostingRequestTemplateDescriptor template =
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template =
           MachineContractPostEntryVariantSchemas.template(entryKind);
       boolean taxAllowed =
           ProtocolCatalog.domain()
               .requestSurface()
               .bookkeepingEntryKind(entryKind)
               .optionalTopLevelFields()
-              .contains(ProtocolPostEntryFields.TopLevel.TAX);
+              .contains(ProtocolBusinessEventFields.Core.TAX);
 
       assertEquals(taxAllowed, template.tax() != null, entryKind.wireValue());
       if (taxAllowed) {

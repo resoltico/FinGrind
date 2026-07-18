@@ -10,11 +10,9 @@ import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRegistryDependency;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
+import dev.erst.fingrind.core.ContraAccountRelationshipViolation;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -22,14 +20,12 @@ import org.junit.jupiter.api.Test;
 
 /** Coverage tests for bookkeeping-administration rejection publication. */
 class BookkeepingAdministrationRejectionPublishedMapperTest {
-  private static final MethodHandle TO_PUBLISHED_ACCOUNT_STRUCTURE_REJECTION =
-      publishedAccountStructureRejectionHandle();
-
   @Test
   void mapperProjectsAccountStructureConflictIntoPublicContract() {
     AccountTaxonomy existingTaxonomy =
         new AccountTaxonomy(
             AccountNodeKind.POSTABLE,
+            Optional.empty(),
             Optional.empty(),
             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
             Optional.empty(),
@@ -37,6 +33,7 @@ class BookkeepingAdministrationRejectionPublishedMapperTest {
     AccountTaxonomy requestedTaxonomy =
         new AccountTaxonomy(
             AccountNodeKind.HEADER,
+            Optional.empty(),
             Optional.empty(),
             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
             Optional.empty(),
@@ -54,17 +51,56 @@ class BookkeepingAdministrationRejectionPublishedMapperTest {
   }
 
   @Test
-  void helperRejectsUnsupportedNonAccountStructureRejection() throws Exception {
-    IllegalStateException exception =
+  void accountRegistryMapperRejectsUnsupportedRejection() {
+    IllegalArgumentException exception =
         assertThrows(
-            IllegalStateException.class,
+            IllegalArgumentException.class,
             () ->
-                invokeAccountStructureMapper(
+                AccountRegistryRejectionPublishedMapper.toPublished(
                     new BookkeepingAdministrationRejection.BookAlreadyInitialized()));
 
     assertEquals(
-        "Unsupported administration rejection for account-structure mapping: "
-            + BookkeepingAdministrationRejection.BookAlreadyInitialized.class.getName(),
+        "Expected an Account Registry rejection but received "
+            + BookkeepingAdministrationRejection.BookAlreadyInitialized.class.getName()
+            + ".",
+        exception.getMessage());
+  }
+
+  @Test
+  void accountRegistryMapperProjectsContraAccountRejectionsIntoThePublishedContract() {
+    assertEquals(
+        new dev.erst.fingrind.contract.bookkeeping.ContraAccountInvalid(
+            new AccountCode("4090"),
+            new AccountCode("4000"),
+            ContraAccountRelationshipViolation.TARGET_IS_CONTRA),
+        AccountRegistryRejectionPublishedMapper.toPublished(
+            new ContraAccountInvalid(
+                new AccountCode("4090"),
+                new AccountCode("4000"),
+                ContraAccountRelationshipViolation.TARGET_IS_CONTRA)));
+  }
+
+  @Test
+  void closeTargetMapperProjectsMissingCandidatesAndRejectsUnrelatedRejections() {
+    assertEquals(
+        new dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing(
+            FinancialPositionLineClassification.RESULT_HOLDING, List.of(new AccountCode("3200"))),
+        CloseTargetRejectionPublishedMapper.toPublished(
+            new CloseTargetAccountCandidateMissing(
+                FinancialPositionLineClassification.RESULT_HOLDING,
+                List.of(new AccountCode("3200")))));
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                CloseTargetRejectionPublishedMapper.toPublished(
+                    new BookkeepingAdministrationRejection.BookAlreadyInitialized()));
+
+    assertEquals(
+        "Expected a close-target rejection but received "
+            + BookkeepingAdministrationRejection.BookAlreadyInitialized.class.getName()
+            + ".",
         exception.getMessage());
   }
 
@@ -127,32 +163,5 @@ class BookkeepingAdministrationRejectionPublishedMapperTest {
                 List.of(
                     AccountRegistryDependency.POSTINGS,
                     AccountRegistryDependency.TAX_REGISTRATIONS))));
-  }
-
-  private static MethodHandle publishedAccountStructureRejectionHandle() {
-    try {
-      MethodHandles.Lookup lookup =
-          MethodHandles.privateLookupIn(
-              BookkeepingAdministrationRejectionPublishedMapper.class, MethodHandles.lookup());
-      return lookup.findStatic(
-          BookkeepingAdministrationRejectionPublishedMapper.class,
-          "toPublishedAccountStructureRejection",
-          MethodType.methodType(
-              BookAdministrationRejection.class, BookkeepingAdministrationRejection.class));
-    } catch (ReflectiveOperationException exception) {
-      throw new ExceptionInInitializerError(exception);
-    }
-  }
-
-  private static BookAdministrationRejection invokeAccountStructureMapper(
-      BookkeepingAdministrationRejection rejection) {
-    try {
-      return (BookAdministrationRejection)
-          TO_PUBLISHED_ACCOUNT_STRUCTURE_REJECTION.invoke(rejection);
-    } catch (RuntimeException | Error exception) {
-      throw exception;
-    } catch (Throwable throwable) {
-      throw new AssertionError(throwable);
-    }
   }
 }

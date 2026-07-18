@@ -16,6 +16,7 @@ import dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct;
 import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
 import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
 import dev.erst.fingrind.contract.fx.QuotedExchangeRate;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.ProtocolForeignExchangeRequestFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostingNestedFieldSets;
@@ -35,14 +36,14 @@ final class CliBookkeepingEntryNestedParser {
   private CliBookkeepingEntryNestedParser() {}
 
   static @org.jspecify.annotations.Nullable TaxSelection optionalTaxSelection(ObjectNode rootNode) {
-    JsonNode taxNode = rootNode.get(ProtocolPostEntryFields.TopLevel.TAX);
+    JsonNode taxNode = rootNode.get(ProtocolBusinessEventFields.Core.TAX);
     if (taxNode == null || taxNode.isNull()) {
       return null;
     }
-    ObjectNode taxObject = requireObjectNode(taxNode, ProtocolPostEntryFields.TopLevel.TAX);
+    ObjectNode taxObject = requireObjectNode(taxNode, ProtocolBusinessEventFields.Core.TAX);
     rejectUnexpectedFields(
         taxObject,
-        ProtocolPostEntryFields.TopLevel.TAX,
+        ProtocolBusinessEventFields.Core.TAX,
         ProtocolPostingNestedFieldSets.taxFields());
     return new TaxSelection(
         new TaxRegistrationId(
@@ -52,15 +53,15 @@ final class CliBookkeepingEntryNestedParser {
 
   static @org.jspecify.annotations.Nullable ForeignExchangeDetails optionalForeignExchange(
       ObjectNode rootNode) {
-    JsonNode foreignExchangeNode = rootNode.get(ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE);
+    JsonNode foreignExchangeNode = rootNode.get(ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE);
     if (foreignExchangeNode == null || foreignExchangeNode.isNull()) {
       return null;
     }
     ObjectNode foreignExchangeObject =
-        requireObjectNode(foreignExchangeNode, ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE);
+        requireObjectNode(foreignExchangeNode, ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE);
     rejectUnexpectedFields(
         foreignExchangeObject,
-        ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
+        ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE,
         ProtocolPostingNestedFieldSets.foreignExchangeFields());
     ObjectNode quotedRateObject =
         requiredObject(
@@ -68,7 +69,7 @@ final class CliBookkeepingEntryNestedParser {
             ProtocolForeignExchangeRequestFields.ForeignExchange.QUOTED_RATE);
     rejectUnexpectedFields(
         quotedRateObject,
-        ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE
+        ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE
             + "."
             + ProtocolForeignExchangeRequestFields.ForeignExchange.QUOTED_RATE,
         ProtocolPostingNestedFieldSets.quotedRateFields());
@@ -102,24 +103,24 @@ final class CliBookkeepingEntryNestedParser {
   }
 
   static ForeignExchangeDetails requiredForeignExchange(ObjectNode rootNode) {
-    requiredObject(rootNode, ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE);
+    requiredObject(rootNode, ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE);
     return java.util.Objects.requireNonNull(
-        optionalForeignExchange(rootNode), ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE);
+        optionalForeignExchange(rootNode), ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE);
   }
 
   static @org.jspecify.annotations.Nullable SettlementAdjunct optionalSettlementAdjunct(
       ObjectNode rootNode) {
     JsonNode settlementAdjunctNode =
-        rootNode.get(ProtocolPostEntryFields.TopLevel.SETTLEMENT_ADJUNCT);
+        rootNode.get(ProtocolBusinessEventFields.Core.SETTLEMENT_ADJUNCT);
     if (settlementAdjunctNode == null || settlementAdjunctNode.isNull()) {
       return null;
     }
     ObjectNode settlementAdjunctObject =
         requireObjectNode(
-            settlementAdjunctNode, ProtocolPostEntryFields.TopLevel.SETTLEMENT_ADJUNCT);
+            settlementAdjunctNode, ProtocolBusinessEventFields.Core.SETTLEMENT_ADJUNCT);
     rejectUnexpectedFields(
         settlementAdjunctObject,
-        ProtocolPostEntryFields.TopLevel.SETTLEMENT_ADJUNCT,
+        ProtocolBusinessEventFields.Core.SETTLEMENT_ADJUNCT,
         ProtocolPostingNestedFieldSets.settlementAdjunctFields());
     return new SettlementAdjunct(
         new AccountCode(
@@ -130,15 +131,17 @@ final class CliBookkeepingEntryNestedParser {
 
   static @org.jspecify.annotations.Nullable InventoryRelief optionalInventoryRelief(
       ObjectNode rootNode) {
-    JsonNode inventoryReliefNode = rootNode.get(ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF);
+    JsonNode inventoryReliefNode =
+        rootNode.get(ProtocolBusinessEventFields.Inventory.INVENTORY_RELIEF);
     if (inventoryReliefNode == null || inventoryReliefNode.isNull()) {
       return null;
     }
     ObjectNode inventoryReliefObject =
-        requireObjectNode(inventoryReliefNode, ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF);
+        requireObjectNode(
+            inventoryReliefNode, ProtocolBusinessEventFields.Inventory.INVENTORY_RELIEF);
     rejectUnexpectedFields(
         inventoryReliefObject,
-        ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF,
+        ProtocolBusinessEventFields.Inventory.INVENTORY_RELIEF,
         ProtocolPostingNestedFieldSets.inventoryReliefFields());
     return new InventoryRelief(
         new AccountCode(
@@ -155,26 +158,26 @@ final class CliBookkeepingEntryNestedParser {
 
   static AccrualCutoffRecognitionInterval requiredRecognitionInterval(ObjectNode rootNode) {
     ObjectNode intervalObject =
-        requiredObject(rootNode, ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL);
+        requiredObject(rootNode, ProtocolBusinessEventFields.AccrualCutoff.RECOGNITION_INTERVAL);
     rejectUnexpectedFields(
         intervalObject,
-        ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL,
+        ProtocolBusinessEventFields.AccrualCutoff.RECOGNITION_INTERVAL,
         ProtocolPostingNestedFieldSets.recognitionIntervalFields());
     return new AccrualCutoffRecognitionInterval(
         CanonicalTemporalText.parseLocalDate(
             requiredText(intervalObject, ProtocolPostEntryFields.RecognitionInterval.START_DATE),
-            ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL
+            ProtocolBusinessEventFields.AccrualCutoff.RECOGNITION_INTERVAL
                 + "."
                 + ProtocolPostEntryFields.RecognitionInterval.START_DATE),
         CanonicalTemporalText.parseLocalDate(
             requiredText(intervalObject, ProtocolPostEntryFields.RecognitionInterval.END_DATE),
-            ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL
+            ProtocolBusinessEventFields.AccrualCutoff.RECOGNITION_INTERVAL
                 + "."
                 + ProtocolPostEntryFields.RecognitionInterval.END_DATE));
   }
 
   static PostingLineage.Reversal readRequiredReversal(ObjectNode rootNode) {
-    ObjectNode reversalObject = requiredObject(rootNode, ProtocolPostEntryFields.TopLevel.REVERSAL);
+    ObjectNode reversalObject = requiredObject(rootNode, ProtocolBusinessEventFields.Core.REVERSAL);
     return readReversalObject(reversalObject);
   }
 
@@ -186,7 +189,7 @@ final class CliBookkeepingEntryNestedParser {
     rejectForbiddenField(reversalObject, ProtocolPostEntryFields.Reversal.KIND);
     rejectUnexpectedFields(
         reversalObject,
-        ProtocolPostEntryFields.TopLevel.REVERSAL,
+        ProtocolBusinessEventFields.Core.REVERSAL,
         ProtocolPostingNestedFieldSets.reversalFields());
     return new PostingLineage.Reversal(
         new ReversalReference(

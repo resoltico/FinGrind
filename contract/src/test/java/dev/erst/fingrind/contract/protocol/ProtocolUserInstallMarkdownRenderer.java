@@ -115,7 +115,7 @@ final class ProtocolUserInstallMarkdownRenderer {
         readStringArray(releasePublication.path("containerPlatforms"), "containerPlatforms");
     String latestPolicy =
         renderedLatestPublicationPolicy(
-            releasePublication.path("latestPublicationPolicy").asText(""));
+            releasePublication.path("latestPublicationPolicy").asString(""));
     if (latestPolicy.isBlank()) {
       throw new IOException(
           RELEASE_PUBLICATION_CONTRACT_PATH + " must declare latestPublicationPolicy.");
@@ -152,14 +152,14 @@ final class ProtocolUserInstallMarkdownRenderer {
     return StreamSupport.stream(node.spliterator(), false)
         .map(
             element -> {
-              if (!element.isTextual() || element.asText().isBlank()) {
+              if (!element.isString() || element.asString().isBlank()) {
                 throw new IllegalArgumentException(
                     RELEASE_PUBLICATION_CONTRACT_PATH
                         + " must declare "
                         + fieldName
                         + " as strings.");
               }
-              return element.asText();
+              return element.asString();
             })
         .toList();
   }
@@ -177,10 +177,10 @@ final class ProtocolUserInstallMarkdownRenderer {
   private static String requiredText(JsonNode node, String fieldName, String sourcePath)
       throws IOException {
     JsonNode value = node.path(fieldName);
-    if (!value.isTextual() || value.asText().isBlank()) {
+    if (!value.isString() || value.asString().isBlank()) {
       throw new IOException(sourcePath + " must declare " + fieldName + " as non-blank text.");
     }
-    return value.asText();
+    return value.asString();
   }
 
   private static BundleLayoutRow bundleLayoutRowUnchecked(JsonNode node) {

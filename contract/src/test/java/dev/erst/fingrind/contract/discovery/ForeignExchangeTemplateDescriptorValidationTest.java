@@ -74,7 +74,7 @@ class ForeignExchangeTemplateDescriptorValidationTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () ->
-                    new ContractTemplates.PostingRequestTemplateDescriptor(
+                    new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
                         BookkeepingEntryKind.OPENING_POSITION,
                         "2026-04-25",
                         null,

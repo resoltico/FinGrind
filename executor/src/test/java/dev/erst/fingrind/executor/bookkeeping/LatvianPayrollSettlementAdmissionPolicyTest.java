@@ -34,7 +34,11 @@ class LatvianPayrollSettlementAdmissionPolicyTest {
       new LatvianPayrollRunId("payroll-2026-07-employee-1");
   private static final AccountCode CASH = new AccountCode("1000");
   private static final LatvianMonthlyPayrollCalculation CALCULATION =
-      LatvianMonthlyPayroll2026.calculate(PAYROLL_MONTH, Money.parse("EUR", "2000.00"));
+      LatvianMonthlyPayroll2026.calculate(
+          PAYROLL_MONTH,
+          Money.parse("EUR", "2000.00"),
+          dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+              .taxBookWithNoDependantsFor2026());
 
   private final LatvianPayrollSettlementAdmissionPolicy policy =
       new LatvianPayrollSettlementAdmissionPolicy();

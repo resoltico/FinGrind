@@ -50,8 +50,9 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
                     AccountType.ASSET,
                     List.of(
                         new FinancialPositionRowView(
-                            "1000",
-                            "Cash",
+                            "delivery-van-accumulated-depreciation",
+                            "Accumulated Depreciation",
+                            Optional.of("delivery-van"),
                             AccountType.ASSET,
                             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                             StatementLineKind.DECLARED_ACCOUNT,
@@ -62,8 +63,9 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
                     AccountType.ASSET,
                     List.of(
                         new FinancialPositionRowView(
-                            "1000",
-                            "Cash",
+                            "delivery-van-accumulated-depreciation",
+                            "Accumulated Depreciation",
+                            Optional.of("delivery-van"),
                             AccountType.ASSET,
                             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                             StatementLineKind.DECLARED_ACCOUNT,
@@ -83,6 +85,7 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
                         new IncomeStatementRowView(
                             "4000",
                             "Revenue",
+                            Optional.empty(),
                             AccountType.REVENUE,
                             ProfitAndLossLineClassification.OPERATING_REVENUE,
                             StatementLineKind.DECLARED_ACCOUNT,
@@ -96,6 +99,7 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
                         new IncomeStatementRowView(
                             "4000",
                             "Revenue",
+                            Optional.empty(),
                             AccountType.REVENUE,
                             ProfitAndLossLineClassification.OPERATING_REVENUE,
                             StatementLineKind.DECLARED_ACCOUNT,
@@ -149,8 +153,8 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
                     AccountType.ASSET,
                     List.of(
                         new FinancialPositionRow(
-                            "1000",
-                            "Cash",
+                            "delivery-van-accumulated-depreciation",
+                            "Less: Accumulated Depreciation (reduces delivery-van)",
                             AccountType.ASSET,
                             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                             StatementLineKind.DECLARED_ACCOUNT,
@@ -161,8 +165,8 @@ class BookkeepingReadStatementPublishedLanguageTranslatorTest {
                     AccountType.ASSET,
                     List.of(
                         new FinancialPositionRow(
-                            "1000",
-                            "Cash",
+                            "delivery-van-accumulated-depreciation",
+                            "Less: Accumulated Depreciation (reduces delivery-van)",
                             AccountType.ASSET,
                             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
                             StatementLineKind.DECLARED_ACCOUNT,

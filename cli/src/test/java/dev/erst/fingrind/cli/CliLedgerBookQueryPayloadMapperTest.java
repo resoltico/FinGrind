@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.workflow.LedgerFact;
@@ -127,6 +128,8 @@ class CliLedgerBookQueryPayloadMapperTest {
                             LedgerFact.text("payrollRunId", "payroll-run-2026-07-employee-001"),
                             LedgerFact.text("employeeReference", "employee-001"),
                             LedgerFact.text("payrollMonth", "2026-07"),
+                            LedgerFact.flag("taxBookHeldAtEmployer", true),
+                            LedgerFact.count("dependantCount", 0),
                             LedgerFact.text("wageExpenseAccountCode", "5000"),
                             LedgerFact.text("employerSocialContributionExpenseAccountCode", "5010"),
                             LedgerFact.text("netWagesPayableAccountCode", "2200"),
@@ -148,6 +151,8 @@ class CliLedgerBookQueryPayloadMapperTest {
         Objects.requireNonNull(Objects.requireNonNull(payload.entry()).latvianMonthlyPayroll());
     assertEquals("payroll-run-2026-07-employee-001", payroll.payrollRunId());
     assertEquals("employee-001", payroll.employeeReference());
+    assertTrue(payroll.taxBookHeldAtEmployer());
+    assertEquals(0, payroll.dependantCount());
     assertEquals("200000", payroll.grossWages().minorUnits());
     assertEquals(
         "147380", Objects.requireNonNull(payroll.resolvedCalculation()).netWages().minorUnits());

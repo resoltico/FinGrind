@@ -12,6 +12,7 @@ public record ReportContext(
     String accountingBasis,
     String functionalCurrency,
     String fiscalYearStart,
+    String bookStartEffectiveDate,
     @Nullable String postingCoverage,
     @Nullable String periodStart,
     @Nullable String periodEnd,
@@ -31,6 +32,8 @@ public record ReportContext(
     functionalCurrency =
         ContractDescriptorValidation.requireText(functionalCurrency, "functionalCurrency");
     fiscalYearStart = ContractDescriptorValidation.requireText(fiscalYearStart, "fiscalYearStart");
+    bookStartEffectiveDate =
+        ContractDescriptorValidation.requireText(bookStartEffectiveDate, "bookStartEffectiveDate");
     postingCoverage =
         ContractDescriptorValidation.requireOptionalText(postingCoverage, "postingCoverage");
     periodStart = ContractDescriptorValidation.requireOptionalText(periodStart, "periodStart");
@@ -77,6 +80,7 @@ public record ReportContext(
     rows.add(new ReportVerdict("Accounting basis", accountingBasis));
     rows.add(new ReportVerdict("Functional currency", functionalCurrency));
     rows.add(new ReportVerdict("Fiscal year start", fiscalYearStart));
+    rows.add(new ReportVerdict("Book start effective date", bookStartEffectiveDate));
   }
 
   private static void appendOptionalRow(

@@ -15,6 +15,15 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  wrapper-validation:
+    name: Gradle wrapper validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: gradle/actions/wrapper-validation@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+
   check:
     name: Check
     runs-on: ubuntu-24.04
@@ -138,7 +147,8 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
         with:
-          cache-read-only: ${{ github.event_name == 'pull_request' }}
+          # Check owns cache writes; parallel platform proof jobs only consume its cache state.
+          cache-read-only: true
 
       - name: Configure MSVC developer command environment
         if: runner.os == 'Windows'
@@ -365,6 +375,7 @@ jobs:
     name: Gate
     if: always()
     needs:
+      - wrapper-validation
       - check
       - prepare-published-bundle-smoke-matrix
       - published-bundle-smoke

@@ -11,10 +11,10 @@ final class ProtocolPostingRequestFieldSetSupport {
     var fields =
         new LinkedHashSet<>(
             Set.of(
-                ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-                ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-                ProtocolPostEntryFields.TopLevel.EVIDENCE,
-                ProtocolPostEntryFields.TopLevel.PROVENANCE));
+                ProtocolBusinessEventFields.Core.ENTRY_KIND,
+                ProtocolBusinessEventFields.Core.EFFECTIVE_DATE,
+                ProtocolBusinessEventFields.Core.EVIDENCE,
+                ProtocolBusinessEventFields.Core.PROVENANCE));
     java.util.Collections.addAll(fields, variantFields);
     return Set.copyOf(fields);
   }

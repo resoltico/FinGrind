@@ -41,7 +41,7 @@ final class CliRequestReader {
   PostEntryCommand readPostEntryCommand(Path requestFile, OperationId templateOperation) {
     return parseRequest(
         requestFile,
-        CliJsonRequestHints.postEntryRequestHint(),
+        CliJsonRequestHints.postEntryRequestHint(templateOperation),
         templateOperation,
         rootNode -> CliPostingRequestParser.readPostEntryCommand(rootNode, templateOperation));
   }
@@ -123,7 +123,7 @@ final class CliRequestReader {
         message,
         templateOperation == null
             ? CliRequestRepairHints.refineLedgerPlan(message, requestHint)
-            : CliRequestRepairHints.refine(message, requestHint, details, templateOperation),
+            : CliRequestRepairHints.refine(message, requestHint, details),
         exception,
         argument,
         details);
@@ -140,7 +140,7 @@ final class CliRequestReader {
         message,
         templateOperation == null
             ? CliRequestRepairHints.refineLedgerPlan(message, requestHint)
-            : CliRequestRepairHints.refine(message, requestHint, null, templateOperation),
+            : CliRequestRepairHints.refine(message, requestHint, null),
         exception,
         argument);
   }

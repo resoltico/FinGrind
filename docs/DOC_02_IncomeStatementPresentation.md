@@ -1,5 +1,5 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: CONTRACT_EXECUTOR_INCOME_STATEMENT_PRESENTATION
 updated: "2026-07-16"

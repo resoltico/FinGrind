@@ -12,6 +12,7 @@ import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
+import dev.erst.fingrind.core.ContraAccountRelationshipViolation;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
@@ -123,12 +124,14 @@ class LedgerPlanAdministrationFailureSupportTest {
         new AccountTaxonomy(
             AccountNodeKind.POSTABLE,
             Optional.of(new AccountCode("9000")),
+            Optional.of(new AccountCode("1090")),
             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
             Optional.empty(),
             Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
     AccountTaxonomy existingFinancialTaxonomy =
         new AccountTaxonomy(
             AccountNodeKind.POSTABLE,
+            Optional.empty(),
             Optional.empty(),
             Optional.of(FinancialPositionLineClassification.NONCURRENT_ASSET),
             Optional.empty(),
@@ -138,13 +141,17 @@ class LedgerPlanAdministrationFailureSupportTest {
             AccountNodeKind.POSTABLE,
             Optional.of(new AccountCode("9100")),
             Optional.empty(),
-            Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
+            Optional.empty(),
+            Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE),
+            Optional.empty());
     AccountTaxonomy parentProfitTaxonomy =
         new AccountTaxonomy(
             AccountNodeKind.HEADER,
             Optional.empty(),
             Optional.empty(),
-            Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE));
+            Optional.empty(),
+            Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE),
+            Optional.empty());
 
     assertEquals(
         List.of(
@@ -168,11 +175,22 @@ class LedgerPlanAdministrationFailureSupportTest {
                 List.of(
                     BookWorkflowFact.text("accountNodeKind", "POSTABLE"),
                     BookWorkflowFact.text("parentAccountCode", "9000"),
+                    BookWorkflowFact.text("contraOfAccountCode", "1090"),
                     BookWorkflowFact.text(
                         "financialPositionLineClassification", "CURRENT_ASSET")))),
         LedgerPlanAdministrationFailureSupport.facts(
             new BookAdministrationRejection.AccountTaxonomyConflict(
                 new AccountCode("1000"), existingFinancialTaxonomy, requestedFinancialTaxonomy)));
+    assertEquals(
+        List.of(
+            BookWorkflowFact.text("accountCode", "1090"),
+            BookWorkflowFact.text("contraOfAccountCode", "1000"),
+            BookWorkflowFact.text("violation", "target-inactive")),
+        LedgerPlanAdministrationFailureSupport.facts(
+            new dev.erst.fingrind.contract.bookkeeping.ContraAccountInvalid(
+                new AccountCode("1090"),
+                new AccountCode("1000"),
+                ContraAccountRelationshipViolation.TARGET_INACTIVE)));
     assertEquals(
         List.of(
             BookWorkflowFact.text("accountCode", "1000"),

@@ -5,12 +5,17 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.BookDoctrine;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.UnitOfMeasure;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /** Direct coverage for seed-template ownership on built-in book templates. */
 class BookTemplateAccountsTest {
@@ -121,6 +126,43 @@ class BookTemplateAccountsTest {
             .accountTaxonomy()
             .financialPositionLineClassification()
             .orElseThrow());
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("builtInDoctrines")
+  void declarations_resolveEveryContraReferenceWithinItsSelectedChart(BookDoctrine doctrine) {
+    List<AccountDeclaration> declarations = BookTemplateAccounts.declarations(doctrine);
+    Set<AccountCode> declaredCodes =
+        declarations.stream()
+            .map(AccountDeclaration::accountCode)
+            .collect(java.util.stream.Collectors.toSet());
+
+    for (AccountDeclaration declaration : declarations) {
+      var contraAccountCode = declaration.accountTaxonomy().contraOfAccountCode();
+      if (contraAccountCode.isEmpty()) {
+        continue;
+      }
+      AccountCode selectedContraAccountCode = contraAccountCode.orElseThrow();
+      assertTrue(
+          declaredCodes.contains(selectedContraAccountCode),
+          () ->
+              "Template "
+                  + doctrine.bookTemplateId()
+                  + " with basis "
+                  + doctrine.accountingBasis()
+                  + " declares contra account "
+                  + declaration.accountCode().value()
+                  + " against missing account "
+                  + selectedContraAccountCode.value());
+    }
+  }
+
+  private static Stream<BookDoctrine> builtInDoctrines() {
+    return Stream.of(
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING,
+        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING_ACCRUAL);
   }
 
   private static AccountDeclaration declaration(

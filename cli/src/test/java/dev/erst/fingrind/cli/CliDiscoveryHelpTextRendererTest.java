@@ -412,7 +412,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
   }
 
   @Test
-  void renderHelpText_executePlanDescribesTaxOnlyPlanWithoutAPostingScaffold() {
+  void renderHelpText_executePlanDescribesTheGeneralWorkflowStarterPlan() {
     HelpDescriptor executePlan =
         MachineContract.help(
             CliDiscoveryTestSupport.identity(),
@@ -420,8 +420,8 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
             OperationId.EXECUTE_PLAN);
     String rendered = renderHelpText(executePlan);
 
-    assertTrue(rendered.contains("declareTaxRegistration"), rendered);
-    assertTrue(rendered.contains("tax-setup"), rendered);
+    assertTrue(rendered.contains("record-sale-settled"), rendered);
+    assertTrue(rendered.contains("general-workflow"), rendered);
     assertTrue(rendered.contains("steps[].posting.entryKind"), rendered);
   }
 
@@ -488,7 +488,8 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
         ledgerPlanShape.assertionFields()) {
       assertTrue(rendered.contains("steps[].assertion." + assertionField.name()), rendered);
     }
-    assertContainsNestedPostingModelPaths(rendered, ledgerPlanShape.postingModel());
+    CliDiscoveryHelpTextFieldSupport.assertContainsNestedPostingModelPaths(
+        rendered, ledgerPlanShape.postingModel());
     assertFalse(rendered.contains("Posting model\n-------------\nentryKind"), rendered);
   }
 
@@ -510,14 +511,16 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postingModel =
         Objects.requireNonNull(
             Objects.requireNonNull(recordSaleCanonical.requestShapes()).bookkeepingEntry());
-    List<String> acceptedPostingLabels = acceptedPostingFieldPaths(postingModel);
+    List<String> acceptedPostingLabels =
+        CliDiscoveryHelpTextFieldSupport.acceptedPostingFieldPaths(postingModel);
     List<String> recordSaleAcceptedBlocks =
-        extractRenderedFieldBlocks(recordSaleRendered, acceptedPostingLabels);
+        CliDiscoveryHelpTextFieldSupport.extractRenderedFieldBlocks(
+            recordSaleRendered, acceptedPostingLabels);
     assertAll(
         () ->
             assertEquals(
                 acceptedPostingLabels,
-                renderedFieldLabels(recordSaleAcceptedBlocks),
+                CliDiscoveryHelpTextFieldSupport.renderedFieldLabels(recordSaleAcceptedBlocks),
                 recordSaleRendered),
         () ->
             acceptedPostingLabels.forEach(
@@ -527,7 +530,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                         executePlanRendered)),
         () ->
             assertTrue(
-                normalizedFieldBlocks(recordSaleAcceptedBlocks)
+                CliDiscoveryHelpTextFieldSupport.normalizedFieldBlocks(recordSaleAcceptedBlocks)
                     .getFirst()
                     .contains("Canonical scaffold value: SALE_SETTLED."),
                 recordSaleRendered),
@@ -676,6 +679,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                     Objects.requireNonNull(postEntryCanonical.requestShapes()).schemaDialect(),
                     null,
                     postEntryCanonical.requestShapes().declareAccount(),
+                    postEntryCanonical.requestShapes().retireAccount(),
                     postEntryCanonical.requestShapes().declareTaxRegistration(),
                     postEntryCanonical.requestShapes().ledgerPlan()),
                 postEntryCanonical.requestTemplate(),
@@ -741,6 +745,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                     Objects.requireNonNull(declareCanonical.requestShapes()).schemaDialect(),
                     declareCanonical.requestShapes().bookkeepingEntry(),
                     null,
+                    declareCanonical.requestShapes().retireAccount(),
                     declareCanonical.requestShapes().declareTaxRegistration(),
                     declareCanonical.requestShapes().ledgerPlan()),
                 declareCanonical.requestTemplate(),
@@ -806,6 +811,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                     Objects.requireNonNull(executePlanCanonical.requestShapes()).schemaDialect(),
                     executePlanCanonical.requestShapes().bookkeepingEntry(),
                     executePlanCanonical.requestShapes().declareAccount(),
+                    executePlanCanonical.requestShapes().retireAccount(),
                     executePlanCanonical.requestShapes().declareTaxRegistration(),
                     null),
                 executePlanCanonical.requestTemplate(),

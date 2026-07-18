@@ -37,7 +37,12 @@ final class EntrySemanticsRealizedForeignExchangeViolationDefinitions {
             "realized-foreign-exchange-settlement-functional-currency-mismatch",
             "realized-foreign-exchange-currency",
             "The settlement functional amount does not use the obligation's retained functional currency.",
-            "Use foreignExchange.functionalAmount in the functional currency retained by the selected foreign-currency obligation."));
+            "Use foreignExchange.functionalAmount in the functional currency retained by the selected foreign-currency obligation."),
+        definition(
+            "foreign-currency-obligation-reversal-requires-settlement-reversed",
+            "realized-foreign-exchange-reversal",
+            "A foreign-currency obligation cannot be reversed while its active settlement remains.",
+            "Reverse the active settlement before reversing the foreign-currency obligation."));
   }
 
   private static EntrySemanticsViolationDefinition definition(

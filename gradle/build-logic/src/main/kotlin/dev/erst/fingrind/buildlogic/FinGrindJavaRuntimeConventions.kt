@@ -98,6 +98,7 @@ internal fun Project.configureJavaRuntimeConventions(
 
     tasks.withType<JavaCompile>().configureEach {
         options.release.set(fingrindJavaVersion)
+        options.compilerArgs.add("-Xlint:deprecation")
         options.errorprone.disableWarningsInGeneratedCode.set(true)
         options.errorprone.option("NullAway:OnlyNullMarked", "true")
         options.errorprone.option("NullAway:JSpecifyMode", "true")

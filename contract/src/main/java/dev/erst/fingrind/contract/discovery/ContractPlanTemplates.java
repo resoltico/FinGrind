@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.discovery.ContractPostingRequestTemplates.PostingRequestTemplateDescriptor;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
@@ -9,6 +10,7 @@ import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookTemplateId;
+import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.InventoryCostingDoctrine;
@@ -36,7 +38,7 @@ public interface ContractPlanTemplates {
       String stepId,
       LedgerStepKind kind,
       ContractPlanTemplates.@Nullable EnsureBookTemplateDescriptor ensureBook,
-      ContractTemplates.@Nullable PostingRequestTemplateDescriptor posting,
+      @Nullable PostingRequestTemplateDescriptor posting,
       ContractTemplates.@Nullable DeclareAccountTemplateDescriptor declareAccount,
       ContractTemplates.@Nullable DeclareTaxRegistrationTemplateDescriptor declareTaxRegistration,
       ContractPlanTemplates.@Nullable LedgerPlanQueryTemplateDescriptor query,
@@ -48,7 +50,7 @@ public interface ContractPlanTemplates {
         String stepId,
         LedgerStepKind kind,
         ContractPlanTemplates.@Nullable EnsureBookTemplateDescriptor ensureBook,
-        ContractTemplates.@Nullable PostingRequestTemplateDescriptor posting,
+        @Nullable PostingRequestTemplateDescriptor posting,
         ContractTemplates.@Nullable DeclareAccountTemplateDescriptor declareAccount,
         ContractTemplates.@Nullable DeclareTaxRegistrationTemplateDescriptor declareTaxRegistration,
         ContractPlanTemplates.@Nullable LedgerPlanQueryTemplateDescriptor query,
@@ -85,7 +87,8 @@ public interface ContractPlanTemplates {
       String accountingBasis,
       @Nullable String inventoryCosting,
       String functionalCurrency,
-      String fiscalYearStart)
+      String fiscalYearStart,
+      String bookStartEffectiveDate)
       implements TemplateDescriptorType {
     /** Validates one ensure-book template descriptor payload. */
     public EnsureBookTemplateDescriptor {
@@ -107,6 +110,10 @@ public interface ContractPlanTemplates {
       fiscalYearStart =
           ContractDescriptorValidation.requireText(fiscalYearStart, "fiscalYearStart");
       FiscalYearStart.parse(fiscalYearStart);
+      bookStartEffectiveDate =
+          ContractDescriptorValidation.requireText(
+              bookStartEffectiveDate, "bookStartEffectiveDate");
+      CanonicalTemporalText.parseLocalDate(bookStartEffectiveDate, "bookStartEffectiveDate");
     }
   }
 

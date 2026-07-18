@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: CONTRACT_ACCOUNT_REGISTRY
-updated: "2026-07-16"
+updated: "2026-07-17"
 route:
   keywords: [fingrind, contract, account-registry, account-lifecycle, amend-account, retire-account, declared-account]
   questions: ["where are account lifecycle commands documented", "how does amend-account work", "how does retire-account preserve historical reversals"]
@@ -35,6 +35,22 @@ public sealed interface RetireAccountResult
   reversals remain admissible
 - Boundary: no delete-account command or result exists because retirement preserves the account's
   ledger identity and history
+
+## `ContraAccountInvalid`
+
+`ContraAccountInvalid` is the Account Registry rejection for a declared `contraOfAccountCode`
+relationship that violates the chart doctrine.
+
+```java
+public record ContraAccountInvalid(
+    AccountCode accountCode,
+    AccountCode contraOfAccountCode,
+    ContraAccountRelationshipViolation violation)
+```
+
+The rejection preserves both the candidate and target account identities plus the exact closed
+violation reason, so callers can correct the relationship without inferring the cause from a
+generic taxonomy failure.
 
 ## `AccountAmendmentOutcome`, `AccountRegistryDependency`, `AccountRegistryLifecyclePolicy`, `AccountRegistryLifecycleRejection`, `AccountRegistryPublishedLanguageTranslator`, And `AccountRetirementOutcome`
 

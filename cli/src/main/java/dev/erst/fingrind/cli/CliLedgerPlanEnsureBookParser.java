@@ -40,7 +40,10 @@ final class CliLedgerPlanEnsureBookParser {
                 "ensureBook." + ProtocolOpenBookFields.FUNCTIONAL_CURRENCY),
             CliOptionValues.parseFiscalYearStartOption(
                 requiredText(ensureBookNode, ProtocolOpenBookFields.FISCAL_YEAR_START),
-                "ensureBook." + ProtocolOpenBookFields.FISCAL_YEAR_START)));
+                "ensureBook." + ProtocolOpenBookFields.FISCAL_YEAR_START),
+            CliOptionValues.parseLocalDateOption(
+                requiredText(ensureBookNode, ProtocolOpenBookFields.BOOK_START_EFFECTIVE_DATE),
+                "ensureBook." + ProtocolOpenBookFields.BOOK_START_EFFECTIVE_DATE)));
   }
 
   private static @Nullable InventoryCostingDoctrine inventoryCostingDoctrine(

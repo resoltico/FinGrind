@@ -2,7 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractPlanTemplates;
-import dev.erst.fingrind.contract.discovery.ContractTemplates;
+import dev.erst.fingrind.contract.discovery.ContractPostingRequestTemplates;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.OutputMode;
@@ -61,7 +61,8 @@ class CliResponseWriterDiscoverySupport extends CliResponseWriterBaseSupport {
     discoveryWriter.writeVersion(versionDescriptor, outputMode);
   }
 
-  void writeRequestTemplate(ContractTemplates.PostingRequestTemplateDescriptor requestTemplate) {
+  void writeRequestTemplate(
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor requestTemplate) {
     discoveryWriter.writeRawTemplate(requestTemplate);
   }
 

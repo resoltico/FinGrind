@@ -199,7 +199,7 @@ class SqliteFiscalYearCloseBoundaryCoverageTest extends SqlitePostingFactStoreTe
   }
 
   @Test
-  void fiscalYearClose_rejectsYearsThatEndBeforeTheLiveTransferredThroughHorizon() {
+  void fiscalYearClose_rejectsYearsThatEndBeforeTheImmutableBookStart() {
     Path bookPath = tempDirectory.resolve("fiscal-year-close-precedes-horizon.sqlite");
     ReportingPeriod earlierFiscalYear =
         new ReportingPeriod(LocalDate.parse("2025-01-01"), LocalDate.parse("2025-12-31"));
@@ -224,6 +224,48 @@ class SqliteFiscalYearCloseBoundaryCoverageTest extends SqlitePostingFactStoreTe
                   .fiscalYearClose(earlierFiscalYear));
 
       assertEquals(
+          new BookkeepingAdministrationRejection.FiscalYearCloseMustStartAt(
+              LocalDate.parse("2026-01-01")),
+          rejected.rejection());
+      assertEquals(0, countRows(requireStoreDatabase(postingFactStore), "fiscal_year_close"));
+    }
+  }
+
+  @Test
+  void fiscalYearClose_rejectsYearsThatPrecedeTheTransferredThroughHorizon() {
+    Path bookPath = tempDirectory.resolve("fiscal-year-close-precedes-transferred-through.sqlite");
+    var baseline = bookIdentity();
+    var bookOpenedIn2025 =
+        new dev.erst.fingrind.core.BookIdentity(
+            baseline.entityProfile(),
+            baseline.bookDoctrine(),
+            baseline.functionalCurrency(),
+            baseline.fiscalYearStart(),
+            LocalDate.parse("2025-01-01"));
+    ReportingPeriod fiscalYear2025 =
+        new ReportingPeriod(LocalDate.parse("2025-01-01"), LocalDate.parse("2025-12-31"));
+    ReportingPeriod firstQuarter2026 =
+        new ReportingPeriod(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-03-31"));
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath));
+        SqliteReportingPeriodCloseSession closeSession =
+            SqliteCapabilitySessions.reportingPeriodClose(postingFactStore)) {
+      postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookOpenedIn2025, List.of());
+      declareMinimalNumericAccounts(postingFactStore);
+      declareAllCloseTargets(postingFactStore);
+
+      assertInstanceOf(
+          InterimResultSweepOutcome.Transferred.class,
+          new InterimResultSweepService(
+                  closeSession, closeSession, new SequencePostingIdGenerator(), CLOSED_CLOCK)
+              .interimResultSweep(firstQuarter2026));
+
+      FiscalYearCloseOutcome.Rejected rejected =
+          assertInstanceOf(
+              FiscalYearCloseOutcome.Rejected.class,
+              closeService(closeSession, "unused-close-1", "unused-close-2")
+                  .fiscalYearClose(fiscalYear2025));
+
+      assertEquals(
           new BookkeepingAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon(
               LocalDate.parse("2025-12-31"), LocalDate.parse("2026-03-31")),
           rejected.rejection());
@@ -234,8 +276,8 @@ class SqliteFiscalYearCloseBoundaryCoverageTest extends SqlitePostingFactStoreTe
   @Test
   void fiscalYearClose_replaysExistingClosedYearWithoutPersistingAnotherCloseRow() {
     Path bookPath = tempDirectory.resolve("fiscal-year-close-replay.sqlite");
-    ReportingPeriod fiscalYear2025 =
-        new ReportingPeriod(LocalDate.parse("2025-01-01"), LocalDate.parse("2025-12-31"));
+    ReportingPeriod fiscalYear2026 =
+        new ReportingPeriod(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31"));
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath));
         SqliteReportingPeriodCloseSession closeSession =
             SqliteCapabilitySessions.reportingPeriodClose(postingFactStore)) {
@@ -245,12 +287,12 @@ class SqliteFiscalYearCloseBoundaryCoverageTest extends SqlitePostingFactStoreTe
       FiscalYearCloseOutcome.Closed firstClose =
           assertInstanceOf(
               FiscalYearCloseOutcome.Closed.class,
-              closeService(closeSession).fiscalYearClose(fiscalYear2025));
+              closeService(closeSession).fiscalYearClose(fiscalYear2026));
       FiscalYearCloseOutcome.Closed replay =
           assertInstanceOf(
               FiscalYearCloseOutcome.Closed.class,
               closeService(closeSession, "unused-replay-1", "unused-replay-2")
-                  .fiscalYearClose(fiscalYear2025));
+                  .fiscalYearClose(fiscalYear2026));
 
       assertFalse(firstClose.idempotentReplay());
       assertTrue(replay.idempotentReplay());

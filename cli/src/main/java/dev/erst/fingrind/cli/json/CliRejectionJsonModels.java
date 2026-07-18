@@ -25,6 +25,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels, CliTaxRejecti
       permits AccountStateViolationsDetails,
           EntrySemanticsViolationsDetails,
           PriorPostingDetails,
+          PostingEffectiveDateBeforeBookStartDetails,
           PostingEffectiveDateInFutureDetails,
           FunctionalCurrencyMismatchDetails,
           OpeningPositionWindowClosedDetails,
@@ -35,6 +36,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels, CliTaxRejecti
   sealed interface AccountRejectionDetails extends RejectionDetails
       permits AccountTypeConflictDetails,
           AccountTaxonomyConflictDetails,
+          ContraAccountDetails,
           AccountCodeDetails,
           AccountDependenciesDetails,
           ParentAccountDetails,
@@ -118,6 +120,15 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels, CliTaxRejecti
       accountCode = requireText(accountCode, "accountCode");
       existingAccountTaxonomy = requireValue(existingAccountTaxonomy, "existingAccountTaxonomy");
       requestedAccountTaxonomy = requireValue(requestedAccountTaxonomy, "requestedAccountTaxonomy");
+    }
+  }
+
+  record ContraAccountDetails(String accountCode, String contraOfAccountCode, String violation)
+      implements AccountRejectionDetails {
+    public ContraAccountDetails {
+      accountCode = requireText(accountCode, "accountCode");
+      contraOfAccountCode = requireText(contraOfAccountCode, "contraOfAccountCode");
+      violation = requireText(violation, "violation");
     }
   }
 
@@ -335,6 +346,15 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels, CliTaxRejecti
     public PostingEffectiveDateInFutureDetails {
       attemptedEffectiveDate = requireText(attemptedEffectiveDate, "attemptedEffectiveDate");
       currentUtcDate = requireText(currentUtcDate, "currentUtcDate");
+    }
+  }
+
+  record PostingEffectiveDateBeforeBookStartDetails(
+      String attemptedEffectiveDate, String bookStartEffectiveDate)
+      implements PostingRejectionDetails {
+    public PostingEffectiveDateBeforeBookStartDetails {
+      attemptedEffectiveDate = requireText(attemptedEffectiveDate, "attemptedEffectiveDate");
+      bookStartEffectiveDate = requireText(bookStartEffectiveDate, "bookStartEffectiveDate");
     }
   }
 

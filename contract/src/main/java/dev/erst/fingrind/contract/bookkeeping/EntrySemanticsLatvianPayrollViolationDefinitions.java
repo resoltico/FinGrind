@@ -17,7 +17,7 @@ final class EntrySemanticsLatvianPayrollViolationDefinitions {
             "latvian-payroll-profile-not-admitted",
             "latvian-payroll-profile",
             "The supplied payroll facts fall outside the published Latvian monthly-payroll profile.",
-            "Use only the published period and worker assumptions, or record the case in an owned context that admits it."),
+            "Use EUR gross wages up to EUR 8,775.00, a 2026 payroll month, taxBookHeldAtEmployer true, and dependantCount 0; record any other case in an owned context that admits it."),
         definition(
             "latvian-payroll-run-id-already-exists",
             "latvian-payroll-lifecycle",

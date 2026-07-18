@@ -86,18 +86,21 @@ class BookkeepingPublishedLanguageTranslatorSemanticsOwnerTest {
           "fixed-asset-lifecycle-precedes-horizon",
           "fixed-asset-fully-depreciated",
           "fixed-asset-disposal-currency-mismatch",
+          "fixed-asset-capitalization-reversal-requires-applications-reversed",
           "financing-arrangement-id-already-exists",
           "financing-arrangement-not-found",
           "financing-principal-repayment-exceeds-outstanding",
           "financing-interest-payment-exceeds-accrued",
           "financing-lifecycle-precedes-horizon",
           "financing-currency-mismatch",
+          "financing-borrowing-reversal-requires-applications-reversed",
           "foreign-currency-obligation-id-already-exists",
           "foreign-currency-obligation-not-found",
           "foreign-currency-obligation-already-settled",
           "realized-foreign-exchange-settlement-precedes-lifecycle-horizon",
           "realized-foreign-exchange-settlement-transaction-amount-mismatch",
-          "realized-foreign-exchange-settlement-functional-currency-mismatch");
+          "realized-foreign-exchange-settlement-functional-currency-mismatch",
+          "foreign-currency-obligation-reversal-requires-settlement-reversed");
   private static final List<Class<?>> ENTRY_SEMANTICS_OWNERS =
       List.of(
           BookkeepingAccountSemanticsViolations.class,
@@ -137,18 +140,21 @@ class BookkeepingPublishedLanguageTranslatorSemanticsOwnerTest {
           "fixed-asset-lifecycle-precedes-horizon",
           "fixed-asset-fully-depreciated",
           "fixed-asset-disposal-currency-mismatch",
+          "fixed-asset-capitalization-reversal-requires-applications-reversed",
           "financing-arrangement-id-already-exists",
           "financing-arrangement-not-found",
           "financing-principal-repayment-exceeds-outstanding",
           "financing-interest-payment-exceeds-accrued",
           "financing-lifecycle-precedes-horizon",
           "financing-currency-mismatch",
+          "financing-borrowing-reversal-requires-applications-reversed",
           "foreign-currency-obligation-id-already-exists",
           "foreign-currency-obligation-not-found",
           "foreign-currency-obligation-already-settled",
           "realized-foreign-exchange-settlement-precedes-lifecycle-horizon",
           "realized-foreign-exchange-settlement-transaction-amount-mismatch",
-          "realized-foreign-exchange-settlement-functional-currency-mismatch");
+          "realized-foreign-exchange-settlement-functional-currency-mismatch",
+          "foreign-currency-obligation-reversal-requires-settlement-reversed");
   private static final Map<String, EntrySemanticsMethodInvoker> ENTRY_SEMANTICS_METHOD_INVOKERS =
       Map.ofEntries(
           Map.entry(

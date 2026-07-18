@@ -74,3 +74,46 @@ jobs:
       - name: Refresh the staged Docker publication surface
         shell: bash
         run: ./scripts/docker-smoke.sh
+
+  report-failed-canary:
+    name: Report failed distribution freshness
+    if: ${{ always() && github.event_name == 'schedule' && failure() }}
+    needs: [bundle-and-container-canary]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    permissions:
+      issues: write
+
+    steps:
+      - name: Create or update the owned failure issue
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          readonly issue_title='Distribution freshness canary failure'
+          readonly run_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          issue_body="The scheduled distribution freshness canary failed. Investigate the workflow run before the next scheduled execution.
+
+Run: ${run_url}
+Workflow attempt: ${GITHUB_RUN_ATTEMPT}"
+          open_issue_number="$(
+            gh issue list \
+              --repo "${GITHUB_REPOSITORY}" \
+              --state open \
+              --search "in:title \"${issue_title}\"" \
+              --json number,title \
+              --jq '[.[] | select(.title == "Distribution freshness canary failure") | .number] | first // empty'
+          )"
+          if [[ -n "${open_issue_number}" ]]; then
+            gh issue comment \
+              "${open_issue_number}" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --body "${issue_body}"
+          else
+            gh issue create \
+              --repo "${GITHUB_REPOSITORY}" \
+              --title "${issue_title}" \
+              --body "${issue_body}"
+          fi

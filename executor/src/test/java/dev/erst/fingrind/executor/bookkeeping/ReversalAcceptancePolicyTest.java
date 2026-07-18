@@ -10,9 +10,15 @@ import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffBookkeepingEntryVaria
 import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffId;
 import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffRecognitionInterval;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
+import dev.erst.fingrind.contract.bookkeeping.FinancingArrangementId;
+import dev.erst.fingrind.contract.bookkeeping.FixedAssetId;
+import dev.erst.fingrind.contract.bookkeeping.ForeignCurrencyObligationId;
 import dev.erst.fingrind.contract.bookkeeping.LatvianPayrollBookkeepingEntryVariants;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.ResolvedLatvianPayrollSettlement;
+import dev.erst.fingrind.contract.fx.ForeignExchangeDetails;
+import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
+import dev.erst.fingrind.contract.fx.QuotedExchangeRate;
 import dev.erst.fingrind.contract.payroll.LatvianMonthlyPayroll2026;
 import dev.erst.fingrind.contract.payroll.LatvianMonthlyPayrollCalculation;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollEmployeeReference;
@@ -292,8 +298,7 @@ class ReversalAcceptancePolicyTest {
                 settlementPosting, Optional.empty(), Optional.of(settlementRecord), Map.of())));
   }
 
-  private static void assertEntrySemanticsCode(
-      BookkeepingPostingRejection rejection, String expectedCode) {
+  static void assertEntrySemanticsCode(BookkeepingPostingRejection rejection, String expectedCode) {
     BookkeepingPostingRejection.EntrySemanticsViolations semantics =
         assertInstanceOf(BookkeepingPostingRejection.EntrySemanticsViolations.class, rejection);
     assertEquals(expectedCode, semantics.violations().getFirst().code());
@@ -302,7 +307,11 @@ class ReversalAcceptancePolicyTest {
   private static LatvianPayrollRunRecord payrollRun() {
     LatvianPayrollMonth payrollMonth = new LatvianPayrollMonth(YearMonth.of(2026, 7));
     LatvianMonthlyPayrollCalculation calculation =
-        LatvianMonthlyPayroll2026.calculate(payrollMonth, Money.parse("EUR", "2000.00"));
+        LatvianMonthlyPayroll2026.calculate(
+            payrollMonth,
+            Money.parse("EUR", "2000.00"),
+            dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+                .taxBookWithNoDependantsFor2026());
     return new LatvianPayrollRunRecord(
         new LatvianPayrollRunId("payroll-2026-07-employee-1"),
         new LatvianPayrollEmployeeReference("employee-1"),
@@ -326,6 +335,8 @@ class ReversalAcceptancePolicyTest {
         run.payrollRunId(),
         run.employeeReference(),
         run.payrollMonth(),
+        dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+            .taxBookWithNoDependantsFor2026(),
         run.wageExpenseAccountCode(),
         run.employerSocialContributionExpenseAccountCode(),
         run.netWagesPayableAccountCode(),
@@ -393,7 +404,38 @@ class ReversalAcceptancePolicyTest {
         entry);
   }
 
-  private static JournalEntry negatedJournal(JournalEntry original, LocalDate effectiveDate) {
+  static CommittedPosting lifecyclePosting(String postingId, BookkeepingEntry entry) {
+    return new CommittedPosting(
+        new PostingId(postingId),
+        entry.journalEntry(),
+        PostingLineageModel.direct(),
+        entry.postingKind(),
+        entry.postingOriginKind(),
+        accountingEvidence("prior-" + postingId),
+        new CommittedProvenance(
+            requestProvenance("prior-" + postingId), DECLARED_AT, SourceChannel.CLI),
+        entry,
+        entry);
+  }
+
+  static ForeignExchangeDetails foreignExchange(
+      String transactionCurrency,
+      String transactionAmount,
+      String functionalCurrency,
+      String functionalAmount,
+      String quotedOn) {
+    MonetaryAmount transaction =
+        MonetaryAmount.of(Money.parse(transactionCurrency, transactionAmount));
+    MonetaryAmount functional =
+        MonetaryAmount.of(Money.parse(functionalCurrency, functionalAmount));
+    return new ForeignExchangeDetails(
+        transaction,
+        functional,
+        new QuotedExchangeRate(transaction, functional, LocalDate.parse(quotedOn), "test-rate"),
+        ForeignExchangeTreatmentKind.SPOT_TRANSACTION);
+  }
+
+  static JournalEntry negatedJournal(JournalEntry original, LocalDate effectiveDate) {
     return new JournalEntry(
         effectiveDate,
         original.lines().stream()
@@ -408,7 +450,7 @@ class ReversalAcceptancePolicyTest {
             .toList());
   }
 
-  private static PostingRequestModel reversalRequest(
+  static PostingRequestModel reversalRequest(
       String idempotencyKey, String priorPostingId, JournalEntry candidateJournalEntry) {
     ReversalReference reversalReference = new ReversalReference(new PostingId(priorPostingId));
     ReversalReason reversalReason = new ReversalReason("operator reversal");
@@ -667,7 +709,7 @@ class ReversalAcceptancePolicyTest {
   }
 
   /** Minimal validation-store stub for targeted reversal-acceptance branch coverage. */
-  private static class PostingValidationStoreStub implements PostingValidationStore {
+  static class PostingValidationStoreStub implements PostingValidationStore {
     private final Map<PostingId, CommittedPosting> postingsById;
     private final Map<AccrualCutoffId, AccrualCutoffRecord> cutoffsById;
     private final Set<PostingId> reversedPostingIds;
@@ -793,6 +835,41 @@ class ReversalAcceptancePolicyTest {
         return Optional.empty();
       }
       return Optional.of(candidate);
+    }
+  }
+
+  /** Validation store carrying the lifecycle aggregates required by reversal admission. */
+  static final class LifecyclePostingValidationStore extends PostingValidationStoreStub {
+    private final Map<FixedAssetId, FixedAssetRecord> fixedAssets;
+    private final Map<FinancingArrangementId, FinancingArrangementRecord> financingArrangements;
+    private final Map<ForeignCurrencyObligationId, ForeignCurrencyObligationRecord> obligations;
+
+    LifecyclePostingValidationStore(
+        CommittedPosting posting,
+        Map<FixedAssetId, FixedAssetRecord> fixedAssets,
+        Map<FinancingArrangementId, FinancingArrangementRecord> financingArrangements,
+        Map<ForeignCurrencyObligationId, ForeignCurrencyObligationRecord> obligations) {
+      super(Map.of(posting.postingId(), posting));
+      this.fixedAssets = fixedAssets;
+      this.financingArrangements = financingArrangements;
+      this.obligations = obligations;
+    }
+
+    @Override
+    public Optional<FixedAssetRecord> findFixedAsset(FixedAssetId fixedAssetId) {
+      return Optional.ofNullable(fixedAssets.get(fixedAssetId));
+    }
+
+    @Override
+    public Optional<FinancingArrangementRecord> findFinancingArrangement(
+        FinancingArrangementId financingArrangementId) {
+      return Optional.ofNullable(financingArrangements.get(financingArrangementId));
+    }
+
+    @Override
+    public Optional<ForeignCurrencyObligationRecord> findForeignCurrencyObligation(
+        ForeignCurrencyObligationId foreignCurrencyObligationId) {
+      return Optional.ofNullable(obligations.get(foreignCurrencyObligationId));
     }
   }
 

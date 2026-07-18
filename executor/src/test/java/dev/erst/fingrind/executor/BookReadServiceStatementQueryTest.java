@@ -123,6 +123,7 @@ class BookReadServiceStatementQueryTest {
           new AccountTaxonomy(
               dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
               Optional.empty(),
+              Optional.empty(),
               Optional.of(FinancialPositionLineClassification.NONCURRENT_ASSET),
               Optional.empty(),
               Optional.of(CashFlowAssetClassification.NON_CASH)));

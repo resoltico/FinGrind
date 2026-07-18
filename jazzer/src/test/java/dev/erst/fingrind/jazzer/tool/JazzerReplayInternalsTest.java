@@ -14,6 +14,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.Committed;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightAccepted;
+import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
@@ -240,6 +241,11 @@ class JazzerReplayInternalsTest {
     assertEquals(
         PostingLifecycleStatus.IDEMPOTENCY_KEY_CONFLICT,
         JazzerReplayOutcomeSupport.rejectionStatus(new PostingRejection.IdempotencyKeyConflict()));
+    assertEquals(
+        PostingLifecycleStatus.POSTING_EFFECTIVE_DATE_BEFORE_BOOK_START,
+        JazzerReplayOutcomeSupport.rejectionStatus(
+            new PostingEffectiveDateBeforeBookStart(
+                java.time.LocalDate.parse("2026-06-29"), java.time.LocalDate.parse("2026-06-30"))));
     assertEquals(
         PostingLifecycleStatus.POSTING_EFFECTIVE_DATE_IN_FUTURE,
         JazzerReplayOutcomeSupport.rejectionStatus(
@@ -532,6 +538,8 @@ class JazzerReplayInternalsTest {
     assertTrue(PostingLifecycleStatus.wireValues().contains("idempotent-replay"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("closed-period-violation"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("entry-semantics-violations"));
+    assertTrue(
+        PostingLifecycleStatus.wireValues().contains("posting-effective-date-before-book-start"));
     assertTrue(PostingLifecycleStatus.wireValues().contains("posting-effective-date-in-future"));
     assertTrue(
         PostingLifecycleStatus.wireValues().contains("open-accounting-position-window-closed"));
@@ -549,6 +557,9 @@ class JazzerReplayInternalsTest {
     assertEquals(
         PostingLifecycleStatus.ENTRY_SEMANTICS_VIOLATIONS,
         PostingLifecycleStatus.fromWireValue("entry-semantics-violations"));
+    assertEquals(
+        PostingLifecycleStatus.POSTING_EFFECTIVE_DATE_BEFORE_BOOK_START,
+        PostingLifecycleStatus.fromWireValue("posting-effective-date-before-book-start"));
     assertEquals(
         PostingLifecycleStatus.POSTING_EFFECTIVE_DATE_IN_FUTURE,
         PostingLifecycleStatus.fromWireValue("posting-effective-date-in-future"));
@@ -691,6 +702,7 @@ class JazzerReplayInternalsTest {
         AccountType.ASSET,
         new AccountTaxonomy(
             dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+            Optional.empty(),
             Optional.empty(),
             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
             Optional.empty(),

@@ -17,6 +17,8 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
   private final SqliteThreadOwner threadOwner = new SqliteThreadOwner("SQLite book session");
   private final SqliteLedgerPlanTransactionCoordinator ledgerPlanTransactions;
   private final Transactions transactions = new Transactions();
+  private @Nullable Path exclusiveNewBookPreexistingAncestorDirectory;
+  private boolean ownsUninitializedExclusiveNewBook;
 
   SqliteStoreLifecycle(SqliteStoreContext context, SqliteSessionSecret sessionSecret) {
     super(sessionSecret);
@@ -29,9 +31,12 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
     if (closed()) {
       return;
     }
-    boolean cleanupCreatedBookArtifacts = ledgerPlanTransactions.createdBookArtifacts();
-    @Nullable Path preexistingAncestorDirectory =
+    boolean cleanupPlanCreatedBookArtifacts = ledgerPlanTransactions.createdBookArtifacts();
+    @Nullable Path planPreexistingAncestorDirectory =
         ledgerPlanTransactions.preexistingAncestorDirectory();
+    boolean cleanupUninitializedExclusiveNewBook = ownsUninitializedExclusiveNewBook;
+    @Nullable Path exclusiveNewBookPreexistingAncestorDirectory =
+        this.exclusiveNewBookPreexistingAncestorDirectory;
     try (SqliteStoreCloseSequence closeSequence =
         new SqliteStoreCloseSequence(sessionSecret()::close, publishedDatabase())) {
       java.util.Objects.requireNonNull(closeSequence, "closeSequence");
@@ -55,12 +60,18 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
       throw closeFailure;
     }
     try {
-      if (cleanupCreatedBookArtifacts) {
+      if (cleanupPlanCreatedBookArtifacts) {
         SqliteLedgerPlanArtifactCleanup.cleanupCreatedMissingBookArtifacts(
-            context.bookPath(), preexistingAncestorDirectory, null);
+            context.bookPath(), planPreexistingAncestorDirectory, null);
+      }
+      if (cleanupUninitializedExclusiveNewBook) {
+        SqliteLedgerPlanArtifactCleanup.deleteCreatedMissingBookArtifacts(
+            context.bookPath(), exclusiveNewBookPreexistingAncestorDirectory);
       }
     } finally {
       ledgerPlanTransactions.reset();
+      ownsUninitializedExclusiveNewBook = false;
+      this.exclusiveNewBookPreexistingAncestorDirectory = null;
     }
   }
 
@@ -170,6 +181,12 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
     ensureOpen();
   }
 
+  void recordExclusiveNewBookInitialization() {
+    threadOwner.requireOwnerThread();
+    ownsUninitializedExclusiveNewBook = false;
+    exclusiveNewBookPreexistingAncestorDirectory = null;
+  }
+
   Transactions transactions() {
     return transactions;
   }
@@ -187,7 +204,12 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
   private ContractDecision<SqliteNativeDatabase> openDatabase() {
     threadOwner.requireOwnerThread();
     try (SqliteOwnedPassphrase workingPassphrase = sessionSecret().borrowWorkingCopy()) {
+      @Nullable Path preexistingAncestorDirectory = null;
       if (context.accessMode().createsFiles() && Files.notExists(context.bookPath())) {
+        if (context.accessMode().requiresAbsentNewBookTarget()) {
+          preexistingAncestorDirectory =
+              SqliteLedgerPlanArtifactCleanup.nearestExistingAncestor(context.bookPath());
+        }
         ledgerPlanTransactions.noteBookArtifactsMayMutate();
         SqliteBookSchemaBootstrap.ensureParentDirectory(context.bookPath());
       }
@@ -195,6 +217,10 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
           SqliteStoreOperations.retryTransientLockFailures(
               () -> context.openConfiguredDatabase(workingPassphrase.nativePassphrase()));
       publishDatabase(openedDatabase);
+      if (context.accessMode().requiresAbsentNewBookTarget()) {
+        ownsUninitializedExclusiveNewBook = true;
+        exclusiveNewBookPreexistingAncestorDirectory = preexistingAncestorDirectory;
+      }
       ledgerPlanTransactions.beginImmediateIfNeeded(openedDatabase);
       return ContractDecision.accepted(openedDatabase);
     } catch (SqliteCallerPathContractException exception) {

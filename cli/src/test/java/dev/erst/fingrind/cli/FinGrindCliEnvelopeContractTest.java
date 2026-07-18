@@ -166,7 +166,7 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
             "--request-file",
             requestFile.toString());
     assertSuccessEnvelope(success);
-    assertTrue(success.path("payload").path("postingId").isTextual());
+    assertTrue(success.path("payload").path("postingId").isString());
     assertTrue(success.path("payload").path("resolvedJournal").isObject());
     assertTrue(
         success
@@ -174,7 +174,7 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
             .path("resolvedJournal")
             .path("classification")
             .path("eventClass")
-            .isTextual());
+            .isString());
 
     Path missingBookFilePath = tempDirectory.resolve("write-contract").resolve("missing.sqlite");
     Path missingBookKeyFilePath = writeBookKey(missingBookFilePath);
@@ -725,8 +725,8 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
 
   private static void assertRejectedEnvelope(JsonNode envelope) {
     assertEquals("rejected", envelope.path("status").stringValue());
-    assertTrue(envelope.path("code").isTextual());
-    assertTrue(envelope.path("message").isTextual());
+    assertTrue(envelope.path("code").isString());
+    assertTrue(envelope.path("message").isString());
     assertEquals(
         ContractResponseCatalog.failureCategoryFor(envelope.path("code").stringValue()).wireValue(),
         envelope.path("category").stringValue());
@@ -735,8 +735,8 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
 
   private static void assertErrorEnvelope(JsonNode envelope) {
     assertEquals("error", envelope.path("status").stringValue());
-    assertTrue(envelope.path("code").isTextual());
-    assertTrue(envelope.path("message").isTextual());
+    assertTrue(envelope.path("code").isString());
+    assertTrue(envelope.path("message").isString());
     assertEquals(
         ContractResponseCatalog.failureCategoryFor(envelope.path("code").stringValue()).wireValue(),
         envelope.path("category").stringValue());
@@ -792,8 +792,7 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
                 NormalBalance.DEBIT,
                 true,
                 Instant.parse("2026-04-07T12:00:00Z"))),
-        new dev.erst.fingrind.contract.bookkeeping.ListAccountsResult.Listed(
-            accountPage(List.of(), 50, java.util.Optional.empty())),
+        listedAccounts(accountPage(List.of(), 50, java.util.Optional.empty())),
         CliPostEntryResultFixtures.preflightAccepted(
             new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
         CliPostEntryResultFixtures.committed(
@@ -843,7 +842,8 @@ class FinGrindCliEnvelopeContractTest extends CliPublicDocsContractSupport {
                     "bookTemplateId": "OWNER_MANAGED_SERVICE",
                     "accountingBasis": "CASH",
                     "functionalCurrency": "EUR",
-                    "fiscalYearStart": "01-01"
+                    "fiscalYearStart": "01-01",
+                    "bookStartEffectiveDate": "2026-01-01"
                   }
                 },
                 {

@@ -69,6 +69,7 @@ final class SqliteStoreAdministrationMutationOperations {
                     SqliteBookContract.APPLICATION_ID,
                     SqliteBookContract.FORMAT_VERSION,
                     SqliteBookState.INITIALIZED_FINGRIND));
+            lifecycle.recordExclusiveNewBookInitialization();
             return new BookOpeningOutcome.Opened(initializedAt, bookIdentity);
           } catch (SqliteNativeException exception) {
             SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);

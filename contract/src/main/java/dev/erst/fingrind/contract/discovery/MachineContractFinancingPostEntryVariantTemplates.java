@@ -13,7 +13,7 @@ final class MachineContractFinancingPostEntryVariantTemplates {
 
   private MachineContractFinancingPostEntryVariantTemplates() {}
 
-  static ContractTemplates.PostingRequestTemplateDescriptor borrowingTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor borrowingTemplate(
       @Nullable BookTemplateId ignoredBookTemplateId) {
     return template(
         BookkeepingEntryKind.FINANCING_BORROWING,
@@ -27,8 +27,8 @@ final class MachineContractFinancingPostEntryVariantTemplates {
             null));
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor principalRepaymentTemplate(
-      @Nullable BookTemplateId ignoredBookTemplateId) {
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
+      principalRepaymentTemplate(@Nullable BookTemplateId ignoredBookTemplateId) {
     return template(
         BookkeepingEntryKind.FINANCING_PRINCIPAL_REPAYMENT,
         "cash",
@@ -36,7 +36,7 @@ final class MachineContractFinancingPostEntryVariantTemplates {
             SAMPLE_ARRANGEMENT_ID, null, null, null, new MonetaryAmount("EUR", "100000"), null));
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor interestAccrualTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor interestAccrualTemplate(
       @Nullable BookTemplateId ignoredBookTemplateId) {
     return template(
         BookkeepingEntryKind.FINANCING_INTEREST_ACCRUAL,
@@ -50,7 +50,7 @@ final class MachineContractFinancingPostEntryVariantTemplates {
             new MonetaryAmount("EUR", "12000")));
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor interestPaymentTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor interestPaymentTemplate(
       @Nullable BookTemplateId ignoredBookTemplateId) {
     return template(
         BookkeepingEntryKind.FINANCING_INTEREST_PAYMENT,
@@ -59,11 +59,11 @@ final class MachineContractFinancingPostEntryVariantTemplates {
             SAMPLE_ARRANGEMENT_ID, null, null, null, null, new MonetaryAmount("EUR", "12000")));
   }
 
-  private static ContractTemplates.PostingRequestTemplateDescriptor template(
+  private static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor template(
       BookkeepingEntryKind entryKind,
       @Nullable String cashAccountCode,
       FinancingTemplateDescriptor financing) {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+    return new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
         entryKind,
         SAMPLE_EFFECTIVE_DATE,
         cashAccountCode,

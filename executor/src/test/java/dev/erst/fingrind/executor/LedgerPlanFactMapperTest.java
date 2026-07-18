@@ -379,6 +379,7 @@ class LedgerPlanFactMapperTest {
             new AccountTaxonomy(
                 AccountNodeKind.POSTABLE,
                 Optional.of(new AccountCode("1100")),
+                Optional.of(new AccountCode("1105")),
                 Optional.of(FinancialPositionLineClassification.INVENTORY),
                 Optional.empty(),
                 Optional.of(CashFlowAssetClassification.NON_CASH)),
@@ -401,6 +402,13 @@ class LedgerPlanFactMapperTest {
                     fact instanceof BookWorkflowFact.Text text
                         && "parentAccountCode".equals(text.name())
                         && "1100".equals(text.value())));
+    assertTrue(
+        facts.stream()
+            .anyMatch(
+                fact ->
+                    fact instanceof BookWorkflowFact.Text text
+                        && "contraOfAccountCode".equals(text.name())
+                        && "1105".equals(text.value())));
     assertTrue(
         facts.stream()
             .anyMatch(

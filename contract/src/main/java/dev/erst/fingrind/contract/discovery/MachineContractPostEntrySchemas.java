@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolForeignExchangeRequestFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
@@ -62,7 +63,7 @@ final class MachineContractPostEntrySchemas {
             requestSurface.bookkeepingEntryEvidence().minimumSourceDocuments()),
         List.of(
             new ContractRequestShapes.EnumVocabularyDescriptor(
-                ProtocolPostEntryFields.TopLevel.ENTRY_KIND, BookkeepingEntryKind.wireValues()),
+                ProtocolBusinessEventFields.Core.ENTRY_KIND, BookkeepingEntryKind.wireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
                 ProtocolPostEntryFields.JournalLine.SIDE, JournalLine.EntrySide.wireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
@@ -84,30 +85,30 @@ final class MachineContractPostEntrySchemas {
         topLevelFieldDescriptors(facts),
         nestedFieldDescriptors(
             MachineContractPostEntryNestedFieldSpecs.lineFields(),
-            facts.requiredTopLevelFields().contains(ProtocolPostEntryFields.TopLevel.LINES)),
+            facts.requiredTopLevelFields().contains(ProtocolBusinessEventFields.Core.LINES)),
         nestedFieldDescriptors(
             MachineContractPostEntryNestedFieldSpecs.openingBalanceFields(),
             facts
                 .requiredTopLevelFields()
-                .contains(ProtocolPostEntryFields.TopLevel.OPENING_BALANCES)),
+                .contains(ProtocolBusinessEventFields.Core.OPENING_BALANCES)),
         nestedFieldDescriptors(
             MachineContractPostEntryNestedFieldSpecs.recognitionIntervalFields(),
             facts
                 .requiredTopLevelFields()
-                .contains(ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL)),
+                .contains(ProtocolBusinessEventFields.AccrualCutoff.RECOGNITION_INTERVAL)),
         nestedFieldDescriptors(
             MachineContractPostEntryForeignExchangeFieldSpecs.foreignExchangeFields(),
             facts
                 .optionalTopLevelFields()
-                .contains(ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE)),
+                .contains(ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE)),
         nestedFieldDescriptors(
             MachineContractPostEntryForeignExchangeFieldSpecs.quotedRateFields(),
             facts
                 .optionalTopLevelFields()
-                .contains(ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE)),
+                .contains(ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE)),
         nestedFieldDescriptors(
             MachineContractPostEntryNestedFieldSpecs.taxFields(),
-            facts.optionalTopLevelFields().contains(ProtocolPostEntryFields.TopLevel.TAX)),
+            facts.optionalTopLevelFields().contains(ProtocolBusinessEventFields.Core.TAX)),
         MachineContractSchemaSupport.requestFieldDescriptors(
             MachineContractPostEntryEvidenceFieldSpecs.evidenceFields()),
         MachineContractSchemaSupport.requestFieldDescriptors(
@@ -118,7 +119,7 @@ final class MachineContractPostEntrySchemas {
             MachineContractPostEntryNestedFieldSpecs.provenanceFields()),
         nestedFieldDescriptors(
             MachineContractPostEntryNestedFieldSpecs.reversalFields(),
-            facts.requiredTopLevelFields().contains(ProtocolPostEntryFields.TopLevel.REVERSAL)),
+            facts.requiredTopLevelFields().contains(ProtocolBusinessEventFields.Core.REVERSAL)),
         List.of(entryKindSemanticsDescriptor(facts)),
         requestSurface.reachabilityMatrix().stream()
             .map(MachineContractPostEntrySchemas::reachabilityCellDescriptor)
@@ -137,6 +138,7 @@ final class MachineContractPostEntrySchemas {
         facts.requiredTopLevelFields(),
         facts.optionalTopLevelFields(),
         facts.forbiddenTopLevelFields(),
+        MachineContractPostEntryVariantSchemas.variantFieldDescriptors(facts.entryKind()),
         facts.requiredSourceDocumentFields(),
         facts.sourceDocumentTypes().mode().wireValue(),
         facts.sourceDocumentTypes().acceptedValues(),
@@ -165,7 +167,7 @@ final class MachineContractPostEntrySchemas {
   private static boolean conditionallyAcceptedTopLevelField(
       BookkeepingEntryKind entryKind, MachineContractFieldSpec field) {
     return field.presence() == RequestFieldPresence.CONDITIONAL
-        && ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF.equals(field.name())
+        && ProtocolBusinessEventFields.Inventory.INVENTORY_RELIEF.equals(field.name())
         && (entryKind == BookkeepingEntryKind.SALE_SETTLED
             || entryKind == BookkeepingEntryKind.SALE_ON_CREDIT);
   }
@@ -200,7 +202,7 @@ final class MachineContractPostEntrySchemas {
         new java.util.ArrayList<>(
             List.of(
                 new ContractRequestShapes.EnumVocabularyDescriptor(
-                    ProtocolPostEntryFields.TopLevel.ENTRY_KIND, List.of(entryKind.wireValue())),
+                    ProtocolBusinessEventFields.Core.ENTRY_KIND, List.of(entryKind.wireValue())),
                 new ContractRequestShapes.EnumVocabularyDescriptor(
                     ProtocolPostEntryFields.JournalLine.SIDE, JournalLine.EntrySide.wireValues()),
                 new ContractRequestShapes.EnumVocabularyDescriptor(
@@ -212,7 +214,7 @@ final class MachineContractPostEntrySchemas {
                     ProtocolPostEntryFields.Approval.DECISION, ApprovalDecision.wireValues())));
     if (!facts
         .optionalTopLevelFields()
-        .contains(ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE)) {
+        .contains(ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE)) {
       enumVocabularies.removeIf(
           vocabulary ->
               ProtocolForeignExchangeRequestFields.ForeignExchange.TREATMENT_KIND.equals(

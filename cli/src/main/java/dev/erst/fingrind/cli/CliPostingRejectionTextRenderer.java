@@ -55,6 +55,10 @@ final class CliPostingRejectionTextRenderer {
         rows.add(List.of("Attempted effective date", details.attemptedEffectiveDate()));
         rows.add(List.of("Current UTC date", details.currentUtcDate()));
       }
+      case CliRejectionJsonModels.PostingEffectiveDateBeforeBookStartDetails details -> {
+        rows.add(List.of("Attempted effective date", details.attemptedEffectiveDate()));
+        rows.add(List.of("Book start effective date", details.bookStartEffectiveDate()));
+      }
       case CliRejectionJsonModels.OpeningPositionWindowClosedDetails details -> {
         rows.add(List.of("First blocking posting kind", details.firstBlockingPostingKind()));
         rows.add(List.of("First blocking effective date", details.firstBlockingEffectiveDate()));

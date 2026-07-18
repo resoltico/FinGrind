@@ -248,10 +248,10 @@ class CliPublicDocsContractSupport extends FinGrindCliTestSupport {
       actual.forEach(entry -> canonical.add(canonicalizeJsonFixture(entry)));
       return canonical;
     }
-    if (actual.isTextual()) {
+    if (actual.isString()) {
       return OBJECT_MAPPER
           .getNodeFactory()
-          .textNode(canonicalizeOwnedTemporaryPaths(actual.textValue()));
+          .stringNode(canonicalizeOwnedTemporaryPaths(actual.stringValue()));
     }
     return actual;
   }

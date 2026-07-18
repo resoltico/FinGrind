@@ -14,6 +14,7 @@ import dev.erst.fingrind.contract.payroll.LatvianMonthlyPayrollCalculation;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollEmployeeReference;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollMonth;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollRunId;
+import dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyUnit;
@@ -81,7 +82,8 @@ class LatvianPayrollAdmissionPolicyTest {
             eurBook.entityProfile(),
             eurBook.bookDoctrine(),
             CurrencyUnit.of("USD"),
-            eurBook.fiscalYearStart());
+            eurBook.fiscalYearStart(),
+            java.time.LocalDate.parse("2026-01-01"));
     LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll payroll =
         monthly(PAYROLL_MONTH, new MonetaryAmount("EUR", "200000"));
 
@@ -124,6 +126,49 @@ class LatvianPayrollAdmissionPolicyTest {
             "entry"),
         "latvian-payroll-profile-not-admitted",
         "payrollMonth");
+    assertRejection(
+        policy.resolve(
+            monthly(
+                PAYROLL_MONTH,
+                new MonetaryAmount("EUR", "200000"),
+                new LatvianPayrollWithholdingProfile(false, 0)),
+            new PayrollBook(bookIdentity(), Optional.empty(), Optional.empty()),
+            "entry"),
+        "latvian-payroll-profile-not-admitted",
+        "taxBookHeldAtEmployer");
+    assertRejection(
+        policy.resolve(
+            monthly(
+                PAYROLL_MONTH,
+                new MonetaryAmount("EUR", "200000"),
+                new LatvianPayrollWithholdingProfile(true, 1)),
+            new PayrollBook(bookIdentity(), Optional.empty(), Optional.empty()),
+            "entry"),
+        "latvian-payroll-profile-not-admitted",
+        "dependantCount");
+  }
+
+  @Test
+  void resolve_rendersRejectedPayrollFactsAsOneGrammaticalContractSentence() {
+    BookkeepingPostingRejection.EntrySemanticsViolation violation =
+        assertInstanceOf(
+                BookkeepingPostingRejection.EntrySemanticsViolations.class,
+                policy
+                    .resolve(
+                        monthly(
+                            PAYROLL_MONTH,
+                            new MonetaryAmount("EUR", "200000"),
+                            new LatvianPayrollWithholdingProfile(false, 0)),
+                        new PayrollBook(bookIdentity(), Optional.empty(), Optional.empty()),
+                        "record-latvian-monthly-payroll")
+                    .rejection()
+                    .orElseThrow())
+            .violations()
+            .getFirst();
+
+    assertEquals(
+        "entryKind 'record-latvian-monthly-payroll' does not admit taxBookHeldAtEmployer 'false'.",
+        violation.message());
   }
 
   @Test
@@ -156,11 +201,22 @@ class LatvianPayrollAdmissionPolicyTest {
 
   private static LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll monthly(
       LatvianPayrollMonth payrollMonth, MonetaryAmount grossWages) {
+    return monthly(
+        payrollMonth,
+        grossWages,
+        LatvianPayrollWithholdingProfile.taxBookWithNoDependantsFor2026());
+  }
+
+  private static LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll monthly(
+      LatvianPayrollMonth payrollMonth,
+      MonetaryAmount grossWages,
+      LatvianPayrollWithholdingProfile withholdingProfile) {
     return new LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll(
         payrollMonth.value().atEndOfMonth(),
         PAYROLL_RUN_ID,
         EMPLOYEE,
         payrollMonth,
+        withholdingProfile,
         new AccountCode("5000"),
         new AccountCode("5010"),
         new AccountCode("2200"),
@@ -173,7 +229,11 @@ class LatvianPayrollAdmissionPolicyTest {
 
   private static LatvianPayrollRunRecord run() {
     LatvianMonthlyPayrollCalculation calculation =
-        LatvianMonthlyPayroll2026.calculate(PAYROLL_MONTH, Money.parse("EUR", "2000.00"));
+        LatvianMonthlyPayroll2026.calculate(
+            PAYROLL_MONTH,
+            Money.parse("EUR", "2000.00"),
+            dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+                .taxBookWithNoDependantsFor2026());
     return new LatvianPayrollRunRecord(
         PAYROLL_RUN_ID,
         EMPLOYEE,

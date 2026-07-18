@@ -32,7 +32,8 @@ final class ReportCrossFormatLifecycleContextFixture {
                 new AccountCode("accumulated-depreciation"),
                 amount("EUR", "12000"),
                 amount("EUR", "1000"),
-                amount("EUR", "11000"),
+                amount("EUR", "0"),
+                Optional.of(amount("EUR", "11000")),
                 new FixedAssetDepreciationSchedule(
                     LocalDate.parse("2026-06-01"), 12, amount("EUR", "0")),
                 1,

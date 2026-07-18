@@ -42,6 +42,7 @@ class CliPlanBookkeepingTextRendererTest extends CliFixtureSupport {
                 "ASSET",
                 "POSTABLE",
                 null,
+                null,
                 "INVENTORY",
                 "NON_CASH",
                 null,

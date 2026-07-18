@@ -30,7 +30,8 @@ public interface CliAdministrationJsonModels {
       String bookTemplateId,
       @Nullable String inventoryCostingDoctrine,
       String functionalCurrency,
-      String fiscalYearStart) {
+      String fiscalYearStart,
+      String bookStartEffectiveDate) {
     public BookIdentityPayload {
       entityName = requireText(entityName, "entityName");
       accountingKernelProfile = requireText(accountingKernelProfile, "accountingKernelProfile");
@@ -43,6 +44,7 @@ public interface CliAdministrationJsonModels {
           requireOptionalText(inventoryCostingDoctrine, "inventoryCostingDoctrine");
       functionalCurrency = requireText(functionalCurrency, "functionalCurrency");
       fiscalYearStart = requireText(fiscalYearStart, "fiscalYearStart");
+      bookStartEffectiveDate = requireText(bookStartEffectiveDate, "bookStartEffectiveDate");
     }
   }
 

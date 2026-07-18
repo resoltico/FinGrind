@@ -33,9 +33,11 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             "--limit",
             "1");
     assertEquals("ok", emptyListEnvelope.path("status").stringValue());
-    assertEquals(1, emptyListEnvelope.path("payload").path("limit").intValue());
+    assertEquals(
+        1, emptyListEnvelope.path("payload").path("resolvedQuery").path("limit").intValue());
     assertEquals(0, emptyListEnvelope.path("payload").path("registrations").size());
-    assertTrue(emptyListEnvelope.path("payload").path("nextCursor").isMissingNode());
+    assertTrue(
+        emptyListEnvelope.path("payload").path("resolvedQuery").path("cursor").isMissingNode());
 
     String emptyListText =
         runText(
@@ -167,6 +169,9 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             .stringValue());
     String nextCursor = firstPageEnvelope.path("payload").path("nextCursor").stringValue();
     assertTrue(!nextCursor.isBlank(), firstPageEnvelope.toPrettyString());
+    assertTrue(
+        firstPageEnvelope.path("payload").path("resolvedQuery").path("cursor").isMissingNode(),
+        firstPageEnvelope.toPrettyString());
 
     String secondPageText =
         runText(

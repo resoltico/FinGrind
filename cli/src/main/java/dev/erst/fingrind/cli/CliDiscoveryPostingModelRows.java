@@ -1,7 +1,8 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.discovery.ContractPostingRequestTemplates;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
-import dev.erst.fingrind.contract.discovery.ContractTemplates;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,48 +13,48 @@ final class CliDiscoveryPostingModelRows {
   private static final List<CanonicalNestedFieldGroup> CANONICAL_NESTED_FIELD_GROUPS =
       List.of(
           new CanonicalNestedFieldGroup(
-              ProtocolPostEntryFields.TopLevel.LINES,
+              ProtocolBusinessEventFields.Core.LINES,
               ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor::lineFields,
               "lines[]."),
           new CanonicalNestedFieldGroup(
-              ProtocolPostEntryFields.TopLevel.OPENING_BALANCES,
+              ProtocolBusinessEventFields.Core.OPENING_BALANCES,
               ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor::openingBalanceFields,
               "openingBalances[]."),
           new CanonicalNestedFieldGroup(
-              ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL,
+              ProtocolBusinessEventFields.AccrualCutoff.RECOGNITION_INTERVAL,
               ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor
                   ::recognitionIntervalFields,
               "recognitionInterval."),
           new CanonicalNestedFieldGroup(
-              ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
+              ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE,
               ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor::foreignExchangeFields,
               "foreignExchange."),
           new CanonicalNestedFieldGroup(
-              ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
+              ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE,
               ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor::quotedRateFields,
               "foreignExchange.quotedRate."),
           new CanonicalNestedFieldGroup(
-              ProtocolPostEntryFields.TopLevel.TAX,
+              ProtocolBusinessEventFields.Core.TAX,
               ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor::taxFields,
               "tax."),
           new CanonicalNestedFieldGroup(
-              ProtocolPostEntryFields.TopLevel.EVIDENCE,
+              ProtocolBusinessEventFields.Core.EVIDENCE,
               ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor::evidenceFields,
               "evidence."),
           new CanonicalNestedFieldGroup(
-              ProtocolPostEntryFields.TopLevel.EVIDENCE,
+              ProtocolBusinessEventFields.Core.EVIDENCE,
               ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor::sourceDocumentFields,
               "evidence.sourceDocuments[]."),
           new CanonicalNestedFieldGroup(
-              ProtocolPostEntryFields.TopLevel.EVIDENCE,
+              ProtocolBusinessEventFields.Core.EVIDENCE,
               ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor::approvalFields,
               "evidence.approvals[]."),
           new CanonicalNestedFieldGroup(
-              ProtocolPostEntryFields.TopLevel.PROVENANCE,
+              ProtocolBusinessEventFields.Core.PROVENANCE,
               ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor::provenanceFields,
               "provenance."),
           new CanonicalNestedFieldGroup(
-              ProtocolPostEntryFields.TopLevel.REVERSAL,
+              ProtocolBusinessEventFields.Core.REVERSAL,
               ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor::reversalFields,
               "reversal."));
 
@@ -61,7 +62,7 @@ final class CliDiscoveryPostingModelRows {
 
   static List<List<String>> allRows(
       ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape,
-      ContractTemplates.PostingRequestTemplateDescriptor postingTemplate,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor postingTemplate,
       String prefix) {
     ContractRequestShapes.EntryKindSemanticsDescriptor selectedEntryKind =
         CliDiscoveryPostingFieldDescriptions.selectedEntryKind(postEntryShape, postingTemplate);
@@ -69,6 +70,13 @@ final class CliDiscoveryPostingModelRows {
     CliDiscoveryPostingModelRowSupport.appendPostingRows(
         rows,
         postEntryShape.topLevelFields(),
+        prefix,
+        postEntryShape,
+        postingTemplate,
+        selectedEntryKind);
+    CliDiscoveryPostingModelRowSupport.appendPostingRows(
+        rows,
+        selectedEntryKind.variantFields(),
         prefix,
         postEntryShape,
         postingTemplate,
@@ -155,7 +163,7 @@ final class CliDiscoveryPostingModelRows {
 
   static List<List<String>> canonicalRows(
       ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape,
-      ContractTemplates.PostingRequestTemplateDescriptor postingTemplate,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor postingTemplate,
       String prefix) {
     ContractRequestShapes.EntryKindSemanticsDescriptor selectedEntryKind =
         CliDiscoveryPostingFieldDescriptions.selectedEntryKind(postEntryShape, postingTemplate);
@@ -163,6 +171,13 @@ final class CliDiscoveryPostingModelRows {
     CliDiscoveryPostingModelRowSupport.appendTopLevelRows(
         rows,
         postEntryShape.topLevelFields(),
+        prefix,
+        postEntryShape,
+        postingTemplate,
+        selectedEntryKind);
+    CliDiscoveryPostingModelRowSupport.appendPostingRows(
+        rows,
+        selectedEntryKind.variantFields(),
         prefix,
         postEntryShape,
         postingTemplate,
@@ -185,7 +200,7 @@ final class CliDiscoveryPostingModelRows {
 
   static List<List<String>> supplementalRows(
       ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape,
-      ContractTemplates.PostingRequestTemplateDescriptor postingTemplate,
+      ContractPostingRequestTemplates.PostingRequestTemplateDescriptor postingTemplate,
       String prefix) {
     ContractRequestShapes.EntryKindSemanticsDescriptor selectedEntryKind =
         CliDiscoveryPostingFieldDescriptions.selectedEntryKindOrPublishedFallback(
@@ -208,7 +223,7 @@ final class CliDiscoveryPostingModelRows {
         postingTemplate,
         selectedEntryKind,
         !CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.LINES, postingTemplate, selectedEntryKind));
+            ProtocolBusinessEventFields.Core.LINES, postingTemplate, selectedEntryKind));
     CliDiscoveryPostingModelRowSupport.appendPublishedPostingRows(
         rows,
         postEntryShape.openingBalanceFields(),
@@ -218,7 +233,7 @@ final class CliDiscoveryPostingModelRows {
         postingTemplate,
         selectedEntryKind,
         !CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.OPENING_BALANCES, postingTemplate, selectedEntryKind));
+            ProtocolBusinessEventFields.Core.OPENING_BALANCES, postingTemplate, selectedEntryKind));
     CliDiscoveryPostingModelRowSupport.appendPublishedPostingRows(
         rows,
         postEntryShape.recognitionIntervalFields(),
@@ -228,7 +243,7 @@ final class CliDiscoveryPostingModelRows {
         postingTemplate,
         selectedEntryKind,
         !CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.RECOGNITION_INTERVAL,
+            ProtocolBusinessEventFields.AccrualCutoff.RECOGNITION_INTERVAL,
             postingTemplate,
             selectedEntryKind));
     CliDiscoveryPostingModelRowSupport.appendPublishedPostingRows(
@@ -240,7 +255,7 @@ final class CliDiscoveryPostingModelRows {
         postingTemplate,
         selectedEntryKind,
         !CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE, postingTemplate, selectedEntryKind));
+            ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE, postingTemplate, selectedEntryKind));
     CliDiscoveryPostingModelRowSupport.appendPublishedPostingRows(
         rows,
         postEntryShape.quotedRateFields(),
@@ -250,7 +265,7 @@ final class CliDiscoveryPostingModelRows {
         postingTemplate,
         selectedEntryKind,
         !CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE, postingTemplate, selectedEntryKind));
+            ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE, postingTemplate, selectedEntryKind));
     CliDiscoveryPostingModelRowSupport.appendPublishedPostingRows(
         rows,
         postEntryShape.taxFields(),
@@ -260,7 +275,7 @@ final class CliDiscoveryPostingModelRows {
         postingTemplate,
         selectedEntryKind,
         !CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.TAX, postingTemplate, selectedEntryKind));
+            ProtocolBusinessEventFields.Core.TAX, postingTemplate, selectedEntryKind));
     CliDiscoveryPostingModelRowSupport.appendPublishedPostingRows(
         rows,
         postEntryShape.reversalFields(),
@@ -270,7 +285,7 @@ final class CliDiscoveryPostingModelRows {
         postingTemplate,
         selectedEntryKind,
         !CliDiscoveryPostingModelRowSupport.includesCanonicalTopLevelField(
-            ProtocolPostEntryFields.TopLevel.REVERSAL, postingTemplate, selectedEntryKind));
+            ProtocolBusinessEventFields.Core.REVERSAL, postingTemplate, selectedEntryKind));
     return List.copyOf(rows);
   }
 

@@ -39,6 +39,7 @@ def split_sql_statements(schema_text: str) -> list[str]:
 def render_documents(
     docs_root: Path,
     overview_frontmatter: str,
+    afad: str,
     version: str,
     updated: str,
     statements: list[str],
@@ -57,7 +58,7 @@ def render_documents(
     for section in SECTIONS:
         sql_fragment = render_sql_fragment(section_statements[section.key])
         rendered[docs_root / section.file_name] = build_section_document(
-            SECTION_BY_KEY[section.key], version, updated, sql_fragment
+            SECTION_BY_KEY[section.key], afad, version, updated, sql_fragment
         )
     return rendered
 
@@ -183,9 +184,11 @@ Each companion page embeds the exact canonical SQL for one schema responsibility
 """
 
 
-def build_section_document(section, version: str, updated: str, sql_fragment: str) -> str:
+def build_section_document(
+    section, afad: str, version: str, updated: str, sql_fragment: str
+) -> str:
     return f"""---
-afad: "4.0"
+afad: "{afad}"
 version: "{version}"
 domain: {section.domain}
 updated: "{updated}"

@@ -1,5 +1,5 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: DEVELOPER_GRADLE
 updated: "2026-07-16"
@@ -39,7 +39,7 @@ global Gradle command on a machine.
 Wrapper integrity is part of the standard setup:
 - `gradle/wrapper/gradle-wrapper.properties` pins the distribution URL and its
   `distributionSha256Sum`
-- `.github/workflows/gradle-wrapper-validation.yml` validates wrapper changes in GitHub
+- CI's wrapper-validation job validates the checked-in wrapper surface and is a required `Gate` dependency
 - contributors should treat wrapper-file edits as supply-chain-sensitive changes, not as routine noise
 
 Full verification now depends on the wrapper-managed filesystem layout:
@@ -113,8 +113,8 @@ jazzer/
 
 Each layer owns a different concern:
 
-- root product build: builds and verifies `core`, `contract`, `executor`, `sqlite`,
-  `report-pdf`, and `cli`
+- root product build: builds and verifies `core`, `contract`, `executor`, `sqlite`, `report-pdf`,
+  `cli`, and the independent `architecture` verifier
 - shared included build logic: houses reusable Gradle plugins, managed-SQLite tasks, and shared
   pulse infrastructure
 - nested Jazzer build: runs deterministic Jazzer tests, regression replay, and local fuzzing flows
@@ -164,7 +164,7 @@ The consumer scripts are intentionally thin now:
   `FinGrindRootCoverageConventions`, and `FinGrindRootJazzerConventions`
 
 Root verification now has one explicit Python-tooling contract:
-- the pinned CI interpreter version is `fingrindPythonVersion` from
+- the pinned exact CI interpreter version is `fingrindPythonVersion` from
   [../gradle/fingrind-build.properties](../gradle/fingrind-build.properties)
 - the pinned repo-owned `uv` launcher version is `fingrindUvVersion` from
   [../gradle/fingrind-build.properties](../gradle/fingrind-build.properties)
@@ -175,8 +175,8 @@ Root verification now has one explicit Python-tooling contract:
 - the repo-owned Ruff configuration is [../ruff.toml](../ruff.toml)
 - the repo-owned SQLFluff configuration is [../gradle/sqlfluff/sqlfluff.cfg](../gradle/sqlfluff/sqlfluff.cfg)
 - contributors can override the executable Gradle uses with
-  `-PfingrindPythonExecutable=/absolute/path/to/python3` when the desired interpreter is not the
-  default `python3` on Unix-like hosts or `python` on Windows
+  `-PfingrindPythonExecutable=/absolute/path/to/python3.12`; the selected interpreter must match
+  the pinned major/minor version exactly
 
 ### Composite build for Jazzer
 
@@ -292,6 +292,9 @@ Rules:
   FinGrind's quality gate meaning
 - treat the generated `jacocoTestReport.xml` counters as the authoritative module coverage truth
   and fail the gate when that report shows any missed `LINE` or `BRANCH` coverage
+- apply that production coverage rule only to modules with production Java sources; a deliberately
+  test-only verifier still runs its tests and static-quality tasks, but has no artificial production
+  line or branch denominator
 - each `Test` task must delete its own destination `.exec` file before execution and use
   `append=true` only within that one task run, so cross-run coverage drift cannot survive into the
   next verification pass
@@ -423,8 +426,8 @@ Rules:
 
 These are the Gradle-level invariants worth preserving:
 
-- `core`, `contract`, `executor`, `sqlite`, `report-pdf`, and `cli` remain ordinary root
-  subprojects
+- `core`, `contract`, `executor`, `sqlite`, `report-pdf`, `cli`, and `architecture` remain ordinary
+  root subprojects
 - `jazzer/` remains a nested build, not a root subproject
 - `gradle/build-logic` remains the only home for shared typed Gradle logic
 - the repository contains no active `buildSrc` tree
@@ -443,8 +446,8 @@ These are the Gradle-level invariants worth preserving:
   `jazzer/bin/*` continue to share one repo-wide verification lock plus repo-keyed cache-root
   `GRADLE_USER_HOME` isolation
 - root `./check.sh` and `./scripts/run-quality-gates.sh` resolve the repo-owned Python helper-tool
-  runtime automatically; when the shell only exposes an older `python3`, they fall back to a
-  `uv`-managed Python `3.12+` interpreter and pass it into Gradle as
+  runtime automatically; when the shell does not expose exact Python `3.12`, they fall back to a
+  `uv`-managed exact Python `3.12` interpreter and pass it into Gradle as
   `fingrindPythonExecutable`
 
 If a proposed change breaks one of those invariants, document the reason in code comments and in

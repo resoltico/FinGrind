@@ -11,7 +11,7 @@ class AccountRegistryDependencyTest {
   @Test
   void wireVocabulary_isStable() {
     assertEquals(
-        List.of("postings", "tax-registrations", "child-accounts"),
+        List.of("postings", "tax-registrations", "child-accounts", "contra-accounts"),
         Arrays.stream(AccountRegistryDependency.values())
             .map(AccountRegistryDependency::wireValue)
             .toList());

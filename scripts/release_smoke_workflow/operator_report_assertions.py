@@ -11,7 +11,6 @@ from .support import require, require_match, require_no_match
 
 def assert_operator_queries_and_reports(
     config: ReleaseSmokeConfig,
-    list_postings_second_page_output: str,
     list_postings_text_output: str,
     account_balance_text_output: str,
     trial_balance_text_output: str,
@@ -20,7 +19,7 @@ def assert_operator_queries_and_reports(
     account_ledger_csv_output: str,
     period_summary_text_output: str,
 ) -> None:
-    _assert_postings_text(config, list_postings_second_page_output, list_postings_text_output)
+    _assert_postings_text(config, list_postings_text_output)
     _assert_account_balance_text(config, account_balance_text_output)
     _assert_trial_balance_text(config, trial_balance_text_output)
     _assert_pdf_export(config, trial_balance_text_output, pdf_stdout, pdf_stderr)
@@ -28,16 +27,7 @@ def assert_operator_queries_and_reports(
     _assert_period_summary_text(config, period_summary_text_output)
 
 
-def _assert_postings_text(
-    config: ReleaseSmokeConfig,
-    second_page_output: str,
-    text_output: str,
-) -> None:
-    require_match(
-        second_page_output,
-        re.escape(config.second_page_command_id),
-        f"{config.label} second posting page did not round-trip the opaque nextCursor",
-    )
+def _assert_postings_text(config: ReleaseSmokeConfig, text_output: str) -> None:
     for pattern, message in (
         (r"^Postings$", "report title"),
         (r"Returned postings[[:space:]]+:[[:space:]]+2", "returned-posting count"),

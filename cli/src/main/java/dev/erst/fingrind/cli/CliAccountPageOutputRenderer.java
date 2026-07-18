@@ -36,6 +36,7 @@ final class CliAccountPageOutputRenderer {
                     "Cash-flow asset",
                     "Profit or loss line",
                     "Parent",
+                    "Contra of",
                     "Normal",
                     "Active"),
                 page.accounts().stream()
@@ -73,6 +74,11 @@ final class CliAccountPageOutputRenderer {
                                     .parentAccountCode()
                                     .map(parent -> parent.value())
                                     .orElse("(none)"),
+                                account
+                                    .accountTaxonomy()
+                                    .contraOfAccountCode()
+                                    .map(parent -> parent.value())
+                                    .orElse("(none)"),
                                 CliAccountStatementLabels.displayNormalBalanceLabel(
                                     account.normalBalance()),
                                 CliQueryScopeText.displayBooleanLabel(account.active())))
@@ -99,6 +105,7 @@ final class CliAccountPageOutputRenderer {
             "accountCode",
             "accountName",
             "parentAccountCode",
+            "contraOfAccountCode",
             "accountType",
             "unitOfMeasureToken",
             "quantityScale",
@@ -129,6 +136,7 @@ final class CliAccountPageOutputRenderer {
                     "",
                     "",
                     "",
+                    "",
                     CliQueryScopeText.noMatchesLabel("accounts")))
             : page.accounts().stream()
                 .map(
@@ -144,6 +152,11 @@ final class CliAccountPageOutputRenderer {
                             account
                                 .accountTaxonomy()
                                 .parentAccountCode()
+                                .map(parent -> parent.value())
+                                .orElse(""),
+                            account
+                                .accountTaxonomy()
+                                .contraOfAccountCode()
                                 .map(parent -> parent.value())
                                 .orElse(""),
                             account.accountType().wireValue(),

@@ -43,26 +43,29 @@ final class SqliteLatvianPayrollWriter {
         Objects.requireNonNull(
             payroll.resolvedCalculation(),
             "Persisted Latvian payroll requires executor-resolved calculation.");
+    calculation.withholdingProfile().requireSupported2026Profile();
     try (SqliteNativeStatement statement =
         activeDatabase.prepare(SqliteLatvianPayrollSql.INSERT_RUN)) {
       statement.bindText(1, payroll.payrollRunId().value());
       statement.bindText(2, postingFact.postingId().value());
       statement.bindText(3, payroll.employeeReference().value());
       statement.bindText(4, payroll.payrollMonth().wireValue());
-      statement.bindText(5, CanonicalTemporalText.formatLocalDate(payroll.effectiveDate()));
-      statement.bindText(6, payroll.wageExpenseAccountCode().value());
-      statement.bindText(7, payroll.employerSocialContributionExpenseAccountCode().value());
-      statement.bindText(8, payroll.netWagesPayableAccountCode().value());
-      statement.bindText(9, payroll.employeeSocialContributionPayableAccountCode().value());
-      statement.bindText(10, payroll.employerSocialContributionPayableAccountCode().value());
-      statement.bindText(11, payroll.personalIncomeTaxPayableAccountCode().value());
-      statement.bindText(12, calculation.grossWages().currencyUnit().code());
-      statement.bindLong(13, calculation.grossWages().minorUnits());
-      statement.bindLong(14, calculation.employeeSocialContribution().minorUnits());
-      statement.bindLong(15, calculation.employerSocialContribution().minorUnits());
-      statement.bindLong(16, calculation.monthlyNonTaxableMinimum().minorUnits());
-      statement.bindLong(17, calculation.personalIncomeTax().minorUnits());
-      statement.bindLong(18, calculation.netWages().minorUnits());
+      statement.bindLong(5, 1);
+      statement.bindLong(6, 0);
+      statement.bindText(7, CanonicalTemporalText.formatLocalDate(payroll.effectiveDate()));
+      statement.bindText(8, payroll.wageExpenseAccountCode().value());
+      statement.bindText(9, payroll.employerSocialContributionExpenseAccountCode().value());
+      statement.bindText(10, payroll.netWagesPayableAccountCode().value());
+      statement.bindText(11, payroll.employeeSocialContributionPayableAccountCode().value());
+      statement.bindText(12, payroll.employerSocialContributionPayableAccountCode().value());
+      statement.bindText(13, payroll.personalIncomeTaxPayableAccountCode().value());
+      statement.bindText(14, calculation.grossWages().currencyUnit().code());
+      statement.bindLong(15, calculation.grossWages().minorUnits());
+      statement.bindLong(16, calculation.employeeSocialContribution().minorUnits());
+      statement.bindLong(17, calculation.employerSocialContribution().minorUnits());
+      statement.bindLong(18, calculation.monthlyNonTaxableMinimum().minorUnits());
+      statement.bindLong(19, calculation.personalIncomeTax().minorUnits());
+      statement.bindLong(20, calculation.netWages().minorUnits());
       statement.step();
     }
   }

@@ -25,6 +25,7 @@ class BookAdministrationRejectionTest {
             "book-contains-schema",
             "account-type-conflict",
             "account-taxonomy-conflict",
+            "contra-account-invalid",
             "account-not-found",
             "account-has-dependents",
             "account-balance-not-zero",
@@ -61,13 +62,22 @@ class BookAdministrationRejectionTest {
                     new AccountTaxonomy(
                         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.empty(),
+                        Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
+                        Optional.empty(),
                         Optional.empty()),
                     new AccountTaxonomy(
                         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.empty(),
+                        Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.RESULT_HOLDING),
+                        Optional.empty(),
                         Optional.empty()))),
+            BookAdministrationRejection.wireCode(
+                new dev.erst.fingrind.contract.bookkeeping.ContraAccountInvalid(
+                    new dev.erst.fingrind.core.AccountCode("1001"),
+                    new dev.erst.fingrind.core.AccountCode("1000"),
+                    dev.erst.fingrind.core.ContraAccountRelationshipViolation.TARGET_MISSING)),
             BookAdministrationRejection.wireCode(
                 new AccountRegistryLifecycleRejection.AccountNotFound(
                     new dev.erst.fingrind.core.AccountCode("1000"))),
@@ -103,16 +113,20 @@ class BookAdministrationRejectionTest {
                     new AccountTaxonomy(
                         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.of(new dev.erst.fingrind.core.AccountCode("1000")),
+                        Optional.empty(),
                         Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+                        Optional.empty(),
                         Optional.empty()),
                     new dev.erst.fingrind.core.AccountCode("5000"),
                     new AccountTaxonomy(
                         dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
                         Optional.empty(),
                         Optional.empty(),
+                        Optional.empty(),
                         Optional.of(
                             dev.erst.fingrind.core.ProfitAndLossLineClassification
-                                .OPERATING_EXPENSE)))),
+                                .OPERATING_EXPENSE),
+                        Optional.empty()))),
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.AccountHierarchyCycle(
                     new dev.erst.fingrind.core.AccountCode("1100"),
@@ -162,6 +176,7 @@ class BookAdministrationRejectionTest {
             "book-contains-schema",
             "account-type-conflict",
             "account-taxonomy-conflict",
+            "contra-account-invalid",
             "account-not-found",
             "account-has-dependents",
             "account-balance-not-zero",

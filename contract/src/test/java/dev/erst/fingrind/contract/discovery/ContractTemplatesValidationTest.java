@@ -63,6 +63,7 @@ class ContractTemplatesValidationTest {
             AccountType.ASSET,
             AccountNodeKind.POSTABLE,
             "3000",
+            null,
             FinancialPositionLineClassification.CURRENT_ASSET,
             null,
             null,
@@ -78,6 +79,7 @@ class ContractTemplatesValidationTest {
                 AccountType.ASSET,
                 AccountNodeKind.POSTABLE,
                 "cash account",
+                null,
                 FinancialPositionLineClassification.CURRENT_ASSET,
                 null,
                 null,
@@ -94,12 +96,23 @@ class ContractTemplatesValidationTest {
             AccountType.ASSET,
             AccountNodeKind.POSTABLE,
             null,
+            null,
             FinancialPositionLineClassification.INVENTORY,
             null,
             CashFlowAssetClassification.NON_CASH,
             unitOfMeasure);
 
     assertEquals(unitOfMeasure, template.unitOfMeasure());
+  }
+
+  @Test
+  void retireAccountTemplateDescriptor_validatesTheCanonicalAccountCode() {
+    assertEquals(
+        "obsolete-account",
+        new ContractTemplates.RetireAccountTemplateDescriptor("obsolete-account").accountCode());
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new ContractTemplates.RetireAccountTemplateDescriptor("obsolete account"));
   }
 
   @Test
@@ -110,7 +123,13 @@ class ContractTemplatesValidationTest {
               "open",
               LedgerStepKind.ENSURE_BOOK,
               new ContractPlanTemplates.EnsureBookTemplateDescriptor(
-                  "Acme Studio", "OWNER_MANAGED_SERVICE", "CASH", null, "EUR", "01-01"),
+                  "Acme Studio",
+                  "OWNER_MANAGED_SERVICE",
+                  "CASH",
+                  null,
+                  "EUR",
+                  "01-01",
+                  "2026-01-01"),
               null,
               null,
               null,
@@ -118,7 +137,13 @@ class ContractTemplatesValidationTest {
               null,
               null);
           new ContractPlanTemplates.EnsureBookTemplateDescriptor(
-              "Acme Trading", "OWNER_MANAGED_TRADING", "CASH", "WEIGHTED_AVERAGE", "EUR", "01-01");
+              "Acme Trading",
+              "OWNER_MANAGED_TRADING",
+              "CASH",
+              "WEIGHTED_AVERAGE",
+              "EUR",
+              "01-01",
+              "2026-01-01");
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "inspect", LedgerStepKind.INSPECT_BOOK, null, null, null, null, null, null, null);
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
@@ -151,6 +176,7 @@ class ContractTemplatesValidationTest {
                   "Cash",
                   AccountType.ASSET,
                   AccountNodeKind.POSTABLE,
+                  null,
                   null,
                   FinancialPositionLineClassification.CURRENT_ASSET,
                   null,
@@ -350,15 +376,17 @@ class ContractTemplatesValidationTest {
 
   @Test
   void postingRequestTemplates_coverEveryCanonicalEntryShape() {
-    ContractTemplates.PostingRequestTemplateDescriptor sale = postingTemplate();
-    ContractTemplates.PostingRequestTemplateDescriptor expense = expensePostingTemplate();
-    ContractTemplates.PostingRequestTemplateDescriptor ownerContribution =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor sale = postingTemplate();
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor expense =
+        expensePostingTemplate();
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor ownerContribution =
         ownerContributionPostingTemplate();
-    ContractTemplates.PostingRequestTemplateDescriptor ownerWithdrawal =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor ownerWithdrawal =
         ownerWithdrawalPostingTemplate();
-    ContractTemplates.PostingRequestTemplateDescriptor openingPosition =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor openingPosition =
         openingPositionPostingTemplate();
-    ContractTemplates.PostingRequestTemplateDescriptor reversal = reversalPostingTemplate();
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor reversal =
+        reversalPostingTemplate();
 
     assertEquals(BookkeepingEntryKind.SALE_SETTLED, sale.entryKind());
     assertEquals("4000", sale.revenueAccountCode());
@@ -376,7 +404,7 @@ class ContractTemplatesValidationTest {
 
   @Test
   void postingRequestTemplates_acceptDirectJournalShapesWithoutTypedEventFields() {
-    ContractTemplates.PostingRequestTemplateDescriptor directJournal =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor directJournal =
         directJournalPostingTemplate();
 
     assertEquals(BookkeepingEntryKind.DIRECT_JOURNAL, directJournal.entryKind());
@@ -743,7 +771,8 @@ class ContractTemplatesValidationTest {
         missingAssertionRule.getMessage());
   }
 
-  private static ContractTemplates.PostingRequestTemplateDescriptor postingTemplate() {
+  private static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
+      postingTemplate() {
     return postingTemplateDescriptor(
         BookkeepingEntryKind.SALE_SETTLED,
         "2026-04-25",
@@ -755,7 +784,8 @@ class ContractTemplatesValidationTest {
         postingTemplateShape(null, null, null));
   }
 
-  private static ContractTemplates.PostingRequestTemplateDescriptor expensePostingTemplate() {
+  private static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
+      expensePostingTemplate() {
     return postingTemplateDescriptor(
         BookkeepingEntryKind.EXPENSE_SETTLED,
         "2026-04-25",
@@ -767,7 +797,7 @@ class ContractTemplatesValidationTest {
         postingTemplateShape(null, null, null));
   }
 
-  private static ContractTemplates.PostingRequestTemplateDescriptor
+  private static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
       ownerContributionPostingTemplate() {
     return postingTemplateDescriptor(
         BookkeepingEntryKind.OWNER_CONTRIBUTION,
@@ -780,7 +810,7 @@ class ContractTemplatesValidationTest {
         postingTemplateShape(null, null, null));
   }
 
-  private static ContractTemplates.PostingRequestTemplateDescriptor
+  private static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
       ownerWithdrawalPostingTemplate() {
     return postingTemplateDescriptor(
         BookkeepingEntryKind.OWNER_WITHDRAWAL,
@@ -793,7 +823,7 @@ class ContractTemplatesValidationTest {
         postingTemplateShape(null, null, null));
   }
 
-  private static ContractTemplates.PostingRequestTemplateDescriptor
+  private static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
       openingPositionPostingTemplate() {
     return postingTemplateDescriptor(
         BookkeepingEntryKind.OPENING_POSITION,
@@ -811,7 +841,8 @@ class ContractTemplatesValidationTest {
             null));
   }
 
-  private static ContractTemplates.PostingRequestTemplateDescriptor reversalPostingTemplate() {
+  private static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
+      reversalPostingTemplate() {
     return postingTemplateDescriptor(
         BookkeepingEntryKind.REVERSAL,
         "2026-04-25",
@@ -827,7 +858,8 @@ class ContractTemplatesValidationTest {
                 "posting-1", "operator reversal")));
   }
 
-  private static ContractTemplates.PostingRequestTemplateDescriptor directJournalPostingTemplate() {
+  private static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
+      directJournalPostingTemplate() {
     return postingTemplateDescriptor(
         BookkeepingEntryKind.DIRECT_JOURNAL,
         "2026-04-25",
@@ -856,16 +888,17 @@ class ContractTemplatesValidationTest {
     return new PostingTemplateShape(lines, openingBalances, reversal);
   }
 
-  private static ContractTemplates.PostingRequestTemplateDescriptor postingTemplateDescriptor(
-      BookkeepingEntryKind entryKind,
-      String effectiveDate,
-      @Nullable String cashAccountCode,
-      @Nullable String revenueAccountCode,
-      @Nullable String expenseAccountCode,
-      @Nullable String equityAccountCode,
-      @Nullable MonetaryAmount amount,
-      PostingTemplateShape shape) {
-    return new ContractTemplates.PostingRequestTemplateDescriptor(
+  private static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
+      postingTemplateDescriptor(
+          BookkeepingEntryKind entryKind,
+          String effectiveDate,
+          @Nullable String cashAccountCode,
+          @Nullable String revenueAccountCode,
+          @Nullable String expenseAccountCode,
+          @Nullable String equityAccountCode,
+          @Nullable MonetaryAmount amount,
+          PostingTemplateShape shape) {
+    return new ContractPostingRequestTemplates.PostingRequestTemplateDescriptor(
         entryKind,
         effectiveDate,
         cashAccountCode,

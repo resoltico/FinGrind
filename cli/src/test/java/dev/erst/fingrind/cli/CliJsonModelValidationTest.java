@@ -14,6 +14,7 @@ import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
 import dev.erst.fingrind.cli.json.CliPlanLedgerFactJsonModels;
+import dev.erst.fingrind.cli.json.CliPostingEntryPayload;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
@@ -66,6 +67,36 @@ class CliJsonModelValidationTest {
         () ->
             new CliEnvelopeJsonModels.Envelope<>(
                 nullOf(), null, "code", "message", null, null, null, null, null));
+  }
+
+  @Test
+  void contraAndPayrollPayloads_preserveValidFactsAndRejectInvalidValues() {
+    CliRejectionJsonModels.ContraAccountDetails contra =
+        new CliRejectionJsonModels.ContraAccountDetails(
+            "4090", "4000", "statement-taxonomy-mismatch");
+    assertEquals("4090", contra.accountCode());
+    assertEquals("4000", contra.contraOfAccountCode());
+    assertEquals("statement-taxonomy-mismatch", contra.violation());
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new CliRejectionJsonModels.ContraAccountDetails(" ", "4000", "target-missing"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPostingEntryPayload.LatvianMonthlyPayrollPayload(
+                "payroll-run-1",
+                "employee-1",
+                "2026-07",
+                false,
+                -1,
+                "5000",
+                "5010",
+                "2200",
+                "2210",
+                "2220",
+                "2230",
+                new MonetaryAmount("EUR", "200000"),
+                null));
   }
 
   @Test
@@ -484,7 +515,7 @@ class CliJsonModelValidationTest {
                     "2026-05-14T10:00:00Z",
                     "2026-05-14T10:00:01Z",
                     new CliPlanJsonModels.EnsureBookStepDataPayload(
-                        "2026-05-14T10:00:00Z", "Acme Studio", "EUR", "01-01"),
+                        "2026-05-14T10:00:00Z", "Acme Studio", "EUR", "01-01", "2026-01-01"),
                     null)));
 
     assertThrows(
@@ -813,6 +844,7 @@ class CliJsonModelValidationTest {
         accountName,
         "ASSET",
         "POSTABLE",
+        null,
         null,
         "CURRENT_ASSET",
         null,

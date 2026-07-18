@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: INDEX
-updated: "2026-07-16"
+updated: "2026-07-18"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session, tax, account-registry, account-lifecycle, journal, money, quantity, inventory costing, weighted average, posting]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSessions", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService", "which doc file covers the tax surface", "which doc file covers account lifecycle", "which doc file covers quantity and weighted-average inventory costing primitives"]
@@ -75,6 +75,7 @@ route:
 | `DOC_00_PrimarySources.md` | primary legislation and authority links for jurisdiction-specific examples and the Latvian payroll profile |
 | `DOC_00_InventoryCosting.md` | inventory-costing symbol-routing continuation for inventory account state, admission, movements, and rejections |
 | `DOC_00_OwnedLifecycleContexts.md` | accrual cut-off, fixed-asset, financing, and realized-FX symbol-routing continuation |
+| `DOC_00_PostingAndRejections.md` | posting commands, local validation, and published rejection symbol-routing continuation |
 | `DOC_00_ProtectedBookMaintenance.md` | protected-book maintenance, passphrase, SQLite session, and runtime symbol-routing continuation |
 | `DOC_00_ResponseAndWorkflow.md` | response-envelope and ledger-workflow symbol-routing continuation |
 | `DOC_01_Core.md` | exported accounting vocabulary, identity, exact quantity, weighted-average costing, and shared temporal primitives from the `core` module |
@@ -108,6 +109,9 @@ Account-ledger pagination and continuation symbols continue in
 
 Response-envelope and ledger-workflow symbols continue in
 [DOC_00_ResponseAndWorkflow.md](./DOC_00_ResponseAndWorkflow.md).
+
+Posting-command and rejection symbols continue in
+[DOC_00_PostingAndRejections.md](./DOC_00_PostingAndRejections.md).
 
 Protected-book maintenance, passphrase, SQLite session, and runtime symbols continue in
 [DOC_00_ProtectedBookMaintenance.md](./DOC_00_ProtectedBookMaintenance.md).
@@ -143,9 +147,13 @@ Protected-book maintenance, passphrase, SQLite session, and runtime symbols cont
 | `AccountingKernelProfileId` | `DOC_01_Core.md` | `AccountingKernelProfileId` |
 | `AccountingKernelProfiles` | `DOC_01_Core.md` | `AccountingKernelProfiles` |
 | `PostingAccrualCutoffRejectionSemantics` | `DOC_02_AccrualCutoffs.md` | `AccrualCutoffBookkeepingEntryVariants`, `AccrualCutoffAdmissionPolicy`, `AccrualCutoffEntrySemanticsViolations`, And `PostingAccrualCutoffRejectionSemantics` |
+| `PostingFixedAssetRejectionSemantics` | `DOC_02_OwnedLifecycleContexts.md` | `PostingFixedAssetRejectionSemantics`, `PostingFinancingRejectionSemantics`, And `PostingRealizedForeignExchangeRejectionSemantics` |
+| `PostingFinancingRejectionSemantics` | `DOC_02_OwnedLifecycleContexts.md` | `PostingFixedAssetRejectionSemantics`, `PostingFinancingRejectionSemantics`, And `PostingRealizedForeignExchangeRejectionSemantics` |
+| `PostingRealizedForeignExchangeRejectionSemantics` | `DOC_02_OwnedLifecycleContexts.md` | `PostingFixedAssetRejectionSemantics`, `PostingFinancingRejectionSemantics`, And `PostingRealizedForeignExchangeRejectionSemantics` |
 | `ContractLatvianPayrollTemplates` | `DOC_02_LatvianPayroll.md` | `ContractLatvianPayrollTemplates` And Its Request Descriptors |
 | `LatvianMonthlyPayroll2026` | `DOC_02_LatvianPayroll.md` | `LatvianMonthlyPayroll2026` And `LatvianMonthlyPayrollCalculation` |
 | `LatvianMonthlyPayrollCalculation` | `DOC_02_LatvianPayroll.md` | `LatvianMonthlyPayroll2026` And `LatvianMonthlyPayrollCalculation` |
+| `LatvianPayrollWithholdingProfile` | `DOC_02_LatvianPayroll.md` | `LatvianPayrollWithholdingProfile` |
 | `LatvianPayrollAdmissionPolicy` | `DOC_02_LatvianPayroll.md` | `LatvianPayrollBookkeepingEntryVariants`, `LatvianPayrollAdmissionPolicy`, And `PostingLatvianPayrollRejectionSemantics` |
 | `LatvianPayrollAdmissionPolicy.Resolution` | `DOC_02_LatvianPayroll.md` | `LatvianPayrollBookkeepingEntryVariants`, `LatvianPayrollAdmissionPolicy`, And `PostingLatvianPayrollRejectionSemantics` |
 | `LatvianPayrollBookkeepingEntryVariants` | `DOC_02_LatvianPayroll.md` | `LatvianPayrollBookkeepingEntryVariants`, `LatvianPayrollAdmissionPolicy`, And `PostingLatvianPayrollRejectionSemantics` |
@@ -275,11 +283,14 @@ Protected-book maintenance, passphrase, SQLite session, and runtime symbols cont
 | `ContractFailure` | `DOC_02_MachineContractAndDescriptors.md` | `ContractErrors`, `ContractFailure`, `ContractFailurePaths`, `ContractDecision`, And `ContractFailureException` |
 | `ContractFailurePaths` | `DOC_02_MachineContractAndDescriptors.md` | `ContractErrors`, `ContractFailure`, `ContractFailurePaths`, `ContractDecision`, And `ContractFailureException` |
 | `ContractFailureException` | `DOC_02_MachineContractAndDescriptors.md` | `ContractErrors`, `ContractFailure`, `ContractFailurePaths`, `ContractDecision`, And `ContractFailureException` |
+| `ContraAccountInvalid` | `DOC_02_AccountRegistryLifecycle.md` | `ContraAccountInvalid` |
+| `ContraAccountRelationshipViolation` | `DOC_01_Core.md` | `ContraAccountRelationshipViolation` |
 | `DiscoveryFocus` | `DOC_02_ProtocolAndDiscovery.md` | `DiscoveryFocus` |
 | `EvidenceClass` | `DOC_01_Core_LedgerAndPosting.md` | `EvidenceClass` |
 | `ContractRequestShapes` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractRequestShapes.DeclareAccountRequestShapeDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractRequestShapes.DeclareTaxRegistrationRequestShapeDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractRequestShapes.RetireAccountRequestShapeDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractPostingRequestTemplates`, `ContractRequestShapes.RetireAccountRequestShapeDescriptor`, And `ContractTemplates.RetireAccountTemplateDescriptor` |
 | `ContractRequestShapes.EntryKindSemanticsDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractRequestShapes.EvidenceRequirementDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractRequestShapes.EnumVocabularyDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
@@ -291,6 +302,7 @@ Protected-book maintenance, passphrase, SQLite session, and runtime symbols cont
 | `ContractRequestShapes.RequestShapeDescriptorType` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractRequestShapes.RequestShapesDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractReversalTemplates` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractPostingRequestTemplates` | `DOC_02_MachineContractAndDescriptors.md` | `ContractPostingRequestTemplates`, `ContractRequestShapes.RetireAccountRequestShapeDescriptor`, And `ContractTemplates.RetireAccountTemplateDescriptor` |
 | `ContractTemplates` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.AccountingEvidenceTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.ApprovalTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
@@ -308,9 +320,9 @@ Protected-book maintenance, passphrase, SQLite session, and runtime symbols cont
 | `ContractPlanTemplates.LedgerPlanTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractPlanTemplates.EnsureBookTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.OpeningBalanceTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractTemplates.PostingRequestTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.ProvenanceTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.RecognitionIntervalTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractTemplates.RecognitionIntervalTemplateDescriptor` |
+| `ContractTemplates.RetireAccountTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractPostingRequestTemplates`, `ContractRequestShapes.RetireAccountRequestShapeDescriptor`, And `ContractTemplates.RetireAccountTemplateDescriptor` |
 | `QuotedExchangeRateTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractTemplates.SourceDocumentTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `TemplateDescriptorType` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
@@ -345,11 +357,20 @@ Protected-book maintenance, passphrase, SQLite session, and runtime symbols cont
 | `OperationCategory` | `DOC_02_ProtocolAndDiscovery.md` | `OperationCategory` |
 | `OperationId` | `DOC_02_ProtocolAndDiscovery.md` | `OperationId` |
 | `OutputMode` | `DOC_02_ProtocolAndDiscovery.md` | `OutputMode` |
+| `PlanTemplateTopic` | `DOC_02_MachineContractAndDescriptors.md` | `PlanTemplateTopic` |
 | `PreflightFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `BookkeepingKernelFacts`, `ReportCapabilityFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
 | `ProtectedBookFormatContract` | `DOC_02_ProtocolAndDiscovery.md` | `ProtectedBookFormatContract` |
 | `ProtocolArtifactOutput` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolArtifactOutput` |
 | `ProtocolBookAccessOptions` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptions` |
 | `ProtocolCatalog` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolCatalog` |
+| `ProtocolBusinessEventFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolBusinessEventFields`, `ProtocolBusinessEventFields.Core`, `ProtocolBusinessEventFields.AccrualCutoff`, `ProtocolBusinessEventFields.FixedAsset`, `ProtocolBusinessEventFields.Financing`, `ProtocolBusinessEventFields.RealizedForeignExchange`, `ProtocolBusinessEventFields.Inventory`, And `ProtocolBusinessEventFields.LatvianPayroll` |
+| `ProtocolBusinessEventFields.AccrualCutoff` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolBusinessEventFields`, `ProtocolBusinessEventFields.Core`, `ProtocolBusinessEventFields.AccrualCutoff`, `ProtocolBusinessEventFields.FixedAsset`, `ProtocolBusinessEventFields.Financing`, `ProtocolBusinessEventFields.RealizedForeignExchange`, `ProtocolBusinessEventFields.Inventory`, And `ProtocolBusinessEventFields.LatvianPayroll` |
+| `ProtocolBusinessEventFields.Core` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolBusinessEventFields`, `ProtocolBusinessEventFields.Core`, `ProtocolBusinessEventFields.AccrualCutoff`, `ProtocolBusinessEventFields.FixedAsset`, `ProtocolBusinessEventFields.Financing`, `ProtocolBusinessEventFields.RealizedForeignExchange`, `ProtocolBusinessEventFields.Inventory`, And `ProtocolBusinessEventFields.LatvianPayroll` |
+| `ProtocolBusinessEventFields.Financing` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolBusinessEventFields`, `ProtocolBusinessEventFields.Core`, `ProtocolBusinessEventFields.AccrualCutoff`, `ProtocolBusinessEventFields.FixedAsset`, `ProtocolBusinessEventFields.Financing`, `ProtocolBusinessEventFields.RealizedForeignExchange`, `ProtocolBusinessEventFields.Inventory`, And `ProtocolBusinessEventFields.LatvianPayroll` |
+| `ProtocolBusinessEventFields.FixedAsset` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolBusinessEventFields`, `ProtocolBusinessEventFields.Core`, `ProtocolBusinessEventFields.AccrualCutoff`, `ProtocolBusinessEventFields.FixedAsset`, `ProtocolBusinessEventFields.Financing`, `ProtocolBusinessEventFields.RealizedForeignExchange`, `ProtocolBusinessEventFields.Inventory`, And `ProtocolBusinessEventFields.LatvianPayroll` |
+| `ProtocolBusinessEventFields.Inventory` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolBusinessEventFields`, `ProtocolBusinessEventFields.Core`, `ProtocolBusinessEventFields.AccrualCutoff`, `ProtocolBusinessEventFields.FixedAsset`, `ProtocolBusinessEventFields.Financing`, `ProtocolBusinessEventFields.RealizedForeignExchange`, `ProtocolBusinessEventFields.Inventory`, And `ProtocolBusinessEventFields.LatvianPayroll` |
+| `ProtocolBusinessEventFields.LatvianPayroll` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolBusinessEventFields`, `ProtocolBusinessEventFields.Core`, `ProtocolBusinessEventFields.AccrualCutoff`, `ProtocolBusinessEventFields.FixedAsset`, `ProtocolBusinessEventFields.Financing`, `ProtocolBusinessEventFields.RealizedForeignExchange`, `ProtocolBusinessEventFields.Inventory`, And `ProtocolBusinessEventFields.LatvianPayroll` |
+| `ProtocolBusinessEventFields.RealizedForeignExchange` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolBusinessEventFields`, `ProtocolBusinessEventFields.Core`, `ProtocolBusinessEventFields.AccrualCutoff`, `ProtocolBusinessEventFields.FixedAsset`, `ProtocolBusinessEventFields.Financing`, `ProtocolBusinessEventFields.RealizedForeignExchange`, `ProtocolBusinessEventFields.Inventory`, And `ProtocolBusinessEventFields.LatvianPayroll` |
 | `ProtocolInteractionLimits` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolInteractionLimits` |
 | `ProtocolCommandSignature` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOperation` |
 | `ProtocolDeclareAccountFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
@@ -385,7 +406,6 @@ Protected-book maintenance, passphrase, SQLite session, and runtime symbols cont
 | `ProtocolPostEntryFields.SettlementAdjunct` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.SourceDocument` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.Tax` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
-| `ProtocolPostEntryFields.TopLevel` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolBookRequestFieldSets` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolBookRequestFieldSets`, `ProtocolPostingRequestFieldSets`, `ProtocolPostingNestedFieldSets`, And `ProtocolLedgerPlanRequestFieldSets` |
 | `ProtocolPostingRequestFieldSets` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolBookRequestFieldSets`, `ProtocolPostingRequestFieldSets`, `ProtocolPostingNestedFieldSets`, And `ProtocolLedgerPlanRequestFieldSets` |
 | `ProtocolAccrualCutoffPostingRequestFieldSets` | `DOC_02_MachineContractAndDescriptors.md` | `ProtocolAccrualCutoffPostingRequestFieldSets` |
@@ -601,39 +621,6 @@ Protected-book maintenance, passphrase, SQLite session, and runtime symbols cont
 | `TrialBalanceReport` | `DOC_02_AdministrationAndReports.md` | `TrialBalanceQuery`, `TrialBalanceRow`, `TrialBalanceReport`, And `TrialBalanceResult` |
 | `TrialBalanceResult` | `DOC_02_AdministrationAndReports.md` | `TrialBalanceQuery`, `TrialBalanceRow`, `TrialBalanceReport`, And `TrialBalanceResult` |
 | `TrialBalanceRow` | `DOC_02_AdministrationAndReports.md` | `TrialBalanceQuery`, `TrialBalanceRow`, `TrialBalanceReport`, And `TrialBalanceResult` |
-| `BookkeepingAdministrationRejection` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy`, `PostingAcceptancePolicy.Decision`, `BookkeepingAdministrationRejection`, `BookkeepingAdministrationRejectionPublishedMapper`, `BookkeepingPostingRejection`, `BookkeepingRequestPublishedLanguageTranslator`, And `BookkeepingPublishedLanguageTranslator` |
-| `BookkeepingAdministrationRejectionPublishedMapper` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy`, `PostingAcceptancePolicy.Decision`, `BookkeepingAdministrationRejection`, `BookkeepingAdministrationRejectionPublishedMapper`, `BookkeepingPostingRejection`, `BookkeepingRequestPublishedLanguageTranslator`, And `BookkeepingPublishedLanguageTranslator` |
-| `BookkeepingEntry` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry`, `TypedBookkeepingEntry`, `BookkeepingEntrySurface`, And `BookkeepingEntryKind` |
-| `BookkeepingEntrySurface` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry`, `TypedBookkeepingEntry`, `BookkeepingEntrySurface`, And `BookkeepingEntryKind` |
-| `BookkeepingEntryKind` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry`, `TypedBookkeepingEntry`, `BookkeepingEntrySurface`, And `BookkeepingEntryKind` |
-| `BookkeepingEntry.OpeningAccountBalance` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry`, `TypedBookkeepingEntry`, `BookkeepingEntrySurface`, And `BookkeepingEntryKind` |
-| `TypedBookkeepingEntry` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry`, `TypedBookkeepingEntry`, `BookkeepingEntrySurface`, And `BookkeepingEntryKind` |
-| `BookkeepingAccountSemanticsViolations` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingAccountSemanticsViolations`, `BookkeepingEvidenceSemanticsViolations`, `BookkeepingEntryModeSemanticsViolations`, And `BookkeepingTaxSemanticsViolations` |
-| `BookkeepingEvidenceSemanticsViolations` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingAccountSemanticsViolations`, `BookkeepingEvidenceSemanticsViolations`, `BookkeepingEntryModeSemanticsViolations`, And `BookkeepingTaxSemanticsViolations` |
-| `BookkeepingEntryModeSemanticsViolations` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingAccountSemanticsViolations`, `BookkeepingEvidenceSemanticsViolations`, `BookkeepingEntryModeSemanticsViolations`, And `BookkeepingTaxSemanticsViolations` |
-| `BookkeepingPostingRejection` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy`, `PostingAcceptancePolicy.Decision`, `BookkeepingAdministrationRejection`, `BookkeepingAdministrationRejectionPublishedMapper`, `BookkeepingPostingRejection`, `BookkeepingRequestPublishedLanguageTranslator`, And `BookkeepingPublishedLanguageTranslator` |
-| `BookkeepingRequestPublishedLanguageTranslator` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy`, `PostingAcceptancePolicy.Decision`, `BookkeepingAdministrationRejection`, `BookkeepingAdministrationRejectionPublishedMapper`, `BookkeepingPostingRejection`, `BookkeepingRequestPublishedLanguageTranslator`, And `BookkeepingPublishedLanguageTranslator` |
-| `BookkeepingPublishedLanguageTranslator` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy`, `PostingAcceptancePolicy.Decision`, `BookkeepingAdministrationRejection`, `BookkeepingAdministrationRejectionPublishedMapper`, `BookkeepingPostingRejection`, `BookkeepingRequestPublishedLanguageTranslator`, And `BookkeepingPublishedLanguageTranslator` |
-| `BookkeepingTaxSemanticsViolations` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingAccountSemanticsViolations`, `BookkeepingEvidenceSemanticsViolations`, `BookkeepingEntryModeSemanticsViolations`, And `BookkeepingTaxSemanticsViolations` |
-| `CommitEntryResult` | `DOC_02_PostingAndLedgerPlans.md` | `PostEntryResult`, `PreflightEntryResult`, And `CommitEntryResult` |
-| `PostEntryCommand` | `DOC_02_PostingAndLedgerPlans.md` | `PostEntryCommand` |
-| `PostEntryCommandTranslator` | `DOC_02_PostingAndLedgerPlans.md` | `PostEntryCommandTranslator` |
-| `PostEntryResult` | `DOC_02_PostingAndLedgerPlans.md` | `PostEntryResult`, `PreflightEntryResult`, And `CommitEntryResult` |
-| `PostingAcceptancePolicy` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy`, `PostingAcceptancePolicy.Decision`, `BookkeepingAdministrationRejection`, `BookkeepingAdministrationRejectionPublishedMapper`, `BookkeepingPostingRejection`, `BookkeepingRequestPublishedLanguageTranslator`, And `BookkeepingPublishedLanguageTranslator` |
-| `PostingAcceptancePolicy.Decision` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy`, `PostingAcceptancePolicy.Decision`, `BookkeepingAdministrationRejection`, `BookkeepingAdministrationRejectionPublishedMapper`, `BookkeepingPostingRejection`, `BookkeepingRequestPublishedLanguageTranslator`, And `BookkeepingPublishedLanguageTranslator` |
-| `PostingApplicationService` | `DOC_02_PostingAndLedgerPlans.md` | `PostingApplicationService` |
-| `PostingCommand` | `DOC_02_PostingAndLedgerPlans.md` | `PostingCommand`, `PostingLineageModel`, `PostingOriginatingEntryValidator`, And `PostingRequestModel` |
-| `PostingDraft` | `DOC_02_PostingAndLedgerPlans.md` | `PostingDraft` |
-| `PostingIdGenerator` | `DOC_02_PostingAndLedgerPlans.md` | `PostingIdGenerator` |
-| `PostingLineage` | `DOC_02_PostingAndLedgerPlans.md` | `PostingLineage` |
-| `PostingLineageModel` | `DOC_02_PostingAndLedgerPlans.md` | `PostingCommand`, `PostingLineageModel`, `PostingOriginatingEntryValidator`, And `PostingRequestModel` |
-| `PostingOriginatingEntryValidator` | `DOC_02_PostingAndLedgerPlans.md` | `PostingCommand`, `PostingLineageModel`, `PostingOriginatingEntryValidator`, And `PostingRequestModel` |
-| `PostingRejection` | `DOC_02_PostingAndLedgerPlans.md` | `PostingRejection`, `PostingInventoryRejectionSemantics`, And `PostingRejectionSemantics` |
-| `PostingInventoryRejectionSemantics` | `DOC_02_PostingAndLedgerPlans.md` | `PostingRejection`, `PostingInventoryRejectionSemantics`, And `PostingRejectionSemantics` |
-| `PostingRejectionSemantics` | `DOC_02_PostingAndLedgerPlans.md` | `PostingRejection`, `PostingInventoryRejectionSemantics`, And `PostingRejectionSemantics` |
-| `PostingRequestModel` | `DOC_02_PostingAndLedgerPlans.md` | `PostingCommand`, `PostingLineageModel`, `PostingOriginatingEntryValidator`, And `PostingRequestModel` |
-| `PreflightEntryResult` | `DOC_02_PostingAndLedgerPlans.md` | `PostEntryResult`, `PreflightEntryResult`, And `CommitEntryResult` |
-| `UuidV7PostingIdGenerator` | `DOC_02_PostingAndLedgerPlans.md` | `UuidV7PostingIdGenerator` |
 | `AccountBalanceCriteria` | `DOC_03_BookSessionsAndAdapters.md` | `AccountRegistryCursor`, `AccountRegistryQuery`, `AccountRegistryPage`, `PostingHistoryCursor`, `PostingHistoryQuery`, `PostingHistoryPage`, `AccountBalanceCriteria`, `AccountBalanceView`, `TrialBalanceCriteria`, `TrialBalanceRowView`, `TrialBalanceView`, `AccountLedgerCriteria`, `AccountLedgerEntryView`, `AccountLedgerView`, `PeriodSummaryCriteria`, `PeriodCurrencySummaryView`, `PeriodAccountActivityView`, And `PeriodSummaryView` |
 | `AccountBalanceView` | `DOC_03_BookSessionsAndAdapters.md` | `AccountRegistryCursor`, `AccountRegistryQuery`, `AccountRegistryPage`, `PostingHistoryCursor`, `PostingHistoryQuery`, `PostingHistoryPage`, `AccountBalanceCriteria`, `AccountBalanceView`, `TrialBalanceCriteria`, `TrialBalanceRowView`, `TrialBalanceView`, `AccountLedgerCriteria`, `AccountLedgerEntryView`, `AccountLedgerView`, `PeriodSummaryCriteria`, `PeriodCurrencySummaryView`, `PeriodAccountActivityView`, And `PeriodSummaryView` |
 | `AccountCatalogStore` | `DOC_03_BookSessionsAndAdapters.md` | `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `ReportingPeriodCloseStore`, And `LedgerPlanTransaction` |

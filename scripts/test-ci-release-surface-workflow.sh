@@ -24,12 +24,21 @@ resolve_script_dir() {
 readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly workflow_file="${repo_root}/.github/workflows/ci.yml"
+readonly retired_wrapper_workflow="${repo_root}/.github/workflows/gradle-wrapper-validation.yml"
 
 [[ -f "${workflow_file}" ]] || die "missing CI workflow at ${workflow_file}"
+[[ ! -e "${retired_wrapper_workflow}" ]] || die \
+    "wrapper validation still lives outside the release-blocking CI graph"
 grep -Fq 'Run the canonical root verification gate' "${workflow_file}" || die \
     "CI workflow no longer advertises the canonical root verification gate"
 grep -Fq './check.sh --no-daemon --console=plain' "${workflow_file}" || die \
     "CI workflow no longer runs the canonical root verification gate"
+grep -Fq 'wrapper-validation:' "${workflow_file}" || die \
+    "CI workflow no longer owns Gradle wrapper validation"
+grep -Fq 'name: Gradle wrapper validation' "${workflow_file}" || die \
+    "CI workflow no longer gives wrapper validation one explicit owner"
+grep -Fq 'gradle/actions/wrapper-validation@' "${workflow_file}" || die \
+    "CI workflow no longer verifies the checked-in Gradle wrapper"
 grep -Fq 'fingrindUvVersion=' "${workflow_file}" || die \
     "CI workflow no longer resolves the pinned uv launcher version from build metadata"
 grep -Fq 'ORG_GRADLE_PROJECT_fingrindUvExecutable' "${workflow_file}" || die \
@@ -104,6 +113,12 @@ if ! grep -A12 -F 'gate:' "${workflow_file}" | grep -Fq 'published-bundle-smoke'
 fi
 if ! grep -A12 -F 'gate:' "${workflow_file}" | grep -Fq 'prepare-published-bundle-smoke-matrix'; then
     die "CI workflow no longer requires the aggregate Gate job to wait for the matrix-preparation owner"
+fi
+if ! grep -A14 -F 'gate:' "${workflow_file}" | grep -Fq 'wrapper-validation'; then
+    die "CI workflow no longer requires the aggregate Gate job to wait for wrapper validation"
+fi
+if ! grep -A80 -F 'published-bundle-smoke:' "${workflow_file}" | grep -Fq 'cache-read-only: true'; then
+    die "published bundle smoke no longer uses read-only Gradle caching"
 fi
 if grep -Fq 'Run root quality gates and included build-logic tests on Windows' "${workflow_file}"; then
     die "CI workflow combines Windows root verification and build-logic verification in one non-fail-fast step"

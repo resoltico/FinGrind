@@ -10,6 +10,7 @@ readonly repo_hygiene_structural_root_entries=(
     .github
     .gitignore
     AGENTS.md
+    architecture
     CHANGELOG.md
     Dockerfile
     LICENSE

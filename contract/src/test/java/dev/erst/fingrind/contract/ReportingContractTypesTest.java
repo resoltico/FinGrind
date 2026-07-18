@@ -17,7 +17,9 @@ import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
+import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
 import dev.erst.fingrind.contract.bookkeeping.PeriodCurrencySummary;
@@ -145,6 +147,7 @@ class ReportingContractTypesTest {
         new PeriodSummaryResult.Rejected(new BookQueryRejection.BookNotInitialized());
     ListAccountsResult.Listed listedAccounts =
         new ListAccountsResult.Listed(
+            new ListAccountsQuery(50, Optional.empty()),
             ContractFixtures.accountPage(List.of(CASH_ACCOUNT), 50, Optional.empty()));
     ListAccountsResult.Rejected rejectedAccounts =
         new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized());
@@ -155,6 +158,7 @@ class ReportingContractTypesTest {
         new GetPostingResult.Rejected(new BookQueryRejection.BookNotInitialized());
     ListPostingsResult.Listed listedPostings =
         new ListPostingsResult.Listed(
+            new ListPostingsQuery(Optional.empty(), null, null, 10, Optional.empty()),
             ContractFixtures.postingPage(
                 Optional.empty(),
                 EffectiveDateRange.unbounded(),
@@ -377,6 +381,7 @@ class ReportingContractTypesTest {
     AtomicInteger foldCounter = new AtomicInteger();
     ListAccountsResult.Listed listedAccounts =
         new ListAccountsResult.Listed(
+            new ListAccountsQuery(50, Optional.empty()),
             ContractFixtures.accountPage(List.of(CASH_ACCOUNT), 50, Optional.empty()));
     listedAccounts.fold(
         ignored -> {

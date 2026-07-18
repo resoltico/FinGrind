@@ -60,6 +60,8 @@ final class SqlitePostingMapper {
                 requiredText(accountRow, SqlitePostingColumnIndexes.COL_ACCOUNT_NODE_KIND)),
             optionalText(accountRow, SqlitePostingColumnIndexes.COL_ACCOUNT_PARENT_ACCOUNT_CODE)
                 .map(AccountCode::new),
+            optionalText(accountRow, SqlitePostingColumnIndexes.COL_ACCOUNT_CONTRA_OF_ACCOUNT_CODE)
+                .map(AccountCode::new),
             optionalText(
                     accountRow,
                     SqlitePostingColumnIndexes.COL_ACCOUNT_FINANCIAL_POSITION_LINE_CLASSIFICATION)

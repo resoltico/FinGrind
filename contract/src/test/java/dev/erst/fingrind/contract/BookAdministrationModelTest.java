@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
@@ -169,6 +170,7 @@ class BookAdministrationModelTest {
                     Instant.parse("2026-04-07T10:15:30Z"))));
     ListAccountsResult.Listed listed =
         new ListAccountsResult.Listed(
+            new ListAccountsQuery(50, Optional.empty()),
             ContractFixtures.accountPage(source, 50, java.util.Optional.empty()));
     source.clear();
     assertEquals(1, listed.page().accounts().size());
@@ -190,12 +192,14 @@ class BookAdministrationModelTest {
         new EntityProfile(new BookEntityName("Acme Studio")),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"));
+        FiscalYearStart.parse("01-01"),
+        java.time.LocalDate.parse("2026-01-01"));
   }
 
   private static AccountTaxonomy inventoryTaxonomy() {
     return new AccountTaxonomy(
         AccountNodeKind.POSTABLE,
+        Optional.empty(),
         Optional.empty(),
         Optional.of(FinancialPositionLineClassification.INVENTORY),
         Optional.empty(),

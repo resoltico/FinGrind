@@ -5,11 +5,13 @@ import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.StatementLineKind;
 import java.util.Objects;
+import java.util.Optional;
 
 /** Local bookkeeping line inside one income statement section. */
 public record IncomeStatementRowView(
     String lineCode,
     String lineName,
+    Optional<String> contraOfLineCode,
     AccountType lineType,
     ProfitAndLossLineClassification lineClassification,
     StatementLineKind lineKind,
@@ -17,6 +19,7 @@ public record IncomeStatementRowView(
   public IncomeStatementRowView {
     Objects.requireNonNull(lineCode, "lineCode");
     Objects.requireNonNull(lineName, "lineName");
+    Objects.requireNonNull(contraOfLineCode, "contraOfLineCode");
     Objects.requireNonNull(lineType, "lineType");
     Objects.requireNonNull(lineClassification, "lineClassification");
     Objects.requireNonNull(lineKind, "lineKind");

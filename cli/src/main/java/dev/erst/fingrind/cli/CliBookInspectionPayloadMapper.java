@@ -73,7 +73,8 @@ final class CliBookInspectionPayloadMapper {
             ? null
             : bookIdentity.bookDoctrine().inventoryCostingDoctrine().wireValue(),
         bookIdentity.functionalCurrency().code(),
-        bookIdentity.fiscalYearStart().wireValue());
+        bookIdentity.fiscalYearStart().wireValue(),
+        bookIdentity.bookStartEffectiveDate().toString());
   }
 
   static CliAdministrationJsonModels.CloseReadinessPayload closeReadinessPayload(

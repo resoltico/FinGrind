@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import static dev.erst.fingrind.executor.bookkeeping.BookTemplateSeedAccountFactory.contraPostable;
 import static dev.erst.fingrind.executor.bookkeeping.BookTemplateSeedAccountFactory.postable;
 
 import dev.erst.fingrind.core.AccountType;
@@ -30,11 +31,12 @@ final class BookTemplateProfitAndLossSeedAccounts {
         Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE));
   }
 
-  static AccountDeclaration salesDiscountAllowanceAccount() {
-    return postable(
+  static AccountDeclaration salesDiscountAllowanceAccount(AccountDeclaration revenueAccount) {
+    return contraPostable(
         "sales-discount-allowance",
         "Sales Discount Allowance",
         AccountType.REVENUE,
+        java.util.Objects.requireNonNull(revenueAccount, "revenueAccount").accountCode().value(),
         Optional.empty(),
         Optional.empty(),
         Optional.of(ProfitAndLossLineClassification.SALES_DISCOUNT_ALLOWANCE));

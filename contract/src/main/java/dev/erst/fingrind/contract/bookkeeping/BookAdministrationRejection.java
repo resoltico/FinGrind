@@ -17,6 +17,7 @@ public sealed interface BookAdministrationRejection
         BookAdministrationRejection.BookContainsSchema,
         BookAdministrationRejection.AccountTypeConflict,
         BookAdministrationRejection.AccountTaxonomyConflict,
+        ContraAccountInvalid,
         AccountRegistryLifecycleRejection,
         BookAdministrationRejection.ParentAccountMissing,
         BookAdministrationRejection.ParentAccountInactive,

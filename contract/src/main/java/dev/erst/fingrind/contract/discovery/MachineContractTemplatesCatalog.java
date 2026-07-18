@@ -1,8 +1,7 @@
 package dev.erst.fingrind.contract.discovery;
 
-import dev.erst.fingrind.contract.protocol.LedgerStepKind;
+import dev.erst.fingrind.contract.discovery.ContractPostingRequestTemplates.PostingRequestTemplateDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
-import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOperation;
 import dev.erst.fingrind.contract.protocol.ProtocolPostingRequestTopics;
 import dev.erst.fingrind.core.AccountNodeKind;
@@ -49,7 +48,7 @@ final class MachineContractTemplatesCatalog {
     return DECLARE_ACCOUNT_REVENUE_JSON;
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor requestTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor requestTemplate(
       @Nullable BookTemplateId bookTemplateId) {
     return MachineContractPostEntryVariantSchemas.template(
         BookkeepingEntryKind.SALE_SETTLED, bookTemplateId);
@@ -61,6 +60,7 @@ final class MachineContractTemplatesCatalog {
         "Cash Reserve",
         AccountType.ASSET,
         AccountNodeKind.POSTABLE,
+        null,
         null,
         FinancialPositionLineClassification.CURRENT_ASSET,
         null,
@@ -94,69 +94,16 @@ final class MachineContractTemplatesCatalog {
                 dev.erst.fingrind.contract.tax.TaxApplicationKind.INPUT_EXPENSE_RECOVERABLE)));
   }
 
+  static ContractTemplates.RetireAccountTemplateDescriptor retireAccountTemplate() {
+    return new ContractTemplates.RetireAccountTemplateDescriptor("obsolete-account");
+  }
+
   static ContractPlanTemplates.LedgerPlanTemplateDescriptor planTemplate() {
-    return new ContractPlanTemplates.LedgerPlanTemplateDescriptor(
-        "tax-setup",
-        List.of(
-            new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-                "ensure-book",
-                LedgerStepKind.ENSURE_BOOK,
-                new ContractPlanTemplates.EnsureBookTemplateDescriptor(
-                    "Acme Studio", "OWNER_MANAGED_SERVICE", "CASH", null, "EUR", "01-01"),
-                null,
-                null,
-                null,
-                null,
-                null,
-                null),
-            new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-                "declare-tax-payable",
-                LedgerStepKind.DECLARE_ACCOUNT,
-                null,
-                null,
-                new ContractTemplates.DeclareAccountTemplateDescriptor(
-                    "tax-payable-vat",
-                    "VAT Payable",
-                    AccountType.LIABILITY,
-                    AccountNodeKind.POSTABLE,
-                    null,
-                    FinancialPositionLineClassification.CURRENT_LIABILITY,
-                    null,
-                    null,
-                    null),
-                null,
-                null,
-                null,
-                null),
-            new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-                "declare-tax-recoverable",
-                LedgerStepKind.DECLARE_ACCOUNT,
-                null,
-                null,
-                new ContractTemplates.DeclareAccountTemplateDescriptor(
-                    "tax-recoverable-vat",
-                    "VAT Recoverable",
-                    AccountType.ASSET,
-                    AccountNodeKind.POSTABLE,
-                    null,
-                    FinancialPositionLineClassification.CURRENT_ASSET,
-                    null,
-                    CashFlowAssetClassification.NON_CASH,
-                    null),
-                null,
-                null,
-                null,
-                null),
-            new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-                ProtocolCatalog.operationName(OperationId.DECLARE_TAX_REGISTRATION),
-                LedgerStepKind.DECLARE_TAX_REGISTRATION,
-                null,
-                null,
-                null,
-                declareTaxRegistrationTemplate(),
-                null,
-                null,
-                null)));
+    return MachineContractPlanTemplates.template(PlanTemplateTopic.GENERAL);
+  }
+
+  static ContractPlanTemplates.LedgerPlanTemplateDescriptor planTemplate(PlanTemplateTopic topic) {
+    return MachineContractPlanTemplates.template(topic);
   }
 
   static ContractRequestShapes.@Nullable RequestShapesDescriptor requestShapesFor(
@@ -175,6 +122,7 @@ final class MachineContractTemplatesCatalog {
     return switch (operationId) {
       case DECLARE_ACCOUNT, AMEND_ACCOUNT ->
           MachineContractRequestShapesCatalog.declareAccountRequestShapes();
+      case RETIRE_ACCOUNT -> MachineContractRequestShapesCatalog.retireAccountRequestShapes();
       case DECLARE_TAX_REGISTRATION ->
           MachineContractRequestShapesCatalog.declareTaxRegistrationRequestShapes();
       case EXECUTE_PLAN -> MachineContractRequestShapesCatalog.ledgerPlanRequestShapes();
@@ -182,7 +130,7 @@ final class MachineContractTemplatesCatalog {
     };
   }
 
-  static ContractTemplates.@Nullable PostingRequestTemplateDescriptor postingRequestTemplateFor(
+  static @Nullable PostingRequestTemplateDescriptor postingRequestTemplateFor(
       @Nullable ProtocolOperation selectedOperation, @Nullable BookTemplateId bookTemplateId) {
     if (selectedOperation == null) {
       return null;
@@ -207,6 +155,13 @@ final class MachineContractTemplatesCatalog {
       case DECLARE_ACCOUNT, AMEND_ACCOUNT -> declareAccountTemplate();
       default -> null;
     };
+  }
+
+  static ContractTemplates.@Nullable RetireAccountTemplateDescriptor retireAccountTemplateFor(
+      @Nullable ProtocolOperation selectedOperation) {
+    return selectedOperation != null && selectedOperation.id() == OperationId.RETIRE_ACCOUNT
+        ? retireAccountTemplate()
+        : null;
   }
 
   static ContractTemplates.@Nullable DeclareTaxRegistrationTemplateDescriptor

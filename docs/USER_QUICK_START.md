@@ -1,5 +1,5 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: USER_QUICK_START
 updated: "2026-07-16"
@@ -97,7 +97,7 @@ directory already exists, keep it owner-only before you reuse that path.
 Create one new book file and protect it with that key:
 
 ```bash
-fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01
+fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01
 ```
 
 If you accidentally rerun `open-book` against the same initialized file, the command is rejected

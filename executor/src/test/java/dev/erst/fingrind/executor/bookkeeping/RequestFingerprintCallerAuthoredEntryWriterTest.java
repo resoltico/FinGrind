@@ -306,6 +306,8 @@ class RequestFingerprintCallerAuthoredEntryWriterTest {
                 payrollRunId,
                 new LatvianPayrollEmployeeReference("employee-1"),
                 new LatvianPayrollMonth(YearMonth.of(2026, 7)),
+                dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+                    .taxBookWithNoDependantsFor2026(),
                 new AccountCode("5000"),
                 new AccountCode("5010"),
                 new AccountCode("2200"),

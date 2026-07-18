@@ -12,150 +12,155 @@ public final class ProtocolPostingRequestFieldSets {
       Set.copyOf(ProtocolPostEntryFields.topLevelFields());
   private static final Set<String> JOURNAL_DIRECT_FIELDS =
       Set.of(
-          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-          ProtocolPostEntryFields.TopLevel.LINES,
-          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
-          ProtocolPostEntryFields.TopLevel.EVIDENCE,
-          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+          ProtocolBusinessEventFields.Core.ENTRY_KIND,
+          ProtocolBusinessEventFields.Core.EFFECTIVE_DATE,
+          ProtocolBusinessEventFields.Core.LINES,
+          ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE,
+          ProtocolBusinessEventFields.Core.EVIDENCE,
+          ProtocolBusinessEventFields.Core.PROVENANCE);
   private static final Set<String> SALE_SETTLED_FIELDS =
       Set.of(
-          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.AMOUNT,
-          ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF,
-          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
-          ProtocolPostEntryFields.TopLevel.TAX,
-          ProtocolPostEntryFields.TopLevel.EVIDENCE,
-          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+          ProtocolBusinessEventFields.Core.ENTRY_KIND,
+          ProtocolBusinessEventFields.Core.EFFECTIVE_DATE,
+          ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.REVENUE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.AMOUNT,
+          ProtocolBusinessEventFields.Inventory.INVENTORY_RELIEF,
+          ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE,
+          ProtocolBusinessEventFields.Core.TAX,
+          ProtocolBusinessEventFields.Core.EVIDENCE,
+          ProtocolBusinessEventFields.Core.PROVENANCE);
   private static final Set<String> SALE_ON_CREDIT_FIELDS =
       Set.of(
-          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-          ProtocolPostEntryFields.TopLevel.RECEIVABLE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.AMOUNT,
-          ProtocolPostEntryFields.TopLevel.INVENTORY_RELIEF,
-          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
-          ProtocolPostEntryFields.TopLevel.TAX,
-          ProtocolPostEntryFields.TopLevel.EVIDENCE,
-          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+          ProtocolBusinessEventFields.Core.ENTRY_KIND,
+          ProtocolBusinessEventFields.Core.EFFECTIVE_DATE,
+          ProtocolBusinessEventFields.Core.RECEIVABLE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.REVENUE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.AMOUNT,
+          ProtocolBusinessEventFields.Inventory.INVENTORY_RELIEF,
+          ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE,
+          ProtocolBusinessEventFields.Core.TAX,
+          ProtocolBusinessEventFields.Core.EVIDENCE,
+          ProtocolBusinessEventFields.Core.PROVENANCE);
   private static final Set<String> FOREIGN_CURRENCY_OBLIGATION_FIELDS =
       realizedForeignExchangeFields(
-          ProtocolPostEntryFields.TopLevel.FOREIGN_CURRENCY_OBLIGATION_ID,
-          ProtocolPostEntryFields.TopLevel.RECEIVABLE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.REALIZED_GAIN_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.REALIZED_LOSS_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE);
+          ProtocolBusinessEventFields.RealizedForeignExchange.FOREIGN_CURRENCY_OBLIGATION_ID,
+          ProtocolBusinessEventFields.Core.RECEIVABLE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.REVENUE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.RealizedForeignExchange.REALIZED_GAIN_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.RealizedForeignExchange.REALIZED_LOSS_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE);
   private static final Set<String> REALIZED_FOREIGN_EXCHANGE_SETTLEMENT_FIELDS =
       realizedForeignExchangeFields(
-          ProtocolPostEntryFields.TopLevel.FOREIGN_CURRENCY_OBLIGATION_ID,
-          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE);
+          ProtocolBusinessEventFields.RealizedForeignExchange.FOREIGN_CURRENCY_OBLIGATION_ID,
+          ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE);
   private static final Set<String> LATVIAN_MONTHLY_PAYROLL_FIELDS =
       Set.of(
-          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-          ProtocolPostEntryFields.TopLevel.PAYROLL_RUN_ID,
-          ProtocolPostEntryFields.TopLevel.EMPLOYEE_REFERENCE,
-          ProtocolPostEntryFields.TopLevel.PAYROLL_MONTH,
-          ProtocolPostEntryFields.TopLevel.WAGE_EXPENSE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.EMPLOYER_SOCIAL_CONTRIBUTION_EXPENSE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.NET_WAGES_PAYABLE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.EMPLOYEE_SOCIAL_CONTRIBUTION_PAYABLE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.EMPLOYER_SOCIAL_CONTRIBUTION_PAYABLE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.PERSONAL_INCOME_TAX_PAYABLE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.GROSS_WAGES,
-          ProtocolPostEntryFields.TopLevel.EVIDENCE,
-          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+          ProtocolBusinessEventFields.Core.ENTRY_KIND,
+          ProtocolBusinessEventFields.Core.EFFECTIVE_DATE,
+          ProtocolBusinessEventFields.LatvianPayroll.PAYROLL_RUN_ID,
+          ProtocolBusinessEventFields.LatvianPayroll.EMPLOYEE_REFERENCE,
+          ProtocolBusinessEventFields.LatvianPayroll.PAYROLL_MONTH,
+          ProtocolBusinessEventFields.LatvianPayroll.TAX_BOOK_HELD_AT_EMPLOYER,
+          ProtocolBusinessEventFields.LatvianPayroll.DEPENDANT_COUNT,
+          ProtocolBusinessEventFields.LatvianPayroll.WAGE_EXPENSE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.LatvianPayroll
+              .EMPLOYER_SOCIAL_CONTRIBUTION_EXPENSE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.LatvianPayroll.NET_WAGES_PAYABLE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.LatvianPayroll
+              .EMPLOYEE_SOCIAL_CONTRIBUTION_PAYABLE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.LatvianPayroll
+              .EMPLOYER_SOCIAL_CONTRIBUTION_PAYABLE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.LatvianPayroll.PERSONAL_INCOME_TAX_PAYABLE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.LatvianPayroll.GROSS_WAGES,
+          ProtocolBusinessEventFields.Core.EVIDENCE,
+          ProtocolBusinessEventFields.Core.PROVENANCE);
   private static final Set<String> LATVIAN_PAYROLL_SETTLEMENT_FIELDS =
       Set.of(
-          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-          ProtocolPostEntryFields.TopLevel.PAYROLL_RUN_ID,
-          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.EVIDENCE,
-          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+          ProtocolBusinessEventFields.Core.ENTRY_KIND,
+          ProtocolBusinessEventFields.Core.EFFECTIVE_DATE,
+          ProtocolBusinessEventFields.LatvianPayroll.PAYROLL_RUN_ID,
+          ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.EVIDENCE,
+          ProtocolBusinessEventFields.Core.PROVENANCE);
   private static final Set<String> EXPENSE_SETTLED_FIELDS =
       Set.of(
-          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-          ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.AMOUNT,
-          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
-          ProtocolPostEntryFields.TopLevel.TAX,
-          ProtocolPostEntryFields.TopLevel.EVIDENCE,
-          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+          ProtocolBusinessEventFields.Core.ENTRY_KIND,
+          ProtocolBusinessEventFields.Core.EFFECTIVE_DATE,
+          ProtocolBusinessEventFields.Inventory.EXPENSE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.AMOUNT,
+          ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE,
+          ProtocolBusinessEventFields.Core.TAX,
+          ProtocolBusinessEventFields.Core.EVIDENCE,
+          ProtocolBusinessEventFields.Core.PROVENANCE);
   private static final Set<String> EXPENSE_ON_CREDIT_FIELDS =
       Set.of(
-          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-          ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.AMOUNT,
-          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
-          ProtocolPostEntryFields.TopLevel.TAX,
-          ProtocolPostEntryFields.TopLevel.EVIDENCE,
-          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+          ProtocolBusinessEventFields.Core.ENTRY_KIND,
+          ProtocolBusinessEventFields.Core.EFFECTIVE_DATE,
+          ProtocolBusinessEventFields.Inventory.EXPENSE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.PAYABLE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.AMOUNT,
+          ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE,
+          ProtocolBusinessEventFields.Core.TAX,
+          ProtocolBusinessEventFields.Core.EVIDENCE,
+          ProtocolBusinessEventFields.Core.PROVENANCE);
   private static final Set<String> RECEIPT_FIELDS =
       Set.of(
-          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.RECEIVABLE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.AMOUNT,
-          ProtocolPostEntryFields.TopLevel.SETTLEMENT_ADJUNCT,
-          ProtocolPostEntryFields.TopLevel.EVIDENCE,
-          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+          ProtocolBusinessEventFields.Core.ENTRY_KIND,
+          ProtocolBusinessEventFields.Core.EFFECTIVE_DATE,
+          ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.RECEIVABLE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.AMOUNT,
+          ProtocolBusinessEventFields.Core.SETTLEMENT_ADJUNCT,
+          ProtocolBusinessEventFields.Core.EVIDENCE,
+          ProtocolBusinessEventFields.Core.PROVENANCE);
   private static final Set<String> PAYMENT_FIELDS =
       Set.of(
-          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-          ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.AMOUNT,
-          ProtocolPostEntryFields.TopLevel.SETTLEMENT_ADJUNCT,
-          ProtocolPostEntryFields.TopLevel.EVIDENCE,
-          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+          ProtocolBusinessEventFields.Core.ENTRY_KIND,
+          ProtocolBusinessEventFields.Core.EFFECTIVE_DATE,
+          ProtocolBusinessEventFields.Core.PAYABLE_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.AMOUNT,
+          ProtocolBusinessEventFields.Core.SETTLEMENT_ADJUNCT,
+          ProtocolBusinessEventFields.Core.EVIDENCE,
+          ProtocolBusinessEventFields.Core.PROVENANCE);
   private static final Set<String> OWNER_CONTRIBUTION_FIELDS =
       Set.of(
-          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.AMOUNT,
-          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
-          ProtocolPostEntryFields.TopLevel.EVIDENCE,
-          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+          ProtocolBusinessEventFields.Core.ENTRY_KIND,
+          ProtocolBusinessEventFields.Core.EFFECTIVE_DATE,
+          ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.EQUITY_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.AMOUNT,
+          ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE,
+          ProtocolBusinessEventFields.Core.EVIDENCE,
+          ProtocolBusinessEventFields.Core.PROVENANCE);
   private static final Set<String> OWNER_WITHDRAWAL_FIELDS =
       Set.of(
-          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-          ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE,
-          ProtocolPostEntryFields.TopLevel.AMOUNT,
-          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
-          ProtocolPostEntryFields.TopLevel.EVIDENCE,
-          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+          ProtocolBusinessEventFields.Core.ENTRY_KIND,
+          ProtocolBusinessEventFields.Core.EFFECTIVE_DATE,
+          ProtocolBusinessEventFields.Core.EQUITY_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE,
+          ProtocolBusinessEventFields.Core.AMOUNT,
+          ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE,
+          ProtocolBusinessEventFields.Core.EVIDENCE,
+          ProtocolBusinessEventFields.Core.PROVENANCE);
   private static final Set<String> OPENING_POSITION_FIELDS =
       Set.of(
-          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-          ProtocolPostEntryFields.TopLevel.OPENING_BALANCES,
-          ProtocolPostEntryFields.TopLevel.EVIDENCE,
-          ProtocolPostEntryFields.TopLevel.PROVENANCE);
+          ProtocolBusinessEventFields.Core.ENTRY_KIND,
+          ProtocolBusinessEventFields.Core.EFFECTIVE_DATE,
+          ProtocolBusinessEventFields.Core.OPENING_BALANCES,
+          ProtocolBusinessEventFields.Core.EVIDENCE,
+          ProtocolBusinessEventFields.Core.PROVENANCE);
   private static final Set<String> REVERSAL_ENTRY_FIELDS =
       Set.of(
-          ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
-          ProtocolPostEntryFields.TopLevel.EFFECTIVE_DATE,
-          ProtocolPostEntryFields.TopLevel.FOREIGN_EXCHANGE,
-          ProtocolPostEntryFields.TopLevel.EVIDENCE,
-          ProtocolPostEntryFields.TopLevel.PROVENANCE,
-          ProtocolPostEntryFields.TopLevel.REVERSAL);
+          ProtocolBusinessEventFields.Core.ENTRY_KIND,
+          ProtocolBusinessEventFields.Core.EFFECTIVE_DATE,
+          ProtocolBusinessEventFields.Core.FOREIGN_EXCHANGE,
+          ProtocolBusinessEventFields.Core.EVIDENCE,
+          ProtocolBusinessEventFields.Core.PROVENANCE,
+          ProtocolBusinessEventFields.Core.REVERSAL);
   private static final Map<BookkeepingEntryKind, Set<String>> FIELDS_BY_ENTRY_KIND =
       fieldsByEntryKind();
 

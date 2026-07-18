@@ -8,7 +8,7 @@ import org.jspecify.annotations.Nullable;
 final class MachineContractAccrualCutoffPostEntryVariantTemplates {
   private MachineContractAccrualCutoffPostEntryVariantTemplates() {}
 
-  static ContractTemplates.PostingRequestTemplateDescriptor prepaymentTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor prepaymentTemplate(
       @Nullable BookTemplateId ignoredBookTemplateId) {
     return MachineContractPostEntryVariantTemplates.accrualCutoffTemplate(
         BookkeepingEntryKind.PREPAYMENT,
@@ -22,7 +22,7 @@ final class MachineContractAccrualCutoffPostEntryVariantTemplates {
         new ContractTemplates.RecognitionIntervalTemplateDescriptor("2026-01-15", "2026-03-31"));
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor deferredRevenueTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor deferredRevenueTemplate(
       @Nullable BookTemplateId bookTemplateId) {
     return MachineContractPostEntryVariantTemplates.accrualCutoffTemplate(
         BookkeepingEntryKind.DEFERRED_REVENUE,
@@ -36,7 +36,7 @@ final class MachineContractAccrualCutoffPostEntryVariantTemplates {
         new ContractTemplates.RecognitionIntervalTemplateDescriptor("2026-01-15", "2026-03-31"));
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor accruedExpenseTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor accruedExpenseTemplate(
       @Nullable BookTemplateId ignoredBookTemplateId) {
     return MachineContractPostEntryVariantTemplates.accrualCutoffTemplate(
         BookkeepingEntryKind.ACCRUED_EXPENSE,
@@ -50,8 +50,8 @@ final class MachineContractAccrualCutoffPostEntryVariantTemplates {
         null);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor accrualCutoffRecognitionTemplate(
-      @Nullable BookTemplateId ignoredBookTemplateId) {
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
+      accrualCutoffRecognitionTemplate(@Nullable BookTemplateId ignoredBookTemplateId) {
     return MachineContractPostEntryVariantTemplates.accrualCutoffTemplate(
         BookkeepingEntryKind.ACCRUAL_CUTOFF_RECOGNITION,
         null,
@@ -64,8 +64,8 @@ final class MachineContractAccrualCutoffPostEntryVariantTemplates {
         null);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor accruedExpenseSettlementTemplate(
-      @Nullable BookTemplateId ignoredBookTemplateId) {
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
+      accruedExpenseSettlementTemplate(@Nullable BookTemplateId ignoredBookTemplateId) {
     return MachineContractPostEntryVariantTemplates.accrualCutoffTemplate(
         BookkeepingEntryKind.ACCRUED_EXPENSE_SETTLEMENT,
         "cash",

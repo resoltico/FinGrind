@@ -14,23 +14,10 @@ import org.jspecify.annotations.Nullable;
 
 /** Local bookkeeping refusal family for posting validation and commit acceptance. */
 public sealed interface BookkeepingPostingRejection
-    permits BookkeepingPostingRejection.BookNotInitialized,
-        BookkeepingPostingRejection.AccountStateViolations,
-        BookkeepingPostingRejection.EntrySemanticsViolations,
-        BookkeepingPostingRejection.IdempotencyKeyConflict,
-        BookkeepingPostingRejection.PostingEffectiveDateInFuture,
-        BookkeepingPostingRejection.BookFunctionalCurrencyMismatch,
-        BookkeepingPostingRejection.SweptInterimResultViolation,
-        BookkeepingPostingRejection.OpeningPositionWindowClosed,
-        BookkeepingPostingRejection.OpeningPositionTouchesNominalAccount,
-        BookkeepingPostingRejection.ReservedResultClassification,
-        BookkeepingPostingRejection.ReversalTargetNotFound,
-        ReversalTargetIsReversal,
-        BookkeepingPostingRejection.ReversalAlreadyExists,
-        BookkeepingPostingRejection.ReversalDoesNotNegateTarget {
+    permits FoundationalBookkeepingPostingRejection, WorkflowBookkeepingPostingRejection {
 
   /** Refusal for a posting request against a missing or uninitialized book. */
-  record BookNotInitialized() implements BookkeepingPostingRejection {}
+  record BookNotInitialized() implements FoundationalBookkeepingPostingRejection {}
 
   /** Closed family of account-state issues surfaced while validating one posting request. */
   sealed interface AccountStateViolation
@@ -43,7 +30,7 @@ public sealed interface BookkeepingPostingRejection
 
   /** Refusal for a posting request with one or more account-state violations. */
   record AccountStateViolations(List<AccountStateViolation> violations)
-      implements BookkeepingPostingRejection {
+      implements FoundationalBookkeepingPostingRejection {
     public AccountStateViolations {
       violations = List.copyOf(Objects.requireNonNull(violations, "violations"));
       if (violations.isEmpty()) {
@@ -71,7 +58,7 @@ public sealed interface BookkeepingPostingRejection
 
   /** Refusal for one typed entry whose own semantics are incompatible with the selected book. */
   record EntrySemanticsViolations(List<EntrySemanticsViolation> violations)
-      implements BookkeepingPostingRejection {
+      implements FoundationalBookkeepingPostingRejection {
     public EntrySemanticsViolations {
       violations = List.copyOf(Objects.requireNonNull(violations, "violations"));
       if (violations.isEmpty()) {
@@ -105,11 +92,11 @@ public sealed interface BookkeepingPostingRejection
   }
 
   /** Refusal for one reused idempotency key whose semantic request fingerprint differs. */
-  record IdempotencyKeyConflict() implements BookkeepingPostingRejection {}
+  record IdempotencyKeyConflict() implements FoundationalBookkeepingPostingRejection {}
 
   /** Refusal for a posting attempt whose effective date falls after the current UTC date. */
   record PostingEffectiveDateInFuture(LocalDate attemptedEffectiveDate, LocalDate currentUtcDate)
-      implements BookkeepingPostingRejection {
+      implements FoundationalBookkeepingPostingRejection {
     public PostingEffectiveDateInFuture {
       Objects.requireNonNull(attemptedEffectiveDate, "attemptedEffectiveDate");
       Objects.requireNonNull(currentUtcDate, "currentUtcDate");
@@ -119,7 +106,7 @@ public sealed interface BookkeepingPostingRejection
   /** Refusal for a posting whose entry currency diverges from the book functional currency. */
   record BookFunctionalCurrencyMismatch(
       CurrencyUnit functionalCurrency, CurrencyUnit attemptedCurrency)
-      implements BookkeepingPostingRejection {
+      implements FoundationalBookkeepingPostingRejection {
     public BookFunctionalCurrencyMismatch {
       Objects.requireNonNull(functionalCurrency, "functionalCurrency");
       Objects.requireNonNull(attemptedCurrency, "attemptedCurrency");
@@ -129,7 +116,7 @@ public sealed interface BookkeepingPostingRejection
   /** Refusal for a posting request whose effective date falls inside one transferred period. */
   record SweptInterimResultViolation(
       LocalDate transferredThroughEffectiveDate, LocalDate attemptedEffectiveDate)
-      implements BookkeepingPostingRejection {
+      implements FoundationalBookkeepingPostingRejection {
     public SweptInterimResultViolation {
       Objects.requireNonNull(transferredThroughEffectiveDate, "transferredThroughEffectiveDate");
       Objects.requireNonNull(attemptedEffectiveDate, "attemptedEffectiveDate");
@@ -139,7 +126,7 @@ public sealed interface BookkeepingPostingRejection
   /** Refusal for an OPENING_POSITION request after ordinary book activity has begun. */
   record OpeningPositionWindowClosed(
       PostingKind firstBlockingPostingKind, LocalDate firstBlockingEffectiveDate)
-      implements BookkeepingPostingRejection {
+      implements WorkflowBookkeepingPostingRejection {
     public OpeningPositionWindowClosed {
       Objects.requireNonNull(firstBlockingPostingKind, "firstBlockingPostingKind");
       Objects.requireNonNull(firstBlockingEffectiveDate, "firstBlockingEffectiveDate");
@@ -148,7 +135,7 @@ public sealed interface BookkeepingPostingRejection
 
   /** Refusal for an OPENING_POSITION request that touches nominal income-statement accounts. */
   record OpeningPositionTouchesNominalAccount(AccountCode accountCode, AccountType accountType)
-      implements BookkeepingPostingRejection {
+      implements WorkflowBookkeepingPostingRejection {
     public OpeningPositionTouchesNominalAccount {
       Objects.requireNonNull(accountCode, "accountCode");
       Objects.requireNonNull(accountType, "accountType");
@@ -159,7 +146,7 @@ public sealed interface BookkeepingPostingRejection
   record ReservedResultClassification(
       AccountCode accountCode,
       FinancialPositionLineClassification financialPositionLineClassification)
-      implements BookkeepingPostingRejection {
+      implements WorkflowBookkeepingPostingRejection {
     public ReservedResultClassification {
       Objects.requireNonNull(accountCode, "accountCode");
       Objects.requireNonNull(
@@ -168,14 +155,16 @@ public sealed interface BookkeepingPostingRejection
   }
 
   /** Refusal for a reversal whose referenced prior posting does not exist in this book. */
-  record ReversalTargetNotFound(PostingId priorPostingId) implements BookkeepingPostingRejection {
+  record ReversalTargetNotFound(PostingId priorPostingId)
+      implements WorkflowBookkeepingPostingRejection {
     public ReversalTargetNotFound {
       Objects.requireNonNull(priorPostingId, "priorPostingId");
     }
   }
 
   /** Refusal for a reversal attempt when the target already has a full reversal. */
-  record ReversalAlreadyExists(PostingId priorPostingId) implements BookkeepingPostingRejection {
+  record ReversalAlreadyExists(PostingId priorPostingId)
+      implements WorkflowBookkeepingPostingRejection {
     public ReversalAlreadyExists {
       Objects.requireNonNull(priorPostingId, "priorPostingId");
     }
@@ -183,7 +172,7 @@ public sealed interface BookkeepingPostingRejection
 
   /** Refusal for a reversal candidate whose journal lines do not negate the target posting. */
   record ReversalDoesNotNegateTarget(PostingId priorPostingId)
-      implements BookkeepingPostingRejection {
+      implements WorkflowBookkeepingPostingRejection {
     public ReversalDoesNotNegateTarget {
       Objects.requireNonNull(priorPostingId, "priorPostingId");
     }

@@ -896,7 +896,8 @@ class PostEntrySemanticsPolicyCoverageTest {
         baseline.entityProfile(),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL,
         baseline.functionalCurrency(),
-        baseline.fiscalYearStart());
+        baseline.fiscalYearStart(),
+        java.time.LocalDate.parse("2026-01-01"));
   }
 
   /** In-memory validation store used to drive doctrine and role-account branches. */

@@ -8,7 +8,7 @@ import org.jspecify.annotations.Nullable;
 final class MachineContractPostEntryTypedVariantTemplates {
   private MachineContractPostEntryTypedVariantTemplates() {}
 
-  static ContractTemplates.PostingRequestTemplateDescriptor saleSettledTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor saleSettledTemplate(
       @Nullable BookTemplateId bookTemplateId) {
     return MachineContractPostEntryVariantTemplates.roleAmountTemplate(
         BookkeepingEntryKind.SALE_SETTLED,
@@ -22,7 +22,7 @@ final class MachineContractPostEntryTypedVariantTemplates {
         MachineContractPostEntryVariantTemplates.tradingInventoryRelief(bookTemplateId));
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor saleOnCreditTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor saleOnCreditTemplate(
       @Nullable BookTemplateId bookTemplateId) {
     return MachineContractPostEntryVariantTemplates.roleAmountTemplate(
         BookkeepingEntryKind.SALE_ON_CREDIT,
@@ -36,13 +36,13 @@ final class MachineContractPostEntryTypedVariantTemplates {
         MachineContractPostEntryVariantTemplates.tradingInventoryRelief(bookTemplateId));
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor purchaseSettledTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor purchaseSettledTemplate(
       @Nullable BookTemplateId ignoredBookTemplateId) {
     return MachineContractInventoryPostEntryVariantTemplates.purchaseTemplate(
         BookkeepingEntryKind.PURCHASE_SETTLED, "cash", null, null, null, "inventory", null, null);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor purchaseOnCreditTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor purchaseOnCreditTemplate(
       @Nullable BookTemplateId ignoredBookTemplateId) {
     return MachineContractInventoryPostEntryVariantTemplates.purchaseTemplate(
         BookkeepingEntryKind.PURCHASE_ON_CREDIT,
@@ -55,37 +55,37 @@ final class MachineContractPostEntryTypedVariantTemplates {
         null);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor inventoryCapitalizationSettledTemplate(
-      @Nullable BookTemplateId ignoredBookTemplateId) {
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
+      inventoryCapitalizationSettledTemplate(@Nullable BookTemplateId ignoredBookTemplateId) {
     return MachineContractInventoryPostEntryVariantTemplates.roleAmountTemplate(
         BookkeepingEntryKind.INVENTORY_CAPITALIZATION_SETTLED, "cash", null, null);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor inventoryCapitalizationOnCreditTemplate(
-      @Nullable BookTemplateId ignoredBookTemplateId) {
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
+      inventoryCapitalizationOnCreditTemplate(@Nullable BookTemplateId ignoredBookTemplateId) {
     return MachineContractInventoryPostEntryVariantTemplates.roleAmountTemplate(
         BookkeepingEntryKind.INVENTORY_CAPITALIZATION_ON_CREDIT, null, "accounts-payable", null);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor inventoryWriteDownTemplate(
-      @Nullable BookTemplateId ignoredBookTemplateId) {
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
+      inventoryWriteDownTemplate(@Nullable BookTemplateId ignoredBookTemplateId) {
     return MachineContractInventoryPostEntryVariantTemplates.roleAmountTemplate(
         BookkeepingEntryKind.INVENTORY_WRITE_DOWN, null, null, "inventory-write-down-loss");
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor inventoryShrinkageTemplate(
-      @Nullable BookTemplateId ignoredBookTemplateId) {
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
+      inventoryShrinkageTemplate(@Nullable BookTemplateId ignoredBookTemplateId) {
     return MachineContractInventoryPostEntryVariantTemplates.shrinkageTemplate(
         BookkeepingEntryKind.INVENTORY_SHRINKAGE);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor inventoryCountIncreaseTemplate(
-      @Nullable BookTemplateId ignoredBookTemplateId) {
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor
+      inventoryCountIncreaseTemplate(@Nullable BookTemplateId ignoredBookTemplateId) {
     return MachineContractInventoryPostEntryVariantTemplates.countIncreaseTemplate(
         BookkeepingEntryKind.INVENTORY_COUNT_INCREASE);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor expenseSettledTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor expenseSettledTemplate(
       @Nullable BookTemplateId ignoredBookTemplateId) {
     return MachineContractPostEntryVariantTemplates.roleAmountTemplate(
         BookkeepingEntryKind.EXPENSE_SETTLED,
@@ -99,7 +99,7 @@ final class MachineContractPostEntryTypedVariantTemplates {
         null);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor expenseOnCreditTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor expenseOnCreditTemplate(
       @Nullable BookTemplateId ignoredBookTemplateId) {
     return MachineContractPostEntryVariantTemplates.roleAmountTemplate(
         BookkeepingEntryKind.EXPENSE_ON_CREDIT,
@@ -113,7 +113,7 @@ final class MachineContractPostEntryTypedVariantTemplates {
         null);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor receiptTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor receiptTemplate(
       @Nullable BookTemplateId ignoredBookTemplateId) {
     return MachineContractPostEntryVariantTemplates.roleAmountTemplate(
         BookkeepingEntryKind.RECEIPT,
@@ -127,7 +127,7 @@ final class MachineContractPostEntryTypedVariantTemplates {
         null);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor paymentTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor paymentTemplate(
       @Nullable BookTemplateId ignoredBookTemplateId) {
     return MachineContractPostEntryVariantTemplates.roleAmountTemplate(
         BookkeepingEntryKind.PAYMENT,
@@ -141,7 +141,7 @@ final class MachineContractPostEntryTypedVariantTemplates {
         null);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor ownerContributionTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor ownerContributionTemplate(
       @Nullable BookTemplateId ignoredBookTemplateId) {
     return MachineContractPostEntryVariantTemplates.roleAmountTemplate(
         BookkeepingEntryKind.OWNER_CONTRIBUTION,
@@ -155,7 +155,7 @@ final class MachineContractPostEntryTypedVariantTemplates {
         null);
   }
 
-  static ContractTemplates.PostingRequestTemplateDescriptor ownerWithdrawalTemplate(
+  static ContractPostingRequestTemplates.PostingRequestTemplateDescriptor ownerWithdrawalTemplate(
       @Nullable BookTemplateId ignoredBookTemplateId) {
     return MachineContractPostEntryVariantTemplates.roleAmountTemplate(
         BookkeepingEntryKind.OWNER_WITHDRAWAL,

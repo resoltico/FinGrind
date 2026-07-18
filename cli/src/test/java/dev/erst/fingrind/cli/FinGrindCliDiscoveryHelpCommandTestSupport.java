@@ -113,7 +113,8 @@ class FinGrindCliDiscoveryHelpCommandTestSupport extends FinGrindCliDiscoveryCom
             CliDiscoveryTestSupport.identity(), CliDiscoveryTestSupport.environment(), operationId);
     if (helpDescriptor.requestTemplate() != null
         || helpDescriptor.declareAccountTemplate() != null
-        || helpDescriptor.declareTaxRegistrationTemplate() != null) {
+        || helpDescriptor.declareTaxRegistrationTemplate() != null
+        || operationId == OperationId.RETIRE_ACCOUNT) {
       return Optional.of(
           CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
               + " "

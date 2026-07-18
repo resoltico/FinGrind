@@ -298,7 +298,8 @@ class PostingApplicationServiceInventoryPreflightTest {
             new EntityProfile(new BookEntityName("Acme Trading")),
             BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING_ACCRUAL,
             dev.erst.fingrind.core.CurrencyUnit.of("EUR"),
-            FiscalYearStart.parse("01-01")),
+            FiscalYearStart.parse("01-01"),
+            java.time.LocalDate.parse("2026-01-01")),
         List.of());
     declareTradingAccount(
         bookSession,

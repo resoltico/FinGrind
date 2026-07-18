@@ -121,7 +121,9 @@ class TaxContractTypesTest {
     DeclareTaxRegistrationResult.Unchanged unchanged =
         new DeclareTaxRegistrationResult.Unchanged(registration);
     new DeclareTaxRegistrationResult.Rejected(new TaxDeclarationRejection.BookNotInitialized());
-    ListTaxRegistrationsResult.Listed listed = new ListTaxRegistrationsResult.Listed(page);
+    ListTaxRegistrationsResult.Listed listed =
+        new ListTaxRegistrationsResult.Listed(
+            new ListTaxRegistrationsQuery(page.limit(), Optional.empty()), page);
     ListTaxRegistrationsResult.Rejected listRejected =
         new ListTaxRegistrationsResult.Rejected(new TaxQueryRejection.BookNotInitialized());
     TaxObligationResult.Reported reported = new TaxObligationResult.Reported(report);

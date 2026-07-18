@@ -56,6 +56,7 @@ public final class BookTemplateAccounts {
   }
 
   private static List<AccountDeclaration> ownerManagedServiceAccrual() {
+    AccountDeclaration revenueAccount = serviceRevenueAccount();
     return List.of(
         cashAccount(),
         accountsReceivableAccount(),
@@ -67,14 +68,15 @@ public final class BookTemplateAccounts {
         ownerDrawsAccount(),
         resultHoldingAccount(),
         retainedAccumulatedAccount(),
-        serviceRevenueAccount(),
-        salesDiscountAllowanceAccount(),
+        revenueAccount,
+        salesDiscountAllowanceAccount(revenueAccount),
         operatingExpenseAccount(),
         settlementFeeAccount(),
         badDebtWriteOffAccount());
   }
 
   private static List<AccountDeclaration> ownerManagedTradingCash() {
+    AccountDeclaration revenueAccount = salesRevenueAccount();
     return List.of(
         cashAccount(),
         inventoryAccount(),
@@ -82,8 +84,8 @@ public final class BookTemplateAccounts {
         ownerDrawsAccount(),
         resultHoldingAccount(),
         retainedAccumulatedAccount(),
-        salesRevenueAccount(),
-        salesDiscountAllowanceAccount(),
+        revenueAccount,
+        salesDiscountAllowanceAccount(revenueAccount),
         costOfSalesAccount(),
         TradingInventorySeedAccounts.writeDownLossAccount(),
         TradingInventorySeedAccounts.shrinkageLossAccount(),
@@ -92,6 +94,7 @@ public final class BookTemplateAccounts {
   }
 
   private static List<AccountDeclaration> ownerManagedTradingAccrual() {
+    AccountDeclaration revenueAccount = salesRevenueAccount();
     return List.of(
         cashAccount(),
         inventoryAccount(),
@@ -104,8 +107,8 @@ public final class BookTemplateAccounts {
         ownerDrawsAccount(),
         resultHoldingAccount(),
         retainedAccumulatedAccount(),
-        salesRevenueAccount(),
-        salesDiscountAllowanceAccount(),
+        revenueAccount,
+        salesDiscountAllowanceAccount(revenueAccount),
         costOfSalesAccount(),
         TradingInventorySeedAccounts.writeDownLossAccount(),
         TradingInventorySeedAccounts.shrinkageLossAccount(),

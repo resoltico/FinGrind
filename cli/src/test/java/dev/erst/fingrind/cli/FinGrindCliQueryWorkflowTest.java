@@ -214,17 +214,11 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
     var listAccountsEnvelope = new ObjectMapper().readTree(jsonOutput.toByteArray());
     assertEquals(
         "Acme Studio",
-        listAccountsEnvelope
-            .path("payload")
-            .path("context")
-            .path("bookIdentity")
-            .path("entityName")
-            .stringValue());
+        listAccountsEnvelope.path("payload").path("bookIdentity").path("entityName").stringValue());
     assertEquals(
         "internal-management-bookkeeping-kernel",
         listAccountsEnvelope
             .path("payload")
-            .path("context")
             .path("bookIdentity")
             .path("accountingKernelProfile")
             .stringValue());
@@ -232,7 +226,6 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
         "OWNER_MANAGED_SERVICE",
         listAccountsEnvelope
             .path("payload")
-            .path("context")
             .path("bookIdentity")
             .path("bookTemplateId")
             .stringValue());

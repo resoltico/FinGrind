@@ -7,6 +7,7 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requirePositive;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
+import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -63,16 +64,28 @@ public interface CliTaxJsonModels {
   }
 
   record TaxRegistrationListPayload(
-      CliBookQueryJsonModels.BookContextPayload context,
-      int limit,
+      String family,
+      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      TaxRegistrationListResolvedQuery resolvedQuery,
+      String generatedAt,
       @Nullable String nextCursor,
       List<DeclaredTaxRegistrationPayload> registrations)
-      implements CliSuccessPayload {
+      implements ProtocolSuccessPayload {
     public TaxRegistrationListPayload {
-      Objects.requireNonNull(context, "context");
-      requirePositive(limit, "limit");
+      family = requireText(family, "family");
+      Objects.requireNonNull(bookIdentity, "bookIdentity");
+      Objects.requireNonNull(resolvedQuery, "resolvedQuery");
+      generatedAt = requireText(generatedAt, "generatedAt");
       nextCursor = requireOptionalText(nextCursor, "nextCursor");
       registrations = copyList(registrations, "registrations");
+    }
+  }
+
+  /** The exact accepted tax-registration page selection. */
+  record TaxRegistrationListResolvedQuery(int limit, @Nullable String cursor) {
+    public TaxRegistrationListResolvedQuery {
+      requirePositive(limit, "limit");
+      cursor = requireOptionalText(cursor, "cursor");
     }
   }
 

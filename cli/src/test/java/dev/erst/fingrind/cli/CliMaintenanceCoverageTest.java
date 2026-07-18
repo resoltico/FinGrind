@@ -773,13 +773,13 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
         OutputMode.JSON);
     assertEquals(
         CliPublicPaths.absoluteValue(Path.of("books/entity.sqlite")),
-        readJson(output).path("payload").path("bookFile").asText().replace('\\', '/'));
+        readJson(output).path("payload").path("bookFile").asString().replace('\\', '/'));
     assertEquals(
         CliPublicPaths.absoluteValue(Path.of("backup/entity.sqlite")),
-        readJson(output).path("artifacts").get(0).path("path").asText().replace('\\', '/'));
+        readJson(output).path("artifacts").get(0).path("path").asString().replace('\\', '/'));
     assertEquals(
         ProtocolArtifactOutput.backupFileFormat(),
-        readJson(output).path("artifacts").get(0).path("format").asText());
+        readJson(output).path("artifacts").get(0).path("format").asString());
     output.reset();
 
     writer.writeRestoreBookResult(
@@ -788,13 +788,13 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
         OutputMode.JSON);
     assertEquals(
         CliPublicPaths.absoluteValue(Path.of("books/entity.sqlite")),
-        readJson(output).path("payload").path("bookFile").asText().replace('\\', '/'));
+        readJson(output).path("payload").path("bookFile").asString().replace('\\', '/'));
     assertEquals(
         CliPublicPaths.absoluteValue(Path.of("books/entity.book-key")),
-        readJson(output).path("artifacts").get(1).path("path").asText().replace('\\', '/'));
+        readJson(output).path("artifacts").get(1).path("path").asString().replace('\\', '/'));
     assertEquals(
         ProtocolArtifactOutput.bookKeyFileFormat(),
-        readJson(output).path("artifacts").get(1).path("format").asText());
+        readJson(output).path("artifacts").get(1).path("format").asString());
     output.reset();
 
     writer.writeInspectRekeyRollbackResult(
@@ -805,7 +805,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
     assertEquals(1, readJson(output).path("artifacts").size());
     assertEquals(
         ProtocolArtifactOutput.rollbackBookFileFormat(),
-        readJson(output).path("artifacts").get(0).path("format").asText());
+        readJson(output).path("artifacts").get(0).path("format").asString());
     output.reset();
 
     writer.writeDeleteRekeyRollbackResult(
@@ -823,10 +823,10 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
         OutputMode.JSON);
     assertEquals(
         CliPublicPaths.absoluteValue(Path.of("books/entity.rekey-rollback.sqlite")),
-        readJson(output).path("artifacts").get(0).path("path").asText().replace('\\', '/'));
+        readJson(output).path("artifacts").get(0).path("path").asString().replace('\\', '/'));
     assertEquals(
         ProtocolArtifactOutput.rollbackBookFileFormat(),
-        readJson(output).path("artifacts").get(0).path("format").asText());
+        readJson(output).path("artifacts").get(0).path("format").asString());
     output.reset();
 
     writer.writeRestoreRekeyRollbackResult(
@@ -843,7 +843,7 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
                 hint(Path.of("backup/entity.sqlite")),
                 List.of(hint(Path.of("backup/entity.sqlite-wal"))))),
         OutputMode.JSON);
-    assertEquals("backup-source-has-blocking-artifacts", readJson(output).path("code").asText());
+    assertEquals("backup-source-has-blocking-artifacts", readJson(output).path("code").asString());
     output.reset();
 
     IllegalArgumentException backupCsv =

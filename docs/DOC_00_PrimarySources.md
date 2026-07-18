@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: PRIMARY_SOURCES
-updated: "2026-07-16"
+updated: "2026-07-17"
 route:
   keywords: [fingrind, primary sources, legislation, Latvia, tax, payroll, VAT, foreign exchange, ECB, source verification]
   questions: ["where do FinGrind jurisdiction examples get their legal inputs", "which official sources govern Latvian payroll", "how should I verify a tax example", "where should I obtain foreign-exchange quote evidence"]
@@ -56,6 +56,8 @@ The Latvia monthly-payroll context is deliberately narrower than Latvian payroll
 - [State Revenue Service: Mandatory State Social Insurance Contributions](https://www.vid.gov.lv/en/mandatory-state-social-insurance-contributions) publishes current operational contribution rates, reporting, and payment guidance.
 - [State Revenue Service: Personal Income Tax](https://www.vid.gov.lv/en/personal-income-tax) publishes current personal-income-tax administration and allowance guidance.
 - [State Revenue Service: Personal Income Tax Rates](https://www.vid.gov.lv/en/personal-income-tax-rates) publishes current rate and threshold guidance.
+- [State Revenue Service: 2026 non-taxable minimum](https://www.vid.gov.lv/lv/neapliekamais-minimums) states the current monthly amount and illustrates the payroll-tax-book and dependant inputs that determine payroll withholding treatment.
+- [State Revenue Service: 2026 mandatory social-insurance contributions](https://www.vid.gov.lv/lv/biezak-uzdotie-jautajumi-katalogs/valsts-socialas-apdrosinasanas-obligatas-iemaksas-vsaoi-darba-nemeju-un-darba-devēju-socialo-iemaksu-veiksanas-kartiba) is the authority's current Latvian-language operational guidance for employer and employee social-contribution treatment.
 
 The context does not generate an EDS return, employee-registration notice, or statutory payslip. Operators remain responsible for those official submissions and for confirming that the supported worker assumptions apply.
 

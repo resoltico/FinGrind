@@ -68,13 +68,13 @@ final class LauncherInvocationArguments {
     }
     List<String> resolvedArguments = new ArrayList<>();
     for (JsonNode element : document) {
-      if (!element.isTextual()) {
+      if (!element.isString()) {
         throw new LauncherInvocationArgumentsException(
             "Staged launcher arguments file at "
                 + argumentsFile
                 + " must contain one JSON array of strings.");
       }
-      resolvedArguments.add(element.textValue());
+      resolvedArguments.add(element.stringValue());
     }
     return resolvedArguments.toArray(String[]::new);
   }

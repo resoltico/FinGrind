@@ -275,8 +275,11 @@ class SqliteOwnedLifecycleContextIntegrationTest extends SqlitePostingFactStoreT
             reads.fixedAssetRegister(new FixedAssetRegisterQuery(Optional.empty())));
     assertEquals(1, fixedAssets.report().rows().size());
     assertEquals(
-        MonetaryAmount.of(Money.parse("EUR", "110.00")),
+        MonetaryAmount.of(Money.parse("EUR", "0.00")),
         fixedAssets.report().rows().getFirst().carryingAmount());
+    assertEquals(
+        Optional.of(MonetaryAmount.of(Money.parse("EUR", "110.00"))),
+        fixedAssets.report().rows().getFirst().carryingAmountAtDisposal());
     assertEquals(
         Optional.of(LocalDate.parse("2026-07-01")),
         fixedAssets.report().rows().getFirst().disposedOn());
@@ -479,7 +482,8 @@ class SqliteOwnedLifecycleContextIntegrationTest extends SqlitePostingFactStoreT
         new EntityProfile(new BookEntityName("Acme Lifecycle Studio")),
         BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE_ACCRUAL,
         CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"));
+        FiscalYearStart.parse("01-01"),
+        java.time.LocalDate.parse("2026-01-01"));
   }
 
   private static void declareLifecycleAccounts(SqlitePostingSession store) {
@@ -506,6 +510,7 @@ class SqliteOwnedLifecycleContextIntegrationTest extends SqlitePostingFactStoreT
         AccountType.ASSET,
         new dev.erst.fingrind.core.AccountTaxonomy(
             dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
+            Optional.empty(),
             Optional.empty(),
             Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
             Optional.empty(),

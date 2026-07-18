@@ -74,14 +74,22 @@ public record FixedAssetRecord(
         });
   }
 
-  /** Returns the undepreciated carrying value at the stored lifecycle horizon. */
+  /** Returns the carrying value currently recognized in the book. */
   public Money carryingAmount() {
+    if (disposedOn.isPresent()) {
+      return Money.zero(cost.currencyUnit());
+    }
+    return carryingAmountBeforeDisposal();
+  }
+
+  /** Returns the immutable carrying value used to derive a recorded disposal. */
+  public Money carryingAmountBeforeDisposal() {
     return cost.minus(accumulatedDepreciation);
   }
 
   /** Returns the exact unconsumed depreciable cost. */
   public Money remainingDepreciableAmount() {
-    return carryingAmount().minus(depreciationSchedule.residualValue().toMoney());
+    return carryingAmountBeforeDisposal().minus(depreciationSchedule.residualValue().toMoney());
   }
 
   /** Returns whether the asset may receive another depreciation charge. */

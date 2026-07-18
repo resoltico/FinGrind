@@ -43,4 +43,44 @@ class FiscalYearCloseValidatorTest {
             LocalDate.parse("2027-03-31"),
             Optional.of(LocalDate.parse("2027-03-31"))));
   }
+
+  @Test
+  void rejectionFor_acceptsThePartialFirstFiscalYearSegmentAtImmutableBookStart() {
+    dev.erst.fingrind.core.BookIdentity baseline = bookIdentity();
+    dev.erst.fingrind.core.BookIdentity midYearBook =
+        new dev.erst.fingrind.core.BookIdentity(
+            baseline.entityProfile(),
+            baseline.bookDoctrine(),
+            baseline.functionalCurrency(),
+            baseline.fiscalYearStart(),
+            LocalDate.parse("2026-07-01"));
+    ReportingPeriod firstFiscalYearSegment =
+        new ReportingPeriod(LocalDate.parse("2026-07-01"), LocalDate.parse("2026-12-31"));
+
+    assertTrue(
+        FiscalYearCloseValidator.rejectionFor(
+                firstFiscalYearSegment, midYearBook, LocalDate.parse("2026-12-31"))
+            .isEmpty());
+  }
+
+  @Test
+  void rejectionFor_rejectsAFiscalYearThatEndedBeforeTheImmutableBookStart() {
+    dev.erst.fingrind.core.BookIdentity baseline = bookIdentity();
+    dev.erst.fingrind.core.BookIdentity midYearBook =
+        new dev.erst.fingrind.core.BookIdentity(
+            baseline.entityProfile(),
+            baseline.bookDoctrine(),
+            baseline.functionalCurrency(),
+            baseline.fiscalYearStart(),
+            LocalDate.parse("2026-07-01"));
+
+    assertEquals(
+        Optional.of(
+            new BookkeepingAdministrationRejection.FiscalYearCloseMustStartAt(
+                LocalDate.parse("2026-07-01"))),
+        FiscalYearCloseValidator.rejectionFor(
+            new ReportingPeriod(LocalDate.parse("2025-01-01"), LocalDate.parse("2025-12-31")),
+            midYearBook,
+            LocalDate.parse("2026-12-31")));
+  }
 }

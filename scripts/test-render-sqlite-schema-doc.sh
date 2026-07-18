@@ -50,7 +50,7 @@ cp "${repo_root}/sqlite/src/main/resources/dev/erst/fingrind/sqlite/book_schema.
 
 cat > "${fixture_root}/docs/sqlite/SCHEMA_CORE.md" <<'EOF'
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "9.9.9"
 domain: SQLITE_SCHEMA_CORE
 updated: "2026-05-09"
@@ -89,6 +89,12 @@ if reconstructed_schema != schema_text:
 PY
 [[ -f "${fixture_root}/docs/sqlite/SCHEMA_CORE_01_FOUNDATION.md" ]] || die \
     "generated schema doc set is missing the foundation page"
+[[ -f "${fixture_root}/docs/sqlite/SCHEMA_CORE_03_ACCOUNT_DECLARATION_RULES.md" ]] || die \
+    "generated schema doc set is missing the account-declaration rules page"
+[[ -f "${fixture_root}/docs/sqlite/SCHEMA_CORE_03a_ACCOUNT_LIFECYCLE_RULES.md" ]] || die \
+    "generated schema doc set is missing the account-lifecycle rules page"
+[[ ! -f "${fixture_root}/docs/sqlite/SCHEMA_CORE_03_ACCOUNT_RULES.md" ]] || die \
+    "generated schema doc set retained the superseded combined account-rules page"
 [[ -f "${fixture_root}/docs/sqlite/SCHEMA_CORE_13ze_LATVIAN_PAYROLL_RUNS.md" ]] || die \
     "generated schema doc set is missing the Latvian payroll-runs page"
 [[ -f "${fixture_root}/docs/sqlite/SCHEMA_CORE_13zea_LATVIAN_PAYROLL_RUN_IMMUTABILITY.md" ]] || die \
@@ -104,6 +110,8 @@ if grep -Fq 'latvian_payroll_run_reject_update' \
 fi
 grep -Fq 'version: "9.9.9"' "${fixture_root}/docs/sqlite/SCHEMA_CORE_01_FOUNDATION.md" || die \
     "generated schema foundation page did not inherit the overview version frontmatter"
+grep -Fq 'afad: "5.0.1"' "${fixture_root}/docs/sqlite/SCHEMA_CORE_01_FOUNDATION.md" || die \
+    "generated schema foundation page did not inherit the overview AFAD frontmatter"
 grep -Fq 'updated: "2026-05-09"' "${fixture_root}/docs/sqlite/SCHEMA_CORE_01_FOUNDATION.md" || die \
     "generated schema foundation page did not inherit the overview updated frontmatter"
 grep -Fq '`book_meta.schema_fingerprint_sha256`' "${fixture_root}/docs/sqlite/SCHEMA_CORE.md" || die \

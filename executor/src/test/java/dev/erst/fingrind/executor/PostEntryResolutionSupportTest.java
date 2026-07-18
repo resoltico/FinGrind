@@ -87,7 +87,8 @@ class PostEntryResolutionSupportTest {
             eurBook.entityProfile(),
             eurBook.bookDoctrine(),
             CurrencyUnit.of("USD"),
-            eurBook.fiscalYearStart());
+            eurBook.fiscalYearStart(),
+            java.time.LocalDate.parse("2026-01-01"));
     var outcome =
         PostEntryResolutionSupport.resolve(
             new LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll(
@@ -95,6 +96,8 @@ class PostEntryResolutionSupportTest {
                 new LatvianPayrollRunId("payroll-2026-07-employee-1"),
                 new LatvianPayrollEmployeeReference("employee-1"),
                 new LatvianPayrollMonth(YearMonth.of(2026, 7)),
+                dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+                    .taxBookWithNoDependantsFor2026(),
                 new AccountCode("5000"),
                 new AccountCode("5010"),
                 new AccountCode("2200"),

@@ -58,6 +58,10 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
           "EUR",
           "--fiscal-year-start",
           "01-01",
+          "--book-start-effective-date",
+          "2026-01-01",
+          "--book-start-effective-date",
+          "2026-01-01",
           "--output",
           "text"
         };
@@ -80,6 +84,10 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
               "EUR",
               "--fiscal-year-start",
               "01-01",
+              "--book-start-effective-date",
+              "2026-01-01",
+              "--book-start-effective-date",
+              "2026-01-01",
               "--output",
               "json"
             });
@@ -151,6 +159,10 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
               "EUR",
               "--fiscal-year-start",
               "01-01",
+              "--book-start-effective-date",
+              "2026-01-01",
+              "--book-start-effective-date",
+              "2026-01-01",
               "--output",
               "text"
             });
@@ -229,6 +241,10 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
               "EUR",
               "--fiscal-year-start",
               "01-01",
+              "--book-start-effective-date",
+              "2026-01-01",
+              "--book-start-effective-date",
+              "2026-01-01",
               "--tighten-parents",
               "--output",
               "json"

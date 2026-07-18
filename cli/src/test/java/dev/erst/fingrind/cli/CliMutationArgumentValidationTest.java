@@ -385,7 +385,9 @@ class CliMutationArgumentValidationTest extends CliArgumentParsingTestSupport {
                       "--functional-currency",
                       "EUR",
                       "--fiscal-year-start",
-                      "01-01"
+                      "01-01",
+                      "--book-start-effective-date",
+                      "2026-01-01"
                     }));
 
     assertEquals("invalid-request", exception.code());

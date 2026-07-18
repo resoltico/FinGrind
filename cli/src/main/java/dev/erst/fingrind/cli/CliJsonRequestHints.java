@@ -2,18 +2,23 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import java.util.Objects;
 
 /** Request-recovery hints for CLI JSON input failures. */
 final class CliJsonRequestHints {
   private CliJsonRequestHints() {}
 
-  static String postEntryRequestHint() {
+  static String postEntryRequestHint(OperationId templateOperation) {
+    OperationId operation = Objects.requireNonNull(templateOperation, "templateOperation");
+    String operationName = ProtocolCatalog.operationName(operation);
     return "Use '"
         + CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+        + " "
+        + operationName
         + "' for a starter request file, then replace its placeholder evidence and provenance values before real-world use. For accepted entry fields, run '"
         + CliInvocationText.commandExample(OperationId.HELP)
         + " "
-        + OperationId.POST_ENTRY.wireName()
+        + operationName
         + " --output json --detail full'.";
   }
 

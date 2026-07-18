@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.protocol.OperationId;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -104,7 +105,9 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
     assertEquals(
         "Scaffold placeholder must be replaced before submission: provenance.actorId",
         exception.getMessage());
-    assertEquals(CliJsonRequestHints.postEntryRequestHint(), exception.failure().hint());
+    assertEquals(
+        CliJsonRequestHints.postEntryRequestHint(OperationId.PREFLIGHT_ENTRY),
+        exception.failure().hint());
   }
 
   @Test
@@ -123,7 +126,9 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
     assertEquals(
         "Scaffold placeholder must be replaced before submission: effectiveDate",
         exception.getMessage());
-    assertEquals(CliJsonRequestHints.postEntryRequestHint(), exception.failure().hint());
+    assertEquals(
+        CliJsonRequestHints.postEntryRequestHint(OperationId.PREFLIGHT_ENTRY),
+        exception.failure().hint());
   }
 
   @Test

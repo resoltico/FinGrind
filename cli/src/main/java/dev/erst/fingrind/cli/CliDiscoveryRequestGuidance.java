@@ -1,7 +1,7 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.discovery.ContractPostingRequestTemplates;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
-import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import java.util.List;
@@ -20,6 +20,9 @@ final class CliDiscoveryRequestGuidance {
     if (operationId == OperationId.DECLARE_TAX_REGISTRATION) {
       return renderDeclareTaxRegistrationRequestGuidance(helpDescriptor);
     }
+    if (operationId == OperationId.RETIRE_ACCOUNT) {
+      return renderRetireAccountRequestGuidance(helpDescriptor);
+    }
     if (operationId == OperationId.EXECUTE_PLAN) {
       return renderLedgerPlanRequestGuidance(helpDescriptor);
     }
@@ -29,7 +32,8 @@ final class CliDiscoveryRequestGuidance {
   static CliDiscoveryCommandHelpSupport.SupportEntry requestTemplateHint(OperationId operationId) {
     if (CliDiscoveryOperationFamilies.isEntryRequest(operationId)
         || operationId == OperationId.DECLARE_ACCOUNT
-        || operationId == OperationId.AMEND_ACCOUNT) {
+        || operationId == OperationId.AMEND_ACCOUNT
+        || operationId == OperationId.RETIRE_ACCOUNT) {
       return CliDiscoveryCommandHelpSupport.SupportEntry.command(
           "Request template",
           CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
@@ -59,7 +63,7 @@ final class CliDiscoveryRequestGuidance {
     }
     ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postEntryShape =
         helpDescriptor.requestShapes().bookkeepingEntry();
-    ContractTemplates.PostingRequestTemplateDescriptor requestTemplate =
+    ContractPostingRequestTemplates.PostingRequestTemplateDescriptor requestTemplate =
         helpDescriptor.requestTemplate();
     return CliDiscoveryTextSupport.joinSections(
         CliDiscoveryTextSupport.section(
@@ -107,6 +111,20 @@ final class CliDiscoveryRequestGuidance {
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
                 + " "
                 + OperationId.DECLARE_TAX_REGISTRATION.wireName()));
+  }
+
+  private static String renderRetireAccountRequestGuidance(HelpDescriptor helpDescriptor) {
+    if (helpDescriptor.requestShapes() == null
+        || helpDescriptor.requestShapes().retireAccount() == null) {
+      return "";
+    }
+    return CliDiscoveryTextSupport.section(
+        "Input Contract",
+        requestFileGuidance(
+            "Pass a JSON object containing the declared accountCode through --request-file <path|->.",
+            CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+                + " "
+                + OperationId.RETIRE_ACCOUNT.wireName()));
   }
 
   private static String renderLedgerPlanRequestGuidance(HelpDescriptor helpDescriptor) {

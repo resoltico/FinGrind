@@ -60,24 +60,21 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
     assertWriterOutput(
         writer ->
             writer.writeListAccountsResult(
-                new ListAccountsResult.Listed(
-                    accountPage(List.of(cashAccount), 50, Optional.empty())),
+                listedAccounts(accountPage(List.of(cashAccount), 50, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"accountCode\":\"1000\"");
     assertWriterOutput(
         writer ->
             writer.writeListAccountsResult(
-                new ListAccountsResult.Listed(
-                    accountPage(List.of(cashAccount), 50, Optional.empty())),
+                listedAccounts(accountPage(List.of(cashAccount), 50, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
         "Cash");
     assertWriterOutput(
         writer ->
             writer.writeListAccountsResult(
-                new ListAccountsResult.Listed(
-                    accountPage(List.of(cashAccount), 50, Optional.empty())),
+                listedAccounts(accountPage(List.of(cashAccount), 50, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
-        "accountCode,accountName,parentAccountCode,accountType,unitOfMeasureToken,quantityScale,financialPositionLineClassification,cashFlowAssetClassification,profitAndLossLineClassification,normalBalance,active,declaredAt");
+        "accountCode,accountName,parentAccountCode,contraOfAccountCode,accountType,unitOfMeasureToken,quantityScale,financialPositionLineClassification,cashFlowAssetClassification,profitAndLossLineClassification,normalBalance,active,declaredAt");
     assertWriterOutput(
         writer ->
             writer.writeGetPostingResult(
@@ -91,22 +88,19 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
     assertWriterOutput(
         writer ->
             writer.writeListPostingsResult(
-                new ListPostingsResult.Listed(
-                    postingPage(List.of(postingFact), 10, Optional.empty())),
+                listedPostings(postingPage(List.of(postingFact), 10, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"sourceDocumentIds\":[\"document-idem-1\"]");
     assertWriterOutput(
         writer ->
             writer.writeListPostingsResult(
-                new ListPostingsResult.Listed(
-                    postingPage(List.of(postingFact), 10, Optional.empty())),
+                listedPostings(postingPage(List.of(postingFact), 10, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
         "Accounts");
     assertWriterOutput(
         writer ->
             writer.writeListPostingsResult(
-                new ListPostingsResult.Listed(
-                    postingPage(List.of(postingFact), 10, Optional.empty())),
+                listedPostings(postingPage(List.of(postingFact), 10, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
         "exportFamily,rowId,recordKind,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversesPostingId,reversedByPostingId,currencyCode,debitTotal,creditTotal,accountCodes,sourceDocumentIds,sourceDocumentTypes,approvalIds,approvalDecisions,message");
   }

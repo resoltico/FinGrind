@@ -62,6 +62,12 @@ final class BookAdministrationRejectionNarrative {
       case BookAdministrationRejection.AccountTaxonomyConflict accountTaxonomyConflict ->
           "Account '%s' already exists with a different immutable hierarchy or statement taxonomy."
               .formatted(accountTaxonomyConflict.accountCode().value());
+      case dev.erst.fingrind.contract.bookkeeping.ContraAccountInvalid conflict ->
+          "Account '%s' cannot reduce account '%s' because the contra relationship is %s."
+              .formatted(
+                  conflict.accountCode().value(),
+                  conflict.contraOfAccountCode().value(),
+                  conflict.violation().wireValue());
       case AccountRegistryLifecycleRejection.AccountNotFound missing ->
           "Account '%s' is not declared in this book.".formatted(missing.accountCode().value());
       case AccountRegistryLifecycleRejection.AccountHasDependents dependents ->
@@ -145,7 +151,7 @@ final class BookAdministrationRejectionNarrative {
                   rejectionBoundary.attemptedEffectiveDateTo(),
                   rejectionBoundary.fiscalYearStart().wireValue());
       case BookAdministrationRejection.FiscalYearCloseMustStartAt rejectionStartAt ->
-          "Fiscal-year close must start at '%s' to cover one full fiscal year."
+          "Fiscal-year close must start at '%s' to cover the admissible fiscal-year segment."
               .formatted(rejectionStartAt.requiredEffectiveDateFrom());
       case BookAdministrationRejection.FiscalYearCloseMustEndAt rejectionEndAt ->
           "Fiscal-year close must end at '%s' to cover one full fiscal year."

@@ -109,7 +109,11 @@ final class ProtocolTypedRecordEntryOperations {
             OperationId.RECORD_LATVIAN_MONTHLY_PAYROLL,
             "Record Latvian Monthly Payroll",
             "Commit an executor-resolved Latvian 2026 ordinary monthly-payroll accrual.",
-            "Payroll request scaffolds publish the opaque employee reference, payroll month, six account roles, gross wages, evidence, and provenance; FinGrind derives social contributions, personal income tax, and net wages."),
+            "Payroll request scaffolds publish the opaque employee reference, payroll month, "
+                + ProtocolBusinessEventFields.LatvianPayroll.TAX_BOOK_HELD_AT_EMPLOYER
+                + ": true admission fact, "
+                + ProtocolBusinessEventFields.LatvianPayroll.DEPENDANT_COUNT
+                + ": 0 admission fact, six account roles, gross wages, evidence, and provenance; FinGrind derives social contributions, personal income tax, and net wages."),
         recordEntryOperation(
             OperationId.RECORD_LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT,
             "Record Latvian Payroll Net-Wage Settlement",

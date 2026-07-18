@@ -59,7 +59,8 @@ final class SqlitePostingMetadataSql {
           costing_doctrine,
           functional_currency_code,
           fiscal_year_start_month,
-          fiscal_year_start_day
+          fiscal_year_start_day,
+          book_start_effective_date
       from book_identity
       where singleton_id = 1
       limit 1
@@ -84,8 +85,9 @@ final class SqlitePostingMetadataSql {
           costing_doctrine,
           functional_currency_code,
           fiscal_year_start_month,
-          fiscal_year_start_day
-      ) values (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          fiscal_year_start_day,
+          book_start_effective_date
+      ) values (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       """;
 
   private SqlitePostingMetadataSql() {}

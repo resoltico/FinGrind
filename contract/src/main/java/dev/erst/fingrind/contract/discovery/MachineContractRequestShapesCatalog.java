@@ -13,6 +13,7 @@ final class MachineContractRequestShapesCatalog {
         MachineContractPostEntrySchemas.descriptor(entryKind),
         null,
         null,
+        null,
         null);
   }
 
@@ -20,6 +21,7 @@ final class MachineContractRequestShapesCatalog {
     return new ContractRequestShapes.RequestShapesDescriptor(
         MachineContractRequestSchemas.JSON_SCHEMA_DIALECT,
         MachineContractPostEntrySchemas.descriptor(),
+        null,
         null,
         null,
         null);
@@ -31,12 +33,24 @@ final class MachineContractRequestShapesCatalog {
         null,
         MachineContractDeclareAccountSchemas.descriptor(),
         null,
+        null,
+        null);
+  }
+
+  static ContractRequestShapes.RequestShapesDescriptor retireAccountRequestShapes() {
+    return new ContractRequestShapes.RequestShapesDescriptor(
+        MachineContractRequestSchemas.JSON_SCHEMA_DIALECT,
+        null,
+        null,
+        MachineContractRetireAccountSchemas.descriptor(),
+        null,
         null);
   }
 
   static ContractRequestShapes.RequestShapesDescriptor declareTaxRegistrationRequestShapes() {
     return new ContractRequestShapes.RequestShapesDescriptor(
         MachineContractRequestSchemas.JSON_SCHEMA_DIALECT,
+        null,
         null,
         null,
         MachineContractDeclareTaxRegistrationSchemas.descriptor(),
@@ -46,6 +60,7 @@ final class MachineContractRequestShapesCatalog {
   static ContractRequestShapes.RequestShapesDescriptor ledgerPlanRequestShapes() {
     return new ContractRequestShapes.RequestShapesDescriptor(
         MachineContractRequestSchemas.JSON_SCHEMA_DIALECT,
+        null,
         null,
         null,
         null,

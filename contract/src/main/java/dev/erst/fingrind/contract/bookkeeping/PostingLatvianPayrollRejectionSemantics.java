@@ -24,15 +24,16 @@ public final class PostingLatvianPayrollRejectionSemantics {
         .toPostingRejection();
   }
 
-  /** Returns one refusal for a worker, period, or amount outside the published profile. */
+  /** Returns one refusal for a concrete payroll fact outside the published profile. */
   public static PostingRejection.EntrySemanticsViolation profileNotAdmitted(
-      String selectorValue, String field, String reason) {
+      String selectorValue, String field, String rejectedFact) {
     return violation(
             "latvian-payroll-profile-not-admitted",
             Objects.requireNonNull(field, "field"),
             "entryKind '%s' does not admit %s."
                 .formatted(
-                    requireSelectorValue(selectorValue), Objects.requireNonNull(reason, "reason")))
+                    requireSelectorValue(selectorValue),
+                    Objects.requireNonNull(rejectedFact, "rejectedFact")))
         .toPostingRejection();
   }
 

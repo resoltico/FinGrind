@@ -28,15 +28,30 @@ final class PostingRejectionDescriptors {
 
   private static Descriptor descriptorFor(PostingRejection rejection) {
     return switch (Objects.requireNonNull(rejection, "rejection")) {
+      case FoundationalPostingRejection foundationalRejection ->
+          foundationalDescriptor(foundationalRejection);
+      case WorkflowPostingRejection workflowRejection -> workflowDescriptor(workflowRejection);
+    };
+  }
+
+  private static Descriptor foundationalDescriptor(FoundationalPostingRejection rejection) {
+    return switch (rejection) {
       case PostingRejection.BookNotInitialized _ -> Descriptor.BOOK_NOT_INITIALIZED;
       case PostingRejection.AccountStateViolations _ -> Descriptor.ACCOUNT_STATE_VIOLATIONS;
       case PostingRejection.EntrySemanticsViolations _ -> Descriptor.ENTRY_SEMANTICS_VIOLATIONS;
       case PostingRejection.IdempotencyKeyConflict _ -> Descriptor.IDEMPOTENCY_KEY_CONFLICT;
+      case PostingEffectiveDateBeforeBookStart _ ->
+          Descriptor.POSTING_EFFECTIVE_DATE_BEFORE_BOOK_START;
       case PostingRejection.PostingEffectiveDateInFuture _ ->
           Descriptor.POSTING_EFFECTIVE_DATE_IN_FUTURE;
       case PostingRejection.BookFunctionalCurrencyMismatch _ ->
           Descriptor.BOOK_FUNCTIONAL_CURRENCY_MISMATCH;
       case PostingRejection.SweptInterimResultViolation _ -> Descriptor.CLOSED_PERIOD_VIOLATION;
+    };
+  }
+
+  private static Descriptor workflowDescriptor(WorkflowPostingRejection rejection) {
+    return switch (rejection) {
       case PostingRejection.OpeningPositionWindowClosed _ ->
           Descriptor.OPENING_POSITION_WINDOW_CLOSED;
       case PostingRejection.OpeningPositionTouchesNominalAccount _ ->
@@ -75,6 +90,11 @@ final class PostingRejectionDescriptors {
         "idempotency-key-conflict",
         "Posting refused because the selected book already contains this idempotency key for a different normalized request.",
         PostingRejectionDetailDescriptors.FieldOwner.NONE,
+        PostingRejectionDetailDescriptors.RejectionOwner.NONE),
+    POSTING_EFFECTIVE_DATE_BEFORE_BOOK_START(
+        "posting-effective-date-before-book-start",
+        "Posting refused because its effective date predates the immutable book-start effective date.",
+        PostingRejectionDetailDescriptors.FieldOwner.BOOK_START_EFFECTIVE_DATE,
         PostingRejectionDetailDescriptors.RejectionOwner.NONE),
     POSTING_EFFECTIVE_DATE_IN_FUTURE(
         "posting-effective-date-in-future",

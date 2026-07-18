@@ -113,6 +113,22 @@ class FiscalYearClosePlannerTest {
   }
 
   @Test
+  void reportingPeriod_preservesAWhollyPreBookFiscalYearForDeterministicRejection() {
+    dev.erst.fingrind.core.BookIdentity baseline = bookIdentity();
+    dev.erst.fingrind.core.BookIdentity midYearBook =
+        new dev.erst.fingrind.core.BookIdentity(
+            baseline.entityProfile(),
+            baseline.bookDoctrine(),
+            baseline.functionalCurrency(),
+            baseline.fiscalYearStart(),
+            LocalDate.parse("2026-07-01"));
+
+    assertEquals(
+        new ReportingPeriod(LocalDate.parse("2025-01-01"), LocalDate.parse("2025-12-31")),
+        planner.reportingPeriod(midYearBook, 2025));
+  }
+
+  @Test
   void closeDraft_buildsUnsweptSweepAndDurableClosePostings() {
     RegisteredAccount capital =
         equityAccount("3000", "Capital", FinancialPositionLineClassification.EQUITY_CONTRIBUTION);
@@ -228,6 +244,7 @@ class FiscalYearClosePlannerTest {
   }
 
   @Test
+  @SuppressWarnings("NullAway")
   void fiscalYearCloseValueObjects_validateRequiredState() {
     IllegalArgumentException closeOrderFailure =
         assertThrows(
@@ -251,17 +268,12 @@ class FiscalYearClosePlannerTest {
                 new AccountCode("3300"),
                 CLOSED_AT,
                 null,
-                (List<dev.erst.fingrind.executor.spi.PostingDraft>) nullValue()));
+                null));
     NullPointerException closedOutcomeFailure =
         assertThrows(
-            NullPointerException.class,
-            () -> new FiscalYearCloseOutcome.Closed((ClosedFiscalYearRecord) nullValue(), false));
+            NullPointerException.class, () -> new FiscalYearCloseOutcome.Closed(null, false));
     NullPointerException rejectedOutcomeFailure =
-        assertThrows(
-            NullPointerException.class,
-            () ->
-                new FiscalYearCloseOutcome.Rejected(
-                    (BookkeepingAdministrationRejection) nullValue()));
+        assertThrows(NullPointerException.class, () -> new FiscalYearCloseOutcome.Rejected(null));
 
     assertEquals("closeOrder must be at least one.", closeOrderFailure.getMessage());
     assertEquals("closedFiscalYear", closedOutcomeFailure.getMessage());
@@ -326,10 +338,5 @@ class FiscalYearClosePlannerTest {
 
   private static JournalLine line(String accountCode, JournalLine.EntrySide side, String amount) {
     return new JournalLine(new AccountCode(accountCode), side, Money.parse("EUR", amount));
-  }
-
-  @SuppressWarnings("NullAway")
-  private static Object nullValue() {
-    return null;
   }
 }

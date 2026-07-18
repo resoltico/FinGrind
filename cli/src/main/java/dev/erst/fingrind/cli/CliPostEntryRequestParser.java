@@ -11,6 +11,7 @@ import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostingNestedFieldSets;
@@ -46,13 +47,13 @@ final class CliPostEntryRequestParser {
     BookkeepingEntry entry = CliBookkeepingEntryRequestParser.readEntry(rootNode);
     requireAcceptedEntryKind(entry.entryKind(), operationId);
     ObjectNode provenanceNode =
-        requiredObject(rootNode, ProtocolPostEntryFields.TopLevel.PROVENANCE);
+        requiredObject(rootNode, ProtocolBusinessEventFields.Core.PROVENANCE);
     rejectForbiddenField(provenanceNode, ProtocolPostEntryFields.Provenance.REASON);
     rejectForbiddenField(provenanceNode, ProtocolPostEntryFields.Provenance.RECORDED_AT);
     rejectForbiddenField(provenanceNode, ProtocolPostEntryFields.Provenance.SOURCE_CHANNEL);
     rejectUnexpectedFields(
         provenanceNode,
-        ProtocolPostEntryFields.TopLevel.PROVENANCE,
+        ProtocolBusinessEventFields.Core.PROVENANCE,
         ProtocolPostingNestedFieldSets.provenanceFields());
     String actorId =
         CliRequestPlaceholderValues.requiredRealProvenanceText(
@@ -83,10 +84,10 @@ final class CliPostEntryRequestParser {
     Optional<CorrelationId> correlationId =
         optionalText(provenanceNode, ProtocolPostEntryFields.Provenance.CORRELATION_ID)
             .map(CorrelationId::new);
-    ObjectNode evidenceNode = requiredObject(rootNode, ProtocolPostEntryFields.TopLevel.EVIDENCE);
+    ObjectNode evidenceNode = requiredObject(rootNode, ProtocolBusinessEventFields.Core.EVIDENCE);
     rejectUnexpectedFields(
         evidenceNode,
-        ProtocolPostEntryFields.TopLevel.EVIDENCE,
+        ProtocolBusinessEventFields.Core.EVIDENCE,
         ProtocolPostingNestedFieldSets.evidenceFields());
     AccountingEvidence evidence = CliAccountingEvidenceRequestParser.readEvidence(evidenceNode);
     RequestProvenance requestProvenance =
@@ -115,7 +116,7 @@ final class CliPostEntryRequestParser {
         "Command '%s' requires request field %s to be '%s', but the request carries '%s'."
             .formatted(
                 operationId.wireName(),
-                ProtocolPostEntryFields.TopLevel.ENTRY_KIND,
+                ProtocolBusinessEventFields.Core.ENTRY_KIND,
                 requiredEntryKind.wireValue(),
                 actualEntryKind.wireValue()));
   }

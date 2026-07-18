@@ -181,6 +181,9 @@ class ReportCrossFormatEquivalenceTest extends CliFixtureSupport {
     assertTrue(
         ReportCrossFormatProjectionAssertions.containsNormalized(
             TextReportProjector.render(model), "asset-vehicle-001"));
+    assertTrue(
+        ReportCrossFormatProjectionAssertions.containsNormalized(
+            TextReportProjector.render(model), "Carrying before disposal"));
   }
 
   @Test

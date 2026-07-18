@@ -4,7 +4,6 @@ import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.WireValue;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Objects;
 
@@ -223,11 +222,9 @@ public sealed interface BookLifecycleInspection
       return Status.INITIALIZED;
     }
 
-    /** Returns the canonical book-start date derived from the initialized book doctrine. */
+    /** Returns the immutable effective-date boundary selected when this book was opened. */
     public LocalDate bookStartDate() {
-      return bookIdentity
-          .fiscalYearStart()
-          .containingFiscalYearStart(initializedAt.atZone(ZoneOffset.UTC).toLocalDate());
+      return bookIdentity.bookStartEffectiveDate();
     }
   }
 }

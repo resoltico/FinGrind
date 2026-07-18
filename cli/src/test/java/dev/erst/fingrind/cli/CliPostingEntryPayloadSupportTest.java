@@ -342,7 +342,9 @@ class CliPostingEntryPayloadSupportTest {
             money("471.80"),
             money("550.00"),
             money("316.20"),
-            money("1473.80"));
+            money("1473.80"),
+            dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+                .taxBookWithNoDependantsFor2026());
     CliPostingEntryPayload monthlyPayroll =
         entryPayload(
             new LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll(
@@ -350,6 +352,8 @@ class CliPostingEntryPayloadSupportTest {
                 runId,
                 new LatvianPayrollEmployeeReference("employee-001"),
                 LatvianPayrollMonth.parse("2026-07"),
+                dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+                    .taxBookWithNoDependantsFor2026(),
                 new AccountCode("5000"),
                 new AccountCode("5010"),
                 new AccountCode("2200"),
@@ -436,6 +440,8 @@ class CliPostingEntryPayloadSupportTest {
                 runId,
                 new LatvianPayrollEmployeeReference("employee-001"),
                 LatvianPayrollMonth.parse("2026-07"),
+                dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+                    .taxBookWithNoDependantsFor2026(),
                 new AccountCode("5000"),
                 new AccountCode("5010"),
                 new AccountCode("2200"),

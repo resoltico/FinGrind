@@ -151,7 +151,9 @@ final class LedgerPlanStepExecutor {
         BookWorkflowFact.text("initializedAt", initializedAt),
         BookWorkflowFact.text("entityName", bookIdentity.entityName().value()),
         BookWorkflowFact.text("functionalCurrency", bookIdentity.functionalCurrency().code()),
-        BookWorkflowFact.text("fiscalYearStart", bookIdentity.fiscalYearStart().wireValue()));
+        BookWorkflowFact.text("fiscalYearStart", bookIdentity.fiscalYearStart().wireValue()),
+        BookWorkflowFact.text(
+            "bookStartEffectiveDate", bookIdentity.bookStartEffectiveDate().toString()));
   }
 
   private LedgerPlanStepOutcome reconcileEnsureBookRejection(

@@ -10,7 +10,8 @@ public record LatvianMonthlyPayrollCalculation(
     Money employerSocialContribution,
     Money monthlyNonTaxableMinimum,
     Money personalIncomeTax,
-    Money netWages) {
+    Money netWages,
+    LatvianPayrollWithholdingProfile withholdingProfile) {
   /** Validates one internally coherent payroll calculation. */
   public LatvianMonthlyPayrollCalculation {
     Objects.requireNonNull(grossWages, "grossWages");
@@ -19,6 +20,7 @@ public record LatvianMonthlyPayrollCalculation(
     Objects.requireNonNull(monthlyNonTaxableMinimum, "monthlyNonTaxableMinimum");
     Objects.requireNonNull(personalIncomeTax, "personalIncomeTax");
     Objects.requireNonNull(netWages, "netWages");
+    Objects.requireNonNull(withholdingProfile, "withholdingProfile");
     requireCurrency(grossWages, employeeSocialContribution, "employeeSocialContribution");
     requireCurrency(grossWages, employerSocialContribution, "employerSocialContribution");
     requireCurrency(grossWages, monthlyNonTaxableMinimum, "monthlyNonTaxableMinimum");

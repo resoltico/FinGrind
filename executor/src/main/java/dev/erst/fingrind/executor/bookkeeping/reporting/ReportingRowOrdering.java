@@ -19,11 +19,15 @@ final class ReportingRowOrdering {
                   row.lineClassification()
                       .map(FinancialPositionLineClassification::wireValue)
                       .orElse(""))
+          .thenComparing(row -> row.contraOfLineCode().orElse(row.lineCode()))
+          .thenComparing(row -> row.contraOfLineCode().isPresent())
           .thenComparing(FinancialPositionRowView::lineCode)
           .thenComparing(row -> row.balance().netAmount().currencyUnit().code());
   static final Comparator<IncomeStatementRowView> INCOME_STATEMENT_ROW_ORDER =
       Comparator.comparing(IncomeStatementRowView::lineKind)
           .thenComparing(IncomeStatementRowView::lineClassification)
+          .thenComparing(row -> row.contraOfLineCode().orElse(row.lineCode()))
+          .thenComparing(row -> row.contraOfLineCode().isPresent())
           .thenComparing(IncomeStatementRowView::lineCode)
           .thenComparing(row -> row.movement().netAmount().currencyUnit().code());
   static final Comparator<ChangesInEquityRowView> CHANGES_IN_EQUITY_ROW_ORDER =

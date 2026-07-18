@@ -246,7 +246,9 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
                 "--functional-currency",
                 "EUR",
                 "--fiscal-year-start",
-                "01-01"));
+                "01-01",
+                "--book-start-effective-date",
+                "2026-01-01"));
 
     assertEquals(6, exitCode);
     String outputText = outputStream.toString(StandardCharsets.UTF_8);

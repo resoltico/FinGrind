@@ -5,7 +5,7 @@ import java.util.Objects;
 
 /** Refusal for a reversal whose selected target is itself already one reversal posting. */
 public record ReversalTargetIsReversal(PostingId priorPostingId)
-    implements BookkeepingPostingRejection {
+    implements WorkflowBookkeepingPostingRejection {
   public ReversalTargetIsReversal {
     Objects.requireNonNull(priorPostingId, "priorPostingId");
   }

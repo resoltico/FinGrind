@@ -816,7 +816,8 @@ class LedgerPlanFuzzAssertionsTest {
           "bookTemplateId": "OWNER_MANAGED_SERVICE",
           "accountingBasis": "CASH",
           "functionalCurrency": "%s",
-          "fiscalYearStart": "01-01"
+          "fiscalYearStart": "01-01",
+          "bookStartEffectiveDate": "2026-01-01"
         }
         """
         .formatted(functionalCurrency)

@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.InventoryWriteDownExceedsCarryingCost;
-import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
@@ -632,7 +631,9 @@ class FinGrindCliAccountStateContractTest extends FinGrindCliTestSupport {
       "--functional-currency",
       tradingBookIdentity().functionalCurrency().code(),
       "--fiscal-year-start",
-      tradingBookIdentity().fiscalYearStart().wireValue()
+      tradingBookIdentity().fiscalYearStart().wireValue(),
+      "--book-start-effective-date",
+      tradingBookIdentity().bookStartEffectiveDate().toString()
     };
   }
 
@@ -642,7 +643,7 @@ class FinGrindCliAccountStateContractTest extends FinGrindCliTestSupport {
         openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
         new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
         new DeclareAccountResult.Declared(declaredAccount("1000", "Cash", NormalBalance.DEBIT)),
-        new ListAccountsResult.Listed(accountPage(List.of(), 50, Optional.empty())),
+        listedAccounts(accountPage(List.of(), 50, Optional.empty())),
         preflightResult,
         commitResult);
   }

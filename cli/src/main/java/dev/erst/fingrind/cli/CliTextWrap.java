@@ -11,7 +11,6 @@ import java.util.stream.Collectors;
 final class CliTextWrap {
   private static final String TEXT_LINE_SEPARATOR = "\n";
   private static final Pattern WRAP_WORD_BOUNDARY = Pattern.compile("\\s+");
-  private static final String WRAP_PREFERRED_BREAKS = "/._-";
 
   private CliTextWrap() {}
 
@@ -60,21 +59,9 @@ final class CliTextWrap {
   }
 
   static List<String> splitLongToken(String token, int width) {
-    if (token.length() <= width) {
-      return List.of(token);
-    }
-    List<String> segments = new ArrayList<>();
-    int segmentStart = 0;
-    while (true) {
-      int remaining = token.length() - segmentStart;
-      if (remaining <= width) {
-        segments.add(token.substring(segmentStart));
-        return List.copyOf(segments);
-      }
-      int split = preferredSplitIndex(token, segmentStart, width);
-      segments.add(token.substring(segmentStart, split));
-      segmentStart = split;
-    }
+    Objects.requireNonNull(token, "token");
+    // Paths, URLs, identifiers, and shell tokens must remain copy-pasteable.
+    return List.of(token);
   }
 
   private static String wrapWithPrefix(
@@ -145,15 +132,5 @@ final class CliTextWrap {
         currentLine.append(wordPart);
       }
     }
-  }
-
-  private static int preferredSplitIndex(String token, int start, int width) {
-    int limit = Math.min(token.length(), start + width);
-    for (int index = limit - 1; index > start; index--) {
-      if (WRAP_PREFERRED_BREAKS.indexOf(token.charAt(index)) >= 0) {
-        return index + 1;
-      }
-    }
-    return limit;
   }
 }

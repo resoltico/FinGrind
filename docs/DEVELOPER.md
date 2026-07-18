@@ -1,8 +1,8 @@
 ---
-afad: "4.0"
+afad: "5.0.1"
 version: "0.61.0"
 domain: DEVELOPER
-updated: "2026-07-16"
+updated: "2026-07-17"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -65,8 +65,8 @@ The module graph below is the implementation projection of those contexts.
 
 ## Architecture
 
-FinGrind is a six-module Gradle project with a narrow accounting center, a contract-owned public
-surface, executor-owned services, and explicit adapter seams:
+FinGrind is a seven-module Gradle project with a narrow accounting center, a contract-owned public
+surface, executor-owned services, explicit adapter seams, and independent architecture verification:
 
 ```text
 core/         Accounting vocabulary and invariants:
@@ -116,6 +116,7 @@ cli/          Agent-first JSON CLI:
               list-postings, account-balance, trial-balance, account-ledger, period-summary,
               execute-plan, preflight-entry, and post-entry, with discovery payloads rendered
               from contract-owned protocol metadata.
+
 ```
 
 The dependency graph is deliberately one-way:
@@ -182,7 +183,7 @@ FinGrind's current public model is:
   stored, while `normalBalance` is derived from `accountType` plus classification doctrine
 - every posting line references a declared active account
 - the canonical book schema uses SQLite `STRICT` tables and opened handles disable `trusted_schema`
-- the current supported on-disk format is `44`, owned by `BookFormatContract`
+- the current supported on-disk format is `50`, owned by `BookFormatContract`
 - `inspect-book` publishes one explicit hard-break migration policy for the active format line:
   no in-place upgrade path, no older-format acceptance, and no newer-format acceptance
 - FinGrind is in an alpha hard-break line, so schema evolution advances by replacing the current
@@ -238,7 +239,7 @@ Generated-state stance:
 | Component | Version |
 |:----------|:--------|
 | Java | 26 |
-| Python helper toolchain | Python 3.12 in CI, `uv` 0.11.25 as the repo-owned runner, plus helper-tool pins from `requirements-python-tools.txt` |
+| Python helper toolchain | Exact Python 3.12 in CI, `uv` 0.11.25 as the repo-owned runner, plus helper-tool pins from `requirements-python-tools.txt` |
 | Gradle Wrapper | 9.6.1 |
 | Kotlin build logic | 2.4.10 in `gradle/build-logic`, emitting JVM 26 bytecode |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
@@ -298,9 +299,9 @@ python3 -m pip install --user uv==0.11.25
 ./check.sh
 ```
 
-The canonical shell gates resolve the helper-tool Python runtime automatically. If the ambient
-`python3` is older than the repo minimum, `./check.sh` and `./scripts/run-quality-gates.sh` fall
-back to a `uv`-managed Python `3.12+` interpreter for `ruff` and `sqlfluff`.
+The canonical shell gates resolve the helper-tool Python runtime automatically. If ambient
+`python3` does not match the pinned version, they fall back to a `uv`-managed exact Python `3.12`
+interpreter for `ruff` and `sqlfluff`.
 
 Nested Jazzer verification:
 
@@ -351,7 +352,7 @@ Local CLI usage from source:
 - SQLFluff verification for the canonical SQLite schema file
 - Error Prone compile-time checks
 - PMD on main and test sources
-- unit tests
+- unit tests, including independent architecture verification
 - JaCoCo coverage verification at 100% line and 100% branch coverage
 
 Coverage-gate protocol:
@@ -433,6 +434,11 @@ That stage now runs through `./scripts/run-quality-gates.sh`, which pairs root `
 with the included `gradle/build-logic:test` surface so the canonical local gate and CI exercise
 the repository's verification plugins as first-class code.
 
+At completion the root gate emits one `[CHECK-REPORT]` record per executed stage and one bounded
+Java-compiler `[CHECK-WARNING]` manifest plus `[CHECK-WARNING-SUMMARY]`. Those records are the
+warning signal to inspect first; raw `warning:` and `error:` text remains evidence only because
+release-surface negative tests deliberately exercise expected failures.
+
 During Stage 2, `./check.sh` tracks nested Jazzer deterministic tests and regression replay
 through `[JAZZER-PULSE]` lines, including deterministic-tests heartbeats plus
 regression-target `event=plan`, `regression-input`, and `event=finish` markers.
@@ -478,25 +484,27 @@ root-script `subprojects {}` policy blocks.
 
 ## GitHub Workflows
 
-The repository ships four workflow files and one release-blocking CI graph:
+The repository ships three workflow files and one release-blocking CI graph:
 
 - `CI` runs on pushes, pull requests to `main`, and manual `workflow_dispatch`, and publishes the
   aggregate `Gate` required-status job plus `Check`, `Prepare published bundle smoke matrix`,
-  one `Published bundle smoke (<classifier>)` job for each published bundle target, and the
-  devcontainer pair.
+  one `Published bundle smoke (<classifier>)` job for each published bundle target, the
+  wrapper-validation job, and the devcontainer pair.
 - `Release` runs for `v*` tags or manual dispatch, builds the self-contained bundle matrix, and publishes the GitHub release.
-- `Container` runs for `v*` tags or manual dispatch, builds and smoke-tests the image, publishes GHCR tags, and prunes older package versions.
-- `Gradle wrapper validation` runs when wrapper files change and validates the checked-in wrapper surface.
+- `Distribution freshness` runs weekly and on demand to rebuild the published Linux bundle and Docker surface. A failed scheduled canary creates one actionable issue or adds its latest run to the existing open issue; manual reruns do not create issues.
 
 **CI job structure:**
 
-1. `check` — core Linux quality gate: runs `run-quality-gates.sh`, deterministic Jazzer
+1. The wrapper-validation job validates every checked-in Gradle wrapper JAR through Gradle's pinned
+   checksum owner. It is deliberately part of every CI run so `Gate` cannot pass around a
+   wrapper-integrity failure.
+2. `check` — core Linux quality gate: runs `run-quality-gates.sh`, deterministic Jazzer
    regression, SQLite verification, bundle build and smoke, and release-surface script checks.
    Runs on `ubuntu-24.04`.
-2. `prepare-published-bundle-smoke-matrix` — renders the published bundle matrix from the same
+3. `prepare-published-bundle-smoke-matrix` — renders the published bundle matrix from the same
    canonical release-plan reader that tagged publication uses, so CI and release cannot drift on
    target ownership.
-3. `published-bundle-smoke` — runs the release-owned publication-proof matrix after `check`
+4. `published-bundle-smoke` — runs the release-owned publication-proof matrix after `check`
    passes. The matrix expands to every classifier whose publication status is `published` in
    `bundle-publication-contract.json`, currently `macos-aarch64`, `macos-x86_64`,
    `linux-x86_64`, `linux-aarch64`, and `windows-x86_64`. It verifies the native runner identity
@@ -512,15 +520,15 @@ The repository ships four workflow files and one release-blocking CI graph:
    home before Gradle work begins. The exclusion attempt is a performance optimization only: an
    unavailable Defender service must warn and continue instead of blocking the product-verification
    lane.
-4. `devcontainer-changes` — detection job that computes a git diff of the PR's changed files
+5. `devcontainer-changes` — detection job that computes a git diff of the PR's changed files
    against the devcontainer trigger paths. Runs independently; no upstream dependency.
-5. `devcontainer` — validates the committed contributor devcontainer surface through
+6. `devcontainer` — validates the committed contributor devcontainer surface through
    `./scripts/validate-devcontainer.sh`. Fires only when `devcontainer-changes` reports that a
    relevant file changed; skipped otherwise. No longer depends on `check` — the devcontainer
    environment is orthogonal to code correctness and should be proven whenever its files change
    regardless of whether the application gate passes.
-6. `gate` — aggregate required-status job using `if: always()` with explicit `${{ toJSON(needs.*.result) }}` failure detection so a correctly skipped `devcontainer` gate does not prevent `Gate` from being reported or block merge; only a failed or cancelled job prevents success.
-   It aggregates `check`, `prepare-published-bundle-smoke-matrix`, the published bundle-smoke matrix, and the devcontainer gate pair.
+7. `gate` — aggregate required-status job using `if: always()` with explicit `${{ toJSON(needs.*.result) }}` failure detection so a correctly skipped `devcontainer` gate does not prevent `Gate` from being reported or block merge; only a failed or cancelled job prevents success.
+   It aggregates wrapper validation, `check`, `prepare-published-bundle-smoke-matrix`, the published bundle-smoke matrix, and the devcontainer gate pair.
    Configure branch protection to require `Gate` as the single required check, code-owner review on the protected surfaces routed through `.github/CODEOWNERS`,
    and administrator bypass availability for the repository owner so the protected release/publication workflow is not deadlocked
    by a self-review requirement.

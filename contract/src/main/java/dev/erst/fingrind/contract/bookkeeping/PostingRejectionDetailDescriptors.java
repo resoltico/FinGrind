@@ -49,6 +49,16 @@ final class PostingRejectionDetailDescriptors {
             field("currentUtcDate", "Current UTC date resolved from the application clock."));
       }
     },
+    BOOK_START_EFFECTIVE_DATE {
+      @Override
+      List<ContractResponse.FieldDescriptor> descriptors() {
+        return List.of(
+            field("attemptedEffectiveDate", "Rejected effective date from the posting request."),
+            field(
+                "bookStartEffectiveDate",
+                "Immutable earliest effective date configured when the selected book was opened."));
+      }
+    },
     FUNCTIONAL_CURRENCY_MISMATCH {
       @Override
       List<ContractResponse.FieldDescriptor> descriptors() {

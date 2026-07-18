@@ -37,7 +37,12 @@ final class EntrySemanticsFinancingViolationDefinitions {
             "financing-currency-mismatch",
             "financing-currency",
             "The requested financing amount does not use the arrangement's functional currency.",
-            "Use an amount in the functional currency retained by the selected financing arrangement."));
+            "Use an amount in the functional currency retained by the selected financing arrangement."),
+        definition(
+            "financing-borrowing-reversal-requires-applications-reversed",
+            "financing-reversal",
+            "A financing borrowing cannot be reversed while active principal or interest applications remain.",
+            "Reverse every active principal repayment, interest accrual, and interest payment before reversing the borrowing."));
   }
 
   private static EntrySemanticsViolationDefinition definition(

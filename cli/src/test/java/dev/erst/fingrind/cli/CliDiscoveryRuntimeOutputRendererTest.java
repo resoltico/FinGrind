@@ -51,6 +51,9 @@ class CliDiscoveryRuntimeOutputRendererTest {
             .contains("Inventory is available only for the owner-managed trading template."));
     assertTrue(rendered.contains("Next Steps"));
     assertTrue(rendered.contains("Operator guide"));
+    String launcherHelp = CliInvocationText.commandExample(OperationId.HELP);
+    assertTrue(rendered.contains("$ " + launcherHelp), rendered);
+    assertTrue(rendered.contains("$ " + launcherHelp + " trial-balance"), rendered);
     assertTrue(rendered.contains("Kernel scope"));
     assertTrue(rendered.contains("Built-in statements"));
     assertTrue(rendered.contains("Discovery commands"));
@@ -58,6 +61,8 @@ class CliDiscoveryRuntimeOutputRendererTest {
     assertTrue(rendered.contains("Query and report commands"));
     assertTrue(rendered.contains("Write commands"));
     assertTrue(rendered.contains("PDF-capable reports"));
+    assertTrue(rendered.contains("account-balance, trial-balance"));
+    assertFalse(rendered.contains("fingrind account-balance, fingrind trial-balance"));
     assertFalse(rendered.contains("Quick Start"));
     assertFalse(rendered.contains("Targeted Retrieval"));
     assertFalse(rendered.contains("Timestamp"));

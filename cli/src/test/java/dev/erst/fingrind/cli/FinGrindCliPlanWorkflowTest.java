@@ -291,7 +291,8 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
                     "bookTemplateId": "OWNER_MANAGED_SERVICE",
                     "accountingBasis": "CASH",
                     "functionalCurrency": "EUR",
-                    "fiscalYearStart": "01-01"
+                    "fiscalYearStart": "01-01",
+                    "bookStartEffectiveDate": "2026-01-01"
                   }
                 },
                 {

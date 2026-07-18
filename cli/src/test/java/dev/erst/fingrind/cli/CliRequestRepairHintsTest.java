@@ -24,29 +24,30 @@ class CliRequestRepairHintsTest {
   void refine_rewritesDirectRequestFailuresBeforeScaffoldFallback() {
     String missingFieldHint =
         CliRequestRepairHints.refine(
-            "Missing required field: entry.journalEntry", "fallback", null, OperationId.POST_ENTRY);
+            "Missing required field: entry.journalEntry",
+            CliJsonRequestHints.postEntryRequestHint(OperationId.POST_ENTRY),
+            null);
     String optionalStringHint =
         CliRequestRepairHints.refine(
             "Field must be a string when present: evidence.memo",
-            "fallback",
-            null,
-            OperationId.DECLARE_ACCOUNT);
+            CliJsonRequestHints.declareAccountRequestHint(),
+            null);
     String stringHint =
         CliRequestRepairHints.refine(
-            "Field must be a string: evidence.memo", "fallback", null, OperationId.DECLARE_ACCOUNT);
+            "Field must be a string: evidence.memo",
+            CliJsonRequestHints.declareAccountRequestHint(),
+            null);
     String integerHint =
         CliRequestRepairHints.refine(
             "Field must be an integer when present: evidence.sequence",
-            "fallback",
-            null,
-            OperationId.DECLARE_ACCOUNT);
+            CliJsonRequestHints.declareAccountRequestHint(),
+            null);
     String lineHint =
         CliRequestRepairHints.refine(
             "Invalid request document.",
-            "fallback",
+            CliJsonRequestHints.postEntryRequestHint(OperationId.PREFLIGHT_ENTRY),
             new CliErrorJsonModels.InvalidRequestDetails(
-                java.util.List.of("entry.journalEntry.lines must contain at least one line")),
-            OperationId.PREFLIGHT_ENTRY);
+                java.util.List.of("entry.journalEntry.lines must contain at least one line")));
 
     assertTrue(missingFieldHint.contains("Add entry.journalEntry to the request document"));
     assertTrue(optionalStringHint.contains("Replace evidence.memo with one JSON string value"));
@@ -59,27 +60,32 @@ class CliRequestRepairHintsTest {
         optionalStringHint.contains(
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
                 + " "
-                + OperationId.DECLARE_ACCOUNT.wireName()));
+                + OperationId.DECLARE_ACCOUNT.wireName()),
+        optionalStringHint);
+    assertTrue(
+        optionalStringHint.contains(
+            CliInvocationText.commandExample(OperationId.HELP)
+                + " "
+                + OperationId.DECLARE_ACCOUNT.wireName()
+                + " --output json --detail full"),
+        optionalStringHint);
   }
 
   @Test
   void refineAndRefineLedgerPlan_fallBackWhenNoDirectRepairExists() {
-    String requestHint =
-        CliRequestRepairHints.refine("Opaque message", "fallback", null, OperationId.POST_ENTRY);
+    String requestHint = CliRequestRepairHints.refine("Opaque message", "fallback", null);
     String multiViolationHint =
         CliRequestRepairHints.refine(
             "Invalid request document.",
             "fallback-multi",
             new CliErrorJsonModels.InvalidRequestDetails(
                 java.util.List.of(
-                    "entry.journalEntry.lines must contain at least one line", "other")),
-            OperationId.POST_ENTRY);
+                    "entry.journalEntry.lines must contain at least one line", "other")));
     String unrelatedViolationHint =
         CliRequestRepairHints.refine(
             "Invalid request document.",
             "fallback-unrelated",
-            new CliErrorJsonModels.InvalidRequestDetails(java.util.List.of("other violation")),
-            OperationId.POST_ENTRY);
+            new CliErrorJsonModels.InvalidRequestDetails(java.util.List.of("other violation")));
     String ledgerHint = CliRequestRepairHints.refineLedgerPlan("Opaque message", "fallback-ledger");
     String missingFieldHint =
         CliRequestRepairHints.refineLedgerPlan(

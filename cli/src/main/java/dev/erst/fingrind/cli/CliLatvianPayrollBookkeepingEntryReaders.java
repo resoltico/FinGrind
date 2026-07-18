@@ -1,5 +1,7 @@
 package dev.erst.fingrind.cli;
 
+import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredBoolean;
+import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredInt;
 import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredText;
 import static dev.erst.fingrind.cli.CliJsonStructureAccess.rejectUnexpectedFields;
 
@@ -8,7 +10,8 @@ import dev.erst.fingrind.contract.bookkeeping.LatvianPayrollBookkeepingEntryVari
 import dev.erst.fingrind.contract.payroll.LatvianPayrollEmployeeReference;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollMonth;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollRunId;
-import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
+import dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostingRequestFieldSets;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
@@ -36,26 +39,35 @@ final class CliLatvianPayrollBookkeepingEntryReaders {
     return new LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         new LatvianPayrollRunId(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.PAYROLL_RUN_ID)),
+            requiredText(rootNode, ProtocolBusinessEventFields.LatvianPayroll.PAYROLL_RUN_ID)),
         new LatvianPayrollEmployeeReference(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.EMPLOYEE_REFERENCE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.LatvianPayroll.EMPLOYEE_REFERENCE)),
         LatvianPayrollMonth.parse(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.PAYROLL_MONTH)),
-        account(rootNode, ProtocolPostEntryFields.TopLevel.WAGE_EXPENSE_ACCOUNT_CODE),
+            requiredText(rootNode, ProtocolBusinessEventFields.LatvianPayroll.PAYROLL_MONTH)),
+        new LatvianPayrollWithholdingProfile(
+            requiredBoolean(
+                rootNode, ProtocolBusinessEventFields.LatvianPayroll.TAX_BOOK_HELD_AT_EMPLOYER),
+            requiredInt(rootNode, ProtocolBusinessEventFields.LatvianPayroll.DEPENDANT_COUNT)),
+        account(rootNode, ProtocolBusinessEventFields.LatvianPayroll.WAGE_EXPENSE_ACCOUNT_CODE),
         account(
             rootNode,
-            ProtocolPostEntryFields.TopLevel.EMPLOYER_SOCIAL_CONTRIBUTION_EXPENSE_ACCOUNT_CODE),
-        account(rootNode, ProtocolPostEntryFields.TopLevel.NET_WAGES_PAYABLE_ACCOUNT_CODE),
+            ProtocolBusinessEventFields.LatvianPayroll
+                .EMPLOYER_SOCIAL_CONTRIBUTION_EXPENSE_ACCOUNT_CODE),
+        account(
+            rootNode, ProtocolBusinessEventFields.LatvianPayroll.NET_WAGES_PAYABLE_ACCOUNT_CODE),
         account(
             rootNode,
-            ProtocolPostEntryFields.TopLevel.EMPLOYEE_SOCIAL_CONTRIBUTION_PAYABLE_ACCOUNT_CODE),
+            ProtocolBusinessEventFields.LatvianPayroll
+                .EMPLOYEE_SOCIAL_CONTRIBUTION_PAYABLE_ACCOUNT_CODE),
         account(
             rootNode,
-            ProtocolPostEntryFields.TopLevel.EMPLOYER_SOCIAL_CONTRIBUTION_PAYABLE_ACCOUNT_CODE),
+            ProtocolBusinessEventFields.LatvianPayroll
+                .EMPLOYER_SOCIAL_CONTRIBUTION_PAYABLE_ACCOUNT_CODE),
         account(
-            rootNode, ProtocolPostEntryFields.TopLevel.PERSONAL_INCOME_TAX_PAYABLE_ACCOUNT_CODE),
+            rootNode,
+            ProtocolBusinessEventFields.LatvianPayroll.PERSONAL_INCOME_TAX_PAYABLE_ACCOUNT_CODE),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(
-            rootNode, ProtocolPostEntryFields.TopLevel.GROSS_WAGES),
+            rootNode, ProtocolBusinessEventFields.LatvianPayroll.GROSS_WAGES),
         null);
   }
 
@@ -69,8 +81,8 @@ final class CliLatvianPayrollBookkeepingEntryReaders {
     return new LatvianPayrollBookkeepingEntryVariants.NetWageSettlement(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         new LatvianPayrollRunId(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.PAYROLL_RUN_ID)),
-        account(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE),
+            requiredText(rootNode, ProtocolBusinessEventFields.LatvianPayroll.PAYROLL_RUN_ID)),
+        account(rootNode, ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE),
         null);
   }
 
@@ -84,8 +96,8 @@ final class CliLatvianPayrollBookkeepingEntryReaders {
     return new LatvianPayrollBookkeepingEntryVariants.StateRemittance(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         new LatvianPayrollRunId(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.PAYROLL_RUN_ID)),
-        account(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE),
+            requiredText(rootNode, ProtocolBusinessEventFields.LatvianPayroll.PAYROLL_RUN_ID)),
+        account(rootNode, ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE),
         null);
   }
 

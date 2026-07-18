@@ -11,6 +11,7 @@ import java.util.Optional;
 public record FinancialPositionRowView(
     String lineCode,
     String lineName,
+    Optional<String> contraOfLineCode,
     AccountType lineType,
     Optional<FinancialPositionLineClassification> lineClassification,
     StatementLineKind lineKind,
@@ -18,6 +19,7 @@ public record FinancialPositionRowView(
   public FinancialPositionRowView {
     Objects.requireNonNull(lineCode, "lineCode");
     Objects.requireNonNull(lineName, "lineName");
+    Objects.requireNonNull(contraOfLineCode, "contraOfLineCode");
     Objects.requireNonNull(lineType, "lineType");
     Objects.requireNonNull(lineClassification, "lineClassification");
     Objects.requireNonNull(lineKind, "lineKind");

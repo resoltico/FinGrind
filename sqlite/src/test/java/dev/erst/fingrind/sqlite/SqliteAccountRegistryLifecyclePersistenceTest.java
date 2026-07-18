@@ -172,7 +172,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
   }
 
   @Test
-  void lifecycleMutations_refuseTaxAndChildOperationalReferences() {
+  void lifecycleMutations_refuseTaxChildAndContraOperationalReferences() {
     Path bookPath = tempDirectory.resolve("account-lifecycle-operational-references.sqlite");
     AccountCode payableAccountCode = new AccountCode("2100");
     AccountCode parentAccountCode = new AccountCode("1100");
@@ -225,6 +225,39 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
                   .amendAccount(currentAssetHeaderAmendment(parentAccountCode), AMENDED_AT)),
           parentAccountCode,
           AccountRegistryDependency.CHILD_ACCOUNTS);
+
+      AccountCode contraTargetAccountCode = new AccountCode("1200");
+      declareAccount(
+          postingFactStore,
+          contraTargetAccountCode,
+          new AccountName("Trade receivables"),
+          AccountType.ASSET,
+          financialPositionTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET),
+          DECLARED_AT);
+      declareAccount(
+          postingFactStore,
+          new AccountCode("1290"),
+          new AccountName("Expected credit losses"),
+          AccountType.ASSET,
+          currentAssetContraTaxonomy(contraTargetAccountCode),
+          DECLARED_AT);
+
+      assertDependentAccountRejection(
+          assertInstanceOf(
+              AccountAmendmentOutcome.Rejected.class,
+              postingFactStore
+                  .storeMutationOperations()
+                  .amendAccount(nonCurrentAssetAmendment(contraTargetAccountCode), AMENDED_AT)),
+          contraTargetAccountCode,
+          AccountRegistryDependency.CONTRA_ACCOUNTS);
+      assertDependentAccountRejection(
+          assertInstanceOf(
+              AccountRetirementOutcome.Rejected.class,
+              postingFactStore
+                  .storeMutationOperations()
+                  .retireAccount(contraTargetAccountCode, RETIRED_AT)),
+          contraTargetAccountCode,
+          AccountRegistryDependency.CONTRA_ACCOUNTS);
       assertDependentAccountRejection(
           assertInstanceOf(
               AccountRetirementOutcome.Rejected.class,
@@ -421,6 +454,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
     return new AccountTaxonomy(
         AccountNodeKind.HEADER,
         Optional.empty(),
+        Optional.empty(),
         Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
         Optional.empty(),
         Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
@@ -430,9 +464,20 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
     return new AccountTaxonomy(
         AccountNodeKind.POSTABLE,
         Optional.of(parentAccountCode),
+        Optional.empty(),
         Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
         Optional.empty(),
         Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
+  }
+
+  private static AccountTaxonomy currentAssetContraTaxonomy(AccountCode contraTargetAccountCode) {
+    return new AccountTaxonomy(
+        AccountNodeKind.POSTABLE,
+        Optional.empty(),
+        Optional.of(contraTargetAccountCode),
+        Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
+        Optional.empty(),
+        Optional.of(CashFlowAssetClassification.NON_CASH));
   }
 
   private static void declareTaxAccounts(SqlitePostingFactStore postingFactStore) {

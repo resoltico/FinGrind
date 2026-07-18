@@ -76,6 +76,28 @@ class MachineContractDiscoverySurfaceTest {
     assertNull(declareAccountHelp.planTemplate());
     assertTrue(declareAccountHelp.quickStart().isEmpty());
 
+    HelpDescriptor retireAccountHelp =
+        MachineContract.help(
+            IDENTITY,
+            environment(RuntimeDistribution.SOURCE_CHECKOUT_GRADLE),
+            OperationId.RETIRE_ACCOUNT);
+    assertNotNull(Objects.requireNonNull(retireAccountHelp.requestShapes()).retireAccount());
+    assertNull(retireAccountHelp.requestTemplate());
+    assertNull(retireAccountHelp.declareAccountTemplate());
+    assertNull(retireAccountHelp.planTemplate());
+
+    HelpDescriptor declareTaxRegistrationHelp =
+        MachineContract.help(
+            IDENTITY,
+            environment(RuntimeDistribution.SOURCE_CHECKOUT_GRADLE),
+            OperationId.DECLARE_TAX_REGISTRATION);
+    assertNotNull(
+        Objects.requireNonNull(declareTaxRegistrationHelp.requestShapes())
+            .declareTaxRegistration());
+    assertNotNull(declareTaxRegistrationHelp.declareTaxRegistrationTemplate());
+    assertNull(declareTaxRegistrationHelp.requestTemplate());
+    assertNull(declareTaxRegistrationHelp.planTemplate());
+
     HelpDescriptor executePlanHelp =
         MachineContract.help(
             IDENTITY,
@@ -205,7 +227,9 @@ class MachineContractDiscoverySurfaceTest {
         Objects.requireNonNull(MachineContract.requestTemplate(OperationId.RECORD_REVERSAL))
             .entryKind());
     assertEquals("cash-reserve", MachineContract.declareAccountTemplate().accountCode());
-    assertEquals("tax-setup", MachineContract.planTemplate().planId());
+    assertEquals("obsolete-account", MachineContract.retireAccountTemplate().accountCode());
+    assertEquals("general-workflow", MachineContract.planTemplate().planId());
+    assertNull(MachineContract.requestTemplate(OperationId.HELP));
     assertNull(MachineContractTemplatesCatalog.requestShapesFor(null));
     assertNull(
         MachineContractTemplatesCatalog.requestShapesFor(
@@ -215,10 +239,32 @@ class MachineContractDiscoverySurfaceTest {
             ProtocolCatalog.operation(OperationId.POST_ENTRY)));
     assertNotNull(
         MachineContractTemplatesCatalog.requestShapesFor(
+            ProtocolCatalog.operation(OperationId.PREFLIGHT_ENTRY)));
+    assertNotNull(
+        MachineContractTemplatesCatalog.requestShapesFor(
             ProtocolCatalog.operation(OperationId.DECLARE_ACCOUNT)));
     assertNotNull(
         MachineContractTemplatesCatalog.requestShapesFor(
+            ProtocolCatalog.operation(OperationId.RETIRE_ACCOUNT)));
+    assertNotNull(
+        MachineContractTemplatesCatalog.requestShapesFor(
+            ProtocolCatalog.operation(OperationId.DECLARE_TAX_REGISTRATION)));
+    assertNotNull(
+        MachineContractTemplatesCatalog.requestShapesFor(
             ProtocolCatalog.operation(OperationId.EXECUTE_PLAN)));
+    assertNull(MachineContractTemplatesCatalog.retireAccountTemplateFor(null));
+    assertNull(
+        MachineContractTemplatesCatalog.retireAccountTemplateFor(
+            ProtocolCatalog.operation(OperationId.HELP)));
+    assertEquals(
+        "obsolete-account",
+        Objects.requireNonNull(
+                MachineContractTemplatesCatalog.retireAccountTemplateFor(
+                    ProtocolCatalog.operation(OperationId.RETIRE_ACCOUNT)))
+            .accountCode());
+    assertNotNull(MachineContractRequestSchemas.postEntrySchema());
+    assertNotNull(MachineContractRequestSchemas.retireAccountSchema());
+    assertNotNull(MachineContractRetireAccountSchemas.descriptor());
   }
 
   @Test
@@ -279,6 +325,32 @@ class MachineContractDiscoverySurfaceTest {
             .sourceDocuments()
             .getFirst()
             .sourceDocumentType());
+  }
+
+  @Test
+  void latvianPayrollSemanticsPublishAdmittedProfileFieldsFromTheRequestSchema() {
+    HelpDescriptor payrollHelp =
+        MachineContract.help(
+            IDENTITY,
+            environment(RuntimeDistribution.SOURCE_CHECKOUT_GRADLE),
+            OperationId.RECORD_LATVIAN_MONTHLY_PAYROLL);
+    ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor postingShape =
+        Objects.requireNonNull(
+            Objects.requireNonNull(payrollHelp.requestShapes()).bookkeepingEntry());
+    ContractRequestShapes.EntryKindSemanticsDescriptor payrollSemantics =
+        postingShape.entryKindSemantics().stream()
+            .filter(
+                descriptor ->
+                    descriptor.entryKind() == BookkeepingEntryKind.LATVIAN_MONTHLY_PAYROLL)
+            .findFirst()
+            .orElseThrow();
+
+    assertEquals(
+        "True only when the employee has lodged the payroll tax book with this employer; the current profile refuses false.",
+        variantField(payrollSemantics, "taxBookHeldAtEmployer").description());
+    assertEquals(
+        "Number of eligible dependants claimed through this employer's payroll tax book; the current profile admits only 0.",
+        variantField(payrollSemantics, "dependantCount").description());
   }
 
   @Test
@@ -352,8 +424,9 @@ class MachineContractDiscoverySurfaceTest {
     assertNull(requestShapes.declareAccount());
     assertNotNull(requestShapes.ledgerPlan());
     assertNotNull(executePlanHelp.planTemplate());
-    assertEquals("tax-setup", Objects.requireNonNull(executePlanHelp.planTemplate()).planId());
-    assertFalse(
+    assertEquals(
+        "general-workflow", Objects.requireNonNull(executePlanHelp.planTemplate()).planId());
+    assertTrue(
         executePlanHelp.planTemplate().steps().stream().anyMatch(step -> step.posting() != null));
     assertTrue(
         recordComponentNames(LedgerPlanRequestShapeDescriptor.class).contains("postingModel"),
@@ -432,6 +505,14 @@ class MachineContractDiscoverySurfaceTest {
         .filter(field -> fieldName.equals(field.name()))
         .findFirst()
         .orElseThrow(() -> new AssertionError("Missing response-model field " + fieldName));
+  }
+
+  private static ContractRequestShapes.RequestFieldDescriptor variantField(
+      ContractRequestShapes.EntryKindSemanticsDescriptor entryKind, String fieldName) {
+    return entryKind.variantFields().stream()
+        .filter(field -> field.name().equals(fieldName))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("Missing variant field " + fieldName));
   }
 
   private static void assertQuickStartSurface(

@@ -272,6 +272,8 @@ class LatvianPayrollLifecycleIntegrationTest {
         payrollRunId,
         employeeReference,
         MONTH,
+        dev.erst.fingrind.contract.payroll.LatvianPayrollWithholdingProfile
+            .taxBookWithNoDependantsFor2026(),
         WAGE_EXPENSE,
         EMPLOYER_SOCIAL_EXPENSE,
         NET_WAGES_PAYABLE,

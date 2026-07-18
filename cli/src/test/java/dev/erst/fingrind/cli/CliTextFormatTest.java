@@ -67,15 +67,15 @@ class CliTextFormatTest {
             .contains("(none)"));
     assertEquals("", CliTextFormat.wrapLineBlock(List.of(), 12));
     assertEquals(
-        "alpha\nbeta/\ngamma", CliTextFormat.wrapLineBlock(List.of("alpha", "beta/gamma"), 5));
+        "alpha\nbeta/gamma", CliTextFormat.wrapLineBlock(List.of("alpha", "beta/gamma"), 5));
     assertEquals("", CliTextFormat.renderBulletedBlock(List.of(), 12));
     assertEquals("- alpha", CliTextFormat.renderBulletedBlock(List.of("alpha"), Integer.MAX_VALUE));
-    assertEquals("alph\na", CliTextFormat.wrap("alpha   ", 4));
-    assertEquals("alpha/\nbeta", CliTextFormat.wrap("alpha/beta", 6));
+    assertEquals("alpha", CliTextFormat.wrap("alpha   ", 4));
+    assertEquals("alpha/beta", CliTextFormat.wrap("alpha/beta", 6));
     assertEquals("alpha\nbeta", CliTextFormat.wrap("alpha beta", 7));
-    assertEquals("super\nlongt\noken", CliTextFormat.wrap("superlongtoken", 5));
+    assertEquals("superlongtoken", CliTextFormat.wrap("superlongtoken", 5));
     assertEquals("x", CliTextFormat.wrap("x\n      ", 4));
-    assertEquals("- alpha/\n  beta", CliTextFormat.renderBulletedBlock(List.of("alpha/beta"), 8));
+    assertEquals("- alpha/beta", CliTextFormat.renderBulletedBlock(List.of("alpha/beta"), 8));
 
     String compactRows =
         CliTextFormat.renderAdaptiveTable(

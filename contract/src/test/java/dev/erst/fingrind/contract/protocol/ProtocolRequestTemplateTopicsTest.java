@@ -53,6 +53,7 @@ class ProtocolRequestTemplateTopicsTest {
             OperationId.RECORD_REVERSAL,
             OperationId.DECLARE_ACCOUNT,
             OperationId.AMEND_ACCOUNT,
+            OperationId.RETIRE_ACCOUNT,
             OperationId.DECLARE_TAX_REGISTRATION),
         ProtocolRequestTemplateTopics.topics());
     assertEquals(
@@ -95,10 +96,11 @@ class ProtocolRequestTemplateTopicsTest {
             "record-reversal",
             "declare-account",
             "amend-account",
+            "retire-account",
             "declare-tax-registration"),
         ProtocolRequestTemplateTopics.topicNames());
     assertEquals(
-        "[post-entry|preflight-entry|record-sale-settled|record-sale-on-credit|record-purchase-settled|record-purchase-on-credit|record-inventory-capitalization-settled|record-inventory-capitalization-on-credit|record-inventory-write-down|record-inventory-shrinkage|record-inventory-count-increase|record-prepayment|record-deferred-revenue|record-accrued-expense|record-accrual-cutoff-recognition|record-accrued-expense-settlement|record-latvian-monthly-payroll|record-latvian-payroll-net-wage-settlement|record-latvian-payroll-state-remittance|record-fixed-asset-capitalization|record-fixed-asset-depreciation|record-fixed-asset-disposal|record-financing-borrowing|record-financing-principal-repayment|record-financing-interest-accrual|record-financing-interest-payment|record-foreign-currency-obligation|record-realized-foreign-exchange-settlement|record-expense-settled|record-expense-on-credit|record-receipt|record-payment|record-owner-contribution|record-owner-withdrawal|record-opening-position|record-reversal|declare-account|amend-account|declare-tax-registration]",
+        "[post-entry|preflight-entry|record-sale-settled|record-sale-on-credit|record-purchase-settled|record-purchase-on-credit|record-inventory-capitalization-settled|record-inventory-capitalization-on-credit|record-inventory-write-down|record-inventory-shrinkage|record-inventory-count-increase|record-prepayment|record-deferred-revenue|record-accrued-expense|record-accrual-cutoff-recognition|record-accrued-expense-settlement|record-latvian-monthly-payroll|record-latvian-payroll-net-wage-settlement|record-latvian-payroll-state-remittance|record-fixed-asset-capitalization|record-fixed-asset-depreciation|record-fixed-asset-disposal|record-financing-borrowing|record-financing-principal-repayment|record-financing-interest-accrual|record-financing-interest-payment|record-foreign-currency-obligation|record-realized-foreign-exchange-settlement|record-expense-settled|record-expense-on-credit|record-receipt|record-payment|record-owner-contribution|record-owner-withdrawal|record-opening-position|record-reversal|declare-account|amend-account|retire-account|declare-tax-registration]",
         ProtocolRequestTemplateTopics.syntax());
   }
 
@@ -115,6 +117,7 @@ class ProtocolRequestTemplateTopicsTest {
             OperationId.RECORD_LATVIAN_PAYROLL_STATE_REMITTANCE));
     assertTrue(ProtocolRequestTemplateTopics.supports(OperationId.DECLARE_ACCOUNT));
     assertTrue(ProtocolRequestTemplateTopics.supports(OperationId.AMEND_ACCOUNT));
+    assertTrue(ProtocolRequestTemplateTopics.supports(OperationId.RETIRE_ACCOUNT));
     assertTrue(ProtocolRequestTemplateTopics.supports(OperationId.DECLARE_TAX_REGISTRATION));
     assertFalse(ProtocolRequestTemplateTopics.supports(OperationId.EXECUTE_PLAN));
   }

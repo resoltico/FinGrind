@@ -14,7 +14,13 @@ import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.BookDoctrines;
+import dev.erst.fingrind.core.BookEntityName;
+import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
+import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.EntityProfile;
+import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.PostingOriginKind;
@@ -95,6 +101,37 @@ class SqliteBookSchemaContractTest extends SqlitePostingFactStoreTestSupport {
           assertEquals(
               SqliteBookContract.FORMAT_VERSION, queryInt(database, "pragma user_version"));
         });
+  }
+
+  @Test
+  void openBook_seedsTheTradingTemplateWithInventoryDoctrineAndQuantityUnit() {
+    Path databasePath = tempDirectory.resolve("trading-template.sqlite");
+    BookIdentity tradingBookIdentity =
+        new BookIdentity(
+            new EntityProfile(new BookEntityName("Acme Trading")),
+            BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_TRADING,
+            CurrencyUnit.of("EUR"),
+            FiscalYearStart.parse("01-01"),
+            java.time.LocalDate.parse("2026-01-01"));
+
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
+      assertDoesNotThrow(
+          () ->
+              postingFactStore.openBook(
+                  Instant.parse("2026-04-07T10:15:30Z"),
+                  tradingBookIdentity,
+                  dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
+                      tradingBookIdentity.bookDoctrine())));
+
+      assertEquals(
+          "unit",
+          java.util.Objects.requireNonNull(
+                  postingFactStore
+                      .findAccount(new AccountCode("inventory"))
+                      .orElseThrow()
+                      .unitOfMeasure())
+              .token());
+    }
   }
 
   @Test

@@ -40,6 +40,10 @@ final class SqliteAccountLifecycleQueries {
     if (exists(activeDatabase, SqliteAccountLifecycleSql.ACCOUNT_HAS_CHILDREN, accountCode)) {
       dependencies.add(AccountRegistryDependency.CHILD_ACCOUNTS);
     }
+    if (exists(
+        activeDatabase, SqliteAccountLifecycleSql.ACCOUNT_HAS_CONTRA_ACCOUNTS, accountCode)) {
+      dependencies.add(AccountRegistryDependency.CONTRA_ACCOUNTS);
+    }
     return List.copyOf(dependencies);
   }
 

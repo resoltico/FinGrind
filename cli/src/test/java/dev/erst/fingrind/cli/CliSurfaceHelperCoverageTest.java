@@ -105,6 +105,7 @@ class CliSurfaceHelperCoverageTest extends CliFixtureSupport {
                 "Cash",
                 "EUR",
                 "01-01",
+                "2026-01-01",
                 null,
                 null,
                 null,

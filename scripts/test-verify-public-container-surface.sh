@@ -193,6 +193,7 @@ TEXT
                 accounting_basis=''
                 functional_currency=''
                 fiscal_year_start=''
+                book_start_effective_date=''
                 book_file=''
                 book_key_file=''
                 while [[ $# -gt 0 ]]; do
@@ -226,6 +227,10 @@ TEXT
                             fiscal_year_start="${2}"
                             shift 2
                             ;;
+                        --book-start-effective-date)
+                            book_start_effective_date="${2}"
+                            shift 2
+                            ;;
                         *)
                             printf 'unsupported open-book argument: %s\n' "${1}" >&2
                             exit 1
@@ -239,6 +244,7 @@ TEXT
                 [[ "${accounting_basis}" == 'CASH' ]] || exit 1
                 [[ "${functional_currency}" == 'EUR' ]] || exit 1
                 [[ "${fiscal_year_start}" == '01-01' ]] || exit 1
+                [[ "${book_start_effective_date}" == '2026-01-01' ]] || exit 1
                 printf '{"status":"ok"}\n'
                 ;;
             declare-account)
@@ -427,6 +433,7 @@ Seed template       : Owner-managed service seed template
 Accounting basis    : Cash basis
 Functional currency : EUR
 Fiscal year start   : 01-01
+Book start effective date : 2026-01-01
 Posting coverage    : All posting kinds
 As of               : 2026-04-08
 TEXT
@@ -475,6 +482,7 @@ Seed template       : Owner-managed service seed template
 Accounting basis    : Cash basis
 Functional currency : EUR
 Fiscal year start   : 01-01
+Book start effective date : 2026-01-01
 Posting coverage    : All posting kinds
 As of               : 2026-04-08
 TEXT

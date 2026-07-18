@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
 import java.security.CodeSigner;
 import java.security.CodeSource;
 import org.junit.jupiter.api.Test;
@@ -222,13 +222,14 @@ class CliInvocationTextTest {
     assertEquals(
         "fingrind.jar",
         CliInvocationText.currentCodeSourceFileName(
-            new CodeSource(new URL("file:/tmp/fingrind.jar"), (CodeSigner[]) null)));
+            new CodeSource(URI.create("file:/tmp/fingrind.jar").toURL(), (CodeSigner[]) null)));
     assertNull(
         CliInvocationText.currentCodeSourceFileName(
-            new CodeSource(new URL("file:/"), (CodeSigner[]) null)));
+            new CodeSource(URI.create("file:/").toURL(), (CodeSigner[]) null)));
     assertNull(
         CliInvocationText.currentCodeSourceFileName(
-            new CodeSource(new URL("http://example.com/fingrind.jar"), (CodeSigner[]) null)));
+            new CodeSource(
+                URI.create("http://example.com/fingrind.jar").toURL(), (CodeSigner[]) null)));
 
     assertNull(CliInvocationText.normalizeCodeSourceJarFileName(null));
     assertNull(CliInvocationText.normalizeCodeSourceJarFileName("   "));

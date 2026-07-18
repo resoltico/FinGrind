@@ -88,7 +88,8 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
                 LedgerFact.text("initializedAt", openFinishedAt.toString()),
                 LedgerFact.text("entityName", "Acme Studio"),
                 LedgerFact.text("functionalCurrency", "EUR"),
-                LedgerFact.text("fiscalYearStart", "01-01")));
+                LedgerFact.text("fiscalYearStart", "01-01"),
+                LedgerFact.text("bookStartEffectiveDate", "2026-01-01")));
     LedgerJournalEntry.Succeeded commitStep =
         new LedgerJournalEntry.Succeeded(
             stepId("@plan-boundary:commit"),

@@ -2,12 +2,13 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.ContractPlanTemplates.LedgerPlanTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractPostingRequestTemplates.PostingRequestTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes.RequestShapesDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareAccountTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareTaxRegistrationTemplateDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractTemplates.PostingRequestTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
+import dev.erst.fingrind.contract.discovery.PlanTemplateTopic;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.OperationCategory;
 import dev.erst.fingrind.contract.protocol.OperationId;
@@ -75,8 +76,8 @@ final class CliDiscoveryCommandExecutor {
     return 0;
   }
 
-  int writePlanTemplate() {
-    responseWriter.writeRawTemplate(MachineContract.planTemplate());
+  int writePlanTemplate(PlanTemplateTopic topic) {
+    responseWriter.writeRawTemplate(MachineContract.planTemplate(topic));
     return 0;
   }
 
@@ -131,6 +132,9 @@ final class CliDiscoveryCommandExecutor {
     }
     if (commandTopic == OperationId.DECLARE_ACCOUNT || commandTopic == OperationId.AMEND_ACCOUNT) {
       return MachineContract.declareAccountTemplate();
+    }
+    if (commandTopic == OperationId.RETIRE_ACCOUNT) {
+      return MachineContract.retireAccountTemplate();
     }
     if (ProtocolRequestTemplateTopics.supports(commandTopic)) {
       return Objects.requireNonNull(

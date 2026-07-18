@@ -5,7 +5,7 @@ import static dev.erst.fingrind.cli.CliJsonStructureAccess.rejectUnexpectedField
 import static dev.erst.fingrind.cli.CliJsonStructureAccess.requiredArray;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
-import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
+import dev.erst.fingrind.contract.protocol.ProtocolBusinessEventFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostingRequestFieldSets;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
@@ -137,9 +137,9 @@ final class CliTypedBookkeepingEntryReaders {
         ProtocolPostingRequestFieldSets.fieldsFor(BookkeepingEntryKind.SALE_SETTLED));
     return new BookkeepingEntry.SaleSettled(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
-        new AccountCode(requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
+        new AccountCode(requiredText(rootNode, ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE)),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.Core.REVENUE_ACCOUNT_CODE)),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(rootNode),
         CliBookkeepingEntryNestedParser.optionalInventoryRelief(rootNode),
         null,
@@ -156,9 +156,9 @@ final class CliTypedBookkeepingEntryReaders {
     return new BookkeepingEntry.SaleOnCredit(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.RECEIVABLE_ACCOUNT_CODE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.Core.RECEIVABLE_ACCOUNT_CODE)),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.REVENUE_ACCOUNT_CODE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.Core.REVENUE_ACCOUNT_CODE)),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(rootNode),
         CliBookkeepingEntryNestedParser.optionalInventoryRelief(rootNode),
         null,
@@ -175,8 +175,8 @@ final class CliTypedBookkeepingEntryReaders {
     return new BookkeepingEntry.ExpenseSettled(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE)),
-        new AccountCode(requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.Inventory.EXPENSE_ACCOUNT_CODE)),
+        new AccountCode(requiredText(rootNode, ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE)),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(rootNode),
         CliBookkeepingEntryNestedParser.optionalForeignExchange(rootNode),
         CliBookkeepingEntryNestedParser.optionalTaxSelection(rootNode),
@@ -191,9 +191,9 @@ final class CliTypedBookkeepingEntryReaders {
     return new BookkeepingEntry.ExpenseOnCredit(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.EXPENSE_ACCOUNT_CODE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.Inventory.EXPENSE_ACCOUNT_CODE)),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.Core.PAYABLE_ACCOUNT_CODE)),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(rootNode),
         CliBookkeepingEntryNestedParser.optionalForeignExchange(rootNode),
         CliBookkeepingEntryNestedParser.optionalTaxSelection(rootNode),
@@ -205,9 +205,9 @@ final class CliTypedBookkeepingEntryReaders {
         rootNode, null, ProtocolPostingRequestFieldSets.fieldsFor(BookkeepingEntryKind.RECEIPT));
     return new BookkeepingEntry.Receipt(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
-        new AccountCode(requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
+        new AccountCode(requiredText(rootNode, ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE)),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.RECEIVABLE_ACCOUNT_CODE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.Core.RECEIVABLE_ACCOUNT_CODE)),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(rootNode),
         CliBookkeepingEntryNestedParser.optionalSettlementAdjunct(rootNode));
   }
@@ -218,8 +218,8 @@ final class CliTypedBookkeepingEntryReaders {
     return new BookkeepingEntry.Payment(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.PAYABLE_ACCOUNT_CODE)),
-        new AccountCode(requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.Core.PAYABLE_ACCOUNT_CODE)),
+        new AccountCode(requiredText(rootNode, ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE)),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(rootNode),
         CliBookkeepingEntryNestedParser.optionalSettlementAdjunct(rootNode));
   }
@@ -232,9 +232,9 @@ final class CliTypedBookkeepingEntryReaders {
         ProtocolPostingRequestFieldSets.fieldsFor(BookkeepingEntryKind.OWNER_CONTRIBUTION));
     return new BookkeepingEntry.OwnerContribution(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
-        new AccountCode(requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
+        new AccountCode(requiredText(rootNode, ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE)),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.Core.EQUITY_ACCOUNT_CODE)),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(rootNode),
         CliBookkeepingEntryNestedParser.optionalForeignExchange(rootNode));
   }
@@ -247,8 +247,8 @@ final class CliTypedBookkeepingEntryReaders {
     return new BookkeepingEntry.OwnerWithdrawal(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         new AccountCode(
-            requiredText(rootNode, ProtocolPostEntryFields.TopLevel.EQUITY_ACCOUNT_CODE)),
-        new AccountCode(requiredText(rootNode, ProtocolPostEntryFields.TopLevel.CASH_ACCOUNT_CODE)),
+            requiredText(rootNode, ProtocolBusinessEventFields.Core.EQUITY_ACCOUNT_CODE)),
+        new AccountCode(requiredText(rootNode, ProtocolBusinessEventFields.Core.CASH_ACCOUNT_CODE)),
         CliBookkeepingEntryStructureParser.requiredPositiveAmount(rootNode),
         CliBookkeepingEntryNestedParser.optionalForeignExchange(rootNode));
   }
@@ -261,7 +261,7 @@ final class CliTypedBookkeepingEntryReaders {
     return new BookkeepingEntry.OpeningPosition(
         CliBookkeepingEntryStructureParser.requiredEffectiveDate(rootNode),
         CliBookkeepingEntryStructureParser.readOpeningBalances(
-            requiredArray(rootNode, ProtocolPostEntryFields.TopLevel.OPENING_BALANCES)));
+            requiredArray(rootNode, ProtocolBusinessEventFields.Core.OPENING_BALANCES)));
   }
 
   private static BookkeepingEntry.Reversal readReversalEntry(ObjectNode rootNode) {

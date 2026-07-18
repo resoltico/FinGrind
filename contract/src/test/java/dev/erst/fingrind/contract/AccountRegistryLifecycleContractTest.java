@@ -186,6 +186,7 @@ class AccountRegistryLifecycleContractTest {
     return new AccountTaxonomy(
         AccountNodeKind.POSTABLE,
         Optional.empty(),
+        Optional.empty(),
         Optional.of(FinancialPositionLineClassification.INVENTORY),
         Optional.empty(),
         Optional.of(CashFlowAssetClassification.NON_CASH));
