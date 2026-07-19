@@ -33,6 +33,13 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Corrected the unreleased next-format operation-attestation contract so close operations carry a
+  derived posting request, system provenance requires an all-system viable quorum, tax-inclusive
+  sales and purchases have one exact rounded journal equation, and generic reversal is limited to
+  the non-lifecycle postings it can completely compensate. The fixture corpus now distinguishes
+  standalone envelope vectors from complete book and artifact verification resources, and closes
+  the previously unspecified fixed-asset, payroll, financing, inventory-shrinkage, settlement, and
+  policy-effect mappings.
 - Fixed malformed typed-request recovery so every operation points to its own request scaffold and
   canonical help command. Fixed payroll discovery notes to name both supported withholding-profile
   facts, and made the pinned `uv` plus exact Python helper-tool runtime contract fail before Gradle

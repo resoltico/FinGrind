@@ -91,8 +91,12 @@ in the form YYYY-MM-DD and must denote a valid Gregorian calendar date.
 No signed payload contains passphrases, private keys, custodian handles, environment values, local
 paths, encrypted-key bytes, or presentation-only path hints. A preimage has at most 1,000,000
 records and 16 MiB of encoded bytes. An authorization quorum is in the inclusive range 1 through
-64; a policy, key, or grant mutation is invalid if its post-operation state would leave any
-configured quorum greater than its eligible-principal count for that capability.
+64. The post-operation fold of every policy, binding, revocation, grant, or system-workflow-policy
+mutation must leave each configured quorum no greater than its eligible-principal count. It must
+also leave each capability's quorum no greater than its operator-purpose eligible-principal count
+whenever that capability admits a cli operation. If an active system-workflow policy exists, the
+CLOSE_PERIOD quorum must additionally be no greater than its system-purpose eligible-principal
+count. A system workflow is therefore never activated into an impossible all-system quorum.
 
 ## Principal Registry, Policy, And Operation Kinds
 
@@ -101,18 +105,18 @@ eligibility resolve from the fold through N minus one. A binding or revocation c
 affects N plus one. No record may set a retrospective or future-effective credential interval.
 
 An active credential is an enrolled or rolled-over Ed25519 key that has not been revoked. Every
-binding also has one immutable credentialPurpose: operator or system. An operator credential may
-sign an operation only when sourceChannel is cli. A system request must contain at least one active
-system credential; its other quorum signatures may be operator co-signatures. Purpose does not
-constrain a manifest or receipt because neither carries a source channel. Purpose belongs to the
-credential binding, not to an inferred principal name, external key-store label, or caller claim.
-A new binding is the only way to change a credential's purpose; history retains the purpose that
-was effective at its operation position.
+binding also has one immutable credentialPurpose: operator or system. A cli operation has only
+operator-purpose envelope credentials; a system operation has only system-purpose envelope
+credentials. Purpose does not constrain a manifest or receipt because neither carries a source
+channel. Purpose belongs to the credential binding, not to an inferred principal name, external
+key-store label, or caller claim. A new binding is the only way to change a credential's purpose;
+history retains the purpose that was effective at its operation position.
 
 A principal is eligible for one capability exactly when it owns at least one active credential and
-its latest principal.capability-grant fact for that capability is GRANT. Capability grants are
-append-only facts; ALTER_POLICY may add a GRANT or REVOKE fact but may not rewrite prior authority.
-There is no hidden role or scope table.
+its latest principal.capability-grant fact for that capability is GRANT. A purpose-eligible
+principal additionally owns an active credential with the required operator or system purpose.
+Capability grants are append-only facts; ALTER_POLICY may add a GRANT or REVOKE fact but may not
+rewrite prior authority. There is no hidden role or scope table.
 
 Every policy rule is capability plus concrete quorum M. Distinct principals and distinct keys are
 unconditional envelope invariants, so there is no persisted require-distinct-principals switch.
@@ -214,7 +218,7 @@ log, CLI DTO, contract DTO, or generic accounting object.
 |:--|:--|:--|
 | one atomic operation | business entries, execute-plan, account/tax/registry/policy mutation, close, and rekey | one SQLite transaction contains domain rows, immutable preimages, envelope, and head |
 | sequence of signed operations | a command genuinely unable to be one transaction | each step is independently signed, has exact preimages, and has its own chain position |
-| staged external artifact | backup-book and restore-book | the filesystem boundary uses the ordered manifest protocol below; it is never claimed to be one SQLite transaction |
+| staged external artifact | backup-book and restore-book | the filesystem boundary uses the ordered manifest protocol in [the artifact reference](./DOC_02_VerifiableOperationAttestationArtifacts.md); it is never claimed to be one SQLite transaction |
 
 ## Version 1 Exclusions And Future Format Breaks
 
@@ -323,7 +327,7 @@ allowed, or forbidden; a record not allowed by that profile is attestation-reque
 | 0131 | request.fixed-asset | stepOrder:u32!, assetId:uuid!, assetClass:token?, usefulLifeMonths:u32? | stepOrder, assetId |
 | 0132 | request.financing | stepOrder:u32!, arrangementId:uuid! | stepOrder, arrangementId |
 | 0133 | request.foreign-currency-obligation | stepOrder:u32!, obligationId:uuid!, settlementId:uuid? | stepOrder, obligationId, settlementId |
-| 0134 | request.payroll | stepOrder:u32!, payrollRunId:uuid!, employeeReference:text?, payrollMonth:text?, taxBookHeldAtEmployer:bool?, dependantCount:u8? | stepOrder, payrollRunId |
+| 0134 | request.payroll | stepOrder:u32!, payrollRunId:uuid!, employeeReference:text?, payrollMonth:text?, withholdingProfile:token?, taxBookHeldAtEmployer:bool?, dependantCount:u8? | stepOrder, payrollRunId |
 | 0140 | request.period-close | closeKind:token!, effectiveFrom:date?, effectiveTo:date?, fiscalYear:u32?, resultHoldingAccountCode:text?, capitalAccountCode:text?, retainedResultAccountCode:text? | closeKind, effectiveTo |
 | 0141 | request.system-workflow-run | workflowId:uuid! | workflowId |
 | 0150 | request.backup-acknowledgement | backupId:uuid!, backupArtifactDigest:hash!, sourceOrder:u64!, sourceHead:hash! | backupId |
@@ -425,14 +429,20 @@ never be widened by an adapter, a database trigger, or a future implementation c
 | tax registration | 0100, 0113; 0114 as applicable | 0013, 0014 |
 | typed posting | 0100 plus the exact request groups in the closed per-kind matrix | the exact effect groups in the closed per-kind matrix |
 | attach-posting-approval | 0100, 0125 | 0022 |
-| interim-result-sweep | 0100, 0140; 0141 when sourceChannel is system | 0020, 0025, 0040, 0041, 0042 |
-| fiscal-year-close | 0100, 0140; 0141 when sourceChannel is system | 0020, 0025, 0043, 0044 |
+| interim-result-sweep | 0100, 0120, 0140; 0141 when sourceChannel is system | 0020, 0025, 0040, 0041, 0042 |
+| fiscal-year-close | 0100, 0120, 0140; 0141 when sourceChannel is system | 0020, 0025, 0043, 0044 |
 | backup-created | 0100, 0150 | 0006 |
 | restore-book | 0100, 0160 | 00A0 |
 | rekey-book | 0100, 0170 | 0007 |
 | enroll-key or rollover-key | 0100, 0180 | 0002 |
 | revoke-key | 0100, 0181 | 0004 |
 | alter-policy | 0100; one or more of 0182, 0183, 0184 | matching 0003, 0005, 0008 only |
+
+For alter-policy, each request record maps to exactly one effect record of its paired kind: 0182 to
+0005, 0183 to 0003, and 0184 to 0008. All non-mutation fields are byte-for-value equal; no effect
+record may lack its paired request or share it with another effect. The effect mutation is the only
+derived field and expresses the resulting append-only lifecycle transition. The post-operation
+quorum and purpose-eligible capacity rules apply before this operation can be accepted.
 
 Every effect posting.fact operationStepOrder must match one request.posting stepOrder in the same
 operation, and every effect record referring to a postingId, account, lifecycle ID, credential,
@@ -444,10 +454,11 @@ derivation rule above. A generated identifier may occur only in an effect record
 The following groups are the canonical owner of Version-1 typed-posting admissibility. A group
 names every request and effect tag it contributes; a row permits no tag outside its listed groups.
 `B` is required for every typed posting. `D` is the raw-journal profile. `T` and `X` are optional
-paired groups: their request and effect tags occur together. `R` means the effect tags of the
-verified operation being reversed, with every lifecycle effect using its catalogued reversal form
-where one exists. A row that lists a group as required requires every one of that group's request
-tags and at least the corresponding effect facts; the effect's generated IDs remain derivations.
+paired record groups; `S` admits one settlement adjunct and its exact B-journal projection where
+the selected row permits it. `R` is the total compensating-projection relation for the narrowly admitted
+non-lifecycle reversal origins; it contributes no caller-selected fact beyond B. A row that lists a
+group as required requires every one of that group's request tags and at least the corresponding
+effect facts; the effect's generated IDs remain derivations.
 Tag admission is only the outer grammar: field multiplicity, role admission, account linkage,
 amount use, journal balance, and the exact request-to-effect relation are closed by the semantic
 profiles in
@@ -459,6 +470,7 @@ profiles in
 | D: direct journal | 0100, 0120, 0124, 012A | 0020, 0021, 0025 |
 | T: tax selection | 0126 | 0023 |
 | X: quoted foreign exchange | 0127 | 0024 |
+| S: settlement adjunct | 0129 | none beyond B's 0025 journal lines |
 | I: inventory | 0123, 0128 | 0030, 0031 |
 | A1: accrual or cut-off origin | 0130 | 0050 |
 | A2: accrual or cut-off application | 0130 | 0051 |
@@ -473,16 +485,18 @@ profiles in
 | O1: foreign-currency obligation | 0133, 0127 | 0024, 0080 |
 | O2: foreign-currency settlement | 0133, 0127 | 0024, 0081 |
 | O3: foreign-currency reversal | 0133 | 0082 |
+| R: compensating reversal | none beyond B | exact inverse B lines and, only when present on the admitted original, 0023 and 0024 |
 
 | Operation kinds | Required groups | Optional groups |
 |:--|:--|:--|
-| post-entry | D | T, X |
+| post-entry | D | X |
 | execute-plan | one or more independently ordered child rows from this table | none beyond the selected child rows |
 | record-sale-settled, record-sale-on-credit, record-purchase-settled, record-purchase-on-credit, record-expense-settled, record-expense-on-credit | B | T |
-| record-receipt, record-payment, record-owner-contribution, record-owner-withdrawal | B | none |
+| record-receipt, record-payment | B | S |
+| record-owner-contribution, record-owner-withdrawal | B | none |
 | record-opening-position | D | none |
-| record-inventory-capitalization-settled, record-inventory-capitalization-on-credit, record-inventory-write-down, record-inventory-shrinkage, record-inventory-count-increase | B, I | T |
-| record-prepayment, record-deferred-revenue, record-accrued-expense | B, A1 | T |
+| record-inventory-capitalization-settled, record-inventory-capitalization-on-credit, record-inventory-write-down, record-inventory-shrinkage, record-inventory-count-increase | B, I | none |
+| record-prepayment, record-deferred-revenue, record-accrued-expense | B, A1 | none |
 | record-accrual-cutoff-recognition, record-accrued-expense-settlement | B, A2 | none |
 | record-latvian-monthly-payroll | B, L1 | none |
 | record-latvian-payroll-net-wage-settlement, record-latvian-payroll-state-remittance | B, L2 | none |
@@ -500,12 +514,14 @@ request.posting stepOrder names one child operation kind and must independently 
 child's exact row after removing 0100 from its B group. Its effect records carry the same stepOrder
 or the generated postingId linked to that step; it cannot use the union of unrelated rows as a
 discretionary extension point. `record-reversal` names the admitted original posting in
-request.posting.priorPostingId and may reverse only the original operation's closed profile.
+request.posting.priorPostingId and may reverse it only under the closed reversal relation in the
+semantic profiles.
 
 `request.account-role.role` is closed to cash-account, receivable-account, payable-account,
 revenue-account, inventory-account, expense-account, equity-account, settlement-adjunct-account,
 prepayment-account, deferred-revenue-account, accrued-expense-account, fixed-asset-account,
-accumulated-depreciation-account, financing-principal-account, financing-interest-account,
+accumulated-depreciation-account, depreciation-expense-account, financing-principal-account,
+financing-interest-account,
 foreign-exchange-gain-account, foreign-exchange-loss-account, tax-payable-account,
 tax-receivable-account, result-holding-account, capital-account, retained-result-account,
 write-down-loss-account, shrinkage-loss-account, count-gain-account, prepayment-asset-account,
@@ -522,110 +538,12 @@ The matrix and the profile document determine which of these closed facts is sem
 An unlisted role, duplicate role, wrong multiplicity, unconsumed request fact, or tag outside the
 selected row is attestation-request-profile-invalid.
 
-## Backup Manifest, Publication, And Restore
+## Backup Artifacts And Receipts
 
-Signer identity belongs only in the envelope:
-
-~~~text
-manifestPayload =
-  "FGATTBM1"
-  || manifestVersion(u8 = 01)
-  || bookId(uuid)
-  || backupId(uuid)
-  || sourceOrder(u64)
-  || sourceOperationHead(hash)
-  || snapshotDigest(hash)
-  || algorithmId(token = "ed25519")
-
-manifestEnvelope = envelope(manifestPayload)
-
-trailer =
-  "FGATBMF1"
-  || containerVersion(u8 = 01)
-  || snapshotLength(u64)
-  || manifestEnvelopeLength(u32)
-
-publishedArtifact = snapshot || manifestEnvelope || trailer
-~~~
-
-The 21-byte final trailer permits an unambiguous reverse parse. It must name exactly one snapshot
-and one manifest envelope; their declared lengths must consume the complete file with no trailing
-or unconsumed byte. snapshotDigest is SHA-256 of exactly snapshot. backupArtifactDigest is SHA-256
-of the entire publishedArtifact. A manifest verifies under the BACKUP quorum resolved as of
-sourceOrder from the snapshot's own registry and policy.
-
-Backup is a staged external-artifact operation:
-
-1. Create one consistent SQLite snapshot at head H.
-2. Compute snapshotDigest, collect the BACKUP quorum as of H, and form the artifact.
-3. Fsync the staged artifact; publish only through an atomic create-exclusive or link-based
-   no-clobber primitive; fsync the parent directory. Check-then-rename, ATOMIC_MOVE, and POSIX
-   rename are forbidden because they can replace an existing target. A final-path collision is
-   artifact-already-exists with exit 7.
-4. Best-effort append backup-created with backupId, backupArtifactDigest, sourceOrder H, and
-   source head H. It compares-and-swaps the current live head; if that head advanced, it rebuilds
-   and re-signs the acknowledgement while retaining source H.
-
-backup-created is idempotent only for the identical tuple bookId, backupId, backupArtifactDigest,
-and sourceHead. Exact replay is a no-op success. Any other reuse of backupId is
-backup-acknowledgement-conflict with exit 2.
-
-| Crash point | Residual | Recovery |
-|:--|:--|:--|
-| after snapshot or blessing, before publication | staged local temporary file | discard locally; nothing was published |
-| after publication, before acknowledgement | manifest-attested artifact and an understated source-book backup index | resume the identical acknowledgement |
-
-A manifest-attested artifact is never unattested or orphaned. Explicit discard is confirmed local
-off-chain deletion; no operation claims a published file disappeared.
-
-Restore is also staged external-artifact work:
-
-1. Split the artifact, verify the snapshot's internal chain through sourceOrder, check its head,
-   bookId, snapshot digest, and manifest BACKUP quorum. A surviving source-book acknowledgement is
-   not required.
-2. Resolve RESTORE as of sourceOrder.
-3. Decrypt the snapshot under its backup key and re-encrypt a staged destination under the
-   destination key. Inside that destination append restore-book at sourceOrder plus one with
-   previousHead equal to sourceOperationHead and the restore.provenance effect record.
-4. Fsync the staged destination; create it atomically without replacement; fsync the destination
-   directory. Collision is artifact-already-exists with exit 7.
-
-Restore preserves bookId but is no longer byte-for-byte the source artifact. It creates a
-restoration-derived continuation, not proof of a concurrent original fork. Restore authorization
-is historical, as of sourceOrder: a later-revoked credential can create a valid restoration-derived
-branch, and version 1 has no external current recovery authority. The no-clobber primitive and
-directory durability must be tested on macOS aarch64 and x86_64, Linux x86_64 and aarch64, and
-Windows x86_64.
-
-## Receipts And Anchors
-
-~~~text
-receiptPayload =
-  "FGATTRC1"
-  || receiptVersion(u8 = 01)
-  || bookId(uuid)
-  || operationOrder(u64)
-  || operationHead(hash)
-  || receiptTimestamp(instant)
-  || algorithmId(token = "ed25519")
-
-receiptEnvelope = envelope(receiptPayload)
-~~~
-
-The receipt quorum resolves ANCHOR as of operationOrder. Receipt timestamps are signer-asserted
-until a future counter-signature format. Export is non-mutating, uses the same atomic no-clobber
-publication rule, and warns when its output remains inside the book's trust boundary.
-
-verify-receipt is non-mutating. It verifies the receipt envelope, finds the referenced book and
-operation order, requires equal bookId and operationHead, and evaluates the receipt's ANCHOR quorum
-as of that order. A valid receipt retained beside the book is reported as valid-but-not-independent.
-
-| Verifier holds | Detects | Does not detect |
-|:--|:--|:--|
-| book only | interior alteration, reordering, signatures, and authorization failures | truncation, rollback, or fork |
-| retained receipt at K | rollback, truncation, or alteration through K | a fork strictly after K |
-| latest known head | rollback or truncation through that head | a fork strictly after that head |
-| append-only witness with mandatory submission, gossip, and consistency checks | equivocation among submitted and observed heads when both branches are revealed | a never-revealed branch |
+[DOC_02_VerifiableOperationAttestationArtifacts.md](./DOC_02_VerifiableOperationAttestationArtifacts.md)
+is the canonical owner of backup-manifest, artifact-publication, restore, and receipt/anchor
+contracts, including the artifact golden vectors. This protocol retains the shared envelope grammar,
+historical authorization rules, and deterministic failure taxonomy they use.
 
 ## Verification, Compromise Review, And Failure Taxonomy
 
@@ -712,7 +630,7 @@ reviewRequired into exit 2.
 | artifact-already-exists | no-clobber target already exists | 7 |
 | custodian-not-supported | caller selected an unshipped key custodian | 2 |
 
-## Golden Vectors
+## Operation Envelope Golden Vectors
 
 All vector private seeds are public fixtures only, never production credentials. An encoder must
 reproduce every declared payload, envelope, length, and digest byte-for-byte. A verifier must
@@ -733,10 +651,11 @@ head        = d7e8fb5126e2d1a7ff28398faec6bfa0e061ca1c74ffd4d1947ea5f70a339213
 payload is 181 bytes. The envelope is payload, 0001, principalId, keyId, and signature; it is 295
 bytes and SHA-256 equals head.
 
-### V-OP-02: Complete Two-Principal Posting Quorum
+### V-OP-02: Complete Two-Principal Posting Envelope
 
-This uses the V-OP-01 payload, principal A, and principal B. Under an M=2 POST resolver, both
-principals are active and granted POST. keyB sorts before keyA, so B's entry precedes A's.
+This uses the V-OP-01 payload, principal A, and principal B. Under the standalone M=2 POST
+envelope resolver in the corpus, both principals are active and granted POST. keyB sorts before
+keyA, so B's entry precedes A's. It is not a complete protected-book chain fixture.
 
 ~~~text
 signatureB = aa1ed4763cf3b2712c1826c25d43ff3d4cef5fb11ebd840ae97e57036f7003b2408a59ec16c9d3754ab1467d27488a96b455bb178182a4d56fd2d96d2b4be601
@@ -745,54 +664,8 @@ head       = 1340639b39f477bde0427c9e347b9096e18ef19551ff288f88aa597f1347d45a
 ~~~
 
 The envelope is 407 bytes and SHA-256 equals head. V-OP-01's payload and A signature are unchanged.
-
-### V-MANIFEST-02: Complete Two-Principal Backup Quorum
-
-~~~text
-principalA       = 102132435465768798a9babcbddceeff
-seedA            = 000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f
-keyA             = a050837d85070582ccf7394b0988847cc312cb88259b894899f6f239cf1791a5
-principalB       = 112233445566778899aabbccddeeff00
-seedB            = 202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f
-spkiB            = 302a300506032b657003210029acbae141bccaf0b22e1a94d34d0bc7361e526d0bfe12c89794bc9322966dd7
-keyB             = 824c89aa8efb95ef93629b4519599129cace4adac9a6180daba31ceed41ecee6
-payload          = 4647415454424d310100112233445566778899aabbccddeeffffeeddccbbaa99887766554433221100000000000000002ad7e8fb5126e2d1a7ff28398faec6bfa0e061ca1c74ffd4d1947ea5f70a339213606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f0765643235353139
-envelope         = 4647415454424d310100112233445566778899aabbccddeeffffeeddccbbaa99887766554433221100000000000000002ad7e8fb5126e2d1a7ff28398faec6bfa0e061ca1c74ffd4d1947ea5f70a339213606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f07656432353531390002112233445566778899aabbccddeeff00824c89aa8efb95ef93629b4519599129cace4adac9a6180daba31ceed41ecee6fe5c371ee312e047907cb70c3f7f93d0f187412869138f58287a8ff8662eb69021f9163e470f3230e89109128204088abe5c5520460b514547ed002c12efa004102132435465768798a9babcbddceeffa050837d85070582ccf7394b0988847cc312cb88259b894899f6f239cf1791a59a8259fa79252defc53e7bd64215f5b15e63ec4d16ef5cb3377762c2134371d4194ab61e929e87068475a9ad5e2b19829f16c32eb8f2f2be0721c219e6372804
-head             = c3a03b2006e080726454b60ace100df0f9e4e78cdf2154b0454503794c830c69
-~~~
-
-payload is 121 bytes and envelope is 347 bytes. keyB precedes keyA because raw keyB sorts first.
-
-### V-RECEIPT-02: Complete Two-Principal Anchor Quorum
-
-~~~text
-payload  = 46474154545243310100112233445566778899aabbccddeeff000000000000002ad7e8fb5126e2d1a7ff28398faec6bfa0e061ca1c74ffd4d1947ea5f70a339213323032362d30372d31375430343a30303a30302e3030305a0765643235353139
-envelope = 46474154545243310100112233445566778899aabbccddeeff000000000000002ad7e8fb5126e2d1a7ff28398faec6bfa0e061ca1c74ffd4d1947ea5f70a339213323032362d30372d31375430343a30303a30302e3030305a07656432353531390002112233445566778899aabbccddeeff00824c89aa8efb95ef93629b4519599129cace4adac9a6180daba31ceed41ecee68f69835573aa8fe7afb8456eca706eb32700b4a19faf7fb544e8f9e55e49393bafa0316be4dd0a01362c2650df94e37ca857a994aac46a869f33c5d8a788320b102132435465768798a9babcbddceeffa050837d85070582ccf7394b0988847cc312cb88259b894899f6f239cf1791a556cf223436c6e05b65040e26eb5674686e575846c4f4b78ff7645a7bfb2d5dddfeb0c7b76e67d4b2557a45c5499a1c890192d4daa2840b6b682da7be5cdff20e
-head     = 42549e39bdb60205d16082d6e557c4c9d12e000a87b40f0974b2d82f62f3d0dc
-~~~
-
-The principals, keys, and seeds are exactly V-MANIFEST-02. payload is 97 bytes and envelope is
-323 bytes.
-
-### V-CONTAINER-01: Complete Parser And Digest Artifact
-
-This is a container-framing vector, not a SQLite-book verifier vector. Its 16-byte synthetic
-snapshot is intentionally not a valid FinGrind book.
-
-~~~text
-snapshot       = 000102030405060708090a0b0c0d0e0f
-snapshotDigest = be45cb2605bf36bebde684841a28f0fd43c69850a3dce5fedba69928ee3a8991
-trailer        = 46474154424d46310100000000000000100000015b
-containerDigest= 3b0fc99b3916dadebfdfa6babcff83afdac8d23b861a4a4e5c43d9e386d9d6ff
-~~~
-
-Its manifest uses V-MANIFEST-02 signers, bookId and source head; backupId is
-00112233445566778899aabbccddeeff. Its full container is snapshot followed by the following
-347-byte manifest envelope and the listed trailer:
-
-~~~text
-4647415454424d310100112233445566778899aabbccddeeff00112233445566778899aabbccddeeff000000000000002ad7e8fb5126e2d1a7ff28398faec6bfa0e061ca1c74ffd4d1947ea5f70a339213be45cb2605bf36bebde684841a28f0fd43c69850a3dce5fedba69928ee3a899107656432353531390002112233445566778899aabbccddeeff00824c89aa8efb95ef93629b4519599129cace4adac9a6180daba31ceed41ecee67653ae182cf8e3eb9cfbfb479a11ac87effa34ea3b7deafbec65ca7a29fd4993a93f66ef8cd42fac7d2f3cef70f54cbe3f8a359c89ee3ebaa5e5397efce88406102132435465768798a9babcbddceeffa050837d85070582ccf7394b0988847cc312cb88259b894899f6f239cf1791a5555760252105dfdd5f3a45358581f7ede854f5c8ed7e156ee80a488a67c0da8c28a5c85a16d12d8d415448f8cfe6ee4558566a157ec51f97af4f22b4d5d45c0d
-~~~
+The backup-manifest, receipt, and parser vectors are owned by
+[DOC_02_VerifiableOperationAttestationArtifacts.md](./DOC_02_VerifiableOperationAttestationArtifacts.md).
 
 ## Static Corpus
 

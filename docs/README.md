@@ -126,8 +126,9 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md)
 - [DOC_02_Application.md](./DOC_02_Application.md)
 - [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md)
-- [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md): normative feature-branch contract for the next hard-break protected-book format, including credential-purpose authorization, closed per-kind effects, and deterministic verifier failures; it is not released CLI or book-format behavior
+- [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md): normative feature-branch operation, authorization, preimage, semantic-profile, verifier, and operation-envelope contract for the next hard-break protected-book format; it is not released CLI or book-format behavior
 - [DOC_02_VerifiableOperationAttestationProfiles.md](./DOC_02_VerifiableOperationAttestationProfiles.md): normative field-level posting profiles and autonomous system-close derivations for the next attestation format; it is not released CLI or book-format behavior
+- [DOC_02_VerifiableOperationAttestationArtifacts.md](./DOC_02_VerifiableOperationAttestationArtifacts.md): normative backup-manifest, artifact-publication, restore, receipt, anchor, and artifact-vector contract for the next attestation format; it is not released CLI or book-format behavior
 - [DOC_02_VerifiableOperationAttestationCorpus.md](./DOC_02_VerifiableOperationAttestationCorpus.md): normative positive and negative static fixture source for the next attestation format; it is not released CLI or book-format behavior
 - [DOC_02_MachineContractAndDescriptors.md](./DOC_02_MachineContractAndDescriptors.md)
 - [DOC_02_AdministrationAndReports.md](./DOC_02_AdministrationAndReports.md)

@@ -53,6 +53,8 @@ route:
   credential-purpose authorization, closed per-kind effects, and deterministic verifier failures.
   Use [DOC_02_VerifiableOperationAttestationProfiles.md](./DOC_02_VerifiableOperationAttestationProfiles.md)
   for the normative request-to-effect semantic profiles and autonomous system-close derivations.
+  Use [DOC_02_VerifiableOperationAttestationArtifacts.md](./DOC_02_VerifiableOperationAttestationArtifacts.md)
+  for backup-manifest, artifact-publication, restore, receipt, and artifact-vector contracts.
   Use [DOC_02_VerifiableOperationAttestationCorpus.md](./DOC_02_VerifiableOperationAttestationCorpus.md)
   for the normative positive, negative, backup-artifact, and live-CAS fixture sources.
   It does not describe a released CLI command or accepted book format.
@@ -94,8 +96,9 @@ route:
 | `DOC_01_DecimalBoundaries.md` | exact-money boundary, exact-quantity boundary, and future non-money decimal-domain rules |
 | `DOC_02_Application.md` | routing overview for the split `contract` and `executor` reference spine |
 | `DOC_02_ProtocolAndDiscovery.md` | exported `contract` protocol metadata, runtime/distribution facts, request-field vocabularies, and protected-book format owners |
-| `DOC_02_VerifiableOperationAttestation.md` | normative feature-branch contract for the next hard-break protected-book format, including operation attestations, credential-purpose quorum envelopes, closed per-kind effects, backup manifests, receipts, verifier precedence, and static vectors |
+| `DOC_02_VerifiableOperationAttestation.md` | normative feature-branch operation, authorization, preimage, semantic-profile, verifier, and operation-envelope contract for the next hard-break protected-book format |
 | `DOC_02_VerifiableOperationAttestationProfiles.md` | normative field-level posting profiles and autonomous system-close derivations for the next attestation format |
+| `DOC_02_VerifiableOperationAttestationArtifacts.md` | normative backup-manifest, artifact-publication, restore, receipt, anchor, and artifact-vector contract for the next attestation format |
 | `DOC_02_VerifiableOperationAttestationCorpus.md` | normative positive and negative source fixtures for the next attestation format, including backup, restore, rekey, system-initiation, and live-CAS coverage |
 | `DOC_02_MachineContractAndDescriptors.md` | exported machine-contract assembly, discovery descriptors, templates, workflow scaffolds, and deterministic contract-error owners |
 | `DOC_02_AdministrationAndReports.md` | exported administration/query/report models and exported `executor` administration and read services |
