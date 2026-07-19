@@ -7,8 +7,8 @@ scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["AttestedOperation", "AttestationEnvelope", "BackupManifest", "AttestationReceipt"]
 route:
-  keywords: [verifiable-operation-attestation, operation-head, attestation-envelope, backup-manifest, receipt-anchor, principal-quorum, credential-purpose, per-kind-profile, failure-precedence, ed25519, stale-head]
-  questions: ["what does FinGrind book-operation attestation prove", "how is an attested operation encoded", "which credential may authorize a system operation", "which effect records may a typed operation create", "how does FinGrind verify an attestation receipt"]
+  keywords: [verifiable-operation-attestation, operation-head, attestation-envelope, backup-manifest, receipt-anchor, principal-quorum, credential-purpose, autonomous-workflow, semantic-profile, failure-precedence, ed25519, stale-head]
+  questions: ["what does FinGrind book-operation attestation prove", "how is an attested operation encoded", "which credential may authorize a system operation", "which semantic profile governs a typed operation", "how does FinGrind verify an attestation receipt"]
 stage: "Slice 0 feature-branch specification; not released behavior"
 ---
 
@@ -135,6 +135,7 @@ respectively. The following tokens are likewise closed:
 | credentialPurpose | operator, system |
 | grantState | grant, revoke |
 | sourceChannel | cli, system |
+| systemWorkflowKind | interim-result-sweep, fiscal-year-close |
 | closeKind | interim-result-sweep, fiscal-year-close |
 | journal side | debit, credit |
 | taxDirection | payable, receivable |
@@ -144,30 +145,8 @@ Other token fields in the record catalog are the already-owned accounting vocabu
 by their bounded contexts. Their values are normalized to their published lowercase wire token
 before preimage encoding; a display label, enum name, or localized text is never signed.
 
-### Autonomous System Initiation
-
-The sourceChannel field records the origin of a signed request; it is not authority. cli means the
-request was initiated through an operator-facing surface. system means FinGrind derived the request
-from already committed book facts while executing an autonomous accounting workflow, such as the
-posting steps required by an interim-result sweep or fiscal-year close. A human-requested command,
-including one submitted by automation on that human's behalf, is cli.
-
-A system-initiated operation has at least one system-purpose enrolled credential in its envelope.
-That credential has no ambient or implicit authority: it needs the same active key, capability
-grant, exact quorum, distinct-principal, observed-head, and historical-policy checks as every
-other signer. Its private key remains outside the book and is subject to the same custody rule.
-system is valid only for an operation whose request and effect are mechanically derived from the
-stated autonomous workflow and already committed facts; it is invalid for a caller-supplied
-request, a caller-authored journal entry, or a discretionary policy decision. A cli request has
-only operator-purpose envelope credentials. The signed request therefore proves the credential
-purpose that authorized its asserted provenance, but cannot prove an external human did or did not
-press a button.
-
-Version 1 permits sourceChannel=system only for interim-result-sweep, fiscal-year-close,
-record-accrual-cutoff-recognition, record-fixed-asset-depreciation, and
-record-financing-interest-accrual. Those kinds remain subject to their normal capability and
-request/effect profiles; every other operation kind requires sourceChannel=cli. A system channel
-outside this closed set is attestation-request-profile-invalid.
+The sourceChannel provenance rule and autonomous system-close derivation are owned by
+[DOC_02_VerifiableOperationAttestationProfiles.md](./DOC_02_VerifiableOperationAttestationProfiles.md).
 
 The operation-kind catalog is closed. A token not listed here is attestation-unknown-operation-kind.
 
@@ -337,14 +316,16 @@ allowed, or forbidden; a record not allowed by that profile is attestation-reque
 | 0125 | request.posting-approval | postingId:uuid!, approvalId:text!, approverReference:text!, approverType:token!, decision:token!, approvedAt:instant! | postingId, approvalId |
 | 0126 | request.tax-selection | stepOrder:u32!, registrationId:text!, taxCode:text! | stepOrder, registrationId, taxCode |
 | 0127 | request.foreign-exchange | stepOrder:u32!, foreignCurrency:currency!, foreignAmount:money!, functionalAmount:money!, exchangeRate:scaled! | stepOrder |
-| 0128 | request.inventory-relief | stepOrder:u32!, inventoryAccountCode:text!, costOfSalesAccountCode:text!, quantity:scaled! | stepOrder |
+| 0128 | request.inventory-movement | stepOrder:u32!, inventoryAccountCode:text!, counterAccountCode:text!, movementKind:token!, quantity:scaled! | stepOrder |
 | 0129 | request.settlement-adjunct | stepOrder:u32!, accountCode:text!, amount:money! | stepOrder, accountCode |
+| 012A | request.journal-line | stepOrder:u32!, lineOrder:u32!, accountCode:text!, side:token!, amount:money!, quantity:scaled? | stepOrder, lineOrder |
 | 0130 | request.accrual-cutoff | stepOrder:u32!, cutoffId:uuid!, cutoffKind:token!, recognitionStart:date?, recognitionEnd:date? | stepOrder, cutoffId |
 | 0131 | request.fixed-asset | stepOrder:u32!, assetId:uuid!, assetClass:token?, usefulLifeMonths:u32? | stepOrder, assetId |
 | 0132 | request.financing | stepOrder:u32!, arrangementId:uuid! | stepOrder, arrangementId |
 | 0133 | request.foreign-currency-obligation | stepOrder:u32!, obligationId:uuid!, settlementId:uuid? | stepOrder, obligationId, settlementId |
 | 0134 | request.payroll | stepOrder:u32!, payrollRunId:uuid!, employeeReference:text?, payrollMonth:text?, taxBookHeldAtEmployer:bool?, dependantCount:u8? | stepOrder, payrollRunId |
 | 0140 | request.period-close | closeKind:token!, effectiveFrom:date?, effectiveTo:date?, fiscalYear:u32?, resultHoldingAccountCode:text?, capitalAccountCode:text?, retainedResultAccountCode:text? | closeKind, effectiveTo |
+| 0141 | request.system-workflow-run | workflowId:uuid! | workflowId |
 | 0150 | request.backup-acknowledgement | backupId:uuid!, backupArtifactDigest:hash!, sourceOrder:u64!, sourceHead:hash! | backupId |
 | 0160 | request.restore | backupId:uuid!, backupArtifactDigest:hash!, sourceOrder:u64!, sourceHead:hash! | backupId |
 | 0170 | request.rekey | keyEpoch:u64!, reason:text? | keyEpoch |
@@ -352,6 +333,7 @@ allowed, or forbidden; a record not allowed by that profile is attestation-reque
 | 0181 | request.credential-revocation | keyId:hash!, principalId:uuid!, reason:text? | keyId |
 | 0182 | request.policy-change | capability:token!, quorum:u16! | capability |
 | 0183 | request.principal-capability-grant | principalId:uuid!, capability:token!, grantState:token! | principalId, capability |
+| 0184 | request.system-workflow-policy | workflowId:uuid!, workflowKind:token!, resultHoldingAccountCode:text!, capitalAccountCode:text?, retainedResultAccountCode:text?, active:bool! | workflowId |
 
 ### Effect Record Catalog
 
@@ -364,6 +346,7 @@ allowed, or forbidden; a record not allowed by that profile is attestation-reque
 | 0005 | policy.capability-rule | mutation:u8!, capability:token!, quorum:u16! | capability |
 | 0006 | backup.acknowledgement | mutation:u8!, backupId:uuid!, backupArtifactDigest:hash!, sourceOrder:u64!, sourceHead:hash! | backupId |
 | 0007 | book.key-epoch | mutation:u8!, keyEpoch:u64!, rekeyedAt:instant! | keyEpoch |
+| 0008 | system.workflow-policy | mutation:u8!, workflowId:uuid!, workflowKind:token!, resultHoldingAccountCode:text!, capitalAccountCode:text?, retainedResultAccountCode:text?, active:bool! | workflowId |
 | 0010 | account.state | mutation:u8!, accountCode:text!, accountName:text!, accountType:token!, nodeKind:token!, parentAccountCode:text?, unitOfMeasure:text?, active:bool! | accountCode |
 | 0011 | account.classification | mutation:u8!, accountCode:text!, classificationFamily:token!, classification:token! | accountCode, classificationFamily |
 | 0012 | account.relationship | mutation:u8!, accountCode:text!, relationshipKind:token!, targetAccountCode:text? | accountCode, relationshipKind |
@@ -382,18 +365,18 @@ allowed, or forbidden; a record not allowed by that profile is attestation-reque
 | 0042 | interim-result-sweep-posting | mutation:u8!, sweepOrder:u64!, postingId:uuid! | sweepOrder, postingId |
 | 0043 | fiscal-year-close | mutation:u8!, closeOrder:u64!, effectiveFrom:date!, effectiveTo:date!, capitalAccountCode:text!, resultHoldingAccountCode:text!, retainedResultAccountCode:text! | closeOrder |
 | 0044 | fiscal-year-close-posting | mutation:u8!, closeOrder:u64!, postingId:uuid! | closeOrder, postingId |
-| 0050 | accrual-cutoff | mutation:u8!, cutoffId:uuid!, cutoffKind:token!, originPostingId:uuid!, recognitionStart:date?, recognitionEnd:date?, deferredOrAccruedAmount:money! | cutoffId |
+| 0050 | accrual-cutoff | mutation:u8!, cutoffId:uuid!, cutoffKind:token!, originPostingId:uuid!, balanceAccountCode:text!, recognitionAccountCode:text!, recognitionStart:date?, recognitionEnd:date?, deferredOrAccruedAmount:money! | cutoffId |
 | 0051 | accrual-cutoff-application | mutation:u8!, cutoffId:uuid!, applicationOrder:u64!, postingId:uuid!, applicationKind:token!, recognizedAmount:money!, reversalPostingId:uuid? | cutoffId, applicationOrder |
-| 0060 | fixed-asset | mutation:u8!, assetId:uuid!, originPostingId:uuid!, assetClass:token!, capitalizationAmount:money!, serviceDate:date!, usefulLifeMonths:u32! | assetId |
+| 0060 | fixed-asset | mutation:u8!, assetId:uuid!, originPostingId:uuid!, fixedAssetAccountCode:text!, accumulatedDepreciationAccountCode:text!, depreciationExpenseAccountCode:text!, gainOnDisposalAccountCode:text!, lossOnDisposalAccountCode:text!, assetClass:token!, capitalizationAmount:money!, serviceDate:date!, usefulLifeMonths:u32! | assetId |
 | 0061 | fixed-asset-application | mutation:u8!, assetId:uuid!, applicationOrder:u64!, postingId:uuid!, applicationKind:token!, amount:money!, period:date! | assetId, applicationOrder |
 | 0062 | fixed-asset-reversal | mutation:u8!, reversalPostingId:uuid!, assetId:uuid!, reversedApplicationOrOriginId:uuid! | reversalPostingId |
-| 0070 | financing-arrangement | mutation:u8!, arrangementId:uuid!, originPostingId:uuid!, principal:money!, commencementDate:date! | arrangementId |
+| 0070 | financing-arrangement | mutation:u8!, arrangementId:uuid!, originPostingId:uuid!, principalAccountCode:text!, interestPayableAccountCode:text!, principal:money!, commencementDate:date! | arrangementId |
 | 0071 | financing-application | mutation:u8!, arrangementId:uuid!, applicationOrder:u64!, postingId:uuid!, principalAmount:money!, interestAmount:money!, effectiveDate:date! | arrangementId, applicationOrder |
 | 0072 | financing-reversal | mutation:u8!, reversalPostingId:uuid!, arrangementId:uuid!, reversedApplicationOrOriginId:uuid! | reversalPostingId |
-| 0080 | foreign-currency-obligation | mutation:u8!, obligationId:uuid!, originPostingId:uuid!, currency:currency!, foreignAmount:money!, functionalAmount:money! | obligationId |
+| 0080 | foreign-currency-obligation | mutation:u8!, obligationId:uuid!, originPostingId:uuid!, receivableAccountCode:text!, revenueAccountCode:text!, foreignExchangeGainAccountCode:text!, foreignExchangeLossAccountCode:text!, currency:currency!, foreignAmount:money!, functionalAmount:money! | obligationId |
 | 0081 | foreign-currency-settlement | mutation:u8!, obligationId:uuid!, settlementId:uuid!, postingId:uuid!, settlementAmount:money!, realizedGainLoss:money! | obligationId, settlementId |
 | 0082 | foreign-currency-reversal | mutation:u8!, reversalPostingId:uuid!, obligationOrSettlementId:uuid! | reversalPostingId |
-| 0090 | latvian-payroll-run | mutation:u8!, payrollRunId:uuid!, employeeReference:text!, payrollMonth:text!, withholdingProfile:token!, grossAmount:money!, netAmount:money!, taxContributionAmount:money! | payrollRunId |
+| 0090 | latvian-payroll-run | mutation:u8!, payrollRunId:uuid!, employeeReference:text!, payrollMonth:text!, withholdingProfile:token!, wageExpenseAccountCode:text!, employerSocialContributionExpenseAccountCode:text!, netWagesPayableAccountCode:text!, employeeSocialContributionPayableAccountCode:text!, employerSocialContributionPayableAccountCode:text!, personalIncomeTaxPayableAccountCode:text!, grossAmount:money!, netAmount:money!, taxContributionAmount:money! | payrollRunId |
 | 0091 | latvian-payroll-run-reversal | mutation:u8!, reversalPostingId:uuid!, payrollRunId:uuid! | reversalPostingId |
 | 0092 | latvian-payroll-settlement | mutation:u8!, payrollRunId:uuid!, settlementKind:token!, postingId:uuid!, settledAmount:money! | payrollRunId, settlementKind |
 | 0093 | latvian-payroll-settlement-reversal | mutation:u8!, reversalPostingId:uuid!, payrollRunId:uuid!, settlementKind:token! | reversalPostingId |
@@ -419,7 +402,7 @@ or semantic mutation outside the effect catalog and operation profile.
 
 | Operation profile | Exhaustive permitted derivations |
 |:--|:--|
-| book-genesis | canonical initial active lifecycle state implied by the declared identity, founder bindings, grants, and policy rules; no other state |
+| book-genesis | canonical initial active lifecycle state implied by the declared identity, founder bindings, grants, policy rules, and declared system-workflow policies; absent 0184 declares no autonomous workflow; no other state |
 | account lifecycle and tax registration | resulting active state and normalized relationship rows implied by the requested lifecycle mutation |
 | typed posting | generated postingId and commandId; recordedAt; resolved posting origin; journal lines; and only the tax, foreign-exchange, inventory, accrual, fixed-asset, financing, foreign-currency, or payroll facts admitted by its exact operation-kind row below |
 | attach-posting-approval | the approved posting relationship named by the request |
@@ -427,7 +410,7 @@ or semantic mutation outside the effect catalog and operation profile.
 | backup-created | no derivation beyond the acknowledged verified artifact tuple |
 | restore-book | restoration provenance derived from the verified manifest and the new restoration-derived chain position |
 | rekey-book | the resulting key epoch and recorded rekey instant |
-| enroll-key, rollover-key, revoke-key, alter-policy | only the binding, revocation, policy, and capability-grant facts explicitly requested |
+| enroll-key, rollover-key, revoke-key, alter-policy | only the binding, revocation, capability-grant, capability-policy, and system-workflow-policy facts explicitly requested |
 
 An operation with an effect fact that is neither request-supported nor in this table is
 attestation-request-profile-invalid. A profile may be narrowed by its operation kind, but it may
@@ -437,19 +420,19 @@ never be widened by an adapter, a database trigger, or a future implementation c
 
 | Operation profile | Required request tags | Allowed effect tags |
 |:--|:--|:--|
-| book-genesis | 0100, 0101, 0102, 0103, 0183 | 0001, 0002, 0003, 0005 |
+| book-genesis | 0100, 0101, 0102, 0103, 0183; 0184 as applicable | 0001, 0002, 0003, 0005; 0008 as applicable |
 | account lifecycle | 0100, 0110; 0111 and 0112 as applicable | 0010, 0011, 0012 |
 | tax registration | 0100, 0113; 0114 as applicable | 0013, 0014 |
 | typed posting | 0100 plus the exact request groups in the closed per-kind matrix | the exact effect groups in the closed per-kind matrix |
 | attach-posting-approval | 0100, 0125 | 0022 |
-| interim-result-sweep | 0100, 0140 | 0020, 0025, 0040, 0041, 0042 |
-| fiscal-year-close | 0100, 0140 | 0020, 0025, 0043, 0044 |
+| interim-result-sweep | 0100, 0140; 0141 when sourceChannel is system | 0020, 0025, 0040, 0041, 0042 |
+| fiscal-year-close | 0100, 0140; 0141 when sourceChannel is system | 0020, 0025, 0043, 0044 |
 | backup-created | 0100, 0150 | 0006 |
 | restore-book | 0100, 0160 | 00A0 |
 | rekey-book | 0100, 0170 | 0007 |
 | enroll-key or rollover-key | 0100, 0180 | 0002 |
 | revoke-key | 0100, 0181 | 0004 |
-| alter-policy | 0100, 0182; 0183 as applicable | 0003, 0005 |
+| alter-policy | 0100; one or more of 0182, 0183, 0184 | matching 0003, 0005, 0008 only |
 
 Every effect posting.fact operationStepOrder must match one request.posting stepOrder in the same
 operation, and every effect record referring to a postingId, account, lifecycle ID, credential,
@@ -460,15 +443,20 @@ derivation rule above. A generated identifier may occur only in an effect record
 
 The following groups are the canonical owner of Version-1 typed-posting admissibility. A group
 names every request and effect tag it contributes; a row permits no tag outside its listed groups.
-`B` is required for every typed posting. `T` and `X` are optional paired groups: their request and
-effect tags occur together. `R` means the effect tags of the verified operation being reversed,
-with every lifecycle effect using its catalogued reversal form where one exists. A row that lists a
-group as required requires every one of that group's request tags and at least the corresponding
-effect facts; the effect's generated IDs remain derivations.
+`B` is required for every typed posting. `D` is the raw-journal profile. `T` and `X` are optional
+paired groups: their request and effect tags occur together. `R` means the effect tags of the
+verified operation being reversed, with every lifecycle effect using its catalogued reversal form
+where one exists. A row that lists a group as required requires every one of that group's request
+tags and at least the corresponding effect facts; the effect's generated IDs remain derivations.
+Tag admission is only the outer grammar: field multiplicity, role admission, account linkage,
+amount use, journal balance, and the exact request-to-effect relation are closed by the semantic
+profiles in
+[DOC_02_VerifiableOperationAttestationProfiles.md](./DOC_02_VerifiableOperationAttestationProfiles.md).
 
 | Group | Request tags | Effect tags |
 |:--|:--|:--|
-| B: base posting | 0100, 0120, 0121, 0122, 0124 | 0020, 0021, 0025 |
+| B: typed-posting base | 0100, 0120, 0124 | 0020, 0021, 0025 |
+| D: direct journal | 0100, 0120, 0124, 012A | 0020, 0021, 0025 |
 | T: tax selection | 0126 | 0023 |
 | X: quoted foreign exchange | 0127 | 0024 |
 | I: inventory | 0123, 0128 | 0030, 0031 |
@@ -488,9 +476,11 @@ effect facts; the effect's generated IDs remain derivations.
 
 | Operation kinds | Required groups | Optional groups |
 |:--|:--|:--|
-| post-entry | B | T, X |
+| post-entry | D | T, X |
 | execute-plan | one or more independently ordered child rows from this table | none beyond the selected child rows |
-| record-sale-settled, record-sale-on-credit, record-purchase-settled, record-purchase-on-credit, record-expense-settled, record-expense-on-credit, record-receipt, record-payment, record-owner-contribution, record-owner-withdrawal, record-opening-position | B | T |
+| record-sale-settled, record-sale-on-credit, record-purchase-settled, record-purchase-on-credit, record-expense-settled, record-expense-on-credit | B | T |
+| record-receipt, record-payment, record-owner-contribution, record-owner-withdrawal | B | none |
+| record-opening-position | D | none |
 | record-inventory-capitalization-settled, record-inventory-capitalization-on-credit, record-inventory-write-down, record-inventory-shrinkage, record-inventory-count-increase | B, I | T |
 | record-prepayment, record-deferred-revenue, record-accrued-expense | B, A1 | T |
 | record-accrual-cutoff-recognition, record-accrued-expense-settlement | B, A2 | none |
@@ -520,13 +510,17 @@ foreign-exchange-gain-account, foreign-exchange-loss-account, tax-payable-accoun
 tax-receivable-account, result-holding-account, capital-account, retained-result-account,
 write-down-loss-account, shrinkage-loss-account, count-gain-account, prepayment-asset-account,
 accrued-expense-liability-account, gain-on-disposal-account, loss-on-disposal-account,
-loan-payable-account, interest-expense-account, and interest-payable-account.
+loan-payable-account, interest-expense-account, interest-payable-account, wage-expense-account,
+employer-social-contribution-expense-account, net-wages-payable-account,
+employee-social-contribution-payable-account, employer-social-contribution-payable-account, and
+personal-income-tax-payable-account.
 `request.money.role` is closed to gross-amount, net-amount, tax-amount, foreign-amount,
 functional-amount, principal-amount, interest-amount, carrying-amount, settlement-amount, and
-depreciation-amount, unit-cost, and opening-balance-amount. `request.quantity.role` is exactly
-inventory-quantity or opening-quantity.
-The matrix determines which of these closed facts is semantically required; an unlisted role or a
-tag outside the selected row is attestation-request-profile-invalid.
+depreciation-amount, recognition-amount, proceeds-amount, unit-cost, and opening-balance-amount.
+`request.quantity.role` is exactly inventory-quantity or opening-quantity.
+The matrix and the profile document determine which of these closed facts is semantically required.
+An unlisted role, duplicate role, wrong multiplicity, unconsumed request fact, or tag outside the
+selected row is attestation-request-profile-invalid.
 
 ## Backup Manifest, Publication, And Restore
 
@@ -643,23 +637,40 @@ storage-runtime failure.
 
 ### Deterministic Failure Precedence
 
-Every verifier applies the following phases in order and returns the first failure from the first
-failing phase. It does not substitute a later cryptographic or storage failure for an earlier
-structural classification. For an operation, phase 1 checks the payload version and grammar,
-preimage field grammar and digests, the closed operation kind, and the exact per-kind profile;
-phase 2 checks chain position and previous head; phase 3 resolves the historical policy; phase 4
-checks sigCount against M; phase 5 rejects duplicate principal IDs; phase 6 rejects duplicate key
-IDs; phase 7 rejects a strictly descending adjacent key ID; phase 8 rejects a non-Ed25519
-credential; phase 9 checks enrollment, revocation, and key-to-principal binding; phase 10 verifies
-signatures; phase 11 checks capability eligibility; and phase 12 checks credential purpose and the
-sourceChannel rule. Equal key IDs are phase-6 duplicate keys, never an envelope-order failure.
+Every verifier applies the following numbered checks in order and returns the first failing check.
+It does not substitute a later cryptographic or storage failure for an earlier structural
+classification. For an operation, check 1 validates the domain tag and version
+(attestation-unsupported-version for a syntactically present unsupported version); check 2 validates
+the fixed payload grammar and bounds; check 3 decodes both preimages and validates their grammar,
+ordering, and digests; check 4 resolves the closed operation kind; check 5 validates its exact
+semantic profile; check 6 validates chain position and previous head; check 7 resolves historical
+policy; check 8 compares sigCount with M; check 9 rejects duplicate principal IDs; check 10 rejects
+duplicate key IDs; check 11 rejects a non-ascending adjacent key ID; check 12 rejects a non-Ed25519
+credential or algorithmId; check 13a rejects a key with no binding effective at the resolving
+position, check 13b rejects an effective revoked binding, and check 13c rejects a key-to-principal
+binding mismatch; check 14 verifies signatures; check 15 validates capability eligibility; check
+16a validates the sourceChannel's all-system or all-operator credential-purpose rule; and check 16b
+validates an autonomous system derivation. Equal key IDs are check-10 duplicates, never an
+envelope-order failure. A malformed or unknown operation domain tag, payload field, preimage field,
+or record tag in checks 1 through 3 is attestation-preimage-invalid; check 4 is
+attestation-unknown-operation-kind; check 5 is attestation-request-profile-invalid; checks 13a,
+13b, and 13c are respectively attestation-key-not-enrolled, attestation-key-revoked, and
+attestation-key-principal-mismatch.
 
-Manifest and receipt verification applies the same common-envelope phases after its own version,
-tuple, length, digest, and source-position checks. Genesis uses phases 1 and 4 through 10, then
-checks its founder declaration, operator-purpose requirement, and unanimity rule as
-attestation-genesis-invalid before any normal historical-policy or capability phase. A malformed
-backup container that is not a valid manifest artifact is attestation-manifest-invalid; a receipt
-whose tuple does not bind the resolved book head is attestation-receipt-invalid.
+For a manifest, before check 7 it performs these preamble checks in order: container trailer and
+length framing; manifest domain tag and version; payload grammar; snapshot digest; declared bookId
+against the snapshot; source order and source head against the internal chain. For a receipt,
+before check 7 it performs: receipt domain tag and version; payload grammar; referenced operation
+order; bookId; and operation head. A preamble failure uses attestation-manifest-invalid or
+attestation-receipt-invalid, except an unsupported syntactically present structure version uses
+attestation-unsupported-version. The shared envelope checks then start at check 7 because the
+structure-specific resolving position is now known.
+
+Genesis performs checks 1 through 3, then validates founder declaration, operator-purpose
+requirement, and unanimity as attestation-genesis-invalid before applying any ordinary chain,
+historical-policy, or capability check. A malformed backup container that is not a valid manifest
+artifact is attestation-manifest-invalid; a receipt whose tuple does not bind the resolved book head
+is attestation-receipt-invalid.
 
 Compromise review is verifier input, never mutable book state. A review declaration is the tuple
 credential keyId, firstAffectedOrder, and optional lastAffectedOrder; an omitted end means the
@@ -692,6 +703,7 @@ reviewRequired into exit 2.
 | attestation-signature-invalid | signature does not verify | 2 |
 | attestation-capability-invalid | signer is not eligible or policy quorum is impossible | 2 |
 | attestation-credential-purpose-invalid | sourceChannel conflicts with enrolled credential purposes | 2 |
+| attestation-system-derivation-invalid | a system-channel close does not reproduce its one workflow derivation | 2 |
 | attestation-genesis-invalid | genesis order, founders, policy, declared key, or unanimity rule fails | 2 |
 | attestation-manifest-invalid | container, digest, source head, book identity, or BACKUP rule fails | 2 |
 | attestation-receipt-invalid | receipt does not match the book, head, or ANCHOR rule | 2 |

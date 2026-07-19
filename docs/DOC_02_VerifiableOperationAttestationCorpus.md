@@ -32,7 +32,11 @@ V-OP-01, V-OP-02, V-MANIFEST-02, V-RECEIPT-02, and V-CONTAINER-01 in the core pr
 
 All corpus fixtures use the following literal facts unless their construction row overrides one.
 The values make every key, principal, time, identifier, and policy decision reproducible rather
-than implementation-selected.
+than implementation-selected. A field not explicitly supplied here or in a construction row has
+the following only permitted default: an optional field is absent; a required cli command has
+sourceChannel cli; causationId is absent; and idempotencyKey is the ASCII token
+fixture-<fixture-id>-<operation-order>. No other value, record, key, account, time, policy fact,
+or derivation is implicit.
 
 | Name | Exact value or construction |
 |:--|:--|
@@ -42,8 +46,9 @@ than implementation-selected.
 | principal C | principalId 2233445566778899aabbccddeeff0011; seed 404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f; SPKI and keyId are the canonical Ed25519 DER-SPKI and SHA-256 thereof |
 | initial capability policy | post, approve, close-period, backup, and anchor have M=1; restore, rekey, enroll-key, revoke-key, and alter-policy have M=min(2, founderCount) |
 | initial grants | every founder has GRANT for every listed capability; no other principal has a grant until its explicit grant record |
+| standalone envelope resolvers | B-08 and B-09 use exact resolver inputs rather than incomplete synthetic books: as-of order 42, A, B, and C have their listed active, non-revoked operator-purpose bindings; no other binding exists. B-08 has BACKUP M=2 and BACKUP GRANT only for A and B. B-09 has ANCHOR M=2 and ANCHOR GRANT only for A and B. Every other capability rule and grant is absent. These are complete verifier inputs for the standalone envelope vectors, not claimed operation-chain resources. |
 | fixture instants | genesis is 2026-12-31T03:00:00.000Z; subsequent operation n is exactly that instant plus n milliseconds |
-| fixture IDs | account cash = 1000, revenue = 4000, result holding = 3000, capital = 3100, retained result = 3200; common posting = 30000000000070008000000000000001 and command = 30000000000070008000000000000002; sweep posting = 30000000000070008000000000000003 and command = 30000000000070008000000000000004; close posting = 30000000000070008000000000000005 and command = 30000000000070008000000000000006; B-03 second posting = 30000000000070008000000000000007 and command = 30000000000070008000000000000008; backup = ffeeddccbbaa99887766554433221100; rekey epoch = 2 |
+| fixture IDs | account cash = 1000, revenue = 4000, result holding = 3000, capital = 3100, retained result = 3200; common posting = 30000000000070008000000000000001 and command = 30000000000070008000000000000002; sweep posting = 30000000000070008000000000000003 and command = 30000000000070008000000000000004; close posting = 30000000000070008000000000000005 and command = 30000000000070008000000000000006; B-03 second posting = 30000000000070008000000000000007 and command = 30000000000070008000000000000008; sweep workflow = 40000000000070008000000000000001; close workflow = 40000000000070008000000000000002; backup = ffeeddccbbaa99887766554433221100; rekey epoch = 2 |
 | fixture accounts | 1000 Cash is asset/leaf; 4000 Service revenue is income/leaf; 3000 Current-year result holding, 3100 Owner capital, and 3200 Retained result are equity/leaf. Every account is active and has absent optional parent, unit, classification, and relationship fields. |
 | B-02 operation positions | genesis = 0, declare 1000 = 1, declare 4000 = 2, common posting = 3. A and B are operator-purpose founder credentials in every B-02-derived fixture unless a row explicitly binds another purpose. |
 | posting source | request.command has operationKind record-sale-settled, idempotencyKey fixture-sale-1, absent causationId, and sourceChannel cli; request.posting has stepOrder 0, effectiveDate 2026-07-17, postingKind standard; request.account-role has stepOrder 0, role cash-account, accountCode 1000 and role revenue-account, accountCode 4000; request.money has stepOrder 0, role gross-amount, EUR 100.00; request.evidence-document is stepOrder 0, fixture-receipt-1, cash-receipt, 2026-07-17 |
@@ -65,13 +70,13 @@ not supply an unstated record, identifier, time, signer, policy fact, or first f
 |:--|:--|:--|
 | B-01 | book A genesis at order 0 with founder A as an operator-purpose credential; every initial M is 1 because founderCount is 1; envelope contains only A | valid |
 | B-02 | book A genesis at 0 with operator-purpose founders A and B; set post M=2; declare accounts 1000 and 4000 at 1 and 2, then append the common posting at 3 signed by A and B | valid |
-| B-03 | B-02 through 3; at 4 A and B enroll C with credentialPurpose operator, at 5 A and B retain POST M=2 and grant C POST, at 6 A and B roll A to the key derived from seed 606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f, at 7 B and C append a second ordinary sale posting using IDs ending 07/08, idempotencyKey fixture-sale-2, source document fixture-receipt-2, effectiveDate 2026-12-31, and the same account roles and EUR 100.00 journal lines as the common posting, and at 8 A and B revoke C | valid |
-| B-04 | B-02 through 3; at 4 A and B enroll C with credentialPurpose system, at 5 A and B retain CLOSE_PERIOD M=1 and grant C CLOSE_PERIOD, and at 6, 7, and 8 A and B declare accounts 3000, 3100, and 3200. At 9 C alone appends sourceChannel system interim-result-sweep for 2026-01-01 through 2026-12-30 into result holding 3000: posting/command IDs ending 03/04; journal lines debit 4000 and credit 3000 EUR 100.00; sweepOrder 1; EUR total 100.00; and its posting link. At 10 C alone appends sourceChannel system fiscal-year-close for 2026-01-01 through 2026-12-31 with capital 3100, result holding 3000, and retained result 3200: posting/command IDs ending 05/06; journal lines debit 3000 and credit 3200 EUR 100.00; closeOrder 1; and its posting link. | valid |
+| B-03 | B-02 through 3; at 4 A and B enroll C with credentialPurpose operator, at 5 A and B retain POST M=2 and grant C POST, at 6 A and B roll A to the key derived from seed 606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f, at 7 B and C append record-sale-settled using IDs ending 07/08, idempotencyKey fixture-sale-2, sourceChannel cli, source document fixture-receipt-2, effectiveDate 2026-12-31, and the same postingKind, originKind, account roles, money role, and EUR 100.00 journal lines as the common posting, and at 8 A and B revoke C | valid |
+| B-04 | B-02 through 3; at 4 A and B enroll C with credentialPurpose system. At 5 A and B retain CLOSE_PERIOD M=1, grant C CLOSE_PERIOD, and create active system workflow policy sweep workflow with kind interim-result-sweep and result holding 3000, plus active close workflow with kind fiscal-year-close and result holding 3000, capital 3100, and retained result 3200. At 6, 7, and 8 A and B declare accounts 3000, 3100, and 3200. At 9 C alone appends sourceChannel system interim-result-sweep naming sweep workflow for 2026-01-01 through 2026-12-30 into result holding 3000: posting/command IDs ending 03/04; journal lines debit 4000 and credit 3000 EUR 100.00; sweepOrder 1; EUR total 100.00; and its posting link. At 10 C alone appends sourceChannel system fiscal-year-close naming close workflow for 2026-01-01 through 2026-12-31 with capital 3100, result holding 3000, and retained result 3200: posting/command IDs ending 05/06; journal lines debit 3000 and credit 3200 EUR 100.00; closeOrder 1; and its posting link. | valid |
 | B-05 | B-02 through the common posting at sourceOrder 3. `B-05.snapshot` is the deterministic consistent SQLite online-backup copy of exactly that committed source book: no rekey, VACUUM, page-size change, or intervening operation. Its manifest is signed by A under BACKUP M=1. The artifact's source head is the order-3 head and its whole-container digest is the SHA-256 of that named derived resource. A appends backup-created at order 4 with the fixture backup ID and that exact tuple. | valid |
 | B-06 | B-05 snapshot source, not its order-4 acknowledgement. The staged destination is exactly B-02 through order 3 and preserves book A. A and B append restore-book at order 4 with the B-05 backup ID, its derived artifact digest, sourceOrder 3, source head 3, and historicalSnapshotAuthorization true; publication uses the no-replacement protocol. | valid |
 | B-07 | B-02 through order 3 with the B-05 snapshot and an A-signed BACKUP M=1 manifest, but without any backup-created operation. A and B perform the same order-4 restore as B-06. | valid |
-| B-08 | an explicit two-founder resolver at sourceOrder 42 with BACKUP M=2, both A and B active and granted BACKUP, plus V-MANIFEST-02 | valid |
-| B-09 | an explicit two-founder resolver at operationOrder 42 with ANCHOR M=2, both A and B active and granted ANCHOR, plus V-RECEIPT-02 | valid |
+| B-08 | an explicit resolver at sourceOrder 42 with active A, B, and C; BACKUP M=2; A and B, but not C, granted BACKUP; plus V-MANIFEST-02 signed by A and B | valid |
+| B-09 | an explicit resolver at operationOrder 42 with active A, B, and C; ANCHOR M=2; A and B, but not C, granted ANCHOR; plus V-RECEIPT-02 signed by A and B | valid |
 | B-10 | B-02 through order 3; A and B as the REKEY quorum append rekey-book at order 4 with keyEpoch 2, absent reason, and book.key-epoch DERIVE with rekeyedAt 2026-12-31T03:00:00.004Z | valid |
 
 ## Negative Fixture Sources
@@ -96,11 +101,16 @@ explicit rather than inferred from a fixture name.
 | N-11 | B-02 common posting: replace previousHead with 32 zero bytes | attestation-previous-head-invalid |
 | N-12a | B-01 genesis: replace A's declared SPKI with B's while retaining A's keyId | attestation-genesis-invalid |
 | N-12b | B-01 genesis: remove A's sole envelope entry and set sigCount 0000 | attestation-genesis-invalid |
-| N-13 | B-08: replace one BACKUP grant for A or B with REVOKE at or before sourceOrder | attestation-capability-invalid |
-| N-14 | V-CONTAINER-01 independently: in four named resources XOR byte 0 of snapshotDigest, sourceOperationHead, bookId, and trailer snapshotLength with 01 | attestation-manifest-invalid |
-| N-15 | B-09: replace one ANCHOR grant for A or B with REVOKE at or before operationOrder | attestation-capability-invalid |
+| N-13 | B-08 with active C and a valid policy state: A and B, but not C, have BACKUP GRANT and M remains 2. Rebuild the V-MANIFEST-02 payload as a valid B-and-C envelope with C's valid signature and all key IDs sorted. | attestation-capability-invalid |
+| N-14a | V-CONTAINER-01: XOR byte 0 of snapshotDigest with 01. | attestation-manifest-invalid |
+| N-14b | V-CONTAINER-01: XOR byte 0 of sourceOperationHead with 01. | attestation-manifest-invalid |
+| N-14c | V-CONTAINER-01: XOR byte 0 of bookId with 01. | attestation-manifest-invalid |
+| N-14d | V-CONTAINER-01: XOR byte 0 of trailer snapshotLength with 01. | attestation-manifest-invalid |
+| N-15 | B-09 with active C and a valid policy state: A and B, but not C, have ANCHOR GRANT and M remains 2. Rebuild the V-RECEIPT-02 payload as a valid B-and-C envelope with C's valid signature and all key IDs sorted. | attestation-capability-invalid |
 | N-16 | B-04 at order 9: change C's order-4 credentialPurpose from system to operator while retaining its key, grant, request, envelope, and every other registry fact | attestation-credential-purpose-invalid |
 | N-17 | B-02 common posting: add a fixed-asset 0060 effect record, recompute the effect digest, operation payload, and A/B signatures, but add no 0131 request record | attestation-request-profile-invalid |
+| N-18 | B-02 through 3; at 4 A and B enroll active operator-purpose C without POST GRANT. At 5 B and C sign an otherwise valid record-sale-settled envelope under the still-valid POST M=2 policy. | attestation-capability-invalid |
+| N-19 | B-04 at order 9: retain C's valid system-purpose key and signature but change request.period-close.effectiveTo from 2026-12-30 to 2026-12-29, then recompute every affected digest and signature. | attestation-system-derivation-invalid |
 
 The corpus resource records the raw source bytes, mutation offset, replacement bytes, policy fold,
 and expected result for every row above. A later slice may generate the resource from this ledger,
