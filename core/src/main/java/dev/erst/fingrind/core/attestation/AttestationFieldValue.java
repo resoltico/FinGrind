@@ -30,4 +30,8 @@ final class AttestationFieldValue {
   byte[] encoded() {
     return encoded.clone();
   }
+
+  int encodedByteCount() {
+    return encoded.length;
+  }
 }

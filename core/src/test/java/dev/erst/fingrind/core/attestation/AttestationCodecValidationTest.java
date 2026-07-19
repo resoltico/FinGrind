@@ -59,6 +59,11 @@ class AttestationCodecValidationTest {
                 () -> AttestationHash.digest(new byte[0], "missing-digest"))
             .getMessage());
     assertEquals(
+        "Attestation hash must contain exactly 32 bytes.",
+        assertThrows(
+                IllegalArgumentException.class, () -> AttestationHash.digest(new byte[0], "SHA-1"))
+            .getMessage());
+    assertEquals(
         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         AttestationHash.sha256(new byte[0]).hex());
   }
@@ -213,6 +218,12 @@ class AttestationCodecValidationTest {
         assertThrows(
                 IllegalArgumentException.class,
                 () -> AttestationNumericFieldValue.money("eur", false, BigInteger.ZERO))
+            .getMessage());
+    assertEquals(
+        "Unsupported currency unit code: ZZZ.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> AttestationNumericFieldValue.money("ZZZ", false, BigInteger.ZERO))
             .getMessage());
     assertEquals(
         "token must be a lowercase ASCII kebab token of at most 64 bytes.",
@@ -409,7 +420,7 @@ class AttestationCodecValidationTest {
             .getMessage());
     assertEquals(
         "Attestation preimage must be at most 16777216 bytes.",
-        assertThrows(IllegalArgumentException.class, () -> oversizedPreimage().encoded())
+        assertThrows(IllegalArgumentException.class, () -> AttestationPreimage.of(oversizedFacts()))
             .getMessage());
   }
 
@@ -448,7 +459,7 @@ class AttestationCodecValidationTest {
     };
   }
 
-  private static AttestationPreimage oversizedPreimage() {
+  private static List<AttestationPreimage.Fact> oversizedFacts() {
     String largeText = "x".repeat(1_048_576);
     List<AttestationPreimage.Fact> facts = new ArrayList<>();
     for (int stepOrder = 0; stepOrder < 17; stepOrder++) {
@@ -463,6 +474,6 @@ class AttestationCodecValidationTest {
                   AttestationField.present(
                       AttestationTextFieldValue.date(LocalDate.of(2026, 7, 19))))));
     }
-    return AttestationPreimage.of(facts);
+    return List.copyOf(facts);
   }
 }

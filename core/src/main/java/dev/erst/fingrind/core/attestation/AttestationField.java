@@ -43,4 +43,8 @@ final class AttestationField {
     Objects.requireNonNull(schema, "schema");
     return value == null ? !schema.required() : value.type() == schema.type();
   }
+
+  int encodedByteCount() {
+    return Byte.BYTES + (value == null ? 0 : value.encodedByteCount());
+  }
 }

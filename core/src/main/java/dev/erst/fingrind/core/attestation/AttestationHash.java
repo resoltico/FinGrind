@@ -31,7 +31,7 @@ final class AttestationHash implements Comparable<AttestationHash> {
     Objects.requireNonNull(value, "value");
     Objects.requireNonNull(algorithm, "algorithm");
     try {
-      return new AttestationHash(MessageDigest.getInstance(algorithm).digest(value));
+      return of(MessageDigest.getInstance(algorithm).digest(value));
     } catch (NoSuchAlgorithmException exception) {
       throw new IllegalStateException(
           algorithm + " is unavailable in this Java runtime.", exception);

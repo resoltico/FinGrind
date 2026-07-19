@@ -12,9 +12,11 @@ final class AttestationPreimage {
   private static final int MAX_RECORD_COUNT = 1_000_000;
   private static final int MAX_ENCODED_BYTE_COUNT = 16 * 1024 * 1024;
   private final List<Fact> records;
+  private final int encodedByteCount;
 
-  private AttestationPreimage(List<Fact> records) {
+  private AttestationPreimage(List<Fact> records, int encodedByteCount) {
     this.records = records;
+    this.encodedByteCount = encodedByteCount;
   }
 
   static AttestationPreimage of(List<Fact> records) {
@@ -24,8 +26,14 @@ final class AttestationPreimage {
           "Attestation preimage may contain at most 1000000 records.");
     }
     List<Fact> canonicalRecords = new ArrayList<>(records.size());
+    long encodedByteCount = Integer.BYTES;
     for (Fact fact : records) {
-      canonicalRecords.add(Objects.requireNonNull(fact, "records must not contain null"));
+      Fact requiredFact = Objects.requireNonNull(fact, "records must not contain null");
+      encodedByteCount = Math.addExact(encodedByteCount, requiredFact.encodedByteCount());
+      if (encodedByteCount > MAX_ENCODED_BYTE_COUNT) {
+        throw new IllegalArgumentException("Attestation preimage must be at most 16777216 bytes.");
+      }
+      canonicalRecords.add(requiredFact);
     }
     canonicalRecords.sort(AttestationPreimage::compareRecords);
     for (int index = 1; index < canonicalRecords.size(); index++) {
@@ -37,7 +45,7 @@ final class AttestationPreimage {
             "Attestation preimage must not contain duplicate complete sort keys.");
       }
     }
-    return new AttestationPreimage(List.copyOf(canonicalRecords));
+    return new AttestationPreimage(List.copyOf(canonicalRecords), (int) encodedByteCount);
   }
 
   List<Fact> records() {
@@ -45,13 +53,10 @@ final class AttestationPreimage {
   }
 
   byte[] encoded() {
-    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    ByteArrayOutputStream output = new ByteArrayOutputStream(encodedByteCount);
     AttestationUnsignedEncoding.appendUnsigned(
         output, BigInteger.valueOf(records.size()), Integer.BYTES, "recordCount");
     records.forEach(record -> record.appendTo(output));
-    if (output.size() > MAX_ENCODED_BYTE_COUNT) {
-      throw new IllegalArgumentException("Attestation preimage must be at most 16777216 bytes.");
-    }
     return output.toByteArray();
   }
 
@@ -79,6 +84,7 @@ final class AttestationPreimage {
     private final int recordTypeTag;
     private final List<AttestationField> fields;
     private final byte[] encodedSortKey;
+    private final int encodedByteCount;
 
     Fact(int recordTypeTag, List<AttestationField> fields) {
       if (recordTypeTag < 0
@@ -95,6 +101,11 @@ final class AttestationPreimage {
       schema.requireValidFields(this.fields);
       this.recordTypeTag = schema.recordTypeTag();
       this.encodedSortKey = schema.encodedSortKey(this.fields);
+      long encodedByteCount = Short.BYTES + Short.BYTES;
+      for (AttestationField field : this.fields) {
+        encodedByteCount = Math.addExact(encodedByteCount, field.encodedByteCount());
+      }
+      this.encodedByteCount = Math.toIntExact(encodedByteCount);
     }
 
     int recordTypeTag() {
@@ -107,6 +118,10 @@ final class AttestationPreimage {
 
     byte[] encodedSortKey() {
       return encodedSortKey.clone();
+    }
+
+    private int encodedByteCount() {
+      return encodedByteCount;
     }
 
     private void appendTo(ByteArrayOutputStream output) {

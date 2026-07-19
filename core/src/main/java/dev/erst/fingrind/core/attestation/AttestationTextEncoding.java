@@ -1,5 +1,6 @@
 package dev.erst.fingrind.core.attestation;
 
+import dev.erst.fingrind.core.CurrencyUnit;
 import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
@@ -101,7 +102,7 @@ final class AttestationTextEncoding {
     if (!CURRENCY.matcher(value).matches()) {
       throw new IllegalArgumentException("currency must be exactly three uppercase ASCII letters.");
     }
-    output.writeBytes(value.getBytes(StandardCharsets.US_ASCII));
+    output.writeBytes(CurrencyUnit.of(value).code().getBytes(StandardCharsets.US_ASCII));
   }
 
   static void appendInstant(ByteArrayOutputStream output, Instant value, String fieldName) {
