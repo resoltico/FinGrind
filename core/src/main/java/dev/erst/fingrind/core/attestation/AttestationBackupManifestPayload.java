@@ -37,7 +37,7 @@ final class AttestationBackupManifestPayload implements AttestationPayload {
     AttestationUnsignedEncoding.appendUnsigned(output, sourceOrder, Long.BYTES, "sourceOrder");
     AttestationEncoding.appendHash(output, sourceOperationHead);
     AttestationEncoding.appendHash(output, snapshotDigest);
-    AttestationTextEncoding.appendToken(output, AttestationEncoding.ALGORITHM_ID, "algorithmId");
+    AttestationTextEncoding.appendToken(output, AttestationAlgorithm.ED25519.id(), "algorithmId");
     return output.toByteArray();
   }
 }

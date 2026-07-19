@@ -1,7 +1,5 @@
 package dev.erst.fingrind.core.attestation;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.Objects;
@@ -24,18 +22,7 @@ final class AttestationHash implements Comparable<AttestationHash> {
   }
 
   static AttestationHash sha256(byte[] value) {
-    return digest(value, "SHA-256");
-  }
-
-  static AttestationHash digest(byte[] value, String algorithm) {
-    Objects.requireNonNull(value, "value");
-    Objects.requireNonNull(algorithm, "algorithm");
-    try {
-      return of(MessageDigest.getInstance(algorithm).digest(value));
-    } catch (NoSuchAlgorithmException exception) {
-      throw new IllegalStateException(
-          algorithm + " is unavailable in this Java runtime.", exception);
-    }
+    return AttestationEd25519.sha256(value);
   }
 
   byte[] bytes() {

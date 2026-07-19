@@ -29,7 +29,7 @@ class AttestationCodecValidationTest {
   private static final AttestationHash HASH_B = hash(2);
 
   @Test
-  void hash_isImmutableComparableAndReportsUnavailableAlgorithms() {
+  void hash_isImmutableComparableAndUsesTheVersionOneSha256Contract() {
     byte[] source = new byte[AttestationHash.BYTE_LENGTH];
     source[0] = 1;
     AttestationHash value = AttestationHash.of(source);
@@ -51,17 +51,6 @@ class AttestationCodecValidationTest {
     assertEquals(
         "Attestation hash must contain exactly 32 bytes.",
         assertThrows(IllegalArgumentException.class, () -> AttestationHash.of(new byte[31]))
-            .getMessage());
-    assertEquals(
-        "missing-digest is unavailable in this Java runtime.",
-        assertThrows(
-                IllegalStateException.class,
-                () -> AttestationHash.digest(new byte[0], "missing-digest"))
-            .getMessage());
-    assertEquals(
-        "Attestation hash must contain exactly 32 bytes.",
-        assertThrows(
-                IllegalArgumentException.class, () -> AttestationHash.digest(new byte[0], "SHA-1"))
             .getMessage());
     assertEquals(
         "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",

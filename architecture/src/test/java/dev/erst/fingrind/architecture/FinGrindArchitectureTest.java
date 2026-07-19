@@ -150,6 +150,18 @@ final class FinGrindArchitectureTest {
           .haveFullyQualifiedName("dev.erst.fingrind.contract.runtime.PublicPathHint");
 
   @ArchTest
+  static final ArchRule privateKeyTypesDoNotEnterProjectionOrContractLayers =
+      noClasses()
+          .that()
+          .resideInAnyPackage(
+              "dev.erst.fingrind.cli..",
+              "dev.erst.fingrind.contract..",
+              "dev.erst.fingrind.report.pdf..")
+          .should()
+          .dependOnClassesThat()
+          .haveNameMatching("java\\.security(\\.interfaces)?\\..*PrivateKey");
+
+  @ArchTest
   static final ArchRule primarySlicesAreFreeOfCycles =
       slices().matching("dev.erst.fingrind.(*)..").should().beFreeOfCycles();
 

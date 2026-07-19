@@ -43,7 +43,7 @@ final class AttestationOperationPayload implements AttestationPayload {
     AttestationUnsignedEncoding.appendUnsigned(
         output, operationOrder, Long.BYTES, "operationOrder");
     AttestationTextEncoding.appendToken(output, operationKind, "operationKind");
-    AttestationTextEncoding.appendToken(output, AttestationEncoding.ALGORITHM_ID, "algorithmId");
+    AttestationTextEncoding.appendToken(output, AttestationAlgorithm.ED25519.id(), "algorithmId");
     AttestationEncoding.appendHash(output, previousHead);
     AttestationTextEncoding.appendInstant(output, recordedAt, "recordedAt");
     AttestationEncoding.appendHash(output, requestDigest);

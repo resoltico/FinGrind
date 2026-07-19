@@ -35,7 +35,7 @@ final class AttestationReceiptPayload implements AttestationPayload {
         output, operationOrder, Long.BYTES, "operationOrder");
     AttestationEncoding.appendHash(output, operationHead);
     AttestationTextEncoding.appendInstant(output, receiptTimestamp, "receiptTimestamp");
-    AttestationTextEncoding.appendToken(output, AttestationEncoding.ALGORITHM_ID, "algorithmId");
+    AttestationTextEncoding.appendToken(output, AttestationAlgorithm.ED25519.id(), "algorithmId");
     return output.toByteArray();
   }
 }

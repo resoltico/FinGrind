@@ -7,8 +7,6 @@ import java.util.UUID;
 
 /** Shared composition helpers for canonical attestation encodings. */
 final class AttestationEncoding {
-  static final String ALGORITHM_ID = "ed25519";
-
   private AttestationEncoding() {}
 
   static void appendUuid(ByteArrayOutputStream output, UUID value) {
