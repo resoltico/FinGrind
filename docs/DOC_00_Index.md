@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: INDEX
-updated: "2026-07-18"
+updated: "2026-07-19"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session, tax, account-registry, account-lifecycle, journal, money, quantity, inventory costing, weighted average, posting]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSessions", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService", "which doc file covers the tax surface", "which doc file covers account lifecycle", "which doc file covers quantity and weighted-average inventory costing primitives"]
@@ -49,8 +49,11 @@ route:
   machine-contract assembly, discovery descriptors, templates, and deterministic failures.
 - Next-format attestation protocol:
   use [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md) for
-  the normative feature-branch contract for the next hard-break protected-book format. It does not
-  describe a released CLI command or accepted book format.
+  the normative feature-branch contract for the next hard-break protected-book format, including
+  credential-purpose authorization, closed per-kind effects, and deterministic verifier failures.
+  Use [DOC_02_VerifiableOperationAttestationCorpus.md](./DOC_02_VerifiableOperationAttestationCorpus.md)
+  for the normative positive, negative, backup-artifact, and live-CAS fixture sources.
+  It does not describe a released CLI command or accepted book format.
 - Decimal-boundary design:
   use [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md) for the exact-money boundary,
   the exact-quantity boundary, and the future split between money, rates, percentages, exchange
@@ -89,7 +92,8 @@ route:
 | `DOC_01_DecimalBoundaries.md` | exact-money boundary, exact-quantity boundary, and future non-money decimal-domain rules |
 | `DOC_02_Application.md` | routing overview for the split `contract` and `executor` reference spine |
 | `DOC_02_ProtocolAndDiscovery.md` | exported `contract` protocol metadata, runtime/distribution facts, request-field vocabularies, and protected-book format owners |
-| `DOC_02_VerifiableOperationAttestation.md` | normative feature-branch contract for the next hard-break protected-book format, including operation attestations, quorum envelopes, backup manifests, receipts, and verifier vectors |
+| `DOC_02_VerifiableOperationAttestation.md` | normative feature-branch contract for the next hard-break protected-book format, including operation attestations, credential-purpose quorum envelopes, closed per-kind effects, backup manifests, receipts, verifier precedence, and static vectors |
+| `DOC_02_VerifiableOperationAttestationCorpus.md` | normative positive and negative source fixtures for the next attestation format, including backup, restore, rekey, system-initiation, and live-CAS coverage |
 | `DOC_02_MachineContractAndDescriptors.md` | exported machine-contract assembly, discovery descriptors, templates, workflow scaffolds, and deterministic contract-error owners |
 | `DOC_02_AdministrationAndReports.md` | exported administration/query/report models and exported `executor` administration and read services |
 | `DOC_02_AccountRegistryLifecycle.md` | exported account amendment and retirement commands, results, and durable-history lifecycle rules |

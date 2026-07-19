@@ -7,8 +7,8 @@ scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["AttestedOperation", "AttestationEnvelope", "BackupManifest", "AttestationReceipt"]
 route:
-  keywords: [verifiable-operation-attestation, operation-head, attestation-envelope, backup-manifest, receipt-anchor, principal-quorum, ed25519, stale-head]
-  questions: ["what does FinGrind book-operation attestation prove", "how is an attested operation encoded", "how does an attested backup restore without its source book", "how does FinGrind verify an attestation receipt"]
+  keywords: [verifiable-operation-attestation, operation-head, attestation-envelope, backup-manifest, receipt-anchor, principal-quorum, credential-purpose, per-kind-profile, failure-precedence, ed25519, stale-head]
+  questions: ["what does FinGrind book-operation attestation prove", "how is an attested operation encoded", "which credential may authorize a system operation", "which effect records may a typed operation create", "how does FinGrind verify an attestation receipt"]
 stage: "Slice 0 feature-branch specification; not released behavior"
 ---
 
@@ -100,8 +100,16 @@ Registry and policy facts are append-only. For operation order N greater than ze
 eligibility resolve from the fold through N minus one. A binding or revocation committed at N first
 affects N plus one. No record may set a retrospective or future-effective credential interval.
 
-An active credential is an enrolled or rolled-over Ed25519 key that has not been revoked. A
-principal is eligible for one capability exactly when it owns at least one active credential and
+An active credential is an enrolled or rolled-over Ed25519 key that has not been revoked. Every
+binding also has one immutable credentialPurpose: operator or system. An operator credential may
+sign an operation only when sourceChannel is cli. A system request must contain at least one active
+system credential; its other quorum signatures may be operator co-signatures. Purpose does not
+constrain a manifest or receipt because neither carries a source channel. Purpose belongs to the
+credential binding, not to an inferred principal name, external key-store label, or caller claim.
+A new binding is the only way to change a credential's purpose; history retains the purpose that
+was effective at its operation position.
+
+A principal is eligible for one capability exactly when it owns at least one active credential and
 its latest principal.capability-grant fact for that capability is GRANT. Capability grants are
 append-only facts; ALTER_POLICY may add a GRANT or REVOKE fact but may not rewrite prior authority.
 There is no hidden role or scope table.
@@ -124,6 +132,7 @@ respectively. The following tokens are likewise closed:
 | Field | Exact permitted token values |
 |:--|:--|
 | bindingAction | enroll, rollover |
+| credentialPurpose | operator, system |
 | grantState | grant, revoke |
 | sourceChannel | cli, system |
 | closeKind | interim-result-sweep, fiscal-year-close |
@@ -143,15 +152,16 @@ from already committed book facts while executing an autonomous accounting workf
 posting steps required by an interim-result sweep or fiscal-year close. A human-requested command,
 including one submitted by automation on that human's behalf, is cli.
 
-A system-initiated operation is signed by a normal enrolled credential of a book-recognized system
-principal. That principal has no ambient or implicit authority: it needs the same active key,
-capability grant, exact quorum, distinct-principal, observed-head, and historical-policy checks as
-every other initiator. Its private key remains outside the book and is subject to the same custody
-rule. system is valid only for an operation whose request and effect are mechanically derived from
-the stated autonomous workflow and already committed facts; it is invalid for a caller-supplied
-request, a caller-authored journal entry, or a discretionary policy decision. The signed request
-records sourceChannel=system so a verifier can distinguish the asserted provenance, but cannot
-prove an external human did or did not press a button.
+A system-initiated operation has at least one system-purpose enrolled credential in its envelope.
+That credential has no ambient or implicit authority: it needs the same active key, capability
+grant, exact quorum, distinct-principal, observed-head, and historical-policy checks as every
+other signer. Its private key remains outside the book and is subject to the same custody rule.
+system is valid only for an operation whose request and effect are mechanically derived from the
+stated autonomous workflow and already committed facts; it is invalid for a caller-supplied
+request, a caller-authored journal entry, or a discretionary policy decision. A cli request has
+only operator-purpose envelope credentials. The signed request therefore proves the credential
+purpose that authorized its asserted provenance, but cannot prove an external human did or did not
+press a button.
 
 Version 1 permits sourceChannel=system only for interim-result-sweep, fiscal-year-close,
 record-accrual-cutoff-recognition, record-fixed-asset-depreciation, and
@@ -206,10 +216,12 @@ position if and only if all of these conditions hold:
 3. every keyId is SHA-256 of its Ed25519 SPKI, belongs to the stated principal, and is active;
 4. every stated principal is eligible for the resolved capability;
 5. every signature verifies over canonicalPayload; and
-6. entries are strictly keyId ascending.
+6. for an operation, the sourceChannel credential-purpose rule holds; and
+7. entries are strictly keyId ascending.
 
 Extra signatures never add authority. A request for unanimous authorization changes M explicitly;
-it never appends redundant signatures.
+it never appends redundant signatures. This list states envelope invariants; the deterministic
+failure-precedence section defines their evaluation order.
 
 ## Key Custody And Operation Atomicity
 
@@ -266,8 +278,9 @@ currentOrder; it is never persisted. An operation order is never reserved while 
 co-signing exchange is pending.
 
 Genesis is the only self-authorizing envelope. It has operationOrder zero, a 32-byte all-zero
-previousHead, and operationKind book-genesis. Its effect preimage must contain exactly one
-book.identity record, one principal.key-binding enrollment record per founder, one
+previousHead, and operationKind book-genesis. Every founder credential has credentialPurpose
+operator. Its effect preimage must contain exactly one book.identity record, one
+principal.key-binding enrollment record per founder, one
 principal.capability-grant GRANT record for each founder-capability pair, and one
 policy.capability-rule record per listed capability. It has one through five founders. Every
 envelope signer must match a declared founder principal and declared SPKI-derived keyId, and every
@@ -309,7 +322,7 @@ allowed, or forbidden; a record not allowed by that profile is attestation-reque
 |:--|:--|:--|:--|
 | 0100 | request.command | operationKind:token!, idempotencyKey:text?, causationId:text?, sourceChannel:token! | operationKind |
 | 0101 | request.book-identity | bookId:uuid!, entityName:text!, kernelProfile:token!, accountingBasis:token!, frameworkPosition:token!, entityForm:token!, template:token!, costingDoctrine:token?, functionalCurrency:currency!, fiscalYearStartMonth:u8!, fiscalYearStartDay:u8!, bookStartDate:date! | bookId |
-| 0102 | request.founder | principalId:uuid!, keyId:hash!, spki:spki! | principalId, keyId |
+| 0102 | request.founder | principalId:uuid!, keyId:hash!, spki:spki!, credentialPurpose:token! | principalId, keyId |
 | 0103 | request.policy-rule | capability:token!, quorum:u16! | capability |
 | 0110 | request.account | accountCode:text!, accountName:text!, accountType:token!, nodeKind:token!, parentAccountCode:text?, unitOfMeasure:text? | accountCode |
 | 0111 | request.account-classification | accountCode:text!, classificationFamily:token!, classification:token! | accountCode, classificationFamily |
@@ -335,7 +348,7 @@ allowed, or forbidden; a record not allowed by that profile is attestation-reque
 | 0150 | request.backup-acknowledgement | backupId:uuid!, backupArtifactDigest:hash!, sourceOrder:u64!, sourceHead:hash! | backupId |
 | 0160 | request.restore | backupId:uuid!, backupArtifactDigest:hash!, sourceOrder:u64!, sourceHead:hash! | backupId |
 | 0170 | request.rekey | keyEpoch:u64!, reason:text? | keyEpoch |
-| 0180 | request.credential-binding | principalId:uuid!, keyId:hash!, bindingAction:token!, spki:spki!, predecessorKeyId:hash? | principalId, keyId |
+| 0180 | request.credential-binding | principalId:uuid!, keyId:hash!, bindingAction:token!, spki:spki!, credentialPurpose:token!, predecessorKeyId:hash? | principalId, keyId |
 | 0181 | request.credential-revocation | keyId:hash!, principalId:uuid!, reason:text? | keyId |
 | 0182 | request.policy-change | capability:token!, quorum:u16! | capability |
 | 0183 | request.principal-capability-grant | principalId:uuid!, capability:token!, grantState:token! | principalId, capability |
@@ -345,7 +358,7 @@ allowed, or forbidden; a record not allowed by that profile is attestation-reque
 | Tag | Record | Complete schema field order | Per-type sort key |
 |:--|:--|:--|:--|
 | 0001 | book.identity | mutation:u8!, bookId:uuid!, entityName:text!, kernelProfile:token!, accountingBasis:token!, frameworkPosition:token!, entityForm:token!, template:token!, costingDoctrine:token?, functionalCurrency:currency!, fiscalYearStartMonth:u8!, fiscalYearStartDay:u8!, bookStartDate:date! | bookId |
-| 0002 | principal.key-binding | mutation:u8!, principalId:uuid!, keyId:hash!, bindingAction:token!, spki:spki!, predecessorKeyId:hash? | principalId, keyId |
+| 0002 | principal.key-binding | mutation:u8!, principalId:uuid!, keyId:hash!, bindingAction:token!, spki:spki!, credentialPurpose:token!, predecessorKeyId:hash? | principalId, keyId |
 | 0003 | principal.capability-grant | mutation:u8!, principalId:uuid!, capability:token!, grantState:token! | principalId, capability |
 | 0004 | credential.revocation | mutation:u8!, keyId:hash!, principalId:uuid!, reason:text? | keyId |
 | 0005 | policy.capability-rule | mutation:u8!, capability:token!, quorum:u16! | capability |
@@ -408,7 +421,7 @@ or semantic mutation outside the effect catalog and operation profile.
 |:--|:--|
 | book-genesis | canonical initial active lifecycle state implied by the declared identity, founder bindings, grants, and policy rules; no other state |
 | account lifecycle and tax registration | resulting active state and normalized relationship rows implied by the requested lifecycle mutation |
-| ordinary or typed posting | generated postingId and commandId; recordedAt; resolved posting origin; journal lines; applied tax; inventory movement and on-hand state; and the selected accrual, fixed-asset, financing, foreign-currency, or payroll lifecycle facts |
+| typed posting | generated postingId and commandId; recordedAt; resolved posting origin; journal lines; and only the tax, foreign-exchange, inventory, accrual, fixed-asset, financing, foreign-currency, or payroll facts admitted by its exact operation-kind row below |
 | attach-posting-approval | the approved posting relationship named by the request |
 | interim-result-sweep and fiscal-year-close | generated posting IDs, journal lines, currency totals, and close relationships calculated from the admitted period request and prior accepted balances |
 | backup-created | no derivation beyond the acknowledged verified artifact tuple |
@@ -427,7 +440,7 @@ never be widened by an adapter, a database trigger, or a future implementation c
 | book-genesis | 0100, 0101, 0102, 0103, 0183 | 0001, 0002, 0003, 0005 |
 | account lifecycle | 0100, 0110; 0111 and 0112 as applicable | 0010, 0011, 0012 |
 | tax registration | 0100, 0113; 0114 as applicable | 0013, 0014 |
-| ordinary or typed posting | 0100, 0120, 0121, 0122, 0124; 0123, 0126 through 0134 as applicable | 0020 through 0031 and the owned lifecycle tags selected by the operation kind |
+| typed posting | 0100 plus the exact request groups in the closed per-kind matrix | the exact effect groups in the closed per-kind matrix |
 | attach-posting-approval | 0100, 0125 | 0022 |
 | interim-result-sweep | 0100, 0140 | 0020, 0025, 0040, 0041, 0042 |
 | fiscal-year-close | 0100, 0140 | 0020, 0025, 0043, 0044 |
@@ -438,13 +451,82 @@ never be widened by an adapter, a database trigger, or a future implementation c
 | revoke-key | 0100, 0181 | 0004 |
 | alter-policy | 0100, 0182; 0183 as applicable | 0003, 0005 |
 
-The selected operation kind makes the profile narrower: for example, an ordinary posting permits
-only the lifecycle request and effect records owned by that kind. Slice 5 makes these per-kind
-allowlists executable from this catalog before any adapter writes a book. Every effect
-posting.fact operationStepOrder must match one request.posting stepOrder in the same operation, and
-every effect record referring to a postingId, account, lifecycle ID, credential, policy, or backup
-must be justified by the corresponding admitted request record or the exhaustive derivation rule
-above. A generated identifier may occur only in an effect record.
+Every effect posting.fact operationStepOrder must match one request.posting stepOrder in the same
+operation, and every effect record referring to a postingId, account, lifecycle ID, credential,
+policy, or backup must be justified by the corresponding admitted request record or the exhaustive
+derivation rule above. A generated identifier may occur only in an effect record.
+
+### Closed Per-Kind Posting Matrix
+
+The following groups are the canonical owner of Version-1 typed-posting admissibility. A group
+names every request and effect tag it contributes; a row permits no tag outside its listed groups.
+`B` is required for every typed posting. `T` and `X` are optional paired groups: their request and
+effect tags occur together. `R` means the effect tags of the verified operation being reversed,
+with every lifecycle effect using its catalogued reversal form where one exists. A row that lists a
+group as required requires every one of that group's request tags and at least the corresponding
+effect facts; the effect's generated IDs remain derivations.
+
+| Group | Request tags | Effect tags |
+|:--|:--|:--|
+| B: base posting | 0100, 0120, 0121, 0122, 0124 | 0020, 0021, 0025 |
+| T: tax selection | 0126 | 0023 |
+| X: quoted foreign exchange | 0127 | 0024 |
+| I: inventory | 0123, 0128 | 0030, 0031 |
+| A1: accrual or cut-off origin | 0130 | 0050 |
+| A2: accrual or cut-off application | 0130 | 0051 |
+| L1: Latvian payroll run | 0134 | 0090 |
+| L2: Latvian payroll settlement | 0134 | 0092, 0093 |
+| F1: fixed-asset capitalization | 0131 | 0060 |
+| F2: fixed-asset application | 0131 | 0061 |
+| F3: fixed-asset disposal or reversal | 0131 | 0062 |
+| N1: financing origination | 0132 | 0070 |
+| N2: financing application | 0132 | 0071 |
+| N3: financing reversal | 0132 | 0072 |
+| O1: foreign-currency obligation | 0133, 0127 | 0024, 0080 |
+| O2: foreign-currency settlement | 0133, 0127 | 0024, 0081 |
+| O3: foreign-currency reversal | 0133 | 0082 |
+
+| Operation kinds | Required groups | Optional groups |
+|:--|:--|:--|
+| post-entry | B | T, X |
+| execute-plan | one or more independently ordered child rows from this table | none beyond the selected child rows |
+| record-sale-settled, record-sale-on-credit, record-purchase-settled, record-purchase-on-credit, record-expense-settled, record-expense-on-credit, record-receipt, record-payment, record-owner-contribution, record-owner-withdrawal, record-opening-position | B | T |
+| record-inventory-capitalization-settled, record-inventory-capitalization-on-credit, record-inventory-write-down, record-inventory-shrinkage, record-inventory-count-increase | B, I | T |
+| record-prepayment, record-deferred-revenue, record-accrued-expense | B, A1 | T |
+| record-accrual-cutoff-recognition, record-accrued-expense-settlement | B, A2 | none |
+| record-latvian-monthly-payroll | B, L1 | none |
+| record-latvian-payroll-net-wage-settlement, record-latvian-payroll-state-remittance | B, L2 | none |
+| record-fixed-asset-capitalization | B, F1 | none |
+| record-fixed-asset-depreciation | B, F2 | none |
+| record-fixed-asset-disposal | B, F3 | none |
+| record-financing-borrowing | B, N1 | none |
+| record-financing-principal-repayment, record-financing-interest-accrual, record-financing-interest-payment | B, N2 | none |
+| record-foreign-currency-obligation | B, O1 | none |
+| record-realized-foreign-exchange-settlement | B, O2 | none |
+| record-reversal | B, R | none |
+
+`execute-plan` is one attested operation with exactly one 0100 request.command. Every
+request.posting stepOrder names one child operation kind and must independently satisfy that
+child's exact row after removing 0100 from its B group. Its effect records carry the same stepOrder
+or the generated postingId linked to that step; it cannot use the union of unrelated rows as a
+discretionary extension point. `record-reversal` names the admitted original posting in
+request.posting.priorPostingId and may reverse only the original operation's closed profile.
+
+`request.account-role.role` is closed to cash-account, receivable-account, payable-account,
+revenue-account, inventory-account, expense-account, equity-account, settlement-adjunct-account,
+prepayment-account, deferred-revenue-account, accrued-expense-account, fixed-asset-account,
+accumulated-depreciation-account, financing-principal-account, financing-interest-account,
+foreign-exchange-gain-account, foreign-exchange-loss-account, tax-payable-account,
+tax-receivable-account, result-holding-account, capital-account, retained-result-account,
+write-down-loss-account, shrinkage-loss-account, count-gain-account, prepayment-asset-account,
+accrued-expense-liability-account, gain-on-disposal-account, loss-on-disposal-account,
+loan-payable-account, interest-expense-account, and interest-payable-account.
+`request.money.role` is closed to gross-amount, net-amount, tax-amount, foreign-amount,
+functional-amount, principal-amount, interest-amount, carrying-amount, settlement-amount, and
+depreciation-amount, unit-cost, and opening-balance-amount. `request.quantity.role` is exactly
+inventory-quantity or opening-quantity.
+The matrix determines which of these closed facts is semantically required; an unlisted role or a
+tag outside the selected row is attestation-request-profile-invalid.
 
 ## Backup Manifest, Publication, And Restore
 
@@ -559,6 +641,26 @@ reports the first structural break. A verifier checks a manifest independently f
 backup-created acknowledgement. It never reports a structural attestation defect as a generic
 storage-runtime failure.
 
+### Deterministic Failure Precedence
+
+Every verifier applies the following phases in order and returns the first failure from the first
+failing phase. It does not substitute a later cryptographic or storage failure for an earlier
+structural classification. For an operation, phase 1 checks the payload version and grammar,
+preimage field grammar and digests, the closed operation kind, and the exact per-kind profile;
+phase 2 checks chain position and previous head; phase 3 resolves the historical policy; phase 4
+checks sigCount against M; phase 5 rejects duplicate principal IDs; phase 6 rejects duplicate key
+IDs; phase 7 rejects a strictly descending adjacent key ID; phase 8 rejects a non-Ed25519
+credential; phase 9 checks enrollment, revocation, and key-to-principal binding; phase 10 verifies
+signatures; phase 11 checks capability eligibility; and phase 12 checks credential purpose and the
+sourceChannel rule. Equal key IDs are phase-6 duplicate keys, never an envelope-order failure.
+
+Manifest and receipt verification applies the same common-envelope phases after its own version,
+tuple, length, digest, and source-position checks. Genesis uses phases 1 and 4 through 10, then
+checks its founder declaration, operator-purpose requirement, and unanimity rule as
+attestation-genesis-invalid before any normal historical-policy or capability phase. A malformed
+backup container that is not a valid manifest artifact is attestation-manifest-invalid; a receipt
+whose tuple does not bind the resolved book head is attestation-receipt-invalid.
+
 Compromise review is verifier input, never mutable book state. A review declaration is the tuple
 credential keyId, firstAffectedOrder, and optional lastAffectedOrder; an omitted end means the
 verified head. Its interval is inclusive. A valid operation signed by that credential in the
@@ -589,6 +691,7 @@ reviewRequired into exit 2.
 | attestation-key-algorithm-invalid | non-Ed25519 key or algorithmId | 2 |
 | attestation-signature-invalid | signature does not verify | 2 |
 | attestation-capability-invalid | signer is not eligible or policy quorum is impossible | 2 |
+| attestation-credential-purpose-invalid | sourceChannel conflicts with enrolled credential purposes | 2 |
 | attestation-genesis-invalid | genesis order, founders, policy, declared key, or unanimity rule fails | 2 |
 | attestation-manifest-invalid | container, digest, source head, book identity, or BACKUP rule fails | 2 |
 | attestation-receipt-invalid | receipt does not match the book, head, or ANCHOR rule | 2 |
@@ -679,93 +782,11 @@ Its manifest uses V-MANIFEST-02 signers, bookId and source head; backupId is
 4647415454424d310100112233445566778899aabbccddeeff00112233445566778899aabbccddeeff000000000000002ad7e8fb5126e2d1a7ff28398faec6bfa0e061ca1c74ffd4d1947ea5f70a339213be45cb2605bf36bebde684841a28f0fd43c69850a3dce5fedba69928ee3a899107656432353531390002112233445566778899aabbccddeeff00824c89aa8efb95ef93629b4519599129cace4adac9a6180daba31ceed41ecee67653ae182cf8e3eb9cfbfb479a11ac87effa34ea3b7deafbec65ca7a29fd4993a93f66ef8cd42fac7d2f3cef70f54cbe3f8a359c89ee3ebaa5e5397efce88406102132435465768798a9babcbddceeffa050837d85070582ccf7394b0988847cc312cb88259b894899f6f239cf1791a5555760252105dfdd5f3a45358581f7ede854f5c8ed7e156ee80a488a67c0da8c28a5c85a16d12d8d415448f8cfe6ee4558566a157ec51f97af4f22b4d5d45c0d
 ~~~
 
-### Required Static Book And Artifact Corpus
+## Static Corpus
 
-The following is a normative fixture-source ledger, not a list of test ideas. A fixture contains the
-listed immutable preimages, folded registry and policy facts, exact envelope bytes, and expected
-first result. Slice 4 materializes each source into a protected-book or artifact resource without
-choosing new semantic data, keys, operation positions, or expected results. The single-structure
-octets are V-OP-01, V-OP-02, V-MANIFEST-02, V-RECEIPT-02, and V-CONTAINER-01 above; a corpus resource
-records their complete bytes and any mutation as a byte offset plus replacement bytes.
-
-#### Static Corpus Common Facts
-
-All corpus fixtures use the following literal facts unless their construction row overrides one.
-The values make every key, principal, time, identifier, and policy decision reproducible rather
-than implementation-selected.
-
-| Name | Exact value or construction |
-|:--|:--|
-| book A | bookId 00112233445566778899aabbccddeeff; identity is Acme Attestation Fixture, internal-management-bookkeeping-kernel, cash, non-statutory-internal-management, owner-managed-single-entity, owner-managed-service, functional EUR, fiscal start 01-01, book start 2026-01-01 |
-| principal A | principalId, seed, SPKI, and keyId from V-OP-01 |
-| principal B | principalId, seed, SPKI, and keyId from V-MANIFEST-02 |
-| principal C | principalId 2233445566778899aabbccddeeff0011; seed 404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f; SPKI and keyId are the canonical Ed25519 DER-SPKI and SHA-256 thereof |
-| initial capability policy | post, approve, close-period, backup, and anchor have M=1; restore, rekey, enroll-key, revoke-key, and alter-policy have M=min(2, founderCount) |
-| initial grants | every founder has GRANT for every listed capability; no other principal has a grant until its explicit grant record |
-| fixture instants | genesis is 2026-07-17T03:00:00.000Z; subsequent operation n is exactly that instant plus n milliseconds |
-| fixture IDs | account cash = 1000, account revenue = 4000, posting = 30000000000070008000000000000001, command = 30000000000070008000000000000002, backup = ffeeddccbbaa99887766554433221100, rekey epoch = 2 |
-| fixture accounts | declare 1000 as Cash, asset, leaf, active; declare 4000 as Service revenue, income, leaf, active; all optional parent, unit, classification, and relationship fields are absent |
-| posting source | request.command has operationKind record-sale-settled, idempotencyKey fixture-sale-1, absent causationId, and sourceChannel cli; request.posting has stepOrder 0, effectiveDate 2026-07-17, postingKind standard; request.account-role has stepOrder 0, role cash-account, accountCode 1000 and role revenue-account, accountCode 4000; request.money has stepOrder 0, role gross-amount, EUR 100.00; request.evidence-document is stepOrder 0, fixture-receipt-1, cash-receipt, 2026-07-17 |
-| posting effect | posting.fact CREATE uses the listed posting and command IDs, stepOrder 0, record-sale-settled, standard, sale-settled, 2026-07-17, no prior posting, fixture-sale-1, absent causation, cli; it has source-document fixture-receipt-1 and two CREATE journal.line records: lineOrder 0, 1000 debit EUR 100.00; lineOrder 1, 4000 credit EUR 100.00 |
-
-Every genesis in the corpus has one request.command, one request.book-identity, one
-request.founder for every founder, one request.policy-rule for every capability, and one
-request.principal-capability-grant for every founder-capability pair. Its effect has exactly the
-matching book.identity, principal.key-binding, policy.capability-rule, and
-principal.capability-grant records. Every later operation uses the request and effect profile in
-this document; absent optional fields are encoded with their mandatory absent presence byte.
-
-#### Positive Fixture Sources
-
-| ID | Exact construction trace | Expected result |
-|:--|:--|:--|
-| B-01 | book A genesis with founder A; all initial M values are 1 because founderCount is 1; envelope contains only A | valid |
-| B-02 | book A genesis with founders A and B; set post M=2; declare accounts 1000 and 4000, then append the common posting signed by A and B | valid |
-| B-03 | B-02 through the common posting; enrol C, grant C POST, rollover A to a second key derived from seed 606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f, append a POST signed by B and C while C is active, then revoke C; all operations use their historical positions | valid |
-| B-04 | B-02 through the common posting; A acts as the enrolled system principal to append an interim-result-sweep and then fiscal-year-close, each with its required close request, calculated journal effects, and the sourceChannel system assertion | valid |
-| B-05 | B-02 through the common posting; create a coherent snapshot artifact whose sourceOrder and sourceOperationHead are that source book's actual common-posting position and head, then append backup-created with the exact fixture backup ID and that artifact's exact whole-container digest | valid |
-| B-06 | B-05 snapshot source; restore the B-05 artifact into a staged destination preserving book A, append restore-book at sourceOrder+1 with its exact artifact digest and historicalSnapshotAuthorization true, then publish without replacement | valid |
-| B-07 | B-02 snapshot source with a valid M=2 BACKUP manifest but no backup-created operation; restore that manifest-attested artifact exactly as B-06 | valid |
-| B-08 | an explicit two-founder resolver at sourceOrder 42 with BACKUP M=2, both A and B active and granted BACKUP, plus V-MANIFEST-02 | valid |
-| B-09 | an explicit two-founder resolver at operationOrder 42 with ANCHOR M=2, both A and B active and granted ANCHOR, plus V-RECEIPT-02 | valid |
-| B-10 | B-02 through the common posting, then A and B as the REKEY quorum append rekey-book with key epoch 2 and the exact resulting book.key-epoch effect | valid |
-
-#### Negative Fixture Sources
-
-For N-01 through N-10, the operation, manifest, and receipt forms are separate fixtures. Each
-starts from the listed valid base bytes and applies exactly one mutation; the verifier must return
-the stated result before considering any later condition. This makes the three-structure coverage
-explicit rather than inferred from a fixture name.
-
-| ID | Base and single exact mutation | Expected result |
-|:--|:--|:--|
-| N-01 | V-OP-02, V-MANIFEST-02, and V-RECEIPT-02 independently: XOR the final signature byte with 01 | attestation-signature-invalid |
-| N-02 | each two-principal signed base under an M=2 registry/policy: replace sigCount 0002 with 0001 and delete its second 112-byte entry | attestation-quorum-below |
-| N-03 | V-OP-02, V-MANIFEST-02, and V-RECEIPT-02 independently under an M=1 resolver; no byte mutation is needed because sigCount is already 0002 | attestation-quorum-excess |
-| N-04 | each two-signature base: replace the second principalId with the first principalId, leaving key IDs distinct and ascending | attestation-duplicate-principal |
-| N-05 | each two-signature base: replace the second keyId with the first keyId, leaving principal IDs distinct | attestation-duplicate-key |
-| N-06 | each two-signature base: swap the complete A and B envelope entries without changing sigCount | attestation-envelope-order-invalid |
-| N-07 | each signed base: resolve against a registry in which the named signer binding begins at source position plus 1 | attestation-key-not-enrolled |
-| N-08 | each signed base: resolve against a registry in which the named signer is revoked at source position minus 1 | attestation-key-revoked |
-| N-09 | each two-principal base resolved with A, B, and active C: replace A's principalId with C's while retaining A's keyId and signature, so no duplicate principal occurs | attestation-key-principal-mismatch |
-| N-10 | each signed base: use X25519 SPKI 302a300506032b656e032100000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f and keyId 6625748c7ed4ff8a552c6453609a8892c494e624a5ad97854b2161461c098e7f; retain all other position facts | attestation-key-algorithm-invalid |
-| N-11 | B-02 common posting: replace previousHead with 32 zero bytes | attestation-previous-head-invalid |
-| N-12a | B-01 genesis: replace A's declared SPKI with B's while retaining A's keyId | attestation-genesis-invalid |
-| N-12b | B-01 genesis: remove A's sole envelope entry and set sigCount 0000 | attestation-genesis-invalid |
-| N-13 | B-08: replace one BACKUP grant for A or B with REVOKE at or before sourceOrder | attestation-capability-invalid |
-| N-14 | V-CONTAINER-01 independently: in four named resources XOR byte 0 of snapshotDigest, sourceOperationHead, bookId, and trailer snapshotLength with 01 | attestation-manifest-invalid |
-| N-15 | B-09: replace one ANCHOR grant for A or B with REVOKE at or before operationOrder | attestation-capability-invalid |
-
-The corpus resource records the raw source bytes, mutation offset, replacement bytes, policy fold,
-and expected result for every row above. A later slice may generate the resource from this ledger,
-but may not replace it with prose-only scenario tests or choose a different first failure.
-
-The separate command-admission corpus is live-CAS only. It has three exact attempts: a request
-signed over head H committed after another operation advances the head returns stale-head with exit
-2 and observedHead/currentHead/currentOrder; an acknowledgement repeating the B-05 tuple succeeds
-without a new operation; and the same backup ID with any differing digest or source head returns
-backup-acknowledgement-conflict with exit 2. Each live below-quorum or unauthorized attempt returns
-the matching taxonomy refusal. These are not verify-book fixture failures.
+The normative static-book and artifact source ledger, including positive sources, exact negative
+mutations, and live-CAS admission attempts, is
+[DOC_02_VerifiableOperationAttestationCorpus.md](./DOC_02_VerifiableOperationAttestationCorpus.md).
 
 ## Implementation Boundary
 
