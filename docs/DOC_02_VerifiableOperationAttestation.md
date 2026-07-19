@@ -5,10 +5,10 @@ domain: BOOK_OPERATION_ATTESTATION
 updated: "2026-07-19"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["AttestedOperation", "AttestationEnvelope", "BackupManifest", "AttestationReceipt"]
+  symbols: ["AttestedOperation", "AttestationEnvelope"]
 route:
-  keywords: [verifiable-operation-attestation, operation-head, attestation-envelope, backup-manifest, receipt-anchor, principal-quorum, credential-purpose, autonomous-workflow, semantic-profile, failure-precedence, ed25519, stale-head]
-  questions: ["what does FinGrind book-operation attestation prove", "how is an attested operation encoded", "which credential may authorize a system operation", "which semantic profile governs a typed operation", "how does FinGrind verify an attestation receipt"]
+  keywords: [verifiable-operation-attestation, operation-head, attestation-envelope, principal-quorum, credential-purpose, autonomous-workflow, semantic-profile, failure-precedence, ed25519, stale-head]
+  questions: ["what does FinGrind book-operation attestation prove", "how is an attested operation encoded", "which credential may authorize a system operation", "which semantic profile governs a typed operation"]
 stage: "Slice 0 feature-branch specification; not released behavior"
 ---
 
@@ -104,6 +104,13 @@ Registry and policy facts are append-only. For operation order N greater than ze
 eligibility resolve from the fold through N minus one. A binding or revocation committed at N first
 affects N plus one. No record may set a retrospective or future-effective credential interval.
 
+For every capability, its effective policy rule at a resolving position is the
+policy.capability-rule fact for that capability with the greatest accepted operation order at or
+before that position. Genesis supplies exactly one rule for every closed capability. A later
+alter-policy operation replaces only the effective quorum of each capability it names; it does not
+alter another capability or rewrite its predecessor. There can be at most one policy-change record
+for a capability in one operation because a duplicate complete per-type sort key is invalid.
+
 An active credential is an enrolled or rolled-over Ed25519 key that has not been revoked. Every
 binding also has one immutable credentialPurpose: operator or system. A cli operation has only
 operator-purpose envelope credentials; a system operation has only system-purpose envelope
@@ -117,6 +124,16 @@ its latest principal.capability-grant fact for that capability is GRANT. A purpo
 principal additionally owns an active credential with the required operator or system purpose.
 Capability grants are append-only facts; ALTER_POLICY may add a GRANT or REVOKE fact but may not
 rewrite prior authority. There is no hidden role or scope table.
+
+Every admitted principal.key-binding, including every genesis founder binding, has a keyId exactly
+equal to SHA-256 of its canonical Ed25519 DER-SPKI. A keyId may occur in exactly one binding fact in
+the entire book history and therefore belongs permanently to one principal. An enroll binding has
+an absent predecessorKeyId. A rollover binding has a predecessorKeyId that is different from the
+new keyId and identifies an active credential of the same principal at the preceding resolving
+position. Rollover adds the new credential; it never implicitly revokes or changes the predecessor.
+Only an explicit credential.revocation of that principal's active binding retires a credential, and
+revocation is final: no later binding may reuse its keyId. A binding or revocation that violates
+these rules is an invalid request/effect profile.
 
 Every policy rule is capability plus concrete quorum M. Distinct principals and distinct keys are
 unconditional envelope invariants, so there is no persisted require-distinct-principals switch.

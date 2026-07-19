@@ -33,6 +33,12 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Closed the unreleased next-format operation-attestation contract around historical policy and
+  credential identity. The latest capability policy rule is now the only effective rule at a
+  position; credential bindings prove their SPKI-derived key identity and one-principal ownership;
+  rollover adds rather than silently retires a credential; and the fixture ledger names the exact
+  rollover signer and binding-rejection cases. Receipt independence now has one result name, and
+  artifact vectors route to their canonical protocol.
 - Corrected the unreleased next-format operation-attestation contract so close operations carry a
   derived posting request, system provenance requires an all-system viable quorum, tax-inclusive
   sales and purchases have one exact rounded journal equation, and generic reversal is limited to

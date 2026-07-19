@@ -116,7 +116,8 @@ publication rule, and warns when its output remains inside the book's trust boun
 
 verify-receipt is non-mutating. It verifies the receipt envelope, finds the referenced book and
 operation order, requires equal bookId and operationHead, and evaluates the receipt's ANCHOR quorum
-as of that order. A valid receipt retained beside the book is reported as valid-but-not-independent.
+as of that order. A valid receipt retained beside the book reports the valid-result finding
+receipt-not-independent.
 
 | Verifier holds | Detects | Does not detect |
 |:--|:--|:--|

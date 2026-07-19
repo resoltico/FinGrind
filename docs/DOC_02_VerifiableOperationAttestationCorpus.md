@@ -14,9 +14,12 @@ stage: "Slice 0 feature-branch specification; not released behavior"
 
 # Verifiable Operation Attestation Corpus
 
-This is the normative fixture source for the next protected-book attestation format. It extends
-[DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md), which owns
-the wire grammar, closed profiles, authorization rules, error taxonomy, and verifier precedence.
+This is the normative fixture source for the next protected-book attestation format. It extends the
+[core protocol](./DOC_02_VerifiableOperationAttestation.md), which owns the shared operation and
+envelope grammar, authorization rules, error taxonomy, and verifier precedence; the
+[semantic profiles](./DOC_02_VerifiableOperationAttestationProfiles.md), which own field-level
+posting admission; and the [artifact protocol](./DOC_02_VerifiableOperationAttestationArtifacts.md),
+which owns manifest, receipt, and container contracts.
 
 ## Required Static Book And Artifact Corpus
 
@@ -25,9 +28,9 @@ preimages, folded registry and policy facts, exact envelope bytes, and expected 
 declared verification scope. Slice 4 materializes every protected-book and artifact source without
 choosing new semantic data, keys, operation positions, or expected results. Envelope bytes, heads,
 snapshot bytes, and artifact digests are derived outputs of these literal sources; the resource
-records their complete bytes and any mutation as a byte offset plus replacement bytes. The
-single-structure octets are V-OP-01, V-OP-02, V-MANIFEST-02, V-RECEIPT-02, and V-CONTAINER-01 in
-the core protocol; they are standalone envelope or parser vectors unless a row expressly names a
+records their complete bytes and any mutation as a byte offset plus replacement bytes. The core
+protocol owns V-OP-01 and V-OP-02. The artifact protocol owns V-MANIFEST-02, V-RECEIPT-02, and
+V-CONTAINER-01. They are standalone envelope or parser vectors unless a row expressly names a
 complete book or artifact.
 
 ## Static Corpus Common Facts
@@ -43,12 +46,13 @@ or derivation is implicit.
 | Name | Exact value or construction |
 |:--|:--|
 | book A | bookId 00112233445566778899aabbccddeeff; identity is Acme Attestation Fixture, internal-management-bookkeeping-kernel, cash, non-statutory-internal-management, owner-managed-single-entity, owner-managed-service, functional EUR, fiscal start 01-01, book start 2026-01-01 |
-| principal A | principalId, seed, SPKI, and keyId from V-OP-01 |
+| principal A (A1; “A” elsewhere) | principalId, seed, SPKI, and keyId from V-OP-01 |
+| principal A rollover key (A2) | principalId is A1's principalId; seed is 606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f; SPKI and keyId are the canonical Ed25519 DER-SPKI and SHA-256 thereof; its operator-purpose principal.key-binding fact occurs only in B-03's order-6 rollover |
 | principal B | principalId, seed, SPKI, and keyId from V-MANIFEST-02 |
 | principal C | principalId 2233445566778899aabbccddeeff0011; seed 404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f; SPKI and keyId are the canonical Ed25519 DER-SPKI and SHA-256 thereof |
 | initial capability policy | post, approve, close-period, backup, and anchor have M=1; restore, rekey, enroll-key, revoke-key, and alter-policy have M=min(2, founderCount) |
 | initial grants | every founder has GRANT for every listed capability; no other principal has a grant until its explicit grant record |
-| standalone envelope resolvers | The V-OP-02 resolver is as-of order 42 with active, non-revoked operator-purpose A and B, POST M=2, and POST GRANT only for A and B; it evaluates only the operation envelope checks after payload and preimage validation. B-08 and B-09 use the same shape with active A, B, and C: B-08 has BACKUP M=2 and BACKUP GRANT only for A and B; B-09 has ANCHOR M=2 and ANCHOR GRANT only for A and B. Every other capability rule and grant is absent. These are complete inputs for standalone envelope verification, never claimed operation-chain, manifest-artifact, or receipt-book resources. |
+| standalone envelope resolvers | The V-OP-02 resolver is as-of order 42 with active, non-revoked operator-purpose A and B. Its complete POST policy ledger has M=1 at order 40 and M=2 at order 41, so the effective POST M is 2; POST GRANT exists only for A and B. It evaluates only operation-envelope checks after payload and preimage validation. B-08 and B-09 use the same shape with active A, B, and C: B-08 has BACKUP M=2 and BACKUP GRANT only for A and B; B-09 has ANCHOR M=2 and ANCHOR GRANT only for A and B. Every other capability rule and grant is absent. These are complete inputs for standalone envelope verification, never claimed operation-chain, manifest-artifact, or receipt-book resources. |
 | fixture instants | genesis is 2026-12-31T03:00:00.000Z; subsequent operation n is exactly that instant plus n milliseconds |
 | fixture IDs | account cash = 1000, revenue = 4000, result holding = 3000, capital = 3100, retained result = 3200; common posting = 30000000000070008000000000000001 and command = 30000000000070008000000000000002; sweep posting = 30000000000070008000000000000003 and command = 30000000000070008000000000000004; close posting = 30000000000070008000000000000005 and command = 30000000000070008000000000000006; B-03 second posting = 30000000000070008000000000000007 and command = 30000000000070008000000000000008; sweep workflow = 40000000000070008000000000000001; close workflow = 40000000000070008000000000000002; backup = ffeeddccbbaa99887766554433221100; rekey epoch = 2 |
 | fixture accounts | 1000 Cash is asset/leaf; 4000 Service revenue is income/leaf; 3000 Current-year result holding, 3100 Owner capital, and 3200 Retained result are equity/leaf. Every account is active and has absent optional parent, unit, classification, and relationship fields. |
@@ -72,7 +76,7 @@ not supply an unstated record, identifier, time, signer, policy fact, or first f
 |:--|:--|:--|
 | B-01 | book A genesis at order 0 with founder A as an operator-purpose credential; every initial M is 1 because founderCount is 1; envelope contains only A | valid |
 | B-02 | book A genesis at 0 with operator-purpose founders A and B; set post M=2; declare accounts 1000 and 4000 at 1 and 2, then append the common posting at 3 signed by A and B | valid |
-| B-03 | B-02 through 3; at 4 A and B enroll C with credentialPurpose operator, at 5 A and B retain POST M=2 and grant C POST, at 6 A and B roll A to the key derived from seed 606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f, at 7 B and C append record-sale-settled using IDs ending 07/08, idempotencyKey fixture-sale-2, sourceChannel cli, source document fixture-receipt-2, effectiveDate 2026-12-31, and the same postingKind, originKind, account roles, money role, and EUR 100.00 journal lines as the common posting, and at 8 A and B revoke C | valid |
+| B-03 | B-02 through 3; at 4 A1 and B enroll C with credentialPurpose operator, at 5 A1 and B retain POST M=2 and grant C POST, at 6 A1 and B add A2 by rollover from A1 with operator purpose and predecessorKeyId A1, at 7 B and C append record-sale-settled using IDs ending 07/08, idempotencyKey fixture-sale-2, sourceChannel cli, source document fixture-receipt-2, effectiveDate 2026-12-31, and the same postingKind, originKind, account roles, money role, and EUR 100.00 journal lines as the common posting, and at 8 A2 and B revoke C | valid |
 | B-04 | B-02 through 3; at 4 A and B enroll C with credentialPurpose system. At 5 A and B retain CLOSE_PERIOD M=1, grant C CLOSE_PERIOD, and create active system workflow policy sweep workflow with kind interim-result-sweep and result holding 3000, plus active close workflow with kind fiscal-year-close and result holding 3000, capital 3100, and retained result 3200. At 6, 7, and 8 A and B declare accounts 3000, 3100, and 3200. At 9 C alone appends sourceChannel system interim-result-sweep naming sweep workflow for 2026-01-01 through 2026-12-30 into result holding 3000. Its derived request.posting has stepOrder 0, operationKind interim-result-sweep, postingKind period-close, and effectiveDate 2026-12-30; its posting/command IDs end 03/04; journal lines debit 4000 and credit 3000 EUR 100.00; sweepOrder 1; EUR total 100.00; and its posting link. At 10 C alone appends sourceChannel system fiscal-year-close naming close workflow for 2026-01-01 through 2026-12-31 with capital 3100, result holding 3000, and retained result 3200. Its derived request.posting has stepOrder 0, operationKind fiscal-year-close, postingKind period-close, and effectiveDate 2026-12-31; its posting/command IDs end 05/06; journal lines debit 3000 and credit 3200 EUR 100.00; closeOrder 1; and its posting link. | valid |
 | B-05 | B-02 through the common posting at sourceOrder 3. `B-05.snapshot` is the deterministic consistent SQLite online-backup copy of exactly that committed source book: no rekey, VACUUM, page-size change, or intervening operation. Its manifest is signed by A under BACKUP M=1. The artifact's source head is the order-3 head and its whole-container digest is the SHA-256 of that named derived resource. A appends backup-created at order 4 with the fixture backup ID and that exact tuple. | valid |
 | B-06 | B-05 snapshot source, not its order-4 acknowledgement. The staged destination is exactly B-02 through order 3 and preserves book A. A and B append restore-book at order 4 with the B-05 backup ID, its derived artifact digest, sourceOrder 3, source head 3, and historicalSnapshotAuthorization true; publication uses the no-replacement protocol. | valid |
@@ -80,7 +84,7 @@ not supply an unstated record, identifier, time, signer, policy fact, or first f
 | B-08 | the standalone BACKUP envelope resolver at sourceOrder 42 with active A, B, and C; BACKUP M=2; A and B, but not C, granted BACKUP; plus V-MANIFEST-02 signed by A and B | valid standalone envelope; not a manifest artifact |
 | B-09 | the standalone ANCHOR envelope resolver at operationOrder 42 with active A, B, and C; ANCHOR M=2; A and B, but not C, granted ANCHOR; plus V-RECEIPT-02 signed by A and B | valid standalone envelope; not a receipt/book |
 | B-10 | B-02 through order 3; A and B as the REKEY quorum append rekey-book at order 4 with keyEpoch 2, absent reason, and book.key-epoch DERIVE with rekeyedAt 2026-12-31T03:00:00.004Z | valid |
-| B-11 | B-02 through order 3. A produces an off-chain receipt with book A, operationOrder 3, the derived order-3 operation head, issuedAt 2027-01-01T00:00:00.000Z, and algorithm ed25519; A is the exact ANCHOR M=1 signer at order 3. The resource contains the complete B-02 book and its derived receipt envelope. | valid receipt/book pair |
+| B-11 | B-02 through order 3. A produces an off-chain receipt with book A, operationOrder 3, the derived order-3 operation head, receiptTimestamp 2027-01-01T00:00:00.000Z, and algorithmId ed25519; A is the exact ANCHOR M=1 signer at order 3. The resource contains the complete B-02 book and its derived receipt envelope. | valid receipt/book pair |
 
 ## Negative Fixture Sources
 
@@ -117,6 +121,13 @@ from a fixture name.
 | N-18 | B-02 through 3; at 4 A and B enroll active operator-purpose C without POST GRANT. At 5 B and C sign an otherwise valid record-sale-settled envelope under the still-valid POST M=2 policy. | attestation-capability-invalid |
 | N-19 | B-04 at order 9: retain C's valid system-purpose key and signature but change request.period-close.effectiveTo, the linked request.posting effectiveDate, and posting.fact effectiveDate from 2026-12-30 to 2026-12-29, then recompute every affected digest and signature while leaving the workflow-derived interval and effects unchanged. | attestation-system-derivation-invalid |
 | N-20 | B-04's order-5 policy mutation with CLOSE_PERIOD changed from M=1 to M=2 while C remains its only system-purpose CLOSE_PERIOD principal and A/B remain operator-purpose principals. | attestation-capability-invalid |
+| N-21 | B-03 order 6: replace A2's keyId in both matching binding records with a different 32-byte hash while retaining A2's SPKI, then recompute the preimage digests, payload, and A1/B signatures. | attestation-request-profile-invalid |
+| N-22 | B-03 order 6: omit the rollover predecessorKeyId from both matching binding records, then recompute the preimage digests, payload, and A1/B signatures. | attestation-request-profile-invalid |
+| N-23 | B-03 order 6: replace the rollover predecessorKeyId in both matching binding records with B's active keyId, then recompute the preimage digests, payload, and A1/B signatures. | attestation-request-profile-invalid |
+| N-24 | B-02 through 3: at order 4 A1 and B enroll C using B's existing founder keyId and SPKI, then recompute the preimage digests, payload, and A1/B signatures. | attestation-request-profile-invalid |
+| N-25 | B-02 through 3: at order 4 A1 and B enroll C with a predecessorKeyId set to A1's keyId, then recompute the preimage digests, payload, and A1/B signatures. | attestation-request-profile-invalid |
+| N-26 | B-03 order 6: set the rollover predecessorKeyId in both matching binding records to A2's new keyId, then recompute the preimage digests, payload, and A1/B signatures. | attestation-request-profile-invalid |
+| N-27 | B-02 through 3: at order 4 A1 and B revoke C's unbound predefined keyId, then recompute the preimage digests, payload, and A1/B signatures. | attestation-request-profile-invalid |
 
 The corpus resource records the raw source bytes, mutation offset, replacement bytes, policy fold,
 verification scope, and expected result for every row above. A later slice may generate the resource
