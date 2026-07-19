@@ -25,10 +25,12 @@ readonly script_dir="$(resolve_script_dir)"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly workflow_file="${repo_root}/.github/workflows/ci.yml"
 readonly retired_wrapper_workflow="${repo_root}/.github/workflows/gradle-wrapper-validation.yml"
+readonly developer_doc="${repo_root}/docs/DEVELOPER.md"
 
 [[ -f "${workflow_file}" ]] || die "missing CI workflow at ${workflow_file}"
 [[ ! -e "${retired_wrapper_workflow}" ]] || die \
     "wrapper validation still lives outside the release-blocking CI graph"
+[[ -f "${developer_doc}" ]] || die "missing developer reference at ${developer_doc}"
 grep -Fq 'Run the canonical root verification gate' "${workflow_file}" || die \
     "CI workflow no longer advertises the canonical root verification gate"
 grep -Fq './check.sh --no-daemon --console=plain' "${workflow_file}" || die \
@@ -47,6 +49,22 @@ grep -Fq 'sysconfig.get_path' "${workflow_file}" || die \
     "CI workflow no longer resolves the uv launcher scripts path through Python sysconfig"
 grep -Fq 'Run included build-logic tests on Windows' "${workflow_file}" || die \
     "CI workflow no longer keeps Windows build-logic verification as a separate step"
+grep -Fq 'Prove canonical attestation codec determinism on Unix' "${workflow_file}" || die \
+    "CI workflow no longer proves canonical attestation bytes on every published Unix bundle target"
+grep -Fq 'Prove canonical attestation codec determinism on Windows' "${workflow_file}" || die \
+    "CI workflow no longer proves canonical attestation bytes on the published Windows bundle target"
+if ! grep -A8 -F 'Prove canonical attestation codec determinism on Unix' "${workflow_file}" | \
+    grep -Fq -- "--tests 'dev.erst.fingrind.core.attestation.*'"; then
+    die \
+    "CI workflow no longer runs the canonical attestation codec conformance suite on Unix targets"
+fi
+if ! grep -A8 -F 'Prove canonical attestation codec determinism on Windows' "${workflow_file}" | \
+    grep -Fq -- "--tests 'dev.erst.fingrind.core.attestation.*'"; then
+    die \
+    "CI workflow no longer runs the canonical attestation codec conformance suite on Windows"
+fi
+grep -Fq 'attestation codec conformance suite on every target' "${developer_doc}" || die \
+    "developer reference no longer describes the five-platform attestation codec proof"
 grep -Fq 'prepare-published-bundle-smoke-matrix:' "${workflow_file}" || die \
     "CI workflow no longer prepares the published bundle smoke matrix from the canonical release plan"
 grep -Fq 'read-release-publication-plan.py' "${workflow_file}" || die \

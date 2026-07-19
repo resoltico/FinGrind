@@ -213,6 +213,25 @@ jobs:
         shell: pwsh
         run: .\gradlew.bat -p gradle\build-logic test --no-daemon --console=plain
 
+      - name: Prove canonical attestation codec determinism on Unix
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew :core:test \
+            --tests 'dev.erst.fingrind.core.attestation.*' \
+            --no-daemon \
+            --console=plain
+
+      - name: Prove canonical attestation codec determinism on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          .\gradlew.bat :core:test `
+            --tests 'dev.erst.fingrind.core.attestation.*' `
+            --no-daemon `
+            --console=plain
+
       - name: Verify managed SQLite CLI runtimes on Unix
         if: runner.os != 'Windows'
         shell: bash
