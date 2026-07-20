@@ -2,12 +2,8 @@ package dev.erst.fingrind.core.attestation;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.security.GeneralSecurityException;
 import java.security.KeyFactory;
 import java.security.KeyPair;
@@ -15,9 +11,7 @@ import java.security.PrivateKey;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.spec.PKCS8EncodedKeySpec;
-import java.util.EnumSet;
 import java.util.Objects;
-import java.util.Set;
 import javax.crypto.Cipher;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.GCMParameterSpec;
@@ -42,8 +36,6 @@ final class AttestationFilePkcs8Custodian {
           + SALT_BYTE_COUNT
           + INITIALIZATION_VECTOR_BYTE_COUNT;
   private static final SecureRandom RANDOM = new SecureRandom();
-  private static final Set<PosixFilePermission> OWNER_ONLY_PERMISSIONS =
-      Set.copyOf(EnumSet.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
 
   private AttestationFilePkcs8Custodian() {}
 
@@ -54,7 +46,7 @@ final class AttestationFilePkcs8Custodian {
       KeyPair keyPair = AttestationEd25519.generateKeyPair();
       byte[] encryptedPrivateKey = encrypt(keyPair.getPrivate(), ownedPassphrase);
       try {
-        writeNewKeyFile(path, encryptedPrivateKey);
+        AttestationKeyFilePublication.writeNewKeyFile(path, encryptedPrivateKey);
       } finally {
         java.util.Arrays.fill(encryptedPrivateKey, (byte) 0);
       }
@@ -168,30 +160,6 @@ final class AttestationFilePkcs8Custodian {
     }
   }
 
-  private static void writeNewKeyFile(Path path, byte[] encryptedPrivateKey) throws IOException {
-    createOwnerOnlyFile(path);
-    try (FileChannel channel = FileChannel.open(path, StandardOpenOption.WRITE)) {
-      ByteBuffer source = ByteBuffer.wrap(encryptedPrivateKey);
-      writeFully(source, channel::write);
-      channel.force(true);
-    }
-  }
-
-  private static void createOwnerOnlyFile(Path path) throws IOException {
-    createOwnerOnlyFile(
-        path,
-        target ->
-            Files.createFile(target, PosixFilePermissions.asFileAttribute(OWNER_ONLY_PERMISSIONS)));
-  }
-
-  static void createOwnerOnlyFile(Path path, KeyFileCreator ownerOnlyCreator) throws IOException {
-    try {
-      ownerOnlyCreator.create(path);
-    } catch (UnsupportedOperationException exception) {
-      Files.createFile(path);
-    }
-  }
-
   private static void requireFormat(ByteBuffer encoded) {
     if (encoded.remaining() < HEADER_BYTE_COUNT + AUTHENTICATION_TAG_BIT_COUNT / Byte.SIZE
         || !java.util.Arrays.equals(next(encoded, FORMAT_MAGIC.length), FORMAT_MAGIC)
@@ -212,32 +180,10 @@ final class AttestationFilePkcs8Custodian {
     }
   }
 
-  static void writeFully(ByteBuffer source, ByteBufferWriter writer) throws IOException {
-    while (source.hasRemaining()) {
-      if (writer.write(source) <= 0) {
-        throw new IOException("Failed to write the complete encrypted attestation key file.");
-      }
-    }
-  }
-
-  /** Writes encrypted key bytes to an already-created file. */
-  @FunctionalInterface
-  interface ByteBufferWriter {
-    /** Writes from the supplied source buffer and returns the byte count. */
-    int write(ByteBuffer source) throws IOException;
-  }
-
   /** Produces a JCA cipher for deterministic provider-failure testing. */
   @FunctionalInterface
   interface CipherFactory {
     /** Creates the cipher identified by its JCA transformation. */
     Cipher create(String algorithm) throws GeneralSecurityException;
-  }
-
-  /** Creates a new key file with one platform-specific permission strategy. */
-  @FunctionalInterface
-  interface KeyFileCreator {
-    /** Creates the target file without replacing an existing file. */
-    void create(Path path) throws IOException;
   }
 }

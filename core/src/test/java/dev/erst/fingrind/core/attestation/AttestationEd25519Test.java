@@ -6,9 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
 import java.security.KeyPairGenerator;
@@ -16,6 +18,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -174,6 +177,7 @@ class AttestationEd25519Test {
     assertThrows(
         java.nio.file.FileAlreadyExistsException.class,
         () -> AttestationFilePkcs8Custodian.create(keyPath, "another passphrase".toCharArray()));
+    assertEquals(1L, directoryEntryCount());
 
     Assumptions.assumeTrue(
         FileSystems.getDefault().supportedFileAttributeViews().contains("posix"),
@@ -204,17 +208,83 @@ class AttestationEd25519Test {
         assertThrows(
                 java.io.IOException.class,
                 () ->
-                    AttestationFilePkcs8Custodian.writeFully(
+                    AttestationKeyFilePublication.writeFully(
                         ByteBuffer.wrap(new byte[] {1}), ignored -> 0))
             .getMessage());
 
-    Path fallbackPath = temporaryDirectory.resolve("fallback.pk8");
-    AttestationFilePkcs8Custodian.createOwnerOnlyFile(
-        fallbackPath,
-        ignored -> {
-          throw new UnsupportedOperationException("test");
-        });
+    Path fallbackPath =
+        AttestationKeyFilePublication.createOwnerOnlyTemporaryFile(
+            temporaryDirectory,
+            ignored -> {
+              throw new UnsupportedOperationException("test");
+            });
     assertTrue(Files.isRegularFile(fallbackPath));
+  }
+
+  @Test
+  void fileCustodianNeverPublishesOrLeavesAStageWhenWritingTheKeyFails() throws Exception {
+    Path keyPath = temporaryDirectory.resolve("signing.pk8");
+
+    IOException failure =
+        assertThrows(
+            IOException.class,
+            () ->
+                AttestationKeyFilePublication.writeNewKeyFile(
+                    keyPath,
+                    new byte[] {1, 2, 3},
+                    (stagedPath, encryptedPrivateKey) -> {
+                      Files.write(stagedPath, encryptedPrivateKey);
+                      throw new IOException("simulated force failure");
+                    },
+                    Files::createLink,
+                    Files::deleteIfExists));
+
+    assertEquals("simulated force failure", failure.getMessage());
+    assertFalse(Files.exists(keyPath, LinkOption.NOFOLLOW_LINKS));
+    assertEquals(0L, directoryEntryCount());
+  }
+
+  @Test
+  void keyFilePublicationReportsStagingCleanupFailureWithoutPublishingAKey() throws Exception {
+    Path keyPath = temporaryDirectory.resolve("signing.pk8");
+
+    IOException failure =
+        assertThrows(
+            IOException.class,
+            () ->
+                AttestationKeyFilePublication.writeNewKeyFile(
+                    keyPath,
+                    new byte[] {1, 2, 3},
+                    (stagedPath, encryptedPrivateKey) -> {
+                      throw new IOException("simulated write failure");
+                    },
+                    Files::createLink,
+                    ignored -> {
+                      throw new IOException("simulated cleanup failure");
+                    }));
+
+    assertEquals("simulated write failure", failure.getMessage());
+    assertEquals(1, failure.getSuppressed().length);
+    assertEquals("simulated cleanup failure", failure.getSuppressed()[0].getMessage());
+    assertFalse(Files.exists(keyPath, LinkOption.NOFOLLOW_LINKS));
+  }
+
+  @Test
+  void keyFilePublicationRejectsTheFilesystemRootAsAKeyPath() {
+    Path root = temporaryDirectory.toAbsolutePath().getRoot();
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> AttestationKeyFilePublication.writeNewKeyFile(root, new byte[] {1, 2, 3}));
+
+    assertEquals("Attestation key file must have a parent directory.", exception.getMessage());
+  }
+
+  private long directoryEntryCount() throws java.io.IOException {
+    try (Stream<Path> entries = Files.list(temporaryDirectory)) {
+      return entries.count();
+    }
   }
 
   private IllegalArgumentException signingFailure(Path keyPath) {

@@ -16,6 +16,7 @@ import com.tngtech.archunit.lang.SimpleConditionEvent;
 import com.tngtech.archunit.library.dependencies.SliceAssignment;
 import com.tngtech.archunit.library.dependencies.SliceIdentifier;
 import java.util.Optional;
+import java.util.Set;
 import org.jspecify.annotations.NullMarked;
 
 /** Enforces FinGrind production-module boundaries and CLI responsibility direction. */
@@ -32,6 +33,13 @@ import org.jspecify.annotations.NullMarked;
     importOptions = ImportOption.DoNotIncludeTests.class)
 @SuppressWarnings("PMD.TestClassWithoutTestCases")
 final class FinGrindArchitectureTest {
+  private static final Set<String> ATTESTATION_CRYPTO_SEAM =
+      Set.of(
+          "dev.erst.fingrind.core.attestation.AttestationEd25519",
+          "dev.erst.fingrind.core.attestation.AttestationFilePkcs8Custodian");
+  private static final String PRIVATE_KEY_TYPE_PATTERN =
+      "java\\.security(\\.interfaces)?\\..*PrivateKey";
+
   private FinGrindArchitectureTest() {}
 
   @ArchTest
@@ -150,16 +158,8 @@ final class FinGrindArchitectureTest {
           .haveFullyQualifiedName("dev.erst.fingrind.contract.runtime.PublicPathHint");
 
   @ArchTest
-  static final ArchRule privateKeyTypesDoNotEnterProjectionOrContractLayers =
-      noClasses()
-          .that()
-          .resideInAnyPackage(
-              "dev.erst.fingrind.cli..",
-              "dev.erst.fingrind.contract..",
-              "dev.erst.fingrind.report.pdf..")
-          .should()
-          .dependOnClassesThat()
-          .haveNameMatching("java\\.security(\\.interfaces)?\\..*PrivateKey");
+  static final ArchRule privateKeyTypesAreConfinedToTheAttestationCryptoSeam =
+      classes().should(dependOnPrivateKeyTypesOnlyInsideTheAttestationCryptoSeam());
 
   @ArchTest
   static final ArchRule primarySlicesAreFreeOfCycles =
@@ -202,6 +202,32 @@ final class FinGrindArchitectureTest {
                                                         + " in "
                                                         + targetContext.description()
                                                         + ".")))));
+      }
+    };
+  }
+
+  private static ArchCondition<JavaClass>
+      dependOnPrivateKeyTypesOnlyInsideTheAttestationCryptoSeam() {
+    return new ArchCondition<>(
+        "depend on private-key types only inside the attestation crypto seam") {
+      @Override
+      public void check(JavaClass source, ConditionEvents events) {
+        if (ATTESTATION_CRYPTO_SEAM.contains(source.getName())) {
+          return;
+        }
+        source.getDirectDependenciesFromSelf().stream()
+            .filter(
+                dependency ->
+                    dependency.getTargetClass().getName().matches(PRIVATE_KEY_TYPE_PATTERN))
+            .forEach(
+                dependency ->
+                    events.add(
+                        SimpleConditionEvent.violated(
+                            source,
+                            source.getName()
+                                + " must not depend on private-key type "
+                                + dependency.getTargetClass().getName()
+                                + ".")));
       }
     };
   }
