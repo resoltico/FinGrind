@@ -3,6 +3,7 @@ package dev.erst.fingrind.buildlogic
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import org.gradle.api.GradleException
 import org.gradle.testfixtures.ProjectBuilder
@@ -48,6 +49,33 @@ class VerificationPolicySupportTest {
 
         kotlin.test.assertTrue(
             exception.message.orEmpty().contains("cryptographic primitives are owned only by the explicit crypto seam"),
+        )
+    }
+
+    @Test
+    fun cryptographicPrimitiveSeam_rejectsPrivateKeyCarriersOutsideSeam() {
+        val projectDirectory = temporaryDirectory.resolve("contract")
+        writeSource(
+            projectDirectory,
+            "dev/erst/fingrind/contract/UnexpectedPrivateKeyCarrier.java",
+            """
+            package dev.erst.fingrind.contract;
+            import java.security.KeyPair;
+            import java.security.spec.PKCS8EncodedKeySpec;
+            final class UnexpectedPrivateKeyCarrier {}
+            """.trimIndent(),
+        )
+
+        val exception =
+            assertFailsWith<GradleException> {
+                sourcePolicyTask(projectDirectory, ":contract").verify()
+            }
+
+        assertEquals(
+            2,
+            Regex("cryptographic primitives are owned only by the explicit crypto seam")
+                .findAll(exception.message.orEmpty())
+                .count(),
         )
     }
 

@@ -19,6 +19,7 @@ import java.security.PublicKey;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Stream;
+import javax.crypto.Cipher;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -37,6 +38,9 @@ class AttestationEd25519Test {
     assertTrue(AttestationEd25519.verifies(pair.getPublic(), payload, signature));
     assertFalse(AttestationEd25519.verifies(wrongPair.getPublic(), payload, signature));
     assertFalse(AttestationEd25519.verifies(pair.getPublic(), new byte[] {1, 2, 4}, signature));
+    byte[] tamperedSignature = signature.clone();
+    tamperedSignature[0] ^= 1;
+    assertFalse(AttestationEd25519.verifies(pair.getPublic(), payload, tamperedSignature));
     assertFalse(AttestationEd25519.verifies(pair.getPublic(), payload, new byte[63]));
     assertFalse(
         AttestationEd25519.verifies(
@@ -122,6 +126,27 @@ class AttestationEd25519Test {
     assertEquals(
         "Attestation key file cannot be decrypted with this passphrase.",
         signingFailure(keyPath).getMessage());
+  }
+
+  @Test
+  void fileCustodianDoesNotPersistPlaintextPrivateKeysAndUsesFreshEncryptionMaterial() {
+    var pair = AttestationEd25519.generateKeyPair();
+    byte[] privateKeyEncoding = pair.getPrivate().getEncoded();
+    byte[] firstEncryption =
+        AttestationFilePkcs8Custodian.encrypt(
+            pair.getPrivate(), "correct horse battery staple".toCharArray(), Cipher::getInstance);
+    byte[] secondEncryption =
+        AttestationFilePkcs8Custodian.encrypt(
+            pair.getPrivate(), "correct horse battery staple".toCharArray(), Cipher::getInstance);
+    try {
+      assertFalse(contains(firstEncryption, privateKeyEncoding));
+      assertFalse(contains(secondEncryption, privateKeyEncoding));
+      assertFalse(Arrays.equals(firstEncryption, secondEncryption));
+    } finally {
+      Arrays.fill(privateKeyEncoding, (byte) 0);
+      Arrays.fill(firstEncryption, (byte) 0);
+      Arrays.fill(secondEncryption, (byte) 0);
+    }
   }
 
   @Test
@@ -293,6 +318,16 @@ class AttestationEd25519Test {
         () ->
             AttestationFilePkcs8Custodian.sign(
                 keyPath, "correct horse battery staple".toCharArray(), new byte[] {4, 5, 6}));
+  }
+
+  private static boolean contains(byte[] values, byte[] candidate) {
+    for (int offset = 0; offset <= values.length - candidate.length; offset++) {
+      if (Arrays.mismatch(values, offset, offset + candidate.length, candidate, 0, candidate.length)
+          < 0) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Deliberately non-JCA public-key implementation carrying otherwise valid Ed25519 bytes. */

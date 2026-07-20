@@ -4,7 +4,7 @@ import java.io.File
 
 private val cryptographicPrimitiveTypePattern =
     Regex(
-        """\bjava\.security\.(?:Signature|KeyPairGenerator|KeyFactory|MessageDigest|SecureRandom|(?:interfaces\.)?[\w.]*Private[\w.]*Key\w*)\b""",
+        """\b(?:java\.security\.(?:Signature|KeyPair|KeyPairGenerator|KeyFactory|MessageDigest|SecureRandom|(?:interfaces\.)?[\w.]*Private[\w.]*Key\w*)|java\.security\.spec\.PKCS8EncodedKeySpec)\b""",
     )
 private val cryptographicPrimitiveSeamSourceSuffixes =
     setOf(

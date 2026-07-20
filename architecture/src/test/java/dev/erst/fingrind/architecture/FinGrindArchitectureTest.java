@@ -39,7 +39,8 @@ final class FinGrindArchitectureTest {
           "dev.erst.fingrind.core.attestation.AttestationEd25519",
           "dev.erst.fingrind.core.attestation.AttestationFilePkcs8Custodian");
   private static final String CRYPTOGRAPHIC_PRIMITIVE_TYPE_PATTERN =
-      "java\\.security\\.(Signature|KeyPairGenerator|KeyFactory|MessageDigest|SecureRandom)"
+      "java\\.security\\.(Signature|KeyPair|KeyPairGenerator|KeyFactory|MessageDigest|SecureRandom)"
+          + "|java\\.security\\.spec\\.PKCS8EncodedKeySpec"
           + "|java\\.security(\\.interfaces)?\\..*Private.*Key.*";
 
   private FinGrindArchitectureTest() {}
