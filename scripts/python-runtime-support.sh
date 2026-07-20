@@ -80,16 +80,44 @@ default_uv_bootstrap_python() {
 }
 
 uv_command_path() {
-    local uv_executable
-    uv_executable="$(python_runtime_command_path uv)"
+    local path_uv_executable
+    path_uv_executable="$(python_runtime_command_path uv)"
+    if uv_version_matches_requirement "${path_uv_executable}"; then
+        printf '%s\n' "${path_uv_executable}"
+        return 0
+    fi
+
+    local user_uv_executable
+    user_uv_executable="$(user_uv_command_path || true)"
+    if uv_version_matches_requirement "${user_uv_executable}"; then
+        printf '%s\n' "${user_uv_executable}"
+        return 0
+    fi
+    return 1
+}
+
+user_uv_command_path() {
+    local bootstrap_python
+    bootstrap_python="$(default_uv_bootstrap_python)"
+    local scripts_directory
+    scripts_directory="$("${bootstrap_python}" -c \
+        'import sysconfig; print(sysconfig.get_path("scripts", scheme="posix_user") or "")' \
+        2>/dev/null || true)"
+    [[ -n "${scripts_directory}" ]] || return 1
+    local uv_executable="${scripts_directory}/uv"
+    [[ -x "${uv_executable}" ]] || return 1
+    printf '%s\n' "${uv_executable}"
+}
+
+uv_version_matches_requirement() {
+    local uv_executable=$1
     [[ -n "${uv_executable}" ]] || return 1
     local uv_version
     uv_version="$("${uv_executable}" --version 2>/dev/null || true)"
     case "${uv_version}" in
-        "uv $(fingrind_required_uv_version)"|"uv $(fingrind_required_uv_version) "*) ;;
+        "uv $(fingrind_required_uv_version)"|"uv $(fingrind_required_uv_version) "*) return 0 ;;
         *) return 1 ;;
     esac
-    printf '%s\n' "${uv_executable}"
 }
 
 python_runtime_bootstrap_hint() {
@@ -201,6 +229,11 @@ prepare_python_runtime_env() {
     local required_python_version
     required_python_version="$(fingrind_required_python_version)"
 
+    local resolved_uv_executable=
+    if [[ -z "${ORG_GRADLE_PROJECT_fingrindUvExecutable:-}" ]]; then
+        resolved_uv_executable="$(uv_command_path || true)"
+    fi
+
     local resolved_python="${FINGRIND_PYTHON_EXECUTABLE:-${ORG_GRADLE_PROJECT_fingrindPythonExecutable:-}}"
     if [[ -z "${resolved_python}" ]]; then
         resolved_python="$(resolve_repo_python_runtime "${required_python_version}")" || return 1
@@ -215,10 +248,8 @@ prepare_python_runtime_env() {
     export FINGRIND_PYTHON_EXECUTABLE="${resolved_python}"
     ensure_repo_python_shims "${resolved_python}"
 
-    if [[ -z "${ORG_GRADLE_PROJECT_fingrindUvExecutable:-}" ]]; then
-        local uv_executable
-        if uv_executable="$(uv_command_path)"; then
-            export ORG_GRADLE_PROJECT_fingrindUvExecutable="${uv_executable}"
-        fi
+    if [[ -z "${ORG_GRADLE_PROJECT_fingrindUvExecutable:-}" \
+        && -n "${resolved_uv_executable}" ]]; then
+        export ORG_GRADLE_PROJECT_fingrindUvExecutable="${resolved_uv_executable}"
     fi
 }

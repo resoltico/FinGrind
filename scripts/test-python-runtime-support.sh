@@ -130,6 +130,20 @@ grep -Fx "uv=${preferred_stub_dir}/uv" "${preferred_inherited_log}" >/dev/null |
 mismatched_uv_stub_dir="${scenario_dir}/mismatched-uv"
 mkdir -p "${mismatched_uv_stub_dir}"
 ln -s "${preferred_stub_dir}/python3.12" "${mismatched_uv_stub_dir}/python3.12"
+cat > "${mismatched_uv_stub_dir}/python3" <<EOF
+#!/bin/bash
+if [[ "\${1:-}" == "-" ]]; then
+    shift
+    read -r _script
+    exit 1
+fi
+if [[ "\${1:-}" == "-c" ]]; then
+    printf '%s\n' "${scenario_dir}/missing-user-scripts"
+    exit 0
+fi
+exit 1
+EOF
+chmod +x "${mismatched_uv_stub_dir}/python3"
 cat > "${mismatched_uv_stub_dir}/uv" <<'EOF'
 #!/bin/bash
 if [[ "${1:-}" == "--version" ]]; then
@@ -144,6 +158,39 @@ mismatched_uv_log="${scenario_dir}/mismatched-uv.log"
 run_with_stub_path "${mismatched_uv_stub_dir}" "${mismatched_uv_log}"
 grep -Fx 'uv=missing' "${mismatched_uv_log}" >/dev/null || die \
     "prepare_python_runtime_env must not abort or publish a mismatched uv launcher"
+
+user_uv_stub_dir="${scenario_dir}/user-uv"
+user_uv_scripts_dir="${scenario_dir}/user-uv-scripts"
+mkdir -p "${user_uv_stub_dir}" "${user_uv_scripts_dir}"
+ln -s "${preferred_stub_dir}/python3.12" "${user_uv_stub_dir}/python3.12"
+cat > "${user_uv_stub_dir}/python3" <<EOF
+#!/bin/bash
+if [[ "\${1:-}" == "-" ]]; then
+    shift
+    read -r _script
+    exit 1
+fi
+if [[ "\${1:-}" == "-c" ]]; then
+    printf '%s\n' "${user_uv_scripts_dir}"
+    exit 0
+fi
+exit 1
+EOF
+chmod +x "${user_uv_stub_dir}/python3"
+cat > "${user_uv_scripts_dir}/uv" <<'EOF'
+#!/bin/bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'uv 0.11.25\n'
+    exit 0
+fi
+printf 'uv invoked unexpectedly\n' >&2
+exit 1
+EOF
+chmod +x "${user_uv_scripts_dir}/uv"
+user_uv_log="${scenario_dir}/user-uv.log"
+run_with_stub_path "${user_uv_stub_dir}" "${user_uv_log}"
+grep -Fx "uv=${user_uv_scripts_dir}/uv" "${user_uv_log}" >/dev/null || die \
+    "prepare_python_runtime_env must prefer the pinned user-installed uv launcher over a mismatched PATH launcher"
 
 uv_stub_dir="${scenario_dir}/uv-managed"
 mkdir -p "${uv_stub_dir}"
