@@ -1,5 +1,6 @@
 package dev.erst.fingrind.core.attestation;
 
+import java.util.List;
 import java.util.Objects;
 
 /** Verifies independent manifest and receipt envelopes against a reconstructed immutable book. */
@@ -22,7 +23,7 @@ final class AttestationArtifactVerifier {
   static AttestationReceiptVerification verifyReceipt(
       byte[] receiptBytes,
       AttestationBookVerification verification,
-      boolean retainedWithinTrustBoundary) {
+      AttestationReceiptRetention retention) {
     AttestationDecodedEnvelope<AttestationReceiptPayload> receipt =
         AttestationDecodedEnvelope.receipt(receiptBytes);
     AttestationReceiptPayload payload = receipt.payload();
@@ -37,7 +38,7 @@ final class AttestationArtifactVerifier {
         checkedVerification.registry(),
         AttestationAuthorizationContext.receipt(payload),
         receipt.authorizationEnvelope());
-    return new AttestationReceiptVerification(receipt, retainedWithinTrustBoundary);
+    return new AttestationReceiptVerification(receipt, receiptFindings(retention));
   }
 
   private static void requireManifestBinding(
@@ -46,7 +47,7 @@ final class AttestationArtifactVerifier {
       AttestationBackupManifestPayload payload) {
     if (!payload.snapshotDigest().equals(AttestationHash.sha256(artifact.snapshot()))
         || !payload.bookId().equals(verification.bookId())
-        || payload.sourceOrder().compareTo(verification.headOrder()) > 0
+        || !payload.sourceOrder().equals(verification.headOrder())
         || !payload.sourceOperationHead().equals(verification.headAt(payload.sourceOrder()))) {
       throw manifestFailure();
     }
@@ -70,5 +71,13 @@ final class AttestationArtifactVerifier {
 
   private static AttestationAuthorizationException receiptFailure() {
     return new AttestationAuthorizationException(AttestationAuthorizationFailure.RECEIPT_INVALID);
+  }
+
+  private static List<AttestationReceiptFinding> receiptFindings(
+      AttestationReceiptRetention retention) {
+    return switch (Objects.requireNonNull(retention, "retention")) {
+      case INDEPENDENT -> List.of();
+      case WITHIN_BOOK_TRUST_BOUNDARY -> List.of(AttestationReceiptFinding.NOT_INDEPENDENT);
+    };
   }
 }

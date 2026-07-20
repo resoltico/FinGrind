@@ -54,6 +54,29 @@ class AttestationBookVerifierTest {
   }
 
   @Test
+  void executesTheByteAddressedPreviousHeadRowN11() {
+    TestCredential founder = credential();
+    AttestationBookOperation genesis = genesis(founder);
+    AttestationBookOperation malformed =
+        successor(founder, AttestationHash.of(new byte[AttestationHash.BYTE_LENGTH]));
+    byte[] rawSource = malformed.envelope().encoded();
+    byte[] replacement = new byte[AttestationHash.BYTE_LENGTH];
+    AttestationStaticCorpus.Fixture fixture =
+        AttestationStaticCorpus.fixture(
+            "N-11",
+            rawSource,
+            new AttestationStaticCorpus.Mutation(indexOf(rawSource, replacement), replacement),
+            new AttestationStaticCorpus.PolicyFold("B-02 POST M=2 before the common posting"),
+            AttestationStaticCorpus.VerificationScope.BOOK,
+            AttestationAuthorizationFailure.PREVIOUS_HEAD_INVALID);
+
+    assertTrue(fixture.mutation().isRepresentedBy(fixture.rawSource()));
+    assertFailure(
+        fixture.expectedFirstFailure(),
+        () -> AttestationBookVerifier.verify(new AttestationBook(List.of(genesis, malformed))));
+  }
+
+  @Test
   void rejectsASignedOperationWhosePreimagesOmitItsClosedPostingProfile() {
     AttestationPreimage request =
         AttestationAuthorizationTestSupport.requestPreimage(
@@ -306,5 +329,15 @@ class AttestationBookVerifierTest {
   private static byte[] envelopeBytes(
       AttestationOperationPayload payload, AttestationAuthorizationEnvelope authorizationEnvelope) {
     return AttestationEnvelope.of(payload, authorizationEnvelope.entries()).encoded();
+  }
+
+  private static int indexOf(byte[] source, byte[] target) {
+    for (int offset = 0; offset <= source.length - target.length; offset++) {
+      if (java.util.Arrays.equals(
+          target, java.util.Arrays.copyOfRange(source, offset, offset + target.length))) {
+        return offset;
+      }
+    }
+    throw new IllegalArgumentException("Fixture mutation bytes are not present in the raw source.");
   }
 }

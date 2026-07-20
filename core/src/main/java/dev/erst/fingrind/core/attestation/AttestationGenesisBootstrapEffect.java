@@ -13,13 +13,14 @@ final class AttestationGenesisBootstrapEffect {
 
   private AttestationGenesisBootstrapEffect() {}
 
-  static List<AttestationFounder> requireValid(UUID bookId, AttestationPreimage effectPreimage) {
+  static Bootstrap requireValid(UUID bookId, AttestationPreimage effectPreimage) {
     List<AttestationFounder> founders = founders(effectPreimage);
-    AttestationGenesisInitialRegistry.requireValid(effectPreimage, founders);
+    AttestationGenesisInitialRegistry.InitialRegistry initialRegistry =
+        AttestationGenesisInitialRegistry.requireValid(effectPreimage, founders);
     requireExactEffectShape(effectPreimage, founders.size());
     requireBookIdentity(effectPreimage, bookId);
     requireDistinctFounders(founders);
-    return founders;
+    return new Bootstrap(founders, initialRegistry);
   }
 
   private static List<AttestationFounder> founders(AttestationPreimage effectPreimage) {
@@ -87,5 +88,15 @@ final class AttestationGenesisBootstrapEffect {
 
   private static AttestationAuthorizationException failure() {
     return new AttestationAuthorizationException(failureType());
+  }
+
+  /** The founder credentials and concrete policy facts committed by one genesis effect preimage. */
+  record Bootstrap(
+      List<AttestationFounder> founders,
+      AttestationGenesisInitialRegistry.InitialRegistry initialRegistry) {
+    Bootstrap {
+      founders = List.copyOf(founders);
+      java.util.Objects.requireNonNull(initialRegistry, "initialRegistry");
+    }
   }
 }

@@ -45,7 +45,7 @@ final class AttestationBookVerifier {
         AttestationAuthorization.requireGenesis(
             genesis, checkedOperation.envelope().authorizationEnvelope());
         bookId = payload.bookId();
-        registryHistory = AttestationRegistryHistory.genesis(genesis.founders());
+        registryHistory = AttestationRegistryHistory.genesis(genesis);
         registryHistory.requireAcceptedState();
       } else {
         AttestationOperationKind operationKind =

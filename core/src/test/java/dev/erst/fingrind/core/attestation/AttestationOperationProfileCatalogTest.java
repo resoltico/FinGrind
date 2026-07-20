@@ -3,6 +3,7 @@ package dev.erst.fingrind.core.attestation;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.assertFailure;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.credential;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
 import java.time.Instant;
@@ -187,6 +188,29 @@ class AttestationOperationProfileCatalogTest {
                 payload, AttestationOperationKind.EXECUTE_PLAN, request, append(effect, 0x0030)));
   }
 
+  @Test
+  void executesTheByteAddressedFixedAssetRowN17() {
+    AttestationPreimage request = preimage(0x0100, 0x0120, 0x0124);
+    AttestationPreimage effect = append(preimage(0x0020, 0x0021, 0x0025), 0x0060);
+    byte[] rawSource = effect.encoded();
+    byte[] fixedAssetTag = new byte[] {0, 0x60};
+    AttestationStaticCorpus.Fixture fixture =
+        AttestationStaticCorpus.fixture(
+            "N-17",
+            rawSource,
+            new AttestationStaticCorpus.Mutation(indexOf(rawSource, fixedAssetTag), fixedAssetTag),
+            new AttestationStaticCorpus.PolicyFold("B-02 POST M=2 before the common posting"),
+            AttestationStaticCorpus.VerificationScope.OPERATION_PROFILE,
+            AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID);
+
+    assertTrue(fixture.mutation().isRepresentedBy(fixture.rawSource()));
+    assertFailure(
+        fixture.expectedFirstFailure(),
+        () ->
+            AttestationOperationProfileCatalog.profile(AttestationOperationKind.RECORD_SALE_SETTLED)
+                .requireTags(request, effect));
+  }
+
   private static AttestationPreimage append(AttestationPreimage preimage, int tag) {
     List<AttestationPreimage.Fact> records = new ArrayList<>(preimage.records());
     records.add(fact(tag));
@@ -212,5 +236,15 @@ class AttestationOperationProfileCatalogTest {
 
   private static AttestationFieldValue value(AttestationFieldType type) {
     return Objects.requireNonNull(VALUES.get(type), "value factory").get();
+  }
+
+  private static int indexOf(byte[] source, byte[] target) {
+    for (int offset = 0; offset <= source.length - target.length; offset++) {
+      if (java.util.Arrays.equals(
+          target, java.util.Arrays.copyOfRange(source, offset, offset + target.length))) {
+        return offset;
+      }
+    }
+    throw new IllegalArgumentException("Fixture mutation bytes are not present in the raw source.");
   }
 }

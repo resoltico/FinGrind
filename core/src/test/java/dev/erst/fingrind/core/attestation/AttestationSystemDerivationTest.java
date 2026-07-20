@@ -2,6 +2,7 @@ package dev.erst.fingrind.core.attestation;
 
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
 import java.time.Instant;
@@ -33,9 +34,21 @@ class AttestationSystemDerivationTest {
   @Test
   void rejectsAConsistentlyMutatedButNotWorkflowDerivedCloseDate() {
     CloseEvidence evidence = evidence(LocalDate.of(2026, 12, 29));
+    byte[] rawSource = evidence.request().encoded();
+    byte[] replacementBytes = "2026-12-29".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+    AttestationStaticCorpus.Fixture fixture =
+        AttestationStaticCorpus.fixture(
+            "N-19",
+            rawSource,
+            new AttestationStaticCorpus.Mutation(
+                indexOf(rawSource, replacementBytes), replacementBytes),
+            new AttestationStaticCorpus.PolicyFold("active interim-result-sweep workflow at close"),
+            AttestationStaticCorpus.VerificationScope.SYSTEM_DERIVATION,
+            AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID);
 
+    assertTrue(fixture.mutation().isRepresentedBy(fixture.rawSource()));
     assertFailure(
-        AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID,
+        fixture.expectedFirstFailure(),
         () ->
             AttestationSystemDerivation.requireValid(
                 registry(),
@@ -369,6 +382,16 @@ class AttestationSystemDerivationTest {
 
   private static AttestationFieldValue token(String value) {
     return AttestationTextFieldValue.token(value);
+  }
+
+  private static int indexOf(byte[] source, byte[] target) {
+    for (int offset = 0; offset <= source.length - target.length; offset++) {
+      if (java.util.Arrays.equals(
+          target, java.util.Arrays.copyOfRange(source, offset, offset + target.length))) {
+        return offset;
+      }
+    }
+    throw new IllegalArgumentException("Fixture mutation bytes are not present in the raw source.");
   }
 
   private record CloseEvidence(

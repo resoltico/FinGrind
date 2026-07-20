@@ -10,11 +10,15 @@ final class AttestationGenesisAuthorizationContext {
 
   private final byte[] payload;
   private final List<AttestationFounder> founders;
+  private final AttestationGenesisInitialRegistry.InitialRegistry initialRegistry;
 
   private AttestationGenesisAuthorizationContext(
-      AttestationOperationPayload payload, List<AttestationFounder> founders) {
+      AttestationOperationPayload payload, AttestationGenesisBootstrapEffect.Bootstrap bootstrap) {
     this.payload = payload.encoded();
-    this.founders = List.copyOf(founders);
+    AttestationGenesisBootstrapEffect.Bootstrap checkedBootstrap =
+        Objects.requireNonNull(bootstrap, "bootstrap");
+    founders = checkedBootstrap.founders();
+    initialRegistry = checkedBootstrap.initialRegistry();
   }
 
   static AttestationGenesisAuthorizationContext verify(
@@ -33,12 +37,12 @@ final class AttestationGenesisAuthorizationContext {
         .equals(AttestationHash.sha256(checkedEffectPreimage.encoded()))) {
       throw failure();
     }
-    List<AttestationFounder> founders =
+    AttestationGenesisBootstrapEffect.Bootstrap bootstrap =
         AttestationGenesisBootstrapEffect.requireValid(
             checkedPayload.bookId(), checkedEffectPreimage);
     AttestationGenesisBootstrapRequest.requireMatches(
-        checkedRequestPreimage, checkedEffectPreimage, founders);
-    return new AttestationGenesisAuthorizationContext(checkedPayload, founders);
+        checkedRequestPreimage, checkedEffectPreimage, bootstrap);
+    return new AttestationGenesisAuthorizationContext(checkedPayload, bootstrap);
   }
 
   boolean matchesPayload(byte[] candidate) {
@@ -51,6 +55,10 @@ final class AttestationGenesisAuthorizationContext {
 
   List<AttestationFounder> founders() {
     return founders;
+  }
+
+  AttestationGenesisInitialRegistry.InitialRegistry initialRegistry() {
+    return initialRegistry;
   }
 
   private static void requireGenesisPayload(AttestationOperationPayload payload) {

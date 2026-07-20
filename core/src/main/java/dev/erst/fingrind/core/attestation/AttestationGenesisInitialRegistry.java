@@ -1,5 +1,7 @@
 package dev.erst.fingrind.core.attestation;
 
+import java.math.BigInteger;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -13,51 +15,67 @@ final class AttestationGenesisInitialRegistry {
 
   private AttestationGenesisInitialRegistry() {}
 
-  static void requireValid(AttestationPreimage effectPreimage, List<AttestationFounder> founders) {
-    requireInitialPolicies(effectPreimage, founders.size());
-    requireInitialGrants(effectPreimage, founders);
+  static InitialRegistry requireValid(
+      AttestationPreimage effectPreimage, List<AttestationFounder> founders) {
+    return new InitialRegistry(
+        requireInitialPolicies(effectPreimage, founders.size()),
+        requireInitialGrants(effectPreimage, founders));
   }
 
-  private static void requireInitialPolicies(AttestationPreimage effectPreimage, int founderCount) {
+  private static List<AttestationPolicyRule> requireInitialPolicies(
+      AttestationPreimage effectPreimage, int founderCount) {
     List<AttestationPreimage.Fact> policies =
         AttestationPreimageFields.records(effectPreimage, POLICY_RULE_RECORD_TYPE);
     if (policies.size() != AttestationCapability.values().length) {
       throw failure();
     }
+    List<AttestationPolicyRule> rules = new java.util.ArrayList<>(policies.size());
     for (AttestationPreimage.Fact policy : policies) {
-      requireInitialPolicy(policy, founderCount);
+      rules.add(requireInitialPolicy(policy, founderCount));
     }
+    return List.copyOf(rules);
   }
 
-  private static void requireInitialPolicy(AttestationPreimage.Fact policy, int founderCount) {
+  private static AttestationPolicyRule requireInitialPolicy(
+      AttestationPreimage.Fact policy, int founderCount) {
     if (AttestationPreimageValueReader.mutation(policy, 0, failureType()) != CREATE_MUTATION) {
       throw failure();
     }
     AttestationCapability capability =
         capability(AttestationPreimageValueReader.token(policy, 1, failureType()));
-    if (AttestationPreimageValueReader.unsigned16(policy, 2, failureType())
-        != capability.genesisQuorum(founderCount)) {
+    int quorum = AttestationPreimageValueReader.unsigned16(policy, 2, failureType());
+    if (quorum < 1 || quorum > founderCount) {
       throw failure();
     }
+    return new AttestationPolicyRule(BigInteger.ZERO, capability, quorum);
   }
 
-  private static void requireInitialGrants(
+  private static List<AttestationCapabilityGrant> requireInitialGrants(
       AttestationPreimage effectPreimage, List<AttestationFounder> founders) {
-    List<AttestationPreimage.Fact> grants =
+    List<AttestationPreimage.Fact> grantFacts =
         AttestationPreimageFields.records(effectPreimage, CAPABILITY_GRANT_RECORD_TYPE);
-    if (grants.size() != founders.size() * AttestationCapability.values().length) {
+    if (grantFacts.size() != founders.size() * AttestationCapability.values().length) {
       throw failure();
     }
-    Set<UUID> founderIds =
-        founders.stream()
-            .map(AttestationFounder::principalId)
-            .collect(java.util.stream.Collectors.toUnmodifiableSet());
-    for (AttestationPreimage.Fact grant : grants) {
-      requireInitialGrant(grant, founderIds);
+    Set<UUID> founderIds = new HashSet<>();
+    for (AttestationFounder founder : founders) {
+      founderIds.add(founder.principalId());
     }
+    List<AttestationCapabilityGrant> initialGrants = new java.util.ArrayList<>(grantFacts.size());
+    for (AttestationPreimage.Fact grant : grantFacts) {
+      InitialGrant declared = requireInitialGrant(grant, founderIds);
+      initialGrants.add(
+          new AttestationCapabilityGrant(
+              BigInteger.ZERO,
+              declared.principalId(),
+              declared.capability(),
+              AttestationGrantState.GRANT));
+    }
+    return List.copyOf(initialGrants);
   }
 
-  private static void requireInitialGrant(AttestationPreimage.Fact grant, Set<UUID> founderIds) {
+  private static InitialGrant requireInitialGrant(
+      AttestationPreimage.Fact grant, Set<UUID> founderIds) {
     if (AttestationPreimageValueReader.mutation(grant, 0, failureType()) != CREATE_MUTATION) {
       throw failure();
     }
@@ -68,7 +86,8 @@ final class AttestationGenesisInitialRegistry {
     if (!founderIds.contains(principalId)) {
       throw failure();
     }
-    capability(AttestationPreimageValueReader.token(grant, 2, failureType()));
+    return new InitialGrant(
+        principalId, capability(AttestationPreimageValueReader.token(grant, 2, failureType())));
   }
 
   private static AttestationCapability capability(String token) {
@@ -87,4 +106,15 @@ final class AttestationGenesisInitialRegistry {
   private static AttestationAuthorizationException failure() {
     return new AttestationAuthorizationException(failureType());
   }
+
+  /* Immutable registry facts established by the unanimous genesis envelope. */
+  record InitialRegistry(
+      List<AttestationPolicyRule> policyRules, List<AttestationCapabilityGrant> grants) {
+    InitialRegistry {
+      policyRules = List.copyOf(policyRules);
+      grants = List.copyOf(grants);
+    }
+  }
+
+  private record InitialGrant(UUID principalId, AttestationCapability capability) {}
 }

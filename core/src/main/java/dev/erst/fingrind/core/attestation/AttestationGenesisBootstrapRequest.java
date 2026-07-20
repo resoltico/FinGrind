@@ -19,11 +19,12 @@ final class AttestationGenesisBootstrapRequest {
   static void requireMatches(
       AttestationPreimage requestPreimage,
       AttestationPreimage effectPreimage,
-      List<AttestationFounder> founders) {
+      AttestationGenesisBootstrapEffect.Bootstrap bootstrap) {
+    List<AttestationFounder> founders = bootstrap.founders();
     requireOnlyGenesisRecords(requestPreimage);
     requireBookIdentityDeclaration(requestPreimage, effectPreimage);
     requireFounderDeclarations(requestPreimage, founders);
-    requirePolicyDeclarations(requestPreimage, founders.size());
+    requirePolicyDeclarations(requestPreimage, bootstrap.initialRegistry());
     requireGrantDeclarations(requestPreimage, founders);
   }
 
@@ -82,7 +83,8 @@ final class AttestationGenesisBootstrapRequest {
   }
 
   private static void requirePolicyDeclarations(
-      AttestationPreimage requestPreimage, int founderCount) {
+      AttestationPreimage requestPreimage,
+      AttestationGenesisInitialRegistry.InitialRegistry initialRegistry) {
     List<AttestationPreimage.Fact> requests =
         AttestationPreimageFields.records(requestPreimage, REQUEST_POLICY_RULE_RECORD_TYPE);
     if (requests.size() != AttestationCapability.values().length) {
@@ -91,8 +93,9 @@ final class AttestationGenesisBootstrapRequest {
     for (AttestationPreimage.Fact request : requests) {
       AttestationCapability capability =
           capability(AttestationPreimageValueReader.token(request, 0, failureType()));
-      if (AttestationPreimageValueReader.unsigned16(request, 1, failureType())
-          != capability.genesisQuorum(founderCount)) {
+      int quorum = AttestationPreimageValueReader.unsigned16(request, 1, failureType());
+      if (initialRegistry.policyRules().stream()
+          .noneMatch(rule -> rule.capability() == capability && rule.quorum() == quorum)) {
         throw failure();
       }
     }

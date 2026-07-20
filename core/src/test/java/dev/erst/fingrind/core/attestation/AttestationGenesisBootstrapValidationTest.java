@@ -13,6 +13,7 @@ import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.r
 import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.signedGenesisEnvelope;
 import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.withField;
 import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.withoutRecords;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
 import java.time.Instant;
@@ -111,6 +112,44 @@ class AttestationGenesisBootstrapValidationTest {
         () ->
             AttestationAuthorization.requireGenesis(
                 context, new AttestationAuthorizationEnvelope(alteredPayload, envelope.entries())));
+  }
+
+  @Test
+  void executesTheByteAddressedGenesisRowsN12aAndN12b() {
+    TestCredential a = credential();
+    TestCredential b = credential();
+    AttestationPreimage request = genesisRequestPreimage(a);
+    AttestationPreimage n12aEffect =
+        replaceFirstRecord(
+            genesisEffectPreimage(a),
+            0x0002,
+            record ->
+                withField(
+                    record,
+                    4,
+                    AttestationField.present(
+                        AttestationBinaryFieldValue.spki(b.pair().getPublic().getEncoded()))));
+    AttestationStaticCorpus.Fixture n12a =
+        fixture("N-12a", n12aEffect.encoded(), b.pair().getPublic().getEncoded());
+    assertFixtureFailure(
+        n12a,
+        () ->
+            AttestationGenesisAuthorizationContext.verify(
+                genesisPayload(BigInteger.ZERO, ZERO_HEAD, request, n12aEffect),
+                request,
+                n12aEffect));
+
+    AttestationPreimage effect = genesisEffectPreimage(a);
+    AttestationGenesisAuthorizationContext context =
+        AttestationGenesisAuthorizationContext.verify(
+            genesisPayload(BigInteger.ZERO, ZERO_HEAD, request, effect), request, effect);
+    AttestationAuthorizationEnvelope noSignatureEnvelope =
+        new AttestationAuthorizationEnvelope(context.payload(), List.of());
+    AttestationStaticCorpus.Fixture n12b =
+        fixture(
+            "N-12b", AttestationStaticCorpus.rawEnvelope(noSignatureEnvelope), new byte[] {0, 0});
+    assertFixtureFailure(
+        n12b, () -> AttestationAuthorization.requireGenesis(context, noSignatureEnvelope));
   }
 
   @Test
@@ -535,6 +574,34 @@ class AttestationGenesisBootstrapValidationTest {
       AttestationPreimage request, AttestationPreimage effect) {
     assertGenesisFailure(
         genesisPayload(BigInteger.ZERO, ZERO_HEAD, request, effect), request, effect);
+  }
+
+  private static AttestationStaticCorpus.Fixture fixture(
+      String id, byte[] rawSource, byte[] replacementBytes) {
+    return AttestationStaticCorpus.fixture(
+        id,
+        rawSource,
+        new AttestationStaticCorpus.Mutation(
+            indexOf(rawSource, replacementBytes), replacementBytes),
+        new AttestationStaticCorpus.PolicyFold("unanimous founder genesis"),
+        AttestationStaticCorpus.VerificationScope.GENESIS,
+        AttestationAuthorizationFailure.GENESIS_INVALID);
+  }
+
+  private static void assertFixtureFailure(
+      AttestationStaticCorpus.Fixture fixture, Runnable verification) {
+    assertTrue(fixture.mutation().isRepresentedBy(fixture.rawSource()));
+    assertFailure(fixture.expectedFirstFailure(), verification);
+  }
+
+  private static int indexOf(byte[] source, byte[] target) {
+    for (int offset = 0; offset <= source.length - target.length; offset++) {
+      if (java.util.Arrays.equals(
+          target, java.util.Arrays.copyOfRange(source, offset, offset + target.length))) {
+        return offset;
+      }
+    }
+    throw new IllegalArgumentException("Fixture mutation bytes are not present in the raw source.");
   }
 
   private static void assertGenesisFailure(

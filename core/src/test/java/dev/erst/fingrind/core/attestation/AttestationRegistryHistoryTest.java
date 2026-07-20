@@ -2,7 +2,10 @@ package dev.erst.fingrind.core.attestation;
 
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.assertFailure;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.credential;
+import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.replaceFirstRecord;
+import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.withField;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
 import java.util.List;
@@ -262,11 +265,174 @@ class AttestationRegistryHistoryTest {
     assertFailure(AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID, history::registry);
   }
 
+  @Test
+  void executesTheByteAddressedRolloverAndRevocationRowsN21ThroughN27() {
+    TestCredential a = credential();
+    TestCredential b = credential();
+    TestCredential rawA2 = credential();
+    TestCredential a2 = new TestCredential(a.principalId(), rawA2.pair(), rawA2.keyId());
+    TestCredential c = credential();
+    AttestationRegistryHistory history = history(a, b);
+    AttestationHash wrongKeyId = AttestationHash.sha256(new byte[] {9});
+    AttestationPreimage n21Request =
+        replaceFirstRecord(
+            bindingRequest(a2, "rollover", "operator", a.keyId()),
+            0x0180,
+            record -> withField(record, 1, present(AttestationBinaryFieldValue.hash(wrongKeyId))));
+    AttestationPreimage n21Effect =
+        replaceFirstRecord(
+            bindingEffect(a2, "rollover", "operator", a.keyId()),
+            0x0002,
+            record -> withField(record, 2, present(AttestationBinaryFieldValue.hash(wrongKeyId))));
+
+    assertFixtureFailure(
+        fixture("N-21", n21Effect, wrongKeyId.bytes()),
+        () ->
+            history.accept(
+                AttestationOperationKind.ROLLOVER_KEY, BigInteger.ONE, n21Request, n21Effect));
+
+    AttestationPreimage n22Request = bindingRequest(a2, "rollover", "operator", null);
+    AttestationPreimage n22Effect = bindingEffect(a2, "rollover", "operator", null);
+    assertFixtureFailure(
+        fixture("N-22", n22Effect, lastByte(n22Effect.encoded())),
+        () ->
+            history(a, b)
+                .accept(
+                    AttestationOperationKind.ROLLOVER_KEY, BigInteger.ONE, n22Request, n22Effect));
+
+    AttestationPreimage n23Request = bindingRequest(a2, "rollover", "operator", b.keyId());
+    AttestationPreimage n23Effect = bindingEffect(a2, "rollover", "operator", b.keyId());
+    AttestationRegistryHistory n23History = history(a, b);
+    n23History.accept(AttestationOperationKind.ROLLOVER_KEY, BigInteger.ONE, n23Request, n23Effect);
+    assertFixtureFailure(fixture("N-23", n23Effect, b.keyId().bytes()), n23History::registry);
+
+    TestCredential cWithBKey = new TestCredential(c.principalId(), b.pair(), b.keyId());
+    AttestationPreimage n24Request = bindingRequest(cWithBKey, "enroll", "operator", null);
+    AttestationPreimage n24Effect = bindingEffect(cWithBKey, "enroll", "operator", null);
+    AttestationRegistryHistory n24History = history(a, b);
+    n24History.accept(AttestationOperationKind.ENROLL_KEY, BigInteger.ONE, n24Request, n24Effect);
+    assertFixtureFailure(fixture("N-24", n24Effect, b.keyId().bytes()), n24History::registry);
+
+    AttestationPreimage n25Request = bindingRequest(c, "enroll", "operator", a.keyId());
+    AttestationPreimage n25Effect = bindingEffect(c, "enroll", "operator", a.keyId());
+    assertFixtureFailure(
+        fixture("N-25", n25Effect, a.keyId().bytes()),
+        () ->
+            history(a, b)
+                .accept(
+                    AttestationOperationKind.ENROLL_KEY, BigInteger.ONE, n25Request, n25Effect));
+
+    AttestationPreimage n26Request = bindingRequest(a2, "rollover", "operator", a2.keyId());
+    AttestationPreimage n26Effect = bindingEffect(a2, "rollover", "operator", a2.keyId());
+    assertFixtureFailure(
+        fixture("N-26", n26Effect, a2.keyId().bytes()),
+        () ->
+            history(a, b)
+                .accept(
+                    AttestationOperationKind.ROLLOVER_KEY, BigInteger.ONE, n26Request, n26Effect));
+
+    AttestationPreimage n27Request = revocationRequest(c);
+    AttestationPreimage n27Effect = revocationEffect(c);
+    AttestationRegistryHistory n27History = history(a, b);
+    n27History.accept(AttestationOperationKind.REVOKE_KEY, BigInteger.ONE, n27Request, n27Effect);
+    assertFixtureFailure(fixture("N-27", n27Effect, c.keyId().bytes()), n27History::registry);
+  }
+
+  @Test
+  void executesTheByteAddressedSystemCloseCapacityRowN20() {
+    TestCredential a = credential();
+    TestCredential b = credential();
+    TestCredential c = credential();
+    AttestationRegistryHistory history = history(a, b);
+    AttestationPreimage enrollmentRequest = bindingRequest(c, "enroll", "system", null);
+    AttestationPreimage enrollmentEffect = bindingEffect(c, "enroll", "system", null);
+    history.accept(
+        AttestationOperationKind.ENROLL_KEY,
+        BigInteger.valueOf(4),
+        enrollmentRequest,
+        enrollmentEffect);
+
+    UUID workflowId = UUID.fromString("40000000-0000-7000-8000-000000000001");
+    AttestationPreimage request =
+        AttestationPreimage.of(
+            List.of(
+                policyRequest(AttestationCapability.CLOSE_PERIOD, 2).records().getFirst(),
+                grantRequest(c, AttestationCapability.CLOSE_PERIOD, "grant"),
+                workflowRequest(workflowId, "interim-result-sweep", null, null)));
+    AttestationPreimage effect =
+        AttestationPreimage.of(
+            List.of(
+                policyEffect(AttestationCapability.CLOSE_PERIOD, 2).records().getFirst(),
+                grantEffect(c, AttestationCapability.CLOSE_PERIOD, "grant"),
+                workflowEffect(workflowId, "interim-result-sweep", null, null)));
+    history.accept(AttestationOperationKind.ALTER_POLICY, BigInteger.valueOf(5), request, effect);
+    byte[] rawSource = effect.encoded();
+    byte[] replacementBytes = new byte[] {0, 2};
+    AttestationStaticCorpus.Fixture fixture =
+        AttestationStaticCorpus.fixture(
+            "N-20",
+            rawSource,
+            new AttestationStaticCorpus.Mutation(
+                indexOf(rawSource, replacementBytes), replacementBytes),
+            new AttestationStaticCorpus.PolicyFold(
+                "CLOSE_PERIOD M=2 with only one system-purpose principal"),
+            AttestationStaticCorpus.VerificationScope.REGISTRY,
+            AttestationAuthorizationFailure.CAPABILITY_INVALID);
+
+    assertFixtureFailure(fixture, history::requireAcceptedState);
+  }
+
   private static AttestationRegistryEffectDecoder.DecodedFacts decode(
       AttestationOperationKind operationKind,
       AttestationPreimage request,
       AttestationPreimage effect) {
     return AttestationRegistryEffectDecoder.decode(operationKind, BigInteger.ONE, request, effect);
+  }
+
+  private static AttestationRegistryHistory history(TestCredential... founders) {
+    return AttestationRegistryHistory.genesis(
+        java.util.Arrays.stream(founders)
+            .map(
+                founder ->
+                    new AttestationFounder(
+                        founder.principalId(),
+                        founder.keyId(),
+                        AttestationSpki.of(founder.pair().getPublic().getEncoded())))
+            .toList());
+  }
+
+  private static AttestationStaticCorpus.Fixture fixture(
+      String id, AttestationPreimage source, byte[] replacementBytes) {
+    byte[] rawSource = source.encoded();
+    int offset = indexOf(rawSource, replacementBytes);
+    return AttestationStaticCorpus.fixture(
+        id,
+        rawSource,
+        new AttestationStaticCorpus.Mutation(offset, replacementBytes),
+        new AttestationStaticCorpus.PolicyFold("genesis authority plus the mutated registry fact"),
+        AttestationStaticCorpus.VerificationScope.REGISTRY,
+        AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID);
+  }
+
+  private static void assertFixtureFailure(
+      AttestationStaticCorpus.Fixture fixture, Runnable verification) {
+    assertTrue(fixture.rawSource().length > 0);
+    assertTrue(fixture.mutation().isRepresentedBy(fixture.rawSource()));
+    assertFailure(fixture.expectedFirstFailure(), verification);
+  }
+
+  private static byte[] lastByte(byte[] bytes) {
+    return new byte[] {bytes[bytes.length - 1]};
+  }
+
+  private static int indexOf(byte[] source, byte[] target) {
+    for (int offset = 0; offset <= source.length - target.length; offset++) {
+      if (java.util.Arrays.equals(
+          target, java.util.Arrays.copyOfRange(source, offset, offset + target.length))) {
+        return offset;
+      }
+    }
+    throw new IllegalArgumentException("Fixture mutation bytes are not present in the raw source.");
   }
 
   private static void assertDecoderFailure(AttestationPreimage effect) {

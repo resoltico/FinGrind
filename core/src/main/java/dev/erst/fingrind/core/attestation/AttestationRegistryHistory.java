@@ -19,22 +19,18 @@ final class AttestationRegistryHistory {
   private final List<AttestationPolicyRule> policyRules = new ArrayList<>();
   private final List<AttestationSystemWorkflowPolicy> workflowPolicies = new ArrayList<>();
 
-  private AttestationRegistryHistory(List<AttestationFounder> founders) {
+  private AttestationRegistryHistory(
+      List<AttestationFounder> founders,
+      AttestationGenesisInitialRegistry.InitialRegistry initialRegistry) {
     List<AttestationFounder> checkedFounders =
         List.copyOf(Objects.requireNonNull(founders, "founders"));
     for (AttestationFounder founder : checkedFounders) {
       bindings.add(founder.binding());
-      for (AttestationCapability capability : AttestationCapability.values()) {
-        grants.add(
-            new AttestationCapabilityGrant(
-                BigInteger.ZERO, founder.principalId(), capability, AttestationGrantState.GRANT));
-      }
     }
-    for (AttestationCapability capability : AttestationCapability.values()) {
-      policyRules.add(
-          new AttestationPolicyRule(
-              BigInteger.ZERO, capability, capability.genesisQuorum(checkedFounders.size())));
-    }
+    AttestationGenesisInitialRegistry.InitialRegistry checkedInitialRegistry =
+        Objects.requireNonNull(initialRegistry, "initialRegistry");
+    grants.addAll(checkedInitialRegistry.grants());
+    policyRules.addAll(checkedInitialRegistry.policyRules());
   }
 
   private AttestationRegistryHistory(AttestationRegistryHistory source) {
@@ -46,7 +42,16 @@ final class AttestationRegistryHistory {
   }
 
   static AttestationRegistryHistory genesis(List<AttestationFounder> founders) {
-    return new AttestationRegistryHistory(founders);
+    List<AttestationFounder> checkedFounders =
+        List.copyOf(Objects.requireNonNull(founders, "founders"));
+    return new AttestationRegistryHistory(checkedFounders, defaults(checkedFounders));
+  }
+
+  static AttestationRegistryHistory genesis(AttestationGenesisAuthorizationContext genesis) {
+    AttestationGenesisAuthorizationContext checkedGenesis =
+        Objects.requireNonNull(genesis, "genesis");
+    return new AttestationRegistryHistory(
+        checkedGenesis.founders(), checkedGenesis.initialRegistry());
   }
 
   AttestationRegistry registry() {
@@ -84,13 +89,35 @@ final class AttestationRegistryHistory {
       BigInteger operationOrder,
       AttestationPreimage requestPreimage,
       AttestationPreimage effectPreimage) {
-    AttestationRegistryEffectDecoder.DecodedFacts decoded =
-        AttestationRegistryEffectDecoder.decode(
-            operationKind, operationOrder, requestPreimage, effectPreimage);
-    bindings.addAll(decoded.bindings());
-    revocations.addAll(decoded.revocations());
-    grants.addAll(decoded.grants());
-    policyRules.addAll(decoded.policyRules());
-    workflowPolicies.addAll(decoded.workflowPolicies());
+    try {
+      AttestationRegistryEffectDecoder.DecodedFacts decoded =
+          AttestationRegistryEffectDecoder.decode(
+              operationKind, operationOrder, requestPreimage, effectPreimage);
+      bindings.addAll(decoded.bindings());
+      revocations.addAll(decoded.revocations());
+      grants.addAll(decoded.grants());
+      policyRules.addAll(decoded.policyRules());
+      workflowPolicies.addAll(decoded.workflowPolicies());
+    } catch (RuntimeException exception) {
+      throw AttestationFormatFailure.classify(
+          exception, AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID);
+    }
+  }
+
+  private static AttestationGenesisInitialRegistry.InitialRegistry defaults(
+      List<AttestationFounder> founders) {
+    List<AttestationCapabilityGrant> grants = new ArrayList<>();
+    List<AttestationPolicyRule> policyRules = new ArrayList<>();
+    for (AttestationCapability capability : AttestationCapability.values()) {
+      policyRules.add(
+          new AttestationPolicyRule(
+              BigInteger.ZERO, capability, capability.genesisQuorum(founders.size())));
+      for (AttestationFounder founder : founders) {
+        grants.add(
+            new AttestationCapabilityGrant(
+                BigInteger.ZERO, founder.principalId(), capability, AttestationGrantState.GRANT));
+      }
+    }
+    return new AttestationGenesisInitialRegistry.InitialRegistry(policyRules, grants);
   }
 }

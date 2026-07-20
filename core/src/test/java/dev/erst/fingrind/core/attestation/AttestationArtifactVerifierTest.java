@@ -20,7 +20,7 @@ import org.junit.jupiter.api.Test;
 /** Proves that external artifacts bind to the book reconstructed from their own snapshot bytes. */
 class AttestationArtifactVerifierTest {
   @Test
-  void verifiesAManifestAgainstItsSnapshotChainAndAReceiptAgainstTheSameHistoricalHead() {
+  void verifiesAManifestAgainstItsSnapshotChainAndReportsANonIndependentReceipt() {
     TestCredential founder = credential();
     AttestationBook book = book(founder);
     AttestationBookVerification verification = AttestationBookVerifier.verify(book);
@@ -31,10 +31,20 @@ class AttestationArtifactVerifierTest {
         AttestationArtifactVerifier.verifyArtifact(artifact, snapshotDecoder(snapshot, book));
     AttestationReceiptVerification receiptVerification =
         AttestationArtifactVerifier.verifyReceipt(
-            receipt(founder, verification), artifactVerification.snapshotVerification(), true);
+            receipt(founder, verification),
+            artifactVerification.snapshotVerification(),
+            AttestationReceiptRetention.WITHIN_BOOK_TRUST_BOUNDARY);
+    AttestationReceiptVerification independentReceiptVerification =
+        AttestationArtifactVerifier.verifyReceipt(
+            receipt(founder, verification),
+            artifactVerification.snapshotVerification(),
+            AttestationReceiptRetention.INDEPENDENT);
 
     assertEquals(verification.head(), artifactVerification.snapshotVerification().head());
-    assertTrue(receiptVerification.retainedWithinTrustBoundary());
+    assertEquals(
+        List.of(AttestationReceiptFinding.NOT_INDEPENDENT), receiptVerification.findings());
+    assertEquals("receipt-not-independent", receiptVerification.findings().getFirst().code());
+    assertEquals(List.of(), independentReceiptVerification.findings());
   }
 
   @Test
@@ -53,6 +63,31 @@ class AttestationArtifactVerifierTest {
   }
 
   @Test
+  void rejectsManifestWhoseSnapshotContainsOperationsPastItsDeclaredSourceHead() {
+    TestCredential founder = credential();
+    AttestationBook snapshotBook = book(founder);
+    AttestationBookVerification verification = AttestationBookVerifier.verify(snapshotBook);
+    AttestationBookVerification genesisVerification =
+        AttestationBookVerifier.verify(
+            new AttestationBook(List.of(snapshotBook.operations().getFirst())));
+    byte[] snapshot = new byte[] {1, 2, 3, 4};
+    byte[] artifact =
+        artifact(
+            founder,
+            verification.bookId(),
+            genesisVerification.headOrder(),
+            genesisVerification.head(),
+            snapshot,
+            AttestationHash.sha256(snapshot));
+
+    assertFailure(
+        AttestationAuthorizationFailure.MANIFEST_INVALID,
+        () ->
+            AttestationArtifactVerifier.verifyArtifact(
+                artifact, snapshotDecoder(snapshot, snapshotBook)));
+  }
+
+  @Test
   void rejectsReceiptThatNamesTheRightBookButTheWrongHistoricalHead() {
     TestCredential founder = credential();
     AttestationBookVerification verification = AttestationBookVerifier.verify(book(founder));
@@ -67,7 +102,7 @@ class AttestationArtifactVerifierTest {
         AttestationAuthorizationFailure.RECEIPT_INVALID,
         () ->
             AttestationArtifactVerifier.verifyReceipt(
-                envelope(payload, founder), verification, false));
+                envelope(payload, founder), verification, AttestationReceiptRetention.INDEPENDENT));
   }
 
   @Test
@@ -92,12 +127,16 @@ class AttestationArtifactVerifierTest {
         AttestationAuthorizationFailure.RECEIPT_INVALID,
         () ->
             AttestationArtifactVerifier.verifyReceipt(
-                envelope(wrongBook, founder), verification, false));
+                envelope(wrongBook, founder),
+                verification,
+                AttestationReceiptRetention.INDEPENDENT));
     assertFailure(
         AttestationAuthorizationFailure.RECEIPT_INVALID,
         () ->
             AttestationArtifactVerifier.verifyReceipt(
-                envelope(futureOrder, founder), verification, false));
+                envelope(futureOrder, founder),
+                verification,
+                AttestationReceiptRetention.INDEPENDENT));
   }
 
   @Test
@@ -119,6 +158,24 @@ class AttestationArtifactVerifierTest {
     assertManifestFailure(artifact, snapshot, book, manifestBookIdOffset(snapshot));
     assertManifestFailure(artifact, snapshot, book, manifestSourceOrderOffset(snapshot));
     assertManifestFailure(artifact, snapshot, book, manifestSourceHeadOffset(snapshot));
+  }
+
+  @Test
+  void executesTheByteAddressedContainerRowsN14aThroughN14d() {
+    TestCredential founder = credential();
+    AttestationBook book = book(founder);
+    AttestationBookVerification verification = AttestationBookVerifier.verify(book);
+    byte[] snapshot = new byte[] {1, 2, 3, 4};
+    byte[] artifact = artifact(founder, verification, snapshot, AttestationHash.sha256(snapshot));
+
+    assertManifestFixture(
+        fixture("N-14a", artifact, manifestSnapshotDigestOffset(snapshot)), snapshot, book);
+    assertManifestFixture(
+        fixture("N-14b", artifact, manifestSourceHeadOffset(snapshot)), snapshot, book);
+    assertManifestFixture(
+        fixture("N-14c", artifact, manifestBookIdOffset(snapshot)), snapshot, book);
+    assertManifestFixture(
+        fixture("N-14d", artifact, trailerSnapshotLengthOffset(artifact)), snapshot, book);
   }
 
   private static void assertManifestFailure(
@@ -143,17 +200,63 @@ class AttestationArtifactVerifierTest {
     return manifestSourceOrderOffset(snapshot) + Long.BYTES;
   }
 
+  private static int manifestSnapshotDigestOffset(byte[] snapshot) {
+    return manifestSourceHeadOffset(snapshot) + AttestationHash.BYTE_LENGTH;
+  }
+
+  private static int trailerSnapshotLengthOffset(byte[] artifact) {
+    return artifact.length - 21 + 9;
+  }
+
+  private static AttestationStaticCorpus.Fixture fixture(String id, byte[] source, int offset) {
+    byte[] mutated = source.clone();
+    mutated[offset] ^= 1;
+    return AttestationStaticCorpus.fixture(
+        id,
+        mutated,
+        new AttestationStaticCorpus.Mutation(offset, new byte[] {mutated[offset]}),
+        new AttestationStaticCorpus.PolicyFold("BACKUP M=1 at the snapshot head"),
+        AttestationStaticCorpus.VerificationScope.ARTIFACT,
+        AttestationAuthorizationFailure.MANIFEST_INVALID);
+  }
+
+  private static void assertManifestFixture(
+      AttestationStaticCorpus.Fixture fixture, byte[] snapshot, AttestationBook book) {
+    assertTrue(fixture.mutation().isRepresentedBy(fixture.rawSource()));
+    assertFailure(
+        fixture.expectedFirstFailure(),
+        () ->
+            AttestationArtifactVerifier.verifyArtifact(
+                fixture.rawSource(), snapshotDecoder(snapshot, book)));
+  }
+
   private static byte[] artifact(
       TestCredential founder,
       AttestationBookVerification verification,
       byte[] snapshot,
       AttestationHash snapshotDigest) {
+    return artifact(
+        founder,
+        verification.bookId(),
+        verification.headOrder(),
+        verification.head(),
+        snapshot,
+        snapshotDigest);
+  }
+
+  private static byte[] artifact(
+      TestCredential founder,
+      UUID bookId,
+      BigInteger sourceOrder,
+      AttestationHash sourceHead,
+      byte[] snapshot,
+      AttestationHash snapshotDigest) {
     AttestationBackupManifestPayload payload =
         new AttestationBackupManifestPayload(
-            verification.bookId(),
+            bookId,
             UUID.fromString("ffeeddcc-bbaa-9988-7766-554433221100"),
-            verification.headOrder(),
-            verification.head(),
+            sourceOrder,
+            sourceHead,
             snapshotDigest);
     AttestationEnvelope<AttestationBackupManifestPayload> manifest =
         AttestationEnvelope.of(
