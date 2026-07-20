@@ -76,7 +76,7 @@ final class AttestationEd25519 {
 
   static boolean isEd25519(PublicKey publicKey) {
     try {
-      publicKey(Objects.requireNonNull(publicKey, "publicKey").getEncoded());
+      canonicalEd25519PublicKey(publicKey);
       return true;
     } catch (IllegalArgumentException exception) {
       return false;
@@ -84,10 +84,11 @@ final class AttestationEd25519 {
   }
 
   static AttestationHash keyId(PublicKey publicKey) {
-    if (!isEd25519(Objects.requireNonNull(publicKey, "publicKey"))) {
-      throw new IllegalArgumentException("Attestation public key must be Ed25519.");
+    try {
+      return AttestationHash.sha256(canonicalEd25519PublicKey(publicKey).getEncoded());
+    } catch (IllegalArgumentException exception) {
+      throw new IllegalArgumentException("Attestation public key must be Ed25519.", exception);
     }
-    return AttestationHash.sha256(publicKey.getEncoded());
   }
 
   static AttestationHash sha256(byte[] value) {
@@ -111,6 +112,14 @@ final class AttestationEd25519 {
     if (!java.util.Arrays.equals(encodedSpki, publicKey.getEncoded())) {
       throw new IllegalArgumentException("Attestation public key must use canonical DER SPKI.");
     }
+  }
+
+  private static PublicKey canonicalEd25519PublicKey(PublicKey publicKey) {
+    byte[] encodedSpki = Objects.requireNonNull(publicKey, "publicKey").getEncoded();
+    if (encodedSpki == null) {
+      throw new IllegalArgumentException("Attestation public key must be an Ed25519 DER SPKI.");
+    }
+    return publicKey(encodedSpki.clone());
   }
 
   /** Produces a JCA digest for deterministic provider-failure testing. */

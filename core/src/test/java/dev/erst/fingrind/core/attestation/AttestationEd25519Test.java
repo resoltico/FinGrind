@@ -1,5 +1,6 @@
 package dev.erst.fingrind.core.attestation;
 
+import static dev.erst.fingrind.core.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -12,12 +13,20 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.attribute.AclEntry;
+import java.nio.file.attribute.AclEntryPermission;
+import java.nio.file.attribute.AclEntryType;
+import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.UserPrincipal;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 import javax.crypto.Cipher;
 import org.junit.jupiter.api.Assumptions;
@@ -91,6 +100,25 @@ class AttestationEd25519Test {
                           throw new NoSuchAlgorithmException("test");
                         }))
             .getMessage());
+  }
+
+  @Test
+  void rejectsUnencodableKeysAndHashesOnlyTheCanonicalSpkiItValidated() {
+    var pair = AttestationEd25519.generateKeyPair();
+    assertFalse(AttestationEd25519.isEd25519(new UnencodablePublicKey()));
+    assertFalse(
+        AttestationEd25519.verifies(
+            new UnencodablePublicKey(),
+            new byte[0],
+            AttestationEd25519.sign(pair.getPrivate(), new byte[0])));
+    assertThrows(
+        IllegalArgumentException.class, () -> AttestationEd25519.keyId(new UnencodablePublicKey()));
+
+    PublicKey changingKey =
+        new ChangingEncodedPublicKey(pair.getPublic().getEncoded(), new byte[] {1, 2, 3});
+    assertEquals(
+        AttestationHash.sha256(pair.getPublic().getEncoded()),
+        AttestationEd25519.keyId(changingKey));
   }
 
   @Test
@@ -263,13 +291,136 @@ class AttestationEd25519Test {
                         ByteBuffer.wrap(new byte[] {1}), ignored -> 0))
             .getMessage());
 
+    AtomicReference<Path> aclConfiguredPath = new AtomicReference<>();
+    UserPrincipal owner = () -> "test-owner";
+    RecordingAclFileAttributeView appliedAcl = new RecordingAclFileAttributeView(true);
     Path fallbackPath =
         AttestationKeyFilePublication.createOwnerOnlyTemporaryFile(
             temporaryDirectory,
             ignored -> {
               throw new UnsupportedOperationException("test");
-            });
+            },
+            path -> {
+              aclConfiguredPath.set(path);
+              return appliedAcl;
+            },
+            ignored -> owner);
     assertTrue(Files.isRegularFile(fallbackPath));
+    assertEquals(fallbackPath, aclConfiguredPath.get());
+    assertEquals(owner, appliedAcl.getAcl().getFirst().principal());
+
+    AtomicReference<Path> rejectedFallbackPath = new AtomicReference<>();
+    IOException aclFailure =
+        assertThrows(
+            IOException.class,
+            () ->
+                AttestationKeyFilePublication.createOwnerOnlyTemporaryFile(
+                    temporaryDirectory,
+                    ignored -> {
+                      throw new UnsupportedOperationException("test");
+                    },
+                    path -> {
+                      rejectedFallbackPath.set(path);
+                      return new RecordingAclFileAttributeView(false);
+                    },
+                    ignored -> owner));
+    assertEquals(
+        "Attestation key files require owner-only filesystem permissions.",
+        aclFailure.getMessage());
+    assertFalse(Files.exists(rejectedFallbackPath.get()));
+  }
+
+  @Test
+  void keyFilePublicationKeepsCommittedKeysWhenStagingCleanupFails() throws Exception {
+    Path keyPath = temporaryDirectory.resolve("signing.pk8");
+    byte[] encryptedPrivateKey = new byte[] {1, 2, 3};
+
+    AttestationKeyFilePublication.writeNewKeyFile(
+        keyPath,
+        encryptedPrivateKey,
+        Files::write,
+        Files::createLink,
+        ignored -> {
+          throw new IOException("simulated post-publication cleanup failure");
+        });
+
+    assertArrayEquals(encryptedPrivateKey, Files.readAllBytes(keyPath));
+    assertEquals(1L, directoryEntryCount());
+  }
+
+  @Test
+  void keyFilePublicationFailsClosedWhenNoAclViewCanSecureAFallbackStage() {
+    IOException exception =
+        assertThrows(
+            IOException.class,
+            () ->
+                AttestationKeyFilePublication.configureOwnerOnlyAcl(
+                    temporaryDirectory,
+                    ignored -> nullOf(),
+                    ignored -> {
+                      throw new AssertionError("Owner lookup must not run without an ACL view.");
+                    }));
+
+    assertEquals(
+        "Attestation key files require owner-only filesystem permissions.", exception.getMessage());
+  }
+
+  @Test
+  void keyFilePublicationReadsThePlatformAclAndOwner() throws Exception {
+    Path candidate = Files.createTempFile(temporaryDirectory, "acl-", ".tmp");
+    try {
+      assertTrue(AttestationKeyFilePublication.filesystemOwner(candidate).getName().length() > 0);
+      AttestationKeyFilePublication.filesystemAclView(candidate);
+    } finally {
+      Files.deleteIfExists(candidate);
+    }
+  }
+
+  @Test
+  void keyFilePublicationRetainsCommittedKeyWhenEveryStagingCleanupAttemptFails() throws Exception {
+    Path keyPath = temporaryDirectory.resolve("signing.pk8");
+    byte[] encryptedPrivateKey = new byte[] {1, 2, 3};
+
+    AttestationKeyFilePublication.writeNewKeyFile(
+        keyPath,
+        encryptedPrivateKey,
+        Files::write,
+        Files::createLink,
+        ignored -> {
+          throw new IOException("simulated post-publication cleanup failure");
+        },
+        ignored -> {
+          throw new IOException("simulated retry cleanup failure");
+        });
+
+    assertArrayEquals(encryptedPrivateKey, Files.readAllBytes(keyPath));
+    assertEquals(2L, directoryEntryCount());
+  }
+
+  @Test
+  void keyFilePublicationAppliesAndVerifiesOwnerOnlyAcls() throws Exception {
+    UserPrincipal owner = () -> "test-owner";
+    RecordingAclFileAttributeView appliedAcl = new RecordingAclFileAttributeView(true);
+
+    AttestationKeyFilePublication.configureOwnerOnlyAcl(
+        temporaryDirectory, ignored -> appliedAcl, ignored -> owner);
+
+    assertEquals(1, appliedAcl.getAcl().size());
+    AclEntry entry = appliedAcl.getAcl().getFirst();
+    assertEquals(AclEntryType.ALLOW, entry.type());
+    assertEquals(owner, entry.principal());
+    assertEquals(Set.copyOf(EnumSet.allOf(AclEntryPermission.class)), entry.permissions());
+
+    IOException mismatch =
+        assertThrows(
+            IOException.class,
+            () ->
+                AttestationKeyFilePublication.configureOwnerOnlyAcl(
+                    temporaryDirectory,
+                    ignored -> new RecordingAclFileAttributeView(false),
+                    ignored -> owner));
+    assertEquals(
+        "Attestation key files require owner-only filesystem permissions.", mismatch.getMessage());
   }
 
   @Test
@@ -380,5 +531,91 @@ class AttestationEd25519Test {
     public byte[] getEncoded() {
       return encoded.clone();
     }
+  }
+
+  /** Deliberately unencodable public key used to prove boolean validation fails closed. */
+  private static final class UnencodablePublicKey implements PublicKey {
+    private static final long serialVersionUID = 1L;
+
+    @Override
+    public String getAlgorithm() {
+      return "Ed25519";
+    }
+
+    @Override
+    public String getFormat() {
+      return "X.509";
+    }
+
+    @Override
+    public byte[] getEncoded() {
+      return nullOf();
+    }
+  }
+
+  /** Deliberately changes its encoding to prove the key ID uses the one validated SPKI. */
+  private static final class ChangingEncodedPublicKey implements PublicKey {
+    private static final long serialVersionUID = 1L;
+
+    private final byte[] firstEncoding;
+    private final byte[] laterEncoding;
+    private boolean firstRead = true;
+
+    private ChangingEncodedPublicKey(byte[] firstEncoding, byte[] laterEncoding) {
+      this.firstEncoding = firstEncoding.clone();
+      this.laterEncoding = laterEncoding.clone();
+    }
+
+    @Override
+    public String getAlgorithm() {
+      return "Ed25519";
+    }
+
+    @Override
+    public String getFormat() {
+      return "X.509";
+    }
+
+    @Override
+    public byte[] getEncoded() {
+      if (firstRead) {
+        firstRead = false;
+        return firstEncoding.clone();
+      }
+      return laterEncoding.clone();
+    }
+  }
+
+  /** In-memory ACL view used to exercise the cross-platform owner-only ACL boundary. */
+  private static final class RecordingAclFileAttributeView implements AclFileAttributeView {
+    private final boolean preservesWrittenAcl;
+    private List<AclEntry> acl = List.of();
+
+    private RecordingAclFileAttributeView(boolean preservesWrittenAcl) {
+      this.preservesWrittenAcl = preservesWrittenAcl;
+    }
+
+    @Override
+    public String name() {
+      return "acl";
+    }
+
+    @Override
+    public List<AclEntry> getAcl() {
+      return acl;
+    }
+
+    @Override
+    public void setAcl(List<AclEntry> acl) {
+      this.acl = preservesWrittenAcl ? List.copyOf(acl) : List.of();
+    }
+
+    @Override
+    public UserPrincipal getOwner() {
+      return () -> "test-owner";
+    }
+
+    @Override
+    public void setOwner(UserPrincipal owner) {}
   }
 }

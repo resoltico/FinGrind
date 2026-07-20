@@ -17,7 +17,6 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.security.SecureRandom;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -241,7 +240,7 @@ class SqliteProtectedBookStagingFaultInjectionTest
         duplicateSourceKey(sourceKeyPath).generate(stagedKeyPath);
         return;
       }
-      SqliteBookKeyFileGenerator.generate(stagedKeyPath, deterministicRandom());
+      SqliteBookKeyFileGenerator.generate(stagedKeyPath);
     };
   }
 
@@ -255,19 +254,6 @@ class SqliteProtectedBookStagingFaultInjectionTest
             StandardCopyOption.COPY_ATTRIBUTES);
       } catch (IOException exception) {
         throw new UncheckedIOException(exception);
-      }
-    };
-  }
-
-  private static SecureRandom deterministicRandom() {
-    return new SecureRandom() {
-      private static final long serialVersionUID = 1L;
-
-      @Override
-      public void nextBytes(byte[] bytes) {
-        for (int index = 0; index < bytes.length; index++) {
-          bytes[index] = (byte) (index + 1);
-        }
       }
     };
   }

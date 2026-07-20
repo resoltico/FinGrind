@@ -78,6 +78,16 @@ public final class CryptographicPrimitives {
     return new SecureRandom();
   }
 
+  /** Returns newly generated cryptographically secure bytes. */
+  public static byte[] secureBytes(int byteCount) {
+    if (byteCount < 0) {
+      throw new IllegalArgumentException("byteCount must not be negative.");
+    }
+    byte[] bytes = new byte[byteCount];
+    secureRandom().nextBytes(bytes);
+    return bytes;
+  }
+
   private static MessageDigest sha256Digest() throws NoSuchAlgorithmException {
     return MessageDigest.getInstance("SHA-256");
   }

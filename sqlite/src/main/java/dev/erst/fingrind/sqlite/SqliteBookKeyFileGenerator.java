@@ -14,14 +14,12 @@ import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Objects;
-import java.util.random.RandomGenerator;
 
 /** Creates new owner-only UTF-8 key files for protected FinGrind books. */
 public final class SqliteBookKeyFileGenerator {
   static final String GENERATED_ENCODING = "base64url-no-padding";
   static final int GENERATED_ENTROPY_BITS = 256;
   private static final int GENERATED_RANDOM_BYTES = GENERATED_ENTROPY_BITS / 8;
-  private static final RandomGenerator SECURE_RANDOM = CryptographicPrimitives.secureRandom();
 
   /** Internal seam for materializing a newly created key file during generator tests. */
   @FunctionalInterface
@@ -53,35 +51,18 @@ public final class SqliteBookKeyFileGenerator {
 
   /** Creates one new key file and returns the explicit accepted/rejected result. */
   public static ContractDecision<GeneratedBookKeyFile> generateDecision(Path bookKeyFilePath) {
-    return generateDecision(
-        bookKeyFilePath, SECURE_RANDOM, SqliteBookKeyFileGenerator::writeAndVerifyFile);
-  }
-
-  static GeneratedBookKeyFile generate(Path bookKeyFilePath, RandomGenerator secureRandom) {
-    return generateDecision(bookKeyFilePath, secureRandom).requireAccepted();
+    return generateDecision(bookKeyFilePath, SqliteBookKeyFileGenerator::writeAndVerifyFile);
   }
 
   static GeneratedBookKeyFile generate(
-      Path bookKeyFilePath,
-      RandomGenerator secureRandom,
-      GeneratedKeyFileMaterializer generatedKeyFileMaterializer) {
-    return generateDecision(bookKeyFilePath, secureRandom, generatedKeyFileMaterializer)
-        .requireAccepted();
+      Path bookKeyFilePath, GeneratedKeyFileMaterializer generatedKeyFileMaterializer) {
+    return generateDecision(bookKeyFilePath, generatedKeyFileMaterializer).requireAccepted();
   }
 
   static ContractDecision<GeneratedBookKeyFile> generateDecision(
-      Path bookKeyFilePath, RandomGenerator secureRandom) {
-    return generateDecision(
-        bookKeyFilePath, secureRandom, SqliteBookKeyFileGenerator::writeAndVerifyFile);
-  }
-
-  static ContractDecision<GeneratedBookKeyFile> generateDecision(
-      Path bookKeyFilePath,
-      RandomGenerator secureRandom,
-      GeneratedKeyFileMaterializer generatedKeyFileMaterializer) {
+      Path bookKeyFilePath, GeneratedKeyFileMaterializer generatedKeyFileMaterializer) {
     return generateDecision(
         bookKeyFilePath,
-        secureRandom,
         generatedKeyFileMaterializer,
         SqliteBookKeyFileGenerator::ensureParentDirectory,
         SqliteBookKeyFileGenerator::createStageFile);
@@ -89,11 +70,9 @@ public final class SqliteBookKeyFileGenerator {
 
   static ContractDecision<GeneratedBookKeyFile> generateDecision(
       Path bookKeyFilePath,
-      RandomGenerator secureRandom,
       GeneratedKeyFileMaterializer generatedKeyFileMaterializer,
       SecureParentDirectoryEnsurer secureParentDirectoryEnsurer,
       EmptyKeyFileCreator emptyKeyFileCreator) {
-    Objects.requireNonNull(secureRandom, "secureRandom");
     Objects.requireNonNull(generatedKeyFileMaterializer, "generatedKeyFileMaterializer");
     Objects.requireNonNull(secureParentDirectoryEnsurer, "secureParentDirectoryEnsurer");
     Objects.requireNonNull(emptyKeyFileCreator, "emptyKeyFileCreator");
@@ -103,7 +82,7 @@ public final class SqliteBookKeyFileGenerator {
     } catch (SqliteCallerPathContractException exception) {
       return ContractDecision.rejected(SqliteCallerPathFailureMapper.invalidBookKeyFile(exception));
     }
-    byte[] encodedPassphrase = encodedPassphraseBytes(secureRandom);
+    byte[] encodedPassphrase = encodedPassphraseBytes();
     SqliteOwnedStagedArtifact stagedArtifact = null;
     boolean published = false;
     try {
@@ -195,10 +174,9 @@ public final class SqliteBookKeyFileGenerator {
     }
   }
 
-  private static byte[] encodedPassphraseBytes(RandomGenerator secureRandom) {
-    byte[] randomBytes = new byte[GENERATED_RANDOM_BYTES];
+  private static byte[] encodedPassphraseBytes() {
+    byte[] randomBytes = CryptographicPrimitives.secureBytes(GENERATED_RANDOM_BYTES);
     try {
-      secureRandom.nextBytes(randomBytes);
       return Base64.getUrlEncoder().withoutPadding().encode(randomBytes);
     } finally {
       Arrays.fill(randomBytes, (byte) 0);

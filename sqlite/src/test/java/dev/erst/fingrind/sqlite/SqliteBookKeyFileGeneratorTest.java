@@ -18,7 +18,6 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
-import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -48,8 +47,7 @@ class SqliteBookKeyFileGeneratorTest {
   @Test
   void generate_createsOneNewSecureUtf8KeyFile() throws Exception {
     Path keyFile = tempDirectory.resolve("keys").resolve("acme.book-key");
-    GeneratedBookKeyFile generatedKeyFile =
-        SqliteBookKeyFileGenerator.generate(keyFile, deterministicRandom());
+    GeneratedBookKeyFile generatedKeyFile = SqliteBookKeyFileGenerator.generate(keyFile);
     assertEquals(keyFile.toAbsolutePath().normalize(), generatedKeyFile.bookKeyFilePath());
     assertEquals("base64url-no-padding", generatedKeyFile.encoding());
     assertEquals(256, generatedKeyFile.entropyBits());
@@ -87,7 +85,7 @@ class SqliteBookKeyFileGeneratorTest {
         keyFile.resolveSibling(keyFile.getFileName() + ".generated-key-unowned.tmp");
     Files.writeString(unownedLookalike, "unowned", StandardCharsets.UTF_8);
 
-    SqliteBookKeyFileGenerator.generate(keyFile, deterministicRandom());
+    SqliteBookKeyFileGenerator.generate(keyFile);
 
     assertTrue(Files.isRegularFile(keyFile));
     assertFalse(Files.exists(interruptedStage.stagedPath()));
@@ -105,7 +103,7 @@ class SqliteBookKeyFileGeneratorTest {
   @Test
   void generate_rejectsExistingKeyFiles() throws Exception {
     Path keyFile = tempDirectory.resolve("existing.book-key");
-    SqliteBookKeyFileGenerator.generate(keyFile, deterministicRandom());
+    SqliteBookKeyFileGenerator.generate(keyFile);
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class, () -> SqliteBookKeyFileGenerator.generate(keyFile));
@@ -117,7 +115,7 @@ class SqliteBookKeyFileGeneratorTest {
   @Test
   void generateDecision_rejectsOneRootTargetWithoutAttemptingParentStageRecovery() {
     ContractDecision<GeneratedBookKeyFile> decision =
-        SqliteBookKeyFileGenerator.generateDecision(Path.of("/"), deterministicRandom());
+        SqliteBookKeyFileGenerator.generateDecision(Path.of("/"));
 
     ContractFailureException exception =
         assertThrows(ContractFailureException.class, decision::requireAccepted);
@@ -131,7 +129,6 @@ class SqliteBookKeyFileGeneratorTest {
     GeneratedBookKeyFile generatedKeyFile =
         SqliteBookKeyFileGenerator.generate(
             keyFile,
-            deterministicRandom(),
             (normalizedPath, encodedPassphrase) -> Files.write(normalizedPath, encodedPassphrase));
     assertEquals(keyFile.toAbsolutePath().normalize(), generatedKeyFile.bookKeyFilePath());
     assertTrue(Files.isRegularFile(keyFile));
@@ -145,7 +142,7 @@ class SqliteBookKeyFileGeneratorTest {
     ContractFailureException exception =
         assertThrows(
             ContractFailureException.class,
-            () -> SqliteBookKeyFileGenerator.generate(nestedKeyFile, deterministicRandom()));
+            () -> SqliteBookKeyFileGenerator.generate(nestedKeyFile));
     assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, exception.failure().descriptor());
     assertTrue(exception.failure().message().contains("non-directory entry or symlink"));
     assertFalse(Files.exists(nestedKeyFile));
@@ -163,10 +160,7 @@ class SqliteBookKeyFileGeneratorTest {
       ContractFailureException exception =
           assertThrows(
               ContractFailureException.class,
-              () ->
-                  SqliteBookKeyFileGenerator.generateDecision(
-                          unsupportedPath, deterministicRandom())
-                      .requireAccepted());
+              () -> SqliteBookKeyFileGenerator.generateDecision(unsupportedPath).requireAccepted());
 
       assertEquals(
           ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, exception.failure().descriptor());
@@ -183,7 +177,6 @@ class SqliteBookKeyFileGeneratorTest {
             () ->
                 SqliteBookKeyFileGenerator.generate(
                     keyFile,
-                    deterministicRandom(),
                     (normalizedPath, encodedPassphrase) -> {
                       Files.write(normalizedPath, encodedPassphrase);
                       throw new IOException("simulated materialization failure");
@@ -208,7 +201,6 @@ class SqliteBookKeyFileGeneratorTest {
             () ->
                 SqliteBookKeyFileGenerator.generateDecision(
                         keyFile,
-                        deterministicRandom(),
                         (normalizedPath, encodedPassphrase) -> {
                           throw new SqliteCallerPathContractException(
                               normalizedPath,
@@ -239,7 +231,6 @@ class SqliteBookKeyFileGeneratorTest {
             () ->
                 SqliteBookKeyFileGenerator.generateDecision(
                         keyFile,
-                        deterministicRandom(),
                         (normalizedPath, encodedPassphrase) -> {},
                         normalizedPath -> {
                           throw new IOException("parent boom");
@@ -263,7 +254,6 @@ class SqliteBookKeyFileGeneratorTest {
     ContractDecision<GeneratedBookKeyFile> decision =
         SqliteBookKeyFileGenerator.generateDecision(
             keyFile,
-            deterministicRandom(),
             (normalizedPath, encodedPassphrase) -> {
               throw new AssertionError("The materializer must not run after stage rejection.");
             },
@@ -369,19 +359,6 @@ class SqliteBookKeyFileGeneratorTest {
             IllegalArgumentException.class,
             () -> new GeneratedBookKeyFile(absentPath, "base64url-no-padding", 256, " "));
     assertEquals("permissions must not be blank.", blankPermissionsException.getMessage());
-  }
-
-  private static SecureRandom deterministicRandom() {
-    return new SecureRandom() {
-      private static final long serialVersionUID = 1L;
-
-      @Override
-      public void nextBytes(byte[] bytes) {
-        for (int index = 0; index < bytes.length; index++) {
-          bytes[index] = (byte) index;
-        }
-      }
-    };
   }
 
   private static boolean supportsPosix(Path path) {

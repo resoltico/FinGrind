@@ -590,6 +590,7 @@ public final class CryptographicPrimitives {
   public static String sha256Hex(InputStream inputStream) throws IOException;
   public static boolean constantTimeEquals(byte[] left, byte[] right);
   public static RandomGenerator secureRandom();
+  public static byte[] secureBytes(int byteCount);
 }
 ```
 
@@ -600,7 +601,8 @@ public final class CryptographicPrimitives {
 - Comparison: `constantTimeEquals(...)` delegates to JDK constant-time byte comparison and returns
   `false` for unequal values
 - Randomness: `secureRandom()` returns a `RandomGenerator` backed by secure JDK entropy without
-  exposing a JCA random type to callers
+  exposing a JCA random type to callers; `secureBytes(byteCount)` returns exactly the requested
+  count of newly generated secure bytes and rejects a negative count
 - Failure: an unavailable SHA-256 implementation raises `IllegalStateException`; stream read
   failures propagate as `IOException`
 - Compatibility: exported core API; only the attestation crypto seam may directly use the guarded

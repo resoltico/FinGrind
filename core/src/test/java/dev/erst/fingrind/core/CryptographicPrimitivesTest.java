@@ -43,6 +43,12 @@ class CryptographicPrimitivesTest {
   @Test
   void secureRandomProvidesAnEntropySource() {
     assertNotNull(CryptographicPrimitives.secureRandom());
+    assertEquals(32, CryptographicPrimitives.secureBytes(32).length);
+    assertEquals(0, CryptographicPrimitives.secureBytes(0).length);
+    assertEquals(
+        "byteCount must not be negative.",
+        assertThrows(IllegalArgumentException.class, () -> CryptographicPrimitives.secureBytes(-1))
+            .getMessage());
   }
 
   @Test
