@@ -48,6 +48,38 @@ class AttestationGenesisBootstrapValidationTest {
             AttestationHash.sha256(new byte[] {2})),
         request,
         effect);
+    assertGenesisFailure(
+        new AttestationOperationPayload(
+            BOOK_ID,
+            BigInteger.ZERO,
+            AttestationOperationKind.BOOK_GENESIS.wireToken(),
+            ZERO_HEAD,
+            Instant.parse("2026-07-20T00:00:00Z"),
+            AttestationHash.sha256(new byte[] {3}),
+            AttestationHash.sha256(effect.encoded())),
+        request,
+        effect);
+
+    AttestationPreimage commandKindMismatch =
+        replaceFirstRecord(
+            request,
+            0x0100,
+            record ->
+                withField(
+                    record,
+                    0,
+                    AttestationField.present(AttestationTextFieldValue.token("post-entry"))));
+    assertGenesisFailure(commandKindMismatch, effect);
+    AttestationPreimage unknownSourceRequest =
+        replaceFirstRecord(
+            request,
+            0x0100,
+            record ->
+                withField(
+                    record,
+                    3,
+                    AttestationField.present(AttestationTextFieldValue.token("unknown"))));
+    assertGenesisFailure(unknownSourceRequest, effect);
 
     AttestationPreimage systemCommandRequest =
         replaceFirstRecord(

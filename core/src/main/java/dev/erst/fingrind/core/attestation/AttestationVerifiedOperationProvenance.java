@@ -24,43 +24,57 @@ final class AttestationVerifiedOperationProvenance {
 
   static AttestationVerifiedOperationProvenance verify(
       AttestationOperationPayload payload, AttestationPreimage requestPreimage) {
+    return verifyWithFailure(
+        payload, requestPreimage, AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID);
+  }
+
+  static AttestationVerifiedOperationProvenance verifyGenesis(
+      AttestationOperationPayload payload, AttestationPreimage requestPreimage) {
+    return verifyWithFailure(
+        payload, requestPreimage, AttestationAuthorizationFailure.GENESIS_INVALID);
+  }
+
+  private static AttestationVerifiedOperationProvenance verifyWithFailure(
+      AttestationOperationPayload payload,
+      AttestationPreimage requestPreimage,
+      AttestationAuthorizationFailure failure) {
     AttestationOperationPayload checkedPayload = Objects.requireNonNull(payload, "payload");
     AttestationPreimage checkedPreimage =
         Objects.requireNonNull(requestPreimage, "requestPreimage");
     if (!checkedPayload.requestDigest().equals(AttestationHash.sha256(checkedPreimage.encoded()))) {
-      throw failure();
+      throw failure(failure);
     }
 
     List<AttestationPreimage.Fact> commandRecords =
         AttestationPreimageFields.records(checkedPreimage, COMMAND_RECORD_TYPE);
     if (commandRecords.size() != 1) {
-      throw failure();
+      throw failure(failure);
     }
     AttestationPreimage.Fact command = commandRecords.getFirst();
     if (!checkedPayload
         .operationKind()
-        .equals(AttestationPreimageValueReader.token(command, 0, failureType()))) {
-      throw failure();
+        .equals(AttestationPreimageValueReader.token(command, 0, failure))) {
+      throw failure(failure);
     }
     AttestationSourceChannel sourceChannel =
         AttestationSourceChannel.forWireToken(
-            AttestationPreimageValueReader.token(command, 3, failureType()));
+            AttestationPreimageValueReader.token(command, 3, failure), failure);
     List<AttestationPreimage.Fact> workflowRecords =
         AttestationPreimageFields.records(checkedPreimage, SYSTEM_WORKFLOW_RUN_RECORD_TYPE);
     if (sourceChannel == AttestationSourceChannel.CLI) {
       if (!workflowRecords.isEmpty()) {
-        throw failure();
+        throw failure(failure);
       }
       return new AttestationVerifiedOperationProvenance(
           checkedPayload.encoded(), sourceChannel, null);
     }
     if (workflowRecords.size() != 1) {
-      throw failure();
+      throw failure(failure);
     }
     return new AttestationVerifiedOperationProvenance(
         checkedPayload.encoded(),
         sourceChannel,
-        AttestationPreimageValueReader.uuid(workflowRecords.getFirst(), 0, failureType()));
+        AttestationPreimageValueReader.uuid(workflowRecords.getFirst(), 0, failure));
   }
 
   boolean matches(AttestationOperationPayload candidate) {
@@ -75,11 +89,8 @@ final class AttestationVerifiedOperationProvenance {
     return systemWorkflowId;
   }
 
-  private static AttestationAuthorizationFailure failureType() {
-    return AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID;
-  }
-
-  private static AttestationAuthorizationException failure() {
-    return new AttestationAuthorizationException(failureType());
+  private static AttestationAuthorizationException failure(
+      AttestationAuthorizationFailure failure) {
+    return new AttestationAuthorizationException(failure);
   }
 }

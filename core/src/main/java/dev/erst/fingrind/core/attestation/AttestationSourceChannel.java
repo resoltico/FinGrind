@@ -13,13 +13,12 @@ enum AttestationSourceChannel {
     this.credentialPurpose = credentialPurpose;
   }
 
-  static AttestationSourceChannel forWireToken(String wireToken) {
+  static AttestationSourceChannel forWireToken(
+      String wireToken, AttestationAuthorizationFailure failure) {
     return switch (wireToken) {
       case "cli" -> CLI;
       case "system" -> SYSTEM;
-      default ->
-          throw new AttestationAuthorizationException(
-              AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID);
+      default -> throw new AttestationAuthorizationException(failure);
     };
   }
 

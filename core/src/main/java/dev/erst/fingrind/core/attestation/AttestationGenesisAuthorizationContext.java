@@ -63,8 +63,9 @@ final class AttestationGenesisAuthorizationContext {
 
   private static void requireCliRequestProvenance(
       AttestationOperationPayload payload, AttestationPreimage requestPreimage) {
-    if (AttestationVerifiedOperationProvenance.verify(payload, requestPreimage).sourceChannel()
-        != AttestationSourceChannel.CLI) {
+    AttestationVerifiedOperationProvenance provenance =
+        AttestationVerifiedOperationProvenance.verifyGenesis(payload, requestPreimage);
+    if (provenance.sourceChannel() != AttestationSourceChannel.CLI) {
       throw failure();
     }
   }
