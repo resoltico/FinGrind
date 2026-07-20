@@ -700,6 +700,10 @@ mutations, and live-CAS admission attempts, is
 Slice 1 owns the canonical preimage and envelope encoders and proves V-OP-01, V-OP-02,
 V-MANIFEST-02, V-RECEIPT-02, and V-CONTAINER-01 byte-for-byte. Slice 2 owns the JCA file-PKCS#8
 custody seam and rejects unshipped custodians. Slice 3 owns registry/policy folding and all
-historical authorization outcomes. Slice 4 owns verification, review, static-book resources, and
-the exact negative corpus. Slice 5 performs the only public hard format break and ships user, CLI,
-response, schema, security, index, example, and changelog documentation together.
+historical authorization outcomes. Its authorization context is derived from the decoded signed
+payload and verified request provenance, never selected independently by the caller. It executes
+the exact standalone-envelope bytes for N-01 through N-10 and N-13/N-15. Slice 4 owns full
+verification, review, protected-book and artifact resources, and the verifier-dependent exact
+negative rows N-11, N-12, N-14, and N-16 through N-27. Slice 5 performs the only public hard
+format break and ships user, CLI, response, schema, security, index, example, and changelog
+documentation together.

@@ -11,8 +11,11 @@ import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSup
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.fiscalWorkflow;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.founder;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.interimWorkflow;
+import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.manifestContext;
+import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.operationContext;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.orderedEntries;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.postRule;
+import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.receiptContext;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.registry;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.signedEnvelope;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -41,11 +44,48 @@ class AttestationAuthorizationTest {
     assertDoesNotThrow(
         () ->
             AttestationAuthorization.requireAuthorized(
-                registry,
-                POSITION,
-                AttestationAuthorizationScope.operation(
-                    AttestationOperationKind.POST_ENTRY, AttestationSourceChannel.CLI),
-                signedEnvelope(first, second)));
+                registry, operationContext(), signedEnvelope(first, second)));
+  }
+
+  @Test
+  void derivesCapabilityAndHistoricalPositionFromThePayloadBoundAuthorizationContext() {
+    TestCredential signer = credential();
+    AttestationAuthorizationContext context =
+        operationContext(AttestationOperationKind.REKEY_BOOK, AttestationSourceChannel.CLI);
+    AttestationRegistry registry =
+        AttestationRegistry.fromVerifierFacts(
+            List.of(binding(0, signer)),
+            List.of(),
+            List.of(
+                new AttestationCapabilityGrant(
+                    BigInteger.ZERO,
+                    signer.principalId(),
+                    AttestationCapability.REKEY,
+                    AttestationGrantState.GRANT)),
+            List.of(new AttestationPolicyRule(BigInteger.ZERO, AttestationCapability.REKEY, 1)),
+            List.of());
+
+    assertEquals(POSITION, context.resolvingOrder());
+    assertEquals(AttestationCapability.REKEY, context.capability());
+    assertDoesNotThrow(
+        () ->
+            AttestationAuthorization.requireAuthorized(
+                registry, context, signedEnvelope(context, signer)));
+    assertFailure(
+        AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
+        () ->
+            AttestationAuthorization.requireAuthorized(registry, context, signedEnvelope(signer)));
+  }
+
+  @Test
+  void rejectsGenesisAsAnOperationAuthorizationContext() {
+    assertFailure(
+        AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
+        () ->
+            operationContext(
+                BigInteger.ZERO,
+                AttestationOperationKind.POST_ENTRY,
+                AttestationSourceChannel.CLI));
   }
 
   @Test
@@ -73,11 +113,7 @@ class AttestationAuthorizationTest {
         AttestationAuthorizationFailure.CAPABILITY_INVALID,
         () ->
             AttestationAuthorization.requireAuthorized(
-                registry,
-                POSITION,
-                AttestationAuthorizationScope.operation(
-                    AttestationOperationKind.POST_ENTRY, AttestationSourceChannel.CLI),
-                signedEnvelope(first, second)));
+                registry, operationContext(), signedEnvelope(first, second)));
   }
 
   @Test
@@ -95,11 +131,7 @@ class AttestationAuthorizationTest {
         AttestationAuthorizationFailure.KEY_NOT_ENROLLED,
         () ->
             AttestationAuthorization.requireAuthorized(
-                futureBinding,
-                POSITION,
-                AttestationAuthorizationScope.operation(
-                    AttestationOperationKind.POST_ENTRY, AttestationSourceChannel.CLI),
-                signedEnvelope(later)));
+                futureBinding, operationContext(), signedEnvelope(later)));
 
     AttestationRegistry revoked =
         AttestationRegistry.fromVerifierFacts(
@@ -114,11 +146,7 @@ class AttestationAuthorizationTest {
         AttestationAuthorizationFailure.KEY_REVOKED,
         () ->
             AttestationAuthorization.requireAuthorized(
-                revoked,
-                POSITION,
-                AttestationAuthorizationScope.operation(
-                    AttestationOperationKind.POST_ENTRY, AttestationSourceChannel.CLI),
-                signedEnvelope(founder)));
+                revoked, operationContext(), signedEnvelope(founder)));
   }
 
   @Test
@@ -344,17 +372,11 @@ class AttestationAuthorizationTest {
     assertDoesNotThrow(
         () ->
             AttestationAuthorization.requireAuthorized(
-                registry,
-                POSITION,
-                AttestationAuthorizationScope.manifest(),
-                signedEnvelope(system)));
+                registry, manifestContext(), signedEnvelope(manifestContext(), system)));
     assertDoesNotThrow(
         () ->
             AttestationAuthorization.requireAuthorized(
-                registry,
-                POSITION,
-                AttestationAuthorizationScope.receipt(),
-                signedEnvelope(system)));
+                registry, receiptContext(), signedEnvelope(receiptContext(), system)));
   }
 
   @Test
@@ -362,16 +384,11 @@ class AttestationAuthorizationTest {
     for (AttestationOperationKind operationKind : AttestationOperationKind.values()) {
       if (operationKind == AttestationOperationKind.INTERIM_RESULT_SWEEP
           || operationKind == AttestationOperationKind.FISCAL_YEAR_CLOSE) {
-        assertDoesNotThrow(
-            () ->
-                AttestationAuthorizationScope.operation(
-                    operationKind, AttestationSourceChannel.SYSTEM));
+        assertDoesNotThrow(() -> operationContext(operationKind, AttestationSourceChannel.SYSTEM));
       } else {
         assertFailure(
             AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
-            () ->
-                AttestationAuthorizationScope.operation(
-                    operationKind, AttestationSourceChannel.SYSTEM));
+            () -> operationContext(operationKind, AttestationSourceChannel.SYSTEM));
       }
     }
   }
@@ -387,8 +404,8 @@ class AttestationAuthorizationTest {
         List.of(binding(0, operator), binding(0, system, AttestationCredentialPurpose.SYSTEM));
     List<AttestationPolicyRule> rules =
         List.of(new AttestationPolicyRule(BigInteger.ZERO, AttestationCapability.CLOSE_PERIOD, 1));
-    AttestationAuthorizationScope systemInterimScope =
-        AttestationAuthorizationScope.operation(
+    AttestationAuthorizationContext systemInterimContext =
+        operationContext(
             AttestationOperationKind.INTERIM_RESULT_SWEEP, AttestationSourceChannel.SYSTEM);
 
     AttestationRegistry noWorkflow =
@@ -400,7 +417,7 @@ class AttestationAuthorizationTest {
         AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID,
         () ->
             AttestationAuthorization.requireAuthorized(
-                noWorkflow, POSITION, systemInterimScope, signedEnvelope(system)));
+                noWorkflow, systemInterimContext, signedEnvelope(systemInterimContext, system)));
 
     AttestationRegistry wrongWorkflow =
         AttestationRegistry.fromVerifierFacts(
@@ -416,7 +433,7 @@ class AttestationAuthorizationTest {
         AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID,
         () ->
             AttestationAuthorization.requireAuthorized(
-                wrongWorkflow, POSITION, systemInterimScope, signedEnvelope(system)));
+                wrongWorkflow, systemInterimContext, signedEnvelope(systemInterimContext, system)));
 
     AttestationRegistry matchingWorkflow =
         AttestationRegistry.fromVerifierFacts(
@@ -431,15 +448,20 @@ class AttestationAuthorizationTest {
     assertDoesNotThrow(
         () ->
             AttestationAuthorization.requireAuthorized(
-                matchingWorkflow, POSITION, systemInterimScope, signedEnvelope(system)));
+                matchingWorkflow,
+                systemInterimContext,
+                signedEnvelope(systemInterimContext, system)));
     assertDoesNotThrow(
         () ->
             AttestationAuthorization.requireAuthorized(
                 noWorkflow,
-                POSITION,
-                AttestationAuthorizationScope.operation(
+                operationContext(
                     AttestationOperationKind.INTERIM_RESULT_SWEEP, AttestationSourceChannel.CLI),
-                signedEnvelope(operator)));
+                signedEnvelope(
+                    operationContext(
+                        AttestationOperationKind.INTERIM_RESULT_SWEEP,
+                        AttestationSourceChannel.CLI),
+                    operator)));
 
     UUID retiredWorkflowId = UUID.randomUUID();
     AttestationRegistry retiredWorkflow =
@@ -577,9 +599,7 @@ class AttestationAuthorizationTest {
   void rejectsUnknownOperationKinds() {
     assertFailure(
         AttestationAuthorizationFailure.UNKNOWN_OPERATION_KIND,
-        () -> {
-          throw AttestationCapability.unknownOperation();
-        });
+        () -> AttestationOperationKind.forWireToken("not-an-operation"));
   }
 
   @Test
@@ -643,6 +663,7 @@ class AttestationAuthorizationTest {
   void mapsTheClosedCapabilityCatalogAndRejectsInvalidGenesisInputs() {
     for (AttestationOperationKind operationKind : AttestationOperationKind.values()) {
       assertEquals(operationKind.capability(), AttestationCapability.forOperation(operationKind));
+      assertEquals(operationKind, AttestationOperationKind.forWireToken(operationKind.wireToken()));
     }
     assertEquals(AttestationCapability.POST, AttestationOperationKind.POST_ENTRY.capability());
     assertEquals(

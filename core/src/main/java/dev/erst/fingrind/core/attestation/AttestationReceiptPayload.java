@@ -38,4 +38,8 @@ final class AttestationReceiptPayload implements AttestationPayload {
     AttestationTextEncoding.appendToken(output, AttestationAlgorithm.ED25519.id(), "algorithmId");
     return output.toByteArray();
   }
+
+  BigInteger operationOrder() {
+    return operationOrder;
+  }
 }

@@ -13,28 +13,27 @@ final class AttestationAuthorization {
 
   static void requireAuthorized(
       AttestationRegistry registry,
-      BigInteger resolvingOrder,
-      AttestationAuthorizationScope scope,
+      AttestationAuthorizationContext context,
       AttestationAuthorizationEnvelope envelope) {
     Objects.requireNonNull(registry, "registry");
-    BigInteger checkedResolvingOrder =
-        AttestationUnsignedEncoding.requireUnsigned(resolvingOrder, Long.BYTES, "resolvingOrder");
-    AttestationAuthorizationScope checkedScope = Objects.requireNonNull(scope, "scope");
+    AttestationAuthorizationContext checkedContext = Objects.requireNonNull(context, "context");
     AttestationAuthorizationEnvelope checkedEnvelope = Objects.requireNonNull(envelope, "envelope");
+    if (!checkedContext.matchesPayload(checkedEnvelope.payload())) {
+      throw failure(AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID);
+    }
     List<AttestationSignatureEntry> entries = checkedEnvelope.entries();
-    int quorum = registry.quorumAt(checkedScope.capability(), checkedResolvingOrder);
+    BigInteger resolvingOrder = checkedContext.resolvingOrder();
+    int quorum = registry.quorumAt(checkedContext.capability(), resolvingOrder);
     requireExactQuorum(entries, quorum);
     requireDistinct(entries);
     requireAscending(entries);
 
     List<AttestationCredentialState> credentials =
-        entries.stream()
-            .map(entry -> requireCredential(registry, entry, checkedResolvingOrder))
-            .toList();
+        entries.stream().map(entry -> requireCredential(registry, entry, resolvingOrder)).toList();
     requireSignatures(entries, credentials, checkedEnvelope.payload());
-    requireCapability(registry, entries, checkedScope.capability(), checkedResolvingOrder, quorum);
-    requireCredentialPurpose(credentials, checkedScope.sourceChannel());
-    requireSystemWorkflow(registry, checkedScope, checkedResolvingOrder);
+    requireCapability(registry, entries, checkedContext.capability(), resolvingOrder, quorum);
+    requireCredentialPurpose(credentials, checkedContext.sourceChannel());
+    requireSystemWorkflow(registry, checkedContext, resolvingOrder);
   }
 
   static void requireGenesis(
@@ -188,9 +187,9 @@ final class AttestationAuthorization {
 
   private static void requireSystemWorkflow(
       AttestationRegistry registry,
-      AttestationAuthorizationScope scope,
+      AttestationAuthorizationContext context,
       BigInteger resolvingOrder) {
-    AttestationSystemWorkflowKind requiredWorkflowKind = scope.requiredSystemWorkflowKind();
+    AttestationSystemWorkflowKind requiredWorkflowKind = context.requiredSystemWorkflowKind();
     if (requiredWorkflowKind != null
         && !registry.hasActiveSystemWorkflow(requiredWorkflowKind, resolvingOrder)) {
       throw failure(AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID);

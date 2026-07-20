@@ -36,6 +36,10 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Fixed unreleased next-format attestation authorization so every operation, manifest, and receipt
+  derives its historical position and capability from the typed payload it signs. The standalone
+  authorization corpus now applies its exact published byte mutations, including fixed C-key
+  capability failures, rather than substituting generated semantic equivalents.
 - Fixed unreleased next-format attestation key custody. Verification now consumes the one
   canonical Ed25519 SPKI it validated, and an encrypted PKCS#8 credential is successful only after
   its no-clobber final name has passed the native parent-directory durability barrier.

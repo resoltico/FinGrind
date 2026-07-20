@@ -50,4 +50,12 @@ final class AttestationOperationPayload implements AttestationPayload {
     AttestationEncoding.appendHash(output, effectDigest);
     return output.toByteArray();
   }
+
+  BigInteger operationOrder() {
+    return operationOrder;
+  }
+
+  String operationKind() {
+    return operationKind;
+  }
 }

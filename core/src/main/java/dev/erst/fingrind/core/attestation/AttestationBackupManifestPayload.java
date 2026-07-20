@@ -40,4 +40,8 @@ final class AttestationBackupManifestPayload implements AttestationPayload {
     AttestationTextEncoding.appendToken(output, AttestationAlgorithm.ED25519.id(), "algorithmId");
     return output.toByteArray();
   }
+
+  BigInteger sourceOrder() {
+    return sourceOrder;
+  }
 }

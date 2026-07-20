@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigInteger;
 import java.security.KeyPair;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -12,18 +13,59 @@ import java.util.UUID;
 
 /** Shared deterministic builders and assertions for attestation authorization tests. */
 final class AttestationAuthorizationTestSupport {
-  static final byte[] PAYLOAD = new byte[] {1, 2, 3};
   static final BigInteger POSITION = BigInteger.ONE;
+  private static final UUID BOOK_ID = UUID.fromString("00112233-4455-6677-8899-aabbccddeeff");
+  private static final AttestationHash PREVIOUS_HEAD = AttestationHash.sha256(new byte[] {1});
+  private static final AttestationHash REQUEST_DIGEST = AttestationHash.sha256(new byte[] {2});
+  private static final AttestationHash EFFECT_DIGEST = AttestationHash.sha256(new byte[] {3});
+  private static final AttestationAuthorizationContext OPERATION_CONTEXT = operationContext();
+  static final byte[] PAYLOAD = OPERATION_CONTEXT.payload();
 
   private AttestationAuthorizationTestSupport() {}
 
   static void authorize(AttestationRegistry registry, AttestationAuthorizationEnvelope envelope) {
-    AttestationAuthorization.requireAuthorized(
-        registry,
-        POSITION,
-        AttestationAuthorizationScope.operation(
-            AttestationOperationKind.POST_ENTRY, AttestationSourceChannel.CLI),
-        envelope);
+    AttestationAuthorization.requireAuthorized(registry, OPERATION_CONTEXT, envelope);
+  }
+
+  static AttestationAuthorizationContext operationContext() {
+    return operationContext(AttestationOperationKind.POST_ENTRY, AttestationSourceChannel.CLI);
+  }
+
+  static AttestationAuthorizationContext operationContext(
+      AttestationOperationKind operationKind, AttestationSourceChannel sourceChannel) {
+    return operationContext(POSITION.add(BigInteger.ONE), operationKind, sourceChannel);
+  }
+
+  static AttestationAuthorizationContext operationContext(
+      BigInteger operationOrder,
+      AttestationOperationKind operationKind,
+      AttestationSourceChannel sourceChannel) {
+    return AttestationAuthorizationContext.operation(
+        new AttestationOperationPayload(
+            BOOK_ID,
+            operationOrder,
+            operationKind.wireToken(),
+            PREVIOUS_HEAD,
+            Instant.parse("2026-07-20T00:00:00Z"),
+            REQUEST_DIGEST,
+            EFFECT_DIGEST),
+        sourceChannel);
+  }
+
+  static AttestationAuthorizationContext manifestContext() {
+    return AttestationAuthorizationContext.manifest(
+        new AttestationBackupManifestPayload(
+            BOOK_ID,
+            UUID.fromString("ffeeddcc-bbaa-9988-7766-554433221100"),
+            POSITION,
+            PREVIOUS_HEAD,
+            REQUEST_DIGEST));
+  }
+
+  static AttestationAuthorizationContext receiptContext() {
+    return AttestationAuthorizationContext.receipt(
+        new AttestationReceiptPayload(
+            BOOK_ID, POSITION, PREVIOUS_HEAD, Instant.parse("2026-07-20T00:00:00Z")));
   }
 
   static AttestationRegistry registry(
@@ -126,14 +168,25 @@ final class AttestationAuthorizationTestSupport {
     return new AttestationAuthorizationEnvelope(PAYLOAD, orderedEntries(credentials));
   }
 
+  static AttestationAuthorizationEnvelope signedEnvelope(
+      AttestationAuthorizationContext context, TestCredential... credentials) {
+    byte[] payload = context.payload();
+    return new AttestationAuthorizationEnvelope(payload, orderedEntries(payload, credentials));
+  }
+
   static List<AttestationSignatureEntry> orderedEntries(TestCredential... credentials) {
+    return orderedEntries(PAYLOAD, credentials);
+  }
+
+  static List<AttestationSignatureEntry> orderedEntries(
+      byte[] payload, TestCredential... credentials) {
     return java.util.Arrays.stream(credentials)
         .map(
             credential ->
                 new AttestationSignatureEntry(
                     credential.principalId(),
                     credential.keyId(),
-                    AttestationEd25519.sign(credential.pair().getPrivate(), PAYLOAD)))
+                    AttestationEd25519.sign(credential.pair().getPrivate(), payload)))
         .sorted(Comparator.comparing(AttestationSignatureEntry::keyId))
         .toList();
   }

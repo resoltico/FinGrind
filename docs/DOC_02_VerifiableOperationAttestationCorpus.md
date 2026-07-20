@@ -49,7 +49,7 @@ or derivation is implicit.
 | principal A (A1; “A” elsewhere) | principalId, seed, SPKI, and keyId from V-OP-01 |
 | principal A rollover key (A2) | principalId is A1's principalId; seed is 606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f; SPKI and keyId are the canonical Ed25519 DER-SPKI and SHA-256 thereof; its operator-purpose principal.key-binding fact occurs only in B-03's order-6 rollover |
 | principal B | principalId, seed, SPKI, and keyId from V-MANIFEST-02 |
-| principal C | principalId 2233445566778899aabbccddeeff0011; seed 404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f; SPKI and keyId are the canonical Ed25519 DER-SPKI and SHA-256 thereof |
+| principal C | principalId 2233445566778899aabbccddeeff0011; seed 404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f; SPKI 302a300506032b65700321002543b92ff1095511476adc8369db6ddc933665a11978dda1404ee1066ca9559d; keyId 788de5096f8b530eef97a4015cffb7cfeb260c23795b846bf8112682a93b1101 |
 | initial capability policy | post, approve, close-period, backup, and anchor have M=1; restore, rekey, enroll-key, revoke-key, and alter-policy have M=min(2, founderCount) |
 | initial grants | every founder has GRANT for every listed capability; no other principal has a grant until its explicit grant record |
 | standalone envelope resolvers | The V-OP-02 resolver is as-of order 42 with active, non-revoked operator-purpose A and B. Its complete POST policy ledger has M=1 at order 40 and M=2 at order 41, so the effective POST M is 2; POST GRANT exists only for A and B. It evaluates only operation-envelope checks after payload and preimage validation. B-08 and B-09 use the same shape with active A, B, and C: B-08 has BACKUP M=2 and BACKUP GRANT only for A and B; B-09 has ANCHOR M=2 and ANCHOR GRANT only for A and B. Every other capability rule and grant is absent. These are complete inputs for standalone envelope verification, never claimed operation-chain, manifest-artifact, or receipt-book resources. |
@@ -110,12 +110,12 @@ from a fixture name.
 | N-11 | B-02 common posting: replace previousHead with 32 zero bytes | attestation-previous-head-invalid |
 | N-12a | B-01 genesis: replace A's declared SPKI with B's while retaining A's keyId | attestation-genesis-invalid |
 | N-12b | B-01 genesis: remove A's sole envelope entry and set sigCount 0000 | attestation-genesis-invalid |
-| N-13 | B-08's standalone envelope resolver with active C and a valid policy state: A and B, but not C, have BACKUP GRANT and M remains 2. Rebuild the V-MANIFEST-02 payload as a valid B-and-C envelope with C's valid signature and all key IDs sorted. | attestation-capability-invalid |
+| N-13 | B-08's standalone envelope resolver with active C and a valid policy state: A and B, but not C, have BACKUP GRANT and M remains 2. Rebuild V-MANIFEST-02 as the two-entry raw envelope C then B: C has principalId 2233445566778899aabbccddeeff0011, keyId 788de5096f8b530eef97a4015cffb7cfeb260c23795b846bf8112682a93b1101, and signature e68bc651ab5ee607fe5f5e5a122e58477950dc37b33794c95fc5671df28d6efaf408d460b75231b175b025276fff1e92981c942ab523602d0076a3250f8d5f0e; B's 112-byte entry is unchanged. | attestation-capability-invalid |
 | N-14a | V-CONTAINER-01: XOR byte 0 of snapshotDigest with 01. | attestation-manifest-invalid |
 | N-14b | V-CONTAINER-01: XOR byte 0 of sourceOperationHead with 01. | attestation-manifest-invalid |
 | N-14c | V-CONTAINER-01: XOR byte 0 of bookId with 01. | attestation-manifest-invalid |
 | N-14d | V-CONTAINER-01: XOR byte 0 of trailer snapshotLength with 01. | attestation-manifest-invalid |
-| N-15 | B-09's standalone envelope resolver with active C and a valid policy state: A and B, but not C, have ANCHOR GRANT and M remains 2. Rebuild the V-RECEIPT-02 payload as a valid B-and-C envelope with C's valid signature and all key IDs sorted. | attestation-capability-invalid |
+| N-15 | B-09's standalone envelope resolver with active C and a valid policy state: A and B, but not C, have ANCHOR GRANT and M remains 2. Rebuild V-RECEIPT-02 as the two-entry raw envelope C then B: C has principalId 2233445566778899aabbccddeeff0011, keyId 788de5096f8b530eef97a4015cffb7cfeb260c23795b846bf8112682a93b1101, and signature 31f445e7dda739aa66fb025d965217c83d8df4a602adad8023539df5ac8cff46be999d06b8278439b201099b57519f699718c05dd0f0abdb0ca7a445cd835705; B's 112-byte entry is unchanged. | attestation-capability-invalid |
 | N-16 | B-04 at order 9: change C's order-4 credentialPurpose from system to operator while retaining its key, grant, request, envelope, and every other registry fact | attestation-credential-purpose-invalid |
 | N-17 | B-02 common posting: add a fixed-asset 0060 effect record, recompute the effect digest, operation payload, and A/B signatures, but add no 0131 request record | attestation-request-profile-invalid |
 | N-18 | B-02 through 3; at 4 A and B enroll active operator-purpose C without POST GRANT. At 5 B and C sign an otherwise valid record-sale-settled envelope under the still-valid POST M=2 policy. | attestation-capability-invalid |
@@ -129,10 +129,15 @@ from a fixture name.
 | N-26 | B-03 order 6: set the rollover predecessorKeyId in both matching binding records to A2's new keyId, then recompute the preimage digests, payload, and A1/B signatures. | attestation-request-profile-invalid |
 | N-27 | B-02 through 3: at order 4 A1 and B revoke C's unbound predefined keyId, then recompute the preimage digests, payload, and A1/B signatures. | attestation-request-profile-invalid |
 
-The corpus resource records the raw source bytes, mutation offset, replacement bytes, policy fold,
-verification scope, and expected result for every row above. A later slice may generate the resource
-from this ledger, but may not replace it with prose-only scenario tests or choose a different first
-failure.
+Slice 3 executes N-01 through N-10 and N-13/N-15 from these literal standalone-envelope bytes:
+every one-byte mutation, count replacement, entry replacement, entry deletion, or entry swap is
+performed against the published envelope before it is decoded. The authorization context is then
+derived from that same decoded payload: operation envelopes resolve at operationOrder minus one,
+manifests at sourceOrder, and receipts at operationOrder. N-11, N-12, N-14, and N-16 through N-27
+depend on complete protected-book, genesis-preimage, or artifact sources and are the Slice 4
+verifier gate. Slice 4 materializes those sources with their raw bytes, mutation offsets,
+replacement bytes, policy fold, verification scope, and expected first result; it may not replace
+them with prose-only scenario tests or choose a different first failure.
 
 ## Command-Admission Corpus
 
