@@ -8,9 +8,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.function.UnaryOperator;
-import org.jspecify.annotations.Nullable;
 
 /** Shared deterministic genesis builders for attestation authorization tests. */
 final class AttestationGenesisTestSupport {
@@ -129,49 +127,6 @@ final class AttestationGenesisTestSupport {
     List<AttestationField> fields = new ArrayList<>(record.fields());
     fields.set(fieldIndex, replacement);
     return new AttestationPreimage.Fact(record.recordTypeTag(), fields);
-  }
-
-  static AttestationPreimage.Fact initialWorkflowPolicyEffect(
-      UUID workflowId,
-      AttestationSystemWorkflowKind workflowKind,
-      String resultHoldingAccountCode,
-      @Nullable String capitalAccountCode,
-      @Nullable String retainedResultAccountCode,
-      boolean active) {
-    return new AttestationPreimage.Fact(
-        0x0008,
-        List.of(
-            AttestationField.present(AttestationNumericFieldValue.mutation(0)),
-            AttestationField.present(AttestationBinaryFieldValue.uuid(workflowId)),
-            AttestationField.present(AttestationTextFieldValue.token(workflowKind.wireToken())),
-            AttestationField.present(AttestationTextFieldValue.text(resultHoldingAccountCode)),
-            optionalText(capitalAccountCode),
-            optionalText(retainedResultAccountCode),
-            AttestationField.present(AttestationNumericFieldValue.booleanValue(active))));
-  }
-
-  static AttestationPreimage.Fact initialWorkflowPolicyRequest(
-      UUID workflowId,
-      AttestationSystemWorkflowKind workflowKind,
-      String resultHoldingAccountCode,
-      @Nullable String capitalAccountCode,
-      @Nullable String retainedResultAccountCode,
-      boolean active) {
-    return new AttestationPreimage.Fact(
-        0x0184,
-        List.of(
-            AttestationField.present(AttestationBinaryFieldValue.uuid(workflowId)),
-            AttestationField.present(AttestationTextFieldValue.token(workflowKind.wireToken())),
-            AttestationField.present(AttestationTextFieldValue.text(resultHoldingAccountCode)),
-            optionalText(capitalAccountCode),
-            optionalText(retainedResultAccountCode),
-            AttestationField.present(AttestationNumericFieldValue.booleanValue(active))));
-  }
-
-  private static AttestationField optionalText(@Nullable String value) {
-    return value == null
-        ? AttestationField.absent()
-        : AttestationField.present(AttestationTextFieldValue.text(value));
   }
 
   private static AttestationPreimage command(

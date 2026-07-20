@@ -9,13 +9,10 @@ import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.a
 import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.genesisEffectPreimage;
 import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.genesisPayload;
 import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.genesisRequestPreimage;
-import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.initialWorkflowPolicyEffect;
-import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.initialWorkflowPolicyRequest;
 import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.replaceFirstRecord;
 import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.signedGenesisEnvelope;
 import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.withField;
 import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.withoutRecords;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import java.math.BigInteger;
 import java.time.Instant;
@@ -377,158 +374,6 @@ class AttestationGenesisBootstrapValidationTest {
                     2,
                     AttestationField.present(AttestationTextFieldValue.token("revoke")))),
         effect);
-  }
-
-  @Test
-  void admitsOnlyActiveWellShapedWorkflowPoliciesAndExactDeclarations() {
-    TestCredential founder = credential();
-    UUID fiscalWorkflowId = UUID.randomUUID();
-    AttestationPreimage request =
-        appendRecord(
-            genesisRequestPreimage(founder),
-            initialWorkflowPolicyRequest(
-                fiscalWorkflowId,
-                AttestationSystemWorkflowKind.FISCAL_YEAR_CLOSE,
-                "3000",
-                "3100",
-                "3200",
-                true));
-    AttestationPreimage effect =
-        appendRecord(
-            genesisEffectPreimage(founder),
-            initialWorkflowPolicyEffect(
-                fiscalWorkflowId,
-                AttestationSystemWorkflowKind.FISCAL_YEAR_CLOSE,
-                "3000",
-                "3100",
-                "3200",
-                true));
-    assertDoesNotThrow(
-        () ->
-            AttestationGenesisAuthorizationContext.verify(
-                genesisPayload(BigInteger.ZERO, ZERO_HEAD, request, effect), request, effect));
-
-    AttestationPreimage baseRequest = genesisRequestPreimage(founder);
-    AttestationPreimage baseEffect = genesisEffectPreimage(founder);
-    AttestationPreimage interimEffect =
-        appendRecord(
-            baseEffect,
-            initialWorkflowPolicyEffect(
-                UUID.randomUUID(),
-                AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP,
-                "3000",
-                null,
-                null,
-                true));
-    assertGenesisFailure(baseRequest, interimEffect);
-    assertGenesisFailure(
-        baseRequest,
-        replaceFirstRecord(
-            interimEffect,
-            0x0008,
-            record ->
-                withField(
-                    record,
-                    0,
-                    AttestationField.present(AttestationNumericFieldValue.mutation(1)))));
-    assertGenesisFailure(
-        baseRequest,
-        replaceFirstRecord(
-            interimEffect,
-            0x0008,
-            record ->
-                withField(
-                    record, 3, AttestationField.present(AttestationTextFieldValue.text(" ")))));
-    assertGenesisFailure(
-        baseRequest,
-        replaceFirstRecord(
-            interimEffect,
-            0x0008,
-            record ->
-                withField(
-                    record, 4, AttestationField.present(AttestationTextFieldValue.text("3100")))));
-    assertGenesisFailure(
-        baseRequest,
-        replaceFirstRecord(
-            interimEffect,
-            0x0008,
-            record ->
-                withField(
-                    record,
-                    6,
-                    AttestationField.present(AttestationNumericFieldValue.booleanValue(false)))));
-    assertGenesisFailure(
-        baseRequest,
-        replaceFirstRecord(
-            interimEffect,
-            0x0008,
-            record ->
-                withField(
-                    record,
-                    2,
-                    AttestationField.present(AttestationTextFieldValue.token("unknown")))));
-
-    AttestationPreimage incompleteFiscalEffect =
-        appendRecord(
-            baseEffect,
-            initialWorkflowPolicyEffect(
-                UUID.randomUUID(),
-                AttestationSystemWorkflowKind.FISCAL_YEAR_CLOSE,
-                "3000",
-                null,
-                null,
-                true));
-    assertGenesisFailure(baseRequest, incompleteFiscalEffect);
-    AttestationPreimage missingRetainedResultEffect =
-        appendRecord(
-            baseEffect,
-            initialWorkflowPolicyEffect(
-                UUID.randomUUID(),
-                AttestationSystemWorkflowKind.FISCAL_YEAR_CLOSE,
-                "3000",
-                "3100",
-                null,
-                true));
-    assertGenesisFailure(baseRequest, missingRetainedResultEffect);
-    AttestationPreimage interimWithRetainedResultEffect =
-        appendRecord(
-            baseEffect,
-            initialWorkflowPolicyEffect(
-                UUID.randomUUID(),
-                AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP,
-                "3000",
-                null,
-                "3200",
-                true));
-    assertGenesisFailure(baseRequest, interimWithRetainedResultEffect);
-    assertGenesisFailure(
-        baseRequest,
-        replaceFirstRecord(
-            effect,
-            0x0008,
-            record ->
-                withField(
-                    record, 4, AttestationField.present(AttestationTextFieldValue.text("")))));
-    assertGenesisFailure(
-        baseRequest,
-        replaceFirstRecord(
-            effect,
-            0x0008,
-            record ->
-                withField(
-                    record, 5, AttestationField.present(AttestationTextFieldValue.text("")))));
-
-    AttestationPreimage duplicateKindEffect =
-        appendRecord(
-            interimEffect,
-            initialWorkflowPolicyEffect(
-                UUID.randomUUID(),
-                AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP,
-                "3010",
-                null,
-                null,
-                true));
-    assertGenesisFailure(baseRequest, duplicateKindEffect);
   }
 
   @Test

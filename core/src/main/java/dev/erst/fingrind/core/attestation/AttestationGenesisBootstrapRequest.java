@@ -8,12 +8,10 @@ import java.util.UUID;
 /** Validates the signed genesis request against its immutable initial effect facts. */
 final class AttestationGenesisBootstrapRequest {
   private static final int BOOK_IDENTITY_RECORD_TYPE = 0x0001;
-  private static final int SYSTEM_WORKFLOW_POLICY_RECORD_TYPE = 0x0008;
   private static final int REQUEST_BOOK_IDENTITY_RECORD_TYPE = 0x0101;
   private static final int REQUEST_FOUNDER_RECORD_TYPE = 0x0102;
   private static final int REQUEST_POLICY_RULE_RECORD_TYPE = 0x0103;
   private static final int REQUEST_CAPABILITY_GRANT_RECORD_TYPE = 0x0183;
-  private static final int REQUEST_SYSTEM_WORKFLOW_POLICY_RECORD_TYPE = 0x0184;
   private static final String GRANT_STATE = "grant";
 
   private AttestationGenesisBootstrapRequest() {}
@@ -27,7 +25,6 @@ final class AttestationGenesisBootstrapRequest {
     requireFounderDeclarations(requestPreimage, founders);
     requirePolicyDeclarations(requestPreimage, founders.size());
     requireGrantDeclarations(requestPreimage, founders);
-    requireWorkflowPolicyDeclarations(requestPreimage, effectPreimage);
   }
 
   private static void requireOnlyGenesisRecords(AttestationPreimage requestPreimage) {
@@ -37,8 +34,7 @@ final class AttestationGenesisBootstrapRequest {
             REQUEST_BOOK_IDENTITY_RECORD_TYPE,
             REQUEST_FOUNDER_RECORD_TYPE,
             REQUEST_POLICY_RULE_RECORD_TYPE,
-            REQUEST_CAPABILITY_GRANT_RECORD_TYPE,
-            REQUEST_SYSTEM_WORKFLOW_POLICY_RECORD_TYPE -> {}
+            REQUEST_CAPABILITY_GRANT_RECORD_TYPE -> {}
         default -> throw failure();
       }
     }
@@ -128,21 +124,6 @@ final class AttestationGenesisBootstrapRequest {
       throw failure();
     }
     capability(AttestationPreimageValueReader.token(request, 1, failureType()));
-  }
-
-  private static void requireWorkflowPolicyDeclarations(
-      AttestationPreimage requestPreimage, AttestationPreimage effectPreimage) {
-    List<AttestationPreimage.Fact> requestRecords =
-        AttestationPreimageFields.records(
-            requestPreimage, REQUEST_SYSTEM_WORKFLOW_POLICY_RECORD_TYPE);
-    List<AttestationPreimage.Fact> effectRecords =
-        AttestationPreimageFields.records(effectPreimage, SYSTEM_WORKFLOW_POLICY_RECORD_TYPE);
-    if (requestRecords.size() != effectRecords.size()) {
-      throw failure();
-    }
-    for (int index = 0; index < requestRecords.size(); index++) {
-      requireMatchingFields(requestRecords.get(index), 0, effectRecords.get(index), 1, 6);
-    }
   }
 
   private static void requireMatchingFields(

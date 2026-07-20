@@ -297,11 +297,14 @@ envelope signer must match a declared founder principal and declared SPKI-derive
 declared founder must sign exactly once. Genesis is trusted out of band. Every later structure
 uses the ordinary as-of rule.
 
+Genesis cannot declare a system-workflow policy: its founders have operator-purpose credentials
+only. Enroll the required system-purpose credential first, then declare the active workflow in a
+later attested operation; the post-operation registry fold rejects an unreachable system quorum.
+
 Genesis authorization constructs no caller-supplied founder or policy list. It recomputes both
 preimage digests, verifies the order-zero book-genesis payload and zero previousHead, then proves
-that each declared identity, founder, policy, grant, and optional workflow policy maps exactly to
-its immutable CREATE effect before deriving the founder bindings and checking unanimous
-signatures.
+that each declared identity, founder, policy, and grant maps exactly to its immutable CREATE effect
+before deriving the founder bindings and checking unanimous signatures.
 
 ## Immutable Preimages
 
@@ -439,7 +442,7 @@ or semantic mutation outside the effect catalog and operation profile.
 
 | Operation profile | Exhaustive permitted derivations |
 |:--|:--|
-| book-genesis | canonical initial active lifecycle state implied by the declared identity, founder bindings, grants, policy rules, and declared system-workflow policies; absent 0184 declares no autonomous workflow; no other state |
+| book-genesis | canonical initial active lifecycle state implied by the declared identity, founder bindings, grants, and policy rules; no autonomous workflow may be active at Genesis |
 | account lifecycle and tax registration | resulting active state and normalized relationship rows implied by the requested lifecycle mutation |
 | typed posting | generated postingId and commandId; recordedAt; resolved posting origin; journal lines; and only the tax, foreign-exchange, inventory, accrual, fixed-asset, financing, foreign-currency, or payroll facts admitted by its exact operation-kind row below |
 | attach-posting-approval | the approved posting relationship named by the request |
@@ -457,7 +460,7 @@ never be widened by an adapter, a database trigger, or a future implementation c
 
 | Operation profile | Required request tags | Allowed effect tags |
 |:--|:--|:--|
-| book-genesis | 0100, 0101, 0102, 0103, 0183; 0184 as applicable | 0001, 0002, 0003, 0005; 0008 as applicable |
+| book-genesis | 0100, 0101, 0102, 0103, 0183 | 0001, 0002, 0003, 0005 |
 | account lifecycle | 0100, 0110; 0111 and 0112 as applicable | 0010, 0011, 0012 |
 | tax registration | 0100, 0113; 0114 as applicable | 0013, 0014 |
 | typed posting | 0100 plus the exact request groups in the closed per-kind matrix | the exact effect groups in the closed per-kind matrix |

@@ -5,8 +5,6 @@ import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSup
 import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.genesisEffectPreimage;
 import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.genesisPayload;
 import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.genesisRequestPreimage;
-import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.signedGenesisEnvelope;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -43,32 +41,31 @@ class AttestationGenesisBootstrapTest {
   }
 
   @Test
-  void admitsOnlyExactActiveGenesisWorkflowPolicyDeclarations() {
+  void rejectsInitialSystemWorkflowDeclarations() {
     TestCredential founder = credential();
     UUID workflowId = UUID.randomUUID();
-    AttestationPreimage request =
+    AttestationPreimage request = genesisRequestPreimage(founder);
+    AttestationPreimage effect = genesisEffectPreimage(founder);
+    AttestationPreimage requestWithWorkflow =
         requestWithInitialInterimWorkflow(genesisRequestPreimage(founder), workflowId);
-    AttestationPreimage effect =
+    AttestationPreimage effectWithWorkflow =
         effectWithInitialInterimWorkflow(genesisEffectPreimage(founder), workflowId);
     AttestationHash zeroHead = AttestationHash.of(new byte[AttestationHash.BYTE_LENGTH]);
-    AttestationGenesisAuthorizationContext context =
-        AttestationGenesisAuthorizationContext.verify(
-            genesisPayload(BigInteger.ZERO, zeroHead, request, effect), request, effect);
 
-    assertDoesNotThrow(
-        () ->
-            AttestationAuthorization.requireGenesis(
-                context, signedGenesisEnvelope(context, founder)));
-
-    AttestationPreimage mismatchedRequest =
-        requestWithInitialInterimWorkflow(genesisRequestPreimage(founder), UUID.randomUUID());
     assertFailure(
         AttestationAuthorizationFailure.GENESIS_INVALID,
         () ->
             AttestationGenesisAuthorizationContext.verify(
-                genesisPayload(BigInteger.ZERO, zeroHead, mismatchedRequest, effect),
-                mismatchedRequest,
+                genesisPayload(BigInteger.ZERO, zeroHead, requestWithWorkflow, effect),
+                requestWithWorkflow,
                 effect));
+    assertFailure(
+        AttestationAuthorizationFailure.GENESIS_INVALID,
+        () ->
+            AttestationGenesisAuthorizationContext.verify(
+                genesisPayload(BigInteger.ZERO, zeroHead, request, effectWithWorkflow),
+                request,
+                effectWithWorkflow));
   }
 
   private static AttestationPreimage requestWithInitialInterimWorkflow(

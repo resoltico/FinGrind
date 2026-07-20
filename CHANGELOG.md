@@ -36,6 +36,9 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Fixed unreleased next-format Genesis admission so it cannot activate an autonomous workflow
+  before any system-purpose credential exists. Workflow activation now follows system credential
+  enrollment and the registry's reachable-quorum check.
 - Fixed unreleased next-format attestation authorization so genesis is bound to its order-zero
   signed payload and declared immutable bootstrap facts, while operation provenance is recomputed
   from the signed request preimage. System close authorization now requires the exact active

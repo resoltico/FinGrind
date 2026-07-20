@@ -16,9 +16,7 @@ final class AttestationGenesisBootstrapEffect {
   static List<AttestationFounder> requireValid(UUID bookId, AttestationPreimage effectPreimage) {
     List<AttestationFounder> founders = founders(effectPreimage);
     AttestationGenesisInitialRegistry.requireValid(effectPreimage, founders);
-    int workflowPolicyCount =
-        AttestationGenesisInitialWorkflowPolicies.requireValid(effectPreimage);
-    requireExactEffectShape(effectPreimage, founders.size(), workflowPolicyCount);
+    requireExactEffectShape(effectPreimage, founders.size());
     requireBookIdentity(effectPreimage, bookId);
     requireDistinctFounders(founders);
     return founders;
@@ -50,13 +48,12 @@ final class AttestationGenesisBootstrapEffect {
   }
 
   private static void requireExactEffectShape(
-      AttestationPreimage effectPreimage, int founderCount, int workflowPolicyCount) {
+      AttestationPreimage effectPreimage, int founderCount) {
     int expectedRecordCount =
         1
             + founderCount
             + founderCount * AttestationCapability.values().length
-            + AttestationCapability.values().length
-            + workflowPolicyCount;
+            + AttestationCapability.values().length;
     if (effectPreimage.records().size() != expectedRecordCount) {
       throw failure();
     }
