@@ -62,7 +62,7 @@ class AttestationAuthorizationTest {
             AttestationCapability.POST,
             AttestationGrantState.REVOKE));
     AttestationRegistry registry =
-        AttestationRegistry.of(
+        AttestationRegistry.fromVerifierFacts(
             List.of(binding(0, first), binding(0, second)),
             List.of(),
             grants,
@@ -85,7 +85,7 @@ class AttestationAuthorizationTest {
     TestCredential founder = credential();
     TestCredential later = credential();
     AttestationRegistry futureBinding =
-        AttestationRegistry.of(
+        AttestationRegistry.fromVerifierFacts(
             List.of(binding(0, founder), binding(2, later)),
             List.of(),
             allFounderGrants(founder.principalId()),
@@ -102,7 +102,7 @@ class AttestationAuthorizationTest {
                 signedEnvelope(later)));
 
     AttestationRegistry revoked =
-        AttestationRegistry.of(
+        AttestationRegistry.fromVerifierFacts(
             List.of(binding(0, founder)),
             List.of(
                 new AttestationCredentialRevocation(
@@ -214,7 +214,7 @@ class AttestationAuthorizationTest {
                         entries.getLast()))));
 
     AttestationRegistry noGrant =
-        AttestationRegistry.of(
+        AttestationRegistry.fromVerifierFacts(
             List.of(binding(0, first), binding(0, second)),
             List.of(),
             allFounderGrants(first.principalId()),
@@ -226,7 +226,7 @@ class AttestationAuthorizationTest {
 
     TestCredential system = credential();
     AttestationRegistry systemRegistry =
-        AttestationRegistry.of(
+        AttestationRegistry.fromVerifierFacts(
             List.of(binding(0, system, AttestationCredentialPurpose.SYSTEM)),
             List.of(),
             allFounderGrants(system.principalId()),
@@ -243,7 +243,7 @@ class AttestationAuthorizationTest {
                 "302a300506032b656e032100000102030405060708090a0b0c0d0e0f101112131415161718191a1f");
     AttestationHash x25519KeyId = AttestationHash.sha256(x25519Spki);
     AttestationRegistry x25519Registry =
-        AttestationRegistry.of(
+        AttestationRegistry.fromVerifierFacts(
             List.of(
                 new AttestationCredentialBinding(
                     BigInteger.ZERO,
@@ -269,7 +269,7 @@ class AttestationAuthorizationTest {
                         new AttestationSignatureEntry(
                             x25519Principal, x25519KeyId, new byte[64])))));
     AttestationRegistry revokedX25519Registry =
-        AttestationRegistry.of(
+        AttestationRegistry.fromVerifierFacts(
             List.of(
                 new AttestationCredentialBinding(
                     BigInteger.ZERO,
@@ -316,7 +316,7 @@ class AttestationAuthorizationTest {
   void allowsManifestAndReceiptQuorumsWithoutAnOperationSourceChannelPurpose() {
     TestCredential system = credential();
     AttestationRegistry registry =
-        AttestationRegistry.of(
+        AttestationRegistry.fromVerifierFacts(
             List.of(binding(0, system, AttestationCredentialPurpose.SYSTEM)),
             List.of(),
             allFounderGrants(system.principalId()),
@@ -340,7 +340,117 @@ class AttestationAuthorizationTest {
   }
 
   @Test
-  void rejectsAWorkflowPolicyWhosePostMutationSystemQuorumWouldBeImpossible() {
+  void permitsSystemSourceOnlyForAutonomousCloseKinds() {
+    for (AttestationOperationKind operationKind : AttestationOperationKind.values()) {
+      if (operationKind == AttestationOperationKind.INTERIM_RESULT_SWEEP
+          || operationKind == AttestationOperationKind.FISCAL_YEAR_CLOSE) {
+        assertDoesNotThrow(
+            () ->
+                AttestationAuthorizationScope.operation(
+                    operationKind, AttestationSourceChannel.SYSTEM));
+      } else {
+        assertFailure(
+            AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
+            () ->
+                AttestationAuthorizationScope.operation(
+                    operationKind, AttestationSourceChannel.SYSTEM));
+      }
+    }
+  }
+
+  @Test
+  void requiresTheMatchingActiveWorkflowForASystemClose() {
+    TestCredential operator = credential();
+    TestCredential system = credential();
+    List<AttestationCapabilityGrant> grants = new ArrayList<>();
+    grants.addAll(allFounderGrants(operator.principalId()));
+    grants.addAll(allFounderGrants(system.principalId()));
+    List<AttestationCredentialBinding> bindings =
+        List.of(binding(0, operator), binding(0, system, AttestationCredentialPurpose.SYSTEM));
+    List<AttestationPolicyRule> rules =
+        List.of(new AttestationPolicyRule(BigInteger.ZERO, AttestationCapability.CLOSE_PERIOD, 1));
+    AttestationAuthorizationScope systemInterimScope =
+        AttestationAuthorizationScope.operation(
+            AttestationOperationKind.INTERIM_RESULT_SWEEP, AttestationSourceChannel.SYSTEM);
+
+    AttestationRegistry noWorkflow =
+        AttestationRegistry.fromVerifierFacts(bindings, List.of(), grants, rules, List.of());
+    assertFalse(
+        noWorkflow.hasActiveSystemWorkflow(
+            AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP, POSITION));
+    assertFailure(
+        AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID,
+        () ->
+            AttestationAuthorization.requireAuthorized(
+                noWorkflow, POSITION, systemInterimScope, signedEnvelope(system)));
+
+    AttestationRegistry wrongWorkflow =
+        AttestationRegistry.fromVerifierFacts(
+            bindings,
+            List.of(),
+            grants,
+            rules,
+            List.of(fiscalWorkflow(0, UUID.randomUUID(), true)));
+    assertFalse(
+        wrongWorkflow.hasActiveSystemWorkflow(
+            AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP, POSITION));
+    assertFailure(
+        AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID,
+        () ->
+            AttestationAuthorization.requireAuthorized(
+                wrongWorkflow, POSITION, systemInterimScope, signedEnvelope(system)));
+
+    AttestationRegistry matchingWorkflow =
+        AttestationRegistry.fromVerifierFacts(
+            bindings,
+            List.of(),
+            grants,
+            rules,
+            List.of(interimWorkflow(0, UUID.randomUUID(), true)));
+    assertTrue(
+        matchingWorkflow.hasActiveSystemWorkflow(
+            AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP, POSITION));
+    assertDoesNotThrow(
+        () ->
+            AttestationAuthorization.requireAuthorized(
+                matchingWorkflow, POSITION, systemInterimScope, signedEnvelope(system)));
+    assertDoesNotThrow(
+        () ->
+            AttestationAuthorization.requireAuthorized(
+                noWorkflow,
+                POSITION,
+                AttestationAuthorizationScope.operation(
+                    AttestationOperationKind.INTERIM_RESULT_SWEEP, AttestationSourceChannel.CLI),
+                signedEnvelope(operator)));
+
+    UUID retiredWorkflowId = UUID.randomUUID();
+    AttestationRegistry retiredWorkflow =
+        AttestationRegistry.fromVerifierFacts(
+            bindings,
+            List.of(),
+            grants,
+            rules,
+            List.of(
+                interimWorkflow(0, retiredWorkflowId, true),
+                interimWorkflow(1, retiredWorkflowId, false)));
+    assertFalse(
+        retiredWorkflow.hasActiveSystemWorkflow(
+            AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP, POSITION));
+
+    AttestationRegistry futureWorkflow =
+        AttestationRegistry.fromVerifierFacts(
+            bindings,
+            List.of(),
+            grants,
+            rules,
+            List.of(interimWorkflow(2, UUID.randomUUID(), true)));
+    assertFalse(
+        futureWorkflow.hasActiveSystemWorkflow(
+            AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP, POSITION));
+  }
+
+  @Test
+  void rejectsAnAcceptedHistoryWhoseSystemWorkflowQuorumWouldBeImpossible() {
     TestCredential firstOperator = credential();
     TestCredential secondOperator = credential();
     TestCredential system = credential();
@@ -348,25 +458,24 @@ class AttestationAuthorizationTest {
     grants.addAll(allFounderGrants(firstOperator.principalId()));
     grants.addAll(allFounderGrants(secondOperator.principalId()));
     grants.addAll(allFounderGrants(system.principalId()));
-    AttestationRegistry registry =
-        AttestationRegistry.of(
-            List.of(
-                binding(0, firstOperator),
-                binding(0, secondOperator),
-                binding(0, system, AttestationCredentialPurpose.SYSTEM)),
-            List.of(),
-            grants,
-            List.of(
-                new AttestationPolicyRule(BigInteger.ONE, AttestationCapability.CLOSE_PERIOD, 2)),
-            List.of(interimWorkflow(1, UUID.randomUUID(), true)));
-
     assertFailure(
         AttestationAuthorizationFailure.CAPABILITY_INVALID,
-        () -> registry.requirePostMutationCapacityAt(BigInteger.ONE));
+        () ->
+            AttestationRegistry.fromAcceptedHistory(
+                List.of(
+                    binding(0, firstOperator),
+                    binding(0, secondOperator),
+                    binding(0, system, AttestationCredentialPurpose.SYSTEM)),
+                List.of(),
+                grants,
+                List.of(
+                    new AttestationPolicyRule(
+                        BigInteger.ONE, AttestationCapability.CLOSE_PERIOD, 2)),
+                List.of(interimWorkflow(1, UUID.randomUUID(), true))));
   }
 
   @Test
-  void acceptsReachablePolicyCapacityAndAnEmptyPolicyHistory() {
+  void acceptsReachableAcceptedHistoryCapacityAndAnEmptyPolicyHistory() {
     TestCredential firstOperator = credential();
     TestCredential secondOperator = credential();
     TestCredential firstSystem = credential();
@@ -376,117 +485,152 @@ class AttestationAuthorizationTest {
         List.of(firstOperator, secondOperator, firstSystem, secondSystem)) {
       grants.addAll(allFounderGrants(credential.principalId()));
     }
-    AttestationRegistry registry =
-        AttestationRegistry.of(
-            List.of(
-                binding(0, firstOperator),
-                binding(0, secondOperator),
-                binding(0, firstSystem, AttestationCredentialPurpose.SYSTEM),
-                binding(0, secondSystem, AttestationCredentialPurpose.SYSTEM)),
-            List.of(),
-            grants,
-            List.of(
-                new AttestationPolicyRule(BigInteger.ONE, AttestationCapability.CLOSE_PERIOD, 2)),
-            List.of(fiscalWorkflow(1, UUID.randomUUID(), true)));
-    assertDoesNotThrow(() -> registry.requirePostMutationCapacityAt(BigInteger.ONE));
+    assertDoesNotThrow(
+        () ->
+            AttestationRegistry.fromAcceptedHistory(
+                List.of(
+                    binding(0, firstOperator),
+                    binding(0, secondOperator),
+                    binding(0, firstSystem, AttestationCredentialPurpose.SYSTEM),
+                    binding(0, secondSystem, AttestationCredentialPurpose.SYSTEM)),
+                List.of(),
+                grants,
+                List.of(
+                    new AttestationPolicyRule(
+                        BigInteger.ONE, AttestationCapability.CLOSE_PERIOD, 2)),
+                List.of(fiscalWorkflow(1, UUID.randomUUID(), true))));
+
+    assertDoesNotThrow(
+        () ->
+            AttestationRegistry.fromAcceptedHistory(
+                List.of(binding(0, firstOperator)),
+                List.of(),
+                List.of(
+                    new AttestationCapabilityGrant(
+                        BigInteger.ZERO,
+                        firstOperator.principalId(),
+                        AttestationCapability.CLOSE_PERIOD,
+                        AttestationGrantState.GRANT)),
+                List.of(
+                    new AttestationPolicyRule(
+                        BigInteger.ZERO, AttestationCapability.CLOSE_PERIOD, 1)),
+                List.of()));
 
     AttestationRegistry noPolicy =
-        AttestationRegistry.of(
+        AttestationRegistry.fromAcceptedHistory(
             List.of(binding(0, firstOperator)), List.of(), List.of(), List.of(), List.of());
-    assertDoesNotThrow(() -> noPolicy.requirePostMutationCapacityAt(BigInteger.ZERO));
     assertFailure(
         AttestationAuthorizationFailure.CAPABILITY_INVALID,
         () -> noPolicy.quorumAt(AttestationCapability.POST, BigInteger.ZERO));
 
-    AttestationRegistry reachablePost =
-        AttestationRegistry.of(
-            List.of(binding(0, firstOperator)),
-            List.of(),
-            List.of(
-                new AttestationCapabilityGrant(
-                    BigInteger.ZERO,
-                    firstOperator.principalId(),
-                    AttestationCapability.POST,
-                    AttestationGrantState.GRANT)),
-            List.of(new AttestationPolicyRule(BigInteger.ZERO, AttestationCapability.POST, 1)),
-            List.of());
-    assertDoesNotThrow(() -> reachablePost.requirePostMutationCapacityAt(BigInteger.ZERO));
+    assertDoesNotThrow(
+        () ->
+            AttestationRegistry.fromAcceptedHistory(
+                List.of(binding(0, firstOperator)),
+                List.of(),
+                List.of(
+                    new AttestationCapabilityGrant(
+                        BigInteger.ZERO,
+                        firstOperator.principalId(),
+                        AttestationCapability.POST,
+                        AttestationGrantState.GRANT)),
+                List.of(new AttestationPolicyRule(BigInteger.ZERO, AttestationCapability.POST, 1)),
+                List.of()));
   }
 
   @Test
-  void rejectsEveryOtherUnreachablePolicyCapacityCase() {
+  void validatesOtherAcceptedHistoryCapacityCases() {
     TestCredential operator = credential();
-    AttestationRegistry totalCapacityTooSmall =
-        AttestationRegistry.of(
-            List.of(binding(0, operator)),
-            List.of(),
-            allFounderGrants(operator.principalId()),
-            List.of(new AttestationPolicyRule(BigInteger.ZERO, AttestationCapability.POST, 2)),
-            List.of());
     assertFailure(
         AttestationAuthorizationFailure.CAPABILITY_INVALID,
-        () -> totalCapacityTooSmall.requirePostMutationCapacityAt(BigInteger.ZERO));
+        () ->
+            AttestationRegistry.fromAcceptedHistory(
+                List.of(binding(0, operator)),
+                List.of(),
+                allFounderGrants(operator.principalId()),
+                List.of(new AttestationPolicyRule(BigInteger.ZERO, AttestationCapability.POST, 2)),
+                List.of()));
 
     TestCredential firstSystem = credential();
     TestCredential secondSystem = credential();
-    AttestationRegistry operatorCapacityTooSmall =
-        AttestationRegistry.of(
-            List.of(
-                binding(0, firstSystem, AttestationCredentialPurpose.SYSTEM),
-                binding(0, secondSystem, AttestationCredentialPurpose.SYSTEM)),
-            List.of(),
-            List.of(
-                new AttestationCapabilityGrant(
-                    BigInteger.ZERO,
-                    firstSystem.principalId(),
-                    AttestationCapability.POST,
-                    AttestationGrantState.GRANT),
-                new AttestationCapabilityGrant(
-                    BigInteger.ZERO,
-                    secondSystem.principalId(),
-                    AttestationCapability.POST,
-                    AttestationGrantState.GRANT)),
-            List.of(new AttestationPolicyRule(BigInteger.ZERO, AttestationCapability.POST, 1)),
-            List.of());
     assertFailure(
         AttestationAuthorizationFailure.CAPABILITY_INVALID,
-        () -> operatorCapacityTooSmall.requirePostMutationCapacityAt(BigInteger.ZERO));
+        () ->
+            AttestationRegistry.fromAcceptedHistory(
+                List.of(
+                    binding(0, firstSystem, AttestationCredentialPurpose.SYSTEM),
+                    binding(0, secondSystem, AttestationCredentialPurpose.SYSTEM)),
+                List.of(),
+                List.of(
+                    new AttestationCapabilityGrant(
+                        BigInteger.ZERO,
+                        firstSystem.principalId(),
+                        AttestationCapability.POST,
+                        AttestationGrantState.GRANT),
+                    new AttestationCapabilityGrant(
+                        BigInteger.ZERO,
+                        secondSystem.principalId(),
+                        AttestationCapability.POST,
+                        AttestationGrantState.GRANT)),
+                List.of(new AttestationPolicyRule(BigInteger.ZERO, AttestationCapability.POST, 1)),
+                List.of()));
 
-    AttestationRegistry systemOnlyAnchorCapacity =
-        AttestationRegistry.of(
-            List.of(
-                binding(0, firstSystem, AttestationCredentialPurpose.SYSTEM),
-                binding(0, secondSystem, AttestationCredentialPurpose.SYSTEM)),
-            List.of(),
-            List.of(
-                new AttestationCapabilityGrant(
-                    BigInteger.ZERO,
-                    firstSystem.principalId(),
-                    AttestationCapability.ANCHOR,
-                    AttestationGrantState.GRANT),
-                new AttestationCapabilityGrant(
-                    BigInteger.ZERO,
-                    secondSystem.principalId(),
-                    AttestationCapability.ANCHOR,
-                    AttestationGrantState.GRANT)),
-            List.of(new AttestationPolicyRule(BigInteger.ZERO, AttestationCapability.ANCHOR, 2)),
-            List.of());
     assertDoesNotThrow(
-        () -> systemOnlyAnchorCapacity.requirePostMutationCapacityAt(BigInteger.ZERO));
+        () ->
+            AttestationRegistry.fromAcceptedHistory(
+                List.of(
+                    binding(0, firstSystem, AttestationCredentialPurpose.SYSTEM),
+                    binding(0, secondSystem, AttestationCredentialPurpose.SYSTEM)),
+                List.of(),
+                List.of(
+                    new AttestationCapabilityGrant(
+                        BigInteger.ZERO,
+                        firstSystem.principalId(),
+                        AttestationCapability.ANCHOR,
+                        AttestationGrantState.GRANT),
+                    new AttestationCapabilityGrant(
+                        BigInteger.ZERO,
+                        secondSystem.principalId(),
+                        AttestationCapability.ANCHOR,
+                        AttestationGrantState.GRANT)),
+                List.of(
+                    new AttestationPolicyRule(BigInteger.ZERO, AttestationCapability.ANCHOR, 2)),
+                List.of()));
 
+    TestCredential initialSystem = credential();
+    TestCredential replacementSystem = credential();
     UUID workflowId = UUID.randomUUID();
-    AttestationRegistry inactiveWorkflow =
-        AttestationRegistry.of(
-            List.of(binding(0, operator)),
-            List.of(),
-            allFounderGrants(operator.principalId()),
-            List.of(
-                new AttestationPolicyRule(BigInteger.ZERO, AttestationCapability.CLOSE_PERIOD, 1)),
-            List.of(
-                interimWorkflow(0, workflowId, true),
-                interimWorkflow(1, workflowId, false),
-                fiscalWorkflow(2, UUID.randomUUID(), true)));
-    assertDoesNotThrow(() -> inactiveWorkflow.requirePostMutationCapacityAt(BigInteger.ONE));
+    assertFailure(
+        AttestationAuthorizationFailure.CAPABILITY_INVALID,
+        () ->
+            AttestationRegistry.fromAcceptedHistory(
+                List.of(
+                    binding(0, operator),
+                    binding(0, initialSystem, AttestationCredentialPurpose.SYSTEM),
+                    binding(2, replacementSystem, AttestationCredentialPurpose.SYSTEM)),
+                List.of(
+                    new AttestationCredentialRevocation(
+                        BigInteger.ONE, initialSystem.principalId(), initialSystem.keyId())),
+                List.of(
+                    new AttestationCapabilityGrant(
+                        BigInteger.ZERO,
+                        operator.principalId(),
+                        AttestationCapability.CLOSE_PERIOD,
+                        AttestationGrantState.GRANT),
+                    new AttestationCapabilityGrant(
+                        BigInteger.ZERO,
+                        initialSystem.principalId(),
+                        AttestationCapability.CLOSE_PERIOD,
+                        AttestationGrantState.GRANT),
+                    new AttestationCapabilityGrant(
+                        BigInteger.TWO,
+                        replacementSystem.principalId(),
+                        AttestationCapability.CLOSE_PERIOD,
+                        AttestationGrantState.GRANT)),
+                List.of(
+                    new AttestationPolicyRule(
+                        BigInteger.ZERO, AttestationCapability.CLOSE_PERIOD, 1)),
+                List.of(interimWorkflow(0, workflowId, true))));
   }
 
   @Test
@@ -495,7 +639,7 @@ class AttestationAuthorizationTest {
     TestCredential second = credential();
     TestCredential future = credential();
     AttestationRegistry registry =
-        AttestationRegistry.of(
+        AttestationRegistry.fromVerifierFacts(
             List.of(binding(0, first), binding(0, second), binding(2, future)),
             List.of(
                 new AttestationCredentialRevocation(
@@ -544,7 +688,7 @@ class AttestationAuthorizationTest {
     TestCredential eligible = credential();
     TestCredential ineligible = credential();
     AttestationRegistry registry =
-        AttestationRegistry.of(
+        AttestationRegistry.fromVerifierFacts(
             List.of(binding(0, eligible), binding(0, ineligible)),
             List.of(),
             List.of(
@@ -580,7 +724,7 @@ class AttestationAuthorizationTest {
             AttestationCredentialPurpose.OPERATOR,
             original.keyId());
     AttestationRegistry registry =
-        AttestationRegistry.of(
+        AttestationRegistry.fromVerifierFacts(
             List.of(binding(0, original), binding(0, unrelated), rollover),
             List.of(
                 new AttestationCredentialRevocation(

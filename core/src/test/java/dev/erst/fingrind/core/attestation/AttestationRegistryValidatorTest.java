@@ -26,7 +26,7 @@ class AttestationRegistryValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            AttestationRegistry.of(
+            AttestationRegistry.fromVerifierFacts(
                 List.of(binding(0, first), binding(1, first)),
                 List.of(),
                 List.of(),
@@ -35,7 +35,7 @@ class AttestationRegistryValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            AttestationRegistry.of(
+            AttestationRegistry.fromVerifierFacts(
                 List.of(),
                 List.of(
                     new AttestationCredentialRevocation(
@@ -46,7 +46,7 @@ class AttestationRegistryValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            AttestationRegistry.of(
+            AttestationRegistry.fromVerifierFacts(
                 List.of(binding(0, first)),
                 List.of(
                     new AttestationCredentialRevocation(
@@ -57,7 +57,7 @@ class AttestationRegistryValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            AttestationRegistry.of(
+            AttestationRegistry.fromVerifierFacts(
                 List.of(binding(1, first)),
                 List.of(
                     new AttestationCredentialRevocation(
@@ -68,7 +68,7 @@ class AttestationRegistryValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            AttestationRegistry.of(
+            AttestationRegistry.fromVerifierFacts(
                 List.of(binding(0, first)),
                 List.of(
                     new AttestationCredentialRevocation(
@@ -81,7 +81,7 @@ class AttestationRegistryValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            AttestationRegistry.of(
+            AttestationRegistry.fromVerifierFacts(
                 List.of(binding(0, first), rollover(1, replacement, second.keyId())),
                 List.of(),
                 List.of(),
@@ -102,7 +102,7 @@ class AttestationRegistryValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            AttestationRegistry.of(
+            AttestationRegistry.fromVerifierFacts(
                 List.of(
                     rollover(1, samePrincipalReplacement, futurePredecessor.keyId()),
                     binding(2, futurePredecessor)),
@@ -113,7 +113,7 @@ class AttestationRegistryValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            AttestationRegistry.of(
+            AttestationRegistry.fromVerifierFacts(
                 List.of(binding(0, first), rollover(1, replacement, first.keyId())),
                 List.of(),
                 List.of(),
@@ -122,7 +122,7 @@ class AttestationRegistryValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            AttestationRegistry.of(
+            AttestationRegistry.fromVerifierFacts(
                 List.of(binding(0, first), rollover(2, samePrincipalReplacement, first.keyId())),
                 List.of(
                     new AttestationCredentialRevocation(
@@ -139,7 +139,7 @@ class AttestationRegistryValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            AttestationRegistry.of(
+            AttestationRegistry.fromVerifierFacts(
                 List.of(binding(0, first)),
                 List.of(),
                 List.of(duplicateGrant, duplicateGrant),
@@ -150,7 +150,7 @@ class AttestationRegistryValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            AttestationRegistry.of(
+            AttestationRegistry.fromVerifierFacts(
                 List.of(binding(0, first)),
                 List.of(),
                 List.of(),
@@ -160,7 +160,7 @@ class AttestationRegistryValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            AttestationRegistry.of(
+            AttestationRegistry.fromVerifierFacts(
                 List.of(binding(0, first)),
                 List.of(),
                 List.of(),
@@ -174,7 +174,7 @@ class AttestationRegistryValidatorTest {
     UUID replacementWorkflowId = UUID.randomUUID();
     assertDoesNotThrow(
         () ->
-            AttestationRegistry.of(
+            AttestationRegistry.fromVerifierFacts(
                 List.of(),
                 List.of(),
                 List.of(),
@@ -186,7 +186,7 @@ class AttestationRegistryValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            AttestationRegistry.of(
+            AttestationRegistry.fromVerifierFacts(
                 List.of(),
                 List.of(),
                 List.of(),
@@ -197,7 +197,7 @@ class AttestationRegistryValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            AttestationRegistry.of(
+            AttestationRegistry.fromVerifierFacts(
                 List.of(),
                 List.of(),
                 List.of(),
@@ -208,7 +208,7 @@ class AttestationRegistryValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            AttestationRegistry.of(
+            AttestationRegistry.fromVerifierFacts(
                 List.of(),
                 List.of(),
                 List.of(),
@@ -217,7 +217,7 @@ class AttestationRegistryValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            AttestationRegistry.of(
+            AttestationRegistry.fromVerifierFacts(
                 List.of(),
                 List.of(),
                 List.of(),
@@ -228,7 +228,7 @@ class AttestationRegistryValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            AttestationRegistry.of(
+            AttestationRegistry.fromVerifierFacts(
                 List.of(),
                 List.of(),
                 List.of(),

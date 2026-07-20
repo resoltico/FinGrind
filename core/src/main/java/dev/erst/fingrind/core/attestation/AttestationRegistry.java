@@ -47,7 +47,8 @@ final class AttestationRegistry {
                 sortedWorkflowPolicies));
   }
 
-  static AttestationRegistry of(
+  /** Resolves untrusted facts so a verifier can classify their first protocol failure. */
+  static AttestationRegistry fromVerifierFacts(
       List<AttestationCredentialBinding> bindings,
       List<AttestationCredentialRevocation> revocations,
       List<AttestationCapabilityGrant> grants,
@@ -59,6 +60,19 @@ final class AttestationRegistry {
         Objects.requireNonNull(grants, "grants"),
         Objects.requireNonNull(policyRules, "policyRules"),
         Objects.requireNonNull(workflowPolicies, "workflowPolicies"));
+  }
+
+  /** Validates an accepted registry history, including every post-mutation quorum state. */
+  static AttestationRegistry fromAcceptedHistory(
+      List<AttestationCredentialBinding> bindings,
+      List<AttestationCredentialRevocation> revocations,
+      List<AttestationCapabilityGrant> grants,
+      List<AttestationPolicyRule> policyRules,
+      List<AttestationSystemWorkflowPolicy> workflowPolicies) {
+    AttestationRegistry registry =
+        fromVerifierFacts(bindings, revocations, grants, policyRules, workflowPolicies);
+    AttestationRegistryCapacity.requireCapacityForAcceptedHistory(registry.resolution);
+    return registry;
   }
 
   static AttestationRegistry genesis(List<AttestationFounder> founders) {
@@ -79,7 +93,7 @@ final class AttestationRegistry {
                 BigInteger.ZERO, founder.principalId(), capability, AttestationGrantState.GRANT));
       }
     }
-    return of(bindings, List.of(), grants, policyRules, List.of());
+    return fromAcceptedHistory(bindings, List.of(), grants, policyRules, List.of());
   }
 
   int quorumAt(AttestationCapability capability, BigInteger resolvingOrder) {
@@ -99,9 +113,11 @@ final class AttestationRegistry {
     return resolution.eligiblePrincipalCount(capability, resolvingOrder, null);
   }
 
-  void requirePostMutationCapacityAt(BigInteger resolvingOrder) {
-    AttestationRegistryCapacity.requireCapacityAt(
-        resolution, Objects.requireNonNull(resolvingOrder, "resolvingOrder"));
+  boolean hasActiveSystemWorkflow(
+      AttestationSystemWorkflowKind workflowKind, BigInteger resolvingOrder) {
+    return resolution.hasActiveSystemWorkflow(
+        Objects.requireNonNull(workflowKind, "workflowKind"),
+        Objects.requireNonNull(resolvingOrder, "resolvingOrder"));
   }
 
   private static void requireDistinctFounders(List<AttestationFounder> founders) {

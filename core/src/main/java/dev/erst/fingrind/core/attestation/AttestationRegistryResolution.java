@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
@@ -98,18 +99,42 @@ final class AttestationRegistryResolution {
         .isPresent();
   }
 
-  boolean hasActiveSystemWorkflowAt(BigInteger resolvingOrder) {
+  boolean hasActiveSystemWorkflow(
+      AttestationSystemWorkflowKind workflowKind, BigInteger resolvingOrder) {
+    AttestationSystemWorkflowKind checkedWorkflowKind =
+        Objects.requireNonNull(workflowKind, "workflowKind");
     BigInteger checkedOrder = Objects.requireNonNull(resolvingOrder, "resolvingOrder");
     Set<UUID> resolvedWorkflowIds = new HashSet<>();
     for (int index = workflowPolicies.size() - 1; index >= 0; index--) {
       AttestationSystemWorkflowPolicy policy = workflowPolicies.get(index);
       if (policy.acceptedOrder().compareTo(checkedOrder) <= 0
           && resolvedWorkflowIds.add(policy.workflowId())
-          && policy.active()) {
+          && policy.active()
+          && policy.workflowKind() == checkedWorkflowKind) {
         return true;
       }
     }
     return false;
+  }
+
+  boolean hasActiveSystemWorkflowAt(BigInteger resolvingOrder) {
+    BigInteger checkedOrder = Objects.requireNonNull(resolvingOrder, "resolvingOrder");
+    for (AttestationSystemWorkflowKind workflowKind : AttestationSystemWorkflowKind.values()) {
+      if (hasActiveSystemWorkflow(workflowKind, checkedOrder)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  List<BigInteger> mutationOrders() {
+    Set<BigInteger> orders = new TreeSet<>();
+    bindings.forEach(binding -> orders.add(binding.acceptedOrder()));
+    revocations.forEach(revocation -> orders.add(revocation.acceptedOrder()));
+    grants.forEach(grant -> orders.add(grant.acceptedOrder()));
+    policyRules.forEach(rule -> orders.add(rule.acceptedOrder()));
+    workflowPolicies.forEach(policy -> orders.add(policy.acceptedOrder()));
+    return List.copyOf(orders);
   }
 
   private boolean isRevoked(AttestationHash keyId, BigInteger resolvingOrder) {

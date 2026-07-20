@@ -34,6 +34,7 @@ final class AttestationAuthorization {
     requireSignatures(entries, credentials, checkedEnvelope.payload());
     requireCapability(registry, entries, checkedScope.capability(), checkedResolvingOrder, quorum);
     requireCredentialPurpose(credentials, checkedScope.sourceChannel());
+    requireSystemWorkflow(registry, checkedScope, checkedResolvingOrder);
   }
 
   static void requireGenesis(
@@ -182,6 +183,17 @@ final class AttestationAuthorization {
       if (credential.requireBinding().purpose() != sourceChannel.credentialPurpose()) {
         throw failure(AttestationAuthorizationFailure.CREDENTIAL_PURPOSE_INVALID);
       }
+    }
+  }
+
+  private static void requireSystemWorkflow(
+      AttestationRegistry registry,
+      AttestationAuthorizationScope scope,
+      BigInteger resolvingOrder) {
+    AttestationSystemWorkflowKind requiredWorkflowKind = scope.requiredSystemWorkflowKind();
+    if (requiredWorkflowKind != null
+        && !registry.hasActiveSystemWorkflow(requiredWorkflowKind, resolvingOrder)) {
+      throw failure(AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID);
     }
   }
 

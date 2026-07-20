@@ -36,7 +36,8 @@ final class AttestationAuthorizationTestSupport {
     for (TestCredential credential : credentials) {
       grants.addAll(allFounderGrants(credential.principalId()));
     }
-    return AttestationRegistry.of(bindings, revocations, grants, policyRules, List.of());
+    return AttestationRegistry.fromVerifierFacts(
+        bindings, revocations, grants, policyRules, List.of());
   }
 
   static List<AttestationCapabilityGrant> allFounderGrants(UUID principalId) {

@@ -2,6 +2,7 @@ package dev.erst.fingrind.core.attestation;
 
 /** Closed typed outcomes for historical attestation authorization. */
 enum AttestationAuthorizationFailure {
+  REQUEST_PROFILE_INVALID("attestation-request-profile-invalid"),
   UNKNOWN_OPERATION_KIND("attestation-unknown-operation-kind"),
   ENVELOPE_ORDER_INVALID("attestation-envelope-order-invalid"),
   QUORUM_BELOW("attestation-quorum-below"),
@@ -15,6 +16,7 @@ enum AttestationAuthorizationFailure {
   SIGNATURE_INVALID("attestation-signature-invalid"),
   CAPABILITY_INVALID("attestation-capability-invalid"),
   CREDENTIAL_PURPOSE_INVALID("attestation-credential-purpose-invalid"),
+  SYSTEM_DERIVATION_INVALID("attestation-system-derivation-invalid"),
   GENESIS_INVALID("attestation-genesis-invalid");
 
   private final String code;

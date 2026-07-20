@@ -6,6 +6,12 @@ import java.math.BigInteger;
 final class AttestationRegistryCapacity {
   private AttestationRegistryCapacity() {}
 
+  static void requireCapacityForAcceptedHistory(AttestationRegistryResolution resolution) {
+    for (BigInteger resolvingOrder : resolution.mutationOrders()) {
+      requireCapacityAt(resolution, resolvingOrder);
+    }
+  }
+
   static void requireCapacityAt(
       AttestationRegistryResolution resolution, BigInteger resolvingOrder) {
     for (AttestationCapability capability : AttestationCapability.values()) {
