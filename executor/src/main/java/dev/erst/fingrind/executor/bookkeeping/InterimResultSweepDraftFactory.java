@@ -11,6 +11,7 @@ import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
+import dev.erst.fingrind.core.CryptographicPrimitives;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -27,13 +28,9 @@ import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.executor.spi.PostingDraft;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -164,12 +161,7 @@ final class InterimResultSweepDraftFactory {
   }
 
   static String sha256Hex(String value) {
-    try {
-      MessageDigest digest = MessageDigest.getInstance("SHA-256");
-      return HexFormat.of().formatHex(digest.digest(value.getBytes(StandardCharsets.UTF_8)));
-    } catch (NoSuchAlgorithmException exception) {
-      throw new IllegalStateException("SHA-256 is unavailable in this Java runtime.", exception);
-    }
+    return CryptographicPrimitives.sha256HexUtf8(value);
   }
 
   /** One generated posting draft plus the result-holding movement it closes. */

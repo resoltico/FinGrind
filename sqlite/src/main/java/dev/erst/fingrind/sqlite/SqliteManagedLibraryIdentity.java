@@ -2,7 +2,6 @@ package dev.erst.fingrind.sqlite;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
 import java.util.List;
 import java.util.Objects;
 
@@ -85,14 +84,6 @@ final class SqliteManagedLibraryIdentity {
 
   static String actualSha256(Path libraryPath) {
     return SqliteManagedLibraryDigestSupport.actualSha256(libraryPath);
-  }
-
-  static String actualSha256(Path libraryPath, String algorithm) {
-    return SqliteManagedLibraryDigestSupport.actualSha256(libraryPath, algorithm);
-  }
-
-  static MessageDigest sha256Digest(String algorithm) {
-    return SqliteManagedLibraryDigestSupport.sha256Digest(algorithm);
   }
 
   static Path createPrivateSnapshotDirectory(Path tempRoot, boolean supportsPosix) {

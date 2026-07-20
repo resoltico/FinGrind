@@ -33,12 +33,14 @@ import org.jspecify.annotations.NullMarked;
     importOptions = ImportOption.DoNotIncludeTests.class)
 @SuppressWarnings("PMD.TestClassWithoutTestCases")
 final class FinGrindArchitectureTest {
-  private static final Set<String> ATTESTATION_CRYPTO_SEAM =
+  private static final Set<String> CRYPTOGRAPHIC_PRIMITIVE_SEAM =
       Set.of(
+          "dev.erst.fingrind.core.CryptographicPrimitives",
           "dev.erst.fingrind.core.attestation.AttestationEd25519",
           "dev.erst.fingrind.core.attestation.AttestationFilePkcs8Custodian");
-  private static final String PRIVATE_KEY_TYPE_PATTERN =
-      "java\\.security(\\.interfaces)?\\..*PrivateKey";
+  private static final String CRYPTOGRAPHIC_PRIMITIVE_TYPE_PATTERN =
+      "java\\.security\\.(Signature|KeyPairGenerator|KeyFactory|MessageDigest|SecureRandom)"
+          + "|java\\.security(\\.interfaces)?\\..*Private.*Key.*";
 
   private FinGrindArchitectureTest() {}
 
@@ -158,8 +160,8 @@ final class FinGrindArchitectureTest {
           .haveFullyQualifiedName("dev.erst.fingrind.contract.runtime.PublicPathHint");
 
   @ArchTest
-  static final ArchRule privateKeyTypesAreConfinedToTheAttestationCryptoSeam =
-      classes().should(dependOnPrivateKeyTypesOnlyInsideTheAttestationCryptoSeam());
+  static final ArchRule cryptographicPrimitivesAreConfinedToTheCryptoSeam =
+      classes().should(dependOnCryptographicPrimitiveTypesOnlyInsideTheCryptoSeam());
 
   @ArchTest
   static final ArchRule primarySlicesAreFreeOfCycles =
@@ -207,29 +209,38 @@ final class FinGrindArchitectureTest {
   }
 
   private static ArchCondition<JavaClass>
-      dependOnPrivateKeyTypesOnlyInsideTheAttestationCryptoSeam() {
+      dependOnCryptographicPrimitiveTypesOnlyInsideTheCryptoSeam() {
     return new ArchCondition<>(
-        "depend on private-key types only inside the attestation crypto seam") {
+        "depend on cryptographic primitive types only inside the crypto seam") {
       @Override
       public void check(JavaClass source, ConditionEvents events) {
-        if (ATTESTATION_CRYPTO_SEAM.contains(source.getName())) {
+        if (belongsToCryptographicPrimitiveSeam(source)) {
           return;
         }
         source.getDirectDependenciesFromSelf().stream()
             .filter(
                 dependency ->
-                    dependency.getTargetClass().getName().matches(PRIVATE_KEY_TYPE_PATTERN))
+                    dependency
+                        .getTargetClass()
+                        .getName()
+                        .matches(CRYPTOGRAPHIC_PRIMITIVE_TYPE_PATTERN))
             .forEach(
                 dependency ->
                     events.add(
                         SimpleConditionEvent.violated(
                             source,
                             source.getName()
-                                + " must not depend on private-key type "
+                                + " must not depend on cryptographic primitive type "
                                 + dependency.getTargetClass().getName()
                                 + ".")));
       }
     };
+  }
+
+  private static boolean belongsToCryptographicPrimitiveSeam(JavaClass source) {
+    return CRYPTOGRAPHIC_PRIMITIVE_SEAM.stream()
+        .anyMatch(
+            owner -> source.getName().equals(owner) || source.getName().startsWith(owner + "$"));
   }
 
   private static SliceAssignment bookkeepingContexts() {

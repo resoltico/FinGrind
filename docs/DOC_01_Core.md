@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: CORE
-updated: "2026-07-17"
+updated: "2026-07-20"
 route:
   keywords: [fingrind, core, account-code, account-name, accounting-basis, account-taxonomy, cash-flow-asset-classification, book-doctrine, currency-unit, quantity, unit-of-measure, inventory-costing, weighted-average, idempotency, temporal-text, fiscal-year-start, reachability]
   questions: ["what core value types does fingrind expose", "where do the core accounting invariants live", "how does account doctrine work in fingrind", "what account and identity primitives are in the fingrind core module", "where are quantity and weighted-average inventory costing primitives documented"]
@@ -576,6 +576,35 @@ public record CorrelationId(String value)
 
 - Purpose: correlate related commands without overloading `CommandId`
 - Validation: rejects `null` and blank text after stripping surrounding whitespace
+
+## `CryptographicPrimitives`
+
+`CryptographicPrimitives` is the sole generic core owner for SHA-256 hashing, constant-time byte
+comparison, and secure random generation outside attestation-specific operations.
+
+```java
+public final class CryptographicPrimitives {
+  public static byte[] sha256(byte[] value);
+  public static String sha256Hex(byte[] value);
+  public static String sha256HexUtf8(String value);
+  public static String sha256Hex(InputStream inputStream) throws IOException;
+  public static boolean constantTimeEquals(byte[] left, byte[] right);
+  public static RandomGenerator secureRandom();
+}
+```
+
+- Purpose: keep generic JCA primitive use confined to one audited core owner instead of allowing
+  individual adapters, workflow code, or local tools to choose independent implementations
+- Hashing: all hash methods use SHA-256 and emit lowercase hexadecimal text where applicable;
+  `sha256Hex(InputStream)` reads but does not close the caller-owned stream
+- Comparison: `constantTimeEquals(...)` delegates to JDK constant-time byte comparison and returns
+  `false` for unequal values
+- Randomness: `secureRandom()` returns a `RandomGenerator` backed by secure JDK entropy without
+  exposing a JCA random type to callers
+- Failure: an unavailable SHA-256 implementation raises `IllegalStateException`; stream read
+  failures propagate as `IOException`
+- Compatibility: exported core API; only the attestation crypto seam may directly use the guarded
+  JCA primitive types
 
 ## `CurrencyUnit`
 

@@ -34,7 +34,7 @@ internal fun Project.registerJavaSourcePolicyTask() =
     } else {
         tasks.register<VerifyJavaSourcePoliciesTask>("verifyJavaSourcePolicies") {
             group = "verification"
-            description = "Fails the build when Java source files use forbidden wildcard imports."
+            description = "Fails the build when Java source files violate FinGrind's Java source policies."
             projectPathValue.set(path)
             projectDirectoryPath.set(projectDir.invariantSeparatorsPath())
             sourceFiles.from(
@@ -96,13 +96,14 @@ abstract class VerifyJavaSourcePoliciesTask : DefaultTask() {
         sourceFiles.files
             .sortedBy { it.invariantSeparatorsPath() }
             .forEach { file ->
+                val productionSource = file.invariantSeparatorsPath().contains("/src/main/java/")
                 file.useLines { lines ->
                     lines.forEachIndexed { index, line ->
                         if (wildcardImportPattern.matches(line.trim())) {
                             violations +=
                                 "${file.displayPath(projectDirectory)}:${index + 1}: wildcard imports are forbidden."
                         }
-                        if (file.invariantSeparatorsPath().contains("/src/main/java/")) {
+                        if (productionSource) {
                             if (catchThrowablePattern.containsMatchIn(line)) {
                                 violations +=
                                     "${file.displayPath(projectDirectory)}:${index + 1}: catch (Throwable) is forbidden in production sources."
@@ -117,6 +118,12 @@ abstract class VerifyJavaSourcePoliciesTask : DefaultTask() {
                             ) {
                                 violations +=
                                     "${file.displayPath(projectDirectory)}:${index + 1}: qualified JPMS exports are forbidden; Gradle compiles repository modules independently, so `exports ... to` emits unresolved-target warnings. Export the package unqualified or move it into its own module."
+                            }
+                            if (
+                                file.usesCryptographicPrimitiveOutsideSeam(line)
+                            ) {
+                                violations +=
+                                    "${file.displayPath(projectDirectory)}:${index + 1}: cryptographic primitives are owned only by the explicit crypto seam."
                             }
                         }
                         if (!sqliteOwnedProject) {

@@ -33,6 +33,9 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Fixed cryptographic primitive ownership. Generic SHA-256 hashing, constant-time secret
+  comparison, and secure entropy now have one documented core owner, while architecture and shared
+  source policy reject direct primitive use outside that owner and the attestation crypto seam.
 - Closed the unreleased next-format operation-attestation contract around historical policy and
   credential identity. The latest capability policy rule is now the only effective rule at a
   position; credential bindings prove their SPKI-derived key identity and one-principal ownership;

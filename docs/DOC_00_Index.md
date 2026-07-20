@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: INDEX
-updated: "2026-07-19"
+updated: "2026-07-20"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session, tax, account-registry, account-lifecycle, journal, money, quantity, inventory costing, weighted average, posting]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSessions", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService", "which doc file covers the tax surface", "which doc file covers account lifecycle", "which doc file covers quantity and weighted-average inventory costing primitives"]
@@ -214,6 +214,7 @@ Protected-book maintenance, passphrase, SQLite session, and runtime symbols cont
 | `ComparativeSelection` | `DOC_02_AdministrationAndReports.md` | `ComparativeRangeResolver` |
 | `ClassificationResult` | `DOC_01_Core_LedgerAndPosting.md` | `ClassificationResult` |
 | `CorrelationId` | `DOC_01_Core.md` | `CorrelationId` |
+| `CryptographicPrimitives` | `DOC_01_Core.md` | `CryptographicPrimitives` |
 | `CurrencyBalance` | `DOC_01_Core_LedgerAndPosting.md` | `CurrencyBalance` |
 | `CurrencyUnit` | `DOC_01_Core.md` | `CurrencyUnit` |
 | `EffectiveDateRange` | `DOC_01_Core.md` | `EffectiveDateRange` |

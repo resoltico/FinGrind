@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
+import dev.erst.fingrind.core.CryptographicPrimitives;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -10,17 +11,17 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
-import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Objects;
+import java.util.random.RandomGenerator;
 
 /** Creates new owner-only UTF-8 key files for protected FinGrind books. */
 public final class SqliteBookKeyFileGenerator {
   static final String GENERATED_ENCODING = "base64url-no-padding";
   static final int GENERATED_ENTROPY_BITS = 256;
   private static final int GENERATED_RANDOM_BYTES = GENERATED_ENTROPY_BITS / 8;
-  private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+  private static final RandomGenerator SECURE_RANDOM = CryptographicPrimitives.secureRandom();
 
   /** Internal seam for materializing a newly created key file during generator tests. */
   @FunctionalInterface
@@ -56,27 +57,27 @@ public final class SqliteBookKeyFileGenerator {
         bookKeyFilePath, SECURE_RANDOM, SqliteBookKeyFileGenerator::writeAndVerifyFile);
   }
 
-  static GeneratedBookKeyFile generate(Path bookKeyFilePath, SecureRandom secureRandom) {
+  static GeneratedBookKeyFile generate(Path bookKeyFilePath, RandomGenerator secureRandom) {
     return generateDecision(bookKeyFilePath, secureRandom).requireAccepted();
   }
 
   static GeneratedBookKeyFile generate(
       Path bookKeyFilePath,
-      SecureRandom secureRandom,
+      RandomGenerator secureRandom,
       GeneratedKeyFileMaterializer generatedKeyFileMaterializer) {
     return generateDecision(bookKeyFilePath, secureRandom, generatedKeyFileMaterializer)
         .requireAccepted();
   }
 
   static ContractDecision<GeneratedBookKeyFile> generateDecision(
-      Path bookKeyFilePath, SecureRandom secureRandom) {
+      Path bookKeyFilePath, RandomGenerator secureRandom) {
     return generateDecision(
         bookKeyFilePath, secureRandom, SqliteBookKeyFileGenerator::writeAndVerifyFile);
   }
 
   static ContractDecision<GeneratedBookKeyFile> generateDecision(
       Path bookKeyFilePath,
-      SecureRandom secureRandom,
+      RandomGenerator secureRandom,
       GeneratedKeyFileMaterializer generatedKeyFileMaterializer) {
     return generateDecision(
         bookKeyFilePath,
@@ -88,7 +89,7 @@ public final class SqliteBookKeyFileGenerator {
 
   static ContractDecision<GeneratedBookKeyFile> generateDecision(
       Path bookKeyFilePath,
-      SecureRandom secureRandom,
+      RandomGenerator secureRandom,
       GeneratedKeyFileMaterializer generatedKeyFileMaterializer,
       SecureParentDirectoryEnsurer secureParentDirectoryEnsurer,
       EmptyKeyFileCreator emptyKeyFileCreator) {
@@ -194,7 +195,7 @@ public final class SqliteBookKeyFileGenerator {
     }
   }
 
-  private static byte[] encodedPassphraseBytes(SecureRandom secureRandom) {
+  private static byte[] encodedPassphraseBytes(RandomGenerator secureRandom) {
     byte[] randomBytes = new byte[GENERATED_RANDOM_BYTES];
     try {
       secureRandom.nextBytes(randomBytes);

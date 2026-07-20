@@ -151,8 +151,6 @@ class SqliteManagedLibraryDigestVerificationTest extends SqliteManagedLibraryIde
             java.util.List.of(sha256Line(libraryPath, "libsqlite3.so.0")),
             "test digest",
             "libsqlite3.so.0"));
-    assertEquals(expectedDigest, SqliteManagedLibraryIdentity.actualSha256(libraryPath, "SHA-256"));
-    assertEquals("SHA-256", SqliteManagedLibraryIdentity.sha256Digest("SHA-256").getAlgorithm());
   }
 
   @Test
@@ -267,22 +265,10 @@ class SqliteManagedLibraryDigestVerificationTest extends SqliteManagedLibraryIde
     IllegalStateException exception =
         assertThrows(
             IllegalStateException.class,
-            () -> SqliteManagedLibraryIdentity.actualSha256(libraryPath, "SHA-256"));
+            () -> SqliteManagedLibraryIdentity.actualSha256(libraryPath));
 
     assertTrue(
         Objects.requireNonNull(exception.getMessage())
             .contains("Failed to read the managed SQLite library"));
-  }
-
-  @Test
-  void sha256Digest_rejectsUnavailableAlgorithms() {
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () -> SqliteManagedLibraryIdentity.sha256Digest("definitely-not-a-real-algorithm"));
-
-    assertTrue(
-        Objects.requireNonNull(exception.getMessage())
-            .contains("definitely-not-a-real-algorithm is unavailable"));
   }
 }

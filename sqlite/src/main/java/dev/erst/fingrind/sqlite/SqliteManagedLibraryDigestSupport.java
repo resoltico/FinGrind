@@ -1,12 +1,10 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.CryptographicPrimitives;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -79,36 +77,14 @@ final class SqliteManagedLibraryDigestSupport {
   }
 
   static String actualSha256(Path libraryPath) {
-    return actualSha256(libraryPath, "SHA-256");
-  }
-
-  static String actualSha256(Path libraryPath, String algorithm) {
-    MessageDigest digest = sha256Digest(algorithm);
     try (InputStream inputStream = Files.newInputStream(libraryPath)) {
-      byte[] buffer = new byte[16 * 1024];
-      while (true) {
-        int read = inputStream.read(buffer);
-        if (read < 0) {
-          break;
-        }
-        digest.update(buffer, 0, read);
-      }
+      return CryptographicPrimitives.sha256Hex(inputStream);
     } catch (IOException exception) {
       throw new IllegalStateException(
           "Failed to read the managed SQLite library at "
               + libraryPath
               + " for SHA-256 verification.",
           exception);
-    }
-    return HexFormat.of().formatHex(digest.digest());
-  }
-
-  static MessageDigest sha256Digest(String algorithm) {
-    try {
-      return MessageDigest.getInstance(algorithm);
-    } catch (NoSuchAlgorithmException exception) {
-      throw new IllegalStateException(
-          algorithm + " is unavailable in the active Java runtime.", exception);
     }
   }
 
