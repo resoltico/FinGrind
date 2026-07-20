@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: BOOK_OPERATION_ATTESTATION
-updated: "2026-07-19"
+updated: "2026-07-20"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["AttestedOperation", "AttestationEnvelope"]
@@ -229,7 +229,9 @@ Version 1 ships exactly one signing custodian: an encrypted file-backed PKCS#8 p
 JDK Ed25519 seam decrypts that key only transiently while signing. PKCS#11, HSM, OS-keychain, and
 non-exportable custodians are unshipped; selecting one returns custodian-not-supported and never
 falls back to file custody. Private-key material cannot enter a book, report, telemetry payload,
-log, CLI DTO, contract DTO, or generic accounting object.
+log, CLI DTO, contract DTO, or generic accounting object. The custodian enforces a 1 KiB key-file
+maximum with one additional probe byte, so an oversized artifact is rejected before decryption and
+never fully loaded.
 
 | Class | Applies to | Required boundary |
 |:--|:--|:--|

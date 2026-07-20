@@ -35,6 +35,7 @@ final class AttestationFilePkcs8Custodian {
           + Integer.BYTES
           + SALT_BYTE_COUNT
           + INITIALIZATION_VECTOR_BYTE_COUNT;
+  static final int MAXIMUM_KEY_FILE_BYTE_COUNT = 1_024;
   private static final SecureRandom RANDOM = new SecureRandom();
 
   private AttestationFilePkcs8Custodian() {}
@@ -61,7 +62,7 @@ final class AttestationFilePkcs8Custodian {
     char[] ownedPassphrase = Objects.requireNonNull(passphrase, "passphrase");
     try {
       Objects.requireNonNull(payload, "payload");
-      byte[] encryptedPrivateKey = Files.readAllBytes(path);
+      byte[] encryptedPrivateKey = readEncryptedPrivateKey(path);
       try {
         return AttestationEd25519.sign(decrypt(encryptedPrivateKey, ownedPassphrase), payload);
       } finally {
@@ -74,6 +75,18 @@ final class AttestationFilePkcs8Custodian {
 
   private static byte[] encrypt(PrivateKey privateKey, char[] passphrase) {
     return encrypt(privateKey, passphrase, Cipher::getInstance);
+  }
+
+  private static byte[] readEncryptedPrivateKey(Path path) throws IOException {
+    byte[] encryptedPrivateKey;
+    try (var input = Files.newInputStream(path)) {
+      encryptedPrivateKey = input.readNBytes(MAXIMUM_KEY_FILE_BYTE_COUNT + 1);
+    }
+    if (encryptedPrivateKey.length <= MAXIMUM_KEY_FILE_BYTE_COUNT) {
+      return encryptedPrivateKey;
+    }
+    java.util.Arrays.fill(encryptedPrivateKey, (byte) 0);
+    throw new IllegalArgumentException("Attestation key file exceeds the maximum size of 1 KiB.");
   }
 
   static byte[] encrypt(PrivateKey privateKey, char[] passphrase, CipherFactory cipherFactory) {

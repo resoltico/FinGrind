@@ -193,6 +193,16 @@ class AttestationEd25519Test {
   }
 
   @Test
+  void fileCustodianRejectsOversizedKeyFilesBeforeDecryption() throws Exception {
+    Path keyPath = temporaryDirectory.resolve("signing.pk8");
+    Files.write(keyPath, new byte[AttestationFilePkcs8Custodian.MAXIMUM_KEY_FILE_BYTE_COUNT + 1]);
+
+    assertEquals(
+        "Attestation key file exceeds the maximum size of 1 KiB.",
+        signingFailure(keyPath).getMessage());
+  }
+
+  @Test
   void fileCustodianDoesNotOverwriteKeysAndClearsPassedPassphrases() throws Exception {
     Path keyPath = temporaryDirectory.resolve("signing.pk8");
     char[] passphrase = "correct horse battery staple".toCharArray();
