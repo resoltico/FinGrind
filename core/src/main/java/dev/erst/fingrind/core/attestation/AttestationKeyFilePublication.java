@@ -37,7 +37,9 @@ final class AttestationKeyFilePublication {
         encryptedPrivateKey,
         AttestationKeyFilePublication::writeAndForce,
         Files::createLink,
-        Files::deleteIfExists);
+        Files::deleteIfExists,
+        Files::deleteIfExists,
+        AttestationDirectoryDurability::force);
   }
 
   static void writeNewKeyFile(
@@ -53,7 +55,8 @@ final class AttestationKeyFilePublication {
         stagedKeyFileWriter,
         noReplaceLinkCreator,
         stagedKeyFileDeleter,
-        Files::deleteIfExists);
+        Files::deleteIfExists,
+        AttestationDirectoryDurability::force);
   }
 
   static void writeNewKeyFile(
@@ -64,16 +67,38 @@ final class AttestationKeyFilePublication {
       PathDeleter stagedKeyFileDeleter,
       PathDeleter committedStageRetryDeleter)
       throws IOException {
+    writeNewKeyFile(
+        path,
+        encryptedPrivateKey,
+        stagedKeyFileWriter,
+        noReplaceLinkCreator,
+        stagedKeyFileDeleter,
+        committedStageRetryDeleter,
+        AttestationDirectoryDurability::force);
+  }
+
+  static void writeNewKeyFile(
+      Path path,
+      byte[] encryptedPrivateKey,
+      StagedKeyFileWriter stagedKeyFileWriter,
+      NoReplaceLinkCreator noReplaceLinkCreator,
+      PathDeleter stagedKeyFileDeleter,
+      PathDeleter committedStageRetryDeleter,
+      DirectoryDurabilityForcer directoryDurabilityForcer)
+      throws IOException {
     Objects.requireNonNull(path, "path");
     Objects.requireNonNull(encryptedPrivateKey, "encryptedPrivateKey");
     Objects.requireNonNull(stagedKeyFileWriter, "stagedKeyFileWriter");
     Objects.requireNonNull(noReplaceLinkCreator, "noReplaceLinkCreator");
     Objects.requireNonNull(stagedKeyFileDeleter, "stagedKeyFileDeleter");
     Objects.requireNonNull(committedStageRetryDeleter, "committedStageRetryDeleter");
-    Path stagedPath = createOwnerOnlyTemporaryFile(parentDirectory(path));
+    Objects.requireNonNull(directoryDurabilityForcer, "directoryDurabilityForcer");
+    Path parent = parentDirectory(path);
+    Path stagedPath = createOwnerOnlyTemporaryFile(parent);
     try {
       stagedKeyFileWriter.write(stagedPath, encryptedPrivateKey);
       noReplaceLinkCreator.create(path, stagedPath);
+      directoryDurabilityForcer.force(parent);
     } catch (IOException | RuntimeException | Error exception) {
       discardStagedKeyFile(stagedPath, exception, stagedKeyFileDeleter);
       throw exception;
@@ -234,6 +259,15 @@ final class AttestationKeyFilePublication {
   interface PathDeleter {
     /** Removes the selected staged key-file path. */
     void delete(Path stagedPath) throws IOException;
+  }
+
+  /**
+   * Makes a parent directory's committed name changes durable before reporting publication success.
+   */
+  @FunctionalInterface
+  interface DirectoryDurabilityForcer {
+    /** Forces the committed directory entry for the selected directory to stable storage. */
+    void force(Path directory) throws IOException;
   }
 
   /** Creates an owner-only temporary key file in the selected directory. */

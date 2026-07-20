@@ -44,15 +44,27 @@ final class AttestationEd25519 {
   }
 
   static boolean verifies(PublicKey publicKey, byte[] payload, byte[] signature) {
+    return verifies(publicKey, payload, signature, Signature::getInstance);
+  }
+
+  static boolean verifies(
+      PublicKey publicKey, byte[] payload, byte[] signature, SignatureFactory signatureFactory) {
     Objects.requireNonNull(publicKey, "publicKey");
     Objects.requireNonNull(payload, "payload");
     Objects.requireNonNull(signature, "signature");
-    if (!isEd25519(publicKey) || signature.length != ALGORITHM.signatureByteLength()) {
+    Objects.requireNonNull(signatureFactory, "signatureFactory");
+    PublicKey canonicalPublicKey;
+    try {
+      canonicalPublicKey = canonicalEd25519PublicKey(publicKey);
+    } catch (IllegalArgumentException exception) {
+      return false;
+    }
+    if (signature.length != ALGORITHM.signatureByteLength()) {
       return false;
     }
     try {
-      Signature verifier = Signature.getInstance(ALGORITHM.jcaName());
-      verifier.initVerify(publicKey);
+      Signature verifier = signatureFactory.create(ALGORITHM.jcaName());
+      verifier.initVerify(canonicalPublicKey);
       verifier.update(payload);
       return verifier.verify(signature);
     } catch (GeneralSecurityException exception) {
@@ -134,5 +146,12 @@ final class AttestationEd25519 {
   interface KeyPairGeneratorFactory {
     /** Creates the key-pair generator identified by its JCA algorithm name. */
     KeyPairGenerator create(String algorithm) throws GeneralSecurityException;
+  }
+
+  /** Produces an Ed25519 JCA signature engine for deterministic verification-failure testing. */
+  @FunctionalInterface
+  interface SignatureFactory {
+    /** Creates the signature engine identified by its JCA algorithm name. */
+    Signature create(String algorithm) throws GeneralSecurityException;
   }
 }

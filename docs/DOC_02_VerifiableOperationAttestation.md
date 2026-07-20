@@ -231,7 +231,10 @@ non-exportable custodians are unshipped; selecting one returns custodian-not-sup
 falls back to file custody. Private-key material cannot enter a book, report, telemetry payload,
 log, CLI DTO, contract DTO, or generic accounting object. The custodian enforces a 1 KiB key-file
 maximum with one additional probe byte, so an oversized artifact is rejected before decryption and
-after a bounded read.
+after a bounded read. Creation writes and forces an owner-only stage, creates the final name by
+no-replace hard link, and reports success only after the parent directory's native durability
+barrier succeeds; a post-link durability failure is reported without pretending that the key was
+not published.
 
 | Class | Applies to | Required boundary |
 |:--|:--|:--|

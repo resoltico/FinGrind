@@ -79,6 +79,51 @@ class VerificationPolicySupportTest {
         )
     }
 
+    @Test
+    fun foreignMemorySeam_acceptsOnlyTheAttestationFfmTransportOutsideSqlite() {
+        val projectDirectory = temporaryDirectory.resolve("core")
+        writeSource(
+            projectDirectory,
+            "dev/erst/fingrind/core/attestation/AttestationDirectoryFfmTransport.java",
+            """
+            package dev.erst.fingrind.core.attestation;
+            import java.lang.foreign.Arena;
+            final class AttestationDirectoryFfmTransport {
+              void force() {
+                try {
+                } catch (Throwable ignored) {
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+
+        sourcePolicyTask(projectDirectory, ":core").verify()
+    }
+
+    @Test
+    fun foreignMemorySeam_rejectsOtherProductionOwners() {
+        val projectDirectory = temporaryDirectory.resolve("core")
+        writeSource(
+            projectDirectory,
+            "dev/erst/fingrind/core/UnexpectedNativeOwner.java",
+            """
+            package dev.erst.fingrind.core;
+            import java.lang.foreign.Arena;
+            final class UnexpectedNativeOwner {}
+            """.trimIndent(),
+        )
+
+        val exception =
+            assertFailsWith<GradleException> {
+                sourcePolicyTask(projectDirectory, ":core").verify()
+            }
+
+        kotlin.test.assertTrue(
+            exception.message.orEmpty().contains("Java FFM usage is owned only by the SQLite bridge module and the attestation key directory-durability seam"),
+        )
+    }
+
     private fun sourcePolicyTask(
         projectDirectory: Path,
         projectPath: String,

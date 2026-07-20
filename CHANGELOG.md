@@ -33,6 +33,9 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Fixed unreleased next-format attestation key custody. Verification now consumes the one
+  canonical Ed25519 SPKI it validated, and an encrypted PKCS#8 credential is successful only after
+  its no-clobber final name has passed the native parent-directory durability barrier.
 - Fixed cryptographic primitive ownership. Generic SHA-256 hashing, constant-time secret
   comparison, and secure entropy now have one documented core owner, while architecture and shared
   source policy reject direct primitive use outside that owner and the attestation crypto seam.

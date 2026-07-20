@@ -2,6 +2,7 @@ package dev.erst.fingrind.core.attestation;
 
 import static dev.erst.fingrind.core.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -45,13 +46,14 @@ class AttestationEd25519Test {
     byte[] signature = AttestationEd25519.sign(pair.getPrivate(), payload);
 
     assertTrue(AttestationEd25519.verifies(pair.getPublic(), payload, signature));
+    assertTrue(AttestationEd25519.isEd25519(pair.getPublic()));
     assertFalse(AttestationEd25519.verifies(wrongPair.getPublic(), payload, signature));
     assertFalse(AttestationEd25519.verifies(pair.getPublic(), new byte[] {1, 2, 4}, signature));
     byte[] tamperedSignature = signature.clone();
     tamperedSignature[0] ^= 1;
     assertFalse(AttestationEd25519.verifies(pair.getPublic(), payload, tamperedSignature));
     assertFalse(AttestationEd25519.verifies(pair.getPublic(), payload, new byte[63]));
-    assertFalse(
+    assertTrue(
         AttestationEd25519.verifies(
             new EncodedOnlyPublicKey(pair.getPublic().getEncoded()), payload, signature));
     assertArrayEquals(
@@ -69,6 +71,15 @@ class AttestationEd25519Test {
     PublicKey rsa = rsaPair.getPublic();
     assertFalse(AttestationEd25519.isEd25519(rsa));
     assertFalse(AttestationEd25519.verifies(rsa, new byte[0], new byte[64]));
+    var pair = AttestationEd25519.generateKeyPair();
+    assertFalse(
+        AttestationEd25519.verifies(
+            pair.getPublic(),
+            new byte[0],
+            AttestationEd25519.sign(pair.getPrivate(), new byte[0]),
+            ignored -> {
+              throw new NoSuchAlgorithmException("test");
+            }));
     assertThrows(IllegalArgumentException.class, () -> AttestationEd25519.keyId(rsa));
     assertThrows(
         IllegalArgumentException.class,
@@ -119,6 +130,14 @@ class AttestationEd25519Test {
     assertEquals(
         AttestationHash.sha256(pair.getPublic().getEncoded()),
         AttestationEd25519.keyId(changingKey));
+
+    byte[] payload = new byte[] {1, 2, 3};
+    byte[] signature = AttestationEd25519.sign(pair.getPrivate(), payload);
+    assertTrue(
+        AttestationEd25519.verifies(
+            new ChangingEncodedPublicKey(pair.getPublic().getEncoded(), new byte[] {1, 2, 3}),
+            payload,
+            signature));
   }
 
   @Test
@@ -346,6 +365,74 @@ class AttestationEd25519Test {
 
     assertArrayEquals(encryptedPrivateKey, Files.readAllBytes(keyPath));
     assertEquals(1L, directoryEntryCount());
+  }
+
+  @Test
+  void keyFilePublicationForcesTheFinalNameBeforeReportingSuccess() throws Exception {
+    Path keyPath = temporaryDirectory.resolve("signing.pk8");
+    byte[] encryptedPrivateKey = new byte[] {1, 2, 3};
+    AtomicReference<Path> forcedDirectory = new AtomicReference<>();
+
+    AttestationKeyFilePublication.writeNewKeyFile(
+        keyPath,
+        encryptedPrivateKey,
+        Files::write,
+        Files::createLink,
+        Files::deleteIfExists,
+        Files::deleteIfExists,
+        directory -> {
+          assertArrayEquals(encryptedPrivateKey, Files.readAllBytes(keyPath));
+          forcedDirectory.set(directory);
+        });
+
+    assertEquals(temporaryDirectory.toAbsolutePath().normalize(), forcedDirectory.get());
+    assertArrayEquals(encryptedPrivateKey, Files.readAllBytes(keyPath));
+    assertEquals(1L, directoryEntryCount());
+  }
+
+  @Test
+  void keyFilePublicationFailsAfterLinkingWhenTheFinalNameCannotBeMadeDurable() throws Exception {
+    Path keyPath = temporaryDirectory.resolve("signing.pk8");
+    byte[] encryptedPrivateKey = new byte[] {1, 2, 3};
+
+    IOException failure =
+        assertThrows(
+            IOException.class,
+            () ->
+                AttestationKeyFilePublication.writeNewKeyFile(
+                    keyPath,
+                    encryptedPrivateKey,
+                    Files::write,
+                    Files::createLink,
+                    Files::deleteIfExists,
+                    Files::deleteIfExists,
+                    ignored -> {
+                      assertTrue(Files.isRegularFile(keyPath));
+                      throw new IOException("simulated directory-force failure");
+                    }));
+
+    assertEquals("simulated directory-force failure", failure.getMessage());
+    assertArrayEquals(encryptedPrivateKey, Files.readAllBytes(keyPath));
+    assertEquals(1L, directoryEntryCount());
+  }
+
+  @Test
+  void directoryDurabilityUsesTheSupportedPlatformBoundary() throws Exception {
+    assertEquals(
+        AttestationDirectoryDurability.OperatingSystem.POSIX,
+        AttestationDirectoryDurability.operatingSystem("Mac OS X"));
+    assertEquals(
+        AttestationDirectoryDurability.OperatingSystem.POSIX,
+        AttestationDirectoryDurability.operatingSystem("Linux"));
+    assertEquals(
+        AttestationDirectoryDurability.OperatingSystem.WINDOWS,
+        AttestationDirectoryDurability.operatingSystem("Windows 11"));
+    assertEquals(
+        "Attestation key directory durability is supported only on macOS, Linux, and Windows. Detected: Solaris",
+        assertThrows(
+                IOException.class, () -> AttestationDirectoryDurability.operatingSystem("Solaris"))
+            .getMessage());
+    assertDoesNotThrow(() -> AttestationDirectoryDurability.force(temporaryDirectory));
   }
 
   @Test

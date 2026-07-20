@@ -20,10 +20,6 @@ private val wildcardImportPattern = Regex("""^import\s+(static\s+)?[\w.]+\.\*;$"
 private val catchThrowablePattern = Regex("""\bcatch\s*\(\s*Throwable(?:\s+\w+)?\s*\)""")
 private val suppressWarningsPattern = Regex("""@SuppressWarnings\s*\(""")
 private val qualifiedExportPattern = Regex("""^exports\s+[\w.]+\s+to(?:\s.*)?$""")
-private val foreignMemoryImportPattern = Regex("""^import\s+java\.lang\.foreign\.[\w.*]+;$""")
-private val fullyQualifiedForeignMemoryPattern = Regex("""\bjava\.lang\.foreign\.[A-Z]\w*""")
-private val systemLoadPattern = Regex("""\bSystem\.load(?:Library)?\s*\(""")
-private val runtimeLoadPattern = Regex("""\bRuntime\.getRuntime\(\)\.load(?:Library)?\s*\(""")
 private const val JACKSON_DATABIND_GROUP = "tools.jackson.core"
 private const val JACKSON_DATABIND_MODULE = "jackson-databind"
 private const val LEGACY_JACKSON_GROUP = "com.fasterxml.jackson.core"
@@ -97,6 +93,7 @@ abstract class VerifyJavaSourcePoliciesTask : DefaultTask() {
             .sortedBy { it.invariantSeparatorsPath() }
             .forEach { file ->
                 val productionSource = file.invariantSeparatorsPath().contains("/src/main/java/")
+                val attestationNativeInteropSeam = file.isAttestationNativeInteropSeam()
                 file.useLines { lines ->
                     lines.forEachIndexed { index, line ->
                         if (wildcardImportPattern.matches(line.trim())) {
@@ -104,7 +101,10 @@ abstract class VerifyJavaSourcePoliciesTask : DefaultTask() {
                                 "${file.displayPath(projectDirectory)}:${index + 1}: wildcard imports are forbidden."
                         }
                         if (productionSource) {
-                            if (catchThrowablePattern.containsMatchIn(line)) {
+                            if (
+                                catchThrowablePattern.containsMatchIn(line) &&
+                                    !attestationNativeInteropSeam
+                            ) {
                                 violations +=
                                     "${file.displayPath(projectDirectory)}:${index + 1}: catch (Throwable) is forbidden in production sources."
                             }
@@ -126,19 +126,14 @@ abstract class VerifyJavaSourcePoliciesTask : DefaultTask() {
                                     "${file.displayPath(projectDirectory)}:${index + 1}: cryptographic primitives are owned only by the explicit crypto seam."
                             }
                         }
-                        if (!sqliteOwnedProject) {
-                            if (
-                                foreignMemoryImportPattern.matches(line.trim()) ||
-                                    fullyQualifiedForeignMemoryPattern.containsMatchIn(line)
-                            ) {
-                                violations +=
-                                    "${file.displayPath(projectDirectory)}:${index + 1}: Java FFM usage is owned only by the SQLite bridge module; move this code behind sqlite-owned abstractions."
-                            }
-                            if (systemLoadPattern.containsMatchIn(line) || runtimeLoadPattern.containsMatchIn(line)) {
-                                violations +=
-                                    "${file.displayPath(projectDirectory)}:${index + 1}: Native library loading is owned only by the SQLite bridge module; remove this direct runtime load."
-                            }
-                        }
+                        violations +=
+                            nativeInteropPolicyViolations(
+                                file,
+                                line,
+                                index + 1,
+                                projectDirectory,
+                                sqliteOwnedProject,
+                            )
                     }
                 }
             }

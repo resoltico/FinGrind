@@ -42,6 +42,8 @@ final class FinGrindArchitectureTest {
       "java\\.security\\.(Signature|KeyPair|KeyPairGenerator|KeyFactory|MessageDigest|SecureRandom)"
           + "|java\\.security\\.spec\\.PKCS8EncodedKeySpec"
           + "|java\\.security(\\.interfaces)?\\..*Private.*Key.*";
+  private static final String ATTESTATION_DIRECTORY_FFM_TRANSPORT =
+      "dev.erst.fingrind.core.attestation.AttestationDirectoryFfmTransport";
 
   private FinGrindArchitectureTest() {}
 
@@ -165,6 +167,10 @@ final class FinGrindArchitectureTest {
       classes().should(dependOnCryptographicPrimitiveTypesOnlyInsideTheCryptoSeam());
 
   @ArchTest
+  static final ArchRule foreignMemoryIsConfinedToNativeInteropSeams =
+      classes().should(dependOnForeignMemoryOnlyInsideNativeInteropSeams());
+
+  @ArchTest
   static final ArchRule primarySlicesAreFreeOfCycles =
       slices().matching("dev.erst.fingrind.(*)..").should().beFreeOfCycles();
 
@@ -242,6 +248,36 @@ final class FinGrindArchitectureTest {
     return CRYPTOGRAPHIC_PRIMITIVE_SEAM.stream()
         .anyMatch(
             owner -> source.getName().equals(owner) || source.getName().startsWith(owner + "$"));
+  }
+
+  private static ArchCondition<JavaClass> dependOnForeignMemoryOnlyInsideNativeInteropSeams() {
+    return new ArchCondition<>("depend on foreign-memory types only inside native interop seams") {
+      @Override
+      public void check(JavaClass source, ConditionEvents events) {
+        if (belongsToNativeInteropSeam(source)) {
+          return;
+        }
+        source.getDirectDependenciesFromSelf().stream()
+            .filter(
+                dependency ->
+                    dependency.getTargetClass().getPackageName().startsWith("java.lang.foreign"))
+            .forEach(
+                dependency ->
+                    events.add(
+                        SimpleConditionEvent.violated(
+                            source,
+                            source.getName()
+                                + " must not depend on foreign-memory type "
+                                + dependency.getTargetClass().getName()
+                                + ".")));
+      }
+    };
+  }
+
+  private static boolean belongsToNativeInteropSeam(JavaClass source) {
+    return source.getPackageName().startsWith("dev.erst.fingrind.sqlite")
+        || ATTESTATION_DIRECTORY_FFM_TRANSPORT.equals(source.getName())
+        || source.getName().startsWith(ATTESTATION_DIRECTORY_FFM_TRANSPORT + "$");
   }
 
   private static SliceAssignment bookkeepingContexts() {
