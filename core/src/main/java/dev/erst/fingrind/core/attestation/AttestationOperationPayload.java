@@ -106,7 +106,8 @@ final class AttestationOperationPayload implements AttestationPayload {
 
   private static void requireVersion(AttestationByteReader input) {
     if (input.readUnsigned(Byte.BYTES).intValueExact() != 1) {
-      throw new AttestationAuthorizationException(AttestationAuthorizationFailure.UNSUPPORTED_VERSION);
+      throw new AttestationAuthorizationException(
+          AttestationAuthorizationFailure.UNSUPPORTED_VERSION);
     }
   }
 

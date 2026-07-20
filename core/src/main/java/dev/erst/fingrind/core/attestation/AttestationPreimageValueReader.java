@@ -1,7 +1,9 @@
 package dev.erst.fingrind.core.attestation;
 
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -30,6 +32,13 @@ final class AttestationPreimageValueReader {
     return AttestationHash.of(encoded);
   }
 
+  static @Nullable AttestationHash optionalHash(
+      AttestationPreimage.Fact fact, int fieldIndex, AttestationAuthorizationFailure failure) {
+    return AttestationPreimageFields.requireField(fact, fieldIndex).isPresent()
+        ? hash(fact, fieldIndex, failure)
+        : null;
+  }
+
   static AttestationSpki spki(
       AttestationPreimage.Fact fact, int fieldIndex, AttestationAuthorizationFailure failure) {
     byte[] encoded = value(fact, fieldIndex, failure);
@@ -54,6 +63,16 @@ final class AttestationPreimageValueReader {
       AttestationPreimage.Fact fact, int fieldIndex, AttestationAuthorizationFailure failure) {
     byte[] encoded = value(fact, fieldIndex, failure);
     return encoded[0] == 1;
+  }
+
+  static LocalDate date(
+      AttestationPreimage.Fact fact, int fieldIndex, AttestationAuthorizationFailure failure) {
+    return LocalDate.parse(new String(value(fact, fieldIndex, failure), StandardCharsets.US_ASCII));
+  }
+
+  static BigInteger unsigned64(
+      AttestationPreimage.Fact fact, int fieldIndex, AttestationAuthorizationFailure failure) {
+    return new BigInteger(1, value(fact, fieldIndex, failure));
   }
 
   static int mutation(

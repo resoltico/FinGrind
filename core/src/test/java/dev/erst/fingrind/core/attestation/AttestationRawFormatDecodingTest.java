@@ -57,6 +57,29 @@ class AttestationRawFormatDecodingTest {
         () -> AttestationDecodedEnvelope.operation(truncated));
   }
 
+  @Test
+  void splitsThePublishedContainerFromItsTrailerAndRejectsFramingTampering() throws IOException {
+    byte[] encoded =
+        AttestationDocumentVectors.bytes(
+            AttestationDocumentVectors.ARTIFACT_DOCUMENT, "V-CONTAINER-01", "container");
+    AttestationDecodedArtifact decoded = AttestationDecodedArtifact.decode(encoded);
+
+    assertArrayEquals(
+        AttestationDocumentVectors.bytes(
+            AttestationDocumentVectors.ARTIFACT_DOCUMENT, "V-CONTAINER-01", "snapshot"),
+        decoded.snapshot());
+    assertEquals(
+        AttestationDocumentVectors.value(
+            AttestationDocumentVectors.ARTIFACT_DOCUMENT, "V-CONTAINER-01", "containerDigest"),
+        decoded.digest().hex());
+
+    byte[] invalidLength = encoded.clone();
+    invalidLength[encoded.length - 12] ^= 1;
+    assertFailure(
+        AttestationAuthorizationFailure.MANIFEST_INVALID,
+        () -> AttestationDecodedArtifact.decode(invalidLength));
+  }
+
   private static void assertOperationVector() throws IOException {
     byte[] encoded =
         AttestationDocumentVectors.bytes(

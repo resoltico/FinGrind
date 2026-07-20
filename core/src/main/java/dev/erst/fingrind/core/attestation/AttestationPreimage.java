@@ -70,7 +70,9 @@ final class AttestationPreimage {
           if (presence == 0) {
             fields.add(AttestationField.absent());
           } else if (presence == 1) {
-            fields.add(AttestationField.present(input.readFieldValue(schema.fieldSchema(fieldIndex).type())));
+            fields.add(
+                AttestationField.present(
+                    input.readFieldValue(schema.fieldSchema(fieldIndex).type())));
           } else {
             throw input.failure();
           }

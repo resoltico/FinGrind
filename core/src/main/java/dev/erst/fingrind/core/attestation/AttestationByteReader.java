@@ -101,8 +101,10 @@ final class AttestationByteReader {
 
   AttestationFieldValue readFieldValue(AttestationFieldType type) {
     return switch (type) {
-      case UNSIGNED_8 -> AttestationNumericFieldValue.unsigned8(readUnsigned(Byte.BYTES).intValueExact());
-      case UNSIGNED_16 -> AttestationNumericFieldValue.unsigned16(readUnsigned(Short.BYTES).intValueExact());
+      case UNSIGNED_8 ->
+          AttestationNumericFieldValue.unsigned8(readUnsigned(Byte.BYTES).intValueExact());
+      case UNSIGNED_16 ->
+          AttestationNumericFieldValue.unsigned16(readUnsigned(Short.BYTES).intValueExact());
       case UNSIGNED_32 -> AttestationNumericFieldValue.unsigned32(readUnsigned(Integer.BYTES));
       case UNSIGNED_64 -> AttestationNumericFieldValue.unsigned64(readUnsigned(Long.BYTES));
       case SIGNED_64 -> AttestationNumericFieldValue.signed64(readSigned(Long.BYTES));
@@ -119,12 +121,14 @@ final class AttestationByteReader {
       case MONEY -> readMoney();
       case SCALED -> readScaled();
       case BOOLEAN -> readBoolean();
-      case MUTATION -> AttestationNumericFieldValue.mutation(readUnsigned(Byte.BYTES).intValueExact());
+      case MUTATION ->
+          AttestationNumericFieldValue.mutation(readUnsigned(Byte.BYTES).intValueExact());
     };
   }
 
   void requireAscii(String expected) {
-    if (!Arrays.equals(readBytes(expected.length()), expected.getBytes(StandardCharsets.US_ASCII))) {
+    if (!Arrays.equals(
+        readBytes(expected.length()), expected.getBytes(StandardCharsets.US_ASCII))) {
       throw failure();
     }
   }

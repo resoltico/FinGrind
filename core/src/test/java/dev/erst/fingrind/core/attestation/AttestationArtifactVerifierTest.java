@@ -1,0 +1,197 @@
+package dev.erst.fingrind.core.attestation;
+
+import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.assertFailure;
+import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.credential;
+import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.genesisContext;
+import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.genesisEffectPreimage;
+import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.genesisPayload;
+import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.genesisRequestPreimage;
+import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.signedGenesisEnvelope;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.math.BigInteger;
+import java.time.Instant;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
+import org.junit.jupiter.api.Test;
+
+/** Proves that external artifacts bind to the book reconstructed from their own snapshot bytes. */
+class AttestationArtifactVerifierTest {
+  @Test
+  void verifiesAManifestAgainstItsSnapshotChainAndAReceiptAgainstTheSameHistoricalHead() {
+    TestCredential founder = credential();
+    AttestationBook book = book(founder);
+    AttestationBookVerification verification = AttestationBookVerifier.verify(book);
+    byte[] snapshot = new byte[] {1, 2, 3, 4};
+    byte[] artifact = artifact(founder, verification, snapshot, AttestationHash.sha256(snapshot));
+
+    AttestationArtifactVerification artifactVerification =
+        AttestationArtifactVerifier.verifyArtifact(artifact, snapshotDecoder(snapshot, book));
+    AttestationReceiptVerification receiptVerification =
+        AttestationArtifactVerifier.verifyReceipt(
+            receipt(founder, verification), artifactVerification.snapshotVerification(), true);
+
+    assertEquals(verification.head(), artifactVerification.snapshotVerification().head());
+    assertTrue(receiptVerification.retainedWithinTrustBoundary());
+  }
+
+  @Test
+  void rejectsManifestSnapshotMismatchBeforeManifestAuthorization() {
+    TestCredential founder = credential();
+    AttestationBook book = book(founder);
+    AttestationBookVerification verification = AttestationBookVerifier.verify(book);
+    byte[] snapshot = new byte[] {1, 2, 3, 4};
+    byte[] artifact =
+        artifact(founder, verification, snapshot, AttestationHash.sha256(new byte[] {9, 8, 7, 6}));
+
+    assertFailure(
+        AttestationAuthorizationFailure.MANIFEST_INVALID,
+        () ->
+            AttestationArtifactVerifier.verifyArtifact(artifact, snapshotDecoder(snapshot, book)));
+  }
+
+  @Test
+  void rejectsReceiptThatNamesTheRightBookButTheWrongHistoricalHead() {
+    TestCredential founder = credential();
+    AttestationBookVerification verification = AttestationBookVerifier.verify(book(founder));
+    AttestationReceiptPayload payload =
+        new AttestationReceiptPayload(
+            verification.bookId(),
+            verification.headOrder(),
+            AttestationHash.sha256(new byte[] {9}),
+            Instant.parse("2026-07-20T00:00:01.000Z"));
+
+    assertFailure(
+        AttestationAuthorizationFailure.RECEIPT_INVALID,
+        () ->
+            AttestationArtifactVerifier.verifyReceipt(
+                envelope(payload, founder), verification, false));
+  }
+
+  private static byte[] artifact(
+      TestCredential founder,
+      AttestationBookVerification verification,
+      byte[] snapshot,
+      AttestationHash snapshotDigest) {
+    AttestationBackupManifestPayload payload =
+        new AttestationBackupManifestPayload(
+            verification.bookId(),
+            UUID.fromString("ffeeddcc-bbaa-9988-7766-554433221100"),
+            verification.headOrder(),
+            verification.head(),
+            snapshotDigest);
+    AttestationEnvelope<AttestationBackupManifestPayload> manifest =
+        AttestationEnvelope.of(
+            payload,
+            AttestationAuthorizationTestSupport.orderedEntries(payload.encoded(), founder));
+    return new AttestationArtifactContainer(snapshot, manifest).encoded();
+  }
+
+  private static byte[] receipt(TestCredential founder, AttestationBookVerification verification) {
+    AttestationReceiptPayload payload =
+        new AttestationReceiptPayload(
+            verification.bookId(),
+            verification.headOrder(),
+            verification.head(),
+            Instant.parse("2026-07-20T00:00:01.000Z"));
+    return envelope(payload, founder);
+  }
+
+  private static <P extends AttestationPayload> byte[] envelope(P payload, TestCredential founder) {
+    return AttestationEnvelope.of(
+            payload, AttestationAuthorizationTestSupport.orderedEntries(payload.encoded(), founder))
+        .encoded();
+  }
+
+  private static AttestationSnapshotDecoder snapshotDecoder(
+      byte[] expectedSnapshot, AttestationBook book) {
+    return snapshot -> {
+      if (!Arrays.equals(expectedSnapshot, snapshot)) {
+        throw new IllegalArgumentException("Unexpected snapshot bytes.");
+      }
+      return book;
+    };
+  }
+
+  private static AttestationBook book(TestCredential founder) {
+    AttestationPreimage genesisRequest = genesisRequestPreimage(founder);
+    AttestationPreimage genesisEffect = genesisEffectPreimage(founder);
+    AttestationOperationPayload genesisPayload =
+        genesisPayload(
+            BigInteger.ZERO,
+            AttestationHash.of(new byte[AttestationHash.BYTE_LENGTH]),
+            genesisRequest,
+            genesisEffect);
+    AttestationBookOperation genesis =
+        AttestationBookOperation.decode(
+            envelopeBytes(genesisPayload, signedGenesisEnvelope(genesisContext(founder), founder)),
+            genesisRequest.encoded(),
+            genesisEffect.encoded());
+    UUID backupId = UUID.fromString("ffeeddcc-bbaa-9988-7766-554433221100");
+    AttestationHash artifactDigest = AttestationHash.sha256(new byte[] {2});
+    AttestationPreimage request =
+        backupRequest(backupId, artifactDigest, genesis.envelope().head());
+    AttestationPreimage effect = backupEffect(backupId, artifactDigest, genesis.envelope().head());
+    AttestationOperationPayload successorPayload =
+        new AttestationOperationPayload(
+            AttestationAuthorizationTestSupport.BOOK_ID,
+            BigInteger.ONE,
+            AttestationOperationKind.BACKUP_CREATED.wireToken(),
+            genesis.envelope().head(),
+            Instant.parse("2026-07-20T00:00:00.001Z"),
+            AttestationHash.sha256(request.encoded()),
+            AttestationHash.sha256(effect.encoded()));
+    AttestationBookOperation successor =
+        AttestationBookOperation.decode(
+            envelope(successorPayload, founder), request.encoded(), effect.encoded());
+    return new AttestationBook(List.of(genesis, successor));
+  }
+
+  private static byte[] envelopeBytes(
+      AttestationOperationPayload payload, AttestationAuthorizationEnvelope authorizationEnvelope) {
+    return AttestationEnvelope.of(payload, authorizationEnvelope.entries()).encoded();
+  }
+
+  private static AttestationPreimage backupRequest(
+      UUID backupId, AttestationHash artifactDigest, AttestationHash sourceHead) {
+    return AttestationPreimage.of(
+        List.of(
+            command(AttestationOperationKind.BACKUP_CREATED),
+            new AttestationPreimage.Fact(
+                0x0150,
+                List.of(
+                    AttestationField.present(AttestationBinaryFieldValue.uuid(backupId)),
+                    AttestationField.present(AttestationBinaryFieldValue.hash(artifactDigest)),
+                    AttestationField.present(
+                        AttestationNumericFieldValue.unsigned64(BigInteger.ZERO)),
+                    AttestationField.present(AttestationBinaryFieldValue.hash(sourceHead))))));
+  }
+
+  private static AttestationPreimage backupEffect(
+      UUID backupId, AttestationHash artifactDigest, AttestationHash sourceHead) {
+    return AttestationPreimage.of(
+        List.of(
+            new AttestationPreimage.Fact(
+                0x0006,
+                List.of(
+                    AttestationField.present(AttestationNumericFieldValue.mutation(0)),
+                    AttestationField.present(AttestationBinaryFieldValue.uuid(backupId)),
+                    AttestationField.present(AttestationBinaryFieldValue.hash(artifactDigest)),
+                    AttestationField.present(
+                        AttestationNumericFieldValue.unsigned64(BigInteger.ZERO)),
+                    AttestationField.present(AttestationBinaryFieldValue.hash(sourceHead))))));
+  }
+
+  private static AttestationPreimage.Fact command(AttestationOperationKind operationKind) {
+    return new AttestationPreimage.Fact(
+        0x0100,
+        List.of(
+            AttestationField.present(AttestationTextFieldValue.token(operationKind.wireToken())),
+            AttestationField.absent(),
+            AttestationField.absent(),
+            AttestationField.present(
+                AttestationTextFieldValue.token(AttestationSourceChannel.CLI.wireToken()))));
+  }
+}

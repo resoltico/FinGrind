@@ -1,6 +1,5 @@
 package dev.erst.fingrind.core.attestation;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -23,7 +22,8 @@ final class AttestationDecodedEnvelope<P extends AttestationPayload> {
   private AttestationDecodedEnvelope(
       P payload, AttestationAuthorizationEnvelope authorizationEnvelope, byte[] encoded) {
     this.payload = Objects.requireNonNull(payload, "payload");
-    this.authorizationEnvelope = Objects.requireNonNull(authorizationEnvelope, "authorizationEnvelope");
+    this.authorizationEnvelope =
+        Objects.requireNonNull(authorizationEnvelope, "authorizationEnvelope");
     this.encoded = AttestationEncoding.copy(encoded, "encoded");
   }
 
@@ -106,7 +106,8 @@ final class AttestationDecodedEnvelope<P extends AttestationPayload> {
     return AttestationHash.sha256(encoded);
   }
 
-  private static AttestationAuthorizationException failure(AttestationAuthorizationFailure failure) {
+  private static AttestationAuthorizationException failure(
+      AttestationAuthorizationFailure failure) {
     return new AttestationAuthorizationException(failure);
   }
 }
