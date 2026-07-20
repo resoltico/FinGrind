@@ -89,7 +89,10 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
                       2,
                       List.of(
                           binding(BigInteger.ZERO, PRINCIPAL_B, SPKI_B),
-                          binding(form.resolvingOrder().add(BigInteger.ONE), PRINCIPAL_A, SPKI_A)),
+                          binding(
+                              form.expectedResolvingOrder().add(BigInteger.ONE),
+                              PRINCIPAL_A,
+                              SPKI_A)),
                       List.of(),
                       PRINCIPAL_A,
                       PRINCIPAL_B),
@@ -105,7 +108,7 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
                       canonicalBindings(),
                       List.of(
                           new AttestationCredentialRevocation(
-                              form.resolvingOrder().subtract(BigInteger.ONE),
+                              form.expectedResolvingOrder().subtract(BigInteger.ONE),
                               PRINCIPAL_A,
                               keyId(SPKI_A))),
                       PRINCIPAL_A,
@@ -136,6 +139,13 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
   void executesTheFixedBAndCRebuildsForRowsN13AndN15() throws IOException {
     assertCapabilityFailure(EnvelopeForm.MANIFEST);
     assertCapabilityFailure(EnvelopeForm.RECEIPT);
+  }
+
+  @Test
+  void derivesThePublishedResolvingOrderForEachStandaloneEnvelopeForm() {
+    assertEquals(BigInteger.valueOf(41), EnvelopeForm.OPERATION.context().resolvingOrder());
+    assertEquals(BigInteger.valueOf(42), EnvelopeForm.MANIFEST.context().resolvingOrder());
+    assertEquals(BigInteger.valueOf(42), EnvelopeForm.RECEIPT.context().resolvingOrder());
   }
 
   private static void assertCapabilityFailure(EnvelopeForm form) throws IOException {
@@ -229,6 +239,7 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
         "V-OP-02",
         181,
         AttestationCapability.POST,
+        BigInteger.valueOf(41),
         "0000000000000000000000000000000000000000000000000000000000000000") {
       @Override
       AttestationAuthorizationContext context() {
@@ -254,6 +265,7 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
         "V-MANIFEST-02",
         121,
         AttestationCapability.BACKUP,
+        BigInteger.valueOf(42),
         "e68bc651ab5ee607fe5f5e5a122e58477950dc37b33794c95fc5671df28d6efaf408d460b75231b175b025276fff1e92981c942ab523602d0076a3250f8d5f0e") {
       @Override
       AttestationAuthorizationContext context() {
@@ -275,6 +287,7 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
         "V-RECEIPT-02",
         97,
         AttestationCapability.ANCHOR,
+        BigInteger.valueOf(42),
         "31f445e7dda739aa66fb025d965217c83d8df4a602adad8023539df5ac8cff46be999d06b8278439b201099b57519f699718c05dd0f0abdb0ca7a445cd835705") {
       @Override
       AttestationAuthorizationContext context() {
@@ -293,6 +306,7 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
     private final String vector;
     private final int payloadLength;
     private final AttestationCapability capability;
+    private final BigInteger expectedResolvingOrder;
     private final String cSignatureHex;
 
     EnvelopeForm(
@@ -300,11 +314,13 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
         String vector,
         int payloadLength,
         AttestationCapability capability,
+        BigInteger expectedResolvingOrder,
         String cSignatureHex) {
       this.document = document;
       this.vector = vector;
       this.payloadLength = payloadLength;
       this.capability = capability;
+      this.expectedResolvingOrder = expectedResolvingOrder;
       this.cSignatureHex = cSignatureHex;
     }
 
@@ -328,8 +344,8 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
       return AttestationDocumentVectors.hex(cSignatureHex);
     }
 
-    BigInteger resolvingOrder() {
-      return context().resolvingOrder();
+    BigInteger expectedResolvingOrder() {
+      return expectedResolvingOrder;
     }
 
     abstract AttestationAuthorizationContext context();
