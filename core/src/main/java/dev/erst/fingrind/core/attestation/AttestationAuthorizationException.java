@@ -12,6 +12,12 @@ final class AttestationAuthorizationException extends IllegalArgumentException {
     this.failure = failure;
   }
 
+  AttestationAuthorizationException(AttestationAuthorizationFailure failure, Throwable cause) {
+    super(
+        Objects.requireNonNull(failure, "failure").code(), Objects.requireNonNull(cause, "cause"));
+    this.failure = failure;
+  }
+
   AttestationAuthorizationFailure failure() {
     return failure;
   }

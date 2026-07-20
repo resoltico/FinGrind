@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -124,6 +125,14 @@ final class AttestationRegistry {
   boolean hasActiveSystemWorkflow(
       UUID workflowId, AttestationSystemWorkflowKind workflowKind, BigInteger resolvingOrder) {
     return resolution.hasActiveSystemWorkflow(
+        Objects.requireNonNull(workflowId, "workflowId"),
+        Objects.requireNonNull(workflowKind, "workflowKind"),
+        Objects.requireNonNull(resolvingOrder, "resolvingOrder"));
+  }
+
+  Optional<AttestationSystemWorkflowPolicy> activeSystemWorkflow(
+      UUID workflowId, AttestationSystemWorkflowKind workflowKind, BigInteger resolvingOrder) {
+    return resolution.activeSystemWorkflow(
         Objects.requireNonNull(workflowId, "workflowId"),
         Objects.requireNonNull(workflowKind, "workflowKind"),
         Objects.requireNonNull(resolvingOrder, "resolvingOrder"));

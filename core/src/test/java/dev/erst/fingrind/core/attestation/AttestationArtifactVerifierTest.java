@@ -70,6 +70,79 @@ class AttestationArtifactVerifierTest {
                 envelope(payload, founder), verification, false));
   }
 
+  @Test
+  void rejectsReceiptWithTheWrongBookAndAReferenceBeyondTheVerifiedHead() {
+    TestCredential founder = credential();
+    AttestationBookVerification verification = AttestationBookVerifier.verify(book(founder));
+
+    AttestationReceiptPayload wrongBook =
+        new AttestationReceiptPayload(
+            UUID.fromString("11000000-0000-0000-0000-000000000001"),
+            verification.headOrder(),
+            verification.head(),
+            Instant.parse("2026-07-20T00:00:01.000Z"));
+    AttestationReceiptPayload futureOrder =
+        new AttestationReceiptPayload(
+            verification.bookId(),
+            verification.headOrder().add(BigInteger.ONE),
+            verification.head(),
+            Instant.parse("2026-07-20T00:00:01.000Z"));
+
+    assertFailure(
+        AttestationAuthorizationFailure.RECEIPT_INVALID,
+        () ->
+            AttestationArtifactVerifier.verifyReceipt(
+                envelope(wrongBook, founder), verification, false));
+    assertFailure(
+        AttestationAuthorizationFailure.RECEIPT_INVALID,
+        () ->
+            AttestationArtifactVerifier.verifyReceipt(
+                envelope(futureOrder, founder), verification, false));
+  }
+
+  @Test
+  void rejectsEveryManifestBindingComponentAndARejectedSnapshotDecoder() {
+    TestCredential founder = credential();
+    AttestationBook book = book(founder);
+    AttestationBookVerification verification = AttestationBookVerifier.verify(book);
+    byte[] snapshot = new byte[] {1, 2, 3, 4};
+    byte[] artifact = artifact(founder, verification, snapshot, AttestationHash.sha256(snapshot));
+
+    assertFailure(
+        AttestationAuthorizationFailure.MANIFEST_INVALID,
+        () ->
+            AttestationArtifactVerifier.verifyArtifact(
+                artifact,
+                ignored -> {
+                  throw new IllegalStateException();
+                }));
+    assertManifestFailure(artifact, snapshot, book, manifestBookIdOffset(snapshot));
+    assertManifestFailure(artifact, snapshot, book, manifestSourceOrderOffset(snapshot));
+    assertManifestFailure(artifact, snapshot, book, manifestSourceHeadOffset(snapshot));
+  }
+
+  private static void assertManifestFailure(
+      byte[] artifact, byte[] snapshot, AttestationBook book, int offset) {
+    byte[] tampered = artifact.clone();
+    tampered[offset] ^= 1;
+    assertFailure(
+        AttestationAuthorizationFailure.MANIFEST_INVALID,
+        () ->
+            AttestationArtifactVerifier.verifyArtifact(tampered, snapshotDecoder(snapshot, book)));
+  }
+
+  private static int manifestBookIdOffset(byte[] snapshot) {
+    return snapshot.length + 9;
+  }
+
+  private static int manifestSourceOrderOffset(byte[] snapshot) {
+    return manifestBookIdOffset(snapshot) + 32;
+  }
+
+  private static int manifestSourceHeadOffset(byte[] snapshot) {
+    return manifestSourceOrderOffset(snapshot) + Long.BYTES;
+  }
+
   private static byte[] artifact(
       TestCredential founder,
       AttestationBookVerification verification,

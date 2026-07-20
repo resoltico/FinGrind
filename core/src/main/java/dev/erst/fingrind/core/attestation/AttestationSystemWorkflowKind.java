@@ -17,6 +17,16 @@ enum AttestationSystemWorkflowKind {
     return requiresCapitalAndRetainedResultAccounts;
   }
 
+  static AttestationSystemWorkflowKind forWireToken(
+      String wireToken, AttestationAuthorizationFailure failure) {
+    for (AttestationSystemWorkflowKind workflowKind : values()) {
+      if (workflowKind.wireToken().equals(wireToken)) {
+        return workflowKind;
+      }
+    }
+    throw new AttestationAuthorizationException(failure);
+  }
+
   String wireToken() {
     return name().toLowerCase(Locale.ROOT).replace('_', '-');
   }

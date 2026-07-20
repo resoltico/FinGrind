@@ -36,31 +36,30 @@ final class AttestationOperationPayload implements AttestationPayload {
 
   /** Decodes one complete operation payload at the raw attestation boundary. */
   static AttestationOperationPayload decode(byte[] encoded) {
-    try {
-      AttestationByteReader input =
-          new AttestationByteReader(encoded, AttestationAuthorizationFailure.PREIMAGE_INVALID);
-      input.requireAscii("FGATTOP1");
-      requireVersion(input);
-      java.util.UUID bookId = input.readUuid();
-      BigInteger operationOrder = input.readUnsigned(Long.BYTES);
-      String operationKind = input.readToken();
-      requireEd25519(input.readToken());
-      AttestationOperationPayload payload =
-          new AttestationOperationPayload(
-              bookId,
-              operationOrder,
-              operationKind,
-              input.readHash(),
-              input.readInstant(),
-              input.readHash(),
-              input.readHash());
-      input.requireAtEnd();
-      return payload;
-    } catch (AttestationAuthorizationException exception) {
-      throw exception;
-    } catch (IllegalArgumentException | ArithmeticException exception) {
-      throw new AttestationAuthorizationException(AttestationAuthorizationFailure.PREIMAGE_INVALID);
-    }
+    return AttestationFormatFailure.decoding(
+        AttestationAuthorizationFailure.PREIMAGE_INVALID, () -> decodeUnchecked(encoded));
+  }
+
+  private static AttestationOperationPayload decodeUnchecked(byte[] encoded) {
+    AttestationByteReader input =
+        new AttestationByteReader(encoded, AttestationAuthorizationFailure.PREIMAGE_INVALID);
+    input.requireAscii("FGATTOP1");
+    requireVersion(input);
+    java.util.UUID bookId = input.readUuid();
+    BigInteger operationOrder = input.readUnsigned(Long.BYTES);
+    String operationKind = AttestationCanonicalValueReader.token(input);
+    requireEd25519(AttestationCanonicalValueReader.token(input));
+    AttestationOperationPayload payload =
+        new AttestationOperationPayload(
+            bookId,
+            operationOrder,
+            operationKind,
+            input.readHash(),
+            AttestationCanonicalValueReader.instant(input),
+            input.readHash(),
+            input.readHash());
+    input.requireAtEnd();
+    return payload;
   }
 
   @Override
@@ -94,6 +93,10 @@ final class AttestationOperationPayload implements AttestationPayload {
 
   AttestationHash previousHead() {
     return previousHead;
+  }
+
+  Instant recordedAt() {
+    return recordedAt;
   }
 
   AttestationHash requestDigest() {

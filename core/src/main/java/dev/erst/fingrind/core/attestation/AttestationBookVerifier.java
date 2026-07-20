@@ -46,6 +46,7 @@ final class AttestationBookVerifier {
             genesis, checkedOperation.envelope().authorizationEnvelope());
         bookId = payload.bookId();
         registryHistory = AttestationRegistryHistory.genesis(genesis.founders());
+        registryHistory.requireAcceptedState();
       } else {
         AttestationOperationKind operationKind =
             AttestationOperationKind.forWireToken(payload.operationKind());
@@ -70,6 +71,14 @@ final class AttestationBookVerifier {
             checkedRegistryHistory.registry(),
             AttestationAuthorizationContext.operation(payload, provenance),
             checkedOperation.envelope().authorizationEnvelope());
+        AttestationSystemDerivation.requireValid(
+            checkedRegistryHistory.registry(),
+            payload,
+            operationKind,
+            provenance,
+            checkedOperation.requestPreimage(),
+            checkedOperation.effectPreimage());
+        nextRegistryHistory.requireAcceptedState();
         registryHistory = nextRegistryHistory;
       }
       requireChainPosition(payload, bookId, expectedOrder, expectedPreviousHead);
@@ -106,10 +115,13 @@ final class AttestationBookVerifier {
       @Nullable UUID expectedBookId,
       BigInteger expectedOrder,
       AttestationHash expectedPreviousHead) {
-    if (expectedBookId == null
-        || !payload.bookId().equals(expectedBookId)
-        || !payload.operationOrder().equals(expectedOrder)
-        || !Arrays.equals(payload.previousHead().bytes(), expectedPreviousHead.bytes())) {
+    UUID checkedBookId = Objects.requireNonNull(expectedBookId, "expectedBookId");
+    List<Boolean> chainPosition =
+        List.of(
+            payload.bookId().equals(checkedBookId),
+            payload.operationOrder().equals(expectedOrder),
+            Arrays.equals(payload.previousHead().bytes(), expectedPreviousHead.bytes()));
+    if (chainPosition.contains(false)) {
       throw previousHeadFailure();
     }
   }

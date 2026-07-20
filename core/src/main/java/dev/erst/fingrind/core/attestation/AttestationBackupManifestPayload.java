@@ -29,32 +29,31 @@ final class AttestationBackupManifestPayload implements AttestationPayload {
 
   /** Decodes one complete backup-manifest payload at the raw attestation boundary. */
   static AttestationBackupManifestPayload decode(byte[] encoded) {
-    try {
-      AttestationByteReader input =
-          new AttestationByteReader(encoded, AttestationAuthorizationFailure.MANIFEST_INVALID);
-      input.requireAscii("FGATTBM1");
-      if (input.readUnsigned(Byte.BYTES).intValueExact() != 1) {
-        throw new AttestationAuthorizationException(
-            AttestationAuthorizationFailure.UNSUPPORTED_VERSION);
-      }
-      AttestationBackupManifestPayload payload =
-          new AttestationBackupManifestPayload(
-              input.readUuid(),
-              input.readUuid(),
-              input.readUnsigned(Long.BYTES),
-              input.readHash(),
-              input.readHash());
-      if (!AttestationAlgorithm.ED25519.id().equals(input.readToken())) {
-        throw new AttestationAuthorizationException(
-            AttestationAuthorizationFailure.KEY_ALGORITHM_INVALID);
-      }
-      input.requireAtEnd();
-      return payload;
-    } catch (AttestationAuthorizationException exception) {
-      throw exception;
-    } catch (IllegalArgumentException | ArithmeticException exception) {
-      throw new AttestationAuthorizationException(AttestationAuthorizationFailure.MANIFEST_INVALID);
+    return AttestationFormatFailure.decoding(
+        AttestationAuthorizationFailure.MANIFEST_INVALID, () -> decodeUnchecked(encoded));
+  }
+
+  private static AttestationBackupManifestPayload decodeUnchecked(byte[] encoded) {
+    AttestationByteReader input =
+        new AttestationByteReader(encoded, AttestationAuthorizationFailure.MANIFEST_INVALID);
+    input.requireAscii("FGATTBM1");
+    if (input.readUnsigned(Byte.BYTES).intValueExact() != 1) {
+      throw new AttestationAuthorizationException(
+          AttestationAuthorizationFailure.UNSUPPORTED_VERSION);
     }
+    AttestationBackupManifestPayload payload =
+        new AttestationBackupManifestPayload(
+            input.readUuid(),
+            input.readUuid(),
+            input.readUnsigned(Long.BYTES),
+            input.readHash(),
+            input.readHash());
+    if (!AttestationAlgorithm.ED25519.id().equals(AttestationCanonicalValueReader.token(input))) {
+      throw new AttestationAuthorizationException(
+          AttestationAuthorizationFailure.KEY_ALGORITHM_INVALID);
+    }
+    input.requireAtEnd();
+    return payload;
   }
 
   @Override

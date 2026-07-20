@@ -8,6 +8,9 @@ import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.g
 import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.genesisRequestPreimage;
 import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.signedGenesisEnvelope;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
 import java.time.Instant;
@@ -73,6 +76,148 @@ class AttestationBookVerifierTest {
                 payload, AttestationOperationKind.POST_ENTRY, request, effect));
   }
 
+  @Test
+  void rejectsEveryBrokenChainPositionBeforeAnyDependentAuthorization() {
+    TestCredential founder = credential();
+    AttestationBookOperation genesis = genesis(founder);
+    AttestationBook missingGenesis =
+        new AttestationBook(
+            List.of(
+                successor(
+                    founder,
+                    AttestationAuthorizationTestSupport.BOOK_ID,
+                    BigInteger.ONE,
+                    AttestationHash.of(new byte[AttestationHash.BYTE_LENGTH]))));
+    AttestationBook wrongBookId =
+        new AttestationBook(
+            List.of(
+                genesis,
+                successor(
+                    founder,
+                    UUID.fromString("11000000-0000-0000-0000-000000000001"),
+                    BigInteger.ONE,
+                    genesis.envelope().head())));
+    AttestationBook wrongOrder =
+        new AttestationBook(
+            List.of(
+                genesis,
+                successor(
+                    founder,
+                    AttestationAuthorizationTestSupport.BOOK_ID,
+                    BigInteger.TWO,
+                    genesis.envelope().head())));
+
+    assertFailure(
+        AttestationAuthorizationFailure.PREVIOUS_HEAD_INVALID,
+        () -> AttestationBookVerifier.verify(new AttestationBook(List.of(genesis, genesis))));
+    assertFailure(
+        AttestationAuthorizationFailure.PREVIOUS_HEAD_INVALID,
+        () -> AttestationBookVerifier.verify(missingGenesis));
+    assertFailure(
+        AttestationAuthorizationFailure.PREVIOUS_HEAD_INVALID,
+        () -> AttestationBookVerifier.verify(wrongBookId));
+    assertFailure(
+        AttestationAuthorizationFailure.PREVIOUS_HEAD_INVALID,
+        () -> AttestationBookVerifier.verify(wrongOrder));
+  }
+
+  @Test
+  void rejectsAChainWhoseRawPreimageBytesDoNotMatchTheSignedDigest() {
+    TestCredential founder = credential();
+    AttestationBookOperation genesis = genesis(founder);
+    AttestationBookOperation successor = successor(founder, genesis.envelope().head());
+    AttestationBookOperation mismatched =
+        AttestationBookOperation.decode(
+            successor.envelope().encoded(),
+            backupRequest(
+                    UUID.fromString("11000000-0000-0000-0000-000000000001"),
+                    AttestationHash.sha256(new byte[] {7}),
+                    genesis.envelope().head())
+                .encoded(),
+            successor.effectPreimage().encoded());
+    AttestationBookOperation effectMismatched =
+        AttestationBookOperation.decode(
+            successor.envelope().encoded(),
+            successor.requestPreimage().encoded(),
+            backupEffect(
+                    UUID.fromString("11000000-0000-0000-0000-000000000002"),
+                    AttestationHash.sha256(new byte[] {8}),
+                    genesis.envelope().head())
+                .encoded());
+
+    assertFailure(
+        AttestationAuthorizationFailure.PREIMAGE_INVALID,
+        () -> AttestationBookVerifier.verify(new AttestationBook(List.of(genesis, mismatched))));
+    assertFailure(
+        AttestationAuthorizationFailure.PREIMAGE_INVALID,
+        () ->
+            AttestationBookVerifier.verify(
+                new AttestationBook(List.of(genesis, effectMismatched))));
+  }
+
+  @Test
+  void keepsReviewIntervalsAndBookResultAccessorsInternallyConsistent() {
+    TestCredential founder = credential();
+    AttestationBookOperation genesis = genesis(founder);
+    AttestationBookVerification verification =
+        AttestationBookVerifier.verify(new AttestationBook(List.of(genesis)));
+    AttestationCompromiseReview review =
+        new AttestationCompromiseReview(founder.keyId(), BigInteger.ONE, BigInteger.TWO);
+
+    assertFalse(review.includes(BigInteger.ZERO));
+    assertTrue(review.includes(BigInteger.ONE));
+    assertTrue(review.includes(BigInteger.TWO));
+    assertFalse(review.includes(BigInteger.valueOf(3)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new AttestationCompromiseReview(founder.keyId(), BigInteger.ONE, BigInteger.ZERO));
+    assertThrows(IllegalArgumentException.class, () -> new AttestationBook(List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new AttestationBookVerification(
+                verification.bookId(), List.of(), verification.registry(), List.of()));
+
+    assertEquals(verification.bookId(), verification.bookId());
+    assertEquals(verification.head(), verification.headAt(BigInteger.ZERO));
+    assertEquals(genesis, verification.operationAt(BigInteger.ZERO).operation());
+    assertEquals(verification.registry(), verification.registry());
+    assertEquals(List.of(), verification.reviewFindings());
+    assertFailure(
+        AttestationAuthorizationFailure.PREIMAGE_INVALID,
+        () -> verification.operationAt(BigInteger.ONE));
+    assertFailure(
+        AttestationAuthorizationFailure.PREIMAGE_INVALID,
+        () -> verification.operationAt(BigInteger.ONE.negate()));
+    AttestationBookVerification inconsistent =
+        new AttestationBookVerification(
+            verification.bookId(),
+            List.of(
+                new AttestationBookVerification.VerifiedOperation(
+                    BigInteger.ONE, verification.head(), genesis)),
+            verification.registry(),
+            List.of());
+    assertFailure(
+        AttestationAuthorizationFailure.PREIMAGE_INVALID,
+        () -> inconsistent.operationAt(BigInteger.ZERO));
+  }
+
+  @Test
+  void reportsOnlyReviewsThatCoverAnOperationSignedByTheNamedCredential() {
+    TestCredential founder = credential();
+    AttestationBook book = new AttestationBook(List.of(genesis(founder)));
+
+    assertEquals(
+        List.of(),
+        AttestationBookVerifier.verify(
+                book,
+                List.of(
+                    new AttestationCompromiseReview(
+                        AttestationHash.sha256(new byte[] {9}), BigInteger.ZERO, BigInteger.ZERO),
+                    new AttestationCompromiseReview(founder.keyId(), BigInteger.ONE, null)))
+            .reviewFindings());
+  }
+
   private static AttestationBookOperation genesis(TestCredential founder) {
     AttestationPreimage request = genesisRequestPreimage(founder);
     AttestationPreimage effect = genesisEffectPreimage(founder);
@@ -90,14 +235,20 @@ class AttestationBookVerifierTest {
 
   private static AttestationBookOperation successor(
       TestCredential founder, AttestationHash previousHead) {
+    return successor(
+        founder, AttestationAuthorizationTestSupport.BOOK_ID, BigInteger.ONE, previousHead);
+  }
+
+  private static AttestationBookOperation successor(
+      TestCredential founder, UUID bookId, BigInteger order, AttestationHash previousHead) {
     UUID backupId = UUID.fromString("ffeeddcc-bbaa-9988-7766-554433221100");
     AttestationHash artifactDigest = AttestationHash.sha256(new byte[] {2});
     AttestationPreimage request = backupRequest(backupId, artifactDigest, previousHead);
     AttestationPreimage effect = backupEffect(backupId, artifactDigest, previousHead);
     AttestationOperationPayload payload =
         new AttestationOperationPayload(
-            AttestationAuthorizationTestSupport.BOOK_ID,
-            BigInteger.ONE,
+            bookId,
+            order,
             AttestationOperationKind.BACKUP_CREATED.wireToken(),
             previousHead,
             Instant.parse("2026-07-20T00:00:00.001Z"),

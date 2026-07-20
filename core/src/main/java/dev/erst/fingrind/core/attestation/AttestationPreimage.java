@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.IntStream;
 
 /** Canonically ordered immutable semantic facts committed by one attested operation. */
 final class AttestationPreimage {
@@ -50,46 +51,52 @@ final class AttestationPreimage {
 
   /** Decodes and rechecks one complete canonical preimage without consulting mutable book state. */
   static AttestationPreimage decode(byte[] encoded, AttestationAuthorizationFailure failure) {
-    try {
-      AttestationByteReader input = new AttestationByteReader(encoded, failure);
-      int recordCount = input.readUnsigned(Integer.BYTES).intValueExact();
-      if (recordCount > MAX_RECORD_COUNT) {
-        throw input.failure();
-      }
-      List<Fact> decodedRecords = new ArrayList<>(recordCount);
-      for (int recordIndex = 0; recordIndex < recordCount; recordIndex++) {
-        int recordTypeTag = input.readUnsigned(Short.BYTES).intValueExact();
-        AttestationRecordSchema schema = AttestationPreimageCatalog.require(recordTypeTag);
-        int fieldCount = input.readUnsigned(Short.BYTES).intValueExact();
-        if (fieldCount != schema.fieldCount()) {
-          throw input.failure();
-        }
-        List<AttestationField> fields = new ArrayList<>(fieldCount);
-        for (int fieldIndex = 0; fieldIndex < fieldCount; fieldIndex++) {
-          int presence = input.readUnsigned(Byte.BYTES).intValueExact();
-          if (presence == 0) {
-            fields.add(AttestationField.absent());
-          } else if (presence == 1) {
-            fields.add(
-                AttestationField.present(
-                    input.readFieldValue(schema.fieldSchema(fieldIndex).type())));
-          } else {
-            throw input.failure();
-          }
-        }
-        decodedRecords.add(new Fact(recordTypeTag, fields));
-      }
-      input.requireAtEnd();
-      AttestationPreimage decoded = of(decodedRecords);
-      if (!Arrays.equals(decoded.encoded(), encoded)) {
-        throw input.failure();
-      }
-      return decoded;
-    } catch (AttestationAuthorizationException exception) {
-      throw exception;
-    } catch (IllegalArgumentException | ArithmeticException exception) {
-      throw new AttestationAuthorizationException(failure);
+    return AttestationFormatFailure.decoding(failure, () -> decodeUnchecked(encoded, failure));
+  }
+
+  private static AttestationPreimage decodeUnchecked(
+      byte[] encoded, AttestationAuthorizationFailure failure) {
+    AttestationByteReader input = new AttestationByteReader(encoded, failure);
+    int recordCount = input.readUnsigned(Integer.BYTES).intValueExact();
+    if (recordCount > MAX_RECORD_COUNT) {
+      throw input.failure();
     }
+    AttestationPreimage decoded = of(decodeRecords(input, recordCount));
+    input.requireAtEnd();
+    if (!Arrays.equals(decoded.encoded(), encoded)) {
+      throw input.failure();
+    }
+    return decoded;
+  }
+
+  private static List<Fact> decodeRecords(AttestationByteReader input, int recordCount) {
+    return IntStream.range(0, recordCount).mapToObj(ignored -> decodeRecord(input)).toList();
+  }
+
+  private static Fact decodeRecord(AttestationByteReader input) {
+    int recordTypeTag = input.readUnsigned(Short.BYTES).intValueExact();
+    AttestationRecordSchema schema = AttestationPreimageCatalog.require(recordTypeTag);
+    int fieldCount = input.readUnsigned(Short.BYTES).intValueExact();
+    if (fieldCount != schema.fieldCount()) {
+      throw input.failure();
+    }
+    List<AttestationField> fields =
+        IntStream.range(0, fieldCount)
+            .mapToObj(fieldIndex -> decodeField(input, schema, fieldIndex))
+            .toList();
+    return new Fact(recordTypeTag, fields);
+  }
+
+  private static AttestationField decodeField(
+      AttestationByteReader input, AttestationRecordSchema schema, int fieldIndex) {
+    int presence = input.readUnsigned(Byte.BYTES).intValueExact();
+    return switch (presence) {
+      case 0 -> AttestationField.absent();
+      case 1 ->
+          AttestationField.present(
+              AttestationFieldValueDecoder.decode(input, schema.fieldSchema(fieldIndex).type()));
+      default -> throw input.failure();
+    };
   }
 
   List<Fact> records() {

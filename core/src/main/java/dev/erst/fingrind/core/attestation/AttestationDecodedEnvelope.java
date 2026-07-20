@@ -33,12 +33,7 @@ final class AttestationDecodedEnvelope<P extends AttestationPayload> {
       throw failure(AttestationAuthorizationFailure.PREIMAGE_INVALID);
     }
     int operationKindLength = Byte.toUnsignedInt(encoded[33]);
-    int payloadLength;
-    try {
-      payloadLength = Math.addExact(162, operationKindLength);
-    } catch (ArithmeticException exception) {
-      throw failure(AttestationAuthorizationFailure.PREIMAGE_INVALID);
-    }
+    int payloadLength = 162 + operationKindLength;
     return decode(
         encoded,
         payloadLength,
@@ -67,27 +62,30 @@ final class AttestationDecodedEnvelope<P extends AttestationPayload> {
       int payloadLength,
       Function<byte[], P> payloadDecoder,
       AttestationAuthorizationFailure failure) {
-    try {
-      AttestationByteReader input = new AttestationByteReader(encoded, failure);
-      byte[] payloadBytes = input.readBytes(payloadLength);
-      P payload = payloadDecoder.apply(payloadBytes);
-      int entryCount = input.readUnsigned(Short.BYTES).intValueExact();
-      if (entryCount > MAX_ENTRY_COUNT) {
-        throw input.failure();
-      }
-      List<AttestationSignatureEntry> entries = new ArrayList<>(entryCount);
-      for (int index = 0; index < entryCount; index++) {
-        entries.add(
-            new AttestationSignatureEntry(input.readUuid(), input.readHash(), input.readBytes(64)));
-      }
-      input.requireAtEnd();
-      return new AttestationDecodedEnvelope<>(
-          payload, new AttestationAuthorizationEnvelope(payloadBytes, entries), encoded);
-    } catch (AttestationAuthorizationException exception) {
-      throw exception;
-    } catch (IllegalArgumentException | ArithmeticException exception) {
-      throw failure(failure);
+    return AttestationFormatFailure.decoding(
+        failure, () -> decodeUnchecked(encoded, payloadLength, payloadDecoder, failure));
+  }
+
+  private static <P extends AttestationPayload> AttestationDecodedEnvelope<P> decodeUnchecked(
+      byte[] encoded,
+      int payloadLength,
+      Function<byte[], P> payloadDecoder,
+      AttestationAuthorizationFailure failure) {
+    AttestationByteReader input = new AttestationByteReader(encoded, failure);
+    byte[] payloadBytes = input.readBytes(payloadLength);
+    P payload = payloadDecoder.apply(payloadBytes);
+    int entryCount = input.readUnsigned(Short.BYTES).intValueExact();
+    if (entryCount > MAX_ENTRY_COUNT) {
+      throw input.failure();
     }
+    List<AttestationSignatureEntry> entries = new ArrayList<>(entryCount);
+    for (int index = 0; index < entryCount; index++) {
+      entries.add(
+          new AttestationSignatureEntry(input.readUuid(), input.readHash(), input.readBytes(64)));
+    }
+    input.requireAtEnd();
+    return new AttestationDecodedEnvelope<>(
+        payload, new AttestationAuthorizationEnvelope(payloadBytes, entries), encoded);
   }
 
   P payload() {

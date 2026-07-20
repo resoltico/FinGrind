@@ -12,16 +12,10 @@ final class AttestationArtifactVerifier {
     AttestationBookVerification verification = verifySnapshot(artifact, snapshotDecoder);
     AttestationBackupManifestPayload payload = artifact.manifest().payload();
     requireManifestBinding(artifact, verification, payload);
-    try {
-      AttestationAuthorization.requireAuthorized(
-          verification.registry(),
-          AttestationAuthorizationContext.manifest(payload),
-          artifact.manifest().authorizationEnvelope());
-    } catch (AttestationAuthorizationException exception) {
-      throw exception;
-    } catch (IllegalArgumentException exception) {
-      throw manifestFailure();
-    }
+    AttestationAuthorization.requireAuthorized(
+        verification.registry(),
+        AttestationAuthorizationContext.manifest(payload),
+        artifact.manifest().authorizationEnvelope());
     return new AttestationArtifactVerification(artifact, verification);
   }
 
@@ -34,43 +28,26 @@ final class AttestationArtifactVerifier {
     AttestationReceiptPayload payload = receipt.payload();
     AttestationBookVerification checkedVerification =
         Objects.requireNonNull(verification, "verification");
-    try {
-      if (!payload.bookId().equals(checkedVerification.bookId())
-          || payload.operationOrder().compareTo(checkedVerification.headOrder()) > 0
-          || !payload
-              .operationHead()
-              .equals(checkedVerification.headAt(payload.operationOrder()))) {
-        throw receiptFailure();
-      }
-      AttestationAuthorization.requireAuthorized(
-          checkedVerification.registry(),
-          AttestationAuthorizationContext.receipt(payload),
-          receipt.authorizationEnvelope());
-      return new AttestationReceiptVerification(receipt, retainedWithinTrustBoundary);
-    } catch (AttestationAuthorizationException exception) {
-      if (exception.failure() == AttestationAuthorizationFailure.PREIMAGE_INVALID) {
-        throw receiptFailure();
-      }
-      throw exception;
-    } catch (IllegalArgumentException exception) {
+    if (!payload.bookId().equals(checkedVerification.bookId())
+        || payload.operationOrder().compareTo(checkedVerification.headOrder()) > 0
+        || !payload.operationHead().equals(checkedVerification.headAt(payload.operationOrder()))) {
       throw receiptFailure();
     }
+    AttestationAuthorization.requireAuthorized(
+        checkedVerification.registry(),
+        AttestationAuthorizationContext.receipt(payload),
+        receipt.authorizationEnvelope());
+    return new AttestationReceiptVerification(receipt, retainedWithinTrustBoundary);
   }
 
   private static void requireManifestBinding(
       AttestationDecodedArtifact artifact,
       AttestationBookVerification verification,
       AttestationBackupManifestPayload payload) {
-    try {
-      if (!payload.snapshotDigest().equals(AttestationHash.sha256(artifact.snapshot()))
-          || !payload.bookId().equals(verification.bookId())
-          || payload.sourceOrder().compareTo(verification.headOrder()) > 0
-          || !payload.sourceOperationHead().equals(verification.headAt(payload.sourceOrder()))) {
-        throw manifestFailure();
-      }
-    } catch (AttestationAuthorizationException exception) {
-      throw manifestFailure();
-    } catch (IllegalArgumentException exception) {
+    if (!payload.snapshotDigest().equals(AttestationHash.sha256(artifact.snapshot()))
+        || !payload.bookId().equals(verification.bookId())
+        || payload.sourceOrder().compareTo(verification.headOrder()) > 0
+        || !payload.sourceOperationHead().equals(verification.headAt(payload.sourceOrder()))) {
       throw manifestFailure();
     }
   }
@@ -81,10 +58,9 @@ final class AttestationArtifactVerifier {
       AttestationBook decodedSnapshot =
           Objects.requireNonNull(snapshotDecoder, "snapshotDecoder").decode(artifact.snapshot());
       return AttestationBookVerifier.verify(decodedSnapshot);
-    } catch (AttestationAuthorizationException exception) {
-      throw exception;
-    } catch (IllegalArgumentException exception) {
-      throw manifestFailure();
+    } catch (RuntimeException exception) {
+      throw AttestationFormatFailure.classify(
+          exception, AttestationAuthorizationFailure.MANIFEST_INVALID);
     }
   }
 

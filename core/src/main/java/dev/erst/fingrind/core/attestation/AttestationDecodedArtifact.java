@@ -23,39 +23,37 @@ final class AttestationDecodedArtifact {
   }
 
   static AttestationDecodedArtifact decode(byte[] encoded) {
-    try {
-      byte[] checkedEncoded = AttestationEncoding.copy(encoded, "encoded");
-      if (checkedEncoded.length < TRAILER_BYTE_LENGTH) {
-        throw failure();
-      }
-      int trailerOffset = checkedEncoded.length - TRAILER_BYTE_LENGTH;
-      AttestationByteReader trailer =
-          new AttestationByteReader(
-              Arrays.copyOfRange(checkedEncoded, trailerOffset, checkedEncoded.length),
-              AttestationAuthorizationFailure.MANIFEST_INVALID);
-      trailer.requireAscii(TRAILER_MAGIC);
-      if (trailer.readUnsigned(Byte.BYTES).intValueExact() != 1) {
-        throw new AttestationAuthorizationException(
-            AttestationAuthorizationFailure.UNSUPPORTED_VERSION);
-      }
-      int snapshotLength = intLength(trailer.readUnsigned(Long.BYTES));
-      int manifestLength = intLength(trailer.readUnsigned(Integer.BYTES));
-      trailer.requireAtEnd();
-      int actualSnapshotLength = checkedEncoded.length - TRAILER_BYTE_LENGTH - manifestLength;
-      if (actualSnapshotLength < 0 || actualSnapshotLength != snapshotLength) {
-        throw failure();
-      }
-      byte[] snapshot = Arrays.copyOfRange(checkedEncoded, 0, actualSnapshotLength);
-      byte[] manifestBytes =
-          Arrays.copyOfRange(checkedEncoded, actualSnapshotLength, trailerOffset);
-      AttestationDecodedEnvelope<AttestationBackupManifestPayload> manifest =
-          AttestationDecodedEnvelope.manifest(manifestBytes);
-      return new AttestationDecodedArtifact(snapshot, manifest, checkedEncoded);
-    } catch (AttestationAuthorizationException exception) {
-      throw exception;
-    } catch (IllegalArgumentException | ArithmeticException exception) {
+    return AttestationFormatFailure.decoding(
+        AttestationAuthorizationFailure.MANIFEST_INVALID, () -> decodeUnchecked(encoded));
+  }
+
+  private static AttestationDecodedArtifact decodeUnchecked(byte[] encoded) {
+    byte[] checkedEncoded = AttestationEncoding.copy(encoded, "encoded");
+    if (checkedEncoded.length < TRAILER_BYTE_LENGTH) {
       throw failure();
     }
+    int trailerOffset = checkedEncoded.length - TRAILER_BYTE_LENGTH;
+    AttestationByteReader trailer =
+        new AttestationByteReader(
+            Arrays.copyOfRange(checkedEncoded, trailerOffset, checkedEncoded.length),
+            AttestationAuthorizationFailure.MANIFEST_INVALID);
+    trailer.requireAscii(TRAILER_MAGIC);
+    if (trailer.readUnsigned(Byte.BYTES).intValueExact() != 1) {
+      throw new AttestationAuthorizationException(
+          AttestationAuthorizationFailure.UNSUPPORTED_VERSION);
+    }
+    int snapshotLength = intLength(trailer.readUnsigned(Long.BYTES));
+    int manifestLength = intLength(trailer.readUnsigned(Integer.BYTES));
+    trailer.requireAtEnd();
+    int actualSnapshotLength = checkedEncoded.length - TRAILER_BYTE_LENGTH - manifestLength;
+    if (actualSnapshotLength < 0 || actualSnapshotLength != snapshotLength) {
+      throw failure();
+    }
+    byte[] snapshot = Arrays.copyOfRange(checkedEncoded, 0, actualSnapshotLength);
+    byte[] manifestBytes = Arrays.copyOfRange(checkedEncoded, actualSnapshotLength, trailerOffset);
+    AttestationDecodedEnvelope<AttestationBackupManifestPayload> manifest =
+        AttestationDecodedEnvelope.manifest(manifestBytes);
+    return new AttestationDecodedArtifact(snapshot, manifest, checkedEncoded);
   }
 
   byte[] snapshot() {
