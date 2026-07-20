@@ -1,10 +1,12 @@
 package dev.erst.fingrind.core.attestation;
 
 import java.math.BigInteger;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
@@ -22,6 +24,7 @@ final class AttestationRegistryValidator {
     validateRevocations(revocations, bindingByKey);
     validateRolloverPredecessors(bindings, revocations, bindingByKey);
     validateFactUniqueness(grants, policyRules, workflowPolicies);
+    validateWorkflowPolicyHistory(workflowPolicies);
     return bindingByKey;
   }
 
@@ -92,6 +95,75 @@ final class AttestationRegistryValidator {
         grant -> grant.acceptedOrder() + ":" + grant.principalId() + ":" + grant.capability());
     requireUnique(policyRules, rule -> rule.acceptedOrder() + ":" + rule.capability());
     requireUnique(workflowPolicies, policy -> policy.acceptedOrder() + ":" + policy.workflowId());
+  }
+
+  private static void validateWorkflowPolicyHistory(
+      List<AttestationSystemWorkflowPolicy> workflowPolicies) {
+    Map<UUID, AttestationSystemWorkflowPolicy> activeById = new ConcurrentHashMap<>();
+    Set<UUID> retiredIds = new HashSet<>();
+    int start = 0;
+    while (start < workflowPolicies.size()) {
+      int end = endOfOrder(workflowPolicies, start);
+      for (int index = start; index < end; index++) {
+        AttestationSystemWorkflowPolicy policy = workflowPolicies.get(index);
+        if (!policy.active()) {
+          retireWorkflow(policy, activeById, retiredIds);
+        }
+      }
+      for (int index = start; index < end; index++) {
+        AttestationSystemWorkflowPolicy policy = workflowPolicies.get(index);
+        if (policy.active()) {
+          activateWorkflow(policy, activeById, retiredIds);
+        }
+      }
+      requireDistinctActiveWorkflowKinds(activeById.values());
+      start = end;
+    }
+  }
+
+  private static int endOfOrder(List<AttestationSystemWorkflowPolicy> workflowPolicies, int start) {
+    BigInteger acceptedOrder = workflowPolicies.get(start).acceptedOrder();
+    int index = start + 1;
+    while (index < workflowPolicies.size()
+        && workflowPolicies.get(index).acceptedOrder().equals(acceptedOrder)) {
+      index++;
+    }
+    return index;
+  }
+
+  private static void retireWorkflow(
+      AttestationSystemWorkflowPolicy policy,
+      Map<UUID, AttestationSystemWorkflowPolicy> activeById,
+      Set<UUID> retiredIds) {
+    AttestationSystemWorkflowPolicy activePolicy = activeById.remove(policy.workflowId());
+    if (activePolicy == null || !policy.hasSameConfiguration(activePolicy)) {
+      throw new IllegalArgumentException(
+          "Attestation workflow retirement must repeat one active workflow configuration.");
+    }
+    retiredIds.add(policy.workflowId());
+  }
+
+  private static void activateWorkflow(
+      AttestationSystemWorkflowPolicy policy,
+      Map<UUID, AttestationSystemWorkflowPolicy> activeById,
+      Set<UUID> retiredIds) {
+    if (activeById.putIfAbsent(policy.workflowId(), policy) != null
+        || retiredIds.contains(policy.workflowId())) {
+      throw new IllegalArgumentException(
+          "Attestation workflow IDs may be activated only once and never reactivated.");
+    }
+  }
+
+  private static void requireDistinctActiveWorkflowKinds(
+      java.util.Collection<AttestationSystemWorkflowPolicy> activePolicies) {
+    Set<AttestationSystemWorkflowKind> activeKinds =
+        EnumSet.noneOf(AttestationSystemWorkflowKind.class);
+    for (AttestationSystemWorkflowPolicy policy : activePolicies) {
+      if (!activeKinds.add(policy.workflowKind())) {
+        throw new IllegalArgumentException(
+            "Attestation history may have at most one active workflow of each kind.");
+      }
+    }
   }
 
   private static <T> void requireUnique(List<T> values, Function<T, String> identity) {

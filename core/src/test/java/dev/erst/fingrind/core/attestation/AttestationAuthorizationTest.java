@@ -8,7 +8,9 @@ import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSup
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.binding;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.credential;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.defaultRules;
+import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.fiscalWorkflow;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.founder;
+import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.interimWorkflow;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.orderedEntries;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.postRule;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.registry;
@@ -356,12 +358,7 @@ class AttestationAuthorizationTest {
             grants,
             List.of(
                 new AttestationPolicyRule(BigInteger.ONE, AttestationCapability.CLOSE_PERIOD, 2)),
-            List.of(
-                new AttestationSystemWorkflowPolicy(
-                    BigInteger.ONE,
-                    UUID.randomUUID(),
-                    AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP,
-                    true)));
+            List.of(interimWorkflow(1, UUID.randomUUID(), true)));
 
     assertFailure(
         AttestationAuthorizationFailure.CAPABILITY_INVALID,
@@ -390,12 +387,7 @@ class AttestationAuthorizationTest {
             grants,
             List.of(
                 new AttestationPolicyRule(BigInteger.ONE, AttestationCapability.CLOSE_PERIOD, 2)),
-            List.of(
-                new AttestationSystemWorkflowPolicy(
-                    BigInteger.ONE,
-                    UUID.randomUUID(),
-                    AttestationSystemWorkflowKind.FISCAL_YEAR_CLOSE,
-                    true)));
+            List.of(fiscalWorkflow(1, UUID.randomUUID(), true)));
     assertDoesNotThrow(() -> registry.requirePostMutationCapacityAt(BigInteger.ONE));
 
     AttestationRegistry noPolicy =
@@ -460,6 +452,28 @@ class AttestationAuthorizationTest {
         AttestationAuthorizationFailure.CAPABILITY_INVALID,
         () -> operatorCapacityTooSmall.requirePostMutationCapacityAt(BigInteger.ZERO));
 
+    AttestationRegistry systemOnlyAnchorCapacity =
+        AttestationRegistry.of(
+            List.of(
+                binding(0, firstSystem, AttestationCredentialPurpose.SYSTEM),
+                binding(0, secondSystem, AttestationCredentialPurpose.SYSTEM)),
+            List.of(),
+            List.of(
+                new AttestationCapabilityGrant(
+                    BigInteger.ZERO,
+                    firstSystem.principalId(),
+                    AttestationCapability.ANCHOR,
+                    AttestationGrantState.GRANT),
+                new AttestationCapabilityGrant(
+                    BigInteger.ZERO,
+                    secondSystem.principalId(),
+                    AttestationCapability.ANCHOR,
+                    AttestationGrantState.GRANT)),
+            List.of(new AttestationPolicyRule(BigInteger.ZERO, AttestationCapability.ANCHOR, 2)),
+            List.of());
+    assertDoesNotThrow(
+        () -> systemOnlyAnchorCapacity.requirePostMutationCapacityAt(BigInteger.ZERO));
+
     UUID workflowId = UUID.randomUUID();
     AttestationRegistry inactiveWorkflow =
         AttestationRegistry.of(
@@ -469,21 +483,9 @@ class AttestationAuthorizationTest {
             List.of(
                 new AttestationPolicyRule(BigInteger.ZERO, AttestationCapability.CLOSE_PERIOD, 1)),
             List.of(
-                new AttestationSystemWorkflowPolicy(
-                    BigInteger.ZERO,
-                    workflowId,
-                    AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP,
-                    true),
-                new AttestationSystemWorkflowPolicy(
-                    BigInteger.ONE,
-                    workflowId,
-                    AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP,
-                    false),
-                new AttestationSystemWorkflowPolicy(
-                    BigInteger.TWO,
-                    UUID.randomUUID(),
-                    AttestationSystemWorkflowKind.FISCAL_YEAR_CLOSE,
-                    true)));
+                interimWorkflow(0, workflowId, true),
+                interimWorkflow(1, workflowId, false),
+                fiscalWorkflow(2, UUID.randomUUID(), true)));
     assertDoesNotThrow(() -> inactiveWorkflow.requirePostMutationCapacityAt(BigInteger.ONE));
   }
 

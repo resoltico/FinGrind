@@ -2,8 +2,13 @@ package dev.erst.fingrind.core.attestation;
 
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.binding;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.credential;
+import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.fiscalWorkflow;
+import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.interimWorkflow;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.rollover;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
 import java.security.KeyPair;
@@ -151,12 +156,7 @@ class AttestationRegistryValidatorTest {
                 List.of(),
                 List.of(duplicateRule, duplicateRule),
                 List.of()));
-    AttestationSystemWorkflowPolicy duplicateWorkflow =
-        new AttestationSystemWorkflowPolicy(
-            BigInteger.ZERO,
-            UUID.randomUUID(),
-            AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP,
-            true);
+    AttestationSystemWorkflowPolicy duplicateWorkflow = interimWorkflow(0, UUID.randomUUID(), true);
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -166,5 +166,181 @@ class AttestationRegistryValidatorTest {
                 List.of(),
                 List.of(),
                 List.of(duplicateWorkflow, duplicateWorkflow)));
+  }
+
+  @Test
+  void validatesWorkflowPolicyLifecycleAndActiveKindUniqueness() {
+    UUID originalWorkflowId = UUID.randomUUID();
+    UUID replacementWorkflowId = UUID.randomUUID();
+    assertDoesNotThrow(
+        () ->
+            AttestationRegistry.of(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(
+                    interimWorkflow(0, originalWorkflowId, true),
+                    interimWorkflow(1, originalWorkflowId, false),
+                    interimWorkflow(1, replacementWorkflowId, true))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AttestationRegistry.of(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(
+                    interimWorkflow(0, originalWorkflowId, true),
+                    interimWorkflow(1, replacementWorkflowId, true))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AttestationRegistry.of(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(
+                    interimWorkflow(0, originalWorkflowId, true),
+                    interimWorkflow(1, originalWorkflowId, true))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AttestationRegistry.of(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(interimWorkflow(0, originalWorkflowId, false))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AttestationRegistry.of(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(
+                    interimWorkflow(0, originalWorkflowId, true),
+                    fiscalWorkflow(1, originalWorkflowId, false))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AttestationRegistry.of(
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(),
+                List.of(
+                    interimWorkflow(0, originalWorkflowId, true),
+                    interimWorkflow(1, originalWorkflowId, false),
+                    interimWorkflow(2, originalWorkflowId, true))));
+  }
+
+  @Test
+  void validatesWorkflowPolicyShapeAndConfigurationIdentity() {
+    UUID workflowId = UUID.randomUUID();
+    AttestationSystemWorkflowPolicy interim = interimWorkflow(0, workflowId, true);
+    AttestationSystemWorkflowPolicy fiscal = fiscalWorkflow(0, workflowId, true);
+    assertTrue(interim.hasSameConfiguration(interimWorkflow(1, workflowId, false)));
+    assertFalse(interim.hasSameConfiguration(fiscal));
+    assertFalse(
+        fiscal.hasSameConfiguration(
+            new AttestationSystemWorkflowPolicy(
+                BigInteger.ZERO,
+                workflowId,
+                AttestationSystemWorkflowKind.FISCAL_YEAR_CLOSE,
+                "4000",
+                "3100",
+                "3200",
+                true)));
+    assertFalse(
+        fiscal.hasSameConfiguration(
+            new AttestationSystemWorkflowPolicy(
+                BigInteger.ZERO,
+                workflowId,
+                AttestationSystemWorkflowKind.FISCAL_YEAR_CLOSE,
+                "3000",
+                "4100",
+                "3200",
+                true)));
+    assertFalse(
+        fiscal.hasSameConfiguration(
+            new AttestationSystemWorkflowPolicy(
+                BigInteger.ZERO,
+                workflowId,
+                AttestationSystemWorkflowKind.FISCAL_YEAR_CLOSE,
+                "3000",
+                "3100",
+                "4200",
+                true)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new AttestationSystemWorkflowPolicy(
+                BigInteger.ZERO,
+                workflowId,
+                AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP,
+                "3000",
+                "3100",
+                null,
+                true));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new AttestationSystemWorkflowPolicy(
+                BigInteger.ZERO,
+                workflowId,
+                AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP,
+                "3000",
+                null,
+                "3200",
+                true));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new AttestationSystemWorkflowPolicy(
+                BigInteger.ZERO,
+                workflowId,
+                AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP,
+                " ",
+                null,
+                null,
+                true));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new AttestationSystemWorkflowPolicy(
+                BigInteger.ZERO,
+                workflowId,
+                AttestationSystemWorkflowKind.FISCAL_YEAR_CLOSE,
+                "3000",
+                null,
+                "3200",
+                true));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new AttestationSystemWorkflowPolicy(
+                BigInteger.ZERO,
+                workflowId,
+                AttestationSystemWorkflowKind.FISCAL_YEAR_CLOSE,
+                "3000",
+                " ",
+                "3200",
+                true));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new AttestationSystemWorkflowPolicy(
+                BigInteger.ZERO,
+                workflowId,
+                AttestationSystemWorkflowKind.FISCAL_YEAR_CLOSE,
+                "3000",
+                "3100",
+                null,
+                true));
   }
 }

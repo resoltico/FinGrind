@@ -17,9 +17,10 @@ final class AttestationRegistryCapacity {
         throw new AttestationAuthorizationException(
             AttestationAuthorizationFailure.CAPABILITY_INVALID);
       }
-      if (resolution.eligiblePrincipalCount(
-              capability, resolvingOrder, AttestationCredentialPurpose.OPERATOR)
-          < quorum) {
+      if (capability.admitsCliOperation()
+          && resolution.eligiblePrincipalCount(
+                  capability, resolvingOrder, AttestationCredentialPurpose.OPERATOR)
+              < quorum) {
         throw new AttestationAuthorizationException(
             AttestationAuthorizationFailure.CAPABILITY_INVALID);
       }

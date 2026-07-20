@@ -97,6 +97,30 @@ final class AttestationAuthorizationTestSupport {
         AttestationSpki.of(credential.pair().getPublic().getEncoded()));
   }
 
+  static AttestationSystemWorkflowPolicy interimWorkflow(
+      int order, UUID workflowId, boolean active) {
+    return new AttestationSystemWorkflowPolicy(
+        BigInteger.valueOf(order),
+        workflowId,
+        AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP,
+        "3000",
+        null,
+        null,
+        active);
+  }
+
+  static AttestationSystemWorkflowPolicy fiscalWorkflow(
+      int order, UUID workflowId, boolean active) {
+    return new AttestationSystemWorkflowPolicy(
+        BigInteger.valueOf(order),
+        workflowId,
+        AttestationSystemWorkflowKind.FISCAL_YEAR_CLOSE,
+        "3000",
+        "3100",
+        "3200",
+        active);
+  }
+
   static AttestationAuthorizationEnvelope signedEnvelope(TestCredential... credentials) {
     return new AttestationAuthorizationEnvelope(PAYLOAD, orderedEntries(credentials));
   }

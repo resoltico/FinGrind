@@ -44,6 +44,10 @@ enum AttestationCapability {
     return DUAL_CONTROL_CAPABILITIES.contains(this) ? Math.min(2, founderCount) : 1;
   }
 
+  boolean admitsCliOperation() {
+    return this != ANCHOR;
+  }
+
   private static void requireGenesisFounderCount(int founderCount) {
     if (founderCount < 1 || founderCount > 5) {
       throw new IllegalArgumentException(
