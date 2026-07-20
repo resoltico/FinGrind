@@ -9,7 +9,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /** Catalog-owned closed operation-to-request/effect tag profiles. */
 final class AttestationOperationProfileCatalog {
-  private static final Group B = group(0x0100, 0x0120, 0x0124, 0x0020, 0x0021, 0x0025);
+  private static final Group B =
+      group(0x0100, 0x0120, 0x0121, 0x0122, 0x0124, 0x0020, 0x0021, 0x0025);
   private static final Group D = group(0x0100, 0x0120, 0x0124, 0x012A, 0x0020, 0x0021, 0x0025);
   private static final Group T = group(0x0126, 0x0023);
   private static final Group X = group(0x0127, 0x0024);

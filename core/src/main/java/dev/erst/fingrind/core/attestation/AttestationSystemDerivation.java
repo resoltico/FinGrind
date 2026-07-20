@@ -53,8 +53,12 @@ final class AttestationSystemDerivation {
       AttestationPreimage requestPreimage,
       AttestationPreimage effectPreimage) {
     String expectedCloseKind = workflowKind(operationKind).wireToken();
+    LocalDate recordedOn = payload.recordedAt().atZone(ZoneOffset.UTC).toLocalDate();
     LocalDate expectedEffectiveTo =
-        payload.recordedAt().atZone(ZoneOffset.UTC).toLocalDate().minusDays(1);
+        switch (workflowPolicy.workflowKind()) {
+          case INTERIM_RESULT_SWEEP -> recordedOn.minusDays(1);
+          case FISCAL_YEAR_CLOSE -> recordedOn;
+        };
     AttestationPreimage.Fact periodClose = exactlyOne(requestPreimage, REQUEST_PERIOD_CLOSE);
     AttestationPreimage.Fact posting = exactlyOne(requestPreimage, REQUEST_POSTING);
     AttestationPreimage.Fact effectPosting = exactlyOne(effectPreimage, EFFECT_POSTING);

@@ -47,6 +47,9 @@ Historical release notes older than `0.31.0` live in:
   derives its historical position and capability from the typed payload it signs. The standalone
   authorization corpus now applies its exact published byte mutations, including fixed C-key
   capability failures, rather than substituting generated semantic equivalents.
+- Fixed unreleased next-format attestation verification so deterministic complete-book, artifact,
+  and receipt resources execute against their actual serialized bytes; sale profiles require their
+  tax-inclusive request facts and fiscal close uses its recorded UTC date.
 - Fixed unreleased next-format attestation key custody. Verification now consumes the one
   canonical Ed25519 SPKI it validated, and an encrypted PKCS#8 credential is successful only after
   its no-clobber final name has passed the native parent-directory durability barrier.

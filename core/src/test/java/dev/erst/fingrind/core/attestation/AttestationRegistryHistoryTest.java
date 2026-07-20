@@ -372,7 +372,7 @@ class AttestationRegistryHistoryTest {
         AttestationStaticCorpus.fixture(
             "N-20",
             rawSource,
-            new AttestationStaticCorpus.Mutation(
+            AttestationStaticCorpus.Mutation.replace(
                 indexOf(rawSource, replacementBytes), replacementBytes),
             new AttestationStaticCorpus.PolicyFold(
                 "CLOSE_PERIOD M=2 with only one system-purpose principal"),
@@ -408,7 +408,7 @@ class AttestationRegistryHistoryTest {
     return AttestationStaticCorpus.fixture(
         id,
         rawSource,
-        new AttestationStaticCorpus.Mutation(offset, replacementBytes),
+        AttestationStaticCorpus.Mutation.replace(offset, replacementBytes),
         new AttestationStaticCorpus.PolicyFold("genesis authority plus the mutated registry fact"),
         AttestationStaticCorpus.VerificationScope.REGISTRY,
         AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID);
@@ -416,8 +416,7 @@ class AttestationRegistryHistoryTest {
 
   private static void assertFixtureFailure(
       AttestationStaticCorpus.Fixture fixture, Runnable verification) {
-    assertTrue(fixture.rawSource().length > 0);
-    assertTrue(fixture.mutation().isRepresentedBy(fixture.rawSource()));
+    assertTrue(fixture.source().length > 0);
     assertFailure(fixture.expectedFirstFailure(), verification);
   }
 

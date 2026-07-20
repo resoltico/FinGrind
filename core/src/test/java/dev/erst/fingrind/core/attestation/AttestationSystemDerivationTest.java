@@ -2,7 +2,6 @@ package dev.erst.fingrind.core.attestation;
 
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.assertFailure;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
 import java.time.Instant;
@@ -33,20 +32,21 @@ class AttestationSystemDerivationTest {
 
   @Test
   void rejectsAConsistentlyMutatedButNotWorkflowDerivedCloseDate() {
+    CloseEvidence base = evidence(LocalDate.of(2026, 12, 30));
     CloseEvidence evidence = evidence(LocalDate.of(2026, 12, 29));
-    byte[] rawSource = evidence.request().encoded();
+    byte[] rawSource = base.request().encoded();
+    byte[] replacedBytes = "2026-12-30".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
     byte[] replacementBytes = "2026-12-29".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
     AttestationStaticCorpus.Fixture fixture =
         AttestationStaticCorpus.fixture(
             "N-19",
             rawSource,
-            new AttestationStaticCorpus.Mutation(
-                indexOf(rawSource, replacementBytes), replacementBytes),
+            AttestationStaticCorpus.Mutation.replace(
+                indexOf(rawSource, replacedBytes), replacementBytes),
             new AttestationStaticCorpus.PolicyFold("active interim-result-sweep workflow at close"),
             AttestationStaticCorpus.VerificationScope.SYSTEM_DERIVATION,
             AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID);
 
-    assertTrue(fixture.mutation().isRepresentedBy(fixture.rawSource()));
     assertFailure(
         fixture.expectedFirstFailure(),
         () ->
@@ -55,7 +55,8 @@ class AttestationSystemDerivationTest {
                 evidence.payload(),
                 AttestationOperationKind.INTERIM_RESULT_SWEEP,
                 evidence.provenance(),
-                evidence.request(),
+                AttestationPreimage.decode(
+                    fixture.source(), AttestationAuthorizationFailure.PREIMAGE_INVALID),
                 evidence.effect()));
   }
 
@@ -80,21 +81,21 @@ class AttestationSystemDerivationTest {
     CloseEvidence valid =
         evidence(
             AttestationOperationKind.FISCAL_YEAR_CLOSE,
-            LocalDate.of(2026, 12, 30),
+            LocalDate.of(2026, 12, 31),
             "3000",
             "3100",
             "3200");
     CloseEvidence altered =
         evidence(
             AttestationOperationKind.FISCAL_YEAR_CLOSE,
-            LocalDate.of(2026, 12, 30),
+            LocalDate.of(2026, 12, 31),
             "3000",
             "3100",
             "3299");
     CloseEvidence alteredCapital =
         evidence(
             AttestationOperationKind.FISCAL_YEAR_CLOSE,
-            LocalDate.of(2026, 12, 30),
+            LocalDate.of(2026, 12, 31),
             "3000",
             "3199",
             "3200");

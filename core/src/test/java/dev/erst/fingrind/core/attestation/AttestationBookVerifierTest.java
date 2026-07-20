@@ -65,12 +65,12 @@ class AttestationBookVerifierTest {
         AttestationStaticCorpus.fixture(
             "N-11",
             rawSource,
-            new AttestationStaticCorpus.Mutation(indexOf(rawSource, replacement), replacement),
+            AttestationStaticCorpus.Mutation.replace(indexOf(rawSource, replacement), replacement),
             new AttestationStaticCorpus.PolicyFold("B-02 POST M=2 before the common posting"),
             AttestationStaticCorpus.VerificationScope.BOOK,
             AttestationAuthorizationFailure.PREVIOUS_HEAD_INVALID);
 
-    assertTrue(fixture.mutation().isRepresentedBy(fixture.rawSource()));
+    assertTrue(fixture.source().length > 0);
     assertFailure(
         fixture.expectedFirstFailure(),
         () -> AttestationBookVerifier.verify(new AttestationBook(List.of(genesis, malformed))));

@@ -3,7 +3,6 @@ package dev.erst.fingrind.core.attestation;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.assertFailure;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.credential;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
 import java.time.Instant;
@@ -92,6 +91,14 @@ class AttestationOperationProfileCatalogTest {
         AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
         () -> profile.requireTags(request, append(effect, 0x0024)));
     assertDoesNotThrow(() -> profile.requireTags(append(request, 0x0127), append(effect, 0x0024)));
+
+    AttestationOperationProfileCatalog.TagProfile sale =
+        AttestationOperationProfileCatalog.profile(AttestationOperationKind.RECORD_SALE_SETTLED);
+    assertDoesNotThrow(
+        () ->
+            sale.requireTags(
+                preimage(0x0100, 0x0120, 0x0121, 0x0122, 0x0124),
+                preimage(0x0020, 0x0021, 0x0025)));
 
     AttestationOperationProfileCatalog.TagProfile policy =
         AttestationOperationProfileCatalog.profile(AttestationOperationKind.ALTER_POLICY);
@@ -190,25 +197,26 @@ class AttestationOperationProfileCatalogTest {
 
   @Test
   void executesTheByteAddressedFixedAssetRowN17() {
-    AttestationPreimage request = preimage(0x0100, 0x0120, 0x0124);
-    AttestationPreimage effect = append(preimage(0x0020, 0x0021, 0x0025), 0x0060);
-    byte[] rawSource = effect.encoded();
-    byte[] fixedAssetTag = new byte[] {0, 0x60};
+    AttestationPreimage request = preimage(0x0100, 0x0120, 0x0121, 0x0122, 0x0124);
+    AttestationPreimage baseEffect = preimage(0x0020, 0x0021, 0x0025);
+    AttestationPreimage effect = append(baseEffect, 0x0060);
     AttestationStaticCorpus.Fixture fixture =
         AttestationStaticCorpus.fixture(
             "N-17",
-            rawSource,
-            new AttestationStaticCorpus.Mutation(indexOf(rawSource, fixedAssetTag), fixedAssetTag),
+            baseEffect.encoded(),
+            mutationBetween(baseEffect.encoded(), effect.encoded()),
             new AttestationStaticCorpus.PolicyFold("B-02 POST M=2 before the common posting"),
             AttestationStaticCorpus.VerificationScope.OPERATION_PROFILE,
             AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID);
 
-    assertTrue(fixture.mutation().isRepresentedBy(fixture.rawSource()));
     assertFailure(
         fixture.expectedFirstFailure(),
         () ->
             AttestationOperationProfileCatalog.profile(AttestationOperationKind.RECORD_SALE_SETTLED)
-                .requireTags(request, effect));
+                .requireTags(
+                    request,
+                    AttestationPreimage.decode(
+                        fixture.source(), AttestationAuthorizationFailure.PREIMAGE_INVALID)));
   }
 
   private static AttestationPreimage append(AttestationPreimage preimage, int tag) {
@@ -238,13 +246,23 @@ class AttestationOperationProfileCatalogTest {
     return Objects.requireNonNull(VALUES.get(type), "value factory").get();
   }
 
-  private static int indexOf(byte[] source, byte[] target) {
-    for (int offset = 0; offset <= source.length - target.length; offset++) {
-      if (java.util.Arrays.equals(
-          target, java.util.Arrays.copyOfRange(source, offset, offset + target.length))) {
-        return offset;
-      }
+  private static AttestationStaticCorpus.Mutation mutationBetween(byte[] base, byte[] source) {
+    int prefixLength = 0;
+    while (prefixLength < base.length
+        && prefixLength < source.length
+        && base[prefixLength] == source[prefixLength]) {
+      prefixLength++;
     }
-    throw new IllegalArgumentException("Fixture mutation bytes are not present in the raw source.");
+    int suffixLength = 0;
+    while (suffixLength < base.length - prefixLength
+        && suffixLength < source.length - prefixLength
+        && base[base.length - suffixLength - 1] == source[source.length - suffixLength - 1]) {
+      suffixLength++;
+    }
+    return AttestationStaticCorpus.Mutation.edits(
+        AttestationStaticCorpus.Mutation.edit(
+            prefixLength,
+            base.length - prefixLength - suffixLength,
+            java.util.Arrays.copyOfRange(source, prefixLength, source.length - suffixLength)));
   }
 }

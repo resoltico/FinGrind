@@ -161,7 +161,7 @@ class AttestationArtifactVerifierTest {
   }
 
   @Test
-  void executesTheByteAddressedContainerRowsN14aThroughN14d() {
+  void rejectsEachConstructedArtifactManifestBindingMutation() {
     TestCredential founder = credential();
     AttestationBook book = book(founder);
     AttestationBookVerification verification = AttestationBookVerifier.verify(book);
@@ -169,13 +169,19 @@ class AttestationArtifactVerifierTest {
     byte[] artifact = artifact(founder, verification, snapshot, AttestationHash.sha256(snapshot));
 
     assertManifestFixture(
-        fixture("N-14a", artifact, manifestSnapshotDigestOffset(snapshot)), snapshot, book);
+        fixture("manifest-snapshot-digest", artifact, manifestSnapshotDigestOffset(snapshot)),
+        snapshot,
+        book);
     assertManifestFixture(
-        fixture("N-14b", artifact, manifestSourceHeadOffset(snapshot)), snapshot, book);
+        fixture("manifest-source-head", artifact, manifestSourceHeadOffset(snapshot)),
+        snapshot,
+        book);
     assertManifestFixture(
-        fixture("N-14c", artifact, manifestBookIdOffset(snapshot)), snapshot, book);
+        fixture("manifest-book-id", artifact, manifestBookIdOffset(snapshot)), snapshot, book);
     assertManifestFixture(
-        fixture("N-14d", artifact, trailerSnapshotLengthOffset(artifact)), snapshot, book);
+        fixture("manifest-trailer-length", artifact, trailerSnapshotLengthOffset(artifact)),
+        snapshot,
+        book);
   }
 
   private static void assertManifestFailure(
@@ -209,12 +215,11 @@ class AttestationArtifactVerifierTest {
   }
 
   private static AttestationStaticCorpus.Fixture fixture(String id, byte[] source, int offset) {
-    byte[] mutated = source.clone();
-    mutated[offset] ^= 1;
+    byte[] replacement = new byte[] {(byte) (source[offset] ^ 1)};
     return AttestationStaticCorpus.fixture(
         id,
-        mutated,
-        new AttestationStaticCorpus.Mutation(offset, new byte[] {mutated[offset]}),
+        source,
+        AttestationStaticCorpus.Mutation.replace(offset, replacement),
         new AttestationStaticCorpus.PolicyFold("BACKUP M=1 at the snapshot head"),
         AttestationStaticCorpus.VerificationScope.ARTIFACT,
         AttestationAuthorizationFailure.MANIFEST_INVALID);
@@ -222,12 +227,12 @@ class AttestationArtifactVerifierTest {
 
   private static void assertManifestFixture(
       AttestationStaticCorpus.Fixture fixture, byte[] snapshot, AttestationBook book) {
-    assertTrue(fixture.mutation().isRepresentedBy(fixture.rawSource()));
+    assertTrue(fixture.source().length > 0);
     assertFailure(
         fixture.expectedFirstFailure(),
         () ->
             AttestationArtifactVerifier.verifyArtifact(
-                fixture.rawSource(), snapshotDecoder(snapshot, book)));
+                fixture.source(), snapshotDecoder(snapshot, book)));
   }
 
   private static byte[] artifact(
