@@ -47,6 +47,23 @@ final class AttestationEd25519 {
     return verifies(publicKey, payload, signature, Signature::getInstance);
   }
 
+  static boolean verifies(byte[] encodedSpki, byte[] payload, byte[] signature) {
+    try {
+      return verifies(publicKey(encodedSpki), payload, signature);
+    } catch (IllegalArgumentException exception) {
+      return false;
+    }
+  }
+
+  static boolean isEd25519Spki(byte[] encodedSpki) {
+    try {
+      publicKey(encodedSpki);
+      return true;
+    } catch (IllegalArgumentException exception) {
+      return false;
+    }
+  }
+
   static boolean verifies(
       PublicKey publicKey, byte[] payload, byte[] signature, SignatureFactory signatureFactory) {
     Objects.requireNonNull(publicKey, "publicKey");

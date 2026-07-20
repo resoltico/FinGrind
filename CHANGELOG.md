@@ -11,6 +11,9 @@ Historical release notes older than `0.31.0` live in:
 
 ### Added
 
+- Added the unreleased next-format attestation registry and authorization fold. It resolves
+  credentials, grants, and quorums at the signed structure's historical position and returns the
+  contract's exact authorization refusal for every shared-envelope violation.
 - Added first-class contra-account taxonomy. A declared account can now identify the active postable account it reduces; the relationship is validated as a same-type, compatible-statement relationship, normal balance follows the contra role, account readback publishes `contraOfAccountCode`, and financial statements present the row as a reduction of its named account.
 - Added discoverable `retire-account` request scaffolding and named atomic setup plans for tax, fixed assets, and financing. Each setup plan declares the exact prerequisite account taxonomy before it declares or uses the bounded-context facts, while the default `print-plan-template` remains a general executable workflow.
 - Added an explicit Latvian monthly-payroll withholding profile to every payroll request, retained payroll run, plan fact, and readback. The supported 2026 calculation admits only `taxBookHeldAtEmployer: true` with `dependantCount: 0` and rejects all other profiles rather than assuming their tax treatment.
