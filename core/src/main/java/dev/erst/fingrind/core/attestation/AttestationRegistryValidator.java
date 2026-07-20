@@ -28,6 +28,15 @@ final class AttestationRegistryValidator {
     return bindingByKey;
   }
 
+  static void requireAcceptedCredentialAlgorithms(List<AttestationCredentialBinding> bindings) {
+    for (AttestationCredentialBinding binding : bindings) {
+      if (!AttestationEd25519.isEd25519Spki(binding.spki().bytes())) {
+        throw new AttestationAuthorizationException(
+            AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID);
+      }
+    }
+  }
+
   private static Map<AttestationHash, AttestationCredentialBinding> indexBindings(
       List<AttestationCredentialBinding> bindings) {
     Map<AttestationHash, AttestationCredentialBinding> result = new ConcurrentHashMap<>();

@@ -66,7 +66,10 @@ final class AttestationRegistryResolution {
     BigInteger checkedOrder = Objects.requireNonNull(resolvingOrder, "resolvingOrder");
     return bindings.stream()
             .filter(binding -> binding.principalId().equals(checkedPrincipalId))
-            .anyMatch(binding -> credentialAt(binding.keyId(), checkedOrder).active())
+            .anyMatch(
+                binding ->
+                    credentialAt(binding.keyId(), checkedOrder).active()
+                        && AttestationEd25519.isEd25519Spki(binding.spki().bytes()))
         && latestGrant(checkedCapability, checkedOrder, checkedPrincipalId)
             .map(grant -> grant.state() == AttestationGrantState.GRANT)
             .orElse(false);

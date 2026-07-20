@@ -71,6 +71,7 @@ final class AttestationRegistry {
       List<AttestationSystemWorkflowPolicy> workflowPolicies) {
     AttestationRegistry registry =
         fromVerifierFacts(bindings, revocations, grants, policyRules, workflowPolicies);
+    AttestationRegistryValidator.requireAcceptedCredentialAlgorithms(bindings);
     AttestationRegistryCapacity.requireCapacityForAcceptedHistory(registry.resolution);
     return registry;
   }

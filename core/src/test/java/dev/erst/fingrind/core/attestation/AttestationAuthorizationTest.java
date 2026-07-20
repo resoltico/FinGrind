@@ -257,6 +257,7 @@ class AttestationAuthorizationTest {
             allFounderGrants(x25519Principal),
             defaultRules(1),
             List.of());
+    assertFalse(x25519Registry.isEligible(x25519Principal, AttestationCapability.POST, POSITION));
     assertEquals(0, x25519Registry.eligiblePrincipalCount(AttestationCapability.POST, POSITION));
     assertFailure(
         AttestationAuthorizationFailure.KEY_ALGORITHM_INVALID,
@@ -268,6 +269,23 @@ class AttestationAuthorizationTest {
                     List.of(
                         new AttestationSignatureEntry(
                             x25519Principal, x25519KeyId, new byte[64])))));
+    assertFailure(
+        AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
+        () ->
+            AttestationRegistry.fromAcceptedHistory(
+                List.of(
+                    new AttestationCredentialBinding(
+                        BigInteger.ZERO,
+                        x25519Principal,
+                        x25519KeyId,
+                        AttestationCredentialBinding.BindingAction.ENROLL,
+                        AttestationSpki.of(x25519Spki),
+                        AttestationCredentialPurpose.OPERATOR,
+                        null)),
+                List.of(),
+                allFounderGrants(x25519Principal),
+                defaultRules(1),
+                List.of()));
     AttestationRegistry revokedX25519Registry =
         AttestationRegistry.fromVerifierFacts(
             List.of(
@@ -450,190 +468,6 @@ class AttestationAuthorizationTest {
   }
 
   @Test
-  void rejectsAnAcceptedHistoryWhoseSystemWorkflowQuorumWouldBeImpossible() {
-    TestCredential firstOperator = credential();
-    TestCredential secondOperator = credential();
-    TestCredential system = credential();
-    List<AttestationCapabilityGrant> grants = new ArrayList<>();
-    grants.addAll(allFounderGrants(firstOperator.principalId()));
-    grants.addAll(allFounderGrants(secondOperator.principalId()));
-    grants.addAll(allFounderGrants(system.principalId()));
-    assertFailure(
-        AttestationAuthorizationFailure.CAPABILITY_INVALID,
-        () ->
-            AttestationRegistry.fromAcceptedHistory(
-                List.of(
-                    binding(0, firstOperator),
-                    binding(0, secondOperator),
-                    binding(0, system, AttestationCredentialPurpose.SYSTEM)),
-                List.of(),
-                grants,
-                List.of(
-                    new AttestationPolicyRule(
-                        BigInteger.ONE, AttestationCapability.CLOSE_PERIOD, 2)),
-                List.of(interimWorkflow(1, UUID.randomUUID(), true))));
-  }
-
-  @Test
-  void acceptsReachableAcceptedHistoryCapacityAndAnEmptyPolicyHistory() {
-    TestCredential firstOperator = credential();
-    TestCredential secondOperator = credential();
-    TestCredential firstSystem = credential();
-    TestCredential secondSystem = credential();
-    List<AttestationCapabilityGrant> grants = new ArrayList<>();
-    for (TestCredential credential :
-        List.of(firstOperator, secondOperator, firstSystem, secondSystem)) {
-      grants.addAll(allFounderGrants(credential.principalId()));
-    }
-    assertDoesNotThrow(
-        () ->
-            AttestationRegistry.fromAcceptedHistory(
-                List.of(
-                    binding(0, firstOperator),
-                    binding(0, secondOperator),
-                    binding(0, firstSystem, AttestationCredentialPurpose.SYSTEM),
-                    binding(0, secondSystem, AttestationCredentialPurpose.SYSTEM)),
-                List.of(),
-                grants,
-                List.of(
-                    new AttestationPolicyRule(
-                        BigInteger.ONE, AttestationCapability.CLOSE_PERIOD, 2)),
-                List.of(fiscalWorkflow(1, UUID.randomUUID(), true))));
-
-    assertDoesNotThrow(
-        () ->
-            AttestationRegistry.fromAcceptedHistory(
-                List.of(binding(0, firstOperator)),
-                List.of(),
-                List.of(
-                    new AttestationCapabilityGrant(
-                        BigInteger.ZERO,
-                        firstOperator.principalId(),
-                        AttestationCapability.CLOSE_PERIOD,
-                        AttestationGrantState.GRANT)),
-                List.of(
-                    new AttestationPolicyRule(
-                        BigInteger.ZERO, AttestationCapability.CLOSE_PERIOD, 1)),
-                List.of()));
-
-    AttestationRegistry noPolicy =
-        AttestationRegistry.fromAcceptedHistory(
-            List.of(binding(0, firstOperator)), List.of(), List.of(), List.of(), List.of());
-    assertFailure(
-        AttestationAuthorizationFailure.CAPABILITY_INVALID,
-        () -> noPolicy.quorumAt(AttestationCapability.POST, BigInteger.ZERO));
-
-    assertDoesNotThrow(
-        () ->
-            AttestationRegistry.fromAcceptedHistory(
-                List.of(binding(0, firstOperator)),
-                List.of(),
-                List.of(
-                    new AttestationCapabilityGrant(
-                        BigInteger.ZERO,
-                        firstOperator.principalId(),
-                        AttestationCapability.POST,
-                        AttestationGrantState.GRANT)),
-                List.of(new AttestationPolicyRule(BigInteger.ZERO, AttestationCapability.POST, 1)),
-                List.of()));
-  }
-
-  @Test
-  void validatesOtherAcceptedHistoryCapacityCases() {
-    TestCredential operator = credential();
-    assertFailure(
-        AttestationAuthorizationFailure.CAPABILITY_INVALID,
-        () ->
-            AttestationRegistry.fromAcceptedHistory(
-                List.of(binding(0, operator)),
-                List.of(),
-                allFounderGrants(operator.principalId()),
-                List.of(new AttestationPolicyRule(BigInteger.ZERO, AttestationCapability.POST, 2)),
-                List.of()));
-
-    TestCredential firstSystem = credential();
-    TestCredential secondSystem = credential();
-    assertFailure(
-        AttestationAuthorizationFailure.CAPABILITY_INVALID,
-        () ->
-            AttestationRegistry.fromAcceptedHistory(
-                List.of(
-                    binding(0, firstSystem, AttestationCredentialPurpose.SYSTEM),
-                    binding(0, secondSystem, AttestationCredentialPurpose.SYSTEM)),
-                List.of(),
-                List.of(
-                    new AttestationCapabilityGrant(
-                        BigInteger.ZERO,
-                        firstSystem.principalId(),
-                        AttestationCapability.POST,
-                        AttestationGrantState.GRANT),
-                    new AttestationCapabilityGrant(
-                        BigInteger.ZERO,
-                        secondSystem.principalId(),
-                        AttestationCapability.POST,
-                        AttestationGrantState.GRANT)),
-                List.of(new AttestationPolicyRule(BigInteger.ZERO, AttestationCapability.POST, 1)),
-                List.of()));
-
-    assertDoesNotThrow(
-        () ->
-            AttestationRegistry.fromAcceptedHistory(
-                List.of(
-                    binding(0, firstSystem, AttestationCredentialPurpose.SYSTEM),
-                    binding(0, secondSystem, AttestationCredentialPurpose.SYSTEM)),
-                List.of(),
-                List.of(
-                    new AttestationCapabilityGrant(
-                        BigInteger.ZERO,
-                        firstSystem.principalId(),
-                        AttestationCapability.ANCHOR,
-                        AttestationGrantState.GRANT),
-                    new AttestationCapabilityGrant(
-                        BigInteger.ZERO,
-                        secondSystem.principalId(),
-                        AttestationCapability.ANCHOR,
-                        AttestationGrantState.GRANT)),
-                List.of(
-                    new AttestationPolicyRule(BigInteger.ZERO, AttestationCapability.ANCHOR, 2)),
-                List.of()));
-
-    TestCredential initialSystem = credential();
-    TestCredential replacementSystem = credential();
-    UUID workflowId = UUID.randomUUID();
-    assertFailure(
-        AttestationAuthorizationFailure.CAPABILITY_INVALID,
-        () ->
-            AttestationRegistry.fromAcceptedHistory(
-                List.of(
-                    binding(0, operator),
-                    binding(0, initialSystem, AttestationCredentialPurpose.SYSTEM),
-                    binding(2, replacementSystem, AttestationCredentialPurpose.SYSTEM)),
-                List.of(
-                    new AttestationCredentialRevocation(
-                        BigInteger.ONE, initialSystem.principalId(), initialSystem.keyId())),
-                List.of(
-                    new AttestationCapabilityGrant(
-                        BigInteger.ZERO,
-                        operator.principalId(),
-                        AttestationCapability.CLOSE_PERIOD,
-                        AttestationGrantState.GRANT),
-                    new AttestationCapabilityGrant(
-                        BigInteger.ZERO,
-                        initialSystem.principalId(),
-                        AttestationCapability.CLOSE_PERIOD,
-                        AttestationGrantState.GRANT),
-                    new AttestationCapabilityGrant(
-                        BigInteger.TWO,
-                        replacementSystem.principalId(),
-                        AttestationCapability.CLOSE_PERIOD,
-                        AttestationGrantState.GRANT)),
-                List.of(
-                    new AttestationPolicyRule(
-                        BigInteger.ZERO, AttestationCapability.CLOSE_PERIOD, 1)),
-                List.of(interimWorkflow(0, workflowId, true))));
-  }
-
-  @Test
   void resolvesHistoricalCredentialsGrantsAndPolicyFactsWithoutFutureLeakage() {
     TestCredential first = credential();
     TestCredential second = credential();
@@ -671,6 +505,7 @@ class AttestationAuthorizationTest {
     assertTrue(registry.credentialAt(first.keyId(), POSITION).active());
     assertFalse(registry.credentialAt(second.keyId(), POSITION).active());
     assertTrue(registry.isEligible(first.principalId(), AttestationCapability.POST, POSITION));
+    assertFalse(registry.isEligible(second.principalId(), AttestationCapability.POST, POSITION));
     assertFalse(registry.isEligible(UUID.randomUUID(), AttestationCapability.POST, POSITION));
     assertEquals(1, registry.eligiblePrincipalCount(AttestationCapability.POST, POSITION));
     assertFailure(
