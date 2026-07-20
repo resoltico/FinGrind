@@ -10,13 +10,15 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 
 /** Shared deterministic builders and assertions for attestation authorization tests. */
 final class AttestationAuthorizationTestSupport {
   static final BigInteger POSITION = BigInteger.ONE;
-  private static final UUID BOOK_ID = UUID.fromString("00112233-4455-6677-8899-aabbccddeeff");
+  static final UUID SYSTEM_WORKFLOW_ID = UUID.fromString("99887766-5544-3322-1100-ffeeddccbbaa");
+  static final UUID BOOK_ID = UUID.fromString("00112233-4455-6677-8899-aabbccddeeff");
   private static final AttestationHash PREVIOUS_HEAD = AttestationHash.sha256(new byte[] {1});
-  private static final AttestationHash REQUEST_DIGEST = AttestationHash.sha256(new byte[] {2});
+  private static final AttestationHash SNAPSHOT_DIGEST = AttestationHash.sha256(new byte[] {2});
   private static final AttestationHash EFFECT_DIGEST = AttestationHash.sha256(new byte[] {3});
   private static final AttestationAuthorizationContext OPERATION_CONTEXT = operationContext();
   static final byte[] PAYLOAD = OPERATION_CONTEXT.payload();
@@ -33,23 +35,49 @@ final class AttestationAuthorizationTestSupport {
 
   static AttestationAuthorizationContext operationContext(
       AttestationOperationKind operationKind, AttestationSourceChannel sourceChannel) {
-    return operationContext(POSITION.add(BigInteger.ONE), operationKind, sourceChannel);
+    return operationContext(
+        POSITION.add(BigInteger.ONE),
+        operationKind,
+        sourceChannel,
+        sourceChannel == AttestationSourceChannel.SYSTEM ? SYSTEM_WORKFLOW_ID : null);
   }
 
   static AttestationAuthorizationContext operationContext(
       BigInteger operationOrder,
       AttestationOperationKind operationKind,
       AttestationSourceChannel sourceChannel) {
+    return operationContext(
+        operationOrder,
+        operationKind,
+        sourceChannel,
+        sourceChannel == AttestationSourceChannel.SYSTEM ? SYSTEM_WORKFLOW_ID : null);
+  }
+
+  static AttestationAuthorizationContext operationContext(
+      BigInteger operationOrder,
+      AttestationOperationKind operationKind,
+      AttestationSourceChannel sourceChannel,
+      @Nullable UUID systemWorkflowId) {
+    AttestationPreimage requestPreimage =
+        requestPreimage(operationKind, sourceChannel, systemWorkflowId);
+    AttestationOperationPayload payload =
+        operationPayload(operationOrder, operationKind, requestPreimage);
     return AttestationAuthorizationContext.operation(
-        new AttestationOperationPayload(
-            BOOK_ID,
-            operationOrder,
-            operationKind.wireToken(),
-            PREVIOUS_HEAD,
-            Instant.parse("2026-07-20T00:00:00Z"),
-            REQUEST_DIGEST,
-            EFFECT_DIGEST),
-        sourceChannel);
+        payload, AttestationVerifiedOperationProvenance.verify(payload, requestPreimage));
+  }
+
+  static AttestationOperationPayload operationPayload(
+      BigInteger operationOrder,
+      AttestationOperationKind operationKind,
+      AttestationPreimage requestPreimage) {
+    return new AttestationOperationPayload(
+        BOOK_ID,
+        operationOrder,
+        operationKind.wireToken(),
+        PREVIOUS_HEAD,
+        Instant.parse("2026-07-20T00:00:00Z"),
+        AttestationHash.sha256(requestPreimage.encoded()),
+        EFFECT_DIGEST);
   }
 
   static AttestationAuthorizationContext manifestContext() {
@@ -59,7 +87,7 @@ final class AttestationAuthorizationTestSupport {
             UUID.fromString("ffeeddcc-bbaa-9988-7766-554433221100"),
             POSITION,
             PREVIOUS_HEAD,
-            REQUEST_DIGEST));
+            SNAPSHOT_DIGEST));
   }
 
   static AttestationAuthorizationContext receiptContext() {
@@ -133,13 +161,6 @@ final class AttestationAuthorizationTestSupport {
         predecessorKeyId);
   }
 
-  static AttestationFounder founder(TestCredential credential) {
-    return new AttestationFounder(
-        credential.principalId(),
-        credential.keyId(),
-        AttestationSpki.of(credential.pair().getPublic().getEncoded()));
-  }
-
   static AttestationSystemWorkflowPolicy interimWorkflow(
       int order, UUID workflowId, boolean active) {
     return new AttestationSystemWorkflowPolicy(
@@ -199,6 +220,33 @@ final class AttestationAuthorizationTestSupport {
   static void assertFailure(AttestationAuthorizationFailure expected, Runnable action) {
     assertEquals(
         expected, assertThrows(AttestationAuthorizationException.class, action::run).failure());
+  }
+
+  static AttestationPreimage requestPreimage(
+      AttestationOperationKind operationKind,
+      AttestationSourceChannel sourceChannel,
+      @Nullable UUID systemWorkflowId) {
+    List<AttestationPreimage.Fact> records = new ArrayList<>();
+    records.add(command(operationKind, sourceChannel));
+    if (sourceChannel == AttestationSourceChannel.SYSTEM && systemWorkflowId != null) {
+      records.add(
+          new AttestationPreimage.Fact(
+              0x0141,
+              List.of(
+                  AttestationField.present(AttestationBinaryFieldValue.uuid(systemWorkflowId)))));
+    }
+    return AttestationPreimage.of(records);
+  }
+
+  private static AttestationPreimage.Fact command(
+      AttestationOperationKind operationKind, AttestationSourceChannel sourceChannel) {
+    return new AttestationPreimage.Fact(
+        0x0100,
+        List.of(
+            AttestationField.present(AttestationTextFieldValue.token(operationKind.wireToken())),
+            AttestationField.absent(),
+            AttestationField.absent(),
+            AttestationField.present(AttestationTextFieldValue.token(sourceChannel.wireToken()))));
   }
 }
 

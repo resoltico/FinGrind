@@ -2,6 +2,7 @@ package dev.erst.fingrind.core.attestation;
 
 import java.io.ByteArrayOutputStream;
 import java.util.Objects;
+import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 
 /** Presence-marked field in a canonical immutable-preimage record. */
@@ -23,6 +24,10 @@ final class AttestationField {
 
   boolean isPresent() {
     return value != null;
+  }
+
+  Optional<AttestationFieldValue> value() {
+    return Optional.ofNullable(value);
   }
 
   byte[] encoded() {

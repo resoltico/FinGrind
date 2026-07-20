@@ -168,6 +168,11 @@ before preimage encoding; a display label, enum name, or localized text is never
 
 The sourceChannel provenance rule and autonomous system-close derivation are owned by
 [DOC_02_VerifiableOperationAttestationProfiles.md](./DOC_02_VerifiableOperationAttestationProfiles.md).
+Before ordinary operation authorization, FinGrind recomputes requestDigest from the retained
+request preimage, requires its one request.command operationKind to equal the payload, and derives
+sourceChannel from that record. sourceChannel is never an authorization-call argument. A system
+request additionally carries exactly one request.system-workflow-run; the historical resolver
+matches that exact workflowId and operation kind, not merely any active workflow of the same kind.
 
 The operation-kind catalog is closed. A token not listed here is attestation-unknown-operation-kind.
 
@@ -291,6 +296,12 @@ policy.capability-rule record per listed capability. It has one through five fou
 envelope signer must match a declared founder principal and declared SPKI-derived keyId, and every
 declared founder must sign exactly once. Genesis is trusted out of band. Every later structure
 uses the ordinary as-of rule.
+
+Genesis authorization constructs no caller-supplied founder or policy list. It recomputes both
+preimage digests, verifies the order-zero book-genesis payload and zero previousHead, then proves
+that each declared identity, founder, policy, grant, and optional workflow policy maps exactly to
+its immutable CREATE effect before deriving the founder bindings and checking unanimous
+signatures.
 
 ## Immutable Preimages
 

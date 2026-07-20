@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: BOOK_OPERATION_ATTESTATION_CORPUS
-updated: "2026-07-19"
+updated: "2026-07-20"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["AttestationStaticCorpus", "AttestationVectors"]
@@ -138,6 +138,12 @@ depend on complete protected-book, genesis-preimage, or artifact sources and are
 verifier gate. Slice 4 materializes those sources with their raw bytes, mutation offsets,
 replacement bytes, policy fold, verification scope, and expected first result; it may not replace
 them with prose-only scenario tests or choose a different first failure.
+
+The standalone operation-envelope bases contain requestDigest but not the corresponding request
+preimage bytes, so these rows are deliberately provenance-neutral: they test only the shared
+envelope rules. Credential-purpose and exact workflowId authorization are exercised only with a
+request preimage whose recomputed digest matches the signed operation payload; a standalone vector
+must not simulate that proof with a caller-selected source channel.
 
 ## Command-Admission Corpus
 

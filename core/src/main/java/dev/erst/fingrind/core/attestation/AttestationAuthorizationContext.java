@@ -3,6 +3,7 @@ package dev.erst.fingrind.core.attestation;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -17,6 +18,7 @@ final class AttestationAuthorizationContext {
   private final BigInteger resolvingOrder;
   private final AttestationCapability capability;
   private final @Nullable AttestationSourceChannel sourceChannel;
+  private final @Nullable UUID systemWorkflowId;
   private final @Nullable AttestationSystemWorkflowKind requiredSystemWorkflowKind;
 
   private AttestationAuthorizationContext(
@@ -24,32 +26,51 @@ final class AttestationAuthorizationContext {
       BigInteger resolvingOrder,
       AttestationCapability capability,
       @Nullable AttestationSourceChannel sourceChannel,
+      @Nullable UUID systemWorkflowId,
       @Nullable AttestationSystemWorkflowKind requiredSystemWorkflowKind) {
     this.payload = Objects.requireNonNull(payload, "payload").clone();
     this.resolvingOrder =
         AttestationUnsignedEncoding.requireUnsigned(resolvingOrder, Long.BYTES, "resolvingOrder");
     this.capability = Objects.requireNonNull(capability, "capability");
     this.sourceChannel = sourceChannel;
+    this.systemWorkflowId = systemWorkflowId;
     this.requiredSystemWorkflowKind = requiredSystemWorkflowKind;
   }
 
   static AttestationAuthorizationContext operation(
-      AttestationOperationPayload payload, AttestationSourceChannel sourceChannel) {
+      AttestationOperationPayload payload, AttestationVerifiedOperationProvenance provenance) {
     AttestationOperationPayload checkedPayload = Objects.requireNonNull(payload, "payload");
-    AttestationSourceChannel checkedSourceChannel =
-        Objects.requireNonNull(sourceChannel, "sourceChannel");
+    AttestationVerifiedOperationProvenance checkedProvenance =
+        Objects.requireNonNull(provenance, "provenance");
+    if (!checkedProvenance.matches(checkedPayload)) {
+      throw failure(AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID);
+    }
+    return operation(
+        checkedPayload, checkedProvenance.sourceChannel(), checkedProvenance.systemWorkflowId());
+  }
+
+  /** Builds the provenance-neutral context used only by standalone shared-envelope fixtures. */
+  static AttestationAuthorizationContext standaloneOperation(AttestationOperationPayload payload) {
+    return operation(Objects.requireNonNull(payload, "payload"), null, null);
+  }
+
+  private static AttestationAuthorizationContext operation(
+      AttestationOperationPayload payload,
+      @Nullable AttestationSourceChannel sourceChannel,
+      @Nullable UUID systemWorkflowId) {
     AttestationOperationKind operationKind =
-        AttestationOperationKind.forWireToken(checkedPayload.operationKind());
-    BigInteger operationOrder = checkedPayload.operationOrder();
-    if (operationOrder.signum() == 0) {
+        AttestationOperationKind.forWireToken(payload.operationKind());
+    BigInteger operationOrder = payload.operationOrder();
+    if (operationOrder.signum() == 0 || operationKind.isGenesis()) {
       throw failure(AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID);
     }
     return new AttestationAuthorizationContext(
-        checkedPayload.encoded(),
+        payload.encoded(),
         operationOrder.subtract(BigInteger.ONE),
         operationKind.capability(),
-        checkedSourceChannel,
-        checkedSourceChannel == AttestationSourceChannel.SYSTEM
+        sourceChannel,
+        systemWorkflowId,
+        sourceChannel == AttestationSourceChannel.SYSTEM
             ? requiredSystemWorkflowKind(operationKind)
             : null);
   }
@@ -61,6 +82,7 @@ final class AttestationAuthorizationContext {
         checkedPayload.sourceOrder(),
         AttestationCapability.BACKUP,
         null,
+        null,
         null);
   }
 
@@ -70,6 +92,7 @@ final class AttestationAuthorizationContext {
         checkedPayload.encoded(),
         checkedPayload.operationOrder(),
         AttestationCapability.ANCHOR,
+        null,
         null,
         null);
   }
@@ -92,6 +115,10 @@ final class AttestationAuthorizationContext {
 
   @Nullable AttestationSourceChannel sourceChannel() {
     return sourceChannel;
+  }
+
+  @Nullable UUID systemWorkflowId() {
+    return systemWorkflowId;
   }
 
   @Nullable AttestationSystemWorkflowKind requiredSystemWorkflowKind() {

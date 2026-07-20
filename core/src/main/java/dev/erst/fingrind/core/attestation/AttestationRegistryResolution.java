@@ -120,6 +120,22 @@ final class AttestationRegistryResolution {
     return false;
   }
 
+  boolean hasActiveSystemWorkflow(
+      UUID workflowId, AttestationSystemWorkflowKind workflowKind, BigInteger resolvingOrder) {
+    UUID checkedWorkflowId = Objects.requireNonNull(workflowId, "workflowId");
+    AttestationSystemWorkflowKind checkedWorkflowKind =
+        Objects.requireNonNull(workflowKind, "workflowKind");
+    BigInteger checkedOrder = Objects.requireNonNull(resolvingOrder, "resolvingOrder");
+    for (int index = workflowPolicies.size() - 1; index >= 0; index--) {
+      AttestationSystemWorkflowPolicy policy = workflowPolicies.get(index);
+      if (policy.workflowId().equals(checkedWorkflowId)
+          && policy.acceptedOrder().compareTo(checkedOrder) <= 0) {
+        return policy.active() && policy.workflowKind() == checkedWorkflowKind;
+      }
+    }
+    return false;
+  }
+
   boolean hasActiveSystemWorkflowAt(BigInteger resolvingOrder) {
     BigInteger checkedOrder = Objects.requireNonNull(resolvingOrder, "resolvingOrder");
     for (AttestationSystemWorkflowKind workflowKind : AttestationSystemWorkflowKind.values()) {

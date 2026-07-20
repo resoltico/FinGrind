@@ -55,7 +55,23 @@ final class AttestationOperationPayload implements AttestationPayload {
     return operationOrder;
   }
 
+  UUID bookId() {
+    return bookId;
+  }
+
   String operationKind() {
     return operationKind;
+  }
+
+  AttestationHash previousHead() {
+    return previousHead;
+  }
+
+  AttestationHash requestDigest() {
+    return requestDigest;
+  }
+
+  AttestationHash effectDigest() {
+    return effectDigest;
   }
 }

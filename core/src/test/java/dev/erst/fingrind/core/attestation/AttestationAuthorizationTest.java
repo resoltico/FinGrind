@@ -2,6 +2,7 @@ package dev.erst.fingrind.core.attestation;
 
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.PAYLOAD;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.POSITION;
+import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.SYSTEM_WORKFLOW_ID;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.allFounderGrants;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.assertFailure;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.authorize;
@@ -9,19 +10,27 @@ import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSup
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.credential;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.defaultRules;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.fiscalWorkflow;
-import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.founder;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.interimWorkflow;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.manifestContext;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.operationContext;
+import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.operationPayload;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.orderedEntries;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.postRule;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.receiptContext;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.registry;
+import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.requestPreimage;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.signedEnvelope;
+import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.founder;
+import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.genesisContext;
+import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.genesisEffectPreimage;
+import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.genesisPayload;
+import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.genesisRequestPreimage;
+import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.signedGenesisEnvelope;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -78,6 +87,51 @@ class AttestationAuthorizationTest {
   }
 
   @Test
+  void derivesProvenanceOnlyFromTheRequestPreimageBoundByThePayload() {
+    AttestationPreimage cliRequest =
+        requestPreimage(AttestationOperationKind.REKEY_BOOK, AttestationSourceChannel.CLI, null);
+    AttestationOperationPayload cliPayload =
+        operationPayload(BigInteger.TWO, AttestationOperationKind.REKEY_BOOK, cliRequest);
+    AttestationVerifiedOperationProvenance cliProvenance =
+        AttestationVerifiedOperationProvenance.verify(cliPayload, cliRequest);
+    AttestationAuthorizationContext cliContext =
+        AttestationAuthorizationContext.operation(cliPayload, cliProvenance);
+    assertEquals(AttestationSourceChannel.CLI, cliContext.sourceChannel());
+    assertNull(cliContext.systemWorkflowId());
+    assertFailure(
+        AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
+        () ->
+            AttestationAuthorizationContext.operation(
+                operationPayload(
+                    BigInteger.valueOf(3), AttestationOperationKind.REKEY_BOOK, cliRequest),
+                cliProvenance));
+
+    AttestationPreimage systemRequest =
+        requestPreimage(
+            AttestationOperationKind.INTERIM_RESULT_SWEEP,
+            AttestationSourceChannel.SYSTEM,
+            SYSTEM_WORKFLOW_ID);
+    AttestationOperationPayload systemPayload =
+        operationPayload(
+            BigInteger.TWO, AttestationOperationKind.INTERIM_RESULT_SWEEP, systemRequest);
+    AttestationAuthorizationContext systemContext =
+        AttestationAuthorizationContext.operation(
+            systemPayload,
+            AttestationVerifiedOperationProvenance.verify(systemPayload, systemRequest));
+    assertEquals(AttestationSourceChannel.SYSTEM, systemContext.sourceChannel());
+    assertEquals(SYSTEM_WORKFLOW_ID, systemContext.systemWorkflowId());
+    assertFailure(
+        AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
+        () ->
+            AttestationVerifiedOperationProvenance.verify(
+                systemPayload,
+                requestPreimage(
+                    AttestationOperationKind.INTERIM_RESULT_SWEEP,
+                    AttestationSourceChannel.SYSTEM,
+                    null)));
+  }
+
+  @Test
   void rejectsGenesisAsAnOperationAuthorizationContext() {
     assertFailure(
         AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
@@ -85,6 +139,13 @@ class AttestationAuthorizationTest {
             operationContext(
                 BigInteger.ZERO,
                 AttestationOperationKind.POST_ENTRY,
+                AttestationSourceChannel.CLI));
+    assertFailure(
+        AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
+        () ->
+            operationContext(
+                BigInteger.ONE,
+                AttestationOperationKind.BOOK_GENESIS,
                 AttestationSourceChannel.CLI));
   }
 
@@ -346,16 +407,17 @@ class AttestationAuthorizationTest {
   void requiresAllDistinctGenesisFoundersToSign() {
     TestCredential first = credential();
     TestCredential second = credential();
+    AttestationGenesisAuthorizationContext context = genesisContext(first, second);
 
     assertDoesNotThrow(
         () ->
             AttestationAuthorization.requireGenesis(
-                List.of(founder(first), founder(second)), signedEnvelope(first, second)));
+                context, signedGenesisEnvelope(context, first, second)));
     assertFailure(
         AttestationAuthorizationFailure.GENESIS_INVALID,
         () ->
             AttestationAuthorization.requireGenesis(
-                List.of(founder(first), founder(second)), signedEnvelope(first)));
+                context, signedGenesisEnvelope(context, first)));
   }
 
   @Test
@@ -425,7 +487,7 @@ class AttestationAuthorizationTest {
             List.of(),
             grants,
             rules,
-            List.of(fiscalWorkflow(0, UUID.randomUUID(), true)));
+            List.of(fiscalWorkflow(0, SYSTEM_WORKFLOW_ID, true)));
     assertFalse(
         wrongWorkflow.hasActiveSystemWorkflow(
             AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP, POSITION));
@@ -441,7 +503,7 @@ class AttestationAuthorizationTest {
             List.of(),
             grants,
             rules,
-            List.of(interimWorkflow(0, UUID.randomUUID(), true)));
+            List.of(interimWorkflow(0, SYSTEM_WORKFLOW_ID, true)));
     assertTrue(
         matchingWorkflow.hasActiveSystemWorkflow(
             AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP, POSITION));
@@ -449,6 +511,26 @@ class AttestationAuthorizationTest {
         () ->
             AttestationAuthorization.requireAuthorized(
                 matchingWorkflow,
+                systemInterimContext,
+                signedEnvelope(systemInterimContext, system)));
+    AttestationRegistry wrongWorkflowId =
+        AttestationRegistry.fromVerifierFacts(
+            bindings,
+            List.of(),
+            grants,
+            rules,
+            List.of(interimWorkflow(0, UUID.randomUUID(), true)));
+    assertTrue(
+        wrongWorkflowId.hasActiveSystemWorkflow(
+            AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP, POSITION));
+    assertFalse(
+        wrongWorkflowId.hasActiveSystemWorkflow(
+            SYSTEM_WORKFLOW_ID, AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP, POSITION));
+    assertFailure(
+        AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID,
+        () ->
+            AttestationAuthorization.requireAuthorized(
+                wrongWorkflowId,
                 systemInterimContext,
                 signedEnvelope(systemInterimContext, system)));
     assertDoesNotThrow(
@@ -694,52 +776,50 @@ class AttestationAuthorizationTest {
   void rejectsInvalidGenesisAndFounderDeclarationsAsOneTypedFailure() {
     TestCredential first = credential();
     TestCredential second = credential();
-    assertFailure(
-        AttestationAuthorizationFailure.GENESIS_INVALID,
-        () -> AttestationAuthorization.requireGenesis(List.of(), signedEnvelope()));
-    assertFailure(
-        AttestationAuthorizationFailure.GENESIS_INVALID,
-        () ->
-            AttestationAuthorization.requireGenesis(
-                List.of(founder(first), founder(first)), signedEnvelope(first, first)));
+    assertThrows(IllegalArgumentException.class, () -> genesisContext());
+    assertThrows(IllegalArgumentException.class, () -> genesisContext(first, first));
+    AttestationGenesisAuthorizationContext firstContext = genesisContext(first);
     assertFailure(
         AttestationAuthorizationFailure.GENESIS_INVALID,
         () ->
             AttestationAuthorization.requireGenesis(
-                List.of(founder(first)), new AttestationAuthorizationEnvelope(PAYLOAD, List.of())));
+                firstContext,
+                new AttestationAuthorizationEnvelope(firstContext.payload(), List.of())));
     assertFailure(
         AttestationAuthorizationFailure.GENESIS_INVALID,
         () ->
             AttestationAuthorization.requireGenesis(
-                List.of(founder(first)), signedEnvelope(second)));
-    List<AttestationSignatureEntry> firstEntry = orderedEntries(first);
+                firstContext, signedGenesisEnvelope(firstContext, second)));
+    List<AttestationSignatureEntry> firstEntry = orderedEntries(firstContext.payload(), first);
     assertFailure(
         AttestationAuthorizationFailure.GENESIS_INVALID,
         () ->
             AttestationAuthorization.requireGenesis(
-                List.of(founder(first)),
+                firstContext,
                 new AttestationAuthorizationEnvelope(
-                    PAYLOAD,
+                    firstContext.payload(),
                     List.of(
                         new AttestationSignatureEntry(
                             UUID.randomUUID(),
                             firstEntry.getFirst().keyId(),
                             firstEntry.getFirst().signature())))));
-    List<AttestationSignatureEntry> ordered = orderedEntries(first, second);
+    AttestationGenesisAuthorizationContext twoFounderContext = genesisContext(first, second);
+    List<AttestationSignatureEntry> ordered =
+        orderedEntries(twoFounderContext.payload(), first, second);
     assertFailure(
         AttestationAuthorizationFailure.GENESIS_INVALID,
         () ->
             AttestationAuthorization.requireGenesis(
-                List.of(founder(first), founder(second)),
+                twoFounderContext,
                 new AttestationAuthorizationEnvelope(
-                    PAYLOAD, List.of(ordered.getFirst(), ordered.getFirst()))));
+                    twoFounderContext.payload(), List.of(ordered.getFirst(), ordered.getFirst()))));
     assertFailure(
         AttestationAuthorizationFailure.GENESIS_INVALID,
         () ->
             AttestationAuthorization.requireGenesis(
-                List.of(founder(first), founder(second)),
+                twoFounderContext,
                 new AttestationAuthorizationEnvelope(
-                    PAYLOAD,
+                    twoFounderContext.payload(),
                     List.of(
                         ordered.getFirst(),
                         new AttestationSignatureEntry(
@@ -750,18 +830,18 @@ class AttestationAuthorizationTest {
         AttestationAuthorizationFailure.GENESIS_INVALID,
         () ->
             AttestationAuthorization.requireGenesis(
-                List.of(founder(first), founder(second)),
+                twoFounderContext,
                 new AttestationAuthorizationEnvelope(
-                    PAYLOAD, List.of(ordered.getLast(), ordered.getFirst()))));
+                    twoFounderContext.payload(), List.of(ordered.getLast(), ordered.getFirst()))));
     byte[] tampered = ordered.getFirst().signature();
     tampered[0] ^= 1;
     assertFailure(
         AttestationAuthorizationFailure.GENESIS_INVALID,
         () ->
             AttestationAuthorization.requireGenesis(
-                List.of(founder(first), founder(second)),
+                twoFounderContext,
                 new AttestationAuthorizationEnvelope(
-                    PAYLOAD,
+                    twoFounderContext.payload(),
                     List.of(
                         new AttestationSignatureEntry(
                             ordered.getFirst().principalId(), ordered.getFirst().keyId(), tampered),
@@ -799,24 +879,39 @@ class AttestationAuthorizationTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> AttestationRegistry.genesis(List.of(founder(first), reusedKeyForOtherPrincipal)));
+    TestCredential[] tooManyCredentials = {
+      credential(), credential(), credential(), credential(), credential(), credential()
+    };
+    List<AttestationFounder> tooManyFounders =
+        java.util.Arrays.stream(tooManyCredentials)
+            .map(AttestationGenesisTestSupport::founder)
+            .toList();
+    assertThrows(
+        IllegalArgumentException.class, () -> AttestationRegistry.genesis(tooManyFounders));
+    AttestationPreimage genesisRequest = genesisRequestPreimage(first);
+    AttestationPreimage validGenesisEffect = genesisEffectPreimage(first);
     assertFailure(
         AttestationAuthorizationFailure.GENESIS_INVALID,
         () ->
-            AttestationAuthorization.requireGenesis(
-                List.of(founder(first), reusedKeyForOtherPrincipal), signedEnvelope(first, first)));
-    List<AttestationFounder> tooManyFounders =
-        List.of(
-            founder(credential()),
-            founder(credential()),
-            founder(credential()),
-            founder(credential()),
-            founder(credential()),
-            founder(credential()));
-    assertThrows(
-        IllegalArgumentException.class, () -> AttestationRegistry.genesis(tooManyFounders));
+            AttestationGenesisAuthorizationContext.verify(
+                genesisPayload(
+                    BigInteger.ONE,
+                    AttestationHash.of(new byte[AttestationHash.BYTE_LENGTH]),
+                    genesisRequest,
+                    validGenesisEffect),
+                genesisRequest,
+                validGenesisEffect));
     assertFailure(
         AttestationAuthorizationFailure.GENESIS_INVALID,
-        () -> AttestationAuthorization.requireGenesis(tooManyFounders, signedEnvelope()));
+        () ->
+            AttestationGenesisAuthorizationContext.verify(
+                genesisPayload(
+                    BigInteger.ZERO,
+                    AttestationHash.sha256(new byte[] {4}),
+                    genesisRequest,
+                    validGenesisEffect),
+                genesisRequest,
+                validGenesisEffect));
     assertFalse(AttestationEd25519.verifies(new byte[] {1}, PAYLOAD, new byte[64]));
   }
 }

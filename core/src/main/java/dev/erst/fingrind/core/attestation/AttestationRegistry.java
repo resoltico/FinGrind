@@ -121,6 +121,14 @@ final class AttestationRegistry {
         Objects.requireNonNull(resolvingOrder, "resolvingOrder"));
   }
 
+  boolean hasActiveSystemWorkflow(
+      UUID workflowId, AttestationSystemWorkflowKind workflowKind, BigInteger resolvingOrder) {
+    return resolution.hasActiveSystemWorkflow(
+        Objects.requireNonNull(workflowId, "workflowId"),
+        Objects.requireNonNull(workflowKind, "workflowKind"),
+        Objects.requireNonNull(resolvingOrder, "resolvingOrder"));
+  }
+
   private static void requireDistinctFounders(List<AttestationFounder> founders) {
     if (founders.isEmpty() || founders.size() > 5) {
       throw new IllegalArgumentException(

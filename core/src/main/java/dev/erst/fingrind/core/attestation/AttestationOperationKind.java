@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 /** Closed operation meaning and its canonical payload token. */
 enum AttestationOperationKind {
+  BOOK_GENESIS,
   DECLARE_ACCOUNT,
   AMEND_ACCOUNT,
   RETIRE_ACCOUNT,
@@ -90,5 +91,9 @@ enum AttestationOperationKind {
 
   AttestationCapability capability() {
     return NON_POST_CAPABILITIES.getOrDefault(this, AttestationCapability.POST);
+  }
+
+  boolean isGenesis() {
+    return this == BOOK_GENESIS;
   }
 }

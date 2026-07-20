@@ -1,5 +1,7 @@
 package dev.erst.fingrind.core.attestation;
 
+import java.util.Locale;
+
 /** Closed autonomous workflow kinds that use the CLOSE_PERIOD capability. */
 enum AttestationSystemWorkflowKind {
   INTERIM_RESULT_SWEEP(false),
@@ -13,5 +15,9 @@ enum AttestationSystemWorkflowKind {
 
   boolean requiresCapitalAndRetainedResultAccounts() {
     return requiresCapitalAndRetainedResultAccounts;
+  }
+
+  String wireToken() {
+    return name().toLowerCase(Locale.ROOT).replace('_', '-');
   }
 }

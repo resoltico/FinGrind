@@ -232,7 +232,7 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
         "0000000000000000000000000000000000000000000000000000000000000000") {
       @Override
       AttestationAuthorizationContext context() {
-        return AttestationAuthorizationContext.operation(
+        return AttestationAuthorizationContext.standaloneOperation(
             new AttestationOperationPayload(
                 BOOK_ID,
                 BigInteger.valueOf(42),
@@ -246,8 +246,7 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
                         "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f")),
                 AttestationHash.of(
                     AttestationDocumentVectors.hex(
-                        "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f"))),
-            AttestationSourceChannel.CLI);
+                        "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f"))));
       }
     },
     MANIFEST(

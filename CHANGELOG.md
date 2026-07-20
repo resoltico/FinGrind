@@ -36,6 +36,10 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Fixed unreleased next-format attestation authorization so genesis is bound to its order-zero
+  signed payload and declared immutable bootstrap facts, while operation provenance is recomputed
+  from the signed request preimage. System close authorization now requires the exact active
+  workflow ID rather than any active workflow of the same kind.
 - Fixed unreleased next-format attestation authorization so every operation, manifest, and receipt
   derives its historical position and capability from the typed payload it signs. The standalone
   authorization corpus now applies its exact published byte mutations, including fixed C-key

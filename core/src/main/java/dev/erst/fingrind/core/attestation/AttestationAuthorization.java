@@ -37,11 +37,14 @@ final class AttestationAuthorization {
   }
 
   static void requireGenesis(
-      List<AttestationFounder> founders, AttestationAuthorizationEnvelope envelope) {
-    List<AttestationFounder> checkedFounders =
-        List.copyOf(Objects.requireNonNull(founders, "founders"));
+      AttestationGenesisAuthorizationContext context, AttestationAuthorizationEnvelope envelope) {
+    AttestationGenesisAuthorizationContext checkedContext =
+        Objects.requireNonNull(context, "context");
     AttestationAuthorizationEnvelope checkedEnvelope = Objects.requireNonNull(envelope, "envelope");
-    requireGenesisFounders(checkedFounders);
+    if (!checkedContext.matchesPayload(checkedEnvelope.payload())) {
+      throw failure(AttestationAuthorizationFailure.GENESIS_INVALID);
+    }
+    List<AttestationFounder> checkedFounders = checkedContext.founders();
     List<AttestationSignatureEntry> entries = checkedEnvelope.entries();
     if (entries.size() != checkedFounders.size()) {
       throw failure(AttestationAuthorizationFailure.GENESIS_INVALID);
@@ -49,19 +52,6 @@ final class AttestationAuthorization {
     requireGenesisEnvelopeShape(entries);
     requireGenesisSignatures(
         AttestationRegistry.genesis(checkedFounders), entries, checkedEnvelope.payload());
-  }
-
-  private static void requireGenesisFounders(List<AttestationFounder> founders) {
-    if (founders.isEmpty() || founders.size() > 5) {
-      throw failure(AttestationAuthorizationFailure.GENESIS_INVALID);
-    }
-    Set<UUID> principalIds = new HashSet<>();
-    Set<AttestationHash> keyIds = new HashSet<>();
-    for (AttestationFounder founder : founders) {
-      if (!principalIds.add(founder.principalId()) || !keyIds.add(founder.keyId())) {
-        throw failure(AttestationAuthorizationFailure.GENESIS_INVALID);
-      }
-    }
   }
 
   private static void requireGenesisSignatures(
@@ -191,7 +181,10 @@ final class AttestationAuthorization {
       BigInteger resolvingOrder) {
     AttestationSystemWorkflowKind requiredWorkflowKind = context.requiredSystemWorkflowKind();
     if (requiredWorkflowKind != null
-        && !registry.hasActiveSystemWorkflow(requiredWorkflowKind, resolvingOrder)) {
+        && !registry.hasActiveSystemWorkflow(
+            Objects.requireNonNull(context.systemWorkflowId(), "systemWorkflowId"),
+            requiredWorkflowKind,
+            resolvingOrder)) {
       throw failure(AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID);
     }
   }
