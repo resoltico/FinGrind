@@ -231,7 +231,7 @@ non-exportable custodians are unshipped; selecting one returns custodian-not-sup
 falls back to file custody. Private-key material cannot enter a book, report, telemetry payload,
 log, CLI DTO, contract DTO, or generic accounting object. The custodian enforces a 1 KiB key-file
 maximum with one additional probe byte, so an oversized artifact is rejected before decryption and
-never fully loaded.
+after a bounded read.
 
 | Class | Applies to | Required boundary |
 |:--|:--|:--|

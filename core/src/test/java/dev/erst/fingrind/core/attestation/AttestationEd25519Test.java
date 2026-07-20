@@ -223,6 +223,22 @@ class AttestationEd25519Test {
   }
 
   @Test
+  void fileCustodianClearsPassedPassphrasesWhenPathValidationFails() {
+    Path[] absentPath = new Path[1];
+    char[] createPassphrase = "correct horse battery staple".toCharArray();
+    assertThrows(
+        NullPointerException.class,
+        () -> AttestationFilePkcs8Custodian.create(absentPath[0], createPassphrase));
+    assertArrayEquals(new char[createPassphrase.length], createPassphrase);
+
+    char[] signingPassphrase = "correct horse battery staple".toCharArray();
+    assertThrows(
+        NullPointerException.class,
+        () -> AttestationFilePkcs8Custodian.sign(absentPath[0], signingPassphrase, new byte[0]));
+    assertArrayEquals(new char[signingPassphrase.length], signingPassphrase);
+  }
+
+  @Test
   void custodySupportFailsClosedWhenItsDependenciesCannotProvideSafeOutput() throws Exception {
     var keyPair = AttestationEd25519.generateKeyPair();
     assertEquals(

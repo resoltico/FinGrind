@@ -41,9 +41,9 @@ final class AttestationFilePkcs8Custodian {
   private AttestationFilePkcs8Custodian() {}
 
   static PublicKey create(Path path, char[] passphrase) throws IOException {
-    Objects.requireNonNull(path, "path");
     char[] ownedPassphrase = Objects.requireNonNull(passphrase, "passphrase");
     try {
+      Objects.requireNonNull(path, "path");
       KeyPair keyPair = AttestationEd25519.generateKeyPair();
       byte[] encryptedPrivateKey = encrypt(keyPair.getPrivate(), ownedPassphrase);
       try {
@@ -58,9 +58,9 @@ final class AttestationFilePkcs8Custodian {
   }
 
   static byte[] sign(Path path, char[] passphrase, byte[] payload) throws IOException {
-    Objects.requireNonNull(path, "path");
     char[] ownedPassphrase = Objects.requireNonNull(passphrase, "passphrase");
     try {
+      Objects.requireNonNull(path, "path");
       Objects.requireNonNull(payload, "payload");
       byte[] encryptedPrivateKey = readEncryptedPrivateKey(path);
       try {
