@@ -25,6 +25,35 @@ final class AttestationReceiptPayload implements AttestationPayload {
     this.receiptTimestamp = Objects.requireNonNull(receiptTimestamp, "receiptTimestamp");
   }
 
+  /** Decodes one complete receipt payload at the raw attestation boundary. */
+  static AttestationReceiptPayload decode(byte[] encoded) {
+    try {
+      AttestationByteReader input =
+          new AttestationByteReader(encoded, AttestationAuthorizationFailure.RECEIPT_INVALID);
+      input.requireAscii("FGATTRC1");
+      if (input.readUnsigned(Byte.BYTES).intValueExact() != 1) {
+        throw new AttestationAuthorizationException(
+            AttestationAuthorizationFailure.UNSUPPORTED_VERSION);
+      }
+      AttestationReceiptPayload payload =
+          new AttestationReceiptPayload(
+              input.readUuid(),
+              input.readUnsigned(Long.BYTES),
+              input.readHash(),
+              input.readInstant());
+      if (!AttestationAlgorithm.ED25519.id().equals(input.readToken())) {
+        throw new AttestationAuthorizationException(
+            AttestationAuthorizationFailure.KEY_ALGORITHM_INVALID);
+      }
+      input.requireAtEnd();
+      return payload;
+    } catch (AttestationAuthorizationException exception) {
+      throw exception;
+    } catch (IllegalArgumentException | ArithmeticException exception) {
+      throw new AttestationAuthorizationException(AttestationAuthorizationFailure.RECEIPT_INVALID);
+    }
+  }
+
   @Override
   public byte[] encoded() {
     ByteArrayOutputStream output = new ByteArrayOutputStream(97);
@@ -41,5 +70,17 @@ final class AttestationReceiptPayload implements AttestationPayload {
 
   BigInteger operationOrder() {
     return operationOrder;
+  }
+
+  UUID bookId() {
+    return bookId;
+  }
+
+  AttestationHash operationHead() {
+    return operationHead;
+  }
+
+  Instant receiptTimestamp() {
+    return receiptTimestamp;
   }
 }

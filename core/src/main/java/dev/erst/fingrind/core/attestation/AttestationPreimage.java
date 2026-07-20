@@ -48,6 +48,48 @@ final class AttestationPreimage {
     return new AttestationPreimage(List.copyOf(canonicalRecords), (int) encodedByteCount);
   }
 
+  /** Decodes and rechecks one complete canonical preimage without consulting mutable book state. */
+  static AttestationPreimage decode(byte[] encoded, AttestationAuthorizationFailure failure) {
+    try {
+      AttestationByteReader input = new AttestationByteReader(encoded, failure);
+      int recordCount = input.readUnsigned(Integer.BYTES).intValueExact();
+      if (recordCount > MAX_RECORD_COUNT) {
+        throw input.failure();
+      }
+      List<Fact> decodedRecords = new ArrayList<>(recordCount);
+      for (int recordIndex = 0; recordIndex < recordCount; recordIndex++) {
+        int recordTypeTag = input.readUnsigned(Short.BYTES).intValueExact();
+        AttestationRecordSchema schema = AttestationPreimageCatalog.require(recordTypeTag);
+        int fieldCount = input.readUnsigned(Short.BYTES).intValueExact();
+        if (fieldCount != schema.fieldCount()) {
+          throw input.failure();
+        }
+        List<AttestationField> fields = new ArrayList<>(fieldCount);
+        for (int fieldIndex = 0; fieldIndex < fieldCount; fieldIndex++) {
+          int presence = input.readUnsigned(Byte.BYTES).intValueExact();
+          if (presence == 0) {
+            fields.add(AttestationField.absent());
+          } else if (presence == 1) {
+            fields.add(AttestationField.present(input.readFieldValue(schema.fieldSchema(fieldIndex).type())));
+          } else {
+            throw input.failure();
+          }
+        }
+        decodedRecords.add(new Fact(recordTypeTag, fields));
+      }
+      input.requireAtEnd();
+      AttestationPreimage decoded = of(decodedRecords);
+      if (!Arrays.equals(decoded.encoded(), encoded)) {
+        throw input.failure();
+      }
+      return decoded;
+    } catch (AttestationAuthorizationException exception) {
+      throw exception;
+    } catch (IllegalArgumentException | ArithmeticException exception) {
+      throw new AttestationAuthorizationException(failure);
+    }
+  }
+
   List<Fact> records() {
     return records;
   }

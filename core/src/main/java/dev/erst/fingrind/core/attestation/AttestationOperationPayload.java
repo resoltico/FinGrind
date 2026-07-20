@@ -34,6 +34,35 @@ final class AttestationOperationPayload implements AttestationPayload {
     this.effectDigest = Objects.requireNonNull(effectDigest, "effectDigest");
   }
 
+  /** Decodes one complete operation payload at the raw attestation boundary. */
+  static AttestationOperationPayload decode(byte[] encoded) {
+    try {
+      AttestationByteReader input =
+          new AttestationByteReader(encoded, AttestationAuthorizationFailure.PREIMAGE_INVALID);
+      input.requireAscii("FGATTOP1");
+      requireVersion(input);
+      java.util.UUID bookId = input.readUuid();
+      BigInteger operationOrder = input.readUnsigned(Long.BYTES);
+      String operationKind = input.readToken();
+      requireEd25519(input.readToken());
+      AttestationOperationPayload payload =
+          new AttestationOperationPayload(
+              bookId,
+              operationOrder,
+              operationKind,
+              input.readHash(),
+              input.readInstant(),
+              input.readHash(),
+              input.readHash());
+      input.requireAtEnd();
+      return payload;
+    } catch (AttestationAuthorizationException exception) {
+      throw exception;
+    } catch (IllegalArgumentException | ArithmeticException exception) {
+      throw new AttestationAuthorizationException(AttestationAuthorizationFailure.PREIMAGE_INVALID);
+    }
+  }
+
   @Override
   public byte[] encoded() {
     ByteArrayOutputStream output = new ByteArrayOutputStream(181);
@@ -73,5 +102,18 @@ final class AttestationOperationPayload implements AttestationPayload {
 
   AttestationHash effectDigest() {
     return effectDigest;
+  }
+
+  private static void requireVersion(AttestationByteReader input) {
+    if (input.readUnsigned(Byte.BYTES).intValueExact() != 1) {
+      throw new AttestationAuthorizationException(AttestationAuthorizationFailure.UNSUPPORTED_VERSION);
+    }
+  }
+
+  private static void requireEd25519(String algorithmId) {
+    if (!AttestationAlgorithm.ED25519.id().equals(algorithmId)) {
+      throw new AttestationAuthorizationException(
+          AttestationAuthorizationFailure.KEY_ALGORITHM_INVALID);
+    }
   }
 }

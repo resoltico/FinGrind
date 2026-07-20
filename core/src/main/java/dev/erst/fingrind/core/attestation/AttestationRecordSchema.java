@@ -49,6 +49,14 @@ final class AttestationRecordSchema {
     return sortKeyFieldIndexes.clone();
   }
 
+  int fieldCount() {
+    return fields.size();
+  }
+
+  AttestationFieldSchema fieldSchema(int index) {
+    return fields.get(index);
+  }
+
   void requireValidFields(List<AttestationField> values) {
     if (values.size() != fields.size()) {
       throw new IllegalArgumentException(
