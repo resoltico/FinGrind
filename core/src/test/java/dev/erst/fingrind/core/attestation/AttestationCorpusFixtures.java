@@ -233,6 +233,16 @@ final class AttestationCorpusFixtures {
     return restoredBook("B-07");
   }
 
+  static AttestationCorpusResources.Restore b06Restore() {
+    return new AttestationCorpusResources.Restore(
+        "B-06", b05Artifact(), java.util.Optional.of(b05()), b06());
+  }
+
+  static AttestationCorpusResources.Restore b07Restore() {
+    return new AttestationCorpusResources.Restore(
+        "B-07", b05Artifact(), java.util.Optional.empty(), b07());
+  }
+
   static AttestationCorpusResources.Book b10() {
     List<AttestationBookOperation> operations = new ArrayList<>(b02().operations());
     AttestationPreimage request =
@@ -331,7 +341,7 @@ final class AttestationCorpusFixtures {
     return book(id, operations);
   }
 
-  private static AttestationBookOperation genesis(
+  static AttestationBookOperation genesis(
       List<Signer> founders, Map<AttestationCapability, Integer> policy) {
     AttestationPreimage request = genesisRequest(founders, policy);
     AttestationPreimage effect = genesisEffect(founders, policy);
@@ -385,7 +395,7 @@ final class AttestationCorpusFixtures {
         operations, AttestationOperationKind.DECLARE_ACCOUNT, request, effect, signers);
   }
 
-  private static AttestationBookOperation sale(
+  static AttestationBookOperation sale(
       List<AttestationBookOperation> operations,
       String idempotencyKey,
       String sourceDocumentId,
@@ -443,7 +453,7 @@ final class AttestationCorpusFixtures {
         operations, AttestationOperationKind.RECORD_SALE_SETTLED, request, effect, signers);
   }
 
-  private static AttestationBookOperation bindingOperation(
+  static AttestationBookOperation bindingOperation(
       List<AttestationBookOperation> operations,
       AttestationOperationKind kind,
       Signer signer,
@@ -462,7 +472,7 @@ final class AttestationCorpusFixtures {
     return operation(operations, kind, request, effect, authorizers);
   }
 
-  private static AttestationBookOperation revoke(
+  static AttestationBookOperation revoke(
       List<AttestationBookOperation> operations, Signer signer, List<Signer> authorizers) {
     AttestationPreimage request =
         preimage(

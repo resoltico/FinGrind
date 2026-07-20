@@ -65,9 +65,10 @@ final class AttestationRegistryHistory {
   }
 
   void requireAcceptedState() {
+    AttestationRegistry registry = registry();
+    AttestationRegistryValidator.requireAcceptedCredentialAlgorithms(bindings);
     try {
-      AttestationRegistry.fromAcceptedHistory(
-          bindings, revocations, grants, policyRules, workflowPolicies);
+      registry.requireAcceptedCapacity();
     } catch (RuntimeException exception) {
       throw AttestationFormatFailure.classify(
           exception, AttestationAuthorizationFailure.CAPABILITY_INVALID);

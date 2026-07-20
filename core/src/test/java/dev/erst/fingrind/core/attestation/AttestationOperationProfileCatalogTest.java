@@ -196,27 +196,15 @@ class AttestationOperationProfileCatalogTest {
   }
 
   @Test
-  void executesTheByteAddressedFixedAssetRowN17() {
+  void requiresARequestFixedAssetFactForAFixedAssetEffect() {
     AttestationPreimage request = preimage(0x0100, 0x0120, 0x0121, 0x0122, 0x0124);
     AttestationPreimage baseEffect = preimage(0x0020, 0x0021, 0x0025);
     AttestationPreimage effect = append(baseEffect, 0x0060);
-    AttestationStaticCorpus.Fixture fixture =
-        AttestationStaticCorpus.fixture(
-            "N-17",
-            baseEffect.encoded(),
-            mutationBetween(baseEffect.encoded(), effect.encoded()),
-            new AttestationStaticCorpus.PolicyFold("B-02 POST M=2 before the common posting"),
-            AttestationStaticCorpus.VerificationScope.OPERATION_PROFILE,
-            AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID);
-
     assertFailure(
-        fixture.expectedFirstFailure(),
+        AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
         () ->
             AttestationOperationProfileCatalog.profile(AttestationOperationKind.RECORD_SALE_SETTLED)
-                .requireTags(
-                    request,
-                    AttestationPreimage.decode(
-                        fixture.source(), AttestationAuthorizationFailure.PREIMAGE_INVALID)));
+                .requireTags(request, effect));
   }
 
   private static AttestationPreimage append(AttestationPreimage preimage, int tag) {
@@ -244,25 +232,5 @@ class AttestationOperationProfileCatalogTest {
 
   private static AttestationFieldValue value(AttestationFieldType type) {
     return Objects.requireNonNull(VALUES.get(type), "value factory").get();
-  }
-
-  private static AttestationStaticCorpus.Mutation mutationBetween(byte[] base, byte[] source) {
-    int prefixLength = 0;
-    while (prefixLength < base.length
-        && prefixLength < source.length
-        && base[prefixLength] == source[prefixLength]) {
-      prefixLength++;
-    }
-    int suffixLength = 0;
-    while (suffixLength < base.length - prefixLength
-        && suffixLength < source.length - prefixLength
-        && base[base.length - suffixLength - 1] == source[source.length - suffixLength - 1]) {
-      suffixLength++;
-    }
-    return AttestationStaticCorpus.Mutation.edits(
-        AttestationStaticCorpus.Mutation.edit(
-            prefixLength,
-            base.length - prefixLength - suffixLength,
-            java.util.Arrays.copyOfRange(source, prefixLength, source.length - suffixLength)));
   }
 }

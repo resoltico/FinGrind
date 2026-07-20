@@ -119,6 +119,40 @@ final class AttestationStaticCorpus {
       return edits(edit(offset, checkedBytes.length, checkedBytes));
     }
 
+    /**
+     * Produces the one exact replacement which turns one complete raw source into another.
+     *
+     * <p>The common prefix and suffix remain byte-for-byte anchored to the declared base. A corpus
+     * mutation is required to change its source: accepting an identity edit would make a negative
+     * fixture cosmetically byte-addressed while leaving its verifier input unchanged.
+     */
+    static Mutation between(byte[] baseSource, byte[] targetSource) {
+      byte[] checkedBase = Objects.requireNonNull(baseSource, "baseSource");
+      byte[] checkedTarget = Objects.requireNonNull(targetSource, "targetSource");
+      if (Arrays.equals(checkedBase, checkedTarget)) {
+        throw new IllegalArgumentException("corpus mutation must change its base source.");
+      }
+      int prefixLength = 0;
+      while (prefixLength < checkedBase.length
+          && prefixLength < checkedTarget.length
+          && checkedBase[prefixLength] == checkedTarget[prefixLength]) {
+        prefixLength++;
+      }
+      int suffixLength = 0;
+      while (suffixLength < checkedBase.length - prefixLength
+          && suffixLength < checkedTarget.length - prefixLength
+          && checkedBase[checkedBase.length - suffixLength - 1]
+              == checkedTarget[checkedTarget.length - suffixLength - 1]) {
+        suffixLength++;
+      }
+      return edits(
+          edit(
+              prefixLength,
+              checkedBase.length - prefixLength - suffixLength,
+              Arrays.copyOfRange(
+                  checkedTarget, prefixLength, checkedTarget.length - suffixLength)));
+    }
+
     static Mutation edits(Edit... edits) {
       return new Mutation(java.util.List.of(edits));
     }

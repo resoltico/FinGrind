@@ -31,32 +31,18 @@ class AttestationSystemDerivationTest {
   }
 
   @Test
-  void rejectsAConsistentlyMutatedButNotWorkflowDerivedCloseDate() {
-    CloseEvidence base = evidence(LocalDate.of(2026, 12, 30));
+  void rejectsAConsistentlySignedButNotWorkflowDerivedCloseDate() {
     CloseEvidence evidence = evidence(LocalDate.of(2026, 12, 29));
-    byte[] rawSource = base.request().encoded();
-    byte[] replacedBytes = "2026-12-30".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
-    byte[] replacementBytes = "2026-12-29".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
-    AttestationStaticCorpus.Fixture fixture =
-        AttestationStaticCorpus.fixture(
-            "N-19",
-            rawSource,
-            AttestationStaticCorpus.Mutation.replace(
-                indexOf(rawSource, replacedBytes), replacementBytes),
-            new AttestationStaticCorpus.PolicyFold("active interim-result-sweep workflow at close"),
-            AttestationStaticCorpus.VerificationScope.SYSTEM_DERIVATION,
-            AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID);
 
     assertFailure(
-        fixture.expectedFirstFailure(),
+        AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID,
         () ->
             AttestationSystemDerivation.requireValid(
                 registry(),
                 evidence.payload(),
                 AttestationOperationKind.INTERIM_RESULT_SWEEP,
                 evidence.provenance(),
-                AttestationPreimage.decode(
-                    fixture.source(), AttestationAuthorizationFailure.PREIMAGE_INVALID),
+                evidence.request(),
                 evidence.effect()));
   }
 
@@ -383,16 +369,6 @@ class AttestationSystemDerivationTest {
 
   private static AttestationFieldValue token(String value) {
     return AttestationTextFieldValue.token(value);
-  }
-
-  private static int indexOf(byte[] source, byte[] target) {
-    for (int offset = 0; offset <= source.length - target.length; offset++) {
-      if (java.util.Arrays.equals(
-          target, java.util.Arrays.copyOfRange(source, offset, offset + target.length))) {
-        return offset;
-      }
-    }
-    throw new IllegalArgumentException("Fixture mutation bytes are not present in the raw source.");
   }
 
   private record CloseEvidence(

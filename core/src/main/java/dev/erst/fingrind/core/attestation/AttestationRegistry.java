@@ -73,7 +73,7 @@ final class AttestationRegistry {
     AttestationRegistry registry =
         fromVerifierFacts(bindings, revocations, grants, policyRules, workflowPolicies);
     AttestationRegistryValidator.requireAcceptedCredentialAlgorithms(bindings);
-    AttestationRegistryCapacity.requireCapacityForAcceptedHistory(registry.resolution);
+    registry.requireAcceptedCapacity();
     return registry;
   }
 
@@ -136,6 +136,10 @@ final class AttestationRegistry {
         Objects.requireNonNull(workflowId, "workflowId"),
         Objects.requireNonNull(workflowKind, "workflowKind"),
         Objects.requireNonNull(resolvingOrder, "resolvingOrder"));
+  }
+
+  void requireAcceptedCapacity() {
+    AttestationRegistryCapacity.requireCapacityForAcceptedHistory(resolution);
   }
 
   private static void requireDistinctFounders(List<AttestationFounder> founders) {

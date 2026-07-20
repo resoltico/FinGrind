@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 /** Raw, deterministic resource forms consumed by the executable static corpus. */
 final class AttestationCorpusResources {
@@ -56,6 +57,41 @@ final class AttestationCorpusResources {
 
     byte[] encoded() {
       return encoded.clone();
+    }
+  }
+
+  /** One restore continuation with its external artifact and optional source acknowledgement. */
+  static final class Restore {
+    private final String id;
+    private final Artifact artifact;
+    private final Optional<Book> sourceAcknowledgement;
+    private final Book target;
+
+    Restore(String id, Artifact artifact, Optional<Book> sourceAcknowledgement, Book target) {
+      if (Objects.requireNonNull(id, "id").isBlank()) {
+        throw new IllegalArgumentException("restore resource id must not be blank.");
+      }
+      this.id = id;
+      this.artifact = Objects.requireNonNull(artifact, "artifact");
+      this.sourceAcknowledgement =
+          Objects.requireNonNull(sourceAcknowledgement, "sourceAcknowledgement");
+      this.target = Objects.requireNonNull(target, "target");
+    }
+
+    String id() {
+      return id;
+    }
+
+    Artifact artifact() {
+      return artifact;
+    }
+
+    Optional<Book> sourceAcknowledgement() {
+      return sourceAcknowledgement;
+    }
+
+    Book target() {
+      return target;
     }
   }
 
