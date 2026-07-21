@@ -250,6 +250,11 @@ class RejectionNarrativeTest {
             .contains("actively in use"));
     assertTrue(
         RejectionNarrative.message(
+                new BookMaintenanceRejection.BackupAcknowledgementConflict(
+                    java.util.UUID.fromString("b4e5c6d7-e8f9-4012-a345-6789abcdef01")))
+            .contains("different immutable backup acknowledgement"));
+    assertTrue(
+        RejectionNarrative.message(
                 new BookMaintenanceRejection.BackupDestinationAlreadyExists(
                     hint(java.nio.file.Path.of("backup/acme.sqlite"))))
             .contains("will not overwrite"));
