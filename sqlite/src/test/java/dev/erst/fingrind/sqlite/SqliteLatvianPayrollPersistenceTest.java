@@ -24,7 +24,6 @@ import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -465,7 +464,7 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
 
   private static RequestProvenance requestProvenance(String token) {
     return new RequestProvenance(
-        new CommandId("command-" + token),
+        TestCommandIds.fromLabel("command-" + token),
         new IdempotencyKey("idempotency-" + token),
         new CausationId("cause-" + token),
         Optional.of(new CorrelationId("correlation-" + token)));

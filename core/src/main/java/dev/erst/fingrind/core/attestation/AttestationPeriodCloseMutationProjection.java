@@ -10,6 +10,7 @@ import java.util.Objects;
 /** Projects the aggregate generated effects of one attested reporting-period close. */
 public final class AttestationPeriodCloseMutationProjection {
   private static final String CLI = "cli";
+  private static final String SYSTEM = "system";
   private static final int STEP_ORDER = 0;
 
   private AttestationPeriodCloseMutationProjection() {}
@@ -279,9 +280,9 @@ public final class AttestationPeriodCloseMutationProjection {
     for (AttestationClosePostingSnapshot posting : postings) {
       if (!expectedOperationKind.equals(tokenValue(posting.postingKind()))
           || !expectedOperationKind.equals(tokenValue(posting.postingOriginKind()))
-          || !CLI.equals(tokenValue(posting.sourceChannel()))) {
+          || !SYSTEM.equals(tokenValue(posting.sourceChannel()))) {
         throw new IllegalArgumentException(
-            "Generated close postings must retain their attested operation kind and CLI source channel.");
+            "Generated close postings must retain their attested operation kind and SYSTEM source channel.");
       }
     }
   }

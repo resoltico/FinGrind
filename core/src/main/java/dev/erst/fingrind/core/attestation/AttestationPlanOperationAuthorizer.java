@@ -6,6 +6,8 @@ import java.util.Objects;
 
 /** Collects one plan's child mutation projections for a single final authorization. */
 public final class AttestationPlanOperationAuthorizer implements AttestationOperationAuthorizer {
+  private static final String EXECUTE_PLAN = AttestationOperationKind.EXECUTE_PLAN.wireToken();
+
   /** Immutable child mutation projection bound to its source-plan position. */
   record ChildMutation(
       int stepOrder, String operationKind, AttestationOperationPreimages preimages) {
@@ -74,6 +76,6 @@ public final class AttestationPlanOperationAuthorizer implements AttestationOper
   public AttestationEvidence authorize(AttestationOperationRequest request) {
     Objects.requireNonNull(request, "request");
     throw new IllegalStateException(
-        "Ledger-plan child mutations must be finalized as one execute-plan operation.");
+        "Ledger-plan child mutations must be finalized as one " + EXECUTE_PLAN + " operation.");
   }
 }

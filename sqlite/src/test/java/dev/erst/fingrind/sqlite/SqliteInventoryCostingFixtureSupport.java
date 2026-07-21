@@ -106,8 +106,6 @@ class SqliteInventoryCostingFixtureSupport extends SqlitePostingFactStoreTestSup
             entry_unit_cost_minor,
             effective_date,
             recorded_at,
-            actor_id,
-            actor_type,
             command_id,
             idempotency_key,
             causation_id,
@@ -132,9 +130,7 @@ class SqliteInventoryCostingFixtureSupport extends SqlitePostingFactStoreTestSup
             %s,
             '%s',
             '%s',
-            'actor-1',
-            'AGENT',
-            'command-%s',
+            '019e26ff-0000-7002-8000-000000000001',
             '%s',
             'cause-1',
             null,
@@ -158,7 +154,6 @@ class SqliteInventoryCostingFixtureSupport extends SqlitePostingFactStoreTestSup
                 unitCostMinor,
                 effectiveDate,
                 recordedAt,
-                postingId,
                 idempotencyKey,
                 "0".repeat(64)));
   }

@@ -6,7 +6,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /** Closed operation meaning and its canonical payload token. */
-enum AttestationOperationKind {
+public enum AttestationOperationKind {
   BOOK_GENESIS,
   DECLARE_ACCOUNT,
   AMEND_ACCOUNT,
@@ -85,8 +85,14 @@ enum AttestationOperationKind {
     return operationKind;
   }
 
-  String wireToken() {
+  /** Returns the canonical lowercase operation token signed in request preimages. */
+  public String wireToken() {
     return name().toLowerCase(Locale.ROOT).replace('_', '-');
+  }
+
+  /** Returns every canonical operation token accepted by the verifier. */
+  public static java.util.Set<String> wireTokens() {
+    return BY_WIRE_TOKEN.keySet();
   }
 
   AttestationCapability capability() {

@@ -8,7 +8,6 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
@@ -542,7 +541,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
     String closeToken = EFFECTIVE_DATE + ":" + EFFECTIVE_DATE + ":" + FIXED_INSTANT.toEpochMilli();
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new CommandId("interimResultSweep:" + closeToken + ":" + currencyCode),
+            TestCommandIds.fromLabel("interimResultSweep:" + closeToken + ":" + currencyCode),
             new IdempotencyKey("interimResultSweep:" + closeToken + ":" + currencyCode),
             new CausationId("interimResultSweep:" + closeToken),
             Optional.of(new CorrelationId("interimResultSweep:" + closeToken)));

@@ -19,7 +19,6 @@ import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyUnit;
@@ -130,7 +129,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         evidence,
         new CommittedProvenance(
             new RequestProvenance(
-                new CommandId("command-" + postingId),
+                TestCommandIds.fromLabel("command-" + postingId),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-1"),
                 Optional.of(new CorrelationId("corr-1"))),
@@ -162,7 +161,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
-                new CommandId("command-" + postingId),
+                TestCommandIds.fromLabel("command-" + postingId),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-1"),
                 Optional.of(new CorrelationId("corr-1"))),
@@ -620,8 +619,6 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
             posting_origin_kind,
             effective_date,
             recorded_at,
-            actor_id,
-            actor_type,
             command_id,
             idempotency_key,
             causation_id,
@@ -637,9 +634,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
             '%s',
             '2026-04-07',
             '2026-04-07T10:15:30Z',
-            'actor-1',
-            'AGENT',
-            'command-%s',
+            '019e26ff-0000-7002-8000-000000000001',
             '%s',
             'cause-1',
             null,
@@ -653,7 +648,6 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
             .formatted(
                 postingId,
                 postingOriginKind,
-                postingId,
                 idempotencyKey,
                 SourceChannel.CLI.wireValue(),
                 RequestFingerprint.CURRENT_VERSION,

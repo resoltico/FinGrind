@@ -11,7 +11,6 @@ import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
 import dev.erst.fingrind.contract.fx.QuotedExchangeRate;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -226,7 +225,7 @@ class SqliteForeignExchangeStoreCoverageTest extends SqlitePostingFactStoreTestS
   private static CommittedProvenance committedProvenance(String token) {
     return new CommittedProvenance(
         new RequestProvenance(
-            new CommandId("command-" + token),
+            TestCommandIds.fromLabel("command-" + token),
             new IdempotencyKey("idem-" + token),
             new CausationId("cause-" + token),
             Optional.of(new CorrelationId("corr-" + token))),

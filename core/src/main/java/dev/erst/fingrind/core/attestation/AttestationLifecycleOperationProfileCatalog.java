@@ -91,7 +91,7 @@ final class AttestationLifecycleOperationProfileCatalog {
     return AttestationOperationProfileCatalog.profile(
         AttestationOperationProfileCatalog.tags(0x0100, 0x0120, 0x0140),
         AttestationOperationProfileCatalog.tags(0x0100, 0x0120, 0x0140, 0x0141),
-        AttestationOperationProfileCatalog.tags(0x0020, 0x0025, 0x0040, 0x0041, 0x0042),
+        AttestationOperationProfileCatalog.tags(0x0020, 0x0025, 0x0040, 0x0042),
         AttestationOperationProfileCatalog.tags(0x0020, 0x0025, 0x0040, 0x0041, 0x0042));
   }
 

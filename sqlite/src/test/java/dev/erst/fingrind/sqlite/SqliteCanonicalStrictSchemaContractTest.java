@@ -95,22 +95,6 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                       invalidIdempotencyKey.resultCode());
                   assertEquals("SQLITE_CONSTRAINT_CHECK", invalidIdempotencyKey.resultName());
                   assertEquals(0, queryInt(database, "select count(*) from posting_fact"));
-                  SqliteNativeException invalidActorId =
-                      assertThrows(
-                          SqliteNativeException.class,
-                          () ->
-                              insertPostingFactRow(
-                                  database,
-                                  "posting-actor",
-                                  "   ",
-                                  "command-actor",
-                                  "idem-actor",
-                                  "cause-actor",
-                                  "null"));
-                  assertEquals(
-                      SqliteNativeResultCode.code("CONSTRAINT_CHECK"), invalidActorId.resultCode());
-                  assertEquals("SQLITE_CONSTRAINT_CHECK", invalidActorId.resultName());
-                  assertEquals(0, queryInt(database, "select count(*) from posting_fact"));
                   SqliteNativeException invalidCommandId =
                       assertThrows(
                           SqliteNativeException.class,
@@ -829,8 +813,6 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
             posting_origin_kind,
             effective_date,
             recorded_at,
-            actor_id,
-            actor_type,
             command_id,
             idempotency_key,
             causation_id,
@@ -841,8 +823,6 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
             request_fingerprint_version,
             request_fingerprint_sha256
         ) values (
-            '%s',
-            '%s',
             '%s',
             '%s',
             '%s',
@@ -865,8 +845,6 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                 postingOriginKind,
                 effectiveDate,
                 recordedAt,
-                sqlLiterals.actorId(),
-                sqlLiterals.actorType(),
                 sqlLiterals.commandId(),
                 sqlLiterals.idempotencyKey(),
                 sqlLiterals.causationId(),

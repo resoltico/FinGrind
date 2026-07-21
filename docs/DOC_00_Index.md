@@ -145,15 +145,60 @@ Protected-book maintenance, passphrase, SQLite session, and runtime symbols cont
 | `AccountTaxonomyDoctrine` | `DOC_01_Core.md` | `AccountTaxonomyDoctrine` |
 | `AccountType` | `DOC_01_Core.md` | `AccountType` |
 | `AttestationAccountMutationIntent` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationAccountMutationIntent` |
+| `AttestationAccountMutationProjection` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationAccountSnapshot` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationArtifactSnapshotReader` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Backup Artifact Types` |
+| `AttestationBackupAcknowledgement` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Backup Artifact Types` |
+| `AttestationBackupAcknowledgementAdmission` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Backup Artifact Types` |
+| `AttestationBackupArtifact` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Backup Artifact Types` |
+| `AttestationBackupArtifactVerification` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Backup Artifact Types` |
+| `AttestationClosePostingSnapshot` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationCredentialException` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |
+| `AttestationCredentialSource` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |
 | `AttestationEvidence` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationEvidence` |
+| `AttestationEffectMutation` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationFounderInput` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationGenesis` |
 | `AttestationGenesis` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationGenesis` |
+| `AttestationGenesisFactory` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationGenesis` |
+| `AttestationInspectionService` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Inspection And Verification Results` |
 | `AttestationKeyFiles` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationKeyFiles` |
+| `AttestationLifecycleMutationProjection` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationLifecycleState` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationMutationAuthorization` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |
+| `AttestationOperationAuthorizer` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationOperationKind` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationOperationPreimages` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationOperationRequest` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationOperationSigner` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationOperationSigner` |
+| `AttestationPeriodCloseMutationProjection` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationPlanOperationAuthorizer` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationPostingEffectSnapshot` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationPostingEvidenceDocument` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationPostingLine` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationPostingMutationProjection` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationPostingRequestSnapshot` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationPublicCredential` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationPublicCredential` |
+| `AttestationReceipt` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |
+| `AttestationReceiptFinding` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |
+| `AttestationReceiptRetention` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |
+| `AttestationReceiptVerificationResult` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |
+| `AttestationReviewResult` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Inspection And Verification Results` |
+| `AttestationSigningSession` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |
+| `AttestationSigningSessionFactory` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |
 | `AttestationSigningCredential` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationSigningCredential` |
+| `AttestationTaxCodeSnapshot` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationTaxRegistrationMutationProjection` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationTaxRegistrationSnapshot` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationVerification` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationVerification` |
 | `AttestationVerificationException` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationVerificationException` |
 | `AttestationVerifier` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationVerifier` |
+| `AttestedProtectedBookLifecycleWorkflow` | `DOC_03_BookSessionsAndAdapters.md` | `Attested Protected-Book Maintenance` |
+| `AttestedProtectedBookMaintenanceStore` | `DOC_03_BookSessionsAndAdapters.md` | `Attested Protected-Book Maintenance` |
+| `BackupAcknowledgementConflictException` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Backup Artifact Types` |
+| `ExportAttestationReceiptResult` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |
+| `ProtocolOptions.Attestation` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptions` |
+| `VerifyAttestationReceiptResult` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |
+| `VerifyBookAttestationResult` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Inspection And Verification Results` |
 | `AccountAmendmentOutcome` | `DOC_02_AccountRegistryLifecycle.md` | `AccountAmendmentOutcome`, `AccountRegistryDependency`, `AccountRegistryLifecyclePolicy`, `AccountRegistryLifecycleRejection`, `AccountRegistryPublishedLanguageTranslator`, And `AccountRetirementOutcome` |
 | `AccountRegistryDependency` | `DOC_02_AccountRegistryLifecycle.md` | `AccountAmendmentOutcome`, `AccountRegistryDependency`, `AccountRegistryLifecyclePolicy`, `AccountRegistryLifecycleRejection`, `AccountRegistryPublishedLanguageTranslator`, And `AccountRetirementOutcome` |
 | `AccountRegistryLifecyclePolicy` | `DOC_02_AccountRegistryLifecycle.md` | `AccountAmendmentOutcome`, `AccountRegistryDependency`, `AccountRegistryLifecyclePolicy`, `AccountRegistryLifecycleRejection`, `AccountRegistryPublishedLanguageTranslator`, And `AccountRetirementOutcome` |
@@ -669,10 +714,9 @@ Protected-book maintenance, passphrase, SQLite session, and runtime symbols cont
 | `BookkeepingReportStore` | `DOC_03_BookSessionsAndAdapters.md` | `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `ReportingPeriodCloseStore`, And `LedgerPlanTransaction` |
 | `ChartOfAccounts` | `DOC_03_BookSessionsAndAdapters.md` | `ChartOfAccounts` |
 | `CommittedPosting` | `DOC_03_BookSessionsAndAdapters.md` | `CommittedPosting` |
-| `MaintenanceCompletion` | `DOC_03_BookSessionsAndAdapters.md` | `MaintenanceDecision`, `MaintenanceCompletion`, And `MaintenanceFailure` |
-| `MaintenanceDecision` | `DOC_03_BookSessionsAndAdapters.md` | `MaintenanceDecision`, `MaintenanceCompletion`, And `MaintenanceFailure` |
-| `MaintenanceFailure` | `DOC_03_BookSessionsAndAdapters.md` | `MaintenanceDecision`, `MaintenanceCompletion`, And `MaintenanceFailure` |
 | `ManagedSqliteRuntimeUnavailableException` | `DOC_03_BookSessionsAndAdapters.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, `SqlitePersistenceInvariantException`, And `SqliteStorageFailureException` |
+| `MaintenanceDecision` | `DOC_03_BookSessionsAndAdapters.md` | `MaintenanceDecision` And `MaintenanceFailure` |
+| `MaintenanceFailure` | `DOC_03_BookSessionsAndAdapters.md` | `MaintenanceDecision` And `MaintenanceFailure` |
 | `PeriodAccountActivityView` | `DOC_03_BookSessionsAndAdapters.md` | `AccountRegistryCursor`, `AccountRegistryQuery`, `AccountRegistryPage`, `PostingHistoryCursor`, `PostingHistoryQuery`, `PostingHistoryPage`, `AccountBalanceCriteria`, `AccountBalanceView`, `TrialBalanceCriteria`, `TrialBalanceRowView`, `TrialBalanceView`, `AccountLedgerCriteria`, `AccountLedgerEntryView`, `AccountLedgerView`, `PeriodSummaryCriteria`, `PeriodCurrencySummaryView`, `PeriodAccountActivityView`, And `PeriodSummaryView` |
 | `ReportingPeriodCloseStore` | `DOC_03_BookSessionsAndAdapters.md` | `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `ReportingPeriodCloseStore`, And `LedgerPlanTransaction` |
 | `PeriodCurrencySummaryView` | `DOC_03_BookSessionsAndAdapters.md` | `AccountRegistryCursor`, `AccountRegistryQuery`, `AccountRegistryPage`, `PostingHistoryCursor`, `PostingHistoryQuery`, `PostingHistoryPage`, `AccountBalanceCriteria`, `AccountBalanceView`, `TrialBalanceCriteria`, `TrialBalanceRowView`, `TrialBalanceView`, `AccountLedgerCriteria`, `AccountLedgerEntryView`, `AccountLedgerView`, `PeriodSummaryCriteria`, `PeriodCurrencySummaryView`, `PeriodAccountActivityView`, And `PeriodSummaryView` |

@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: DEVELOPER_DOMAIN_MODEL
-updated: "2026-07-16"
+updated: "2026-07-21"
 route:
   keywords: [fingrind, domain model, bounded context, context map, ubiquitous language, bookkeeping, workflow, published language]
   questions: ["what are fingrind's bounded contexts", "what is the context map in fingrind", "which term is canonical for the owner of a book", "how does execute-plan relate to bookkeeping in fingrind"]
@@ -75,20 +75,20 @@ The protected-book maintenance context lives across:
 - `executor/src/main/java/dev/erst/fingrind/executor/ProtectedBookMaintenanceService.java`
 - `executor/src/main/java/dev/erst/fingrind/executor/maintenance/`
 - `executor/src/main/java/dev/erst/fingrind/executor/spi/ProtectedBookMaintenanceStore.java`
+- `executor/src/main/java/dev/erst/fingrind/executor/spi/AttestedProtectedBookMaintenanceStore.java`
 
 This context owns:
-- backup, restore, and rekey-recovery acceptance semantics
+- manifest-attested backup, restore, and rekey acceptance semantics
 - the local maintenance rejection and verification-failure language
-- the distinction between verified live books, verified backup sources, rollback artifacts, and
-  restored targets
-- reversible replacement discipline for destructive restore-style workflows
-- encrypted in-book maintenance audit meaning plus compensating audit retraction when one external
-  maintenance mutation fails after the audit is staged
+- the distinction between verified live books, authenticated backup artifacts, and restored targets
+- staging, no-clobber publication, and exact-tuple backup-acknowledgement replay
+- signed continuation of the restored or rekeyed operation chain before publication
 
 This context uses `ProtectedBookBackupOutcome`, `ProtectedBookRestoreOutcome`,
-`ProtectedBookRecoveryOutcome`, `ProtectedBookMaintenanceRejection`,
-`ProtectedBookVerificationFailure`, `ProtectedBookMaintenanceAuditKind`, `ProtectedBookAccess`,
-`MaintenanceDecision`, and `MaintenanceFailure` as its local language.
+`ProtectedBookRekeyOutcome`, `ProtectedBookMaintenanceRejection`,
+`ProtectedBookVerificationFailure`, `ProtectedBookAccess`, `MaintenanceDecision`,
+`MaintenanceFailure`, `AttestedProtectedBookLifecycleWorkflow`, and
+`AttestedProtectedBookMaintenanceStore` as its local language.
 
 The maintenance context is not bookkeeping. It does not own accounts, postings, or reports. It
 owns protected-book artifact verification and closed-copy maintenance workflows around one book.

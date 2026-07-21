@@ -170,6 +170,9 @@ public final class ProtocolOptions
 - `ProtocolBookAccessOptions` owns the protected-book file, key, passphrase, backup, restore,
   generated-key, and rollback option spellings; `ProtocolOptions` consumes its passphrase-source
   vocabulary rather than duplicating it
+- `ProtocolOptions.Attestation` owns credential-source, founder, receipt, and review option
+  spellings for protected-book attestation commands; callers must use these canonical names rather
+  than assembling private-key or passphrase options ad hoc
 
 ## `ProtocolOptions.Request`, `ProtocolOptions.DateRange`, `ProtocolOptions.ReportQuery`, `ProtocolOptions.BookDefinition`, `ProtocolOptions.Presentation`, And `ProtocolOptions.Discovery`
 

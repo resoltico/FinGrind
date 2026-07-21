@@ -1167,8 +1167,8 @@ create trigger if not exists posting_fact_validate_generated_close_provenance_on
 before insert on posting_fact
 when new.posting_kind in ('INTERIM_RESULT_SWEEP', 'FISCAL_YEAR_CLOSE')
 begin
-    select raise(fail, 'generated close postings must retain the initiating CLI source channel.')
-    where new.source_channel <> 'CLI';
+    select raise(fail, 'generated close postings must use the SYSTEM source channel.')
+    where new.source_channel <> 'SYSTEM';
     select raise(fail, 'generated close postings cannot reverse earlier postings.')
     where new.prior_posting_id is not null or new.reason is not null;
 end;
@@ -2014,21 +2014,21 @@ begin
             posting_fact.posting_id = new.posting_id
             and posting_fact.posting_kind <> 'INTERIM_RESULT_SWEEP'
     );
-    select raise(fail, 'interim-result-sweep links must reference CLI-authorized postings.')
+    select raise(fail, 'interim-result-sweep links must reference system-generated postings.')
     where exists (
         select 1
         from posting_fact
         where
             posting_fact.posting_id = new.posting_id
-            and posting_fact.source_channel <> 'CLI'
+            and posting_fact.source_channel <> 'SYSTEM'
     );
-    select raise(fail, 'interim-result-sweep links must reference CLI-authorized postings.')
+    select raise(fail, 'interim-result-sweep links must reference system-generated postings.')
     where exists (
         select 1
         from posting_fact
         where
             posting_fact.posting_id = new.posting_id
-            and posting_fact.source_channel <> 'CLI'
+            and posting_fact.source_channel <> 'SYSTEM'
     );
     select raise(
         fail,
@@ -2229,21 +2229,21 @@ begin
             posting_fact.posting_id = new.posting_id
             and posting_fact.posting_kind <> 'FISCAL_YEAR_CLOSE'
     );
-    select raise(fail, 'fiscal-year-close links must reference CLI-authorized postings.')
+    select raise(fail, 'fiscal-year-close links must reference system-generated postings.')
     where exists (
         select 1
         from posting_fact
         where
             posting_fact.posting_id = new.posting_id
-            and posting_fact.source_channel <> 'CLI'
+            and posting_fact.source_channel <> 'SYSTEM'
     );
-    select raise(fail, 'fiscal-year-close links must reference CLI-authorized postings.')
+    select raise(fail, 'fiscal-year-close links must reference system-generated postings.')
     where exists (
         select 1
         from posting_fact
         where
             posting_fact.posting_id = new.posting_id
-            and posting_fact.source_channel <> 'CLI'
+            and posting_fact.source_channel <> 'SYSTEM'
     );
     select raise(
         fail,

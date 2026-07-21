@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: ADAPTERS
-updated: "2026-07-16"
+updated: "2026-07-21"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -303,47 +303,40 @@ public record ProtectedBookAccess(...)
 - Boundary: `fromPublished(...)` and `toPublished()` are the only translators between this local
   type and the public `BookAccess` contract
 
-## `MaintenanceDecision`, `MaintenanceCompletion`, And `MaintenanceFailure`
+## `MaintenanceDecision` And `MaintenanceFailure`
 
 These local maintenance support types keep accepted-versus-failed workflow outcomes separate from
 the public `ContractDecision` surface.
 
 ```java
 public sealed interface MaintenanceDecision<T>
-public enum MaintenanceCompletion
 public record MaintenanceFailure(...)
 ```
 
 - `MaintenanceDecision`: local accepted-or-failed decision type used by the maintenance workflow
   and store seam before public projection
-- `MaintenanceCompletion`: sentinel success value for local maintenance steps that do not need
-  extra payload
 - `MaintenanceFailure`: local runtime failure value that isolates protected-book maintenance from
   the public contract failure envelope until the published-language adapter translates it outward
 
-## `ProtectedBookBackupOutcome`, `ProtectedBookRekeyOutcome`, `ProtectedBookRestoreOutcome`, And `ProtectedBookRecoveryOutcome`
+## `ProtectedBookBackupOutcome`, `ProtectedBookRekeyOutcome`, And `ProtectedBookRestoreOutcome`
 
-These local maintenance result families keep backup, restore, and rollback-recovery outcomes inside
-the maintenance context until the published-language translator projects them into public contract
-types.
+These local maintenance result families keep backup, restore, and rekey outcomes inside the
+maintenance context until the published-language translator projects them into public contract types.
 
 ```java
 public sealed interface ProtectedBookBackupOutcome
 public sealed interface ProtectedBookRekeyOutcome
 public sealed interface ProtectedBookRestoreOutcome
-public sealed interface ProtectedBookRecoveryOutcome
 ```
 
 - `ProtectedBookBackupOutcome`: accepted or rejected result for verified encrypted backup export
 - `ProtectedBookRekeyOutcome`: accepted or rejected result for staged rekey publication under one
   newly generated key file
 - `ProtectedBookRestoreOutcome`: accepted or rejected result for verified backup restore
-- `ProtectedBookRecoveryOutcome`: accepted or rejected result for rollback inspection, rollback
-  restore, and rollback deletion
 - Boundary: each local outcome carries local `Path` values and local maintenance rejections; the
   published JSON contract preserves their canonical absolute paths
 
-## `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenancePathFailure`, `ProtectedBookMaintenanceRejection`, `ProtectedBookMaintenanceRejectionException`, And `ProtectedBookMaintenanceWorkflow`
+## `ProtectedBookMaintenanceArtifactRole`, `ProtectedBookMaintenancePathFailure`, `ProtectedBookMaintenanceRejection`, And `ProtectedBookMaintenanceRejectionException`
 
 These local maintenance types own protected-book maintenance semantics, deterministic refusals, and
 artifact-role vocabulary behind the public maintenance adapter.
@@ -353,7 +346,6 @@ public enum ProtectedBookMaintenanceArtifactRole
 public enum ProtectedBookMaintenancePathFailure
 public sealed interface ProtectedBookMaintenanceRejection
 public final class ProtectedBookMaintenanceRejectionException
-public final class ProtectedBookMaintenanceWorkflow
 ```
 
 - `ProtectedBookMaintenanceArtifactRole`: local role vocabulary for live-book, backup-source,
@@ -368,10 +360,6 @@ public final class ProtectedBookMaintenanceWorkflow
 - `ProtectedBookMaintenanceRejectionException`: local short-circuit carrier that preserves one
   typed maintenance rejection across workflow orchestration without collapsing it into generic
   runtime failure handling
-- `ProtectedBookMaintenanceWorkflow`: local owner for lease ordering, source verification,
-  side-effect-free rollback inspection, staged backup publication, staged restore, rollback
-  restore, rollback deletion, and audit retraction when an external commit fails after audit
-  staging
 
 ## `ProtectedBookAccess` And `ProtectedBookPassphraseSource`
 
@@ -687,68 +675,42 @@ public final class SqliteBookSessions
   projects that internal store into the public workflow-shaped interfaces instead of publishing the
   full implementation seam
 
-## `ProtectedBookMaintenanceAuditKind`
+## `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedRestoredBookPair`, And `SqliteProtectedBookMaintenanceStore`
 
-This executor-owned maintenance vocabulary names the successful protected-book workflows that are
-durably recorded inside the encrypted bookkeeping audit stream.
-
-```java
-public enum ProtectedBookMaintenanceAuditKind
-```
-
-- `ProtectedBookMaintenanceAuditKind`: the closed successful-maintenance vocabulary:
-  `BACKUP_RESTORED`, `REKEY_ROLLBACK_RESTORED`, and `REKEY_ROLLBACK_DELETED`
-- Storage projection: `SqliteProtectedBookMaintenanceStore` maps these maintenance audit kinds
-  onto `BookAuditEventKind` values and inserts them into the protected book's `audit_event` table
-- Boundary: side-effect-free inspection does not emit one maintenance audit fact
-
-## `ProtectedBookMaintenanceAuditCompensationKind`
-
-This executor-owned maintenance vocabulary names the compensating protected-book workflows that
-durably retract a prior successful maintenance fact inside the encrypted bookkeeping audit stream.
-
-```java
-public enum ProtectedBookMaintenanceAuditCompensationKind
-```
-
-- `ProtectedBookMaintenanceAuditCompensationKind`: the closed compensation vocabulary:
-  `REKEY_ROLLBACK_DELETED`
-- Storage projection: `SqliteProtectedBookMaintenanceStore` maps this compensation kind onto
-  `BookAuditEventKind.REKEY_ROLLBACK_DELETED_COMPENSATED`
-- Boundary: compensation facts exist only when a previously published maintenance fact must be
-  durably retracted after later failure cleanup
-
-## `ProtectedBookMaintenanceService`, `ProtectedBookMaintenanceStore`, `StagedBackupPair`, `StagedBookReplacement`, `StagedRestoredBookPair`, `StagedRollbackArtifactDeletion`, And `SqliteProtectedBookMaintenanceStore`
-
-Protected-book maintenance now belongs to one executor-owned maintenance boundary with one narrow
-SQLite store SPI and one encrypted in-book maintenance audit stream.
+Protected-book maintenance belongs to one executor-owned lifecycle boundary. Its base store SPI
+owns artifact verification, leases, staging, and no-clobber pair publication; the attested
+extension owns the signed operation-chain transaction and artifact-manifest verification.
 
 ```java
 public final class ProtectedBookMaintenanceService
 public interface ProtectedBookMaintenanceStore
 public interface StagedBackupPair
-public interface StagedBookReplacement
 public interface StagedRestoredBookPair
-public interface StagedRollbackArtifactDeletion
 public final class SqliteProtectedBookMaintenanceStore
 ```
 
-- `ProtectedBookMaintenanceService`: owns backup, rollback inspection, rollback restore,
-  rollback deletion, and restore doctrine plus typed rejections and published maintenance results
-- `ProtectedBookMaintenanceStore`: narrow SPI for initialized-book verification, reversible book
-  replacement, rollback-artifact selection, and encrypted maintenance-audit append/retract
+- `ProtectedBookMaintenanceService`: opens the necessary signing session and adapts the attested
+  backup, restore, and rekey workflow to published results
+- `ProtectedBookMaintenanceStore`: narrow SPI for initialized-book verification, exclusive
+  artifact leases, staged pair publication, and destination-admission doctrine
 - `StagedBackupPair`: reversible staged backup publication that can verify the staged backup
   before final publish
-- `StagedBookReplacement`: reversible staged replacement prepared for restore-style workflows
 - `StagedRestoredBookPair`: reversible staged restored-book publication that verifies the staged
   restored book already opens with the staged destination key file before final publish
-- `StagedRollbackArtifactDeletion`: reversible staged deletion prepared for rollback-artifact
-  cleanup
 - `SqliteProtectedBookMaintenanceStore`: verifies protected-book artifacts through SQLite, rejects
-  non-initialized and noncanonical sources, performs reversible replacement work, and records
-  successful maintenance facts in the selected book's `audit_event` stream
-- Boundary: maintenance doctrine now lives above SQLite, while SQLite owns only verification and
-  filesystem/native execution details
+  non-initialized and noncanonical sources, and performs staged filesystem/native work
+- Boundary: maintenance doctrine lives above SQLite, while SQLite owns verification, staged
+  publication, and the attested transaction implementation
+
+## `Attested Protected-Book Maintenance`
+
+`AttestedProtectedBookMaintenanceStore` extends the protected-book store seam with the evidence
+and signing-session requirements of backup acknowledgement, restoration, and rekey. The
+executor-owned `AttestedProtectedBookLifecycleWorkflow` separates backup staging and exact-tuple
+acknowledgement from restore/rekey continuation, so an external artifact can be durable before its
+live-book acknowledgement without pretending both resources share one transaction. The workflow
+permits only absent destinations, preserves the backup acknowledgement replay invariant, and
+requires an attested destination continuation before restore or rekey reports success.
 
 ## Protection Boundary
 

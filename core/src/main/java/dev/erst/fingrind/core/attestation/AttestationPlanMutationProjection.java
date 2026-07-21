@@ -8,7 +8,7 @@ import java.util.Set;
 
 /** Projects ordered child mutations into the one immutable execute-plan operation payload. */
 final class AttestationPlanMutationProjection {
-  private static final String EXECUTE_PLAN = "execute-plan";
+  private static final String EXECUTE_PLAN = AttestationOperationKind.EXECUTE_PLAN.wireToken();
   private static final String CLI = "cli";
   private static final Set<Integer> REQUEST_STEP_ORDER_TAGS =
       Set.of(
@@ -23,7 +23,7 @@ final class AttestationPlanMutationProjection {
     List<AttestationPlanOperationAuthorizer.ChildMutation> checkedChildren =
         List.copyOf(Objects.requireNonNull(childMutations, "childMutations"));
     if (checkedChildren.isEmpty()) {
-      throw new IllegalArgumentException("execute-plan requires at least one child mutation.");
+      throw new IllegalArgumentException(EXECUTE_PLAN + " requires at least one child mutation.");
     }
     requireStrictStepOrder(checkedChildren);
     List<AttestationPreimage.Fact> requestFacts = new ArrayList<>();
@@ -110,7 +110,7 @@ final class AttestationPlanMutationProjection {
           Objects.requireNonNull(child, "childMutations");
       if (checkedChild.stepOrder() <= previousStepOrder) {
         throw new IllegalArgumentException(
-            "execute-plan child mutations must have strictly increasing stepOrder values.");
+            EXECUTE_PLAN + " child mutations must have strictly increasing stepOrder values.");
       }
       previousStepOrder = checkedChild.stepOrder();
     }

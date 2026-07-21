@@ -4,6 +4,7 @@ import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
 import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgementAdmission;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationOperationPreimages;
 import dev.erst.fingrind.core.attestation.AttestationOperationRequest;
 import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
@@ -30,6 +31,7 @@ import org.jspecify.annotations.Nullable;
  */
 final class SqliteAttestationEvidenceStore {
   private static final byte[] GENESIS_PREVIOUS_HEAD = new byte[32];
+  private static final String EXECUTE_PLAN = AttestationOperationKind.EXECUTE_PLAN.wireToken();
 
   private SqliteAttestationEvidenceStore() {}
 
@@ -145,7 +147,7 @@ final class SqliteAttestationEvidenceStore {
     AttestationPlanOperationAuthorizer checkedAuthorizer =
         Objects.requireNonNull(authorizer, "authorizer");
     if (!checkedAuthorizer.hasChildMutations()) {
-      throw new IllegalArgumentException("execute-plan did not produce a mutating child step.");
+      throw new IllegalArgumentException(EXECUTE_PLAN + " did not produce a mutating child step.");
     }
     List<AttestationEvidence> persistedEvidence = loadAll(activeDatabase);
     AttestationVerification persistedVerification =
@@ -160,7 +162,7 @@ final class SqliteAttestationEvidenceStore {
             new AttestationOperationRequest(
                 persistedVerification.bookId(),
                 persistedVerification.headOrder().add(BigInteger.ONE),
-                "execute-plan",
+                EXECUTE_PLAN,
                 persistedVerification.operationHead(),
                 checkedRecordedAt,
                 planPreimages.request(),

@@ -14,6 +14,7 @@ import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
+import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -224,6 +225,7 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
     ids.addAll(PlanTransactionMode.wireValues());
     ids.addAll(PlanFailurePolicy.wireValues());
     ids.addAll(PlanResultDetail.wireValues());
+    ids.addAll(AttestationOperationKind.wireTokens());
     RequestSurfaceContracts.current()
         .bookkeepingEntryKinds()
         .forEach(facts -> ids.addAll(facts.sourceDocumentTypes().acceptedValues()));

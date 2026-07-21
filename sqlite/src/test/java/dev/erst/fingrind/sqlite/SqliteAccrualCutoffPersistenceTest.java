@@ -20,7 +20,6 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -751,7 +750,7 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
 
   private static RequestProvenance requestProvenance(String token) {
     return new RequestProvenance(
-        new CommandId("command-" + token),
+        TestCommandIds.fromLabel("command-" + token),
         new IdempotencyKey("idempotency-" + token),
         new CausationId("cause-" + token),
         Optional.of(new CorrelationId("correlation-" + token)));

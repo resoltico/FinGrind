@@ -4,6 +4,7 @@ import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
 import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgementAdmission;
 import dev.erst.fingrind.core.attestation.AttestationBackupArtifact;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
+import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationLifecycleMutationProjection;
 import dev.erst.fingrind.core.attestation.AttestationSigningSession;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
@@ -21,7 +22,8 @@ import java.util.UUID;
 
 /** Owns durable backup publication and its exactly-once attestation acknowledgement. */
 final class AttestedProtectedBookBackupAcknowledgementWorkflow {
-  private static final String BACKUP_CREATED_OPERATION = "backup-created";
+  private static final String BACKUP_CREATED_OPERATION =
+      AttestationOperationKind.BACKUP_CREATED.wireToken();
 
   private final Clock clock;
   private final AttestedProtectedBookMaintenanceStore store;

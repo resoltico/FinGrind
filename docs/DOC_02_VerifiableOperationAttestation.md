@@ -5,7 +5,7 @@ domain: BOOK_OPERATION_ATTESTATION
 updated: "2026-07-21"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["AttestedOperation", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationEvidence", "AttestationGenesis", "AttestationKeyFiles", "AttestationOperationSigner", "AttestationPublicCredential", "AttestationSigningCredential", "AttestationVerification", "AttestationVerificationException", "AttestationVerifier"]
+  symbols: ["AttestedOperation", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationEvidence", "AttestationGenesis", "AttestationKeyFiles", "AttestationOperationKind", "AttestationOperationSigner", "AttestationPublicCredential", "AttestationSigningCredential", "AttestationVerification", "AttestationVerificationException", "AttestationVerifier"]
 route:
   keywords: [verifiable-operation-attestation, operation-head, attestation-envelope, principal-quorum, credential-purpose, autonomous-workflow, semantic-profile, failure-precedence, ed25519, stale-head]
   questions: ["what does FinGrind book-operation attestation prove", "how is an attested operation encoded", "which credential may authorize a system operation", "which semantic profile governs a typed operation"]
@@ -78,6 +78,10 @@ operation names out of the accounting kernel.
 complete initial registry and policy in immutable preimages, and produces the unanimous order-zero
 evidence.
 
+`AttestationFounderInput` is the public open-book input that binds one founder principal to one
+credential and purpose. `AttestationGenesisFactory` translates those inputs into the canonical
+core genesis; it never accepts an implicit founder or a caller-provided genesis envelope.
+
 ## `AttestationKeyFiles`
 
 `AttestationKeyFiles.create` is the sole format-51 creation path for a new encrypted file-backed
@@ -90,6 +94,35 @@ DER-SPKI bytes and its SHA-256 key identifier.
 
 `AttestationOperationSigner` builds an ordered operation envelope only from canonical request and
 effect preimages; persistence performs historical authorization and compare-and-swap admission.
+
+## `Attestation Signing Sessions And Authorization`
+
+`AttestationSigningSession` owns one short-lived private signing capability. Its executor factory,
+`AttestationSigningSessionFactory`, resolves a selected credential source without exposing private
+key bytes to the caller. `AttestationCredentialSource` names the accepted credential source,
+`AttestationCredentialException` reports a typed credential-resolution failure, and
+`AttestationMutationAuthorization` couples an authorized mutation to the operation evidence it
+must append. These types are adapter seams: application code supplies a credential source and
+canonical mutation facts, while the session owns signing and zeroization.
+
+## `Attestation Mutation Projections`
+
+`AttestationOperationKind` is the closed canonical token vocabulary for signed operation
+preimages. `AttestationOperationRequest`, `AttestationOperationPreimages`, and
+`AttestationOperationAuthorizer` carry one normalized request/effect pair into the signer;
+`AttestationPlanOperationAuthorizer` collects child mutations and permits exactly one final
+aggregate plan authorization.
+
+`AttestationAccountMutationProjection`, `AttestationLifecycleMutationProjection`,
+`AttestationPostingMutationProjection`, `AttestationPeriodCloseMutationProjection`, and
+`AttestationTaxRegistrationMutationProjection` derive those preimages from the corresponding
+committed state transition. Their immutable input records — `AttestationAccountSnapshot`,
+`AttestationLifecycleState`, `AttestationPostingRequestSnapshot`,
+`AttestationPostingEffectSnapshot`, `AttestationPostingEvidenceDocument`,
+`AttestationPostingLine`, `AttestationClosePostingSnapshot`, `AttestationTaxCodeSnapshot`,
+`AttestationTaxRegistrationSnapshot`, and `AttestationEffectMutation` — prevent the signing
+boundary from reading mutable storage rows after a mutation has been selected. Projection callers
+must retain the exact request and committed effect; they must not synthesize a semantic proxy.
 
 ## `AttestationPublicCredential`
 
@@ -114,6 +147,14 @@ operation head, and non-persisted review finding identifiers for a structurally 
 
 `AttestationVerifier` is the pure complete-chain boundary; it owns no private-key type, custodian
 handle, filesystem path, or mutable book state.
+
+## `Attestation Inspection And Verification Results`
+
+`AttestationInspectionService` projects verifier facts for the selected protected book.
+`VerifyBookAttestationResult` and `AttestationReviewResult` are its public success/rejection
+surfaces: verification proves the chain through its head, while review reports non-persisted
+compromise findings without changing the book. A review result is not an authorization decision
+and cannot repair, delete, or rewrite evidence.
 
 ## Profile Constants And Canonical Primitives
 

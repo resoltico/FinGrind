@@ -730,8 +730,6 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
             posting_origin_kind,
             effective_date,
             recorded_at,
-            actor_id,
-            actor_type,
             command_id,
             idempotency_key,
             causation_id,
@@ -742,8 +740,6 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
             request_fingerprint_version,
             request_fingerprint_sha256
         ) values (
-            '%s',
-            '%s',
             '%s',
             '%s',
             '%s',
@@ -766,8 +762,6 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
                 postingOriginKind,
                 effectiveDate,
                 recordedAt,
-                sqlLiterals.actorId(),
-                sqlLiterals.actorType(),
                 sqlLiterals.commandId(),
                 sqlLiterals.idempotencyKey(),
                 sqlLiterals.causationId(),

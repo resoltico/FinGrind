@@ -158,9 +158,9 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
 
 - Invariant: one append-only audit stream records durable administrative and posting events in the
   same book, and audit rows cannot be updated or deleted in place.
-- Mutation paths: `open-book`, `declare-account`, `post-entry`, `execute-plan`, `rekey-book`,
-  `backup-book`, and `restore-book` through
-  the bookkeeping/store mutation paths that actually change the book.
+- Mutation paths: `open-book`, account lifecycle changes, `post-entry`, `execute-plan`, and
+  period-close postings through the bookkeeping/store mutation paths that actually change the
+  book.
 - Immediate or derived: immediate on write, read-only on inspection.
 - Domain owners:
   - `executor.bookkeeping.BookAuditEvent`
@@ -169,25 +169,25 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
   - `sqlite.SqliteAuditEventWriter`
   - `sqlite.SqliteStoreMutationOperations`
   - SQLite `audit_event` append-only triggers
-- Notes: posting provenance inside `posting_fact` is not a substitute for this stream; account
-  mutation and rekey actions must also be durable audit facts.
+- Notes: posting provenance inside `posting_fact` is not a substitute for this stream. Signed
+  lifecycle evidence is a separate attestation-chain concern, not an audit-event substitute.
 
-## Protected-Book Maintenance Audit
+## Attested Protected-Book Lifecycle
 
-- Invariant: successful backup, restore, and rekey facts are durable encrypted audit events inside
-  the protected book, and maintenance workflows retract those facts when a paired external file
-  mutation fails before publication completes.
+- Invariant: a backup acknowledgement binds exactly one backup identity, artifact digest, source
+  order, and source head. Restore and rekey append their derived signed continuation before staged
+  publication succeeds.
 - Maintenance paths: mutation workflows `backup-book`, `restore-book`, and `rekey-book` through
   the maintenance service/store boundary.
 - Immediate or derived: immediate on successful mutation; absent for side-effect-free inspection.
 - Domain owners:
-  - `executor.maintenance.ProtectedBookMaintenanceAuditKind`
-  - `executor.bookkeeping.BookAuditEvent`
+  - `executor.maintenance.AttestedProtectedBookLifecycleWorkflow`
+  - `executor.spi.AttestedProtectedBookMaintenanceStore`
 - Storage participants:
   - `sqlite.SqliteProtectedBookMaintenanceStore`
-  - `sqlite.audit_event`
-- Notes: maintenance audit belongs to the encrypted bookkeeping audit stream because the selected
-  protected book is the durable state owner for successful maintenance facts.
+  - attestation operation-chain and backup-artifact manifest storage
+- Notes: lifecycle evidence is distinct from the bookkeeping audit stream and cannot be replaced
+  by a maintenance audit event.
 
 ## Read Models And Reports
 

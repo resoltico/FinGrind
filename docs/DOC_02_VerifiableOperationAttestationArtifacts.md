@@ -5,7 +5,7 @@ domain: BOOK_OPERATION_ATTESTATION_ARTIFACTS
 updated: "2026-07-21"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["BackupManifest", "AttestationReceipt", "AttestationArtifactContainer"]
+  symbols: ["BackupManifest", "AttestationBackupArtifact", "AttestationReceipt", "AttestationArtifactContainer"]
 route:
   keywords: [verifiable-operation-attestation, backup-manifest, attestation-receipt, artifact-container, restore-book, backup-acknowledgement, receipt-anchor, no-clobber]
   questions: ["how is an attested backup artifact encoded", "how does FinGrind restore an attested snapshot", "what does an attestation receipt anchor", "which vectors prove backup and receipt envelopes"]
@@ -68,6 +68,16 @@ backup-created is idempotent only for the identical tuple bookId, backupId, back
 and sourceHead. Exact replay is a no-op success. Any other reuse of backupId is
 backup-acknowledgement-conflict with exit 2.
 
+## `Backup Artifact Types`
+
+`AttestationArtifactSnapshotReader` supplies the verified immutable snapshot view used to create
+or restore an artifact. `AttestationBackupArtifact` is the parsed snapshot/manifest container;
+`AttestationBackupArtifactVerification` is the successful verification result; and
+`AttestationBackupAcknowledgement` binds the live-chain acknowledgement to one exact backup tuple.
+`AttestationBackupAcknowledgementAdmission` is the closed append, identical-replay, or conflict
+decision for that tuple. `BackupAcknowledgementConflictException` carries the non-retryable
+conflicting backup id after the exact-tuple check fails.
+
 | Crash point | Residual | Recovery |
 |:--|:--|:--|
 | after snapshot or blessing, before publication | staged local temporary file | discard locally; nothing was published |
@@ -118,6 +128,15 @@ verify-receipt is non-mutating. It verifies the receipt envelope, finds the refe
 operation order, requires equal bookId and operationHead, and evaluates the receipt's ANCHOR quorum
 as of that order. A valid receipt retained beside the book reports the valid-result finding
 receipt-not-independent.
+
+## `Receipt Result Types`
+
+`AttestationReceipt` is the immutable off-chain anchor envelope. `AttestationReceiptFinding` and
+`AttestationReceiptRetention` classify its verification and independence status, while
+`AttestationReceiptVerificationResult` carries the verified anchor outcome. The public
+`ExportAttestationReceiptResult` reports no-clobber receipt publication, and
+`VerifyAttestationReceiptResult` reports receipt verification. Both remain non-mutating: neither
+command appends evidence or changes a book's head.
 
 | Verifier holds | Detects | Does not detect |
 |:--|:--|:--|
