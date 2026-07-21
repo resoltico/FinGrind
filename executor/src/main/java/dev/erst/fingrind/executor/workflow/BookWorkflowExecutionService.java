@@ -89,9 +89,6 @@ public final class BookWorkflowExecutionService {
       Instant startedAt,
       BookWorkflowStep firstStep,
       List<BookWorkflowJournalEntry> entries) {
-    if (plan.beginsWithEnsureBook()) {
-      return null;
-    }
     try {
       if (stepExecutor.allowsInitializedWorkflow()) {
         return null;

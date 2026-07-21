@@ -21,7 +21,6 @@ public sealed interface TemplateDescriptorType
         ContractTemplates.DeclareTaxCodeTemplateDescriptor,
         ContractPlanTemplates.LedgerPlanTemplateDescriptor,
         ContractPlanTemplates.LedgerPlanStepTemplateDescriptor,
-        ContractPlanTemplates.EnsureBookTemplateDescriptor,
         ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor,
         ContractTemplates.DeclareAccountTemplateDescriptor,
         ContractTemplates.RetireAccountTemplateDescriptor,

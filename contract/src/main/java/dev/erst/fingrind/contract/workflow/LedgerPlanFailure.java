@@ -24,13 +24,7 @@ public enum LedgerPlanFailure {
       ProtocolEnvelopeStatus.REJECTED,
       ContractResponse.FailureCategory.INTERNAL,
       2,
-      "Ledger-plan execution stopped because FinGrind encountered an unexpected transaction-boundary failure."),
-  ENSURE_BOOK_IDENTITY_CONFLICT(
-      "ensure-book-identity-conflict",
-      ProtocolEnvelopeStatus.REJECTED,
-      ContractResponse.FailureCategory.DOMAIN_SEMANTIC,
-      2,
-      "Ledger-plan initialization refused because the selected book identity differs from the requested identity.");
+      "Ledger-plan execution stopped because FinGrind encountered an unexpected transaction-boundary failure.");
 
   private final String code;
   private final ProtocolEnvelopeStatus envelopeStatus;

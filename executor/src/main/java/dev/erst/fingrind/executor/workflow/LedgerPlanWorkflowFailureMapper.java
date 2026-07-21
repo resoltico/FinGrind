@@ -4,8 +4,6 @@ import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
 import dev.erst.fingrind.contract.tax.TaxDeclarationRejection;
-import dev.erst.fingrind.contract.workflow.LedgerPlanFailure;
-import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingQueryRejection;
@@ -81,40 +79,7 @@ final class LedgerPlanWorkflowFailureMapper {
     };
   }
 
-  static BookWorkflowFailure ensureBookIdentityConflict(
-      BookIdentity existingBookIdentity, BookIdentity requestedBookIdentity) {
-    Objects.requireNonNull(existingBookIdentity, "existingBookIdentity");
-    Objects.requireNonNull(requestedBookIdentity, "requestedBookIdentity");
-    return new BookWorkflowFailure(
-        LedgerPlanFailure.ENSURE_BOOK_IDENTITY_CONFLICT.code(),
-        "The selected book is already initialized with a different book identity.",
-        List.of(
-            BookWorkflowFact.text("existingEntityName", existingBookIdentity.entityName().value()),
-            BookWorkflowFact.text(
-                "existingFunctionalCurrency", existingBookIdentity.functionalCurrency().code()),
-            BookWorkflowFact.text(
-                "existingFiscalYearStart", existingBookIdentity.fiscalYearStart().wireValue()),
-            BookWorkflowFact.text(
-                "existingBookStartEffectiveDate",
-                existingBookIdentity.bookStartEffectiveDate().toString()),
-            BookWorkflowFact.text(
-                "existingBookTemplateId",
-                existingBookIdentity.bookDoctrine().bookTemplateId().wireValue()),
-            BookWorkflowFact.text(
-                "requestedEntityName", requestedBookIdentity.entityName().value()),
-            BookWorkflowFact.text(
-                "requestedFunctionalCurrency", requestedBookIdentity.functionalCurrency().code()),
-            BookWorkflowFact.text(
-                "requestedFiscalYearStart", requestedBookIdentity.fiscalYearStart().wireValue()),
-            BookWorkflowFact.text(
-                "requestedBookStartEffectiveDate",
-                requestedBookIdentity.bookStartEffectiveDate().toString()),
-            BookWorkflowFact.text(
-                "requestedBookTemplateId",
-                requestedBookIdentity.bookDoctrine().bookTemplateId().wireValue())));
-  }
-
   private static String missingBookMessage() {
-    return "The selected book does not exist or has not been initialized with an ensure-book step.";
+    return "The selected book does not exist or has not been opened.";
   }
 }

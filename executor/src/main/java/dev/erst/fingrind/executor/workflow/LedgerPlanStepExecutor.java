@@ -74,8 +74,6 @@ final class LedgerPlanStepExecutor {
     Instant startedAt = Instant.now(clock);
     LedgerPlanStepOutcome outcome =
         switch (step) {
-          case BookWorkflowStep.EnsureBook ensureBook ->
-              openBookOnly(ensureBook.stepId().value());
           case BookWorkflowStep.DeclareAccount declareAccount ->
               declareAccountOutcome(declareAccount.command(), attestationAuthorizer);
           case BookWorkflowStep.DeclareTaxRegistration declareTaxRegistration ->
@@ -132,16 +130,6 @@ final class LedgerPlanStepExecutor {
                 + OperationId.OPEN_BOOK.wireName()
                 + " before executing a plan.",
             List.of()));
-  }
-
-  private static LedgerPlanStepOutcome openBookOnly(String stepId) {
-    return new LedgerPlanStepOutcome.Rejected(
-        new BookWorkflowFailure(
-            "book-genesis-requires-open-book",
-            "Ledger plans cannot create a book. Run "
-                + OperationId.OPEN_BOOK.wireName()
-                + " with explicit founder credentials first.",
-            List.of(BookWorkflowFact.text("stepId", stepId))));
   }
 
   private LedgerPlanStepOutcome declareAccountOutcome(

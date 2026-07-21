@@ -2,7 +2,6 @@ package dev.erst.fingrind.executor.workflow;
 
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
-import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
@@ -12,8 +11,7 @@ import java.util.Objects;
 
 /** Internal workflow step family for executing ordered book plans. */
 public sealed interface BookWorkflowStep
-    permits BookWorkflowStep.EnsureBook,
-        BookWorkflowStep.DeclareAccount,
+    permits BookWorkflowStep.DeclareAccount,
         BookWorkflowStep.DeclareTaxRegistration,
         BookWorkflowStep.PreflightEntry,
         BookWorkflowStep.PostEntry,
@@ -25,16 +23,6 @@ public sealed interface BookWorkflowStep
         BookWorkflowAssertionStep {
   /** Stable caller-supplied step identifier. */
   BookWorkflowStepId stepId();
-
-  /** Ensures the selected book identity is present inside the workflow transaction. */
-  record EnsureBook(BookWorkflowStepId stepId, BookIdentity bookIdentity)
-      implements BookWorkflowStep {
-    /** Validates the step. */
-    public EnsureBook {
-      requireStepId(stepId);
-      Objects.requireNonNull(bookIdentity, "bookIdentity");
-    }
-  }
 
   /** Declares or reactivates one account. */
   record DeclareAccount(BookWorkflowStepId stepId, AccountDeclaration command)

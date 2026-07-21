@@ -28,9 +28,6 @@ final class CliLedgerStepDataPayloadMapper {
       if (isQueryJournalKind(kind)) {
         return queryStepDataPayload(entry);
       }
-      if (kind == LedgerStepKind.ENSURE_BOOK) {
-        return ensureBookStepDataPayload(entry.facts());
-      }
       if (kind == LedgerStepKind.DECLARE_ACCOUNT) {
         return new CliPlanJsonModels.AccountDeclarationStepDataPayload(
             CliLedgerFactAccess.requiredTextFact(entry.facts(), "outcome"),
@@ -88,16 +85,6 @@ final class CliLedgerStepDataPayloadMapper {
       return postingPageStepDataPayload(entry.facts());
     }
     return accountBalanceStepDataPayload(entry.facts());
-  }
-
-  private static CliPlanJsonModels.EnsureBookStepDataPayload ensureBookStepDataPayload(
-      List<LedgerFact> facts) {
-    return new CliPlanJsonModels.EnsureBookStepDataPayload(
-        CliLedgerFactAccess.requiredTextFact(facts, "initializedAt"),
-        CliLedgerFactAccess.requiredTextFact(facts, "entityName"),
-        CliLedgerFactAccess.requiredTextFact(facts, "functionalCurrency"),
-        CliLedgerFactAccess.requiredTextFact(facts, "fiscalYearStart"),
-        CliLedgerFactAccess.requiredTextFact(facts, "bookStartEffectiveDate"));
   }
 
   private static CliPlanJsonModels.PreflightEntryStepDataPayload preflightEntryStepDataPayload(

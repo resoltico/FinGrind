@@ -14,7 +14,6 @@ import org.jspecify.annotations.Nullable;
 
 /** Canonical wire kinds accepted for top-level ledger-plan steps. */
 public enum LedgerStepKind implements WireValue, LedgerJournalKind {
-  ENSURE_BOOK("ensure-book"),
   DECLARE_ACCOUNT(OperationId.DECLARE_ACCOUNT),
   DECLARE_TAX_REGISTRATION(OperationId.DECLARE_TAX_REGISTRATION),
   PREFLIGHT_ENTRY(OperationId.PREFLIGHT_ENTRY),
@@ -104,7 +103,7 @@ public enum LedgerStepKind implements WireValue, LedgerJournalKind {
 
   /** Returns every ledger-plan step kind accepted by the public request format. */
   public static List<LedgerStepKind> supportedPlanStepKinds() {
-    return Arrays.stream(values()).filter(kind -> kind != ENSURE_BOOK).toList();
+    return List.of(values());
   }
 
   /** Returns every public ledger-plan step wire value in declaration order. */

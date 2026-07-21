@@ -1,7 +1,6 @@
 package dev.erst.fingrind.executor.workflow;
 
 import dev.erst.fingrind.contract.workflow.LedgerPlanFailure;
-import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import java.util.List;
@@ -31,8 +30,7 @@ public final class LedgerPlanStepOutcomes {
   /** Chooses the public-facing missing-book code that matches the first workflow step family. */
   public static String missingBookCode(BookWorkflowStep firstStep) {
     Objects.requireNonNull(firstStep, "firstStep");
-    if (firstStep instanceof BookWorkflowStep.EnsureBook
-        || firstStep instanceof BookWorkflowStep.DeclareAccount) {
+    if (firstStep instanceof BookWorkflowStep.DeclareAccount) {
       return "administration-book-not-initialized";
     }
     if (firstStep instanceof BookWorkflowStep.PreflightEntry
@@ -51,13 +49,5 @@ public final class LedgerPlanStepOutcomes {
   /** Creates one successful workflow step outcome from the supplied fact list. */
   public static LedgerPlanStepOutcome stepSucceeded(List<BookWorkflowFact> facts) {
     return new LedgerPlanStepOutcome.Succeeded(facts);
-  }
-
-  /** Converts one setup-identity mismatch into the local workflow outcome model. */
-  public static LedgerPlanStepOutcome ensureBookIdentityConflict(
-      BookIdentity existingBookIdentity, BookIdentity requestedBookIdentity) {
-    return new LedgerPlanStepOutcome.Rejected(
-        LedgerPlanWorkflowFailureMapper.ensureBookIdentityConflict(
-            existingBookIdentity, requestedBookIdentity));
   }
 }

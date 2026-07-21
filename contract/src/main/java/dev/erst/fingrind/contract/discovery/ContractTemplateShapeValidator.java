@@ -20,7 +20,6 @@ final class ContractTemplateShapeValidator {
 
   static void validateStepShape(
       LedgerStepKind kind,
-      ContractPlanTemplates.@Nullable EnsureBookTemplateDescriptor ensureBook,
       @Nullable PostingRequestTemplateDescriptor posting,
       ContractTemplates.@Nullable DeclareAccountTemplateDescriptor declareAccount,
       ContractTemplates.@Nullable DeclareTaxRegistrationTemplateDescriptor declareTaxRegistration,
@@ -28,7 +27,6 @@ final class ContractTemplateShapeValidator {
       ContractPlanTemplates.@Nullable LedgerAssertionTemplateDescriptor assertion,
       @Nullable String postingId) {
     ContractTemplateStepShapeRequirements requirements = stepRequirements(kind);
-    requirePresence(kind, "ensureBook", ensureBook, requirements.openBook());
     requirePresence(kind, "posting", posting, requirements.posting());
     requirePresence(kind, "declareAccount", declareAccount, requirements.declareAccount());
     requirePresence(

@@ -13,9 +13,4 @@ public record BookWorkflowPlan(BookWorkflowPlanId planId, List<BookWorkflowStep>
       throw new IllegalArgumentException("Workflow plan must contain at least one step.");
     }
   }
-
-  /** Returns whether this plan begins by ensuring the selected book exists. */
-  public boolean beginsWithEnsureBook() {
-    return steps.getFirst() instanceof BookWorkflowStep.EnsureBook;
-  }
 }

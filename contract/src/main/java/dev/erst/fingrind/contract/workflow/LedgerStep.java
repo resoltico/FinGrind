@@ -4,7 +4,6 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
-import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
@@ -15,8 +14,7 @@ import org.jspecify.annotations.Nullable;
 
 /** One executable step inside an AI-agent-authored ledger plan. */
 public sealed interface LedgerStep
-    permits LedgerStep.EnsureBook,
-        LedgerStep.DeclareAccount,
+    permits LedgerStep.DeclareAccount,
         LedgerStep.DeclareTaxRegistration,
         LedgerStep.PreflightEntry,
         LedgerStep.PostEntry,
@@ -48,20 +46,6 @@ public sealed interface LedgerStep
   /** Validates a step identifier. */
   static void requireStepId(LedgerStepId stepId) {
     Objects.requireNonNull(stepId, "stepId");
-  }
-
-  /** Ensures the selected book is initialized inside the plan transaction. */
-  record EnsureBook(LedgerStepId stepId, OpenBookCommand command) implements LedgerStep {
-    /** Validates the step. */
-    public EnsureBook {
-      requireStepId(stepId);
-      Objects.requireNonNull(command, "command");
-    }
-
-    @Override
-    public LedgerStepKind kind() {
-      return LedgerStepKind.ENSURE_BOOK;
-    }
   }
 
   /** Declares or reactivates one account inside the plan transaction. */

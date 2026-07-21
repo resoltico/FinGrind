@@ -32,7 +32,6 @@ final class MachineContractPlanTemplates {
             new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
                 ProtocolCatalog.operationName(OperationId.RECORD_SALE_SETTLED),
                 LedgerStepKind.RECORD_SALE_SETTLED,
-                null,
                 MachineContractPostEntryVariantSchemas.template(BookkeepingEntryKind.SALE_SETTLED),
                 null,
                 null,
@@ -66,7 +65,6 @@ final class MachineContractPlanTemplates {
             new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
                 ProtocolCatalog.operationName(OperationId.DECLARE_TAX_REGISTRATION),
                 LedgerStepKind.DECLARE_TAX_REGISTRATION,
-                null,
                 null,
                 null,
                 MachineContractTemplatesCatalog.declareTaxRegistrationTemplate(),
@@ -171,7 +169,6 @@ final class MachineContractPlanTemplates {
     return new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
         stepId,
         LedgerStepKind.DECLARE_ACCOUNT,
-        null,
         null,
         new ContractTemplates.DeclareAccountTemplateDescriptor(
             accountCode,

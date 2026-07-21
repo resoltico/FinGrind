@@ -17,7 +17,6 @@ import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
-import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolBookRequestFieldSets;
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.protocol.ProtocolLedgerPlanFields;
@@ -64,18 +63,9 @@ final class CliLedgerPlanParser {
   private static LedgerStep readLedgerStep(ObjectNode stepNode) {
     LedgerStepId stepId =
         new LedgerStepId(requiredText(stepNode, ProtocolLedgerPlanFields.Step.STEP_ID));
-    String kindValue = requiredText(stepNode, ProtocolLedgerPlanFields.Step.KIND);
-    if (LedgerStepKind.ENSURE_BOOK.wireValue().equals(kindValue)) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolLedgerPlanFields.Step.KIND,
-          "Ledger plans cannot initialize an attested book. Run "
-              + OperationId.OPEN_BOOK.wireName()
-              + " with explicit founder "
-              + "credentials before executing a plan.");
-    }
     LedgerStepKind kind =
         parseWireValue(
-            kindValue,
+            requiredText(stepNode, ProtocolLedgerPlanFields.Step.KIND),
             ProtocolLedgerPlanFields.Step.KIND,
             LedgerStepKind.wireValues(),
             LedgerStepKind::fromWireValue);
@@ -147,13 +137,6 @@ final class CliLedgerPlanParser {
     if (unexpectedFields.isEmpty()) {
       return;
     }
-    rejectFlattenedNestedStepPayload(
-        stepNode,
-        kind,
-        unexpectedFields,
-        ProtocolLedgerPlanFields.Step.ENSURE_BOOK,
-        ProtocolBookRequestFieldSets.openBookFields(),
-        LedgerStepKind.ENSURE_BOOK);
     rejectFlattenedNestedStepPayload(
         stepNode,
         kind,

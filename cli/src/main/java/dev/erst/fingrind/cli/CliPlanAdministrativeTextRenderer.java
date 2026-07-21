@@ -9,14 +9,6 @@ final class CliPlanAdministrativeTextRenderer {
 
   static String renderStepData(CliPlanJsonModels.LedgerAdministrativeStepDataPayload dataPayload) {
     return switch (dataPayload) {
-      case CliPlanJsonModels.EnsureBookStepDataPayload ensureBook ->
-          CliTextFormat.renderKeyValueBlock(
-              List.of(
-                  List.of("Initialized at", ensureBook.initializedAt()),
-                  List.of("Entity name", ensureBook.entityName()),
-                  List.of("Functional currency", ensureBook.functionalCurrency()),
-                  List.of("Fiscal year start", ensureBook.fiscalYearStart()),
-                  List.of("Book start effective date", ensureBook.bookStartEffectiveDate())));
       case CliPlanJsonModels.AccountDeclarationStepDataPayload accountDeclaration ->
           CliPlanBookkeepingTextRenderer.renderDeclaredAccount(
               accountDeclaration.outcome(), accountDeclaration.account());

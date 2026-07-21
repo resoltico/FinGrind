@@ -6,14 +6,8 @@ import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
-import dev.erst.fingrind.core.AccountingBasis;
 import dev.erst.fingrind.core.BalanceSide;
-import dev.erst.fingrind.core.BookEntityName;
-import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.CanonicalTemporalText;
-import dev.erst.fingrind.core.CurrencyUnit;
-import dev.erst.fingrind.core.FiscalYearStart;
-import dev.erst.fingrind.core.InventoryCostingDoctrine;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -37,7 +31,6 @@ public interface ContractPlanTemplates {
   public record LedgerPlanStepTemplateDescriptor(
       String stepId,
       LedgerStepKind kind,
-      ContractPlanTemplates.@Nullable EnsureBookTemplateDescriptor ensureBook,
       @Nullable PostingRequestTemplateDescriptor posting,
       ContractTemplates.@Nullable DeclareAccountTemplateDescriptor declareAccount,
       ContractTemplates.@Nullable DeclareTaxRegistrationTemplateDescriptor declareTaxRegistration,
@@ -49,7 +42,6 @@ public interface ContractPlanTemplates {
     public LedgerPlanStepTemplateDescriptor(
         String stepId,
         LedgerStepKind kind,
-        ContractPlanTemplates.@Nullable EnsureBookTemplateDescriptor ensureBook,
         @Nullable PostingRequestTemplateDescriptor posting,
         ContractTemplates.@Nullable DeclareAccountTemplateDescriptor declareAccount,
         ContractTemplates.@Nullable DeclareTaxRegistrationTemplateDescriptor declareTaxRegistration,
@@ -58,7 +50,6 @@ public interface ContractPlanTemplates {
         @Nullable String postingId) {
       this.stepId = ContractDescriptorValidation.requireText(stepId, "stepId");
       this.kind = ContractDescriptorValidation.requireValue(kind, "kind");
-      this.ensureBook = ContractDescriptorValidation.requireOptionalValue(ensureBook, "ensureBook");
       this.posting = ContractDescriptorValidation.requireOptionalValue(posting, "posting");
       this.declareAccount =
           ContractDescriptorValidation.requireOptionalValue(declareAccount, "declareAccount");
@@ -70,50 +61,12 @@ public interface ContractPlanTemplates {
       this.postingId = ContractDescriptorValidation.requireOptionalText(postingId, "postingId");
       ContractTemplateShapeValidator.validateStepShape(
           this.kind,
-          this.ensureBook,
           this.posting,
           this.declareAccount,
           this.declareTaxRegistration,
           this.query,
           this.assertion,
           this.postingId);
-    }
-  }
-
-  /** Canonical ensure-book template nested inside a ledger plan. */
-  public record EnsureBookTemplateDescriptor(
-      String entityName,
-      String bookTemplateId,
-      String accountingBasis,
-      @Nullable String inventoryCosting,
-      String functionalCurrency,
-      String fiscalYearStart,
-      String bookStartEffectiveDate)
-      implements TemplateDescriptorType {
-    /** Validates one ensure-book template descriptor payload. */
-    public EnsureBookTemplateDescriptor {
-      entityName = ContractDescriptorValidation.requireText(entityName, "entityName");
-      new BookEntityName(entityName);
-      bookTemplateId = ContractDescriptorValidation.requireText(bookTemplateId, "bookTemplateId");
-      BookTemplateId.fromWireValue(bookTemplateId);
-      accountingBasis =
-          ContractDescriptorValidation.requireText(accountingBasis, "accountingBasis");
-      AccountingBasis.fromWireValue(accountingBasis);
-      inventoryCosting =
-          ContractDescriptorValidation.requireOptionalText(inventoryCosting, "inventoryCosting");
-      if (inventoryCosting != null) {
-        InventoryCostingDoctrine.fromWireValue(inventoryCosting);
-      }
-      functionalCurrency =
-          ContractDescriptorValidation.requireText(functionalCurrency, "functionalCurrency");
-      CurrencyUnit.of(functionalCurrency);
-      fiscalYearStart =
-          ContractDescriptorValidation.requireText(fiscalYearStart, "fiscalYearStart");
-      FiscalYearStart.parse(fiscalYearStart);
-      bookStartEffectiveDate =
-          ContractDescriptorValidation.requireText(
-              bookStartEffectiveDate, "bookStartEffectiveDate");
-      CanonicalTemporalText.parseLocalDate(bookStartEffectiveDate, "bookStartEffectiveDate");
     }
   }
 
