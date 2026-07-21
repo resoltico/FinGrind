@@ -156,8 +156,6 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
                     baseFact.evidence(),
                     new CommittedProvenance(
                         new RequestProvenance(
-                            new ActorId("actor-2"),
-                            ActorType.AGENT,
                             new CommandId("command-2"),
                             new IdempotencyKey("idem-2"),
                             new CausationId("cause-2"),
