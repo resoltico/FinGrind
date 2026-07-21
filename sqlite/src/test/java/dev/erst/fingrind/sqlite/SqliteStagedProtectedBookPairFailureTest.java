@@ -291,6 +291,32 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
   }
 
   @Test
+  void stagedBackupPair_passphraseCleanupIsIdempotentBeforeRollbackTakesOwnershipOfTheStages()
+      throws Exception {
+    Path stagedBackupPath = writeArtifact("backup-passphrase-cleanup/staged.sqlite", "backup");
+    Path stagedKeyPath = writeArtifact("backup-passphrase-cleanup/staged.key", "key");
+    Path finalBackupPath =
+        tempDirectory.resolve("backup-passphrase-cleanup").resolve("backup.sqlite");
+    Path finalKeyPath = tempDirectory.resolve("backup-passphrase-cleanup").resolve("backup.key");
+
+    try (SqliteBookPassphrase passphrase = testPassphrase();
+        SqliteStagedBackupPair stagedPair =
+            SqliteStagedBackupPairFactory.create(
+                SqliteOwnedStagedArtifact.recordExisting(finalBackupPath, stagedBackupPath),
+                finalBackupPath,
+                SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath),
+                finalKeyPath,
+                passphrase,
+                VERIFICATION_SUPPORT)) {
+      closeUnusedBackupPassphrase(stagedPair);
+      closeUnusedBackupPassphrase(stagedPair);
+    }
+
+    assertFalse(Files.exists(stagedBackupPath));
+    assertFalse(Files.exists(stagedKeyPath));
+  }
+
+  @Test
   void stagedBackupPair_reclaimsItsPublishedKeyBeforeSecondaryCleanupFails() throws Exception {
     Path stagedBackupPath = writeArtifact("backup-cleanup-failure/staged.sqlite", "backup");
     Path stagedKeyPath = writeArtifact("backup-cleanup-failure/staged.key", "key");
@@ -655,6 +681,24 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
   private static SqliteBookPassphrase testPassphrase() {
     return SqliteBookPassphrase.fromUtf8Bytes(
         "staged protected-book pair", TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8));
+  }
+
+  private static void closeUnusedBackupPassphrase(SqliteStagedBackupPair stagedPair) {
+    try {
+      MethodHandle closeUnusedBackupPassphrase =
+          MethodHandles.privateLookupIn(SqliteStagedBackupPair.class, MethodHandles.lookup())
+              .findVirtual(
+                  SqliteStagedBackupPair.class,
+                  "closeUnusedBackupPassphrase",
+                  MethodType.methodType(void.class));
+      closeUnusedBackupPassphrase.invoke(stagedPair);
+    } catch (RuntimeException exception) {
+      throw exception;
+    } catch (Error error) {
+      throw error;
+    } catch (Throwable throwable) {
+      throw new AssertionError("Failed to invoke staged backup passphrase cleanup.", throwable);
+    }
   }
 
   private static Path ownedRecordPath(Path parent) throws IOException {
