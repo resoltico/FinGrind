@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationReviewResult;
+import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.ExportAttestationReceiptResult;
 import dev.erst.fingrind.contract.bookkeeping.VerifyAttestationReceiptResult;
 import dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult;
@@ -58,7 +59,8 @@ public final class AttestationInspectionService {
                 return ContractDecision.accepted(validBookResult(verification));
               } catch (AttestationVerificationException exception) {
                 return ContractDecision.accepted(
-                    new VerifyBookAttestationResult.Invalid(exception.code()));
+                    new VerifyBookAttestationResult.Invalid(
+                        AttestationVerificationFailure.requireWireCode(exception.code())));
               }
             },
             ContractDecision::rejected);
@@ -161,7 +163,8 @@ public final class AttestationInspectionService {
     try {
       if (!Files.isRegularFile(receiptPath, LinkOption.NOFOLLOW_LINKS)) {
         return ContractDecision.accepted(
-            new VerifyAttestationReceiptResult.Invalid("receipt-artifact-invalid"));
+            new VerifyAttestationReceiptResult.Invalid(
+                AttestationVerificationFailure.RECEIPT_ARTIFACT_INVALID.wireCode()));
       }
       receipt = Files.readAllBytes(receiptPath);
     } catch (IOException exception) {
@@ -180,7 +183,8 @@ public final class AttestationInspectionService {
               verification.bookId(), verification.operationOrder(), verification.findings()));
     } catch (IllegalArgumentException exception) {
       return ContractDecision.accepted(
-          new VerifyAttestationReceiptResult.Invalid("receipt-artifact-invalid"));
+          new VerifyAttestationReceiptResult.Invalid(
+              AttestationVerificationFailure.RECEIPT_ARTIFACT_INVALID.wireCode()));
     }
   }
 

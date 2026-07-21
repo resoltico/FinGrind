@@ -25,10 +25,7 @@ public sealed interface VerifyAttestationReceiptResult
   /** First exact receipt or underlying-chain structural failure. */
   record Invalid(String failureCode) implements VerifyAttestationReceiptResult {
     public Invalid {
-      failureCode = Objects.requireNonNull(failureCode, "failureCode").strip();
-      if (failureCode.isEmpty()) {
-        throw new IllegalArgumentException("failureCode must not be blank.");
-      }
+      failureCode = AttestationVerificationFailure.requireWireCode(failureCode);
     }
   }
 }

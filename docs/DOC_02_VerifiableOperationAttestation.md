@@ -5,7 +5,7 @@ domain: BOOK_OPERATION_ATTESTATION
 updated: "2026-07-21"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["AttestedOperation", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationEvidence", "AttestationGenesis", "AttestationKeyFiles", "AttestationOperationKind", "AttestationOperationSigner", "AttestationPublicCredential", "AttestationSigningCredential", "AttestationVerification", "AttestationVerificationException", "AttestationVerifier"]
+  symbols: ["AttestedOperation", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationEvidence", "AttestationGenesis", "AttestationKeyFiles", "AttestationOperationKind", "AttestationOperationSigner", "AttestationPublicCredential", "AttestationSigningCredential", "AttestationVerification", "AttestationVerificationException", "AttestationVerificationFailure", "AttestationVerifier"]
 route:
   keywords: [verifiable-operation-attestation, operation-head, attestation-envelope, principal-quorum, credential-purpose, autonomous-workflow, semantic-profile, failure-precedence, ed25519, stale-head]
   questions: ["what does FinGrind book-operation attestation prove", "how is an attested operation encoded", "which credential may authorize a system operation", "which semantic profile governs a typed operation"]
@@ -145,6 +145,49 @@ operation head, and non-persisted review finding identifiers for a structurally 
 
 `AttestationVerificationException` identifies the first stable structural-failure token.
 
+## `AttestationVerificationFailure`
+
+`AttestationVerificationFailure` is the closed public structural-rejection vocabulary for
+`verify-book` and `verify-receipt`. Its exact `wireCode` is published in the rejected JSON
+envelope, has the `structural-invalid` category, and produces process exit `2`; unknown,
+normalized, or aliased codes are rejected at the contract boundary rather than becoming generic
+internal errors.
+
+```java
+public enum AttestationVerificationFailure
+```
+
+| Member | `wireCode` |
+|:--|:--|
+| `UNSUPPORTED_VERSION` | `attestation-unsupported-version` |
+| `PREIMAGE_INVALID` | `attestation-preimage-invalid` |
+| `PREVIOUS_HEAD_INVALID` | `attestation-previous-head-invalid` |
+| `REQUEST_PROFILE_INVALID` | `attestation-request-profile-invalid` |
+| `UNKNOWN_OPERATION_KIND` | `attestation-unknown-operation-kind` |
+| `ENVELOPE_ORDER_INVALID` | `attestation-envelope-order-invalid` |
+| `QUORUM_BELOW` | `attestation-quorum-below` |
+| `QUORUM_EXCESS` | `attestation-quorum-excess` |
+| `DUPLICATE_PRINCIPAL` | `attestation-duplicate-principal` |
+| `DUPLICATE_KEY` | `attestation-duplicate-key` |
+| `KEY_NOT_ENROLLED` | `attestation-key-not-enrolled` |
+| `KEY_REVOKED` | `attestation-key-revoked` |
+| `KEY_PRINCIPAL_MISMATCH` | `attestation-key-principal-mismatch` |
+| `KEY_ALGORITHM_INVALID` | `attestation-key-algorithm-invalid` |
+| `SIGNATURE_INVALID` | `attestation-signature-invalid` |
+| `CAPABILITY_INVALID` | `attestation-capability-invalid` |
+| `CREDENTIAL_PURPOSE_INVALID` | `attestation-credential-purpose-invalid` |
+| `SYSTEM_DERIVATION_INVALID` | `attestation-system-derivation-invalid` |
+| `GENESIS_INVALID` | `attestation-genesis-invalid` |
+| `MANIFEST_INVALID` | `attestation-manifest-invalid` |
+| `RECEIPT_INVALID` | `attestation-receipt-invalid` |
+| `RECEIPT_ARTIFACT_INVALID` | `receipt-artifact-invalid` |
+
+The enum owns the public code vocabulary and response descriptors. Core verification may report
+the first of these codes, while the executor maps it across the application boundary without
+exposing an unclassified internal token.
+
+---
+
 ## `AttestationVerifier`
 
 `AttestationVerifier` is the pure complete-chain boundary; it owns no private-key type, custodian
@@ -156,7 +199,8 @@ handle, filesystem path, or mutable book state.
 `VerifyBookAttestationResult` and `AttestationReviewResult` are its public success/rejection
 surfaces: verification proves the chain through its head, while review reports non-persisted
 compromise findings without changing the book. A review result is not an authorization decision
-and cannot repair, delete, or rewrite evidence.
+and cannot repair, delete, or rewrite evidence. An invalid verification result contains exactly one
+`AttestationVerificationFailure.wireCode`; it is never converted into an `internal-error` envelope.
 
 ## Profile Constants And Canonical Primitives
 

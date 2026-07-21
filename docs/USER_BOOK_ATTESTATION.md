@@ -84,6 +84,12 @@ fingrind attestation-review \
   --book-key-file ./secrets/acme.book-key
 ```
 
+An invalid `verify-book` or `verify-receipt` JSON response is a rejected envelope with exit code
+`2`, category `structural-invalid`, and one exact attestation failure code. The response never
+falls back to `internal-error` for an expected verification refusal; use the published code to
+distinguish a bad signature, invalid chain link, unauthorized historical credential, malformed
+receipt, or unsupported format.
+
 ## Backups, Restores, And Receipts
 
 `backup-book` publishes an encrypted backup pair only to absent destinations, then appends the

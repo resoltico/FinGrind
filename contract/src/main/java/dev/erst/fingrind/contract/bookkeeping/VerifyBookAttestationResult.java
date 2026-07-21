@@ -32,10 +32,7 @@ public sealed interface VerifyBookAttestationResult
   /** First exact structural attestation failure. */
   record Invalid(String failureCode) implements VerifyBookAttestationResult {
     public Invalid {
-      failureCode = Objects.requireNonNull(failureCode, "failureCode").strip();
-      if (failureCode.isEmpty()) {
-        throw new IllegalArgumentException("failureCode must not be blank.");
-      }
+      failureCode = AttestationVerificationFailure.requireWireCode(failureCode);
     }
   }
 

@@ -48,6 +48,9 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Fixed `verify-book` and `verify-receipt` invalid-result transport. Every structural attestation
+  refusal now publishes its exact documented rejection code and `structural-invalid` category with
+  exit code `2`, rather than degrading into an `internal-error` response.
 - Fixed live-clock attested postings, lifecycle operations, and receipt exports. Runtime timestamps
   are now canonicalized to UTC milliseconds before durable mutation and immutable signed payload
   construction, and non-credential mutation failures are no longer reported as invalid attestation

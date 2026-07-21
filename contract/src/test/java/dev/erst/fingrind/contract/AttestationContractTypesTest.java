@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput;
 import dev.erst.fingrind.contract.bookkeeping.AttestationReviewResult;
+import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.ExportAttestationReceiptResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.VerifyAttestationReceiptResult;
@@ -91,11 +92,15 @@ class AttestationContractTypesTest extends ContractTestSupport {
     assertTrue(reviewedBook.reviewRequired());
     assertFalse(cleanBook.reviewRequired());
     assertEquals(
-        "receipt-chain-invalid",
-        new VerifyAttestationReceiptResult.Invalid(" receipt-chain-invalid ").failureCode());
+        AttestationVerificationFailure.RECEIPT_INVALID.wireCode(),
+        new VerifyAttestationReceiptResult.Invalid(
+                AttestationVerificationFailure.RECEIPT_INVALID.wireCode())
+            .failureCode());
     assertEquals(
-        "book-chain-invalid",
-        new VerifyBookAttestationResult.Invalid(" book-chain-invalid ").failureCode());
+        AttestationVerificationFailure.PREIMAGE_INVALID.wireCode(),
+        new VerifyBookAttestationResult.Invalid(
+                AttestationVerificationFailure.PREIMAGE_INVALID.wireCode())
+            .failureCode());
 
     assertThrows(
         IllegalArgumentException.class,
@@ -131,7 +136,8 @@ class AttestationContractTypesTest extends ContractTestSupport {
         () ->
             new VerifyAttestationReceiptResult.Valid(BOOK_ID, oversizedUnsignedOrder(), List.of()));
     assertThrows(
-        IllegalArgumentException.class, () -> new VerifyAttestationReceiptResult.Invalid(" "));
+        IllegalArgumentException.class,
+        () -> new VerifyAttestationReceiptResult.Invalid("attestation-unpublished"));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -148,7 +154,22 @@ class AttestationContractTypesTest extends ContractTestSupport {
             new VerifyBookAttestationResult.Valid(
                 BOOK_ID, BigInteger.ZERO, OPERATION_HEAD.toUpperCase(Locale.ROOT), List.of()));
     assertThrows(
-        IllegalArgumentException.class, () -> new VerifyBookAttestationResult.Invalid(" "));
+        IllegalArgumentException.class,
+        () -> new VerifyBookAttestationResult.Invalid("attestation-unpublished"));
+  }
+
+  @Test
+  void attestationVerificationFailures_areAnExactPublishedVocabulary() {
+    assertEquals(22, AttestationVerificationFailure.values().length);
+    assertEquals(
+        AttestationVerificationFailure.SIGNATURE_INVALID,
+        AttestationVerificationFailure.fromWireCode("attestation-signature-invalid"));
+    assertEquals(
+        AttestationVerificationFailure.RECEIPT_ARTIFACT_INVALID,
+        AttestationVerificationFailure.fromWireCode("receipt-artifact-invalid"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> AttestationVerificationFailure.fromWireCode(" attestation-signature-invalid "));
   }
 
   @Test

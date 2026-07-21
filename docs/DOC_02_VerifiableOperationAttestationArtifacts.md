@@ -136,7 +136,9 @@ receipt-not-independent.
 `AttestationReceiptVerificationResult` carries the verified anchor outcome. The public
 `ExportAttestationReceiptResult` reports no-clobber receipt publication, and
 `VerifyAttestationReceiptResult` reports receipt verification. Both remain non-mutating: neither
-command appends evidence or changes a book's head.
+command appends evidence or changes a book's head. A structurally invalid receipt publishes the
+exact closed `AttestationVerificationFailure` code in a `structural-invalid` rejected envelope;
+an unreadable or malformed receipt artifact uses `receipt-artifact-invalid`.
 
 | Verifier holds | Detects | Does not detect |
 |:--|:--|:--|

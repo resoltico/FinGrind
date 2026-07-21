@@ -43,6 +43,12 @@ class ContractResponseCatalogTest {
     assertEquals(
         ContractResponse.FailureCategory.DOMAIN_SEMANTIC,
         ContractResponseCatalog.failureCategoryFor("assertion-failed"));
+    assertEquals(
+        ContractResponse.FailureCategory.STRUCTURAL_INVALID,
+        ContractResponseCatalog.failureCategoryFor("attestation-signature-invalid"));
+    assertEquals(
+        ContractResponse.FailureCategory.STRUCTURAL_INVALID,
+        ContractResponseCatalog.failureCategoryFor("receipt-artifact-invalid"));
   }
 
   @Test

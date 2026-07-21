@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.runtime;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
@@ -24,6 +25,7 @@ public final class ContractResponseCatalog {
               BookAdministrationRejection.descriptors(),
               BookMaintenanceRejection.descriptors(),
               BookQueryRejection.descriptors(),
+              AttestationVerificationFailure.rejectionDescriptors(),
               TaxDeclarationRejection.descriptors(),
               TaxQueryRejection.descriptors(),
               PostingRejection.descriptors(),

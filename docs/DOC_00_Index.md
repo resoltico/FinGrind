@@ -199,6 +199,7 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `AttestationTaxRegistrationSnapshot` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationVerification` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationVerification` |
 | `AttestationVerificationException` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationVerificationException` |
+| `AttestationVerificationFailure` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationVerificationFailure` |
 | `AttestationVerifier` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationVerifier` |
 | `AttestedProtectedBookLifecycleWorkflow` | `DOC_03_BookSessionsAndAdapters.md` | `Attested Protected-Book Maintenance` |
 | `AttestedProtectedBookMaintenanceStore` | `DOC_03_BookSessionsAndAdapters.md` | `Attested Protected-Book Maintenance` |
