@@ -85,12 +85,52 @@ class ProtectedBookMaintenanceServiceTest {
         service.rekeyBook(credentialFreeAccess, temporaryDirectory.resolve("rekeyed/book.key")));
   }
 
+  @Test
+  void projectsLocalStorageFailuresAsPublishedContractRejections() throws IOException {
+    AttestationMaintenanceTestSupport.CredentialFixture credential = credential();
+    Path bookPath = temporaryDirectory.resolve("live/book.sqlite");
+    BookAccess access = AttestationMaintenanceTestSupport.bookAccess(bookPath, credential);
+
+    AttestationMaintenanceTestSupport.Store backupStore = store(bookPath, credential);
+    backupStore.setPrepareFailure(new IllegalStateException("backup staging unavailable"));
+    assertInstanceOf(
+        ContractDecision.Rejected.class,
+        new ProtectedBookMaintenanceService(CLOCK, backupStore)
+            .backupBook(
+                access,
+                temporaryDirectory.resolve("retained/book.fgba"),
+                temporaryDirectory.resolve("retained/book.key"),
+                BACKUP_ID));
+
+    AttestationMaintenanceTestSupport.Store restoreStore = store(bookPath, credential);
+    restoreStore.setExistingLeaseFailure(new IllegalStateException("backup lease unavailable"));
+    assertInstanceOf(
+        ContractDecision.Rejected.class,
+        new ProtectedBookMaintenanceService(CLOCK, restoreStore)
+            .restoreBook(
+                temporaryDirectory.resolve("restored/book.sqlite"),
+                temporaryDirectory.resolve("restored/book.key"),
+                temporaryDirectory.resolve("retained/book.fgba"),
+                temporaryDirectory.resolve("retained/book.key"),
+                List.of(credential.source())));
+
+    AttestationMaintenanceTestSupport.Store rekeyStore = store(bookPath, credential);
+    rekeyStore.setPrepareFailure(new IllegalStateException("rekey staging unavailable"));
+    assertInstanceOf(
+        ContractDecision.Rejected.class,
+        new ProtectedBookMaintenanceService(CLOCK, rekeyStore)
+            .rekeyBook(access, temporaryDirectory.resolve("rekeyed/book.key")));
+  }
+
   private ProtectedBookMaintenanceService service(
       Path bookPath, AttestationMaintenanceTestSupport.CredentialFixture credential) {
-    return new ProtectedBookMaintenanceService(
-        CLOCK,
-        new AttestationMaintenanceTestSupport.Store(
-            bookPath, List.of(AttestationMaintenanceTestSupport.genesis(credential, RECORDED_AT))));
+    return new ProtectedBookMaintenanceService(CLOCK, store(bookPath, credential));
+  }
+
+  private AttestationMaintenanceTestSupport.Store store(
+      Path bookPath, AttestationMaintenanceTestSupport.CredentialFixture credential) {
+    return new AttestationMaintenanceTestSupport.Store(
+        bookPath, List.of(AttestationMaintenanceTestSupport.genesis(credential, RECORDED_AT)));
   }
 
   private AttestationMaintenanceTestSupport.CredentialFixture credential() throws IOException {

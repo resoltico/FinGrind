@@ -4,6 +4,7 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTa
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.core.AccountCode;
@@ -20,12 +21,15 @@ import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountRetirementOutcome;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /** Unit tests for {@link BookAdministrationService}. */
 class BookAdministrationServiceTest {
@@ -35,6 +39,31 @@ class BookAdministrationServiceTest {
       ignored -> {
         throw new AssertionError("In-memory test doubles must not invoke the attestation signer.");
       };
+
+  @TempDir Path temporaryDirectory;
+
+  @Test
+  void openAttestedBook_delegatesTheMatchingSignedGenesisToTheBookStore() throws IOException {
+    AttestationMaintenanceTestSupport.CredentialFixture credential =
+        AttestationMaintenanceTestSupport.createCredential(temporaryDirectory);
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      BookAdministrationService service =
+          new BookAdministrationService(bookSession, bookSession, bookSession, FIXED_CLOCK);
+
+      assertInstanceOf(
+          dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome.Opened.class,
+          service.openAttestedBook(
+              bookIdentity(),
+              AttestationGenesisFactory.create(
+                  bookIdentity(),
+                  FIXED_CLOCK.instant(),
+                  List.of(
+                      new dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput(
+                          credential.source().principalId(),
+                          credential.source().encryptedKeyFilePath(),
+                          credential.source().passphraseFilePath())))));
+    }
+  }
 
   @Test
   @org.jspecify.annotations.NullUnmarked

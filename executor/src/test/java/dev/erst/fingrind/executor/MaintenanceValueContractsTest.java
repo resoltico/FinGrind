@@ -4,12 +4,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingRequestPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.maintenance.BackupAcknowledgementConflictException;
+import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
+import dev.erst.fingrind.executor.spi.AttestedProtectedBookMaintenanceStore;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
+import dev.erst.fingrind.executor.spi.StagedBackupPair;
+import dev.erst.fingrind.executor.spi.StagedRestoredBookPair;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
@@ -58,5 +66,96 @@ class MaintenanceValueContractsTest {
         () ->
             new ProtectedBookMaintenanceRejection.BackupSourceHasBlockingArtifacts(
                 BOOK_PATH, List.of()));
+  }
+
+  @Test
+  @org.jspecify.annotations.NullUnmarked
+  void rejectsNullPublishedOpenBookCommandsAtTheTranslationBoundary() {
+    assertThrows(
+        NullPointerException.class,
+        () -> BookkeepingRequestPublishedLanguageTranslator.fromPublished((OpenBookCommand) null));
+  }
+
+  @Test
+  void rejectsUnattestedMaintenanceStoresBeforeInvokingAnyStorageOperation() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> AttestedProtectedBookMaintenanceStore.require(new UnattestedStore()));
+  }
+
+  /**
+   * A deliberately incomplete store that proves attestation is mandatory at the adapter boundary.
+   */
+  private static final class UnattestedStore implements ProtectedBookMaintenanceStore {
+    @Override
+    public Path normalize(Path path, String argumentName) {
+      throw unsupported();
+    }
+
+    @Override
+    public PreparedPairPublication preparePairPublication(
+        Path normalizedSecretTargetPath,
+        Path normalizedBookTargetPath,
+        RestoredBookTargetPolicy bookTargetPolicy,
+        dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole
+            bookArtifactRole,
+        dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole
+            secretArtifactRole) {
+      throw unsupported();
+    }
+
+    @Override
+    public List<Path> blockingArtifactsForBook(Path normalizedBookPath) {
+      throw unsupported();
+    }
+
+    @Override
+    public List<Path> blockingArtifactsForBackupSource(Path normalizedBackupFilePath) {
+      throw unsupported();
+    }
+
+    @Override
+    public BackupArtifactPairState backupArtifactPairState(
+        Path normalizedBackupArtifactPath, Path normalizedBackupKeyFilePath) {
+      throw unsupported();
+    }
+
+    @Override
+    public LeaseAcquisition acquireExistingArtifactLease(
+        Path normalizedArtifactPath,
+        dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole artifactRole) {
+      throw unsupported();
+    }
+
+    @Override
+    public LeaseAcquisition acquireManagedArtifactLease(
+        Path normalizedArtifactPath,
+        dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole artifactRole) {
+      throw unsupported();
+    }
+
+    @Override
+    public MaintenanceDecision<BookVerification> verifyInitializedBook(
+        ProtectedBookAccess bookAccess,
+        dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole artifactRole) {
+      throw unsupported();
+    }
+
+    @Override
+    public MaintenanceDecision<StagedBackupPair> stageBackupPair(
+        VerifiedBook sourceBook, PreparedPairPublication preparedPairPublication) {
+      throw unsupported();
+    }
+
+    @Override
+    public MaintenanceDecision<StagedRestoredBookPair> stageRestoredBookPair(
+        VerifiedBook sourceBook, PreparedPairPublication preparedPairPublication) {
+      throw unsupported();
+    }
+
+    private static UnsupportedOperationException unsupported() {
+      return new UnsupportedOperationException(
+          "Attestation boundary test must not invoke storage.");
+    }
   }
 }

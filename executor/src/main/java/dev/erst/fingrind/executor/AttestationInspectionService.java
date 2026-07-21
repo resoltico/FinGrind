@@ -179,9 +179,6 @@ public final class AttestationInspectionService {
       return ContractDecision.accepted(
           new VerifyAttestationReceiptResult.Valid(
               verification.bookId(), verification.operationOrder(), verification.findings()));
-    } catch (AttestationVerificationException exception) {
-      return ContractDecision.accepted(
-          new VerifyAttestationReceiptResult.Invalid(exception.code()));
     } catch (IllegalArgumentException exception) {
       return ContractDecision.accepted(
           new VerifyAttestationReceiptResult.Invalid("receipt-artifact-invalid"));

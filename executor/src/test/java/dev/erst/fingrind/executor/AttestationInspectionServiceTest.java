@@ -18,10 +18,12 @@ import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.Verification
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -73,6 +75,21 @@ class AttestationInspectionServiceTest {
     assertInstanceOf(
         VerifyAttestationReceiptResult.Invalid.class,
         service.verifyReceipt(access, alteredReceiptPath).requireAccepted());
+    Path unreadableReceiptPath = retainedDirectory.resolve("unreadable.fgar");
+    Files.writeString(unreadableReceiptPath, "unreadable receipt");
+    Files.setPosixFilePermissions(unreadableReceiptPath, Set.of());
+    try {
+      assertInstanceOf(
+          dev.erst.fingrind.contract.runtime.ContractDecision.Rejected.class,
+          service.verifyReceipt(access, unreadableReceiptPath));
+    } finally {
+      Files.setPosixFilePermissions(
+          unreadableReceiptPath,
+          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
+    }
+    assertInstanceOf(
+        dev.erst.fingrind.contract.runtime.ContractDecision.Rejected.class,
+        service.exportReceipt(access, Path.of("/dev/fingrind-receipt-output.fgar")));
   }
 
   @Test
@@ -156,6 +173,11 @@ class AttestationInspectionServiceTest {
     assertInstanceOf(
         VerifyAttestationReceiptResult.Valid.class,
         valid.verifyReceipt(rootPathAccess, receiptPath).requireAccepted());
+    AttestationInspectionService malformedEvidence =
+        service(bookPath, List.of(new AttestationEvidence(new byte[0], new byte[0], new byte[0])));
+    assertInstanceOf(
+        VerifyAttestationReceiptResult.Invalid.class,
+        malformedEvidence.verifyReceipt(access, receiptPath).requireAccepted());
   }
 
   @Test

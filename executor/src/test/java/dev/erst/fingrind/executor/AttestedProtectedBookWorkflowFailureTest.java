@@ -158,6 +158,56 @@ class AttestedProtectedBookWorkflowFailureTest {
         access,
         credential,
         ProtectedBookMaintenanceRejection.BackupAcknowledgementConflict.class);
+
+    AttestationMaintenanceTestSupport.Store admissionConflict =
+        store(credential, BackupArtifactPairState.ABSENT);
+    assertInstanceOf(
+        ProtectedBookBackupOutcome.BackedUp.class,
+        accepted(backup(admissionConflict, access, credential)));
+    admissionConflict.setBackupPairState(BackupArtifactPairState.ABSENT);
+    admissionConflict.setSnapshotEvidence(admissionConflict.liveEvidence());
+    assertBackupRejection(
+        admissionConflict,
+        access,
+        credential,
+        ProtectedBookMaintenanceRejection.BackupAcknowledgementConflict.class);
+  }
+
+  @Test
+  void classifiesEveryResumePreconditionBeforeOpeningTheBackupArtifact() throws IOException {
+    AttestationMaintenanceTestSupport.CredentialFixture credential = credential();
+    ProtectedBookAccess access = access(credential);
+
+    AttestationMaintenanceTestSupport.Store blocked =
+        store(credential, BackupArtifactPairState.COMPLETE);
+    blocked.setLiveBlockingArtifacts(List.of(bookPath().resolveSibling("book.sqlite-wal")));
+    assertBackupRejection(
+        blocked,
+        access,
+        credential,
+        ProtectedBookMaintenanceRejection.BookHasBlockingArtifacts.class);
+
+    AttestationMaintenanceTestSupport.Store busy =
+        store(credential, BackupArtifactPairState.COMPLETE);
+    busy.setManagedLease(new LeaseBusy(bookPath()));
+    assertBackupRejection(
+        busy, access, credential, ProtectedBookMaintenanceRejection.ArtifactBusy.class);
+
+    AttestationMaintenanceTestSupport.Store invalidLive =
+        store(credential, BackupArtifactPairState.COMPLETE);
+    invalidLive.setLiveVerification(
+        MaintenanceDecision.accepted(
+            new VerificationFailure(bookPath(), ProtectedBookVerificationFailure.MISSING)));
+    assertBackupRejection(
+        invalidLive,
+        access,
+        credential,
+        ProtectedBookMaintenanceRejection.ArtifactVerificationFailed.class);
+
+    AttestationMaintenanceTestSupport.Store unreadableArtifact =
+        store(credential, BackupArtifactPairState.COMPLETE);
+    assertInstanceOf(
+        MaintenanceDecision.Failed.class, backup(unreadableArtifact, access, credential));
   }
 
   @Test
@@ -358,6 +408,30 @@ class AttestedProtectedBookWorkflowFailureTest {
                   backupPath(),
                   backupKeyPath(),
                   session));
+    }
+
+    AttestationMaintenanceTestSupport.Store rejectedArtifactVerification =
+        store(credential, BackupArtifactPairState.ABSENT);
+    rejectedArtifactVerification.setBackupArtifactVerificationFailure(
+        new ProtectedBookMaintenanceRejectionException(
+            new ProtectedBookMaintenanceRejection.ArtifactVerificationFailed(
+                ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE,
+                backupPath(),
+                ProtectedBookVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED)));
+    try (var session = credential.openSession()) {
+      ProtectedBookRestoreOutcome.Rejected rejected =
+          assertInstanceOf(
+              ProtectedBookRestoreOutcome.Rejected.class,
+              accepted(
+                  workflow(rejectedArtifactVerification)
+                      .restoreBook(
+                          temporaryDirectory.resolve("restored/book.sqlite"),
+                          temporaryDirectory.resolve("restored/book.key"),
+                          backupPath(),
+                          backupKeyPath(),
+                          session)));
+      assertInstanceOf(
+          ProtectedBookMaintenanceRejection.ArtifactVerificationFailed.class, rejected.rejection());
     }
 
     AttestationMaintenanceTestSupport.Store rejectedRekeyPublication =
