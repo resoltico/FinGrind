@@ -28,6 +28,7 @@ import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
+import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner;
 import dev.erst.fingrind.executor.bookkeeping.InventoryAccountState;
 import dev.erst.fingrind.executor.bookkeeping.InventoryMovementRecord;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
@@ -213,6 +214,8 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
     Path blankBookPath = tempDirectory.resolve("period-transfer-session-blank.sqlite");
     LocalDate effectiveDate = LocalDate.parse("2026-04-07");
     Instant sweptAt = Instant.parse("2026-04-07T10:15:30Z");
+    ReportingPeriod reportingPeriod = new ReportingPeriod(effectiveDate, effectiveDate);
+    InterimResultSweepPlanner planner = InterimResultSweepPlanner.forBookIdentity(bookIdentity());
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(missingBookPath));
         SqliteReportingPeriodCloseSession reportingPeriodCloseSession =
             SqliteCapabilitySessions.reportingPeriodClose(postingFactStore)) {
@@ -230,6 +233,29 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
                   emptyInterimResultSweepDraft(effectiveDate, sweptAt),
                   unusedPostingIdGenerator(),
                   SqliteAttestationTestSupport.authorizer()));
+      assertEquals(
+          new InterimResultSweepOutcome.Rejected(
+              new BookkeepingAdministrationRejection.BookNotInitialized()),
+          reportingPeriodCloseSession.interimResultSweep(
+              reportingPeriod,
+              bookIdentity(),
+              planner,
+              effectiveDate,
+              sweptAt,
+              unusedPostingIdGenerator(),
+              SqliteAttestationTestSupport.authorizer()));
+      assertEquals(
+          new InterimResultSweepOutcome.Rejected(
+              new BookkeepingAdministrationRejection.BookNotInitialized()),
+          reportingPeriodCloseSession.interimResultSweep(
+              effectiveDate,
+              effectiveDate,
+              bookIdentity(),
+              planner,
+              effectiveDate,
+              sweptAt,
+              unusedPostingIdGenerator(),
+              SqliteAttestationTestSupport.authorizer()));
     }
     createEmptySqliteFile(blankBookPath);
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(blankBookPath));

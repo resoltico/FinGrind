@@ -27,7 +27,6 @@ import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
-import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -41,8 +40,7 @@ class FiscalYearClosePlannerTest {
       new ReportingPeriod(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31"));
 
   private final FiscalYearClosePlanner planner =
-      new FiscalYearClosePlanner(
-          KernelAccountingRulesResolver.forBookIdentity(bookIdentity()).closePostingPolicy());
+      FiscalYearClosePlanner.forBookIdentity(bookIdentity());
 
   @Test
   void closeTargetSelections_andHorizonValidation_areDeterministic() {

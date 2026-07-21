@@ -8,6 +8,7 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.executor.bookkeeping.policy.ClosePostingPolicy;
+import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -19,12 +20,19 @@ import java.util.Optional;
 
 /** Domain planner for contiguous interim-result-sweep behavior. */
 public final class InterimResultSweepPlanner {
+  private static final String BOOK_IDENTITY_PARAMETER = "bookIdentity";
   private final ClosePostingPolicy closePostingPolicy;
   private final InterimResultSweepHoldingAccountSelector holdingAccountSelector;
   private final InterimResultSweepDraftFactory closeDraftFactory;
 
-  /** Creates one interim-result-sweep planner from the selected close-posting policy. */
-  public InterimResultSweepPlanner(ClosePostingPolicy closePostingPolicy) {
+  /** Creates a planner bound to the accounting kernel selected by one initialized book. */
+  public static InterimResultSweepPlanner forBookIdentity(BookIdentity bookIdentity) {
+    Objects.requireNonNull(bookIdentity, BOOK_IDENTITY_PARAMETER);
+    return new InterimResultSweepPlanner(
+        KernelAccountingRulesResolver.forBookIdentity(bookIdentity).closePostingPolicy());
+  }
+
+  private InterimResultSweepPlanner(ClosePostingPolicy closePostingPolicy) {
     this.closePostingPolicy = Objects.requireNonNull(closePostingPolicy, "closePostingPolicy");
     this.holdingAccountSelector = new InterimResultSweepHoldingAccountSelector(closePostingPolicy);
     this.closeDraftFactory = new InterimResultSweepDraftFactory();

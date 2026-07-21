@@ -784,7 +784,9 @@ public sealed interface InterimResultTargetSelection
 public final class AcceptedInterimResultTargetSelection
 public final class RejectedInterimResultTargetSelection
 public record InterimResultSweepPlan(...)
-public final class InterimResultSweepPlanner
+public final class InterimResultSweepPlanner {
+    public static InterimResultSweepPlanner forBookIdentity(BookIdentity bookIdentity)
+}
 public final class InterimResultSweepService
 ```
 
@@ -804,7 +806,8 @@ public final class InterimResultSweepService
   account, derives the inclusive reporting period from the selected through date plus the earliest
   committed posting date in the selected book or the prior transferred-through horizon, validates
   close-horizon rules, and generates the
-  `PostingKind.INTERIM_RESULT_SWEEP` drafts plus published transferred totals
+  `PostingKind.INTERIM_RESULT_SWEEP` drafts plus published transferred totals. Construction is
+  bound to the initialized `BookIdentity`; callers cannot supply an internal policy-pack type.
 - `InterimResultSweepService`: application service that coordinates lifecycle inspection, account
   catalog/store access, planner output, and durable interim-result-sweep persistence instead of
   owning the close recipe itself
@@ -822,7 +825,9 @@ public final class CloseTargetAccountSelector
 public record FiscalYearCloseDraft(...)
 public record ClosedFiscalYearRecord(...)
 public sealed interface FiscalYearCloseOutcome
-public final class FiscalYearClosePlanner
+public final class FiscalYearClosePlanner {
+    public static FiscalYearClosePlanner forBookIdentity(BookIdentity bookIdentity)
+}
 public final class FiscalYearCloseService
 ```
 
@@ -838,7 +843,8 @@ public final class FiscalYearCloseService
 - `FiscalYearCloseOutcome`: closed family of accepted-versus-rejected fiscal-year close outcomes
 - `FiscalYearClosePlanner`: bookkeeping-domain planner for fiscal-year boundary derivation from
   the initialized book identity plus selected fiscal-year label, close-target selection, and
-  generated year-end postings
+  generated year-end postings. Construction is bound to the initialized `BookIdentity`; callers
+  cannot supply an internal policy-pack type.
 - `FiscalYearCloseService`: application service that coordinates lifecycle inspection, planner
   output, and durable fiscal-year close persistence
 

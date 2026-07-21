@@ -25,6 +25,10 @@ Historical release notes older than `0.31.0` live in:
 
 ### Changed
 
+- Hard-broke close-planner construction to identity-bound factories. `InterimResultSweepPlanner`
+  and `FiscalYearClosePlanner` now derive their accounting kernel from the initialized book
+  identity, and no longer expose an unusable constructor parameter from an internal Java module
+  package.
 - Hard-broke the protected-book format to `51` and made `bookStartEffectiveDate` an immutable
   initialization fact. Every posting now refuses dates before that boundary, interim-result sweeps
   use it as their exact earliest admissible date, and the first fiscal-year close covers the valid

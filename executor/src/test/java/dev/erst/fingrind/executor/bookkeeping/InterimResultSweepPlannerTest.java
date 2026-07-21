@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.core.ReportingPeriod;
-import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -144,7 +143,6 @@ class InterimResultSweepPlannerTest {
   }
 
   private static InterimResultSweepPlanner planner() {
-    return new InterimResultSweepPlanner(
-        KernelAccountingRulesResolver.forBookIdentity(bookIdentity()).closePostingPolicy());
+    return InterimResultSweepPlanner.forBookIdentity(bookIdentity());
   }
 }

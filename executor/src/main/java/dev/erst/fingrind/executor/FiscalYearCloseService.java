@@ -5,7 +5,6 @@ import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner;
-import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
 import dev.erst.fingrind.executor.spi.BookLifecycleReader;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.executor.spi.ReportingPeriodCloseStore;
@@ -36,9 +35,7 @@ public final class FiscalYearCloseService {
         () ->
             new FiscalYearCloseOutcome.Rejected(
                 new BookkeepingAdministrationRejection.BookNotInitialized()),
-        bookIdentity ->
-            new FiscalYearClosePlanner(
-                KernelAccountingRulesResolver.forBookIdentity(bookIdentity).closePostingPolicy()),
+        FiscalYearClosePlanner::forBookIdentity,
         (period, bookIdentity, planner, currentUtcDate, closedAt, postingIdGenerator) ->
             closeStore.fiscalYearClose(
                 period,
@@ -57,9 +54,7 @@ public final class FiscalYearCloseService {
         () ->
             new FiscalYearCloseOutcome.Rejected(
                 new BookkeepingAdministrationRejection.BookNotInitialized()),
-        bookIdentity ->
-            new FiscalYearClosePlanner(
-                KernelAccountingRulesResolver.forBookIdentity(bookIdentity).closePostingPolicy()),
+        FiscalYearClosePlanner::forBookIdentity,
         (bookIdentity, bookStartDate, planner, currentUtcDate, closedAt, postingIdGenerator) ->
             closeStore.fiscalYearClose(
                 planner.reportingPeriod(bookIdentity, fiscalYearLabel),

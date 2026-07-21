@@ -5,7 +5,6 @@ import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner;
-import dev.erst.fingrind.executor.bookkeeping.policy.KernelAccountingRulesResolver;
 import dev.erst.fingrind.executor.spi.BookLifecycleReader;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.executor.spi.ReportingPeriodCloseStore;
@@ -40,9 +39,7 @@ public final class InterimResultSweepService {
         () ->
             new InterimResultSweepOutcome.Rejected(
                 new BookkeepingAdministrationRejection.BookNotInitialized()),
-        bookIdentity ->
-            new InterimResultSweepPlanner(
-                KernelAccountingRulesResolver.forBookIdentity(bookIdentity).closePostingPolicy()),
+        InterimResultSweepPlanner::forBookIdentity,
         (period, bookIdentity, planner, currentUtcDate, sweptAt, postingIdGenerator) ->
             reportingPeriodCloseStore.interimResultSweep(
                 period,
@@ -63,9 +60,7 @@ public final class InterimResultSweepService {
         () ->
             new InterimResultSweepOutcome.Rejected(
                 new BookkeepingAdministrationRejection.BookNotInitialized()),
-        bookIdentity ->
-            new InterimResultSweepPlanner(
-                KernelAccountingRulesResolver.forBookIdentity(bookIdentity).closePostingPolicy()),
+        InterimResultSweepPlanner::forBookIdentity,
         (bookIdentity, bookStartDate, planner, currentUtcDate, sweptAt, postingIdGenerator) ->
             reportingPeriodCloseStore.interimResultSweep(
                 throughEffectiveDate,
