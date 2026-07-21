@@ -16,10 +16,10 @@ class SqliteStoreSessionStateTrackerTest extends SqliteStoreFixtureSupport {
   @Test
   void stateTransitions_preserveDatabaseCacheAndTerminalFailureInvariants() {
     try (SqliteSessionSecret sessionSecret =
-        new SqliteSessionSecret(
-            SqliteBookPassphrase.fromCharacters(
-                "session-state-tracker", TEST_BOOK_KEY.toCharArray()))) {
-      SqliteNativeDatabase database = new SqliteNativeDatabase(MemorySegment.NULL);
+            new SqliteSessionSecret(
+                SqliteBookPassphrase.fromCharacters(
+                    "session-state-tracker", TEST_BOOK_KEY.toCharArray()));
+        SqliteNativeDatabase database = inertDatabase()) {
       SqliteBookStateSnapshot initial =
           new SqliteBookStateSnapshot(1, 25, SqliteBookState.INITIALIZED_FINGRIND);
       SqliteBookStateSnapshot replacement =
@@ -144,14 +144,25 @@ class SqliteStoreSessionStateTrackerTest extends SqliteStoreFixtureSupport {
 
   @Test
   void rollbackQuietly_preservesThePrimaryFailureWhenCleanupCannotReachSQLite() {
-    SqliteNativeDatabase rollbackFailingDatabase =
+    try (SqliteNativeDatabase rollbackFailingDatabase =
         new SqliteNativeDatabase(MemorySegment.NULL) {
           @Override
           void executeStatement(String sql) {
             throw new IllegalStateException("rollback failure");
           }
-        };
 
-    assertDoesNotThrow(() -> SqliteStoreOperations.rollbackQuietly(rollbackFailingDatabase));
+          @Override
+          public void close() {}
+        }) {
+
+      assertDoesNotThrow(() -> SqliteStoreOperations.rollbackQuietly(rollbackFailingDatabase));
+    }
+  }
+
+  private static SqliteNativeDatabase inertDatabase() {
+    return new SqliteNativeDatabase(MemorySegment.NULL) {
+      @Override
+      public void close() {}
+    };
   }
 }

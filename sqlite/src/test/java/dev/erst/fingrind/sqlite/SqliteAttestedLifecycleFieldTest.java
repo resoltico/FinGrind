@@ -15,6 +15,7 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookBackupOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRekeyOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRestoreOutcome;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
@@ -93,7 +94,7 @@ class SqliteAttestedLifecycleFieldTest extends SqliteArtifactPublicationTestSupp
             .size());
   }
 
-  private AttestationCredentialSource createFounderCredential() throws Exception {
+  private AttestationCredentialSource createFounderCredential() throws IOException {
     Path credentialDirectory = tempDirectory.resolve("attestation");
     Files.createDirectories(credentialDirectory);
     SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(credentialDirectory);

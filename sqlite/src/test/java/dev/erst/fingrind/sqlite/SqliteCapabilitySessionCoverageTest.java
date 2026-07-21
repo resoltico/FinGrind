@@ -128,8 +128,7 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
   @Test
   void postingFactStoreLifecycleView_primesInspectsAndCoordinatesBothPlanTransactionOutcomes() {
     Path bookPath = tempDirectory.resolve("posting-store-lifecycle-view.sqlite");
-    SqlitePostingFactStore store = openStore(bookAccess(bookPath));
-    try {
+    try (SqlitePostingFactStore store = openStore(bookAccess(bookPath))) {
       initializeBookWithMinimalNumericAccounts(store);
 
       assertSame(
@@ -140,15 +139,12 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
       assertEquals(bookPath.toAbsolutePath().normalize(), store.bookPath());
       assertEquals(SqliteStoreAccessMode.READ_WRITE_CREATE, store.accessMode());
       assertSame(store.storeContext().postingReader(), store.postingReader());
-      SqliteNativeDatabase database = store.activeNativeDatabase();
-      store.requireInitializedBook(database);
+      store.requireInitializedBook(store.activeNativeDatabase());
 
       store.beginLedgerPlanTransaction();
       store.commitLedgerPlanTransaction();
       store.beginLedgerPlanTransaction();
       store.rollbackLedgerPlanTransaction();
-    } finally {
-      store.close();
     }
   }
 

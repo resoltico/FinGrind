@@ -22,18 +22,17 @@ class SqliteStoreLifecycleFieldTest extends SqlitePostingFactStoreTestSupport {
   void planTransaction_defersMissingBookCreationAndCleansArtifactsWhenTheSessionCloses()
       throws Exception {
     Path bookPath = tempDirectory.resolve("plan").resolve("book.sqlite");
-    SqlitePostingFactStore store =
-        openStore(bookAccess(bookPath), SqliteStoreAccessMode.PLAN_EXECUTION);
-
-    assertFalse(Files.exists(bookPath));
-    store.lifecycle.transactions().begin();
-    assertTrue(store.lifecycle.transactions().active());
-    assertFalse(store.lifecycle.transactions().begunInDatabase());
-    assertFalse(Files.exists(bookPath));
-    store.lifecycle.database();
-    assertTrue(store.lifecycle.transactions().begunInDatabase());
-    assertTrue(Files.isRegularFile(bookPath));
-    store.close();
+    try (SqlitePostingFactStore store =
+        openStore(bookAccess(bookPath), SqliteStoreAccessMode.PLAN_EXECUTION)) {
+      assertFalse(Files.exists(bookPath));
+      store.lifecycle.transactions().begin();
+      assertTrue(store.lifecycle.transactions().active());
+      assertFalse(store.lifecycle.transactions().begunInDatabase());
+      assertFalse(Files.exists(bookPath));
+      store.lifecycle.database();
+      assertTrue(store.lifecycle.transactions().begunInDatabase());
+      assertTrue(Files.isRegularFile(bookPath));
+    }
 
     assertFalse(Files.exists(bookPath));
     assertFalse(Files.exists(bookPath.resolveSibling("book.sqlite-wal")));
@@ -44,22 +43,21 @@ class SqliteStoreLifecycleFieldTest extends SqlitePostingFactStoreTestSupport {
   void deferredPlanCommitAndOwnedTransactionBoundaryKeepDatabaseAdmissionExplicit()
       throws Exception {
     Path deferredBookPath = tempDirectory.resolve("deferred-commit.sqlite");
-    SqlitePostingFactStore deferredStore =
-        openStore(bookAccess(deferredBookPath), SqliteStoreAccessMode.PLAN_EXECUTION);
-    try {
+    try (SqlitePostingFactStore deferredStore =
+        openStore(bookAccess(deferredBookPath), SqliteStoreAccessMode.PLAN_EXECUTION)) {
       deferredStore.lifecycle.transactions().begin();
       deferredStore.lifecycle.transactions().commit();
       assertFalse(deferredStore.lifecycle.transactions().active());
       assertFalse(Files.exists(deferredBookPath));
-    } finally {
-      deferredStore.close();
     }
 
     Path existingBookPath = tempDirectory.resolve("owned-boundary.sqlite");
     Files.writeString(existingBookPath, "existing book placeholder");
     try (SqliteSessionSecret sessionSecret =
-        new SqliteSessionSecret(
-            SqliteBookPassphrase.fromCharacters("owned boundary", TEST_BOOK_KEY.toCharArray()))) {
+            new SqliteSessionSecret(
+                SqliteBookPassphrase.fromCharacters(
+                    "owned boundary", TEST_BOOK_KEY.toCharArray()));
+        RecordingDatabase database = new RecordingDatabase()) {
       SqliteStoreLifecycle lifecycle =
           new SqliteStoreLifecycle(
               new SqliteStoreContext(
@@ -67,7 +65,6 @@ class SqliteStoreLifecycleFieldTest extends SqlitePostingFactStoreTestSupport {
                   SqliteStoreAccessMode.READ_WRITE_CREATE,
                   SqliteNativeBootstrap::api),
               sessionSecret);
-      RecordingDatabase database = new RecordingDatabase();
       assertEquals(
           SqliteTransactionOwnership.OWNED,
           lifecycle.transactions().beginImmediateIfNeeded(database));
@@ -154,5 +151,8 @@ class SqliteStoreLifecycleFieldTest extends SqlitePostingFactStoreTestSupport {
     void executeStatement(String sql) {
       statements.add(sql);
     }
+
+    @Override
+    public void close() {}
   }
 }

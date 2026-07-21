@@ -176,7 +176,7 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
   @Test
   void protectedBookMaintenanceStore_rejectsForeignVerifiedBookHandles() {
     Path artifactPath = tempDirectory.resolve("foreign-verified-book.sqlite");
-    ProtectedBookMaintenanceStore.VerifiedBook foreignHandle =
+    try (ProtectedBookMaintenanceStore.VerifiedBook foreignHandle =
         new ProtectedBookMaintenanceStore.VerifiedBook() {
           @Override
           public Path artifactPath() {
@@ -185,15 +185,17 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
 
           @Override
           public void close() {}
-        };
+        }) {
 
-    assertEquals(
-        "The SQLite maintenance store requires one verified SQLite book handle.",
-        assertThrows(
-                IllegalArgumentException.class,
-                () ->
-                    SqliteProtectedBookMaintenanceArtifactStore.requireVerifiedBook(foreignHandle))
-            .getMessage());
+      assertEquals(
+          "The SQLite maintenance store requires one verified SQLite book handle.",
+          assertThrows(
+                  IllegalArgumentException.class,
+                  () ->
+                      SqliteProtectedBookMaintenanceArtifactStore.requireVerifiedBook(
+                          foreignHandle))
+              .getMessage());
+    }
   }
 
   @Test

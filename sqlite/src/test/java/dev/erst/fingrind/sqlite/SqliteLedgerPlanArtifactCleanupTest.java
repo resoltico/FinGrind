@@ -74,18 +74,24 @@ class SqliteLedgerPlanArtifactCleanupTest extends SqliteNativeBridgeTestSupport 
             .contains("Failed to remove SQLite book artifact"));
 
     RuntimeException closeCause = new IllegalStateException("close failure");
-    SqliteNativeDatabase failingDatabase =
+    try (SqliteNativeDatabase failingDatabase =
         new SqliteNativeDatabase(MemorySegment.NULL) {
+          private boolean firstClose = true;
+
           @Override
           public void close() {
-            throw closeCause;
+            if (firstClose) {
+              firstClose = false;
+              throw closeCause;
+            }
           }
-        };
-    IllegalStateException closeFailure =
-        assertThrows(
-            IllegalStateException.class,
-            () -> SqliteLedgerPlanArtifactCleanup.closeCreatedCleanupDatabase(failingDatabase));
-    assertSame(closeCause, closeFailure.getCause());
+        }) {
+      IllegalStateException closeFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteLedgerPlanArtifactCleanup.closeCreatedCleanupDatabase(failingDatabase));
+      assertSame(closeCause, closeFailure.getCause());
+    }
     assertDoesNotThrow(() -> SqliteLedgerPlanArtifactCleanup.closeCreatedCleanupDatabase(null));
   }
 

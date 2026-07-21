@@ -165,15 +165,15 @@ class SqliteTaxRegistrationFieldTest extends SqlitePostingFactStoreTestSupport {
               CLOCK.instant(),
               SqliteAttestationTestSupport.authorizer()));
 
-      SqliteNativeDatabase database = requireStoreDatabase(store);
       try (SqliteStatementRedirectingDatabase duplicateLookupDatabase =
           new SqliteStatementRedirectingDatabase(
-              database,
+              requireStoreDatabase(store),
               sql ->
-                  database.prepare(
-                      SqliteTaxSql.FIND_TAX_REGISTRATION_BY_ID.equals(sql)
-                          ? DUPLICATE_TAX_REGISTRATION_LOOKUP_SQL
-                          : sql))) {
+                  requireStoreDatabase(store)
+                      .prepare(
+                          SqliteTaxSql.FIND_TAX_REGISTRATION_BY_ID.equals(sql)
+                              ? DUPLICATE_TAX_REGISTRATION_LOOKUP_SQL
+                              : sql))) {
         assertEquals(
             "SQLite tax-registration query returned more than one row for vat-lv.",
             assertThrows(

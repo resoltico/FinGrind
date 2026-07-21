@@ -1,7 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.foreign.MemorySegment;
 import java.nio.file.Path;
@@ -58,11 +60,11 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
     withStandaloneDatabase(
         bookAccess(bookPath),
         database -> {
-          assertEquals(false, SqliteBookContract.BOOK_STATE_READER.hasInitializedMarker(database));
+          assertFalse(SqliteBookContract.BOOK_STATE_READER.hasInitializedMarker(database));
           SqliteBookSchemaBootstrap.initializeBook(database);
-          assertEquals(false, SqliteBookContract.BOOK_STATE_READER.hasInitializedMarker(database));
+          assertFalse(SqliteBookContract.BOOK_STATE_READER.hasInitializedMarker(database));
           insertInitializedAtRow(database);
-          assertEquals(true, SqliteBookContract.BOOK_STATE_READER.hasInitializedMarker(database));
+          assertTrue(SqliteBookContract.BOOK_STATE_READER.hasInitializedMarker(database));
         });
   }
 

@@ -179,11 +179,10 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
     SqliteOwnedStagedArtifact stage =
         SqliteOwnedStagedArtifact.create(finalArtifactPath, ".snapshot-", ".sqlite");
     Path stagePath = stage.stagedPath();
-    SqliteVerifiedBackupSnapshot snapshot = new SqliteVerifiedBackupSnapshot(stage);
-    snapshot.attachBook(new SqliteVerifiedBook(finalArtifactPath, testPassphrase()));
-
-    snapshot.close();
-    snapshot.close();
+    try (SqliteVerifiedBackupSnapshot snapshot = new SqliteVerifiedBackupSnapshot(stage)) {
+      snapshot.attachBook(new SqliteVerifiedBook(finalArtifactPath, testPassphrase()));
+      snapshot.close();
+    }
 
     assertFalse(Files.exists(stagePath));
   }

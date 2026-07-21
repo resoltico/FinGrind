@@ -219,7 +219,7 @@ class SqliteProtectedBookVerificationSupportCoverageTest
     try (SqliteBookPassphrase initializedPassphrase =
         SqliteBookPassphrase.fromUtf8Bytes(
             "initialized-inspection", "secret".getBytes(StandardCharsets.UTF_8))) {
-      ProtectedBookMaintenanceStore.VerifiedBook verifiedBook =
+      try (ProtectedBookMaintenanceStore.VerifiedBook verifiedBook =
           (ProtectedBookMaintenanceStore.VerifiedBook)
               invokeInspectOpenedBook(
                   normalizedBookPath,
@@ -231,10 +231,10 @@ class SqliteProtectedBookVerificationSupportCoverageTest
                               SqliteBookContract.FORMAT_VERSION,
                               Instant.parse("2026-06-12T10:15:00Z")),
                       () -> initializedSessionClosed.set(true)),
-                  initializedPassphrase);
-      assertEquals(normalizedBookPath, verifiedBook.artifactPath());
-      assertTrue(initializedSessionClosed.get());
-      verifiedBook.close();
+                  initializedPassphrase)) {
+        assertEquals(normalizedBookPath, verifiedBook.artifactPath());
+        assertTrue(initializedSessionClosed.get());
+      }
     }
   }
 

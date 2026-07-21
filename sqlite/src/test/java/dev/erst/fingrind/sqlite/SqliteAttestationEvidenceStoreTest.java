@@ -29,6 +29,7 @@ import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationPublicCredential;
 import dev.erst.fingrind.core.attestation.AttestationSigningCredential;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -482,7 +483,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
     }
   }
 
-  private static AttestationEvidence genesis(Path signerPath) throws Exception {
+  private static AttestationEvidence genesis(Path signerPath) throws IOException {
     char[] passphrase = "sqlite attestation test passphrase".toCharArray();
     AttestationPublicCredential publicCredential =
         AttestationKeyFiles.create(signerPath, passphrase);

@@ -83,10 +83,11 @@ class SqliteFiscalYearCloseStateRejectionFieldTest extends SqlitePostingFactStor
               FiscalYearCloseOutcome.Rejected.class,
               close(closeSession, LocalDate.parse("2027-01-01")));
       assertInstanceOf(FiscalYearCloseRequiresGeneratedPostings.class, rejected.rejection());
-      SqliteNativeDatabase database = requireStoreDatabase(store);
-      assertEquals(0, countRows(database, "fiscal_year_close"));
+      assertEquals(0, countRows(requireStoreDatabase(store), "fiscal_year_close"));
       assertEquals(
-          0, countRowsWhereTextEquals(database, "audit_event", "event_kind", "FISCAL_YEAR_CLOSED"));
+          0,
+          countRowsWhereTextEquals(
+              requireStoreDatabase(store), "audit_event", "event_kind", "FISCAL_YEAR_CLOSED"));
     }
   }
 

@@ -76,105 +76,106 @@ class SqliteLedgerPlanTransactionCoordinatorTest {
                 existingBookPath,
                 SqliteStoreAccessMode.READ_WRITE_CREATE,
                 SqliteNativeBootstrap::api));
-    RecordingDatabase database = new RecordingDatabase();
+    try (RecordingDatabase database = new RecordingDatabase()) {
 
-    eager.begin(
-        () -> database, ignored -> fail("existing-book transaction must not clean artifacts"));
-    assertTrue(eager.active());
-    assertFalse(eager.begunInDatabase());
-    assertFalse(eager.createdBookArtifacts());
-    assertNull(eager.preexistingAncestorDirectory());
-    assertThrows(IllegalStateException.class, () -> eager.begin(() -> database, ignored -> {}));
-    eager.noteBookArtifactsMayMutate();
-    assertFalse(eager.createdBookArtifacts());
-    eager.beginImmediateIfNeeded(database);
-    eager.beginImmediateIfNeeded(database);
-    assertEquals(List.of("begin immediate"), database.statements);
-    assertTrue(eager.begunInDatabase());
-    eager.commit(() -> database);
-    assertEquals(List.of("begin immediate", "commit"), database.statements);
-    assertFalse(eager.active());
-    assertFalse(eager.begunInDatabase());
-    assertThrows(IllegalStateException.class, () -> eager.commit(() -> database));
+      eager.begin(
+          () -> database, ignored -> fail("existing-book transaction must not clean artifacts"));
+      assertTrue(eager.active());
+      assertFalse(eager.begunInDatabase());
+      assertFalse(eager.createdBookArtifacts());
+      assertNull(eager.preexistingAncestorDirectory());
+      assertThrows(IllegalStateException.class, () -> eager.begin(() -> database, ignored -> {}));
+      eager.noteBookArtifactsMayMutate();
+      assertFalse(eager.createdBookArtifacts());
+      eager.beginImmediateIfNeeded(database);
+      eager.beginImmediateIfNeeded(database);
+      assertEquals(List.of("begin immediate"), database.statements);
+      assertTrue(eager.begunInDatabase());
+      eager.commit(() -> database);
+      assertEquals(List.of("begin immediate", "commit"), database.statements);
+      assertFalse(eager.active());
+      assertFalse(eager.begunInDatabase());
+      assertThrows(IllegalStateException.class, () -> eager.commit(() -> database));
 
-    Path deferredBookPath = tempDirectory.resolve("deferred-commit.sqlite");
-    SqliteLedgerPlanTransactionCoordinator deferred =
-        new SqliteLedgerPlanTransactionCoordinator(
-            new SqliteStoreContext(
-                deferredBookPath,
-                SqliteStoreAccessMode.PLAN_EXECUTION,
-                SqliteNativeBootstrap::api));
-    deferred.begin(
-        () -> {
-          throw new AssertionError("Deferred missing-book commit must not open SQLite.");
-        },
-        ignored -> {});
-    deferred.commit(
-        () -> {
-          throw new AssertionError("Deferred missing-book commit must not open SQLite.");
-        });
-    assertFalse(deferred.active());
-    deferred.rollback(null, ignored -> fail("Inactive transaction must not clean artifacts"));
+      Path deferredBookPath = tempDirectory.resolve("deferred-commit.sqlite");
+      SqliteLedgerPlanTransactionCoordinator deferred =
+          new SqliteLedgerPlanTransactionCoordinator(
+              new SqliteStoreContext(
+                  deferredBookPath,
+                  SqliteStoreAccessMode.PLAN_EXECUTION,
+                  SqliteNativeBootstrap::api));
+      deferred.begin(
+          () -> {
+            throw new AssertionError("Deferred missing-book commit must not open SQLite.");
+          },
+          ignored -> {});
+      deferred.commit(
+          () -> {
+            throw new AssertionError("Deferred missing-book commit must not open SQLite.");
+          });
+      assertFalse(deferred.active());
+      deferred.rollback(null, ignored -> fail("Inactive transaction must not clean artifacts"));
 
-    Path missingBookPath = tempDirectory.resolve("rollback").resolve("book.sqlite");
-    SqliteLedgerPlanTransactionCoordinator rollback =
-        new SqliteLedgerPlanTransactionCoordinator(
-            new SqliteStoreContext(
-                missingBookPath,
-                SqliteStoreAccessMode.READ_WRITE_CREATE,
-                SqliteNativeBootstrap::api));
-    NullablePathBox rollbackCleanup = new NullablePathBox();
-    rollback.begin(() -> database, ancestor -> rollbackCleanup.value = ancestor);
-    rollback.beginImmediateIfNeeded(database);
-    rollback.rollback(database, ancestor -> rollbackCleanup.value = ancestor);
-    assertEquals(tempDirectory.toAbsolutePath().normalize(), rollbackCleanup.value);
-    assertFalse(rollback.active());
-    assertFalse(rollback.createdBookArtifacts());
-    assertEquals(
-        List.of("begin immediate", "commit", "begin immediate", "rollback"), database.statements);
+      Path missingBookPath = tempDirectory.resolve("rollback").resolve("book.sqlite");
+      SqliteLedgerPlanTransactionCoordinator rollback =
+          new SqliteLedgerPlanTransactionCoordinator(
+              new SqliteStoreContext(
+                  missingBookPath,
+                  SqliteStoreAccessMode.READ_WRITE_CREATE,
+                  SqliteNativeBootstrap::api));
+      NullablePathBox rollbackCleanup = new NullablePathBox();
+      rollback.begin(() -> database, ancestor -> rollbackCleanup.value = ancestor);
+      rollback.beginImmediateIfNeeded(database);
+      rollback.rollback(database, ancestor -> rollbackCleanup.value = ancestor);
+      assertEquals(tempDirectory.toAbsolutePath().normalize(), rollbackCleanup.value);
+      assertFalse(rollback.active());
+      assertFalse(rollback.createdBookArtifacts());
+      assertEquals(
+          List.of("begin immediate", "commit", "begin immediate", "rollback"), database.statements);
 
-    SqliteLedgerPlanTransactionCoordinator failedOpen =
-        new SqliteLedgerPlanTransactionCoordinator(
-            new SqliteStoreContext(
-                tempDirectory.resolve("failed-open").resolve("book.sqlite"),
-                SqliteStoreAccessMode.READ_WRITE_CREATE,
-                SqliteNativeBootstrap::api));
-    NullablePathBox failedOpenCleanup = new NullablePathBox();
-    IllegalStateException failure =
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                failedOpen.begin(
-                    () -> {
-                      throw new IllegalStateException("open failed");
-                    },
-                    ancestor -> failedOpenCleanup.value = ancestor));
-    assertEquals("open failed", failure.getMessage());
-    assertEquals(tempDirectory.toAbsolutePath().normalize(), failedOpenCleanup.value);
-    assertFalse(failedOpen.active());
+      SqliteLedgerPlanTransactionCoordinator failedOpen =
+          new SqliteLedgerPlanTransactionCoordinator(
+              new SqliteStoreContext(
+                  tempDirectory.resolve("failed-open").resolve("book.sqlite"),
+                  SqliteStoreAccessMode.READ_WRITE_CREATE,
+                  SqliteNativeBootstrap::api));
+      NullablePathBox failedOpenCleanup = new NullablePathBox();
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  failedOpen.begin(
+                      () -> {
+                        throw new IllegalStateException("open failed");
+                      },
+                      ancestor -> failedOpenCleanup.value = ancestor));
+      assertEquals("open failed", failure.getMessage());
+      assertEquals(tempDirectory.toAbsolutePath().normalize(), failedOpenCleanup.value);
+      assertFalse(failedOpen.active());
 
-    SqliteLedgerPlanTransactionCoordinator failedCleanup =
-        new SqliteLedgerPlanTransactionCoordinator(
-            new SqliteStoreContext(
-                tempDirectory.resolve("failed-cleanup").resolve("book.sqlite"),
-                SqliteStoreAccessMode.READ_WRITE_CREATE,
-                SqliteNativeBootstrap::api));
-    IllegalStateException openingFailure = new IllegalStateException("opening failed");
-    IllegalStateException cleanupFailure = new IllegalStateException("cleanup failed");
-    assertSame(
-        openingFailure,
-        assertThrows(
-            IllegalStateException.class,
-            () ->
-                failedCleanup.begin(
-                    () -> {
-                      throw openingFailure;
-                    },
-                    ignored -> {
-                      throw cleanupFailure;
-                    })));
-    assertEquals(List.of(cleanupFailure), List.of(openingFailure.getSuppressed()));
-    assertFalse(failedCleanup.active());
+      SqliteLedgerPlanTransactionCoordinator failedCleanup =
+          new SqliteLedgerPlanTransactionCoordinator(
+              new SqliteStoreContext(
+                  tempDirectory.resolve("failed-cleanup").resolve("book.sqlite"),
+                  SqliteStoreAccessMode.READ_WRITE_CREATE,
+                  SqliteNativeBootstrap::api));
+      IllegalStateException openingFailure = new IllegalStateException("opening failed");
+      IllegalStateException cleanupFailure = new IllegalStateException("cleanup failed");
+      assertSame(
+          openingFailure,
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  failedCleanup.begin(
+                      () -> {
+                        throw openingFailure;
+                      },
+                      ignored -> {
+                        throw cleanupFailure;
+                      })));
+      assertEquals(List.of(cleanupFailure), List.of(openingFailure.getSuppressed()));
+      assertFalse(failedCleanup.active());
+    }
   }
 
   @Test
@@ -185,35 +186,36 @@ class SqliteLedgerPlanTransactionCoordinatorTest {
         new SqliteLedgerPlanTransactionCoordinator(
             new SqliteStoreContext(
                 bookPath, SqliteStoreAccessMode.READ_WRITE_CREATE, SqliteNativeBootstrap::api));
-    RecordingDatabase database = new RecordingDatabase();
-    coordinator.begin(() -> database, ignored -> {});
-    coordinator.beginImmediateIfNeeded(database);
-    database.failure =
-        new SqliteNativeException(SqliteNativeResultCode.code("ERROR"), "commit failure");
+    try (RecordingDatabase database = new RecordingDatabase()) {
+      coordinator.begin(() -> database, ignored -> {});
+      coordinator.beginImmediateIfNeeded(database);
+      database.failure =
+          new SqliteNativeException(SqliteNativeResultCode.code("ERROR"), "commit failure");
 
-    IllegalStateException failure =
-        assertThrows(IllegalStateException.class, () -> coordinator.commit(() -> database));
-    assertEquals(
-        "Failed to commit SQLite ledger plan transaction. SQLITE_ERROR: commit failure",
-        failure.getMessage());
-    assertTrue(coordinator.active());
-    assertTrue(coordinator.begunInDatabase());
-    database.failure = null;
-    coordinator.rollback(database, ignored -> {});
-    assertFalse(coordinator.active());
+      IllegalStateException failure =
+          assertThrows(IllegalStateException.class, () -> coordinator.commit(() -> database));
+      assertEquals(
+          "Failed to commit SQLite ledger plan transaction. SQLITE_ERROR: commit failure",
+          failure.getMessage());
+      assertTrue(coordinator.active());
+      assertTrue(coordinator.begunInDatabase());
+      database.failure = null;
+      coordinator.rollback(database, ignored -> {});
+      assertFalse(coordinator.active());
 
-    coordinator.begin(() -> database, ignored -> {});
-    coordinator.beginImmediateIfNeeded(database);
-    IllegalStateException commitStateFailure = new IllegalStateException("commit state failure");
-    database.failure = commitStateFailure;
-    IllegalStateException wrappedStateFailure =
-        assertThrows(IllegalStateException.class, () -> coordinator.commit(() -> database));
-    assertEquals(
-        "Failed to commit SQLite ledger plan transaction.", wrappedStateFailure.getMessage());
-    assertSame(commitStateFailure, wrappedStateFailure.getCause());
-    database.failure = null;
-    coordinator.rollback(null, ignored -> {});
-    assertFalse(coordinator.active());
+      coordinator.begin(() -> database, ignored -> {});
+      coordinator.beginImmediateIfNeeded(database);
+      IllegalStateException commitStateFailure = new IllegalStateException("commit state failure");
+      database.failure = commitStateFailure;
+      IllegalStateException wrappedStateFailure =
+          assertThrows(IllegalStateException.class, () -> coordinator.commit(() -> database));
+      assertEquals(
+          "Failed to commit SQLite ledger plan transaction.", wrappedStateFailure.getMessage());
+      assertSame(commitStateFailure, wrappedStateFailure.getCause());
+      database.failure = null;
+      coordinator.rollback(null, ignored -> {});
+      assertFalse(coordinator.active());
+    }
   }
 
   /** Records transaction-control statements without requiring a native SQLite handle. */
