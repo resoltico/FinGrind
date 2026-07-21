@@ -141,4 +141,17 @@ class SqliteStoreSessionStateTrackerTest extends SqliteStoreFixtureSupport {
             .getMessage());
     assertDoesNotThrow(SqliteStoreAccessMode.READ_WRITE_CREATE::requireWritableInitialization);
   }
+
+  @Test
+  void rollbackQuietly_preservesThePrimaryFailureWhenCleanupCannotReachSQLite() {
+    SqliteNativeDatabase rollbackFailingDatabase =
+        new SqliteNativeDatabase(MemorySegment.NULL) {
+          @Override
+          void executeStatement(String sql) {
+            throw new IllegalStateException("rollback failure");
+          }
+        };
+
+    assertDoesNotThrow(() -> SqliteStoreOperations.rollbackQuietly(rollbackFailingDatabase));
+  }
 }
