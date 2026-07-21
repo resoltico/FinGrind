@@ -191,6 +191,12 @@ class SqliteTaxRegistrationFieldTest extends SqlitePostingFactStoreTestSupport {
                 new TaxCodeName("Standard VAT"),
                 new TaxRate(210_000),
                 TaxInclusionMode.EXCLUSIVE,
+                TaxApplicationKind.OUTPUT_SALE),
+            new TaxCodeDefinition(
+                new TaxCode(taxCode + "-reduced"),
+                new TaxCodeName("Reduced VAT"),
+                new TaxRate(100_000),
+                TaxInclusionMode.EXCLUSIVE,
                 TaxApplicationKind.OUTPUT_SALE)));
   }
 }
