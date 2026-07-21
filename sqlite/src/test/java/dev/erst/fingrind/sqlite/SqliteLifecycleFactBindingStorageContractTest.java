@@ -9,6 +9,8 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingOriginKind;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -231,6 +233,78 @@ class SqliteLifecycleFactBindingStorageContractTest extends SqlitePostingFactSto
         """);
     insertTypedPostingFact(
         database,
+        "foreign-currency-obligation-loss",
+        "2026-01-02",
+        PostingOriginKind.FOREIGN_CURRENCY_OBLIGATION,
+        "foreign-receivable",
+        "foreign-revenue",
+        10_000);
+    insertForeignExchangeFacts(database, "foreign-currency-obligation-loss", 1_000, 10_000);
+    database.executeStatement(
+        """
+        insert into foreign_currency_obligation (
+            foreign_currency_obligation_id,
+            origin_posting_id,
+            originated_on,
+            receivable_account_code,
+            realized_gain_account_code,
+            realized_loss_account_code,
+            transaction_currency_code,
+            transaction_amount_minor,
+            functional_currency_code,
+            functional_carrying_amount_minor
+        ) values (
+            'foreign-currency-obligation-002',
+            'foreign-currency-obligation-loss',
+            '2026-01-02',
+            'foreign-receivable',
+            'foreign-exchange-gain',
+            'foreign-exchange-loss',
+            'USD',
+            1000,
+            'EUR',
+            10000
+        )
+        """);
+    insertTypedPostingFact(
+        database,
+        "foreign-exchange-realized-gain",
+        "2026-02-01",
+        PostingOriginKind.REALIZED_FOREIGN_EXCHANGE_SETTLEMENT,
+        "cash",
+        "foreign-receivable",
+        10_500);
+    insertForeignExchangeFacts(database, "foreign-exchange-realized-gain", 1_000, 10_500);
+    insertForeignExchangeSettlement(
+        database,
+        "foreign-exchange-realized-gain",
+        "foreign-currency-obligation-001",
+        "2026-02-01",
+        10_500);
+    insertTypedPostingFact(
+        database,
+        "foreign-exchange-realized-loss",
+        "2026-02-02",
+        PostingOriginKind.REALIZED_FOREIGN_EXCHANGE_SETTLEMENT,
+        "cash",
+        "foreign-receivable",
+        9_500);
+    insertForeignExchangeFacts(database, "foreign-exchange-realized-loss", 1_000, 9_500);
+    insertForeignExchangeSettlement(
+        database,
+        "foreign-exchange-realized-loss",
+        "foreign-currency-obligation-002",
+        "2026-02-02",
+        9_500);
+    assertEquals(
+        List.of(Optional.of(true), Optional.of(false)),
+        SqliteRealizedForeignExchangeStatementQueries.load(database).stream()
+            .map(
+                dev.erst.fingrind.executor.bookkeeping.ForeignCurrencyObligationRecord
+                    ::realizedGain)
+            .toList());
+    insertTypedPostingFact(
+        database,
         "foreign-exchange-transaction-mismatch",
         "2026-02-01",
         PostingOriginKind.REALIZED_FOREIGN_EXCHANGE_SETTLEMENT,
@@ -251,12 +325,20 @@ class SqliteLifecycleFactBindingStorageContractTest extends SqlitePostingFactSto
     assertTriggerRejection(
         () ->
             insertForeignExchangeSettlement(
-                database, "foreign-exchange-transaction-mismatch", "2026-02-01", 9_500));
+                database,
+                "foreign-exchange-transaction-mismatch",
+                "foreign-currency-obligation-001",
+                "2026-02-01",
+                9_500));
     assertTriggerRejection(
         () ->
             insertForeignExchangeSettlement(
-                database, "foreign-exchange-functional-mismatch", "2026-02-02", 9_500));
-    assertEquals(0, countRows(database, "foreign_currency_obligation_settlement"));
+                database,
+                "foreign-exchange-functional-mismatch",
+                "foreign-currency-obligation-001",
+                "2026-02-02",
+                9_500));
+    assertEquals(2, countRows(database, "foreign_currency_obligation_settlement"));
   }
 
   private static void insertLifecycleAccounts(SqliteNativeDatabase database) {
@@ -473,6 +555,7 @@ class SqliteLifecycleFactBindingStorageContractTest extends SqlitePostingFactSto
   private static void insertForeignExchangeSettlement(
       SqliteNativeDatabase database,
       String postingId,
+      String foreignCurrencyObligationId,
       String effectiveDate,
       long functionalSettlementAmountMinor) {
     database.executeStatement(
@@ -485,13 +568,17 @@ class SqliteLifecycleFactBindingStorageContractTest extends SqlitePostingFactSto
             functional_settlement_amount_minor
         ) values (
             '%s',
-            'foreign-currency-obligation-001',
+            '%s',
             '%s',
             'EUR',
             %d
         )
         """
-            .formatted(postingId, effectiveDate, functionalSettlementAmountMinor));
+            .formatted(
+                postingId,
+                foreignCurrencyObligationId,
+                effectiveDate,
+                functionalSettlementAmountMinor));
   }
 
   private static void assertTriggerRejection(Runnable operation) {

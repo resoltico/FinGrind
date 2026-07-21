@@ -32,6 +32,7 @@ import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner;
 import dev.erst.fingrind.executor.bookkeeping.InventoryAccountState;
 import dev.erst.fingrind.executor.bookkeeping.InventoryMovementRecord;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -145,6 +146,20 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
       store.commitLedgerPlanTransaction();
       store.beginLedgerPlanTransaction();
       store.rollbackLedgerPlanTransaction();
+    }
+  }
+
+  @Test
+  void ledgerPlanArtifactCleanup_removesAnUninitializedBookCreatedByTheActivePlanOnly() {
+    Path bookPath = tempDirectory.resolve("plan-created-book-cleanup.sqlite");
+    try (SqlitePostingFactStore store = openStore(bookAccess(bookPath))) {
+      store.storeLifecycle().transactions().cleanupCreatedMissingBookArtifactsIfPresent();
+
+      store.beginLedgerPlanTransaction();
+      assertTrue(Files.isRegularFile(bookPath));
+      store.storeLifecycle().transactions().cleanupCreatedMissingBookArtifactsIfPresent();
+
+      assertFalse(Files.exists(bookPath));
     }
   }
 

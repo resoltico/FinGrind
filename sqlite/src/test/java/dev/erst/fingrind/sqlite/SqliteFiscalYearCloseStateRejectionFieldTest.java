@@ -91,6 +91,36 @@ class SqliteFiscalYearCloseStateRejectionFieldTest extends SqlitePostingFactStor
     }
   }
 
+  @Test
+  void close_rejectsAYearThatPrecedesTheAlreadyTransferredThroughHorizon() {
+    Path bookPath = tempDirectory.resolve("close-transferred-through-horizon.sqlite");
+    try (SqlitePostingFactStore store = openStore(bookAccess(bookPath));
+        SqliteReportingPeriodCloseSession closeSession =
+            SqliteCapabilitySessions.reportingPeriodClose(store)) {
+      initializeBookWithMinimalNumericAccounts(store);
+      declareTarget(
+          store, "3200", "Result holding", FinancialPositionLineClassification.RESULT_HOLDING);
+      SqliteMutationWriter.insertInterimResultSweep(
+          requireStoreDatabase(store),
+          new ReportingPeriod(LocalDate.parse("2026-01-01"), LocalDate.parse("2027-01-01")),
+          new AccountCode("3200"),
+          List.of(),
+          CLOSED_AT,
+          List.of());
+
+      FiscalYearCloseOutcome.Rejected rejected =
+          assertInstanceOf(
+              FiscalYearCloseOutcome.Rejected.class,
+              close(closeSession, LocalDate.parse("2027-01-01")));
+      assertEquals(
+          new dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection
+              .FiscalYearClosePrecedesTransferredThroughHorizon(
+              FISCAL_YEAR.effectiveDateTo(), LocalDate.parse("2027-01-01")),
+          rejected.rejection());
+      assertEquals(0, countRows(requireStoreDatabase(store), "fiscal_year_close"));
+    }
+  }
+
   private static void assertRejected(
       SqliteReportingPeriodCloseSession closeSession, LocalDate currentUtcDate) {
     assertInstanceOf(FiscalYearCloseOutcome.Rejected.class, close(closeSession, currentUtcDate));
