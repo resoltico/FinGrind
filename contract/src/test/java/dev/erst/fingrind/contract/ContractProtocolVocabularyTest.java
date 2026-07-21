@@ -61,7 +61,6 @@ import dev.erst.fingrind.contract.runtime.VersionDescriptor;
 import dev.erst.fingrind.contract.workflow.LedgerFactKind;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.JournalLine;
@@ -390,7 +389,7 @@ class ContractProtocolVocabularyTest {
                 null,
                 evidenceTemplate(),
                 new ContractTemplates.ProvenanceTemplateDescriptor(
-                    "actor-1", ActorType.PERSON, "command-1", "idem-1", "cause-1", null),
+                    "actor-1", "person", "command-1", "idem-1", "cause-1", null),
                 null,
                 null,
                 null,
@@ -433,7 +432,7 @@ class ContractProtocolVocabularyTest {
                 null,
                 evidenceTemplate(),
                 new ContractTemplates.ProvenanceTemplateDescriptor(
-                    "actor-1", ActorType.PERSON, "command-1", "idem-1", "cause-1", null),
+                    "actor-1", "person", "command-1", "idem-1", "cause-1", null),
                 null,
                 null,
                 null,

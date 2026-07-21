@@ -99,8 +99,6 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
             accountingEvidenceWithApproval("ledger-approval"),
             new CommittedProvenance(
                 new RequestProvenance(
-                    new dev.erst.fingrind.core.ActorId("actor-approval-1"),
-                    dev.erst.fingrind.core.ActorType.PERSON,
                     new dev.erst.fingrind.core.CommandId("command-approval-1"),
                     new IdempotencyKey("idem-approval-1"),
                     new dev.erst.fingrind.core.CausationId("cause-approval-1"),

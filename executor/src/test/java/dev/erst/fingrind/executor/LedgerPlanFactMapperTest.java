@@ -26,8 +26,6 @@ import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
@@ -209,8 +207,6 @@ class LedgerPlanFactMapperTest {
                     List.of()),
                 new CommittedProvenance(
                     new RequestProvenance(
-                        new ActorId("actor-sale-1"),
-                        ActorType.PERSON,
                         new CommandId("command-sale-1"),
                         new IdempotencyKey("idem-sale-1"),
                         new CausationId("cause-sale-1"),
@@ -446,14 +442,12 @@ class LedgerPlanFactMapperTest {
                 new ApprovalReference(
                     new ApprovalId("approval-idem-1"),
                     new ApprovalType("manager-signoff"),
-                    new ActorId("approver-1"),
-                    ActorType.PERSON,
+                    "approver-1",
+                    "person",
                     dev.erst.fingrind.core.ApprovalDecision.APPROVED,
                     Instant.parse("2026-04-07T10:20:30Z")))),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-1"),
-                ActorType.AGENT,
                 new CommandId("command-1"),
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),
@@ -488,8 +482,6 @@ class LedgerPlanFactMapperTest {
                         List.of()),
                     new CommittedProvenance(
                         new RequestProvenance(
-                            new ActorId("actor-entry"),
-                            ActorType.PERSON,
                             new CommandId("command-entry"),
                             new IdempotencyKey("idem-entry"),
                             new CausationId("cause-entry"),

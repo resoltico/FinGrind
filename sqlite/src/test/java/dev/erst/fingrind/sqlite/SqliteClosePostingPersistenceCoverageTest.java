@@ -11,8 +11,6 @@ import dev.erst.fingrind.contract.bookkeeping.ResolvedInventoryAcquisition;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -373,8 +371,6 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
   private static CommittedProvenance generatedProvenance(String operationName, String token) {
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new ActorId("system:" + operationName),
-            ActorType.SYSTEM,
             new CommandId(operationName + ":" + token),
             new IdempotencyKey(operationName + ":" + token),
             new CausationId(operationName + ":" + token),

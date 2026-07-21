@@ -14,8 +14,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -326,8 +324,6 @@ class FiscalYearClosePlannerTest {
         accountingEvidence(postingId),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-" + postingId),
-                ActorType.PERSON,
                 new CommandId("command-" + postingId),
                 new IdempotencyKey("idem-" + postingId),
                 new CausationId("cause-" + postingId),

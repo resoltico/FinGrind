@@ -32,8 +32,6 @@ import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -573,8 +571,6 @@ class BookQueryModelTest {
   private static CommittedProvenance committedProvenance(String idempotencyKey) {
     return new CommittedProvenance(
         new RequestProvenance(
-            new ActorId("actor-1"),
-            ActorType.AGENT,
             new CommandId("command-1"),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-1"),

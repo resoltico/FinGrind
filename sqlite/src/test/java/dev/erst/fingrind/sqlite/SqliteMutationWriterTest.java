@@ -25,8 +25,6 @@ import dev.erst.fingrind.contract.tax.TaxRate;
 import dev.erst.fingrind.contract.tax.TaxRegistrationId;
 import dev.erst.fingrind.contract.tax.TaxSelection;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -871,8 +869,8 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
   private static CommittedProvenance committedProvenance(String token) {
     return new CommittedProvenance(
         new dev.erst.fingrind.core.RequestProvenance(
-            new ActorId("actor-1"),
-            ActorType.AGENT,
+            "actor-1",
+            "agent",
             new CommandId("command-" + token),
             new IdempotencyKey("idem-" + token),
             new CausationId("cause-" + token),

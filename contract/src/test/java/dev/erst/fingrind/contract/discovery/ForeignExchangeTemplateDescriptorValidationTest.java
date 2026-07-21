@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.fx.ForeignExchangeTreatmentKind;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.JournalLine;
 import java.util.List;
@@ -138,6 +137,6 @@ class ForeignExchangeTemplateDescriptorValidationTest {
 
   private static ContractTemplates.ProvenanceTemplateDescriptor provenanceTemplate() {
     return new ContractTemplates.ProvenanceTemplateDescriptor(
-        "actor-1", ActorType.PERSON, "command-1", "idem-1", "cause-1", null);
+        "actor-1", "person", "command-1", "idem-1", "cause-1", null);
   }
 }

@@ -13,7 +13,6 @@ import dev.erst.fingrind.contract.tax.TaxApplicationKind;
 import dev.erst.fingrind.contract.tax.TaxInclusionMode;
 import dev.erst.fingrind.contract.tax.TaxJurisdiction;
 import dev.erst.fingrind.contract.tax.TaxObligationFrequency;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -195,7 +194,7 @@ class TaxDiscoveryTemplateCoverageTest {
   void provenanceTemplateValidation_coversLiveAndPlaceholderBranches() {
     ContractTemplates.ProvenanceTemplateDescriptor live =
         new ContractTemplates.ProvenanceTemplateDescriptor(
-            "actor-1", ActorType.PERSON, "command-1", "idem-1", "cause-1", "corr-1");
+            "actor-1", "person", "command-1", "idem-1", "cause-1", "corr-1");
 
     assertEquals("actor-1", live.actorId());
     assertEquals("corr-1", live.correlationId());
@@ -203,7 +202,7 @@ class TaxDiscoveryTemplateCoverageTest {
         ScaffoldPlaceholders.ACTOR_ID,
         new ContractTemplates.ProvenanceTemplateDescriptor(
                 ScaffoldPlaceholders.ACTOR_ID,
-                ActorType.PERSON,
+                "person",
                 "command-1",
                 "idem-1",
                 "cause-1",
@@ -213,7 +212,7 @@ class TaxDiscoveryTemplateCoverageTest {
         ScaffoldPlaceholders.COMMAND_ID,
         new ContractTemplates.ProvenanceTemplateDescriptor(
                 "actor-1",
-                ActorType.PERSON,
+                "person",
                 ScaffoldPlaceholders.COMMAND_ID,
                 "idem-1",
                 "cause-1",
@@ -223,7 +222,7 @@ class TaxDiscoveryTemplateCoverageTest {
         ScaffoldPlaceholders.IDEMPOTENCY_KEY,
         new ContractTemplates.ProvenanceTemplateDescriptor(
                 "actor-1",
-                ActorType.PERSON,
+                "person",
                 "command-1",
                 ScaffoldPlaceholders.IDEMPOTENCY_KEY,
                 "cause-1",
@@ -233,7 +232,7 @@ class TaxDiscoveryTemplateCoverageTest {
         ScaffoldPlaceholders.CAUSATION_ID,
         new ContractTemplates.ProvenanceTemplateDescriptor(
                 "actor-1",
-                ActorType.PERSON,
+                "person",
                 "command-1",
                 "idem-1",
                 ScaffoldPlaceholders.CAUSATION_ID,
@@ -243,7 +242,7 @@ class TaxDiscoveryTemplateCoverageTest {
         ScaffoldPlaceholders.COMMAND_ID,
         ContractTemplateValidationSupport.validateProvenanceTemplate(
                 "actor-1",
-                ActorType.PERSON,
+                "person",
                 ScaffoldPlaceholders.COMMAND_ID,
                 "idem-1",
                 "cause-1",
@@ -253,7 +252,7 @@ class TaxDiscoveryTemplateCoverageTest {
         ScaffoldPlaceholders.COMMAND_ID,
         ContractTemplateValidationSupport.validateProvenanceTemplate(
                 "actor-1",
-                ActorType.PERSON,
+                "person",
                 "command-1",
                 "idem-1",
                 "cause-1",

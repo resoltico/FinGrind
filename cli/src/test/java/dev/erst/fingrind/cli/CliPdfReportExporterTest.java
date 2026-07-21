@@ -22,8 +22,6 @@ import dev.erst.fingrind.contract.reportmodel.AccountLedgerReportModelBuilder;
 import dev.erst.fingrind.contract.reportmodel.CashFlowStatementReportModelBuilder;
 import dev.erst.fingrind.contract.reportmodel.PeriodSummaryReportModelBuilder;
 import dev.erst.fingrind.contract.reportmodel.TrialBalanceReportModelBuilder;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
@@ -421,8 +419,6 @@ class CliPdfReportExporterTest {
         CliFixtureSupport.accountingEvidence("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("operator"),
-                ActorType.PERSON,
                 new CommandId("command-1"),
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),

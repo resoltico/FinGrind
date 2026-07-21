@@ -10,8 +10,6 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
@@ -126,8 +124,6 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         evidence,
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-1"),
-                ActorType.AGENT,
                 new CommandId("command-" + postingId),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-1"),
@@ -154,8 +150,6 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-1"),
-                ActorType.AGENT,
                 new CommandId("command-" + postingId),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-1"),
@@ -218,8 +212,8 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
     return new ApprovalReference(
         new ApprovalId(approvalId),
         new ApprovalType(approvalType),
-        new ActorId("approver-" + approvalId),
-        ActorType.PERSON,
+        "approver-" + approvalId,
+        "person",
         ApprovalDecision.APPROVED,
         Instant.parse("2026-04-07T10:20:30Z"));
   }

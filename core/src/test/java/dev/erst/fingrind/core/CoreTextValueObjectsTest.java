@@ -21,12 +21,6 @@ class CoreTextValueObjectsTest {
   }
 
   @Test
-  void actorId_stripsWhitespaceAndRejectsBlank() {
-    assertEquals("actor-1", new ActorId("  actor-1  ").value());
-    assertThrows(IllegalArgumentException.class, () -> new ActorId("   "));
-  }
-
-  @Test
   void causationId_stripsWhitespaceAndRejectsBlank() {
     assertEquals("cause-1", new CausationId("  cause-1  ").value());
     assertThrows(IllegalArgumentException.class, () -> new CausationId("   "));
@@ -577,15 +571,6 @@ class CoreTextValueObjectsTest {
     assertEquals(BalanceSide.ZERO, BalanceSide.fromWireValue("ZERO"));
     assertEquals(java.util.List.of("DEBIT", "CREDIT", "ZERO"), BalanceSide.wireValues());
     assertThrows(IllegalArgumentException.class, () -> BalanceSide.fromWireValue("debit"));
-
-    assertEquals("PERSON", ActorType.PERSON.wireValue());
-    assertEquals("SYSTEM", ActorType.SYSTEM.wireValue());
-    assertEquals("AGENT", ActorType.AGENT.wireValue());
-    assertEquals(java.util.List.of("PERSON", "SYSTEM", "AGENT"), ActorType.wireValues());
-    assertEquals(ActorType.PERSON, ActorType.fromWireValue("PERSON"));
-    assertEquals(ActorType.SYSTEM, ActorType.fromWireValue("SYSTEM"));
-    assertEquals(ActorType.AGENT, ActorType.fromWireValue("AGENT"));
-    assertThrows(IllegalArgumentException.class, () -> ActorType.fromWireValue("ROBOT"));
 
     assertEquals("CLI", SourceChannel.CLI.wireValue());
     assertEquals("CLI", SourceChannel.CLI.toString());

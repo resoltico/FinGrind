@@ -29,13 +29,13 @@ final class SqliteProtectedBookStagingFiles {
               runBackupStep(
                   SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_SOURCE_OPEN,
                   () ->
-                      SqliteNativeConnections.openWithoutRollbackArtifactWarning(
+                      SqliteNativeConnections.open(
                           normalizedBookPath, sourcePassphrase, SqliteNativeOpenMode.READ_ONLY));
           SqliteNativeDatabase stagedBackupDatabase =
               runBackupStep(
                   SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_STAGE_OPEN,
                   () ->
-                      SqliteNativeConnections.openWithoutRollbackArtifactWarning(
+                      SqliteNativeConnections.open(
                           stagedBackupFilePath,
                           stagedBackupPassphrase,
                           SqliteNativeOpenMode.READ_WRITE_EXISTING_STAGE))) {
@@ -100,7 +100,7 @@ final class SqliteProtectedBookStagingFiles {
         SqliteBookPassphrase resolvedSourcePassphrase = sourcePassphrase.copy();
         SqliteBookPassphrase resolvedReplacementPassphrase = replacementPassphrase.copy();
         SqliteNativeDatabase stagedDatabase =
-            SqliteNativeConnections.openWithoutRollbackArtifactWarning(
+            SqliteNativeConnections.open(
                 stagedBookPath,
                 resolvedSourcePassphrase,
                 SqliteNativeOpenMode.READ_WRITE_EXISTING_STAGE)) {

@@ -115,34 +115,7 @@ public enum BookAuditEventKind implements WireValue {
       rejectAccountPostingAndCloseOrder(wireValue(), accountCode, postingId, closeOperationOrder);
     }
   },
-  REKEY_ROLLBACK_RESTORED("REKEY_ROLLBACK_RESTORED") {
-    @Override
-    void validatePayload(
-        @Nullable AccountCode accountCode,
-        @Nullable PostingId postingId,
-        @Nullable Integer closeOperationOrder) {
-      rejectAccountPostingAndCloseOrder(wireValue(), accountCode, postingId, closeOperationOrder);
-    }
-  },
-  REKEY_ROLLBACK_DELETED("REKEY_ROLLBACK_DELETED") {
-    @Override
-    void validatePayload(
-        @Nullable AccountCode accountCode,
-        @Nullable PostingId postingId,
-        @Nullable Integer closeOperationOrder) {
-      rejectAccountPostingAndCloseOrder(wireValue(), accountCode, postingId, closeOperationOrder);
-    }
-  },
   BACKUP_CREATED_COMPENSATED("BACKUP_CREATED_COMPENSATED") {
-    @Override
-    void validatePayload(
-        @Nullable AccountCode accountCode,
-        @Nullable PostingId postingId,
-        @Nullable Integer closeOperationOrder) {
-      rejectAccountPostingAndCloseOrder(wireValue(), accountCode, postingId, closeOperationOrder);
-    }
-  },
-  REKEY_ROLLBACK_DELETED_COMPENSATED("REKEY_ROLLBACK_DELETED_COMPENSATED") {
     @Override
     void validatePayload(
         @Nullable AccountCode accountCode,

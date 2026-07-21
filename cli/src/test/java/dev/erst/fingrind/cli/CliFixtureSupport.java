@@ -40,8 +40,6 @@ import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
@@ -118,8 +116,6 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         accountingEvidence("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-1"),
-                ActorType.AGENT,
                 new CommandId("command-1"),
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),
@@ -144,8 +140,6 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         accountingEvidence("idem-2"),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-2"),
-                ActorType.PERSON,
                 new CommandId("command-2"),
                 new IdempotencyKey("idem-2"),
                 new CausationId("cause-2"),
@@ -175,8 +169,6 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         accountingEvidence("idem-sale-1"),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-sale-1"),
-                ActorType.PERSON,
                 new CommandId("command-sale-1"),
                 new IdempotencyKey("idem-sale-1"),
                 new CausationId("cause-sale-1"),
@@ -209,8 +201,8 @@ class CliFixtureSupport extends CliIoFixtureSupport {
     return new ApprovalReference(
         new ApprovalId(approvalId),
         new ApprovalType(approvalType),
-        new ActorId("approver-" + approvalId),
-        ActorType.PERSON,
+        "approver-" + approvalId,
+        "person",
         ApprovalDecision.APPROVED,
         Instant.parse("2026-04-07T10:20:30Z"));
   }

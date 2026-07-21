@@ -102,19 +102,20 @@ class AccountingEvidenceTest {
   void approvalReference_requiresRetainedApprovalFact() {
     ApprovalId approvalId = new ApprovalId("approval-1");
     ApprovalType approvalType = new ApprovalType("manager-signoff");
-    ActorId approverId = new ActorId("manager-1");
+    String approverReference = "manager-1";
+    String approverType = "person";
     ApprovalReference reference =
         new ApprovalReference(
             approvalId,
             approvalType,
-            approverId,
-            ActorType.PERSON,
+            approverReference,
+            approverType,
             ApprovalDecision.APPROVED,
             APPROVED_AT);
     assertEquals(approvalId, reference.approvalId());
     assertEquals(approvalType, reference.approvalType());
-    assertEquals(approverId, reference.approverId());
-    assertEquals(ActorType.PERSON, reference.approverType());
+    assertEquals(approverReference, reference.approverReference());
+    assertEquals(approverType, reference.approverType());
     assertEquals(ApprovalDecision.APPROVED, reference.decision());
     assertEquals(APPROVED_AT, reference.approvedAt());
     assertThrows(
@@ -123,8 +124,8 @@ class AccountingEvidenceTest {
             new ApprovalReference(
                 nullOf(),
                 approvalType,
-                approverId,
-                ActorType.PERSON,
+                approverReference,
+                approverType,
                 ApprovalDecision.APPROVED,
                 APPROVED_AT));
     assertThrows(
@@ -133,8 +134,8 @@ class AccountingEvidenceTest {
             new ApprovalReference(
                 approvalId,
                 nullOf(),
-                approverId,
-                ActorType.PERSON,
+                approverReference,
+                approverType,
                 ApprovalDecision.APPROVED,
                 APPROVED_AT));
     assertThrows(
@@ -144,7 +145,7 @@ class AccountingEvidenceTest {
                 approvalId,
                 approvalType,
                 nullOf(),
-                ActorType.PERSON,
+                approverType,
                 ApprovalDecision.APPROVED,
                 APPROVED_AT));
     assertThrows(
@@ -153,7 +154,7 @@ class AccountingEvidenceTest {
             new ApprovalReference(
                 approvalId,
                 approvalType,
-                approverId,
+                approverReference,
                 nullOf(),
                 ApprovalDecision.APPROVED,
                 APPROVED_AT));
@@ -161,15 +162,15 @@ class AccountingEvidenceTest {
         NullPointerException.class,
         () ->
             new ApprovalReference(
-                approvalId, approvalType, approverId, ActorType.PERSON, nullOf(), APPROVED_AT));
+                approvalId, approvalType, approverReference, approverType, nullOf(), APPROVED_AT));
     assertThrows(
         NullPointerException.class,
         () ->
             new ApprovalReference(
                 approvalId,
                 approvalType,
-                approverId,
-                ActorType.PERSON,
+                approverReference,
+                approverType,
                 ApprovalDecision.APPROVED,
                 nullOf()));
   }
@@ -237,8 +238,8 @@ class AccountingEvidenceTest {
     return new ApprovalReference(
         new ApprovalId(token),
         new ApprovalType("manager-signoff"),
-        new ActorId("manager-1"),
-        ActorType.PERSON,
+        "manager-1",
+        "person",
         ApprovalDecision.APPROVED,
         APPROVED_AT);
   }

@@ -7,8 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -67,8 +65,6 @@ class PostingAcceptancePolicyInternalTest {
                 PostingLineageModel.direct(),
                 generatedEvidence("interim-result-sweep-command", "interim-result-sweep-plan"),
                 new RequestProvenance(
-                    new ActorId("actor-1"),
-                    ActorType.SYSTEM,
                     new CommandId("command-close"),
                     new IdempotencyKey("idem-system-command"),
                     new CausationId("cause-close"),
@@ -87,8 +83,6 @@ class PostingAcceptancePolicyInternalTest {
                 PostingLineageModel.direct(),
                 generatedEvidence("operator-correction", "operator-correction"),
                 new RequestProvenance(
-                    new ActorId("actor-1"),
-                    ActorType.PERSON,
                     new CommandId("command-correction"),
                     new IdempotencyKey("idem-command-cli"),
                     new CausationId("cause-correction"),
@@ -116,8 +110,6 @@ class PostingAcceptancePolicyInternalTest {
             PostingLineageModel.direct(),
             generatedEvidence("accepted", "operator-note"),
             new RequestProvenance(
-                new ActorId("actor-accepted"),
-                ActorType.PERSON,
                 new CommandId("command-accepted"),
                 new IdempotencyKey("idem-accepted"),
                 new CausationId("cause-accepted"),
@@ -164,8 +156,6 @@ class PostingAcceptancePolicyInternalTest {
         new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-1"),
-                ActorType.SYSTEM,
                 new CommandId("command-close"),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-close"),
@@ -188,8 +178,6 @@ class PostingAcceptancePolicyInternalTest {
         generatedEvidence("stored-" + postingId, "operator-note"),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-" + postingId),
-                ActorType.PERSON,
                 new CommandId("command-" + postingId),
                 new IdempotencyKey("idem-" + postingId),
                 new CausationId("cause-" + postingId),

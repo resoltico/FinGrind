@@ -25,8 +25,6 @@ import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus
 import dev.erst.fingrind.contract.workflow.LedgerPlanId;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
@@ -79,8 +77,6 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
         CliFixtureSupport.accountingEvidence("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-1"),
-                ActorType.AGENT,
                 new CommandId("command-1"),
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),
@@ -106,8 +102,6 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
         CliFixtureSupport.accountingEvidenceWithApproval("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-1"),
-                ActorType.AGENT,
                 new CommandId("command-1"),
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),

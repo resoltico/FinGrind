@@ -16,8 +16,6 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -611,8 +609,6 @@ class InterimResultSweepServiceTest {
         postingEvidence(postingId, postingKind),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-" + postingId),
-                ActorType.AGENT,
                 new CommandId("command-" + postingId),
                 new IdempotencyKey("idem-" + postingId),
                 new CausationId("cause-" + postingId),
@@ -625,8 +621,6 @@ class InterimResultSweepServiceTest {
     String closeToken = PERIOD_DATE + ":" + PERIOD_DATE + ":" + FIXED_INSTANT.toEpochMilli();
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new ActorId("system:interimResultSweep"),
-            ActorType.SYSTEM,
             new CommandId("interimResultSweep:" + closeToken + ":" + currencyCode),
             new IdempotencyKey("interimResultSweep:" + closeToken + ":" + currencyCode),
             new CausationId("interimResultSweep:" + closeToken),
@@ -650,8 +644,6 @@ class InterimResultSweepServiceTest {
             accountingEvidence(idempotencyKey),
             new CommittedProvenance(
                 new RequestProvenance(
-                    new dev.erst.fingrind.core.ActorId("actor-" + postingId),
-                    dev.erst.fingrind.core.ActorType.AGENT,
                     new dev.erst.fingrind.core.CommandId("command-" + postingId),
                     new dev.erst.fingrind.core.IdempotencyKey(idempotencyKey),
                     new dev.erst.fingrind.core.CausationId("cause-" + postingId),

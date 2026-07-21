@@ -8,14 +8,12 @@ import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationOperationPreimages;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
-import dev.erst.fingrind.executor.maintenance.MaintenanceCompletion;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditCompensationKind;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditKind;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.AttestedProtectedBookMaintenanceStore;
@@ -42,7 +40,6 @@ public final class SqliteProtectedBookMaintenanceStore
     implements AttestedProtectedBookMaintenanceStore {
   private final SqlitePassphraseResolver passphraseResolver;
   private final SqliteProtectedBookVerificationSupport verificationSupport;
-  private final SqliteProtectedBookMaintenanceAuditSupport auditSupport;
   private final SqliteProtectedBookPairPublicationPreparation pairPublicationPreparation;
 
   /** Creates the SQLite maintenance store with one passphrase-resolution seam. */
@@ -56,7 +53,6 @@ public final class SqliteProtectedBookMaintenanceStore
           interruptedPairCompanionBookVerifier) {
     this.passphraseResolver = Objects.requireNonNull(passphraseResolver, "passphraseResolver");
     this.verificationSupport = new SqliteProtectedBookVerificationSupport();
-    this.auditSupport = new SqliteProtectedBookMaintenanceAuditSupport();
     this.pairPublicationPreparation =
         new SqliteProtectedBookPairPublicationPreparation(
             this,
@@ -180,50 +176,11 @@ public final class SqliteProtectedBookMaintenanceStore
   }
 
   @Override
-  public MaintenanceDecision<BookVerification> verifyInitializedReplica(
-      Path normalizedReplicaBookPath, VerifiedBook sourceBook) {
-    Objects.requireNonNull(normalizedReplicaBookPath, "normalizedReplicaBookPath");
-    SqliteVerifiedBook verifiedSourceBook = requireVerifiedBook(sourceBook);
-    return verifyInitializedResolvedBook(
-        normalizedReplicaBookPath,
-        verifiedSourceBook.passphraseCopy(),
-        ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET);
-  }
-
-  @Override
-  public MaintenanceDecision<MaintenanceCompletion> appendMaintenanceAudit(
-      VerifiedBook verifiedBook, Instant recordedAt, ProtectedBookMaintenanceAuditKind auditKind) {
-    Objects.requireNonNull(recordedAt, "recordedAt");
-    Objects.requireNonNull(auditKind, "auditKind");
-    SqliteVerifiedBook sqliteVerifiedBook = requireVerifiedBook(verifiedBook);
-    return auditSupport.appendResolvedMaintenanceAudit(
-        sqliteVerifiedBook.artifactPath(),
-        sqliteVerifiedBook.passphraseCopy(),
-        recordedAt,
-        auditKind);
-  }
-
-  @Override
-  public MaintenanceDecision<MaintenanceCompletion> appendMaintenanceAuditCompensation(
-      VerifiedBook verifiedBook,
-      Instant recordedAt,
-      ProtectedBookMaintenanceAuditCompensationKind auditKind) {
-    Objects.requireNonNull(recordedAt, "recordedAt");
-    Objects.requireNonNull(auditKind, "auditKind");
-    SqliteVerifiedBook sqliteVerifiedBook = requireVerifiedBook(verifiedBook);
-    return auditSupport.appendResolvedMaintenanceAuditCompensation(
-        sqliteVerifiedBook.artifactPath(),
-        sqliteVerifiedBook.passphraseCopy(),
-        recordedAt,
-        auditKind);
-  }
-
-  @Override
   public List<AttestationEvidence> loadAttestationEvidence(VerifiedBook verifiedBook) {
     SqliteVerifiedBook sqliteVerifiedBook = requireVerifiedBook(verifiedBook);
     try (SqliteBookPassphrase passphrase = sqliteVerifiedBook.passphraseCopy();
         SqliteNativeDatabase database =
-            SqliteNativeConnections.openWithoutRollbackArtifactWarning(
+            SqliteNativeConnections.open(
                 sqliteVerifiedBook.artifactPath(), passphrase, SqliteNativeOpenMode.READ_ONLY)) {
       return SqliteAttestationEvidenceStore.loadAll(database);
     }
@@ -240,7 +197,7 @@ public final class SqliteProtectedBookMaintenanceStore
     SqliteVerifiedBook sqliteVerifiedBook = requireVerifiedBook(verifiedBook);
     try (SqliteBookPassphrase passphrase = sqliteVerifiedBook.passphraseCopy();
         SqliteNativeDatabase database =
-            SqliteNativeConnections.openWithoutRollbackArtifactWarning(
+            SqliteNativeConnections.open(
                 sqliteVerifiedBook.artifactPath(),
                 passphrase,
                 SqliteNativeOpenMode.READ_WRITE_EXISTING)) {

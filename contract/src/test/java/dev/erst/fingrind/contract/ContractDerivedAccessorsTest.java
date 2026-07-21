@@ -18,8 +18,6 @@ import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
@@ -53,8 +51,6 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
     PostingLineage reversal = PostingLineage.reversal(reversalReference, reversalReason);
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new ActorId("actor-1"),
-            ActorType.AGENT,
             new CommandId("command-1"),
             new IdempotencyKey("idem-1"),
             new CausationId("cause-1"),

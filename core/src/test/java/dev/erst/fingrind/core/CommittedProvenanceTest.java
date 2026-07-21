@@ -13,8 +13,6 @@ class CommittedProvenanceTest {
   void constructor_keepsCommittedAuditPayload() {
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new ActorId("actor-1"),
-            ActorType.AGENT,
             new CommandId("command-1"),
             new IdempotencyKey("idem-1"),
             new CausationId("cause-1"),
@@ -32,8 +30,6 @@ class CommittedProvenanceTest {
   void constructor_rejectsNullRecordedAt() {
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new ActorId("actor-1"),
-            ActorType.PERSON,
             new CommandId("command-1"),
             new IdempotencyKey("idem-1"),
             new CausationId("cause-1"),

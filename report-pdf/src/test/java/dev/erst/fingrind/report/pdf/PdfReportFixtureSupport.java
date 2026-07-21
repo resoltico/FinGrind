@@ -33,8 +33,6 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
@@ -215,8 +213,6 @@ final class PdfReportFixtureSupport {
         evidence("idem-%03d".formatted(index)),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("office-worker"),
-                ActorType.PERSON,
                 new CommandId("command-%03d".formatted(index)),
                 new IdempotencyKey("idem-%03d".formatted(index)),
                 new CausationId("cause-%03d".formatted(index)),

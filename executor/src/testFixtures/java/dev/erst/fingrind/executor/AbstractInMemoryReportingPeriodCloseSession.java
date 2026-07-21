@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.AcceptedCloseTargetSelection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.CloseTargetSelection;
@@ -52,13 +53,15 @@ abstract class AbstractInMemoryReportingPeriodCloseSession extends AbstractInMem
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
       Instant sweptAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(reportingPeriod, "reportingPeriod");
     Objects.requireNonNull(bookIdentity, "bookIdentity");
     Objects.requireNonNull(planner, "planner");
     Objects.requireNonNull(currentUtcDate, "currentUtcDate");
     Objects.requireNonNull(sweptAt, "sweptAt");
     Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     return InMemoryBookSessionSupport.withLock(
         lock,
         () -> {
@@ -101,7 +104,8 @@ abstract class AbstractInMemoryReportingPeriodCloseSession extends AbstractInMem
                   closePlan.sweptTotals(),
                   sweptAt,
                   closePlan.closingPostings()),
-              postingIdGenerator);
+              postingIdGenerator,
+              attestationAuthorizer);
         });
   }
 
@@ -113,7 +117,8 @@ abstract class AbstractInMemoryReportingPeriodCloseSession extends AbstractInMem
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
       Instant sweptAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(throughEffectiveDate, "throughEffectiveDate");
     Objects.requireNonNull(bookStartDate, "bookStartDate");
     Objects.requireNonNull(bookIdentity, "bookIdentity");
@@ -121,6 +126,7 @@ abstract class AbstractInMemoryReportingPeriodCloseSession extends AbstractInMem
     Objects.requireNonNull(currentUtcDate, "currentUtcDate");
     Objects.requireNonNull(sweptAt, "sweptAt");
     Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     return interimResultSweep(
         planner.reportingPeriod(
             throughEffectiveDate, bookStartDate, bookIdentity, transferredThroughEffectiveDate()),
@@ -128,13 +134,17 @@ abstract class AbstractInMemoryReportingPeriodCloseSession extends AbstractInMem
         planner,
         currentUtcDate,
         sweptAt,
-        postingIdGenerator);
+        postingIdGenerator,
+        attestationAuthorizer);
   }
 
   InterimResultSweepOutcome interimResultSweep(
-      InterimResultSweepDraft interimResultSweepDraft, PostingIdGenerator postingIdGenerator) {
+      InterimResultSweepDraft interimResultSweepDraft,
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(interimResultSweepDraft);
     Objects.requireNonNull(postingIdGenerator);
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     return InMemoryBookSessionSupport.withLock(
         lock,
         () -> {
@@ -149,7 +159,8 @@ abstract class AbstractInMemoryReportingPeriodCloseSession extends AbstractInMem
           try {
             for (dev.erst.fingrind.executor.spi.PostingDraft closingPostingDraft :
                 interimResultSweepDraft.closingPostings()) {
-              PostingCommitResult commitResult = commit(closingPostingDraft, postingIdGenerator);
+              PostingCommitResult commitResult =
+                  commit(closingPostingDraft, postingIdGenerator, attestationAuthorizer);
               if (commitResult instanceof PostingCommitResult.Rejected rejected) {
                 throw new IllegalStateException(
                     "Generated interim-result-sweep posting failed bookkeeping acceptance: "
@@ -184,13 +195,15 @@ abstract class AbstractInMemoryReportingPeriodCloseSession extends AbstractInMem
       FiscalYearClosePlanner planner,
       LocalDate currentUtcDate,
       Instant closedAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(reportingPeriod, "reportingPeriod");
     Objects.requireNonNull(bookIdentity, "bookIdentity");
     Objects.requireNonNull(planner, "planner");
     Objects.requireNonNull(currentUtcDate, "currentUtcDate");
     Objects.requireNonNull(closedAt, "closedAt");
     Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     return InMemoryBookSessionSupport.withLock(
         lock,
         () -> {
@@ -229,7 +242,7 @@ abstract class AbstractInMemoryReportingPeriodCloseSession extends AbstractInMem
                   postings(reportingPeriod.effectiveDateRange()),
                   latestTransferredThroughWithinPeriod(reportingPeriod),
                   closedAt);
-          return persistFiscalYearClose(closeDraft, postingIdGenerator);
+          return persistFiscalYearClose(closeDraft, postingIdGenerator, attestationAuthorizer);
         });
   }
 
@@ -270,20 +283,23 @@ abstract class AbstractInMemoryReportingPeriodCloseSession extends AbstractInMem
   }
 
   private FiscalYearCloseOutcome persistFiscalYearClose(
-      FiscalYearCloseDraft closeDraft, PostingIdGenerator postingIdGenerator) {
+      FiscalYearCloseDraft closeDraft,
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     InMemoryBookSessionSnapshot rollbackSnapshot = snapshotState();
     boolean committed = false;
     try {
       if (closeDraft.unsweptInterimResultSweepDraft() != null) {
         InterimResultSweepOutcome sweepOutcome =
-            interimResultSweep(closeDraft.unsweptInterimResultSweepDraft(), postingIdGenerator);
+            interimResultSweep(
+                closeDraft.unsweptInterimResultSweepDraft(), postingIdGenerator, attestationAuthorizer);
         if (!(sweepOutcome instanceof InterimResultSweepOutcome.Transferred)) {
           throw new IllegalStateException(
               "Generated interim-result sweep failed during fiscal-year close.");
         }
       }
       ClosedFiscalYearRecord closedFiscalYear =
-          persistFiscalYearCloseRecord(closeDraft, postingIdGenerator);
+          persistFiscalYearCloseRecord(closeDraft, postingIdGenerator, attestationAuthorizer);
       committed = true;
       return new FiscalYearCloseOutcome.Closed(closedFiscalYear, false);
     } finally {
@@ -309,11 +325,14 @@ abstract class AbstractInMemoryReportingPeriodCloseSession extends AbstractInMem
   }
 
   private ClosedFiscalYearRecord persistFiscalYearCloseRecord(
-      FiscalYearCloseDraft closeDraft, PostingIdGenerator postingIdGenerator) {
+      FiscalYearCloseDraft closeDraft,
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     List<PostingId> closePostingIds = new ArrayList<>();
     for (dev.erst.fingrind.executor.spi.PostingDraft closePostingDraft :
         closeDraft.closePostingDrafts()) {
-      PostingCommitResult commitResult = commit(closePostingDraft, postingIdGenerator);
+      PostingCommitResult commitResult =
+          commit(closePostingDraft, postingIdGenerator, attestationAuthorizer);
       if (commitResult instanceof PostingCommitResult.Rejected rejected) {
         throw new IllegalStateException(
             "Generated fiscal-year-close posting failed bookkeeping acceptance: "

@@ -11,7 +11,6 @@ import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
@@ -354,7 +353,7 @@ class ContractTemplatesValidationTest {
                 "approval 1",
                 "manager-signoff",
                 "manager-1",
-                ActorType.PERSON,
+                "person",
                 ApprovalDecision.APPROVED,
                 "2026-04-25T10:15:30Z"));
     assertThrows(
@@ -364,7 +363,7 @@ class ContractTemplatesValidationTest {
                 "approval-1",
                 "manager signoff",
                 "manager-1",
-                ActorType.PERSON,
+                "person",
                 ApprovalDecision.APPROVED,
                 "2026-04-25T10:15:30Z"));
     assertThrows(
@@ -937,7 +936,7 @@ class ContractTemplatesValidationTest {
 
   private static ContractTemplates.ProvenanceTemplateDescriptor provenanceTemplate() {
     return new ContractTemplates.ProvenanceTemplateDescriptor(
-        "actor-1", ActorType.PERSON, "command-1", "idem-1", "cause-1", null);
+        "actor-1", "person", "command-1", "idem-1", "cause-1", null);
   }
 
   private static ContractTemplates.JournalLineTemplateDescriptor journalLineTemplate(
@@ -968,7 +967,7 @@ class ContractTemplatesValidationTest {
         "approval-1",
         "manager-signoff",
         "manager-1",
-        ActorType.PERSON,
+        "person",
         ApprovalDecision.APPROVED,
         "2026-04-25T10:15:30Z");
   }

@@ -19,7 +19,6 @@ import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;

@@ -165,7 +165,10 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifec
 
   @Override
   public PostingCommitResult commit(
-      PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
+      PostingDraft postingDraft,
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     return InMemoryBookSessionSupport.withLock(
         lock,
         () -> {
@@ -219,7 +222,10 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifec
             postingFact.postingOriginKind(),
             postingFact.evidence(),
             postingFact.provenance()),
-        postingFact::postingId);
+        postingFact::postingId,
+        ignored -> {
+          throw new AssertionError("The in-memory semantic fixture must not authorize persistence.");
+        });
   }
 
   @Override

@@ -17,8 +17,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
@@ -697,8 +695,6 @@ class InMemoryBookSessionTest {
       String idempotencyKey, Instant recordedAt) {
     return new CommittedProvenance(
         new RequestProvenance(
-            new ActorId("actor-1"),
-            ActorType.AGENT,
             new CommandId("command-" + idempotencyKey),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-1"),

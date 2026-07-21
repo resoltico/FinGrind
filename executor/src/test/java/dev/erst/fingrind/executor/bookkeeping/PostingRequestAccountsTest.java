@@ -15,8 +15,6 @@ import dev.erst.fingrind.contract.bookkeeping.ResolvedFixedAssetDepreciation;
 import dev.erst.fingrind.contract.bookkeeping.SettlementAdjunct;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CorrelationId;
@@ -525,8 +523,6 @@ class PostingRequestAccountsTest {
 
   private static RequestProvenance provenance() {
     return new RequestProvenance(
-        new ActorId("actor-1"),
-        ActorType.PERSON,
         new CommandId("command-1"),
         new IdempotencyKey("idem-1"),
         new CausationId("cause-1"),

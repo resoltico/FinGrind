@@ -29,8 +29,6 @@ import dev.erst.fingrind.contract.tax.TaxRegistrationName;
 import dev.erst.fingrind.contract.tax.TaxRegistrationPage;
 import dev.erst.fingrind.contract.tax.TaxSelection;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
@@ -388,8 +386,6 @@ class TaxReadServiceTest {
         accountingEvidence(postingId),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-" + postingId),
-                ActorType.PERSON,
                 new CommandId("command-" + postingId),
                 new IdempotencyKey("idem-" + postingId),
                 new CausationId("cause-" + postingId),

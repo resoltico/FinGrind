@@ -118,8 +118,6 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
             evidence("idem-reversal"),
             new CommittedProvenance(
                 new RequestProvenance(
-                    new dev.erst.fingrind.core.ActorId("office-worker"),
-                    dev.erst.fingrind.core.ActorType.PERSON,
                     new CommandId("command-reversal"),
                     new IdempotencyKey("idem-reversal"),
                     new CausationId("cause-reversal"),
@@ -195,8 +193,6 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
             evidence("idem-self"),
             new CommittedProvenance(
                 new RequestProvenance(
-                    new dev.erst.fingrind.core.ActorId("office-worker"),
-                    dev.erst.fingrind.core.ActorType.PERSON,
                     new CommandId("command-self"),
                     new IdempotencyKey("idem-self"),
                     new CausationId("cause-self"),

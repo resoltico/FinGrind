@@ -24,8 +24,6 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -328,8 +326,6 @@ class LatvianPayrollLifecycleIntegrationTest {
         entry,
         evidence(token, sourceDocumentType(entry)),
         new RequestProvenance(
-            new ActorId("payroll-operator"),
-            ActorType.AGENT,
             new CommandId("payroll-command-" + token),
             new IdempotencyKey("payroll-idempotency-" + token),
             new CausationId("payroll-cause-" + token),

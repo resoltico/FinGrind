@@ -1,7 +1,5 @@
 package dev.erst.fingrind.testsupport;
 
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -22,8 +20,6 @@ public final class PostingRouteReachabilityProvenanceFixtures {
   /** Builds the operator provenance used by shared reachability scenarios. */
   public static RequestProvenance requestProvenance(String token) {
     return new RequestProvenance(
-        new ActorId("actor-" + token),
-        ActorType.AGENT,
         new CommandId("command-" + token),
         new IdempotencyKey("idem-" + token),
         new CausationId("cause-" + token),

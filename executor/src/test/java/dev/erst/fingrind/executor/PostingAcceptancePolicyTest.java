@@ -13,8 +13,6 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
@@ -608,8 +606,6 @@ class PostingAcceptancePolicyTest {
             unusedRequestFingerprint(),
             new dev.erst.fingrind.core.CommittedProvenance(
                 new RequestProvenance(
-                    new ActorId("actor-1"),
-                    ActorType.SYSTEM,
                     new CommandId("command-close"),
                     new IdempotencyKey("idem-close"),
                     new CausationId("cause-close"),
@@ -681,8 +677,6 @@ class PostingAcceptancePolicyTest {
         PostingLineageModel.direct(),
         accountingEvidence(idempotencyKey),
         new RequestProvenance(
-            new ActorId("actor-1"),
-            ActorType.AGENT,
             new CommandId("command-1"),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-1"),
@@ -724,8 +718,6 @@ class PostingAcceptancePolicyTest {
         accountingEvidence(idempotencyKey),
         new dev.erst.fingrind.core.CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-1"),
-                ActorType.AGENT,
                 new CommandId("command-1"),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-1"),

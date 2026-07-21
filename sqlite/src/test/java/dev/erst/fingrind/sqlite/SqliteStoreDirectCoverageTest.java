@@ -7,8 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -519,8 +517,6 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
     String closeToken = EFFECTIVE_DATE + ":" + EFFECTIVE_DATE + ":" + FIXED_INSTANT.toEpochMilli();
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new ActorId("system:interimResultSweep"),
-            ActorType.SYSTEM,
             new CommandId("interimResultSweep:" + closeToken + ":" + currencyCode),
             new IdempotencyKey("interimResultSweep:" + closeToken + ":" + currencyCode),
             new CausationId("interimResultSweep:" + closeToken),

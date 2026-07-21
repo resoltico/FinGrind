@@ -3,8 +3,6 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
-import dev.erst.fingrind.executor.spi.StagedBookReplacement;
-import dev.erst.fingrind.executor.spi.StagedRollbackArtifactDeletion;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
@@ -41,47 +39,6 @@ abstract class SqliteProtectedBookMaintenanceArtifactStore
       Path normalizedArtifactPath, ProtectedBookMaintenanceArtifactRole artifactRole) {
     return acquireLease(
         normalizedArtifactPath, artifactRole, SqliteMaintenanceLeaseIntent.MANAGED_TARGET);
-  }
-
-  @Override
-  public StagedBookReplacement stageReplacement(
-      Path normalizedSourceBookPath, Path normalizedTargetBookPath) {
-    try {
-      return SqliteStagedBookReplacement.create(normalizedSourceBookPath, normalizedTargetBookPath);
-    } catch (SqliteCallerPathContractException exception) {
-      throw maintenanceRejection(ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET, exception);
-    }
-  }
-
-  @Override
-  public List<Path> staleRollbackArtifacts(Path normalizedBookPath) {
-    try {
-      return SqliteRekeyRollbackFile.staleRollbackArtifacts(normalizedBookPath);
-    } catch (java.io.IOException exception) {
-      throw new IllegalStateException(
-          "Failed to inspect FinGrind SQLite rollback artifacts beside "
-              + SqliteMachinePaths.absoluteValue(normalizedBookPath)
-              + ".",
-          exception);
-    }
-  }
-
-  @Override
-  public boolean isRollbackArtifactForBook(
-      Path normalizedBookPath, Path normalizedRollbackArtifactPath) {
-    return SqliteRekeyRollbackFile.isRollbackArtifactForBook(
-        normalizedBookPath, normalizedRollbackArtifactPath);
-  }
-
-  @Override
-  public StagedRollbackArtifactDeletion stageRollbackArtifactDeletion(
-      Path normalizedRollbackArtifactPath) {
-    try {
-      SqliteProtectedBookStagingFiles.requireRegularNonSymlinkFile(normalizedRollbackArtifactPath);
-      return SqliteStagedRollbackDeletion.create(normalizedRollbackArtifactPath);
-    } catch (SqliteCallerPathContractException exception) {
-      throw maintenanceRejection(ProtectedBookMaintenanceArtifactRole.ROLLBACK_ARTIFACT, exception);
-    }
   }
 
   protected static SqliteVerifiedBook requireVerifiedBook(VerifiedBook verifiedBook) {

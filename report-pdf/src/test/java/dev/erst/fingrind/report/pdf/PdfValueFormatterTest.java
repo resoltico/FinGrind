@@ -6,8 +6,6 @@ import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CashFlowSectionKind;
 import dev.erst.fingrind.core.CausationId;
@@ -234,8 +232,6 @@ class PdfValueFormatterTest {
                 evidence("idem-2"),
                 new CommittedProvenance(
                     new RequestProvenance(
-                        new ActorId("actor-1"),
-                        ActorType.AGENT,
                         new CommandId("command-1"),
                         new IdempotencyKey("idem-2"),
                         new CausationId("cause-1"),
@@ -260,8 +256,6 @@ class PdfValueFormatterTest {
                 evidence("idem-2"),
                 new CommittedProvenance(
                     new RequestProvenance(
-                        new ActorId("actor-1"),
-                        ActorType.AGENT,
                         new CommandId("command-1"),
                         new IdempotencyKey("idem-2"),
                         new CausationId("cause-1"),
@@ -396,8 +390,6 @@ class PdfValueFormatterTest {
         evidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-1"),
-                ActorType.AGENT,
                 new CommandId("command-1"),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-1"),

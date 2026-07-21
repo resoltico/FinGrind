@@ -26,8 +26,6 @@ import dev.erst.fingrind.contract.payroll.LatvianPayrollMonth;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollRunId;
 import dev.erst.fingrind.contract.payroll.LatvianPayrollSettlementKind;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -676,8 +674,6 @@ class ReversalAcceptancePolicyTest {
 
   private static RequestProvenance requestProvenance(String idempotencyKey) {
     return new RequestProvenance(
-        new ActorId("actor-1"),
-        ActorType.AGENT,
         new CommandId("command-1"),
         new IdempotencyKey(idempotencyKey),
         new CausationId("cause-1"),

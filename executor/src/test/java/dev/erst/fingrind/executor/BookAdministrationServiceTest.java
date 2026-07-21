@@ -252,8 +252,8 @@ class BookAdministrationServiceTest {
               ExecutorAccountingTestSupport.accountingEvidence("idem-1"),
               new dev.erst.fingrind.core.CommittedProvenance(
                   new dev.erst.fingrind.core.RequestProvenance(
-                      new dev.erst.fingrind.core.ActorId("actor-1"),
-                      dev.erst.fingrind.core.ActorType.AGENT,
+                      "actor-1",
+                      "agent",
                       new dev.erst.fingrind.core.CommandId("command-1"),
                       new dev.erst.fingrind.core.IdempotencyKey("idem-1"),
                       new dev.erst.fingrind.core.CausationId("cause-1"),
@@ -280,8 +280,8 @@ class BookAdministrationServiceTest {
               ExecutorAccountingTestSupport.accountingEvidence("idem-2"),
               new dev.erst.fingrind.core.CommittedProvenance(
                   new dev.erst.fingrind.core.RequestProvenance(
-                      new dev.erst.fingrind.core.ActorId("actor-2"),
-                      dev.erst.fingrind.core.ActorType.AGENT,
+                      "actor-2",
+                      "agent",
                       new dev.erst.fingrind.core.CommandId("command-2"),
                       new dev.erst.fingrind.core.IdempotencyKey("idem-2"),
                       new dev.erst.fingrind.core.CausationId("cause-2"),

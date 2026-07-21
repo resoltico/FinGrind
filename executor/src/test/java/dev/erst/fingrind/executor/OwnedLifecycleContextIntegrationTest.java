@@ -31,8 +31,6 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
@@ -251,8 +249,6 @@ class OwnedLifecycleContextIntegrationTest {
 
   private static RequestProvenance provenance(String token) {
     return new RequestProvenance(
-        new ActorId("lifecycle-operator"),
-        ActorType.AGENT,
         new CommandId("lifecycle-command-" + token),
         new IdempotencyKey("lifecycle-idempotency-" + token),
         new CausationId("lifecycle-cause-" + token),

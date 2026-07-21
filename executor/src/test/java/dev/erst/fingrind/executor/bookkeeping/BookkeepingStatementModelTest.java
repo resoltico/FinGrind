@@ -556,8 +556,6 @@ class BookkeepingStatementModelTest {
         new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
         new CommittedProvenance(
             new RequestProvenance(
-                new dev.erst.fingrind.core.ActorId("actor-1"),
-                dev.erst.fingrind.core.ActorType.SYSTEM,
                 new dev.erst.fingrind.core.CommandId("command-1"),
                 new dev.erst.fingrind.core.IdempotencyKey("idem-1"),
                 new dev.erst.fingrind.core.CausationId("cause-1"),

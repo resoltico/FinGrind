@@ -20,8 +20,6 @@ import dev.erst.fingrind.contract.tax.TaxRegistrationId;
 import dev.erst.fingrind.contract.tax.TaxSelection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
@@ -60,8 +58,8 @@ class RequestFingerprintOwnerTest {
                 new ApprovalReference(
                     new ApprovalId("approval-1"),
                     new ApprovalType("owner-review"),
-                    new ActorId("owner-1"),
-                    ActorType.PERSON,
+                    "owner-1",
+                    "person",
                     ApprovalDecision.APPROVED,
                     Instant.parse("2026-04-07T10:15:30Z"))));
     PostingCommand commandWithoutApproval = postingCommand(SourceChannel.CLI, List.of());
@@ -336,8 +334,6 @@ class RequestFingerprintOwnerTest {
         new dev.erst.fingrind.core.AccountingEvidence(
             accountingEvidence("fingerprint").sourceDocuments(), approvals),
         new RequestProvenance(
-            new ActorId("actor-1"),
-            ActorType.PERSON,
             new CommandId("command-1"),
             new IdempotencyKey("idem-1"),
             new CausationId("cause-1"),
@@ -358,8 +354,6 @@ class RequestFingerprintOwnerTest {
         },
         accountingEvidence("entry-fingerprint"),
         new RequestProvenance(
-            new ActorId("actor-entry"),
-            ActorType.PERSON,
             new CommandId("command-entry"),
             new IdempotencyKey("idem-entry"),
             new CausationId("cause-entry"),
@@ -395,8 +389,6 @@ class RequestFingerprintOwnerTest {
         new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "1".repeat(64)),
         new CommittedProvenance(
             new RequestProvenance(
-                new ActorId("actor-entry"),
-                ActorType.PERSON,
                 new CommandId("command-entry"),
                 new IdempotencyKey("idem-entry"),
                 new CausationId("cause-entry"),
@@ -421,8 +413,6 @@ class RequestFingerprintOwnerTest {
         entry.postingOriginKind(),
         accountingEvidence("accepted-entry-fingerprint"),
         new RequestProvenance(
-            new ActorId("actor-accepted"),
-            ActorType.PERSON,
             new CommandId("command-accepted"),
             new IdempotencyKey("idem-accepted"),
             new CausationId("cause-accepted"),

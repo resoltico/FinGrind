@@ -28,8 +28,6 @@ import dev.erst.fingrind.contract.tax.TaxSelection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -691,8 +689,6 @@ class SqliteTaxStoreCoverageTest extends SqlitePostingFactStoreTestSupport {
   private static CommittedProvenance committedProvenance(String token) {
     return new CommittedProvenance(
         new RequestProvenance(
-            new ActorId("actor-" + token),
-            ActorType.AGENT,
             new CommandId("command-" + token),
             new IdempotencyKey("idem-" + token),
             new CausationId("cause-" + token),

@@ -7,8 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -120,8 +118,6 @@ class PostingAccountStatePolicyTest {
         historicalReversal ? PostingOriginKind.REVERSAL : PostingOriginKind.DIRECT_JOURNAL,
         accountingEvidence("account-state-" + historicalReversal),
         new RequestProvenance(
-            new ActorId("agent-1"),
-            ActorType.AGENT,
             new CommandId("account-state-command"),
             new IdempotencyKey("account-state-" + historicalReversal),
             new CausationId("account-state-cause"),

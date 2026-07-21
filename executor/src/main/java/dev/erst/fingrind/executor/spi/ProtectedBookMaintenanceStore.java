@@ -1,14 +1,10 @@
 package dev.erst.fingrind.executor.spi;
 
-import dev.erst.fingrind.executor.maintenance.MaintenanceCompletion;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditCompensationKind;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditKind;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import java.nio.file.Path;
-import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
@@ -99,36 +95,6 @@ public interface ProtectedBookMaintenanceStore {
     @Override
     void close();
   }
-
-  /**
-   * Verifies that the supplied replicated book path opens with the same secret material as the
-   * already verified source book.
-   */
-  MaintenanceDecision<BookVerification> verifyInitializedReplica(
-      Path normalizedReplicaBookPath, VerifiedBook sourceBook);
-
-  /** Stages one reversible replacement of the selected live book path with one verified source. */
-  StagedBookReplacement stageReplacement(
-      Path normalizedSourceBookPath, Path normalizedTargetBookPath);
-
-  /** Lists every sibling rollback artifact that belongs to the supplied live book path. */
-  List<Path> staleRollbackArtifacts(Path normalizedBookPath);
-
-  /** Returns whether the selected rollback artifact belongs to the supplied live book path. */
-  boolean isRollbackArtifactForBook(Path normalizedBookPath, Path normalizedRollbackArtifactPath);
-
-  /** Stages one reversible rollback-artifact deletion. */
-  StagedRollbackArtifactDeletion stageRollbackArtifactDeletion(Path normalizedRollbackArtifactPath);
-
-  /** Appends one durable maintenance audit event into the selected initialized protected book. */
-  MaintenanceDecision<MaintenanceCompletion> appendMaintenanceAudit(
-      VerifiedBook verifiedBook, Instant recordedAt, ProtectedBookMaintenanceAuditKind auditKind);
-
-  /** Appends one compensating maintenance audit event after external publish compensation. */
-  MaintenanceDecision<MaintenanceCompletion> appendMaintenanceAuditCompensation(
-      VerifiedBook verifiedBook,
-      Instant recordedAt,
-      ProtectedBookMaintenanceAuditCompensationKind auditKind);
 
   /** Outcome of attempting to acquire one exclusive maintenance lease. */
   sealed interface LeaseAcquisition permits HeldLease, LeaseBusy {

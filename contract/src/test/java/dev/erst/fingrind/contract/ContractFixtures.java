@@ -28,8 +28,6 @@ import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
@@ -251,8 +249,6 @@ final class ContractFixtures {
 
   static RequestProvenance requestProvenance(String idempotencyKey) {
     return new RequestProvenance(
-        new ActorId("actor-1"),
-        ActorType.AGENT,
         new CommandId("command-1"),
         new IdempotencyKey(idempotencyKey),
         new CausationId("cause-1"),
@@ -270,8 +266,8 @@ final class ContractFixtures {
     return new ApprovalReference(
         new ApprovalId("approval-" + token),
         new ApprovalType("manager-signoff"),
-        new ActorId("manager-1"),
-        ActorType.PERSON,
+        "manager-1",
+        "person",
         ApprovalDecision.APPROVED,
         FIXTURE_INSTANT);
   }

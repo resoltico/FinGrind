@@ -11,8 +11,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceMath;
 import dev.erst.fingrind.core.CashFlowSectionKind;
 import dev.erst.fingrind.core.CausationId;
@@ -446,8 +444,6 @@ class CashFlowPostingMovementClassifierTest {
   private static CommittedProvenance provenance(String token) {
     return new CommittedProvenance(
         new RequestProvenance(
-            new ActorId("actor-" + token),
-            ActorType.AGENT,
             new CommandId("command-" + token),
             new IdempotencyKey("idem-" + token),
             new CausationId("cause-" + token),

@@ -30,8 +30,6 @@ import dev.erst.fingrind.contract.fx.QuotedExchangeRate;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
@@ -593,8 +591,6 @@ class SqliteOwnedLifecycleContextIntegrationTest extends SqlitePostingFactStoreT
 
   private static RequestProvenance requestProvenance(String token) {
     return new RequestProvenance(
-        new ActorId("actor-" + token),
-        ActorType.AGENT,
         new CommandId("command-" + token),
         new IdempotencyKey("idempotency-" + token),
         new CausationId("cause-" + token),
