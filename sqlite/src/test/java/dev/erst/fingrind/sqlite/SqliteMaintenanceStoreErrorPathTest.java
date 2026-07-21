@@ -8,7 +8,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationLifecycleMutationProjection;
+import dev.erst.fingrind.core.attestation.AttestationVerification;
+import dev.erst.fingrind.core.attestation.AttestationVerifier;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
@@ -18,7 +21,9 @@ import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /** Exercises real maintenance-store error handling at the durable attestation boundary. */
@@ -108,6 +113,40 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
         assertInstanceOf(
             ProtectedBookMaintenanceRejection.ArtifactVerificationFailed.class,
             exception.rejection());
+    assertEquals(ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE, rejection.artifactRole());
+    assertEquals(artifactPath.toAbsolutePath().normalize(), rejection.artifactPath());
+    assertEquals(
+        ProtectedBookVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED,
+        rejection.verificationFailure());
+  }
+
+  @Test
+  void signedBackupArtifactWithANonBookSnapshot_isClassifiedAsVerificationFailure()
+      throws Exception {
+    Instant initializedAt = Instant.parse("2026-07-21T12:00:00Z");
+    AttestationEvidence genesis =
+        SqliteAttestationTestSupport.genesis(
+            SqlitePostingFactFixtureSupport.bookIdentity(), initializedAt);
+    AttestationVerification sourceVerification = AttestationVerifier.verifyBook(List.of(genesis));
+    Path artifactPath = tempDirectory.resolve("signed-non-book-snapshot.fgba");
+    Files.write(
+        artifactPath,
+        SqliteAttestationTestSupport.signedBackupArtifact(
+            "not an encrypted SQLite book".getBytes(java.nio.charset.StandardCharsets.UTF_8),
+            sourceVerification,
+            UUID.fromString("75624522-2c32-42fe-bc59-815d2f5b062e")));
+    BookAccess backupAccess = bookAccess(tempDirectory.resolve("signed-non-book-snapshot.sqlite"));
+    Path keyPath =
+        ((BookAccess.PassphraseSource.KeyFile) backupAccess.passphraseSource()).bookKeyFilePath();
+
+    ProtectedBookMaintenanceRejection.ArtifactVerificationFailed rejection =
+        assertInstanceOf(
+            ProtectedBookMaintenanceRejection.ArtifactVerificationFailed.class,
+            assertThrows(
+                    ProtectedBookMaintenanceRejectionException.class,
+                    () -> maintenanceStore().verifyBackupArtifact(artifactPath, keyPath))
+                .rejection());
+
     assertEquals(ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE, rejection.artifactRole());
     assertEquals(artifactPath.toAbsolutePath().normalize(), rejection.artifactPath());
     assertEquals(
