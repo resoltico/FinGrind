@@ -112,6 +112,13 @@ class AttestedProtectedBookWorkflowFailureTest {
     failedStaging.setStagedBackup(MaintenanceDecision.failed(storageFailure()));
     assertInstanceOf(MaintenanceDecision.Failed.class, backup(failedStaging, access, credential));
 
+    AttestationMaintenanceTestSupport.Store failedStagedVerification =
+        store(credential, BackupArtifactPairState.ABSENT);
+    failedStagedVerification.setStagedBackupVerification(
+        MaintenanceDecision.failed(storageFailure()));
+    assertInstanceOf(
+        MaintenanceDecision.Failed.class, backup(failedStagedVerification, access, credential));
+
     AttestationMaintenanceTestSupport.Store malformedSnapshot =
         store(credential, BackupArtifactPairState.ABSENT);
     malformedSnapshot.setSnapshotEvidence(List.of());
@@ -495,6 +502,15 @@ class AttestedProtectedBookWorkflowFailureTest {
       assertInstanceOf(
           MaintenanceDecision.Failed.class,
           workflow(failedRekeyVerification).rekeyBook(access, rekeyPath(), session));
+    }
+
+    AttestationMaintenanceTestSupport.Store malformedLiveEvidence =
+        store(credential, BackupArtifactPairState.ABSENT);
+    malformedLiveEvidence.setLiveEvidence(List.of());
+    try (var session = credential.openSession()) {
+      assertInstanceOf(
+          MaintenanceDecision.Failed.class,
+          workflow(malformedLiveEvidence).rekeyBook(access, rekeyPath(), session));
     }
   }
 
