@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -111,7 +112,8 @@ class LatvianPayrollLifecycleIntegrationTest {
           assertInstanceOf(
               PostEntryResult.CommitRejected.class,
               service.commit(
-                  command(netWageSettlement(PAYROLL_DATE), "payroll-net-wages-duplicate")));
+                  command(netWageSettlement(PAYROLL_DATE), "payroll-net-wages-duplicate"),
+                  TEST_AUTHORIZER));
       assertEntrySemanticsCode(
           duplicateSettlement.rejection(), "latvian-payroll-settlement-already-exists");
 
@@ -119,7 +121,8 @@ class LatvianPayrollLifecycleIntegrationTest {
           assertInstanceOf(
               PostEntryResult.CommitRejected.class,
               service.commit(
-                  reversal(run.postingId(), LocalDate.parse("2026-08-06"), "reverse-run")));
+                  reversal(run.postingId(), LocalDate.parse("2026-08-06"), "reverse-run"),
+                  TEST_AUTHORIZER));
       assertEntrySemanticsCode(
           runReversalWithActiveSettlements.rejection(),
           "latvian-payroll-run-reversal-requires-settlements-reversed");
@@ -129,7 +132,8 @@ class LatvianPayrollLifecycleIntegrationTest {
               PostEntryResult.CommitRejected.class,
               service.commit(
                   reversal(
-                      netWages.postingId(), LocalDate.parse("2026-07-30"), "reverse-net-before")));
+                      netWages.postingId(), LocalDate.parse("2026-07-30"), "reverse-net-before"),
+                  TEST_AUTHORIZER));
       assertEntrySemanticsCode(
           prematureSettlementReversal.rejection(),
           "latvian-payroll-settlement-reversal-precedes-settlement");
@@ -296,7 +300,8 @@ class LatvianPayrollLifecycleIntegrationTest {
 
   private static PostEntryResult.Committed commit(
       PostingApplicationService service, BookkeepingEntry entry, String token) {
-    return assertInstanceOf(PostEntryResult.Committed.class, service.commit(command(entry, token)));
+    return assertInstanceOf(
+        PostEntryResult.Committed.class, service.commit(command(entry, token), TEST_AUTHORIZER));
   }
 
   private static PostEntryResult.Committed commitReversal(
@@ -306,7 +311,7 @@ class LatvianPayrollLifecycleIntegrationTest {
       String token) {
     return assertInstanceOf(
         PostEntryResult.Committed.class,
-        service.commit(reversal(priorPostingId, effectiveDate, token)));
+        service.commit(reversal(priorPostingId, effectiveDate, token), TEST_AUTHORIZER));
   }
 
   private static PostEntryCommand reversal(

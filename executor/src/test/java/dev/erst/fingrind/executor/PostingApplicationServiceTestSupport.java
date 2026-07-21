@@ -45,6 +45,7 @@ import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
@@ -398,7 +399,9 @@ final class PostingApplicationServiceTestSupport {
 
       @Override
       public PostingCommitResult commit(
-          PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
+          PostingDraft postingDraft,
+          PostingIdGenerator postingIdGenerator,
+          AttestationOperationAuthorizer attestationAuthorizer) {
         CommittedPosting postingFact = postingDraft.materialize(postingIdGenerator.nextPostingId());
         String idempotencyKey =
             postingFact.provenance().requestProvenance().idempotencyKey().value();
@@ -501,7 +504,9 @@ final class PostingApplicationServiceTestSupport {
 
     @Override
     public PostingCommitResult commit(
-        PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
+        PostingDraft postingDraft,
+        PostingIdGenerator postingIdGenerator,
+        AttestationOperationAuthorizer attestationAuthorizer) {
       throw new AssertionError("commit should not be called in this test");
     }
   }

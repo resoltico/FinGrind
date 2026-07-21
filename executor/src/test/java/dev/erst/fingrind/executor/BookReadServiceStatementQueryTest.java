@@ -10,6 +10,7 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountin
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.generatedEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -345,7 +346,8 @@ class BookReadServiceStatementQueryTest {
           new InterimResultSweepService(
               bookSession, bookSession, () -> new PostingId("interim-result-sweep-1"), FIXED_CLOCK);
 
-      InterimResultSweepOutcome outcome = closeService.interimResultSweep(TRANSFER_PERIOD_RESULT);
+      InterimResultSweepOutcome outcome =
+          closeService.interimResultSweep(TRANSFER_PERIOD_RESULT, TEST_AUTHORIZER);
       dev.erst.fingrind.executor.bookkeeping.SweptInterimResult sweptInterimResult =
           assertInstanceOf(InterimResultSweepOutcome.Transferred.class, outcome)
               .sweptInterimResult();

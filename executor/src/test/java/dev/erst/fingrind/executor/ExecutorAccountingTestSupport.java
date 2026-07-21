@@ -30,6 +30,7 @@ import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.UnitOfMeasure;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
@@ -42,6 +43,12 @@ import java.util.Set;
 
 /** Shared test-only helpers for expressing declared-account fixtures through taxonomy owners. */
 public final class ExecutorAccountingTestSupport {
+  /** Test capability for in-memory fixtures that must carry, but never invoke, attestation data. */
+  public static final AttestationOperationAuthorizer TEST_AUTHORIZER =
+      ignored -> {
+        throw new AssertionError("This in-memory fixture must not invoke attestation signing.");
+      };
+
   private static final Set<FinancialPositionLineClassification>
       NON_CASH_ASSET_LINE_CLASSIFICATIONS =
           Set.of(

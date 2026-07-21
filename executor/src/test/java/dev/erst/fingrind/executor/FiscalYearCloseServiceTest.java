@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -49,7 +50,9 @@ class FiscalYearCloseServiceTest {
                   FiscalYearClosePlanner planner,
                   LocalDate currentUtcDate,
                   Instant closedAt,
-                  PostingIdGenerator postingIdGenerator) {
+                  PostingIdGenerator postingIdGenerator,
+                  dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer
+                      attestationAuthorizer) {
                 storeCalled.set(true);
                 throw new AssertionError("closeStore should not be called");
               }
@@ -60,7 +63,7 @@ class FiscalYearCloseServiceTest {
     assertEquals(
         new FiscalYearCloseOutcome.Rejected(
             new BookkeepingAdministrationRejection.BookNotInitialized()),
-        service.fiscalYearClose(FISCAL_YEAR_LABEL));
+        service.fiscalYearClose(FISCAL_YEAR_LABEL, TEST_AUTHORIZER));
     assertFalse(storeCalled.get());
   }
 
@@ -78,7 +81,9 @@ class FiscalYearCloseServiceTest {
                   FiscalYearClosePlanner planner,
                   LocalDate currentUtcDate,
                   Instant closedAt,
-                  PostingIdGenerator postingIdGenerator) {
+                  PostingIdGenerator postingIdGenerator,
+                  dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer
+                      attestationAuthorizer) {
                 storeCalled.set(true);
                 throw new AssertionError("closeStore should not be called");
               }
@@ -89,7 +94,7 @@ class FiscalYearCloseServiceTest {
     assertEquals(
         new FiscalYearCloseOutcome.Rejected(
             new BookkeepingAdministrationRejection.BookNotInitialized()),
-        service.fiscalYearClose(FISCAL_YEAR));
+        service.fiscalYearClose(FISCAL_YEAR, TEST_AUTHORIZER));
     assertFalse(storeCalled.get());
   }
 
@@ -104,7 +109,7 @@ class FiscalYearCloseServiceTest {
             postingIdGenerator,
             FIXED_CLOCK);
 
-    FiscalYearCloseOutcome outcome = service.fiscalYearClose(FISCAL_YEAR_LABEL);
+    FiscalYearCloseOutcome outcome = service.fiscalYearClose(FISCAL_YEAR_LABEL, TEST_AUTHORIZER);
 
     assertEquals(store.outcome, outcome);
     assertEquals(FISCAL_YEAR, store.reportingPeriod);
@@ -132,7 +137,7 @@ class FiscalYearCloseServiceTest {
         new FiscalYearCloseService(
             () -> inspection, store, () -> new PostingId("generated-1"), FIXED_CLOCK);
 
-    service.fiscalYearClose(FISCAL_YEAR_LABEL);
+    service.fiscalYearClose(FISCAL_YEAR_LABEL, TEST_AUTHORIZER);
 
     assertEquals(
         new ReportingPeriod(LocalDate.parse("2026-07-01"), LocalDate.parse("2026-12-31")),
@@ -150,7 +155,7 @@ class FiscalYearCloseServiceTest {
             postingIdGenerator,
             FIXED_CLOCK);
 
-    FiscalYearCloseOutcome outcome = service.fiscalYearClose(FISCAL_YEAR);
+    FiscalYearCloseOutcome outcome = service.fiscalYearClose(FISCAL_YEAR, TEST_AUTHORIZER);
 
     assertEquals(store.outcome, outcome);
     assertEquals(FISCAL_YEAR, store.reportingPeriod);
@@ -189,7 +194,8 @@ class FiscalYearCloseServiceTest {
         dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner planner,
         LocalDate currentUtcDate,
         Instant sweptAt,
-        PostingIdGenerator postingIdGenerator) {
+        PostingIdGenerator postingIdGenerator,
+        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
       throw new UnsupportedOperationException("Interim-result sweep is not under test here.");
     }
 
@@ -201,7 +207,8 @@ class FiscalYearCloseServiceTest {
         dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner planner,
         LocalDate currentUtcDate,
         Instant sweptAt,
-        PostingIdGenerator postingIdGenerator) {
+        PostingIdGenerator postingIdGenerator,
+        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
       throw new UnsupportedOperationException("Interim-result sweep is not under test here.");
     }
 
@@ -228,7 +235,8 @@ class FiscalYearCloseServiceTest {
         FiscalYearClosePlanner planner,
         LocalDate currentUtcDate,
         Instant closedAt,
-        PostingIdGenerator postingIdGenerator) {
+        PostingIdGenerator postingIdGenerator,
+        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
       this.reportingPeriod = reportingPeriod;
       this.bookIdentity = resolvedBookIdentity;
       this.planner = planner;

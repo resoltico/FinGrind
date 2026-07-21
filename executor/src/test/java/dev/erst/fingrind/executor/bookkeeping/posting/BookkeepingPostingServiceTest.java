@@ -3,6 +3,7 @@ package dev.erst.fingrind.executor.bookkeeping.posting;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -60,7 +61,8 @@ class BookkeepingPostingServiceTest {
               new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
           service.preflight(command));
       PostingCommitResult.Committed firstCommit =
-          assertInstanceOf(PostingCommitResult.Committed.class, service.commit(command));
+          assertInstanceOf(
+              PostingCommitResult.Committed.class, service.commit(command, TEST_AUTHORIZER));
       assertEquals(
           new PostingCommitResult.Committed(firstCommit.postingFact(), false), firstCommit);
       assertEquals(
@@ -68,7 +70,8 @@ class BookkeepingPostingServiceTest {
               new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
           service.preflight(command));
       assertTrue(
-          assertInstanceOf(PostingCommitResult.Committed.class, service.commit(command))
+          assertInstanceOf(
+                  PostingCommitResult.Committed.class, service.commit(command, TEST_AUTHORIZER))
               .idempotentReplay());
     }
   }
@@ -82,7 +85,7 @@ class BookkeepingPostingServiceTest {
                 new StoredRequestPosting(
                     committedPosting("posting-replay", "idem-replay"),
                     RequestFingerprintTestSupport.fingerprint(command))),
-            (postingDraft, postingIdGenerator) -> {
+            (postingDraft, postingIdGenerator, attestationAuthorizer) -> {
               throw new AssertionError("commitStore should not be called during preflight");
             },
             () -> new PostingId("posting-new"),
@@ -108,7 +111,7 @@ class BookkeepingPostingServiceTest {
           service.preflight(command));
       assertEquals(
           new PostingCommitResult.Rejected(new BookkeepingPostingRejection.BookNotInitialized()),
-          service.commit(command));
+          service.commit(command, TEST_AUTHORIZER));
     }
   }
 

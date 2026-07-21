@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.generatedEvidence;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.applicationService;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.command;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.conflictingPosting;
@@ -515,7 +516,8 @@ class PostingApplicationServicePreflightTest {
               "idem-existing-reversal",
               reversalReference("posting-1"),
               Optional.of(new ReversalReason("full reversal")),
-              reversalJournalEntry()));
+              reversalJournalEntry()),
+          TEST_AUTHORIZER);
 
       PostEntryResult result =
           applicationService.preflight(
@@ -540,7 +542,8 @@ class PostingApplicationServicePreflightTest {
       PostingApplicationService applicationService = applicationService(bookSession);
       PostEntryResult.Committed originalCommitted =
           assertInstanceOf(
-              PostEntryResult.Committed.class, applicationService.commit(command("idem-original")));
+              PostEntryResult.Committed.class,
+              applicationService.commit(command("idem-original"), TEST_AUTHORIZER));
       PostEntryResult.Committed reversalCommitted =
           assertInstanceOf(
               PostEntryResult.Committed.class,
@@ -549,7 +552,8 @@ class PostingApplicationServicePreflightTest {
                       "idem-reversal",
                       Optional.of(new ReversalReference(originalCommitted.postingId())),
                       Optional.of(new ReversalReason("full reversal")),
-                      reversalJournalEntry())));
+                      reversalJournalEntry()),
+                  TEST_AUTHORIZER));
 
       PostEntryResult result =
           applicationService.preflight(

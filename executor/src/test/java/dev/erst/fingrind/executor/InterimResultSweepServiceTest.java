@@ -8,6 +8,7 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdent
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.generatedEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
@@ -84,7 +85,7 @@ class InterimResultSweepServiceTest {
   void interimResultSweep_throughDateOverloadRejectsUninitializedBook() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       InterimResultSweepOutcome outcome =
-          service(bookSession, FIXED_CLOCK).interimResultSweep(PERIOD_DATE);
+          service(bookSession, FIXED_CLOCK).interimResultSweep(PERIOD_DATE, TEST_AUTHORIZER);
 
       assertEquals(
           new InterimResultSweepOutcome.Rejected(
@@ -249,7 +250,8 @@ class InterimResultSweepServiceTest {
       dev.erst.fingrind.executor.bookkeeping.SweptInterimResult sweptInterimResult =
           assertInstanceOf(
                   InterimResultSweepOutcome.Transferred.class,
-                  service(bookSession, FIXED_CLOCK).interimResultSweep(PERIOD_DATE))
+                  service(bookSession, FIXED_CLOCK)
+                      .interimResultSweep(PERIOD_DATE, TEST_AUTHORIZER))
               .sweptInterimResult();
 
       assertEquals(FULL_PERIOD, sweptInterimResult.reportingPeriod());
@@ -389,7 +391,7 @@ class InterimResultSweepServiceTest {
 
     InterimResultSweepOutcome outcome =
         new InterimResultSweepService(book, book, new SequencePostingIdGenerator(), FIXED_CLOCK)
-            .interimResultSweep(PERIOD);
+            .interimResultSweep(PERIOD, TEST_AUTHORIZER);
     dev.erst.fingrind.executor.bookkeeping.SweptInterimResult sweptInterimResult =
         assertInstanceOf(InterimResultSweepOutcome.Transferred.class, outcome).sweptInterimResult();
 
@@ -492,7 +494,7 @@ class InterimResultSweepServiceTest {
 
   private static InterimResultSweepOutcome interimResultSweep(
       InMemoryBookSession bookSession, Clock clock, ReportingPeriod reportingPeriod) {
-    return service(bookSession, clock).interimResultSweep(reportingPeriod);
+    return service(bookSession, clock).interimResultSweep(reportingPeriod, TEST_AUTHORIZER);
   }
 
   private static Clock clockAt(LocalDate date) {
@@ -736,7 +738,8 @@ class InterimResultSweepServiceTest {
         dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner planner,
         LocalDate currentUtcDate,
         java.time.Instant sweptAt,
-        PostingIdGenerator postingIdGenerator) {
+        PostingIdGenerator postingIdGenerator,
+        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
       var resultHoldingSelection = planner.resultHoldingAccount(bookIdentity, accounts);
       if (resultHoldingSelection
           instanceof
@@ -786,7 +789,8 @@ class InterimResultSweepServiceTest {
         dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner planner,
         LocalDate currentUtcDate,
         java.time.Instant sweptAt,
-        PostingIdGenerator postingIdGenerator) {
+        PostingIdGenerator postingIdGenerator,
+        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
       return interimResultSweep(
           planner.reportingPeriod(
               throughEffectiveDate, bookStartDate, bookIdentity, Optional.empty()),
@@ -794,7 +798,8 @@ class InterimResultSweepServiceTest {
           planner,
           currentUtcDate,
           sweptAt,
-          postingIdGenerator);
+          postingIdGenerator,
+          attestationAuthorizer);
     }
 
     @Override
@@ -804,7 +809,8 @@ class InterimResultSweepServiceTest {
         dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner planner,
         LocalDate currentUtcDate,
         java.time.Instant closedAt,
-        PostingIdGenerator postingIdGenerator) {
+        PostingIdGenerator postingIdGenerator,
+        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
       throw new UnsupportedOperationException(
           "Fiscal-year close is not exercised by this interim result sweep test double.");
     }

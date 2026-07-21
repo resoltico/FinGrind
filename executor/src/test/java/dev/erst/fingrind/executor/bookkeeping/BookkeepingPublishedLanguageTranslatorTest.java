@@ -285,8 +285,6 @@ class BookkeepingPublishedLanguageTranslatorTest {
                 "published-posting"),
             new dev.erst.fingrind.core.CommittedProvenance(
                 new dev.erst.fingrind.core.RequestProvenance(
-                    "actor-1",
-                    "person",
                     new dev.erst.fingrind.core.CommandId("command-1"),
                     new dev.erst.fingrind.core.IdempotencyKey("idem-1"),
                     new dev.erst.fingrind.core.CausationId("cause-1"),

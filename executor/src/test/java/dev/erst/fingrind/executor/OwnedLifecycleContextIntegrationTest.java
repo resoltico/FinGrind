@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
@@ -229,7 +230,8 @@ class OwnedLifecycleContextIntegrationTest {
                 entry,
                 evidence(token, sourceDocumentType, entry.effectiveDate()),
                 provenance(token),
-                SourceChannel.CLI));
+                SourceChannel.CLI),
+            TEST_AUTHORIZER);
     return assertInstanceOf(
         PostEntryResult.Committed.class,
         result,

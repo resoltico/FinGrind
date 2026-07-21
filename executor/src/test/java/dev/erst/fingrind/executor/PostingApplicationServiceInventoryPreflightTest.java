@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.generatedEvidence;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.applicationService;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.declareInventoryVatRegistration;
 import static dev.erst.fingrind.executor.PostingApplicationServiceTestSupport.declareTaxAccounts;
@@ -385,7 +386,8 @@ class PostingApplicationServiceInventoryPreflightTest {
                 entry,
                 generatedEvidence(idempotencyKey, sourceDocumentType),
                 requestProvenance(idempotencyKey),
-                SourceChannel.CLI));
+                SourceChannel.CLI),
+            TEST_AUTHORIZER);
     return assertInstanceOf(PostEntryResult.Committed.class, result, result::toString);
   }
 

@@ -2,7 +2,6 @@ package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.openedBook;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -24,6 +23,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for {@link BookAdministrationService}. */
@@ -46,21 +46,11 @@ class BookAdministrationServiceTest {
   }
 
   @Test
-  void openBook_delegatesToBookSession() {
-    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      BookAdministrationService service =
-          new BookAdministrationService(bookSession, bookSession, bookSession, FIXED_CLOCK);
-      org.junit.jupiter.api.Assertions.assertEquals(
-          openedBook(FIXED_CLOCK.instant()), service.openBook(bookIdentity()));
-    }
-  }
-
-  @Test
   void declareAccount_delegatesToBookSession() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       BookAdministrationService service =
           new BookAdministrationService(bookSession, bookSession, bookSession, FIXED_CLOCK);
-      service.openBook(bookIdentity());
+      bookSession.openBook(FIXED_CLOCK.instant(), bookIdentity(), List.of());
       AccountDeclarationOutcome result =
           service.declareAccount(
               new AccountDeclaration(
@@ -106,7 +96,7 @@ class BookAdministrationServiceTest {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       BookAdministrationService service =
           new BookAdministrationService(bookSession, bookSession, bookSession, FIXED_CLOCK);
-      service.openBook(bookIdentity());
+      bookSession.openBook(FIXED_CLOCK.instant(), bookIdentity(), List.of());
 
       AccountDeclarationOutcome result =
           service.declareAccount(
@@ -148,7 +138,7 @@ class BookAdministrationServiceTest {
       org.junit.jupiter.api.Assertions.assertInstanceOf(
           AccountRetirementOutcome.Rejected.class,
           service.retireAccount(new AccountCode("1010"), TEST_AUTHORIZER));
-      service.openBook(bookIdentity());
+      bookSession.openBook(FIXED_CLOCK.instant(), bookIdentity(), List.of());
 
       AccountAmendmentOutcome.Rejected invalid =
           org.junit.jupiter.api.Assertions.assertInstanceOf(
@@ -181,7 +171,7 @@ class BookAdministrationServiceTest {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       BookAdministrationService service =
           new BookAdministrationService(bookSession, bookSession, bookSession, FIXED_CLOCK);
-      service.openBook(bookIdentity());
+      bookSession.openBook(FIXED_CLOCK.instant(), bookIdentity(), List.of());
       service.declareAccount(
           new AccountDeclaration(
               accountCode,
@@ -216,7 +206,7 @@ class BookAdministrationServiceTest {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       BookAdministrationService service =
           new BookAdministrationService(bookSession, bookSession, bookSession, FIXED_CLOCK);
-      service.openBook(bookIdentity());
+      bookSession.openBook(FIXED_CLOCK.instant(), bookIdentity(), List.of());
       service.declareAccount(
           new AccountDeclaration(
               new AccountCode("1000"),
@@ -252,8 +242,6 @@ class BookAdministrationServiceTest {
               ExecutorAccountingTestSupport.accountingEvidence("idem-1"),
               new dev.erst.fingrind.core.CommittedProvenance(
                   new dev.erst.fingrind.core.RequestProvenance(
-                      "actor-1",
-                      "agent",
                       new dev.erst.fingrind.core.CommandId("command-1"),
                       new dev.erst.fingrind.core.IdempotencyKey("idem-1"),
                       new dev.erst.fingrind.core.CausationId("cause-1"),
@@ -280,8 +268,6 @@ class BookAdministrationServiceTest {
               ExecutorAccountingTestSupport.accountingEvidence("idem-2"),
               new dev.erst.fingrind.core.CommittedProvenance(
                   new dev.erst.fingrind.core.RequestProvenance(
-                      "actor-2",
-                      "agent",
                       new dev.erst.fingrind.core.CommandId("command-2"),
                       new dev.erst.fingrind.core.IdempotencyKey("idem-2"),
                       new dev.erst.fingrind.core.CausationId("cause-2"),
@@ -297,7 +283,8 @@ class BookAdministrationServiceTest {
                   FIXED_CLOCK)
               .interimResultSweep(
                   new ReportingPeriod(
-                      LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-07")));
+                      LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-07")),
+                  TEST_AUTHORIZER);
 
       org.junit.jupiter.api.Assertions.assertEquals(
           1,

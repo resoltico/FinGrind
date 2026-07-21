@@ -90,18 +90,6 @@ class BookAuditEventTest {
             FIXED_INSTANT, BookAuditEventKind.BACKUP_CREATED_COMPENSATED, null, null, null),
         BookAuditEvent.backupCreatedCompensated(FIXED_INSTANT));
     assertEquals(
-        new BookAuditEvent(
-            FIXED_INSTANT, BookAuditEventKind.REKEY_ROLLBACK_RESTORED, null, null, null),
-        BookAuditEvent.rekeyRollbackRestored(FIXED_INSTANT));
-    assertEquals(
-        new BookAuditEvent(
-            FIXED_INSTANT, BookAuditEventKind.REKEY_ROLLBACK_DELETED, null, null, null),
-        BookAuditEvent.rekeyRollbackDeleted(FIXED_INSTANT));
-    assertEquals(
-        new BookAuditEvent(
-            FIXED_INSTANT, BookAuditEventKind.REKEY_ROLLBACK_DELETED_COMPENSATED, null, null, null),
-        BookAuditEvent.rekeyRollbackDeletedCompensated(FIXED_INSTANT));
-    assertEquals(
         new BookAuditEvent(FIXED_INSTANT, BookAuditEventKind.INTERIM_RESULT_SWEPT, null, null, 7),
         BookAuditEvent.interimResultSwept(FIXED_INSTANT, 7));
     assertEquals(
@@ -326,10 +314,7 @@ class BookAuditEventTest {
             "BOOK_REKEYED",
             "BACKUP_CREATED",
             "BACKUP_RESTORED",
-            "REKEY_ROLLBACK_RESTORED",
-            "REKEY_ROLLBACK_DELETED",
             "BACKUP_CREATED_COMPENSATED",
-            "REKEY_ROLLBACK_DELETED_COMPENSATED",
             "INTERIM_RESULT_SWEPT",
             "FISCAL_YEAR_CLOSED"),
         BookAuditEventKind.wireValues());

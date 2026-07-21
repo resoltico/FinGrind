@@ -4,6 +4,7 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTa
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.openBookCommand;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
@@ -104,7 +105,7 @@ final class LedgerPlanServiceTestSupport {
     PostEntryResult committed =
         new PostingApplicationService(
                 bookSession, bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK)
-            .commit(postEntryCommand("idem-setup"));
+            .commit(postEntryCommand("idem-setup"), TEST_AUTHORIZER);
     assertEquals(PostEntryResult.Committed.class, committed.getClass());
     return bookSession;
   }
@@ -249,7 +250,6 @@ final class LedgerPlanServiceTestSupport {
       return delegate.inspectBook();
     }
 
-    @Override
     public BookOpeningOutcome openBook(
         Instant initializedAt,
         dev.erst.fingrind.core.BookIdentity bookIdentity,
@@ -405,8 +405,10 @@ final class LedgerPlanServiceTestSupport {
 
     @Override
     public PostingCommitResult commit(
-        PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
-      return delegate.commit(postingDraft, postingIdGenerator);
+        PostingDraft postingDraft,
+        PostingIdGenerator postingIdGenerator,
+        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
+      return delegate.commit(postingDraft, postingIdGenerator, attestationAuthorizer);
     }
 
     @Override
@@ -416,9 +418,16 @@ final class LedgerPlanServiceTestSupport {
         InterimResultSweepPlanner planner,
         LocalDate currentUtcDate,
         Instant sweptAt,
-        PostingIdGenerator postingIdGenerator) {
+        PostingIdGenerator postingIdGenerator,
+        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
       return delegate.interimResultSweep(
-          reportingPeriod, bookIdentity, planner, currentUtcDate, sweptAt, postingIdGenerator);
+          reportingPeriod,
+          bookIdentity,
+          planner,
+          currentUtcDate,
+          sweptAt,
+          postingIdGenerator,
+          attestationAuthorizer);
     }
 
     @Override
@@ -429,7 +438,8 @@ final class LedgerPlanServiceTestSupport {
         InterimResultSweepPlanner planner,
         LocalDate currentUtcDate,
         Instant sweptAt,
-        PostingIdGenerator postingIdGenerator) {
+        PostingIdGenerator postingIdGenerator,
+        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
       return delegate.interimResultSweep(
           throughEffectiveDate,
           bookStartDate,
@@ -437,7 +447,8 @@ final class LedgerPlanServiceTestSupport {
           planner,
           currentUtcDate,
           sweptAt,
-          postingIdGenerator);
+          postingIdGenerator,
+          attestationAuthorizer);
     }
 
     @Override
@@ -447,14 +458,22 @@ final class LedgerPlanServiceTestSupport {
         FiscalYearClosePlanner planner,
         LocalDate currentUtcDate,
         Instant closedAt,
-        PostingIdGenerator postingIdGenerator) {
+        PostingIdGenerator postingIdGenerator,
+        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
       return delegate.fiscalYearClose(
-          reportingPeriod, bookIdentity, planner, currentUtcDate, closedAt, postingIdGenerator);
+          reportingPeriod,
+          bookIdentity,
+          planner,
+          currentUtcDate,
+          closedAt,
+          postingIdGenerator,
+          attestationAuthorizer);
     }
 
     InterimResultSweepOutcome interimResultSweep(
         InterimResultSweepDraft interimResultSweepDraft, PostingIdGenerator postingIdGenerator) {
-      return delegate.interimResultSweep(interimResultSweepDraft, postingIdGenerator);
+      return delegate.interimResultSweep(
+          interimResultSweepDraft, postingIdGenerator, TEST_AUTHORIZER);
     }
 
     @Override
