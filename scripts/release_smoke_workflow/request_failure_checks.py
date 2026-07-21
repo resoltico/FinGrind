@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .attestation_arguments import founder_credential_arguments
 from .cli import run_cli_allow_failure
 from .models import ReleaseSmokeConfig
 from .support import require, require_match, require_no_match
@@ -41,6 +42,7 @@ def verify_deterministic_nonsense_workflows(
         "--book-start-effective-date",
         "2026-01-01",
         "--book-passphrase-prompt",
+        *founder_credential_arguments(config),
         "--output",
         "json",
     )
@@ -62,6 +64,7 @@ def verify_deterministic_nonsense_workflows(
         "--book-start-effective-date",
         "2026-01-01",
         "--book-passphrase-prompt",
+        *founder_credential_arguments(config),
         "--output",
         "text",
     )

@@ -24,6 +24,8 @@ def verify_backup_restore_and_rollback_surfaces(
             config.backup_book.argument,
             "--new-backup-key-file",
             config.backup_book_key.argument,
+            "--backup-id",
+            config.backup_id,
             *signing_credential_arguments(config),
             "--output",
             "json",

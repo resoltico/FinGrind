@@ -44,9 +44,10 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
-- Fixed live-clock attested postings and lifecycle operations. Runtime timestamps are now
-  canonicalized to UTC milliseconds before durable mutation and immutable preimage projection, and
-  non-credential mutation failures are no longer reported as invalid attestation credentials.
+- Fixed live-clock attested postings, lifecycle operations, and receipt exports. Runtime timestamps
+  are now canonicalized to UTC milliseconds before durable mutation and immutable signed payload
+  construction, and non-credential mutation failures are no longer reported as invalid attestation
+  credentials.
 - Fixed fiscal-year close admission so a period with no generated close postings returns a named
   deterministic refusal before any close fact, audit event, or attestation operation is persisted.
 - Fixed restore's clean-break contract across rejection messages and operator guides: an existing

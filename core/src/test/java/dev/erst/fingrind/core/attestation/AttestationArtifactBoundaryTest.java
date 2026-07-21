@@ -64,7 +64,7 @@ class AttestationArtifactBoundaryTest {
               bookId,
               source.headOrder(),
               source.operationHead(),
-              Instant.parse("2026-07-21T00:01:00Z"));
+              Instant.parse("2026-07-21T00:01:00.123456789Z"));
     }
 
     AttestationBackupArtifactVerification artifactVerification =
@@ -80,6 +80,9 @@ class AttestationArtifactBoundaryTest {
     assertEquals(bookId, receiptVerification.bookId());
     assertEquals(source.headOrder(), receiptVerification.operationOrder());
     assertEquals(List.of(), receiptVerification.findings());
+    assertEquals(
+        Instant.parse("2026-07-21T00:01:00.123Z"),
+        AttestationDecodedEnvelope.receipt(receipt).payload().receiptTimestamp());
   }
 
   private static BookIdentity bookIdentity() {

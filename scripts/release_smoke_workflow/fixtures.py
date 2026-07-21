@@ -24,6 +24,7 @@ def prepare_fixture_directories(config: ReleaseSmokeConfig) -> None:
         config.invalid_request.local_path,
         config.declare_bank_account.local_path,
         config.declare_expense_supplement.local_path,
+        config.attestation_receipt.local_path,
         config.trial_balance_pdf.local_path,
         config.trial_balance_pdf_stderr_path,
     ]:

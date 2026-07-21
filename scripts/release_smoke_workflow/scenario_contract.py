@@ -23,6 +23,8 @@ def assert_release_smoke_scenarios(
     assert "Rīga büro" in str(bundle.book.local_path)
     assert bundle.book.argument == str(bundle.book.local_path)
     assert bundle.backup_book.argument == str(bundle.backup_book.local_path)
+    assert bundle.backup_id == "96ace780-ce14-5177-9c49-3917db69edae"
+    assert bundle.attestation_receipt.argument == str(bundle.attestation_receipt.local_path)
     assert bundle.attestation_founder_principal_id == "4bc17dd7-145f-4ea7-bb55-167ca2f6ac11"
     assert bundle.attestation_founder_key.argument == str(bundle.attestation_founder_key.local_path)
     assert bundle.attestation_founder_passphrase.argument == str(
@@ -49,6 +51,11 @@ def assert_release_smoke_scenarios(
         == "restored odd/Rīga büro/nested/--entity restored [docker-acceptance].key"
     )
     assert docker.request_prefix == "docker-acceptance"
+    assert docker.backup_id == "39f7a204-3096-54e3-ac73-c3a745350411"
+    assert (
+        docker.attestation_receipt.argument
+        == "receipts odd/Rīga büro/retained/-receipt [docker-acceptance].fgar"
+    )
     assert (
         docker.attestation_founder_key.argument
         == "attestation credentials/Rīga büro/founder/docker-acceptance.fgatk"

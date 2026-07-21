@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from uuid import NAMESPACE_URL, uuid5
 
 from .models import ReleaseSmokeFailure, ReleaseSmokeScenario, SmokePath
 
@@ -115,6 +116,12 @@ def build_release_smoke_scenario(
             / "nested"
             / f"--entity backup [{normalized_scenario_id}].key",
         ),
+        backup_id=str(
+            uuid5(
+                NAMESPACE_URL,
+                "fingrind-release-smoke:" + normalized_scenario_id + ":backup",
+            )
+        ),
         restored_book=smoke_path(
             work_root,
             normalized_path_mode,
@@ -146,6 +153,14 @@ def build_release_smoke_scenario(
             / UNICODE_WORKSPACE_SEGMENT
             / "nested"
             / f"prompt unavailable [{normalized_scenario_id}].sqlite",
+        ),
+        attestation_receipt=smoke_path(
+            work_root,
+            normalized_path_mode,
+            Path("receipts odd")
+            / UNICODE_WORKSPACE_SEGMENT
+            / "retained"
+            / f"-receipt [{normalized_scenario_id}].fgar",
         ),
         trial_balance_pdf=smoke_path(
             work_root,

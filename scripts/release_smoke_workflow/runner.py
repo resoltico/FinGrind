@@ -4,6 +4,7 @@ import sys
 
 from contract_values import load_contract_values
 
+from .attestation_checks import verify_attestation_inspection_and_receipt_artifacts
 from .config import load_config
 from .discovery_checks import (
     verify_help_and_template_surfaces,
@@ -47,6 +48,7 @@ def run_release_smoke(config: ReleaseSmokeConfig) -> None:
     verify_preflight_and_commit(config, operation_ids)
     verify_operator_queries_and_reports(config, operation_ids)
     verify_raw_journal_commit_and_readback(config, operation_ids)
+    verify_attestation_inspection_and_receipt_artifacts(config, operation_ids)
     verify_backup_restore_and_rollback_surfaces(config, operation_ids, error_exit_codes)
     verify_rekey_and_wrong_key_semantics(config, operation_ids, error_exit_codes)
     verify_deterministic_nonsense_workflows(config, operation_ids, error_exit_codes)

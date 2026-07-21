@@ -3,6 +3,7 @@ package dev.erst.fingrind.core.attestation;
 import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -33,7 +34,8 @@ final class AttestationReceiptPayload implements AttestationPayload {
     this.operationOrder =
         AttestationUnsignedEncoding.requireUnsigned(operationOrder, Long.BYTES, "operationOrder");
     this.operationHead = Objects.requireNonNull(operationHead, "operationHead");
-    this.receiptTimestamp = Objects.requireNonNull(receiptTimestamp, "receiptTimestamp");
+    this.receiptTimestamp =
+        Objects.requireNonNull(receiptTimestamp, "receiptTimestamp").truncatedTo(ChronoUnit.MILLIS);
     this.algorithmId = Objects.requireNonNull(algorithmId, "algorithmId");
   }
 

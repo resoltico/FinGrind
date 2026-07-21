@@ -38,10 +38,12 @@ class ReleaseSmokeConfig:
     attestation_founder_passphrase: SmokePath
     backup_book: SmokePath
     backup_book_key: SmokePath
+    backup_id: str
     restored_book: SmokePath
     restored_book_key: SmokePath
     replacement_book_key: SmokePath
     prompt_failure_book: SmokePath
+    attestation_receipt: SmokePath
     trial_balance_pdf: SmokePath
     trial_balance_pdf_stderr_path: Path
     request_prefix: str
@@ -79,10 +81,12 @@ class ReleaseSmokeScenario:
     attestation_founder_passphrase: SmokePath
     backup_book: SmokePath
     backup_book_key: SmokePath
+    backup_id: str
     restored_book: SmokePath
     restored_book_key: SmokePath
     replacement_book_key: SmokePath
     prompt_failure_book: SmokePath
+    attestation_receipt: SmokePath
     trial_balance_pdf: SmokePath
     trial_balance_pdf_stderr_path: Path
     request_prefix: str
