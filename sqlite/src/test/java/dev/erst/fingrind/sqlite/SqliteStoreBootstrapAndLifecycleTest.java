@@ -121,6 +121,37 @@ class SqliteStoreBootstrapAndLifecycleTest extends SqliteStoreLifecycleTestSuppo
   }
 
   @Test
+  void ensureParentDirectory_mapsCallerPathViolationsAndParentlessPaths() {
+    Path bookPath = tempDirectory.resolve("caller-path-parent").resolve("book.sqlite");
+    assertInvalidBookFilePathFailure(
+        assertThrows(
+            ContractFailureException.class,
+            () ->
+                SqliteBookSchemaBootstrap.ensureParentDirectory(
+                    bookPath,
+                    normalizedBookPath -> {
+                      throw new SqliteCallerPathContractException(
+                          normalizedBookPath,
+                          SqliteCallerPathFailure.PARENT_OWNER_ONLY_REQUIRED,
+                          "owner-only parent required");
+                    })),
+        bookPath,
+        "The FinGrind protected-book path requires an owner-only parent directory.");
+
+    assertInvalidBookFilePathFailure(
+        assertThrows(
+            ContractFailureException.class,
+            () ->
+                SqliteBookSchemaBootstrap.ensureParentDirectory(
+                    Path.of("/"),
+                    normalizedBookPath -> {
+                      throw new AssertionError("Parentless paths must fail before preparation.");
+                    })),
+        Path.of("/"),
+        "The FinGrind protected-book path does not satisfy the filesystem contract.");
+  }
+
+  @Test
   void close_isIdempotent() {
     try (SqlitePostingFactStore postingFactStore =
         openStore(bookAccess(tempDirectory.resolve("close-ok.sqlite")))) {
