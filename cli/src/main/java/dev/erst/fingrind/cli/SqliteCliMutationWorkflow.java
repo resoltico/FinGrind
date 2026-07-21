@@ -21,7 +21,9 @@ import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
+import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationOperationRequest;
 import dev.erst.fingrind.executor.LedgerPlanService;
 import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
 import dev.erst.fingrind.sqlite.SqliteBookSessionMode;
@@ -35,10 +37,16 @@ import java.util.Objects;
 /** SQLite-backed mutation workflow that delegates each bounded mutation family to its owner. */
 final class SqliteCliMutationWorkflow implements CliBookMutationWorkflow {
   private static final AttestationOperationAuthorizer READ_ONLY_PLAN_AUTHORIZER =
-      request -> {
-        throw new IllegalStateException(
-            "A credential-free ledger plan must not authorize a protected-book mutation.");
-      };
+      new ReadOnlyPlanAuthorizer();
+
+  /** Fails closed if a plan classified as read-only ever attempts a protected-book mutation. */
+  static final class ReadOnlyPlanAuthorizer implements AttestationOperationAuthorizer {
+    @Override
+    public AttestationEvidence authorize(AttestationOperationRequest request) {
+      throw new IllegalStateException(
+          "A credential-free ledger plan must not authorize a protected-book mutation.");
+    }
+  }
 
   private final Clock clock;
   private final CliBookPassphraseResolver passphraseResolver;

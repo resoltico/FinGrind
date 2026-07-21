@@ -223,4 +223,58 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
 
     assertEquals("--attestation-principal-id", exception.argument());
   }
+
+  @Test
+  void parse_rejectsAnUnsupportedRekeyTailArgument() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "rekey-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "current.key",
+                      "--new-book-key-file",
+                      "replacement.key",
+                      "--attestation-principal-id",
+                      "10213243-5465-7687-98a9-babcbddceeff",
+                      "--attestation-key-file",
+                      "operator.fgatk",
+                      "--attestation-passphrase-file",
+                      "operator.passphrase",
+                      "--unexpected"
+                    }));
+
+    assertEquals("--unexpected", exception.argument());
+  }
+
+  @Test
+  void parse_rekey_acceptsAnExplicitJsonOutputMode() {
+    RekeyBook command =
+        assertInstanceOf(
+            RekeyBook.class,
+            CliArguments.parse(
+                new String[] {
+                  "rekey-book",
+                  "--book-file",
+                  "book.sqlite",
+                  "--book-key-file",
+                  "current.key",
+                  "--new-book-key-file",
+                  "replacement.key",
+                  "--attestation-principal-id",
+                  "10213243-5465-7687-98a9-babcbddceeff",
+                  "--attestation-key-file",
+                  "operator.fgatk",
+                  "--attestation-passphrase-file",
+                  "operator.passphrase",
+                  "--output",
+                  "json"
+                }));
+
+    assertEquals(dev.erst.fingrind.contract.protocol.OutputMode.JSON, command.outputMode());
+  }
 }

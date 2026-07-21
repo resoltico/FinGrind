@@ -26,26 +26,22 @@ final class CliRekeyBookArguments {
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
     while (argumentIterator.hasNext()) {
       String argument = argumentIterator.next();
-      switch (argument) {
-        case ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE -> {
-          if (newBookKeyFilePath != null) {
-            throw CliArgumentValueParser.invalid(
-                ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
-                "Duplicate argument: " + ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE);
-          }
-          newBookKeyFilePath =
-              CliOptionValues.requirePathOptionValue(
-                  argumentIterator, ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE);
+      if (ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE.equals(argument)) {
+        if (newBookKeyFilePath != null) {
+          throw CliArgumentValueParser.invalid(
+              ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
+              "Duplicate argument: " + ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE);
         }
-        case ProtocolOptions.Presentation.OUTPUT ->
-            outputMode =
-                CliOptionModes.requireOutputMode(
-                    outputMode,
-                    CliOptionValues.requireValue(
-                        argumentIterator, ProtocolOptions.Presentation.OUTPUT),
-                    CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
-        default -> throw CliArgumentValueParser.unsupportedArgument(argument, List.of());
+        newBookKeyFilePath =
+            CliOptionValues.requirePathOptionValue(
+                argumentIterator, ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE);
+        continue;
       }
+      outputMode =
+          CliOptionModes.requireOutputMode(
+              outputMode,
+              CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Presentation.OUTPUT),
+              CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
     }
     if (newBookKeyFilePath == null) {
       throw CliArgumentValueParser.invalid(

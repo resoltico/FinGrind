@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.nio.file.Path;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -64,7 +66,10 @@ class CliCommandFamiliesTest {
               BookAccess bookAccess,
               @Nullable Path path,
               OutputMode commandOutputMode) {
-            return 0;
+            assertSame(BOOK_ACCESS, bookAccess);
+            assertEquals(Path.of("rollback.zip"), path);
+            assertSame(outputMode, commandOutputMode);
+            return 23;
           }
         };
 
@@ -83,5 +88,23 @@ class CliCommandFamiliesTest {
     assertSame(BOOK_ACCESS, nullablePathCommand.bookAccess());
     assertEquals(Path.of("rollback.zip"), nullablePathCommand.optionalArtifactPath());
     assertSame(outputMode, nullablePathCommand.outputMode());
+    assertEquals(23, nullablePathCommand.execute(executionContext()));
+  }
+
+  private static CliExecutionContext executionContext() {
+    try {
+      FinGrindCli cli =
+          FinGrindCli.standard(
+              new ByteArrayInputStream(new byte[0]),
+              new java.io.PrintStream(new ByteArrayOutputStream()),
+              new java.io.PrintStream(new ByteArrayOutputStream()),
+              CliFilesystemFixtureSupport.fixedClock());
+      var executionContext = FinGrindCli.class.getDeclaredField("executionContext");
+      executionContext.setAccessible(true);
+      return (CliExecutionContext) executionContext.get(cli);
+    } catch (ReflectiveOperationException exception) {
+      throw new LinkageError(
+          "Unable to obtain a real CLI execution context for the base contract.", exception);
+    }
   }
 }

@@ -58,27 +58,24 @@ final class CliBackupBookArguments {
     private @Nullable OutputMode outputMode;
 
     private void apply(String argument, ListIterator<String> argumentIterator) {
-      switch (argument) {
-        case ProtocolBookAccessOptions.BACKUP_FILE ->
-            backupFilePath =
-                requireSinglePath(
-                    backupFilePath, argumentIterator, ProtocolBookAccessOptions.BACKUP_FILE);
-        case ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE ->
-            backupBookKeyFilePath =
-                requireSinglePath(
-                    backupBookKeyFilePath,
-                    argumentIterator,
-                    ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE);
-        case ProtocolBookAccessOptions.BACKUP_ID ->
-            backupId = requireBackupId(argumentIterator, backupId);
-        case ProtocolOptions.Presentation.OUTPUT ->
-            outputMode =
-                CliOptionModes.requireOutputMode(
-                    outputMode,
-                    CliOptionValues.requireValue(
-                        argumentIterator, ProtocolOptions.Presentation.OUTPUT),
-                    CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
-        default -> throw CliArgumentValueParser.unsupportedArgument(argument, List.of());
+      if (ProtocolBookAccessOptions.BACKUP_FILE.equals(argument)) {
+        backupFilePath =
+            requireSinglePath(
+                backupFilePath, argumentIterator, ProtocolBookAccessOptions.BACKUP_FILE);
+      } else if (ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE.equals(argument)) {
+        backupBookKeyFilePath =
+            requireSinglePath(
+                backupBookKeyFilePath,
+                argumentIterator,
+                ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE);
+      } else if (ProtocolBookAccessOptions.BACKUP_ID.equals(argument)) {
+        backupId = requireBackupId(argumentIterator, backupId);
+      } else {
+        outputMode =
+            CliOptionModes.requireOutputMode(
+                outputMode,
+                CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Presentation.OUTPUT),
+                CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
       }
     }
 

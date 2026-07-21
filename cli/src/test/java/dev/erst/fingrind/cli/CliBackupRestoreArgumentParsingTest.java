@@ -83,6 +83,12 @@ class CliBackupRestoreArgumentParsingTest {
     duplicateBackupId.addAll(List.of("--backup-id", "5de5f1ea-23ec-4b12-8f2d-e50a53a339f4"));
     assertArgument(
         "--backup-id", () -> CliBackupRestoreArguments.parseBackupBookCommand(duplicateBackupId));
+
+    List<String> unsupportedArgument = new ArrayList<>(backupArguments(OutputMode.TEXT));
+    unsupportedArgument.add("--unexpected");
+    assertArgument(
+        "--unexpected",
+        () -> CliBackupRestoreArguments.parseBackupBookCommand(unsupportedArgument));
   }
 
   @Test
@@ -118,6 +124,45 @@ class CliBackupRestoreArgumentParsingTest {
     duplicateBookFile.addAll(List.of("--book-file", "books/other.sqlite"));
     assertArgument(
         "--book-file", () -> CliBackupRestoreArguments.parseRestoreBookCommand(duplicateBookFile));
+
+    List<String> keyWithoutPrincipal = restoreArguments(OutputMode.JSON);
+    keyWithoutPrincipal.subList(9, 11).clear();
+    assertArgument(
+        "--attestation-principal-id",
+        () -> CliBackupRestoreArguments.parseRestoreBookCommand(keyWithoutPrincipal));
+
+    List<String> principalWithoutPassphrase = restoreArguments(OutputMode.JSON);
+    principalWithoutPassphrase.subList(13, 15).clear();
+    assertArgument(
+        "--attestation-principal-id",
+        () -> CliBackupRestoreArguments.parseRestoreBookCommand(principalWithoutPassphrase));
+
+    List<String> principalWithoutKey = restoreArguments(OutputMode.JSON);
+    principalWithoutKey.subList(11, 13).clear();
+    assertArgument(
+        "--attestation-principal-id",
+        () -> CliBackupRestoreArguments.parseRestoreBookCommand(principalWithoutKey));
+
+    List<String> sameKeyAndPassphrase = restoreArguments(OutputMode.JSON);
+    sameKeyAndPassphrase.set(14, "keys/founder.fgatk");
+    assertArgument(
+        "--attestation-principal-id",
+        () -> CliBackupRestoreArguments.parseRestoreBookCommand(sameKeyAndPassphrase));
+
+    List<String> tooManyCredentials = restoreArguments(OutputMode.JSON);
+    for (int index = 1; index < 6; index++) {
+      tooManyCredentials.addAll(
+          List.of(
+              "--attestation-principal-id",
+              "00000000-0000-4000-8000-%012d".formatted(index),
+              "--attestation-key-file",
+              "keys/founder-%d.fgatk".formatted(index),
+              "--attestation-passphrase-file",
+              "keys/founder-%d.passphrase".formatted(index)));
+    }
+    assertArgument(
+        "--attestation-principal-id",
+        () -> CliBackupRestoreArguments.parseRestoreBookCommand(tooManyCredentials));
   }
 
   private static List<String> backupArguments(OutputMode outputMode) {

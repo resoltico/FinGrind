@@ -42,6 +42,7 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
     CliMutationResponseWriter writer = new CliMutationResponseWriter(outputChannel(committedText));
     writer.writePostEntryResult(committed, dev.erst.fingrind.contract.protocol.OutputMode.TEXT);
     assertTrue(committedText.toString(StandardCharsets.UTF_8).contains("Entry Committed"));
+    assertEquals(0, CliPostingExitCodes.exitCodeFor(committed));
 
     assertThrows(
         IllegalArgumentException.class,
@@ -91,15 +92,17 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
   void writePostEntryResult_writesRejectedEnvelopeWithStructuredDetails() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
-    responseWriter.writePostEntryResult(
+    PostEntryResult.CommitRejected rejected =
         new PostEntryResult.CommitRejected(
             new IdempotencyKey("idem-1"),
             new PostingRejection.ReversalTargetNotFound(
-                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
+    responseWriter.writePostEntryResult(rejected);
     String json = outputStream.toString(StandardCharsets.UTF_8);
     assertJsonContains(json, "\"status\":\"rejected\"");
     assertJsonContains(json, "\"code\":\"reversal-target-not-found\"");
     assertJsonContains(json, "\"priorPostingId\":\"bdc03c47-a16c-3688-a18f-2445894bbc69\"");
+    assertEquals(2, CliPostingExitCodes.exitCodeFor(rejected));
   }
 
   @Test

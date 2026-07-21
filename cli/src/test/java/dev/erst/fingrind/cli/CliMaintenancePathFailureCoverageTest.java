@@ -166,6 +166,35 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
   }
 
   @Test
+  void maintenanceFailureRows_renderEveryClosedDetailShape() {
+    List<CliRejectionJsonModels.MaintenanceRejectionDetails> details =
+        List.of(
+            new CliRejectionJsonModels.BookFileDetails("/tmp/book.sqlite"),
+            new CliRejectionJsonModels.BookAndBackupFileDetails(
+                "/tmp/book.sqlite", "/tmp/backup.sqlite"),
+            new CliRejectionJsonModels.BlockingArtifactsDetails(
+                "/tmp/book.sqlite", List.of("/tmp/book.sqlite-wal")),
+            new CliArtifactPathFailureDetails(
+                "backup-target", "/tmp/backup.sqlite", "parent-path-collision"),
+            new CliRejectionJsonModels.ArtifactBusyDetails("live-book", "/tmp/book.sqlite"),
+            new CliRejectionJsonModels.BackupAcknowledgementConflictDetails("backup-42"),
+            new CliRejectionJsonModels.BackupFileDetails("/tmp/backup.sqlite"),
+            new CliRejectionJsonModels.SecretTargetDetails("/tmp/new-book.key"),
+            new CliRejectionJsonModels.ArtifactVerificationFailureDetails(
+                "backup-target", "/tmp/backup.sqlite", "missing"));
+
+    for (CliRejectionJsonModels.MaintenanceRejectionDetails detail : details) {
+      List<List<String>> rows = new java.util.ArrayList<>();
+      CliMaintenanceFailureOutputRenderer.appendRows(rows, detail);
+      assertFalse(rows.isEmpty(), detail::toString);
+    }
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new CliRejectionJsonModels.BlockingArtifactsDetails("/tmp/book.sqlite", List.of()));
+  }
+
+  @Test
   void standardInputUsage_acceptsKeyFileAndPromptSourcesForRequestStandardInput() {
     assertDoesNotThrow(
         () ->

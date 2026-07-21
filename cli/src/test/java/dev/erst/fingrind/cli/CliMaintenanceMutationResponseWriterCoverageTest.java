@@ -52,6 +52,9 @@ class CliMaintenanceMutationResponseWriterCoverageTest extends CliResponseWriter
     ByteArrayOutputStream resumedText = new ByteArrayOutputStream();
     writer(resumedText).writeBackupBookResult(resumed, OutputMode.TEXT);
     assertTrue(resumedText.toString(StandardCharsets.UTF_8).contains("resumed"));
+    ByteArrayOutputStream resumedJson = new ByteArrayOutputStream();
+    writer(resumedJson).writeBackupBookResult(resumed, OutputMode.JSON);
+    assertJsonContains(resumedJson, "\"acknowledgementState\":\"resumed\"");
     assertThrows(
         IllegalArgumentException.class,
         () -> writer(new ByteArrayOutputStream()).writeBackupBookResult(resumed, OutputMode.CSV));

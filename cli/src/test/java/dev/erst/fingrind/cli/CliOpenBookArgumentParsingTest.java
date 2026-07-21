@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.core.InventoryCostingDoctrine;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 import org.junit.jupiter.api.Test;
@@ -316,5 +317,80 @@ class CliOpenBookArgumentParsingTest extends CliArgumentParsingTestSupport {
     assertEquals(
         "Service book doctrines must not declare an inventoryCostingDoctrine.",
         serviceCosting.getMessage());
+  }
+
+  @Test
+  void parse_openBook_requiresOneThroughFiveAlignedFounderTriples() {
+    List<String> missingFounders = new ArrayList<>(List.of(validOpenBookArguments()));
+    int firstFounderOption = missingFounders.indexOf("--attestation-founder-principal-id");
+    missingFounders.subList(firstFounderOption, missingFounders.size()).clear();
+    CliArgumentsException missing =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(missingFounders.toArray(String[]::new)));
+    assertEquals("--attestation-founder-principal-id", missing.argument());
+
+    List<String> unalignedFounders = new ArrayList<>(List.of(validOpenBookArguments()));
+    int passphraseOption = unalignedFounders.indexOf("--attestation-founder-passphrase-file");
+    unalignedFounders.subList(passphraseOption, passphraseOption + 2).clear();
+    CliArgumentsException unaligned =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(unalignedFounders.toArray(String[]::new)));
+    assertEquals("--attestation-founder-principal-id", unaligned.argument());
+
+    List<String> missingFounderKey = new ArrayList<>(List.of(validOpenBookArguments()));
+    int keyOption = missingFounderKey.indexOf("--attestation-founder-key-file");
+    missingFounderKey.subList(keyOption, keyOption + 2).clear();
+    CliArgumentsException missingKey =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(missingFounderKey.toArray(String[]::new)));
+    assertEquals("--attestation-founder-principal-id", missingKey.argument());
+
+    List<String> tooManyFounders = new ArrayList<>(List.of(validOpenBookArguments()));
+    for (int index = 1; index < 6; index++) {
+      tooManyFounders.addAll(
+          List.of(
+              "--attestation-founder-principal-id",
+              "00000000-0000-4000-8000-%012d".formatted(index),
+              "--attestation-founder-key-file",
+              "founder-%d.fgatk".formatted(index),
+              "--attestation-founder-passphrase-file",
+              "founder-%d.passphrase".formatted(index)));
+    }
+    CliArgumentsException tooMany =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(tooManyFounders.toArray(String[]::new)));
+    assertEquals("--attestation-founder-principal-id", tooMany.argument());
+  }
+
+  private static String[] validOpenBookArguments() {
+    return new String[] {
+      "open-book",
+      "--book-file",
+      "book.sqlite",
+      "--book-key-file",
+      "book.key",
+      "--entity-name",
+      "Acme Studio",
+      "--book-template-id",
+      "OWNER_MANAGED_SERVICE",
+      "--accounting-basis",
+      "CASH",
+      "--functional-currency",
+      "EUR",
+      "--fiscal-year-start",
+      "01-01",
+      "--book-start-effective-date",
+      "2026-01-01",
+      "--attestation-founder-principal-id",
+      "123e4567-e89b-12d3-a456-426614174000",
+      "--attestation-founder-key-file",
+      "founder.fgatk",
+      "--attestation-founder-passphrase-file",
+      "founder.passphrase"
+    };
   }
 }

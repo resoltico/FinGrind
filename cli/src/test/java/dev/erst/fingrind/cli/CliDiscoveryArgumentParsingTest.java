@@ -542,9 +542,16 @@ class CliDiscoveryArgumentParsingTest extends CliArgumentParsingTestSupport {
 
   @Test
   void parse_acceptsOneNamedPlanTemplateTopicAndRejectsAdditionalArguments() {
+    assertEquals(new PrintPlanTemplate(), CliArguments.parse(new String[] {"print-plan-template"}));
     assertEquals(
         new PrintPlanTemplate(PlanTemplateTopic.TAX_SETUP),
         CliArguments.parse(new String[] {"print-plan-template", "tax-setup"}));
+
+    CliArgumentsException unsupportedOption =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(new String[] {"print-plan-template", "--unexpected"}));
+    assertEquals("--unexpected", unsupportedOption.argument());
 
     CliArgumentsException exception =
         assertThrows(

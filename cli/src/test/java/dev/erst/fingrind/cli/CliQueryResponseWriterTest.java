@@ -235,6 +235,22 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         "DEBIT",
         balanceJson.path("payload").path("balances").get(0).path("balanceSide").stringValue());
     assertJsonContains(balanceRejectionOutput, "\"code\":\"query-book-not-initialized\"");
+    assertEquals(0, CliBookQueryExitCodes.exitCodeFor(foundPosting(postingFact)));
+    assertEquals(
+        2,
+        CliBookQueryExitCodes.exitCodeFor(
+            new GetPostingResult.Rejected(
+                new BookQueryRejection.PostingNotFound(
+                    new PostingId("7982b5de-2f28-355e-9911-9ca85b4f5a67")))));
+    assertEquals(
+        0,
+        CliBookQueryExitCodes.exitCodeFor(
+            listedPostings(postingPage(List.of(postingFact), 10, java.util.Optional.empty()))));
+    assertEquals(
+        2,
+        CliBookQueryExitCodes.exitCodeFor(
+            new ListPostingsResult.Rejected(
+                new BookQueryRejection.UnknownAccount(new AccountCode("9999")))));
   }
 
   @Test

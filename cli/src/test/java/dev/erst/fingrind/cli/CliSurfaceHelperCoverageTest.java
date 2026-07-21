@@ -47,6 +47,8 @@ class CliSurfaceHelperCoverageTest extends CliFixtureSupport {
     assertEquals(
         List.of("2000"), CliBookPayloadMapper.counterpartAccounts(cashAccount, reversalPosting));
     assertEquals("(none)", CliQueryRowFormatAccess.postingApprovalsText(selfPosting));
+    assertEquals("direct", CliQueryLabelFormatAccess.reversalStateWireValue(selfPosting));
+    assertEquals("reversal", CliQueryLabelFormatAccess.reversalStateWireValue(reversalPosting));
   }
 
   @Test
@@ -84,6 +86,11 @@ class CliSurfaceHelperCoverageTest extends CliFixtureSupport {
             LocalDate.parse("2026-05-31"), LocalDate.parse("2026-05-14")));
     assertEquals("Debit", CliPostingOutputRenderer.displayWireLabel("DEBIT"));
     assertEquals("Credit", CliPostingOutputRenderer.displayWireLabel("CREDIT"));
+    assertEquals("Person", CliPostingOutputRenderer.displayWireLabel("PERSON"));
+    assertEquals("Agent", CliPostingOutputRenderer.displayWireLabel("AGENT"));
+    assertEquals("System", CliPostingOutputRenderer.displayWireLabel("SYSTEM"));
+    assertEquals("CLI", CliPostingOutputRenderer.displayWireLabel("CLI"));
+    assertEquals("Internal", CliPostingOutputRenderer.displayWireLabel("INTERNAL"));
     assertEquals("mystery label", CliPostingOutputRenderer.displayWireLabel("MYSTERY_LABEL"));
   }
 

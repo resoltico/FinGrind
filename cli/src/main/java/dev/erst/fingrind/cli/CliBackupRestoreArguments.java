@@ -140,10 +140,11 @@ final class CliBackupRestoreArguments {
       }
       return List.copyOf(sources);
     } catch (IllegalArgumentException exception) {
-      String message = exception.getMessage();
       throw CliArgumentValueParser.invalid(
           ProtocolOptions.Attestation.PRINCIPAL_ID,
-          message == null ? "The supplied attestation credential triple is invalid." : message,
+          java.util.Objects.requireNonNull(
+              exception.getMessage(),
+              "AttestationCredentialSource must report why a credential triple is invalid."),
           exception);
     }
   }

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -70,6 +71,13 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
     assertTrue(rendered.contains("rejected"));
     assertTrue(rendered.contains("Failure code"));
     assertFalse(rendered.contains("Failure details"));
+  }
+
+  @Test
+  void planExitCodes_preserveSucceededRejectedAndAssertionFailedStatuses() {
+    assertEquals(0, CliPostingExitCodes.exitCodeFor(succeededPlanResult()));
+    assertEquals(2, CliPostingExitCodes.exitCodeFor(rejectedPlanResultWithoutFailureFacts()));
+    assertEquals(3, CliPostingExitCodes.exitCodeFor(assertionFailedPlanResult()));
   }
 
   private static LedgerPlanResult.Succeeded succeededPlanResult() {

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AttestationReviewResult;
 import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.ExportAttestationReceiptResult;
@@ -18,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Objects;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -228,6 +230,35 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
     CliAttestationCredentialArguments incomplete = new CliAttestationCredentialArguments();
     applyCredential(incomplete, "--attestation-principal-id", BOOK_ID.toString());
     assertThrows(IllegalArgumentException.class, incomplete::resolveOptional);
+
+    CliAttestationCredentialArguments noPrincipal = new CliAttestationCredentialArguments();
+    applyCredential(noPrincipal, "--attestation-key-file", "keys/principal.fgatk");
+    assertThrows(IllegalArgumentException.class, noPrincipal::resolveOptional);
+
+    CliAttestationCredentialArguments passphraseWithoutPrincipal =
+        new CliAttestationCredentialArguments();
+    applyCredential(
+        passphraseWithoutPrincipal, "--attestation-passphrase-file", "keys/principal.passphrase");
+    assertThrows(IllegalArgumentException.class, passphraseWithoutPrincipal::resolveOptional);
+
+    CliAttestationCredentialArguments keyWithoutPassphrase =
+        new CliAttestationCredentialArguments();
+    applyCredential(keyWithoutPassphrase, "--attestation-principal-id", BOOK_ID.toString());
+    applyCredential(keyWithoutPassphrase, "--attestation-key-file", "keys/principal.fgatk");
+    assertThrows(IllegalArgumentException.class, keyWithoutPassphrase::resolveOptional);
+
+    CliAttestationCredentialArguments tooMany = new CliAttestationCredentialArguments();
+    for (int index = 0; index < 6; index++) {
+      applyCredential(
+          tooMany, "--attestation-principal-id", "00000000-0000-4000-8000-%012d".formatted(index));
+      applyCredential(
+          tooMany, "--attestation-key-file", "keys/principal-%d.fgatk".formatted(index));
+      applyCredential(
+          tooMany,
+          "--attestation-passphrase-file",
+          "keys/principal-%d.passphrase".formatted(index));
+    }
+    assertThrows(IllegalArgumentException.class, tooMany::resolveOptional);
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -236,6 +267,38 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
                     Path.of("book.sqlite"),
                     new BookAccess.PassphraseSource.KeyFile(Path.of("book.key")),
                     List.of())));
+  }
+
+  @Test
+  void attestationVerificationPayload_keepsReviewStateDerivableAndCanonical() {
+    CliAttestationJsonModels.VerifyBookPayload noReview =
+        new CliAttestationJsonModels.VerifyBookPayload(
+            BOOK_ID.toString(), "0", OPERATION_HEAD, false, List.of());
+    assertTrue(!noReview.reviewRequired());
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliAttestationJsonModels.VerifyBookPayload(
+                BOOK_ID.toString(), "0", OPERATION_HEAD, true, List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliAttestationJsonModels.VerifyBookPayload(
+                BOOK_ID.toString(), "0", OPERATION_HEAD, false, List.of("retain receipt")));
+  }
+
+  @Test
+  void successEnvelopes_omitEmptyArtifactsAndPreservePublishedArtifacts() {
+    CliAttestationJsonModels.VerifyBookPayload payload =
+        new CliAttestationJsonModels.VerifyBookPayload(
+            BOOK_ID.toString(), "0", OPERATION_HEAD, false, List.of());
+    assertEquals(null, CliEnvelopeMapper.successEnvelope(payload, List.of()).artifacts());
+    var artifacts =
+        CliEnvelopeMapper.successEnvelope(
+                payload,
+                List.of(CliEnvelopeMapper.successArtifact("pdf", Path.of("reports", "book.pdf"))))
+            .artifacts();
+    assertEquals(1, Objects.requireNonNull(artifacts).size());
   }
 
   @Test

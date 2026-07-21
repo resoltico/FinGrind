@@ -44,12 +44,6 @@ final class SqliteCliWorkflowSessions {
     return withSessionDecision(decision, work, SqlitePostingSession::close);
   }
 
-  static <T> ContractDecision<T> withReportingPeriodCloseSession(
-      ContractDecision<SqliteReportingPeriodCloseSession> decision,
-      Function<SqliteReportingPeriodCloseSession, T> work) {
-    return withSession(decision, work, SqliteReportingPeriodCloseSession::close);
-  }
-
   static <T> ContractDecision<T> withReportingPeriodCloseSessionDecision(
       ContractDecision<SqliteReportingPeriodCloseSession> decision,
       Function<SqliteReportingPeriodCloseSession, ContractDecision<T>> work) {

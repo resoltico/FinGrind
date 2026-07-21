@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.ClosedFiscalYear;
 import dev.erst.fingrind.contract.bookkeeping.SweptInterimResult;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReportingPeriod;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -38,6 +39,18 @@ class CliPeriodCloseOutputRendererCoverageTest extends CliFixtureSupport {
     assertTrue(
         renderedWithoutMovements.contains(
             "No closing movements were required for the selected reporting period."));
+
+    SweptInterimResult nonemptyPostingIdsWithoutTotals =
+        new SweptInterimResult(
+            3,
+            new ReportingPeriod(LocalDate.parse("2026-06-01"), LocalDate.parse("2026-06-30")),
+            new AccountCode("3200"),
+            List.of(),
+            Instant.parse("2026-06-30T12:00:00Z"),
+            List.of(new PostingId("98be232b-af01-324d-b4fc-6f62636fae68")));
+    assertTrue(
+        CliPeriodCloseOutputRenderer.renderSweptInterimResultText(nonemptyPostingIdsWithoutTotals)
+            .contains("98be232b-af01-324d-b4fc-6f62636fae68"));
   }
 
   @Test
