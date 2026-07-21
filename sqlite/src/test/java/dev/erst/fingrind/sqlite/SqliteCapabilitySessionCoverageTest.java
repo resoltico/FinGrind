@@ -340,6 +340,8 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
       initializeBookWithMinimalNumericAccounts(postingFactStore);
       DatabaseHandleRef activeDatabase =
           new DatabaseHandleRef(requireStoreDatabase(postingFactStore));
+      assertEquals(Optional.empty(), postingSession.earliestPostingEffectiveDate());
+      assertEquals(Optional.empty(), postingSession.transferredThroughEffectiveDate());
       assertEquals(
           new dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared(
               registeredAccount(
