@@ -226,7 +226,8 @@ class SqliteNativeInteropTest {
           SqliteNativeStatements.prepare(
               database,
               postingFactProjectionSql(
-                  "'operator reversal'", "'" + TestPostingIds.valueForLabel("posting-1") + "'"))) {
+                  "'operator reversal'",
+                  "'" + SqliteTestPostingIds.valueForLabel("posting-1") + "'"))) {
         assertEquals(SqliteNativeResultCode.code("ROW"), presentPriorPostingId.step());
         assertEquals(
             PostingLineage.reversal(
@@ -239,7 +240,7 @@ class SqliteNativeInteropTest {
           SqliteNativeStatements.prepare(
               database,
               postingFactProjectionSql(
-                  "null", "'" + TestPostingIds.valueForLabel("posting-1") + "'"))) {
+                  "null", "'" + SqliteTestPostingIds.valueForLabel("posting-1") + "'"))) {
         assertEquals(SqliteNativeResultCode.code("ROW"), missingReason.step());
         IllegalStateException exception =
             assertThrows(
@@ -298,8 +299,8 @@ class SqliteNativeInteropTest {
                   '%s'
               """
                   .formatted(
-                      TestPostingIds.valueForLabel("posting-1"),
-                      TestCommandIds.fromLabel("command-1").value(),
+                      SqliteTestPostingIds.valueForLabel("posting-1"),
+                      SqliteTestCommandIds.fromLabel("command-1").value(),
                       "0".repeat(64)))) {
         assertEquals(SqliteNativeResultCode.code("ROW"), postingRow.step());
         List<JournalLine> lines =
@@ -346,7 +347,7 @@ class SqliteNativeInteropTest {
           "insert into inventory_movement values ('purchase', '1400', '2026-05-04', 1, 'ACQUISITION', 10, 10000, 'purchase')");
       database.executeStatement(
           "insert into inventory_movement values ('sale', '1400', '2026-05-05', 2, 'DISPOSAL', -1, -1000, '%s')"
-              .formatted(TestPostingIds.valueForLabel("posting-1")));
+              .formatted(SqliteTestPostingIds.valueForLabel("posting-1")));
       try (SqliteNativeStatement postingRow =
           SqliteNativeStatements.prepare(database, saleSettledProjectionSql("1"))) {
         assertEquals(SqliteNativeResultCode.code("ROW"), postingRow.step());
@@ -607,8 +608,8 @@ class SqliteNativeInteropTest {
                   '%s'
               """
                   .formatted(
-                      TestPostingIds.valueForLabel("posting-1"),
-                      TestCommandIds.fromLabel("command-1").value(),
+                      SqliteTestPostingIds.valueForLabel("posting-1"),
+                      SqliteTestCommandIds.fromLabel("command-1").value(),
                       "0".repeat(64)))) {
         assertEquals(SqliteNativeResultCode.code("ROW"), postingRow.step());
         List<JournalLine> lines =
@@ -874,9 +875,9 @@ class SqliteNativeInteropTest {
             '%s'
         """
         .formatted(
-            TestPostingIds.valueForLabel("posting-1"),
+            SqliteTestPostingIds.valueForLabel("posting-1"),
             entryQuantity == null ? "null" : "'" + entryQuantity + "'",
-            TestCommandIds.fromLabel("command-1").value(),
+            SqliteTestCommandIds.fromLabel("command-1").value(),
             "0".repeat(64));
   }
 

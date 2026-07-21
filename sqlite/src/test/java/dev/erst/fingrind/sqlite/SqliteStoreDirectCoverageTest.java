@@ -587,7 +587,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
     String closeToken = EFFECTIVE_DATE + ":" + EFFECTIVE_DATE + ":" + FIXED_INSTANT.toEpochMilli();
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            TestCommandIds.fromLabel("interimResultSweep:" + closeToken + ":" + currencyCode),
+            SqliteTestCommandIds.fromLabel("interimResultSweep:" + closeToken + ":" + currencyCode),
             new IdempotencyKey("interimResultSweep:" + closeToken + ":" + currencyCode),
             new CausationId("interimResultSweep:" + closeToken),
             Optional.of(new CorrelationId("interimResultSweep:" + closeToken)));

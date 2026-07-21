@@ -538,7 +538,7 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                           "null",
                           "'historical correction'",
                           SourceChannel.CLI.wireValue(),
-                          "'%s'".formatted(TestPostingIds.valueForLabel("posting-prior"))));
+                          "'%s'".formatted(SqliteTestPostingIds.valueForLabel("posting-prior"))));
                   insertJournalLineRow(
                       database, "posting-historical-reversal", 0, "1100", "CREDIT", "EUR", 1000);
                   assertEquals(
@@ -550,7 +550,8 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                           where posting_id = '%s'
                           """
                               .formatted(
-                                  TestPostingIds.valueForLabel("posting-historical-reversal"))));
+                                  SqliteTestPostingIds.valueForLabel(
+                                      "posting-historical-reversal"))));
                 }));
 
     Path nominalOpeningBalancePath = tempDirectory.resolve("opening-balance-nominal.sqlite");
@@ -709,7 +710,8 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                           '%s'
                       )
                       """
-                          .formatted(TestPostingIds.valueForLabel("posting-interim-result-sweep")));
+                          .formatted(
+                              SqliteTestPostingIds.valueForLabel("posting-interim-result-sweep")));
                   insertPostingFactRow(
                       database,
                       "posting-post-close",
@@ -771,7 +773,8 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
                                   )
                                   """
                                       .formatted(
-                                          TestPostingIds.valueForLabel("posting-post-close"))));
+                                          SqliteTestPostingIds.valueForLabel(
+                                              "posting-post-close"))));
                   assertEquals(
                       SqliteNativeResultCode.code("CONSTRAINT_TRIGGER"),
                       brokenCloseLink.resultCode());
@@ -848,7 +851,7 @@ class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTest
         )
         """
             .formatted(
-                TestPostingIds.valueForLabel(postingId),
+                SqliteTestPostingIds.valueForLabel(postingId),
                 postingKind,
                 postingOriginKind,
                 effectiveDate,

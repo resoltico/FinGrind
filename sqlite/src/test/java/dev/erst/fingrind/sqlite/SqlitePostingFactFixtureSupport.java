@@ -129,7 +129,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         evidence,
         new CommittedProvenance(
             new RequestProvenance(
-                TestCommandIds.fromLabel("command-" + postingId),
+                SqliteTestCommandIds.fromLabel("command-" + postingId),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-1"),
                 Optional.of(new CorrelationId("corr-1"))),
@@ -161,7 +161,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
-                TestCommandIds.fromLabel("command-" + postingId),
+                SqliteTestCommandIds.fromLabel("command-" + postingId),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-1"),
                 Optional.of(new CorrelationId("corr-1"))),
@@ -646,7 +646,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         )
         """
             .formatted(
-                TestPostingIds.valueForLabel(postingId),
+                SqliteTestPostingIds.valueForLabel(postingId),
                 postingOriginKind,
                 idempotencyKey,
                 SourceChannel.CLI.wireValue(),

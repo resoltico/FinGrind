@@ -55,7 +55,8 @@ final class CliOpenBookCommandFactory {
   }
 
   private static List<AttestationFounderInput> resolveFounders(CliOpenBookArgumentValues values) {
-    int founderCount = values.founderPrincipalIds.size();
+    CliOpenBookArgumentValues.FounderArguments founderArguments = values.founders;
+    int founderCount = founderArguments.principalIds.size();
     if (founderCount == 0) {
       throw CliArgumentValueParser.invalid(
           ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
@@ -64,8 +65,8 @@ final class CliOpenBookCommandFactory {
               + " argument is required to establish attested book authorization.");
     }
     if (founderCount > 5
-        || values.founderKeyFiles.size() != founderCount
-        || values.founderPassphraseFiles.size() != founderCount) {
+        || founderArguments.keyFiles.size() != founderCount
+        || founderArguments.passphraseFiles.size() != founderCount) {
       throw CliArgumentValueParser.invalid(
           ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
           "Provide one through five aligned founder triples: "
@@ -80,9 +81,9 @@ final class CliOpenBookCommandFactory {
     for (int index = 0; index < founderCount; index++) {
       founders.add(
           new AttestationFounderInput(
-              values.founderPrincipalIds.get(index),
-              values.founderKeyFiles.get(index),
-              values.founderPassphraseFiles.get(index)));
+              founderArguments.principalIds.get(index),
+              founderArguments.keyFiles.get(index),
+              founderArguments.passphraseFiles.get(index)));
     }
     return List.copyOf(founders);
   }

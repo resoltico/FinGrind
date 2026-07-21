@@ -368,16 +368,16 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
               ('%s', 'missing-cutoff', 'SETTLEMENT', '2026-04-02', 'EUR', 1000);
           """
               .formatted(
-                  TestPostingIds.valueForLabel("origin-prepayment"),
-                  TestPostingIds.valueForLabel("origin-deferred"),
-                  TestPostingIds.valueForLabel("origin-accrued"),
-                  TestPostingIds.valueForLabel("recognition-prepayment"),
-                  TestPostingIds.valueForLabel("recognition-deferred"),
-                  TestPostingIds.valueForLabel("recognition-accrued"),
-                  TestPostingIds.valueForLabel("settlement-prepayment"),
-                  TestPostingIds.valueForLabel("settlement-accrued"),
-                  TestPostingIds.valueForLabel("missing-cutoff-recognition"),
-                  TestPostingIds.valueForLabel("missing-cutoff-settlement")));
+                  SqliteTestPostingIds.valueForLabel("origin-prepayment"),
+                  SqliteTestPostingIds.valueForLabel("origin-deferred"),
+                  SqliteTestPostingIds.valueForLabel("origin-accrued"),
+                  SqliteTestPostingIds.valueForLabel("recognition-prepayment"),
+                  SqliteTestPostingIds.valueForLabel("recognition-deferred"),
+                  SqliteTestPostingIds.valueForLabel("recognition-accrued"),
+                  SqliteTestPostingIds.valueForLabel("settlement-prepayment"),
+                  SqliteTestPostingIds.valueForLabel("settlement-accrued"),
+                  SqliteTestPostingIds.valueForLabel("missing-cutoff-recognition"),
+                  SqliteTestPostingIds.valueForLabel("missing-cutoff-settlement")));
 
       assertInstanceOf(
           AccrualCutoffBookkeepingEntryVariants.Prepayment.class,
@@ -761,7 +761,7 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
 
   private static RequestProvenance requestProvenance(String token) {
     return new RequestProvenance(
-        TestCommandIds.fromLabel("command-" + token),
+        SqliteTestCommandIds.fromLabel("command-" + token),
         new IdempotencyKey("idempotency-" + token),
         new CausationId("cause-" + token),
         Optional.of(new CorrelationId("correlation-" + token)));

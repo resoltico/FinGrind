@@ -322,7 +322,7 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
                   '%s'
               )
               """
-                  .formatted(TestPostingIds.valueForLabel("posting-interim-result-sweep")));
+                  .formatted(SqliteTestPostingIds.valueForLabel("posting-interim-result-sweep")));
           insertPostingFactRow(
               database,
               "posting-closed-period",
@@ -387,7 +387,7 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
                   '%s'
               )
               """
-                  .formatted(TestPostingIds.valueForLabel("posting-standard")));
+                  .formatted(SqliteTestPostingIds.valueForLabel("posting-standard")));
         });
   }
 
@@ -524,7 +524,7 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
                   '%s'
               )
               """
-                  .formatted(TestPostingIds.valueForLabel("posting-standard")));
+                  .formatted(SqliteTestPostingIds.valueForLabel("posting-standard")));
         });
   }
 
@@ -760,7 +760,7 @@ class SqliteBookIntegrityVerifierTest extends SqlitePostingFactStoreTestSupport 
         )
         """
             .formatted(
-                TestPostingIds.valueForLabel(postingId),
+                SqliteTestPostingIds.valueForLabel(postingId),
                 postingKind,
                 postingOriginKind,
                 effectiveDate,

@@ -5,8 +5,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /** Creates deterministic canonical command identifiers for SQLite test fixtures. */
-final class TestCommandIds {
-  private TestCommandIds() {}
+final class SqliteTestCommandIds {
+  private SqliteTestCommandIds() {}
 
   static CommandId fromLabel(String label) {
     return new CommandId(UUID.nameUUIDFromBytes(label.getBytes(StandardCharsets.UTF_8)).toString());

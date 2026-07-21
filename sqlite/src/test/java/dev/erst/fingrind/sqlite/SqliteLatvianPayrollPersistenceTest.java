@@ -464,7 +464,7 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
 
   private static RequestProvenance requestProvenance(String token) {
     return new RequestProvenance(
-        TestCommandIds.fromLabel("command-" + token),
+        SqliteTestCommandIds.fromLabel("command-" + token),
         new IdempotencyKey("idempotency-" + token),
         new CausationId("cause-" + token),
         Optional.of(new CorrelationId("correlation-" + token)));

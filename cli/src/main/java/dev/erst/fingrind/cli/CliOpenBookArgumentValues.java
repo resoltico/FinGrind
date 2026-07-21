@@ -24,8 +24,13 @@ final class CliOpenBookArgumentValues {
   @Nullable FiscalYearStart fiscalYearStart;
   @Nullable LocalDate bookStartEffectiveDate;
   @Nullable OutputMode outputMode;
-  final List<UUID> founderPrincipalIds = new ArrayList<>();
-  final List<Path> founderKeyFiles = new ArrayList<>();
-  final List<Path> founderPassphraseFiles = new ArrayList<>();
+  final FounderArguments founders = new FounderArguments();
   boolean tightenParents;
+
+  /** Keeps the three repeated founder inputs aligned during one command-tail parse. */
+  static final class FounderArguments {
+    final List<UUID> principalIds = new ArrayList<>();
+    final List<Path> keyFiles = new ArrayList<>();
+    final List<Path> passphraseFiles = new ArrayList<>();
+  }
 }

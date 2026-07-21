@@ -93,27 +93,39 @@ public final class AttestedProtectedBookLifecycleWorkflow {
           new ProtectedBookMaintenanceRejection.ArtifactBusy(
               ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE, busy.artifactPath()));
     }
-    try (HeldLease ignoredSourceLease = (HeldLease) sourceLease) {
-      PreparedPairPublication publication;
-      try {
-        publication =
-            store.preparePairPublication(
-                newKeyPath,
-                bookPath,
-                RestoredBookTargetPolicy.REQUIRE_ABSENT,
-                ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
-                ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET);
-      } catch (ProtectedBookMaintenanceRejectionException exception) {
-        return AttestedProtectedBookMaintenanceDecisions.rejectedRestore(exception.rejection());
-      } catch (RuntimeException exception) {
-        return AttestedProtectedBookMaintenanceDecisions.failure(
-            bookPath, "bookFilePath", "Failed to prepare restored-book publication.");
-      }
-      try (publication;
-          AttestedProtectedBookMaintenanceStore.VerifiedBackupArtifact artifact =
-              store.verifyBackupArtifact(artifactPath, backupKeyPath)) {
-        return stageAndPublishRestore(bookPath, newKeyPath, publication, artifact, signingSession);
-      }
+    HeldLease heldSourceLease = (HeldLease) sourceLease;
+    try {
+      return MaintenanceResourceScope.closeAfter(
+          heldSourceLease::close,
+          () -> {
+            PreparedPairPublication publication;
+            try {
+              publication =
+                  store.preparePairPublication(
+                      newKeyPath,
+                      bookPath,
+                      RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                      ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+                      ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET);
+            } catch (ProtectedBookMaintenanceRejectionException exception) {
+              return AttestedProtectedBookMaintenanceDecisions.rejectedRestore(
+                  exception.rejection());
+            } catch (RuntimeException exception) {
+              return AttestedProtectedBookMaintenanceDecisions.failure(
+                  bookPath, "bookFilePath", "Failed to prepare restored-book publication.");
+            }
+            return MaintenanceResourceScope.closeAfter(
+                publication::close,
+                () -> {
+                  AttestedProtectedBookMaintenanceStore.VerifiedBackupArtifact artifact =
+                      store.verifyBackupArtifact(artifactPath, backupKeyPath);
+                  return MaintenanceResourceScope.closeAfter(
+                      artifact::close,
+                      () ->
+                          stageAndPublishRestore(
+                              bookPath, newKeyPath, publication, artifact, signingSession));
+                });
+          });
     } catch (ProtectedBookMaintenanceRejectionException exception) {
       return AttestedProtectedBookMaintenanceDecisions.rejectedRestore(exception.rejection());
     } catch (RuntimeException exception) {
@@ -146,24 +158,34 @@ public final class AttestedProtectedBookLifecycleWorkflow {
       return AttestedProtectedBookMaintenanceDecisions.failure(
           newKeyPath, "newBookKeyFilePath", "Failed to prepare rekey publication.");
     }
-    try (publication) {
-      List<Path> blocking = store.blockingArtifactsForBook(bookPath);
-      if (!blocking.isEmpty()) {
-        return AttestedProtectedBookMaintenanceDecisions.rejectedRekey(
-            new ProtectedBookMaintenanceRejection.BookHasBlockingArtifacts(bookPath, blocking));
-      }
-      try (ProtectedBookMaintenanceStore.VerifiedBook liveBook =
-          AttestedProtectedBookMaintenanceDecisions.requireVerifiedBook(store, bookAccess)) {
-        List<AttestationEvidence> evidence = store.loadAttestationEvidence(liveBook);
-        AttestationVerifier.verifyBook(evidence);
-        return store
-            .stageRestoredBookPair(liveBook, publication)
-            .fold(
-                staged -> rekeyAndPublish(bookPath, newKeyPath, staged, evidence, signingSession),
-                failure ->
-                    AttestedProtectedBookMaintenanceDecisions.failure(
-                        newKeyPath, "newBookKeyFilePath", failure.message()));
-      }
+    try {
+      return MaintenanceResourceScope.closeAfter(
+          publication::close,
+          () -> {
+            List<Path> blocking = store.blockingArtifactsForBook(bookPath);
+            if (!blocking.isEmpty()) {
+              return AttestedProtectedBookMaintenanceDecisions.rejectedRekey(
+                  new ProtectedBookMaintenanceRejection.BookHasBlockingArtifacts(
+                      bookPath, blocking));
+            }
+            ProtectedBookMaintenanceStore.VerifiedBook liveBook =
+                AttestedProtectedBookMaintenanceDecisions.requireVerifiedBook(store, bookAccess);
+            return MaintenanceResourceScope.closeAfter(
+                liveBook::close,
+                () -> {
+                  List<AttestationEvidence> evidence = store.loadAttestationEvidence(liveBook);
+                  AttestationVerifier.verifyBook(evidence);
+                  return store
+                      .stageRestoredBookPair(liveBook, publication)
+                      .fold(
+                          staged ->
+                              rekeyAndPublish(
+                                  bookPath, newKeyPath, staged, evidence, signingSession),
+                          failure ->
+                              AttestedProtectedBookMaintenanceDecisions.failure(
+                                  newKeyPath, "newBookKeyFilePath", failure.message()));
+                });
+          });
     } catch (ProtectedBookMaintenanceRejectionException exception) {
       return AttestedProtectedBookMaintenanceDecisions.rejectedRekey(exception.rejection());
     } catch (RuntimeException exception) {

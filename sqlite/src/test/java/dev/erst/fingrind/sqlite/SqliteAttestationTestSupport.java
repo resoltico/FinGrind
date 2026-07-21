@@ -45,6 +45,7 @@ final class SqliteAttestationTestSupport {
     };
   }
 
+  /** Owns the reusable encrypted founder credential fixture and its protected passphrase copy. */
   private static final class KeyMaterial {
     private final AttestationPublicCredential publicCredential;
     private final Path encryptedKeyPath;

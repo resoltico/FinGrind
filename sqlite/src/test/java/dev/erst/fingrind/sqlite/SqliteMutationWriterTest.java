@@ -510,7 +510,8 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                               failingDatabase,
                               SqlitePostingSql.FIND_POSTING_BY_ID,
                               statement ->
-                                  statement.bindText(1, TestPostingIds.valueForLabel(postingId))));
+                                  statement.bindText(
+                                      1, SqliteTestPostingIds.valueForLabel(postingId))));
 
           String message = Objects.requireNonNull(failure.getMessage());
           assertTrue(
@@ -771,7 +772,7 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
             .findOneCommittedPosting(
                 database,
                 SqlitePostingSql.FIND_POSTING_BY_ID,
-                statement -> statement.bindText(1, TestPostingIds.valueForLabel(postingId)))
+                statement -> statement.bindText(1, SqliteTestPostingIds.valueForLabel(postingId)))
             .orElseThrow();
 
     assertEquals(Optional.of(entry), persisted.callerAuthoredEntry());
@@ -881,7 +882,7 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
   private static CommittedProvenance committedProvenance(String token) {
     return new CommittedProvenance(
         new dev.erst.fingrind.core.RequestProvenance(
-            TestCommandIds.fromLabel("command-" + token),
+            SqliteTestCommandIds.fromLabel("command-" + token),
             new IdempotencyKey("idem-" + token),
             new CausationId("cause-" + token),
             Optional.of(new CorrelationId("corr-" + token))),

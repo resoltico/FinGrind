@@ -201,23 +201,15 @@ public final class AttestationInspectionService {
       stagedPath = Files.createTempFile(parent, ".fingrind-receipt-", ".fgar");
       writeAndForce(stagedPath, receipt);
       Files.createLink(receiptPath, stagedPath);
-      List<String> warnings = new ArrayList<>();
-      if (receiptRetention(bookPath, receiptPath)
-          == AttestationReceiptRetention.WITHIN_BOOK_TRUST_BOUNDARY) {
-        warnings.add("receipt-not-independent");
-      }
       String cleanupWarning = deleteStagedReceipt(stagedPath);
       stagedPath = null;
-      if (cleanupWarning != null) {
-        warnings.add(cleanupWarning);
-      }
       return ContractDecision.accepted(
           new ExportAttestationReceiptResult(
               receiptPath,
               verification.bookId(),
               verification.headOrder(),
               HexFormat.of().formatHex(verification.operationHead()),
-              warnings));
+              receiptPublicationWarnings(bookPath, receiptPath, cleanupWarning)));
     } catch (FileAlreadyExistsException exception) {
       return ContractDecision.rejected(
           ContractErrors.Descriptor.ARTIFACT_OUTPUT_ALREADY_EXISTS.failureAt(
@@ -234,12 +226,7 @@ public final class AttestationInspectionService {
               "--receipt-file"));
     } finally {
       if (stagedPath != null) {
-        try {
-          Files.deleteIfExists(stagedPath);
-        } catch (IOException ignored) {
-          // A second best-effort removal cannot change the already returned primary publication
-          // outcome.
-        }
+        deleteStagedQuietly(stagedPath);
       }
     }
   }
@@ -299,13 +286,42 @@ public final class AttestationInspectionService {
     }
   }
 
-  private static @Nullable String deleteStagedReceipt(Path stagedPath) {
+  /** Returns a truthful warning when the published receipt's staging file could not be removed. */
+  static @Nullable String deleteStagedReceipt(Path stagedPath) {
     try {
       Files.delete(stagedPath);
       return null;
     } catch (IOException exception) {
       return "receipt-staging-cleanup-required:" + stagedPath;
     }
+  }
+
+  /**
+   * Performs best-effort cleanup after a primary receipt-publication failure is already decided.
+   */
+  static void deleteStagedQuietly(Path stagedPath) {
+    try {
+      Files.deleteIfExists(stagedPath);
+    } catch (IOException ignored) {
+      // A second best-effort removal cannot change the already returned primary publication
+      // outcome.
+    }
+  }
+
+  /**
+   * Derives every caller-visible receipt publication warning from the canonical retention outcome.
+   */
+  static List<String> receiptPublicationWarnings(
+      Path bookPath, Path receiptPath, @Nullable String cleanupWarning) {
+    List<String> warnings = new ArrayList<>();
+    if (receiptRetention(bookPath, receiptPath)
+        == AttestationReceiptRetention.WITHIN_BOOK_TRUST_BOUNDARY) {
+      warnings.add("receipt-not-independent");
+    }
+    if (cleanupWarning != null) {
+      warnings.add(cleanupWarning);
+    }
+    return List.copyOf(warnings);
   }
 
   private static <T> ContractDecision<T> invalidAttestationCredentials(Path bookPath) {

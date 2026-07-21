@@ -247,7 +247,7 @@ class SqliteStoreFixtureSupport {
         )
         """
             .formatted(
-                TestPostingIds.valueForLabel(postingId),
+                SqliteTestPostingIds.valueForLabel(postingId),
                 lineOrder,
                 accountCode,
                 entrySide,

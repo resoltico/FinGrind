@@ -74,27 +74,45 @@ final class AttestedProtectedBookBackupWorkflow {
       return AttestedProtectedBookMaintenanceDecisions.failure(
           backupPath, "backupFilePath", "Failed to prepare backup artifact publication.");
     }
-    try (publication) {
-      List<Path> blocking = store.blockingArtifactsForBook(bookPath);
-      if (!blocking.isEmpty()) {
-        return AttestedProtectedBookMaintenanceDecisions.rejectedBackup(
-            new ProtectedBookMaintenanceRejection.BookHasBlockingArtifacts(bookPath, blocking));
-      }
-      ProtectedBookMaintenanceStore.LeaseAcquisition lease =
-          store.acquireManagedArtifactLease(
-              bookPath, ProtectedBookMaintenanceArtifactRole.LIVE_BOOK);
-      if (lease instanceof ProtectedBookMaintenanceStore.LeaseBusy busy) {
-        return AttestedProtectedBookMaintenanceDecisions.rejectedBackup(
-            new ProtectedBookMaintenanceRejection.ArtifactBusy(
-                ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, busy.artifactPath()));
-      }
-      try (ProtectedBookMaintenanceStore.HeldLease ignoredLease =
-              (ProtectedBookMaintenanceStore.HeldLease) lease;
-          ProtectedBookMaintenanceStore.VerifiedBook liveBook =
-              AttestedProtectedBookMaintenanceDecisions.requireVerifiedBook(store, bookAccess)) {
-        return acknowledgementWorkflow.stagePublishAndAcknowledgeBackup(
-            liveBook, bookPath, backupPath, backupKeyPath, publication, backupId, signingSession);
-      }
+    try {
+      return MaintenanceResourceScope.closeAfter(
+          publication::close,
+          () -> {
+            List<Path> blocking = store.blockingArtifactsForBook(bookPath);
+            if (!blocking.isEmpty()) {
+              return AttestedProtectedBookMaintenanceDecisions.rejectedBackup(
+                  new ProtectedBookMaintenanceRejection.BookHasBlockingArtifacts(
+                      bookPath, blocking));
+            }
+            ProtectedBookMaintenanceStore.LeaseAcquisition lease =
+                store.acquireManagedArtifactLease(
+                    bookPath, ProtectedBookMaintenanceArtifactRole.LIVE_BOOK);
+            if (lease instanceof ProtectedBookMaintenanceStore.LeaseBusy busy) {
+              return AttestedProtectedBookMaintenanceDecisions.rejectedBackup(
+                  new ProtectedBookMaintenanceRejection.ArtifactBusy(
+                      ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, busy.artifactPath()));
+            }
+            ProtectedBookMaintenanceStore.HeldLease heldLease =
+                (ProtectedBookMaintenanceStore.HeldLease) lease;
+            return MaintenanceResourceScope.closeAfter(
+                heldLease::close,
+                () -> {
+                  ProtectedBookMaintenanceStore.VerifiedBook liveBook =
+                      AttestedProtectedBookMaintenanceDecisions.requireVerifiedBook(
+                          store, bookAccess);
+                  return MaintenanceResourceScope.closeAfter(
+                      liveBook::close,
+                      () ->
+                          acknowledgementWorkflow.stagePublishAndAcknowledgeBackup(
+                              liveBook,
+                              bookPath,
+                              backupPath,
+                              backupKeyPath,
+                              publication,
+                              backupId,
+                              signingSession));
+                });
+          });
     } catch (ProtectedBookMaintenanceRejectionException exception) {
       return AttestedProtectedBookMaintenanceDecisions.rejectedBackup(exception.rejection());
     } catch (RuntimeException exception) {
@@ -122,33 +140,55 @@ final class AttestedProtectedBookBackupWorkflow {
           new ProtectedBookMaintenanceRejection.ArtifactBusy(
               ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, busy.artifactPath()));
     }
-    try (ProtectedBookMaintenanceStore.HeldLease ignoredLease =
-            (ProtectedBookMaintenanceStore.HeldLease) lease;
-        ProtectedBookMaintenanceStore.VerifiedBook liveBook =
-            AttestedProtectedBookMaintenanceDecisions.requireVerifiedBook(store, bookAccess);
-        AttestedProtectedBookMaintenanceStore.VerifiedBackupArtifact artifact =
-            store.verifyBackupArtifact(backupPath, backupKeyPath)) {
-      if (!artifact.verification().backupId().equals(backupId)) {
-        return AttestedProtectedBookMaintenanceDecisions.rejectedBackup(
-            new ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists(backupPath));
-      }
-      List<AttestationEvidence> liveEvidence = store.loadAttestationEvidence(liveBook);
-      if (!AttestedProtectedBookBackupAcknowledgementWorkflow.artifactSourceIsLive(
-          artifact.verification(), liveEvidence)) {
-        return AttestedProtectedBookMaintenanceDecisions.rejectedBackup(
-            new ProtectedBookMaintenanceRejection.ArtifactVerificationFailed(
-                ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE,
-                backupPath,
-                ProtectedBookVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED));
-      }
-      AttestationBackupAcknowledgement acknowledgement =
-          new AttestationBackupAcknowledgement(
-              artifact.verification().backupId(),
-              artifact.verification().artifactDigest(),
-              artifact.verification().sourceOrder(),
-              artifact.verification().sourceOperationHead());
-      return acknowledgementWorkflow.acknowledgeBackup(
-          liveBook, bookPath, backupPath, backupKeyPath, acknowledgement, signingSession, true);
+    ProtectedBookMaintenanceStore.HeldLease heldLease =
+        (ProtectedBookMaintenanceStore.HeldLease) lease;
+    try {
+      return MaintenanceResourceScope.closeAfter(
+          heldLease::close,
+          () -> {
+            ProtectedBookMaintenanceStore.VerifiedBook liveBook =
+                AttestedProtectedBookMaintenanceDecisions.requireVerifiedBook(store, bookAccess);
+            return MaintenanceResourceScope.closeAfter(
+                liveBook::close,
+                () -> {
+                  AttestedProtectedBookMaintenanceStore.VerifiedBackupArtifact artifact =
+                      store.verifyBackupArtifact(backupPath, backupKeyPath);
+                  return MaintenanceResourceScope.closeAfter(
+                      artifact::close,
+                      () -> {
+                        if (!artifact.verification().backupId().equals(backupId)) {
+                          return AttestedProtectedBookMaintenanceDecisions.rejectedBackup(
+                              new ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists(
+                                  backupPath));
+                        }
+                        List<AttestationEvidence> liveEvidence =
+                            store.loadAttestationEvidence(liveBook);
+                        if (!AttestedProtectedBookBackupAcknowledgementWorkflow
+                            .artifactSourceIsLive(artifact.verification(), liveEvidence)) {
+                          return AttestedProtectedBookMaintenanceDecisions.rejectedBackup(
+                              new ProtectedBookMaintenanceRejection.ArtifactVerificationFailed(
+                                  ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE,
+                                  backupPath,
+                                  ProtectedBookVerificationFailure
+                                      .PROTECTED_BOOK_VERIFICATION_FAILED));
+                        }
+                        AttestationBackupAcknowledgement acknowledgement =
+                            new AttestationBackupAcknowledgement(
+                                artifact.verification().backupId(),
+                                artifact.verification().artifactDigest(),
+                                artifact.verification().sourceOrder(),
+                                artifact.verification().sourceOperationHead());
+                        return acknowledgementWorkflow.acknowledgeBackup(
+                            liveBook,
+                            bookPath,
+                            backupPath,
+                            backupKeyPath,
+                            acknowledgement,
+                            signingSession,
+                            true);
+                      });
+                });
+          });
     } catch (ProtectedBookMaintenanceRejectionException exception) {
       return AttestedProtectedBookMaintenanceDecisions.rejectedBackup(exception.rejection());
     } catch (RuntimeException exception) {

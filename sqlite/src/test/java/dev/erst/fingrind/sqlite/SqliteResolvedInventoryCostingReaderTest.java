@@ -28,14 +28,14 @@ class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSup
           insert into inventory_movement
           values ('sale', 'inventory', '2026-05-05', 2, 'DISPOSAL', -4, -4000, '%s')
           """
-              .formatted(TestPostingIds.valueForLabel("sale")));
+              .formatted(SqliteTestPostingIds.valueForLabel("sale")));
 
       BookkeepingEntry.SaleSettled resolved =
           assertInstanceOf(
               BookkeepingEntry.SaleSettled.class,
               SqliteResolvedInventoryCostingReader.resolve(
                   database,
-                  new PostingId(TestPostingIds.valueForLabel("sale")),
+                  new PostingId(SqliteTestPostingIds.valueForLabel("sale")),
                   saleSettledWithInventoryRelief()));
       var resolvedCosting =
           Objects.requireNonNull(resolved.resolvedInventoryCosting(), "resolvedInventoryCosting");
@@ -59,14 +59,14 @@ class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSup
           insert into inventory_movement
           values ('sale', 'inventory', '2026-05-05', 2, 'DISPOSAL', -4, -4000, '%s')
           """
-              .formatted(TestPostingIds.valueForLabel("sale")));
+              .formatted(SqliteTestPostingIds.valueForLabel("sale")));
 
       BookkeepingEntry.SaleOnCredit resolved =
           assertInstanceOf(
               BookkeepingEntry.SaleOnCredit.class,
               SqliteResolvedInventoryCostingReader.resolve(
                   database,
-                  new PostingId(TestPostingIds.valueForLabel("sale")),
+                  new PostingId(SqliteTestPostingIds.valueForLabel("sale")),
                   saleOnCreditWithInventoryRelief()));
 
       assertEquals(
@@ -86,11 +86,11 @@ class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSup
       assertNull(
           SqliteResolvedInventoryCostingReader.resolve(
               database,
-              new PostingId(TestPostingIds.valueForLabel("no-disposal")),
+              new PostingId(SqliteTestPostingIds.valueForLabel("no-disposal")),
               saleOnCreditWithInventoryRelief()));
       assertNull(
           SqliteResolvedInventoryCostingReader.resolve(
-              database, new PostingId(TestPostingIds.valueForLabel("no-disposal")), null));
+              database, new PostingId(SqliteTestPostingIds.valueForLabel("no-disposal")), null));
     }
   }
 
@@ -106,13 +106,13 @@ class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSup
           insert into inventory_movement
           values ('sale-one', 'inventory', '2026-05-05', 2, 'DISPOSAL', -4, -4000, '%s')
           """
-              .formatted(TestPostingIds.valueForLabel("ambiguous")));
+              .formatted(SqliteTestPostingIds.valueForLabel("ambiguous")));
       database.executeStatement(
           """
           insert into inventory_movement
           values ('sale-two', 'inventory', '2026-05-05', 3, 'DISPOSAL', -1, -1000, '%s')
           """
-              .formatted(TestPostingIds.valueForLabel("ambiguous")));
+              .formatted(SqliteTestPostingIds.valueForLabel("ambiguous")));
 
       assertRejection(
           database,
@@ -121,13 +121,13 @@ class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSup
 
       database.executeStatement(
           "delete from inventory_movement where posting_id = '%s'"
-              .formatted(TestPostingIds.valueForLabel("ambiguous")));
+              .formatted(SqliteTestPostingIds.valueForLabel("ambiguous")));
       database.executeStatement(
           """
           insert into inventory_movement
           values ('sale-invalid', 'inventory', '2026-05-05', 2, 'DISPOSAL', 4, -4000, '%s')
           """
-              .formatted(TestPostingIds.valueForLabel("invalid")));
+              .formatted(SqliteTestPostingIds.valueForLabel("invalid")));
       assertRejection(
           database,
           "invalid",
@@ -135,13 +135,13 @@ class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSup
 
       database.executeStatement(
           "delete from inventory_movement where posting_id = '%s'"
-              .formatted(TestPostingIds.valueForLabel("invalid")));
+              .formatted(SqliteTestPostingIds.valueForLabel("invalid")));
       database.executeStatement(
           """
           insert into inventory_movement
           values ('sale-invalid-cost', 'inventory', '2026-05-05', 2, 'DISPOSAL', -4, 4000, '%s')
           """
-              .formatted(TestPostingIds.valueForLabel("invalid-cost")));
+              .formatted(SqliteTestPostingIds.valueForLabel("invalid-cost")));
       assertRejection(
           database,
           "invalid-cost",
@@ -149,13 +149,13 @@ class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSup
 
       database.executeStatement(
           "delete from inventory_movement where posting_id = '%s'"
-              .formatted(TestPostingIds.valueForLabel("invalid-cost")));
+              .formatted(SqliteTestPostingIds.valueForLabel("invalid-cost")));
       database.executeStatement(
           """
           insert into inventory_movement
           values ('sale-inconsistent', 'inventory', '2026-05-05', 2, 'DISPOSAL', -4, -3000, '%s')
           """
-              .formatted(TestPostingIds.valueForLabel("inconsistent")));
+              .formatted(SqliteTestPostingIds.valueForLabel("inconsistent")));
       assertRejection(
           database,
           "inconsistent",
@@ -171,7 +171,7 @@ class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSup
             () ->
                 SqliteResolvedInventoryCostingReader.resolve(
                     database,
-                    new PostingId(TestPostingIds.valueForLabel(postingId)),
+                    new PostingId(SqliteTestPostingIds.valueForLabel(postingId)),
                     saleOnCreditWithInventoryRelief()));
     assertEquals(expectedMessage, exception.getMessage());
   }
@@ -190,7 +190,7 @@ class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSup
         insert into inventory_movement
         values ('purchase', 'inventory', '2026-05-04', 1, 'ACQUISITION', 10, 10000, '%s')
         """
-            .formatted(TestPostingIds.valueForLabel("purchase")));
+            .formatted(SqliteTestPostingIds.valueForLabel("purchase")));
   }
 
   private static BookkeepingEntry.SaleSettled saleSettledWithInventoryRelief() {

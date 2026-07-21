@@ -225,7 +225,7 @@ class SqliteForeignExchangeStoreCoverageTest extends SqlitePostingFactStoreTestS
   private static CommittedProvenance committedProvenance(String token) {
     return new CommittedProvenance(
         new RequestProvenance(
-            TestCommandIds.fromLabel("command-" + token),
+            SqliteTestCommandIds.fromLabel("command-" + token),
             new IdempotencyKey("idem-" + token),
             new CausationId("cause-" + token),
             Optional.of(new CorrelationId("corr-" + token))),

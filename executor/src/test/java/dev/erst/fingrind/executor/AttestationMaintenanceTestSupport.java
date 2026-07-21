@@ -87,116 +87,95 @@ final class AttestationMaintenanceTestSupport {
 
   /** Mutable test double for the attested maintenance SPI. */
   static final class Store implements AttestedProtectedBookMaintenanceStore {
-    private final StubBook liveBook;
-    private final StubBook snapshotBook;
-    private final StubBook restoredBook;
-    private final Map<StubBook, List<AttestationEvidence>> evidenceByBook =
-        new ConcurrentHashMap<>();
-    private final byte[] snapshot = new byte[] {4, 8, 15, 16, 23, 42};
-    private BackupArtifactPairState backupPairState = BackupArtifactPairState.ABSENT;
-    private List<Path> liveBlockingArtifacts = List.of();
-    private List<Path> backupBlockingArtifacts = List.of();
-    private LeaseAcquisition managedLease;
-    private LeaseAcquisition existingLease;
-    private MaintenanceDecision<BookVerification> liveVerification;
-    private MaintenanceDecision<StagedBackupPair> stagedBackup;
-    private MaintenanceDecision<StagedRestoredBookPair> stagedRestore;
-    private MaintenanceDecision<BookVerification> stagedBackupVerification;
-    private MaintenanceDecision<BookVerification> stagedRestoreVerification;
-    private @Nullable RuntimeException prepareFailure;
-    private @Nullable RuntimeException appendFailure;
-    private @Nullable RuntimeException existingLeaseFailure;
-    private @Nullable RuntimeException backupArtifactVerificationFailure;
-    private byte @Nullable [] sealedArtifact;
+    private final BookHandles bookHandles;
+    private final EvidenceState evidenceState;
+    private final BackupArtifactState backupArtifactState = new BackupArtifactState();
+    private final AdmissionState admissionState;
+    private final StagingState stagingState;
+    private final FailureState failureState = new FailureState();
 
     Store(Path bookPath, List<AttestationEvidence> evidence) {
       Path normalizedBookPath = normalize(bookPath, "bookPath");
-      liveBook = new StubBook(normalizedBookPath);
-      snapshotBook = new StubBook(normalizedBookPath.resolveSibling("snapshot.sqlite"));
-      restoredBook = new StubBook(normalizedBookPath.resolveSibling("restored.sqlite"));
-      List<AttestationEvidence> checkedEvidence = List.copyOf(evidence);
-      evidenceByBook.put(liveBook, checkedEvidence);
-      evidenceByBook.put(snapshotBook, checkedEvidence);
-      evidenceByBook.put(restoredBook, checkedEvidence);
-      liveVerification = MaintenanceDecision.accepted(liveBook);
-      stagedBackup = MaintenanceDecision.accepted(new StubStagedBackup(this));
-      stagedRestore = MaintenanceDecision.accepted(new StubStagedRestore(this));
-      stagedBackupVerification = MaintenanceDecision.accepted(snapshotBook);
-      stagedRestoreVerification = MaintenanceDecision.accepted(restoredBook);
-      managedLease = new StubLease(normalizedBookPath);
-      existingLease = new StubLease(normalizedBookPath);
+      bookHandles = new BookHandles(normalizedBookPath);
+      evidenceState = new EvidenceState(bookHandles, evidence);
+      admissionState = new AdmissionState(normalizedBookPath, bookHandles.liveBook());
+      stagingState = new StagingState(this, bookHandles);
     }
 
     void setLiveVerification(MaintenanceDecision<BookVerification> verification) {
-      liveVerification = Objects.requireNonNull(verification, "verification");
+      admissionState.liveVerification = Objects.requireNonNull(verification, "verification");
     }
 
     void setBackupPairState(BackupArtifactPairState state) {
-      backupPairState = Objects.requireNonNull(state, "state");
+      backupArtifactState.pairState = Objects.requireNonNull(state, "state");
     }
 
     void setLiveBlockingArtifacts(List<Path> blockingArtifacts) {
-      liveBlockingArtifacts = List.copyOf(blockingArtifacts);
+      admissionState.liveBlockingArtifacts = List.copyOf(blockingArtifacts);
     }
 
     void setBackupBlockingArtifacts(List<Path> blockingArtifacts) {
-      backupBlockingArtifacts = List.copyOf(blockingArtifacts);
+      admissionState.backupBlockingArtifacts = List.copyOf(blockingArtifacts);
     }
 
     void setManagedLease(LeaseAcquisition lease) {
-      managedLease = Objects.requireNonNull(lease, "lease");
+      admissionState.managedLease = Objects.requireNonNull(lease, "lease");
     }
 
     void setExistingLease(LeaseAcquisition lease) {
-      existingLease = Objects.requireNonNull(lease, "lease");
+      admissionState.existingLease = Objects.requireNonNull(lease, "lease");
     }
 
     void setExistingLeaseFailure(RuntimeException failure) {
-      existingLeaseFailure = Objects.requireNonNull(failure, "failure");
+      failureState.existingLease = Objects.requireNonNull(failure, "failure");
     }
 
     void setBackupArtifactVerificationFailure(RuntimeException failure) {
-      backupArtifactVerificationFailure = Objects.requireNonNull(failure, "failure");
+      failureState.backupArtifactVerification = Objects.requireNonNull(failure, "failure");
     }
 
     void setStagedBackup(MaintenanceDecision<StagedBackupPair> staged) {
-      stagedBackup = Objects.requireNonNull(staged, "staged");
+      stagingState.backup = Objects.requireNonNull(staged, "staged");
     }
 
     void setStagedRestore(MaintenanceDecision<StagedRestoredBookPair> staged) {
-      stagedRestore = Objects.requireNonNull(staged, "staged");
+      stagingState.restore = Objects.requireNonNull(staged, "staged");
     }
 
     void setStagedBackupVerification(MaintenanceDecision<BookVerification> verification) {
-      stagedBackupVerification = Objects.requireNonNull(verification, "verification");
+      stagingState.backupVerification = Objects.requireNonNull(verification, "verification");
     }
 
     void setStagedRestoreVerification(MaintenanceDecision<BookVerification> verification) {
-      stagedRestoreVerification = Objects.requireNonNull(verification, "verification");
+      stagingState.restoreVerification = Objects.requireNonNull(verification, "verification");
     }
 
     void setPrepareFailure(RuntimeException failure) {
-      prepareFailure = Objects.requireNonNull(failure, "failure");
+      failureState.prepare = Objects.requireNonNull(failure, "failure");
+    }
+
+    void setStagedBackupFailure(RuntimeException failure) {
+      failureState.stagedBackup = Objects.requireNonNull(failure, "failure");
     }
 
     void setAppendFailure(RuntimeException failure) {
-      appendFailure = Objects.requireNonNull(failure, "failure");
+      failureState.append = Objects.requireNonNull(failure, "failure");
     }
 
     List<AttestationEvidence> liveEvidence() {
-      return evidenceFor(liveBook);
+      return evidenceFor(bookHandles.liveBook());
     }
 
     List<AttestationEvidence> restoredEvidence() {
-      return evidenceFor(restoredBook);
+      return evidenceFor(bookHandles.restoredBook());
     }
 
-    void setLiveEvidence(List<AttestationEvidence> evidence) {
-      evidenceByBook.put(liveBook, List.copyOf(evidence));
+    void setLiveEvidence(List<AttestationEvidence> attestationEvidence) {
+      evidenceState.byBook.put(bookHandles.liveBook(), List.copyOf(attestationEvidence));
     }
 
-    void setSnapshotEvidence(List<AttestationEvidence> evidence) {
-      evidenceByBook.put(snapshotBook, List.copyOf(evidence));
+    void setSnapshotEvidence(List<AttestationEvidence> attestationEvidence) {
+      evidenceState.byBook.put(bookHandles.snapshotBook(), List.copyOf(attestationEvidence));
     }
 
     @Override
@@ -212,8 +191,8 @@ final class AttestationMaintenanceTestSupport {
         RestoredBookTargetPolicy bookTargetPolicy,
         ProtectedBookMaintenanceArtifactRole bookArtifactRole,
         ProtectedBookMaintenanceArtifactRole secretArtifactRole) {
-      if (prepareFailure != null) {
-        throw prepareFailure;
+      if (failureState.prepare != null) {
+        throw failureState.prepare;
       }
       return new StubPublication(
           normalizedBookTargetPath, normalizedSecretTargetPath, bookTargetPolicy);
@@ -221,51 +200,54 @@ final class AttestationMaintenanceTestSupport {
 
     @Override
     public List<Path> blockingArtifactsForBook(Path normalizedBookPath) {
-      return liveBlockingArtifacts;
+      return admissionState.liveBlockingArtifacts;
     }
 
     @Override
     public List<Path> blockingArtifactsForBackupSource(Path normalizedBackupFilePath) {
-      return backupBlockingArtifacts;
+      return admissionState.backupBlockingArtifacts;
     }
 
     @Override
     public BackupArtifactPairState backupArtifactPairState(
         Path normalizedBackupArtifactPath, Path normalizedBackupKeyFilePath) {
-      return backupPairState;
+      return backupArtifactState.pairState;
     }
 
     @Override
     public LeaseAcquisition acquireExistingArtifactLease(
         Path normalizedArtifactPath, ProtectedBookMaintenanceArtifactRole artifactRole) {
-      if (existingLeaseFailure != null) {
-        throw existingLeaseFailure;
+      if (failureState.existingLease != null) {
+        throw failureState.existingLease;
       }
-      return existingLease;
+      return admissionState.existingLease;
     }
 
     @Override
     public LeaseAcquisition acquireManagedArtifactLease(
         Path normalizedArtifactPath, ProtectedBookMaintenanceArtifactRole artifactRole) {
-      return managedLease;
+      return admissionState.managedLease;
     }
 
     @Override
     public MaintenanceDecision<BookVerification> verifyInitializedBook(
         ProtectedBookAccess bookAccess, ProtectedBookMaintenanceArtifactRole artifactRole) {
-      return liveVerification;
+      return admissionState.liveVerification;
     }
 
     @Override
     public MaintenanceDecision<StagedBackupPair> stageBackupPair(
         VerifiedBook sourceBook, PreparedPairPublication preparedPairPublication) {
-      return stagedBackup;
+      if (failureState.stagedBackup != null) {
+        throw failureState.stagedBackup;
+      }
+      return stagingState.backup;
     }
 
     @Override
     public MaintenanceDecision<StagedRestoredBookPair> stageRestoredBookPair(
         VerifiedBook sourceBook, PreparedPairPublication preparedPairPublication) {
-      return stagedRestore;
+      return stagingState.restore;
     }
 
     @Override
@@ -281,8 +263,8 @@ final class AttestationMaintenanceTestSupport {
         AttestationOperationPreimages preimages,
         AttestationOperationAuthorizer authorizer,
         @Nullable AttestationBackupAcknowledgement backupAcknowledgement) {
-      if (appendFailure != null) {
-        throw appendFailure;
+      if (failureState.append != null) {
+        throw failureState.append;
       }
       StubBook book = (StubBook) verifiedBook;
       AttestationVerification head = AttestationVerifier.verifyBook(evidenceFor(book));
@@ -298,32 +280,100 @@ final class AttestationMaintenanceTestSupport {
                   preimages.effect()));
       List<AttestationEvidence> appendedEvidence = new ArrayList<>(evidenceFor(book));
       appendedEvidence.add(appended);
-      evidenceByBook.put(book, List.copyOf(appendedEvidence));
+      evidenceState.byBook.put(book, List.copyOf(appendedEvidence));
       return AttestationVerifier.verifyBook(appendedEvidence);
     }
 
     @Override
     public VerifiedBackupArtifact verifyBackupArtifact(
         Path normalizedBackupArtifactPath, Path normalizedBackupKeyFilePath) {
-      if (backupArtifactVerificationFailure != null) {
-        throw backupArtifactVerificationFailure;
+      if (failureState.backupArtifactVerification != null) {
+        throw failureState.backupArtifactVerification;
       }
-      byte[] artifact = Objects.requireNonNull(sealedArtifact, "sealedArtifact");
-      AttestationArtifactSnapshotReader reader = ignored -> evidenceFor(snapshotBook);
+      byte[] artifact = Objects.requireNonNull(backupArtifactState.sealed, "sealedArtifact");
+      AttestationArtifactSnapshotReader reader = ignored -> evidenceFor(bookHandles.snapshotBook());
       return new StubVerifiedBackupArtifact(
-          AttestationBackupArtifact.verify(artifact, reader), snapshotBook);
+          AttestationBackupArtifact.verify(artifact, reader), bookHandles.snapshotBook());
     }
 
     private List<AttestationEvidence> evidenceFor(StubBook book) {
-      return Objects.requireNonNull(evidenceByBook.get(book), "known verified book");
+      return Objects.requireNonNull(evidenceState.byBook.get(book), "known verified book");
     }
 
     private void sealArtifact(byte[] artifact) {
-      sealedArtifact = artifact.clone();
+      backupArtifactState.sealed = artifact.clone();
     }
 
     private void publishBackup() {
-      backupPairState = BackupArtifactPairState.COMPLETE;
+      backupArtifactState.pairState = BackupArtifactPairState.COMPLETE;
+    }
+
+    /** Groups the three verified book handles that share one fixture filesystem root. */
+    private record BookHandles(StubBook liveBook, StubBook snapshotBook, StubBook restoredBook) {
+      private BookHandles(Path normalizedBookPath) {
+        this(
+            new StubBook(normalizedBookPath),
+            new StubBook(normalizedBookPath.resolveSibling("snapshot.sqlite")),
+            new StubBook(normalizedBookPath.resolveSibling("restored.sqlite")));
+      }
+    }
+
+    /** Owns test evidence independently for each verified-book handle. */
+    private static final class EvidenceState {
+      private final Map<StubBook, List<AttestationEvidence>> byBook = new ConcurrentHashMap<>();
+      private final byte[] snapshot = new byte[] {4, 8, 15, 16, 23, 42};
+
+      private EvidenceState(BookHandles bookHandles, List<AttestationEvidence> evidence) {
+        List<AttestationEvidence> checkedEvidence = List.copyOf(evidence);
+        byBook.put(bookHandles.liveBook(), checkedEvidence);
+        byBook.put(bookHandles.snapshotBook(), checkedEvidence);
+        byBook.put(bookHandles.restoredBook(), checkedEvidence);
+      }
+    }
+
+    /** Represents the externally observable backup pair and its sealed artifact bytes. */
+    private static final class BackupArtifactState {
+      private BackupArtifactPairState pairState = BackupArtifactPairState.ABSENT;
+      private byte @Nullable [] sealed;
+    }
+
+    /** Holds mutable admission outcomes before a maintenance workflow opens a verified book. */
+    private static final class AdmissionState {
+      private List<Path> liveBlockingArtifacts = List.of();
+      private List<Path> backupBlockingArtifacts = List.of();
+      private LeaseAcquisition managedLease;
+      private LeaseAcquisition existingLease;
+      private MaintenanceDecision<BookVerification> liveVerification;
+
+      private AdmissionState(Path normalizedBookPath, StubBook liveBook) {
+        managedLease = new StubLease(normalizedBookPath);
+        existingLease = new StubLease(normalizedBookPath);
+        liveVerification = MaintenanceDecision.accepted(liveBook);
+      }
+    }
+
+    /** Holds staging and staged-verification outcomes for each lifecycle artifact kind. */
+    private static final class StagingState {
+      private MaintenanceDecision<StagedBackupPair> backup;
+      private MaintenanceDecision<StagedRestoredBookPair> restore;
+      private MaintenanceDecision<BookVerification> backupVerification;
+      private MaintenanceDecision<BookVerification> restoreVerification;
+
+      private StagingState(Store store, BookHandles bookHandles) {
+        backup = MaintenanceDecision.accepted(new StubStagedBackup(store));
+        restore = MaintenanceDecision.accepted(new StubStagedRestore(store));
+        backupVerification = MaintenanceDecision.accepted(bookHandles.snapshotBook());
+        restoreVerification = MaintenanceDecision.accepted(bookHandles.restoredBook());
+      }
+    }
+
+    /** Holds injected runtime faults at the explicit persistence and publication boundaries. */
+    private static final class FailureState {
+      private @Nullable RuntimeException prepare;
+      private @Nullable RuntimeException stagedBackup;
+      private @Nullable RuntimeException append;
+      private @Nullable RuntimeException existingLease;
+      private @Nullable RuntimeException backupArtifactVerification;
     }
   }
 
@@ -363,12 +413,12 @@ final class AttestationMaintenanceTestSupport {
     @Override
     public MaintenanceDecision<ProtectedBookMaintenanceStore.BookVerification>
         verifyInitializedBackup() {
-      return store.stagedBackupVerification;
+      return store.stagingState.backupVerification;
     }
 
     @Override
     public byte[] snapshot() {
-      return store.snapshot.clone();
+      return store.evidenceState.snapshot.clone();
     }
 
     @Override
@@ -399,7 +449,7 @@ final class AttestationMaintenanceTestSupport {
     @Override
     public MaintenanceDecision<ProtectedBookMaintenanceStore.BookVerification>
         verifyInitializedRestoredBook() {
-      return store.stagedRestoreVerification;
+      return store.stagingState.restoreVerification;
     }
 
     @Override

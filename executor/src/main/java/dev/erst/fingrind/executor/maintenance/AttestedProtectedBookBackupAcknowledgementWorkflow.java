@@ -13,6 +13,7 @@ import dev.erst.fingrind.executor.spi.AttestedProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.PreparedPairPublication;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
+import java.math.BigInteger;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.Arrays;
@@ -161,19 +162,40 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
       dev.erst.fingrind.core.attestation.AttestationBackupArtifactVerification artifact,
       List<AttestationEvidence> liveEvidence) {
     List<AttestationEvidence> checkedEvidence = List.copyOf(liveEvidence);
-    int sourceIndex;
-    try {
-      sourceIndex = artifact.sourceOrder().intValueExact();
-    } catch (ArithmeticException exception) {
+    if (!sourceOrderIsAddressable(artifact.sourceOrder(), checkedEvidence.size())) {
       return false;
     }
-    if (sourceIndex < 0 || sourceIndex >= checkedEvidence.size()) {
-      return false;
-    }
+    int sourceIndex = artifact.sourceOrder().intValue();
     AttestationVerification sourceVerification =
         AttestationVerifier.verifyBook(checkedEvidence.subList(0, sourceIndex + 1));
-    return sourceVerification.bookId().equals(artifact.bookId())
-        && sourceVerification.headOrder().equals(artifact.sourceOrder())
-        && Arrays.equals(sourceVerification.operationHead(), artifact.sourceOperationHead());
+    return sourceVerificationMatchesArtifact(
+        sourceVerification,
+        artifact.bookId(),
+        artifact.sourceOrder(),
+        artifact.sourceOperationHead());
+  }
+
+  /** Returns whether an authenticated unsigned order can address one entry in the live chain. */
+  static boolean sourceOrderIsAddressable(BigInteger sourceOrder, int evidenceSize) {
+    return Objects.requireNonNull(sourceOrder, "sourceOrder")
+            .compareTo(BigInteger.valueOf(evidenceSize))
+        < 0;
+  }
+
+  /** Compares the reconstructed source state with the immutable backup-manifest binding. */
+  static boolean sourceVerificationMatchesArtifact(
+      AttestationVerification sourceVerification,
+      UUID bookId,
+      BigInteger sourceOrder,
+      byte[] sourceOperationHead) {
+    AttestationVerification checkedVerification =
+        Objects.requireNonNull(sourceVerification, "sourceVerification");
+    return checkedVerification.bookId().equals(Objects.requireNonNull(bookId, "bookId"))
+        && checkedVerification
+            .headOrder()
+            .equals(Objects.requireNonNull(sourceOrder, "sourceOrder"))
+        && Arrays.equals(
+            checkedVerification.operationHead(),
+            Objects.requireNonNull(sourceOperationHead, "sourceOperationHead"));
   }
 }

@@ -5,10 +5,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /** Creates deterministic canonical posting identifiers for SQLite test fixtures. */
-final class TestPostingIds {
+final class SqliteTestPostingIds {
   private static final String LABEL_PREFIX = "fingrind-test-postingid:";
 
-  private TestPostingIds() {}
+  private SqliteTestPostingIds() {}
 
   static PostingId fromLabel(String label) {
     return new PostingId(valueForLabel(label));

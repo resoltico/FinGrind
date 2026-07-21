@@ -297,7 +297,7 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
         .formatted(
             taxBookHeldAtEmployer,
             dependantCount,
-            TestPostingIds.valueForLabel("payroll-run-posting"));
+            SqliteTestPostingIds.valueForLabel("payroll-run-posting"));
   }
 
   private static String duplicateSettlementRowsSql() {
@@ -316,7 +316,7 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
         where ?1 is not null
           and ?2 is not null
         """
-        .formatted(TestPostingIds.valueForLabel("payroll-net-wage-posting"));
+        .formatted(SqliteTestPostingIds.valueForLabel("payroll-net-wage-posting"));
   }
 
   private static String settlementRowByOriginSql() {
@@ -330,6 +330,6 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
             null
         where ?1 is not null
         """
-        .formatted(TestPostingIds.valueForLabel("payroll-net-wage-posting"));
+        .formatted(SqliteTestPostingIds.valueForLabel("payroll-net-wage-posting"));
   }
 }

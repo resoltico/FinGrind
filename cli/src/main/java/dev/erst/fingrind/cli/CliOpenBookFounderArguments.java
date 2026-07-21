@@ -13,7 +13,7 @@ final class CliOpenBookFounderArguments {
       CliOpenBookArgumentValues values, String argument, ListIterator<String> argumentIterator) {
     switch (argument) {
       case ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID ->
-          values.founderPrincipalIds.add(
+          values.founders.principalIds.add(
               CliArgumentValueParser.requireValidArgument(
                   ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
                   () ->
@@ -22,11 +22,11 @@ final class CliOpenBookFounderArguments {
                               argumentIterator,
                               ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID))));
       case ProtocolOptions.Attestation.FOUNDER_KEY_FILE ->
-          values.founderKeyFiles.add(
+          values.founders.keyFiles.add(
               CliOptionValues.requirePathOptionValue(
                   argumentIterator, ProtocolOptions.Attestation.FOUNDER_KEY_FILE));
       case ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE ->
-          values.founderPassphraseFiles.add(
+          values.founders.passphraseFiles.add(
               CliOptionValues.requirePathOptionValue(
                   argumentIterator, ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE));
       case ProtocolOptions.Presentation.OUTPUT ->

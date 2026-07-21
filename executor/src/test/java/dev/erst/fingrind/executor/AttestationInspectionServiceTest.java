@@ -153,6 +153,9 @@ class AttestationInspectionServiceTest {
     assertInstanceOf(
         dev.erst.fingrind.contract.runtime.ContractDecision.Rejected.class,
         valid.exportReceipt(access, temporaryDirectory.resolve("missing-parent/receipt.fgar")));
+    assertInstanceOf(
+        dev.erst.fingrind.contract.runtime.ContractDecision.Rejected.class,
+        valid.exportReceipt(access, Path.of("/")));
 
     Path retainedDirectory = Files.createDirectories(temporaryDirectory.resolve("retained"));
     Path receiptPath = retainedDirectory.resolve("book.fgar");
@@ -221,5 +224,25 @@ class AttestationInspectionServiceTest {
   private static AttestationEvidence genesis(
       AttestationMaintenanceTestSupport.CredentialFixture credential) {
     return AttestationMaintenanceTestSupport.genesis(credential, RECORDED_AT);
+  }
+
+  @Test
+  void retainsReceiptCleanupWarningsAndLeavesPrimaryFailureCleanupBestEffort() throws IOException {
+    Path bookPath = temporaryDirectory.resolve("book/live.sqlite");
+    Path receiptPath = temporaryDirectory.resolve("book/receipt.fgar");
+    Path stagedDirectory = Files.createDirectory(temporaryDirectory.resolve("staged"));
+    Files.writeString(stagedDirectory.resolve("retained-after-failure"), "fixture");
+
+    assertEquals(
+        List.of("receipt-not-independent", "receipt-staging-cleanup-required:" + stagedDirectory),
+        AttestationInspectionService.receiptPublicationWarnings(
+            bookPath,
+            receiptPath,
+            AttestationInspectionService.deleteStagedReceipt(stagedDirectory)));
+
+    AttestationInspectionService.deleteStagedQuietly(stagedDirectory);
+    assertTrue(Files.isDirectory(stagedDirectory));
+    Files.delete(stagedDirectory.resolve("retained-after-failure"));
+    Files.delete(stagedDirectory);
   }
 }

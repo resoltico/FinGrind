@@ -78,7 +78,7 @@ class SqliteInventoryCostingFixtureSupport extends SqlitePostingFactStoreTestSup
       String recordedAt,
       String postingKind,
       PostingOriginKind postingOriginKind) {
-    String canonicalPostingId = TestPostingIds.valueForLabel(postingId);
+    String canonicalPostingId = SqliteTestPostingIds.valueForLabel(postingId);
     PostingFactEntryFields entryFields = entryFields(postingOriginKind);
     String accountCode =
         entryFields.accountPair()
@@ -175,7 +175,7 @@ class SqliteInventoryCostingFixtureSupport extends SqlitePostingFactStoreTestSup
         movementKind,
         quantityDelta,
         costDeltaMinor,
-        TestPostingIds.fromLabel(postingId));
+        SqliteTestPostingIds.fromLabel(postingId));
   }
 
   private static PostingFactEntryFields entryFields(PostingOriginKind postingOriginKind) {

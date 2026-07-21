@@ -199,11 +199,11 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
             'asset-1', 'asset', 'accumulated-depreciation', 'depreciation-expense',
             'disposal-gain', 'disposal-loss', 'EUR', 12000, 0, '2026-01-01', 12, '%s')
         """
-            .formatted(TestPostingIds.valueForLabel("fixed-origin")));
+            .formatted(SqliteTestPostingIds.valueForLabel("fixed-origin")));
     assertTrue(SqliteFixedAssetStatementQueries.exists(database, new FixedAssetId("asset-1")));
     database.executeStatement(
         "insert into fixed_asset_application values ('DISPOSAL', 'asset-1', 'EUR', 10000, '%s')"
-            .formatted(TestPostingIds.valueForLabel("fixed-application")));
+            .formatted(SqliteTestPostingIds.valueForLabel("fixed-application")));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -264,10 +264,10 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
       SqliteNativeDatabase database, SqliteNativeStatement postingRow) {
     database.executeStatement(
         "insert into financing_arrangement values ('arrangement-1', 'principal', 'interest-payable', '%s')"
-            .formatted(TestPostingIds.valueForLabel("financing-origin")));
+            .formatted(SqliteTestPostingIds.valueForLabel("financing-origin")));
     database.executeStatement(
         "insert into financing_application values ('INTEREST_ACCRUAL', 'arrangement-1', 'EUR', 100, '%s')"
-            .formatted(TestPostingIds.valueForLabel("financing-application")));
+            .formatted(SqliteTestPostingIds.valueForLabel("financing-application")));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -307,10 +307,10 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
             'obligation-1', 'receivable', 'foreign-exchange-gain', 'foreign-exchange-loss',
             'EUR', 10000, '%s')
         """
-            .formatted(TestPostingIds.valueForLabel("foreign-exchange-origin")));
+            .formatted(SqliteTestPostingIds.valueForLabel("foreign-exchange-origin")));
     database.executeStatement(
         "insert into foreign_currency_obligation_settlement values ('obligation-1', '%s')"
-            .formatted(TestPostingIds.valueForLabel("foreign-exchange-settlement")));
+            .formatted(SqliteTestPostingIds.valueForLabel("foreign-exchange-settlement")));
     RealizedForeignExchangeBookkeepingEntryVariants.Settlement loss =
         assertInstanceOf(
             RealizedForeignExchangeBookkeepingEntryVariants.Settlement.class,
