@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -124,6 +125,25 @@ class SqliteAppliedTaxStoreCoverageTest extends SqlitePostingFactStoreTestSuppor
   }
 
   @Test
+  void postingWriter_persistsAppliedTaxWithoutAnOptionalTaxControlAccount() {
+    Path bookPath = tempDirectory.resolve("posting-writer-applied-tax-without-account.sqlite");
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          initializePostingStorage(database);
+          insertAppliedTaxPosting(database, "sale-without-account", null);
+
+          AppliedTax persistedTax =
+              java.util.Objects.requireNonNull(
+                  invokeLoadAppliedTax(
+                      new SqlitePostingReader(),
+                      database,
+                      new PostingId(SqliteTestPostingIds.valueForLabel("sale-without-account"))));
+          assertNull(persistedTax.taxAccountCode());
+        });
+  }
+
+  @Test
   void postingReader_closesStatementAfterAppliedTaxStepFailure() {
     try (Arena arena = Arena.ofConfined();
         SqliteNativeDatabase database = stepFailingAppliedTaxDatabase(arena)) {
@@ -184,29 +204,46 @@ class SqliteAppliedTaxStoreCoverageTest extends SqlitePostingFactStoreTestSuppor
   }
 
   private static void insertAppliedTaxPosting(SqliteNativeDatabase database, String postingIdText) {
+    insertAppliedTaxPosting(database, postingIdText, new AccountCode("2200"));
+  }
+
+  private static void insertAppliedTaxPosting(
+      SqliteNativeDatabase database, String postingIdText, @Nullable AccountCode taxAccountCode) {
+    boolean nonrecoverableExpense = taxAccountCode == null;
     AppliedTax appliedTax =
         new AppliedTax(
             new TaxRegistrationId("vat-lv"),
             new TaxCode("vat-21"),
             new TaxCodeName("VAT Standard Sale"),
-            new TaxRate(210_000),
-            TaxInclusionMode.EXCLUSIVE,
-            TaxApplicationKind.OUTPUT_SALE,
+            new TaxRate(nonrecoverableExpense ? 120_000 : 210_000),
+            nonrecoverableExpense ? TaxInclusionMode.INCLUSIVE : TaxInclusionMode.EXCLUSIVE,
+            nonrecoverableExpense
+                ? TaxApplicationKind.INPUT_EXPENSE_NONRECOVERABLE
+                : TaxApplicationKind.OUTPUT_SALE,
             new MonetaryAmount("EUR", "1000"),
-            new MonetaryAmount("EUR", "210"),
-            new MonetaryAmount("EUR", "1210"),
-            new AccountCode("2200"));
-    BookkeepingEntry.SaleSettled entry =
-        new BookkeepingEntry.SaleSettled(
-            LocalDate.parse("2026-04-07"),
-            new AccountCode("1000"),
-            new AccountCode("4000"),
-            new MonetaryAmount("EUR", "1000"),
-            null,
-            null,
-            null,
-            new TaxSelection(appliedTax.taxRegistrationId(), appliedTax.taxCode()),
-            appliedTax);
+            new MonetaryAmount("EUR", nonrecoverableExpense ? "120" : "210"),
+            new MonetaryAmount("EUR", nonrecoverableExpense ? "1120" : "1210"),
+            taxAccountCode);
+    BookkeepingEntry entry =
+        nonrecoverableExpense
+            ? new BookkeepingEntry.ExpenseSettled(
+                LocalDate.parse("2026-04-07"),
+                new AccountCode("5000"),
+                new AccountCode("1000"),
+                new MonetaryAmount("EUR", "1120"),
+                null,
+                new TaxSelection(appliedTax.taxRegistrationId(), appliedTax.taxCode()),
+                appliedTax)
+            : new BookkeepingEntry.SaleSettled(
+                LocalDate.parse("2026-04-07"),
+                new AccountCode("1000"),
+                new AccountCode("4000"),
+                new MonetaryAmount("EUR", "1000"),
+                null,
+                null,
+                null,
+                new TaxSelection(appliedTax.taxRegistrationId(), appliedTax.taxCode()),
+                appliedTax);
     CommittedPosting posting =
         new CommittedPosting(
             new PostingId(

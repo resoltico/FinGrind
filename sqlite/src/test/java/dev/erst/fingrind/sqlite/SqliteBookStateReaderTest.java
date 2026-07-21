@@ -33,6 +33,15 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
         });
 
     withStandaloneDatabase(
+        bookAccess(tempDirectory.resolve("book-state-foreign-version-only.sqlite")),
+        database -> {
+          database.executeStatement("pragma user_version = 1");
+          assertEquals(
+              SqliteBookState.FOREIGN_SQLITE,
+              SqliteBookContract.BOOK_STATE_READER.bookState(database));
+        });
+
+    withStandaloneDatabase(
         bookAccess(tempDirectory.resolve("book-state-foreign-schema.sqlite")),
         database -> {
           database.executeStatement("create table foreign_schema_probe (value text)");

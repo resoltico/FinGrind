@@ -438,6 +438,26 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
     assertFalse(Files.exists(stagedSecret));
   }
 
+  @Test
+  void recoveryDeletesAnIncompleteOwnedPublishedPairWhenTheCompanionCannotOpen() throws Exception {
+    Path bookTarget = absentTarget("recovery/book.sqlite");
+    Path secretTarget = absentTarget("recovery/book.key");
+    SqliteOwnedStagedArtifact bookStage = writeStage(bookTarget, ".book-", ".sqlite", "book");
+    SqliteOwnedStagedArtifact secretStage = writeStage(secretTarget, ".secret-", ".key", "secret");
+    Files.createLink(bookTarget, bookStage.stagedPath());
+    Files.createLink(secretTarget, secretStage.stagedPath());
+
+    SqliteProtectedBookMaintenanceStore store =
+        new SqliteProtectedBookMaintenanceStore(
+            KEY_FILE_RESOLVER, (ignoredBook, ignoredSecret) -> false);
+    store.recoverInterruptedPairPublication(secretTarget, bookTarget);
+
+    assertFalse(Files.exists(bookTarget));
+    assertFalse(Files.exists(secretTarget));
+    assertTrue(SqliteOwnedStageRecord.findFor(bookTarget).isEmpty());
+    assertTrue(SqliteOwnedStageRecord.findFor(secretTarget).isEmpty());
+  }
+
   private Path absentTarget(String relativePath) throws IOException {
     Path target = tempDirectory.resolve(relativePath);
     Path parent = target.getParent();

@@ -76,4 +76,19 @@ class SqliteReadViewCoverageTest extends SqliteStoreFixtureSupport {
       assertEquals(List.of(), reportingCapabilityView.postings(effectiveDateRange));
     }
   }
+
+  @Test
+  void reportingView_projectsTheCanonicalLatestPostingEffectiveDate() {
+    Path bookPath = tempDirectory.resolve("latest-posting-effective-date.sqlite");
+    try (SqlitePostingFactStore store = openStore(staticBookAccess(bookPath))) {
+      SqlitePostingFactFixtureSupport.initializeBookWithMinimalNumericAccounts(store);
+      var posting =
+          SqlitePostingFactFixtureSupport.postingFact(
+              "latest-effective-date", "latest-effective-date", Optional.empty(), Optional.empty());
+      SqlitePostingFactStoreTestSupport.commitPosting(store, posting);
+
+      assertEquals(
+          Optional.of(posting.journalEntry().effectiveDate()), store.latestPostingEffectiveDate());
+    }
+  }
 }

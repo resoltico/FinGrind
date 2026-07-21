@@ -186,6 +186,25 @@ class SqliteOwnedStageRecordTest {
               () -> SqliteOwnedStageRecord.create(aclFinalPath, () -> failingStage));
       assertTrue(NullTestSupport.messageOf(stageFailure).contains("Failed to create"));
     }
+
+    try (AclFixtureFileSystem fileSystem =
+        AclFixtureFileSystem.withViews(Set.of("basic"))
+            .onPathCreated(
+                path -> {
+                  if (path.toString().endsWith(".owner")) {
+                    path.failNewByteChannelWith(new IOException("record creation failure"));
+                  }
+                })) {
+      AclFixturePath aclFinalPath = fileSystem.path("\\stages\\book.sqlite");
+      AclFixturePath stagedPath = fileSystem.path("\\stages\\stage.tmp");
+
+      IllegalStateException recordFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteOwnedStageRecord.create(aclFinalPath, () -> stagedPath));
+
+      assertTrue(NullTestSupport.messageOf(recordFailure).contains("Failed to create"));
+    }
   }
 
   @Test

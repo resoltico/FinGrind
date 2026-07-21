@@ -142,6 +142,38 @@ class SqliteProtectedBookStagingFaultInjectionTest extends SqliteArtifactPublica
     assertFalse(Files.exists(stagedKeyPath));
   }
 
+  @Test
+  void stageBackupPair_translatesNativeBackupExportFailuresWithoutLeavingOwnedArtifacts()
+      throws Exception {
+    Path sourceBookPath = writeArtifact("backup-native-failure/source.sqlite", "not a database");
+    Path backupBookPath = tempDirectory.resolve("backup-native-failure/backup.sqlite");
+    Path backupKeyPath = tempDirectory.resolve("backup-native-failure/backup.key");
+
+    MaintenanceFailure failure;
+    try (SqliteBookPassphrase sourcePassphrase = testPassphrase()) {
+      failure =
+          failedValue(
+              SqliteProtectedBookStagingSupport.stageResolvedBackupPair(
+                  sourceBookPath,
+                  backupBookPath,
+                  backupKeyPath,
+                  sourcePassphrase,
+                  VERIFICATION_SUPPORT,
+                  checkpoint -> {},
+                  SqliteBookKeyFileGenerator::generate));
+    }
+
+    assertTrue(
+        failure
+            .message()
+            .startsWith(
+                SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_SOURCE_OPEN
+                    .failureMessage()));
+    assertFalse(Files.exists(backupBookPath));
+    assertFalse(Files.exists(backupKeyPath));
+    assertNoOwnedStages(backupBookPath, backupKeyPath);
+  }
+
   private static Stream<Arguments> backupStagingCheckpoints() {
     return Stream.of(
         Arguments.of("export", SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_EXPORT),
@@ -270,6 +302,11 @@ class SqliteProtectedBookStagingFaultInjectionTest extends SqliteArtifactPublica
 
   private static Path requiredParent(Path path) {
     return Objects.requireNonNull(path.getParent(), "test book path parent");
+  }
+
+  private static SqliteBookPassphrase testPassphrase() {
+    return SqliteBookPassphrase.fromUtf8Bytes(
+        "staging fault injection", TEST_BOOK_KEY.getBytes(java.nio.charset.StandardCharsets.UTF_8));
   }
 
   private static Path keyFilePath(BookAccess bookAccess) {

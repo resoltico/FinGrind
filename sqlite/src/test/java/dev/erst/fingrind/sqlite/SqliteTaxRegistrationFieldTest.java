@@ -186,6 +186,25 @@ class SqliteTaxRegistrationFieldTest extends SqlitePostingFactStoreTestSupport {
     }
   }
 
+  @Test
+  void registrationPage_rejectsAnInitializedSchemaWithoutItsRequiredBookIdentity() {
+    Path bookPath = tempDirectory.resolve("tax-registration-missing-identity.sqlite");
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          SqliteBookSchemaBootstrap.initializeBook(database);
+
+          IllegalStateException failure =
+              assertThrows(
+                  IllegalStateException.class,
+                  () ->
+                      SqliteTaxStatementQueries.loadTaxRegistrationPage(
+                          database, new ListTaxRegistrationsQuery(10, Optional.empty())));
+
+          assertEquals("Initialized SQLite book is missing book identity.", failure.getMessage());
+        });
+  }
+
   private static final String DUPLICATE_TAX_REGISTRATION_LOOKUP_SQL =
       """
       select tax_registration_id, tax_registration_name, jurisdiction, registration_number,
