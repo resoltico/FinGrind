@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
@@ -17,6 +18,9 @@ import org.junit.jupiter.api.Test;
 
 /** Coverage proofs for the split SQLite session-factory and passphrase-resolution seams. */
 class SqliteSessionFactoryCoverageTest extends SqlitePostingFactStoreTestSupport {
+  private static final String FOREIGN_SESSION_MESSAGE =
+      "The supplied session is not one owned SQLite store or capability wrapper.";
+
   @Test
   void passphraseResolverDefaultOverload_forwardsTheBookAccessTuple() {
     Path bookPath = tempDirectory.resolve("passphrase-resolver-default.sqlite");
@@ -92,6 +96,15 @@ class SqliteSessionFactoryCoverageTest extends SqlitePostingFactStoreTestSupport
       assertFalse(planExecutionStore.inspectBook().initialized());
     }
     assertFalse(Files.exists(missingPlanBookPath));
+  }
+
+  @Test
+  void capabilityLookup_rejectsForeignCloseables() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class, () -> SqliteCapabilitySessions.storeOf(() -> {}));
+
+    assertEquals(FOREIGN_SESSION_MESSAGE, exception.getMessage());
   }
 
   @Test

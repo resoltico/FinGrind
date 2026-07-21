@@ -28,6 +28,7 @@ class SqliteTransactionValidationBookFailureTest extends SqlitePostingFactStoreT
     try (SqlitePostingFactStore store = openStore(bookAccess(bookPath))) {
       SqliteTransactionValidationBook validationBook =
           new SqliteTransactionValidationBook(staleDatabaseHandle(bookPath), store.postingReader());
+      SqliteTransactionValidationPostingCapabilityView postingCapability = validationBook;
 
       assertQueryFailure(validationBook::inspectBook);
       assertQueryFailure(() -> validationBook.findAccount(new AccountCode("1000")));
@@ -38,6 +39,8 @@ class SqliteTransactionValidationBookFailureTest extends SqlitePostingFactStoreT
               validationBook.findAccounts(
                   Set.of(new AccountCode("1000"), new AccountCode("2000"))));
       assertQueryFailure(() -> validationBook.findTaxRegistration(new TaxRegistrationId("vat-lv")));
+      assertQueryFailure(
+          () -> postingCapability.findTaxRegistration(new TaxRegistrationId("vat-lv")));
       assertQueryFailure(() -> validationBook.findExistingPosting(new IdempotencyKey("idem-1")));
       assertQueryFailure(
           () -> validationBook.findPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
