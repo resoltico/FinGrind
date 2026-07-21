@@ -156,4 +156,24 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
                     SqliteProtectedBookMaintenanceArtifactStore.requireVerifiedBook(foreignHandle))
             .getMessage());
   }
+
+  @Test
+  void verification_reportsAMissingBookAfterThePassphraseSourceHasResolved() {
+    Path missingBookPath = tempDirectory.resolve("resolved-missing-book.sqlite");
+    SqliteProtectedBookMaintenanceStore store =
+        new SqliteProtectedBookMaintenanceStore(
+            (bookPath, passphraseSource, intent) ->
+                ContractDecision.accepted(
+                    SqliteBookPassphrase.fromUtf8Bytes(
+                        "resolved missing book test",
+                        TEST_BOOK_KEY.getBytes(java.nio.charset.StandardCharsets.UTF_8))));
+
+    assertVerificationFailure(
+        acceptedValue(
+            store.verifyInitializedBook(
+                localAccess(bookAccess(missingBookPath)),
+                ProtectedBookMaintenanceArtifactRole.LIVE_BOOK)),
+        missingBookPath,
+        ProtectedBookVerificationFailure.MISSING);
+  }
 }
