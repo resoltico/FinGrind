@@ -68,6 +68,54 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
   }
 
   @Test
+  void postingFactStoreLifecycleView_primesInspectsAndCoordinatesBothPlanTransactionOutcomes() {
+    Path bookPath = tempDirectory.resolve("posting-store-lifecycle-view.sqlite");
+    SqlitePostingFactStore store = openStore(bookAccess(bookPath));
+    try {
+      initializeBookWithMinimalNumericAccounts(store);
+
+      assertSame(
+          store,
+          assertInstanceOf(
+                  dev.erst.fingrind.contract.runtime.ContractDecision.Accepted.class, store.prime())
+              .value());
+      assertEquals(bookPath.toAbsolutePath().normalize(), store.bookPath());
+      assertEquals(SqliteStoreAccessMode.READ_WRITE_CREATE, store.accessMode());
+      assertSame(store.storeContext().postingReader(), store.postingReader());
+      SqliteNativeDatabase database = store.activeNativeDatabase();
+      store.requireInitializedBook(database);
+
+      store.beginLedgerPlanTransaction();
+      store.commitLedgerPlanTransaction();
+      store.beginLedgerPlanTransaction();
+      store.rollbackLedgerPlanTransaction();
+    } finally {
+      store.close();
+    }
+  }
+
+  @Test
+  void reportingCloseSession_exposesItsLifecycleAccountAndPostingReadCapabilities() {
+    Path bookPath = tempDirectory.resolve("reporting-close-read-capabilities.sqlite");
+    try (SqlitePostingFactStore store = openStore(bookAccess(bookPath));
+        SqliteReportingPeriodCloseSession session =
+            SqliteCapabilitySessions.reportingPeriodClose(store)) {
+      initializeBookWithMinimalNumericAccounts(store);
+      ReportingPeriod period =
+          new ReportingPeriod(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31"));
+
+      assertTrue(session.allowsInitializedWorkflow());
+      assertEquals(bookIdentity(), session.requireInitializedBookIdentity());
+      assertEquals(store.allAccounts(), session.allAccounts());
+      assertEquals(
+          store.listAccounts(firstAccountPage()), session.listAccounts(firstAccountPage()));
+      assertEquals(List.of(), session.postings(period.effectiveDateRange()));
+      assertEquals(Optional.empty(), session.earliestPostingEffectiveDate());
+      assertEquals(Optional.empty(), session.transferredThroughEffectiveDate());
+    }
+  }
+
+  @Test
   void reportingPeriodCloseCapabilitySessionCoversDraftHelperAndStoreContext() {
     Path missingBookPath = tempDirectory.resolve("period-transfer-session-coverage.sqlite");
     LocalDate effectiveDate = LocalDate.parse("2026-04-07");
