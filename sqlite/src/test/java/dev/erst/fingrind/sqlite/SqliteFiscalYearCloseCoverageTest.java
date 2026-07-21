@@ -44,89 +44,88 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
       declareFiscalYearCloseAccounts(postingFactStore);
       commitFiscalYearActivity(postingFactStore);
 
+      FiscalYearCloseService fiscalYearCloseService =
+          new FiscalYearCloseService(
+              () ->
+                  initializedLifecycleInspection(
+                      SqliteBookContract.APPLICATION_ID,
+                      SqliteBookContract.FORMAT_VERSION,
+                      SqliteBookContract.FORMAT_VERSION,
+                      Instant.parse("2026-04-07T10:15:30Z")),
+              new ReportingPeriodCloseStore() {
+                @Override
+                public java.util.List<dev.erst.fingrind.executor.bookkeeping.CommittedPosting>
+                    postings(dev.erst.fingrind.core.EffectiveDateRange effectiveDateRange) {
+                  return java.util.List.of();
+                }
+
+                @Override
+                public java.util.Optional<LocalDate> earliestPostingEffectiveDate() {
+                  return java.util.Optional.empty();
+                }
+
+                @Override
+                public java.util.Optional<LocalDate> transferredThroughEffectiveDate() {
+                  return java.util.Optional.empty();
+                }
+
+                @Override
+                public InterimResultSweepOutcome interimResultSweep(
+                    ReportingPeriod reportingPeriod,
+                    dev.erst.fingrind.core.BookIdentity bookIdentity,
+                    dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner planner,
+                    LocalDate currentUtcDate,
+                    Instant sweptAt,
+                    PostingIdGenerator postingIdGenerator,
+                    dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer
+                        attestationAuthorizer) {
+                  throw new UnsupportedOperationException(
+                      "Interim-result sweep is not under test here.");
+                }
+
+                @Override
+                public InterimResultSweepOutcome interimResultSweep(
+                    LocalDate throughEffectiveDate,
+                    LocalDate bookStartDate,
+                    dev.erst.fingrind.core.BookIdentity bookIdentity,
+                    dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner planner,
+                    LocalDate currentUtcDate,
+                    Instant sweptAt,
+                    PostingIdGenerator postingIdGenerator,
+                    dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer
+                        attestationAuthorizer) {
+                  throw new UnsupportedOperationException(
+                      "Interim-result sweep is not under test here.");
+                }
+
+                @Override
+                public FiscalYearCloseOutcome fiscalYearClose(
+                    ReportingPeriod reportingPeriod,
+                    dev.erst.fingrind.core.BookIdentity bookIdentity,
+                    dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner planner,
+                    LocalDate currentUtcDate,
+                    Instant closedAt,
+                    PostingIdGenerator postingIdGenerator,
+                    dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer
+                        attestationAuthorizer) {
+                  return postingFactStore.fiscalYearClose(
+                      reportingPeriod,
+                      bookIdentity,
+                      planner,
+                      currentUtcDate,
+                      closedAt,
+                      postingIdGenerator,
+                      attestationAuthorizer);
+                }
+              },
+              new SequencePostingIdGenerator(
+                  "generated-sweep-1", "generated-close-1", "generated-close-2"),
+              CLOSED_CLOCK);
       FiscalYearCloseOutcome.Closed closed =
           assertInstanceOf(
               FiscalYearCloseOutcome.Closed.class,
-              new FiscalYearCloseService(
-                      () ->
-                          initializedLifecycleInspection(
-                              SqliteBookContract.APPLICATION_ID,
-                              SqliteBookContract.FORMAT_VERSION,
-                              SqliteBookContract.FORMAT_VERSION,
-                              Instant.parse("2026-04-07T10:15:30Z")),
-                      new ReportingPeriodCloseStore() {
-                        @Override
-                        public java.util.List<
-                                dev.erst.fingrind.executor.bookkeeping.CommittedPosting>
-                            postings(dev.erst.fingrind.core.EffectiveDateRange effectiveDateRange) {
-                          return java.util.List.of();
-                        }
-
-                        @Override
-                        public java.util.Optional<LocalDate> earliestPostingEffectiveDate() {
-                          return java.util.Optional.empty();
-                        }
-
-                        @Override
-                        public java.util.Optional<LocalDate> transferredThroughEffectiveDate() {
-                          return java.util.Optional.empty();
-                        }
-
-                        @Override
-                        public InterimResultSweepOutcome interimResultSweep(
-                            ReportingPeriod reportingPeriod,
-                            dev.erst.fingrind.core.BookIdentity bookIdentity,
-                            dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner
-                                planner,
-                            LocalDate currentUtcDate,
-                            Instant sweptAt,
-                            PostingIdGenerator postingIdGenerator,
-                            dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer
-                                attestationAuthorizer) {
-                          throw new UnsupportedOperationException(
-                              "Interim-result sweep is not under test here.");
-                        }
-
-                        @Override
-                        public InterimResultSweepOutcome interimResultSweep(
-                            LocalDate throughEffectiveDate,
-                            LocalDate bookStartDate,
-                            dev.erst.fingrind.core.BookIdentity bookIdentity,
-                            dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner
-                                planner,
-                            LocalDate currentUtcDate,
-                            Instant sweptAt,
-                            PostingIdGenerator postingIdGenerator,
-                            dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer
-                                attestationAuthorizer) {
-                          throw new UnsupportedOperationException(
-                              "Interim-result sweep is not under test here.");
-                        }
-
-                        @Override
-                        public FiscalYearCloseOutcome fiscalYearClose(
-                            ReportingPeriod reportingPeriod,
-                            dev.erst.fingrind.core.BookIdentity bookIdentity,
-                            dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner planner,
-                            LocalDate currentUtcDate,
-                            Instant closedAt,
-                            PostingIdGenerator postingIdGenerator,
-                            dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer
-                                attestationAuthorizer) {
-                          return postingFactStore.fiscalYearClose(
-                              reportingPeriod,
-                              bookIdentity,
-                              planner,
-                              currentUtcDate,
-                              closedAt,
-                              postingIdGenerator,
-                              attestationAuthorizer);
-                        }
-                      },
-                      new SequencePostingIdGenerator(
-                          "generated-sweep-1", "generated-close-1", "generated-close-2"),
-                      CLOSED_CLOCK)
-                  .fiscalYearClose(FISCAL_YEAR, SqliteAttestationTestSupport.authorizer()));
+              fiscalYearCloseService.fiscalYearClose(
+                  FISCAL_YEAR, SqliteAttestationTestSupport.authorizer()));
 
       assertEquals(
           new ClosedFiscalYearRecord(
@@ -143,6 +142,13 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
       assertEquals(
           Optional.of(FISCAL_YEAR.effectiveDateTo()),
           postingFactStore.transferredThroughEffectiveDate());
+      FiscalYearCloseOutcome.Closed replayed =
+          assertInstanceOf(
+              FiscalYearCloseOutcome.Closed.class,
+              fiscalYearCloseService.fiscalYearClose(
+                  FISCAL_YEAR, SqliteAttestationTestSupport.authorizer()));
+      assertEquals(closed.closedFiscalYear(), replayed.closedFiscalYear());
+      assertTrue(replayed.idempotentReplay());
 
       SqliteNativeDatabase database = requireStoreDatabase(postingFactStore);
       assertEquals(1, countRows(database, "interim_result_sweep"));

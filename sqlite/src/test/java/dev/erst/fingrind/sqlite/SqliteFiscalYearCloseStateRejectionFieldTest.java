@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 import dev.erst.fingrind.core.AccountCode;
@@ -84,6 +85,10 @@ class SqliteFiscalYearCloseStateRejectionFieldTest extends SqlitePostingFactStor
       assertInstanceOf(
           BookkeepingAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings.class,
           rejected.rejection());
+      SqliteNativeDatabase database = requireStoreDatabase(store);
+      assertEquals(0, countRows(database, "fiscal_year_close"));
+      assertEquals(
+          0, countRowsWhereTextEquals(database, "audit_event", "event_kind", "FISCAL_YEAR_CLOSED"));
     }
   }
 

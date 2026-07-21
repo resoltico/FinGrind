@@ -114,4 +114,23 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
         ProtectedBookVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED,
         rejection.verificationFailure());
   }
+
+  @Test
+  void backupArtifactVerification_rejectsADirectorySourceBeforeAnySnapshotIsOpened()
+      throws Exception {
+    Path artifactDirectory = Files.createDirectory(tempDirectory.resolve("backup-directory"));
+    Path keyPath = writeArtifact("backup-directory.key", "not a usable key");
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid rejection =
+        assertInstanceOf(
+            ProtectedBookMaintenanceRejection.ArtifactPathInvalid.class,
+            assertThrows(
+                    ProtectedBookMaintenanceRejectionException.class,
+                    () -> store.verifyBackupArtifact(artifactDirectory, keyPath))
+                .rejection());
+
+    assertEquals(ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE, rejection.artifactRole());
+    assertEquals(artifactDirectory.toAbsolutePath().normalize(), rejection.artifactPath());
+  }
 }
