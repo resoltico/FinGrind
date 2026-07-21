@@ -40,6 +40,9 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Fixed the attested lifecycle boundary so `rekey-book` now requires and carries the same
+  principal-bound encrypted credential triples as every other protected-book mutation. The old
+  credential-less invocation is rejected; no compatibility path is retained.
 - Fixed unreleased next-format Genesis admission so it cannot activate an autonomous workflow
   before any system-purpose credential exists. Workflow activation now follows system credential
   enrollment and the registry's reachable-quorum check.

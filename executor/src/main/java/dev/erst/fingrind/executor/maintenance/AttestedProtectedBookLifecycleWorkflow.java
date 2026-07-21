@@ -261,17 +261,9 @@ public final class AttestedProtectedBookLifecycleWorkflow {
         return rejectedRekey(
             new ProtectedBookMaintenanceRejection.BookHasBlockingArtifacts(bookPath, blocking));
       }
-      ProtectedBookMaintenanceStore.LeaseAcquisition lease =
-          store.acquireManagedArtifactLease(
-              bookPath, ProtectedBookMaintenanceArtifactRole.LIVE_BOOK);
-      if (lease instanceof ProtectedBookMaintenanceStore.LeaseBusy busy) {
-        return rejectedRekey(
-            new ProtectedBookMaintenanceRejection.ArtifactBusy(
-                ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, busy.artifactPath()));
-      }
-      try (ProtectedBookMaintenanceStore.HeldLease ignoredLease =
-              (ProtectedBookMaintenanceStore.HeldLease) lease;
-          ProtectedBookMaintenanceStore.VerifiedBook liveBook = requireVerifiedBook(bookAccess)) {
+      // The prepared replacement publication already owns the live-book target lease. Rekey
+      // replaces that exact path, so acquiring a second lease would self-deadlock before staging.
+      try (ProtectedBookMaintenanceStore.VerifiedBook liveBook = requireVerifiedBook(bookAccess)) {
         List<AttestationEvidence> evidence = store.loadAttestationEvidence(liveBook);
         AttestationVerifier.verifyBook(evidence);
         return store

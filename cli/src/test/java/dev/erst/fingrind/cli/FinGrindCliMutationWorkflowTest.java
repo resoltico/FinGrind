@@ -28,7 +28,8 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(openOutput), fixedClock());
     assertEquals(
         0,
-        openCli.run(jsonArguments(openBookKeyFileArguments(bookFilePath, currentBookKeyFilePath))));
+        openCli.run(jsonArguments(openBookKeyFileArguments(bookFilePath, currentBookKeyFilePath))),
+        () -> openOutput.toString(StandardCharsets.UTF_8));
     ByteArrayOutputStream rekeyOutput = new ByteArrayOutputStream();
     FinGrindCli rekeyCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(rekeyOutput), fixedClock());
@@ -42,7 +43,8 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
                 "--book-key-file",
                 currentBookKeyFilePath.toString(),
                 "--new-book-key-file",
-                replacementBookKeyFilePath.toString())));
+                replacementBookKeyFilePath.toString())),
+        () -> rekeyOutput.toString(StandardCharsets.UTF_8));
     assertJsonContains(rekeyOutput, "\"bookFile\"");
     ByteArrayOutputStream oldKeyOutput = new ByteArrayOutputStream();
     FinGrindCli oldKeyCli =

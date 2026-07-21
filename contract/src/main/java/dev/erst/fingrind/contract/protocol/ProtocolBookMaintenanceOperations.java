@@ -42,6 +42,9 @@ final class ProtocolBookMaintenanceOperations {
                 ProtocolBookAccessOptions.BOOK_FILE + " <path>",
                 ProtocolOptions.currentPassphraseSourceSyntax(),
                 ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE + " <path>",
+                ProtocolOptions.Attestation.PRINCIPAL_ID + " <uuid>",
+                ProtocolOptions.Attestation.KEY_FILE + " <path>",
+                ProtocolOptions.Attestation.PASSPHRASE_FILE + " <path>",
                 ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
@@ -49,12 +52,15 @@ final class ProtocolBookMaintenanceOperations {
             "Re-encrypt an existing book under a newly generated, absent-target key file.",
             List.of(
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./secrets/acme-replacement.book-key"
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./secrets/acme-replacement.book-key %s 123e4567-e89b-12d3-a456-426614174000 %s ./secrets/operator.fgatk %s ./secrets/operator.passphrase"
                         .formatted(
                             OperationId.REKEY_BOOK.wireName(),
                             ProtocolBookAccessOptions.BOOK_FILE,
                             ProtocolBookAccessOptions.BOOK_KEY_FILE,
-                            ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE)),
+                            ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
+                            ProtocolOptions.Attestation.PRINCIPAL_ID,
+                            ProtocolOptions.Attestation.KEY_FILE,
+                            ProtocolOptions.Attestation.PASSPHRASE_FILE)),
                 ProtocolExampleStep.note(
                     "The generated --new-book-key-file target must not already exist; rekey-book never accepts a replacement passphrase from a flag, standard input, or prompt."))));
   }

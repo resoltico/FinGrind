@@ -39,7 +39,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
                   "correlationId": "corr-1"
                 },
                 "reversal": {
-                  "priorPostingId": "018f0000-0000-7000-8000-000000000002",
+                  "priorPostingId": "e888fd00-a501-341d-9a6b-8d9059757d1b",
                   "reason": "operator reversal"
                 }
               }
