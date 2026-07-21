@@ -46,7 +46,8 @@ class SqlitePostingFactStoreTestSupport extends SqliteStoreTestIntrospectionSupp
     try {
       Path keyPath = tempDirectory.resolve("book-keys").resolve(bookPath.getFileName() + ".key");
       writeSecureKeyFile(keyPath, keyText);
-      return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath));
+      return new BookAccess(
+          bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath), java.util.List.of());
     } catch (IOException exception) {
       throw new UncheckedIOException(exception);
     }

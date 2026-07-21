@@ -961,7 +961,9 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
         workflow
             .backupBook(
                 new BookAccess(
-                    bookFile, new BookAccess.PassphraseSource.KeyFile(Path.of("book.key"))),
+                    bookFile,
+                    new BookAccess.PassphraseSource.KeyFile(Path.of("book.key")),
+                    java.util.List.of()),
                 backupFile,
                 backupBookKeyFile)
             .requireAccepted();
@@ -991,7 +993,8 @@ class CliMaintenanceCoverageTest extends CliResponseWriterTestSupport {
             .deleteRekeyRollback(
                 new BookAccess(
                     tempDirectory.resolve("recovery.sqlite"),
-                    new BookAccess.PassphraseSource.KeyFile(Path.of("book.key"))),
+                    new BookAccess.PassphraseSource.KeyFile(Path.of("book.key")),
+                    java.util.List.of()),
                 null)
             .requireAccepted();
     assertInstanceOf(RekeyRollbackResult.Rejected.class, deleteResult);

@@ -785,7 +785,8 @@ class CliJsonModelValidationTest {
                     new CliBookArgumentParser.ParsedBookArguments(
                         new BookAccess(
                             Path.of("book.sqlite"),
-                            BookAccess.PassphraseSource.StandardInput.INSTANCE),
+                            BookAccess.PassphraseSource.StandardInput.INSTANCE,
+                            java.util.List.of()),
                         nullOf(),
                         nullOf()))
             .getMessage());

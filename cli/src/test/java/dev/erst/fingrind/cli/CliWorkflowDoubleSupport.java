@@ -21,7 +21,10 @@ import java.nio.file.Path;
 /** Thin CLI workflow fixture layer that exposes focused workflow doubles to test suites. */
 class CliWorkflowDoubleSupport extends CliFixtureSupport {
   protected static BookAccess bookAccess(Path bookFilePath, Path bookKeyFilePath) {
-    return new BookAccess(bookFilePath, new BookAccess.PassphraseSource.KeyFile(bookKeyFilePath));
+    return new BookAccess(
+        bookFilePath,
+        new BookAccess.PassphraseSource.KeyFile(bookKeyFilePath),
+        java.util.List.of());
   }
 
   /** Backward-compatible test alias that preserves concise fixture call sites. */

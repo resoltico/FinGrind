@@ -76,7 +76,8 @@ class CliAdministrativeCommandExecutorCoverageTest extends CliResponseWriterTest
       BookAccess bookAccess =
           new BookAccess(
               bookFilePath,
-              new BookAccess.PassphraseSource.KeyFile(Path.of("keys/entity.book-key")));
+              new BookAccess.PassphraseSource.KeyFile(Path.of("keys/entity.book-key")),
+              java.util.List.of());
       IllegalStateException bookFailure =
           assertThrows(
               IllegalStateException.class,

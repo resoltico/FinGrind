@@ -30,6 +30,7 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.AccountLookupStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
@@ -48,6 +49,10 @@ class TaxAdministrationServiceTest {
   private static final Clock FIXED_CLOCK =
       Clock.fixed(Instant.parse("2026-04-07T12:00:00Z"), ZoneOffset.UTC);
   private static final Instant DECLARED_AT = Instant.parse("2026-04-01T10:15:30Z");
+  private static final AttestationOperationAuthorizer TEST_AUTHORIZER =
+      ignored -> {
+        throw new AssertionError("Tax service validation must not invoke an attestation signer.");
+      };
 
   @Test
   void declareTaxRegistration_rejectsWhenBookIsNotInitialized() {
@@ -65,11 +70,12 @@ class TaxAdministrationServiceTest {
     DeclareTaxRegistrationResult.Rejected rejected =
         assertInstanceOf(
             DeclareTaxRegistrationResult.Rejected.class,
-            service.declareTaxRegistration(validCommand()));
+            service.declareTaxRegistration(validCommand(), TEST_AUTHORIZER));
 
     assertInstanceOf(TaxDeclarationRejection.BookNotInitialized.class, rejected.rejection());
     assertNull(store.lastCommand);
     assertNull(store.lastDeclaredAt);
+    assertNull(store.lastAttestationAuthorizer);
   }
 
   @Test
@@ -91,7 +97,7 @@ class TaxAdministrationServiceTest {
     DeclareTaxRegistrationResult.Rejected rejected =
         assertInstanceOf(
             DeclareTaxRegistrationResult.Rejected.class,
-            service.declareTaxRegistration(commandWithDuplicateCode()));
+            service.declareTaxRegistration(commandWithDuplicateCode(), TEST_AUTHORIZER));
     TaxDeclarationRejection.DefinitionViolations violations =
         assertInstanceOf(TaxDeclarationRejection.DefinitionViolations.class, rejected.rejection());
 
@@ -107,6 +113,7 @@ class TaxAdministrationServiceTest {
                     "cash-flow-asset-classification-mismatch")));
     assertNull(store.lastCommand);
     assertNull(store.lastDeclaredAt);
+    assertNull(store.lastAttestationAuthorizer);
   }
 
   @Test
@@ -128,12 +135,14 @@ class TaxAdministrationServiceTest {
 
     DeclareTaxRegistrationResult.Declared declared =
         assertInstanceOf(
-            DeclareTaxRegistrationResult.Declared.class, service.declareTaxRegistration(command));
+            DeclareTaxRegistrationResult.Declared.class,
+            service.declareTaxRegistration(command, TEST_AUTHORIZER));
 
     assertEquals(registration, declared.registration());
     assertEquals(command, store.lastCommand);
     assertEquals(FIXED_CLOCK.instant(), store.lastDeclaredAt);
     assertNotNull(store.lastDeclaredAt);
+    assertEquals(TEST_AUTHORIZER, store.lastAttestationAuthorizer);
   }
 
   private static AccountLookupStore lookupStore(Map<AccountCode, RegisteredAccount> accounts) {
@@ -245,6 +254,7 @@ class TaxAdministrationServiceTest {
     private final DeclareTaxRegistrationResult result;
     private @Nullable DeclareTaxRegistrationCommand lastCommand;
     private @Nullable Instant lastDeclaredAt;
+    private @Nullable AttestationOperationAuthorizer lastAttestationAuthorizer;
 
     private RecordingTaxAdministrationStore(DeclareTaxRegistrationResult result) {
       this.result = result;
@@ -252,9 +262,12 @@ class TaxAdministrationServiceTest {
 
     @Override
     public DeclareTaxRegistrationResult declareTaxRegistration(
-        DeclareTaxRegistrationCommand command, Instant declaredAt) {
+        DeclareTaxRegistrationCommand command,
+        Instant declaredAt,
+        AttestationOperationAuthorizer attestationAuthorizer) {
       this.lastCommand = command;
       this.lastDeclaredAt = declaredAt;
+      this.lastAttestationAuthorizer = attestationAuthorizer;
       return result;
     }
   }

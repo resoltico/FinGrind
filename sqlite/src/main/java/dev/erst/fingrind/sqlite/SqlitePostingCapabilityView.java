@@ -88,9 +88,12 @@ interface SqlitePostingCapabilityView extends SqlitePostingSession, SqliteReadCa
 
   @Override
   default DeclareTaxRegistrationResult declareTaxRegistration(
-      DeclareTaxRegistrationCommand command, Instant declaredAt) {
+      DeclareTaxRegistrationCommand command,
+      Instant declaredAt,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().declareTaxRegistration(command, declaredAt);
+    return storeMutationOperations()
+        .declareTaxRegistration(command, declaredAt, attestationAuthorizer);
   }
 
   @Override

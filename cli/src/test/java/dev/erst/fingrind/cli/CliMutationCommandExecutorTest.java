@@ -126,6 +126,7 @@ class CliMutationCommandExecutorTest extends CliResponseWriterTestSupport {
   private BookAccess bookAccess() {
     Path bookFile = tempDirectory.resolve("book.sqlite");
     Path bookKeyFile = writeBookKey(bookFile);
-    return new BookAccess(bookFile, new BookAccess.PassphraseSource.KeyFile(bookKeyFile));
+    return new BookAccess(
+        bookFile, new BookAccess.PassphraseSource.KeyFile(bookKeyFile), java.util.List.of());
   }
 }

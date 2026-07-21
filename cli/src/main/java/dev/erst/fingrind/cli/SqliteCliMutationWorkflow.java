@@ -149,15 +149,18 @@ final class SqliteCliMutationWorkflow implements CliBookMutationWorkflow {
   @Override
   public ContractDecision<DeclareTaxRegistrationResult> declareTaxRegistration(
       BookAccess bookAccess, DeclareTaxRegistrationCommand command) {
-    return SqliteCliWorkflowSessions.withAdministrationSession(
-        SqliteAdministrationSessions.openResolved(
-            bookAccess,
-            SqliteBookSessionMode.READ_WRITE_EXISTING,
-            passphraseResolver,
-            SqlitePassphraseIntent.EXISTING_SECRET),
-        bookSession ->
-            new TaxAdministrationService(bookSession, bookSession, bookSession, clock)
-                .declareTaxRegistration(command));
+    return withAttestationAuthorization(
+        bookAccess,
+        authorizer ->
+            SqliteCliWorkflowSessions.withAdministrationSession(
+                SqliteAdministrationSessions.openResolved(
+                    bookAccess,
+                    SqliteBookSessionMode.READ_WRITE_EXISTING,
+                    passphraseResolver,
+                    SqlitePassphraseIntent.EXISTING_SECRET),
+                bookSession ->
+                    new TaxAdministrationService(bookSession, bookSession, bookSession, clock)
+                        .declareTaxRegistration(command, authorizer)));
   }
 
   @Override

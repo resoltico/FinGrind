@@ -607,7 +607,8 @@ class SqliteProtectedBookRestoreStagingCoverageTest
   }
 
   private static BookAccess keyedAccess(Path bookPath, Path keyFilePath) {
-    return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyFilePath));
+    return new BookAccess(
+        bookPath, new BookAccess.PassphraseSource.KeyFile(keyFilePath), java.util.List.of());
   }
 
   private static Path sourceKeyFilePath(BookAccess bookAccess) {

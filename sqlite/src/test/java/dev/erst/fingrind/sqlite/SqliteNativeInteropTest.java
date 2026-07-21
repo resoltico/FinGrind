@@ -786,7 +786,8 @@ class SqliteNativeInteropTest {
         }
       }
       Files.writeString(keyPath, TEST_BOOK_KEY);
-      return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath));
+      return new BookAccess(
+          bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath), java.util.List.of());
     } catch (IOException exception) {
       throw new UncheckedIOException(exception);
     }

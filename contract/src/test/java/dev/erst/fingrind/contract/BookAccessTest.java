@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import java.nio.file.Path;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** Tests for the protected-book access tuple. */
@@ -14,7 +15,8 @@ class BookAccessTest {
     Path bookKeyFilePath = Path.of("keys", "acme.book-key");
 
     BookAccess access =
-        new BookAccess(bookFilePath, new BookAccess.PassphraseSource.KeyFile(bookKeyFilePath));
+        new BookAccess(
+            bookFilePath, new BookAccess.PassphraseSource.KeyFile(bookKeyFilePath), List.of());
 
     assertEquals(bookFilePath, access.bookFilePath());
     assertEquals(

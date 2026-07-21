@@ -39,7 +39,8 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
   private static final Path BACKUP_FILE = Path.of("backup/entity.backup.sqlite");
   private static final Path BACKUP_KEY_FILE = Path.of("backup/entity.backup.key");
   private static final BookAccess PROMPT_BOOK_ACCESS =
-      new BookAccess(BOOK_FILE, BookAccess.PassphraseSource.InteractivePrompt.INSTANCE);
+      new BookAccess(
+          BOOK_FILE, BookAccess.PassphraseSource.InteractivePrompt.INSTANCE, java.util.List.of());
 
   @Test
   void administrativeExecutors_rejectInteractivePromptForJsonOutput() throws IOException {

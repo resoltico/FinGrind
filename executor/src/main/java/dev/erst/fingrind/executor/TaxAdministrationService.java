@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.contract.tax.TaxDeclarationRejection;
 import dev.erst.fingrind.contract.tax.TaxDefinitionViolation;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.spi.AccountLookupStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleReader;
 import dev.erst.fingrind.executor.spi.TaxAdministrationStore;
@@ -33,8 +34,9 @@ public final class TaxAdministrationService {
 
   /** Declares or updates one owned tax registration in the selected book. */
   public DeclareTaxRegistrationResult declareTaxRegistration(
-      DeclareTaxRegistrationCommand command) {
+      DeclareTaxRegistrationCommand command, AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(command, "command");
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     if (!lifecycleReader.allowsInitializedWorkflow()) {
       return new DeclareTaxRegistrationResult.Rejected(
           new TaxDeclarationRejection.BookNotInitialized());
@@ -45,6 +47,7 @@ public final class TaxAdministrationService {
       return new DeclareTaxRegistrationResult.Rejected(
           new TaxDeclarationRejection.DefinitionViolations(violations));
     }
-    return taxAdministrationStore.declareTaxRegistration(command, clock.instant());
+    return taxAdministrationStore.declareTaxRegistration(
+        command, clock.instant(), attestationAuthorizer);
   }
 }

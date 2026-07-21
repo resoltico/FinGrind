@@ -35,7 +35,8 @@ class CliReadWorkflowCoverageTest extends CliBookWorkflowFixtureSupport {
         new SqliteCliLifecycleWorkflow(fixedClock(), resolver);
     SqliteCliReadWorkflow workflow = new SqliteCliReadWorkflow(resolver);
     BookAccess bookAccess =
-        new BookAccess(bookFile, new BookAccess.PassphraseSource.KeyFile(bookKeyFile));
+        new BookAccess(
+            bookFile, new BookAccess.PassphraseSource.KeyFile(bookKeyFile), java.util.List.of());
     OpenBookResult openBookResult =
         lifecycleWorkflow.openBook(bookAccess, openBookCommand()).requireAccepted();
 

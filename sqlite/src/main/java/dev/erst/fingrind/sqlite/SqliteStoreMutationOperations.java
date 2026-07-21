@@ -99,8 +99,11 @@ final class SqliteStoreMutationOperations {
   }
 
   DeclareTaxRegistrationResult declareTaxRegistration(
-      DeclareTaxRegistrationCommand command, Instant declaredAt) {
-    return administrationOperations.declareTaxRegistration(command, declaredAt);
+      DeclareTaxRegistrationCommand command,
+      Instant declaredAt,
+      AttestationOperationAuthorizer attestationAuthorizer) {
+    return administrationOperations.declareTaxRegistration(
+        command, declaredAt, attestationAuthorizer);
   }
 
   PostingCommitResult commit(PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {

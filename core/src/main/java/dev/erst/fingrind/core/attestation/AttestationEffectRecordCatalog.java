@@ -71,15 +71,14 @@ final class AttestationEffectRecordCatalog {
         record(
             0x0013,
             "tax.registration",
-            "mutation:u8!, registrationId:text!, jurisdiction:text!, registrationCode:text!, payableAccountCode:text!, receivableAccountCode:text!, active:bool!",
+            "mutation:u8!, registrationId:text!, registrationName:text!, jurisdiction:text!, registrationCode:text?, payableAccountCode:text!, receivableAccountCode:text!, obligationFrequency:token!, dueDaysAfterPeriodEnd:u16!, active:bool!",
             1),
         record(
             0x0014,
             "tax.registration-code",
-            "mutation:u8!, registrationId:text!, taxCode:text!, rate:scaled!, effectiveFrom:date!, effectiveTo:date?",
+            "mutation:u8!, registrationId:text!, taxCode:text!, taxCodeName:text!, rate:scaled!, inclusionMode:token!, applicationKind:token!",
             1,
-            2,
-            4));
+            2));
   }
 
   private static List<AttestationRecordSchema> postingAndInventorySchemas() {

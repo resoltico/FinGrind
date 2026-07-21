@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.tax.TaxRegistrationId;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.InventoryAccountState;
@@ -99,9 +100,12 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifec
 
   @Override
   public DeclareTaxRegistrationResult declareTaxRegistration(
-      DeclareTaxRegistrationCommand command, Instant declaredAt) {
+      DeclareTaxRegistrationCommand command,
+      Instant declaredAt,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(command, "command");
     Objects.requireNonNull(declaredAt, "declaredAt");
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     return InMemoryBookSessionSupport.withLock(
         lock,
         () -> {

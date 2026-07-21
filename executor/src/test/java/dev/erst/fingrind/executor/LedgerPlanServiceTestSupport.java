@@ -297,8 +297,10 @@ final class LedgerPlanServiceTestSupport {
 
     @Override
     public dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult declareTaxRegistration(
-        dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand command, Instant declaredAt) {
-      return delegate.declareTaxRegistration(command, declaredAt);
+        dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand command,
+        Instant declaredAt,
+        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
+      return delegate.declareTaxRegistration(command, declaredAt, attestationAuthorizer);
     }
 
     @Override

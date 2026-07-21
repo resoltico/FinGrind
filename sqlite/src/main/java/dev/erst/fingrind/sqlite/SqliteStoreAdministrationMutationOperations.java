@@ -6,8 +6,13 @@ import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
 import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
 import dev.erst.fingrind.contract.tax.TaxDeclarationRejection;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.attestation.AttestationEffectMutation;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationGenesis;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationTaxCodeSnapshot;
+import dev.erst.fingrind.core.attestation.AttestationTaxRegistrationMutationProjection;
+import dev.erst.fingrind.core.attestation.AttestationTaxRegistrationSnapshot;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
@@ -107,11 +112,14 @@ final class SqliteStoreAdministrationMutationOperations {
   }
 
   DeclareTaxRegistrationResult declareTaxRegistration(
-      DeclareTaxRegistrationCommand command, Instant declaredAt) {
+      DeclareTaxRegistrationCommand command,
+      Instant declaredAt,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     lifecycle.ensureOpenSession();
     context.accessMode().requireWritableMutation();
     Objects.requireNonNull(command, "command");
     Objects.requireNonNull(declaredAt, "declaredAt");
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     if (Files.notExists(context.bookPath())) {
       return new DeclareTaxRegistrationResult.Rejected(
           new TaxDeclarationRejection.BookNotInitialized());
@@ -139,6 +147,17 @@ final class SqliteStoreAdministrationMutationOperations {
               SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
               return new DeclareTaxRegistrationResult.Unchanged(existingRegistration.orElseThrow());
             }
+            SqliteAttestationEvidenceStore.appendAuthorized(
+                activeDatabase,
+                "declare-tax-registration",
+                declaredAt,
+                AttestationTaxRegistrationMutationProjection.project(
+                    taxRegistrationSnapshot(command),
+                    taxRegistrationSnapshot(candidate),
+                    existingRegistration.isPresent()
+                        ? AttestationEffectMutation.AMEND
+                        : AttestationEffectMutation.CREATE),
+                attestationAuthorizer);
             SqliteMutationWriter.upsertTaxRegistration(activeDatabase, candidate);
             DeclaredTaxRegistration persistedRegistration =
                 SqliteTaxStatementQueries.findOneTaxRegistration(
@@ -182,6 +201,51 @@ final class SqliteStoreAdministrationMutationOperations {
 
   private static String taxCodeKey(TaxCodeDefinition taxCodeDefinition) {
     return taxCodeDefinition.taxCode().value();
+  }
+
+  private static AttestationTaxRegistrationSnapshot taxRegistrationSnapshot(
+      DeclareTaxRegistrationCommand registration) {
+    return new AttestationTaxRegistrationSnapshot(
+        registration.taxRegistrationId().value(),
+        registration.taxRegistrationName().value(),
+        registration.jurisdiction().value(),
+        registration.registrationNumber() == null
+            ? null
+            : registration.registrationNumber().value(),
+        registration.payableAccountCode().value(),
+        registration.recoverableAccountCode().value(),
+        registration.obligationFrequency().wireValue(),
+        registration.dueDaysAfterPeriodEnd(),
+        registration.taxCodes().stream()
+            .map(SqliteStoreAdministrationMutationOperations::taxCodeSnapshot)
+            .toList());
+  }
+
+  private static AttestationTaxRegistrationSnapshot taxRegistrationSnapshot(
+      DeclaredTaxRegistration registration) {
+    return new AttestationTaxRegistrationSnapshot(
+        registration.taxRegistrationId().value(),
+        registration.taxRegistrationName().value(),
+        registration.jurisdiction().value(),
+        registration.registrationNumber() == null
+            ? null
+            : registration.registrationNumber().value(),
+        registration.payableAccountCode().value(),
+        registration.recoverableAccountCode().value(),
+        registration.obligationFrequency().wireValue(),
+        registration.dueDaysAfterPeriodEnd(),
+        registration.taxCodes().stream()
+            .map(SqliteStoreAdministrationMutationOperations::taxCodeSnapshot)
+            .toList());
+  }
+
+  private static AttestationTaxCodeSnapshot taxCodeSnapshot(TaxCodeDefinition taxCode) {
+    return new AttestationTaxCodeSnapshot(
+        taxCode.taxCode().value(),
+        taxCode.taxCodeName().value(),
+        taxCode.rate().partsPerMillionOfWhole(),
+        taxCode.inclusionMode().wireValue(),
+        taxCode.applicationKind().wireValue());
   }
 
   private <T> T withBorrowedDatabase(BorrowedDatabaseAction<T> action) {

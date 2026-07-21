@@ -12,7 +12,10 @@ import org.junit.jupiter.api.Test;
 /** Regression tests for shared command-family abstractions extracted from {@link CliCommand}. */
 class CliCommandFamiliesTest {
   private static final BookAccess BOOK_ACCESS =
-      new BookAccess(Path.of("book.db"), BookAccess.PassphraseSource.StandardInput.INSTANCE);
+      new BookAccess(
+          Path.of("book.db"),
+          BookAccess.PassphraseSource.StandardInput.INSTANCE,
+          java.util.List.of());
 
   @Test
   void commandFamilies_preserveTypedStateAcrossSharedCommandShapes() {

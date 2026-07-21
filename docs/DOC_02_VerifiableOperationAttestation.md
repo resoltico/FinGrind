@@ -377,8 +377,8 @@ allowed, or forbidden; a record not allowed by that profile is attestation-reque
 | 0110 | request.account | accountCode:text!, accountName:text!, accountType:token!, nodeKind:token!, parentAccountCode:text?, unitOfMeasure:text? | accountCode |
 | 0111 | request.account-classification | accountCode:text!, classificationFamily:token!, classification:token! | accountCode, classificationFamily |
 | 0112 | request.account-relationship | accountCode:text!, relationshipKind:token!, targetAccountCode:text? | accountCode, relationshipKind |
-| 0113 | request.tax-registration | registrationId:text!, jurisdiction:text!, registrationCode:text!, payableAccountCode:text!, receivableAccountCode:text!, active:bool! | registrationId |
-| 0114 | request.tax-registration-code | registrationId:text!, taxCode:text!, rate:scaled!, effectiveFrom:date!, effectiveTo:date? | registrationId, taxCode, effectiveFrom |
+| 0113 | request.tax-registration | registrationId:text!, registrationName:text!, jurisdiction:text!, registrationCode:text?, payableAccountCode:text!, receivableAccountCode:text!, obligationFrequency:token!, dueDaysAfterPeriodEnd:u16!, active:bool! | registrationId |
+| 0114 | request.tax-registration-code | registrationId:text!, taxCode:text!, taxCodeName:text!, rate:scaled!, inclusionMode:token!, applicationKind:token! | registrationId, taxCode |
 | 0120 | request.posting | stepOrder:u32!, operationKind:token!, effectiveDate:date!, postingKind:token!, priorPostingId:uuid?, reversalReason:text? | stepOrder |
 | 0121 | request.account-role | stepOrder:u32!, role:token!, accountCode:text! | stepOrder, role |
 | 0122 | request.money | stepOrder:u32!, role:token!, amount:money! | stepOrder, role |
@@ -421,8 +421,8 @@ allowed, or forbidden; a record not allowed by that profile is attestation-reque
 | 0010 | account.state | mutation:u8!, accountCode:text!, accountName:text!, accountType:token!, nodeKind:token!, parentAccountCode:text?, unitOfMeasure:text?, active:bool! | accountCode |
 | 0011 | account.classification | mutation:u8!, accountCode:text!, classificationFamily:token!, classification:token! | accountCode, classificationFamily |
 | 0012 | account.relationship | mutation:u8!, accountCode:text!, relationshipKind:token!, targetAccountCode:text? | accountCode, relationshipKind |
-| 0013 | tax.registration | mutation:u8!, registrationId:text!, jurisdiction:text!, registrationCode:text!, payableAccountCode:text!, receivableAccountCode:text!, active:bool! | registrationId |
-| 0014 | tax.registration-code | mutation:u8!, registrationId:text!, taxCode:text!, rate:scaled!, effectiveFrom:date!, effectiveTo:date? | registrationId, taxCode, effectiveFrom |
+| 0013 | tax.registration | mutation:u8!, registrationId:text!, registrationName:text!, jurisdiction:text!, registrationCode:text?, payableAccountCode:text!, receivableAccountCode:text!, obligationFrequency:token!, dueDaysAfterPeriodEnd:u16!, active:bool! | registrationId |
+| 0014 | tax.registration-code | mutation:u8!, registrationId:text!, taxCode:text!, taxCodeName:text!, rate:scaled!, inclusionMode:token!, applicationKind:token! | registrationId, taxCode |
 | 0020 | posting.fact | mutation:u8!, postingId:uuid!, operationStepOrder:u32!, operationKind:token!, postingKind:token!, originKind:token!, effectiveDate:date!, recordedAt:instant!, priorPostingId:uuid?, commandId:uuid!, idempotencyKey:text?, causationId:text?, sourceChannel:token! | postingId |
 | 0021 | posting.source-document | mutation:u8!, postingId:uuid!, sourceDocumentId:text!, sourceDocumentType:text!, documentDate:date! | postingId, sourceDocumentId |
 | 0022 | posting.approval | mutation:u8!, postingId:uuid!, approvalId:text!, approverReference:text!, approverType:token!, decision:token!, approvedAt:instant! | postingId, approvalId |

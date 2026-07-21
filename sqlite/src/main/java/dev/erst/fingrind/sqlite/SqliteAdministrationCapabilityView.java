@@ -81,8 +81,11 @@ interface SqliteAdministrationCapabilityView
 
   @Override
   default DeclareTaxRegistrationResult declareTaxRegistration(
-      DeclareTaxRegistrationCommand command, Instant declaredAt) {
+      DeclareTaxRegistrationCommand command,
+      Instant declaredAt,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().declareTaxRegistration(command, declaredAt);
+    return storeMutationOperations()
+        .declareTaxRegistration(command, declaredAt, attestationAuthorizer);
   }
 }

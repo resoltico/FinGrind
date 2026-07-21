@@ -52,15 +52,14 @@ final class AttestationRequestRecordCatalog {
         record(
             0x0113,
             "request.tax-registration",
-            "registrationId:text!, jurisdiction:text!, registrationCode:text!, payableAccountCode:text!, receivableAccountCode:text!, active:bool!",
+            "registrationId:text!, registrationName:text!, jurisdiction:text!, registrationCode:text?, payableAccountCode:text!, receivableAccountCode:text!, obligationFrequency:token!, dueDaysAfterPeriodEnd:u16!, active:bool!",
             0),
         record(
             0x0114,
             "request.tax-registration-code",
-            "registrationId:text!, taxCode:text!, rate:scaled!, effectiveFrom:date!, effectiveTo:date?",
+            "registrationId:text!, taxCode:text!, taxCodeName:text!, rate:scaled!, inclusionMode:token!, applicationKind:token!",
             0,
-            1,
-            3));
+            1));
   }
 
   private static List<AttestationRecordSchema> operationSchemas() {
