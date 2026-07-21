@@ -197,7 +197,7 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
   }
 
   @Test
-  void verification_reportsAMissingBookAfterThePassphraseSourceHasResolved() {
+  void verification_reportsAMissingBookBeforeThePassphraseSourceIsResolved() {
     Path missingBookPath = tempDirectory.resolve("resolved-missing-book.sqlite");
     SqliteProtectedBookMaintenanceStore store =
         new SqliteProtectedBookMaintenanceStore(
@@ -213,6 +213,33 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
                 localAccess(bookAccess(missingBookPath)),
                 ProtectedBookMaintenanceArtifactRole.LIVE_BOOK)),
         missingBookPath,
+        ProtectedBookVerificationFailure.MISSING);
+  }
+
+  @Test
+  void verification_reportsAMissingBookWhenItDisappearsAfterPassphraseResolution() {
+    Path bookPath = tempDirectory.resolve("disappeared-after-resolution.sqlite");
+    BookAccess bookAccess = bookAccess(bookPath);
+    initializeBook(bookAccess);
+    SqliteProtectedBookMaintenanceStore store =
+        new SqliteProtectedBookMaintenanceStore(
+            (resolvedBookPath, passphraseSource, intent) -> {
+              try {
+                Files.delete(resolvedBookPath);
+              } catch (java.io.IOException exception) {
+                throw new java.io.UncheckedIOException(exception);
+              }
+              return ContractDecision.accepted(
+                  SqliteBookPassphrase.fromUtf8Bytes(
+                      "disappeared book test",
+                      TEST_BOOK_KEY.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            });
+
+    assertVerificationFailure(
+        acceptedValue(
+            store.verifyInitializedBook(
+                localAccess(bookAccess), ProtectedBookMaintenanceArtifactRole.LIVE_BOOK)),
+        bookPath,
         ProtectedBookVerificationFailure.MISSING);
   }
 
