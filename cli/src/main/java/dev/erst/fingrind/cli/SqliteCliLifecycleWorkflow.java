@@ -1,6 +1,5 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
@@ -17,9 +16,8 @@ import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
-import dev.erst.fingrind.core.attestation.AttestationGenesis;
-import dev.erst.fingrind.core.attestation.AttestationKeyFiles;
-import dev.erst.fingrind.core.attestation.AttestationSigningCredential;
+import dev.erst.fingrind.executor.AttestationCredentialException;
+import dev.erst.fingrind.executor.AttestationGenesisFactory;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.ProtectedBookMaintenanceService;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
@@ -31,10 +29,7 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.time.Clock;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 /** SQLite-backed lifecycle workflow for initialization, key rotation, backup, and rollback. */
@@ -76,29 +71,19 @@ final class SqliteCliLifecycleWorkflow implements CliBookLifecycleWorkflow {
 
   private ContractDecision<AttestationEvidence> genesisEvidence(OpenBookCommand command) {
     OpenBookCommand checkedCommand = Objects.requireNonNull(command, "command");
-    List<AttestationSigningCredential> credentials = new ArrayList<>();
-    AttestationFounderInput activeFounder = checkedCommand.attestationFounders().getFirst();
     try {
-      for (AttestationFounderInput founder : checkedCommand.attestationFounders()) {
-        activeFounder = founder;
-        credentials.add(
-            AttestationKeyFiles.openOrCreateCredential(
-                founder.principalId(),
-                founder.encryptedKeyFilePath(),
-                founder.passphraseFilePath()));
-      }
       return ContractDecision.accepted(
-          AttestationGenesis.create(
-              UUID.randomUUID(), checkedCommand.bookIdentity(), clock.instant(), credentials));
-    } catch (java.io.IOException | IllegalArgumentException exception) {
+          AttestationGenesisFactory.create(
+              checkedCommand.bookIdentity(),
+              clock.instant(),
+              checkedCommand.attestationFounders()));
+    } catch (AttestationCredentialException exception) {
       return ContractDecision.rejected(
           ContractErrors.Descriptor.INVALID_ATTESTATION_CREDENTIAL.failureAt(
-              activeFounder.encryptedKeyFilePath(),
+              exception.credentialPath(),
               "FinGrind could not open the selected attestation founder credential.",
               "Confirm the founder key and passphrase files are readable, distinct, and match, then rerun open-book.",
               ProtocolOptions.Attestation.FOUNDER_KEY_FILE));
-    } finally {
-      credentials.forEach(AttestationSigningCredential::close);
     }
   }
 
