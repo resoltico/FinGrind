@@ -36,19 +36,17 @@ class FinGrindCliBackupWorkflowTest extends FinGrindCliTestSupport {
         0,
         firstBackupCli.run(
             attestedArguments(
-                new String[] {
-                  "backup-book",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--backup-file",
-                  backupFilePath.toString(),
-                  "--backup-id",
-                  "018f0000-0000-7000-8000-000000000001",
-                  "--new-backup-key-file",
-                  backupKeyFilePath.toString()
-                })));
+                "backup-book",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--backup-file",
+                backupFilePath.toString(),
+                "--backup-id",
+                "018f0000-0000-7000-8000-000000000001",
+                "--new-backup-key-file",
+                backupKeyFilePath.toString())));
 
     ByteArrayOutputStream secondBackupOutput = new ByteArrayOutputStream();
     FinGrindCli secondBackupCli =

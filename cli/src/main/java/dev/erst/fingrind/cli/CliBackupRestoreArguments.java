@@ -23,92 +23,11 @@ final class CliBackupRestoreArguments {
           ProtocolOptions.Attestation.KEY_FILE,
           ProtocolOptions.Attestation.PASSPHRASE_FILE,
           ProtocolOptions.Presentation.OUTPUT);
-  private static final CliBookArgumentParser.CommandArgumentSpec BACKUP_BOOK_ARGUMENTS =
-      CliBookArgumentParser.commandArgumentSpec(
-          List.of(
-              ProtocolBookAccessOptions.BACKUP_FILE,
-              ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE,
-              ProtocolBookAccessOptions.BACKUP_ID,
-              ProtocolOptions.Presentation.OUTPUT),
-          List.of());
 
   private CliBackupRestoreArguments() {}
 
   static CliCommand parseBackupBookCommand(List<String> arguments) {
-    CliBookArgumentParser.ParsedBookArguments parsedArguments =
-        CliBookArgumentParser.parseBookAndCommandArguments(arguments, BACKUP_BOOK_ARGUMENTS);
-    Path backupFilePath = null;
-    Path backupBookKeyFilePath = null;
-    UUID backupId = null;
-    @Nullable OutputMode outputMode = null;
-    ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();
-    while (argumentIterator.hasNext()) {
-      String argument = argumentIterator.next();
-      switch (argument) {
-        case ProtocolBookAccessOptions.BACKUP_FILE -> {
-          if (backupFilePath != null) {
-            throw CliArgumentValueParser.invalid(
-                ProtocolBookAccessOptions.BACKUP_FILE,
-                "Duplicate argument: " + ProtocolBookAccessOptions.BACKUP_FILE);
-          }
-          backupFilePath =
-              CliOptionValues.requirePathOptionValue(
-                  argumentIterator, ProtocolBookAccessOptions.BACKUP_FILE);
-        }
-        case ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE -> {
-          if (backupBookKeyFilePath != null) {
-            throw CliArgumentValueParser.invalid(
-                ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE,
-                "Duplicate argument: " + ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE);
-          }
-          backupBookKeyFilePath =
-              CliOptionValues.requirePathOptionValue(
-                  argumentIterator, ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE);
-        }
-        case ProtocolBookAccessOptions.BACKUP_ID -> {
-          if (backupId != null) {
-            throw CliArgumentValueParser.invalid(
-                ProtocolBookAccessOptions.BACKUP_ID,
-                "Duplicate argument: " + ProtocolBookAccessOptions.BACKUP_ID);
-          }
-          backupId =
-              CliArgumentValueParser.requireValidArgument(
-                  ProtocolBookAccessOptions.BACKUP_ID,
-                  () ->
-                      UUID.fromString(
-                          CliOptionValues.requireValue(
-                              argumentIterator, ProtocolBookAccessOptions.BACKUP_ID)));
-        }
-        case ProtocolOptions.Presentation.OUTPUT ->
-            outputMode =
-                CliOptionModes.requireOutputMode(
-                    outputMode,
-                    CliOptionValues.requireValue(
-                        argumentIterator, ProtocolOptions.Presentation.OUTPUT),
-                    CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
-        default -> throw CliArgumentValueParser.unsupportedArgument(argument, List.of());
-      }
-    }
-    if (backupFilePath == null) {
-      throw required(ProtocolBookAccessOptions.BACKUP_FILE);
-    }
-    if (backupBookKeyFilePath == null) {
-      throw required(ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE);
-    }
-    if (backupId == null) {
-      throw required(ProtocolBookAccessOptions.BACKUP_ID);
-    }
-    CliBookPathValidator.validateDistinctBackupPaths(
-        parsedArguments.bookAccess().bookFilePath(),
-        parsedArguments.bookAccess().passphraseSource(),
-        backupFilePath,
-        backupBookKeyFilePath);
-    return new BackupBook(
-        parsedArguments.bookAccess(),
-        backupFilePath,
-        backupBookKeyFilePath,
-        backupId,
-        CliOptionModes.resolvedOutputMode(outputMode));
+    return CliBackupBookArguments.parseBackupBookCommand(arguments);
   }
 
   static CliCommand parseRestoreBookCommand(List<String> arguments) {
@@ -224,7 +143,8 @@ final class CliBackupRestoreArguments {
       String message = exception.getMessage();
       throw CliArgumentValueParser.invalid(
           ProtocolOptions.Attestation.PRINCIPAL_ID,
-          message == null ? "The supplied attestation credential triple is invalid." : message);
+          message == null ? "The supplied attestation credential triple is invalid." : message,
+          exception);
     }
   }
 

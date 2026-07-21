@@ -13,6 +13,7 @@ import java.time.Clock;
 
 /** SQLite implementation of non-mutating attestation inspection and receipt operations. */
 interface SqliteCliAttestationInspectionOperations extends CliAttestationInspectionReadWorkflow {
+  /** Supplies the book-passphrase resolver used when opening protected SQLite books. */
   CliBookPassphraseResolver passphraseResolver();
 
   @Override

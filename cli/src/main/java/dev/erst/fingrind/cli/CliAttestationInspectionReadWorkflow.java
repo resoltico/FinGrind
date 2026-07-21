@@ -10,13 +10,17 @@ import java.nio.file.Path;
 
 /** Read-only attestation verification, review, and receipt capability for one protected book. */
 interface CliAttestationInspectionReadWorkflow {
+  /** Verifies the protected book's attestation history against its persisted evidence. */
   ContractDecision<VerifyBookAttestationResult> verifyBookAttestation(BookAccess bookAccess);
 
+  /** Produces a human-reviewable, non-mutating summary of the book's attestation history. */
   ContractDecision<AttestationReviewResult> reviewAttestation(BookAccess bookAccess);
 
+  /** Exports a signed attestation receipt without changing the protected book. */
   ContractDecision<ExportAttestationReceiptResult> exportAttestationReceipt(
       BookAccess bookAccess, Path receiptFilePath);
 
+  /** Verifies a persisted receipt against the protected book without mutating either artifact. */
   ContractDecision<VerifyAttestationReceiptResult> verifyAttestationReceipt(
       BookAccess bookAccess, Path receiptFilePath);
 }

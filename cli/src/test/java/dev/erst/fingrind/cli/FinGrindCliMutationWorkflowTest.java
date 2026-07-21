@@ -158,15 +158,13 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
         0,
         cli.run(
             attestedArguments(
-                new String[] {
-                  "declare-account",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--request-file",
-                  declareRevenueFile.toString()
-                })));
+                "declare-account",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                declareRevenueFile.toString())));
     ByteArrayOutputStream listOutput = new ByteArrayOutputStream();
     cli = cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(listOutput), fixedClock());
     assertEquals(
@@ -321,17 +319,15 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
         0,
         preflightTextCli.run(
             attestedArguments(
-                new String[] {
-                  "preflight-entry",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--request-file",
-                  saleRequestFile.toString(),
-                  "--output",
-                  "text"
-                })));
+                "preflight-entry",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                saleRequestFile.toString(),
+                "--output",
+                "text")));
     String preflightText = preflightTextOutput.toString(StandardCharsets.UTF_8);
     assertTrue(preflightText.contains("Entry Preflight Passed"), preflightText);
     assertTrue(preflightText.contains("Journal lines"), preflightText);
@@ -577,54 +573,50 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
   private static String[] openTradingBookKeyFileArguments(Path bookFilePath, Path bookKeyFilePath) {
     return founderAttestedArguments(
         bookFilePath,
-        new String[] {
-          "open-book",
-          "--book-file",
-          bookFilePath.toString(),
-          "--book-key-file",
-          bookKeyFilePath.toString(),
-          "--entity-name",
-          tradingBookIdentity().entityName().value(),
-          "--book-template-id",
-          tradingBookIdentity().bookDoctrine().bookTemplateId().wireValue(),
-          "--accounting-basis",
-          tradingBookIdentity().bookDoctrine().accountingBasis().wireValue(),
-          "--inventory-costing",
-          dev.erst.fingrind.core.InventoryCostingDoctrine.WEIGHTED_AVERAGE.wireValue(),
-          "--functional-currency",
-          tradingBookIdentity().functionalCurrency().code(),
-          "--fiscal-year-start",
-          tradingBookIdentity().fiscalYearStart().wireValue(),
-          "--book-start-effective-date",
-          tradingBookIdentity().bookStartEffectiveDate().toString()
-        });
+        "open-book",
+        "--book-file",
+        bookFilePath.toString(),
+        "--book-key-file",
+        bookKeyFilePath.toString(),
+        "--entity-name",
+        tradingBookIdentity().entityName().value(),
+        "--book-template-id",
+        tradingBookIdentity().bookDoctrine().bookTemplateId().wireValue(),
+        "--accounting-basis",
+        tradingBookIdentity().bookDoctrine().accountingBasis().wireValue(),
+        "--inventory-costing",
+        dev.erst.fingrind.core.InventoryCostingDoctrine.WEIGHTED_AVERAGE.wireValue(),
+        "--functional-currency",
+        tradingBookIdentity().functionalCurrency().code(),
+        "--fiscal-year-start",
+        tradingBookIdentity().fiscalYearStart().wireValue(),
+        "--book-start-effective-date",
+        tradingBookIdentity().bookStartEffectiveDate().toString());
   }
 
   private static String[] openAccrualTradingBookKeyFileArguments(
       Path bookFilePath, Path bookKeyFilePath) {
     return founderAttestedArguments(
         bookFilePath,
-        new String[] {
-          "open-book",
-          "--book-file",
-          bookFilePath.toString(),
-          "--book-key-file",
-          bookKeyFilePath.toString(),
-          "--entity-name",
-          tradingBookIdentity().entityName().value(),
-          "--book-template-id",
-          tradingBookIdentity().bookDoctrine().bookTemplateId().wireValue(),
-          "--accounting-basis",
-          dev.erst.fingrind.core.AccountingBasis.ACCRUAL.wireValue(),
-          "--inventory-costing",
-          dev.erst.fingrind.core.InventoryCostingDoctrine.WEIGHTED_AVERAGE.wireValue(),
-          "--functional-currency",
-          tradingBookIdentity().functionalCurrency().code(),
-          "--fiscal-year-start",
-          tradingBookIdentity().fiscalYearStart().wireValue(),
-          "--book-start-effective-date",
-          tradingBookIdentity().bookStartEffectiveDate().toString()
-        });
+        "open-book",
+        "--book-file",
+        bookFilePath.toString(),
+        "--book-key-file",
+        bookKeyFilePath.toString(),
+        "--entity-name",
+        tradingBookIdentity().entityName().value(),
+        "--book-template-id",
+        tradingBookIdentity().bookDoctrine().bookTemplateId().wireValue(),
+        "--accounting-basis",
+        dev.erst.fingrind.core.AccountingBasis.ACCRUAL.wireValue(),
+        "--inventory-costing",
+        dev.erst.fingrind.core.InventoryCostingDoctrine.WEIGHTED_AVERAGE.wireValue(),
+        "--functional-currency",
+        tradingBookIdentity().functionalCurrency().code(),
+        "--fiscal-year-start",
+        tradingBookIdentity().fiscalYearStart().wireValue(),
+        "--book-start-effective-date",
+        tradingBookIdentity().bookStartEffectiveDate().toString());
   }
 
   private JsonNode recordEntry(
@@ -795,15 +787,13 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
                 fixedClock())
             .run(
                 attestedArguments(
-                    new String[] {
-                      "declare-account",
-                      "--book-file",
-                      bookFilePath.toString(),
-                      "--book-key-file",
-                      bookKeyFilePath.toString(),
-                      "--request-file",
-                      declareCashFile.toString()
-                    })));
+                    "declare-account",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--request-file",
+                    declareCashFile.toString())));
     assertEquals(
         0,
         cli(
@@ -812,15 +802,13 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
                 fixedClock())
             .run(
                 attestedArguments(
-                    new String[] {
-                      "declare-account",
-                      "--book-file",
-                      bookFilePath.toString(),
-                      "--book-key-file",
-                      bookKeyFilePath.toString(),
-                      "--request-file",
-                      declareRevenueFile.toString()
-                    })));
+                    "declare-account",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--request-file",
+                    declareRevenueFile.toString())));
     assertEquals(
         0,
         cli(

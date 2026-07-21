@@ -87,16 +87,13 @@ class CliOpenBookArgumentParsingTest extends CliArgumentParsingTestSupport {
 
   @Test
   void openBookArgumentGuard_rejectsUnexpectedCommandArgumentsDefensively() throws Exception {
-    CliOpenBookArguments.OpenBookArgumentValues argumentValues =
-        new CliOpenBookArguments.OpenBookArgumentValues();
+    CliOpenBookArgumentValues argumentValues = new CliOpenBookArgumentValues();
     ListIterator<String> emptyIterator = List.<String>of().listIterator();
 
     CliArgumentsException exception =
         assertThrows(
             CliArgumentsException.class,
-            () ->
-                CliOpenBookArguments.applyOpenBookArgument(
-                    argumentValues, "--unexpected", emptyIterator));
+            () -> CliOpenBookArgumentGrammar.apply(argumentValues, "--unexpected", emptyIterator));
     assertEquals("--unexpected", exception.argument());
     assertEquals("Unsupported argument: --unexpected", exception.getMessage());
   }

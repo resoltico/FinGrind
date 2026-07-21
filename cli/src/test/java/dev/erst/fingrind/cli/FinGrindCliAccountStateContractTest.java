@@ -364,17 +364,15 @@ class FinGrindCliAccountStateContractTest extends FinGrindCliTestSupport {
     int exitCode =
         cli.run(
             jsonArguments(
-                new String[] {
-                  commandName,
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--request-file",
-                  requestFile.toString(),
-                  "--output",
-                  outputMode
-                }));
+                commandName,
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                requestFile.toString(),
+                "--output",
+                outputMode));
     return new ObservedInvocation(
         exitCode,
         outputStream.toString(StandardCharsets.UTF_8),
