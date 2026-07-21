@@ -284,6 +284,7 @@ final class AttestationFilePkcs8Custodian {
     }
   }
 
+  /** Owns the sensitive decoded fields of one encrypted PKCS#8 file until they are cleared. */
   private static final class ParsedKeyFile {
     private final byte[] salt;
     private final byte[] initializationVector;

@@ -14,6 +14,11 @@ public final class AttestationVerificationException extends IllegalArgumentExcep
     this.code = code;
   }
 
+  AttestationVerificationException(String code, Throwable cause) {
+    super(Objects.requireNonNull(code, "code"), Objects.requireNonNull(cause, "cause"));
+    this.code = code;
+  }
+
   /** Returns the stable machine-readable refusal code. */
   public String code() {
     return code;

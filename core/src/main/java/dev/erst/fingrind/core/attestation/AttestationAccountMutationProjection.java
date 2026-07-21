@@ -1,12 +1,9 @@
 package dev.erst.fingrind.core.attestation;
 
-import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.WireValue;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 /** Projects an account-registry request and its persisted semantic account effect. */
 public final class AttestationAccountMutationProjection {
@@ -49,7 +46,7 @@ public final class AttestationAccountMutationProjection {
     List<AttestationPreimage.Fact> facts = new ArrayList<>();
     facts.add(command(operationKind));
     facts.add(accountRequest(requested));
-    addRequestTaxonomyFacts(facts, requested);
+    AttestationAccountTaxonomyPreimageProjection.appendFacts(facts, 0x0111, requested, null);
     return AttestationPreimage.of(facts);
   }
 
@@ -57,7 +54,8 @@ public final class AttestationAccountMutationProjection {
       AttestationAccountSnapshot persisted, AttestationEffectMutation effectMutation) {
     List<AttestationPreimage.Fact> facts = new ArrayList<>();
     facts.add(accountEffect(persisted, effectMutation));
-    addEffectTaxonomyFacts(facts, persisted, effectMutation);
+    AttestationAccountTaxonomyPreimageProjection.appendFacts(
+        facts, 0x0011, persisted, effectMutation);
     return AttestationPreimage.of(facts);
   }
 
@@ -65,22 +63,29 @@ public final class AttestationAccountMutationProjection {
     return new AttestationPreimage.Fact(
         0x0100,
         List.of(
-            presentToken(operationKind),
+            AttestationPreimageProjectionFields.token(operationKind),
             AttestationField.absent(),
             AttestationField.absent(),
-            presentToken(CLI)));
+            AttestationPreimageProjectionFields.token(CLI)));
   }
 
   private static AttestationPreimage.Fact accountRequest(AttestationAccountSnapshot snapshot) {
     return new AttestationPreimage.Fact(
         0x0110,
         List.of(
-            presentText(snapshot.accountCode().value()),
-            presentText(snapshot.accountName().value()),
-            presentToken(token(snapshot.accountType())),
-            presentToken(token(snapshot.accountTaxonomy().nodeKind())),
-            optionalText(snapshot.accountTaxonomy().parentAccountCode().map(AccountCode::value)),
-            optionalText(Optional.ofNullable(snapshot.unitOfMeasure()).map(unit -> unit.token()))));
+            AttestationPreimageProjectionFields.text(snapshot.accountCode().value()),
+            AttestationPreimageProjectionFields.text(snapshot.accountName().value()),
+            AttestationPreimageProjectionFields.token(token(snapshot.accountType())),
+            AttestationPreimageProjectionFields.token(token(snapshot.accountTaxonomy().nodeKind())),
+            AttestationPreimageProjectionFields.optionalText(
+                snapshot
+                    .accountTaxonomy()
+                    .parentAccountCode()
+                    .map(value -> value.value())
+                    .orElse(null)),
+            snapshot.unitOfMeasure() == null
+                ? AttestationField.absent()
+                : AttestationPreimageProjectionFields.token(snapshot.unitOfMeasure().token())));
   }
 
   private static AttestationPreimage.Fact accountEffect(
@@ -88,170 +93,29 @@ public final class AttestationAccountMutationProjection {
     return new AttestationPreimage.Fact(
         0x0010,
         List.of(
-            present(AttestationNumericFieldValue.mutation(mutation.wireValue())),
-            presentText(snapshot.accountCode().value()),
-            presentText(snapshot.accountName().value()),
-            presentToken(token(snapshot.accountType())),
-            presentToken(token(snapshot.accountTaxonomy().nodeKind())),
-            optionalText(snapshot.accountTaxonomy().parentAccountCode().map(AccountCode::value)),
-            optionalText(Optional.ofNullable(snapshot.unitOfMeasure()).map(unit -> unit.token())),
-            present(AttestationNumericFieldValue.booleanValue(snapshot.active()))));
-  }
-
-  private static void addRequestTaxonomyFacts(
-      List<AttestationPreimage.Fact> facts, AttestationAccountSnapshot snapshot) {
-    AccountTaxonomy taxonomy = snapshot.accountTaxonomy();
-    addClassifications(
-        facts,
-        0x0111,
-        snapshot,
-        null,
-        taxonomy
-            .financialPositionLineClassification()
-            .map(AttestationAccountMutationProjection::token),
-        taxonomy.profitAndLossLineClassification().map(AttestationAccountMutationProjection::token),
-        taxonomy.cashFlowAssetClassification().map(AttestationAccountMutationProjection::token));
-    addRelationships(facts, 0x0112, snapshot, null);
-  }
-
-  private static void addEffectTaxonomyFacts(
-      List<AttestationPreimage.Fact> facts,
-      AttestationAccountSnapshot snapshot,
-      AttestationEffectMutation mutation) {
-    AccountTaxonomy taxonomy = snapshot.accountTaxonomy();
-    addClassifications(
-        facts,
-        0x0011,
-        snapshot,
-        mutation,
-        taxonomy
-            .financialPositionLineClassification()
-            .map(AttestationAccountMutationProjection::token),
-        taxonomy.profitAndLossLineClassification().map(AttestationAccountMutationProjection::token),
-        taxonomy.cashFlowAssetClassification().map(AttestationAccountMutationProjection::token));
-    addRelationships(facts, 0x0012, snapshot, mutation);
-  }
-
-  private static void addClassifications(
-      List<AttestationPreimage.Fact> facts,
-      int recordType,
-      AttestationAccountSnapshot snapshot,
-      @org.jspecify.annotations.Nullable AttestationEffectMutation mutation,
-      Optional<String> financialPosition,
-      Optional<String> profitAndLoss,
-      Optional<String> cashFlowAsset) {
-    addClassification(
-        facts,
-        recordType,
-        snapshot,
-        mutation,
-        ClassificationFamily.FINANCIAL_POSITION.token(),
-        financialPosition);
-    addClassification(facts, recordType, snapshot, mutation, "profit-and-loss", profitAndLoss);
-    addClassification(facts, recordType, snapshot, mutation, "cash-flow-asset", cashFlowAsset);
-  }
-
-  /** Canonical taxonomy-field vocabulary used by immutable account snapshots. */
-  private enum ClassificationFamily {
-    FINANCIAL_POSITION(String.join("-", "financial", "position"));
-
-    private final String token;
-
-    ClassificationFamily(String token) {
-      this.token = token;
-    }
-
-    String token() {
-      return token;
-    }
-  }
-
-  private static void addClassification(
-      List<AttestationPreimage.Fact> facts,
-      int recordType,
-      AttestationAccountSnapshot snapshot,
-      @org.jspecify.annotations.Nullable AttestationEffectMutation mutation,
-      String family,
-      Optional<String> classification) {
-    classification.ifPresent(
-        value -> {
-          List<AttestationField> fields = new ArrayList<>();
-          if (mutation != null) {
-            fields.add(present(AttestationNumericFieldValue.mutation(mutation.wireValue())));
-          }
-          fields.add(presentText(snapshot.accountCode().value()));
-          fields.add(presentToken(family));
-          fields.add(presentToken(value));
-          facts.add(new AttestationPreimage.Fact(recordType, fields));
-        });
-  }
-
-  private static void addRelationships(
-      List<AttestationPreimage.Fact> facts,
-      int recordType,
-      AttestationAccountSnapshot snapshot,
-      @org.jspecify.annotations.Nullable AttestationEffectMutation mutation) {
-    addRelationship(
-        facts,
-        recordType,
-        snapshot,
-        mutation,
-        "parent",
-        snapshot.accountTaxonomy().parentAccountCode().map(AccountCode::value));
-    addRelationship(
-        facts,
-        recordType,
-        snapshot,
-        mutation,
-        "contra",
-        snapshot.accountTaxonomy().contraOfAccountCode().map(AccountCode::value));
-  }
-
-  private static void addRelationship(
-      List<AttestationPreimage.Fact> facts,
-      int recordType,
-      AttestationAccountSnapshot snapshot,
-      @org.jspecify.annotations.Nullable AttestationEffectMutation mutation,
-      String relationshipKind,
-      Optional<String> targetAccountCode) {
-    targetAccountCode.ifPresent(
-        target -> {
-          List<AttestationField> fields = new ArrayList<>();
-          if (mutation != null) {
-            fields.add(present(AttestationNumericFieldValue.mutation(mutation.wireValue())));
-          }
-          fields.add(presentText(snapshot.accountCode().value()));
-          fields.add(presentToken(relationshipKind));
-          fields.add(presentText(target));
-          facts.add(new AttestationPreimage.Fact(recordType, fields));
-        });
+            AttestationPreimageProjectionFields.present(
+                AttestationNumericFieldValue.mutation(mutation.wireValue())),
+            AttestationPreimageProjectionFields.text(snapshot.accountCode().value()),
+            AttestationPreimageProjectionFields.text(snapshot.accountName().value()),
+            AttestationPreimageProjectionFields.token(token(snapshot.accountType())),
+            AttestationPreimageProjectionFields.token(token(snapshot.accountTaxonomy().nodeKind())),
+            AttestationPreimageProjectionFields.optionalText(
+                snapshot
+                    .accountTaxonomy()
+                    .parentAccountCode()
+                    .map(value -> value.value())
+                    .orElse(null)),
+            snapshot.unitOfMeasure() == null
+                ? AttestationField.absent()
+                : AttestationPreimageProjectionFields.token(snapshot.unitOfMeasure().token()),
+            AttestationPreimageProjectionFields.present(
+                AttestationNumericFieldValue.booleanValue(snapshot.active()))));
   }
 
   private static String token(WireValue value) {
-    return token(Objects.requireNonNull(value, "value").wireValue());
-  }
-
-  private static String token(String value) {
     return Objects.requireNonNull(value, "value")
+        .wireValue()
         .toLowerCase(java.util.Locale.ROOT)
         .replace('_', '-');
-  }
-
-  private static AttestationField present(AttestationFieldValue value) {
-    return AttestationField.present(value);
-  }
-
-  private static AttestationField presentText(String value) {
-    return present(AttestationTextFieldValue.text(value));
-  }
-
-  private static AttestationField presentToken(String value) {
-    return present(AttestationTextFieldValue.token(value));
-  }
-
-  private static AttestationField optionalText(Optional<String> value) {
-    return value
-        .<AttestationField>map(AttestationAccountMutationProjection::presentText)
-        .orElseGet(AttestationField::absent);
   }
 }

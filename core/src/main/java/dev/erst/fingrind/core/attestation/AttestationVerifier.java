@@ -41,7 +41,7 @@ public final class AttestationVerifier {
               .map(finding -> finding.review().keyId().toString())
               .toList());
     } catch (AttestationAuthorizationException exception) {
-      throw new AttestationVerificationException(exception.failure().code());
+      throw new AttestationVerificationException(exception.failure().code(), exception);
     }
   }
 }

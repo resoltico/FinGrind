@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 
 /** Reads the normative attestation vectors that serve as the test oracle. */
 final class AttestationDocumentVectors {
-  static final String PROTOCOL_DOCUMENT = "docs/DOC_02_VerifiableOperationAttestation.md";
+  static final String PROTOCOL_DOCUMENT = "docs/DOC_02_VerifiableOperationAttestationVectors.md";
   static final String ARTIFACT_DOCUMENT = "docs/DOC_02_VerifiableOperationAttestationArtifacts.md";
 
   private static final Pattern DOCUMENT_VALUE =
