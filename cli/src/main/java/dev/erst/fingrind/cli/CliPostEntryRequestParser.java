@@ -18,8 +18,6 @@ import dev.erst.fingrind.contract.protocol.ProtocolPostingNestedFieldSets;
 import dev.erst.fingrind.contract.protocol.ProtocolPostingRequestFieldSets;
 import dev.erst.fingrind.contract.protocol.ProtocolPostingRequestTopics;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
@@ -55,17 +53,6 @@ final class CliPostEntryRequestParser {
         provenanceNode,
         ProtocolBusinessEventFields.Core.PROVENANCE,
         ProtocolPostingNestedFieldSets.provenanceFields());
-    String actorId =
-        CliRequestPlaceholderValues.requiredRealProvenanceText(
-            provenanceNode,
-            ProtocolPostEntryFields.Provenance.ACTOR_ID,
-            ScaffoldPlaceholders.ACTOR_ID);
-    ActorType actorType =
-        parseWireValue(
-            requiredText(provenanceNode, ProtocolPostEntryFields.Provenance.ACTOR_TYPE),
-            ProtocolPostEntryFields.Provenance.ACTOR_TYPE,
-            ActorType.wireValues(),
-            ActorType::fromWireValue);
     String commandId =
         CliRequestPlaceholderValues.requiredRealProvenanceText(
             provenanceNode,
@@ -92,8 +79,6 @@ final class CliPostEntryRequestParser {
     AccountingEvidence evidence = CliAccountingEvidenceRequestParser.readEvidence(evidenceNode);
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new ActorId(actorId),
-            actorType,
             new CommandId(commandId),
             new IdempotencyKey(idempotencyKey),
             new CausationId(causationId),

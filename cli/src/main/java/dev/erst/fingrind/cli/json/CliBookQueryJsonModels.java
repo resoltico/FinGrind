@@ -78,14 +78,14 @@ public interface CliBookQueryJsonModels {
   record ApprovalPayload(
       String approvalId,
       String approvalType,
-      String approverId,
+      String approverReference,
       String approverType,
       String decision,
       String approvedAt) {
     public ApprovalPayload {
       approvalId = requireText(approvalId, "approvalId");
       approvalType = requireText(approvalType, "approvalType");
-      approverId = requireText(approverId, "approverId");
+      approverReference = requireText(approverReference, "approverReference");
       approverType = requireText(approverType, "approverType");
       decision = requireText(decision, "decision");
       approvedAt = requireText(approvedAt, "approvedAt");
@@ -101,8 +101,6 @@ public interface CliBookQueryJsonModels {
       @Nullable String reversedByPostingId,
       String effectiveDate,
       String recordedAt,
-      String actorId,
-      String actorType,
       String commandId,
       String idempotencyKey,
       String causationId,
@@ -122,8 +120,6 @@ public interface CliBookQueryJsonModels {
       reversedByPostingId = requireOptionalText(reversedByPostingId, "reversedByPostingId");
       effectiveDate = requireText(effectiveDate, "effectiveDate");
       recordedAt = requireText(recordedAt, "recordedAt");
-      actorId = requireText(actorId, "actorId");
-      actorType = requireText(actorType, "actorType");
       commandId = requireText(commandId, "commandId");
       idempotencyKey = requireText(idempotencyKey, "idempotencyKey");
       causationId = requireText(causationId, "causationId");

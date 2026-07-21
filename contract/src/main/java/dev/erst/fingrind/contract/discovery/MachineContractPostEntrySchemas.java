@@ -6,7 +6,6 @@ import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolForeignExchangeRequestFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.JournalLine;
@@ -69,8 +68,6 @@ final class MachineContractPostEntrySchemas {
             new ContractRequestShapes.EnumVocabularyDescriptor(
                 ProtocolForeignExchangeRequestFields.ForeignExchange.TREATMENT_KIND,
                 ForeignExchangeTreatmentKind.wireValues()),
-            new ContractRequestShapes.EnumVocabularyDescriptor(
-                ProtocolPostEntryFields.Provenance.ACTOR_TYPE, ActorType.wireValues()),
             new ContractRequestShapes.EnumVocabularyDescriptor(
                 ProtocolPostEntryFields.Approval.DECISION, ApprovalDecision.wireValues())),
         postEntrySchema());
@@ -208,8 +205,6 @@ final class MachineContractPostEntrySchemas {
                 new ContractRequestShapes.EnumVocabularyDescriptor(
                     ProtocolForeignExchangeRequestFields.ForeignExchange.TREATMENT_KIND,
                     ForeignExchangeTreatmentKind.wireValues()),
-                new ContractRequestShapes.EnumVocabularyDescriptor(
-                    ProtocolPostEntryFields.Provenance.ACTOR_TYPE, ActorType.wireValues()),
                 new ContractRequestShapes.EnumVocabularyDescriptor(
                     ProtocolPostEntryFields.Approval.DECISION, ApprovalDecision.wireValues())));
     if (!facts

@@ -107,8 +107,6 @@ final class CliPlanBookkeepingTextRenderer {
     summaryRows.add(List.of("Reversal state", CliTextDisplay.wireLabel(posting.reversalState())));
     summaryRows.add(List.of("Effective date", posting.effectiveDate()));
     summaryRows.add(List.of("Recorded at", posting.recordedAt()));
-    summaryRows.add(List.of("Actor id", posting.actorId()));
-    summaryRows.add(List.of("Actor type", CliTextDisplay.wireLabel(posting.actorType())));
     summaryRows.add(List.of("Command id", posting.commandId()));
     summaryRows.add(List.of("Idempotency key", posting.idempotencyKey()));
     summaryRows.add(List.of("Causation id", posting.causationId()));
@@ -230,7 +228,7 @@ final class CliPlanBookkeepingTextRenderer {
                 List.of(
                     "Approval id",
                     "Type",
-                    "Approver id",
+                    "Approver reference",
                     "Approver type",
                     "Decision",
                     "Approved at"),
@@ -240,8 +238,8 @@ final class CliPlanBookkeepingTextRenderer {
                             List.of(
                                 approval.approvalId(),
                                 CliTextDisplay.wireLabel(approval.approvalType()),
-                                approval.approverId(),
-                                CliTextDisplay.wireLabel(approval.approverType()),
+                                approval.approverReference(),
+                                approval.approverType(),
                                 CliTextDisplay.wireLabel(approval.decision()),
                                 approval.approvedAt()))
                     .toList());

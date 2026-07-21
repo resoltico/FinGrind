@@ -2,7 +2,6 @@ package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.protocol.ProtocolFixedAssetRequestFields;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
 import java.util.List;
@@ -138,17 +137,6 @@ final class MachineContractPostEntryNestedFieldSpecs {
 
   static List<MachineContractFieldSpec> provenanceFields() {
     return List.of(
-        MachineContractFieldSpec.required(
-            ProtocolPostEntryFields.Provenance.ACTOR_ID,
-            "Stable identifier of the actor that initiated the request.",
-            MachineContractScalarSchemas.nonBlankStringSchema(
-                "Stable identifier of the actor that initiated the request.")),
-        MachineContractFieldSpec.required(
-            ProtocolPostEntryFields.Provenance.ACTOR_TYPE,
-            "Actor classification from the live actorType enum vocabulary.",
-            MachineContractScalarSchemas.enumStringSchema(
-                "Actor classification from the live actorType enum vocabulary.",
-                ActorType.wireValues())),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.Provenance.COMMAND_ID,
             "Caller-generated command identity for this request.",

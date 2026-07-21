@@ -3,8 +3,6 @@ package dev.erst.fingrind.executor.bookkeeping;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BalanceMath;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
@@ -29,6 +27,7 @@ import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.time.Instant;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -38,10 +37,7 @@ import java.util.Optional;
 
 /** Builds one interim-result-sweep draft per currency close bucket. */
 final class InterimResultSweepDraftFactory {
-  private static final ActorId INTERIM_RESULT_SWEEP_ACTOR_ID =
-      new ActorId("system:interimResultSweep");
-  private static final ActorType INTERIM_RESULT_SWEEP_ACTOR_TYPE = ActorType.SYSTEM;
-  private static final SourceChannel INTERIM_RESULT_SWEEP_SOURCE_CHANNEL = SourceChannel.SYSTEM;
+  private static final SourceChannel INTERIM_RESULT_SWEEP_SOURCE_CHANNEL = SourceChannel.CLI;
   private static final String INTERIM_RESULT_SWEEP_REQUEST_TOKEN = "interimResultSweep";
   private static final String INTERIM_RESULT_SWEEP_OPERATION =
       OperationId.INTERIM_RESULT_SWEEP.wireName();
@@ -114,10 +110,9 @@ final class InterimResultSweepDraftFactory {
     String currencyToken = currencyUnit.code();
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            INTERIM_RESULT_SWEEP_ACTOR_ID,
-            INTERIM_RESULT_SWEEP_ACTOR_TYPE,
             new CommandId(
-                INTERIM_RESULT_SWEEP_REQUEST_TOKEN + ":" + closeToken + ":" + currencyToken),
+                deterministicUuid(
+                    INTERIM_RESULT_SWEEP_REQUEST_TOKEN + ":" + closeToken + ":" + currencyToken)),
             new IdempotencyKey(
                 INTERIM_RESULT_SWEEP_REQUEST_TOKEN + ":" + closeToken + ":" + currencyToken),
             new CausationId(INTERIM_RESULT_SWEEP_REQUEST_TOKEN + ":" + closeToken),
@@ -162,6 +157,10 @@ final class InterimResultSweepDraftFactory {
 
   static String sha256Hex(String value) {
     return CryptographicPrimitives.sha256HexUtf8(value);
+  }
+
+  private static String deterministicUuid(String value) {
+    return java.util.UUID.nameUUIDFromBytes(value.getBytes(StandardCharsets.UTF_8)).toString();
   }
 
   /** One generated posting draft plus the result-holding movement it closes. */

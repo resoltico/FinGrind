@@ -28,8 +28,6 @@ final class CliBookPostingPayloadMapper {
         reversedByPostingId,
         postingFact.journalEntry().effectiveDate().toString(),
         postingFact.provenance().recordedAt().toString(),
-        postingFact.provenance().requestProvenance().actorId().value(),
-        postingFact.provenance().requestProvenance().actorType().wireValue(),
         postingFact.provenance().requestProvenance().commandId().value(),
         postingFact.provenance().requestProvenance().idempotencyKey().value(),
         postingFact.provenance().requestProvenance().causationId().value(),
@@ -124,8 +122,8 @@ final class CliBookPostingPayloadMapper {
     return new CliBookQueryJsonModels.ApprovalPayload(
         approval.approvalId().value(),
         approval.approvalType().value(),
-        approval.approverId().value(),
-        approval.approverType().wireValue(),
+        approval.approverReference(),
+        approval.approverType(),
         approval.decision().wireValue(),
         approval.approvedAt().toString());
   }

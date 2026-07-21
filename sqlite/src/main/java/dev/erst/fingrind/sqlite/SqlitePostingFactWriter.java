@@ -37,30 +37,28 @@ final class SqlitePostingFactWriter {
           13, CanonicalTemporalText.formatLocalDate(postingFact.journalEntry().effectiveDate()));
       statement.bindText(
           14, CanonicalTemporalText.formatUtcInstant(postingFact.provenance().recordedAt()));
-      statement.bindText(15, requestProvenance.actorId().value());
-      statement.bindText(16, requestProvenance.actorType().wireValue());
-      statement.bindText(17, requestProvenance.commandId().value());
-      statement.bindText(18, requestProvenance.idempotencyKey().value());
-      statement.bindText(19, requestProvenance.causationId().value());
+      statement.bindText(15, requestProvenance.commandId().value());
+      statement.bindText(16, requestProvenance.idempotencyKey().value());
+      statement.bindText(17, requestProvenance.causationId().value());
       bindOptionalText(
           statement,
-          20,
+          18,
           requestProvenance.correlationId().map(value -> value.value()).orElse(null));
       bindOptionalText(
           statement,
-          21,
+          19,
           postingFact.postingLineage().reversalReason().map(value -> value.value()).orElse(null));
-      statement.bindText(22, postingFact.provenance().sourceChannel().wireValue());
+      statement.bindText(20, postingFact.provenance().sourceChannel().wireValue());
       bindOptionalText(
           statement,
-          23,
+          21,
           postingFact
               .postingLineage()
               .reversalReference()
               .map(reference -> reference.priorPostingId().value())
               .orElse(null));
-      statement.bindInt(24, requestFingerprint.version());
-      statement.bindText(25, requestFingerprint.sha256Hex());
+      statement.bindInt(22, requestFingerprint.version());
+      statement.bindText(23, requestFingerprint.sha256Hex());
       statement.step();
     }
     insertPostingSourceDocuments(activeDatabase, postingFact);
@@ -101,8 +99,8 @@ final class SqlitePostingFactWriter {
         statement.bindInt(2, index);
         statement.bindText(3, approval.approvalId().value());
         statement.bindText(4, approval.approvalType().value());
-        statement.bindText(5, approval.approverId().value());
-        statement.bindText(6, approval.approverType().wireValue());
+        statement.bindText(5, approval.approverReference());
+        statement.bindText(6, approval.approverType());
         statement.bindText(7, approval.decision().wireValue());
         statement.bindText(8, CanonicalTemporalText.formatUtcInstant(approval.approvedAt()));
         statement.step();

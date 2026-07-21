@@ -88,8 +88,6 @@ public final class ProtocolPostEntryFields {
   /** Returns provenance request fields in stable wire order. */
   public static List<String> provenanceFields() {
     return List.of(
-        Provenance.ACTOR_ID,
-        Provenance.ACTOR_TYPE,
         Provenance.COMMAND_ID,
         Provenance.IDEMPOTENCY_KEY,
         Provenance.CAUSATION_ID,
@@ -114,7 +112,7 @@ public final class ProtocolPostEntryFields {
     return List.of(
         Approval.APPROVAL_ID,
         Approval.APPROVAL_TYPE,
-        Approval.APPROVER_ID,
+        Approval.APPROVER_REFERENCE,
         Approval.APPROVER_TYPE,
         Approval.DECISION,
         Approval.APPROVED_AT);
@@ -184,8 +182,6 @@ public final class ProtocolPostEntryFields {
 
   /** Provenance request fields. */
   public static final class Provenance {
-    public static final String ACTOR_ID = "actorId";
-    public static final String ACTOR_TYPE = "actorType";
     public static final String COMMAND_ID = "commandId";
     public static final String IDEMPOTENCY_KEY = "idempotencyKey";
     public static final String CAUSATION_ID = "causationId";
@@ -218,7 +214,7 @@ public final class ProtocolPostEntryFields {
   public static final class Approval {
     public static final String APPROVAL_ID = "approvalId";
     public static final String APPROVAL_TYPE = "approvalType";
-    public static final String APPROVER_ID = "approverId";
+    public static final String APPROVER_REFERENCE = "approverReference";
     public static final String APPROVER_TYPE = "approverType";
     public static final String DECISION = "decision";
     public static final String APPROVED_AT = "approvedAt";

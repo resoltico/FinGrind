@@ -139,12 +139,6 @@ final class MachineContractDomainDescriptors {
     return new ContractResponse.AuditDescriptor(
         List.of(
             new ContractResponse.FieldDescriptor(
-                ProtocolPostEntryFields.Provenance.ACTOR_ID,
-                "Stable identifier of the actor that initiated the request."),
-            new ContractResponse.FieldDescriptor(
-                ProtocolPostEntryFields.Provenance.ACTOR_TYPE,
-                "Actor classification from the live actorType enum vocabulary."),
-            new ContractResponse.FieldDescriptor(
                 ProtocolPostEntryFields.Provenance.COMMAND_ID,
                 "Caller-generated command identity for this request."),
             new ContractResponse.FieldDescriptor(

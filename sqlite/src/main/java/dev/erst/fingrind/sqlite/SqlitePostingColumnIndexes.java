@@ -16,17 +16,15 @@ final class SqlitePostingColumnIndexes {
   static final int COL_ENTRY_UNIT_COST_MINOR = 11;
   static final int COL_EFFECTIVE_DATE = 12;
   static final int COL_RECORDED_AT = 13;
-  static final int COL_ACTOR_ID = 14;
-  static final int COL_ACTOR_TYPE = 15;
-  static final int COL_COMMAND_ID = 16;
-  static final int COL_IDEMPOTENCY_KEY = 17;
-  static final int COL_CAUSATION_ID = 18;
-  static final int COL_CORRELATION_ID = 19;
-  static final int COL_REASON = 20;
-  static final int COL_SOURCE_CHANNEL = 21;
-  static final int COL_PRIOR_POSTING_ID = 22;
-  static final int COL_REQUEST_FINGERPRINT_VERSION = 23;
-  static final int COL_REQUEST_FINGERPRINT_SHA256 = 24;
+  static final int COL_COMMAND_ID = 14;
+  static final int COL_IDEMPOTENCY_KEY = 15;
+  static final int COL_CAUSATION_ID = 16;
+  static final int COL_CORRELATION_ID = 17;
+  static final int COL_REASON = 18;
+  static final int COL_SOURCE_CHANNEL = 19;
+  static final int COL_PRIOR_POSTING_ID = 20;
+  static final int COL_REQUEST_FINGERPRINT_VERSION = 21;
+  static final int COL_REQUEST_FINGERPRINT_SHA256 = 22;
 
   static final int COL_LINE_ACCOUNT_CODE = 0;
   static final int COL_LINE_ENTRY_SIDE = 1;
@@ -39,7 +37,7 @@ final class SqlitePostingColumnIndexes {
 
   static final int COL_APPROVAL_ID = 0;
   static final int COL_APPROVAL_TYPE = 1;
-  static final int COL_APPROVER_ID = 2;
+  static final int COL_APPROVER_REFERENCE = 2;
   static final int COL_APPROVER_TYPE = 3;
   static final int COL_APPROVAL_DECISION = 4;
   static final int COL_APPROVED_AT = 5;

@@ -3,7 +3,6 @@ package dev.erst.fingrind.contract.discovery;
 import dev.erst.fingrind.contract.protocol.ProtocolPostEntryFields;
 import dev.erst.fingrind.contract.protocol.RequestSurfaceFacts;
 import dev.erst.fingrind.contract.protocol.SourceDocumentTypePolicyMode;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalType;
@@ -61,16 +60,17 @@ final class MachineContractPostEntryEvidenceFieldSpecs {
                 ApprovalType.pattern(),
                 ApprovalType.maxLength())),
         MachineContractFieldSpec.required(
-            ProtocolPostEntryFields.Approval.APPROVER_ID,
-            "Stable identifier of the approving actor retained with this approval fact.",
+            ProtocolPostEntryFields.Approval.APPROVER_REFERENCE,
+            "Stable external reference retained with this approval fact.",
             MachineContractScalarSchemas.nonBlankStringSchema(
-                "Stable identifier of the approving actor retained with this approval fact.")),
+                "Stable external reference retained with this approval fact.")),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.Approval.APPROVER_TYPE,
-            "Approver classification from the live actorType enum vocabulary.",
-            MachineContractScalarSchemas.enumStringSchema(
-                "Approver classification from the live actorType enum vocabulary.",
-                ActorType.wireValues())),
+            "Caller-authored approver classification token.",
+            MachineContractScalarSchemas.tokenStringSchema(
+                "Caller-authored approver classification token.",
+                ApprovalType.pattern(),
+                ApprovalType.maxLength())),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.Approval.DECISION,
             "Retained approval decision for this approval fact.",

@@ -23,12 +23,6 @@ final class CliPostingOutputRenderer {
     header.add(List.of("Effective date", postingFact.journalEntry().effectiveDate().toString()));
     header.add(
         List.of("Recorded at", CliTextDisplay.instant(postingFact.provenance().recordedAt())));
-    header.add(List.of("Actor id", postingFact.provenance().requestProvenance().actorId().value()));
-    header.add(
-        List.of(
-            "Actor type",
-            displayWireLabel(
-                postingFact.provenance().requestProvenance().actorType().wireValue())));
     header.add(
         List.of("Command id", postingFact.provenance().requestProvenance().commandId().value()));
     header.add(

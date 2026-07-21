@@ -255,8 +255,6 @@ public final class LedgerPlanFactMapper {
   private static List<BookWorkflowFact> provenanceFacts(CommittedProvenance provenance) {
     RequestProvenance requestProvenance = provenance.requestProvenance();
     List<BookWorkflowFact> facts = new ArrayList<>();
-    facts.add(BookWorkflowFact.text("actorId", requestProvenance.actorId().value()));
-    facts.add(BookWorkflowFact.text("actorType", requestProvenance.actorType().wireValue()));
     facts.add(BookWorkflowFact.text("commandId", requestProvenance.commandId().value()));
     facts.add(BookWorkflowFact.text("idempotencyKey", requestProvenance.idempotencyKey().value()));
     facts.add(BookWorkflowFact.text("causationId", requestProvenance.causationId().value()));
@@ -299,8 +297,8 @@ public final class LedgerPlanFactMapper {
     return List.of(
         BookWorkflowFact.text("approvalId", approval.approvalId().value()),
         BookWorkflowFact.text("approvalType", approval.approvalType().value()),
-        BookWorkflowFact.text("approverId", approval.approverId().value()),
-        BookWorkflowFact.text("approverType", approval.approverType().wireValue()),
+        BookWorkflowFact.text("approverReference", approval.approverReference()),
+        BookWorkflowFact.text("approverType", approval.approverType()),
         BookWorkflowFact.text("decision", approval.decision().wireValue()),
         BookWorkflowFact.text("approvedAt", approval.approvedAt().toString()));
   }

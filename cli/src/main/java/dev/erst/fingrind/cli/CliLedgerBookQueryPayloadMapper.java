@@ -47,8 +47,6 @@ final class CliLedgerBookQueryPayloadMapper {
         CliLedgerFactAccess.optionalTextFact(facts, "reversedByPostingId"),
         CliLedgerFactAccess.requiredTextFact(facts, "effectiveDate"),
         CliLedgerFactAccess.requiredTextFact(facts, "recordedAt"),
-        CliLedgerFactAccess.requiredTextFact(provenanceFacts, "actorId"),
-        CliLedgerFactAccess.requiredTextFact(provenanceFacts, "actorType"),
         CliLedgerFactAccess.requiredTextFact(provenanceFacts, "commandId"),
         CliLedgerFactAccess.requiredTextFact(provenanceFacts, "idempotencyKey"),
         CliLedgerFactAccess.requiredTextFact(provenanceFacts, "causationId"),
@@ -119,7 +117,7 @@ final class CliLedgerBookQueryPayloadMapper {
     return new CliBookQueryJsonModels.ApprovalPayload(
         CliLedgerFactAccess.requiredTextFact(facts, "approvalId"),
         CliLedgerFactAccess.requiredTextFact(facts, "approvalType"),
-        CliLedgerFactAccess.requiredTextFact(facts, "approverId"),
+        CliLedgerFactAccess.requiredTextFact(facts, "approverReference"),
         CliLedgerFactAccess.requiredTextFact(facts, "approverType"),
         CliLedgerFactAccess.requiredTextFact(facts, "decision"),
         CliLedgerFactAccess.requiredTextFact(facts, "approvedAt"));

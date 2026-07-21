@@ -10,7 +10,6 @@ import dev.erst.fingrind.contract.tax.TaxObligationFrequency;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -61,8 +60,6 @@ public interface ContractTemplates extends ContractPostingRequestTemplates {
   }
 
   public record ProvenanceTemplateDescriptor(
-      String actorId,
-      ActorType actorType,
       String commandId,
       String idempotencyKey,
       String causationId,
@@ -71,9 +68,7 @@ public interface ContractTemplates extends ContractPostingRequestTemplates {
     public ProvenanceTemplateDescriptor {
       var validated =
           ContractTemplateValidationSupport.validateProvenanceTemplate(
-              actorId, actorType, commandId, idempotencyKey, causationId, correlationId);
-      actorId = validated.actorId();
-      actorType = validated.actorType();
+              commandId, idempotencyKey, causationId, correlationId);
       commandId = validated.commandId();
       idempotencyKey = validated.idempotencyKey();
       causationId = validated.causationId();
@@ -110,18 +105,18 @@ public interface ContractTemplates extends ContractPostingRequestTemplates {
   public record ApprovalTemplateDescriptor(
       String approvalId,
       String approvalType,
-      String approverId,
-      ActorType approverType,
+      String approverReference,
+      String approverType,
       ApprovalDecision decision,
       String approvedAt)
       implements TemplateDescriptorType {
     public ApprovalTemplateDescriptor {
       var validated =
           ContractTemplateValidationSupport.validateApprovalTemplate(
-              approvalId, approvalType, approverId, approverType, decision, approvedAt);
+              approvalId, approvalType, approverReference, approverType, decision, approvedAt);
       approvalId = validated.approvalId();
       approvalType = validated.approvalType();
-      approverId = validated.approverId();
+      approverReference = validated.approverReference();
       approverType = validated.approverType();
       decision = validated.decision();
       approvedAt = validated.approvedAt();

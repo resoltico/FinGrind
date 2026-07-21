@@ -967,8 +967,6 @@ create table if not exists posting_fact (
         and substr(recorded_at, 15, 2) between '00' and '59'
         and substr(recorded_at, 18, 2) between '00' and '59'
     ),
-    actor_id text not null check (length(trim(actor_id)) > 0),
-    actor_type text not null check (actor_type in ('PERSON', 'SYSTEM', 'AGENT')),
     command_id text not null check (length(trim(command_id)) > 0),
     idempotency_key text not null check (
         length(idempotency_key) between 1 and 128
@@ -1169,10 +1167,8 @@ create trigger if not exists posting_fact_validate_generated_close_provenance_on
 before insert on posting_fact
 when new.posting_kind in ('INTERIM_RESULT_SWEEP', 'FISCAL_YEAR_CLOSE')
 begin
-    select raise(fail, 'generated close postings must be system-authored.')
-    where new.actor_type <> 'SYSTEM';
-    select raise(fail, 'generated close postings must use the system source channel.')
-    where new.source_channel <> 'SYSTEM';
+    select raise(fail, 'generated close postings must retain the initiating CLI source channel.')
+    where new.source_channel <> 'CLI';
     select raise(fail, 'generated close postings cannot reverse earlier postings.')
     where new.prior_posting_id is not null or new.reason is not null;
 end;
@@ -1238,8 +1234,12 @@ create table if not exists posting_approval (
         and approval_type glob '[A-Za-z0-9]*'
         and approval_type not glob '*[^A-Za-z0-9._:/-]*'
     ),
-    approver_id text not null check (length(trim(approver_id)) > 0),
-    approver_type text not null check (approver_type in ('PERSON', 'SYSTEM', 'AGENT')),
+    approver_reference text not null check (length(trim(approver_reference)) > 0),
+    approver_type text not null check (
+        length(approver_type) between 1 and 64
+        and approver_type glob '[A-Za-z0-9]*'
+        and approver_type not glob '*[^A-Za-z0-9._:/-]*'
+    ),
     decision text not null check (decision in ('APPROVED', 'REJECTED')),
     approved_at text not null check (
         (
@@ -2014,21 +2014,21 @@ begin
             posting_fact.posting_id = new.posting_id
             and posting_fact.posting_kind <> 'INTERIM_RESULT_SWEEP'
     );
-    select raise(fail, 'interim-result-sweep links must reference system-authored postings.')
+    select raise(fail, 'interim-result-sweep links must reference CLI-authorized postings.')
     where exists (
         select 1
         from posting_fact
         where
             posting_fact.posting_id = new.posting_id
-            and posting_fact.actor_type <> 'SYSTEM'
+            and posting_fact.source_channel <> 'CLI'
     );
-    select raise(fail, 'interim-result-sweep links must reference system-source postings.')
+    select raise(fail, 'interim-result-sweep links must reference CLI-authorized postings.')
     where exists (
         select 1
         from posting_fact
         where
             posting_fact.posting_id = new.posting_id
-            and posting_fact.source_channel <> 'SYSTEM'
+            and posting_fact.source_channel <> 'CLI'
     );
     select raise(
         fail,
@@ -2229,21 +2229,21 @@ begin
             posting_fact.posting_id = new.posting_id
             and posting_fact.posting_kind <> 'FISCAL_YEAR_CLOSE'
     );
-    select raise(fail, 'fiscal-year-close links must reference system-authored postings.')
+    select raise(fail, 'fiscal-year-close links must reference CLI-authorized postings.')
     where exists (
         select 1
         from posting_fact
         where
             posting_fact.posting_id = new.posting_id
-            and posting_fact.actor_type <> 'SYSTEM'
+            and posting_fact.source_channel <> 'CLI'
     );
-    select raise(fail, 'fiscal-year-close links must reference system-source postings.')
+    select raise(fail, 'fiscal-year-close links must reference CLI-authorized postings.')
     where exists (
         select 1
         from posting_fact
         where
             posting_fact.posting_id = new.posting_id
-            and posting_fact.source_channel <> 'SYSTEM'
+            and posting_fact.source_channel <> 'CLI'
     );
     select raise(
         fail,

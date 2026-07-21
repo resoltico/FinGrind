@@ -19,8 +19,6 @@ final class SqlitePostingReadWriteSql {
           entry_unit_cost_minor,
           effective_date,
           recorded_at,
-          actor_id,
-          actor_type,
           command_id,
           idempotency_key,
           causation_id,
@@ -93,7 +91,7 @@ final class SqlitePostingReadWriteSql {
       select
           approval_id,
           approval_type,
-          approver_id,
+          approver_reference,
           approver_type,
           decision,
           approved_at
@@ -129,8 +127,6 @@ final class SqlitePostingReadWriteSql {
           entry_unit_cost_minor,
           effective_date,
           recorded_at,
-          actor_id,
-          actor_type,
           command_id,
           idempotency_key,
           causation_id,
@@ -140,7 +136,7 @@ final class SqlitePostingReadWriteSql {
           prior_posting_id,
           request_fingerprint_version,
           request_fingerprint_sha256
-      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       """;
 
   static final String INSERT_JOURNAL_LINE =
@@ -173,7 +169,7 @@ final class SqlitePostingReadWriteSql {
           approval_order,
           approval_id,
           approval_type,
-          approver_id,
+          approver_reference,
           approver_type,
           decision,
           approved_at

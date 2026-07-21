@@ -2,7 +2,6 @@ package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.JournalLine;
@@ -14,7 +13,6 @@ final class MachineContractPostEntryVariantTemplates {
   private static final String SAMPLE_EFFECTIVE_DATE = "2026-01-15";
   private static final String SAMPLE_SOURCE_DOCUMENT_ID = ScaffoldPlaceholders.SOURCE_DOCUMENT_ID;
   private static final String SAMPLE_DOCUMENT_DATE = "2026-01-15";
-  private static final String SAMPLE_ACTOR_ID = ScaffoldPlaceholders.ACTOR_ID;
   private static final String SAMPLE_COMMAND_ID = ScaffoldPlaceholders.COMMAND_ID;
   private static final String SAMPLE_IDEMPOTENCY_KEY = ScaffoldPlaceholders.IDEMPOTENCY_KEY;
   private static final String SAMPLE_CAUSATION_ID = ScaffoldPlaceholders.CAUSATION_ID;
@@ -279,8 +277,6 @@ final class MachineContractPostEntryVariantTemplates {
 
   static ContractTemplates.ProvenanceTemplateDescriptor provenanceTemplate() {
     return new ContractTemplates.ProvenanceTemplateDescriptor(
-        SAMPLE_ACTOR_ID,
-        ActorType.PERSON,
         SAMPLE_COMMAND_ID,
         SAMPLE_IDEMPOTENCY_KEY,
         SAMPLE_CAUSATION_ID,

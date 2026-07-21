@@ -111,8 +111,7 @@ final class SqlitePostingIntegritySql {
         on posting_fact.posting_id = interim_result_sweep_posting.posting_id
       where
           posting_fact.posting_kind <> 'INTERIM_RESULT_SWEEP'
-          or posting_fact.actor_type <> 'SYSTEM'
-          or posting_fact.source_channel <> 'SYSTEM'
+          or posting_fact.source_channel <> 'CLI'
           or posting_fact.effective_date <> interim_result_sweep.effective_date_to
       limit 1
       """;
@@ -139,8 +138,7 @@ final class SqlitePostingIntegritySql {
         on posting_fact.posting_id = fiscal_year_close_posting.posting_id
       where
           posting_fact.posting_kind <> 'FISCAL_YEAR_CLOSE'
-          or posting_fact.actor_type <> 'SYSTEM'
-          or posting_fact.source_channel <> 'SYSTEM'
+          or posting_fact.source_channel <> 'CLI'
           or posting_fact.effective_date <> fiscal_year_close.effective_date_to
       limit 1
       """;
