@@ -238,6 +238,82 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
                     List.of())));
   }
 
+  @Test
+  void responseWriter_coversAttestationTextJsonAndUnsupportedCsvWithoutChangingResults() {
+    CliBookReadResponseWriter writer =
+        new CliBookReadResponseWriter(outputChannel(new ByteArrayOutputStream()), fixedClock());
+    VerifyBookAttestationResult.Valid verification =
+        new VerifyBookAttestationResult.Valid(
+            BOOK_ID, java.math.BigInteger.TWO, OPERATION_HEAD, List.of("review this chain"));
+    AttestationReviewResult review =
+        new AttestationReviewResult(BOOK_ID, java.math.BigInteger.TWO, List.of("retain receipt"));
+    ExportAttestationReceiptResult exported =
+        new ExportAttestationReceiptResult(
+            Path.of("receipts", "current.fgr"),
+            BOOK_ID,
+            java.math.BigInteger.TWO,
+            OPERATION_HEAD,
+            List.of("store independently"));
+    VerifyAttestationReceiptResult.Valid receipt =
+        new VerifyAttestationReceiptResult.Valid(
+            BOOK_ID, java.math.BigInteger.TWO, List.of("receipt matches"));
+
+    ByteArrayOutputStream verificationText = new ByteArrayOutputStream();
+    new CliBookReadResponseWriter(outputChannel(verificationText), fixedClock())
+        .writeVerifyBookAttestation(
+            verification, dev.erst.fingrind.contract.protocol.OutputMode.TEXT);
+    assertTrue(
+        verificationText
+            .toString(StandardCharsets.UTF_8)
+            .contains("Book Attestation Valid — Review Required"));
+
+    ByteArrayOutputStream reviewText = new ByteArrayOutputStream();
+    new CliBookReadResponseWriter(outputChannel(reviewText), fixedClock())
+        .writeAttestationReview(review, dev.erst.fingrind.contract.protocol.OutputMode.TEXT);
+    assertTrue(reviewText.toString(StandardCharsets.UTF_8).contains("retain receipt"));
+
+    ByteArrayOutputStream exportedJson = new ByteArrayOutputStream();
+    new CliBookReadResponseWriter(outputChannel(exportedJson), fixedClock())
+        .writeExportAttestationReceipt(
+            exported, dev.erst.fingrind.contract.protocol.OutputMode.JSON);
+    assertJsonContains(exportedJson, "\"receiptFile\"");
+    assertJsonContains(exportedJson, "\"store independently\"");
+
+    ByteArrayOutputStream exportedText = new ByteArrayOutputStream();
+    new CliBookReadResponseWriter(outputChannel(exportedText), fixedClock())
+        .writeExportAttestationReceipt(
+            exported, dev.erst.fingrind.contract.protocol.OutputMode.TEXT);
+    assertTrue(
+        exportedText.toString(StandardCharsets.UTF_8).contains("Attestation Receipt Exported"));
+
+    ByteArrayOutputStream receiptText = new ByteArrayOutputStream();
+    new CliBookReadResponseWriter(outputChannel(receiptText), fixedClock())
+        .writeVerifyAttestationReceipt(
+            receipt, dev.erst.fingrind.contract.protocol.OutputMode.TEXT);
+    assertTrue(receiptText.toString(StandardCharsets.UTF_8).contains("Attestation Receipt Valid"));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            writer.writeVerifyBookAttestation(
+                verification, dev.erst.fingrind.contract.protocol.OutputMode.CSV));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            writer.writeAttestationReview(
+                review, dev.erst.fingrind.contract.protocol.OutputMode.CSV));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            writer.writeExportAttestationReceipt(
+                exported, dev.erst.fingrind.contract.protocol.OutputMode.CSV));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            writer.writeVerifyAttestationReceipt(
+                receipt, dev.erst.fingrind.contract.protocol.OutputMode.CSV));
+  }
+
   private static void applyCredential(
       CliAttestationCredentialArguments credentials, String option, String value) {
     ListIterator<String> iterator = List.of(value).listIterator();
@@ -250,6 +326,10 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
         utf8PrintStream(outputStream),
         fixedClock(),
         workflow);
+  }
+
+  private static CliOutputChannel outputChannel(ByteArrayOutputStream outputStream) {
+    return new CliOutputChannel(utf8PrintStream(outputStream));
   }
 
   private static String[] command(String operation, String... tail) {
