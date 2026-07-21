@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
+import dev.erst.fingrind.core.attestation.AttestationOperationPreimages;
+import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingRequestPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.maintenance.BackupAcknowledgementConflictException;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
@@ -19,6 +21,7 @@ import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import dev.erst.fingrind.executor.spi.StagedRestoredBookPair;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -90,6 +93,38 @@ class MaintenanceValueContractsTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> AttestedProtectedBookMaintenanceStore.require(new UnattestedStore()));
+  }
+
+  @Test
+  void rejectsAggregateAttestationWhenTheTransactionCannotPersistIt() {
+    AttestationPlanOperationAuthorizer authorizer =
+        new AttestationPlanOperationAuthorizer(
+            ignored -> {
+              throw new AssertionError("The aggregate signer must not be invoked.");
+            });
+    authorizer.enterStep(0);
+    authorizer.collectChildMutation(
+        "declare-account", new AttestationOperationPreimages(new byte[] {1}, new byte[] {2}));
+
+    assertThrows(
+        UnsupportedOperationException.class,
+        () ->
+            new UnattestedLedgerPlanTransaction()
+                .appendPlanAttestation(
+                    "plan-id", Instant.parse("2026-07-21T00:00:00Z"), authorizer));
+  }
+
+  /** Exercises the default transaction policy without introducing a persistence implementation. */
+  private static final class UnattestedLedgerPlanTransaction
+      implements dev.erst.fingrind.executor.spi.LedgerPlanTransaction {
+    @Override
+    public void beginLedgerPlanTransaction() {}
+
+    @Override
+    public void commitLedgerPlanTransaction() {}
+
+    @Override
+    public void rollbackLedgerPlanTransaction() {}
   }
 
   /**
