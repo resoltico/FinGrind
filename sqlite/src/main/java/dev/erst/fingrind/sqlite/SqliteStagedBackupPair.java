@@ -112,9 +112,10 @@ final class SqliteStagedBackupPair implements StagedBackupPair {
     try (SqliteBookPassphrase ignored = takeBackupPassphrase()) {
       stagedBackupFile.requireIntactFor(finalBackupFilePath);
       stagedBackupBookKeyFile.requireIntactFor(finalBackupBookKeyFilePath);
-      publishBackupKey();
+      publication.publishKey(
+          stagedBackupBookKeyFile, finalBackupBookKeyFilePath, finalBackupBookKeyFilePath);
       backupKeyFilePublished = true;
-      publishBackupFile();
+      publication.publishBook(stagedBackupFile, finalBackupFilePath);
       backupFilePublished = true;
     } catch (SqliteGeneratedSecretTargetOccupiedException exception) {
       finishAfterFailedPublication();
@@ -204,7 +205,7 @@ final class SqliteStagedBackupPair implements StagedBackupPair {
       try {
         stagedBackupBookKeyFile.discard();
       } finally {
-        closeReservations();
+        publication.closeReservations();
       }
     }
   }
@@ -229,7 +230,7 @@ final class SqliteStagedBackupPair implements StagedBackupPair {
       try {
         stagedBackupBookKeyFile.discard();
       } finally {
-        closeReservations();
+        publication.closeReservations();
       }
     }
   }
@@ -244,18 +245,5 @@ final class SqliteStagedBackupPair implements StagedBackupPair {
           cleanupFailure);
     }
     finished = true;
-  }
-
-  private void publishBackupKey() throws IOException {
-    publication.publishKey(
-        stagedBackupBookKeyFile, finalBackupBookKeyFilePath, finalBackupBookKeyFilePath);
-  }
-
-  private void publishBackupFile() throws IOException {
-    publication.publishBook(stagedBackupFile, finalBackupFilePath);
-  }
-
-  private void closeReservations() {
-    publication.closeReservations();
   }
 }

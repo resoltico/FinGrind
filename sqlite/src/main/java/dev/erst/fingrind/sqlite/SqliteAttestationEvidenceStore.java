@@ -262,6 +262,7 @@ final class SqliteAttestationEvidenceStore {
     return java.util.HexFormat.of().formatHex(requireHead(bytes, "operationHead"));
   }
 
+  /** Immutable verified operation-chain head read from the persisted evidence table. */
   private static final class Head {
     private final byte[] bytes;
     private final BigInteger order;

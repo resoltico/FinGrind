@@ -222,28 +222,19 @@ public final class SqliteProtectedBookMaintenanceStore
     try {
       SqliteProtectedBookStagingFiles.requireRegularNonSymlinkFile(checkedArtifactPath);
       byte[] artifact = Files.readAllBytes(checkedArtifactPath);
-      SqliteOwnedStagedArtifact snapshotStage =
-          SqliteOwnedStagedArtifact.create(checkedArtifactPath, ".artifact-snapshot-", ".sqlite");
-      SqliteVerifiedBook[] snapshotBook = new SqliteVerifiedBook[1];
-      try {
+      try (SqliteVerifiedBackupSnapshot snapshot =
+          new SqliteVerifiedBackupSnapshot(
+              SqliteOwnedStagedArtifact.create(
+                  checkedArtifactPath, ".artifact-snapshot-", ".sqlite"))) {
         AttestationArtifactSnapshotReader reader =
-            snapshot -> {
-              writeSnapshot(snapshotStage.stagedPath(), snapshot);
-              snapshotBook[0] = openVerifiedSnapshot(snapshotStage.stagedPath(), checkedKeyPath);
-              return loadAttestationEvidence(snapshotBook[0]);
+            artifactSnapshot -> {
+              writeSnapshot(snapshot.stagedPath(), artifactSnapshot);
+              snapshot.attachBook(openVerifiedSnapshot(snapshot.stagedPath(), checkedKeyPath));
+              return loadAttestationEvidence(snapshot.book());
             };
         AttestationBackupArtifactVerification verification =
             AttestationBackupArtifact.verify(artifact, reader);
-        return new SqliteVerifiedBackupArtifact(snapshotStage, snapshotBook[0], verification);
-      } catch (RuntimeException exception) {
-        try {
-          if (snapshotBook[0] != null) {
-            snapshotBook[0].close();
-          }
-        } finally {
-          snapshotStage.discard();
-        }
-        throw exception;
+        return snapshot.transfer(verification);
       }
     } catch (java.io.IOException exception) {
       throw new IllegalStateException("Failed to read the selected backup artifact.", exception);
