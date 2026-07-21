@@ -2022,14 +2022,6 @@ begin
             posting_fact.posting_id = new.posting_id
             and posting_fact.source_channel <> 'SYSTEM'
     );
-    select raise(fail, 'interim-result-sweep links must reference system-generated postings.')
-    where exists (
-        select 1
-        from posting_fact
-        where
-            posting_fact.posting_id = new.posting_id
-            and posting_fact.source_channel <> 'SYSTEM'
-    );
     select raise(
         fail,
         'interim-result-sweep posting effective date must match the swept-through date.'
@@ -2228,14 +2220,6 @@ begin
         where
             posting_fact.posting_id = new.posting_id
             and posting_fact.posting_kind <> 'FISCAL_YEAR_CLOSE'
-    );
-    select raise(fail, 'fiscal-year-close links must reference system-generated postings.')
-    where exists (
-        select 1
-        from posting_fact
-        where
-            posting_fact.posting_id = new.posting_id
-            and posting_fact.source_channel <> 'SYSTEM'
     );
     select raise(fail, 'fiscal-year-close links must reference system-generated postings.')
     where exists (

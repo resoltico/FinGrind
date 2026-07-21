@@ -20,23 +20,31 @@ class SqliteCommittedRowImmutabilityTest extends SqlitePostingFactStoreTestSuppo
 
       assertAppendOnlyViolation(
           requireStoreDatabase(postingFactStore),
-          "update posting_fact set actor_id = 'mutated' where posting_id = 'posting-1'",
+          """
+          update posting_fact
+          set command_id = '019e26ff-0000-7002-8000-000000000009'
+          where posting_id = '%s'
+          """
+              .formatted(TestPostingIds.valueForLabel("posting-1")),
           "posting_fact");
       assertAppendOnlyViolation(
           requireStoreDatabase(postingFactStore),
-          "delete from posting_fact where posting_id = 'posting-1'",
+          "delete from posting_fact where posting_id = '%s'"
+              .formatted(TestPostingIds.valueForLabel("posting-1")),
           "posting_fact");
       assertAppendOnlyViolation(
           requireStoreDatabase(postingFactStore),
           """
           update journal_line
           set amount_minor = 999
-          where posting_id = 'posting-1' and line_order = 0
-          """,
+          where posting_id = '%s' and line_order = 0
+          """
+              .formatted(TestPostingIds.valueForLabel("posting-1")),
           "journal_line");
       assertAppendOnlyViolation(
           requireStoreDatabase(postingFactStore),
-          "delete from journal_line where posting_id = 'posting-1' and line_order = 0",
+          "delete from journal_line where posting_id = '%s' and line_order = 0"
+              .formatted(TestPostingIds.valueForLabel("posting-1")),
           "journal_line");
       assertAppendOnlyViolation(
           requireStoreDatabase(postingFactStore),

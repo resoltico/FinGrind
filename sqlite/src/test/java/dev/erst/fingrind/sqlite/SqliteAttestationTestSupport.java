@@ -45,10 +45,16 @@ final class SqliteAttestationTestSupport {
     };
   }
 
-  private record KeyMaterial(
-      AttestationPublicCredential publicCredential, Path encryptedKeyPath, char[] passphrase) {
-    private KeyMaterial {
-      passphrase = passphrase.clone();
+  private static final class KeyMaterial {
+    private final AttestationPublicCredential publicCredential;
+    private final Path encryptedKeyPath;
+    private final char[] passphrase;
+
+    private KeyMaterial(
+        AttestationPublicCredential publicCredential, Path encryptedKeyPath, char[] passphrase) {
+      this.publicCredential = publicCredential;
+      this.encryptedKeyPath = encryptedKeyPath;
+      this.passphrase = passphrase.clone();
     }
 
     private static KeyMaterial create() {

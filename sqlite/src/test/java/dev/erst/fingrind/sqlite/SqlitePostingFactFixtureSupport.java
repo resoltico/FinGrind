@@ -646,7 +646,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
         )
         """
             .formatted(
-                postingId,
+                TestPostingIds.valueForLabel(postingId),
                 postingOriginKind,
                 idempotencyKey,
                 SourceChannel.CLI.wireValue(),
