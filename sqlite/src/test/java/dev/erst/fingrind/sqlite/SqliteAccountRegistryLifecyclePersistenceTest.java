@@ -27,6 +27,7 @@ import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
+import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryLifecycleRejection;
@@ -324,6 +325,16 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
       throw new UncheckedIOException(exception);
     }
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(blankBookPath))) {
+      assertEquals(
+          new dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Rejected(
+              new BookkeepingAdministrationRejection.BookNotInitialized()),
+          declareAccount(
+              postingFactStore,
+              accountCode,
+              new AccountName("Cash reserve"),
+              AccountType.ASSET,
+              NormalBalance.DEBIT,
+              DECLARED_AT));
       assertEquals(
           new AccountAmendmentOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),

@@ -8,10 +8,14 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.NormalBalance;
+import dev.erst.fingrind.core.attestation.AttestationEffectMutation;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.time.Instant;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
@@ -102,5 +106,66 @@ class SqliteStoreAdministrationMutationOperationsCoverageTest {
     assertTrue(
         Objects.requireNonNullElse(rejected.getMessage(), "")
             .contains("Rejected account declarations do not append audit"));
+  }
+
+  @Test
+  void declarationMutation_mapsPersistedAccountChangesAndRejectsNonMutatingOutcomes() {
+    RegisteredAccount account =
+        SqlitePostingFactFixtureSupport.registeredAccount(
+            new AccountCode("3000"),
+            new AccountName("Retained earnings"),
+            AccountType.EQUITY,
+            NormalBalance.CREDIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+
+    assertEquals(
+        AttestationEffectMutation.CREATE,
+        invokeDeclarationMutation(new AccountDeclarationOutcome.Declared(account)));
+    assertEquals(
+        AttestationEffectMutation.REACTIVATE,
+        invokeDeclarationMutation(new AccountDeclarationOutcome.Reactivated(account)));
+    assertEquals(
+        AttestationEffectMutation.AMEND,
+        invokeDeclarationMutation(new AccountDeclarationOutcome.Renamed(account)));
+
+    assertEquals(
+        "Unchanged account declarations do not append attestation.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> invokeDeclarationMutation(new AccountDeclarationOutcome.Unchanged(account)))
+            .getMessage());
+    assertTrue(
+        Objects.requireNonNullElse(
+                assertThrows(
+                        IllegalArgumentException.class,
+                        () ->
+                            invokeDeclarationMutation(
+                                new AccountDeclarationOutcome.Rejected(
+                                    new BookkeepingAdministrationRejection.BookNotInitialized())))
+                    .getMessage(),
+                "")
+            .contains("Rejected account declarations do not append attestation"));
+  }
+
+  private static AttestationEffectMutation invokeDeclarationMutation(
+      AccountDeclarationOutcome outcome) {
+    try {
+      MethodHandle declarationMutation =
+          MethodHandles.privateLookupIn(
+                  SqliteStoreAccountRegistryMutationOperations.class, MethodHandles.lookup())
+              .findStatic(
+                  SqliteStoreAccountRegistryMutationOperations.class,
+                  "declarationMutation",
+                  MethodType.methodType(
+                      AttestationEffectMutation.class, AccountDeclarationOutcome.class));
+      return (AttestationEffectMutation) declarationMutation.invoke(outcome);
+    } catch (RuntimeException exception) {
+      throw exception;
+    } catch (Error error) {
+      throw error;
+    } catch (Throwable throwable) {
+      throw new AssertionError("Failed to invoke account declaration-mutation mapping.", throwable);
+    }
   }
 }
