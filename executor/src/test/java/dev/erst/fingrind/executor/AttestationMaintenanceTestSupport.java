@@ -148,6 +148,10 @@ final class AttestationMaintenanceTestSupport {
       return evidenceFor(liveBook);
     }
 
+    List<AttestationEvidence> restoredEvidence() {
+      return evidenceFor(restoredBook);
+    }
+
     @Override
     public Path normalize(Path path, String argumentName) {
       Objects.requireNonNull(argumentName, "argumentName");
