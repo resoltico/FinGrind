@@ -70,6 +70,40 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
   }
 
   @Test
+  void stagedBackupPair_refusesArtifactsThatDoNotStrictlyExtendItsExactSnapshot() throws Exception {
+    Path stagedBackupPath = writeArtifact("backup-invalid-seal/staged.sqlite", "encrypted backup");
+    Path stagedKeyPath = writeArtifact("backup-invalid-seal/staged.key", "backup key");
+    Path finalBackupPath = tempDirectory.resolve("backup-invalid-seal").resolve("backup.sqlite");
+    Path finalKeyPath = tempDirectory.resolve("backup-invalid-seal").resolve("backup.key");
+
+    try (SqliteBookPassphrase passphrase = testPassphrase();
+        SqliteStagedBackupPair stagedPair =
+            SqliteStagedBackupPairFactory.create(
+                SqliteOwnedStagedArtifact.recordExisting(finalBackupPath, stagedBackupPath),
+                finalBackupPath,
+                SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath),
+                finalKeyPath,
+                passphrase,
+                VERIFICATION_SUPPORT)) {
+      byte[] snapshot = stagedPair.snapshot();
+      assertEquals(
+          "Backup artifact must begin with the exact staged encrypted snapshot.",
+          assertThrows(IllegalArgumentException.class, () -> stagedPair.sealArtifact(snapshot))
+              .getMessage());
+
+      byte[] alteredPrefix = Arrays.copyOf(snapshot, snapshot.length + 1);
+      alteredPrefix[0] ^= 1;
+      assertEquals(
+          "Backup artifact must begin with the exact staged encrypted snapshot.",
+          assertThrows(IllegalArgumentException.class, () -> stagedPair.sealArtifact(alteredPrefix))
+              .getMessage());
+    }
+
+    assertFalse(Files.exists(stagedBackupPath));
+    assertFalse(Files.exists(stagedKeyPath));
+  }
+
+  @Test
   void stagedBackupPair_rejectsAnOccupiedGeneratedKeyTargetAndCleansItsStage() throws Exception {
     Path stagedBackupPath = writeArtifact("backup-key-collision/staged.sqlite", "backup");
     Path stagedKeyPath = writeArtifact("backup-key-collision/staged.key", "key");
