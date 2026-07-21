@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.executor.maintenance.AttestedProtectedBookLifecycleWorkflow;
+import dev.erst.fingrind.executor.maintenance.BackupAcknowledgementConflictException;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
@@ -147,6 +148,15 @@ class AttestedProtectedBookWorkflowFailureTest {
         credential,
         BACKUP_ID,
         ProtectedBookMaintenanceRejection.ArtifactVerificationFailed.class);
+
+    AttestationMaintenanceTestSupport.Store conflict =
+        store(credential, BackupArtifactPairState.ABSENT);
+    conflict.setAppendFailure(new BackupAcknowledgementConflictException(BACKUP_ID));
+    assertBackupRejection(
+        conflict,
+        access,
+        credential,
+        ProtectedBookMaintenanceRejection.BackupAcknowledgementConflict.class);
   }
 
   @Test
@@ -190,6 +200,86 @@ class AttestedProtectedBookWorkflowFailureTest {
               accepted(workflow(rekeyStore).rekeyBook(access, rekeyPath(), session)));
       assertInstanceOf(
           ProtectedBookMaintenanceRejection.ArtifactVerificationFailed.class, rejected.rejection());
+    }
+  }
+
+  @Test
+  void mapsRestoreAndRekeyPublicationAndStagingFailuresToLocalFailures() throws IOException {
+    AttestationMaintenanceTestSupport.CredentialFixture credential = credential();
+    ProtectedBookAccess access = access(credential);
+
+    AttestationMaintenanceTestSupport.Store rejectedRestorePublication =
+        store(credential, BackupArtifactPairState.ABSENT);
+    rejectedRestorePublication.setPrepareFailure(
+        new ProtectedBookMaintenanceRejectionException(
+            new ProtectedBookMaintenanceRejection.BookDestinationOccupied(bookPath())));
+    try (var session = credential.openSession()) {
+      ProtectedBookRestoreOutcome.Rejected rejected =
+          assertInstanceOf(
+              ProtectedBookRestoreOutcome.Rejected.class,
+              accepted(
+                  workflow(rejectedRestorePublication)
+                      .restoreBook(
+                          temporaryDirectory.resolve("restored/book.sqlite"),
+                          temporaryDirectory.resolve("restored/book.key"),
+                          backupPath(),
+                          backupKeyPath(),
+                          session)));
+      assertInstanceOf(
+          ProtectedBookMaintenanceRejection.BookDestinationOccupied.class, rejected.rejection());
+    }
+
+    AttestationMaintenanceTestSupport.Store failedRestorePublication =
+        store(credential, BackupArtifactPairState.ABSENT);
+    failedRestorePublication.setPrepareFailure(
+        new IllegalStateException("restore staging unavailable"));
+    try (var session = credential.openSession()) {
+      assertInstanceOf(
+          MaintenanceDecision.Failed.class,
+          workflow(failedRestorePublication)
+              .restoreBook(
+                  temporaryDirectory.resolve("restored/book.sqlite"),
+                  temporaryDirectory.resolve("restored/book.key"),
+                  backupPath(),
+                  backupKeyPath(),
+                  session));
+    }
+
+    AttestationMaintenanceTestSupport.Store failedRestoreStaging =
+        store(credential, BackupArtifactPairState.ABSENT);
+    assertInstanceOf(
+        ProtectedBookBackupOutcome.BackedUp.class,
+        accepted(backup(failedRestoreStaging, access, credential)));
+    failedRestoreStaging.setStagedRestore(MaintenanceDecision.failed(storageFailure()));
+    try (var session = credential.openSession()) {
+      assertInstanceOf(
+          MaintenanceDecision.Failed.class,
+          workflow(failedRestoreStaging)
+              .restoreBook(
+                  temporaryDirectory.resolve("restored/book.sqlite"),
+                  temporaryDirectory.resolve("restored/book.key"),
+                  backupPath(),
+                  backupKeyPath(),
+                  session));
+    }
+
+    AttestationMaintenanceTestSupport.Store failedRekeyPublication =
+        store(credential, BackupArtifactPairState.ABSENT);
+    failedRekeyPublication.setPrepareFailure(
+        new IllegalStateException("rekey staging unavailable"));
+    try (var session = credential.openSession()) {
+      assertInstanceOf(
+          MaintenanceDecision.Failed.class,
+          workflow(failedRekeyPublication).rekeyBook(access, rekeyPath(), session));
+    }
+
+    AttestationMaintenanceTestSupport.Store failedRekeyStaging =
+        store(credential, BackupArtifactPairState.ABSENT);
+    failedRekeyStaging.setStagedRestore(MaintenanceDecision.failed(storageFailure()));
+    try (var session = credential.openSession()) {
+      assertInstanceOf(
+          MaintenanceDecision.Failed.class,
+          workflow(failedRekeyStaging).rekeyBook(access, rekeyPath(), session));
     }
   }
 
