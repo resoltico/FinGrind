@@ -58,9 +58,26 @@ final class AttestationAccountTaxonomyPreimageProjection {
       Optional<String> profitAndLoss,
       Optional<String> cashFlowAsset) {
     appendClassification(
-        facts, recordType, snapshot, mutation, "financial-position", financialPosition);
-    appendClassification(facts, recordType, snapshot, mutation, "profit-and-loss", profitAndLoss);
-    appendClassification(facts, recordType, snapshot, mutation, "cash-flow-asset", cashFlowAsset);
+        facts,
+        recordType,
+        snapshot,
+        mutation,
+        ClassificationFamily.FINANCIAL_POSITION.wireToken(),
+        financialPosition);
+    appendClassification(
+        facts,
+        recordType,
+        snapshot,
+        mutation,
+        ClassificationFamily.PROFIT_AND_LOSS.wireToken(),
+        profitAndLoss);
+    appendClassification(
+        facts,
+        recordType,
+        snapshot,
+        mutation,
+        ClassificationFamily.CASH_FLOW_ASSET.wireToken(),
+        cashFlowAsset);
   }
 
   private static void appendClassification(
@@ -112,5 +129,16 @@ final class AttestationAccountTaxonomyPreimageProjection {
         .wireValue()
         .toLowerCase(java.util.Locale.ROOT)
         .replace('_', '-');
+  }
+
+  /** Closed taxonomy-family discriminator vocabulary for account-attestation facts. */
+  private enum ClassificationFamily {
+    FINANCIAL_POSITION,
+    PROFIT_AND_LOSS,
+    CASH_FLOW_ASSET;
+
+    String wireToken() {
+      return name().toLowerCase(java.util.Locale.ROOT).replace('_', '-');
+    }
   }
 }

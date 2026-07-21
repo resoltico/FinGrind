@@ -114,6 +114,11 @@ class LedgerPlanContractTest {
     assertTrue(LedgerStepKind.RECORD_OWNER_WITHDRAWAL.commitsPosting());
     assertTrue(LedgerStepKind.POST_ENTRY.commitsPosting());
     assertFalse(LedgerStepKind.ACCOUNT_BALANCE.commitsPosting());
+    assertTrue(LedgerStepKind.DECLARE_ACCOUNT.mutatesBook());
+    assertTrue(LedgerStepKind.DECLARE_TAX_REGISTRATION.mutatesBook());
+    assertTrue(LedgerStepKind.RECORD_OWNER_WITHDRAWAL.mutatesBook());
+    assertFalse(LedgerStepKind.PREFLIGHT_ENTRY.mutatesBook());
+    assertFalse(LedgerStepKind.ACCOUNT_BALANCE.mutatesBook());
     assertEquals(
         LedgerStepKind.POST_ENTRY,
         LedgerStepKind.forCommittedEntryKind(BookkeepingEntryKind.DIRECT_JOURNAL));
