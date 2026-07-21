@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
@@ -144,6 +145,61 @@ class SqliteTaxRegistrationFieldTest extends SqlitePostingFactStoreTestSupport {
       assertTrue(java.nio.file.Files.exists(initializedButUnopenedPath));
     }
   }
+
+  @Test
+  void taxRegistrationReader_rejectsDuplicateSingletonLookupRows() {
+    Path bookPath = tempDirectory.resolve("tax-registration-duplicate-lookup.sqlite");
+    try (SqlitePostingFactStore store = openStore(bookAccess(bookPath));
+        SqlitePostingSession session = SqliteCapabilitySessions.posting(store)) {
+      session.openAttestedBook(
+          CLOCK.instant(),
+          bookIdentity(),
+          List.of(),
+          SqliteAttestationTestSupport.genesis(bookIdentity(), CLOCK.instant()));
+      declareTaxControlAccounts(session);
+      TaxRegistrationId taxRegistrationId = new TaxRegistrationId("vat-lv");
+      assertInstanceOf(
+          DeclareTaxRegistrationResult.Declared.class,
+          session.declareTaxRegistration(
+              registration("vat-lv", "Latvia VAT", "LV", "vat-standard-sale"),
+              CLOCK.instant(),
+              SqliteAttestationTestSupport.authorizer()));
+
+      SqliteNativeDatabase database = requireStoreDatabase(store);
+      try (SqliteStatementRedirectingDatabase duplicateLookupDatabase =
+          new SqliteStatementRedirectingDatabase(
+              database,
+              sql ->
+                  database.prepare(
+                      SqliteTaxSql.FIND_TAX_REGISTRATION_BY_ID.equals(sql)
+                          ? DUPLICATE_TAX_REGISTRATION_LOOKUP_SQL
+                          : sql))) {
+        assertEquals(
+            "SQLite tax-registration query returned more than one row for vat-lv.",
+            assertThrows(
+                    IllegalStateException.class,
+                    () ->
+                        SqliteTaxStatementQueries.findOneTaxRegistration(
+                            duplicateLookupDatabase, taxRegistrationId))
+                .getMessage());
+      }
+    }
+  }
+
+  private static final String DUPLICATE_TAX_REGISTRATION_LOOKUP_SQL =
+      """
+      select tax_registration_id, tax_registration_name, jurisdiction, registration_number,
+             payable_account_code, recoverable_account_code, obligation_frequency,
+             due_days_after_period_end, declared_at
+      from tax_registration
+      where tax_registration_id = ?1
+      union all
+      select tax_registration_id, tax_registration_name, jurisdiction, registration_number,
+             payable_account_code, recoverable_account_code, obligation_frequency,
+             due_days_after_period_end, declared_at
+      from tax_registration
+      where tax_registration_id = ?1
+      """;
 
   private static void declareTaxControlAccounts(SqlitePostingSession session) {
     declare(
