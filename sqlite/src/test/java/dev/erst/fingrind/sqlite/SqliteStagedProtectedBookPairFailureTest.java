@@ -20,6 +20,7 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Objects;
@@ -28,6 +29,45 @@ import org.junit.jupiter.api.Test;
 
 /** Exercises staged backup and restore cleanup when publication cannot complete atomically. */
 class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublicationTestSupport {
+
+  @Test
+  void stagedBackupPair_sealsAnExactSnapshotAndRefusesFurtherSnapshotAccess() throws Exception {
+    Path stagedBackupPath = writeArtifact("backup-sealed/staged.sqlite", "encrypted backup");
+    Path stagedKeyPath = writeArtifact("backup-sealed/staged.key", "backup key");
+    Path finalBackupPath = tempDirectory.resolve("backup-sealed").resolve("backup.sqlite");
+    Path finalKeyPath = tempDirectory.resolve("backup-sealed").resolve("backup.key");
+
+    try (SqliteBookPassphrase passphrase = testPassphrase();
+        SqliteStagedBackupPair stagedPair =
+            SqliteStagedBackupPairFactory.create(
+                SqliteOwnedStagedArtifact.recordExisting(finalBackupPath, stagedBackupPath),
+                finalBackupPath,
+                SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath),
+                finalKeyPath,
+                passphrase,
+                VERIFICATION_SUPPORT)) {
+      byte[] snapshot = stagedPair.snapshot();
+      byte[] sealedArtifact = Arrays.copyOf(snapshot, snapshot.length + 3);
+      sealedArtifact[sealedArtifact.length - 3] = 1;
+      sealedArtifact[sealedArtifact.length - 2] = 2;
+      sealedArtifact[sealedArtifact.length - 1] = 3;
+
+      stagedPair.sealArtifact(sealedArtifact);
+
+      assertArrayEquals(sealedArtifact, Files.readAllBytes(stagedBackupPath));
+      assertThrows(IllegalStateException.class, stagedPair::snapshot);
+      assertThrows(IllegalStateException.class, stagedPair::verifyInitializedBackup);
+      assertThrows(IllegalStateException.class, () -> stagedPair.sealArtifact(sealedArtifact));
+
+      stagedPair.rollback();
+      stagedPair.commit();
+    }
+
+    assertFalse(Files.exists(stagedBackupPath));
+    assertFalse(Files.exists(stagedKeyPath));
+    assertFalse(Files.exists(finalBackupPath));
+    assertFalse(Files.exists(finalKeyPath));
+  }
 
   @Test
   void stagedBackupPair_rejectsAnOccupiedGeneratedKeyTargetAndCleansItsStage() throws Exception {
