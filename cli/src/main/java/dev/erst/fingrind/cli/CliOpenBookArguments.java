@@ -71,6 +71,10 @@ final class CliOpenBookArguments {
       OpenBookArgumentValues argumentValues,
       String argument,
       ListIterator<String> argumentIterator) {
+    if (argument.equals(ProtocolOptions.BookDefinition.TIGHTEN_PARENTS)) {
+      argumentValues.tightenParents = true;
+      return;
+    }
     switch (argument) {
       case ProtocolOptions.BookDefinition.ENTITY_NAME ->
           argumentValues.entityName =
@@ -138,7 +142,6 @@ final class CliOpenBookArguments {
                   CliOptionValues.requireValue(
                       argumentIterator, ProtocolOptions.Presentation.OUTPUT),
                   CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
-      case ProtocolOptions.BookDefinition.TIGHTEN_PARENTS -> argumentValues.tightenParents = true;
       default ->
           throw CliArgumentValueParser.unsupportedArgument(
               argument,

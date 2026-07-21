@@ -3,9 +3,13 @@ from __future__ import annotations
 from typing import Any
 
 
-def posting_evidence(request_prefix: str, evidence_suffix: str, document_date: str) -> dict[str, Any]:
+def posting_evidence(
+    request_prefix: str, evidence_suffix: str, document_date: str
+) -> dict[str, Any]:
     return {
-        "sourceDocuments": [retained_source_document(request_prefix, evidence_suffix, document_date)],
+        "sourceDocuments": [
+            retained_source_document(request_prefix, evidence_suffix, document_date)
+        ],
         "approvals": [],
     }
 

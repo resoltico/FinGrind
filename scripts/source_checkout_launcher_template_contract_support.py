@@ -79,9 +79,7 @@ def assert_plan_template(document: dict[str, object]) -> None:
         )
     steps = document.get("steps")
     if not isinstance(steps, list) or len(steps) != 1:
-        raise SystemExit(
-            "source-checkout launcher plan template did not publish one workflow step"
-        )
+        raise SystemExit("source-checkout launcher plan template did not publish one workflow step")
     sale = steps[0]
     if (
         not isinstance(sale, dict)

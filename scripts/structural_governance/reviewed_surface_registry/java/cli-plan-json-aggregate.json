@@ -8,10 +8,10 @@
   "budgetVarianceReason": "The ledger-plan JSON aggregate exceeds the default CLI JSON budget until envelope, fact, and rejection payload families finish splitting.",
   "duplicationExemptionReason": "The ledger-plan JSON aggregate intentionally repeats machine-contract record structure until payload families move into separate owners.",
   "approval": {
-    "physicalLines": 338,
-    "logicalLines": 308,
+    "physicalLines": 320,
+    "logicalLines": 291,
     "importLikeLines": 14,
-    "nestedTypes": 22,
+    "nestedTypes": 21,
     "functions": 0,
     "fieldsPerTopLevelType": 0,
     "switchArmsPerMethod": 0,

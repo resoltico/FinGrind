@@ -20,27 +20,27 @@ final class CliBookArgumentParser {
   private CliBookArgumentParser() {}
 
   static ParsedBookArguments parseRequestBoundArguments(List<String> arguments) {
-    return parseBookArguments(arguments, BookArgumentMode.REQUEST_BOUND, null);
+    return parseBookArguments(arguments, CliBookArgumentMode.REQUEST_BOUND, null);
   }
 
   static ParsedBookArguments parseRequestBoundCommandArguments(
       List<String> arguments, CommandArgumentSpec commandArgumentSpec) {
     Objects.requireNonNull(commandArgumentSpec, "commandArgumentSpec");
     return parseBookArguments(
-        arguments, BookArgumentMode.REQUEST_BOUND_WITH_COMMAND_ARGUMENTS, commandArgumentSpec);
+        arguments, CliBookArgumentMode.REQUEST_BOUND_WITH_COMMAND_ARGUMENTS, commandArgumentSpec);
   }
 
   static ParsedBookArguments parseBookAndCommandArguments(
       List<String> arguments, CommandArgumentSpec commandArgumentSpec) {
     Objects.requireNonNull(commandArgumentSpec, "commandArgumentSpec");
     return parseBookArguments(
-        arguments, BookArgumentMode.BOOK_WITH_COMMAND_ARGUMENTS, commandArgumentSpec);
+        arguments, CliBookArgumentMode.BOOK_WITH_COMMAND_ARGUMENTS, commandArgumentSpec);
   }
 
   static List<String> requestBoundCommandSupportedArguments(
       @Nullable CommandArgumentSpec commandArgumentSpec) {
     return supportedArguments(
-        BookArgumentMode.REQUEST_BOUND_WITH_COMMAND_ARGUMENTS, commandArgumentSpec);
+        CliBookArgumentMode.REQUEST_BOUND_WITH_COMMAND_ARGUMENTS, commandArgumentSpec);
   }
 
   static void requireAttestationCredentials(BookAccess bookAccess) {
@@ -60,7 +60,7 @@ final class CliBookArgumentParser {
 
   private static ParsedBookArguments parseBookArguments(
       List<String> arguments,
-      BookArgumentMode mode,
+      CliBookArgumentMode mode,
       @Nullable CommandArgumentSpec commandArgumentSpec) {
     ParsedBookArgumentValues argumentValues = new ParsedBookArgumentValues();
     ListIterator<String> argumentIterator = arguments.listIterator(1);
@@ -106,7 +106,7 @@ final class CliBookArgumentParser {
 
   private static void applyBookArgument(
       ParsedBookArgumentValues argumentValues,
-      BookArgumentMode mode,
+      CliBookArgumentMode mode,
       @Nullable CommandArgumentSpec commandArgumentSpec,
       String argument,
       ListIterator<String> argumentIterator) {
@@ -199,7 +199,7 @@ final class CliBookArgumentParser {
 
   private static void applyRequestFileArgument(
       ParsedBookArgumentValues argumentValues,
-      BookArgumentMode mode,
+      CliBookArgumentMode mode,
       @Nullable CommandArgumentSpec commandArgumentSpec,
       ListIterator<String> argumentIterator) {
     if (!mode.acceptsRequestFile()) {
@@ -216,7 +216,7 @@ final class CliBookArgumentParser {
 
   private static void applyCommandArgument(
       ParsedBookArgumentValues argumentValues,
-      BookArgumentMode mode,
+      CliBookArgumentMode mode,
       @Nullable CommandArgumentSpec commandArgumentSpec,
       String argument,
       ListIterator<String> argumentIterator) {
@@ -305,7 +305,7 @@ final class CliBookArgumentParser {
   }
 
   private static List<String> supportedArguments(
-      BookArgumentMode mode, @Nullable CommandArgumentSpec commandArgumentSpec) {
+      CliBookArgumentMode mode, @Nullable CommandArgumentSpec commandArgumentSpec) {
     List<String> requiredArguments =
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE,
@@ -323,46 +323,5 @@ final class CliBookArgumentParser {
       supportedArguments.addAll(commandArgumentSpec.options().keySet());
     }
     return List.copyOf(supportedArguments);
-  }
-
-  /** Supported parser shapes for commands that address one selected book file. */
-  private enum BookArgumentMode {
-    REQUEST_BOUND {
-      @Override
-      boolean acceptsRequestFile() {
-        return true;
-      }
-
-      @Override
-      boolean collectsCommandArguments() {
-        return false;
-      }
-    },
-    REQUEST_BOUND_WITH_COMMAND_ARGUMENTS {
-      @Override
-      boolean acceptsRequestFile() {
-        return true;
-      }
-
-      @Override
-      boolean collectsCommandArguments() {
-        return true;
-      }
-    },
-    BOOK_WITH_COMMAND_ARGUMENTS {
-      @Override
-      boolean acceptsRequestFile() {
-        return false;
-      }
-
-      @Override
-      boolean collectsCommandArguments() {
-        return true;
-      }
-    };
-
-    abstract boolean acceptsRequestFile();
-
-    abstract boolean collectsCommandArguments();
   }
 }
