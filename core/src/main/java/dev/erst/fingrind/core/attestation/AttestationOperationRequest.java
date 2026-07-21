@@ -2,6 +2,7 @@ package dev.erst.fingrind.core.attestation;
 
 import java.math.BigInteger;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.UUID;
@@ -40,7 +41,8 @@ public final class AttestationOperationRequest {
     }
     this.operationKind = Objects.requireNonNull(operationKind, "operationKind");
     this.previousHead = copyHead(previousHead, "previousHead");
-    this.recordedAt = Objects.requireNonNull(recordedAt, "recordedAt");
+    this.recordedAt =
+        Objects.requireNonNull(recordedAt, "recordedAt").truncatedTo(ChronoUnit.MILLIS);
     this.requestPreimage = copy(requestPreimage, "requestPreimage");
     this.effectPreimage = copy(effectPreimage, "effectPreimage");
   }

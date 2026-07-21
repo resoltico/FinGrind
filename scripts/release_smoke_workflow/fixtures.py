@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -27,10 +28,19 @@ def prepare_fixture_directories(config: ReleaseSmokeConfig) -> None:
         config.trial_balance_pdf_stderr_path,
     ]:
         path.parent.mkdir(parents=True, exist_ok=True)
+    attestation_directory = config.attestation_founder_key.local_path.parent
+    attestation_directory.mkdir(parents=True, exist_ok=True)
+    if os.name == "posix":
+        attestation_directory.chmod(0o700)
 
 
 def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
     request_prefix = config.request_prefix
+    config.attestation_founder_passphrase.local_path.write_text(
+        "release-smoke-founder-passphrase\n", encoding="utf-8"
+    )
+    if os.name == "posix":
+        config.attestation_founder_passphrase.local_path.chmod(0o600)
     write_json(
         config.request_sale.local_path,
         sale_request(

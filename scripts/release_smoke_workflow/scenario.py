@@ -23,6 +23,7 @@ BANK_ACCOUNT_CODE = "operating-bank"
 BANK_ACCOUNT_NAME = "Operating Bank"
 EXPENSE_SUPPLEMENT_ACCOUNT_CODE = "misc-expense"
 EXPENSE_SUPPLEMENT_ACCOUNT_NAME = "Misc Expense"
+ATTESTATION_FOUNDER_PRINCIPAL_ID = "4bc17dd7-145f-4ea7-bb55-167ca2f6ac11"
 
 
 def build_release_smoke_scenario(
@@ -81,6 +82,23 @@ def build_release_smoke_scenario(
             / "nested"
             / f"--entity [{normalized_scenario_id}].key",
         ),
+        attestation_founder_principal_id=ATTESTATION_FOUNDER_PRINCIPAL_ID,
+        attestation_founder_key=smoke_path(
+            work_root,
+            normalized_path_mode,
+            Path("attestation credentials")
+            / UNICODE_WORKSPACE_SEGMENT
+            / "founder"
+            / f"{normalized_scenario_id}.fgatk",
+        ),
+        attestation_founder_passphrase=smoke_path(
+            work_root,
+            normalized_path_mode,
+            Path("attestation credentials")
+            / UNICODE_WORKSPACE_SEGMENT
+            / "founder"
+            / f"{normalized_scenario_id}.passphrase",
+        ),
         backup_book=smoke_path(
             work_root,
             normalized_path_mode,
@@ -137,7 +155,6 @@ def build_release_smoke_scenario(
         trial_balance_pdf_stderr_path=(
             work_root / "reports odd" / f"trial balance [{normalized_scenario_id}].stderr.txt"
         ),
-        second_page_command_id=normalized_scenario_id + "-sale",
         request_prefix=normalized_scenario_id,
         entity_name=ENTITY_NAME,
         accounting_kernel_profile=ACCOUNTING_KERNEL_PROFILE,

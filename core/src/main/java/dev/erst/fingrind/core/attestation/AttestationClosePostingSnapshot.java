@@ -2,6 +2,7 @@ package dev.erst.fingrind.core.attestation;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -27,7 +28,7 @@ public record AttestationClosePostingSnapshot(
     postingKind = requireText(postingKind, "postingKind");
     postingOriginKind = requireText(postingOriginKind, "postingOriginKind");
     Objects.requireNonNull(effectiveDate, "effectiveDate");
-    Objects.requireNonNull(recordedAt, "recordedAt");
+    recordedAt = Objects.requireNonNull(recordedAt, "recordedAt").truncatedTo(ChronoUnit.MILLIS);
     sourceChannel = requireText(sourceChannel, "sourceChannel");
     journalLines = List.copyOf(Objects.requireNonNull(journalLines, "journalLines"));
     if (journalLines.size() < 2) {

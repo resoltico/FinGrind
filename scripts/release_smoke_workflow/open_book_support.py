@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .attestation_arguments import founder_credential_arguments
 from .cli import run_cli
 from .models import ReleaseSmokeConfig, ReleaseSmokeFailure
 from .support import require
@@ -30,6 +31,7 @@ def open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> str:
             "--book-start-effective-date",
             "2026-01-01",
             "--book-passphrase-stdin",
+            *founder_credential_arguments(config),
             "--output",
             "json",
             stdin_text=generated_passphrase,
@@ -54,6 +56,7 @@ def open_book(config: ReleaseSmokeConfig, operation_ids: dict[str, str]) -> str:
             "2026-01-01",
             "--book-key-file",
             config.book_key.argument,
+            *founder_credential_arguments(config),
             "--output",
             "json",
         )

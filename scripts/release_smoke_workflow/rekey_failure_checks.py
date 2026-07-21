@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from .attestation_arguments import signing_credential_arguments
 from .cli import run_cli, run_cli_allow_failure
 from .models import ReleaseSmokeConfig
 from .support import require, require_match, require_no_match
@@ -32,6 +33,7 @@ def verify_rekey_and_wrong_key_semantics(
         config.book_key.argument,
         "--new-book-key-file",
         config.replacement_book_key.argument,
+        *signing_credential_arguments(config),
         "--output",
         "json",
     )

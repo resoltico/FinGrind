@@ -1,6 +1,7 @@
 package dev.erst.fingrind.core.attestation;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -20,7 +21,7 @@ public record AttestationPostingEffectSnapshot(
     requireText(operationKind, "operationKind");
     requireText(postingKind, "postingKind");
     requireText(postingOriginKind, "postingOriginKind");
-    Objects.requireNonNull(recordedAt, "recordedAt");
+    recordedAt = Objects.requireNonNull(recordedAt, "recordedAt").truncatedTo(ChronoUnit.MILLIS);
     Objects.requireNonNull(commandId, "commandId");
   }
 

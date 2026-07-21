@@ -3,6 +3,7 @@ package dev.erst.fingrind.core.attestation;
 import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.UUID;
 import org.jspecify.annotations.Nullable;
@@ -48,7 +49,9 @@ final class AttestationPreimageProjectionFields {
   }
 
   static AttestationField instant(Instant value) {
-    return present(AttestationTextFieldValue.instant(value));
+    return present(
+        AttestationTextFieldValue.instant(
+            java.util.Objects.requireNonNull(value, "value").truncatedTo(ChronoUnit.MILLIS)));
   }
 
   static AttestationField text(String value) {

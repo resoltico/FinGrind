@@ -33,6 +33,9 @@ class ReleaseSmokeConfig:
     declare_expense_supplement: SmokePath
     book: SmokePath
     book_key: SmokePath
+    attestation_founder_principal_id: str
+    attestation_founder_key: SmokePath
+    attestation_founder_passphrase: SmokePath
     backup_book: SmokePath
     backup_book_key: SmokePath
     restored_book: SmokePath
@@ -41,7 +44,6 @@ class ReleaseSmokeConfig:
     prompt_failure_book: SmokePath
     trial_balance_pdf: SmokePath
     trial_balance_pdf_stderr_path: Path
-    second_page_command_id: str
     request_prefix: str
     open_book_mode: str
     entity_name: str
@@ -72,6 +74,9 @@ class ReleaseSmokeScenario:
     declare_expense_supplement: SmokePath
     book: SmokePath
     book_key: SmokePath
+    attestation_founder_principal_id: str
+    attestation_founder_key: SmokePath
+    attestation_founder_passphrase: SmokePath
     backup_book: SmokePath
     backup_book_key: SmokePath
     restored_book: SmokePath
@@ -80,7 +85,6 @@ class ReleaseSmokeScenario:
     prompt_failure_book: SmokePath
     trial_balance_pdf: SmokePath
     trial_balance_pdf_stderr_path: Path
-    second_page_command_id: str
     request_prefix: str
     entity_name: str
     accounting_kernel_profile: str

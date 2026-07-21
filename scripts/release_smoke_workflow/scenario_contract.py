@@ -23,7 +23,11 @@ def assert_release_smoke_scenarios(
     assert "Rīga büro" in str(bundle.book.local_path)
     assert bundle.book.argument == str(bundle.book.local_path)
     assert bundle.backup_book.argument == str(bundle.backup_book.local_path)
-    assert bundle.second_page_command_id == "bundle-acceptance-sale"
+    assert bundle.attestation_founder_principal_id == "4bc17dd7-145f-4ea7-bb55-167ca2f6ac11"
+    assert bundle.attestation_founder_key.argument == str(bundle.attestation_founder_key.local_path)
+    assert bundle.attestation_founder_passphrase.argument == str(
+        bundle.attestation_founder_passphrase.local_path
+    )
     assert bundle.accounting_basis == "CASH"
 
     docker = build_release_smoke_scenario(
@@ -45,6 +49,14 @@ def assert_release_smoke_scenarios(
         == "restored odd/Rīga büro/nested/--entity restored [docker-acceptance].key"
     )
     assert docker.request_prefix == "docker-acceptance"
+    assert (
+        docker.attestation_founder_key.argument
+        == "attestation credentials/Rīga büro/founder/docker-acceptance.fgatk"
+    )
+    assert (
+        docker.attestation_founder_passphrase.argument
+        == "attestation credentials/Rīga büro/founder/docker-acceptance.passphrase"
+    )
     assert docker.accounting_basis == "CASH"
 
 
@@ -64,22 +76,27 @@ def assert_fixture_generation(
         prepare_fixture_directories(fixture_scenario)
         write_acceptance_fixtures(fixture_scenario)
 
+        assert (
+            fixture_scenario.attestation_founder_passphrase.local_path.read_text(encoding="utf-8")
+            == "release-smoke-founder-passphrase\n"
+        )
+
         assert_request_payload(
             json.loads(fixture_scenario.request_sale.local_path.read_text(encoding="utf-8")),
             "SALE_SETTLED",
-            "fixture-regression-sale",
+            "23161157-7aff-5d55-b340-33a484925b90",
             expected_source_document("fixture-regression", "sale", "2026-04-07"),
         )
         assert_request_payload(
             json.loads(fixture_scenario.request_expense.local_path.read_text(encoding="utf-8")),
             "EXPENSE_SETTLED",
-            "fixture-regression-expense",
+            "778a2374-e09a-5294-b2e6-2018b709d90e",
             expected_source_document("fixture-regression", "expense", "2026-04-08"),
         )
         assert_direct_journal_payload(
             json.loads(fixture_scenario.request_raw_journal.local_path.read_text(encoding="utf-8")),
             "DIRECT_JOURNAL",
-            "fixture-regression-transfer",
+            "aa0086ea-9b83-5835-937f-24948fd582b8",
             expected_source_document("fixture-regression", "transfer", "2026-04-08"),
             ["operating-bank", "cash"],
         )

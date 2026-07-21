@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from uuid import NAMESPACE_URL, uuid5
 
 
 def posting_evidence(
@@ -31,7 +32,12 @@ def posting_provenance(
     causation_suffix: str,
 ) -> dict[str, str]:
     return {
-        "commandId": request_prefix + "-" + command_suffix,
+        "commandId": str(
+            uuid5(
+                NAMESPACE_URL,
+                "fingrind-release-smoke:" + request_prefix + ":" + command_suffix,
+            )
+        ),
         "idempotencyKey": request_prefix + "-" + idempotency_suffix,
         "causationId": request_prefix + "-" + causation_suffix,
     }

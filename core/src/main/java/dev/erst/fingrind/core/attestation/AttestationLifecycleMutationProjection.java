@@ -76,7 +76,7 @@ public final class AttestationLifecycleMutationProjection {
                         List.of(
                             present(AttestationNumericFieldValue.mutation(1)),
                             present(AttestationNumericFieldValue.unsigned64(checkedKeyEpoch)),
-                            present(AttestationTextFieldValue.instant(checkedRekeyedAt))))))
+                            AttestationPreimageProjectionFields.instant(checkedRekeyedAt))))))
             .encoded());
   }
 

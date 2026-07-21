@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .assertions import assert_operator_queries_and_reports
+from .attestation_arguments import signing_credential_arguments
 from .cli import run_cli, run_cli_with_split_streams
 from .models import ReleaseSmokeConfig
 from .pagination_checks import verify_list_postings_pagination
@@ -30,6 +31,7 @@ def verify_preflight_and_commit(config: ReleaseSmokeConfig, operation_ids: dict[
         config.book_key.argument,
         "--request-file",
         config.request_sale.argument,
+        *signing_credential_arguments(config),
         "--output",
         "json",
     )
@@ -42,6 +44,7 @@ def verify_preflight_and_commit(config: ReleaseSmokeConfig, operation_ids: dict[
         config.book_key.argument,
         "--request-file",
         config.request_expense.argument,
+        *signing_credential_arguments(config),
         "--output",
         "json",
     )
