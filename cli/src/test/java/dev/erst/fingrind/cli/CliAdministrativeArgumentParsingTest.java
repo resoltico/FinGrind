@@ -49,6 +49,12 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "01-01",
                   "--book-start-effective-date",
                   "2026-01-01",
+                  "--attestation-founder-principal-id",
+                  "123e4567-e89b-12d3-a456-426614174000",
+                  "--attestation-founder-key-file",
+                  "founder.fgatk",
+                  "--attestation-founder-passphrase-file",
+                  "founder.passphrase",
                   "--tighten-parents"
                 }));
 
@@ -105,6 +111,12 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "01-01",
                   "--book-start-effective-date",
                   "2026-01-01",
+                  "--attestation-founder-principal-id",
+                  "123e4567-e89b-12d3-a456-426614174000",
+                  "--attestation-founder-key-file",
+                  "founder.fgatk",
+                  "--attestation-founder-passphrase-file",
+                  "founder.passphrase",
                   "--output",
                   "text"
                 }));
@@ -214,6 +226,12 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "01-01",
                       "--book-start-effective-date",
                       "2026-01-01",
+                  "--attestation-founder-principal-id",
+                  "123e4567-e89b-12d3-a456-426614174000",
+                  "--attestation-founder-key-file",
+                  "founder.fgatk",
+                  "--attestation-founder-passphrase-file",
+                  "founder.passphrase",
                       "--output",
                       "csv"
                     }));
@@ -247,6 +265,12 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "01-01",
                       "--book-start-effective-date",
                       "2026-01-01",
+                  "--attestation-founder-principal-id",
+                  "123e4567-e89b-12d3-a456-426614174000",
+                  "--attestation-founder-key-file",
+                  "founder.fgatk",
+                  "--attestation-founder-passphrase-file",
+                  "founder.passphrase",
                       "--extra"
                     }));
     CliArgumentsException executePlanExtra =
@@ -491,6 +515,12 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "01-01",
                   "--book-start-effective-date",
                   "2026-01-01",
+                  "--attestation-founder-principal-id",
+                  "123e4567-e89b-12d3-a456-426614174000",
+                  "--attestation-founder-key-file",
+                  "founder.fgatk",
+                  "--attestation-founder-passphrase-file",
+                  "founder.passphrase",
                 }));
 
     assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
@@ -581,6 +611,12 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "01-01",
                   "--book-start-effective-date",
                   "2026-01-01",
+                  "--attestation-founder-principal-id",
+                  "123e4567-e89b-12d3-a456-426614174000",
+                  "--attestation-founder-key-file",
+                  "founder.fgatk",
+                  "--attestation-founder-passphrase-file",
+                  "founder.passphrase",
                 }));
 
     assertEquals(Path.of("book.sqlite"), command.bookAccess().bookFilePath());
@@ -614,6 +650,12 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "01-01",
                       "--book-start-effective-date",
                       "2026-01-01",
+                  "--attestation-founder-principal-id",
+                  "123e4567-e89b-12d3-a456-426614174000",
+                  "--attestation-founder-key-file",
+                  "founder.fgatk",
+                  "--attestation-founder-passphrase-file",
+                  "founder.passphrase",
                       "--request-file",
                       "oops.json"
                     }));
@@ -642,6 +684,12 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                       "01-01",
                       "--book-start-effective-date",
                       "2026-01-01",
+                  "--attestation-founder-principal-id",
+                  "123e4567-e89b-12d3-a456-426614174000",
+                  "--attestation-founder-key-file",
+                  "founder.fgatk",
+                  "--attestation-founder-passphrase-file",
+                  "founder.passphrase",
                     }));
     CliArgumentsException missingFunctionalCurrency =
         assertThrows(

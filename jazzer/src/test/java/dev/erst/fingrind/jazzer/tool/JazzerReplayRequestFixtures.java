@@ -38,9 +38,7 @@ final class JazzerReplayRequestFixtures {
           },
           "evidence": %s,
           "provenance": {
-            "actorId": "actor-4",
-            "actorType": "AGENT",
-            "commandId": "command-4",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-4",
             "causationId": "cause-4",
             "recordedAt": "2026-04-07T10:15:30Z"
@@ -107,9 +105,7 @@ final class JazzerReplayRequestFixtures {
           },
           "evidence": %s,
           "provenance": {
-            "actorId": "actor-7",
-            "actorType": "AGENT",
-            "commandId": "command-7",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-7-a",
             "idempotencyKey": "idem-7-b",
             "causationId": "cause-7"
@@ -135,9 +131,7 @@ final class JazzerReplayRequestFixtures {
           },
           "evidence": %s,
           "provenance": {
-            "actorId": "actor-8",
-            "actorType": "AGENT",
-            "commandId": "command-8",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-8",
             "causationId": "cause-8"
           },
@@ -163,9 +157,7 @@ final class JazzerReplayRequestFixtures {
           },
           "evidence": %s,
           "provenance": {
-            "actorId": "actor-7",
-            "actorType": "AGENT",
-            "commandId": "command-7",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-7",
             "causationId": "cause-7",
             "sourceChannel": null

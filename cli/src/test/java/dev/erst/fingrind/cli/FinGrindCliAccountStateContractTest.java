@@ -493,9 +493,7 @@ class FinGrindCliAccountStateContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-unknown-account",
-            "actorType": "AGENT",
-            "commandId": "command-unknown-account",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-unknown-account",
             "causationId": "cause-unknown-account"
           }
@@ -526,15 +524,13 @@ class FinGrindCliAccountStateContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-%s",
-            "actorType": "AGENT",
-            "commandId": "command-%s",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "%s",
             "causationId": "cause-%s"
           }
         }
         """
-        .formatted(idempotencyKey, idempotencyKey, idempotencyKey, idempotencyKey, idempotencyKey);
+        .formatted(idempotencyKey, idempotencyKey, idempotencyKey);
   }
 
   private static String saleSettledOverReliefRequestJson(String idempotencyKey) {
@@ -564,15 +560,13 @@ class FinGrindCliAccountStateContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-%s",
-            "actorType": "AGENT",
-            "commandId": "command-%s",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "%s",
             "causationId": "cause-%s"
           }
         }
         """
-        .formatted(idempotencyKey, idempotencyKey, idempotencyKey, idempotencyKey, idempotencyKey);
+        .formatted(idempotencyKey, idempotencyKey, idempotencyKey);
   }
 
   private static String saleSettledBackdatedHorizonRequestJson(String idempotencyKey) {
@@ -602,15 +596,13 @@ class FinGrindCliAccountStateContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-%s",
-            "actorType": "AGENT",
-            "commandId": "command-%s",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "%s",
             "causationId": "cause-%s"
           }
         }
         """
-        .formatted(idempotencyKey, idempotencyKey, idempotencyKey, idempotencyKey, idempotencyKey);
+        .formatted(idempotencyKey, idempotencyKey, idempotencyKey);
   }
 
   private static String[] openTradingBookKeyFileArguments(Path bookFilePath, Path bookKeyFilePath) {

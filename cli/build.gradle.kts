@@ -29,7 +29,7 @@ application {
 val buildMetadata = dev.erst.fingrind.buildlogic.FinGrindBuildMetadata.load(project)
 
 tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
-    jvmArgs("--enable-native-access=dev.erst.fingrind.core")
+    jvmArgs("--enable-native-access=ALL-UNNAMED")
 }
 
 tasks.named<ShadowJar>("shadowJar") {

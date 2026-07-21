@@ -151,7 +151,7 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
             Instant.parse("2026-05-15T10:00:02Z"),
             Instant.parse("2026-05-15T10:00:03Z"),
             List.of(
-                LedgerFact.text("postingId", "posting-1"),
+                LedgerFact.text("postingId", "018f0000-0000-7000-8000-000000000002"),
                 LedgerFact.text("idempotencyKey", "idem-1"),
                 LedgerFact.text("effectiveDate", "2026-05-15"),
                 LedgerFact.text("recordedAt", "2026-05-15T10:00:03Z")));

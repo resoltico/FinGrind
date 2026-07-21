@@ -32,9 +32,7 @@
     ]
   },
   "provenance": {
-    "actorId": "actor-3",
-    "actorType": "AGENT",
-    "commandId": "command-3",
+    "commandId": "018f0000-0000-7000-8000-000000000001",
     "idempotencyKey": "idem-3",
     "causationId": "cause-3"
   }

@@ -96,8 +96,7 @@ class CliJsonRequestCodecTest {
             {
               "effectiveDate": "2026-04-07",
               "provenance": {
-                "actorId": "actor-1",
-                "commandId": "command-1"
+                "commandId": "018f0000-0000-7000-8000-000000000001"
               }
             }
             """
@@ -111,9 +110,8 @@ class CliJsonRequestCodecTest {
             """
             {
               "provenance": {
-                "actorId": "actor-1",
-                "commandId": "command-1",
-                "commandId": "command-2"
+                "commandId": "018f0000-0000-7000-8000-000000000001",
+                "commandId": "018f0000-0000-7000-8000-000000000001"
               }
             }
             """

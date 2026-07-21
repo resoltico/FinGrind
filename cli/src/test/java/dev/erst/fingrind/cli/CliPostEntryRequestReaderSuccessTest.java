@@ -39,9 +39,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
               "cashAccountCode": "1000",
               "amount": %s,
               "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-1",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "idem-expense",
                 "causationId": "cause-1"
               }
@@ -74,9 +72,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                 "taxCode": "vat-standard-sale"
               },
               "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-1",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "idem-credit-sale",
                 "causationId": "cause-1"
               }
@@ -97,9 +93,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                 "taxCode": "vat-standard-expense"
               },
               "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-2",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "idem-credit-expense",
                 "causationId": "cause-2"
               }
@@ -139,9 +133,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                 "quantity": "4"
               },
               "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-1",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "idem-sale-settled-relief",
                 "causationId": "cause-1"
               }
@@ -163,9 +155,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                 "quantity": "4"
               },
               "provenance": {
-                "actorId": "actor-2",
-                "actorType": "AGENT",
-                "commandId": "command-2",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "idem-sale-credit-relief",
                 "causationId": "cause-2"
               }
@@ -201,9 +191,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
               "amount": %s,
               "inventoryRelief": null,
               "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-1",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "idem-sale-null-relief",
                 "causationId": "cause-1"
               }
@@ -233,9 +221,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                 "amount": %s
               },
               "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-1",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "idem-receipt",
                 "causationId": "cause-1"
               }
@@ -256,9 +242,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                 "amount": %s
               },
               "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-2",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "idem-payment",
                 "causationId": "cause-2"
               }
@@ -293,9 +277,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
               "receivableAccountCode": "1100",
               "amount": %s,
               "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-1",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "idem-receipt-plain",
                 "causationId": "cause-1"
               }
@@ -323,9 +305,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
               "amount": %s,
               "settlementAdjunct": null,
               "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-1",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "idem-payment-plain",
                 "causationId": "cause-1"
               }
@@ -352,9 +332,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
               "equityAccountCode": "3000",
               "amount": %s,
               "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-1",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "idem-owner-contribution",
                 "causationId": "cause-1"
               }
@@ -383,9 +361,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
               "cashAccountCode": "1000",
               "amount": %s,
               "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-1",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "idem-owner-withdrawal",
                 "causationId": "cause-1"
               }
@@ -466,9 +442,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
               "amount": %s,
               "tax": null,
               "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-1",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "idem-sale-null-tax",
                 "causationId": "cause-1"
               }
@@ -507,9 +481,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                 "treatmentKind": "SPOT_TRANSACTION"
               },
               "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-1",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "idem-sale-fx",
                 "causationId": "cause-1"
               }
@@ -546,9 +518,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
               "amount": %s,
               "foreignExchange": null,
               "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-1",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "idem-sale-null-foreign-exchange",
                 "causationId": "cause-1"
               }
@@ -598,9 +568,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                 }
               ],
               "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-1",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "idem-direct-journal",
                 "causationId": "cause-1"
               }
@@ -639,9 +607,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                     }
                   ],
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-direct-journal",
                     "causationId": "cause-1"
                   }
@@ -682,9 +648,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                     }
                   ],
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   }
@@ -711,13 +675,11 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                   "entryKind": "REVERSAL",
                   "effectiveDate": "2026-04-07",
                   "reversal": {
-                    "priorPostingId": "posting-0",
+                    "priorPostingId": "018f0000-0000-7000-8000-000000000002",
                     "reason": "operator reversal"
                   },
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-reversal",
                     "causationId": "cause-1"
                   }
@@ -753,9 +715,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                   "revenueAccountCode": "2000",
                   "amount": %s,
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1",
                     "correlationId": null
@@ -784,9 +744,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                   "revenueAccountCode": "2000",
                   "amount": %s,
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   },
@@ -802,7 +760,7 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
                       {
                         "approvalId": "approval-1",
                         "approvalType": "manager-signoff",
-                        "approverId": "approver-1",
+                        "approverReference": "approver-1",
                         "approverType": "PERSON",
                         "decision": "APPROVED",
                         "approvedAt": "2026-04-07T10:20:30Z"

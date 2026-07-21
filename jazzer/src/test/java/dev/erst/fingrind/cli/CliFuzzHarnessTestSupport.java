@@ -123,7 +123,7 @@ public final class CliFuzzHarnessTestSupport {
     String reversalJson =
         """
         {
-          "priorPostingId": "%s"%s
+          "priorPostingId": "018f0000-0000-7000-8000-000000000002"%s
         }
         """
             .formatted(
@@ -176,9 +176,7 @@ public final class CliFuzzHarnessTestSupport {
             : ",\n  \"correlationId\": \"" + context.correlationId() + "\"";
     return """
         {
-          "actorId": "%s",
-          "actorType": "%s",
-          "commandId": "%s",
+          "commandId": "018f0000-0000-7000-8000-000000000001",
           "idempotencyKey": "%s",
           "causationId": "%s"%s
         }

@@ -18,6 +18,7 @@ import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.Arrays;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -40,17 +41,22 @@ class AttestationGenesisBoundaryTest {
             publicCredential,
             temporaryDirectory.resolve("founder.fgatk"),
             passphrase)) {
-      AttestationVerification verification =
-          AttestationVerifier.verifyBook(
-              List.of(
-                  AttestationGenesis.create(
-                      UUID.fromString("00112233-4455-6677-8899-aabbccddeeff"),
-                      bookIdentity(),
-                      Instant.parse("2026-07-21T00:00:00Z"),
-                      List.of(signer))));
+      AttestationEvidence genesis =
+          AttestationGenesis.create(
+              UUID.fromString("00112233-4455-6677-8899-aabbccddeeff"),
+              bookIdentity(),
+              Instant.parse("2026-07-21T00:00:00.123456789Z"),
+              List.of(signer));
+      AttestationVerification verification = AttestationVerifier.verifyBook(List.of(genesis));
 
       assertEquals(0, verification.headOrder().intValueExact());
       assertFalse(verification.reviewRequired());
+      byte[] operationEnvelope = genesis.operationEnvelope();
+      assertEquals(
+          Instant.parse("2026-07-21T00:00:00.123Z"),
+          AttestationOperationPayload.decode(
+                  Arrays.copyOf(operationEnvelope, operationEnvelope.length - 114))
+              .recordedAt());
     } finally {
       java.util.Arrays.fill(passphrase, '\0');
     }

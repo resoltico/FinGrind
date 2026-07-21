@@ -2,6 +2,7 @@ package dev.erst.fingrind.core.attestation;
 
 import java.math.BigInteger;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -15,7 +16,9 @@ public final class AttestationOperationSigner {
   /**
    * Signs an exact immutable operation projection.
    *
-   * <p>Authorization is deliberately checked at the transactional CAS boundary against the
+   * <p>The recorded time is canonicalized to milliseconds here, at the single signing boundary,
+   * before it enters the immutable payload. Authorization is deliberately checked at the
+   * transactional CAS boundary against the
    * persisted historical registry and policy. This method only constructs the canonical evidence
    * that is later verified there.
    */
@@ -42,7 +45,7 @@ public final class AttestationOperationSigner {
             Objects.requireNonNull(operationOrder, "operationOrder"),
             Objects.requireNonNull(operationKind, "operationKind"),
             AttestationHash.of(Objects.requireNonNull(previousHead, "previousHead")),
-            Objects.requireNonNull(recordedAt, "recordedAt"),
+            Objects.requireNonNull(recordedAt, "recordedAt").truncatedTo(ChronoUnit.MILLIS),
             AttestationHash.sha256(checkedRequest.encoded()),
             AttestationHash.sha256(checkedEffect.encoded()));
     List<AttestationSignatureEntry> entries =

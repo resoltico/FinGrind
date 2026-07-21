@@ -49,9 +49,7 @@ class CliPostEntryRequestReaderRootValidationTest extends CliRequestReaderTestSu
                   "revenueAccountCode": "2000",
                   "amount": %s,
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   },
@@ -82,9 +80,7 @@ class CliPostEntryRequestReaderRootValidationTest extends CliRequestReaderTestSu
                   "revenueAccountCode": "2000",
                   "amount": %s,
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "idempotencyKey": "idem-2",
                     "causationId": "cause-1"

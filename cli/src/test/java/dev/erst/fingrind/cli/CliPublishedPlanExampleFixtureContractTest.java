@@ -154,9 +154,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
                 "approvals": []
               },
               "provenance": {
-                "actorId": "tax-setup-agent",
-                "actorType": "AGENT",
-                "commandId": "tax-setup-sale-command",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "tax-setup-sale-idempotency",
                 "causationId": "tax-setup-sale-cause"
               }

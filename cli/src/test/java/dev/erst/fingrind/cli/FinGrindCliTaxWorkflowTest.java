@@ -805,9 +805,7 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-%s",
-            "actorType": "AGENT",
-            "commandId": "%s",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "%s",
             "causationId": "cause-%s"
           }
@@ -822,8 +820,6 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             taxCode,
             sourceDocumentId,
             effectiveDate,
-            commandId,
-            commandId,
             idempotencyKey,
             commandId);
   }
@@ -863,9 +859,7 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-%s",
-            "actorType": "AGENT",
-            "commandId": "%s",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "%s",
             "causationId": "cause-%s"
           }
@@ -880,8 +874,6 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
             taxCode,
             sourceDocumentId,
             effectiveDate,
-            commandId,
-            commandId,
             idempotencyKey,
             commandId);
   }

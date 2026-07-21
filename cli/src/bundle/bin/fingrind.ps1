@@ -56,7 +56,7 @@ function Invoke-FinGrindBundleLauncher {
     }
 
     $javaArguments = @(
-        "--enable-native-access=dev.erst.fingrind.cli,dev.erst.fingrind.core",
+        "--enable-native-access=dev.erst.fingrind.cli",
         "--add-opens=java.base/java.nio=dev.erst.fingrind.cli",
         "--add-exports=java.base/sun.nio=dev.erst.fingrind.cli",
         "-D{{sqliteBundleHomeSystemProperty}}=$appHome",

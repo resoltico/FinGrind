@@ -2,7 +2,7 @@
   "entryKind": "REVERSAL",
   "effectiveDate": "2026-04-07",
   "reversal": {
-    "priorPostingId": "posting-old"
+    "priorPostingId": "018f0000-0000-7000-8000-000000000002"
   },
   "evidence": {
     "sourceDocuments": [
@@ -17,9 +17,7 @@
     ]
   },
   "provenance": {
-    "actorId": "actor-2",
-    "actorType": "PERSON",
-    "commandId": "command-2",
+    "commandId": "018f0000-0000-7000-8000-000000000001",
     "idempotencyKey": "idem-2",
     "causationId": "cause-2"
   }

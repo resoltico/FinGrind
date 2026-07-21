@@ -25,12 +25,12 @@ class CliLedgerBookQueryPayloadMapperTest {
                     LedgerFact.group(
                         "reversal",
                         List.of(
-                            LedgerFact.text("priorPostingId", "posting-0"),
+                            LedgerFact.text("priorPostingId", "018f0000-0000-7000-8000-000000000002"),
                             LedgerFact.text("reason", "operator reversal"))))));
 
     assertNotNull(payload.entry());
     assertNotNull(payload.entry().reversal());
-    assertEquals("posting-0", payload.entry().reversal().priorPostingId());
+    assertEquals("018f0000-0000-7000-8000-000000000002", payload.entry().reversal().priorPostingId());
     assertEquals("operator reversal", payload.entry().reversal().reason());
     assertNull(payload.entry().openingBalances());
   }
@@ -222,7 +222,7 @@ class CliLedgerBookQueryPayloadMapperTest {
   private static List<LedgerFact> postingFacts(
       String postingOriginKind, List<LedgerFact> entryFacts) {
     List<LedgerFact> facts = new ArrayList<>();
-    facts.add(LedgerFact.text("postingId", "posting-1"));
+    facts.add(LedgerFact.text("postingId", "018f0000-0000-7000-8000-000000000002"));
     facts.add(LedgerFact.text("postingKind", "STANDARD"));
     facts.add(LedgerFact.text("postingOriginKind", postingOriginKind));
     facts.add(LedgerFact.text("reversalState", "direct"));
@@ -232,9 +232,7 @@ class CliLedgerBookQueryPayloadMapperTest {
         LedgerFact.group(
             "provenance",
             List.of(
-                LedgerFact.text("actorId", "actor-1"),
-                LedgerFact.text("actorType", "AGENT"),
-                LedgerFact.text("commandId", "command-1"),
+                LedgerFact.text("commandId", "018f0000-0000-7000-8000-000000000001"),
                 LedgerFact.text("idempotencyKey", "idem-1"),
                 LedgerFact.text("causationId", "cause-1"),
                 LedgerFact.text("correlationId", "corr-1"),
@@ -271,7 +269,7 @@ class CliLedgerBookQueryPayloadMapperTest {
             List.of(
                 LedgerFact.text("approvalId", "approval-1"),
                 LedgerFact.text("approvalType", "manager-signoff"),
-                LedgerFact.text("approverId", "approver-1"),
+                LedgerFact.text("approverReference", "approver-1"),
                 LedgerFact.text("approverType", "PERSON"),
                 LedgerFact.text("decision", "APPROVED"),
                 LedgerFact.text("approvedAt", "2026-04-07T10:20:30Z"))));

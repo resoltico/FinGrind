@@ -66,7 +66,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
                             LedgerJournalStep.assertion(LedgerAssertionKind.POSTING_EXISTS),
                             startedAt,
                             finishedAt,
-                            List.of(LedgerFact.text("postingId", "posting-1"))),
+                            List.of(LedgerFact.text("postingId", "018f0000-0000-7000-8000-000000000002"))),
                         new LedgerJournalEntry.Succeeded(
                             stepId("assert-balance"),
                             LedgerJournalStep.assertion(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS),
@@ -318,7 +318,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
 
   private static List<LedgerFact> postingFacts() {
     return List.of(
-        LedgerFact.text("postingId", "posting-1"),
+        LedgerFact.text("postingId", "018f0000-0000-7000-8000-000000000002"),
         LedgerFact.text("postingKind", "STANDARD"),
         LedgerFact.text("postingOriginKind", "REVERSAL"),
         LedgerFact.text("reversalState", "reversal"),
@@ -327,9 +327,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
         LedgerFact.group(
             "provenance",
             List.of(
-                LedgerFact.text("actorId", "actor-1"),
-                LedgerFact.text("actorType", "AGENT"),
-                LedgerFact.text("commandId", "command-1"),
+                LedgerFact.text("commandId", "018f0000-0000-7000-8000-000000000001"),
                 LedgerFact.text("idempotencyKey", "idem-1"),
                 LedgerFact.text("causationId", "cause-1"),
                 LedgerFact.text("correlationId", "corr-1"),
@@ -348,14 +346,14 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
                     List.of(
                         LedgerFact.text("approvalId", "approval-idem-1"),
                         LedgerFact.text("approvalType", "manager-signoff"),
-                        LedgerFact.text("approverId", "approver-1"),
+                        LedgerFact.text("approverReference", "approver-1"),
                         LedgerFact.text("approverType", "PERSON"),
                         LedgerFact.text("decision", "APPROVED"),
                         LedgerFact.text("approvedAt", "2026-05-14T10:05:00Z"))))),
         LedgerFact.group(
             "reversal",
             List.of(
-                LedgerFact.text("priorPostingId", "prior-posting-1"),
+                LedgerFact.text("priorPostingId", "018f0000-0000-7000-8000-000000000002"),
                 LedgerFact.text("reason", "operator reversal"))),
         LedgerFact.group(
             "line",
@@ -367,7 +365,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
 
   private static List<LedgerFact> postingFactsWithoutReversal() {
     return List.of(
-        LedgerFact.text("postingId", "posting-1"),
+        LedgerFact.text("postingId", "018f0000-0000-7000-8000-000000000002"),
         LedgerFact.text("postingKind", "STANDARD"),
         LedgerFact.text("postingOriginKind", "REVERSAL"),
         LedgerFact.text("reversalState", "direct"),
@@ -376,9 +374,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
         LedgerFact.group(
             "provenance",
             List.of(
-                LedgerFact.text("actorId", "actor-1"),
-                LedgerFact.text("actorType", "AGENT"),
-                LedgerFact.text("commandId", "command-1"),
+                LedgerFact.text("commandId", "018f0000-0000-7000-8000-000000000001"),
                 LedgerFact.text("idempotencyKey", "idem-1"),
                 LedgerFact.text("causationId", "cause-1"),
                 LedgerFact.text("correlationId", "corr-1"),
@@ -397,7 +393,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
                     List.of(
                         LedgerFact.text("approvalId", "approval-idem-1"),
                         LedgerFact.text("approvalType", "manager-signoff"),
-                        LedgerFact.text("approverId", "approver-1"),
+                        LedgerFact.text("approverReference", "approver-1"),
                         LedgerFact.text("approverType", "PERSON"),
                         LedgerFact.text("decision", "APPROVED"),
                         LedgerFact.text("approvedAt", "2026-05-14T10:05:00Z"))))),
@@ -423,13 +419,13 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
                 List.of(
                     LedgerFact.text("approvalId", "approval-idem-1"),
                     LedgerFact.text("approvalType", "manager-signoff"),
-                    LedgerFact.text("approverId", "approver-1"),
+                    LedgerFact.text("approverReference", "approver-1"),
                     LedgerFact.text("approverType", "PERSON"),
                     LedgerFact.text("decision", "APPROVED"),
                     LedgerFact.text("approvedAt", "2026-05-14T10:05:00Z"))));
     List<LedgerFact> postingFacts =
         List.of(
-            LedgerFact.text("postingId", "posting-1"),
+            LedgerFact.text("postingId", "018f0000-0000-7000-8000-000000000002"),
             LedgerFact.text("postingKind", "STANDARD"),
             LedgerFact.text("postingOriginKind", "REVERSAL"),
             LedgerFact.text("reversalState", "direct"),
@@ -461,17 +457,17 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
                 List.of(
                     LedgerFact.text("approvalId", "approval-idem-1"),
                     LedgerFact.text("approvalType", "manager-signoff"),
-                    LedgerFact.text("approverId", "approver-1"),
+                    LedgerFact.text("approverReference", "approver-1"),
                     LedgerFact.text("approverType", "PERSON"),
                     LedgerFact.text("decision", "APPROVED"),
                     LedgerFact.text("approvedAt", "2026-05-14T10:05:00Z"))));
     List<LedgerFact> postingFacts =
         List.of(
-            LedgerFact.text("postingId", "posting-1"),
+            LedgerFact.text("postingId", "018f0000-0000-7000-8000-000000000002"),
             LedgerFact.text("postingKind", "STANDARD"),
             LedgerFact.text("postingOriginKind", "REVERSAL"),
             LedgerFact.text("reversalState", "reversal"),
-            LedgerFact.text("priorPostingId", "prior-posting-1"),
+            LedgerFact.text("priorPostingId", "018f0000-0000-7000-8000-000000000002"),
             LedgerFact.text("effectiveDate", "2026-05-14"),
             LedgerFact.text("recordedAt", "2026-05-15T10:00:01Z"),
             LedgerFact.money("debitTotal", new MonetaryAmount("EUR", "1000")),
@@ -482,7 +478,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
             LedgerFact.group(
                 "reversal",
                 List.of(
-                    LedgerFact.text("priorPostingId", "prior-posting-1"),
+                    LedgerFact.text("priorPostingId", "018f0000-0000-7000-8000-000000000002"),
                     LedgerFact.text("reason", "operator reversal"))));
     return List.of(
         LedgerFact.count("count", 1),

@@ -192,15 +192,13 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
             "approvals": []
           },
           "provenance": {
-            "actorId": "%s-actor",
-            "actorType": "AGENT",
-            "commandId": "%s-command",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "%s-idempotency",
             "causationId": "%s-cause"
           }
         }
         """
-        .formatted(minorUnits, token, token, token, token, token);
+        .formatted(minorUnits, token, token, token);
   }
 
   private static String ownerWithdrawalRequestJson(String token, String minorUnits) {
@@ -220,15 +218,13 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
             "approvals": []
           },
           "provenance": {
-            "actorId": "%s-actor",
-            "actorType": "AGENT",
-            "commandId": "%s-command",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "%s-idempotency",
             "causationId": "%s-cause"
           }
         }
         """
-        .formatted(minorUnits, token, token, token, token, token);
+        .formatted(minorUnits, token, token, token);
   }
 
   private static String reversalRequestJson(String priorPostingId) {
@@ -245,9 +241,7 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
             "approvals": []
           },
           "provenance": {
-            "actorId": "reverse-contribution-actor",
-            "actorType": "AGENT",
-            "commandId": "reverse-contribution-command",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "reverse-contribution-idempotency",
             "causationId": "reverse-contribution-cause"
           },

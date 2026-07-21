@@ -587,9 +587,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-economic-null",
-            "actorType": "AGENT",
-            "commandId": "command-economic-null",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-economic-null",
             "causationId": "cause-economic-null"
           }
@@ -619,9 +617,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-multi-violation",
-            "actorType": "AGENT",
-            "commandId": "command-multi-violation",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-multi-violation",
             "causationId": "cause-multi-violation"
           }
@@ -663,9 +659,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-non-cash-direct-journal",
-            "actorType": "AGENT",
-            "commandId": "command-non-cash-direct-journal",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-non-cash-direct-journal",
             "causationId": "cause-non-cash-direct-journal"
           }
@@ -695,9 +689,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-distinct-role",
-            "actorType": "AGENT",
-            "commandId": "command-distinct-role",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-distinct-role",
             "causationId": "cause-distinct-role"
           }
@@ -736,9 +728,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-%s",
-            "actorType": "AGENT",
-            "commandId": "command-%s",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-%s",
             "causationId": "cause-%s"
           }
@@ -748,8 +738,6 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             inventoryAccountCode,
             quantity,
             unitCostMinorUnits,
-            requestSuffix,
-            requestSuffix,
             requestSuffix,
             requestSuffix,
             requestSuffix);
@@ -782,9 +770,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-sale-uom",
-            "actorType": "AGENT",
-            "commandId": "command-sale-uom",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-sale-uom",
             "causationId": "cause-sale-uom"
           }
@@ -845,9 +831,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-opening-inventory",
-            "actorType": "AGENT",
-            "commandId": "command-opening-inventory",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-opening-inventory",
             "causationId": "cause-opening-inventory"
           }
@@ -889,9 +873,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-direct-journal-inventory",
-            "actorType": "AGENT",
-            "commandId": "command-direct-journal-inventory",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-direct-journal-inventory",
             "causationId": "cause-direct-journal-inventory"
           }
@@ -965,16 +947,14 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
               "approvals": []
             },
             "provenance": {
-              "actorId": "actor-%s",
-              "actorType": "AGENT",
-              "commandId": "command-%s",
+              "commandId": "018f0000-0000-7000-8000-000000000001",
               "idempotencyKey": "idem-%s",
               "causationId": "cause-%s"
             }
           }
           """
           .formatted(
-              entryKind, firstField, secondField, slug, sourceDocumentType, slug, slug, slug, slug);
+              entryKind, firstField, secondField, slug, sourceDocumentType, slug, slug);
     }
   }
 }

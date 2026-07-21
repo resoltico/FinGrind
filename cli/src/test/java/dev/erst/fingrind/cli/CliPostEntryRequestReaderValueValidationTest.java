@@ -31,8 +31,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   "revenueAccountCode": "2000",
                   "amount": %s,
                   "provenance": {
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   }
@@ -62,9 +61,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   "revenueAccountCode": "2000",
                   "amount": %s,
                   "provenance": {
-                    "actorId": null,
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   }
@@ -94,9 +91,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   "revenueAccountCode": "2000",
                   "amount": %s,
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   }
@@ -126,9 +121,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   "revenueAccountCode": "2000",
                   "amount": %s,
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   }
@@ -178,9 +171,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   "revenueAccountCode": "2000",
                   "amount": %s,
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   }
@@ -212,9 +203,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   "revenueAccountCode": "2000",
                   "amount": %s,
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   }
@@ -246,9 +235,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   "revenueAccountCode": "2000",
                   "amount": %s,
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   }
@@ -278,9 +265,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   }
@@ -310,14 +295,12 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   "entryKind": "REVERSAL",
                   "effectiveDate": "2026-04-07",
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   },
                   "reversal": {
-                    "priorPostingId": "posting-0",
+                    "priorPostingId": "018f0000-0000-7000-8000-000000000002",
                     "reason": 1
                   }
                 }
@@ -345,9 +328,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   "revenueAccountCode": "2000",
                   "amount": %s,
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1",
                     "correlationId": 1
@@ -424,9 +405,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                   "effectiveDate": "2026-04-07",
                   "lines": %s,
                   "provenance": {
-                    "actorId": "actor-1",
-                    "actorType": "AGENT",
-                    "commandId": "command-1",
+                    "commandId": "018f0000-0000-7000-8000-000000000001",
                     "idempotencyKey": "idem-1",
                     "causationId": "cause-1"
                   }

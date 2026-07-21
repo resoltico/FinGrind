@@ -20,9 +20,7 @@
     ]
   },
   "provenance": {
-    "actorId": "quick-start-operator",
-    "actorType": "PERSON",
-    "commandId": "quick-start-record-sale-settled",
+    "commandId": "018f0000-0000-7000-8000-000000000001",
     "idempotencyKey": "quick-start-idem-1",
     "causationId": "quick-start-sale-cause-1"
   }

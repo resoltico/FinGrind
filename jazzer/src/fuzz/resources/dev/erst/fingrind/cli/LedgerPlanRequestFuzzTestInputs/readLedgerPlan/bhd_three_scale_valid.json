@@ -63,9 +63,7 @@
           ]
         },
         "provenance": {
-          "actorId": "seed-plan-bhd-actor-1",
-          "actorType": "AGENT",
-          "commandId": "seed-plan-bhd-command-1",
+          "commandId": "018f0000-0000-7000-8000-000000000001",
           "idempotencyKey": "seed-plan-bhd-idem-1",
           "causationId": "seed-plan-bhd-cause-1"
         }

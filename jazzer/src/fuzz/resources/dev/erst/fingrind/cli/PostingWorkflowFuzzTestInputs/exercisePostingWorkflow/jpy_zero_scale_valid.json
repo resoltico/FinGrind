@@ -20,9 +20,7 @@
     ]
   },
   "provenance": {
-    "actorId": "seed-posting-jpy-1",
-    "actorType": "AGENT",
-    "commandId": "seed-posting-jpy-command-1",
+    "commandId": "018f0000-0000-7000-8000-000000000001",
     "idempotencyKey": "seed-posting-jpy-idem-1",
     "causationId": "seed-posting-jpy-cause-1"
   }

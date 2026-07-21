@@ -671,9 +671,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-%s",
-            "actorType": "AGENT",
-            "commandId": "command-%s",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "%s",
             "causationId": "cause-%s"
           }
@@ -684,8 +682,6 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
             entryFactsJson,
             idempotencyKey,
             sourceDocumentType,
-            idempotencyKey,
-            idempotencyKey,
             idempotencyKey,
             idempotencyKey);
   }
@@ -713,15 +709,13 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-%s",
-            "actorType": "AGENT",
-            "commandId": "command-%s",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "%s",
             "causationId": "cause-%s"
           }
         }
         """
-        .formatted(idempotencyKey, idempotencyKey, idempotencyKey, idempotencyKey, idempotencyKey);
+        .formatted(idempotencyKey, idempotencyKey, idempotencyKey);
   }
 
   private static String tradingSaleSettledRequestJson(String idempotencyKey) {
@@ -751,15 +745,13 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
             "approvals": []
           },
           "provenance": {
-            "actorId": "actor-%s",
-            "actorType": "AGENT",
-            "commandId": "command-%s",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "%s",
             "causationId": "cause-%s"
           }
         }
         """
-        .formatted(idempotencyKey, idempotencyKey, idempotencyKey, idempotencyKey, idempotencyKey);
+        .formatted(idempotencyKey, idempotencyKey, idempotencyKey);
   }
 
   @Test

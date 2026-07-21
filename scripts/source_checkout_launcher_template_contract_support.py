@@ -146,7 +146,7 @@ def assert_plan_template(document: dict[str, object]) -> None:
     if posting.get("provenance") != {
         "actorId": "replace-before-commit-actor-id",
         "actorType": "PERSON",
-        "commandId": "replace-before-commit-command-id",
+        "commandId": "018f0000-0000-7000-8000-000000000001",
         "idempotencyKey": "replace-before-commit-idempotency-key",
         "causationId": "replace-before-commit-causation-id",
     }:

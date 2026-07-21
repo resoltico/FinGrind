@@ -33,15 +33,13 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
                 "effectiveDate": "2026-04-07",
                 "evidence": %s,
                 "provenance": {
-                  "actorId": "actor-1",
-                  "actorType": "AGENT",
-                  "commandId": "command-1",
+                  "commandId": "018f0000-0000-7000-8000-000000000001",
                   "idempotencyKey": "idem-1",
                   "causationId": "cause-1",
                   "correlationId": "corr-1"
                 },
                 "reversal": {
-                  "priorPostingId": "posting-0",
+                  "priorPostingId": "018f0000-0000-7000-8000-000000000002",
                   "reason": "operator reversal"
                 }
               }
@@ -57,9 +55,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
               "amount": %s,
               "evidence": %s,
               "provenance": {
-                "actorId": "actor-1",
-                "actorType": "AGENT",
-                "commandId": "command-1",
+                "commandId": "018f0000-0000-7000-8000-000000000001",
                 "idempotencyKey": "idem-1",
                 "causationId": "cause-1",
                 "correlationId": "corr-1"
@@ -77,12 +73,10 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
           "evidence": %s,
           "correction": {
             "kind": "AMENDMENT",
-            "priorPostingId": "posting-0"
+            "priorPostingId": "018f0000-0000-7000-8000-000000000002"
           },
           "provenance": {
-            "actorId": "actor-1",
-            "actorType": "AGENT",
-            "commandId": "command-1",
+            "commandId": "018f0000-0000-7000-8000-000000000001",
             "idempotencyKey": "idem-1",
             "causationId": "cause-1",
             "reason": "operator correction"
@@ -176,7 +170,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
             {
               "stepId": "get-posting",
               "kind": "get-posting",
-              "postingId": "posting-1"
+              "postingId": "018f0000-0000-7000-8000-000000000002"
             },
             {
               "stepId": "list-postings",
@@ -219,7 +213,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
               "kind": "assert",
               "assertion": {
                 "kind": "assert-posting-exists",
-                "postingId": "posting-1"
+                "postingId": "018f0000-0000-7000-8000-000000000002"
               }
             },
             {

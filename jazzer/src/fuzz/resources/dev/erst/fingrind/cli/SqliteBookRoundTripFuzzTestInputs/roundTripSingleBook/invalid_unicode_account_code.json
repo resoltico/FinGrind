@@ -20,9 +20,7 @@
     ]
   },
   "provenance": {
-    "actorId": "aktieris-ā",
-    "actorType": "AGENT",
-    "commandId": "komanda-漢字",
+    "commandId": "018f0000-0000-7000-8000-000000000001",
     "idempotencyKey": "idem-unicode-1",
     "causationId": "cause-€-1"
   }

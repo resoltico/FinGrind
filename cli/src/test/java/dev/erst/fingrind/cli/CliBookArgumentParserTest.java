@@ -128,6 +128,9 @@ class CliBookArgumentParserTest extends CliArgumentParsingTestSupport {
             "--book-key-file",
             "--book-passphrase-stdin",
             "--book-passphrase-prompt",
+            "--attestation-principal-id",
+            "--attestation-key-file",
+            "--attestation-passphrase-file",
             "--request-file"),
         result);
   }

@@ -20,9 +20,7 @@
     ]
   },
   "provenance": {
-    "actorId": "seed-sqlite-bhd-1",
-    "actorType": "SYSTEM",
-    "commandId": "seed-sqlite-bhd-command-1",
+    "commandId": "018f0000-0000-7000-8000-000000000001",
     "idempotencyKey": "seed-sqlite-bhd-idem-1",
     "causationId": "seed-sqlite-bhd-cause-1"
   }

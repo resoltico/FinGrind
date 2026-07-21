@@ -312,7 +312,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
                   "kind": "assert",
                   "assertion": {
                     "kind": "assert-posting-exists",
-                    "postingId": "posting-missing"
+                    "postingId": "018f0000-0000-7000-8000-000000000002"
                   }
                 }
               ]

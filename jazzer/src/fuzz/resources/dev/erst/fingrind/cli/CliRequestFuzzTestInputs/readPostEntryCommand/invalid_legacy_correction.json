@@ -21,7 +21,7 @@
   ],
   "correction": {
     "kind": "AMENDMENT",
-    "priorPostingId": "posting-previous"
+    "priorPostingId": "018f0000-0000-7000-8000-000000000002"
   },
   "evidence": {
     "sourceDocuments": [
@@ -36,9 +36,7 @@
     ]
   },
   "provenance": {
-    "actorId": "actor-8",
-    "actorType": "SYSTEM",
-    "commandId": "command-8",
+    "commandId": "018f0000-0000-7000-8000-000000000001",
     "idempotencyKey": "idem-8",
     "causationId": "cause-8",
     "reason": "legacy correction request"

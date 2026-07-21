@@ -25,22 +25,23 @@ public final class AttestationGenesisFactory {
     List<AttestationFounderInput> checkedFounders =
         List.copyOf(Objects.requireNonNull(founders, "founders"));
     List<AttestationSigningCredential> credentials = new ArrayList<>();
-    AttestationFounderInput activeFounder = checkedFounders.getFirst();
     try {
       for (AttestationFounderInput founder : checkedFounders) {
-        activeFounder = founder;
-        credentials.add(
-            AttestationKeyFiles.openOrCreateCredential(
-                founder.principalId(),
-                founder.encryptedKeyFilePath(),
-                founder.passphraseFilePath()));
+        credentials.add(openFounderCredential(founder));
       }
       return AttestationGenesis.create(
           UUID.randomUUID(), checkedBookIdentity, checkedRecordedAt, credentials);
-    } catch (IOException | IllegalArgumentException exception) {
-      throw new AttestationCredentialException(activeFounder.encryptedKeyFilePath(), exception);
     } finally {
       credentials.forEach(AttestationSigningCredential::close);
+    }
+  }
+
+  private static AttestationSigningCredential openFounderCredential(AttestationFounderInput founder) {
+    try {
+      return AttestationKeyFiles.openOrCreateCredential(
+          founder.principalId(), founder.encryptedKeyFilePath(), founder.passphraseFilePath());
+    } catch (IOException | IllegalArgumentException exception) {
+      throw new AttestationCredentialException(founder.encryptedKeyFilePath(), exception);
     }
   }
 }

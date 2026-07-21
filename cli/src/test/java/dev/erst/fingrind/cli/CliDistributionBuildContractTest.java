@@ -434,7 +434,7 @@ class CliDistributionBuildContractTest {
             "application_module='dev.erst.fingrind.cli/dev.erst.fingrind.cli.App'"));
     assertTrue(
         posixBundleLauncher.contains(
-            "--enable-native-access=dev.erst.fingrind.cli,dev.erst.fingrind.core"));
+            "--enable-native-access=dev.erst.fingrind.cli"));
     assertTrue(
         posixBundleLauncher.contains("--add-opens=java.base/java.nio=dev.erst.fingrind.cli"));
     assertTrue(
@@ -449,7 +449,7 @@ class CliDistributionBuildContractTest {
             "$applicationModule = \"dev.erst.fingrind.cli/dev.erst.fingrind.cli.App\""));
     assertTrue(
         powerShellBundleLauncher.contains(
-            "--enable-native-access=dev.erst.fingrind.cli,dev.erst.fingrind.core"));
+            "--enable-native-access=dev.erst.fingrind.cli"));
     assertTrue(
         powerShellBundleLauncher.contains("--add-opens=java.base/java.nio=dev.erst.fingrind.cli"));
     assertTrue(
@@ -464,7 +464,7 @@ class CliDistributionBuildContractTest {
             "application_module=\"dev.erst.fingrind.cli/dev.erst.fingrind.cli.App\""));
     assertTrue(
         dockerEntrypoint.contains(
-            "--enable-native-access=dev.erst.fingrind.cli,dev.erst.fingrind.core"));
+            "--enable-native-access=dev.erst.fingrind.cli"));
     assertTrue(dockerEntrypoint.contains("--add-opens=java.base/java.nio=dev.erst.fingrind.cli"));
     assertTrue(dockerEntrypoint.contains("--add-exports=java.base/sun.nio=dev.erst.fingrind.cli"));
     assertTrue(dockerEntrypoint.contains("-D{{sqliteBundleHomeSystemProperty}}=\"${app_home}\""));

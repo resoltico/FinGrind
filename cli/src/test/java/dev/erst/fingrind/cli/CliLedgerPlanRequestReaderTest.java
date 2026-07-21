@@ -445,7 +445,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
                       "kind": "assert",
                       "assertion": {
                         "kind": "assert-posting-exists",
-                        "postingId": "posting-1",
+                        "postingId": "018f0000-0000-7000-8000-000000000002",
                         "accountCode": "1000"
                       }
                     }

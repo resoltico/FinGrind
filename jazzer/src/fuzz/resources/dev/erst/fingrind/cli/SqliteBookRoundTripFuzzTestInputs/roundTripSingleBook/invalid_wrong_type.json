@@ -20,9 +20,7 @@
     ]
   },
   "provenance": {
-    "actorId": "actor-invalid_wrong_type",
-    "actorType": "AGENT",
-    "commandId": "command-invalid_wrong_type",
+    "commandId": "018f0000-0000-7000-8000-000000000001",
     "idempotencyKey": "idem-invalid_wrong_type",
     "causationId": "cause-invalid_wrong_type"
   }
