@@ -4,7 +4,6 @@ import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import dev.erst.fingrind.core.attestation.AttestationCredentialUseException;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationSigningSession;
-import java.io.IOException;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
@@ -32,17 +31,8 @@ public final class AttestationMutationAuthorization {
     }
     try (AttestationSigningSession session = AttestationSigningSession.open(checkedSources)) {
       return checkedAction.apply(session);
-    } catch (IOException | AttestationCredentialUseException exception) {
-      throw new AttestationCredentialException(
-          credentialPath(checkedSources, exception), exception);
+    } catch (AttestationCredentialUseException exception) {
+      throw new AttestationCredentialException(exception.credentialPath(), exception);
     }
-  }
-
-  private static java.nio.file.Path credentialPath(
-      List<AttestationCredentialSource> sources, Exception exception) {
-    if (exception instanceof AttestationCredentialUseException credentialFailure) {
-      return credentialFailure.credentialPath();
-    }
-    return sources.getFirst().encryptedKeyFilePath();
   }
 }

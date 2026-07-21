@@ -2,7 +2,6 @@ package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import dev.erst.fingrind.core.attestation.AttestationSigningSession;
-import java.io.IOException;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
@@ -19,7 +18,7 @@ public final class AttestationSigningSessionFactory {
         checkedSources.isEmpty() ? null : checkedSources.getFirst().encryptedKeyFilePath();
     try {
       return AttestationSigningSession.open(checkedSources);
-    } catch (IOException | IllegalArgumentException exception) {
+    } catch (IllegalArgumentException exception) {
       if (activePath == null) {
         throw new IllegalArgumentException(
             "Protected-book mutation requires one through five attestation credentials.",

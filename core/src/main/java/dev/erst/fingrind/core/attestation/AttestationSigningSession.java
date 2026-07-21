@@ -29,10 +29,9 @@ public final class AttestationSigningSession
    * Opens one through five pre-existing encrypted credentials for a single authorization attempt.
    *
    * <p>Mutation credentials are never created implicitly: enrollment is a separate attested
-   * operation. A missing file is therefore a typed I/O refusal at the caller's boundary.
+   * operation. A missing file is therefore a typed credential-use refusal at the caller's boundary.
    */
-  public static AttestationSigningSession open(List<AttestationCredentialSource> sources)
-      throws IOException {
+  public static AttestationSigningSession open(List<AttestationCredentialSource> sources) {
     List<AttestationCredentialSource> checkedSources =
         List.copyOf(Objects.requireNonNull(sources, "sources"));
     if (checkedSources.isEmpty() || checkedSources.size() > 5) {
@@ -46,7 +45,7 @@ public final class AttestationSigningSession
         opened.add(openCredential(source));
       }
       return new AttestationSigningSession(opened);
-    } catch (IOException | RuntimeException exception) {
+    } catch (RuntimeException exception) {
       opened.forEach(AttestationSigningCredential::close);
       throw exception;
     }
@@ -123,8 +122,7 @@ public final class AttestationSigningSession
     }
   }
 
-  private static AttestationSigningCredential openCredential(AttestationCredentialSource source)
-      throws IOException {
+  private static AttestationSigningCredential openCredential(AttestationCredentialSource source) {
     AttestationCredentialSource checkedSource = Objects.requireNonNull(source, "sources");
     try {
       return AttestationKeyFiles.openExistingCredential(

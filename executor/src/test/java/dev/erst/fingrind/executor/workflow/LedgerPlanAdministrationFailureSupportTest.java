@@ -312,6 +312,9 @@ class LedgerPlanAdministrationFailureSupportTest {
                 LocalDate.parse("2027-01-01"))));
     assertTrue(
         isPublishedCloseWindowRejection(
+            new dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseRequiresGeneratedPostings()));
+    assertTrue(
+        isPublishedCloseWindowRejection(
             new BookAdministrationRejection.InterimResultSweepMustStartAt(
                 LocalDate.parse("2026-01-01"))));
     assertTrue(

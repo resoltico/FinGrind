@@ -58,8 +58,6 @@ final class SqliteAttestationTestSupport {
           backupId,
           sourceVerification.headOrder(),
           sourceVerification.operationHead());
-    } catch (IOException exception) {
-      throw new IllegalStateException("Could not sign the SQLite test backup artifact.", exception);
     }
   }
 

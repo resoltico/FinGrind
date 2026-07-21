@@ -228,6 +228,9 @@ class SqliteLedgerPlanTransactionCoordinatorTest {
     }
 
     @Override
+    public void close() {}
+
+    @Override
     void executeStatement(String sql) {
       statements.add(sql);
       if (failure != null) {
