@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: CORE
-updated: "2026-07-16"
+updated: "2026-07-21"
 route:
   keywords: [fingrind, core, journal, money, positive-money, posting-kind, posting-origin-kind, posting-coverage, reporting-period, request-provenance, currency-balance, normal-balance]
   questions: ["how does a journal entry work in fingrind", "where are money and posting primitives documented", "which doc file covers RequestProvenance", "what ledger primitives are in the fingrind core module"]
@@ -423,15 +423,14 @@ public record PostingId(String value)
 
 ```java
 public record RequestProvenance(
-    ActorId actorId,
-    ActorType actorType,
     CommandId commandId,
     IdempotencyKey idempotencyKey,
     CausationId causationId,
     Optional<CorrelationId> correlationId)
 ```
 
-- Purpose: carry caller identity and lineage without commit-time audit fields
+- Purpose: carry stable command lineage without a free-text caller identity or commit-time audit
+  fields
 - Validation: rejects `null` required fields and `null` optionals
 - Optionality: callers pass `Optional.empty()` explicitly for absent `correlationId`
 

@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-07-19"
+updated: "2026-07-21"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -24,6 +24,7 @@ Then choose one of the user, developer, or reference tracks below.
 - [USER_QUICK_START.md](./USER_QUICK_START.md): fastest path to create one protected book, post one entry, and read one report back
 - [USER_INSTALL.md](./USER_INSTALL.md): exact public bundle names, launcher paths, checksum commands, attestation commands, and container package surface
 - [USER_CLI.md](./USER_CLI.md): packaged CLI usage, commands, report output modes, PDF artifact behavior, exit codes, and runtime requirements
+- [USER_BOOK_ATTESTATION.md](./USER_BOOK_ATTESTATION.md): current protected-book attestation, credential, verification, backup, and retained-receipt behavior
 - [USER_CLI_OPERATIONAL_NOTES.md](./USER_CLI_OPERATIONAL_NOTES.md): cross-command diagnostics, protected-book handling, query and report output, runtime facts, and failure boundaries
 - [USER_CONTAINER.md](./USER_CONTAINER.md): published container image workflow, mounted workspace model, and smoke-tested command examples
 - [USER_REQUESTS.md](./USER_REQUESTS.md): posting, account-declaration, and ledger-plan JSON request shapes plus executable request schemas
@@ -126,10 +127,10 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md)
 - [DOC_02_Application.md](./DOC_02_Application.md)
 - [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md)
-- [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md): normative feature-branch operation, authorization, preimage, semantic-profile, verifier, and operation-envelope contract for the next hard-break protected-book format; it is not released CLI or book-format behavior
-- [DOC_02_VerifiableOperationAttestationProfiles.md](./DOC_02_VerifiableOperationAttestationProfiles.md): normative field-level posting profiles and autonomous system-close derivations for the next attestation format; it is not released CLI or book-format behavior
-- [DOC_02_VerifiableOperationAttestationArtifacts.md](./DOC_02_VerifiableOperationAttestationArtifacts.md): normative backup-manifest, artifact-publication, restore, receipt, anchor, and artifact-vector contract for the next attestation format; it is not released CLI or book-format behavior
-- [DOC_02_VerifiableOperationAttestationCorpus.md](./DOC_02_VerifiableOperationAttestationCorpus.md): normative positive and negative static fixture source for the next attestation format; it is not released CLI or book-format behavior
+- [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md): current operation, authorization, preimage, verifier, and envelope contract for protected-book format 51
+- [DOC_02_VerifiableOperationAttestationProfiles.md](./DOC_02_VerifiableOperationAttestationProfiles.md): current field-level posting profiles and autonomous system-close derivations for protected-book format 51
+- [DOC_02_VerifiableOperationAttestationArtifacts.md](./DOC_02_VerifiableOperationAttestationArtifacts.md): current backup-manifest, artifact-publication, restore, receipt, anchor, and artifact-vector contract
+- [DOC_02_VerifiableOperationAttestationCorpus.md](./DOC_02_VerifiableOperationAttestationCorpus.md): current positive and negative static fixture source for protected-book format 51
 - [DOC_02_MachineContractAndDescriptors.md](./DOC_02_MachineContractAndDescriptors.md)
 - [DOC_02_AdministrationAndReports.md](./DOC_02_AdministrationAndReports.md)
 - [DOC_02_AccountRegistryLifecycle.md](./DOC_02_AccountRegistryLifecycle.md)
@@ -145,6 +146,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DOC_04_CliAndPdfAdapters.md](./DOC_04_CliAndPdfAdapters.md)
 - [sqlite/SCHEMA_CORE.md](./sqlite/SCHEMA_CORE.md)
 - [sqlite/SCHEMA_CORE_01_FOUNDATION.md](./sqlite/SCHEMA_CORE_01_FOUNDATION.md)
+- [sqlite/SCHEMA_CORE_01a_ATTESTATION_OPERATION.md](./sqlite/SCHEMA_CORE_01a_ATTESTATION_OPERATION.md)
 - [sqlite/SCHEMA_CORE_02_ACCOUNT_TABLE.md](./sqlite/SCHEMA_CORE_02_ACCOUNT_TABLE.md)
 - [sqlite/SCHEMA_CORE_03_ACCOUNT_DECLARATION_RULES.md](./sqlite/SCHEMA_CORE_03_ACCOUNT_DECLARATION_RULES.md)
 - [sqlite/SCHEMA_CORE_03a_ACCOUNT_LIFECYCLE_RULES.md](./sqlite/SCHEMA_CORE_03a_ACCOUNT_LIFECYCLE_RULES.md)

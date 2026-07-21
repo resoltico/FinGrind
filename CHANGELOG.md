@@ -11,9 +11,13 @@ Historical release notes older than `0.31.0` live in:
 
 ### Added
 
-- Added the unreleased next-format attestation registry and authorization fold. It resolves
-  credentials, grants, and quorums at the signed structure's historical position and returns the
-  contract's exact authorization refusal for every shared-envelope violation.
+- Added verifiable operation attestation to protected-book format `51` and CLI protocol `32`.
+  Every mutation now carries immutable canonical request and committed-effect preimages, a
+  historically authorized Ed25519 envelope, and a SHA-256 operation head. `verify-book`,
+  `attestation-review`, `export-attestation-receipt`, and `verify-receipt` expose structural
+  verification, non-persisted review findings, and independently retained receipt anchors.
+- Added manifest-attested no-clobber backup/restore flow with exact backup acknowledgement retry,
+  founder credential genesis, and public documentation of encrypted credential custody.
 - Added first-class contra-account taxonomy. A declared account can now identify the active postable account it reduces; the relationship is validated as a same-type, compatible-statement relationship, normal balance follows the contra role, account readback publishes `contraOfAccountCode`, and financial statements present the row as a reduction of its named account.
 - Added discoverable `retire-account` request scaffolding and named atomic setup plans for tax, fixed assets, and financing. Each setup plan declares the exact prerequisite account taxonomy before it declares or uses the bounded-context facts, while the default `print-plan-template` remains a general executable workflow.
 - Added an explicit Latvian monthly-payroll withholding profile to every payroll request, retained payroll run, plan fact, and readback. The supported 2026 calculation admits only `taxBookHeldAtEmployer: true` with `dependantCount: 0` and rejects all other profiles rather than assuming their tax treatment.
@@ -21,7 +25,7 @@ Historical release notes older than `0.31.0` live in:
 
 ### Changed
 
-- Hard-broke the protected-book format to `50` and made `bookStartEffectiveDate` an immutable
+- Hard-broke the protected-book format to `51` and made `bookStartEffectiveDate` an immutable
   initialization fact. Every posting now refuses dates before that boundary, interim-result sweeps
   use it as their exact earliest admissible date, and the first fiscal-year close covers the valid
   partial fiscal segment when a book starts mid-year. Older protected-book formats are rejected;
@@ -908,7 +912,7 @@ Historical release notes older than `0.31.0` live in:
 
 - Protected-book maintenance now records successful backup, restore, and rollback recovery facts
   inside the encrypted `audit_event` stream instead of through an adjacent plaintext maintenance
-  journal, `delete-rekey-rollback` now requires one explicit live-book passphrase source, and the
+  journal, the then-current rollback-deletion command required one explicit live-book passphrase source, and the
   maintenance workflow compensates those in-book audit facts when backup publication or rollback
   deletion fails before the external filesystem mutation completes.
 - The public CLI example corpus is now replayed from live commands through one deterministic

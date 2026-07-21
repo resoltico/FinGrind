@@ -9,7 +9,7 @@ scope:
 route:
   keywords: [verifiable-operation-attestation, backup-manifest, attestation-receipt, artifact-container, restore-book, backup-acknowledgement, receipt-anchor, no-clobber]
   questions: ["how is an attested backup artifact encoded", "how does FinGrind restore an attested snapshot", "what does an attestation receipt anchor", "which vectors prove backup and receipt envelopes"]
-stage: "Slice 0 feature-branch specification; not released behavior"
+stage: "Current public protocol 32 and protected-book format 51 contract"
 ---
 
 # Verifiable Operation Attestation Artifacts
@@ -189,5 +189,5 @@ container = 000102030405060708090a0b0c0d0e0f4647415454424d3101001122334455667788
 [DOC_02_VerifiableOperationAttestationCorpus.md](./DOC_02_VerifiableOperationAttestationCorpus.md)
 distinguishes these standalone envelope and parser vectors from complete B-05 manifest artifacts
 and B-11 receipt/book resources. V-CONTAINER-01 remains parser and digest conformance only; the
-complete B-05 artifact owns the N-14 manifest-binding negatives. Slice 4 materializes those
-complete sources without inventing additional semantic facts.
+complete B-05 artifact owns the N-14 manifest-binding negatives. Those complete sources add no
+semantic facts beyond their published literals.

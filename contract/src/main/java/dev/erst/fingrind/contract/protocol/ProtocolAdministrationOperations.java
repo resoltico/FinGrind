@@ -46,6 +46,12 @@ final class ProtocolAdministrationOperations {
                 + ">] (required for OWNER_MANAGED_TRADING)",
             ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY + " <currency-code>",
             ProtocolOptions.BookDefinition.FISCAL_YEAR_START + " <MM-DD>",
+            ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID
+                + " <uuid> (repeat one through five aligned founder triples)",
+            ProtocolOptions.Attestation.FOUNDER_KEY_FILE
+                + " <path> (repeat one through five aligned founder triples)",
+            ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE
+                + " <path> (repeat one through five aligned founder triples)",
             "[" + ProtocolOptions.BookDefinition.TIGHTEN_PARENTS + "]",
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
@@ -53,7 +59,7 @@ final class ProtocolAdministrationOperations {
         "Initialize a new book file with the canonical schema, selected seed template, explicit accounting basis, and the inventory costing doctrine required by trading templates.",
         List.of(
             ProtocolExampleStep.command(
-                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s \"Acme Studio\" %s OWNER_MANAGED_SERVICE %s CASH %s EUR %s 01-01"
+                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s \"Acme Studio\" %s OWNER_MANAGED_SERVICE %s CASH %s EUR %s 01-01 %s 123e4567-e89b-12d3-a456-426614174000 %s ./secrets/founder.fgatk %s ./secrets/founder.passphrase"
                     .formatted(
                         OperationId.OPEN_BOOK.wireName(),
                         ProtocolBookAccessOptions.BOOK_FILE,
@@ -62,9 +68,12 @@ final class ProtocolAdministrationOperations {
                         ProtocolOptions.BookDefinition.TEMPLATE_ID,
                         ProtocolOptions.BookDefinition.ACCOUNTING_BASIS,
                         ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
-                        ProtocolOptions.BookDefinition.FISCAL_YEAR_START)),
+                        ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
+                        ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
+                        ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
+                        ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE)),
             ProtocolExampleStep.command(
-                "fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s OWNER_MANAGED_SERVICE %s CASH %s EUR %s 01-01 %s"
+                "fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s OWNER_MANAGED_SERVICE %s CASH %s EUR %s 01-01 %s 123e4567-e89b-12d3-a456-426614174000 %s ./secrets/founder.fgatk %s ./secrets/founder.passphrase %s"
                     .formatted(
                         OperationId.OPEN_BOOK.wireName(),
                         ProtocolBookAccessOptions.BOOK_FILE,
@@ -73,9 +82,12 @@ final class ProtocolAdministrationOperations {
                         ProtocolOptions.BookDefinition.ACCOUNTING_BASIS,
                         ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
                         ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
+                        ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
+                        ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
+                        ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE,
                         ProtocolBookAccessOptions.BOOK_PASSPHRASE_PROMPT)),
             ProtocolExampleStep.command(
-                "cat ./secrets/acme.book-key | fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s OWNER_MANAGED_SERVICE %s CASH %s EUR %s 01-01 %s"
+                "cat ./secrets/acme.book-key | fingrind %s %s ./books/acme.sqlite %s \"Acme Studio\" %s OWNER_MANAGED_SERVICE %s CASH %s EUR %s 01-01 %s 123e4567-e89b-12d3-a456-426614174000 %s ./secrets/founder.fgatk %s ./secrets/founder.passphrase %s"
                     .formatted(
                         OperationId.OPEN_BOOK.wireName(),
                         ProtocolBookAccessOptions.BOOK_FILE,
@@ -84,6 +96,9 @@ final class ProtocolAdministrationOperations {
                         ProtocolOptions.BookDefinition.ACCOUNTING_BASIS,
                         ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
                         ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
+                        ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
+                        ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
+                        ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE,
                         ProtocolBookAccessOptions.BOOK_PASSPHRASE_STDIN))));
   }
 

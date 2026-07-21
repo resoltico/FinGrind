@@ -5,19 +5,18 @@ domain: BOOK_OPERATION_ATTESTATION
 updated: "2026-07-21"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["AttestedOperation", "AttestationEnvelope", "AttestationEvidence", "AttestationGenesis", "AttestationKeyFiles", "AttestationOperationSigner", "AttestationPublicCredential", "AttestationSigningCredential", "AttestationVerification", "AttestationVerificationException", "AttestationVerifier"]
+  symbols: ["AttestedOperation", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationEvidence", "AttestationGenesis", "AttestationKeyFiles", "AttestationOperationSigner", "AttestationPublicCredential", "AttestationSigningCredential", "AttestationVerification", "AttestationVerificationException", "AttestationVerifier"]
 route:
   keywords: [verifiable-operation-attestation, operation-head, attestation-envelope, principal-quorum, credential-purpose, autonomous-workflow, semantic-profile, failure-precedence, ed25519, stale-head]
   questions: ["what does FinGrind book-operation attestation prove", "how is an attested operation encoded", "which credential may authorize a system operation", "which semantic profile governs a typed operation"]
-stage: "Slice 0 feature-branch specification; not released behavior"
+stage: "Current public protocol 32 and protected-book format 51 contract"
 ---
 
 # Verifiable Operation Attestation Protocol
 
-This is the normative contract for FinGrind's next accepted protected-book format. It is a
-feature-branch specification, not a claim about a released command, accepted book, or persisted
-schema. Slice 5 makes this one hard format break: earlier books are rejected, with no mode,
-migration, alias, or compatibility path.
+This is the normative contract for FinGrind protocol 32 and protected-book format 51. It is the
+current public behavior. Earlier protected-book formats are rejected: there is no mode, migration,
+alias, or compatibility path.
 
 ## Ownership And Scope
 
@@ -55,7 +54,7 @@ coverage, or wall-clock truth. A retained independent receipt detects rollback, 
 alteration at or before its pinned head. An external witness can expose equivocation only if it
 observes both branches. No mechanism detects a fork that is never revealed.
 
-## AttestationEvidence, AttestationGenesis, AttestationKeyFiles, AttestationOperationSigner, AttestationPublicCredential, AttestationSigningCredential, AttestationVerification, AttestationVerificationException, And AttestationVerifier
+## `AttestationEvidence`
 
 The exported `AttestationEvidence` value owns exactly one raw operation envelope, request
 preimage, and effect preimage. It defensively copies all byte input and output so a storage adapter
@@ -66,17 +65,55 @@ review finding identifiers. A structural refusal is an `AttestationVerificationE
 `code` is the first stable attestation failure token. The verifier boundary owns no private-key
 type, custodian handle, filesystem path, or mutable book state.
 
-`AttestationKeyFiles.create` is the sole v1 creation path for a new encrypted file-backed Ed25519
-credential. It publishes a no-clobber key file and returns `AttestationPublicCredential`.
+## `AttestationAccountMutationIntent`
+
+`AttestationAccountMutationIntent` is the core semantic classification for a declaration,
+amendment, or retirement effect. The adapter supplies the public catalog operation identifier while
+the core validates that the persisted effect is compatible with this intent, keeping transport
+operation names out of the accounting kernel.
+
+## `AttestationGenesis`
+
+`AttestationGenesis.create` accepts one through five distinct founder credentials, declares the
+complete initial registry and policy in immutable preimages, and produces the unanimous order-zero
+evidence.
+
+## `AttestationKeyFiles`
+
+`AttestationKeyFiles.create` is the sole format-51 creation path for a new encrypted file-backed
+Ed25519 credential. It publishes a no-clobber key file and returns `AttestationPublicCredential`.
 `AttestationKeyFiles.loadPublicCredential` reads the public credential published with an existing
 encrypted key without decrypting its private material. A credential contains only canonical public
-DER-SPKI bytes and its SHA-256 key identifier. An
-`AttestationSigningCredential` binds that public credential to its book principal, encrypted key
-file, and short-lived caller-owned signing secret. `AttestationGenesis.create` accepts one through
-five distinct founder credentials, declares the complete initial registry and policy in immutable
-preimages, and produces the unanimous order-zero evidence. `AttestationOperationSigner` builds an
-ordered operation envelope only from canonical request and effect preimages; persistence performs
-the historical authorization and compare-and-swap admission.
+DER-SPKI bytes and its SHA-256 key identifier.
+
+## `AttestationOperationSigner`
+
+`AttestationOperationSigner` builds an ordered operation envelope only from canonical request and
+effect preimages; persistence performs historical authorization and compare-and-swap admission.
+
+## `AttestationPublicCredential`
+
+`AttestationPublicCredential` identifies a public key by the SHA-256 digest of its DER
+SubjectPublicKeyInfo encoding.
+
+## `AttestationSigningCredential`
+
+`AttestationSigningCredential` binds a public credential to its book principal, encrypted key
+file, and short-lived caller-owned signing secret without disclosing private-key bytes.
+
+## `AttestationVerification`
+
+`AttestationVerification` returns the authenticated book identity, unsigned-64 head order,
+operation head, and non-persisted review finding identifiers for a structurally valid chain.
+
+## `AttestationVerificationException`
+
+`AttestationVerificationException` identifies the first stable structural-failure token.
+
+## `AttestationVerifier`
+
+`AttestationVerifier` is the pure complete-chain boundary; it owns no private-key type, custodian
+handle, filesystem path, or mutable book state.
 
 ## Profile Constants And Canonical Primitives
 
@@ -742,13 +779,8 @@ mutations, and live-CAS admission attempts, is
 
 ## Implementation Boundary
 
-Slice 1 owns the canonical preimage and envelope encoders and proves V-OP-01, V-OP-02,
-V-MANIFEST-02, V-RECEIPT-02, and V-CONTAINER-01 byte-for-byte. Slice 2 owns the JCA file-PKCS#8
-custody seam and rejects unshipped custodians. Slice 3 owns registry/policy folding and all
-historical authorization outcomes. Its authorization context is derived from the decoded signed
-payload and verified request provenance, never selected independently by the caller. It executes
-the exact standalone-envelope bytes for N-01 through N-10 and N-13/N-15. Slice 4 owns full
-verification, review, protected-book and artifact resources, and the verifier-dependent exact
-negative rows N-11, N-12, N-14, and N-16 through N-27. Slice 5 performs the only public hard
-format break and ships user, CLI, response, schema, security, index, example, and changelog
-documentation together.
+The protocol is implemented as one atomic public format break. Every book mutation reaches the
+same immutable append boundary with an operation kind owned by the public command catalog; the
+SQLite transaction commits attestation evidence and bookkeeping effects together. No legacy public
+mutation path, unauthenticated recovery path, legacy format reader, or compatibility adapter
+remains.

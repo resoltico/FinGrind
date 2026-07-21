@@ -9,7 +9,7 @@ scope:
 route:
   keywords: [verifiable-operation-attestation, static-corpus, golden-vectors, fixture-ledger, verifier-negative-cases, backup-artifact, live-cas]
   questions: ["which static fixtures verify FinGrind operation attestation", "how is the attestation corpus constructed", "which negative attestation vectors are required", "which artifact fixtures cover backup and restore"]
-stage: "Slice 0 feature-branch specification; not released behavior"
+stage: "Current public protocol 32 and protected-book format 51 contract"
 ---
 
 # Verifiable Operation Attestation Corpus
@@ -25,8 +25,8 @@ which owns manifest, receipt, and container contracts.
 
 This is a fixture-source ledger, not a list of test ideas. A fixture contains the listed immutable
 preimages, folded registry and policy facts, exact envelope bytes, and expected first result at its
-declared verification scope. Slice 4 materializes every protected-book and artifact source without
-choosing new semantic data, keys, operation positions, or expected results. Envelope bytes, heads,
+declared verification scope. Every protected-book and artifact source fixes its semantic data,
+keys, operation positions, and expected result. Envelope bytes, heads,
 snapshot bytes, and artifact digests are derived outputs of these literal sources; the resource
 records their complete bytes and any mutation as a byte offset plus replacement bytes. The core
 protocol owns V-OP-01 and V-OP-02. The artifact protocol owns V-MANIFEST-02, V-RECEIPT-02, and
@@ -138,15 +138,14 @@ from a fixture name.
 | N-26 | B-03 order 6: set the rollover predecessorKeyId in both matching binding records to A2's new keyId, then recompute the preimage digests, payload, and A1/B signatures. | attestation-request-profile-invalid |
 | N-27 | B-02 through 3: at order 4 A1 and B revoke C's unbound predefined keyId, then recompute the preimage digests, payload, and A1/B signatures. | attestation-request-profile-invalid |
 
-Slice 3 executes N-01 through N-10 and N-13/N-15 from these literal standalone-envelope bytes:
+N-01 through N-10 and N-13/N-15 execute from these literal standalone-envelope bytes:
 every one-byte mutation, count replacement, entry replacement, entry deletion, or entry swap is
 performed against the published envelope before it is decoded. The authorization context is then
 derived from that same decoded payload: operation envelopes resolve at operationOrder minus one,
 manifests at sourceOrder, and receipts at operationOrder. N-11, N-12, N-14, and N-16 through N-27
-depend on complete protected-book, genesis-preimage, or artifact sources and are the Slice 4
-verifier gate. Slice 4 materializes those sources with their raw bytes, mutation offsets,
-replacement bytes, policy fold, verification scope, and expected first result; it may not replace
-them with prose-only scenario tests or choose a different first failure.
+depend on complete protected-book, genesis-preimage, or artifact sources. Those sources include
+their raw bytes, mutation offsets, replacement bytes, policy fold, verification scope, and expected
+first result; they may not be replaced with prose-only scenario tests or a different first failure.
 
 The standalone operation-envelope bases contain requestDigest but not the corresponding request
 preimage bytes, so these rows are deliberately provenance-neutral: they test only the shared

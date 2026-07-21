@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: OPERATOR_RESPONSES
-updated: "2026-07-17"
+updated: "2026-07-21"
 route:
   keywords: [fingrind, response-json, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, fixed-asset-register, output-mode, capabilities, execute-plan, tax-setup, amend-account, retire-account, report-output]
   questions: ["what response envelopes does fingrind return", "what does inspect-book return", "how does list-accounts pagination work in fingrind", "what execute-plan response does fingrind return", "what do amend-account and retire-account return", "what does fixed asset register return", "what report payloads does fingrind return"]
@@ -19,7 +19,7 @@ payloads returned by the CLI.
 
 | Output | Returned By | Fields |
 |:-------|:------------|:-------|
-| success envelope | `help`, `version`, `capabilities`, `environment`, `generate-book-key-file`, `open-book`, `rekey-book`, `backup-book`, `restore-book`, `inspect-rekey-rollback`, `restore-rekey-rollback`, `delete-rekey-rollback`, `declare-account`, `amend-account`, `retire-account`, `declare-tax-registration`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`, `accrual-cutoff-schedule`, `fixed-asset-register`, `financing-register`, `realized-foreign-exchange-register`, `latvian-payroll-register`, `income-statement`, `cash-flow-statement`, `changes-in-equity`, `tax-obligation` | `status`, `payload`, optional `artifacts[]` |
+| success envelope | `help`, `version`, `capabilities`, `environment`, `generate-book-key-file`, `open-book`, `rekey-book`, `backup-book`, `restore-book`, `verify-book`, `attestation-review`, `export-attestation-receipt`, `verify-receipt`, `declare-account`, `amend-account`, `retire-account`, `declare-tax-registration`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`, `accrual-cutoff-schedule`, `fixed-asset-register`, `financing-register`, `realized-foreign-exchange-register`, `latvian-payroll-register`, `income-statement`, `cash-flow-statement`, `changes-in-equity`, `tax-obligation` | `status`, `payload`, optional `artifacts[]` |
 | raw request document | `print-request-template`, `print-plan-template` | canonical posting-request, declare-account-request, declare-tax-registration-request, or AI-agent ledger-plan scaffold JSON |
 | `ok` | successful `preflight-entry` | `status`, `payload.idempotencyKey`, `payload.effectiveDate`, `payload.resolvedJournal` |
 | `ok` | successful typed `record-*` command, `post-entry`, or `record-reversal` | `status`, `payload.postingId`, `payload.idempotencyKey`, `payload.effectiveDate`, `payload.recordedAt`, `payload.idempotentReplay`, `payload.resolvedJournal` |
@@ -250,8 +250,6 @@ Shared posting payload:
 - `reversalState`
 - `effectiveDate`
 - `recordedAt`
-- `actorId`
-- `actorType`
 - `commandId`
 - `idempotencyKey`
 - `causationId`
@@ -259,7 +257,7 @@ Shared posting payload:
 - `sourceChannel`
 - `evidence.sourceDocuments[]`, where each entry carries `sourceDocumentId`, `sourceDocumentType`,
   and `documentDate`; every posting retains at least one such source-document entry
-- `evidence.approvals[]`, where each entry carries `approvalId`, `approvalType`, `approverId`,
+- `evidence.approvals[]`, where each entry carries `approvalId`, `approvalType`, `approverReference`,
   `approverType`, `decision`, and `approvedAt`
 - optional `reversal.priorPostingId` and `reversal.reason`
 - `lines[]`, where each line carries `accountCode`, `side`, and typed `amount`
@@ -343,21 +341,11 @@ and is not the restored live-book secret.
 `rekey-book` success returns `payload.bookFile`, `payload.newBookKeyFile`, and one
 `book-key-file` artifact. The key file is newly generated at the requested absent target.
 
-`inspect-rekey-rollback` success returns:
-- `payload.bookFile`
-- optional `artifacts[]`, where each current entry uses `format: "rollback-book-file"`
-
-Inspection discovers sibling rollback artifact paths without opening the protected book, so it
-accepts no passphrase source. `restore-rekey-rollback` and `delete-rekey-rollback` act on a
-selected artifact and therefore require the current book passphrase source.
-
-`restore-rekey-rollback` success returns:
-- `payload.bookFile`
-- `artifacts[]`, where the current entry uses `format: "rollback-book-file"`
-
-`delete-rekey-rollback` success returns:
-- `payload.bookFile`
-- `artifacts[]`, where the current entry uses `format: "rollback-book-file"`
+`verify-book` returns the verified book identity and immutable head, or the first typed structural
+failure. `attestation-review` returns non-persisted compromise-review findings for a structurally
+valid chain. `export-attestation-receipt` returns the no-clobber receipt artifact path, and
+`verify-receipt` returns the receipt's verified anchor against the selected book. See
+[USER_BOOK_ATTESTATION.md](./USER_BOOK_ATTESTATION.md) for their distinct trust boundaries.
 
 `list-accounts` success returns:
 - `payload.family` as `list-accounts`

@@ -7,7 +7,7 @@ FinGrind is a command-line bookkeeping tool for one accounting entity in one pro
 - Atomic tax, fixed-asset, and financing setup plans; explicit account amendment, retirement, and contra-account rules; per-book tax registrations; tax-obligation reporting; and reporting-period close commands
 - Trial balance, account balance and ledger, period summary, financial position, income statement, cash-flow statement, changes in equity, inventory valuation, accrual-cutoff schedule, fixed-asset, financing, and realized-foreign-exchange register outputs in text, JSON, CSV, or PDF, with keyset pagination for account-ledger and collection queries
 - A retained Latvian payroll register in text, JSON, CSV, and PDF, including payroll runs, settlements, and compensating-reversal lineage
-- Explicit backup, restore, rekey, and interrupted-rekey recovery commands
+- Immutable Ed25519-attested book mutations, verification and compromise review, no-clobber backups, signed restores, and independently retained receipts
 
 **Status:** Alpha. FinGrind is under active development and is not yet production-ready.
 
@@ -25,7 +25,10 @@ fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acm
   --accounting-basis CASH \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
-  --book-start-effective-date 2026-01-01
+  --book-start-effective-date 2026-01-01 \
+  --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-founder-key-file ./secrets/founder.fgatk \
+  --attestation-founder-passphrase-file ./secrets/founder.passphrase
 
 fingrind list-accounts --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
   --limit 10
@@ -105,6 +108,7 @@ As of                     : 2026-04-07
 - [docs/USER_QUICK_START.md](docs/USER_QUICK_START.md) for the complete first-run path
 - [docs/USER_CONTAINER.md](docs/USER_CONTAINER.md) for the mounted-container workflow
 - [docs/USER_CLI.md](docs/USER_CLI.md) for commands and exit behavior
+- [docs/USER_BOOK_ATTESTATION.md](docs/USER_BOOK_ATTESTATION.md) for founder credentials, verification, backups, and retained receipts
 - [docs/USER_REQUESTS.md](docs/USER_REQUESTS.md) for request shapes and inventory rules
 - [docs/USER_RESPONSES.md](docs/USER_RESPONSES.md) for response envelopes and deterministic failures
 - [docs/USER_EXAMPLES.md](docs/USER_EXAMPLES.md) for longer workflows

@@ -3,12 +3,16 @@ package dev.erst.fingrind.contract.discovery;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
+import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.protocol.RuntimeDistribution;
 import java.util.List;
 
 /** Canonical quick-start workflow publication for the machine contract. */
 final class MachineContractQuickStarts {
+  private static final String QUICK_START_FOUNDER_PRINCIPAL_ID =
+      "123e4567-e89b-12d3-a456-426614174000";
+
   private MachineContractQuickStarts() {}
 
   static List<WorkflowDescriptor> canonicalQuickStart(RuntimeDistribution runtimeDistribution) {
@@ -40,12 +44,18 @@ final class MachineContractQuickStarts {
                         ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
                         paths.bookKeyFile())),
             WorkflowStepDescriptor.command(
-                "%s %s --book-file %s --book-key-file %s --entity-name \"Acme Studio\" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01"
+                "%s %s --book-file %s --book-key-file %s --entity-name \"Acme Studio\" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 %s %s %s %s %s %s"
                     .formatted(
                         launcherCommand(surface),
                         ProtocolCatalog.operationName(OperationId.OPEN_BOOK),
                         paths.bookFile(),
-                        paths.bookKeyFile())),
+                        paths.bookKeyFile(),
+                        ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
+                        QUICK_START_FOUNDER_PRINCIPAL_ID,
+                        ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
+                        paths.founderKeyFile(),
+                        ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE,
+                        paths.founderPassphraseFile())),
             WorkflowStepDescriptor.command(
                 "%s %s --book-file %s --book-key-file %s --limit 10"
                     .formatted(
@@ -97,7 +107,10 @@ final class MachineContractQuickStarts {
           "Run commands from the repository root; the direct-Java wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
       case CONTAINER_DOCKER ->
           "Define a session-local fingrind wrapper backed by the published or locally built container image, then run this workflow through that logical launcher name.";
-    };
+    }
+        + " Before open-book, create a nonempty owner-only founder passphrase file at "
+        + quickStartPaths(surface).founderPassphraseFile()
+        + "; the founder key path is created no-clobber when absent.";
   }
 
   private static WorkflowStepDescriptor requestPreparationCommand(
@@ -153,10 +166,19 @@ final class MachineContractQuickStarts {
           SOURCE_CHECKOUT_POSIX_SHELL,
           DIRECT_JAVA_POSIX_SHELL,
           CONTAINER_DOCKER ->
-          new QuickStartPaths("./secrets/acme.book-key", "./books/acme.sqlite", "./request.json");
+          new QuickStartPaths(
+              "./secrets/acme.book-key",
+              "./books/acme.sqlite",
+              "./request.json",
+              "./secrets/acme-founder.fgatk",
+              "./secrets/acme-founder.passphrase");
       case SOURCE_CHECKOUT_WINDOWS_POWERSHELL, DIRECT_JAVA_WINDOWS_POWERSHELL ->
           new QuickStartPaths(
-              ".\\secrets\\acme.book-key", ".\\books\\acme.sqlite", ".\\request.json");
+              ".\\secrets\\acme.book-key",
+              ".\\books\\acme.sqlite",
+              ".\\request.json",
+              ".\\secrets\\acme-founder.fgatk",
+              ".\\secrets\\acme-founder.passphrase");
     };
   }
 
@@ -177,5 +199,10 @@ final class MachineContractQuickStarts {
     };
   }
 
-  private record QuickStartPaths(String bookKeyFile, String bookFile, String requestFile) {}
+  private record QuickStartPaths(
+      String bookKeyFile,
+      String bookFile,
+      String requestFile,
+      String founderKeyFile,
+      String founderPassphraseFile) {}
 }

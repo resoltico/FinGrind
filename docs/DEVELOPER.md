@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: DEVELOPER
-updated: "2026-07-19"
+updated: "2026-07-21"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -111,7 +111,7 @@ report-pdf/   PDF artifact adapter:
 cli/          Agent-first JSON CLI:
               help/version/capabilities plus print-request-template, print-plan-template,
               generate-book-key-file, open-book, rekey-book, backup-book, restore-book,
-              inspect-rekey-rollback, restore-rekey-rollback, delete-rekey-rollback,
+              verify-book, attestation-review, export-attestation-receipt, verify-receipt,
               inspect-book, declare-account, list-accounts, get-posting,
               list-postings, account-balance, trial-balance, account-ledger, period-summary,
               execute-plan, preflight-entry, and post-entry, with discovery payloads rendered
@@ -183,19 +183,15 @@ FinGrind's current public model is:
   stored, while `normalBalance` is derived from `accountType` plus classification doctrine
 - every posting line references a declared active account
 - the canonical book schema uses SQLite `STRICT` tables and opened handles disable `trusted_schema`
-- the current supported on-disk format is `50`, owned by `BookFormatContract`
+- the current supported on-disk format is `51`, owned by `BookFormatContract`
 - `inspect-book` publishes one explicit hard-break migration policy for the active format line:
   no in-place upgrade path, no older-format acceptance, and no newer-format acceptance
 - FinGrind is in an alpha hard-break line, so schema evolution advances by replacing the current
   model and rejecting non-matching book formats instead of carrying compatibility shims
-- maintenance workflows are explicit: `backup-book` exports one verified encrypted backup pair
-  under an independently generated backup key, `restore-book` verifies that pair before replacing
-  a live book path only with explicit replacement consent and re-encrypts the restored live book
-  under a new destination key, `inspect-rekey-rollback` reports stale same-directory
-  rollback artifacts, `restore-rekey-rollback` rewinds one interrupted rekey from one selected
-  rollback artifact, and `delete-rekey-rollback` removes one stale rollback artifact without
-  touching the live book path after verifying one initialized live book with one explicit
-  passphrase source
+- maintenance workflows are explicit: `backup-book` publishes a manifest-attested pair and can
+  resume only its exact missing acknowledgement; `restore-book` verifies that pair before
+  publishing an absent destination under a new key; and `rekey-book` recovers only its own
+  verified interrupted stage without a public rollback-artifact command
 - preflight is side-effect free against a missing book
 - commit is append-only and reversals are additive links, not in-place mutation
 - bookkeeping audit events are append-only durable facts in the same protected book

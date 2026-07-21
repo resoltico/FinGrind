@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: CORE
-updated: "2026-07-20"
+updated: "2026-07-21"
 route:
   keywords: [fingrind, core, account-code, account-name, accounting-basis, account-taxonomy, cash-flow-asset-classification, book-doctrine, currency-unit, quantity, unit-of-measure, inventory-costing, weighted-average, idempotency, temporal-text, fiscal-year-start, reachability]
   questions: ["what core value types does fingrind expose", "where do the core accounting invariants live", "how does account doctrine work in fingrind", "what account and identity primitives are in the fingrind core module", "where are quantity and weighted-average inventory costing primitives documented"]
@@ -186,16 +186,16 @@ public enum ApprovalDecision implements WireValue
 public record ApprovalReference(
     ApprovalId approvalId,
     ApprovalType approvalType,
-    ActorId approverId,
-    ActorType approverType,
+    String approverReference,
+    String approverType,
     ApprovalDecision decision,
     Instant approvedAt)
 ```
 
 - Purpose: keep approval evidence structured and durable across request and committed-posting
   surfaces
-- Validation: rejects `null` approval id, approval type, approver id, approver type, decision,
-  or approval timestamp
+- Validation: rejects missing or blank approval reference and approver type, plus `null` approval
+  id, approval type, decision, or approval timestamp
 
 ## `EntityProfile`
 
@@ -470,33 +470,6 @@ public final class ProfitAndLossAccountDoctrine
   `profitAndLossContributionMinorUnits(...)`
 - Doctrine: only `REVENUE` and `EXPENSE` accounts close into current-period result, and positive
   contribution values increase profit while negative values reduce profit
-
-## `ActorId`
-
-`ActorId` is the stable identifier for the caller recorded in request provenance.
-
-```java
-public record ActorId(String value)
-```
-
-- Purpose: keep actor identity explicit in request provenance
-- Validation: rejects `null` and blank text after stripping surrounding whitespace
-
-## `ActorType`
-
-`ActorType` classifies the actor that initiated one posting request.
-
-```java
-public enum ActorType implements WireValue {
-  PERSON,
-  SYSTEM,
-  AGENT
-}
-```
-
-- Purpose: distinguish person, system, and agent callers without free-form strings
-- Wire contract: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
-  vocabulary
 
 ## `BalanceSide`
 

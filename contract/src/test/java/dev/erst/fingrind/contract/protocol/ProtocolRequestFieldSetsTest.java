@@ -180,8 +180,7 @@ class ProtocolRequestFieldSetsTest {
             "approvedAt"),
         ProtocolPostEntryFields.approvalFields());
     assertEquals(
-        List.of(
-            "actorId", "actorType", "commandId", "idempotencyKey", "causationId", "correlationId"),
+        List.of("commandId", "idempotencyKey", "causationId", "correlationId"),
         ProtocolPostEntryFields.provenanceFields());
     assertEquals(List.of("priorPostingId", "reason"), ProtocolPostEntryFields.reversalFields());
     assertEquals(List.of("taxRegistrationId", "taxCode"), ProtocolPostEntryFields.taxFields());

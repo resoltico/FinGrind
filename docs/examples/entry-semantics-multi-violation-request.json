@@ -20,9 +20,7 @@
     ]
   },
   "provenance": {
-    "actorId": "actor-multi-violation",
-    "actorType": "AGENT",
-    "commandId": "command-multi-violation",
+    "commandId": "018f0000-0000-7000-8000-000000000003",
     "idempotencyKey": "idem-multi-violation",
     "causationId": "cause-multi-violation"
   }

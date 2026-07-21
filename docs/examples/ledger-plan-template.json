@@ -36,8 +36,6 @@
         "approvals" : [ ]
       },
       "provenance" : {
-        "actorId" : "replace-before-commit-actor-id",
-        "actorType" : "PERSON",
         "commandId" : "replace-before-commit-command-id",
         "idempotencyKey" : "replace-before-commit-idempotency-key",
         "causationId" : "replace-before-commit-causation-id"

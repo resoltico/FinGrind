@@ -136,7 +136,7 @@ class MachineContractDiscoverySurfaceTest {
         ProtocolCatalog.operations().size(),
         MachineContractDomainDescriptors.commandDescriptors().size());
     assertEquals(6, MachineContractDomainDescriptors.commandCatalog().discovery().size());
-    assertEquals(6, MachineContractDomainDescriptors.audit().requestProvenanceFields().size());
+    assertEquals(4, MachineContractDomainDescriptors.audit().requestProvenanceFields().size());
     assertEquals(2, MachineContractDomainDescriptors.audit().committedFields().size());
     assertEquals(9, MachineContractDomainDescriptors.exitCodes().size());
     assertEquals("reversal-only", MachineContractDomainDescriptors.reversals().model());
@@ -555,6 +555,10 @@ class MachineContractDiscoverySurfaceTest {
     assertTrue(steps.openBook().text().contains("--entity-name \"Acme Studio\""));
     assertTrue(steps.openBook().text().contains("--book-template-id OWNER_MANAGED_SERVICE"));
     assertTrue(steps.openBook().text().contains("--accounting-basis CASH"));
+    assertTrue(steps.openBook().text().contains("--attestation-founder-principal-id"));
+    assertTrue(steps.openBook().text().contains("--attestation-founder-key-file"));
+    assertTrue(steps.openBook().text().contains("--attestation-founder-passphrase-file"));
+    assertTrue(steps.introNote().text().contains("founder passphrase file"));
     assertTrue(
         steps
             .listAccounts()

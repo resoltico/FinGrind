@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: OPERATOR_REQUESTS
-updated: "2026-07-17"
+updated: "2026-07-21"
 route:
   keywords: [fingrind, request-json, provenance, reversal, idempotency, accrual-cutoff, fixed-assets, financing, realized-foreign-exchange, latvian-payroll, prepayment, deferred-revenue, accrued-expense, ledger-plan, execute-plan, tax-setup, account-declaration, account-lifecycle]
   questions: ["what request json does fingrind accept", "how do i record a fixed asset or depreciation", "how do i record financing interest", "how do i settle a foreign-currency receivable", "how do i record Latvian monthly payroll", "how do i record a prepayment or deferred revenue", "how do i settle an accrued expense", "what ledger plan shape does execute-plan accept", "how do i amend or retire an account in fingrind", "what posting request fields does fingrind accept"]
@@ -69,8 +69,8 @@ content:
 cat docs/examples/request-template.json
 ```
 
-The scaffold is intentionally a placeholder-first sample: `provenance.actorType` defaults to `PERSON`, the
-emitted document carries explicit `replace-before-commit-*` evidence and provenance tokens, and
+The scaffold is intentionally a placeholder-first sample: the emitted document carries explicit
+`replace-before-commit-*` evidence and provenance tokens, and
 those placeholder values must be replaced before real-world use. On one book, an `idempotencyKey`
 becomes single-use per book after the first committed posting.
 The default posting scaffold uses the minimal `SALE_SETTLED` path with `cashAccountCode`,
@@ -223,7 +223,7 @@ Current posting-request rules:
   `acceptedSourceDocumentTypes`, `sourceDocumentTypeSemantics`, and described entry-specific
   `variantFields[]` on `entryKindSemantics[]`
 - `evidence.approvals` is required as an array and may be empty
-- every `evidence.approvals[]` entry requires `approvalId`, `approvalType`, `approverId`, `approverType`, `decision`, and `approvedAt`
+- every `evidence.approvals[]` entry requires `approvalId`, `approvalType`, `approverReference`, `approverType`, `decision`, and `approvedAt`
 - `lines[].accountCode` must start with an ASCII letter or digit, may then contain only ASCII letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 255 characters
 - every direct `DIRECT_JOURNAL` entry must contain at least two journal lines
 - every direct `DIRECT_JOURNAL` entry must contain at least one `DEBIT` line and at least one `CREDIT` line
@@ -253,7 +253,7 @@ Current posting-request rules:
 - `foreignExchange` records foreign transaction facts without changing the journal-line currency,
   so mixed-currency journal lines remain rejected
 - `reversal` is required only for `REVERSAL` and must be absent for every other `entryKind`
-- required provenance fields are `actorId`, `actorType`, `commandId`, `idempotencyKey`, and `causationId`
+- required provenance fields are `commandId`, `idempotencyKey`, and `causationId`; `commandId` is a canonical UUID
 - `provenance.idempotencyKey` must start with an ASCII letter or digit, may then contain only ASCII letters, digits, `.`, `_`, `:`, `/`, or `-`, and must not exceed 128 characters
 - optional provenance field is `correlationId`
 - `reversal.priorPostingId` and `reversal.reason` are both required when `reversal` is present
@@ -445,7 +445,6 @@ exception: its `REJECTED` and `ASSERTION_FAILED` outcomes are primary result env
 |:------|:----------------|
 | `lines[].side` | `DEBIT`, `CREDIT` |
 | `foreignExchange.treatmentKind` | `SPOT_TRANSACTION`, `UNREALIZED_REMEASUREMENT` |
-| `provenance.actorType` | `PERSON`, `SYSTEM`, `AGENT` |
 | `accountType` | `ASSET`, `LIABILITY`, `EQUITY`, `REVENUE`, `EXPENSE` |
 | `accountNodeKind` | `POSTABLE`, `HEADER` |
 | `financialPositionLineClassification` | `CURRENT_ASSET`, `INVENTORY`, `PREPAID_EXPENSE`, `NONCURRENT_ASSET`, `TRADE_RECEIVABLE`, `CURRENT_LIABILITY`, `NONCURRENT_LIABILITY`, `TRADE_PAYABLE`, `DEFERRED_REVENUE`, `ACCRUED_EXPENSE`, `EQUITY_CONTRIBUTION`, `EQUITY_WITHDRAWAL`, `RESULT_HOLDING`, `RETAINED_ACCUMULATED`, `RESERVE`, `OTHER_EQUITY` |

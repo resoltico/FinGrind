@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: INDEX
-updated: "2026-07-20"
+updated: "2026-07-21"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session, tax, account-registry, account-lifecycle, journal, money, quantity, inventory costing, weighted average, posting]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSessions", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService", "which doc file covers the tax surface", "which doc file covers account lifecycle", "which doc file covers quantity and weighted-average inventory costing primitives"]
@@ -47,9 +47,9 @@ route:
   and runtime/distribution/storage facts; use
   [DOC_02_MachineContractAndDescriptors.md](./DOC_02_MachineContractAndDescriptors.md) for
   machine-contract assembly, discovery descriptors, templates, and deterministic failures.
-- Next-format attestation protocol:
+- Verifiable operation attestation:
   use [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md) for
-  the normative feature-branch contract for the next hard-break protected-book format, including
+  the current hard-break protected-book contract, including
   credential-purpose authorization, closed per-kind effects, and deterministic verifier failures.
   Use [DOC_02_VerifiableOperationAttestationProfiles.md](./DOC_02_VerifiableOperationAttestationProfiles.md)
   for the normative request-to-effect semantic profiles and autonomous system-close derivations.
@@ -57,7 +57,6 @@ route:
   for backup-manifest, artifact-publication, restore, receipt, and artifact-vector contracts.
   Use [DOC_02_VerifiableOperationAttestationCorpus.md](./DOC_02_VerifiableOperationAttestationCorpus.md)
   for the normative positive, negative, backup-artifact, and live-CAS fixture sources.
-  It does not describe a released CLI command or accepted book format.
 - Decimal-boundary design:
   use [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md) for the exact-money boundary,
   the exact-quantity boundary, and the future split between money, rates, percentages, exchange
@@ -96,10 +95,10 @@ route:
 | `DOC_01_DecimalBoundaries.md` | exact-money boundary, exact-quantity boundary, and future non-money decimal-domain rules |
 | `DOC_02_Application.md` | routing overview for the split `contract` and `executor` reference spine |
 | `DOC_02_ProtocolAndDiscovery.md` | exported `contract` protocol metadata, runtime/distribution facts, request-field vocabularies, and protected-book format owners |
-| `DOC_02_VerifiableOperationAttestation.md` | normative feature-branch operation, authorization, preimage, semantic-profile, verifier, and operation-envelope contract for the next hard-break protected-book format |
-| `DOC_02_VerifiableOperationAttestationProfiles.md` | normative field-level posting profiles and autonomous system-close derivations for the next attestation format |
-| `DOC_02_VerifiableOperationAttestationArtifacts.md` | normative backup-manifest, artifact-publication, restore, receipt, anchor, and artifact-vector contract for the next attestation format |
-| `DOC_02_VerifiableOperationAttestationCorpus.md` | normative positive and negative source fixtures for the next attestation format, including backup, restore, rekey, system-initiation, and live-CAS coverage |
+| `DOC_02_VerifiableOperationAttestation.md` | current operation, authorization, preimage, verifier, and envelope contract for protected-book format 51 |
+| `DOC_02_VerifiableOperationAttestationProfiles.md` | current field-level posting profiles and autonomous system-close derivations for protected-book format 51 |
+| `DOC_02_VerifiableOperationAttestationArtifacts.md` | current backup-manifest, artifact-publication, restore, receipt, anchor, and artifact-vector contract |
+| `DOC_02_VerifiableOperationAttestationCorpus.md` | current positive and negative source fixtures, including backup, restore, rekey, system-initiation, and live-CAS coverage |
 | `DOC_02_MachineContractAndDescriptors.md` | exported machine-contract assembly, discovery descriptors, templates, workflow scaffolds, and deterministic contract-error owners |
 | `DOC_02_AdministrationAndReports.md` | exported administration/query/report models and exported `executor` administration and read services |
 | `DOC_02_AccountRegistryLifecycle.md` | exported account amendment and retirement commands, results, and durable-history lifecycle rules |
@@ -145,15 +144,16 @@ Protected-book maintenance, passphrase, SQLite session, and runtime symbols cont
 | `AccountTaxonomy` | `DOC_01_Core.md` | `AccountTaxonomy` |
 | `AccountTaxonomyDoctrine` | `DOC_01_Core.md` | `AccountTaxonomyDoctrine` |
 | `AccountType` | `DOC_01_Core.md` | `AccountType` |
-| `AttestationEvidence` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationEvidence`, `AttestationGenesis`, `AttestationKeyFiles`, `AttestationOperationSigner`, `AttestationPublicCredential`, `AttestationSigningCredential`, `AttestationVerification`, `AttestationVerificationException`, And `AttestationVerifier` |
-| `AttestationGenesis` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationEvidence`, `AttestationGenesis`, `AttestationKeyFiles`, `AttestationOperationSigner`, `AttestationPublicCredential`, `AttestationSigningCredential`, `AttestationVerification`, `AttestationVerificationException`, And `AttestationVerifier` |
-| `AttestationKeyFiles` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationEvidence`, `AttestationGenesis`, `AttestationKeyFiles`, `AttestationOperationSigner`, `AttestationPublicCredential`, `AttestationSigningCredential`, `AttestationVerification`, `AttestationVerificationException`, And `AttestationVerifier` |
-| `AttestationOperationSigner` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationEvidence`, `AttestationGenesis`, `AttestationKeyFiles`, `AttestationOperationSigner`, `AttestationPublicCredential`, `AttestationSigningCredential`, `AttestationVerification`, `AttestationVerificationException`, And `AttestationVerifier` |
-| `AttestationPublicCredential` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationEvidence`, `AttestationGenesis`, `AttestationKeyFiles`, `AttestationOperationSigner`, `AttestationPublicCredential`, `AttestationSigningCredential`, `AttestationVerification`, `AttestationVerificationException`, And `AttestationVerifier` |
-| `AttestationSigningCredential` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationEvidence`, `AttestationGenesis`, `AttestationKeyFiles`, `AttestationOperationSigner`, `AttestationPublicCredential`, `AttestationSigningCredential`, `AttestationVerification`, `AttestationVerificationException`, And `AttestationVerifier` |
-| `AttestationVerification` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationEvidence`, `AttestationGenesis`, `AttestationKeyFiles`, `AttestationOperationSigner`, `AttestationPublicCredential`, `AttestationSigningCredential`, `AttestationVerification`, `AttestationVerificationException`, And `AttestationVerifier` |
-| `AttestationVerificationException` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationEvidence`, `AttestationGenesis`, `AttestationKeyFiles`, `AttestationOperationSigner`, `AttestationPublicCredential`, `AttestationSigningCredential`, `AttestationVerification`, `AttestationVerificationException`, And `AttestationVerifier` |
-| `AttestationVerifier` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationEvidence`, `AttestationGenesis`, `AttestationKeyFiles`, `AttestationOperationSigner`, `AttestationPublicCredential`, `AttestationSigningCredential`, `AttestationVerification`, `AttestationVerificationException`, And `AttestationVerifier` |
+| `AttestationAccountMutationIntent` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationAccountMutationIntent` |
+| `AttestationEvidence` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationEvidence` |
+| `AttestationGenesis` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationGenesis` |
+| `AttestationKeyFiles` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationKeyFiles` |
+| `AttestationOperationSigner` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationOperationSigner` |
+| `AttestationPublicCredential` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationPublicCredential` |
+| `AttestationSigningCredential` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationSigningCredential` |
+| `AttestationVerification` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationVerification` |
+| `AttestationVerificationException` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationVerificationException` |
+| `AttestationVerifier` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationVerifier` |
 | `AccountAmendmentOutcome` | `DOC_02_AccountRegistryLifecycle.md` | `AccountAmendmentOutcome`, `AccountRegistryDependency`, `AccountRegistryLifecyclePolicy`, `AccountRegistryLifecycleRejection`, `AccountRegistryPublishedLanguageTranslator`, And `AccountRetirementOutcome` |
 | `AccountRegistryDependency` | `DOC_02_AccountRegistryLifecycle.md` | `AccountAmendmentOutcome`, `AccountRegistryDependency`, `AccountRegistryLifecyclePolicy`, `AccountRegistryLifecycleRejection`, `AccountRegistryPublishedLanguageTranslator`, And `AccountRetirementOutcome` |
 | `AccountRegistryLifecyclePolicy` | `DOC_02_AccountRegistryLifecycle.md` | `AccountAmendmentOutcome`, `AccountRegistryDependency`, `AccountRegistryLifecyclePolicy`, `AccountRegistryLifecycleRejection`, `AccountRegistryPublishedLanguageTranslator`, And `AccountRetirementOutcome` |
@@ -199,8 +199,6 @@ Protected-book maintenance, passphrase, SQLite session, and runtime symbols cont
 | `PostingLatvianPayrollRejectionSemantics` | `DOC_02_LatvianPayroll.md` | `LatvianPayrollBookkeepingEntryVariants`, `LatvianPayrollAdmissionPolicy`, And `PostingLatvianPayrollRejectionSemantics` |
 | `ResolvedLatvianPayrollSettlement` | `DOC_02_LatvianPayroll.md` | `LatvianPayrollSettlementKind`, `ResolvedLatvianPayrollSettlement`, And `LatvianPayrollSettlementAdmissionPolicy` |
 | `ResolvedAccrualCutoffApplication` | `DOC_02_AccrualCutoffs.md` | `ResolvedAccrualCutoffApplication` |
-| `ActorId` | `DOC_01_Core.md` | `ActorId` |
-| `ActorType` | `DOC_01_Core.md` | `ActorType` |
 | `AnchorEntry` | `DOC_01_Core_LedgerAndPosting.md` | `AnchorEntry` |
 | `ApprovalDecision` | `DOC_01_Core.md` | `ApprovalDecision` |
 | `ApprovalId` | `DOC_01_Core.md` | `ApprovalId` |
@@ -613,7 +611,6 @@ Protected-book maintenance, passphrase, SQLite session, and runtime symbols cont
 | `PublicPathHint` | `DOC_02_BookMaintenanceContracts.md` | `PublicPathHint` |
 | `RejectionNarrative` | `DOC_02_BookMaintenanceContracts.md` | `RejectionNarrative` |
 | `RekeyBookResult` | `DOC_02_AdministrationAndReports.md` | `RekeyBookResult` |
-| `RekeyRollbackResult` | `DOC_02_AdministrationAndReports.md` | `RekeyRollbackResult` |
 | `RestoreBookResult` | `DOC_02_AdministrationAndReports.md` | `RestoreBookResult` |
 | `TaxAdministrationService` | `DOC_02_AdministrationAndReports.md` | `DeclareTaxRegistrationCommand`, `DeclareTaxRegistrationResult`, `DeclaredTaxRegistration`, `TaxRegistrationId`, `TaxRegistrationName`, `TaxRegistrationNumber`, `TaxJurisdiction`, `TaxObligationFrequency`, `TaxCode`, `TaxCodeName`, `TaxCodeDefinition`, `TaxRate`, `TaxInclusionMode`, `TaxApplicationKind`, `TaxDeclarationRejection`, `TaxDefinitionViolation`, `TaxAdministrationService`, And `TaxAdministrationStore` |
 | `TaxAdministrationStore` | `DOC_02_AdministrationAndReports.md` | `DeclareTaxRegistrationCommand`, `DeclareTaxRegistrationResult`, `DeclaredTaxRegistration`, `TaxRegistrationId`, `TaxRegistrationName`, `TaxRegistrationNumber`, `TaxJurisdiction`, `TaxObligationFrequency`, `TaxCode`, `TaxCodeName`, `TaxCodeDefinition`, `TaxRate`, `TaxInclusionMode`, `TaxApplicationKind`, `TaxDeclarationRejection`, `TaxDefinitionViolation`, `TaxAdministrationService`, And `TaxAdministrationStore` |

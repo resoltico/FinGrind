@@ -2,10 +2,10 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: DEVELOPER_SECURITY
-updated: "2026-07-16"
+updated: "2026-07-21"
 route:
   keywords: [fingrind, security, threat-boundary, protected-book, sqlite3mc, key-lifecycle, runtime-provenance, ciphertext, passphrase, compile-options]
-  questions: ["what is the fingrind security model", "what does protected-book-verification-failed mean", "what security boundary does fingrind promise", "how does fingrind handle passphrases and sqlite runtime identity"]
+  questions: ["what is the fingrind security model", "what does protected-book-verification-failed mean", "what security boundary does fingrind promise", "how does fingrind handle passphrases sqlite runtime identity and attestation keys"]
 ---
 
 # Security Model Reference
@@ -51,9 +51,10 @@ What FinGrind does not protect automatically:
 - any heap-resident secret copies the JVM GC, heap dump tooling, or crash handling may preserve
   beyond the specific arrays FinGrind overwrites
 - crash dumps, live debuggers, or host-level memory inspection
-- copied backups, exported JSON, CSV, or PDF artifacts
 - stale `*.rekey-rollback-*.sqlite` artifacts left behind by an interrupted rekey before the next
   operator review
+- copied backups, exported JSON, CSV, or PDF artifacts
+- host-level copies created outside FinGrind's verified backup and restore workflow
 - key files stored beside the book file
 - any operator-modified runtime that weakens the canonical temp-store or compile-option contract
 
@@ -61,6 +62,24 @@ What FinGrind does not protect automatically:
 header. If that value changes in the future, the header bytes become a newly exposed metadata
 surface and the change must be treated as a real threat-boundary expansion, not a cosmetic format
 change.
+
+There is no public rollback-artifact command. Any interrupted-rekey artifact is recovered only by
+the verified maintenance workflow; it must not be copied, edited, or adopted as an ordinary book.
+
+## Attestation Credential Cryptography
+
+Attestation envelopes use Ed25519. The file-backed signing credential stores a PKCS#8 private key
+under PBKDF2-HMAC-SHA-256 with 600,000 iterations and a fresh 16-byte salt, followed by
+AES-256-GCM with a fresh 12-byte IV and a 128-bit authentication tag. The credential file is
+format-versioned, bounded to 1 KiB, and published no-clobber. Its passphrase file is valid UTF-8,
+nonempty after one optional trailing line ending, and bounded to 4,096 bytes.
+
+The private key is decrypted only inside the signing seam and is not serialized into an operation,
+manifest, receipt, response, log, or diagnostic. Founder key creation may create one missing key
+path at genesis; later mutation signing refuses a missing credential path so an unenrolled key can
+never appear implicitly. See [USER_BOOK_ATTESTATION.md](./USER_BOOK_ATTESTATION.md) for the
+operator contract and [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md)
+for the canonical verification contract.
 
 ## Secret Transport And Lifecycle
 

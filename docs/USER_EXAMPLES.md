@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: USER_EXAMPLES
-updated: "2026-07-16"
+updated: "2026-07-21"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, financial-position, inventory-valuation, income-statement, cash-flow-statement, changes-in-equity, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -51,7 +51,9 @@ fingrind \
   --accounting-basis CASH \
   --functional-currency EUR \
   --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 \
-  \
+  --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-founder-key-file ./secrets/founder.fgatk \
+  --attestation-founder-passphrase-file ./secrets/founder.passphrase \
   --book-passphrase-prompt
 ```
 
@@ -80,6 +82,11 @@ The key file must be protected with POSIX owner-only permissions (`0400` or `060
 macOS/Linux, or a Windows owner-only ACL on Windows, and its containing directory must also
 remain owner-only.
 
+Before the first `open-book`, prepare a separate nonempty owner-only UTF-8 founder passphrase
+file at `./secrets/founder.passphrase`. The examples bind its newly created no-clobber encrypted
+Ed25519 key at `./secrets/founder.fgatk` to the displayed founder UUID. Do not reuse the book key
+file or its passphrase for that credential.
+
 The interactive prompt route and the stdin route both enforce the same 4096-byte UTF-8 limit as
 the key-file route.
 
@@ -97,14 +104,16 @@ cat ./secrets/acme.book-key | \
     --accounting-basis CASH \
     --functional-currency EUR \
     --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 \
-    \
+    --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+    --attestation-founder-key-file ./secrets/founder.fgatk \
+    --attestation-founder-passphrase-file ./secrets/founder.passphrase \
     --book-passphrase-stdin
 ```
 
 On Windows PowerShell, the same stdin route is:
 
 ```powershell
-Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 --book-passphrase-stdin
+Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-founder-key-file .\secrets\founder.fgatk --attestation-founder-passphrase-file .\secrets\founder.passphrase --book-passphrase-stdin
 ```
 
 ## Initialize One Book
@@ -118,7 +127,9 @@ fingrind \
   --accounting-basis CASH \
   --functional-currency EUR \
   --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 \
-  \
+  --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-founder-key-file ./secrets/founder.fgatk \
+  --attestation-founder-passphrase-file ./secrets/founder.passphrase \
   --book-key-file ./secrets/acme.book-key
 ```
 
@@ -215,39 +226,21 @@ Without `--replace-existing-book`, the selected `--book-file` must remain absent
 publication. If another process creates it while restore is staging, FinGrind leaves that book
 unchanged, removes its own staged artifacts, and rejects the restore.
 
-## Inspect Or Repair One Interrupted Rekey
+## Verify One Attested Book
 
-Inspect stale same-directory rollback artifacts first:
-
-Inspection reads sibling rollback artifact paths without opening the protected book, so it does not
-take a book key or another passphrase source. The subsequent restore or delete action requires the
-current book passphrase source because it acts on a selected artifact.
+Verify the immutable chain before acting on a copied or recovered book. This does not modify the
+book. `--require-clean-attestation` additionally refuses review findings.
 
 ```bash
 fingrind \
-  inspect-rekey-rollback \
-  --book-file ./books/acme.sqlite
-```
-
-If the inspection confirms the rollback artifact you want to restore, recover it explicitly:
-
-```bash
-fingrind \
-  restore-rekey-rollback \
+  verify-book \
   --book-file ./books/acme.sqlite \
-  --rollback-book-file ./books/acme.rekey-rollback-20260517T020345Z.sqlite \
-  --book-key-file ./secrets/acme.book-key
+  --book-key-file ./secrets/acme.book-key \
+  --require-clean-attestation
 ```
 
-Delete one stale rollback artifact without changing the live book:
-
-```bash
-fingrind \
-  delete-rekey-rollback \
-  --book-file ./books/acme.sqlite \
-  --rollback-book-file ./books/acme.rekey-rollback-20260517T020345Z.sqlite \
-  --book-key-file ./secrets/acme.book-key
-```
+See [USER_BOOK_ATTESTATION.md](./USER_BOOK_ATTESTATION.md) for receipt export, receipt
+verification, and the exact backup acknowledgement retry rule.
 
 ## Declare Supplemental Accounts And Page The Registry
 
@@ -350,8 +343,8 @@ with `quantity` and `unitCost` instead of a raw adjustment journal. Use the matc
 `record-inventory-capitalization-*` templates for landed costs, `record-inventory-write-down` for
 carrying-cost impairment, `record-inventory-shrinkage` for a quantity loss with executor-derived
 cost, and `record-inventory-count-increase` for a count-discovered quantity increase.
-The scaffold is request-first rather than demo-runnable: `actorType` defaults to `PERSON`,
-`evidence.approvals` starts as an empty array that callers may populate when one posting requires
+The scaffold is request-first rather than demo-runnable: `evidence.approvals` starts as an empty
+array that callers may populate when one posting requires
 explicit approval references, and every `replace-before-commit-*` evidence or provenance token must be
 replaced before real-world use.
 A committed `idempotencyKey` is single-use per book.

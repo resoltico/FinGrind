@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: DEVELOPER_SQLITE
-updated: "2026-07-16"
+updated: "2026-07-21"
 route:
   keywords: [fingrind, sqlite, sqlite3mc, sqlite3 multiple ciphers, ffm, java26, storage, single-book, filesystem-path, key-file, encryption, canonical-schema, strict, trusted-schema, query-only, application-id, user-version, rekey, no-migrations]
   questions: ["how does fingrind use sqlite now", "why does fingrind use java ffm for sqlite", "how does the sqlite adapter initialize a new protected book", "how does fingrind protect book files"]
@@ -53,13 +53,9 @@ That means:
 - FinGrind is in an alpha hard-break line, so schema evolution replaces the current model
   directly and older formats are rejected instead of being migrated in place
 - `backup-book` exports one verified encrypted backup pair under an independently generated
-  `--new-backup-key-file`; `restore-book` verifies that backup pair before replacing the live book
-  path, re-encrypts the restored live book under an absent generated `--new-book-key-file`, and
-  requires `--replace-existing-book` before replacing a live book path; `inspect-rekey-rollback`
-  reports stale same-directory rollback artifacts;
-  `restore-rekey-rollback` rewinds one interrupted rekey from one selected rollback artifact; and
-  `delete-rekey-rollback` removes one stale rollback artifact without touching the live book path
-  after verifying one initialized live book and recording one encrypted in-book maintenance audit
+  `--new-backup-key-file` and appends its exact acknowledgement; `restore-book` verifies that
+  backup pair before publishing an absent live-book path, then re-encrypts it under an absent
+  generated `--new-book-key-file`; `rekey-book` owns only its verified atomic recovery stages
 - every generated-secret and protected-book stage records its exact final target and staged file
   before the stage is created; recovery first proves that a published generated key is the exact file
   named by an owned durable stage before it can inspect the companion book, so a foreign key is

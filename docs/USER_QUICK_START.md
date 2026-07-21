@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: USER_QUICK_START
-updated: "2026-07-16"
+updated: "2026-07-21"
 route:
   keywords: [fingrind, quick start, first run, open book, seed template, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -92,18 +92,25 @@ owner-only as well as the key file itself. Keep `./books/` owner-only too. If `.
 `./books/` does not exist yet, FinGrind creates it with owner-only permissions. If either
 directory already exists, keep it owner-only before you reuse that path.
 
-## 4. Open The Book
+## 4. Prepare One Founder Credential
+
+Create a separate owner-only, nonempty UTF-8 passphrase file at
+`./secrets/acme-founder.passphrase`. It protects the private founder credential, not the book key.
+At book creation FinGrind creates `./secrets/acme-founder.fgatk` if it is absent and binds it to
+the founder UUID. Keep both files outside the book directory.
+
+## 5. Open The Book
 
 Create one new book file and protect it with that key:
 
 ```bash
-fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01
+fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-founder-key-file ./secrets/acme-founder.fgatk --attestation-founder-passphrase-file ./secrets/acme-founder.passphrase
 ```
 
 If you accidentally rerun `open-book` against the same initialized file, the command is rejected
 deterministically instead of mutating the existing book.
 
-## 5. Review The Seed Template
+## 6. Review The Seed Template
 
 This quick start chooses `OWNER_MANAGED_SERVICE` with `--accounting-basis CASH`. Use
 `--accounting-basis ACCRUAL` when you want the accrual owner-managed service chart. The
@@ -161,9 +168,7 @@ accounts:
     "approvals": []
   },
   "provenance": {
-    "actorId": "quick-start-operator",
-    "actorType": "PERSON",
-    "commandId": "quick-start-record-sale-settled",
+    "commandId": "018f0000-0000-7000-8000-000000000007",
     "idempotencyKey": "quick-start-idem-1",
     "causationId": "quick-start-sale-cause-1"
   }

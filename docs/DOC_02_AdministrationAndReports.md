@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-07-17"
+updated: "2026-07-21"
 route:
   keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, inventory-valuation, interim-result-sweep, fiscal-year-close, financial-position, income-statement, cash-flow-statement, changes-in-equity, declare-tax-registration, list-tax-registrations, tax-obligation]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are administration and query rejections documented", "where is interim-result-sweep documented", "where is fiscal-year-close documented", "where are the primary statement models documented", "where is the tax registration and filing surface documented"]
@@ -285,22 +285,6 @@ public sealed interface RestoreBookResult
 - Variants: `Restored`, `Rejected`
 - Purpose: verify one supplied encrypted backup pair before replacing the target live book path,
   while re-encrypting the restored live book under the selected destination key file
-
-## `RekeyRollbackResult`
-
-This type owns the public stale-rollback maintenance surface for interrupted rekeys.
-
-```java
-public sealed interface RekeyRollbackResult
-```
-
-- Variants: `Inspected`, `Restored`, `Deleted`, `Rejected`
-- Purpose: model the explicit `inspect-rekey-rollback`, `restore-rekey-rollback`, and
-  `delete-rekey-rollback` command results instead of hiding multiple maintenance workflows behind
-  one action enum
-- Access boundary: inspection discovers sibling artifact paths without opening the protected book
-  and needs no passphrase source; restore and delete act on a selected artifact and require the
-  current book passphrase source
 
 ## `BookInspection`
 
