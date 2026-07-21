@@ -8,6 +8,14 @@ die() {
     exit 1
 }
 
+is_running() {
+    local process_id=$1
+    local process_state=''
+
+    process_state="$(ps -o stat= -p "${process_id}" 2>/dev/null | tr -d '[:space:]')"
+    [[ -n "${process_state}" && "${process_state}" != *Z* ]]
+}
+
 resolve_script_dir() {
     local source_path="${BASH_SOURCE[0]}"
     while [[ -h "${source_path}" ]]; do
@@ -84,10 +92,10 @@ child_pid="$(tr -d '[:space:]' < "${child_pid_path}")"
 [[ "${parent_pid}" =~ ^[0-9]+$ ]] || die "published parent pid was not numeric"
 [[ "${child_pid}" =~ ^[0-9]+$ ]] || die "published child pid was not numeric"
 
-if kill -0 "${parent_pid}" 2>/dev/null; then
+if is_running "${parent_pid}"; then
     die "capture_with_timeout left the TERM-ignoring parent process running"
 fi
-if kill -0 "${child_pid}" 2>/dev/null; then
+if is_running "${child_pid}"; then
     die "capture_with_timeout left the TERM-ignoring child process running"
 fi
 

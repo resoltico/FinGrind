@@ -63,6 +63,25 @@ class AttestationArtifactVerifierTest {
   }
 
   @Test
+  void rejectsManifestSnapshotMismatchBeforeDependentSnapshotFailure() {
+    TestCredential founder = credential();
+    AttestationBookVerification verification = AttestationBookVerifier.verify(book(founder));
+    byte[] snapshot = new byte[] {1, 2, 3, 4};
+    byte[] artifact =
+        artifact(founder, verification, snapshot, AttestationHash.sha256(new byte[] {9, 8, 7, 6}));
+
+    assertFailure(
+        AttestationAuthorizationFailure.MANIFEST_INVALID,
+        () ->
+            AttestationArtifactVerifier.verifyArtifact(
+                artifact,
+                ignored -> {
+                  throw new AttestationAuthorizationException(
+                      AttestationAuthorizationFailure.PREVIOUS_HEAD_INVALID);
+                }));
+  }
+
+  @Test
   void rejectsManifestWhoseSnapshotContainsOperationsPastItsDeclaredSourceHead() {
     TestCredential founder = credential();
     AttestationBook snapshotBook = book(founder);

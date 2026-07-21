@@ -10,9 +10,10 @@ final class AttestationArtifactVerifier {
   static AttestationArtifactVerification verifyArtifact(
       byte[] artifactBytes, AttestationSnapshotDecoder snapshotDecoder) {
     AttestationDecodedArtifact artifact = AttestationDecodedArtifact.decode(artifactBytes);
-    AttestationBookVerification verification = verifySnapshot(artifact, snapshotDecoder);
     AttestationBackupManifestPayload payload = artifact.manifest().payload();
-    requireManifestBinding(artifact, verification, payload);
+    requireSnapshotDigest(artifact, payload);
+    AttestationBookVerification verification = verifySnapshot(artifact, snapshotDecoder);
+    requireManifestChainBinding(verification, payload);
     AttestationAuthorization.requireAuthorized(
         verification.registry(),
         AttestationAuthorizationContext.manifest(payload),
@@ -41,12 +42,16 @@ final class AttestationArtifactVerifier {
     return new AttestationReceiptVerification(receipt, receiptFindings(retention));
   }
 
-  private static void requireManifestBinding(
-      AttestationDecodedArtifact artifact,
-      AttestationBookVerification verification,
-      AttestationBackupManifestPayload payload) {
-    if (!payload.snapshotDigest().equals(AttestationHash.sha256(artifact.snapshot()))
-        || !payload.bookId().equals(verification.bookId())
+  private static void requireSnapshotDigest(
+      AttestationDecodedArtifact artifact, AttestationBackupManifestPayload payload) {
+    if (!payload.snapshotDigest().equals(AttestationHash.sha256(artifact.snapshot()))) {
+      throw manifestFailure();
+    }
+  }
+
+  private static void requireManifestChainBinding(
+      AttestationBookVerification verification, AttestationBackupManifestPayload payload) {
+    if (!payload.bookId().equals(verification.bookId())
         || !payload.sourceOrder().equals(verification.headOrder())
         || !payload.sourceOperationHead().equals(verification.headAt(payload.sourceOrder()))) {
       throw manifestFailure();
