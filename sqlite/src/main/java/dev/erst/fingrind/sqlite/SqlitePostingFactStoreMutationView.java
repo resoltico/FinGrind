@@ -2,11 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.ReportingPeriod;
-import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
-import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft;
@@ -17,35 +13,9 @@ import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.List;
 
 /** Mutation surface over one SQLite posting-fact store. */
-interface SqlitePostingFactStoreMutationView {
-  /** Returns the thread-ownership guard for this store. */
-  SqliteThreadOwner storeThreadOwner();
-
-  /** Returns the mutation operations owner for this store. */
-  SqliteStoreMutationOperations storeMutationOperations();
-
-  /** Initializes a previously unopened protected book with self-authorizing genesis evidence. */
-  default BookOpeningOutcome openAttestedBook(
-      Instant initializedAt,
-      BookIdentity bookIdentity,
-      List<AccountDeclaration> seededAccounts,
-      AttestationEvidence genesisEvidence) {
-    storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations()
-        .openAttestedBook(initializedAt, bookIdentity, seededAccounts, genesisEvidence);
-  }
-
-  /** Declares a new account in the protected book. */
-  default AccountDeclarationOutcome declareAccount(
-      AccountDeclaration declaration,
-      Instant declaredAt,
-      AttestationOperationAuthorizer attestationAuthorizer) {
-    storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().declareAccount(declaration, declaredAt, attestationAuthorizer);
-  }
+interface SqlitePostingFactStoreMutationView extends SqliteAttestedAdministrationMutationView {
 
   /** Commits one posting draft into the protected book. */
   default PostingCommitResult commit(

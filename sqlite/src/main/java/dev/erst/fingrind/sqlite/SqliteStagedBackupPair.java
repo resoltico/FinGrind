@@ -30,91 +30,6 @@ final class SqliteStagedBackupPair implements StagedBackupPair {
   private boolean finished;
 
   SqliteStagedBackupPair(
-      SqliteOwnedStagedArtifact stagedBackupFile,
-      Path finalBackupFilePath,
-      SqliteOwnedStagedArtifact stagedBackupBookKeyFile,
-      Path finalBackupBookKeyFilePath,
-      SqliteBookPassphrase backupPassphrase,
-      SqliteProtectedBookVerificationSupport verificationSupport) {
-    this(
-        new SqliteStagedProtectedBookPairArtifacts(
-            stagedBackupFile,
-            finalBackupFilePath,
-            stagedBackupBookKeyFile,
-            finalBackupBookKeyFilePath),
-        backupPassphrase,
-        verificationSupport,
-        Files::createLink,
-        Files::createLink,
-        null,
-        null);
-  }
-
-  SqliteStagedBackupPair(
-      SqliteOwnedStagedArtifact stagedBackupFile,
-      Path finalBackupFilePath,
-      SqliteOwnedStagedArtifact stagedBackupBookKeyFile,
-      Path finalBackupBookKeyFilePath,
-      SqliteBookPassphrase backupPassphrase,
-      SqliteProtectedBookVerificationSupport verificationSupport,
-      SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator backupKeyLinkCreator,
-      SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator backupFileLinkCreator) {
-    this(
-        new SqliteStagedProtectedBookPairArtifacts(
-            stagedBackupFile,
-            finalBackupFilePath,
-            stagedBackupBookKeyFile,
-            finalBackupBookKeyFilePath),
-        backupPassphrase,
-        verificationSupport,
-        backupKeyLinkCreator,
-        backupFileLinkCreator,
-        null,
-        null);
-  }
-
-  SqliteStagedBackupPair(
-      SqliteStagedProtectedBookPairArtifacts artifacts,
-      SqliteBookPassphrase backupPassphrase,
-      SqliteProtectedBookVerificationSupport verificationSupport,
-      SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator backupKeyLinkCreator,
-      SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator backupFileLinkCreator,
-      @Nullable SqliteOwnedDestinationReservation backupFileReservation,
-      @Nullable SqliteOwnedDestinationReservation backupKeyReservation) {
-    this(
-        artifacts,
-        ownedPassphraseBytes(backupPassphrase),
-        verificationSupport,
-        backupKeyLinkCreator,
-        backupFileLinkCreator,
-        backupFileReservation,
-        backupKeyReservation);
-  }
-
-  SqliteStagedBackupPair(
-      SqliteOwnedStagedArtifact stagedBackupFile,
-      Path finalBackupFilePath,
-      SqliteOwnedStagedArtifact stagedBackupBookKeyFile,
-      Path finalBackupBookKeyFilePath,
-      byte[] backupPassphraseBytes,
-      SqliteProtectedBookVerificationSupport verificationSupport,
-      SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator backupKeyLinkCreator,
-      SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator backupFileLinkCreator) {
-    this(
-        new SqliteStagedProtectedBookPairArtifacts(
-            stagedBackupFile,
-            finalBackupFilePath,
-            stagedBackupBookKeyFile,
-            finalBackupBookKeyFilePath),
-        backupPassphraseBytes,
-        verificationSupport,
-        backupKeyLinkCreator,
-        backupFileLinkCreator,
-        null,
-        null);
-  }
-
-  SqliteStagedBackupPair(
       SqliteStagedProtectedBookPairArtifacts artifacts,
       byte[] backupPassphraseBytes,
       SqliteProtectedBookVerificationSupport verificationSupport,
@@ -258,13 +173,6 @@ final class SqliteStagedBackupPair implements StagedBackupPair {
     if (artifactSealed) {
       throw new IllegalStateException(
           "The staged backup snapshot was already sealed into its attestation artifact.");
-    }
-  }
-
-  private static byte[] ownedPassphraseBytes(SqliteBookPassphrase passphrase) {
-    try (SqliteBookPassphrase ownedPassphrase =
-        Objects.requireNonNull(passphrase, "backupPassphrase")) {
-      return ownedPassphrase.utf8BytesCopy();
     }
   }
 

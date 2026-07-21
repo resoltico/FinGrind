@@ -143,7 +143,7 @@ final class SqliteProtectedBookStagingSupport {
           SqlitePreparedPairPublication.@Nullable PublicationReservations reservations =
               preparedPublication == null ? null : preparedPublication.transferReservations();
           stagedBackupPair =
-              new SqliteStagedBackupPair(
+              SqliteStagedBackupPairFactory.create(
                   new SqliteStagedProtectedBookPairArtifacts(
                       stagedBackupFile,
                       normalizedBackupFilePath,

@@ -48,7 +48,7 @@ class SqliteProtectedBookPairPublicationFaultMatrixTest
 
     try (SqliteBookPassphrase passphrase = testPassphrase();
         SqliteStagedBackupPair pair =
-            new SqliteStagedBackupPair(
+            SqliteStagedBackupPairFactory.create(
                 SqliteOwnedStagedArtifact.recordExisting(finalBackupPath, stagedBackupPath),
                 finalBackupPath,
                 SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath),

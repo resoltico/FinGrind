@@ -356,7 +356,7 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
     Path backupTarget = absentTarget("factory/backup.sqlite");
     Path backupKeyTarget = absentTarget("factory/backup.key");
     try (SqliteStagedBackupPair backupPair =
-        new SqliteStagedBackupPair(
+        SqliteStagedBackupPairFactory.create(
             SqliteOwnedStagedArtifact.create(backupTarget, ".backup-", ".sqlite"),
             backupTarget,
             SqliteOwnedStagedArtifact.create(backupKeyTarget, ".backup-key-", ".tmp"),
@@ -399,7 +399,7 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
     SqliteOwnedStagedArtifact stagedBackupKey =
         writeStage(backupKeyTarget, ".backup-key-", ".tmp", "staged backup key");
     try (SqliteStagedBackupPair stagedBackupPair =
-        new SqliteStagedBackupPair(
+        SqliteStagedBackupPairFactory.create(
             stagedBackup,
             backupTarget,
             stagedBackupKey,

@@ -39,7 +39,7 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
 
     try (SqliteBookPassphrase passphrase = testPassphrase();
         SqliteStagedBackupPair stagedPair =
-            new SqliteStagedBackupPair(
+            SqliteStagedBackupPairFactory.create(
                 SqliteOwnedStagedArtifact.recordExisting(finalBackupPath, stagedBackupPath),
                 finalBackupPath,
                 SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath),
@@ -66,7 +66,7 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
 
     try (SqliteBookPassphrase passphrase = testPassphrase();
         SqliteStagedBackupPair stagedPair =
-            new SqliteStagedBackupPair(
+            SqliteStagedBackupPairFactory.create(
                 SqliteOwnedStagedArtifact.recordExisting(finalBackupPath, stagedBackupPath),
                 finalBackupPath,
                 SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath),
@@ -100,7 +100,7 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
 
     try (SqliteBookPassphrase passphrase = testPassphrase();
         SqliteStagedBackupPair stagedPair =
-            new SqliteStagedBackupPair(
+            SqliteStagedBackupPairFactory.create(
                 stagedBackup,
                 finalBackupPath,
                 stagedKey,
@@ -169,7 +169,7 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
 
     try (SqliteBookPassphrase passphrase = testPassphrase();
         SqliteStagedBackupPair backupPair =
-            new SqliteStagedBackupPair(
+            SqliteStagedBackupPairFactory.create(
                 backupStaged,
                 backupFinalPath,
                 backupKeyStaged,
@@ -266,7 +266,7 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
 
     try (SqliteBookPassphrase passphrase = testPassphrase();
         SqliteStagedBackupPair backupPair =
-            new SqliteStagedBackupPair(
+            SqliteStagedBackupPairFactory.create(
                 backupStaged,
                 backupFinalPath,
                 backupKeyStaged,
@@ -389,7 +389,7 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
 
       try (SqliteBookPassphrase passphrase = testPassphrase();
           SqliteStagedBackupPair stagedPair =
-              new SqliteStagedBackupPair(
+              SqliteStagedBackupPairFactory.create(
                   SqliteOwnedStagedArtifact.recordExisting(finalBackupPath, stagedBackupPath),
                   finalBackupPath,
                   SqliteOwnedStagedArtifact.recordExisting(finalBackupKeyPath, stagedBackupKeyPath),
