@@ -71,7 +71,26 @@ class SqliteTaxRegistrationFieldTest extends SqlitePostingFactStoreTestSupport {
                       SqliteAttestationTestSupport.authorizer()))
               .registration();
 
-      assertEquals(Optional.of(latvia), session.findTaxRegistration(latvia.taxRegistrationId()));
+      assertEquals(
+          latvia,
+          assertInstanceOf(
+                  DeclareTaxRegistrationResult.Unchanged.class,
+                  administration.declareTaxRegistration(
+                      registration("vat-lv", "Latvia VAT", "LV", "vat-standard-sale"),
+                      SqliteAttestationTestSupport.authorizer()))
+              .registration());
+      DeclaredTaxRegistration updatedLatvia =
+          assertInstanceOf(
+                  DeclareTaxRegistrationResult.Updated.class,
+                  administration.declareTaxRegistration(
+                      registration("vat-lv", "Latvia VAT amended", "LV", "vat-standard-sale"),
+                      SqliteAttestationTestSupport.authorizer()))
+              .registration();
+      assertEquals("Latvia VAT amended", updatedLatvia.taxRegistrationName().value());
+
+      assertEquals(
+          Optional.of(updatedLatvia),
+          session.findTaxRegistration(updatedLatvia.taxRegistrationId()));
       assertEquals(Optional.of(estonia), session.findTaxRegistration(estonia.taxRegistrationId()));
       assertEquals(Optional.empty(), session.findTaxRegistration(new TaxRegistrationId("missing")));
       assertEquals(2, session.allTaxRegistrations().size());
@@ -95,6 +114,34 @@ class SqliteTaxRegistrationFieldTest extends SqlitePostingFactStoreTestSupport {
           session.allTaxRegistrations().stream()
               .map(registration -> registration.taxRegistrationId().value())
               .toList());
+    }
+  }
+
+  @Test
+  void declaration_rejectsBothMissingAndUninitializedProtectedBooks() {
+    DeclareTaxRegistrationCommand registration =
+        registration("vat-lv", "Latvia VAT", "LV", "vat-standard-sale");
+
+    try (SqlitePostingFactStore missingStore =
+        openStore(bookAccess(tempDirectory.resolve("missing-tax-book.sqlite")))) {
+      assertInstanceOf(
+          DeclareTaxRegistrationResult.Rejected.class,
+          missingStore.declareTaxRegistration(
+              registration, CLOCK.instant(), SqliteAttestationTestSupport.authorizer()));
+    }
+
+    Path initializedButUnopenedPath = tempDirectory.resolve("uninitialized-tax-book.sqlite");
+    dev.erst.fingrind.contract.runtime.BookAccess uninitializedBookAccess =
+        bookAccess(initializedButUnopenedPath);
+    try (SqliteNativeDatabase ignored = openNativeDatabase(uninitializedBookAccess)) {
+      // Establish a valid encrypted SQLite file without initialized FinGrind metadata.
+    }
+    try (SqlitePostingFactStore uninitializedStore = openStore(uninitializedBookAccess)) {
+      assertInstanceOf(
+          DeclareTaxRegistrationResult.Rejected.class,
+          uninitializedStore.declareTaxRegistration(
+              registration, CLOCK.instant(), SqliteAttestationTestSupport.authorizer()));
+      assertTrue(java.nio.file.Files.exists(initializedButUnopenedPath));
     }
   }
 
