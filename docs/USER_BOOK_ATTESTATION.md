@@ -120,6 +120,9 @@ fingrind verify-receipt \
   --receipt-file ./receipts/acme.fgar
 ```
 
-For the canonical binary encoding, verification rules, authorization policy, and artifact
-invariants, see [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md)
-and [DOC_02_VerifiableOperationAttestationArtifacts.md](./DOC_02_VerifiableOperationAttestationArtifacts.md).
+For the canonical binary encoding and authorization policy, see
+[DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md). For
+verification rules and structural failures, see
+[DOC_02_VerifiableOperationAttestationVerification.md](./DOC_02_VerifiableOperationAttestationVerification.md).
+Artifact invariants are in
+[DOC_02_VerifiableOperationAttestationArtifacts.md](./DOC_02_VerifiableOperationAttestationArtifacts.md).

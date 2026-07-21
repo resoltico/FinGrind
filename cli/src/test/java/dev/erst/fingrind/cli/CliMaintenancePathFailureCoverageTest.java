@@ -183,8 +183,9 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
             new CliRejectionJsonModels.ArtifactVerificationFailureDetails(
                 "backup-target", "/tmp/backup.sqlite", "missing"));
 
+    List<List<String>> rows = new java.util.ArrayList<>();
     for (CliRejectionJsonModels.MaintenanceRejectionDetails detail : details) {
-      List<List<String>> rows = new java.util.ArrayList<>();
+      rows.clear();
       CliMaintenanceFailureOutputRenderer.appendRows(rows, detail);
       assertFalse(rows.isEmpty(), detail::toString);
     }

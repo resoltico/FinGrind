@@ -16,7 +16,9 @@ stage: "Current public protocol 32 and protected-book format 51 contract"
 
 This is the normative fixture source for protected-book format 51. It extends the
 [core protocol](./DOC_02_VerifiableOperationAttestation.md), which owns the shared operation and
-envelope grammar, authorization rules, error taxonomy, and verifier precedence; the
+envelope grammar and authorization rules; the
+[verification protocol](./DOC_02_VerifiableOperationAttestationVerification.md), which owns
+error taxonomy and verifier precedence; the
 [semantic profiles](./DOC_02_VerifiableOperationAttestationProfiles.md), which own field-level
 posting admission; and the [artifact protocol](./DOC_02_VerifiableOperationAttestationArtifacts.md),
 which owns manifest, receipt, and container contracts.

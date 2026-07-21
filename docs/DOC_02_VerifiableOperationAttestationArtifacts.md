@@ -17,8 +17,10 @@ stage: "Current public protocol 32 and protected-book format 51 contract"
 This document is the canonical artifact subprotocol for protected-book format 51: backup manifests,
 artifact publication and restore, off-chain receipts, and artifact golden vectors.
 [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md) owns the
-shared envelope grammar, historical authorization, and failure vocabulary; the corpus owns complete
-protected-book and artifact fixture sources. This document describes the current released behavior.
+shared envelope grammar and historical authorization; the
+[verification protocol](./DOC_02_VerifiableOperationAttestationVerification.md) owns failure
+vocabulary and verifier precedence; the corpus owns complete protected-book and artifact fixture
+sources. This document describes the current released behavior.
 
 ## Backup Manifest, Publication, And Restore
 

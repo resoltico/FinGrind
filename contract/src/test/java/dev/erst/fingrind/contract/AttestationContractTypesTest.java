@@ -167,6 +167,9 @@ class AttestationContractTypesTest extends ContractTestSupport {
     assertEquals(
         AttestationVerificationFailure.RECEIPT_ARTIFACT_INVALID,
         AttestationVerificationFailure.fromWireCode("receipt-artifact-invalid"));
+    assertEquals(
+        "The selected receipt artifact cannot be verified.",
+        AttestationVerificationFailure.RECEIPT_ARTIFACT_INVALID.description());
     assertThrows(
         IllegalArgumentException.class,
         () -> AttestationVerificationFailure.fromWireCode(" attestation-signature-invalid "));

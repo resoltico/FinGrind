@@ -5,8 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.report.pdf.PdfReportService;
 import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
+import java.io.OutputStream;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -92,19 +95,47 @@ class CliCommandFamiliesTest {
   }
 
   private static CliExecutionContext executionContext() {
-    try {
-      FinGrindCli cli =
-          FinGrindCli.standard(
-              new ByteArrayInputStream(new byte[0]),
-              new java.io.PrintStream(new ByteArrayOutputStream()),
-              new java.io.PrintStream(new ByteArrayOutputStream()),
-              CliFilesystemFixtureSupport.fixedClock());
-      var executionContext = FinGrindCli.class.getDeclaredField("executionContext");
-      executionContext.setAccessible(true);
-      return (CliExecutionContext) executionContext.get(cli);
-    } catch (ReflectiveOperationException exception) {
-      throw new LinkageError(
-          "Unable to obtain a real CLI execution context for the base contract.", exception);
-    }
+    CliOutputChannel outputChannel =
+        new CliOutputChannel(
+            new PrintStream(OutputStream.nullOutputStream(), true, StandardCharsets.UTF_8));
+    CliFailureResponseWriter failureWriter = new CliFailureResponseWriter(outputChannel);
+    CliRequestReader requestReader = new CliRequestReader(new ByteArrayInputStream(new byte[0]));
+    CliBookWorkflow workflow = new CliBookWorkflowAdapter() {};
+    CliMutationResponseWriter mutationResponseWriter = new CliMutationResponseWriter(outputChannel);
+    CliMetadata metadata = new CliMetadata();
+    CliDiscoveryCommandExecutor discoveryCommandExecutor =
+        new CliDiscoveryCommandExecutor(new CliDiscoveryResponseWriter(outputChannel), metadata);
+    CliAdministrativeCommandExecutor administrativeCommandExecutor =
+        new CliAdministrativeCommandExecutor(
+            requestReader, mutationResponseWriter, failureWriter, workflow, workflow);
+    CliMutationCommandExecutor mutationCommandExecutor =
+        new CliMutationCommandExecutor(
+            requestReader,
+            mutationResponseWriter,
+            new CliPlanResponseWriter(outputChannel),
+            failureWriter,
+            workflow);
+    CliQueryCommandExecutor queryCommandExecutor =
+        new CliQueryCommandExecutor(
+            new CliBookReadResponseWriter(outputChannel, CliFilesystemFixtureSupport.fixedClock()),
+            failureWriter,
+            workflow);
+    CliReportCommandExecutor reportCommandExecutor =
+        new CliReportCommandExecutor(
+            new CliReportResponseWriter(outputChannel),
+            failureWriter,
+            workflow,
+            new CliPdfReportExporter(
+                new PdfReportService(
+                    metadata.applicationName(),
+                    metadata.version(),
+                    CliFilesystemFixtureSupport.fixedClock())),
+            CliFilesystemFixtureSupport.fixedClock());
+    return new CliExecutionContext(
+        administrativeCommandExecutor,
+        discoveryCommandExecutor,
+        mutationCommandExecutor,
+        queryCommandExecutor,
+        reportCommandExecutor);
   }
 }

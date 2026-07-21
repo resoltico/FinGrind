@@ -118,6 +118,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DOC_00_InventoryCosting.md](./DOC_00_InventoryCosting.md)
 - [DOC_00_OwnedLifecycleContexts.md](./DOC_00_OwnedLifecycleContexts.md)
 - [DOC_00_PostingAndRejections.md](./DOC_00_PostingAndRejections.md)
+- [DOC_00_Attestation.md](./DOC_00_Attestation.md)
 - [DOC_00_ProtectedBookMaintenance.md](./DOC_00_ProtectedBookMaintenance.md)
 - [DOC_00_ResponseAndWorkflow.md](./DOC_00_ResponseAndWorkflow.md)
 - [DOC_00_BookSessionsAndAdapters.md](./DOC_00_BookSessionsAndAdapters.md)
@@ -128,7 +129,8 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md)
 - [DOC_02_Application.md](./DOC_02_Application.md)
 - [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md)
-- [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md): current operation, authorization, preimage, verifier, and envelope contract for protected-book format 51
+- [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md): current operation, authorization, preimage, and envelope contract for protected-book format 51
+- [DOC_02_VerifiableOperationAttestationVerification.md](./DOC_02_VerifiableOperationAttestationVerification.md): current verifier procedure, compromise review, and structural-failure contract for protected-book format 51
 - [DOC_02_VerifiableOperationAttestationProfiles.md](./DOC_02_VerifiableOperationAttestationProfiles.md): current field-level posting profiles and autonomous system-close derivations for protected-book format 51
 - [DOC_02_VerifiableOperationAttestationArtifacts.md](./DOC_02_VerifiableOperationAttestationArtifacts.md): current backup-manifest, artifact-publication, restore, receipt, anchor, and artifact-vector contract
 - [DOC_02_VerifiableOperationAttestationCorpus.md](./DOC_02_VerifiableOperationAttestationCorpus.md): current positive and negative static fixture source for protected-book format 51

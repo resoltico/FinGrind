@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput;
@@ -77,7 +78,7 @@ class SqliteCliAttestationCredentialFailureTest extends CliBookWorkflowFixtureSu
             .openBook(bookAccess, command);
 
     assertCredentialFailure(decision, missingFounderKey);
-    assertEquals(false, java.nio.file.Files.exists(bookFile));
+    assertFalse(java.nio.file.Files.exists(bookFile));
   }
 
   private static <T> void assertCredentialFailure(

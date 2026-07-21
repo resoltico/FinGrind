@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.protocol;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
@@ -203,6 +204,10 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
     ids.addAll(collectRejectionCodes(BookQueryRejection.descriptors()));
     ids.addAll(collectRejectionCodes(BookMaintenanceRejection.descriptors()));
     ids.addAll(collectRejectionCodes(PostingRejection.descriptors()));
+    ids.addAll(
+        java.util.Arrays.stream(AttestationVerificationFailure.values())
+            .map(AttestationVerificationFailure::wireCode)
+            .toList());
     ids.addAll(LedgerAssertionKind.wireValues());
     ids.addAll(LedgerBoundaryCheckpoint.wireValues());
     ids.addAll(LedgerJournalKind.wireValues());

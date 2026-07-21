@@ -16,8 +16,10 @@ stage: "Current public protocol 32 and protected-book format 51 contract"
 
 This document is the canonical field-level admission owner for protected-book format 51.
 [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md)
-owns the wire grammar, record tags, envelope, and failure vocabulary. This document closes the
-semantic relation between a typed request, prior accepted book state, and its immutable effect.
+owns the wire grammar, record tags, and envelope. The
+[verification protocol](./DOC_02_VerifiableOperationAttestationVerification.md) owns the failure
+vocabulary. This document closes the semantic relation between a typed request, prior accepted book
+state, and its immutable effect.
 
 ## Closed Posting Relation
 

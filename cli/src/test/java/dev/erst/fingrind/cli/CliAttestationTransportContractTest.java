@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -219,7 +220,7 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
   @Test
   void credentialTriples_areOptionalOnlyWhenEntirelyAbsentAndMustOtherwiseBeAligned() {
     CliAttestationCredentialArguments credentials = new CliAttestationCredentialArguments();
-    assertTrue(!credentials.apply("--not-an-attestation-option", List.<String>of().listIterator()));
+    assertFalse(credentials.apply("--not-an-attestation-option", List.<String>of().listIterator()));
     assertEquals(List.of(), credentials.resolveOptional());
 
     applyCredential(credentials, "--attestation-principal-id", BOOK_ID.toString());
@@ -274,7 +275,7 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
     CliAttestationJsonModels.VerifyBookPayload noReview =
         new CliAttestationJsonModels.VerifyBookPayload(
             BOOK_ID.toString(), "0", OPERATION_HEAD, false, List.of());
-    assertTrue(!noReview.reviewRequired());
+    assertFalse(noReview.reviewRequired());
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -425,6 +426,7 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
     return arguments;
   }
 
+  /** Configurable workflow double for the attestation transport matrix. */
   private static final class AttestationWorkflow extends CliBookWorkflowAdapter {
     private VerifyBookAttestationResult verifyBookResult;
     private final AttestationReviewResult reviewResult;

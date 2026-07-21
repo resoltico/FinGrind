@@ -50,7 +50,9 @@ route:
 - Verifiable operation attestation:
   use [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md) for
   the current hard-break protected-book contract, including
-  credential-purpose authorization, closed per-kind effects, and deterministic verifier failures.
+  credential-purpose authorization and closed per-kind effects. Use
+  [DOC_02_VerifiableOperationAttestationVerification.md](./DOC_02_VerifiableOperationAttestationVerification.md)
+  for verifier procedure, compromise review, and deterministic structural failures.
   Use [DOC_02_VerifiableOperationAttestationProfiles.md](./DOC_02_VerifiableOperationAttestationProfiles.md)
   for the normative request-to-effect semantic profiles and autonomous system-close derivations.
   Use [DOC_02_VerifiableOperationAttestationArtifacts.md](./DOC_02_VerifiableOperationAttestationArtifacts.md)
@@ -89,6 +91,7 @@ route:
 | `DOC_00_InventoryCosting.md` | inventory-costing symbol-routing continuation for inventory account state, admission, movements, and rejections |
 | `DOC_00_OwnedLifecycleContexts.md` | accrual cut-off, fixed-asset, financing, and realized-FX symbol-routing continuation |
 | `DOC_00_PostingAndRejections.md` | posting commands, local validation, and published rejection symbol-routing continuation |
+| `DOC_00_Attestation.md` | protected-book attestation, verifier, artifact, and attestation-result symbol-routing continuation |
 | `DOC_00_ProtectedBookMaintenance.md` | protected-book maintenance, passphrase, SQLite session, and runtime symbol-routing continuation |
 | `DOC_00_ResponseAndWorkflow.md` | response-envelope and ledger-workflow symbol-routing continuation |
 | `DOC_01_Core.md` | exported accounting vocabulary, identity, exact quantity, weighted-average costing, and shared temporal primitives from the `core` module |
@@ -98,7 +101,8 @@ route:
 | `DOC_01_DecimalBoundaries.md` | exact-money boundary, exact-quantity boundary, and future non-money decimal-domain rules |
 | `DOC_02_Application.md` | routing overview for the split `contract` and `executor` reference spine |
 | `DOC_02_ProtocolAndDiscovery.md` | exported `contract` protocol metadata, runtime/distribution facts, request-field vocabularies, and protected-book format owners |
-| `DOC_02_VerifiableOperationAttestation.md` | current operation, authorization, preimage, verifier, and envelope contract for protected-book format 51 |
+| `DOC_02_VerifiableOperationAttestation.md` | current operation, authorization, preimage, and envelope contract for protected-book format 51 |
+| `DOC_02_VerifiableOperationAttestationVerification.md` | current verifier procedure, compromise review, and structural-failure contract for protected-book format 51 |
 | `DOC_02_VerifiableOperationAttestationProfiles.md` | current field-level posting profiles and autonomous system-close derivations for protected-book format 51 |
 | `DOC_02_VerifiableOperationAttestationArtifacts.md` | current backup-manifest, artifact-publication, restore, receipt, anchor, and artifact-vector contract |
 | `DOC_02_VerifiableOperationAttestationCorpus.md` | current positive and negative source fixtures, including backup, restore, rekey, system-initiation, and live-CAS coverage |
@@ -131,6 +135,9 @@ Response-envelope and ledger-workflow symbols continue in
 Posting-command and rejection symbols continue in
 [DOC_00_PostingAndRejections.md](./DOC_00_PostingAndRejections.md).
 
+Protected-book attestation, verification, artifact, and attestation-result symbols continue in
+[DOC_00_Attestation.md](./DOC_00_Attestation.md).
+
 Protected-book maintenance, passphrase, SQLite session, and runtime symbols continue in
 [DOC_00_ProtectedBookMaintenance.md](./DOC_00_ProtectedBookMaintenance.md).
 
@@ -151,63 +158,6 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `AccountTaxonomy` | `DOC_01_Core.md` | `AccountTaxonomy` |
 | `AccountTaxonomyDoctrine` | `DOC_01_Core.md` | `AccountTaxonomyDoctrine` |
 | `AccountType` | `DOC_01_Core.md` | `AccountType` |
-| `AttestationAccountMutationIntent` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationAccountMutationIntent` |
-| `AttestationAccountMutationProjection` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
-| `AttestationAccountSnapshot` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
-| `AttestationArtifactSnapshotReader` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Backup Artifact Types` |
-| `AttestationBackupAcknowledgement` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Backup Artifact Types` |
-| `AttestationBackupAcknowledgementAdmission` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Backup Artifact Types` |
-| `AttestationBackupArtifact` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Backup Artifact Types` |
-| `AttestationBackupArtifactVerification` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Backup Artifact Types` |
-| `AttestationClosePostingSnapshot` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
-| `AttestationCredentialException` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |
-| `AttestationCredentialUseException` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |
-| `AttestationCredentialSource` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |
-| `AttestationEvidence` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationEvidence` |
-| `AttestationEffectMutation` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
-| `AttestationFounderInput` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationGenesis` |
-| `AttestationGenesis` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationGenesis` |
-| `AttestationGenesisFactory` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationGenesis` |
-| `AttestationInspectionService` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Inspection And Verification Results` |
-| `AttestationKeyFiles` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationKeyFiles` |
-| `AttestationLifecycleMutationProjection` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
-| `AttestationLifecycleState` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
-| `AttestationMutationAuthorization` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |
-| `AttestationOperationAuthorizer` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
-| `AttestationOperationKind` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
-| `AttestationOperationPreimages` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
-| `AttestationOperationRequest` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
-| `AttestationOperationSigner` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationOperationSigner` |
-| `AttestationPeriodCloseMutationProjection` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
-| `AttestationPlanOperationAuthorizer` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
-| `AttestationPostingEffectSnapshot` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
-| `AttestationPostingEvidenceDocument` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
-| `AttestationPostingLine` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
-| `AttestationPostingMutationProjection` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
-| `AttestationPostingRequestSnapshot` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
-| `AttestationPublicCredential` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationPublicCredential` |
-| `AttestationReceipt` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |
-| `AttestationReceiptFinding` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |
-| `AttestationReceiptRetention` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |
-| `AttestationReceiptVerificationResult` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |
-| `AttestationReviewResult` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Inspection And Verification Results` |
-| `AttestationSigningSession` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |
-| `AttestationSigningSessionFactory` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |
-| `AttestationSigningCredential` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationSigningCredential` |
-| `AttestationTaxCodeSnapshot` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
-| `AttestationTaxRegistrationMutationProjection` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
-| `AttestationTaxRegistrationSnapshot` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
-| `AttestationVerification` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationVerification` |
-| `AttestationVerificationException` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationVerificationException` |
-| `AttestationVerificationFailure` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationVerificationFailure` |
-| `AttestationVerifier` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationVerifier` |
-| `AttestedProtectedBookLifecycleWorkflow` | `DOC_03_BookSessionsAndAdapters.md` | `Attested Protected-Book Maintenance` |
-| `AttestedProtectedBookMaintenanceStore` | `DOC_03_BookSessionsAndAdapters.md` | `Attested Protected-Book Maintenance` |
-| `BackupAcknowledgementConflictException` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Backup Artifact Types` |
-| `ExportAttestationReceiptResult` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |
-| `ProtocolOptions.Attestation` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptions` |
-| `VerifyAttestationReceiptResult` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |
-| `VerifyBookAttestationResult` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Inspection And Verification Results` |
 | `AccountAmendmentOutcome` | `DOC_02_AccountRegistryLifecycle.md` | `AccountAmendmentOutcome`, `AccountRegistryDependency`, `AccountRegistryLifecyclePolicy`, `AccountRegistryLifecycleRejection`, `AccountRegistryPublishedLanguageTranslator`, And `AccountRetirementOutcome` |
 | `AccountRegistryDependency` | `DOC_02_AccountRegistryLifecycle.md` | `AccountAmendmentOutcome`, `AccountRegistryDependency`, `AccountRegistryLifecyclePolicy`, `AccountRegistryLifecycleRejection`, `AccountRegistryPublishedLanguageTranslator`, And `AccountRetirementOutcome` |
 | `AccountRegistryLifecyclePolicy` | `DOC_02_AccountRegistryLifecycle.md` | `AccountAmendmentOutcome`, `AccountRegistryDependency`, `AccountRegistryLifecyclePolicy`, `AccountRegistryLifecycleRejection`, `AccountRegistryPublishedLanguageTranslator`, And `AccountRetirementOutcome` |
