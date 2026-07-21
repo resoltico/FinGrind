@@ -49,7 +49,7 @@ class SqliteClosingMutationReadSupportCoverageTest extends SqlitePostingFactStor
                       directClosePlanner(),
                       LocalDate.now(CLOSED_CLOCK),
                       CLOSED_CLOCK.instant(),
-                      () -> new PostingId("unused-close-posting"),
+                      () -> new PostingId("b244b900-4f37-3bc5-8921-71e87988c768"),
                       SqliteAttestationTestSupport.authorizer()));
 
       SqliteClosingMutationReadSupport readSupport =
@@ -77,7 +77,7 @@ class SqliteClosingMutationReadSupportCoverageTest extends SqlitePostingFactStor
             loaded.retainedAccumulatedAccountCode());
         assertEquals(closed.closedFiscalYear().closedAt(), loaded.closedAt());
         assertEquals(
-            List.of(new PostingId("close-posting-a"), new PostingId("close-posting-b")),
+            List.of(new PostingId("1dd6c0b8-8a55-384b-8d9a-f9dadfefb140"), new PostingId("08e947c3-7bf0-35b9-b5dd-596eca04cc4c")),
             loaded.closePostingIds());
       }
     }

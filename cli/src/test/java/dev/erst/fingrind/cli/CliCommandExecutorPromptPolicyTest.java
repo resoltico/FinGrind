@@ -117,7 +117,7 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
         outputStream,
         () ->
             executor.runGetPostingCommand(
-                PROMPT_BOOK_ACCESS, new PostingId("posting-1"), false, OutputMode.JSON));
+                PROMPT_BOOK_ACCESS, new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"), false, OutputMode.JSON));
     assertPromptFailure(
         outputStream,
         () ->

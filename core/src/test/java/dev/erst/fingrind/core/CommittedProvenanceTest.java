@@ -13,7 +13,7 @@ class CommittedProvenanceTest {
   void constructor_keepsCommittedAuditPayload() {
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new CommandId("command-1"),
+            new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
             new IdempotencyKey("idem-1"),
             new CausationId("cause-1"),
             Optional.of(new CorrelationId("corr-1")));
@@ -30,7 +30,7 @@ class CommittedProvenanceTest {
   void constructor_rejectsNullRecordedAt() {
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new CommandId("command-1"),
+            new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
             new IdempotencyKey("idem-1"),
             new CausationId("cause-1"),
             Optional.empty());

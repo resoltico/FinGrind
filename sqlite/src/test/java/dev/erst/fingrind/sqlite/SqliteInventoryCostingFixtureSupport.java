@@ -180,7 +180,7 @@ class SqliteInventoryCostingFixtureSupport extends SqlitePostingFactStoreTestSup
         movementKind,
         quantityDelta,
         costDeltaMinor,
-        new PostingId(postingId));
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()));
   }
 
   private static PostingFactEntryFields entryFields(PostingOriginKind postingOriginKind) {

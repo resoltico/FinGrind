@@ -227,7 +227,7 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
               InventoryMovementKind.ACQUISITION,
               10L,
               1_000L,
-              new PostingId("inventory-posting-1")));
+              new PostingId("7383e00e-486e-310b-a663-7672ae9d4159")));
       assertEquals(
           2,
           SqliteInventoryCostingWriter.insertInventoryMovement(
@@ -238,7 +238,7 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
               InventoryMovementKind.DISPOSAL,
               -4L,
               -400L,
-              new PostingId("inventory-posting-2")));
+              new PostingId("0ade5f8e-9609-3b94-bb31-5593699bbcb7")));
       SqliteTransactionValidationBook validationBook =
           new SqliteTransactionValidationBook(
               activeDatabase.value(), postingFactStore.postingReader());
@@ -290,29 +290,29 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
       assertEquals(
           expectedAcquisitionMovements,
           assertInstanceOf(SqliteReadCapabilitySession.class, readSession)
-              .inventoryMovements(new PostingId("inventory-posting-1")));
+              .inventoryMovements(new PostingId("7383e00e-486e-310b-a663-7672ae9d4159")));
       assertEquals(
           expectedDisposalMovements,
           assertInstanceOf(SqliteReadCapabilitySession.class, readSession)
-              .inventoryMovements(new PostingId("inventory-posting-2")));
+              .inventoryMovements(new PostingId("0ade5f8e-9609-3b94-bb31-5593699bbcb7")));
       assertEquals(
           List.of(),
           assertInstanceOf(SqliteReadCapabilitySession.class, readSession)
-              .inventoryMovements(new PostingId("missing-posting")));
+              .inventoryMovements(new PostingId("35b64143-46df-384f-898b-57d9ce1c50c1")));
 
       assertEquals(
           Optional.of(expectedState),
           postingSession.findInventoryAccountState(new AccountCode("1400")));
       assertEquals(
           expectedAcquisitionMovements,
-          postingSession.inventoryMovements(new PostingId("inventory-posting-1")));
+          postingSession.inventoryMovements(new PostingId("7383e00e-486e-310b-a663-7672ae9d4159")));
 
       assertEquals(
           Optional.of(expectedState),
           planExecutionSession.findInventoryAccountState(new AccountCode("1400")));
       assertEquals(
           expectedAcquisitionMovements,
-          planExecutionSession.inventoryMovements(new PostingId("inventory-posting-1")));
+          planExecutionSession.inventoryMovements(new PostingId("7383e00e-486e-310b-a663-7672ae9d4159")));
 
       assertEquals(
           Optional.of(expectedState),
@@ -323,8 +323,8 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
           Optional.empty(), validationBook.findInventoryAccountState(new AccountCode("9999")));
       assertEquals(
           expectedAcquisitionMovements,
-          validationBook.inventoryMovements(new PostingId("inventory-posting-1")));
-      assertEquals(List.of(), validationBook.inventoryMovements(new PostingId("missing-posting")));
+          validationBook.inventoryMovements(new PostingId("7383e00e-486e-310b-a663-7672ae9d4159")));
+      assertEquals(List.of(), validationBook.inventoryMovements(new PostingId("35b64143-46df-384f-898b-57d9ce1c50c1")));
     }
   }
 
@@ -433,7 +433,7 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
                 IllegalStateException.class,
                 () ->
                     assertInstanceOf(SqliteReadCapabilitySession.class, readSession)
-                        .inventoryMovements(new PostingId("inventory-posting-1")));
+                        .inventoryMovements(new PostingId("7383e00e-486e-310b-a663-7672ae9d4159")));
         assertTrue(
             Objects.requireNonNull(inventoryMovementFailure.getMessage())
                 .contains("Failed to query SQLite inventory movements."));
@@ -471,7 +471,7 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
               IllegalStateException.class,
               () ->
                   failingInventoryMovementValidationBook.inventoryMovements(
-                      new PostingId("inventory-posting-1")));
+                      new PostingId("7383e00e-486e-310b-a663-7672ae9d4159")));
       assertTrue(
           Objects.requireNonNull(inventoryMovementFailure.getMessage())
               .contains("Failed to query SQLite inventory movements."));
@@ -589,7 +589,7 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
   }
 
   private static PostingIdGenerator unusedPostingIdGenerator() {
-    return () -> new dev.erst.fingrind.core.PostingId("unused");
+    return () -> new dev.erst.fingrind.core.PostingId("1153abd3-5eb5-3203-9e2f-4900e0e136c3");
   }
 
   private record DatabaseHandleRef(SqliteNativeDatabase value) {}

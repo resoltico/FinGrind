@@ -85,7 +85,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         new PostingPageCursor(
             LocalDate.parse("2026-04-30"),
             Instant.parse("2026-04-07T10:15:30Z"),
-            new PostingId("posting-1"));
+            new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     String postingRegisterText =
         CliQueryOutputRenderer.renderPostingRegisterText(
             postingPage(List.of(postingFact), 10, Optional.of(nextCursor)));
@@ -377,7 +377,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         new PostingPageCursor(
             LocalDate.parse("2026-04-30"),
             Instant.parse("2026-04-07T10:15:30Z"),
-            new PostingId("posting-1"));
+            new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
 
     String emptyPostingsText =
         CliPostingOutputRenderer.renderPostingRegisterText(
@@ -432,7 +432,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     String committedText =
         CliMutationOutputRenderer.renderCommittedText(
             CliPostEntryResultFixtures.committed(
-                new PostingId("posting-committed"),
+                new PostingId("f8ff5c80-5d1e-3f21-abed-e0f33c801959"),
                 new IdempotencyKey("coverage-idem"),
                 LocalDate.parse("2026-04-07"),
                 Instant.parse("2026-04-07T10:15:30Z"),
@@ -841,7 +841,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
   private static PostingFact directPostingFact() {
     PostingFact reversalPosting = reversalPostingFact();
     return new PostingFact(
-        new PostingId("posting-direct-1"),
+        new PostingId("aa75f95f-ca50-3d6c-9fa3-7134b3624ffe"),
         reversalPosting.journalEntry(),
         PostingLineage.direct(),
         reversalPosting.postingKind(),

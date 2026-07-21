@@ -51,7 +51,7 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
         new AccountLedgerPageCursor(
             LocalDate.parse("2026-04-07"),
             Instant.parse("2026-04-07T12:00:00Z"),
-            new PostingId("posting-1"));
+            new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     AccountLedger command =
         assertInstanceOf(
             AccountLedger.class,
@@ -174,7 +174,7 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
                 }));
 
     assertEquals(Path.of("book.sqlite"), inspectBook.bookAccess().bookFilePath());
-    assertEquals(new PostingId("posting-1"), getPosting.postingId());
+    assertEquals(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"), getPosting.postingId());
   }
 
   @Test
@@ -183,7 +183,7 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
         new PostingPageCursor(
             LocalDate.parse("2026-04-15"),
             Instant.parse("2026-04-15T10:15:30Z"),
-            new PostingId("posting-20"));
+            new PostingId("66d33e18-bf7b-399a-aafa-010915846a28"));
     ListPostings command =
         assertInstanceOf(
             ListPostings.class,

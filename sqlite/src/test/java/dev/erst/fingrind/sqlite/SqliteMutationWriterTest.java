@@ -392,7 +392,7 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                   LocalDate.parse("2026-04-07"),
                   new PostingLineage.Reversal(
                       new dev.erst.fingrind.core.ReversalReference(
-                          new PostingId("posting-direct-journal-foreign-exchange")),
+                          new PostingId("f9122c12-b763-3108-b742-5de63f24b701")),
                       new dev.erst.fingrind.core.ReversalReason("Correction")),
                   reversalForeignExchangeDetails(),
                   new dev.erst.fingrind.core.JournalEntry(
@@ -456,7 +456,7 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                       InventoryMovementKind.OPENING,
                       2L,
                       1_250L,
-                      new PostingId(postingId)));
+                      new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString())));
         });
   }
 
@@ -739,7 +739,7 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
             : dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct();
     CommittedPosting posting =
         new CommittedPosting(
-            new PostingId(postingId),
+            new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
             resolvedEntry.journalEntry(),
             postingLineage,
             entry.postingKind(),

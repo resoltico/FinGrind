@@ -403,7 +403,7 @@ class CliPdfReportExporterTest {
 
   private static PostingFact postingFact() {
     return new PostingFact(
-        new PostingId("posting-1"),
+        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
             List.of(
@@ -419,7 +419,7 @@ class CliPdfReportExporterTest {
         CliFixtureSupport.accountingEvidence("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(
-                new CommandId("command-1"),
+                new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),
                 Optional.empty()),

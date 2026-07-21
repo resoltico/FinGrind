@@ -193,7 +193,7 @@ class LedgerPlanFactMapperTest {
     dev.erst.fingrind.executor.bookkeeping.CommittedPosting posting =
         BookkeepingPublishedLanguageTranslator.fromPublished(
             new PostingFact(
-                new PostingId("posting-sale-1"),
+                new PostingId("52471d93-5558-3fac-a2db-6d7166c3d89d"),
                 sale.journalEntry(),
                 sale.postingLineage(),
                 sale.postingKind(),
@@ -207,7 +207,7 @@ class LedgerPlanFactMapperTest {
                     List.of()),
                 new CommittedProvenance(
                     new RequestProvenance(
-                        new CommandId("command-sale-1"),
+                        new CommandId("2d37648c-35d8-36da-b768-a3f048e0c64c"),
                         new IdempotencyKey("idem-sale-1"),
                         new CausationId("cause-sale-1"),
                         Optional.empty()),
@@ -305,7 +305,7 @@ class LedgerPlanFactMapperTest {
         new BookkeepingEntry.Reversal(
             LocalDate.parse("2026-04-23"),
             new PostingLineage.Reversal(
-                new ReversalReference(new PostingId("prior-posting")),
+                new ReversalReference(new PostingId("60bdb11d-299e-3a3e-ba72-9193afd14b09")),
                 new ReversalReason("operator reversal")),
             null,
             null),
@@ -421,14 +421,14 @@ class LedgerPlanFactMapperTest {
 
   private static PostingFact reversalPostingFact() {
     return new PostingFact(
-        new PostingId("posting-1"),
+        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
         new JournalEntry(
             LocalDate.parse("2026-04-23"),
             List.of(
                 line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
                 line("4000", JournalLine.EntrySide.CREDIT, "10.00"))),
         PostingLineage.reversal(
-            new ReversalReference(new PostingId("prior-posting")),
+            new ReversalReference(new PostingId("60bdb11d-299e-3a3e-ba72-9193afd14b09")),
             new ReversalReason("operator reversal")),
         PostingKind.STANDARD,
         dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
@@ -448,7 +448,7 @@ class LedgerPlanFactMapperTest {
                     Instant.parse("2026-04-07T10:20:30Z")))),
         new CommittedProvenance(
             new RequestProvenance(
-                new CommandId("command-1"),
+                new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),
                 Optional.empty()),
@@ -482,7 +482,7 @@ class LedgerPlanFactMapperTest {
                         List.of()),
                     new CommittedProvenance(
                         new RequestProvenance(
-                            new CommandId("command-entry"),
+                            new CommandId("6cb36acc-40cc-3109-959f-e62547ee6314"),
                             new IdempotencyKey("idem-entry"),
                             new CausationId("cause-entry"),
                             Optional.empty()),

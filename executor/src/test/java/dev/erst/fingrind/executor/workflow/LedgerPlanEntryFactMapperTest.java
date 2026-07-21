@@ -91,7 +91,7 @@ class LedgerPlanEntryFactMapperTest {
             new BookkeepingEntry.Reversal(
                 LocalDate.parse("2026-04-23"),
                 new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
-                    new ReversalReference(new PostingId("posting-1")),
+                    new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
                     new ReversalReason("operator reversal")),
                 null,
                 null)),

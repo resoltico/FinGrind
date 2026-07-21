@@ -114,7 +114,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
     JournalEntry journalEntry = journalEntry(reversalReference);
     PostingLineageModel postingLineage = postingLineage(reversalReference, reason);
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         journalEntry,
         postingLineage,
         PostingKind.STANDARD,
@@ -142,7 +142,7 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
       List<JournalLine> lines) {
     JournalEntry journalEntry = new JournalEntry(effectiveDate, lines);
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         journalEntry,
         PostingLineageModel.direct(),
         PostingKind.STANDARD,

@@ -321,7 +321,7 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
     return new PostingPageCursor(
             java.time.LocalDate.parse("2026-04-15"),
             java.time.Instant.parse("2026-04-15T10:15:30Z"),
-            new PostingId("posting-5"))
+            new PostingId("ac835de0-880d-3249-817d-5a1b3758753e"))
         .wireValue();
   }
 }

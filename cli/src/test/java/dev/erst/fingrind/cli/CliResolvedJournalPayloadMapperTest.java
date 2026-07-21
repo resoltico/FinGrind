@@ -53,7 +53,7 @@ class CliResolvedJournalPayloadMapperTest {
                     Set.of(EconomicEventClass.SETTLED_SALE, EconomicEventClass.CREDIT_SALE),
                     false,
                     EvidenceClass.INVOICE,
-                    new StructuralContext(Optional.of(new PostingId("posting-1")), false))));
+                    new StructuralContext(Optional.of(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")), false))));
 
     assertNull(payload.appliedTax());
     assertNull(payload.foreignExchangeDetails());

@@ -246,7 +246,7 @@ class LatvianPayrollAdmissionPolicyTest {
         new AccountCode("2220"),
         new AccountCode("2230"),
         calculation,
-        new PostingId("payroll-run"),
+        new PostingId("6e77a34d-de28-3a87-b5bd-5b5bcf24c394"),
         Optional.empty());
   }
 

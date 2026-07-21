@@ -123,10 +123,10 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
         CommittedPosting stateRemittancePosting =
             persist(persistence, database, stateRemittance, "payroll-state-remittance-posting");
 
-        assertEquals(new PostingId("payroll-run-posting"), runPosting.postingId());
-        assertEquals(new PostingId("payroll-net-wage-posting"), netWagePosting.postingId());
+        assertEquals(new PostingId("46292ace-d9a6-38c2-8d72-a1b0e45a0e0d"), runPosting.postingId());
+        assertEquals(new PostingId("99e31f28-d419-38dc-a82a-793a21ea95cd"), netWagePosting.postingId());
         assertEquals(
-            new PostingId("payroll-state-remittance-posting"), stateRemittancePosting.postingId());
+            new PostingId("d9306dfe-fcc0-36ef-ade7-29280d38c67f"), stateRemittancePosting.postingId());
         assertEquals(1, queryInt(database, "select count(*) from latvian_payroll_run"));
         assertEquals(2, queryInt(database, "select count(*) from latvian_payroll_settlement"));
         assertEquals(
@@ -185,11 +185,11 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
                 "payroll-run-reversal",
                 LocalDate.parse("2026-07-05"));
 
-        assertEquals(new PostingId("payroll-net-wage-reversal"), netWageReversal.postingId());
+        assertEquals(new PostingId("efaca3b3-1da8-31bc-be11-763ede578863"), netWageReversal.postingId());
         assertEquals(
-            new PostingId("payroll-state-remittance-reversal"),
+            new PostingId("ca8d102b-6ba4-389f-aaf5-5fb7f49dcf3e"),
             stateRemittanceReversal.postingId());
-        assertEquals(new PostingId("payroll-run-reversal"), runReversal.postingId());
+        assertEquals(new PostingId("7ade4ccf-dbf0-3b8b-b7cf-227ac041613d"), runReversal.postingId());
         assertEquals(
             2, queryInt(database, "select count(*) from latvian_payroll_settlement_reversal"));
         assertEquals(1, queryInt(database, "select count(*) from latvian_payroll_run_reversal"));
@@ -266,7 +266,7 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
     assertEquals(
         Optional.empty(),
         payrollLookup.findLatvianPayrollSettlementByPosting(
-            new PostingId("missing-payroll-posting")));
+            new PostingId("03e7e664-ac40-34eb-b5a1-98a7c656cbb1")));
   }
 
   private static void assertRehydratedPayrollEntries(
@@ -434,7 +434,7 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
             Map.of()),
         new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
         new CommittedProvenance(requestProvenance(postingId), RECORDED_AT, SourceChannel.CLI),
-        () -> new PostingId(postingId));
+        () -> new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()));
   }
 
   private static JournalEntry negate(JournalEntry original, LocalDate effectiveDate) {

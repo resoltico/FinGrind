@@ -271,7 +271,7 @@ class ReportModelSupportCoverageTest {
             "posting-reversal",
             PostingOriginKind.REVERSAL,
             PostingLineage.reversal(
-                new ReversalReference(new PostingId("posting-0")),
+                new ReversalReference(new PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b")),
                 new ReversalReason("operator reversal")),
             ReportModelTestSupport.journalLine("1000", JournalLine.EntrySide.DEBIT, "10.00"),
             ReportModelTestSupport.journalLine("2000", JournalLine.EntrySide.CREDIT, "10.00"));

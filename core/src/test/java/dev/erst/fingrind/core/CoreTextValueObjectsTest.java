@@ -28,7 +28,9 @@ class CoreTextValueObjectsTest {
 
   @Test
   void commandId_stripsWhitespaceAndRejectsBlank() {
-    assertEquals("command-1", new CommandId("  command-1  ").value());
+    assertEquals(
+        "68b235c4-3e83-35cb-b580-361467f844e5",
+        new CommandId("  68b235c4-3e83-35cb-b580-361467f844e5  ").value());
     assertThrows(IllegalArgumentException.class, () -> new CommandId("   "));
   }
 

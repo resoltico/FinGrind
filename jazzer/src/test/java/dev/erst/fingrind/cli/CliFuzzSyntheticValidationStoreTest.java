@@ -31,8 +31,8 @@ class CliFuzzSyntheticValidationStoreTest {
     assertEquals(
         Map.of(), store.findAccounts(Set.of(new AccountCode("1000"), new AccountCode("2000"))));
     assertTrue(store.findExistingPosting(new IdempotencyKey("idem-direct")).isEmpty());
-    assertTrue(store.findPosting(new PostingId("posting-direct")).isEmpty());
-    assertTrue(store.findReversalFor(new PostingId("posting-direct")).isEmpty());
+    assertTrue(store.findPosting(new PostingId("beaef2d9-7837-39c8-b5dd-35ed3de7cf53")).isEmpty());
+    assertTrue(store.findReversalFor(new PostingId("beaef2d9-7837-39c8-b5dd-35ed3de7cf53")).isEmpty());
     assertEquals(List.of(), store.postings(EffectiveDateRange.unbounded()));
     assertTrue(store.earliestPostingEffectiveDate().isEmpty());
     assertTrue(store.transferredThroughEffectiveDate().isEmpty());
@@ -47,11 +47,11 @@ class CliFuzzSyntheticValidationStoreTest {
             declaredAt);
 
     CommittedPosting priorPosting =
-        store.findPosting(new PostingId("posting-admin-test")).orElseThrow();
+        store.findPosting(new PostingId("32ff28c4-32d9-389e-9721-9d358ac7236b")).orElseThrow();
 
-    assertEquals(new PostingId("posting-admin-test"), priorPosting.postingId());
+    assertEquals(new PostingId("32ff28c4-32d9-389e-9721-9d358ac7236b"), priorPosting.postingId());
     assertEquals(LocalDate.parse("2026-04-13"), priorPosting.journalEntry().effectiveDate());
     assertEquals(2, priorPosting.journalEntry().lines().size());
-    assertTrue(store.findPosting(new PostingId("posting-other")).isEmpty());
+    assertTrue(store.findPosting(new PostingId("a41ecb6e-1334-3953-aadb-ad599370c954")).isEmpty());
   }
 }

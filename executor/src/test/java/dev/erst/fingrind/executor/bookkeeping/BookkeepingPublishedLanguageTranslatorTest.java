@@ -232,7 +232,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
   @Test
   void bookkeepingPublishedLanguageTranslator_translatesDirectAndReversalLineage() {
     ReversalReference reversalReference =
-        new ReversalReference(new dev.erst.fingrind.core.PostingId("posting-1"));
+        new ReversalReference(new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     ReversalReason reversalReason = new ReversalReason("duplicate entry");
 
     assertEquals(
@@ -266,7 +266,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
             null);
     dev.erst.fingrind.contract.bookkeeping.PostingFact postingFact =
         new dev.erst.fingrind.contract.bookkeeping.PostingFact(
-            new dev.erst.fingrind.core.PostingId("posting-1"),
+            new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
             new dev.erst.fingrind.core.JournalEntry(
                 LocalDate.parse("2026-04-07"),
                 List.of(
@@ -285,7 +285,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
                 "published-posting"),
             new dev.erst.fingrind.core.CommittedProvenance(
                 new dev.erst.fingrind.core.RequestProvenance(
-                    new dev.erst.fingrind.core.CommandId("command-1"),
+                    new dev.erst.fingrind.core.CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
                     new dev.erst.fingrind.core.IdempotencyKey("idem-1"),
                     new dev.erst.fingrind.core.CausationId("cause-1"),
                     java.util.Optional.of(new dev.erst.fingrind.core.CorrelationId("corr-1"))),
@@ -313,7 +313,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
             List.of(
                 CurrencyBalance.ofTotals(Money.parse("EUR", "0.00"), Money.parse("EUR", "5.00"))),
             sweptAt,
-            List.of(new dev.erst.fingrind.core.PostingId("posting-1")));
+            List.of(new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
 
     assertEquals(
         reportingPeriod.effectiveDateTo(),
@@ -329,7 +329,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
                     CurrencyBalance.ofTotals(
                         Money.parse("EUR", "0.00"), Money.parse("EUR", "5.00"))),
                 sweptAt,
-                List.of(new dev.erst.fingrind.core.PostingId("posting-1")))),
+                List.of(new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))),
         BookkeepingPublishedLanguageTranslator.toPublished(
             new InterimResultSweepOutcome.Transferred(sweptInterimResult)));
     assertEquals(
@@ -355,7 +355,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
             new AccountCode("3200"),
             new AccountCode("3300"),
             closedAt,
-            List.of(new dev.erst.fingrind.core.PostingId("posting-1")));
+            List.of(new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
 
     assertEquals(
         2026,
@@ -370,7 +370,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
                 new AccountCode("3200"),
                 new AccountCode("3300"),
                 closedAt,
-                List.of(new dev.erst.fingrind.core.PostingId("posting-1"))),
+                List.of(new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
             false),
         BookkeepingPublishedLanguageTranslator.toPublished(
             new FiscalYearCloseOutcome.Closed(closedFiscalYear, false)));
@@ -637,27 +637,27 @@ class BookkeepingPublishedLanguageTranslatorTest {
   private static void assertReversalTargetRejectionTranslations() {
     assertEquals(
         new PostingRejection.ReversalTargetNotFound(
-            new dev.erst.fingrind.core.PostingId("posting-1")),
+            new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
         BookkeepingPublishedLanguageTranslator.toPublished(
             new BookkeepingPostingRejection.ReversalTargetNotFound(
-                new dev.erst.fingrind.core.PostingId("posting-1"))));
+                new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     assertEquals(
         new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
-            new dev.erst.fingrind.core.PostingId("posting-1")),
+            new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
         BookkeepingPublishedLanguageTranslator.toPublished(
-            new ReversalTargetIsReversal(new dev.erst.fingrind.core.PostingId("posting-1"))));
+            new ReversalTargetIsReversal(new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     assertEquals(
         new PostingRejection.ReversalAlreadyExists(
-            new dev.erst.fingrind.core.PostingId("posting-1")),
+            new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
         BookkeepingPublishedLanguageTranslator.toPublished(
             new BookkeepingPostingRejection.ReversalAlreadyExists(
-                new dev.erst.fingrind.core.PostingId("posting-1"))));
+                new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     assertEquals(
         new PostingRejection.ReversalDoesNotNegateTarget(
-            new dev.erst.fingrind.core.PostingId("posting-1")),
+            new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
         BookkeepingPublishedLanguageTranslator.toPublished(
             new BookkeepingPostingRejection.ReversalDoesNotNegateTarget(
-                new dev.erst.fingrind.core.PostingId("posting-1"))));
+                new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
   }
 
   @Test

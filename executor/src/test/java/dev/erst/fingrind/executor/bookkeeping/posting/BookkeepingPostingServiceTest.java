@@ -53,7 +53,7 @@ class BookkeepingPostingServiceTest {
     try (InMemoryBookSession bookSession = initializedBook()) {
       BookkeepingPostingService service =
           new BookkeepingPostingService(
-              bookSession, bookSession, () -> new PostingId("posting-new"), FIXED_CLOCK);
+              bookSession, bookSession, () -> new PostingId("a3a6a18e-ab7a-3802-bab2-e572d7904c54"), FIXED_CLOCK);
       PostingCommand command = command("idem-1");
 
       assertEquals(
@@ -88,7 +88,7 @@ class BookkeepingPostingServiceTest {
             (postingDraft, postingIdGenerator, attestationAuthorizer) -> {
               throw new AssertionError("commitStore should not be called during preflight");
             },
-            () -> new PostingId("posting-new"),
+            () -> new PostingId("a3a6a18e-ab7a-3802-bab2-e572d7904c54"),
             FIXED_CLOCK);
 
     assertEquals(
@@ -102,7 +102,7 @@ class BookkeepingPostingServiceTest {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       BookkeepingPostingService service =
           new BookkeepingPostingService(
-              bookSession, bookSession, () -> new PostingId("posting-new"), FIXED_CLOCK);
+              bookSession, bookSession, () -> new PostingId("a3a6a18e-ab7a-3802-bab2-e572d7904c54"), FIXED_CLOCK);
       PostingCommand command = command("idem-missing");
 
       assertEquals(
@@ -164,7 +164,7 @@ class BookkeepingPostingServiceTest {
 
   private static CommittedPosting committedPosting(String postingId, String idempotencyKey) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
             List.of(

@@ -404,7 +404,7 @@ class InterimResultSweepServiceTest {
                 CurrencyBalance.ofTotals(Money.parse("BHD", "7.000"), Money.parse("BHD", "0.000")),
                 CurrencyBalance.ofTotals(Money.parse("USD", "0.00"), Money.parse("USD", "30.00"))),
             FIXED_INSTANT,
-            List.of(new PostingId("generated-1"), new PostingId("generated-2"))),
+            List.of(new PostingId("f69a68be-269e-3c0f-96ac-2e3f7d806a8b"), new PostingId("01f60e25-bdd4-3408-90ed-384699ceba97"))),
         sweptInterimResult);
     assertEquals(
         new InterimResultSweepDraft(
@@ -603,7 +603,7 @@ class InterimResultSweepServiceTest {
       LocalDate effectiveDate,
       List<JournalLine> lines) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         new JournalEntry(effectiveDate, lines),
         PostingLineageModel.direct(),
         postingKind,
@@ -638,7 +638,7 @@ class InterimResultSweepServiceTest {
       List<JournalLine> lines) {
     CommittedPosting posting =
         new CommittedPosting(
-            new PostingId(postingId),
+            new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
             new JournalEntry(effectiveDate, lines),
             PostingLineageModel.direct(),
             PostingKind.STANDARD,

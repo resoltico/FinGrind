@@ -109,7 +109,7 @@ final class SqliteRoundTripWorkflowCliCoverage {
         primaryAccount.value());
 
     SqliteRoundTripWorkflowRenderingAssertions.assertRenderedAccepted(
-        readWorkflow.getPosting(bookAccess, new PostingId("missing-posting")),
+        readWorkflow.getPosting(bookAccess, new PostingId("35b64143-46df-384f-898b-57d9ce1c50c1")),
         OutputMode.JSON,
         (writers, result, mode) -> writers.query().writeGetPostingResult(result, mode),
         "posting-not-found");

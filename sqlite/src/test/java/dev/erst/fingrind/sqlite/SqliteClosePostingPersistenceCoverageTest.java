@@ -79,7 +79,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
               List.of(
                   line("2000", JournalLine.EntrySide.DEBIT, "10.00"),
                   line("3200", JournalLine.EntrySide.CREDIT, "10.00")));
-      CommittedPosting replayPosting = replayDraft.materialize(new PostingId("sweep-posting-1"));
+      CommittedPosting replayPosting = replayDraft.materialize(new PostingId("cd390bb5-f5ec-3a89-847d-b5c055b5ce3f"));
       assertEquals(
           new PostingCommitResult.Committed(replayPosting, false),
           postingFactStore.commit(
@@ -95,7 +95,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                       List.of(),
                       FIXED_INSTANT,
                       List.of(replayDraft)),
-                  () -> new PostingId("unused-replay"),
+                  () -> new PostingId("c2312115-6b61-3107-97d1-09290f6cda25"),
                   SqliteAttestationTestSupport.authorizer());
 
       assertEquals(List.of(replayPosting.postingId()), transferred.sweepPostingIds());
@@ -129,7 +129,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
               List.of(
                   line("3200", JournalLine.EntrySide.DEBIT, "10.00"),
                   line("3300", JournalLine.EntrySide.CREDIT, "10.00")));
-      CommittedPosting replayPosting = replayDraft.materialize(new PostingId("fiscal-posting-1"));
+      CommittedPosting replayPosting = replayDraft.materialize(new PostingId("3bfbe1d7-5663-3bdc-ab95-57adb3409b51"));
       assertEquals(
           new PostingCommitResult.Committed(replayPosting, false),
           postingFactStore.commit(
@@ -147,7 +147,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                       FIXED_INSTANT,
                       null,
                       List.of(replayDraft)),
-                  () -> new PostingId("unused-replay"),
+                  () -> new PostingId("c2312115-6b61-3107-97d1-09290f6cda25"),
                   SqliteAttestationTestSupport.authorizer());
 
       assertEquals(List.of(replayPosting.postingId()), closedFiscalYear.closePostingIds());
@@ -182,7 +182,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                   line("3200", JournalLine.EntrySide.DEBIT, "10.00"),
                   line("3300", JournalLine.EntrySide.CREDIT, "10.00")));
       CommittedPosting existingPosting =
-          existingDraft.materialize(new PostingId("fiscal-posting-existing"));
+          existingDraft.materialize(new PostingId("846394fb-4b81-3fb9-9d26-e242e9e8c6fb"));
       assertEquals(
           new PostingCommitResult.Committed(existingPosting, false),
           postingFactStore.commit(
@@ -215,7 +215,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                               FIXED_INSTANT,
                               null,
                               List.of(conflictingDraft)),
-                          () -> new PostingId("unused-conflict"),
+                          () -> new PostingId("960e24c2-ef40-3d2d-846b-f1d4963a42ee"),
                           SqliteAttestationTestSupport.authorizer()));
 
       assertTrue(
@@ -262,7 +262,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                       Map.of(new AccountCode("1410"), inventoryState(2L, 300L, "2026-04-07"))),
                   new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
                   generatedProvenance("inventory-posting", "persist"),
-                  () -> new PostingId("inventory-posting-1"));
+                  () -> new PostingId("7383e00e-486e-310b-a663-7672ae9d4159"));
       CommittedPosting inventoryPosting =
           closePostingPersistence(postingFactStore)
               .persistAcceptedPosting(
@@ -272,10 +272,10 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                       Map.of(new AccountCode("1400"), inventoryState(6L, 600L, "2026-04-07"))),
                   new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
                   generatedProvenance("inventory-posting", "persist-second"),
-                  () -> new PostingId("inventory-posting-2"));
+                  () -> new PostingId("0ade5f8e-9609-3b94-bb31-5593699bbcb7"));
 
-      assertEquals(new PostingId("inventory-posting-1"), reservePosting.postingId());
-      assertEquals(new PostingId("inventory-posting-2"), inventoryPosting.postingId());
+      assertEquals(new PostingId("7383e00e-486e-310b-a663-7672ae9d4159"), reservePosting.postingId());
+      assertEquals(new PostingId("0ade5f8e-9609-3b94-bb31-5593699bbcb7"), inventoryPosting.postingId());
       assertEquals(
           2,
           queryInt(
@@ -338,7 +338,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                           new RequestFingerprint(
                               RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
                           generatedProvenance("inventory-posting", "missing-date"),
-                          () -> new PostingId("inventory-posting-2")));
+                          () -> new PostingId("0ade5f8e-9609-3b94-bb31-5593699bbcb7")));
 
       assertTrue(
           NullTestSupport.messageOf(failure)
@@ -379,7 +379,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
   private static CommittedProvenance generatedProvenance(String operationName, String token) {
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new CommandId(operationName + ":" + token),
+            new CommandId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-commandid:" + operationName + ":" + token).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
             new IdempotencyKey(operationName + ":" + token),
             new CausationId(operationName + ":" + token),
             Optional.of(new CorrelationId(operationName + ":" + token)));

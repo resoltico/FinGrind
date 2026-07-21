@@ -137,6 +137,6 @@ class ForeignExchangeTemplateDescriptorValidationTest {
 
   private static ContractTemplates.ProvenanceTemplateDescriptor provenanceTemplate() {
     return new ContractTemplates.ProvenanceTemplateDescriptor(
-        "command-1", "idem-1", "cause-1", null);
+        "68b235c4-3e83-35cb-b580-361467f844e5", "idem-1", "cause-1", null);
   }
 }

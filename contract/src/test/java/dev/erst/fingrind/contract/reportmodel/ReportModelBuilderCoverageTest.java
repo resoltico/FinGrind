@@ -163,7 +163,7 @@ class ReportModelBuilderCoverageTest {
             PostingOriginKind.REVERSAL,
             PostingLineage.reversal(
                 new dev.erst.fingrind.core.ReversalReference(
-                    new dev.erst.fingrind.core.PostingId("posting-0")),
+                    new dev.erst.fingrind.core.PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b")),
                 new dev.erst.fingrind.core.ReversalReason("operator reversal")),
             ReportModelTestSupport.journalLine("1000", JournalLine.EntrySide.DEBIT, "10.00"),
             ReportModelTestSupport.journalLine("3000", JournalLine.EntrySide.CREDIT, "10.00"));
@@ -181,7 +181,7 @@ class ReportModelBuilderCoverageTest {
                         new dev.erst.fingrind.contract.bookkeeping.AccountLedgerPageCursor(
                             LocalDate.parse("2026-04-09"),
                             java.time.Instant.parse("2026-04-09T10:15:30Z"),
-                            new dev.erst.fingrind.core.PostingId("posting-reversal")))),
+                            new dev.erst.fingrind.core.PostingId("d335bf0a-b735-3860-ba2e-fcb74daf48d5")))),
                 List.of(ReportModelTestSupport.balance("EUR", "2.00", "0.00")),
                 List.of(
                     ReportModelTestSupport.accountLedgerEntry(

@@ -55,7 +55,7 @@ class CliMutationOutputRendererCoverageTest {
     String committed =
         CliMutationOutputRenderer.renderCommittedText(
             new PostEntryResult.Committed(
-                new PostingId("posting-1"),
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                 new IdempotencyKey("idem-none"),
                 LocalDate.parse("2026-04-07"),
                 Instant.parse("2026-04-07T10:15:30Z"),
@@ -81,7 +81,7 @@ class CliMutationOutputRendererCoverageTest {
     String committed =
         CliMutationOutputRenderer.renderCommittedText(
             CliPostEntryResultFixtures.committed(
-                new PostingId("posting-singleton"),
+                new PostingId("d5340e27-063d-32a4-a977-01932c57e4be"),
                 new IdempotencyKey("idem-singleton"),
                 LocalDate.parse("2026-04-07"),
                 Instant.parse("2026-04-07T10:15:30Z"),
@@ -102,7 +102,7 @@ class CliMutationOutputRendererCoverageTest {
     String committed =
         CliMutationOutputRenderer.renderCommittedText(
             CliPostEntryResultFixtures.committed(
-                new PostingId("posting-1"),
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                 new IdempotencyKey("idem-1"),
                 LocalDate.parse("2026-04-07"),
                 Instant.parse("2026-04-07T10:15:30Z"),
@@ -199,7 +199,7 @@ class CliMutationOutputRendererCoverageTest {
     String committed =
         CliMutationOutputRenderer.renderCommittedText(
             new PostEntryResult.Committed(
-                new PostingId("posting-compound"),
+                new PostingId("a98b2463-0b2b-3b3c-986c-be2cb3d845c2"),
                 new IdempotencyKey("idem-compound"),
                 LocalDate.parse("2026-04-07"),
                 Instant.parse("2026-04-07T10:15:30Z"),

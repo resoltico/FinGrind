@@ -164,7 +164,7 @@ class BookQueryModelTest {
         new AccountLedgerPageCursor(
             LocalDate.parse("2026-04-08"),
             Instant.parse("2026-04-08T10:15:30.123456789Z"),
-            new PostingId("posting-ledger-1"));
+            new PostingId("c88b55db-47c4-3d5e-a2e6-80997f278c92"));
 
     assertEquals(cursor, AccountLedgerPageCursor.fromWireValue(cursor.wireValue()));
     assertThrows(NullPointerException.class, () -> AccountLedgerPageCursor.fromWireValue(nullOf()));
@@ -180,7 +180,7 @@ class BookQueryModelTest {
         new AccountLedgerPageCursor(
             LocalDate.parse("2026-04-08"),
             Instant.parse("2026-04-08T10:15:30.123456789Z"),
-            new PostingId("posting-ledger-1"));
+            new PostingId("c88b55db-47c4-3d5e-a2e6-80997f278c92"));
     AccountLedgerPagination pagination =
         new AccountLedgerPagination(50, Optional.of(cursor), Optional.of(cursor));
     AccountLedgerPagination firstPage = AccountLedgerPagination.firstPage(50);
@@ -510,7 +510,7 @@ class BookQueryModelTest {
             BookQueryRejection.wireCode(
                 new BookQueryRejection.UnknownAccount(new AccountCode("1000"))),
             BookQueryRejection.wireCode(
-                new BookQueryRejection.PostingNotFound(new PostingId("posting-1")))));
+                new BookQueryRejection.PostingNotFound(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))));
     assertEquals(
         List.of("query-book-not-initialized", "unknown-account", "posting-not-found"),
         BookQueryRejection.descriptors().stream()
@@ -542,7 +542,7 @@ class BookQueryModelTest {
 
   private static PostingFact postingFact(String postingId, String idempotencyKey) {
     return new PostingFact(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         journalEntry(),
         PostingLineage.direct(),
         PostingKind.STANDARD,
@@ -571,7 +571,7 @@ class BookQueryModelTest {
   private static CommittedProvenance committedProvenance(String idempotencyKey) {
     return new CommittedProvenance(
         new RequestProvenance(
-            new CommandId("command-1"),
+            new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-1"),
             Optional.empty()),

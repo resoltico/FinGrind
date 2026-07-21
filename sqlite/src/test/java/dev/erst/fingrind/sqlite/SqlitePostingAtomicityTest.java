@@ -18,7 +18,7 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
       throws Exception {
     Path bookPath = tempDirectory.resolve("atomicity-after-posting-fact.sqlite");
     OneShotCommitFaultHook faultHook =
-        OneShotCommitFaultHook.afterPostingFactInsert(new PostingId("posting-1"));
+        OneShotCommitFaultHook.afterPostingFactInsert(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     try (SqliteBookPassphrase bookPassphrase =
             SqliteBookPassphrase.fromCharacters("atomicity ordinary", TEST_BOOK_KEY.toCharArray());
         SqlitePostingFactStore postingFactStore =
@@ -68,7 +68,7 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
       throws Exception {
     Path bookPath = tempDirectory.resolve("atomicity-before-persist-journal.sqlite");
     OneShotCommitFaultHook faultHook =
-        OneShotCommitFaultHook.beforePersistJournalLines(new PostingId("posting-2"));
+        OneShotCommitFaultHook.beforePersistJournalLines(new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362"));
     try (SqliteBookPassphrase bookPassphrase =
             SqliteBookPassphrase.fromCharacters("atomicity reversal", TEST_BOOK_KEY.toCharArray());
         SqlitePostingFactStore postingFactStore =
@@ -95,7 +95,7 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
                       postingFact(
                           "posting-2",
                           "idem-2",
-                          Optional.of(new ReversalReference(new PostingId("posting-1"))),
+                          Optional.of(new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
                           Optional.of(new ReversalReason("full reversal")))));
       assertEquals("forced failure before journal_line persistence", failure.getMessage());
       assertEquals(
@@ -119,7 +119,7 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
               postingFact(
                   "posting-2",
                   "idem-2",
-                  Optional.of(new ReversalReference(new PostingId("posting-1"))),
+                  Optional.of(new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
                   Optional.of(new ReversalReason("full reversal"))),
               false),
           commitPosting(
@@ -127,7 +127,7 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
               postingFact(
                   "posting-2",
                   "idem-2",
-                  Optional.of(new ReversalReference(new PostingId("posting-1"))),
+                  Optional.of(new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
                   Optional.of(new ReversalReason("full reversal")))));
     }
   }

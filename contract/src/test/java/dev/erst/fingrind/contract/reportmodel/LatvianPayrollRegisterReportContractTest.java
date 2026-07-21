@@ -76,7 +76,7 @@ class LatvianPayrollRegisterReportContractTest {
     assertEquals("Reversed", model.sections().getFirst().rows().getFirst().cells().get(4));
     assertEquals("Unsettled", model.sections().get(3).rows().getFirst().cells().get(4));
     assertEquals("reversed", csvValue(csv, 0, "runStatus"));
-    assertEquals("posting-payroll-run-reversal-2026-07", csvValue(csv, 0, "runReversalPostingId"));
+    assertEquals("3b061b61-bba1-32d8-ba78-d88d091c6ed0", csvValue(csv, 0, "runReversalPostingId"));
     assertEquals("unsettled", csvValue(csv, 0, "settlementStatus"));
   }
 
@@ -128,14 +128,14 @@ class LatvianPayrollRegisterReportContractTest {
         List.of(
             new LatvianPayrollSettlementStatus(
                 LatvianPayrollSettlementKind.NET_WAGES,
-                new PostingId("posting-net-wages-2026-07"),
+                new PostingId("eb9b38b4-f216-3db2-89aa-b322dadcc5c4"),
                 LocalDate.parse("2026-07-31"),
                 Optional.empty()),
             new LatvianPayrollSettlementStatus(
                 LatvianPayrollSettlementKind.STATE_REMITTANCE,
-                new PostingId("posting-state-remittance-2026-07"),
+                new PostingId("210633ad-7df4-3735-a675-6fde1a7f2c55"),
                 LocalDate.parse("2026-08-05"),
-                Optional.of(new PostingId("posting-state-remittance-reversal-2026-07"))));
+                Optional.of(new PostingId("d5317ac7-18ec-33f3-be60-a4f9a6b91606"))));
     return new LatvianPayrollRegisterReport(
         ReportModelTestSupport.bookIdentity(),
         List.of(
@@ -143,7 +143,7 @@ class LatvianPayrollRegisterReportContractTest {
                 new LatvianPayrollRunId("payroll-run-2026-07-employee-001"),
                 new LatvianPayrollEmployeeReference("employee-001"),
                 LatvianPayrollMonth.parse("2026-07"),
-                new PostingId("posting-payroll-run-2026-07"),
+                new PostingId("ddd6d3cc-2763-34be-b4c2-f1dd10218cbd"),
                 LocalDate.parse("2026-07-31"),
                 Optional.empty(),
                 money("200000"),
@@ -162,9 +162,9 @@ class LatvianPayrollRegisterReportContractTest {
         new LatvianPayrollRunId("payroll-run-2026-07-employee-002"),
         new LatvianPayrollEmployeeReference("employee-002"),
         LatvianPayrollMonth.parse("2026-07"),
-        new PostingId("posting-payroll-run-2026-07-employee-002"),
+        new PostingId("036ada02-ff55-3896-b245-deeac1fff12e"),
         LocalDate.parse("2026-07-31"),
-        Optional.of(new PostingId("posting-payroll-run-reversal-2026-07")),
+        Optional.of(new PostingId("3b061b61-bba1-32d8-ba78-d88d091c6ed0")),
         money("10000"),
         money("1050"),
         money("2359"),

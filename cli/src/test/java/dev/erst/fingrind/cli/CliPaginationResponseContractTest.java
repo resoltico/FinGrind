@@ -46,12 +46,12 @@ class CliPaginationResponseContractTest extends CliResponseWriterTestSupport {
         new PostingPageCursor(
             LocalDate.parse("2026-04-06"),
             Instant.parse("2026-04-06T10:15:30Z"),
-            new PostingId("posting-0"));
+            new PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b"));
     PostingPageCursor nextPostingCursor =
         new PostingPageCursor(
             LocalDate.parse("2026-04-07"),
             Instant.parse("2026-04-07T10:15:30Z"),
-            new PostingId("posting-1"));
+            new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     ByteArrayOutputStream postingOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(postingOutput))
         .writeListPostingsResult(

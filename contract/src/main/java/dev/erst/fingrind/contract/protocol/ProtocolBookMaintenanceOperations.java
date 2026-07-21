@@ -79,7 +79,7 @@ final class ProtocolBookMaintenanceOperations {
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
             List.of(ProtocolArtifactOutput.backupFile(), ProtocolArtifactOutput.newBackupKeyFile()),
-            "Export one manifest-attested encrypted-book backup artifact without overwriting any existing destination.",
+            "Export a manifest-attested encrypted-book backup artifact without overwriting any existing destination.",
             List.of(
                 ProtocolExampleStep.note(
                     "backup-book refuses to run when the live book has SQLite sidecars beside it."),

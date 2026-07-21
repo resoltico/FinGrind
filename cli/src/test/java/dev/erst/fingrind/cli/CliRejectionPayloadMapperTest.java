@@ -339,7 +339,7 @@ class CliRejectionPayloadMapperTest {
     assertHintFlagsExist(
         OperationId.GET_POSTING,
         CliRejectionPayloadMapper.queryRejectedEnvelope(
-                new BookQueryRejection.PostingNotFound(new PostingId("posting-404")))
+                new BookQueryRejection.PostingNotFound(new PostingId("1681e9f3-01c4-33d7-8345-24c657998982")))
             .hint());
   }
 
@@ -408,12 +408,12 @@ class CliRejectionPayloadMapperTest {
                 new AccountCode("4000"), AccountType.REVENUE));
     var reversalTargetNotFound =
         CliRejectionPayloadMapper.postingRejectedEnvelope(
-            "idem-4", new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1")));
+            "idem-4", new PostingRejection.ReversalTargetNotFound(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
     var reversalTargetIsReversal =
         CliRejectionPayloadMapper.postingRejectedEnvelope(
             "idem-reroll",
             new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
-                new PostingId("posting-reversal")));
+                new PostingId("d335bf0a-b735-3860-ba2e-fcb74daf48d5")));
 
     CliRejectionJsonModels.FunctionalCurrencyMismatchDetails currencyDetails =
         assertInstanceOf(
@@ -492,11 +492,11 @@ class CliRejectionPayloadMapperTest {
                 new AccountCode("3200"), FinancialPositionLineClassification.RESULT_HOLDING));
     var reversalAlreadyExists =
         CliRejectionPayloadMapper.postingRejectedEnvelope(
-            "idem-exists", new PostingRejection.ReversalAlreadyExists(new PostingId("posting-2")));
+            "idem-exists", new PostingRejection.ReversalAlreadyExists(new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362")));
     var reversalDoesNotNegateTarget =
         CliRejectionPayloadMapper.postingRejectedEnvelope(
             "idem-negate",
-            new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-3")));
+            new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("6d857901-cb53-3986-a1d7-2f64319c76ce")));
 
     assertTrue(Objects.requireNonNull(bookNotInitialized.hint()).contains("open-book"));
     assertNull(bookNotInitialized.details());
@@ -696,7 +696,7 @@ class CliRejectionPayloadMapperTest {
             new BookQueryRejection.UnknownAccount(new AccountCode("9999")));
     var postingNotFound =
         CliRejectionPayloadMapper.queryRejectedEnvelope(
-            new BookQueryRejection.PostingNotFound(new PostingId("posting-404")));
+            new BookQueryRejection.PostingNotFound(new PostingId("1681e9f3-01c4-33d7-8345-24c657998982")));
 
     assertNotNull(unknownAccount.hint());
     assertTrue(unknownAccount.hint().contains("list-accounts"));

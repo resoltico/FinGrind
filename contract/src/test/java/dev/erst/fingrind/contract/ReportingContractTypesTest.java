@@ -401,7 +401,7 @@ class ReportingContractTypesTest {
             "Wrong key", "Use the correct key file.", "--book-key-file");
     ContractDecision<String> accepted = ContractDecision.accepted("ok");
     ContractDecision<String> rejected = ContractDecision.rejected(withoutCause);
-    assertEquals(19, descriptors.size());
+    assertEquals(20, descriptors.size());
     assertEquals("unknown-command", descriptors.getFirst().code());
     assertTrue(
         descriptors.stream()
@@ -490,7 +490,7 @@ class ReportingContractTypesTest {
 
   private static PostingFact postingFact(String postingId, String idempotencyKey) {
     return new PostingFact(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
             List.of(
@@ -508,7 +508,7 @@ class ReportingContractTypesTest {
         ContractFixtures.accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
-                new CommandId("command-1"),
+                new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-1"),
                 Optional.of(new CorrelationId("correlation-1"))),

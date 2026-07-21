@@ -124,7 +124,7 @@ class RequestFingerprintOwnerTest {
                 new BookkeepingEntry.Reversal(
                     testJournalEntry().effectiveDate(),
                     new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
-                        new ReversalReference(new PostingId("prior-posting")),
+                        new ReversalReference(new PostingId("60bdb11d-299e-3a3e-ba72-9193afd14b09")),
                         new ReversalReason("operator reversal")),
                     null,
                     testJournalEntry()))
@@ -203,7 +203,7 @@ class RequestFingerprintOwnerTest {
         new BookkeepingEntry.Reversal(
             testJournalEntry().effectiveDate(),
             new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
-                new ReversalReference(new PostingId("prior-posting-2")),
+                new ReversalReference(new PostingId("fc7f4040-6436-3382-b5a5-d1cd2d2ac06d")),
                 new ReversalReason("operator reversal 2")),
             null,
             testJournalEntry());
@@ -334,7 +334,7 @@ class RequestFingerprintOwnerTest {
         new dev.erst.fingrind.core.AccountingEvidence(
             accountingEvidence("fingerprint").sourceDocuments(), approvals),
         new RequestProvenance(
-            new CommandId("command-1"),
+            new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
             new IdempotencyKey("idem-1"),
             new CausationId("cause-1"),
             Optional.of(new CorrelationId("corr-1"))),
@@ -354,7 +354,7 @@ class RequestFingerprintOwnerTest {
         },
         accountingEvidence("entry-fingerprint"),
         new RequestProvenance(
-            new CommandId("command-entry"),
+            new CommandId("6cb36acc-40cc-3109-959f-e62547ee6314"),
             new IdempotencyKey("idem-entry"),
             new CausationId("cause-entry"),
             Optional.of(new CorrelationId("corr-entry"))),
@@ -389,7 +389,7 @@ class RequestFingerprintOwnerTest {
         new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "1".repeat(64)),
         new CommittedProvenance(
             new RequestProvenance(
-                new CommandId("command-entry"),
+                new CommandId("6cb36acc-40cc-3109-959f-e62547ee6314"),
                 new IdempotencyKey("idem-entry"),
                 new CausationId("cause-entry"),
                 Optional.of(new CorrelationId("corr-entry"))),
@@ -413,7 +413,7 @@ class RequestFingerprintOwnerTest {
         entry.postingOriginKind(),
         accountingEvidence("accepted-entry-fingerprint"),
         new RequestProvenance(
-            new CommandId("command-accepted"),
+            new CommandId("6a2902df-21a8-3aa0-934a-3c34a30e63ea"),
             new IdempotencyKey("idem-accepted"),
             new CausationId("cause-accepted"),
             Optional.of(new CorrelationId("corr-accepted"))),

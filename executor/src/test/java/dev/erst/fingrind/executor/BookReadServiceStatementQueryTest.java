@@ -344,7 +344,7 @@ class BookReadServiceStatementQueryTest {
       seedStatementPostings(bookSession);
       InterimResultSweepService closeService =
           new InterimResultSweepService(
-              bookSession, bookSession, () -> new PostingId("interim-result-sweep-1"), FIXED_CLOCK);
+              bookSession, bookSession, () -> new PostingId("0485e481-7f56-30fd-92e2-92a099a486af"), FIXED_CLOCK);
 
       InterimResultSweepOutcome outcome =
           closeService.interimResultSweep(TRANSFER_PERIOD_RESULT, TEST_AUTHORIZER);
@@ -697,7 +697,7 @@ class BookReadServiceStatementQueryTest {
       LocalDate effectiveDate,
       List<JournalLine> lines) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         new JournalEntry(effectiveDate, lines),
         PostingLineageModel.direct(),
         postingKind,
@@ -721,7 +721,7 @@ class BookReadServiceStatementQueryTest {
       List<JournalLine> lines) {
     CommittedPosting posting =
         new CommittedPosting(
-            new PostingId(postingId),
+            new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
             new JournalEntry(effectiveDate, lines),
             PostingLineageModel.direct(),
             PostingKind.STANDARD,

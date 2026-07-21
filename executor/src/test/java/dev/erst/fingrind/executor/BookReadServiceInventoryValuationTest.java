@@ -60,7 +60,7 @@ class BookReadServiceInventoryValuationTest {
             InventoryMovementKind.ACQUISITION,
             3,
             1_000,
-            new PostingId("purchase-1"));
+            new PostingId("98d7a34c-0b61-3c00-98a8-8d3ec4dc4a98"));
     StatementBookStore bookStore =
         new StatementBookStore(List.of(inventory, emptyInventory), List.of(), List.of(acquisition));
 

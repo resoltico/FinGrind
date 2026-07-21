@@ -59,7 +59,7 @@ class ReversalResolutionSupportTest {
         new BookkeepingEntry.Reversal(
             LocalDate.parse("2026-04-07"),
             new PostingLineage.Reversal(
-                new ReversalReference(new PostingId("posting-1")),
+                new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
                 new ReversalReason("operator reversal")),
             null,
             null);
@@ -68,7 +68,7 @@ class ReversalResolutionSupportTest {
             ExecutorAccountingTestSupport.bookIdentity(),
             Map.of(),
             Map.of(
-                new PostingId("posting-1"),
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                 PostingApplicationServiceTestSupport.existingPosting("posting-1", "idem-1")));
 
     BookkeepingEntry resolved = ReversalResolutionSupport.resolve(entry, book);
@@ -87,7 +87,7 @@ class ReversalResolutionSupportTest {
         new BookkeepingEntry.Reversal(
             LocalDate.parse("2026-04-07"),
             new PostingLineage.Reversal(
-                new ReversalReference(new PostingId("posting-missing")),
+                new ReversalReference(new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6")),
                 new ReversalReason("operator reversal")),
             null,
             null);
@@ -96,7 +96,7 @@ class ReversalResolutionSupportTest {
     assertEquals(
         Optional.of(
             new BookkeepingPostingRejection.ReversalTargetNotFound(
-                new PostingId("posting-missing"))),
+                new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6"))),
         ReversalResolutionSupport.rejectionFor(unresolvedReversal, emptyBook));
 
     IllegalStateException missingTarget =

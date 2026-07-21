@@ -201,7 +201,7 @@ class PostingAcceptancePolicyInventoryAdmissionTest {
             PostingLineageModel.direct(),
             accountingEvidence("idem-sale-over-relief"),
             new RequestProvenance(
-                new CommandId("command-sale-over-relief"),
+                new CommandId("c8312911-6f81-3981-8d79-aa32649462db"),
                 new IdempotencyKey("idem-sale-over-relief"),
                 new CausationId("cause-sale-over-relief"),
                 Optional.of(new CorrelationId("corr-sale-over-relief"))),

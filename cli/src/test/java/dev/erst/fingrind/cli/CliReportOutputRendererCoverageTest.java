@@ -81,7 +81,7 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
             Instant.parse("2026-04-07T12:00:00Z"));
     PostingFact postingFact =
         new PostingFact(
-            new PostingId("posting-approval-1"),
+            new PostingId("0ffb246b-e007-33ab-95ab-b361f43f3cd9"),
             new JournalEntry(
                 LocalDate.parse("2026-04-07"),
                 List.of(
@@ -99,7 +99,7 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
             accountingEvidenceWithApproval("ledger-approval"),
             new CommittedProvenance(
                 new RequestProvenance(
-                    new dev.erst.fingrind.core.CommandId("command-approval-1"),
+                    new dev.erst.fingrind.core.CommandId("e405dba3-8ddf-3017-b9a2-081d80bbe1da"),
                     new IdempotencyKey("idem-approval-1"),
                     new dev.erst.fingrind.core.CausationId("cause-approval-1"),
                     Optional.empty()),

@@ -255,7 +255,7 @@ class FiscalYearClosePlannerTest {
                     new AccountCode("3200"),
                     new AccountCode("3300"),
                     CLOSED_AT,
-                    List.of(new PostingId("posting-1"))));
+                    List.of(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     assertThrows(
         NullPointerException.class,
         () ->
@@ -314,7 +314,7 @@ class FiscalYearClosePlannerTest {
   private static CommittedPosting posting(
       String postingId, PostingKind postingKind, LocalDate effectiveDate, JournalLine... lines) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         new JournalEntry(effectiveDate, List.of(lines)),
         PostingLineageModel.direct(),
         postingKind,

@@ -195,7 +195,7 @@ final class PostingApplicationServiceTestSupport {
   static <T extends PostingValidationStore & PostingCommitStore>
       PostingApplicationService applicationService(T bookSession) {
     return new PostingApplicationService(
-        bookSession, bookSession, () -> new PostingId("posting-new"), FIXED_CLOCK);
+        bookSession, bookSession, () -> new PostingId("a3a6a18e-ab7a-3802-bab2-e572d7904c54"), FIXED_CLOCK);
   }
 
   static PostEntryCommand command(String idempotencyKey) {
@@ -283,7 +283,7 @@ final class PostingApplicationServiceTestSupport {
   }
 
   static Optional<ReversalReference> reversalReference(String priorPostingId) {
-    return Optional.of(new ReversalReference(new PostingId(priorPostingId)));
+    return Optional.of(new ReversalReference(new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + priorPostingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString())));
   }
 
   static CommittedPosting existingPosting(String postingId, String idempotencyKey) {
@@ -297,7 +297,7 @@ final class PostingApplicationServiceTestSupport {
   static CommittedPosting existingPosting(
       String postingId, String idempotencyKey, JournalEntry journalEntry) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         journalEntry,
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
@@ -321,7 +321,7 @@ final class PostingApplicationServiceTestSupport {
 
   static RequestProvenance requestProvenance(String idempotencyKey) {
     return new RequestProvenance(
-        new CommandId("command-1"),
+        new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
         new IdempotencyKey(idempotencyKey),
         new CausationId("cause-1"),
         Optional.of(new CorrelationId("corr-1")));
@@ -348,7 +348,7 @@ final class PostingApplicationServiceTestSupport {
     return new BookkeepingEntry.Reversal(
         journalEntry.effectiveDate(),
         new PostingLineage.Reversal(
-            new ReversalReference(new PostingId(priorPostingId)), new ReversalReason(reason)),
+            new ReversalReference(new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + priorPostingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString())), new ReversalReason(reason)),
         null,
         journalEntry);
   }
@@ -427,11 +427,11 @@ final class PostingApplicationServiceTestSupport {
           case "idem-reversal-duplicate" ->
               new PostingCommitResult.Rejected(
                   new BookkeepingPostingRejection.ReversalAlreadyExists(
-                      new PostingId("posting-1")));
+                      new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
           case "idem-reversal-target-is-reversal" ->
               new PostingCommitResult.Rejected(
                   new dev.erst.fingrind.executor.bookkeeping.ReversalTargetIsReversal(
-                      new PostingId("posting-2")));
+                      new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362")));
           default -> throw new AssertionError("Unexpected test idempotency key: " + idempotencyKey);
         };
       }

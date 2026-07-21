@@ -117,7 +117,7 @@ class BookkeepingEntryTest {
             LocalDate.parse("2026-04-07"),
             new PostingLineage.Reversal(
                 new dev.erst.fingrind.core.ReversalReference(
-                    new dev.erst.fingrind.core.PostingId("posting-1")),
+                    new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
                 new dev.erst.fingrind.core.ReversalReason("operator reversal")),
             null,
             null);
@@ -191,7 +191,7 @@ class BookkeepingEntryTest {
         new BookkeepingEntry.Reversal(
             journalEntry().effectiveDate(),
             new PostingLineage.Reversal(
-                new ReversalReference(new PostingId("posting-1")),
+                new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
                 new ReversalReason("operator reversal")),
             null,
             journalEntry());
@@ -294,7 +294,7 @@ class BookkeepingEntryTest {
         new BookkeepingEntry.Reversal(
             resolvedJournal.effectiveDate(),
             new PostingLineage.Reversal(
-                new ReversalReference(new PostingId("posting-1")),
+                new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
                 new ReversalReason("operator reversal")),
             null,
             null);
@@ -302,7 +302,7 @@ class BookkeepingEntryTest {
         new BookkeepingEntry.Reversal(
             resolvedJournal.effectiveDate(),
             new PostingLineage.Reversal(
-                new ReversalReference(new PostingId("posting-2")),
+                new ReversalReference(new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362")),
                 new ReversalReason("operator reversal")),
             null,
             null);
@@ -311,7 +311,7 @@ class BookkeepingEntryTest {
         new BookkeepingEntry.Reversal(
             resolvedJournal.effectiveDate(),
             new PostingLineage.Reversal(
-                new ReversalReference(new PostingId("posting-3")),
+                new ReversalReference(new PostingId("6d857901-cb53-3986-a1d7-2f64319c76ce")),
                 new ReversalReason("operator reversal")),
             null,
             resolvedJournal);
@@ -331,7 +331,7 @@ class BookkeepingEntryTest {
                 new BookkeepingEntry.Reversal(
                     resolvedJournal.effectiveDate().plusDays(1),
                     new PostingLineage.Reversal(
-                        new ReversalReference(new PostingId("posting-4")),
+                        new ReversalReference(new PostingId("066ad76a-b654-302f-9fde-d2cb870550c6")),
                         new ReversalReason("operator reversal")),
                     null,
                     resolvedJournal));

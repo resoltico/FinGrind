@@ -21,8 +21,8 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
   private static final LatvianPayrollEmployeeReference EMPLOYEE =
       new LatvianPayrollEmployeeReference("employee-001");
   private static final LatvianPayrollMonth PAYROLL_MONTH = LatvianPayrollMonth.parse("2026-06");
-  private static final PostingId RUN_POSTING_ID = new PostingId("payroll-run-posting");
-  private static final PostingId SETTLEMENT_POSTING_ID = new PostingId("payroll-net-wage-posting");
+  private static final PostingId RUN_POSTING_ID = new PostingId("46292ace-d9a6-38c2-8d72-a1b0e45a0e0d");
+  private static final PostingId SETTLEMENT_POSTING_ID = new PostingId("99e31f28-d419-38dc-a82a-793a21ea95cd");
 
   @Test
   void transactionValidationPayrollQueries_translateEveryNativeFailure() throws Exception {

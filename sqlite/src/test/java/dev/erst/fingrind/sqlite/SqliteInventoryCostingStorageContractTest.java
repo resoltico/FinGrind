@@ -46,7 +46,7 @@ class SqliteInventoryCostingStorageContractTest extends SqliteInventoryCostingFi
                   InventoryMovementKind.ACQUISITION,
                   10L,
                   1_000L,
-                  new PostingId("posting-1"));
+                  new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
           int secondSequence =
               SqliteInventoryCostingWriter.insertInventoryMovement(
                   database,
@@ -56,7 +56,7 @@ class SqliteInventoryCostingStorageContractTest extends SqliteInventoryCostingFi
                   InventoryMovementKind.DISPOSAL,
                   -4L,
                   -400L,
-                  new PostingId("posting-2"));
+                  new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362"));
           int thirdSequence =
               SqliteInventoryCostingWriter.insertInventoryMovement(
                   database,
@@ -66,7 +66,7 @@ class SqliteInventoryCostingStorageContractTest extends SqliteInventoryCostingFi
                   InventoryMovementKind.ACQUISITION,
                   2L,
                   300L,
-                  new PostingId("posting-3"));
+                  new PostingId("6d857901-cb53-3986-a1d7-2f64319c76ce"));
 
           assertEquals(1, firstSequence);
           assertEquals(2, secondSequence);
@@ -127,7 +127,7 @@ class SqliteInventoryCostingStorageContractTest extends SqliteInventoryCostingFi
                   InventoryMovementKind.OPENING,
                   2L,
                   300L,
-                  new PostingId("posting-opening")));
+                  new PostingId("aa8c1d14-3896-312e-950f-931d3435cbda")));
 
           SqliteNativeException wrongOrigin =
               assertThrows(
@@ -141,7 +141,7 @@ class SqliteInventoryCostingStorageContractTest extends SqliteInventoryCostingFi
                           InventoryMovementKind.OPENING,
                           2L,
                           300L,
-                          new PostingId("posting-standard")));
+                          new PostingId("4eaeb392-1341-3951-9a96-3e58149464de")));
           assertEquals(SqliteNativeResultCode.code("CONSTRAINT_TRIGGER"), wrongOrigin.resultCode());
           assertEquals("SQLITE_CONSTRAINT_TRIGGER", wrongOrigin.resultName());
         });
@@ -283,7 +283,7 @@ class SqliteInventoryCostingStorageContractTest extends SqliteInventoryCostingFi
                           InventoryMovementKind.ACQUISITION,
                           1L,
                           100L,
-                          new PostingId("posting-raw")));
+                          new PostingId("40b6567c-f4df-347d-b557-94f6fde06c1c")));
           assertEquals(SqliteNativeResultCode.code("CONSTRAINT_TRIGGER"), rawOrigin.resultCode());
           assertEquals("SQLITE_CONSTRAINT_TRIGGER", rawOrigin.resultName());
 
@@ -299,7 +299,7 @@ class SqliteInventoryCostingStorageContractTest extends SqliteInventoryCostingFi
                           InventoryMovementKind.ACQUISITION,
                           1L,
                           100L,
-                          new PostingId("posting-mismatched")));
+                          new PostingId("46766bea-48c1-3169-aa44-29d2e75ea084")));
           assertEquals(
               SqliteNativeResultCode.code("CONSTRAINT_TRIGGER"),
               mismatchedTypedOrigin.resultCode());
@@ -348,7 +348,7 @@ class SqliteInventoryCostingStorageContractTest extends SqliteInventoryCostingFi
                   InventoryMovementKind.ACQUISITION,
                   10L,
                   1_000L,
-                  new PostingId("posting-1")));
+                  new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
 
           SqliteNativeException nonCanonicalDuplicateSequence =
               assertThrows(
@@ -463,7 +463,7 @@ class SqliteInventoryCostingStorageContractTest extends SqliteInventoryCostingFi
                           InventoryMovementKind.ACQUISITION,
                           1L,
                           100L,
-                          new PostingId("posting-2")));
+                          new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362")));
           assertEquals(
               SqliteNativeResultCode.code("CONSTRAINT_TRIGGER"), outOfOrderInsert.resultCode());
           assertEquals("SQLITE_CONSTRAINT_TRIGGER", outOfOrderInsert.resultName());
@@ -532,7 +532,7 @@ class SqliteInventoryCostingStorageContractTest extends SqliteInventoryCostingFi
                           InventoryMovementKind.ACQUISITION,
                           10L,
                           1_000L,
-                          new PostingId("posting-1")));
+                          new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
           assertEquals(
               "SQLite inventory movement insert returned no account sequence.",
               noRowFailure.getMessage());
@@ -569,7 +569,7 @@ class SqliteInventoryCostingStorageContractTest extends SqliteInventoryCostingFi
                           InventoryMovementKind.ACQUISITION,
                           10L,
                           1_000L,
-                          new PostingId("posting-1")));
+                          new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
           assertEquals(
               "SQLite inventory movement insert returned more than one account sequence.",
               extraRowFailure.getMessage());
@@ -601,7 +601,7 @@ class SqliteInventoryCostingStorageContractTest extends SqliteInventoryCostingFi
               InventoryMovementKind.ACQUISITION,
               10L,
               1_000L,
-              new PostingId("posting-1"));
+              new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
           SqliteInventoryCostingWriter.insertInventoryMovement(
               database,
               "movement-2",
@@ -610,7 +610,7 @@ class SqliteInventoryCostingStorageContractTest extends SqliteInventoryCostingFi
               InventoryMovementKind.DISPOSAL,
               -10L,
               -1_000L,
-              new PostingId("posting-2"));
+              new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362"));
           SqliteInventoryCostingWriter.upsertInventoryOnHand(
               database, new AccountCode("1400"), 0L, 0L, LocalDate.parse("2026-04-08"));
 
@@ -643,7 +643,7 @@ class SqliteInventoryCostingStorageContractTest extends SqliteInventoryCostingFi
               InventoryMovementKind.ACQUISITION,
               1L,
               100L,
-              new PostingId("posting-1"));
+              new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
           SqliteInventoryCostingWriter.insertInventoryMovement(
               database,
               "movement-2",
@@ -652,7 +652,7 @@ class SqliteInventoryCostingStorageContractTest extends SqliteInventoryCostingFi
               InventoryMovementKind.DISPOSAL,
               -2L,
               -200L,
-              new PostingId("posting-2"));
+              new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362"));
 
           assertFalse(SqliteBookIntegrityVerifier.hasConsistentInventoryOnHand(database));
         });
@@ -721,7 +721,7 @@ class SqliteInventoryCostingStorageContractTest extends SqliteInventoryCostingFi
               InventoryMovementKind.ACQUISITION,
               10L,
               1_000L,
-              new PostingId("posting-1"));
+              new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
           SqliteInventoryCostingWriter.upsertInventoryOnHand(
               database, new AccountCode("1400"), 10L, 1_000L, LocalDate.parse("2026-04-08"));
 
@@ -746,7 +746,7 @@ class SqliteInventoryCostingStorageContractTest extends SqliteInventoryCostingFi
               InventoryMovementKind.ACQUISITION,
               10L,
               1_000L,
-              new PostingId("posting-1"));
+              new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
           SqliteInventoryCostingWriter.upsertInventoryOnHand(
               database, new AccountCode("1400"), 9L, 1_000L, LocalDate.parse("2026-04-07"));
 

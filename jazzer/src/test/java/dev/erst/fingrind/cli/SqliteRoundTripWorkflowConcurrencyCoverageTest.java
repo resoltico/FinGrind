@@ -77,7 +77,7 @@ class SqliteRoundTripWorkflowConcurrencyCoverageTest {
                         ContractDecision.accepted(
                             SqliteRoundTripWorkflowTestSupport.commitRejected(
                                 new PostingRejection.ReversalTargetNotFound(
-                                    new PostingId("posting-3")))))),
+                                    new PostingId("6d857901-cb53-3986-a1d7-2f64319c76ce")))))),
                 true));
     assertThrows(
         IllegalStateException.class,
@@ -111,7 +111,7 @@ class SqliteRoundTripWorkflowConcurrencyCoverageTest {
     assertTrue(replayResult instanceof Committed committed && committed.idempotentReplay());
     CommitEntryResult reversalTargetResult =
         SqliteRoundTripWorkflowTestSupport.commitRejected(
-            new PostingRejection.ReversalTargetNotFound(new PostingId("posting-duplicate")));
+            new PostingRejection.ReversalTargetNotFound(new PostingId("eed4f82c-57ee-3caf-9afb-271b05f48aa9")));
     assertFalse(
         reversalTargetResult
                 instanceof
@@ -178,7 +178,7 @@ class SqliteRoundTripWorkflowConcurrencyCoverageTest {
                       tally,
                       SqliteRoundTripWorkflowTestSupport.commitRejected(
                           new PostingRejection.ReversalTargetNotFound(
-                              new PostingId("posting-private")))
+                              new PostingId("0feb0a6f-51da-3617-95a0-1a85821f337d")))
                     }));
     SqliteRoundTripWorkflowTestSupport.assertMessageContains(acceptedRejection, "posting-private");
   }

@@ -453,13 +453,13 @@ class PostingApplicationServicePreflightTest {
           applicationService.preflight(
               command(
                   "idem-1",
-                  Optional.of(new ReversalReference(new PostingId("posting-missing"))),
+                  Optional.of(new ReversalReference(new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6"))),
                   Optional.of(new ReversalReason("operator reversal"))));
 
       assertEquals(
           preflightRejected(
               new IdempotencyKey("idem-1"),
-              new PostingRejection.ReversalTargetNotFound(new PostingId("posting-missing"))),
+              new PostingRejection.ReversalTargetNotFound(new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6"))),
           result);
     }
   }
@@ -530,7 +530,7 @@ class PostingApplicationServicePreflightTest {
       assertEquals(
           preflightRejected(
               new IdempotencyKey("idem-1"),
-              new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))),
+              new PostingRejection.ReversalAlreadyExists(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
           result);
     }
   }
@@ -585,7 +585,7 @@ class PostingApplicationServicePreflightTest {
 
       assertEquals(
           Optional.of(
-              new PostingRejection.ReversalTargetNotFound(new PostingId("posting-missing"))),
+              new PostingRejection.ReversalTargetNotFound(new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6"))),
           invokePrivateOptionalRejection(applicationService, "applicationRejectionFor", command));
     }
   }

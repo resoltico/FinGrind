@@ -260,14 +260,14 @@ class PostingRejectionTest {
                 new PostingRejection.ReservedResultClassification(
                     new AccountCode("3000"), FinancialPositionLineClassification.RESULT_HOLDING)),
             PostingRejection.wireCode(
-                new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1"))),
+                new PostingRejection.ReversalTargetNotFound(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
             PostingRejection.wireCode(
                 new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
-                    new PostingId("posting-1b"))),
+                    new PostingId("d66e4aa4-9992-3220-9ea1-17b11ccaee61"))),
             PostingRejection.wireCode(
-                new PostingRejection.ReversalAlreadyExists(new PostingId("posting-2"))),
+                new PostingRejection.ReversalAlreadyExists(new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362"))),
             PostingRejection.wireCode(
-                new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-3")))));
+                new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("6d857901-cb53-3986-a1d7-2f64319c76ce")))));
   }
 
   @Test

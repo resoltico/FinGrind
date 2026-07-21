@@ -83,7 +83,7 @@ class LedgerPlanServiceWorkflowTest {
                               stepId("accounts"),
                               new dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery(
                                   50, Optional.empty())),
-                          new LedgerStep.GetPosting(stepId("get"), new PostingId("posting-1")),
+                          new LedgerStep.GetPosting(stepId("get"), new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
                           new LedgerStep.ListPostings(
                               stepId("postings"),
                               new dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery(
@@ -99,7 +99,7 @@ class LedgerPlanServiceWorkflowTest {
                               new LedgerAssertion.AccountActive(new AccountCode("1000"))),
                           new LedgerStep.Assert(
                               stepId("assert-posting"),
-                              new LedgerAssertion.PostingExists(new PostingId("posting-1"))),
+                              new LedgerAssertion.PostingExists(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
                           new LedgerStep.Assert(
                               stepId("assert-balance"),
                               new LedgerAssertion.AccountBalanceEquals(
@@ -119,7 +119,7 @@ class LedgerPlanServiceWorkflowTest {
       assertEquals(
           LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
           result.journal().steps().getLast().detailKind());
-      assertTrue(bookSession.findPosting(new PostingId("posting-1")).isPresent());
+      assertTrue(bookSession.findPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")).isPresent());
     }
   }
 
@@ -386,7 +386,7 @@ class LedgerPlanServiceWorkflowTest {
                       List.of(
                           new LedgerStep.Assert(
                               stepId("assert-posting"),
-                              new LedgerAssertion.PostingExists(new PostingId("posting-1"))))));
+                              new LedgerAssertion.PostingExists(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))));
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(

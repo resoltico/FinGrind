@@ -69,7 +69,7 @@ class LatvianPayrollSettlementAdmissionPolicyTest {
         policy.resolve(
             netWages(RUN_DATE),
             new SettlementBook(
-                Optional.of(run(Optional.of(new PostingId("run-reversal")))), Optional.empty()),
+                Optional.of(run(Optional.of(new PostingId("4acb74fd-44af-3d9e-8af2-d1b8759c810e")))), Optional.empty()),
             "entry"),
         "latvian-payroll-run-reversed");
     assertRejection(
@@ -87,7 +87,7 @@ class LatvianPayrollSettlementAdmissionPolicyTest {
                     new LatvianPayrollSettlementRecord(
                         LatvianPayrollSettlementKind.NET_WAGES,
                         PAYROLL_RUN_ID,
-                        new PostingId("existing-net-wages"),
+                        new PostingId("33fdea58-5b09-3819-8ced-2db1f792afad"),
                         RUN_DATE,
                         CASH,
                         Optional.empty()))),
@@ -135,7 +135,7 @@ class LatvianPayrollSettlementAdmissionPolicyTest {
   @Test
   void payrollRunRecord_distinguishesActiveAndReversedRuns() {
     assertTrue(run(Optional.empty()).active());
-    assertFalse(run(Optional.of(new PostingId("run-reversal"))).active());
+    assertFalse(run(Optional.of(new PostingId("4acb74fd-44af-3d9e-8af2-d1b8759c810e"))).active());
   }
 
   @Test
@@ -195,7 +195,7 @@ class LatvianPayrollSettlementAdmissionPolicyTest {
         new AccountCode("2220"),
         new AccountCode("2230"),
         CALCULATION,
-        new PostingId("payroll-run"),
+        new PostingId("6e77a34d-de28-3a87-b5bd-5b5bcf24c394"),
         reversalPostingId);
   }
 

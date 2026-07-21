@@ -606,7 +606,7 @@ class PostingAcceptancePolicyTest {
             unusedRequestFingerprint(),
             new dev.erst.fingrind.core.CommittedProvenance(
                 new RequestProvenance(
-                    new CommandId("command-close"),
+                    new CommandId("c01435bb-ec91-3b81-90d6-13c11a761bd7"),
                     new IdempotencyKey("idem-close"),
                     new CausationId("cause-close"),
                     Optional.of(new CorrelationId("corr-close"))),
@@ -677,7 +677,7 @@ class PostingAcceptancePolicyTest {
         PostingLineageModel.direct(),
         accountingEvidence(idempotencyKey),
         new RequestProvenance(
-            new CommandId("command-1"),
+            new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-1"),
             Optional.of(new CorrelationId("corr-1"))),
@@ -710,7 +710,7 @@ class PostingAcceptancePolicyTest {
   private static CommittedPosting existingPosting(
       String postingId, String idempotencyKey, JournalEntry journalEntry) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         journalEntry,
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
@@ -718,7 +718,7 @@ class PostingAcceptancePolicyTest {
         accountingEvidence(idempotencyKey),
         new dev.erst.fingrind.core.CommittedProvenance(
             new RequestProvenance(
-                new CommandId("command-1"),
+                new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-1"),
                 Optional.of(new CorrelationId("corr-1"))),

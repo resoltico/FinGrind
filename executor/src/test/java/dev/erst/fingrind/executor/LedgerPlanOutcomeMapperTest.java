@@ -428,22 +428,22 @@ class LedgerPlanOutcomeMapperTest {
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
-                    .ReversalTargetNotFound(new PostingId("posting-1")));
+                    .ReversalTargetNotFound(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
     var reversalTargetIsReversal =
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.ReversalTargetIsReversal(
-                    new PostingId("posting-1b")));
+                    new PostingId("d66e4aa4-9992-3220-9ea1-17b11ccaee61")));
     var reversalAlreadyExists =
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
-                    .ReversalAlreadyExists(new PostingId("posting-2")));
+                    .ReversalAlreadyExists(new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362")));
     var reversalDoesNotNegateTarget =
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
-                    .ReversalDoesNotNegateTarget(new PostingId("posting-3")));
+                    .ReversalDoesNotNegateTarget(new PostingId("6d857901-cb53-3986-a1d7-2f64319c76ce")));
     var functionalCurrencyMismatch =
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanRejectedOutcomes.postingRejection(
@@ -694,7 +694,7 @@ class LedgerPlanOutcomeMapperTest {
         BookkeepingQueryRejection.bookNotInitializedCode(),
         LedgerPlanStepOutcomes.missingBookCode(
             new BookWorkflowStep.GetPosting(
-                internalStepId("posting"), new PostingId("posting-1"))));
+                internalStepId("posting"), new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     assertEquals(
         BookkeepingQueryRejection.bookNotInitializedCode(),
         LedgerPlanStepOutcomes.missingBookCode(
@@ -757,7 +757,7 @@ class LedgerPlanOutcomeMapperTest {
             null),
         accountingEvidence(idempotencyKey),
         new RequestProvenance(
-            new CommandId("command-1"),
+            new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-1"),
             Optional.of(new CorrelationId("corr-1"))),
@@ -766,7 +766,7 @@ class LedgerPlanOutcomeMapperTest {
 
   private static CommittedPosting committedPosting() {
     return new CommittedPosting(
-        new PostingId("posting-1"),
+        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
         new dev.erst.fingrind.core.JournalEntry(
             LocalDate.parse("2026-05-05"),
             List.of(
@@ -784,7 +784,7 @@ class LedgerPlanOutcomeMapperTest {
         accountingEvidence("idem-3"),
         new CommittedProvenance(
             new RequestProvenance(
-                new CommandId("command-1"),
+                new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
                 new IdempotencyKey("idem-3"),
                 new CausationId("cause-1"),
                 Optional.of(new CorrelationId("corr-1"))),

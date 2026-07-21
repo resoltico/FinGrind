@@ -239,7 +239,7 @@ class PostingModelTest {
   }
 
   private static dev.erst.fingrind.core.PostingId postingId(String value) {
-    return new dev.erst.fingrind.core.PostingId(value);
+    return new dev.erst.fingrind.core.PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + value).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString());
   }
 
   @SuppressWarnings("unchecked")
@@ -303,7 +303,7 @@ class PostingModelTest {
 
   private static RequestProvenance requestProvenance(String idempotencyKey) {
     return new RequestProvenance(
-        new CommandId("command-1"),
+        new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
         new IdempotencyKey(idempotencyKey),
         new CausationId("cause-1"),
         Optional.of(new CorrelationId("corr-1")));

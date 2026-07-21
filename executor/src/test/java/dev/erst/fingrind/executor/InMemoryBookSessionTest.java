@@ -299,7 +299,7 @@ class InMemoryBookSessionTest {
           bookSession.findExistingPosting(new IdempotencyKey("idem-original")));
       assertEquals(
           Optional.of(originalPosting),
-          bookSession.findPosting(new PostingId("posting-idem-original")));
+          bookSession.findPosting(new PostingId("cedcf800-36e6-3c96-a365-1486d6d1bc3a")));
       assertEquals(
           new PostingCommitResult.Committed(originalPosting, true),
           bookSession.commit(postingFact("idem-original")));
@@ -309,7 +309,7 @@ class InMemoryBookSessionTest {
           bookSession.commit(firstReversal));
       assertEquals(
           Optional.of(firstReversal),
-          bookSession.findReversalFor(new PostingId("posting-idem-original")));
+          bookSession.findReversalFor(new PostingId("cedcf800-36e6-3c96-a365-1486d6d1bc3a")));
       CommittedPosting reversalOfReversal =
           reversalFact("idem-reversal-1b", firstReversal.postingId().value());
       assertEquals(
@@ -320,7 +320,7 @@ class InMemoryBookSessionTest {
       assertEquals(
           new PostingCommitResult.Rejected(
               new BookkeepingPostingRejection.ReversalAlreadyExists(
-                  new PostingId("posting-idem-original"))),
+                  new PostingId("cedcf800-36e6-3c96-a365-1486d6d1bc3a"))),
           bookSession.commit(secondReversal));
       assertEquals(
           Optional.empty(),
@@ -654,7 +654,7 @@ class InMemoryBookSessionTest {
       Instant recordedAt,
       List<JournalLine> lines) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         new JournalEntry(effectiveDate, List.copyOf(lines)),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
@@ -668,7 +668,7 @@ class InMemoryBookSessionTest {
         new PostingId("posting-" + idempotencyKey),
         reversalJournalEntry(),
         PostingLineageModel.reversal(
-            new ReversalReference(new PostingId(priorPostingId)),
+            new ReversalReference(new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + priorPostingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString())),
             new ReversalReason("historical full reversal")),
         PostingKind.STANDARD,
         dev.erst.fingrind.core.PostingOriginKind.REVERSAL,

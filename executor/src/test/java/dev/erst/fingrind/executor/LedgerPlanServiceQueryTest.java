@@ -51,7 +51,7 @@ class LedgerPlanServiceQueryTest {
                       List.of(
                           new LedgerStep.ListAccounts(
                               stepId("accounts"), new ListAccountsQuery(1, Optional.empty())),
-                          new LedgerStep.GetPosting(stepId("get"), new PostingId("posting-1")),
+                          new LedgerStep.GetPosting(stepId("get"), new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
                           new LedgerStep.ListPostings(
                               stepId("postings"),
                               new ListPostingsQuery(
@@ -158,7 +158,7 @@ class LedgerPlanServiceQueryTest {
                                                       .toPublished(
                                                           bookSession
                                                               .findPosting(
-                                                                  new PostingId("posting-1"))
+                                                                  new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))
                                                               .orElseThrow()))
                                               .postingId()
                                               .value()))
@@ -235,12 +235,12 @@ class LedgerPlanServiceQueryTest {
                       planId("plan-get"),
                       List.of(
                           new LedgerStep.GetPosting(
-                              stepId("get"), new PostingId("posting-missing")))));
+                              stepId("get"), new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6")))));
 
       assertEquals(LedgerPlanStatus.REJECTED, getPostingResult.status());
       assertEquals(
           BookQueryRejection.wireCode(
-              new BookQueryRejection.PostingNotFound(new PostingId("posting-missing"))),
+              new BookQueryRejection.PostingNotFound(new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6"))),
           getPostingResult.journal().steps().getLast().requiredFailure().code());
     }
 

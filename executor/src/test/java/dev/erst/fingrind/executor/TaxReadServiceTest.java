@@ -373,7 +373,7 @@ class TaxReadServiceTest {
 
   private static CommittedPosting committedPosting(String postingId, BookkeepingEntry entry) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         entry.journalEntry(),
         switch (entry.postingLineage()) {
           case dev.erst.fingrind.contract.bookkeeping.PostingLineage.Direct _ ->

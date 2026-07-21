@@ -101,7 +101,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
 
   protected static PostingFact reversalPostingFact() {
     return new PostingFact(
-        new PostingId("posting-1"),
+        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
             List.of(
@@ -110,13 +110,13 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                 new JournalLine(
                     new AccountCode("2000"), JournalLine.EntrySide.CREDIT, money("EUR", "10.00")))),
         PostingLineage.reversal(
-            new ReversalReference(new PostingId("posting-0")), new ReversalReason("Correction")),
+            new ReversalReference(new PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b")), new ReversalReason("Correction")),
         PostingKind.STANDARD,
         dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         accountingEvidence("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(
-                new CommandId("command-1"),
+                new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),
                 Optional.of(new CorrelationId("corr-1"))),
@@ -126,7 +126,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
 
   protected static PostingFact selfPostingFact() {
     return new PostingFact(
-        new PostingId("posting-self"),
+        new PostingId("e905c501-3ed9-3bf4-a7b4-bc839b9ab2d2"),
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
             List.of(
@@ -140,7 +140,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         accountingEvidence("idem-2"),
         new CommittedProvenance(
             new RequestProvenance(
-                new CommandId("command-2"),
+                new CommandId("01a7741f-8643-3942-80a3-c689bc5aa8f6"),
                 new IdempotencyKey("idem-2"),
                 new CausationId("cause-2"),
                 Optional.empty()),
@@ -161,7 +161,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
             null,
             null);
     return new PostingFact(
-        new PostingId("posting-sale-1"),
+        new PostingId("52471d93-5558-3fac-a2db-6d7166c3d89d"),
         sale.journalEntry(),
         sale.postingLineage(),
         sale.postingKind(),
@@ -169,7 +169,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         accountingEvidence("idem-sale-1"),
         new CommittedProvenance(
             new RequestProvenance(
-                new CommandId("command-sale-1"),
+                new CommandId("2d37648c-35d8-36da-b768-a3f048e0c64c"),
                 new IdempotencyKey("idem-sale-1"),
                 new CausationId("cause-sale-1"),
                 Optional.empty()),
@@ -527,7 +527,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         new AccountCode("3200"),
         List.of(CurrencyBalance.ofTotals(money("EUR", "0.00"), money("EUR", "10.00"))),
         Instant.parse("2026-04-30T12:00:00Z"),
-        List.of(new PostingId("posting-close-1")));
+        List.of(new PostingId("98be232b-af01-324d-b4fc-6f62636fae68")));
   }
 
   protected static ClosedFiscalYear sampleClosedFiscalYear() {
@@ -538,7 +538,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         new AccountCode("3200"),
         new AccountCode("3300"),
         Instant.parse("2026-12-31T12:00:00Z"),
-        List.of(new PostingId("posting-close-1"), new PostingId("posting-close-2")));
+        List.of(new PostingId("98be232b-af01-324d-b4fc-6f62636fae68"), new PostingId("548200b1-9743-3000-a75c-17a99ebf79b7")));
   }
 
   private static FinancialPositionRow financialPositionRow(

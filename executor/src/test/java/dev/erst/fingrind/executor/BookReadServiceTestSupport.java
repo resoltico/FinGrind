@@ -150,7 +150,7 @@ final class BookReadServiceTestSupport {
 
   static CommittedPosting postingFact(String postingId, String idempotencyKey) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         new JournalEntry(
             EFFECTIVE_DATE,
             List.of(
@@ -163,7 +163,7 @@ final class BookReadServiceTestSupport {
         accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
-                new CommandId("command-1"),
+                new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-1"),
                 Optional.empty()),

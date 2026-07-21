@@ -21,7 +21,7 @@ class SqliteRoundTripWorkflowExerciseTest {
             new BookkeepingEntry.Reversal(
                 CliFuzzFixtures.journalEntry(baseCommand).effectiveDate(),
                 new PostingLineage.Reversal(
-                    new ReversalReference(new PostingId("missing-posting")),
+                    new ReversalReference(new PostingId("35b64143-46df-384f-898b-57d9ce1c50c1")),
                     new ReversalReason("Missing prior posting")),
                 null,
                 CliFuzzFixtures.journalEntry(baseCommand)),

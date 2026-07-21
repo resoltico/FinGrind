@@ -69,17 +69,17 @@ class ReversalAcceptancePolicyTest {
     PostingValidationStore existingPostingStore =
         new PostingValidationStoreStub(
             Map.of(
-                new PostingId("posting-1"), committedPosting("posting-1", originalJournalEntry())));
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"), committedPosting("posting-1", originalJournalEntry())));
 
     assertEquals(
         Optional.of(
             new BookkeepingPostingRejection.ReversalTargetNotFound(
-                new PostingId("posting-missing"))),
+                new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6"))),
         ReversalAcceptancePolicy.rejectionFor(missingTargetRequest, missingTargetStore));
     assertEquals(
         Optional.of(
             new BookkeepingPostingRejection.ReversalDoesNotNegateTarget(
-                new PostingId("posting-1"))),
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
         ReversalAcceptancePolicy.rejectionFor(mismatchedReversalRequest, existingPostingStore));
   }
 
@@ -90,11 +90,11 @@ class ReversalAcceptancePolicyTest {
     PostingValidationStore reversalTargetStore =
         new PostingValidationStoreStub(
             Map.of(
-                new PostingId("posting-reversal"),
+                new PostingId("d335bf0a-b735-3860-ba2e-fcb74daf48d5"),
                 reversalPosting("posting-reversal", "posting-original")));
 
     assertEquals(
-        Optional.of(new ReversalTargetIsReversal(new PostingId("posting-reversal"))),
+        Optional.of(new ReversalTargetIsReversal(new PostingId("d335bf0a-b735-3860-ba2e-fcb74daf48d5"))),
         ReversalAcceptancePolicy.rejectionFor(reversalOfReversalRequest, reversalTargetStore));
   }
 
@@ -222,7 +222,7 @@ class ReversalAcceptancePolicyTest {
     LatvianPayrollSettlementRecord activeStateRemittance =
         payrollSettlementRecord(
             LatvianPayrollSettlementKind.STATE_REMITTANCE,
-            new PostingId("posting-active-state-remittance"));
+            new PostingId("dd55e37a-e1d5-3c07-9b51-d1d171b4fa49"));
     assertEntrySemanticsCode(
         ReversalAcceptancePolicy.rejectionFor(
                 reversalRequest(
@@ -322,7 +322,7 @@ class ReversalAcceptancePolicyTest {
         new AccountCode("2220"),
         new AccountCode("2230"),
         calculation,
-        new PostingId("posting-payroll-run"),
+        new PostingId("d1db85d5-b1a1-33a8-8a48-6c45a358757e"),
         Optional.empty());
   }
 
@@ -390,7 +390,7 @@ class ReversalAcceptancePolicyTest {
 
   private static CommittedPosting payrollPosting(String postingId, BookkeepingEntry entry) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         entry.journalEntry(),
         PostingLineageModel.direct(),
         entry.postingKind(),
@@ -404,7 +404,7 @@ class ReversalAcceptancePolicyTest {
 
   static CommittedPosting lifecyclePosting(String postingId, BookkeepingEntry entry) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         entry.journalEntry(),
         PostingLineageModel.direct(),
         entry.postingKind(),
@@ -450,7 +450,7 @@ class ReversalAcceptancePolicyTest {
 
   static PostingRequestModel reversalRequest(
       String idempotencyKey, String priorPostingId, JournalEntry candidateJournalEntry) {
-    ReversalReference reversalReference = new ReversalReference(new PostingId(priorPostingId));
+    ReversalReference reversalReference = new ReversalReference(new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + priorPostingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()));
     ReversalReason reversalReason = new ReversalReason("operator reversal");
     return new PostingCommand(
         PostingKind.STANDARD,
@@ -464,7 +464,7 @@ class ReversalAcceptancePolicyTest {
 
   private static CommittedPosting committedPosting(String postingId, JournalEntry journalEntry) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         journalEntry,
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
@@ -478,10 +478,10 @@ class ReversalAcceptancePolicyTest {
 
   private static CommittedPosting reversalPosting(String postingId, String priorPostingId) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         reversalJournalEntry(),
         PostingLineageModel.reversal(
-            new ReversalReference(new PostingId(priorPostingId)),
+            new ReversalReference(new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + priorPostingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString())),
             new ReversalReason("historical full reversal")),
         PostingKind.STANDARD,
         PostingOriginKind.REVERSAL,
@@ -505,7 +505,7 @@ class ReversalAcceptancePolicyTest {
             new AccrualCutoffRecognitionInterval(
                 LocalDate.parse("2026-04-07"), LocalDate.parse("2026-05-31")));
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         originalJournalEntry(),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
@@ -563,7 +563,7 @@ class ReversalAcceptancePolicyTest {
 
   private static CommittedPosting accrualCutoffPosting(String postingId, BookkeepingEntry entry) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         originalJournalEntry(),
         PostingLineageModel.direct(),
         entry.postingKind(),
@@ -674,7 +674,7 @@ class ReversalAcceptancePolicyTest {
 
   private static RequestProvenance requestProvenance(String idempotencyKey) {
     return new RequestProvenance(
-        new CommandId("command-1"),
+        new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
         new IdempotencyKey(idempotencyKey),
         new CausationId("cause-1"),
         Optional.of(new CorrelationId("corr-1")));

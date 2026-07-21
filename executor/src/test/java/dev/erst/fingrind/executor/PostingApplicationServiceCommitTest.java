@@ -83,7 +83,7 @@ class PostingApplicationServiceCommitTest {
           assertInstanceOf(PostEntryResult.Committed.class, result);
       var appliedTax = committed.resolvedJournal().appliedTax();
       assertNotNull(appliedTax);
-      assertEquals(new PostingId("posting-new"), committed.postingId());
+      assertEquals(new PostingId("a3a6a18e-ab7a-3802-bab2-e572d7904c54"), committed.postingId());
       assertEquals(
           EconomicEventClass.SETTLED_SALE,
           committed.resolvedJournal().classification().eventClass());
@@ -340,7 +340,7 @@ class PostingApplicationServiceCommitTest {
     assertEquals(
         commitRejected(
             new IdempotencyKey("idem-reversal-duplicate"),
-            new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))),
+            new PostingRejection.ReversalAlreadyExists(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
         applicationService.commit(
             command(
                 "idem-reversal-duplicate",
@@ -352,7 +352,7 @@ class PostingApplicationServiceCommitTest {
         commitRejected(
             new IdempotencyKey("idem-reversal-target-is-reversal"),
             new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
-                new PostingId("posting-2"))),
+                new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362"))),
         applicationService.commit(
             command(
                 "idem-reversal-target-is-reversal",
@@ -489,7 +489,7 @@ class PostingApplicationServiceCommitTest {
   private static void assertCommitted(
       PostEntryResult result, String postingId, String idempotencyKey) {
     PostEntryResult.Committed committed = assertInstanceOf(PostEntryResult.Committed.class, result);
-    assertEquals(new PostingId(postingId), committed.postingId());
+    assertEquals(new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()), committed.postingId());
     assertEquals(new IdempotencyKey(idempotencyKey), committed.idempotencyKey());
     assertEquals(LocalDate.parse("2026-04-07"), committed.effectiveDate());
     assertEquals(FIXED_CLOCK.instant(), committed.recordedAt());

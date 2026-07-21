@@ -118,12 +118,12 @@ class CliSemanticReportContractTest extends CliFixtureSupport {
         new AccountLedgerPageCursor(
             java.time.LocalDate.parse("2026-04-07"),
             Instant.parse("2026-04-07T12:00:00Z"),
-            new dev.erst.fingrind.core.PostingId("posting-0"));
+            new dev.erst.fingrind.core.PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b"));
     AccountLedgerPageCursor nextCursor =
         new AccountLedgerPageCursor(
             java.time.LocalDate.parse("2026-04-08"),
             Instant.parse("2026-04-08T12:00:00Z"),
-            new dev.erst.fingrind.core.PostingId("posting-1"));
+            new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     AccountLedgerReport continuedPage =
         new AccountLedgerReport(
             firstPage.bookIdentity(),

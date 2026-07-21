@@ -414,7 +414,7 @@ class BookkeepingStatementModelTest {
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))));
     List<PostingDraft> closingPostings = new ArrayList<>(List.of(postingDraft()));
-    List<PostingId> sweepPostingIds = new ArrayList<>(List.of(new PostingId("posting-1")));
+    List<PostingId> sweepPostingIds = new ArrayList<>(List.of(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
 
     FinancialPositionView financialPositionView =
         new FinancialPositionView(
@@ -556,7 +556,7 @@ class BookkeepingStatementModelTest {
         new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
         new CommittedProvenance(
             new RequestProvenance(
-                new dev.erst.fingrind.core.CommandId("command-1"),
+                new dev.erst.fingrind.core.CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
                 new dev.erst.fingrind.core.IdempotencyKey("idem-1"),
                 new dev.erst.fingrind.core.CausationId("cause-1"),
                 Optional.empty()),

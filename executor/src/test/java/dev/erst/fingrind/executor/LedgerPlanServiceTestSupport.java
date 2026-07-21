@@ -104,7 +104,7 @@ final class LedgerPlanServiceTestSupport {
         FIXED_CLOCK.instant());
     PostEntryResult committed =
         new PostingApplicationService(
-                bookSession, bookSession, () -> new PostingId("posting-1"), FIXED_CLOCK)
+                bookSession, bookSession, () -> new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"), FIXED_CLOCK)
             .commit(postEntryCommand("idem-setup"), TEST_AUTHORIZER);
     assertEquals(PostEntryResult.Committed.class, committed.getClass());
     return bookSession;
@@ -124,7 +124,7 @@ final class LedgerPlanServiceTestSupport {
         bookSession,
         bookSession,
         bookSession,
-        () -> new PostingId("posting-1"),
+        () -> new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
         FIXED_CLOCK);
   }
 
@@ -216,7 +216,7 @@ final class LedgerPlanServiceTestSupport {
             null),
         accountingEvidence(idempotencyKey),
         new RequestProvenance(
-            new CommandId("command-1"),
+            new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-1"),
             Optional.of(new CorrelationId("corr-1"))),

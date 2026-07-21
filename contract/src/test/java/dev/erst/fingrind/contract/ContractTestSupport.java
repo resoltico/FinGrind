@@ -64,7 +64,7 @@ class ContractTestSupport {
 
   protected PostingFact postingFact(String postingId, String idempotencyKey) {
     return new PostingFact(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         journalEntry(),
         PostingLineage.direct(),
         PostingKind.STANDARD,
@@ -72,7 +72,7 @@ class ContractTestSupport {
         ContractFixtures.accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
-                new CommandId("command-1"),
+                new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-1"),
                 Optional.empty()),

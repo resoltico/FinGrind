@@ -54,7 +54,7 @@ class BookkeepingReadPagePublishedLanguageTranslatorTest {
             List.of(BookkeepingPublishedLanguageTranslator.toPublished(postingFact)),
             20,
             Optional.of(
-                new PostingPageCursor(EFFECTIVE_DATE, FIXED_INSTANT, new PostingId("posting-1")))),
+                new PostingPageCursor(EFFECTIVE_DATE, FIXED_INSTANT, new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))),
         BookkeepingReadPagePublishedLanguageTranslator.toPublished(
             bookIdentity(),
             new PostingHistoryQuery(

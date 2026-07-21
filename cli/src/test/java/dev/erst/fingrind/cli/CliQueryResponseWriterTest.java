@@ -188,7 +188,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
         new CliResponseWriter(utf8PrintStream(getPostingRejectionOutput));
     getPostingRejectionWriter.writeGetPostingResult(
         new GetPostingResult.Rejected(
-            new BookQueryRejection.PostingNotFound(new PostingId("posting-9"))));
+            new BookQueryRejection.PostingNotFound(new PostingId("7982b5de-2f28-355e-9911-9ca85b4f5a67"))));
     ByteArrayOutputStream listPostingsOutput = new ByteArrayOutputStream();
     CliResponseWriter listPostingsWriter =
         new CliResponseWriter(utf8PrintStream(listPostingsOutput));

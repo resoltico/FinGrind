@@ -94,7 +94,7 @@ class CliMutationCommandExecutorTest extends CliResponseWriterTestSupport {
             capturedCommand.set(command);
             return ContractDecision.accepted(
                 CliPostEntryResultFixtures.committed(
-                    new PostingId("posting-1"),
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                     new IdempotencyKey("idem-1"),
                     LocalDate.parse("2026-04-07"),
                     Instant.parse("2026-04-07T10:15:30Z"),

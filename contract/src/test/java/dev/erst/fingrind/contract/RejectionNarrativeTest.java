@@ -210,8 +210,8 @@ class RejectionNarrativeTest {
             .contains("9999"));
     assertTrue(
         RejectionNarrative.message(
-                new BookQueryRejection.PostingNotFound(new PostingId("posting-1")))
-            .contains("posting-1"));
+                new BookQueryRejection.PostingNotFound(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))
+            .contains("bdc03c47-a16c-3688-a18f-2445894bbc69"));
   }
 
   @Test
@@ -364,20 +364,20 @@ class RejectionNarrativeTest {
     assertTrue(retainedAccumulatedMessage.contains("RETAINED_ACCUMULATED"));
     assertTrue(
         RejectionNarrative.message(
-                new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1")))
-            .contains("posting-1"));
+                new PostingRejection.ReversalTargetNotFound(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))
+            .contains("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     assertTrue(
         RejectionNarrative.message(
                 new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
-                    new PostingId("posting-1")))
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))
             .contains("cannot be reversed"));
     assertTrue(
         RejectionNarrative.message(
-                new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1")))
+                new PostingRejection.ReversalAlreadyExists(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))
             .contains("full reversal"));
     assertTrue(
         RejectionNarrative.message(
-                new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-1")))
+                new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))
             .contains("does not negate"));
   }
 
@@ -468,23 +468,23 @@ class RejectionNarrativeTest {
     assertTrue(
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(
-                    new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1"))))
+                    new PostingRejection.ReversalTargetNotFound(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))
             .contains("get-posting"));
     assertTrue(
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(
                     new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
-                        new PostingId("posting-1"))))
+                        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))
             .contains("fresh operational entry"));
     assertTrue(
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(
-                    new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))))
+                    new PostingRejection.ReversalAlreadyExists(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))
             .contains("existing reversal"));
     assertTrue(
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(
-                    new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-1"))))
+                    new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))
             .contains("full negating journal entry"));
   }
 

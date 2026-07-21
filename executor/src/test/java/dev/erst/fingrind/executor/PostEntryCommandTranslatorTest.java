@@ -219,7 +219,7 @@ class PostEntryCommandTranslatorTest {
             ExecutorAccountingTestSupport.bookIdentity(),
             Map.of(),
             Map.of(
-                new PostingId("posting-1"),
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                 PostingApplicationServiceTestSupport.existingPosting(
                     "posting-1", "prior-reversal", priorJournalEntry)));
     PostEntryCommand command =
@@ -227,7 +227,7 @@ class PostEntryCommandTranslatorTest {
             new BookkeepingEntry.Reversal(
                 journalEntry.effectiveDate(),
                 new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
-                    new dev.erst.fingrind.core.ReversalReference(new PostingId("posting-1")),
+                    new dev.erst.fingrind.core.ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
                     new dev.erst.fingrind.core.ReversalReason("reverse erroneous entry")),
                 null,
                 null),
@@ -241,7 +241,7 @@ class PostEntryCommandTranslatorTest {
             dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
             journalEntry,
             PostingLineageModel.reversal(
-                new dev.erst.fingrind.core.ReversalReference(new PostingId("posting-1")),
+                new dev.erst.fingrind.core.ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
                 new dev.erst.fingrind.core.ReversalReason("reverse erroneous entry")),
             accountingEvidence("reversal-adjustment"),
             PostingApplicationServiceTestSupport.requestProvenance("idem-reversal-adjustment"),
@@ -259,7 +259,7 @@ class PostEntryCommandTranslatorTest {
             new BookkeepingEntry.Reversal(
                 LocalDate.parse("2026-04-07"),
                 new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
-                    new dev.erst.fingrind.core.ReversalReference(new PostingId("posting-missing")),
+                    new dev.erst.fingrind.core.ReversalReference(new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6")),
                     new dev.erst.fingrind.core.ReversalReason("operator reversal")),
                 null,
                 null),

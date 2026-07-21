@@ -90,7 +90,7 @@ class SqliteForeignExchangeStoreCoverageTest extends SqlitePostingFactStoreTestS
                     IllegalStateException.class,
                     () ->
                         invokeLoadForeignExchange(
-                            new SqlitePostingReader(), redirectedDatabase, new PostingId("sale")));
+                            new SqlitePostingReader(), redirectedDatabase, new PostingId("099c15e8-f223-31cf-a21c-382e45f9e9cb")));
             assertEquals(
                 "SQLite posting foreign-exchange query returned more than one row for posting sale.",
                 failure.getMessage());
@@ -107,7 +107,7 @@ class SqliteForeignExchangeStoreCoverageTest extends SqlitePostingFactStoreTestS
                 invokeLoadForeignExchange(
                     new SqlitePostingReader(),
                     new SqliteStoreFixtureSupport.ThrowingSqliteNativeDatabase(),
-                    new PostingId("posting-without-foreign-exchange")));
+                    new PostingId("1a9c6fac-0d3b-3993-a3d7-0afe0c10b123")));
     assertTrue(
         NullTestSupport.messageOf(failure).contains("prepare a SQLite statement"),
         failure.getMessage());
@@ -124,7 +124,7 @@ class SqliteForeignExchangeStoreCoverageTest extends SqlitePostingFactStoreTestS
                   invokeLoadForeignExchange(
                       new SqlitePostingReader(),
                       database,
-                      new PostingId("posting-with-foreign-exchange")));
+                      new PostingId("fabb2aac-3f31-38f5-af1d-e7bc3dfdc9e2")));
       assertEquals("Failed to step a SQLite statement.", failure.getMessage());
       assertEquals("step boom", NullTestSupport.messageOf(NullTestSupport.causeOf(failure)));
     }
@@ -152,7 +152,7 @@ class SqliteForeignExchangeStoreCoverageTest extends SqlitePostingFactStoreTestS
                     IllegalStateException.class,
                     () ->
                         invokeLoadForeignExchange(
-                            new SqlitePostingReader(), redirectedDatabase, new PostingId("sale")));
+                            new SqlitePostingReader(), redirectedDatabase, new PostingId("099c15e8-f223-31cf-a21c-382e45f9e9cb")));
             assertTrue(
                 NullTestSupport.messageOf(failure).contains("returned more than one row"),
                 failure.getMessage());
@@ -176,7 +176,7 @@ class SqliteForeignExchangeStoreCoverageTest extends SqlitePostingFactStoreTestS
     BookkeepingEntry.SaleSettled entry = saleEntryWithForeignExchange();
     CommittedPosting posting =
         new CommittedPosting(
-            new PostingId(postingIdText),
+            new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingIdText).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
             entry.journalEntry(),
             PostingLineageModel.direct(),
             entry.postingKind(),

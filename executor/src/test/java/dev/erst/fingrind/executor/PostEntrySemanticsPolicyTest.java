@@ -254,7 +254,7 @@ class PostEntrySemanticsPolicyTest {
             ExecutorAccountingTestSupport.bookIdentity(),
             Map.of(),
             Map.of(
-                new dev.erst.fingrind.core.PostingId("posting-1"),
+                new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                 PostingApplicationServiceTestSupport.existingPosting("posting-1", "prior")));
 
     assertTrue(
@@ -312,7 +312,7 @@ class PostEntrySemanticsPolicyTest {
             ExecutorAccountingTestSupport.bookIdentity(),
             Map.of(),
             Map.of(
-                new dev.erst.fingrind.core.PostingId("posting-1"),
+                new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                 PostingApplicationServiceTestSupport.existingPosting("posting-1", "prior")));
 
     assertTrue(

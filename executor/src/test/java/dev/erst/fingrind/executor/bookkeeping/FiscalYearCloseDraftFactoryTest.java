@@ -178,7 +178,7 @@ class FiscalYearCloseDraftFactoryTest {
                 "planned-sweep", "interim-result-sweep-plan"),
             new CommittedProvenance(
                 new RequestProvenance(
-                    new CommandId("interimResultSweep:planned"),
+                    new CommandId("12cb0f8f-1479-3c08-b6ab-77a05fd51b2c"),
                     new IdempotencyKey("interimResultSweep:planned"),
                     new CausationId("interimResultSweep:planned"),
                     Optional.of(new CorrelationId("interimResultSweep:planned"))),
@@ -301,7 +301,7 @@ class FiscalYearCloseDraftFactoryTest {
   private static CommittedPosting posting(
       String postingId, PostingKind postingKind, JournalLine... lines) {
     return new CommittedPosting(
-        new dev.erst.fingrind.core.PostingId(postingId),
+        new dev.erst.fingrind.core.PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         new JournalEntry(LocalDate.parse("2026-12-31"), List.of(lines)),
         PostingLineageModel.direct(),
         postingKind,

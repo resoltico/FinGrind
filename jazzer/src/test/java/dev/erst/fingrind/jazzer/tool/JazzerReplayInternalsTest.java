@@ -281,19 +281,19 @@ class JazzerReplayInternalsTest {
         PostingLifecycleStatus.REVERSAL_TARGET_IS_REVERSAL,
         JazzerReplayOutcomeSupport.rejectionStatus(
             new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
-                new PostingId("posting-1a"))));
+                new PostingId("3e0b1363-80c6-3fac-bcbd-d7655386483f"))));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_ALREADY_EXISTS,
         JazzerReplayOutcomeSupport.rejectionStatus(
-            new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1"))));
+            new PostingRejection.ReversalAlreadyExists(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_DOES_NOT_NEGATE_TARGET,
         JazzerReplayOutcomeSupport.rejectionStatus(
-            new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-2"))));
+            new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362"))));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND,
         JazzerReplayOutcomeSupport.rejectionStatus(
-            new PostingRejection.ReversalTargetNotFound(new PostingId("posting-3"))));
+            new PostingRejection.ReversalTargetNotFound(new PostingId("6d857901-cb53-3986-a1d7-2f64319c76ce"))));
 
     PostEntryCommand command = parsedCommand();
     assertEquals(
@@ -324,7 +324,7 @@ class JazzerReplayInternalsTest {
         () ->
             JazzerReplayOutcomeSupport.requiredCommitRejected(
                 new Committed(
-                    new PostingId("posting-1"),
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                     command.requestProvenance().idempotencyKey(),
                     CliFuzzFixtures.journalEntry(command).effectiveDate(),
                     CliFuzzFixtures.fixedClock().instant(),
@@ -398,7 +398,7 @@ class JazzerReplayInternalsTest {
         () ->
             SqliteRoundTripWorkflowPersistenceAssertions.verifyReloadedPosting(
                 new PostingFact(
-                    new PostingId("posting-1"),
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                     CliFuzzFixtures.journalEntry(command),
                     PostingLineage.direct(),
                     PostingKind.STANDARD,
@@ -658,7 +658,7 @@ class JazzerReplayInternalsTest {
       java.time.Instant recordedAt,
       dev.erst.fingrind.core.SourceChannel sourceChannel) {
     return new PostingFact(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         journalEntry,
         postingLineage,
         PostingKind.STANDARD,

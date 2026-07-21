@@ -54,7 +54,7 @@ public final class JazzerPostEntryResultFixtures {
       PostEntryCommand command, String postingId, boolean idempotentReplay) {
     Objects.requireNonNull(command, "command");
     return new Committed(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         command.requestProvenance().idempotencyKey(),
         CliFuzzFixtures.journalEntry(command).effectiveDate(),
         CliFuzzFixtures.fixedClock().instant(),

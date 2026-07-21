@@ -57,7 +57,7 @@ class FiscalYearCloseServiceTest {
                 throw new AssertionError("closeStore should not be called");
               }
             },
-            () -> new PostingId("generated-1"),
+            () -> new PostingId("f69a68be-269e-3c0f-96ac-2e3f7d806a8b"),
             FIXED_CLOCK);
 
     assertEquals(
@@ -88,7 +88,7 @@ class FiscalYearCloseServiceTest {
                 throw new AssertionError("closeStore should not be called");
               }
             },
-            () -> new PostingId("generated-1"),
+            () -> new PostingId("f69a68be-269e-3c0f-96ac-2e3f7d806a8b"),
             FIXED_CLOCK);
 
     assertEquals(
@@ -101,7 +101,7 @@ class FiscalYearCloseServiceTest {
   @Test
   void fiscalYearClose_passesResolvedExecutionContextIntoStore() {
     RecordingStore store = new RecordingStore();
-    PostingIdGenerator postingIdGenerator = () -> new PostingId("generated-1");
+    PostingIdGenerator postingIdGenerator = () -> new PostingId("f69a68be-269e-3c0f-96ac-2e3f7d806a8b");
     FiscalYearCloseService service =
         new FiscalYearCloseService(
             () -> initializedLifecycleInspection(1001, 1, 1, FIXED_INSTANT),
@@ -135,7 +135,7 @@ class FiscalYearCloseServiceTest {
     RecordingStore store = new RecordingStore();
     FiscalYearCloseService service =
         new FiscalYearCloseService(
-            () -> inspection, store, () -> new PostingId("generated-1"), FIXED_CLOCK);
+            () -> inspection, store, () -> new PostingId("f69a68be-269e-3c0f-96ac-2e3f7d806a8b"), FIXED_CLOCK);
 
     service.fiscalYearClose(FISCAL_YEAR_LABEL, TEST_AUTHORIZER);
 
@@ -147,7 +147,7 @@ class FiscalYearCloseServiceTest {
   @Test
   void fiscalYearClose_reportingPeriodOverloadPassesExplicitWindowIntoStore() {
     RecordingStore store = new RecordingStore();
-    PostingIdGenerator postingIdGenerator = () -> new PostingId("generated-1");
+    PostingIdGenerator postingIdGenerator = () -> new PostingId("f69a68be-269e-3c0f-96ac-2e3f7d806a8b");
     FiscalYearCloseService service =
         new FiscalYearCloseService(
             () -> initializedLifecycleInspection(1001, 1, 1, FIXED_INSTANT),
@@ -177,7 +177,7 @@ class FiscalYearCloseServiceTest {
                 new AccountCode("3200"),
                 new AccountCode("3300"),
                 FIXED_INSTANT,
-                List.of(new PostingId("posting-1"))),
+                List.of(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
             false);
 
     private @Nullable ReportingPeriod reportingPeriod;

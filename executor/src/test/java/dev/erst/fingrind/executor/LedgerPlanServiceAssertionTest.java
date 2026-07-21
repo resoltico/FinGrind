@@ -64,7 +64,7 @@ class LedgerPlanServiceAssertionTest {
                           new LedgerStep.Assert(
                               stepId("missing-posting"),
                               new LedgerAssertion.PostingExists(
-                                  new PostingId("posting-missing"))))));
+                                  new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6"))))));
 
       assertEquals(LedgerPlanStatus.ASSERTION_FAILED, result.status());
       assertEquals(3, result.journal().steps().size());
@@ -220,7 +220,7 @@ class LedgerPlanServiceAssertionTest {
                       List.of(
                           new LedgerStep.Assert(
                               stepId("assert-posting-exists"),
-                              new LedgerAssertion.PostingExists(new PostingId("posting-1"))))));
+                              new LedgerAssertion.PostingExists(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))));
       assertEquals(LedgerPlanStatus.REJECTED, postingExistsResult.status());
       assertEquals(
           BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
@@ -259,7 +259,7 @@ class LedgerPlanServiceAssertionTest {
                 LedgerPlanAssertionEvaluator.evaluate(
                     rejectedReadService,
                     new dev.erst.fingrind.executor.workflow.BookWorkflowAssertion.PostingExists(
-                        new PostingId("posting-1"))))
+                        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))
             .failure()
             .code());
   }

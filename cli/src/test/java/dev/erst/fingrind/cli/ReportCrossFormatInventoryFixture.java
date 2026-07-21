@@ -23,21 +23,21 @@ final class ReportCrossFormatInventoryFixture {
         includesMovements
             ? List.of(
                 new InventoryValuationMovement(
-                    new PostingId("purchase-1"),
+                    new PostingId("98d7a34c-0b61-3c00-98a8-8d3ec4dc4a98"),
                     LocalDate.parse("2026-04-01"),
                     1L,
                     InventoryMovementKind.ACQUISITION,
                     10L,
                     10_000L),
                 new InventoryValuationMovement(
-                    new PostingId("sale-1"),
+                    new PostingId("fd6c691c-eca4-35ba-9672-d0aa49305ff0"),
                     LocalDate.parse("2026-04-02"),
                     2L,
                     InventoryMovementKind.DISPOSAL,
                     -4L,
                     -4_000L),
                 new InventoryValuationMovement(
-                    new PostingId("write-down-1"),
+                    new PostingId("5794731f-c7c3-3061-9e24-058328a76d97"),
                     LocalDate.parse("2026-04-03"),
                     3L,
                     InventoryMovementKind.WRITE_DOWN,

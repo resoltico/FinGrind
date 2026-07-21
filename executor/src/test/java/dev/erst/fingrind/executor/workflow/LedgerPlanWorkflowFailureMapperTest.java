@@ -38,7 +38,7 @@ class LedgerPlanWorkflowFailureMapperTest {
   void postingFailure_publishesPriorPostingFactsForTerminalReversalTargets() {
     BookWorkflowFailure reversalTargetIsReversal =
         LedgerPlanWorkflowFailureMapper.postingFailure(
-            new ReversalTargetIsReversal(new PostingId("posting-9")));
+            new ReversalTargetIsReversal(new PostingId("7982b5de-2f28-355e-9911-9ca85b4f5a67")));
 
     assertEquals("reversal-target-is-reversal", reversalTargetIsReversal.code());
     assertEquals(

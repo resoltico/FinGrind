@@ -192,14 +192,14 @@ class BookReadServiceAccountQueryTest {
       BookReadService service = readService(uninitializedBook);
       assertEquals(
           new GetPostingResult.Rejected(new BookQueryRejection.BookNotInitialized()),
-          service.getPosting(new PostingId("posting-1")));
+          service.getPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
     }
     try (InMemoryBookSession bookSession = initializedBook()) {
       BookReadService service = readService(bookSession);
       assertEquals(
           new GetPostingResult.Rejected(
-              new BookQueryRejection.PostingNotFound(new PostingId("posting-1"))),
-          service.getPosting(new PostingId("posting-1")));
+              new BookQueryRejection.PostingNotFound(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
+          service.getPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
     }
   }
 
@@ -298,7 +298,7 @@ class BookReadServiceAccountQueryTest {
     BookReadService service = readService(bookSession);
     assertEquals(
         foundPosting(BookkeepingPublishedLanguageTranslator.toPublished(postingFact)),
-        service.getPosting(new PostingId("posting-1")));
+        service.getPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
     assertEquals(
         new AccountBalanceResult.Reported(
             new AccountBalanceSnapshot(
@@ -328,7 +328,7 @@ class BookReadServiceAccountQueryTest {
           new BookkeepingLookupOutcome.Rejected<
               dev.erst.fingrind.executor.bookkeeping.CommittedPosting>(
               new BookkeepingQueryRejection.BookNotInitialized()),
-          service.findPosting(new PostingId("posting-1")));
+          service.findPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
     }
     try (InMemoryBookSession bookSession = initializedBook()) {
       declareDefaultAccounts(bookSession);
@@ -344,11 +344,11 @@ class BookReadServiceAccountQueryTest {
           service.findAccount(new AccountCode("9999")));
       assertEquals(
           new BookkeepingLookupOutcome.Found<>(postingFact),
-          service.findPosting(new PostingId("posting-1")));
+          service.findPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
       assertEquals(
           new BookkeepingLookupOutcome.Missing<
               dev.erst.fingrind.executor.bookkeeping.CommittedPosting>(),
-          service.findPosting(new PostingId("posting-missing")));
+          service.findPosting(new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6")));
     }
   }
 
@@ -422,10 +422,10 @@ class BookReadServiceAccountQueryTest {
   private static CommittedPosting reversalPostingFact(
       String postingId, String idempotencyKey, String priorPostingId) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         PostingApplicationServiceTestSupport.reversalJournalEntry(),
         PostingLineageModel.reversal(
-            new ReversalReference(new PostingId(priorPostingId)),
+            new ReversalReference(new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + priorPostingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString())),
             new ReversalReason("operator reversal")),
         PostingKind.STANDARD,
         dev.erst.fingrind.core.PostingOriginKind.REVERSAL,

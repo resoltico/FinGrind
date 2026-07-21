@@ -234,7 +234,7 @@ final class ContractFixtures {
         new BookkeepingEntry.Reversal(
             FIXTURE_DATE,
             new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
-                new ReversalReference(new PostingId("posting-0")),
+                new ReversalReference(new PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b")),
                 new ReversalReason("operator reversal")),
             null,
             null),
@@ -249,7 +249,7 @@ final class ContractFixtures {
 
   static RequestProvenance requestProvenance(String idempotencyKey) {
     return new RequestProvenance(
-        new CommandId("command-1"),
+        new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
         new IdempotencyKey(idempotencyKey),
         new CausationId("cause-1"),
         Optional.of(new CorrelationId("corr-1")));

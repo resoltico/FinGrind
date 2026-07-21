@@ -80,9 +80,9 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
         new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized()).rejection());
     assertEquals(postingFact, foundPosting(postingFact).postingFact());
     assertEquals(
-        new BookQueryRejection.PostingNotFound(new PostingId("posting-2")),
+        new BookQueryRejection.PostingNotFound(new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362")),
         new GetPostingResult.Rejected(
-                new BookQueryRejection.PostingNotFound(new PostingId("posting-2")))
+                new BookQueryRejection.PostingNotFound(new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362")))
             .rejection());
     assertEquals(snapshot, new AccountBalanceResult.Reported(snapshot).snapshot());
     assertEquals(
@@ -122,7 +122,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
     LedgerAssertion.AccountActive active =
         new LedgerAssertion.AccountActive(new AccountCode("1000"));
     LedgerAssertion.PostingExists postingExists =
-        new LedgerAssertion.PostingExists(new PostingId("posting-1"));
+        new LedgerAssertion.PostingExists(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     LedgerAssertion.AccountBalanceEquals assertion =
         new LedgerAssertion.AccountBalanceEquals(
             new AccountCode("1000"),
@@ -146,7 +146,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
     assertEquals(Optional.of(LocalDate.parse("2026-04-01")), snapshot.effectiveDateFrom());
     assertEquals(Optional.of(LocalDate.parse("2026-04-30")), snapshot.effectiveDateTo());
     assertEquals(new AccountCode("1000"), active.accountCode());
-    assertEquals(new PostingId("posting-1"), postingExists.postingId());
+    assertEquals(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"), postingExists.postingId());
     assertTrue(assertion.query().effectiveDateFrom().isEmpty());
     assertEquals(Optional.of(LocalDate.parse("2026-04-30")), assertion.query().effectiveDateTo());
     assertEquals(

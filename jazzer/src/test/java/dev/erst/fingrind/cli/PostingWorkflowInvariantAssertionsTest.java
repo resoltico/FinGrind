@@ -234,7 +234,7 @@ class PostingWorkflowInvariantAssertionsTest {
         () ->
             PostingWorkflowInvariantAssertions.requireIdempotentReplay(
                 new Committed(
-                    new PostingId("posting-1"),
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                     new dev.erst.fingrind.core.IdempotencyKey("idem-2"),
                     CliFuzzFixtures.journalEntry(command).effectiveDate(),
                     CliFuzzFixtures.fixedClock().instant(),
@@ -246,7 +246,7 @@ class PostingWorkflowInvariantAssertionsTest {
         () ->
             PostingWorkflowInvariantAssertions.requireIdempotentReplay(
                 new Committed(
-                    new PostingId("posting-1"),
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                     command.requestProvenance().idempotencyKey(),
                     CliFuzzFixtures.journalEntry(command).effectiveDate().plusDays(1),
                     CliFuzzFixtures.fixedClock().instant(),
@@ -258,7 +258,7 @@ class PostingWorkflowInvariantAssertionsTest {
         () ->
             PostingWorkflowInvariantAssertions.requireIdempotentReplay(
                 new Committed(
-                    new PostingId("posting-1"),
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                     command.requestProvenance().idempotencyKey(),
                     CliFuzzFixtures.journalEntry(command).effectiveDate(),
                     CliFuzzFixtures.fixedClock().instant().plusSeconds(1),
@@ -459,7 +459,7 @@ class PostingWorkflowInvariantAssertionsTest {
       Instant recordedAt,
       SourceChannel sourceChannel) {
     return new PostingFact(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         journalEntry,
         postingLineage,
         PostingKind.STANDARD,

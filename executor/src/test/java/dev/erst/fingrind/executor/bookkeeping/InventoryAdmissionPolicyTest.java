@@ -389,7 +389,7 @@ class InventoryAdmissionPolicyTest extends InventoryAdmissionPolicyTestSupport {
             Money.parse("EUR", "5.00"),
             LocalDate.parse("2026-04-07")));
     book.movementsByPostingId.put(
-        new PostingId("posting-1"),
+        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
         List.of(
             new InventoryMovementRecord(
                 INVENTORY,
@@ -405,7 +405,7 @@ class InventoryAdmissionPolicyTest extends InventoryAdmissionPolicyTestSupport {
                 POLICY.resolve(
                     reversalEntry(
                         LocalDate.parse("2026-04-08"),
-                        new PostingId("posting-1"),
+                        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                         List.of(
                             new dev.erst.fingrind.core.JournalLine(
                                 new AccountCode("1000"),
@@ -441,7 +441,7 @@ class InventoryAdmissionPolicyTest extends InventoryAdmissionPolicyTestSupport {
             Money.parse("EUR", "20.00"),
             LocalDate.parse("2026-04-08")));
     book.movementsByPostingId.put(
-        new PostingId("posting-1"),
+        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
         List.of(
             new InventoryMovementRecord(
                 INVENTORY,
@@ -457,7 +457,7 @@ class InventoryAdmissionPolicyTest extends InventoryAdmissionPolicyTestSupport {
                 POLICY.resolve(
                     reversalEntry(
                         LocalDate.parse("2026-04-07"),
-                        new PostingId("posting-1"),
+                        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                         List.of(
                             new dev.erst.fingrind.core.JournalLine(
                                 INVENTORY,
@@ -491,7 +491,7 @@ class InventoryAdmissionPolicyTest extends InventoryAdmissionPolicyTestSupport {
             Money.parse("EUR", "50.00"),
             LocalDate.parse("2026-04-07")));
     book.movementsByPostingId.put(
-        new PostingId("posting-1"),
+        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
         List.of(
             new InventoryMovementRecord(
                 INVENTORY,
@@ -504,7 +504,7 @@ class InventoryAdmissionPolicyTest extends InventoryAdmissionPolicyTestSupport {
         POLICY.resolve(
             reversalEntry(
                 LocalDate.parse("2026-04-08"),
-                new PostingId("posting-1"),
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                 List.of(
                     new dev.erst.fingrind.core.JournalLine(
                         new AccountCode("1000"),
@@ -546,7 +546,7 @@ class InventoryAdmissionPolicyTest extends InventoryAdmissionPolicyTestSupport {
             Money.parse("EUR", "35.00"),
             LocalDate.parse("2026-04-07")));
     book.movementsByPostingId.put(
-        new PostingId("posting-1"),
+        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
         List.of(
             new InventoryMovementRecord(
                 INVENTORY,
@@ -559,7 +559,7 @@ class InventoryAdmissionPolicyTest extends InventoryAdmissionPolicyTestSupport {
         POLICY.resolve(
             reversalEntry(
                 LocalDate.parse("2026-04-08"),
-                new PostingId("posting-1"),
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                 List.of(
                     new dev.erst.fingrind.core.JournalLine(
                         new AccountCode("5090"),
@@ -601,7 +601,7 @@ class InventoryAdmissionPolicyTest extends InventoryAdmissionPolicyTestSupport {
             Money.parse("EUR", "50.00"),
             LocalDate.parse("2026-04-07")));
     book.movementsByPostingId.put(
-        new PostingId("posting-1"),
+        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
         List.of(
             new InventoryMovementRecord(
                 INVENTORY,
@@ -614,7 +614,7 @@ class InventoryAdmissionPolicyTest extends InventoryAdmissionPolicyTestSupport {
         POLICY.resolve(
             reversalEntry(
                 LocalDate.parse("2026-04-08"),
-                new PostingId("posting-1"),
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                 List.of(
                     new dev.erst.fingrind.core.JournalLine(
                         new AccountCode("5090"),
@@ -656,7 +656,7 @@ class InventoryAdmissionPolicyTest extends InventoryAdmissionPolicyTestSupport {
             Money.parse("EUR", "50.00"),
             LocalDate.parse("2026-04-07")));
     book.movementsByPostingId.put(
-        new PostingId("posting-1"),
+        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
         List.of(
             new InventoryMovementRecord(
                 INVENTORY,
@@ -669,7 +669,7 @@ class InventoryAdmissionPolicyTest extends InventoryAdmissionPolicyTestSupport {
         POLICY.resolve(
             reversalEntry(
                 LocalDate.parse("2026-04-08"),
-                new PostingId("posting-1"),
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                 List.of(
                     new dev.erst.fingrind.core.JournalLine(
                         new AccountCode("3200"),
@@ -711,7 +711,7 @@ class InventoryAdmissionPolicyTest extends InventoryAdmissionPolicyTestSupport {
             Money.parse("EUR", "25.00"),
             LocalDate.parse("2026-04-07")));
     book.movementsByPostingId.put(
-        new PostingId("posting-1"),
+        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
         List.of(
             new InventoryMovementRecord(
                 INVENTORY,
@@ -724,7 +724,7 @@ class InventoryAdmissionPolicyTest extends InventoryAdmissionPolicyTestSupport {
         POLICY.resolve(
             reversalEntry(
                 LocalDate.parse("2026-04-08"),
-                new PostingId("posting-1"),
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                 List.of(
                     new dev.erst.fingrind.core.JournalLine(
                         INVENTORY,
@@ -766,7 +766,7 @@ class InventoryAdmissionPolicyTest extends InventoryAdmissionPolicyTestSupport {
             Money.parse("EUR", "30.00"),
             LocalDate.parse("2026-04-07")));
     book.movementsByPostingId.put(
-        new PostingId("posting-1"),
+        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
         List.of(
             new InventoryMovementRecord(
                 INVENTORY,
@@ -779,7 +779,7 @@ class InventoryAdmissionPolicyTest extends InventoryAdmissionPolicyTestSupport {
         POLICY.resolve(
             reversalEntry(
                 LocalDate.parse("2026-04-08"),
-                new PostingId("posting-1"),
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                 List.of(
                     new dev.erst.fingrind.core.JournalLine(
                         INVENTORY,
@@ -817,7 +817,7 @@ class InventoryAdmissionPolicyTest extends InventoryAdmissionPolicyTestSupport {
     BookkeepingEntry.Reversal reversal =
         reversalEntry(
             LocalDate.parse("2026-04-08"),
-            new PostingId("posting-without-inventory"),
+            new PostingId("c3976320-f339-39d8-a06e-36c2e2b14bc3"),
             List.of(
                 new dev.erst.fingrind.core.JournalLine(
                     new AccountCode("1000"),
@@ -844,7 +844,7 @@ class InventoryAdmissionPolicyTest extends InventoryAdmissionPolicyTestSupport {
             Money.parse("EUR", "30.00"),
             LocalDate.parse("2026-04-07")));
     book.movementsByPostingId.put(
-        new PostingId("posting-1"),
+        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
         List.of(
             new InventoryMovementRecord(
                 INVENTORY,
@@ -857,7 +857,7 @@ class InventoryAdmissionPolicyTest extends InventoryAdmissionPolicyTestSupport {
         POLICY.resolve(
             reversalEntry(
                 LocalDate.parse("2026-04-08"),
-                new PostingId("posting-1"),
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                 List.of(
                     new dev.erst.fingrind.core.JournalLine(
                         INVENTORY,

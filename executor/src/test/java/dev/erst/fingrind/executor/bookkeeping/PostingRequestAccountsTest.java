@@ -196,7 +196,7 @@ class PostingRequestAccountsTest {
                     new BookkeepingEntry.Reversal(
                         date(),
                         new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
-                            new ReversalReference(new PostingId("posting-1")),
+                            new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
                             new ReversalReason("operator reversal")),
                         null,
                         journalEntry("1000", "4000", "10.00"))),
@@ -366,7 +366,7 @@ class PostingRequestAccountsTest {
                 new BookkeepingEntry.Reversal(
                     date(),
                     new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
-                        new ReversalReference(new PostingId("posting-2")),
+                        new ReversalReference(new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362")),
                         new ReversalReason("operator reversal")),
                     null,
                     null))));
@@ -523,7 +523,7 @@ class PostingRequestAccountsTest {
 
   private static RequestProvenance provenance() {
     return new RequestProvenance(
-        new CommandId("command-1"),
+        new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
         new IdempotencyKey("idem-1"),
         new CausationId("cause-1"),
         Optional.of(new CorrelationId("corr-1")));

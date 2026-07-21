@@ -257,7 +257,7 @@ class BookkeepingReadReportPublishedLanguageTranslatorTest {
     accountActivity.clear();
 
     assertEquals(
-        new PostingHistoryCursor(EFFECTIVE_DATE, FIXED_INSTANT, new PostingId("posting-1")),
+        new PostingHistoryCursor(EFFECTIVE_DATE, FIXED_INSTANT, new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
         PostingHistoryCursor.fromPosting(postingFact));
     assertEquals(1, view.currencySummaries().size());
     assertEquals(1, view.accountActivity().size());

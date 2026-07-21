@@ -156,7 +156,7 @@ class StatementAndCloseContractTypesTest {
             new AccountCode("3000"),
             new ArrayList<>(List.of(balance("EUR", "0.00", "10.00"))),
             Instant.parse("2026-05-12T12:34:56Z"),
-            new ArrayList<>(List.of(new PostingId("posting-1"))));
+            new ArrayList<>(List.of(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     InterimResultSweepResult.Swept interimResultSweepResultSwept =
         new InterimResultSweepResult.Swept(sweptInterimResult);
     BookAdministrationRejection.BookNotInitialized interimResultSweepRejection =
@@ -172,7 +172,7 @@ class StatementAndCloseContractTypesTest {
             new AccountCode("3200"),
             new AccountCode("3300"),
             Instant.parse("2026-12-31T23:59:59Z"),
-            new ArrayList<>(List.of(new PostingId("posting-2"), new PostingId("posting-3"))));
+            new ArrayList<>(List.of(new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362"), new PostingId("6d857901-cb53-3986-a1d7-2f64319c76ce"))));
     FiscalYearCloseResult.Closed fiscalYearCloseResultClosed =
         new FiscalYearCloseResult.Closed(closedFiscalYear, false);
     BookAdministrationRejection.BookNotInitialized fiscalYearCloseRejection =

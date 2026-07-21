@@ -166,7 +166,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         () ->
             SqliteFixedAssetOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("fixed-asset-missing"),
+                new PostingId("081e5c62-f606-3670-851a-6514409d074a"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.FIXED_ASSET_CAPITALIZATION));
@@ -175,7 +175,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         () ->
             SqliteFixedAssetOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("fixed-asset-missing"),
+                new PostingId("081e5c62-f606-3670-851a-6514409d074a"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.FIXED_ASSET_DEPRECIATION));
@@ -184,7 +184,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         () ->
             SqliteFixedAssetOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("fixed-asset-missing"),
+                new PostingId("081e5c62-f606-3670-851a-6514409d074a"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.FIXED_ASSET_DISPOSAL));
@@ -207,7 +207,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         () ->
             SqliteFixedAssetOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("fixed-application"),
+                new PostingId("dcb44d0b-2f05-3a1a-97f7-bd20ac65aa05"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.FIXED_ASSET_DEPRECIATION));
@@ -218,7 +218,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         () ->
             SqliteFixedAssetOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("fixed-application"),
+                new PostingId("dcb44d0b-2f05-3a1a-97f7-bd20ac65aa05"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.FIXED_ASSET_DISPOSAL));
@@ -229,7 +229,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
             FixedAssetBookkeepingEntryVariants.Disposal.class,
             SqliteFixedAssetOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("fixed-application"),
+                new PostingId("dcb44d0b-2f05-3a1a-97f7-bd20ac65aa05"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.FIXED_ASSET_DISPOSAL));
@@ -243,7 +243,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         () ->
             SqliteFinancingOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("financing-missing"),
+                new PostingId("28ebe8f7-b11b-3df0-9a2c-824ad5ca05a5"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.FINANCING_BORROWING));
@@ -252,7 +252,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         () ->
             SqliteFinancingOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("financing-missing"),
+                new PostingId("28ebe8f7-b11b-3df0-9a2c-824ad5ca05a5"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.FINANCING_PRINCIPAL_REPAYMENT));
@@ -269,7 +269,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         () ->
             SqliteFinancingOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("financing-application"),
+                new PostingId("edd155bd-c189-3610-8b56-8579b27f5d02"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.FINANCING_PRINCIPAL_REPAYMENT));
@@ -282,7 +282,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         () ->
             SqliteRealizedForeignExchangeOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("foreign-exchange-missing"),
+                new PostingId("fc48ea89-a9d6-39dd-8045-c4d898b83328"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.FOREIGN_CURRENCY_OBLIGATION,
@@ -292,7 +292,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         () ->
             SqliteRealizedForeignExchangeOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("foreign-exchange-missing"),
+                new PostingId("fc48ea89-a9d6-39dd-8045-c4d898b83328"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.REALIZED_FOREIGN_EXCHANGE_SETTLEMENT,
@@ -310,7 +310,7 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
             RealizedForeignExchangeBookkeepingEntryVariants.Settlement.class,
             SqliteRealizedForeignExchangeOriginatingEntryMapper.originatingEntry(
                 database,
-                new PostingId("foreign-exchange-settlement"),
+                new PostingId("455cb4e4-449a-3750-8119-1a95e46be2f5"),
                 postingRow,
                 JOURNAL_ENTRY,
                 PostingOriginKind.REALIZED_FOREIGN_EXCHANGE_SETTLEMENT,

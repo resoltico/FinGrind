@@ -34,7 +34,7 @@ class BookAuditEventTest {
         committedPosting(
             "posting-2",
             PostingLineageModel.reversal(
-                new dev.erst.fingrind.core.ReversalReference(new PostingId("posting-1")),
+                new dev.erst.fingrind.core.ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
                 new dev.erst.fingrind.core.ReversalReason("correction")));
 
     assertEquals(
@@ -100,7 +100,7 @@ class BookAuditEventTest {
   @Test
   void constructor_rejectsFieldShapesThatDoNotMatchTheAuditKind() {
     AccountCode accountCode = new AccountCode("1000");
-    PostingId postingId = new PostingId("posting-1");
+    PostingId postingId = new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69");
 
     IllegalArgumentException bookOpenedFailure =
         assertThrows(
@@ -323,7 +323,7 @@ class BookAuditEventTest {
   private static CommittedPosting committedPosting(
       String postingId, PostingLineageModel postingLineage) {
     return new CommittedPosting(
-        new PostingId(postingId),
+        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
         new JournalEntry(
             LocalDate.parse("2026-05-12"),
             List.of(
@@ -341,7 +341,7 @@ class BookAuditEventTest {
         accountingEvidence("idem-1"),
         new CommittedProvenance(
             new RequestProvenance(
-                new CommandId("command-1"),
+                new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
                 new IdempotencyKey("idem-1"),
                 new CausationId("cause-1"),
                 Optional.empty()),

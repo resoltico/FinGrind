@@ -49,7 +49,7 @@ class SqliteInterimResultSweepThroughDateCoverageTest extends SqlitePostingFactS
               new InterimResultSweepService(
                       closeSession,
                       closeSession,
-                      () -> new PostingId("unused-posting-id"),
+                      () -> new PostingId("8e06996e-e0cf-39f4-b8d7-51bbdc6514b2"),
                       FIXED_CLOCK)
                   .interimResultSweep(
                       LocalDate.parse("2027-01-01"), SqliteAttestationTestSupport.authorizer()));
@@ -93,7 +93,7 @@ class SqliteInterimResultSweepThroughDateCoverageTest extends SqlitePostingFactS
               new InterimResultSweepService(
                       closeSession,
                       closeSession,
-                      () -> new PostingId("generated-sweep-1"),
+                      () -> new PostingId("009e148a-e0f1-316d-ad5a-dcc519ba098e"),
                       SWEEP_CLOCK)
                   .interimResultSweep(
                       LocalDate.parse("2026-04-09"), SqliteAttestationTestSupport.authorizer()));

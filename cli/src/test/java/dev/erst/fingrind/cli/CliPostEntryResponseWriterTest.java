@@ -39,7 +39,7 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
     CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
     responseWriter.writePostEntryResult(
         CliPostEntryResultFixtures.committed(
-            new PostingId("posting-1"),
+            new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
             new IdempotencyKey("idem-1"),
             LocalDate.parse("2026-04-07"),
             Instant.parse("2026-04-07T10:15:30Z"),
@@ -58,7 +58,7 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
     responseWriter.writePostEntryResult(
         new PostEntryResult.CommitRejected(
             new IdempotencyKey("idem-1"),
-            new PostingRejection.ReversalTargetNotFound(new PostingId("posting-1"))));
+            new PostingRejection.ReversalTargetNotFound(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     String json = outputStream.toString(StandardCharsets.UTF_8);
     assertJsonContains(json, "\"status\":\"rejected\"");
     assertJsonContains(json, "\"code\":\"reversal-target-not-found\"");
@@ -76,7 +76,7 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
   @Test
   void writePostEntryResult_writesReversalAlreadyExistsRejection() {
     String json =
-        rejectedJson(new PostingRejection.ReversalAlreadyExists(new PostingId("posting-1")));
+        rejectedJson(new PostingRejection.ReversalAlreadyExists(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
     assertJsonContains(json, "\"code\":\"reversal-already-exists\"");
     assertTrue(json.contains("already has a full reversal"));
     assertJsonContains(json, "\"priorPostingId\":\"posting-1\"");
@@ -87,7 +87,7 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
     String json =
         rejectedJson(
             new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
-                new PostingId("posting-1")));
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
     assertJsonContains(json, "\"code\":\"reversal-target-is-reversal\"");
     assertTrue(json.contains("cannot be reversed"));
     assertJsonContains(json, "\"priorPostingId\":\"posting-1\"");
@@ -96,7 +96,7 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
   @Test
   void writePostEntryResult_writesReversalDoesNotNegateTargetRejection() {
     String json =
-        rejectedJson(new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("posting-1")));
+        rejectedJson(new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
     assertJsonContains(json, "\"code\":\"reversal-does-not-negate-target\"");
     assertTrue(json.contains("does not negate posting"));
     assertJsonContains(json, "\"priorPostingId\":\"posting-1\"");

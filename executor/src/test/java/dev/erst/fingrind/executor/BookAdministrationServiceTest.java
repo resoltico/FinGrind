@@ -224,7 +224,7 @@ class BookAdministrationServiceTest {
 
       bookSession.commit(
           new dev.erst.fingrind.executor.bookkeeping.CommittedPosting(
-              new dev.erst.fingrind.core.PostingId("posting-1"),
+              new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
               new dev.erst.fingrind.core.JournalEntry(
                   LocalDate.parse("2026-04-01"),
                   java.util.List.of(
@@ -242,7 +242,7 @@ class BookAdministrationServiceTest {
               ExecutorAccountingTestSupport.accountingEvidence("idem-1"),
               new dev.erst.fingrind.core.CommittedProvenance(
                   new dev.erst.fingrind.core.RequestProvenance(
-                      new dev.erst.fingrind.core.CommandId("command-1"),
+                      new dev.erst.fingrind.core.CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
                       new dev.erst.fingrind.core.IdempotencyKey("idem-1"),
                       new dev.erst.fingrind.core.CausationId("cause-1"),
                       java.util.Optional.empty()),
@@ -250,7 +250,7 @@ class BookAdministrationServiceTest {
                   dev.erst.fingrind.core.SourceChannel.CLI)));
       bookSession.commit(
           new dev.erst.fingrind.executor.bookkeeping.CommittedPosting(
-              new dev.erst.fingrind.core.PostingId("posting-2"),
+              new dev.erst.fingrind.core.PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362"),
               new dev.erst.fingrind.core.JournalEntry(
                   LocalDate.parse("2026-04-07"),
                   java.util.List.of(
@@ -268,7 +268,7 @@ class BookAdministrationServiceTest {
               ExecutorAccountingTestSupport.accountingEvidence("idem-2"),
               new dev.erst.fingrind.core.CommittedProvenance(
                   new dev.erst.fingrind.core.RequestProvenance(
-                      new dev.erst.fingrind.core.CommandId("command-2"),
+                      new dev.erst.fingrind.core.CommandId("01a7741f-8643-3942-80a3-c689bc5aa8f6"),
                       new dev.erst.fingrind.core.IdempotencyKey("idem-2"),
                       new dev.erst.fingrind.core.CausationId("cause-2"),
                       java.util.Optional.empty()),
@@ -279,7 +279,7 @@ class BookAdministrationServiceTest {
           new InterimResultSweepService(
                   bookSession,
                   bookSession,
-                  () -> new dev.erst.fingrind.core.PostingId("interim-result-sweep-1"),
+                  () -> new dev.erst.fingrind.core.PostingId("0485e481-7f56-30fd-92e2-92a099a486af"),
                   FIXED_CLOCK)
               .interimResultSweep(
                   new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-07")),
