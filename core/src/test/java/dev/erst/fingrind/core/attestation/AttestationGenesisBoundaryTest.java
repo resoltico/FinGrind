@@ -2,6 +2,7 @@ package dev.erst.fingrind.core.attestation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.core.AccountCode;
@@ -97,15 +98,17 @@ class AttestationGenesisBoundaryTest {
       assertEquals(0, AttestationVerifier.verifyBook(List.of(signed)).headOrder().intValueExact());
     }
 
-    assertThrows(
-        java.io.IOException.class,
-        () ->
-            AttestationSigningSession.open(
-                List.of(
-                    new AttestationCredentialSource(
-                        principalId,
-                        temporaryDirectory.resolve("missing.fgatk"),
-                        passphrasePath))));
+    Path missingKeyPath = temporaryDirectory.resolve("missing.fgatk");
+    AttestationCredentialUseException failure =
+        assertThrows(
+            AttestationCredentialUseException.class,
+            () ->
+                AttestationSigningSession.open(
+                    List.of(
+                        new AttestationCredentialSource(
+                            principalId, missingKeyPath, passphrasePath))));
+    assertEquals(missingKeyPath, failure.credentialPath());
+    assertInstanceOf(java.io.IOException.class, failure.getCause());
   }
 
   @Test
