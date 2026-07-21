@@ -20,15 +20,23 @@ import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /** Exercises staged backup and restore cleanup when publication cannot complete atomically. */
 class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublicationTestSupport {
+  private static final String BACKUP_READ_FAILURE_DIRECTORY = "backup-read-failure";
+  private static final String BACKUP_SEAL_FAILURE_DIRECTORY = "backup-seal-failure";
+  private static final String STAGED_BACKUP_FILE_NAME = "staged.sqlite";
+  private static final String STAGED_KEY_FILE_NAME = "staged.key";
+  private static final String FINAL_BACKUP_FILE_NAME = "backup.sqlite";
+  private static final String FINAL_KEY_FILE_NAME = "backup.key";
 
   @Test
   void stagedBackupPair_sealsAnExactSnapshotAndRefusesFurtherSnapshotAccess() throws Exception {
@@ -101,6 +109,66 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
 
     assertFalse(Files.exists(stagedBackupPath));
     assertFalse(Files.exists(stagedKeyPath));
+  }
+
+  @Test
+  void stagedBackupPair_reportsReadAndSealStorageFailuresAfterStaging() throws Exception {
+    Path readFailureDirectory = tempDirectory.resolve(BACKUP_READ_FAILURE_DIRECTORY);
+    Path unreadableBackupPath =
+        writeArtifact(BACKUP_READ_FAILURE_DIRECTORY + "/" + STAGED_BACKUP_FILE_NAME, "backup");
+    Path unreadableKeyPath =
+        writeArtifact(BACKUP_READ_FAILURE_DIRECTORY + "/" + STAGED_KEY_FILE_NAME, "key");
+    Path unreadableFinalBackupPath = readFailureDirectory.resolve(FINAL_BACKUP_FILE_NAME);
+    Path unreadableFinalKeyPath = readFailureDirectory.resolve(FINAL_KEY_FILE_NAME);
+    requirePosixPermissions(unreadableBackupPath);
+    try (SqliteBookPassphrase passphrase = testPassphrase();
+        SqliteStagedBackupPair stagedPair =
+            SqliteStagedBackupPairFactory.create(
+                SqliteOwnedStagedArtifact.recordExisting(
+                    unreadableFinalBackupPath, unreadableBackupPath),
+                unreadableFinalBackupPath,
+                SqliteOwnedStagedArtifact.recordExisting(unreadableFinalKeyPath, unreadableKeyPath),
+                unreadableFinalKeyPath,
+                passphrase,
+                VERIFICATION_SUPPORT)) {
+      Files.setPosixFilePermissions(unreadableBackupPath, Set.of(PosixFilePermission.OWNER_WRITE));
+
+      IllegalStateException readFailure =
+          assertThrows(IllegalStateException.class, stagedPair::snapshot);
+
+      assertEquals(
+          "Failed to read the staged encrypted backup snapshot.", readFailure.getMessage());
+      assertInstanceOf(IOException.class, readFailure.getCause());
+    }
+
+    Path sealFailureDirectory = tempDirectory.resolve(BACKUP_SEAL_FAILURE_DIRECTORY);
+    Path unwritableBackupPath =
+        writeArtifact(BACKUP_SEAL_FAILURE_DIRECTORY + "/" + STAGED_BACKUP_FILE_NAME, "backup");
+    Path unwritableKeyPath =
+        writeArtifact(BACKUP_SEAL_FAILURE_DIRECTORY + "/" + STAGED_KEY_FILE_NAME, "key");
+    Path unwritableFinalBackupPath = sealFailureDirectory.resolve(FINAL_BACKUP_FILE_NAME);
+    Path unwritableFinalKeyPath = sealFailureDirectory.resolve(FINAL_KEY_FILE_NAME);
+    requirePosixPermissions(unwritableBackupPath);
+    try (SqliteBookPassphrase passphrase = testPassphrase();
+        SqliteStagedBackupPair stagedPair =
+            SqliteStagedBackupPairFactory.create(
+                SqliteOwnedStagedArtifact.recordExisting(
+                    unwritableFinalBackupPath, unwritableBackupPath),
+                unwritableFinalBackupPath,
+                SqliteOwnedStagedArtifact.recordExisting(unwritableFinalKeyPath, unwritableKeyPath),
+                unwritableFinalKeyPath,
+                passphrase,
+                VERIFICATION_SUPPORT)) {
+      byte[] snapshot = stagedPair.snapshot();
+      byte[] sealedArtifact = Arrays.copyOf(snapshot, snapshot.length + 1);
+      Files.setPosixFilePermissions(unwritableBackupPath, Set.of(PosixFilePermission.OWNER_READ));
+
+      IllegalStateException sealFailure =
+          assertThrows(IllegalStateException.class, () -> stagedPair.sealArtifact(sealedArtifact));
+
+      assertEquals("Failed to seal the staged attested backup artifact.", sealFailure.getMessage());
+      assertInstanceOf(IOException.class, sealFailure.getCause());
+    }
   }
 
   @Test
@@ -612,5 +680,11 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
     Files.delete(path);
     Files.createDirectory(path);
     Files.writeString(path.resolve("cleanup-blocker"), "altered");
+  }
+
+  private static void requirePosixPermissions(Path path) {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        path.getFileSystem().supportedFileAttributeViews().contains("posix"),
+        "This filesystem cannot model POSIX access denial.");
   }
 }
