@@ -116,7 +116,6 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
       case BACKUP_SOURCE -> BookMaintenanceArtifactRole.BACKUP_SOURCE;
       case BACKUP_TARGET -> BookMaintenanceArtifactRole.BACKUP_TARGET;
       case BACKUP_KEY_TARGET -> BookMaintenanceArtifactRole.BACKUP_KEY_TARGET;
-      case ROLLBACK_ARTIFACT -> BookMaintenanceArtifactRole.ROLLBACK_ARTIFACT;
       case RESTORED_TARGET -> BookMaintenanceArtifactRole.RESTORED_TARGET;
     };
   }

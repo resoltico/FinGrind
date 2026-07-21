@@ -110,24 +110,6 @@ public interface CliAdministrationJsonModels {
     }
   }
 
-  record InspectRekeyRollbackPayload(String bookFile) implements CliSuccessPayload {
-    public InspectRekeyRollbackPayload {
-      bookFile = requireText(bookFile, "bookFile");
-    }
-  }
-
-  record RestoreRekeyRollbackPayload(String bookFile) implements CliSuccessPayload {
-    public RestoreRekeyRollbackPayload {
-      bookFile = requireText(bookFile, "bookFile");
-    }
-  }
-
-  record DeleteRekeyRollbackPayload(String bookFile) implements CliSuccessPayload {
-    public DeleteRekeyRollbackPayload {
-      bookFile = requireText(bookFile, "bookFile");
-    }
-  }
-
   record SweptInterimResultPayload(
       int sweepOrder,
       String effectiveDateFrom,

@@ -12,7 +12,6 @@ import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure;
-import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.BookMigrationPolicy;
 import dev.erst.fingrind.contract.runtime.BookMigrationPolicyMode;
@@ -21,6 +20,7 @@ import dev.erst.fingrind.contract.runtime.PublicPathHint;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
@@ -31,14 +31,12 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
     Path bookFile = Path.of("books/acme.sqlite");
     Path backupFile = Path.of("backup/acme.sqlite");
     Path backupKeyFile = Path.of("backup/acme.book-key");
-    Path rollbackArtifact = Path.of("books/acme.rekey-rollback-1.sqlite");
-    Path secondRollbackArtifact = Path.of("books/acme.rekey-rollback-2.sqlite");
     List<BookMaintenanceRejection> rejections =
         List.of(
             new BookMaintenanceRejection.BookHasBlockingArtifacts(
-                hint(bookFile), List.of(hint(rollbackArtifact))),
+                hint(bookFile), List.of(hint(bookFile.resolveSibling("acme.sqlite-wal")))),
             new BookMaintenanceRejection.BackupSourceHasBlockingArtifacts(
-                hint(backupFile), List.of(hint(rollbackArtifact))),
+                hint(backupFile), List.of(hint(backupFile.resolveSibling("acme.sqlite-wal")))),
             new BookMaintenanceRejection.BackupSourceMatchesLiveBook(
                 hint(bookFile), hint(backupFile)),
             new BookMaintenanceRejection.ArtifactPathInvalid(
@@ -47,19 +45,14 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 BookMaintenancePathFailure.PARENT_PATH_COLLISION),
             new BookMaintenanceRejection.ArtifactBusy(
                 BookMaintenanceArtifactRole.LIVE_BOOK, hint(bookFile)),
+            new BookMaintenanceRejection.BackupAcknowledgementConflict(UUID.randomUUID()),
             new BookMaintenanceRejection.BackupDestinationAlreadyExists(hint(backupFile)),
             new BookMaintenanceRejection.SecretTargetOccupied(hint(backupKeyFile)),
             new BookMaintenanceRejection.BookDestinationOccupied(hint(bookFile)),
             new BookMaintenanceRejection.ArtifactVerificationFailed(
                 BookMaintenanceArtifactRole.BACKUP_SOURCE,
                 hint(backupFile),
-                BookMaintenanceVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED),
-            new BookMaintenanceRejection.NoRollbackArtifactsFound(hint(bookFile)),
-            new BookMaintenanceRejection.RollbackArtifactSelectionRequired(
-                hint(bookFile), List.of(hint(rollbackArtifact), hint(secondRollbackArtifact))),
-            new BookMaintenanceRejection.RollbackArtifactNotFound(hint(rollbackArtifact)),
-            new BookMaintenanceRejection.RollbackArtifactNotForBook(
-                hint(bookFile), hint(rollbackArtifact)));
+                BookMaintenanceVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED));
 
     Map<String, ContractResponse.RejectionDescriptor> descriptorsByCode =
         BookMaintenanceRejection.descriptors().stream()
@@ -67,7 +60,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 Collectors.toUnmodifiableMap(
                     ContractResponse.RejectionDescriptor::code, descriptor -> descriptor));
 
-    assertEquals(13, descriptorsByCode.size());
+    assertEquals(10, descriptorsByCode.size());
     for (BookMaintenanceRejection rejection : rejections) {
       String code = BookMaintenanceRejection.wireCode(rejection);
       ContractResponse.RejectionDescriptor descriptor = descriptorsByCode.get(code);
@@ -88,9 +81,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                             "backupFile",
                             "artifactPath",
                             "secretTarget",
-                            "rollbackArtifact",
-                            "blockingArtifacts",
-                            "rollbackArtifacts")
+                            "blockingArtifacts")
                         .contains(field.name()))
             .allMatch(field -> field.description().startsWith("Canonical absolute")));
   }
@@ -99,7 +90,6 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
   void maintenanceRejections_validateConstructorState() {
     Path bookFile = Path.of("books/acme.sqlite");
     Path backupFile = Path.of("backup/acme.sqlite");
-    Path rollbackArtifact = Path.of("books/acme.rekey-rollback-1.sqlite");
 
     assertThrows(
         IllegalArgumentException.class,
@@ -109,12 +99,6 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
         () ->
             new BookMaintenanceRejection.BackupSourceHasBlockingArtifacts(
                 hint(backupFile), List.of()));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new BookMaintenanceRejection.RollbackArtifactSelectionRequired(
-                hint(bookFile), List.of(hint(rollbackArtifact))));
-
     assertThrows(
         NullPointerException.class,
         () ->
@@ -176,18 +160,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
                 BookMaintenanceArtifactRole.BACKUP_SOURCE, hint(backupFile), nullOf()));
     assertThrows(
         NullPointerException.class,
-        () -> new BookMaintenanceRejection.NoRollbackArtifactsFound(nullOf()));
-    assertThrows(
-        NullPointerException.class,
-        () -> new BookMaintenanceRejection.RollbackArtifactNotFound(nullOf()));
-    assertThrows(
-        NullPointerException.class,
-        () ->
-            new BookMaintenanceRejection.RollbackArtifactNotForBook(
-                nullOf(), hint(rollbackArtifact)));
-    assertThrows(
-        NullPointerException.class,
-        () -> new BookMaintenanceRejection.RollbackArtifactNotForBook(hint(bookFile), nullOf()));
+        () -> new BookMaintenanceRejection.BackupAcknowledgementConflict(nullOf()));
   }
 
   @Test
@@ -195,41 +168,34 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
     Path bookFile = Path.of("books/acme.sqlite");
     Path backupFile = Path.of("backup/acme.sqlite");
     Path backupKeyFile = Path.of("backup/acme.book-key");
-    Path rollbackArtifact = Path.of("books/acme.rekey-rollback-1.sqlite");
     BookMaintenanceRejection rejection =
         new BookMaintenanceRejection.BackupDestinationAlreadyExists(hint(backupFile));
 
+    UUID backupId = UUID.randomUUID();
     BackupBookResult.BackedUp backedUp =
-        new BackupBookResult.BackedUp(hint(bookFile), hint(backupFile), hint(backupKeyFile));
+        new BackupBookResult.BackedUp(
+            hint(bookFile), hint(backupFile), hint(backupKeyFile), backupId, false);
+    BackupBookResult.AcknowledgementPending acknowledgementPending =
+        new BackupBookResult.AcknowledgementPending(
+            hint(bookFile), hint(backupFile), hint(backupKeyFile), backupId);
     BackupBookResult.Rejected backupRejected = new BackupBookResult.Rejected(rejection);
     RestoreBookResult.Restored restored =
         new RestoreBookResult.Restored(
             hint(bookFile), hint(bookFile.resolveSibling("acme-restored.book-key")));
     RestoreBookResult.Rejected restoreRejected = new RestoreBookResult.Rejected(rejection);
-    RekeyRollbackResult.Inspected inspected =
-        new RekeyRollbackResult.Inspected(hint(bookFile), List.of(hint(rollbackArtifact)));
-    RekeyRollbackResult.Restored recovered =
-        new RekeyRollbackResult.Restored(hint(bookFile), hint(rollbackArtifact));
-    RekeyRollbackResult.Deleted deleted =
-        new RekeyRollbackResult.Deleted(hint(bookFile), hint(rollbackArtifact));
-    RekeyRollbackResult.Rejected recoverRejected = new RekeyRollbackResult.Rejected(rejection);
     BookMigrationPolicy migrationPolicy = BookMigrationPolicy.current(9);
 
     assertEquals(hint(bookFile), backedUp.bookFilePath());
     assertEquals(hint(backupFile), backedUp.backupFilePath());
     assertEquals(hint(backupKeyFile), backedUp.backupBookKeyFilePath());
+    assertEquals(backupId, backedUp.backupId());
+    assertFalse(backedUp.acknowledgementResumed());
+    assertEquals(backupId, acknowledgementPending.backupId());
     assertEquals(rejection, backupRejected.rejection());
     assertEquals(hint(bookFile), restored.bookFilePath());
     assertEquals(
         hint(bookFile.resolveSibling("acme-restored.book-key")), restored.bookKeyFilePath());
     assertEquals(rejection, restoreRejected.rejection());
-    assertEquals(hint(bookFile), inspected.bookFilePath());
-    assertIterableEquals(List.of(hint(rollbackArtifact)), inspected.rollbackArtifactPaths());
-    assertEquals(hint(bookFile), recovered.bookFilePath());
-    assertEquals(hint(rollbackArtifact), recovered.rollbackArtifactPath());
-    assertEquals(hint(bookFile), deleted.bookFilePath());
-    assertEquals(hint(rollbackArtifact), deleted.rollbackArtifactPath());
-    assertEquals(rejection, recoverRejected.rejection());
     assertEquals(BookMigrationPolicyMode.HARD_BREAK_REJECT_OLDER_FORMATS, migrationPolicy.mode());
     assertEquals(9, migrationPolicy.supportedBookFormatVersion());
     assertEquals(List.of("hard-break-reject-older-formats"), BookMigrationPolicyMode.wireValues());
@@ -238,13 +204,24 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
         BookMigrationPolicyMode.fromWireValue("hard-break-reject-older-formats"));
     assertThrows(
         NullPointerException.class,
-        () -> new BackupBookResult.BackedUp(nullOf(), hint(backupFile), hint(backupKeyFile)));
+        () ->
+            new BackupBookResult.BackedUp(
+                nullOf(), hint(backupFile), hint(backupKeyFile), backupId, false));
     assertThrows(
         NullPointerException.class,
-        () -> new BackupBookResult.BackedUp(hint(bookFile), nullOf(), hint(backupKeyFile)));
+        () ->
+            new BackupBookResult.BackedUp(
+                hint(bookFile), nullOf(), hint(backupKeyFile), backupId, false));
     assertThrows(
         NullPointerException.class,
-        () -> new BackupBookResult.BackedUp(hint(bookFile), hint(backupFile), nullOf()));
+        () ->
+            new BackupBookResult.BackedUp(
+                hint(bookFile), hint(backupFile), nullOf(), backupId, false));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new BackupBookResult.BackedUp(
+                hint(bookFile), hint(backupFile), hint(backupKeyFile), nullOf(), false));
     assertThrows(NullPointerException.class, () -> new BackupBookResult.Rejected(nullOf()));
     assertThrows(
         NullPointerException.class,
@@ -254,25 +231,6 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
     assertThrows(
         NullPointerException.class, () -> new RestoreBookResult.Restored(hint(bookFile), nullOf()));
     assertThrows(NullPointerException.class, () -> new RestoreBookResult.Rejected(nullOf()));
-    assertThrows(
-        NullPointerException.class,
-        () -> new RekeyRollbackResult.Inspected(nullOf(), List.of(hint(rollbackArtifact))));
-    assertThrows(
-        NullPointerException.class,
-        () -> new RekeyRollbackResult.Inspected(hint(bookFile), nullOf()));
-    assertThrows(
-        NullPointerException.class,
-        () -> new RekeyRollbackResult.Restored(nullOf(), hint(rollbackArtifact)));
-    assertThrows(
-        NullPointerException.class,
-        () -> new RekeyRollbackResult.Restored(hint(bookFile), nullOf()));
-    assertThrows(
-        NullPointerException.class,
-        () -> new RekeyRollbackResult.Deleted(nullOf(), hint(rollbackArtifact)));
-    assertThrows(
-        NullPointerException.class,
-        () -> new RekeyRollbackResult.Deleted(hint(bookFile), nullOf()));
-    assertThrows(NullPointerException.class, () -> new RekeyRollbackResult.Rejected(nullOf()));
     assertThrows(
         NullPointerException.class,
         () -> new BookMigrationPolicy(nullOf(), false, false, false, 8));
@@ -294,14 +252,12 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
             "backup-source",
             "backup-target",
             "backup-key-target",
-            "rollback-artifact",
             "restored-target"),
         BookMaintenanceArtifactRole.wireValues());
     assertEquals("live-book", BookMaintenanceArtifactRole.LIVE_BOOK.wireValue());
     assertEquals("backup-source", BookMaintenanceArtifactRole.BACKUP_SOURCE.wireValue());
     assertEquals("backup-target", BookMaintenanceArtifactRole.BACKUP_TARGET.wireValue());
     assertEquals("backup-key-target", BookMaintenanceArtifactRole.BACKUP_KEY_TARGET.wireValue());
-    assertEquals("rollback-artifact", BookMaintenanceArtifactRole.ROLLBACK_ARTIFACT.wireValue());
     assertEquals("restored-target", BookMaintenanceArtifactRole.RESTORED_TARGET.wireValue());
 
     assertIterableEquals(

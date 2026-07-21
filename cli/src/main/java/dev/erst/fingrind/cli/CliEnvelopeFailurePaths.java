@@ -36,12 +36,6 @@ record CliEnvelopeFailurePaths(String path, List<String> relatedPaths) {
           new CliEnvelopeFailurePaths(value.backupFile(), List.of());
       case CliRejectionJsonModels.SecretTargetDetails value ->
           new CliEnvelopeFailurePaths(value.secretTarget(), List.of());
-      case CliRejectionJsonModels.RollbackArtifactDetails value ->
-          new CliEnvelopeFailurePaths(value.rollbackArtifact(), List.of());
-      case CliRejectionJsonModels.RollbackArtifactMismatchDetails value ->
-          new CliEnvelopeFailurePaths(value.bookFile(), List.of(value.rollbackArtifact()));
-      case CliRejectionJsonModels.RollbackArtifactSelectionDetails value ->
-          new CliEnvelopeFailurePaths(value.bookFile(), value.rollbackArtifacts());
     };
   }
 }

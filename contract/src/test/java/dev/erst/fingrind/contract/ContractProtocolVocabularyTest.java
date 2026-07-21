@@ -389,7 +389,7 @@ class ContractProtocolVocabularyTest {
                 null,
                 evidenceTemplate(),
                 new ContractTemplates.ProvenanceTemplateDescriptor(
-                    "actor-1", "person", "command-1", "idem-1", "cause-1", null),
+                    "command-1", "idem-1", "cause-1", null),
                 null,
                 null,
                 null,
@@ -432,7 +432,7 @@ class ContractProtocolVocabularyTest {
                 null,
                 evidenceTemplate(),
                 new ContractTemplates.ProvenanceTemplateDescriptor(
-                    "actor-1", "person", "command-1", "idem-1", "cause-1", null),
+                    "command-1", "idem-1", "cause-1", null),
                 null,
                 null,
                 null,

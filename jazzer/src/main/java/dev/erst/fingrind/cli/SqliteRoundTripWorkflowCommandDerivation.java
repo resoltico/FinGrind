@@ -4,8 +4,6 @@ import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.core.AccountingEvidence;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
@@ -152,8 +150,6 @@ final class SqliteRoundTripWorkflowCommandDerivation {
   private static RequestProvenance buildDerivedRequestProvenance(
       RequestProvenance provenance, String stableToken) {
     return new RequestProvenance(
-        provenance.actorId(),
-        provenance.actorType(),
         new CommandId("command-" + stableToken),
         new IdempotencyKey(stableToken),
         new CausationId("cause-" + stableToken),
@@ -178,8 +174,8 @@ final class SqliteRoundTripWorkflowCommandDerivation {
                     new ApprovalReference(
                         new ApprovalId(approval.approvalId().value() + "-" + stableToken),
                         new ApprovalType(approval.approvalType().value()),
-                        new ActorId(approval.approverId().value() + "-" + stableToken),
-                        ActorType.AGENT,
+                        approval.approverReference() + "-" + stableToken,
+                        approval.approverType(),
                         ApprovalDecision.APPROVED,
                         approval.approvedAt()))
             .toList());

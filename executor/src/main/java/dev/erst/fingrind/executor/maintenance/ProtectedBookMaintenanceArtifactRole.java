@@ -6,6 +6,5 @@ public enum ProtectedBookMaintenanceArtifactRole {
   BACKUP_SOURCE,
   BACKUP_TARGET,
   BACKUP_KEY_TARGET,
-  ROLLBACK_ARTIFACT,
   RESTORED_TARGET
 }

@@ -194,25 +194,13 @@ class TaxDiscoveryTemplateCoverageTest {
   void provenanceTemplateValidation_coversLiveAndPlaceholderBranches() {
     ContractTemplates.ProvenanceTemplateDescriptor live =
         new ContractTemplates.ProvenanceTemplateDescriptor(
-            "actor-1", "person", "command-1", "idem-1", "cause-1", "corr-1");
+            "command-1", "idem-1", "cause-1", "corr-1");
 
-    assertEquals("actor-1", live.actorId());
+    assertEquals("command-1", live.commandId());
     assertEquals("corr-1", live.correlationId());
-    assertEquals(
-        ScaffoldPlaceholders.ACTOR_ID,
-        new ContractTemplates.ProvenanceTemplateDescriptor(
-                ScaffoldPlaceholders.ACTOR_ID,
-                "person",
-                "command-1",
-                "idem-1",
-                "cause-1",
-                null)
-            .actorId());
     assertEquals(
         ScaffoldPlaceholders.COMMAND_ID,
         new ContractTemplates.ProvenanceTemplateDescriptor(
-                "actor-1",
-                "person",
                 ScaffoldPlaceholders.COMMAND_ID,
                 "idem-1",
                 "cause-1",
@@ -221,8 +209,6 @@ class TaxDiscoveryTemplateCoverageTest {
     assertEquals(
         ScaffoldPlaceholders.IDEMPOTENCY_KEY,
         new ContractTemplates.ProvenanceTemplateDescriptor(
-                "actor-1",
-                "person",
                 "command-1",
                 ScaffoldPlaceholders.IDEMPOTENCY_KEY,
                 "cause-1",
@@ -231,8 +217,6 @@ class TaxDiscoveryTemplateCoverageTest {
     assertEquals(
         ScaffoldPlaceholders.CAUSATION_ID,
         new ContractTemplates.ProvenanceTemplateDescriptor(
-                "actor-1",
-                "person",
                 "command-1",
                 "idem-1",
                 ScaffoldPlaceholders.CAUSATION_ID,
@@ -241,8 +225,6 @@ class TaxDiscoveryTemplateCoverageTest {
     assertEquals(
         ScaffoldPlaceholders.COMMAND_ID,
         ContractTemplateValidationSupport.validateProvenanceTemplate(
-                "actor-1",
-                "person",
                 ScaffoldPlaceholders.COMMAND_ID,
                 "idem-1",
                 "cause-1",
@@ -251,8 +233,6 @@ class TaxDiscoveryTemplateCoverageTest {
     assertEquals(
         ScaffoldPlaceholders.COMMAND_ID,
         ContractTemplateValidationSupport.validateProvenanceTemplate(
-                "actor-1",
-                "person",
                 "command-1",
                 "idem-1",
                 "cause-1",

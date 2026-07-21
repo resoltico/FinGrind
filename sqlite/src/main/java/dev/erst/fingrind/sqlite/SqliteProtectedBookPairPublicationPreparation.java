@@ -228,7 +228,7 @@ final class SqliteProtectedBookPairPublicationPreparation {
           new ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists(bookTargetPath);
       case LIVE_BOOK, RESTORED_TARGET ->
           new ProtectedBookMaintenanceRejection.BookDestinationOccupied(bookTargetPath);
-      case BACKUP_SOURCE, BACKUP_KEY_TARGET, ROLLBACK_ARTIFACT ->
+      case BACKUP_SOURCE, BACKUP_KEY_TARGET ->
           throw new IllegalArgumentException(
               "An absent protected-book target cannot use artifact role " + artifactRole + ".");
     };

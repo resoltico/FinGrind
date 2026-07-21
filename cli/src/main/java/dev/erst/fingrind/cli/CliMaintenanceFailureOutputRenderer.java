@@ -48,22 +48,6 @@ final class CliMaintenanceFailureOutputRenderer {
         rows.add(List.of("Artifact path", redactedPath(details.artifactPath())));
         rows.add(List.of("Verification failure", details.verificationFailure()));
       }
-      case CliRejectionJsonModels.RollbackArtifactDetails details ->
-          rows.add(List.of("Rollback artifact", redactedPath(details.rollbackArtifact())));
-      case CliRejectionJsonModels.RollbackArtifactMismatchDetails details -> {
-        rows.add(List.of("Book file", redactedPath(details.bookFile())));
-        rows.add(List.of("Rollback artifact", redactedPath(details.rollbackArtifact())));
-      }
-      case CliRejectionJsonModels.RollbackArtifactSelectionDetails details -> {
-        rows.add(List.of("Book file", redactedPath(details.bookFile())));
-        rows.add(
-            List.of(
-                "Rollback artifacts",
-                CliTextFormat.joined(
-                    details.rollbackArtifacts().stream()
-                        .map(CliMaintenanceFailureOutputRenderer::redactedPath)
-                        .toList())));
-      }
     }
   }
 

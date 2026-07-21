@@ -138,7 +138,7 @@ abstract non-sealed class CliBookNullablePathOutputModeCommand
     return bookAccess;
   }
 
-  final @Nullable Path rollbackArtifactPath() {
+  final @Nullable Path optionalArtifactPath() {
     return path;
   }
 

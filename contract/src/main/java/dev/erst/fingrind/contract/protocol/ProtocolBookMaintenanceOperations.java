@@ -82,7 +82,7 @@ final class ProtocolBookMaintenanceOperations {
             "Export one manifest-attested encrypted-book backup artifact without overwriting any existing destination.",
             List.of(
                 ProtocolExampleStep.note(
-                    "backup-book refuses to run when the live book has SQLite sidecars or stale rekey rollback artifacts beside it."),
+                    "backup-book refuses to run when the live book has SQLite sidecars beside it."),
                 ProtocolExampleStep.command(
                     "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./backups/acme-2026-05-18.fgat %s ./backups/acme-2026-05-18.book-key %s 86ba4e4e-e08d-45e5-9c42-631d0121d6ef %s 123e4567-e89b-12d3-a456-426614174000 %s ./secrets/operator.fgatk %s ./secrets/operator.passphrase"
                         .formatted(

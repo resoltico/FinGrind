@@ -271,30 +271,6 @@ class RejectionNarrativeTest {
                     dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure
                         .PROTECTED_BOOK_VERIFICATION_FAILED))
             .contains("failed verification"));
-    assertTrue(
-        RejectionNarrative.message(
-                new BookMaintenanceRejection.NoRollbackArtifactsFound(
-                    hint(java.nio.file.Path.of("books/acme.sqlite"))))
-            .contains("No sibling rekey rollback artifacts"));
-    assertTrue(
-        RejectionNarrative.message(
-                new BookMaintenanceRejection.RollbackArtifactSelectionRequired(
-                    hint(java.nio.file.Path.of("books/acme.sqlite")),
-                    List.of(
-                        hint(java.nio.file.Path.of("books/acme.rekey-rollback-1.sqlite")),
-                        hint(java.nio.file.Path.of("books/acme.rekey-rollback-2.sqlite")))))
-            .contains("choose one explicit rollback artifact path"));
-    assertTrue(
-        RejectionNarrative.message(
-                new BookMaintenanceRejection.RollbackArtifactNotFound(
-                    hint(java.nio.file.Path.of("books/acme.rekey-rollback-1.sqlite"))))
-            .contains("does not exist"));
-    assertTrue(
-        RejectionNarrative.message(
-                new BookMaintenanceRejection.RollbackArtifactNotForBook(
-                    hint(java.nio.file.Path.of("books/acme.sqlite")),
-                    hint(java.nio.file.Path.of("books/other.rekey-rollback-1.sqlite"))))
-            .contains("does not belong"));
   }
 
   private static java.nio.file.Path hint(java.nio.file.Path path) {

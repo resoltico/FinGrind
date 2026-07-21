@@ -71,10 +71,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels, CliTaxRejecti
           BackupAcknowledgementConflictDetails,
           ArtifactVerificationFailureDetails,
           BackupFileDetails,
-          SecretTargetDetails,
-          RollbackArtifactDetails,
-          RollbackArtifactMismatchDetails,
-          RollbackArtifactSelectionDetails {}
+          SecretTargetDetails {}
 
   record AccountStateViolationsDetails(List<CliAccountStateViolationPayload> violations)
       implements PostingRejectionDetails {
@@ -431,32 +428,6 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels, CliTaxRejecti
       artifactRole = requireText(artifactRole, "artifactRole");
       artifactPath = requireText(artifactPath, "artifactPath");
       verificationFailure = requireText(verificationFailure, "verificationFailure");
-    }
-  }
-
-  record RollbackArtifactDetails(String rollbackArtifact) implements MaintenanceRejectionDetails {
-    public RollbackArtifactDetails {
-      rollbackArtifact = requireText(rollbackArtifact, "rollbackArtifact");
-    }
-  }
-
-  record RollbackArtifactMismatchDetails(String bookFile, String rollbackArtifact)
-      implements MaintenanceRejectionDetails {
-    public RollbackArtifactMismatchDetails {
-      bookFile = requireText(bookFile, "bookFile");
-      rollbackArtifact = requireText(rollbackArtifact, "rollbackArtifact");
-    }
-  }
-
-  record RollbackArtifactSelectionDetails(String bookFile, List<String> rollbackArtifacts)
-      implements MaintenanceRejectionDetails {
-    public RollbackArtifactSelectionDetails {
-      bookFile = requireText(bookFile, "bookFile");
-      rollbackArtifacts = copyList(rollbackArtifacts, "rollbackArtifacts");
-      if (rollbackArtifacts.size() < 2) {
-        throw new IllegalArgumentException(
-            "rollbackArtifacts must contain at least two entries when explicit selection is required.");
-      }
     }
   }
 

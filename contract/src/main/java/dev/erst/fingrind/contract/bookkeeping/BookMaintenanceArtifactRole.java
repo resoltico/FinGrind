@@ -9,7 +9,6 @@ public enum BookMaintenanceArtifactRole implements WireValue {
   BACKUP_SOURCE,
   BACKUP_TARGET,
   BACKUP_KEY_TARGET,
-  ROLLBACK_ARTIFACT,
   RESTORED_TARGET;
 
   @Override
@@ -19,7 +18,6 @@ public enum BookMaintenanceArtifactRole implements WireValue {
       case BACKUP_SOURCE -> "backup-source";
       case BACKUP_TARGET -> "backup-target";
       case BACKUP_KEY_TARGET -> "backup-key-target";
-      case ROLLBACK_ARTIFACT -> "rollback-artifact";
       case RESTORED_TARGET -> "restored-target";
     };
   }

@@ -42,11 +42,11 @@ final class BookMaintenanceRejectionDescriptors {
   enum Descriptor {
     BOOK_HAS_BLOCKING_ARTIFACTS(
         "book-has-blocking-artifacts",
-        "Maintenance command refused because the selected live book path has SQLite sidecars or stale rollback artifacts that prove the book is not in one clean closed-copy state.",
+        "Maintenance command refused because the selected live book path has SQLite sidecars that prove the book is not in one clean closed-copy state.",
         FieldShape.BLOCKING_ARTIFACTS),
     BACKUP_SOURCE_HAS_BLOCKING_ARTIFACTS(
         "backup-source-has-blocking-artifacts",
-        "Restore command refused because the selected encrypted backup file has SQLite sidecars or rollback artifacts and is not one clean closed-copy source.",
+        "Restore command refused because the selected encrypted backup file has SQLite sidecars and is not one clean closed-copy source.",
         FieldShape.BLOCKING_ARTIFACTS),
     BACKUP_SOURCE_MATCHES_LIVE_BOOK(
         "backup-source-matches-live-book",

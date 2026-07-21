@@ -338,7 +338,7 @@ class ContractTemplatesValidationTest {
 
     assertEquals("approval-1", approval.approvalId());
     assertEquals("manager-signoff", approval.approvalType());
-    assertEquals("manager-1", approval.approverId());
+    assertEquals("manager-1", approval.approverReference());
     assertEquals(ApprovalDecision.APPROVED, approval.decision());
     assertEquals(1, evidence.sourceDocuments().size());
     assertEquals(1, evidence.approvals().size());
@@ -936,7 +936,7 @@ class ContractTemplatesValidationTest {
 
   private static ContractTemplates.ProvenanceTemplateDescriptor provenanceTemplate() {
     return new ContractTemplates.ProvenanceTemplateDescriptor(
-        "actor-1", "person", "command-1", "idem-1", "cause-1", null);
+        "command-1", "idem-1", "cause-1", null);
   }
 
   private static ContractTemplates.JournalLineTemplateDescriptor journalLineTemplate(

@@ -15,7 +15,7 @@ class ContractTemplateValidationSupportTest {
   private static final String LIVE_DOCUMENT_DATE = "2026-04-25";
   private static final String LIVE_APPROVAL_ID = "approval-1";
   private static final String LIVE_APPROVAL_TYPE = "manager-signoff";
-  private static final String LIVE_APPROVER_ID = "manager-1";
+  private static final String LIVE_APPROVER_REFERENCE = "manager-1";
   private static final String LIVE_APPROVED_AT = "2026-04-25T10:15:30Z";
 
   @Test
@@ -25,7 +25,7 @@ class ContractTemplateValidationSupportTest {
     ContractTemplateValidationSupport.validateLiveOptionalTextUnlessPlaceholder(
         null, ignored -> validatorCalls[0]++);
     ContractTemplateValidationSupport.validateLiveOptionalTextUnlessPlaceholder(
-        ScaffoldPlaceholders.ACTOR_ID, ignored -> validatorCalls[0]++);
+        ScaffoldPlaceholders.COMMAND_ID, ignored -> validatorCalls[0]++);
     ContractTemplateValidationSupport.validateLiveOptionalTextUnlessPlaceholder(
         "correlation-1", ignored -> validatorCalls[0]++);
 
@@ -41,7 +41,10 @@ class ContractTemplateValidationSupportTest {
                     LIVE_SOURCE_DOCUMENT_ID, LIVE_SOURCE_DOCUMENT_TYPE, LIVE_DOCUMENT_DATE)),
             List.of(
                 approvalTemplate(
-                    LIVE_APPROVAL_ID, LIVE_APPROVAL_TYPE, LIVE_APPROVER_ID, LIVE_APPROVED_AT))));
+                    LIVE_APPROVAL_ID,
+                    LIVE_APPROVAL_TYPE,
+                    LIVE_APPROVER_REFERENCE,
+                    LIVE_APPROVED_AT))));
 
     assertTrue(
         ContractTemplateValidationSupport.containsPlaceholderEvidence(
@@ -77,7 +80,7 @@ class ContractTemplateValidationSupportTest {
                 approvalTemplate(
                     ScaffoldPlaceholders.APPROVAL_ID,
                     LIVE_APPROVAL_TYPE,
-                    LIVE_APPROVER_ID,
+                    LIVE_APPROVER_REFERENCE,
                     LIVE_APPROVED_AT))));
     assertTrue(
         ContractTemplateValidationSupport.containsPlaceholderEvidence(
@@ -88,7 +91,7 @@ class ContractTemplateValidationSupportTest {
                 approvalTemplate(
                     LIVE_APPROVAL_ID,
                     ScaffoldPlaceholders.APPROVAL_TYPE,
-                    LIVE_APPROVER_ID,
+                    LIVE_APPROVER_REFERENCE,
                     LIVE_APPROVED_AT))));
     assertTrue(
         ContractTemplateValidationSupport.containsPlaceholderEvidence(
@@ -99,7 +102,7 @@ class ContractTemplateValidationSupportTest {
                 approvalTemplate(
                     LIVE_APPROVAL_ID,
                     LIVE_APPROVAL_TYPE,
-                    ScaffoldPlaceholders.APPROVER_ID,
+                    ScaffoldPlaceholders.APPROVER_REFERENCE,
                     LIVE_APPROVED_AT))));
     assertTrue(
         ContractTemplateValidationSupport.containsPlaceholderEvidence(
@@ -110,7 +113,7 @@ class ContractTemplateValidationSupportTest {
                 approvalTemplate(
                     LIVE_APPROVAL_ID,
                     LIVE_APPROVAL_TYPE,
-                    LIVE_APPROVER_ID,
+                    LIVE_APPROVER_REFERENCE,
                     ScaffoldPlaceholders.RECORDED_AT))));
   }
 
@@ -121,11 +124,11 @@ class ContractTemplateValidationSupportTest {
   }
 
   private static ContractTemplates.ApprovalTemplateDescriptor approvalTemplate(
-      String approvalId, String approvalType, String approverId, String approvedAt) {
+      String approvalId, String approvalType, String approverReference, String approvedAt) {
     return new ContractTemplates.ApprovalTemplateDescriptor(
         approvalId,
         approvalType,
-        approverId,
+        approverReference,
         "person",
         ApprovalDecision.APPROVED,
         approvedAt);
