@@ -3,10 +3,17 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.AclEntry;
+import java.nio.file.attribute.AclFileAttributeView;
+import java.nio.file.attribute.UserPrincipal;
+import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** Verifies public-safe failures emitted while SQLite constructs protected-book backup stages. */
@@ -94,5 +101,83 @@ class SqliteProtectedBookStagingFilesTest extends SqliteNativeBridgeTestSupport 
     assertThrows(
         SqliteCallerPathContractException.class,
         () -> SqliteProtectedBookStagingFiles.hardenBookArtifacts(impossibleChild));
+  }
+
+  @Test
+  void stagingFileHelpers_wrapAclMetadataIoFailuresAtTheirPublicBoundaries() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath backupArtifact = fileSystem.path("\\backup\\book.fgba");
+      AclFixturePath backupParent =
+          assertInstanceOf(AclFixturePath.class, backupArtifact.getParent());
+      backupParent.overrideAclView = failingAclView();
+      IllegalStateException backupFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteProtectedBookStagingFiles.ensureSecureBackupFileParentDirectory(
+                      backupArtifact));
+      assertEquals(
+          "Failed to secure the parent directory for \\backup\\book.fgba.",
+          backupFailure.getMessage());
+      assertInstanceOf(IOException.class, backupFailure.getCause());
+
+      AclFixturePath backupKey = fileSystem.path("\\backup-key\\book.key");
+      AclFixturePath backupKeyParent =
+          assertInstanceOf(AclFixturePath.class, backupKey.getParent());
+      backupKeyParent.overrideAclView = failingAclView();
+      IllegalStateException backupKeyFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteProtectedBookStagingFiles.ensureSecureBackupKeyFileParentDirectory(
+                      backupKey));
+      assertEquals(
+          "Failed to secure the parent directory for \\backup-key\\book.key.",
+          backupKeyFailure.getMessage());
+      assertInstanceOf(IOException.class, backupKeyFailure.getCause());
+
+      AclFixturePath stagedBook = fileSystem.path("\\staged\\book.sqlite");
+      SqliteBookFileSecurity.ensureSecureParentDirectory(stagedBook);
+      stagedBook.exists = true;
+      stagedBook.regularFile = true;
+      stagedBook.overrideAclView = failingAclView();
+      IllegalStateException hardeningFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteProtectedBookStagingFiles.hardenBookArtifacts(stagedBook));
+      assertEquals(
+          "Failed to harden the FinGrind protected-book artifacts for \\staged\\book.sqlite.",
+          hardeningFailure.getMessage());
+      assertInstanceOf(IOException.class, hardeningFailure.getCause());
+    }
+  }
+
+  private static AclFileAttributeView failingAclView() {
+    return new AclFileAttributeView() {
+      @Override
+      public String name() {
+        return "acl";
+      }
+
+      @Override
+      public List<AclEntry> getAcl() throws IOException {
+        throw new IOException("simulated ACL metadata failure");
+      }
+
+      @Override
+      public void setAcl(List<AclEntry> acl) throws IOException {
+        throw new IOException("simulated ACL metadata failure");
+      }
+
+      @Override
+      public UserPrincipal getOwner() throws IOException {
+        throw new IOException("simulated ACL metadata failure");
+      }
+
+      @Override
+      public void setOwner(UserPrincipal owner) throws IOException {
+        throw new IOException("simulated ACL metadata failure");
+      }
+    };
   }
 }
