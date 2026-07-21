@@ -304,6 +304,17 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
                   emptyInterimResultSweepDraft(effectiveDate, sweptAt),
                   unusedPostingIdGenerator(),
                   SqliteAttestationTestSupport.authorizer()));
+      assertEquals(
+          new InterimResultSweepOutcome.Rejected(
+              new BookkeepingAdministrationRejection.BookNotInitialized()),
+          reportingPeriodCloseSession.interimResultSweep(
+              reportingPeriod,
+              bookIdentity(),
+              planner,
+              effectiveDate,
+              sweptAt,
+              unusedPostingIdGenerator(),
+              SqliteAttestationTestSupport.authorizer()));
     }
   }
 

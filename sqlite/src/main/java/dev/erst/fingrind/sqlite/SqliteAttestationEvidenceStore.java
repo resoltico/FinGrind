@@ -103,17 +103,15 @@ final class SqliteAttestationEvidenceStore {
       return persistedVerification;
     }
     if (backupAcknowledgement != null) {
-      switch (AttestationBackupAcknowledgementAdmission.evaluate(
-          persistedEvidence, backupAcknowledgement)) {
-        case APPEND -> {
-          // Continue into the shared signing and CAS boundary below.
-        }
-        case IDENTICAL_REPLAY -> {
-          return persistedVerification;
-        }
-        case CONFLICT ->
-            throw new SqliteAttestationBackupAcknowledgementConflictException(
-                backupAcknowledgement.backupId());
+      AttestationBackupAcknowledgementAdmission admission =
+          AttestationBackupAcknowledgementAdmission.evaluate(
+              persistedEvidence, backupAcknowledgement);
+      if (admission == AttestationBackupAcknowledgementAdmission.IDENTICAL_REPLAY) {
+        return persistedVerification;
+      }
+      if (admission == AttestationBackupAcknowledgementAdmission.CONFLICT) {
+        throw new SqliteAttestationBackupAcknowledgementConflictException(
+            backupAcknowledgement.backupId());
       }
     }
     AttestationEvidence candidateEvidence =

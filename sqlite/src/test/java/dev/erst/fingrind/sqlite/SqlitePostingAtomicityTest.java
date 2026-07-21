@@ -138,6 +138,49 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
     }
   }
 
+  @Test
+  void ordinaryPosting_nativeFailureAfterTheAttestationAppend_isTranslatedAndRollsBackFully()
+      throws Exception {
+    Path bookPath = tempDirectory.resolve("atomicity-native-posting-failure.sqlite");
+    SqliteCommitFaultHook nativeFailure =
+        ignored -> {
+          throw new SqliteNativeException(
+              SqliteNativeResultCode.code("IOERR"), "simulated native write failure");
+        };
+    try (SqliteBookPassphrase bookPassphrase =
+            SqliteBookPassphrase.fromCharacters("atomicity native", TEST_BOOK_KEY.toCharArray());
+        SqlitePostingFactStore postingFactStore =
+            new SqlitePostingFactStore(
+                bookPath,
+                bookPassphrase,
+                SqliteStoreAccessMode.READ_WRITE_CREATE,
+                SqliteNativeBootstrap::api,
+                nativeFailure)) {
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
+
+      SqliteStorageFailureException failure =
+          assertThrows(
+              SqliteStorageFailureException.class,
+              () ->
+                  commitPosting(
+                      postingFactStore,
+                      postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())));
+      assertEquals(
+          "Failed to commit SQLite posting fact. SQLITE_IOERR: simulated native write failure",
+          failure.getMessage());
+      assertEquals(
+          0,
+          queryInt(
+              requireStoreDatabase(postingFactStore),
+              "select count(*) from posting_fact where posting_id = 'posting-1'"));
+      assertEquals(
+          0,
+          queryInt(
+              requireStoreDatabase(postingFactStore),
+              "select count(*) from attestation_operation where operation_order_hex = '0000000000000003'"));
+    }
+  }
+
   /**
    * One deterministic failure hook that trips once for one selected posting and injection point.
    */

@@ -13,15 +13,20 @@ import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.nio.file.Path;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 /** Covers durable-account extraction and audit-event mapping for account declarations. */
-class SqliteStoreAdministrationMutationOperationsCoverageTest {
+class SqliteStoreAdministrationMutationOperationsCoverageTest
+    extends SqlitePostingFactStoreTestSupport {
   @Test
   void declaredAccount_returnsDurableSnapshotsAndRejectsRejectedOutcomes() {
     RegisteredAccount account =
@@ -148,6 +153,51 @@ class SqliteStoreAdministrationMutationOperationsCoverageTest {
             .contains("Rejected account declarations do not append attestation"));
   }
 
+  @Test
+  void openAttestedBook_translatesAndRollsBackANativeSchemaInitializationFailure() {
+    Path bookPath = tempDirectory.resolve("native-open-failure.sqlite");
+    Instant initializedAt = Instant.parse("2026-04-07T10:15:30Z");
+    try (SqliteSessionSecret sessionSecret =
+            new SqliteSessionSecret(
+                SqliteBookPassphrase.fromCharacters("native open", TEST_BOOK_KEY.toCharArray()));
+        SchemaFailingDatabase database = new SchemaFailingDatabase()) {
+      SqliteStoreContext context =
+          new SqliteStoreContext(
+              bookPath, SqliteStoreAccessMode.READ_WRITE_CREATE, SqliteNativeBootstrap::api);
+      SqliteStoreLifecycle lifecycle =
+          new SqliteStoreLifecycle(context, sessionSecret) {
+            @Override
+            SqliteNativeDatabase database() {
+              return database;
+            }
+
+            @Override
+            SqliteBookStateSnapshot stateSnapshot(SqliteNativeDatabase activeDatabase) {
+              return new SqliteBookStateSnapshot(0, 0, SqliteBookState.BLANK_SQLITE);
+            }
+          };
+      SqliteStoreAdministrationMutationOperations operations =
+          new SqliteStoreAdministrationMutationOperations(context, lifecycle);
+
+      SqliteStorageFailureException failure =
+          assertThrows(
+              SqliteStorageFailureException.class,
+              () ->
+                  operations.openAttestedBook(
+                      initializedAt,
+                      SqlitePostingFactFixtureSupport.bookIdentity(),
+                      List.of(),
+                      SqliteAttestationTestSupport.genesis(
+                          SqlitePostingFactFixtureSupport.bookIdentity(), initializedAt)));
+
+      assertEquals(
+          "Failed to initialize SQLite book. SQLITE_IOERR: simulated schema initialization failure",
+          failure.getMessage());
+      assertEquals(List.of("begin immediate", "rollback"), database.statements);
+      lifecycle.close();
+    }
+  }
+
   private static AttestationEffectMutation invokeDeclarationMutation(
       AccountDeclarationOutcome outcome) {
     try {
@@ -167,5 +217,28 @@ class SqliteStoreAdministrationMutationOperationsCoverageTest {
     } catch (Throwable throwable) {
       throw new AssertionError("Failed to invoke account declaration-mutation mapping.", throwable);
     }
+  }
+
+  /** Records transaction control while making only schema execution fail natively. */
+  private static final class SchemaFailingDatabase extends SqliteNativeDatabase {
+    private final List<String> statements = new ArrayList<>();
+
+    private SchemaFailingDatabase() {
+      super(MemorySegment.NULL);
+    }
+
+    @Override
+    void executeStatement(String sql) {
+      statements.add(sql);
+    }
+
+    @Override
+    void executeScript(String sql) {
+      throw new SqliteNativeException(
+          SqliteNativeResultCode.code("IOERR"), "simulated schema initialization failure");
+    }
+
+    @Override
+    public void close() {}
   }
 }

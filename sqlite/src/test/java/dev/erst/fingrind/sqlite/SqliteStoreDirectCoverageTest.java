@@ -34,6 +34,7 @@ import dev.erst.fingrind.executor.bookkeeping.CloseTargetAccountCandidateMissing
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
+import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
@@ -191,6 +192,79 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
         throw new UncheckedIOException(exception);
       }
 
+      assertEquals(0, countRows(requireStoreDatabase(postingFactStore), "interim_result_sweep"));
+      assertEquals(
+          0,
+          countRowsWhereTextEquals(
+              requireStoreDatabase(postingFactStore),
+              "audit_event",
+              "event_kind",
+              "INTERIM_RESULT_SWEPT"));
+    }
+  }
+
+  @Test
+  void plannedInterimResultSweep_rollsBackNativeStorageFailures() {
+    ReportingPeriod reportingPeriod = new ReportingPeriod(EFFECTIVE_DATE, EFFECTIVE_DATE);
+    Path bookPath = tempDirectory.resolve("planned-interim-result-sweep-storage-failures.sqlite");
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
+      try (StoreDatabaseSwap ignored =
+          swapStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath))) {
+        assertCloseStorageFailure(
+            () ->
+                postingFactStore
+                    .storeMutationOperations()
+                    .interimResultSweep(
+                        reportingPeriod,
+                        bookIdentity(),
+                        InterimResultSweepPlanner.forBookIdentity(bookIdentity()),
+                        EFFECTIVE_DATE,
+                        FIXED_INSTANT,
+                        unusedPostingIdGenerator(),
+                        SqliteAttestationTestSupport.authorizer()));
+      } catch (IOException exception) {
+        throw new UncheckedIOException(exception);
+      }
+
+      assertEquals(0, countRows(requireStoreDatabase(postingFactStore), "interim_result_sweep"));
+    }
+  }
+
+  @Test
+  void plannedInterimResultSweep_rollsBackTheOpenTransactionWhenCustodyRejectsSigning()
+      throws Exception {
+    Path bookPath = tempDirectory.resolve("planned-interim-result-sweep-custody-rejection.sqlite");
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
+      postingFactStore.declareAccount(
+          new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
+              new AccountCode("3200"),
+              new AccountName("Retained Earnings"),
+              AccountType.EQUITY,
+              financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING)),
+          FIXED_INSTANT,
+          SqliteAttestationTestSupport.authorizer());
+      IllegalStateException custodyRejection =
+          new IllegalStateException("custody rejected signing");
+
+      assertEquals(
+          custodyRejection,
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  postingFactStore
+                      .storeMutationOperations()
+                      .interimResultSweep(
+                          new ReportingPeriod(EFFECTIVE_DATE, EFFECTIVE_DATE),
+                          bookIdentity(),
+                          InterimResultSweepPlanner.forBookIdentity(bookIdentity()),
+                          EFFECTIVE_DATE,
+                          FIXED_INSTANT,
+                          unusedPostingIdGenerator(),
+                          ignored -> {
+                            throw custodyRejection;
+                          })));
       assertEquals(0, countRows(requireStoreDatabase(postingFactStore), "interim_result_sweep"));
       assertEquals(
           0,

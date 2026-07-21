@@ -18,11 +18,16 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
+import java.io.IOException;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -174,6 +179,42 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
   }
 
   @Test
+  void backupArtifactVerification_translatesArtifactReadAndSnapshotWriteIoFailures() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath unreadableArtifact = fileSystem.path("\\backup.fgba");
+      unreadableArtifact.exists = true;
+      unreadableArtifact.regularFile = true;
+      IOException artifactReadCause = new IOException("simulated artifact read failure");
+      unreadableArtifact.failNewByteChannelWith(artifactReadCause);
+
+      IllegalStateException artifactReadFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  maintenanceStore()
+                      .verifyBackupArtifact(unreadableArtifact, fileSystem.path("\\backup.key")));
+      assertEquals(
+          "Failed to read the selected backup artifact.", artifactReadFailure.getMessage());
+      assertSame(artifactReadCause, artifactReadFailure.getCause());
+
+      AclFixturePath snapshotStage = fileSystem.path("\\snapshot.sqlite");
+      snapshotStage.exists = true;
+      snapshotStage.regularFile = true;
+      IOException snapshotWriteCause = new IOException("simulated snapshot write failure");
+      snapshotStage.failNewByteChannelWith(snapshotWriteCause);
+
+      IllegalStateException snapshotWriteFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () -> writeSnapshot(snapshotStage, new byte[] {1, 2, 3}));
+      assertEquals(
+          "Failed to stage the encrypted backup artifact snapshot.",
+          snapshotWriteFailure.getMessage());
+      assertSame(snapshotWriteCause, snapshotWriteFailure.getCause());
+    }
+  }
+
+  @Test
   void protectedBookMaintenanceStore_rejectsForeignVerifiedBookHandles() {
     Path artifactPath = tempDirectory.resolve("foreign-verified-book.sqlite");
     try (ProtectedBookMaintenanceStore.VerifiedBook foreignHandle =
@@ -195,6 +236,25 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
                       SqliteProtectedBookMaintenanceArtifactStore.requireVerifiedBook(
                           foreignHandle))
               .getMessage());
+    }
+  }
+
+  private static void writeSnapshot(Path snapshotPath, byte[] snapshot) {
+    try {
+      MethodHandle writeSnapshot =
+          MethodHandles.privateLookupIn(
+                  SqliteProtectedBookMaintenanceStore.class, MethodHandles.lookup())
+              .findStatic(
+                  SqliteProtectedBookMaintenanceStore.class,
+                  "writeSnapshot",
+                  MethodType.methodType(void.class, Path.class, byte[].class));
+      writeSnapshot.invoke(snapshotPath, snapshot);
+    } catch (RuntimeException exception) {
+      throw exception;
+    } catch (Error error) {
+      throw error;
+    } catch (Throwable throwable) {
+      throw new AssertionError("Failed to invoke encrypted backup snapshot staging.", throwable);
     }
   }
 
