@@ -1,10 +1,14 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationOperationPreimages;
+import dev.erst.fingrind.core.attestation.AttestationOperationRequest;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
 import dev.erst.fingrind.core.attestation.AttestationVerificationException;
 import dev.erst.fingrind.core.attestation.AttestationVerifier;
 import java.math.BigInteger;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -53,6 +57,45 @@ final class SqliteAttestationEvidenceStore {
     }
     insert(activeDatabase, candidateVerification, checkedCandidate);
     return candidateVerification;
+  }
+
+  /**
+   * Signs and appends one operation while the caller owns the immediate write transaction.
+   *
+   * <p>The current head is loaded only after the transaction has begun; the authorizer therefore
+   * cannot reserve a sequence before a credential prompt. The candidate is then passed through the
+   * same full persisted-chain and compare-and-swap validation as externally supplied evidence.
+   */
+  static AttestationVerification appendAuthorized(
+      SqliteNativeDatabase activeDatabase,
+      String operationKind,
+      Instant recordedAt,
+      AttestationOperationPreimages preimages,
+      AttestationOperationAuthorizer authorizer) {
+    Objects.requireNonNull(activeDatabase, "activeDatabase");
+    String checkedOperationKind = Objects.requireNonNull(operationKind, "operationKind");
+    Instant checkedRecordedAt = Objects.requireNonNull(recordedAt, "recordedAt");
+    AttestationOperationPreimages checkedPreimages = Objects.requireNonNull(preimages, "preimages");
+    AttestationOperationAuthorizer checkedAuthorizer =
+        AttestationOperationAuthorizer.require(authorizer);
+    List<AttestationEvidence> persistedEvidence = loadAll(activeDatabase);
+    AttestationVerification persistedVerification =
+        verifyPersisted(persistedEvidence)
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Protected-book mutation requires a persisted attestation genesis."));
+    AttestationEvidence candidateEvidence =
+        checkedAuthorizer.authorize(
+            new AttestationOperationRequest(
+                persistedVerification.bookId(),
+                persistedVerification.headOrder().add(BigInteger.ONE),
+                checkedOperationKind,
+                persistedVerification.operationHead(),
+                checkedRecordedAt,
+                checkedPreimages.request(),
+                checkedPreimages.effect()));
+    return append(activeDatabase, persistedVerification.operationHead(), candidateEvidence);
   }
 
   static List<AttestationEvidence> loadAll(SqliteNativeDatabase activeDatabase) {

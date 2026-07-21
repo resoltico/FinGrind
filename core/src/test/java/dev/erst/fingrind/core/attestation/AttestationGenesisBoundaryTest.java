@@ -4,6 +4,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountTaxonomy;
+import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
@@ -96,6 +100,57 @@ class AttestationGenesisBoundaryTest {
                         principalId,
                         temporaryDirectory.resolve("missing.fgatk"),
                         passphrasePath))));
+  }
+
+  @Test
+  void projectsAndSignsTheCompleteAccountRegistryEffectAtTheObservedHead() throws Exception {
+    Path keyPath = temporaryDirectory.resolve("account-operator.fgatk");
+    Path passphrasePath = temporaryDirectory.resolve("account-operator.passphrase");
+    Files.writeString(passphrasePath, "test attestation passphrase\n");
+    AttestationPublicCredential credential =
+        AttestationKeyFiles.create(keyPath, "test attestation passphrase".toCharArray());
+    UUID principalId = UUID.fromString("10213243-5465-7687-98a9-babcbddceeff");
+    UUID bookId = UUID.fromString("00112233-4455-6677-8899-aabbccddeeff");
+    AttestationEvidence genesis;
+    try (AttestationSigningCredential signer =
+        new AttestationSigningCredential(
+            principalId, credential, keyPath, "test attestation passphrase".toCharArray())) {
+      genesis =
+          AttestationGenesis.create(
+              bookId, bookIdentity(), Instant.parse("2026-07-21T00:00:00Z"), List.of(signer));
+    }
+    AttestationAccountSnapshot account =
+        new AttestationAccountSnapshot(
+            new AccountCode("1010"),
+            new AccountName("Operating cash"),
+            AccountType.ASSET,
+            AccountTaxonomy.empty(),
+            null,
+            true);
+    AttestationOperationPreimages preimages =
+        AttestationAccountMutationProjection.project(
+            "declare-account", account, account, AttestationEffectMutation.CREATE);
+
+    try (AttestationSigningSession session =
+        AttestationSigningSession.open(
+            List.of(new AttestationCredentialSource(principalId, keyPath, passphrasePath)))) {
+      AttestationEvidence declaration =
+          session.authorize(
+              new AttestationOperationRequest(
+                  bookId,
+                  BigInteger.ONE,
+                  "declare-account",
+                  AttestationVerifier.verifyBook(List.of(genesis)).operationHead(),
+                  Instant.parse("2026-07-21T00:00:01Z"),
+                  preimages.request(),
+                  preimages.effect()));
+
+      assertEquals(
+          1,
+          AttestationVerifier.verifyBook(List.of(genesis, declaration))
+              .headOrder()
+              .intValueExact());
+    }
   }
 
   private static BookIdentity bookIdentity() {
