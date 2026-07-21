@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
-import java.io.IOException;
 import java.math.BigInteger;
 import org.junit.jupiter.api.Test;
 
@@ -17,18 +16,13 @@ class AttestationStaticCorpusFixtureTest {
   private static final AttestationStaticCorpus.PolicyFold ANCHOR_AT_ORDER_THREE =
       new AttestationStaticCorpus.PolicyFold(
           BigInteger.valueOf(3), AttestationCapability.ANCHOR, 1, 2, 2, 0, false);
-  private static final String V_CONTAINER_DIGEST =
-      "3b0fc99b3916dadebfdfa6babcff83afdac8d23b861a4a4e5c43d9e386d9d6ff";
-  private static final int N14_BOOK_ID_OFFSET = 25;
-  private static final int N14_SOURCE_OPERATION_HEAD_OFFSET = 65;
-  private static final int N14_SNAPSHOT_DIGEST_OFFSET = 97;
-  private static final int N14_TRAILER_SNAPSHOT_LENGTH_OFFSET = 372;
 
   @Test
   void executesEveryProtectedBookPositiveFromItsDeclaredRawResource() {
     for (String id : AttestationStaticCorpusVectors.positiveBookIds()) {
       AttestationStaticCorpus.Fixture fixture =
           AttestationStaticCorpusVectors.positiveBookFixture(id);
+      assertScope(fixture, AttestationStaticCorpus.VerificationScope.BOOK);
       AttestationStaticCorpusVectors.requirePolicyFold(
           AttestationStaticCorpusVectors.positivePolicy(id));
       AttestationCorpusResources.Book book =
@@ -52,8 +46,7 @@ class AttestationStaticCorpusFixtureTest {
     assertDoesNotThrow(
         () ->
             AttestationArtifactVerifier.verifyArtifact(
-                artifact.encoded(),
-                source -> AttestationStaticCorpusVectors.book("B-02").decode()));
+                artifact.encoded(), AttestationStaticArtifactCorpusVectors::decodeB05Snapshot));
     AttestationStaticCorpusVectors.requirePolicyFold("B-02", BACKUP_AT_SOURCE_ORDER_THREE);
 
     AttestationCorpusResources.Book acknowledged = AttestationStaticCorpusVectors.book("B-05-book");
@@ -72,6 +65,7 @@ class AttestationStaticCorpusFixtureTest {
   void executesN11FromItsCommittedMutation() {
     AttestationStaticCorpus.Fixture fixture =
         AttestationStaticCorpusVectors.negativeBookFixture("N-11");
+    assertScope(fixture, AttestationStaticCorpus.VerificationScope.BOOK);
     AttestationStaticCorpusVectors.requirePolicyFold(
         AttestationStaticCorpusVectors.negativePolicy("N-11"));
     assertFailure(
@@ -82,15 +76,18 @@ class AttestationStaticCorpusFixtureTest {
   }
 
   @Test
-  void executesN14AgainstThePublishedContainerBytes() throws IOException {
-    byte[] source =
-        AttestationDocumentVectors.bytes(
-            AttestationDocumentVectors.ARTIFACT_DOCUMENT, "V-CONTAINER-01", "container");
-    assertEquals(V_CONTAINER_DIGEST, AttestationHash.sha256(source).hex());
-    assertN14("N-14a", source, N14_SNAPSHOT_DIGEST_OFFSET);
-    assertN14("N-14b", source, N14_SOURCE_OPERATION_HEAD_OFFSET);
-    assertN14("N-14c", source, N14_BOOK_ID_OFFSET);
-    assertN14("N-14d", source, N14_TRAILER_SNAPSHOT_LENGTH_OFFSET);
+  void executesEveryN14ManifestNegativeAgainstTheCommittedCompleteArtifact() {
+    for (String id : AttestationStaticArtifactCorpusVectors.negativeIds()) {
+      AttestationStaticCorpus.Fixture fixture =
+          AttestationStaticArtifactCorpusVectors.negativeFixture(id);
+      assertScope(fixture, AttestationStaticCorpus.VerificationScope.ARTIFACT);
+      AttestationStaticCorpusVectors.requirePolicyFold("B-02", fixture.policyFold());
+      assertFailure(
+          fixture.expectedFirstFailure(),
+          () ->
+              AttestationArtifactVerifier.verifyArtifact(
+                  fixture.source(), AttestationStaticArtifactCorpusVectors::decodeB05Snapshot));
+    }
   }
 
   @Test
@@ -99,7 +96,7 @@ class AttestationStaticCorpusFixtureTest {
     assertDoesNotThrow(
         () ->
             AttestationArtifactVerifier.verifyArtifact(
-                artifact.encoded(), source -> AttestationStaticCorpusVectors.book("B-02").decode()),
+                artifact.encoded(), AttestationStaticArtifactCorpusVectors::decodeB05Snapshot),
         artifact.id());
     AttestationStaticCorpusVectors.requirePolicyFold("B-02", BACKUP_AT_SOURCE_ORDER_THREE);
 
@@ -131,24 +128,9 @@ class AttestationStaticCorpusFixtureTest {
         id);
   }
 
-  private static void assertN14(String id, byte[] source, int offset) {
-    AttestationStaticCorpus.Fixture fixture =
-        AttestationStaticCorpus.fixture(
-            id,
-            source,
-            AttestationStaticCorpus.Mutation.replace(
-                offset, new byte[] {(byte) (source[offset] ^ 1)}),
-            BACKUP_AT_SOURCE_ORDER_THREE,
-            AttestationStaticCorpus.VerificationScope.ARTIFACT,
-            AttestationAuthorizationFailure.MANIFEST_INVALID);
-    assertFailure(
-        fixture.expectedFirstFailure(),
-        () ->
-            AttestationArtifactVerifier.verifyArtifact(
-                fixture.source(),
-                ignored -> {
-                  throw new IllegalArgumentException();
-                }));
+  private static void assertScope(
+      AttestationStaticCorpus.Fixture fixture, AttestationStaticCorpus.VerificationScope expected) {
+    assertEquals(expected, fixture.scope(), fixture.id());
   }
 
   private static void assertStandalone(AttestationStaticCorpusVectors.StandaloneEnvelope fixture) {

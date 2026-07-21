@@ -1,16 +1,12 @@
 package dev.erst.fingrind.core.attestation;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * Immutable, committed inputs for the complete-book Slice 4 corpus.
@@ -19,7 +15,6 @@ import java.util.stream.Collectors;
  * author a future vector release, but they must never construct a verifier input here.
  */
 final class AttestationStaticCorpusVectors {
-  private static final String ROOT = "/dev/erst/fingrind/core/attestation/corpus/";
   private static final Map<String, String> SOURCE_SHA256 =
       Map.ofEntries(
           Map.entry("B-01", "f31e017a7bee0930759acd9185b5ee656e8ddc04dda893bfbd3be5f8d1b15549"),
@@ -107,7 +102,7 @@ final class AttestationStaticCorpusVectors {
       throw new IllegalStateException("Static negative base does not match its registered vector.");
     }
     AttestationStaticCorpus.Mutation mutation = mutation(id, metadata);
-    negativeSource(id, definition, metadata);
+    negativeSource(id, definition.baseId(), metadata);
     return AttestationStaticCorpus.fixture(
         id,
         source(definition.baseId()),
@@ -172,11 +167,12 @@ final class AttestationStaticCorpusVectors {
 
   static byte[] source(String id) {
     String expectedHash = require(SOURCE_SHA256, id, "source hash");
-    if (!resourceText("source/" + id + ".sha256").equals(expectedHash)) {
+    if (!AttestationStaticCorpusResourceLoader.text("source/" + id + ".sha256")
+        .equals(expectedHash)) {
       throw new IllegalStateException(
           "Static corpus source fingerprint is not independently pinned.");
     }
-    byte[] source = resourceBase64("source/" + id + ".b64");
+    byte[] source = AttestationStaticCorpusResourceLoader.base64("source/" + id + ".b64");
     requireHash(source, expectedHash, "source " + id);
     return source;
   }
@@ -186,17 +182,16 @@ final class AttestationStaticCorpusVectors {
     if (negative == null) {
       return source(id);
     }
-    return negativeSource(id, negative, negativeMetadata(id));
+    return negativeSource(id, negative.baseId(), negativeMetadata(id));
   }
 
-  private static byte[] negativeSource(
-      String id, NegativeBook definition, NegativeMetadata metadata) {
+  private static byte[] negativeSource(String id, String baseId, NegativeMetadata metadata) {
     String expectedHash = require(NEGATIVE_SOURCE_SHA256, id, "negative source hash");
     if (!metadata.sourceSha256().equals(expectedHash)) {
       throw new IllegalStateException(
           "Static negative source fingerprint is not independently pinned.");
     }
-    byte[] source = mutation(id, metadata).apply(source(definition.baseId()));
+    byte[] source = mutation(id, metadata).apply(source(baseId));
     requireHash(source, expectedHash, "negative " + id);
     return source;
   }
@@ -206,7 +201,7 @@ final class AttestationStaticCorpusVectors {
         AttestationStaticCorpus.Mutation.edit(
             metadata.offset(),
             metadata.replacedByteCount(),
-            resourceBase64("negative/" + id + ".delta.b64")));
+            AttestationStaticCorpusResourceLoader.base64("negative/" + id + ".delta.b64")));
   }
 
   private static AttestationRegistry registryAt(String sourceId, int lastIncludedOrder) {
@@ -394,55 +389,13 @@ final class AttestationStaticCorpusVectors {
   }
 
   private static NegativeMetadata negativeMetadata(String id) {
-    Map<String, String> fields = resourceFields("negative/" + id + ".meta");
+    Map<String, String> fields =
+        AttestationStaticCorpusResourceLoader.fields("negative/" + id + ".meta");
     return new NegativeMetadata(
         requiredField(fields, "base"),
         Integer.parseInt(requiredField(fields, "offset")),
         Integer.parseInt(requiredField(fields, "replacedByteCount")),
         requiredField(fields, "sourceSha256"));
-  }
-
-  private static byte[] resourceBase64(String path) {
-    return Base64.getDecoder().decode(resourceText(path));
-  }
-
-  private static Map<String, String> resourceFields(String path) {
-    Map<String, String> fields =
-        resourceText(path)
-            .lines()
-            .map(line -> resourceField(path, line))
-            .collect(
-                Collectors.toUnmodifiableMap(
-                    Map.Entry::getKey,
-                    Map.Entry::getValue,
-                    (firstValue, secondValue) -> {
-                      throw new IllegalStateException(
-                          "Static corpus metadata is malformed: " + path);
-                    }));
-    if (!fields.keySet().equals(Set.of("base", "offset", "replacedByteCount", "sourceSha256"))) {
-      throw new IllegalStateException("Static corpus metadata has an unexpected schema: " + path);
-    }
-    return fields;
-  }
-
-  private static Map.Entry<String, String> resourceField(String path, String line) {
-    int separator = line.indexOf('=');
-    if (separator <= 0) {
-      throw new IllegalStateException("Static corpus metadata is malformed: " + path);
-    }
-    return Map.entry(line.substring(0, separator), line.substring(separator + 1));
-  }
-
-  private static String resourceText(String path) {
-    try (InputStream input =
-        AttestationStaticCorpusVectors.class.getResourceAsStream(ROOT + path)) {
-      if (input == null) {
-        throw new IllegalStateException("Static corpus resource is missing: " + path);
-      }
-      return new String(input.readAllBytes(), StandardCharsets.US_ASCII).trim();
-    } catch (IOException exception) {
-      throw new IllegalStateException("Cannot read static corpus resource: " + path, exception);
-    }
   }
 
   private static byte[] documentBytes(String document, String vector, String field) {

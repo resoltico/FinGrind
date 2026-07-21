@@ -5,7 +5,7 @@ domain: BOOK_OPERATION_ATTESTATION_CORPUS
 updated: "2026-07-21"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["AttestationStaticCorpus", "AttestationVectors"]
+  symbols: ["AttestationStaticCorpus", "AttestationStaticCorpusVectors", "AttestationStaticArtifactCorpusVectors"]
 route:
   keywords: [verifiable-operation-attestation, static-corpus, golden-vectors, fixture-ledger, verifier-negative-cases, backup-artifact, live-cas]
   questions: ["which static fixtures verify FinGrind operation attestation", "how is the attestation corpus constructed", "which negative attestation vectors are required", "which artifact fixtures cover backup and restore"]
@@ -36,11 +36,11 @@ complete book or artifact.
 The complete-book, artifact, and receipt sources are committed under
 `core/src/test/resources/dev/erst/fingrind/core/attestation/corpus/`. Each `source/<id>.b64` has
 an adjacent SHA-256 commitment and is checked against the independently repeated test constant.
-Each complete-book negative has `negative/<id>.meta` with its base ID, byte offset, replaced-byte
-count, and target SHA-256, plus `negative/<id>.delta.b64` with the replacement bytes. Both source
-and negative target hashes are independently repeated in the test code. The verifier tests decode
-those bytes directly; no encoder, signer, semantic fixture builder, or mutation derivation
-constructs a Slice-4 verifier input at test time.
+Each complete-book or complete-artifact negative has `negative/<id>.meta` with its base ID, byte
+offset, replaced-byte count, and target SHA-256, plus `negative/<id>.delta.b64` with the
+replacement bytes. Both source and negative target hashes are independently repeated in the test
+code. The verifier tests decode those bytes directly; no encoder, signer, semantic fixture builder,
+or mutation derivation constructs a Slice-4 verifier input at test time.
 
 ## Static Corpus Common Facts
 
@@ -120,10 +120,10 @@ from a fixture name.
 | N-12a | B-01 genesis: replace A's declared SPKI with B's while retaining A's keyId | attestation-genesis-invalid |
 | N-12b | B-01 genesis: remove A's sole envelope entry and set sigCount 0000 | attestation-genesis-invalid |
 | N-13 | B-08's standalone envelope resolver with active C and a valid policy state: A and B, but not C, have BACKUP GRANT and M remains 2. Rebuild V-MANIFEST-02 as the two-entry raw envelope C then B: C has principalId 2233445566778899aabbccddeeff0011, keyId 788de5096f8b530eef97a4015cffb7cfeb260c23795b846bf8112682a93b1101, and signature e68bc651ab5ee607fe5f5e5a122e58477950dc37b33794c95fc5671df28d6efaf408d460b75231b175b025276fff1e92981c942ab523602d0076a3250f8d5f0e; B's 112-byte entry is unchanged. | attestation-capability-invalid |
-| N-14a | V-CONTAINER-01: XOR byte 0 of snapshotDigest with 01. | attestation-manifest-invalid |
-| N-14b | V-CONTAINER-01: XOR byte 0 of sourceOperationHead with 01. | attestation-manifest-invalid |
-| N-14c | V-CONTAINER-01: XOR byte 0 of bookId with 01. | attestation-manifest-invalid |
-| N-14d | V-CONTAINER-01: XOR byte 0 of trailer snapshotLength with 01. | attestation-manifest-invalid |
+| N-14a | B-05's complete manifest-attested artifact: XOR byte 0 of the manifest snapshotDigest with 01. | attestation-manifest-invalid |
+| N-14b | B-05's complete manifest-attested artifact: XOR byte 0 of the manifest sourceOperationHead with 01. | attestation-manifest-invalid |
+| N-14c | B-05's complete manifest-attested artifact: XOR byte 0 of the manifest bookId with 01. | attestation-manifest-invalid |
+| N-14d | B-05's complete manifest-attested artifact: XOR byte 0 of the trailer snapshotLength with 01. | attestation-manifest-invalid |
 | N-15 | B-09's standalone envelope resolver with active C and a valid policy state: A and B, but not C, have ANCHOR GRANT and M remains 2. Rebuild V-RECEIPT-02 as the two-entry raw envelope C then B: C has principalId 2233445566778899aabbccddeeff0011, keyId 788de5096f8b530eef97a4015cffb7cfeb260c23795b846bf8112682a93b1101, and signature 31f445e7dda739aa66fb025d965217c83d8df4a602adad8023539df5ac8cff46be999d06b8278439b201099b57519f699718c05dd0f0abdb0ca7a445cd835705; B's 112-byte entry is unchanged. | attestation-capability-invalid |
 | N-16 | B-04 at order 9: change C's order-4 credentialPurpose from system to operator while retaining its key, grant, request, envelope, and every other registry fact. The altered order-5 registry state first leaves CLOSE_PERIOD M=1 without any system-purpose eligible principal, so the verifier rejects that state before order 9. | attestation-capability-invalid |
 | N-17 | B-02 common posting: add a fixed-asset 0060 effect record, recompute the effect digest, operation payload, and A/B signatures, but add no 0131 request record | attestation-request-profile-invalid |

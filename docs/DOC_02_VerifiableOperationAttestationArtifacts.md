@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: BOOK_OPERATION_ATTESTATION_ARTIFACTS
-updated: "2026-07-19"
+updated: "2026-07-21"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["BackupManifest", "AttestationReceipt", "AttestationArtifactContainer"]
@@ -188,5 +188,6 @@ container = 000102030405060708090a0b0c0d0e0f4647415454424d3101001122334455667788
 
 [DOC_02_VerifiableOperationAttestationCorpus.md](./DOC_02_VerifiableOperationAttestationCorpus.md)
 distinguishes these standalone envelope and parser vectors from complete B-05 manifest artifacts
-and B-11 receipt/book resources. Slice 4 materializes those complete sources without inventing
-additional semantic facts.
+and B-11 receipt/book resources. V-CONTAINER-01 remains parser and digest conformance only; the
+complete B-05 artifact owns the N-14 manifest-binding negatives. Slice 4 materializes those
+complete sources without inventing additional semantic facts.

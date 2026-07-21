@@ -1,6 +1,7 @@
 package dev.erst.fingrind.core.attestation;
 
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.assertFailure;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
 
@@ -11,6 +12,7 @@ class AttestationStaticNegativeBookCorpusTest {
     for (String id : AttestationStaticCorpusVectors.negativeBookIds()) {
       AttestationStaticCorpus.Fixture fixture =
           AttestationStaticCorpusVectors.negativeBookFixture(id);
+      assertEquals(AttestationStaticCorpus.VerificationScope.BOOK, fixture.scope(), id);
       AttestationStaticCorpusVectors.requirePolicyFold(
           AttestationStaticCorpusVectors.negativePolicy(id));
       assertFailure(
