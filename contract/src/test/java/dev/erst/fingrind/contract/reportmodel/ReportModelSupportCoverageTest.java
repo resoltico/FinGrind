@@ -290,7 +290,7 @@ class ReportModelSupportCoverageTest {
         "Direct journal / Direct posting",
         ReportModelNarrative.accountLedgerEntrySummary(selfPostingFact));
     assertEquals(
-        "Reversal / Reversal posting of posting-0",
+        "Reversal / Reversal posting of e888fd00-a501-341d-9a6b-8d9059757d1b",
         ReportModelNarrative.accountLedgerEntrySummary(reversalPostingFact));
     assertEquals("EUR 20.00 Debit", ReportModelNarrative.runningBalance(ledgerEntry));
     assertFalse(

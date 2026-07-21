@@ -105,6 +105,10 @@ class ProtocolCatalogTest {
     assertEquals(
         List.of(
             "inspect-book",
+            "verify-book",
+            "attestation-review",
+            "export-attestation-receipt",
+            "verify-receipt",
             "list-accounts",
             "list-tax-registrations",
             "tax-obligation",

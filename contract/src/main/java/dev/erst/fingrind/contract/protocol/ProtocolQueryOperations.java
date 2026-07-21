@@ -83,7 +83,7 @@ final class ProtocolQueryOperations {
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),
-        "Report non-persisted compromise-review findings from one structurally valid attestation chain.",
+        "Report non-persisted compromise-review findings from a structurally valid attestation chain.",
         List.of(
             ProtocolExampleStep.command(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key"
@@ -109,7 +109,7 @@ final class ProtocolQueryOperations {
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),
-        "Publish one independently retained quorum-signed receipt without changing the selected book.",
+        "Publish an independently retained quorum-signed receipt without changing the selected book.",
         List.of(
             ProtocolExampleStep.command(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./receipts/acme.fgar %s 123e4567-e89b-12d3-a456-426614174000 %s ./secrets/operator.fgatk %s ./secrets/operator.passphrase"
@@ -136,7 +136,7 @@ final class ProtocolQueryOperations {
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),
-        "Verify one independently retained receipt against the selected book's complete immutable chain.",
+        "Verify an independently retained receipt against the selected book's complete immutable chain.",
         List.of(
             ProtocolExampleStep.command(
                 "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./receipts/acme.fgar"

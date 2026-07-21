@@ -172,7 +172,12 @@ class ProtocolRequestFieldSetsTest {
         ProtocolPostEntryFields.sourceDocumentFields());
     assertEquals(
         List.of(
-            "approvalId", "approvalType", "approverId", "approverType", "decision", "approvedAt"),
+            "approvalId",
+            "approvalType",
+            "approverReference",
+            "approverType",
+            "decision",
+            "approvedAt"),
         ProtocolPostEntryFields.approvalFields());
     assertEquals(
         List.of(

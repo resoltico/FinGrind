@@ -135,7 +135,7 @@ class MachineContractDiscoverySurfaceTest {
     assertEquals(
         ProtocolCatalog.operations().size(),
         MachineContractDomainDescriptors.commandDescriptors().size());
-    assertEquals(4, MachineContractDomainDescriptors.commandCatalog().discovery().size());
+    assertEquals(6, MachineContractDomainDescriptors.commandCatalog().discovery().size());
     assertEquals(6, MachineContractDomainDescriptors.audit().requestProvenanceFields().size());
     assertEquals(2, MachineContractDomainDescriptors.audit().committedFields().size());
     assertEquals(9, MachineContractDomainDescriptors.exitCodes().size());
