@@ -16,7 +16,6 @@ import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
-import java.lang.reflect.Proxy;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
@@ -143,42 +142,7 @@ class SqliteClosingMutationReadSupportCoverageTest extends SqlitePostingFactStor
   }
 
   private static FiscalYearClosePlanner directClosePlanner() {
-    try {
-      Class<?> closePostingPolicyClass =
-          Class.forName("dev.erst.fingrind.executor.bookkeeping.policy.ClosePostingPolicy");
-      Object policy =
-          Proxy.newProxyInstance(
-              Thread.currentThread().getContextClassLoader(),
-              new Class<?>[] {closePostingPolicyClass},
-              (proxy, method, arguments) ->
-                  switch (method.getName()) {
-                    case "closesAccountType" -> {
-                      AccountType accountType = (AccountType) arguments[0];
-                      yield accountType == AccountType.REVENUE
-                          || accountType == AccountType.EXPENSE;
-                    }
-                    case "resultHoldingLineClassification" ->
-                        FinancialPositionLineClassification.RESULT_HOLDING;
-                    case "toString" -> "DirectClosePolicy";
-                    case "hashCode" -> System.identityHashCode(proxy);
-                    case "equals" ->
-                        arguments[0] != null
-                            && Proxy.isProxyClass(arguments[0].getClass())
-                            && java.util.Objects.equals(
-                                Proxy.getInvocationHandler(arguments[0]),
-                                Proxy.getInvocationHandler(proxy));
-                    default ->
-                        throw new UnsupportedOperationException(
-                            "Unsupported ClosePostingPolicy method: " + method.getName());
-                  });
-      return FiscalYearClosePlanner.class
-          .getConstructor(closePostingPolicyClass)
-          .newInstance(policy);
-    } catch (ReflectiveOperationException exception) {
-      throw new IllegalStateException(
-          "Failed to create a direct fiscal-year-close planner for close-read coverage.",
-          exception);
-    }
+    return FiscalYearClosePlanner.forBookIdentity(bookIdentity());
   }
 
   private static void declareAllCloseTargets(SqlitePostingFactStore postingFactStore) {
