@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -75,11 +76,18 @@ interface SqliteReportingPeriodCloseCapabilityView
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
       Instant sweptAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
     return storeMutationOperations()
         .interimResultSweep(
-            reportingPeriod, bookIdentity, planner, currentUtcDate, sweptAt, postingIdGenerator);
+            reportingPeriod,
+            bookIdentity,
+            planner,
+            currentUtcDate,
+            sweptAt,
+            postingIdGenerator,
+            attestationAuthorizer);
   }
 
   @Override
@@ -90,7 +98,8 @@ interface SqliteReportingPeriodCloseCapabilityView
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
       Instant sweptAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
     return storeMutationOperations()
         .interimResultSweep(
@@ -100,7 +109,8 @@ interface SqliteReportingPeriodCloseCapabilityView
             planner,
             currentUtcDate,
             sweptAt,
-            postingIdGenerator);
+            postingIdGenerator,
+            attestationAuthorizer);
   }
 
   @Override
@@ -110,10 +120,17 @@ interface SqliteReportingPeriodCloseCapabilityView
       FiscalYearClosePlanner planner,
       LocalDate currentUtcDate,
       Instant closedAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
     return storeMutationOperations()
         .fiscalYearClose(
-            reportingPeriod, bookIdentity, planner, currentUtcDate, closedAt, postingIdGenerator);
+            reportingPeriod,
+            bookIdentity,
+            planner,
+            currentUtcDate,
+            closedAt,
+            postingIdGenerator,
+            attestationAuthorizer);
   }
 }

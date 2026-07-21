@@ -166,29 +166,39 @@ final class SqliteCliMutationWorkflow implements CliBookMutationWorkflow {
   @Override
   public ContractDecision<InterimResultSweepResult> interimResultSweep(
       BookAccess bookAccess, InterimResultSweepCommand command) {
-    return SqliteCliWorkflowSessions.withReportingPeriodCloseSession(
-        SqliteReportingPeriodCloseSessions.openResolved(
-            bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
-        bookSession ->
-            BookkeepingPublishedLanguageTranslator.toPublished(
-                new InterimResultSweepService(
-                        bookSession, bookSession, new UuidV7PostingIdGenerator(), clock)
-                    .interimResultSweep(
-                        BookkeepingRequestPublishedLanguageTranslator.fromPublished(command))));
+    return withAttestationAuthorization(
+        bookAccess,
+        authorizer ->
+            SqliteCliWorkflowSessions.withReportingPeriodCloseSession(
+                SqliteReportingPeriodCloseSessions.openResolved(
+                    bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
+                bookSession ->
+                    BookkeepingPublishedLanguageTranslator.toPublished(
+                        new InterimResultSweepService(
+                                bookSession, bookSession, new UuidV7PostingIdGenerator(), clock)
+                            .interimResultSweep(
+                                BookkeepingRequestPublishedLanguageTranslator.fromPublished(
+                                    command),
+                                authorizer))));
   }
 
   @Override
   public ContractDecision<FiscalYearCloseResult> fiscalYearClose(
       BookAccess bookAccess, FiscalYearCloseCommand command) {
-    return SqliteCliWorkflowSessions.withReportingPeriodCloseSession(
-        SqliteReportingPeriodCloseSessions.openResolved(
-            bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
-        bookSession ->
-            BookkeepingPublishedLanguageTranslator.toPublished(
-                new FiscalYearCloseService(
-                        bookSession, bookSession, new UuidV7PostingIdGenerator(), clock)
-                    .fiscalYearClose(
-                        BookkeepingRequestPublishedLanguageTranslator.fromPublished(command))));
+    return withAttestationAuthorization(
+        bookAccess,
+        authorizer ->
+            SqliteCliWorkflowSessions.withReportingPeriodCloseSession(
+                SqliteReportingPeriodCloseSessions.openResolved(
+                    bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
+                bookSession ->
+                    BookkeepingPublishedLanguageTranslator.toPublished(
+                        new FiscalYearCloseService(
+                                bookSession, bookSession, new UuidV7PostingIdGenerator(), clock)
+                            .fiscalYearClose(
+                                BookkeepingRequestPublishedLanguageTranslator.fromPublished(
+                                    command),
+                                authorizer))));
   }
 
   @Override

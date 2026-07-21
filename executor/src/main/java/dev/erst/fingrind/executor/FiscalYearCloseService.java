@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner;
@@ -28,7 +29,8 @@ public final class FiscalYearCloseService {
   }
 
   /** Closes one fiscal year into capital and retained accumulated equity. */
-  public FiscalYearCloseOutcome fiscalYearClose(ReportingPeriod reportingPeriod) {
+  public FiscalYearCloseOutcome fiscalYearClose(
+      ReportingPeriod reportingPeriod, AttestationOperationAuthorizer attestationAuthorizer) {
     return executionSupport.execute(
         reportingPeriod,
         () ->
@@ -37,11 +39,20 @@ public final class FiscalYearCloseService {
         bookIdentity ->
             new FiscalYearClosePlanner(
                 KernelAccountingRulesResolver.forBookIdentity(bookIdentity).closePostingPolicy()),
-        closeStore::fiscalYearClose);
+        (period, bookIdentity, planner, currentUtcDate, closedAt, postingIdGenerator) ->
+            closeStore.fiscalYearClose(
+                period,
+                bookIdentity,
+                planner,
+                currentUtcDate,
+                closedAt,
+                postingIdGenerator,
+                attestationAuthorizer));
   }
 
   /** Closes the fiscal year identified by the selected label. */
-  public FiscalYearCloseOutcome fiscalYearClose(int fiscalYearLabel) {
+  public FiscalYearCloseOutcome fiscalYearClose(
+      int fiscalYearLabel, AttestationOperationAuthorizer attestationAuthorizer) {
     return executionSupport.execute(
         () ->
             new FiscalYearCloseOutcome.Rejected(
@@ -56,6 +67,7 @@ public final class FiscalYearCloseService {
                 planner,
                 currentUtcDate,
                 closedAt,
-                postingIdGenerator));
+                postingIdGenerator,
+                attestationAuthorizer));
   }
 }

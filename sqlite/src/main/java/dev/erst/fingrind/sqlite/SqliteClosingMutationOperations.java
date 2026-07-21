@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.AcceptedPosting;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
@@ -47,9 +48,16 @@ final class SqliteClosingMutationOperations {
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
       Instant sweptAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     return interimResultSweepOperations.interimResultSweep(
-        reportingPeriod, bookIdentity, planner, currentUtcDate, sweptAt, postingIdGenerator);
+        reportingPeriod,
+        bookIdentity,
+        planner,
+        currentUtcDate,
+        sweptAt,
+        postingIdGenerator,
+        attestationAuthorizer);
   }
 
   InterimResultSweepOutcome interimResultSweep(
@@ -59,7 +67,8 @@ final class SqliteClosingMutationOperations {
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
       Instant sweptAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     return interimResultSweepOperations.interimResultSweep(
         throughEffectiveDate,
         bookStartDate,
@@ -67,13 +76,16 @@ final class SqliteClosingMutationOperations {
         planner,
         currentUtcDate,
         sweptAt,
-        postingIdGenerator);
+        postingIdGenerator,
+        attestationAuthorizer);
   }
 
   InterimResultSweepOutcome interimResultSweep(
-      InterimResultSweepDraft interimResultSweepDraft, PostingIdGenerator postingIdGenerator) {
+      InterimResultSweepDraft interimResultSweepDraft,
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     return interimResultSweepOperations.interimResultSweep(
-        interimResultSweepDraft, postingIdGenerator);
+        interimResultSweepDraft, postingIdGenerator, attestationAuthorizer);
   }
 
   FiscalYearCloseOutcome fiscalYearClose(
@@ -82,9 +94,16 @@ final class SqliteClosingMutationOperations {
       FiscalYearClosePlanner planner,
       LocalDate currentUtcDate,
       Instant closedAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     return fiscalYearCloseOperations.fiscalYearClose(
-        reportingPeriod, bookIdentity, planner, currentUtcDate, closedAt, postingIdGenerator);
+        reportingPeriod,
+        bookIdentity,
+        planner,
+        currentUtcDate,
+        closedAt,
+        postingIdGenerator,
+        attestationAuthorizer);
   }
 
   CommittedPosting persistAcceptedPosting(

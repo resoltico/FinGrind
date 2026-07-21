@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor.spi;
 
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
@@ -18,7 +19,8 @@ public interface ReportingPeriodCloseStore extends PostingRangeStore {
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
       Instant sweptAt,
-      PostingIdGenerator postingIdGenerator);
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer);
 
   /** Attempts one atomic interim-result-sweep commit for the selected through date. */
   InterimResultSweepOutcome interimResultSweep(
@@ -28,7 +30,8 @@ public interface ReportingPeriodCloseStore extends PostingRangeStore {
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
       Instant sweptAt,
-      PostingIdGenerator postingIdGenerator);
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer);
 
   /** Attempts one atomic fiscal-year-close commit and returns the administration outcome. */
   FiscalYearCloseOutcome fiscalYearClose(
@@ -37,5 +40,6 @@ public interface ReportingPeriodCloseStore extends PostingRangeStore {
       FiscalYearClosePlanner planner,
       LocalDate currentUtcDate,
       Instant closedAt,
-      PostingIdGenerator postingIdGenerator);
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer);
 }

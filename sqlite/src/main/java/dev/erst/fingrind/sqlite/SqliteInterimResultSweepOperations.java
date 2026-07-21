@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.AcceptedInterimResultTargetSelection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft;
@@ -46,7 +47,8 @@ final class SqliteInterimResultSweepOperations {
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
       Instant sweptAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(reportingPeriod, "reportingPeriod");
     return plannedInterimResultSweep(
         bookIdentity,
@@ -54,6 +56,7 @@ final class SqliteInterimResultSweepOperations {
         currentUtcDate,
         sweptAt,
         postingIdGenerator,
+        attestationAuthorizer,
         activeDatabase ->
             new SweepPlanningResult(
                 reportingPeriod,
@@ -73,7 +76,8 @@ final class SqliteInterimResultSweepOperations {
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
       Instant sweptAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(throughEffectiveDate, "throughEffectiveDate");
     Objects.requireNonNull(bookStartDate, "bookStartDate");
     return plannedInterimResultSweep(
@@ -82,6 +86,7 @@ final class SqliteInterimResultSweepOperations {
         currentUtcDate,
         sweptAt,
         postingIdGenerator,
+        attestationAuthorizer,
         activeDatabase ->
             derivedSweepPlanning(
                 activeDatabase,
@@ -93,10 +98,13 @@ final class SqliteInterimResultSweepOperations {
   }
 
   InterimResultSweepOutcome interimResultSweep(
-      InterimResultSweepDraft interimResultSweepDraft, PostingIdGenerator postingIdGenerator) {
+      InterimResultSweepDraft interimResultSweepDraft,
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     executionSupport.requireWritableMutationSession();
     Objects.requireNonNull(interimResultSweepDraft, "interimResultSweepDraft");
     Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     if (executionSupport.missingBookFile()) {
       return bookNotInitializedOutcome();
     }
@@ -111,7 +119,10 @@ final class SqliteInterimResultSweepOperations {
             transactionOwnership = executionSupport.beginImmediateIfNeeded(activeDatabase);
             var sweptInterimResult =
                 postingPersistence.persistInterimResultSweep(
-                    activeDatabase, interimResultSweepDraft, postingIdGenerator);
+                    activeDatabase,
+                    interimResultSweepDraft,
+                    postingIdGenerator,
+                    attestationAuthorizer);
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
             committed = true;
             return new InterimResultSweepOutcome.Transferred(sweptInterimResult);
@@ -132,6 +143,7 @@ final class SqliteInterimResultSweepOperations {
       LocalDate currentUtcDate,
       Instant sweptAt,
       PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer,
       SweepWindowResolver sweepWindowResolver) {
     executionSupport.requireWritableMutationSession();
     Objects.requireNonNull(bookIdentity, "bookIdentity");
@@ -139,6 +151,7 @@ final class SqliteInterimResultSweepOperations {
     Objects.requireNonNull(currentUtcDate, "currentUtcDate");
     Objects.requireNonNull(sweptAt, "sweptAt");
     Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     Objects.requireNonNull(sweepWindowResolver, "sweepWindowResolver");
     if (executionSupport.missingBookFile()) {
       return bookNotInitializedOutcome();
@@ -182,7 +195,8 @@ final class SqliteInterimResultSweepOperations {
                         closePlan.sweptTotals(),
                         sweptAt,
                         closePlan.closingPostings()),
-                    postingIdGenerator);
+                    postingIdGenerator,
+                    attestationAuthorizer);
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
             return new InterimResultSweepOutcome.Transferred(sweptInterimResult);
           } catch (SqliteNativeException exception) {

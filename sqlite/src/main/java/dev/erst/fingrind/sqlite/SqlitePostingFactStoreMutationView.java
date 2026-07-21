@@ -64,19 +64,28 @@ interface SqlitePostingFactStoreMutationView {
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
       Instant sweptAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
     return storeMutationOperations()
         .interimResultSweep(
-            reportingPeriod, bookIdentity, planner, currentUtcDate, sweptAt, postingIdGenerator);
+            reportingPeriod,
+            bookIdentity,
+            planner,
+            currentUtcDate,
+            sweptAt,
+            postingIdGenerator,
+            attestationAuthorizer);
   }
 
   /** Commits a preplanned interim-result sweep into the protected book. */
   default InterimResultSweepOutcome interimResultSweep(
-      InterimResultSweepDraft interimResultSweepDraft, PostingIdGenerator postingIdGenerator) {
+      InterimResultSweepDraft interimResultSweepDraft,
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
     return storeMutationOperations()
-        .interimResultSweep(interimResultSweepDraft, postingIdGenerator);
+        .interimResultSweep(interimResultSweepDraft, postingIdGenerator, attestationAuthorizer);
   }
 
   /** Commits one fiscal-year close into the protected book. */
@@ -86,10 +95,17 @@ interface SqlitePostingFactStoreMutationView {
       FiscalYearClosePlanner planner,
       LocalDate currentUtcDate,
       Instant closedAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
     return storeMutationOperations()
         .fiscalYearClose(
-            reportingPeriod, bookIdentity, planner, currentUtcDate, closedAt, postingIdGenerator);
+            reportingPeriod,
+            bookIdentity,
+            planner,
+            currentUtcDate,
+            closedAt,
+            postingIdGenerator,
+            attestationAuthorizer);
   }
 }

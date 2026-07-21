@@ -172,9 +172,16 @@ final class SqliteStoreMutationOperations {
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
       Instant sweptAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     return closingOperations.interimResultSweep(
-        reportingPeriod, bookIdentity, planner, currentUtcDate, sweptAt, postingIdGenerator);
+        reportingPeriod,
+        bookIdentity,
+        planner,
+        currentUtcDate,
+        sweptAt,
+        postingIdGenerator,
+        attestationAuthorizer);
   }
 
   InterimResultSweepOutcome interimResultSweep(
@@ -184,7 +191,8 @@ final class SqliteStoreMutationOperations {
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
       Instant sweptAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     return closingOperations.interimResultSweep(
         throughEffectiveDate,
         bookStartDate,
@@ -192,13 +200,16 @@ final class SqliteStoreMutationOperations {
         planner,
         currentUtcDate,
         sweptAt,
-        postingIdGenerator);
+        postingIdGenerator,
+        attestationAuthorizer);
   }
 
   InterimResultSweepOutcome interimResultSweep(
       dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft interimResultSweepDraft,
-      PostingIdGenerator postingIdGenerator) {
-    return closingOperations.interimResultSweep(interimResultSweepDraft, postingIdGenerator);
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
+    return closingOperations.interimResultSweep(
+        interimResultSweepDraft, postingIdGenerator, attestationAuthorizer);
   }
 
   FiscalYearCloseOutcome fiscalYearClose(
@@ -207,9 +218,16 @@ final class SqliteStoreMutationOperations {
       FiscalYearClosePlanner planner,
       LocalDate currentUtcDate,
       Instant closedAt,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     return closingOperations.fiscalYearClose(
-        reportingPeriod, bookIdentity, planner, currentUtcDate, closedAt, postingIdGenerator);
+        reportingPeriod,
+        bookIdentity,
+        planner,
+        currentUtcDate,
+        closedAt,
+        postingIdGenerator,
+        attestationAuthorizer);
   }
 
   private <T> T withBorrowedDatabase(BorrowedDatabaseAction<T> action) {

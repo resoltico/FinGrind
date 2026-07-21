@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner;
@@ -32,7 +33,8 @@ public final class InterimResultSweepService {
   }
 
   /** Sweeps one contiguous reporting period into generated result-holding postings. */
-  public InterimResultSweepOutcome interimResultSweep(ReportingPeriod reportingPeriod) {
+  public InterimResultSweepOutcome interimResultSweep(
+      ReportingPeriod reportingPeriod, AttestationOperationAuthorizer attestationAuthorizer) {
     return executionSupport.execute(
         reportingPeriod,
         () ->
@@ -41,11 +43,21 @@ public final class InterimResultSweepService {
         bookIdentity ->
             new InterimResultSweepPlanner(
                 KernelAccountingRulesResolver.forBookIdentity(bookIdentity).closePostingPolicy()),
-        reportingPeriodCloseStore::interimResultSweep);
+        (period, bookIdentity, planner, currentUtcDate, sweptAt, postingIdGenerator) ->
+            reportingPeriodCloseStore.interimResultSweep(
+                period,
+                bookIdentity,
+                planner,
+                currentUtcDate,
+                sweptAt,
+                postingIdGenerator,
+                attestationAuthorizer));
   }
 
   /** Sweeps the only admissible contiguous window ending at the selected through date. */
-  public InterimResultSweepOutcome interimResultSweep(java.time.LocalDate throughEffectiveDate) {
+  public InterimResultSweepOutcome interimResultSweep(
+      java.time.LocalDate throughEffectiveDate,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(throughEffectiveDate, "throughEffectiveDate");
     return executionSupport.execute(
         () ->
@@ -62,6 +74,7 @@ public final class InterimResultSweepService {
                 planner,
                 currentUtcDate,
                 sweptAt,
-                postingIdGenerator));
+                postingIdGenerator,
+                attestationAuthorizer));
   }
 }

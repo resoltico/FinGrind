@@ -3,6 +3,10 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestFingerprint;
+import dev.erst.fingrind.core.attestation.AttestationClosePostingSnapshot;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationPeriodCloseMutationProjection;
+import dev.erst.fingrind.core.attestation.AttestationPostingLine;
 import dev.erst.fingrind.executor.bookkeeping.AcceptedPosting;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import dev.erst.fingrind.executor.bookkeeping.ClosedFiscalYearRecord;
@@ -16,6 +20,7 @@ import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 /** Durable persistence for generated close postings inside SQLite close workflows. */
 final class SqliteClosePostingPersistence {
@@ -69,11 +74,14 @@ final class SqliteClosePostingPersistence {
   dev.erst.fingrind.executor.bookkeeping.SweptInterimResult persistInterimResultSweep(
       SqliteNativeDatabase activeDatabase,
       InterimResultSweepDraft interimResultSweepDraft,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     SqliteTransactionValidationBook validationBook =
         new SqliteTransactionValidationBook(activeDatabase, context.postingReader(), true);
     PostingIdGenerator requiredPostingIdGenerator =
         Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
+    AttestationOperationAuthorizer requiredAttestationAuthorizer =
+        AttestationOperationAuthorizer.require(attestationAuthorizer);
     List<CommittedPosting> closingPostings = new java.util.ArrayList<>();
     for (PostingDraft closingPostingDraft : interimResultSweepDraft.closingPostings()) {
       switch (postingAcceptancePolicy.decisionFor(closingPostingDraft, validationBook)) {
@@ -100,6 +108,17 @@ final class SqliteClosePostingPersistence {
             interimResultSweepDraft.sweptTotals(),
             interimResultSweepDraft.sweptAt(),
             closingPostings);
+    SqliteAttestationEvidenceStore.appendAuthorized(
+        activeDatabase,
+        "interim-result-sweep",
+        interimResultSweepDraft.sweptAt(),
+        AttestationPeriodCloseMutationProjection.projectInterimResultSweep(
+            interimResultSweepDraft.reportingPeriod(),
+            interimResultSweepDraft.resultHoldingAccountCode().value(),
+            sweptInterimResult.sweepOrder(),
+            sweptInterimResult.sweptTotals(),
+            closePostingSnapshots(closingPostings)),
+        requiredAttestationAuthorizer);
     SqliteAuditEventWriter.insertAuditEvent(
         activeDatabase,
         BookAuditEvent.interimResultSwept(
@@ -110,11 +129,14 @@ final class SqliteClosePostingPersistence {
   ClosedFiscalYearRecord persistFiscalYearClose(
       SqliteNativeDatabase activeDatabase,
       FiscalYearCloseDraft closeDraft,
-      PostingIdGenerator postingIdGenerator) {
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     SqliteTransactionValidationBook validationBook =
         new SqliteTransactionValidationBook(activeDatabase, context.postingReader(), true);
     PostingIdGenerator requiredPostingIdGenerator =
         Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
+    AttestationOperationAuthorizer requiredAttestationAuthorizer =
+        AttestationOperationAuthorizer.require(attestationAuthorizer);
     List<CommittedPosting> closePostings = new java.util.ArrayList<>();
     for (PostingDraft closePostingDraft : closeDraft.closePostingDrafts()) {
       switch (postingAcceptancePolicy.decisionFor(closePostingDraft, validationBook)) {
@@ -142,6 +164,18 @@ final class SqliteClosePostingPersistence {
             closeDraft.retainedAccumulatedAccountCode(),
             closeDraft.closedAt(),
             closePostings);
+    SqliteAttestationEvidenceStore.appendAuthorized(
+        activeDatabase,
+        "fiscal-year-close",
+        closeDraft.closedAt(),
+        AttestationPeriodCloseMutationProjection.projectFiscalYearClose(
+            closeDraft.reportingPeriod(),
+            closeDraft.capitalAccountCode().value(),
+            closeDraft.resultHoldingAccountCode().value(),
+            closeDraft.retainedAccumulatedAccountCode().value(),
+            closedFiscalYear.closeOrder(),
+            closePostingSnapshots(closePostings)),
+        requiredAttestationAuthorizer);
     SqliteAuditEventWriter.insertAuditEvent(
         activeDatabase,
         BookAuditEvent.fiscalYearClosed(
@@ -181,6 +215,33 @@ final class SqliteClosePostingPersistence {
                             () ->
                                 new IllegalStateException(
                                     "Inventory state persisted after movement must own one last movement date."))));
+  }
+
+  private static List<AttestationClosePostingSnapshot> closePostingSnapshots(
+      List<CommittedPosting> postings) {
+    return postings.stream().map(SqliteClosePostingPersistence::closePostingSnapshot).toList();
+  }
+
+  private static AttestationClosePostingSnapshot closePostingSnapshot(CommittedPosting posting) {
+    return new AttestationClosePostingSnapshot(
+        UUID.fromString(posting.postingId().value()),
+        UUID.fromString(posting.provenance().requestProvenance().commandId().value()),
+        posting.provenance().requestProvenance().idempotencyKey().value(),
+        posting.provenance().requestProvenance().causationId().value(),
+        posting.postingKind().wireValue(),
+        posting.postingOriginKind().wireValue(),
+        posting.journalEntry().effectiveDate(),
+        posting.provenance().recordedAt(),
+        posting.provenance().sourceChannel().wireValue(),
+        posting.journalEntry().lines().stream()
+            .map(
+                line ->
+                    new AttestationPostingLine(
+                        line.accountCode().value(),
+                        line.side().wireValue(),
+                        line.amount().currencyUnit().code(),
+                        line.amount().minorUnits()))
+            .toList());
   }
 
   private static String inventoryMovementId(PostingId postingId, int movementIndex) {

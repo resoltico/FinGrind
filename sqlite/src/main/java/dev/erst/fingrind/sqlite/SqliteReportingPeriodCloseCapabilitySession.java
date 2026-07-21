@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
@@ -37,8 +38,11 @@ final class SqliteReportingPeriodCloseCapabilitySession extends SqliteDelegating
   }
 
   InterimResultSweepOutcome interimResultSweep(
-      InterimResultSweepDraft interimResultSweepDraft, PostingIdGenerator postingIdGenerator) {
-    return store.interimResultSweep(interimResultSweepDraft, postingIdGenerator);
+      InterimResultSweepDraft interimResultSweepDraft,
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
+    return store.interimResultSweep(
+        interimResultSweepDraft, postingIdGenerator, attestationAuthorizer);
   }
 
   @Override
