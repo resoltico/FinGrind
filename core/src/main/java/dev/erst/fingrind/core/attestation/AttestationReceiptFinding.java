@@ -4,7 +4,7 @@ package dev.erst.fingrind.core.attestation;
  * A valid receipt condition that affects the anchor's operational value, not its cryptographic
  * validity.
  */
-enum AttestationReceiptFinding {
+public enum AttestationReceiptFinding {
   NOT_INDEPENDENT("receipt-not-independent");
 
   private final String code;
@@ -13,7 +13,8 @@ enum AttestationReceiptFinding {
     this.code = code;
   }
 
-  String code() {
+  /** Returns the stable machine-readable finding code. */
+  public String code() {
     return code;
   }
 }

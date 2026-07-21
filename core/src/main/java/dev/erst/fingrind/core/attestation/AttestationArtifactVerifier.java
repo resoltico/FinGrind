@@ -21,6 +21,28 @@ final class AttestationArtifactVerifier {
     return new AttestationArtifactVerification(artifact, verification);
   }
 
+  static AttestationBackupArtifactVerification verifyBackupArtifact(
+      byte[] artifactBytes, AttestationArtifactSnapshotReader snapshotReader) {
+    AttestationDecodedArtifact artifact = AttestationDecodedArtifact.decode(artifactBytes);
+    AttestationBackupManifestPayload payload = artifact.manifest().payload();
+    requireSnapshotDigest(artifact, payload);
+    AttestationBookVerification verification = verifySnapshot(artifact, snapshotReader);
+    requireManifestChainBinding(verification, payload);
+    AttestationAuthorization.requireAuthorized(
+        verification.registry(),
+        AttestationAuthorizationContext.manifest(payload),
+        artifact.manifest().authorizationEnvelope());
+    return new AttestationBackupArtifactVerification(
+        artifact.snapshot(),
+        payload.bookId(),
+        payload.backupId(),
+        payload.sourceOrder(),
+        payload.sourceOperationHead().bytes(),
+        payload.snapshotDigest().bytes(),
+        artifact.digest().bytes(),
+        publicVerification(verification));
+  }
+
   static AttestationReceiptVerification verifyReceipt(
       byte[] receiptBytes,
       AttestationBookVerification verification,
@@ -40,6 +62,20 @@ final class AttestationArtifactVerifier {
         AttestationAuthorizationContext.receipt(payload),
         receipt.authorizationEnvelope());
     return new AttestationReceiptVerification(receipt, receiptFindings(retention));
+  }
+
+  static AttestationReceiptVerificationResult verifyReceiptArtifact(
+      byte[] receiptBytes,
+      List<AttestationEvidence> evidence,
+      AttestationReceiptRetention retention) {
+    AttestationBookVerification verification = verifyEvidence(evidence);
+    AttestationReceiptVerification receipt = verifyReceipt(receiptBytes, verification, retention);
+    AttestationReceiptPayload payload = receipt.receipt().payload();
+    return new AttestationReceiptVerificationResult(
+        payload.bookId(),
+        payload.operationOrder(),
+        payload.operationHead().bytes(),
+        receipt.findings().stream().map(AttestationReceiptFinding::code).toList());
   }
 
   private static void requireSnapshotDigest(
@@ -72,6 +108,53 @@ final class AttestationArtifactVerifier {
     } catch (RuntimeException exception) {
       throw manifestFailure(exception);
     }
+  }
+
+  private static AttestationBookVerification verifySnapshot(
+      AttestationDecodedArtifact artifact, AttestationArtifactSnapshotReader snapshotReader) {
+    try {
+      return verifyEvidence(
+          Objects.requireNonNull(snapshotReader, "snapshotReader").read(artifact.snapshot()));
+    } catch (AttestationAuthorizationException exception) {
+      if (exception.failure() == AttestationAuthorizationFailure.UNSUPPORTED_VERSION) {
+        throw exception;
+      }
+      throw manifestFailure(exception);
+    } catch (RuntimeException exception) {
+      throw manifestFailure(exception);
+    }
+  }
+
+  private static AttestationBookVerification verifyEvidence(List<AttestationEvidence> evidence) {
+    List<AttestationEvidence> checkedEvidence =
+        List.copyOf(Objects.requireNonNull(evidence, "evidence"));
+    if (checkedEvidence.isEmpty()) {
+      throw new AttestationAuthorizationException(AttestationAuthorizationFailure.PREIMAGE_INVALID);
+    }
+    return AttestationBookVerifier.verify(
+        new AttestationBook(
+            checkedEvidence.stream()
+                .map(
+                    operation -> {
+                      AttestationEvidence checkedOperation =
+                          Objects.requireNonNull(operation, "evidence must not contain null");
+                      return AttestationBookOperation.decode(
+                          checkedOperation.operationEnvelope(),
+                          checkedOperation.requestPreimage(),
+                          checkedOperation.effectPreimage());
+                    })
+                .toList()));
+  }
+
+  private static AttestationVerification publicVerification(
+      AttestationBookVerification verification) {
+    return new AttestationVerification(
+        verification.bookId(),
+        verification.headOrder(),
+        verification.head().bytes(),
+        verification.reviewFindings().stream()
+            .map(finding -> finding.review().keyId().toString())
+            .toList());
   }
 
   private static AttestationAuthorizationException manifestFailure() {

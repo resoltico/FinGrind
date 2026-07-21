@@ -1,6 +1,8 @@
 package dev.erst.fingrind.core.attestation;
 
 import java.io.IOException;
+import java.math.BigInteger;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -69,11 +71,42 @@ public final class AttestationSigningSession
         credentials);
   }
 
+  /**
+   * Signs one independently restorable backup artifact with the session's BACKUP candidates.
+   *
+   * <p>Authorization remains enforced by artifact verification against the source snapshot's
+   * historical registry and policy; this boundary only performs custody-confined signing.
+   */
+  public byte[] createBackupArtifact(
+      byte[] snapshot,
+      UUID bookId,
+      UUID backupId,
+      BigInteger sourceOrder,
+      byte[] sourceOperationHead) {
+    requireOpen();
+    return AttestationBackupArtifact.create(
+        snapshot, bookId, backupId, sourceOrder, sourceOperationHead, credentials);
+  }
+
+  /** Creates one non-mutating receipt signed by the session's ANCHOR candidates. */
+  public byte[] createReceipt(
+      UUID bookId, BigInteger operationOrder, byte[] operationHead, Instant receiptTimestamp) {
+    requireOpen();
+    return AttestationReceipt.create(
+        bookId, operationOrder, operationHead, receiptTimestamp, credentials);
+  }
+
   @Override
   public void close() {
     if (!closed) {
       credentials.forEach(AttestationSigningCredential::close);
       closed = true;
+    }
+  }
+
+  private void requireOpen() {
+    if (closed) {
+      throw new IllegalStateException("Attestation signing session is closed.");
     }
   }
 
