@@ -28,6 +28,10 @@ sealed interface CliCommand
           InterimResultSweep,
           FiscalYearClose,
           InspectBook,
+          VerifyBookAttestation,
+          AttestationReview,
+          ExportAttestationReceipt,
+          VerifyAttestationReceipt,
           GetPosting,
           CliBookQueryOutputModeCommand {
     /** Selected operator-facing output mode for this command. */

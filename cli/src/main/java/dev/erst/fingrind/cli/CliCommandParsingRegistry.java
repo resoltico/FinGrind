@@ -81,6 +81,13 @@ final class CliCommandParsingRegistry {
   private static ParserBinding[] queryBindings() {
     return new ParserBinding[] {
       binding(OperationId.INSPECT_BOOK, CliBookQueryArguments::parseInspectBookCommand),
+      binding(OperationId.VERIFY_BOOK, CliAttestationArguments::parseVerifyBookCommand),
+      binding(
+          OperationId.ATTESTATION_REVIEW, CliAttestationArguments::parseAttestationReviewCommand),
+      binding(
+          OperationId.EXPORT_ATTESTATION_RECEIPT,
+          CliAttestationArguments::parseExportReceiptCommand),
+      binding(OperationId.VERIFY_RECEIPT, CliAttestationArguments::parseVerifyReceiptCommand),
       binding(OperationId.LIST_ACCOUNTS, CliBookQueryArguments::parseListAccountsCommand),
       binding(
           OperationId.LIST_TAX_REGISTRATIONS,

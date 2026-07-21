@@ -11,7 +11,13 @@ final class ProtocolQueryOperations {
     List<ProtocolOperation> reports = reportOperations();
     return Stream.of(
             List.of(
-                inspectBookOperation(), listAccountsOperation(), listTaxRegistrationsOperation()),
+                inspectBookOperation(),
+                verifyBookOperation(),
+                attestationReviewOperation(),
+                exportAttestationReceiptOperation(),
+                verifyReceiptOperation(),
+                listAccountsOperation(),
+                listTaxRegistrationsOperation()),
             reports.subList(0, 1),
             List.of(getPostingOperation(), listPostingsOperation()),
             reports.subList(1, reports.size()))
@@ -39,6 +45,106 @@ final class ProtocolQueryOperations {
                         OperationId.INSPECT_BOOK.wireName(),
                         ProtocolBookAccessOptions.BOOK_FILE,
                         ProtocolBookAccessOptions.BOOK_KEY_FILE))));
+  }
+
+  private static ProtocolOperation verifyBookOperation() {
+    return ProtocolOperationDefinitions.operation(
+        OperationId.VERIFY_BOOK,
+        OperationCategory.QUERY,
+        "Verify Book",
+        List.of(),
+        List.of(
+            ProtocolBookAccessOptions.BOOK_FILE + " <path>",
+            ProtocolOptions.currentPassphraseSourceSyntax(),
+            "[" + ProtocolOptions.Attestation.REQUIRE_CLEAN + "]",
+            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+        ExecutionMode.JSON_ENVELOPE,
+        List.of(OutputMode.JSON, OutputMode.TEXT),
+        "Verify every immutable attestation structure from genesis and report the first exact structural break, if any.",
+        List.of(
+            ProtocolExampleStep.command(
+                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s"
+                    .formatted(
+                        OperationId.VERIFY_BOOK.wireName(),
+                        ProtocolBookAccessOptions.BOOK_FILE,
+                        ProtocolBookAccessOptions.BOOK_KEY_FILE,
+                        ProtocolOptions.Attestation.REQUIRE_CLEAN))));
+  }
+
+  private static ProtocolOperation attestationReviewOperation() {
+    return ProtocolOperationDefinitions.operation(
+        OperationId.ATTESTATION_REVIEW,
+        OperationCategory.QUERY,
+        "Attestation Review",
+        List.of(),
+        List.of(
+            ProtocolBookAccessOptions.BOOK_FILE + " <path>",
+            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+        ExecutionMode.JSON_ENVELOPE,
+        List.of(OutputMode.JSON, OutputMode.TEXT),
+        "Report non-persisted compromise-review findings from one structurally valid attestation chain.",
+        List.of(
+            ProtocolExampleStep.command(
+                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key"
+                    .formatted(
+                        OperationId.ATTESTATION_REVIEW.wireName(),
+                        ProtocolBookAccessOptions.BOOK_FILE,
+                        ProtocolBookAccessOptions.BOOK_KEY_FILE))));
+  }
+
+  private static ProtocolOperation exportAttestationReceiptOperation() {
+    return ProtocolOperationDefinitions.operation(
+        OperationId.EXPORT_ATTESTATION_RECEIPT,
+        OperationCategory.QUERY,
+        "Export Attestation Receipt",
+        List.of(),
+        List.of(
+            ProtocolBookAccessOptions.BOOK_FILE + " <path>",
+            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptions.Attestation.RECEIPT_FILE + " <path>",
+            ProtocolOptions.Attestation.PRINCIPAL_ID + " <uuid>",
+            ProtocolOptions.Attestation.KEY_FILE + " <path>",
+            ProtocolOptions.Attestation.PASSPHRASE_FILE + " <path>",
+            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+        ExecutionMode.JSON_ENVELOPE,
+        List.of(OutputMode.JSON, OutputMode.TEXT),
+        "Publish one independently retained quorum-signed receipt without changing the selected book.",
+        List.of(
+            ProtocolExampleStep.command(
+                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./receipts/acme.fgar %s 123e4567-e89b-12d3-a456-426614174000 %s ./secrets/operator.fgatk %s ./secrets/operator.passphrase"
+                    .formatted(
+                        OperationId.EXPORT_ATTESTATION_RECEIPT.wireName(),
+                        ProtocolBookAccessOptions.BOOK_FILE,
+                        ProtocolBookAccessOptions.BOOK_KEY_FILE,
+                        ProtocolOptions.Attestation.RECEIPT_FILE,
+                        ProtocolOptions.Attestation.PRINCIPAL_ID,
+                        ProtocolOptions.Attestation.KEY_FILE,
+                        ProtocolOptions.Attestation.PASSPHRASE_FILE))));
+  }
+
+  private static ProtocolOperation verifyReceiptOperation() {
+    return ProtocolOperationDefinitions.operation(
+        OperationId.VERIFY_RECEIPT,
+        OperationCategory.QUERY,
+        "Verify Receipt",
+        List.of(),
+        List.of(
+            ProtocolBookAccessOptions.BOOK_FILE + " <path>",
+            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptions.Attestation.RECEIPT_FILE + " <path>",
+            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+        ExecutionMode.JSON_ENVELOPE,
+        List.of(OutputMode.JSON, OutputMode.TEXT),
+        "Verify one independently retained receipt against the selected book's complete immutable chain.",
+        List.of(
+            ProtocolExampleStep.command(
+                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./receipts/acme.fgar"
+                    .formatted(
+                        OperationId.VERIFY_RECEIPT.wireName(),
+                        ProtocolBookAccessOptions.BOOK_FILE,
+                        ProtocolBookAccessOptions.BOOK_KEY_FILE,
+                        ProtocolOptions.Attestation.RECEIPT_FILE))));
   }
 
   private static ProtocolOperation listAccountsOperation() {

@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.tax.ListTaxRegistrationsQuery;
 import dev.erst.fingrind.core.PostingId;
+import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -36,6 +37,58 @@ final class CliQueryCommandExecutor {
         inspection ->
             responseWriter.writeBookInspection(bookAccess.bookFilePath(), inspection, outputMode),
         ignored -> 0);
+  }
+
+  int runVerifyBookAttestationCommand(
+      BookAccess bookAccess, boolean requireCleanAttestation, OutputMode outputMode) {
+    return runPromptedQuery(
+        bookAccess,
+        outputMode,
+        readWorkflow::verifyBookAttestation,
+        result -> responseWriter.writeVerifyBookAttestation(result, outputMode),
+        result ->
+            switch (result) {
+              case dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult.Valid valid ->
+                  requireCleanAttestation && valid.reviewRequired() ? 2 : 0;
+              case dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult.Invalid _ ->
+                  2;
+            });
+  }
+
+  int runAttestationReviewCommand(BookAccess bookAccess, OutputMode outputMode) {
+    return runPromptedQuery(
+        bookAccess,
+        outputMode,
+        readWorkflow::reviewAttestation,
+        result -> responseWriter.writeAttestationReview(result, outputMode),
+        ignored -> 0);
+  }
+
+  int runExportAttestationReceiptCommand(
+      BookAccess bookAccess, Path receiptFilePath, OutputMode outputMode) {
+    return runPromptedQuery(
+        bookAccess,
+        outputMode,
+        ignored -> readWorkflow.exportAttestationReceipt(bookAccess, receiptFilePath),
+        result -> responseWriter.writeExportAttestationReceipt(result, outputMode),
+        ignored -> 0);
+  }
+
+  int runVerifyAttestationReceiptCommand(
+      BookAccess bookAccess, Path receiptFilePath, OutputMode outputMode) {
+    return runPromptedQuery(
+        bookAccess,
+        outputMode,
+        ignored -> readWorkflow.verifyAttestationReceipt(bookAccess, receiptFilePath),
+        result -> responseWriter.writeVerifyAttestationReceipt(result, outputMode),
+        result ->
+            switch (result) {
+              case dev.erst.fingrind.contract.bookkeeping.VerifyAttestationReceiptResult.Valid _ ->
+                  0;
+              case dev.erst.fingrind.contract.bookkeeping.VerifyAttestationReceiptResult.Invalid
+                      _ ->
+                  2;
+            });
   }
 
   int runListAccountsCommand(

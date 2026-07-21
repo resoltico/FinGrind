@@ -43,6 +43,14 @@ public enum OperationId implements WireValue {
   FISCAL_YEAR_CLOSE,
   /** Inspects one book for lifecycle and compatibility state. */
   INSPECT_BOOK,
+  /** Verifies the complete immutable attestation chain from genesis. */
+  VERIFY_BOOK,
+  /** Reports non-persisted compromise-review findings for one verified book. */
+  ATTESTATION_REVIEW,
+  /** Exports one no-clobber quorum-signed receipt without mutating the book. */
+  EXPORT_ATTESTATION_RECEIPT,
+  /** Verifies one receipt against the immutable evidence from one selected book. */
+  VERIFY_RECEIPT,
   /** Lists the declared account registry. */
   LIST_ACCOUNTS,
   /** Lists the declared tax-registration registry. */

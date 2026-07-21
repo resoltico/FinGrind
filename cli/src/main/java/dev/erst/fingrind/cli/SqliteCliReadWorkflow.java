@@ -6,6 +6,7 @@ import java.util.Objects;
 final class SqliteCliReadWorkflow
     implements CliBookReadWorkflow,
         SqliteCliInspectionReadOperations,
+        SqliteCliAttestationInspectionOperations,
         SqliteCliCatalogReadOperations,
         SqliteCliPostingReadOperations,
         SqliteCliReportReadOperations,
