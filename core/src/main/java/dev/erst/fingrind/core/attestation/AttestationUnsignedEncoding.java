@@ -66,6 +66,10 @@ final class AttestationUnsignedEncoding {
     return UINT_16_LIMIT;
   }
 
+  static int uint16Maximum() {
+    return UINT_16_LIMIT.subtract(BigInteger.ONE).intValueExact();
+  }
+
   static BigInteger uint64Limit() {
     return UINT_64_LIMIT;
   }

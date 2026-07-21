@@ -45,7 +45,11 @@ final class AttestationGenesisBootstrapEffect {
     if (!keyId.equals(AttestationHash.sha256(spki.bytes()))) {
       throw failure();
     }
-    return new AttestationFounder(principalId, keyId, spki);
+    try {
+      return new AttestationFounder(principalId, keyId, spki);
+    } catch (IllegalArgumentException exception) {
+      throw new AttestationAuthorizationException(failureType(), exception);
+    }
   }
 
   private static void requireExactEffectShape(

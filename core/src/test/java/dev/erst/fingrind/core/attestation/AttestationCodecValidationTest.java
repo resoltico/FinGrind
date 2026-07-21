@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 /** Boundary coverage for the Slice 1 canonical codec. */
@@ -106,6 +107,26 @@ class AttestationCodecValidationTest {
                 IllegalArgumentException.class,
                 () -> AttestationEnvelope.of(payload, java.util.Collections.nCopies(65_536, entry)))
             .getMessage());
+  }
+
+  @Test
+  void envelope_encodesAndDecodesTheFullUnsigned16SignatureCount() {
+    AttestationOperationPayload payload = operationPayload();
+    List<AttestationSignatureEntry> entries =
+        IntStream.range(0, 65_535)
+            .mapToObj(
+                index ->
+                    new AttestationSignatureEntry(
+                        new UUID(0, index), hashForIndex(index), new byte[64]))
+            .toList();
+
+    AttestationEnvelope<AttestationOperationPayload> envelope =
+        AttestationEnvelope.of(payload, entries);
+    AttestationDecodedEnvelope<AttestationOperationPayload> decoded =
+        AttestationDecodedEnvelope.operation(envelope.encoded());
+
+    assertEquals(65_535, envelope.entries().size());
+    assertEquals(65_535, decoded.authorizationEnvelope().entries().size());
   }
 
   @Test
@@ -427,6 +448,15 @@ class AttestationCodecValidationTest {
   private static AttestationHash hash(int finalByte) {
     byte[] bytes = new byte[AttestationHash.BYTE_LENGTH];
     bytes[AttestationHash.BYTE_LENGTH - 1] = (byte) finalByte;
+    return AttestationHash.of(bytes);
+  }
+
+  private static AttestationHash hashForIndex(int index) {
+    byte[] bytes = new byte[AttestationHash.BYTE_LENGTH];
+    bytes[28] = (byte) (index >>> 24);
+    bytes[29] = (byte) (index >>> 16);
+    bytes[30] = (byte) (index >>> 8);
+    bytes[31] = (byte) index;
     return AttestationHash.of(bytes);
   }
 

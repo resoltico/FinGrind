@@ -16,6 +16,7 @@ import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.w
 
 import java.math.BigInteger;
 import java.time.Instant;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,10 @@ import org.junit.jupiter.api.Test;
 class AttestationGenesisBootstrapValidationTest {
   private static final AttestationHash ZERO_HEAD =
       AttestationHash.of(new byte[AttestationHash.BYTE_LENGTH]);
+  private static final byte[] X25519_SPKI =
+      HexFormat.of()
+          .parseHex(
+              "302a300506032b656e032100000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f");
 
   @Test
   void rejectsPayloadThatIsNotTheExactCliGenesisAndRejectsAnotherEnvelopePayload() {
@@ -129,6 +134,35 @@ class AttestationGenesisBootstrapValidationTest {
                     AttestationField.present(
                         AttestationBinaryFieldValue.spki(b.pair().getPublic().getEncoded()))));
     assertGenesisFailure(request, n12aEffect);
+
+    AttestationHash nonEd25519KeyId = AttestationHash.sha256(X25519_SPKI);
+    AttestationPreimage nonEd25519Request =
+        replaceFirstRecord(
+            request,
+            0x0102,
+            record ->
+                withField(
+                    withField(
+                        record,
+                        1,
+                        AttestationField.present(
+                            AttestationBinaryFieldValue.hash(nonEd25519KeyId))),
+                    2,
+                    AttestationField.present(nonEd25519SpkiValue())));
+    AttestationPreimage nonEd25519Effect =
+        replaceFirstRecord(
+            genesisEffectPreimage(a),
+            0x0002,
+            record ->
+                withField(
+                    withField(
+                        record,
+                        2,
+                        AttestationField.present(
+                            AttestationBinaryFieldValue.hash(nonEd25519KeyId))),
+                    4,
+                    AttestationField.present(nonEd25519SpkiValue())));
+    assertGenesisFailure(nonEd25519Request, nonEd25519Effect);
 
     AttestationPreimage effect = genesisEffectPreimage(a);
     AttestationGenesisAuthorizationContext context =
@@ -572,5 +606,15 @@ class AttestationGenesisBootstrapValidationTest {
     assertFailure(
         AttestationAuthorizationFailure.GENESIS_INVALID,
         () -> AttestationGenesisAuthorizationContext.verify(payload, request, effect));
+  }
+
+  private static AttestationFieldValue nonEd25519SpkiValue() {
+    return AttestationFieldValue.encode(
+        AttestationFieldType.SPKI,
+        output -> {
+          AttestationUnsignedEncoding.appendUnsigned(
+              output, BigInteger.valueOf(X25519_SPKI.length), Short.BYTES, "spki length");
+          output.writeBytes(X25519_SPKI);
+        });
   }
 }

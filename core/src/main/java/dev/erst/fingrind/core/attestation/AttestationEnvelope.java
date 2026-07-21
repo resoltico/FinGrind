@@ -24,7 +24,7 @@ final class AttestationEnvelope<P extends AttestationPayload> {
       P payload, List<AttestationSignatureEntry> entries) {
     Objects.requireNonNull(payload, "payload");
     Objects.requireNonNull(entries, "entries");
-    if (entries.size() >= AttestationUnsignedEncoding.uint16Limit().intValueExact()) {
+    if (entries.size() > AttestationUnsignedEncoding.uint16Maximum()) {
       throw new IllegalArgumentException(
           "Attestation envelope may contain at most 65535 signatures.");
     }

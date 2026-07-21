@@ -12,8 +12,6 @@ import java.util.Objects;
  * ordering failure before any convenience canonicalization occurs.
  */
 final class AttestationDecodedEnvelope<P extends AttestationPayload> {
-  private static final int MAX_ENTRY_COUNT = 65_534;
-
   private final P payload;
   private final AttestationAuthorizationEnvelope authorizationEnvelope;
   private final byte[] encoded;
@@ -59,9 +57,6 @@ final class AttestationDecodedEnvelope<P extends AttestationPayload> {
     P payload = payloadDecoder.decode(input);
     byte[] payloadBytes = input.sourceSlice(0, input.offset());
     int entryCount = input.readUnsigned(Short.BYTES).intValueExact();
-    if (entryCount > MAX_ENTRY_COUNT) {
-      throw input.failure();
-    }
     List<AttestationSignatureEntry> entries = new ArrayList<>(entryCount);
     for (int index = 0; index < entryCount; index++) {
       entries.add(
