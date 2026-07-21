@@ -282,8 +282,7 @@ class BookAdministrationServiceTest {
                   () -> new dev.erst.fingrind.core.PostingId("interim-result-sweep-1"),
                   FIXED_CLOCK)
               .interimResultSweep(
-                  new ReportingPeriod(
-                      LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-07")),
+                  new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-07")),
                   TEST_AUTHORIZER);
 
       org.junit.jupiter.api.Assertions.assertEquals(

@@ -25,7 +25,7 @@ import org.junit.jupiter.api.Test;
 
 /** Focused branch coverage for SQLite protected-book verification support seams. */
 class SqliteProtectedBookVerificationSupportCoverageTest
-    extends SqliteProtectedBookMaintenanceStoreCoverageTestSupport {
+    extends SqliteArtifactPublicationTestSupport {
   private static final MethodHandle INSPECT_OPENED_BOOK = bindInspectOpenedBook();
 
   @Test
@@ -132,39 +132,21 @@ class SqliteProtectedBookVerificationSupportCoverageTest
   }
 
   @Test
-  void maintenanceStore_verifiesMissingReplicasAndRejectsForeignVerificationHandles() {
+  void maintenanceStore_reportsAMissingBackupArtifact() {
     SqliteProtectedBookMaintenanceStore store = maintenanceStore();
     Path sourceBookPath = tempDirectory.resolve("replica-source").resolve("book.sqlite");
     BookAccess sourceAccess = bookAccess(sourceBookPath);
     initializeBook(sourceAccess);
     Path missingReplicaPath = tempDirectory.resolve("replica-target").resolve("missing.sqlite");
 
-    try (ProtectedBookMaintenanceStore.VerifiedBook verifiedSourceBook =
-        verifiedBook(store, sourceAccess)) {
-      assertVerificationFailure(
-          acceptedValue(store.verifyInitializedReplica(missingReplicaPath, verifiedSourceBook)),
-          missingReplicaPath,
-          ProtectedBookVerificationFailure.MISSING);
-    }
-
-    try (ProtectedBookMaintenanceStore.VerifiedBook foreignHandle =
-        new ProtectedBookMaintenanceStore.VerifiedBook() {
-          @Override
-          public Path artifactPath() {
-            return Path.of("foreign.sqlite");
-          }
-
-          @Override
-          public void close() {}
-        }) {
-      IllegalArgumentException foreignHandleFailure =
-          assertThrows(
-              IllegalArgumentException.class,
-              () -> store.verifyInitializedReplica(missingReplicaPath, foreignHandle));
-      assertTrue(
-          NullTestSupport.messageOf(foreignHandleFailure)
-              .contains("requires one verified SQLite book handle"));
-    }
+    assertVerificationFailure(
+        acceptedValue(
+            store.verifyInitializedBook(
+                localAccess(bookAccess(missingReplicaPath)),
+                dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole
+                    .BACKUP_TARGET)),
+        missingReplicaPath,
+        ProtectedBookVerificationFailure.MISSING);
   }
 
   private static ProtectedBookMaintenanceStore.BookVerification invokeInspectOpenedBook(

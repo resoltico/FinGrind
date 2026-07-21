@@ -201,26 +201,17 @@ class TaxDiscoveryTemplateCoverageTest {
     assertEquals(
         ScaffoldPlaceholders.COMMAND_ID,
         new ContractTemplates.ProvenanceTemplateDescriptor(
-                ScaffoldPlaceholders.COMMAND_ID,
-                "idem-1",
-                "cause-1",
-                null)
+                ScaffoldPlaceholders.COMMAND_ID, "idem-1", "cause-1", null)
             .commandId());
     assertEquals(
         ScaffoldPlaceholders.IDEMPOTENCY_KEY,
         new ContractTemplates.ProvenanceTemplateDescriptor(
-                "command-1",
-                ScaffoldPlaceholders.IDEMPOTENCY_KEY,
-                "cause-1",
-                null)
+                "command-1", ScaffoldPlaceholders.IDEMPOTENCY_KEY, "cause-1", null)
             .idempotencyKey());
     assertEquals(
         ScaffoldPlaceholders.CAUSATION_ID,
         new ContractTemplates.ProvenanceTemplateDescriptor(
-                "command-1",
-                "idem-1",
-                ScaffoldPlaceholders.CAUSATION_ID,
-                null)
+                "command-1", "idem-1", ScaffoldPlaceholders.CAUSATION_ID, null)
             .causationId());
     assertEquals(
         ScaffoldPlaceholders.COMMAND_ID,
@@ -233,10 +224,7 @@ class TaxDiscoveryTemplateCoverageTest {
     assertEquals(
         ScaffoldPlaceholders.COMMAND_ID,
         ContractTemplateValidationSupport.validateProvenanceTemplate(
-                "command-1",
-                "idem-1",
-                "cause-1",
-                ScaffoldPlaceholders.COMMAND_ID)
+                "command-1", "idem-1", "cause-1", ScaffoldPlaceholders.COMMAND_ID)
             .correlationId());
   }
 

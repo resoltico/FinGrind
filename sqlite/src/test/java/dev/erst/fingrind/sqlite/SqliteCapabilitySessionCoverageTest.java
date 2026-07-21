@@ -87,7 +87,8 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
                   SqliteReportingPeriodCloseCapabilitySession.class, reportingPeriodCloseSession)
               .interimResultSweep(
                   emptyInterimResultSweepDraft(effectiveDate, sweptAt),
-                  unusedPostingIdGenerator()));
+                  unusedPostingIdGenerator(),
+                  SqliteAttestationTestSupport.authorizer()));
     }
   }
 
@@ -200,7 +201,8 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
                   AccountType.ASSET,
                   financialPositionTaxonomy(FinancialPositionLineClassification.INVENTORY),
                   new dev.erst.fingrind.core.UnitOfMeasure("unit", 0)),
-              Instant.parse("2026-04-07T10:30:00Z")));
+              Instant.parse("2026-04-07T10:30:00Z"),
+              SqliteAttestationTestSupport.authorizer()));
       insertInventoryPostingFactRow(
           activeDatabase.value(),
           "inventory-posting-1",
@@ -350,7 +352,8 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
                   AccountType.ASSET,
                   financialPositionTaxonomy(FinancialPositionLineClassification.INVENTORY),
                   new dev.erst.fingrind.core.UnitOfMeasure("unit", 0)),
-              Instant.parse("2026-04-07T10:30:00Z")));
+              Instant.parse("2026-04-07T10:30:00Z"),
+              SqliteAttestationTestSupport.authorizer()));
       try (SqliteStatementRedirectingDatabase missingIdentityDatabase =
               new SqliteStatementRedirectingDatabase(
                   activeDatabase.value(),

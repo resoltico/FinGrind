@@ -40,7 +40,8 @@ class SqliteInterimResultSweepThroughDateCoverageTest extends SqlitePostingFactS
               new AccountName("Result Holding"),
               AccountType.EQUITY,
               financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING)),
-          Instant.parse("2026-12-31T12:00:00Z"));
+          Instant.parse("2026-12-31T12:00:00Z"),
+          SqliteAttestationTestSupport.authorizer());
 
       InterimResultSweepOutcome.Rejected rejected =
           assertInstanceOf(
@@ -50,7 +51,8 @@ class SqliteInterimResultSweepThroughDateCoverageTest extends SqlitePostingFactS
                       closeSession,
                       () -> new PostingId("unused-posting-id"),
                       FIXED_CLOCK)
-                  .interimResultSweep(LocalDate.parse("2027-01-01")));
+                  .interimResultSweep(
+                      LocalDate.parse("2027-01-01"), SqliteAttestationTestSupport.authorizer()));
 
       assertEquals(
           new BookkeepingAdministrationRejection.InterimResultSweepFutureDate(
@@ -72,7 +74,8 @@ class SqliteInterimResultSweepThroughDateCoverageTest extends SqlitePostingFactS
               new AccountName("Result Holding"),
               AccountType.EQUITY,
               financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING)),
-          SWEEPED_AT);
+          SWEEPED_AT,
+          SqliteAttestationTestSupport.authorizer());
       commitPosting(
           postingFactStore,
           postingFact(
@@ -92,7 +95,8 @@ class SqliteInterimResultSweepThroughDateCoverageTest extends SqlitePostingFactS
                       closeSession,
                       () -> new PostingId("generated-sweep-1"),
                       SWEEP_CLOCK)
-                  .interimResultSweep(LocalDate.parse("2026-04-09")));
+                  .interimResultSweep(
+                      LocalDate.parse("2026-04-09"), SqliteAttestationTestSupport.authorizer()));
 
       assertEquals(1, transferred.sweptInterimResult().sweepOrder());
       assertEquals(

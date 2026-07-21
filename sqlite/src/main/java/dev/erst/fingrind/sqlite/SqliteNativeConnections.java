@@ -15,7 +15,11 @@ final class SqliteNativeConnections {
   private SqliteNativeConnections() {}
 
   static SqliteNativeDatabase open(Path bookPath, SqliteBookPassphrase bookPassphrase) {
-    return open(bookPath, bookPassphrase, SqliteNativeOpenMode.READ_WRITE_CREATE, SqliteNativeBootstrap.api());
+    return open(
+        bookPath,
+        bookPassphrase,
+        SqliteNativeOpenMode.READ_WRITE_CREATE,
+        SqliteNativeBootstrap.api());
   }
 
   static SqliteNativeDatabase open(

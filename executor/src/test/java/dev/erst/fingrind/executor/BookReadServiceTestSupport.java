@@ -1,11 +1,11 @@
 package dev.erst.fingrind.executor;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.declaredAccount;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.core.AccountCode;
@@ -326,7 +326,8 @@ final class BookReadServiceTestSupport {
 
     InterimResultSweepOutcome interimResultSweep(
         InterimResultSweepDraft interimResultSweepDraft, PostingIdGenerator postingIdGenerator) {
-      return delegate.interimResultSweep(interimResultSweepDraft, postingIdGenerator, TEST_AUTHORIZER);
+      return delegate.interimResultSweep(
+          interimResultSweepDraft, postingIdGenerator, TEST_AUTHORIZER);
     }
 
     int findAccountCalls() {

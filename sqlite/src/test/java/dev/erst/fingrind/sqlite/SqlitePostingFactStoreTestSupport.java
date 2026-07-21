@@ -56,6 +56,8 @@ class SqlitePostingFactStoreTestSupport extends SqliteStoreTestIntrospectionSupp
   static PostingCommitResult commitPosting(
       SqlitePostingFactStore postingFactStore, CommittedPosting postingFact) {
     return postingFactStore.commit(
-        SqlitePostingFactFixtureSupport.postingDraft(postingFact), postingFact::postingId);
+        SqlitePostingFactFixtureSupport.postingDraft(postingFact),
+        postingFact::postingId,
+        SqliteAttestationTestSupport.authorizer());
   }
 }

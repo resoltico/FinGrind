@@ -14,8 +14,7 @@ import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** Proves native backup staging needs only read access to its protected-book source. */
-class SqliteProtectedBookReadOnlyBackupSourceTest
-    extends SqliteProtectedBookMaintenanceStoreCoverageTestSupport {
+class SqliteProtectedBookReadOnlyBackupSourceTest extends SqliteArtifactPublicationTestSupport {
 
   @Test
   void stageBackupPair_readsSourceBookWithoutWriteAccess() throws Exception {

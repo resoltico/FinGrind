@@ -292,7 +292,9 @@ abstract class AbstractInMemoryReportingPeriodCloseSession extends AbstractInMem
       if (closeDraft.unsweptInterimResultSweepDraft() != null) {
         InterimResultSweepOutcome sweepOutcome =
             interimResultSweep(
-                closeDraft.unsweptInterimResultSweepDraft(), postingIdGenerator, attestationAuthorizer);
+                closeDraft.unsweptInterimResultSweepDraft(),
+                postingIdGenerator,
+                attestationAuthorizer);
         if (!(sweepOutcome instanceof InterimResultSweepOutcome.Transferred)) {
           throw new IllegalStateException(
               "Generated interim-result sweep failed during fiscal-year close.");

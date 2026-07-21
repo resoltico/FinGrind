@@ -27,8 +27,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /** Exercises staged backup and restore cleanup when publication cannot complete atomically. */
-class SqliteStagedProtectedBookPairFailureTest
-    extends SqliteProtectedBookMaintenanceStoreCoverageTestSupport {
+class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublicationTestSupport {
 
   @Test
   void stagedBackupPair_rejectsAnOccupiedGeneratedKeyTargetAndCleansItsStage() throws Exception {

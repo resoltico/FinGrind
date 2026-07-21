@@ -130,7 +130,8 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                   new AccountName("Retained Earnings"),
                   AccountType.EQUITY,
                   financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING)),
-              FIXED_INSTANT));
+              FIXED_INSTANT,
+              SqliteAttestationTestSupport.authorizer()));
       commitPosting(
           postingFactStore, postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()));
 
@@ -156,7 +157,8 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                               generatedEvidence(
                                   "interim-result-sweep-1", "interim-result-sweep-plan"),
                               interimResultSweepProvenance("EUR")))),
-                  () -> new PostingId("interim-result-sweep-1")));
+                  () -> new PostingId("interim-result-sweep-1"),
+                  SqliteAttestationTestSupport.authorizer()));
 
       assertEquals(1, closed.sweptInterimResult().sweepOrder());
       assertEquals(
@@ -209,7 +211,9 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                       reportingPeriodCloseSession,
                       () -> new PostingId("unused"),
                       java.time.Clock.fixed(FIXED_INSTANT, java.time.ZoneOffset.UTC))
-                  .interimResultSweep(new ReportingPeriod(EFFECTIVE_DATE, EFFECTIVE_DATE)));
+                  .interimResultSweep(
+                      new ReportingPeriod(EFFECTIVE_DATE, EFFECTIVE_DATE),
+                      SqliteAttestationTestSupport.authorizer()));
 
       assertInstanceOf(CloseTargetAccountCandidateMissing.class, rejected.rejection());
       assertEquals(
@@ -246,7 +250,8 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                   new AccountName("Retained Earnings"),
                   AccountType.EQUITY,
                   financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING)),
-              FIXED_INSTANT));
+              FIXED_INSTANT,
+              SqliteAttestationTestSupport.authorizer()));
       commitPosting(
           postingFactStore,
           postingFact(
@@ -266,7 +271,9 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                       reportingPeriodCloseSession,
                       () -> new PostingId("interim-result-sweep-1"),
                       java.time.Clock.fixed(FIXED_INSTANT, java.time.ZoneOffset.UTC))
-                  .interimResultSweep(new ReportingPeriod(EFFECTIVE_DATE, EFFECTIVE_DATE)));
+                  .interimResultSweep(
+                      new ReportingPeriod(EFFECTIVE_DATE, EFFECTIVE_DATE),
+                      SqliteAttestationTestSupport.authorizer()));
 
       assertEquals(1, transferred.sweptInterimResult().sweepOrder());
       assertEquals(Optional.of(EFFECTIVE_DATE), postingFactStore.transferredThroughEffectiveDate());
@@ -281,7 +288,8 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                       java.time.Clock.fixed(FIXED_INSTANT.plusSeconds(1), java.time.ZoneOffset.UTC))
                   .interimResultSweep(
                       new ReportingPeriod(
-                          LocalDate.parse("2026-04-09"), LocalDate.parse("2026-04-09"))));
+                          LocalDate.parse("2026-04-09"), LocalDate.parse("2026-04-09")),
+                      SqliteAttestationTestSupport.authorizer()));
 
       assertEquals(
           new BookkeepingAdministrationRejection.InterimResultSweepMustStartAt(
@@ -310,7 +318,8 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                   new AccountName("Retained Earnings"),
                   AccountType.EQUITY,
                   financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING)),
-              FIXED_INSTANT));
+              FIXED_INSTANT,
+              SqliteAttestationTestSupport.authorizer()));
 
       commitPosting(
           postingFactStore,
@@ -342,7 +351,8 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                           dev.erst.fingrind.core.PostingOriginKind.INTERIM_RESULT_SWEEP,
                           generatedEvidence("interim-result-sweep-1", "interim-result-sweep-plan"),
                           interimResultSweepProvenance("EUR")))),
-              () -> new PostingId("interim-result-sweep-1")));
+              () -> new PostingId("interim-result-sweep-1"),
+              SqliteAttestationTestSupport.authorizer()));
       commitPosting(
           postingFactStore,
           postingFact(
@@ -413,7 +423,8 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                   new AccountName("Retained Earnings"),
                   AccountType.EQUITY,
                   financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING)),
-              FIXED_INSTANT));
+              FIXED_INSTANT,
+              SqliteAttestationTestSupport.authorizer()));
 
       CommittedPosting operatingPosting =
           postingFact(

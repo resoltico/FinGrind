@@ -21,8 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 /** Covers generated-secret target preconditions at the SQLite maintenance-store boundary. */
-class SqliteGeneratedSecretTargetMaintenanceStoreTest
-    extends SqliteProtectedBookMaintenanceStoreCoverageTestSupport {
+class SqliteGeneratedSecretTargetMaintenanceStoreTest extends SqliteArtifactPublicationTestSupport {
 
   @Test
   void generatedSecretTargets_areRejectedAsMaintenanceRejectionsBeforeStaging() throws Exception {

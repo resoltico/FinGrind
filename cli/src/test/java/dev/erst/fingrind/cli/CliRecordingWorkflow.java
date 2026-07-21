@@ -252,5 +252,4 @@ class CliRecordingWorkflow extends CliBookWorkflowAdapter {
   void setRestoreBookResult(RestoreBookResult restoreBookResult) {
     this.restoreBookResult = restoreBookResult;
   }
-
 }

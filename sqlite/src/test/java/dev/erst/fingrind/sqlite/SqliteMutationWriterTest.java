@@ -869,8 +869,6 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
   private static CommittedProvenance committedProvenance(String token) {
     return new CommittedProvenance(
         new dev.erst.fingrind.core.RequestProvenance(
-            "actor-1",
-            "agent",
             new CommandId("command-" + token),
             new IdempotencyKey("idem-" + token),
             new CausationId("cause-" + token),

@@ -24,7 +24,7 @@ import org.junit.jupiter.api.Test;
 
 /** Direct branch coverage for the ownership handles behind protected-book pair publication. */
 class SqliteProtectedBookPublicationOwnershipCoverageTest
-    extends SqliteProtectedBookMaintenanceStoreCoverageTestSupport {
+    extends SqliteArtifactPublicationTestSupport {
 
   @Test
   void reservationPublishesOwnedStagesAndRejectsExternalOrMissingClaims() throws Exception {

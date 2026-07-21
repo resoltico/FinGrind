@@ -71,7 +71,6 @@ import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
-import org.jspecify.annotations.Nullable;
 
 /** Default test workflow adapter that fails fast on any unexpected CLI workflow call. */
 abstract class CliBookWorkflowAdapter implements CliBookWorkflow {
@@ -103,7 +102,8 @@ abstract class CliBookWorkflowAdapter implements CliBookWorkflow {
   }
 
   @Override
-  public ContractDecision<VerifyBookAttestationResult> verifyBookAttestation(BookAccess bookAccess) {
+  public ContractDecision<VerifyBookAttestationResult> verifyBookAttestation(
+      BookAccess bookAccess) {
     throw unexpectedInvocation("verifyBookAttestation");
   }
 

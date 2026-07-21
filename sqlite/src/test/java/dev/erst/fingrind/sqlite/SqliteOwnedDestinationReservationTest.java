@@ -11,8 +11,7 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 /** Verifies exact-path reservations used before protected-book source inspection. */
-class SqliteOwnedDestinationReservationTest
-    extends SqliteProtectedBookMaintenanceStoreCoverageTestSupport {
+class SqliteOwnedDestinationReservationTest extends SqliteArtifactPublicationTestSupport {
 
   @Test
   void reservationKeepsTheFinalPathAbsentUntilItPublishesTheOwnedStage() throws Exception {

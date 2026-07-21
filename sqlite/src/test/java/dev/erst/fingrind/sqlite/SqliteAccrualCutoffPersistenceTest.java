@@ -665,7 +665,8 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
       dev.erst.fingrind.core.AccountTaxonomy taxonomy) {
     store.declareAccount(
         new AccountDeclaration(accountCode, new AccountName(accountName), accountType, taxonomy),
-        RECORDED_AT);
+        RECORDED_AT,
+        SqliteAttestationTestSupport.authorizer());
   }
 
   /** Borrowed native handle whose lifecycle remains owned by the enclosing posting-fact store. */

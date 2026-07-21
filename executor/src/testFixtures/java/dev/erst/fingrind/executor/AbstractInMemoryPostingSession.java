@@ -224,7 +224,8 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifec
             postingFact.provenance()),
         postingFact::postingId,
         ignored -> {
-          throw new AssertionError("The in-memory semantic fixture must not authorize persistence.");
+          throw new AssertionError(
+              "The in-memory semantic fixture must not authorize persistence.");
         });
   }
 

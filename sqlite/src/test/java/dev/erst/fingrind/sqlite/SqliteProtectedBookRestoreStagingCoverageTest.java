@@ -28,8 +28,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /** Focused coverage for SQLite restore staging, staged restore publication, and cleanup paths. */
-class SqliteProtectedBookRestoreStagingCoverageTest
-    extends SqliteProtectedBookMaintenanceStoreCoverageTestSupport {
+class SqliteProtectedBookRestoreStagingCoverageTest extends SqliteArtifactPublicationTestSupport {
 
   @Test
   void stageRestoredBookPair_translatesManagedTargetPathRejections() throws Exception {

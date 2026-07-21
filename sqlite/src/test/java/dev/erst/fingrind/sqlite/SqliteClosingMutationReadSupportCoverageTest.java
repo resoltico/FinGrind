@@ -49,7 +49,8 @@ class SqliteClosingMutationReadSupportCoverageTest extends SqlitePostingFactStor
                       directClosePlanner(),
                       LocalDate.now(CLOSED_CLOCK),
                       CLOSED_CLOCK.instant(),
-                      () -> new PostingId("unused-close-posting")));
+                      () -> new PostingId("unused-close-posting"),
+                      SqliteAttestationTestSupport.authorizer()));
 
       SqliteClosingMutationReadSupport readSupport =
           new SqliteClosingMutationReadSupport(postingFactStore.storeContext());
@@ -195,6 +196,7 @@ class SqliteClosingMutationReadSupportCoverageTest extends SqlitePostingFactStor
                 new AccountName(accountName),
                 AccountType.EQUITY,
                 financialPositionTaxonomy(classification)),
-            CLOSED_CLOCK.instant()));
+            CLOSED_CLOCK.instant(),
+            SqliteAttestationTestSupport.authorizer()));
   }
 }

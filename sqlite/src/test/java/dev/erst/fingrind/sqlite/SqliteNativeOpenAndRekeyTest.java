@@ -229,25 +229,6 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
-  void openWithoutRollbackArtifactWarning_roundTripsThroughNativeOpenOverload() throws Exception {
-    Path bookPath = tempDirectory.resolve("native-round-trip-no-warning.sqlite");
-    try (SqliteBookPassphrase passphrase =
-            SqliteBookPassphrase.fromCharacters(
-                "native no-warning passphrase", TEST_BOOK_KEY.toCharArray());
-        SqliteNativeDatabase database =
-            SqliteNativeConnections.openWithoutRollbackArtifactWarning(
-                bookPath, passphrase, SqliteNativeOpenMode.READ_WRITE_CREATE)) {
-      database.executeStatement("create table sample (id integer primary key, note text not null)");
-      database.executeStatement("insert into sample (id, note) values (1, 'ok')");
-      try (SqliteNativeStatement statement =
-          SqliteNativeStatements.prepare(database, "select count(*) from sample")) {
-        assertEquals(SqliteNativeResultCode.code("ROW"), statement.step());
-        assertEquals(1, statement.columnInt(0));
-      }
-    }
-  }
-
-  @Test
   void rekey_rejectsNullArguments() throws Exception {
     Path bookPath = tempDirectory.resolve("rekey-nulls.sqlite");
     assertThrows(

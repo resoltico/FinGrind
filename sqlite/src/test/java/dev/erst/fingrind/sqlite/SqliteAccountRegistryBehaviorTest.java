@@ -130,7 +130,8 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
                       AccountType.ASSET,
                       financialPositionTaxonomy(FinancialPositionLineClassification.INVENTORY),
                       new UnitOfMeasure("kg", 3)),
-                  Instant.parse("2026-04-07T10:15:30Z")));
+                  Instant.parse("2026-04-07T10:15:30Z"),
+                  SqliteAttestationTestSupport.authorizer()));
 
       assertEquals(new UnitOfMeasure("kg", 3), declared.account().unitOfMeasure());
       assertEquals(

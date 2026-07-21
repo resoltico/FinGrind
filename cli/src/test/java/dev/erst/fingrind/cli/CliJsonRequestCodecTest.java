@@ -50,8 +50,7 @@ class CliJsonRequestCodecTest {
 
     var reservedProvenance =
         (tools.jackson.databind.node.ObjectNode)
-            mapper.readTree(
-                "{\"commandId\":\"%s\"}".formatted(ScaffoldPlaceholders.COMMAND_ID));
+            mapper.readTree("{\"commandId\":\"%s\"}".formatted(ScaffoldPlaceholders.COMMAND_ID));
     IllegalArgumentException provenanceFailure =
         assertThrows(
             IllegalArgumentException.class,

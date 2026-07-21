@@ -82,7 +82,8 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
       CommittedPosting replayPosting = replayDraft.materialize(new PostingId("sweep-posting-1"));
       assertEquals(
           new PostingCommitResult.Committed(replayPosting, false),
-          postingFactStore.commit(replayDraft, replayPosting::postingId));
+          postingFactStore.commit(
+              replayDraft, replayPosting::postingId, SqliteAttestationTestSupport.authorizer()));
 
       SweptInterimResult transferred =
           closePostingPersistence(postingFactStore)
@@ -94,7 +95,8 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                       List.of(),
                       FIXED_INSTANT,
                       List.of(replayDraft)),
-                  () -> new PostingId("unused-replay"));
+                  () -> new PostingId("unused-replay"),
+                  SqliteAttestationTestSupport.authorizer());
 
       assertEquals(List.of(replayPosting.postingId()), transferred.sweepPostingIds());
       assertEquals(
@@ -130,7 +132,8 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
       CommittedPosting replayPosting = replayDraft.materialize(new PostingId("fiscal-posting-1"));
       assertEquals(
           new PostingCommitResult.Committed(replayPosting, false),
-          postingFactStore.commit(replayDraft, replayPosting::postingId));
+          postingFactStore.commit(
+              replayDraft, replayPosting::postingId, SqliteAttestationTestSupport.authorizer()));
 
       ClosedFiscalYearRecord closedFiscalYear =
           closePostingPersistence(postingFactStore)
@@ -144,7 +147,8 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                       FIXED_INSTANT,
                       null,
                       List.of(replayDraft)),
-                  () -> new PostingId("unused-replay"));
+                  () -> new PostingId("unused-replay"),
+                  SqliteAttestationTestSupport.authorizer());
 
       assertEquals(List.of(replayPosting.postingId()), closedFiscalYear.closePostingIds());
       assertEquals(
@@ -181,7 +185,10 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
           existingDraft.materialize(new PostingId("fiscal-posting-existing"));
       assertEquals(
           new PostingCommitResult.Committed(existingPosting, false),
-          postingFactStore.commit(existingDraft, existingPosting::postingId));
+          postingFactStore.commit(
+              existingDraft,
+              existingPosting::postingId,
+              SqliteAttestationTestSupport.authorizer()));
       PostingDraft conflictingDraft =
           generatedPostingDraft(
               "fiscal-year-close",
@@ -208,7 +215,8 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                               FIXED_INSTANT,
                               null,
                               List.of(conflictingDraft)),
-                          () -> new PostingId("unused-conflict")));
+                          () -> new PostingId("unused-conflict"),
+                          SqliteAttestationTestSupport.authorizer()));
 
       assertTrue(
           NullTestSupport.messageOf(failure)
@@ -416,7 +424,8 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                 new AccountName(accountName),
                 AccountType.EQUITY,
                 financialPositionTaxonomy(classification)),
-            FIXED_INSTANT));
+            FIXED_INSTANT,
+            SqliteAttestationTestSupport.authorizer()));
   }
 
   private static void declareInventoryAccount(
@@ -437,7 +446,8 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                 AccountType.ASSET,
                 financialPositionTaxonomy(FinancialPositionLineClassification.INVENTORY),
                 new dev.erst.fingrind.core.UnitOfMeasure("unit", 0)),
-            FIXED_INSTANT));
+            FIXED_INSTANT,
+            SqliteAttestationTestSupport.authorizer()));
   }
 
   private static AcceptedPosting acceptedInventoryPosting(

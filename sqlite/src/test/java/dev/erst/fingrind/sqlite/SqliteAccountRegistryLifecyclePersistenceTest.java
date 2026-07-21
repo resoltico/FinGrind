@@ -70,7 +70,9 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
           assertInstanceOf(
               AccountAmendmentOutcome.Amended.class,
               administrationSession.amendAccount(
-                  nonCurrentAssetAmendment(accountCode), AMENDED_AT));
+                  nonCurrentAssetAmendment(accountCode),
+                  AMENDED_AT,
+                  SqliteAttestationTestSupport.authorizer()));
 
       assertEquals("Operating reserve", amended.account().accountName().value());
       assertEquals(
@@ -96,7 +98,10 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
 
       assertInstanceOf(
           AccountAmendmentOutcome.Unchanged.class,
-          postingSession.amendAccount(nonCurrentAssetAmendment(accountCode), RETIRED_AT));
+          postingSession.amendAccount(
+              nonCurrentAssetAmendment(accountCode),
+              RETIRED_AT,
+              SqliteAttestationTestSupport.authorizer()));
       assertEquals(
           1,
           countRowsWhereTextEquals(
@@ -108,7 +113,8 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
       AccountRetirementOutcome.Retired retired =
           assertInstanceOf(
               AccountRetirementOutcome.Retired.class,
-              administrationSession.retireAccount(accountCode, RETIRED_AT));
+              administrationSession.retireAccount(
+                  accountCode, RETIRED_AT, SqliteAttestationTestSupport.authorizer()));
       assertFalse(retired.account().active());
       assertEquals(
           0,
@@ -125,7 +131,8 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
 
       assertInstanceOf(
           AccountRetirementOutcome.Unchanged.class,
-          postingSession.retireAccount(accountCode, RETIRED_AT));
+          postingSession.retireAccount(
+              accountCode, RETIRED_AT, SqliteAttestationTestSupport.authorizer()));
       assertEquals(
           1,
           countRowsWhereTextEquals(
@@ -153,7 +160,10 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
               AccountAmendmentOutcome.Rejected.class,
               postingFactStore
                   .storeMutationOperations()
-                  .amendAccount(nonCurrentAssetAmendment(cashAccountCode), AMENDED_AT));
+                  .amendAccount(
+                      nonCurrentAssetAmendment(cashAccountCode),
+                      AMENDED_AT,
+                      SqliteAttestationTestSupport.authorizer()));
       assertEquals(
           new AccountRegistryLifecycleRejection.AccountHasDependents(
               cashAccountCode, List.of(AccountRegistryDependency.POSTINGS)),
@@ -164,7 +174,8 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
               AccountRetirementOutcome.Rejected.class,
               postingFactStore
                   .storeMutationOperations()
-                  .retireAccount(cashAccountCode, RETIRED_AT));
+                  .retireAccount(
+                      cashAccountCode, RETIRED_AT, SqliteAttestationTestSupport.authorizer()));
       assertEquals(
           new AccountRegistryLifecycleRejection.AccountBalanceNotZero(cashAccountCode),
           retirementRejected.rejection());
@@ -183,14 +194,18 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
           DeclareTaxRegistrationResult.Declared.class,
           postingFactStore
               .storeMutationOperations()
-              .declareTaxRegistration(taxRegistration(), DECLARED_AT));
+              .declareTaxRegistration(
+                  taxRegistration(), DECLARED_AT, SqliteAttestationTestSupport.authorizer()));
 
       assertDependentAccountRejection(
           assertInstanceOf(
               AccountAmendmentOutcome.Rejected.class,
               postingFactStore
                   .storeMutationOperations()
-                  .amendAccount(currentLiabilityAmendment(payableAccountCode), AMENDED_AT)),
+                  .amendAccount(
+                      currentLiabilityAmendment(payableAccountCode),
+                      AMENDED_AT,
+                      SqliteAttestationTestSupport.authorizer())),
           payableAccountCode,
           AccountRegistryDependency.TAX_REGISTRATIONS);
       assertDependentAccountRejection(
@@ -198,7 +213,8 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
               AccountRetirementOutcome.Rejected.class,
               postingFactStore
                   .storeMutationOperations()
-                  .retireAccount(payableAccountCode, RETIRED_AT)),
+                  .retireAccount(
+                      payableAccountCode, RETIRED_AT, SqliteAttestationTestSupport.authorizer())),
           payableAccountCode,
           AccountRegistryDependency.TAX_REGISTRATIONS);
 
@@ -222,7 +238,10 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
               AccountAmendmentOutcome.Rejected.class,
               postingFactStore
                   .storeMutationOperations()
-                  .amendAccount(currentAssetHeaderAmendment(parentAccountCode), AMENDED_AT)),
+                  .amendAccount(
+                      currentAssetHeaderAmendment(parentAccountCode),
+                      AMENDED_AT,
+                      SqliteAttestationTestSupport.authorizer())),
           parentAccountCode,
           AccountRegistryDependency.CHILD_ACCOUNTS);
 
@@ -247,7 +266,10 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
               AccountAmendmentOutcome.Rejected.class,
               postingFactStore
                   .storeMutationOperations()
-                  .amendAccount(nonCurrentAssetAmendment(contraTargetAccountCode), AMENDED_AT)),
+                  .amendAccount(
+                      nonCurrentAssetAmendment(contraTargetAccountCode),
+                      AMENDED_AT,
+                      SqliteAttestationTestSupport.authorizer())),
           contraTargetAccountCode,
           AccountRegistryDependency.CONTRA_ACCOUNTS);
       assertDependentAccountRejection(
@@ -255,7 +277,10 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
               AccountRetirementOutcome.Rejected.class,
               postingFactStore
                   .storeMutationOperations()
-                  .retireAccount(contraTargetAccountCode, RETIRED_AT)),
+                  .retireAccount(
+                      contraTargetAccountCode,
+                      RETIRED_AT,
+                      SqliteAttestationTestSupport.authorizer())),
           contraTargetAccountCode,
           AccountRegistryDependency.CONTRA_ACCOUNTS);
       assertDependentAccountRejection(
@@ -263,7 +288,8 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
               AccountRetirementOutcome.Rejected.class,
               postingFactStore
                   .storeMutationOperations()
-                  .retireAccount(parentAccountCode, RETIRED_AT)),
+                  .retireAccount(
+                      parentAccountCode, RETIRED_AT, SqliteAttestationTestSupport.authorizer())),
           parentAccountCode,
           AccountRegistryDependency.CHILD_ACCOUNTS);
     }
@@ -279,11 +305,16 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
               new BookkeepingAdministrationRejection.BookNotInitialized()),
           postingFactStore
               .storeMutationOperations()
-              .amendAccount(nonCurrentAssetAmendment(accountCode), AMENDED_AT));
+              .amendAccount(
+                  nonCurrentAssetAmendment(accountCode),
+                  AMENDED_AT,
+                  SqliteAttestationTestSupport.authorizer()));
       assertEquals(
           new AccountRetirementOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
-          postingFactStore.storeMutationOperations().retireAccount(accountCode, RETIRED_AT));
+          postingFactStore
+              .storeMutationOperations()
+              .retireAccount(accountCode, RETIRED_AT, SqliteAttestationTestSupport.authorizer()));
     }
 
     Path blankBookPath = tempDirectory.resolve("account-lifecycle-blank.sqlite");
@@ -298,11 +329,16 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
               new BookkeepingAdministrationRejection.BookNotInitialized()),
           postingFactStore
               .storeMutationOperations()
-              .amendAccount(nonCurrentAssetAmendment(accountCode), AMENDED_AT));
+              .amendAccount(
+                  nonCurrentAssetAmendment(accountCode),
+                  AMENDED_AT,
+                  SqliteAttestationTestSupport.authorizer()));
       assertEquals(
           new AccountRetirementOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
-          postingFactStore.storeMutationOperations().retireAccount(accountCode, RETIRED_AT));
+          postingFactStore
+              .storeMutationOperations()
+              .retireAccount(accountCode, RETIRED_AT, SqliteAttestationTestSupport.authorizer()));
     }
 
     Path initializedBookPath = tempDirectory.resolve("account-lifecycle-unknown.sqlite");
@@ -313,11 +349,16 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
               new AccountRegistryLifecycleRejection.AccountNotFound(accountCode)),
           postingFactStore
               .storeMutationOperations()
-              .amendAccount(nonCurrentAssetAmendment(accountCode), AMENDED_AT));
+              .amendAccount(
+                  nonCurrentAssetAmendment(accountCode),
+                  AMENDED_AT,
+                  SqliteAttestationTestSupport.authorizer()));
       assertEquals(
           new AccountRetirementOutcome.Rejected(
               new AccountRegistryLifecycleRejection.AccountNotFound(accountCode)),
-          postingFactStore.storeMutationOperations().retireAccount(accountCode, RETIRED_AT));
+          postingFactStore
+              .storeMutationOperations()
+              .retireAccount(accountCode, RETIRED_AT, SqliteAttestationTestSupport.authorizer()));
       assertEquals(
           0,
           countRowsWhereTextEquals(
@@ -350,7 +391,10 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
             () ->
                 postingFactStore
                     .storeMutationOperations()
-                    .amendAccount(nonCurrentAssetAmendment(accountCode), AMENDED_AT),
+                    .amendAccount(
+                        nonCurrentAssetAmendment(accountCode),
+                        AMENDED_AT,
+                        SqliteAttestationTestSupport.authorizer()),
             "Failed to amend SQLite book account.");
       } catch (IOException exception) {
         throw new UncheckedIOException(exception);
@@ -358,7 +402,11 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
       try (StoreDatabaseSwap ignored =
           swapStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath))) {
         assertNativeFailure(
-            () -> postingFactStore.storeMutationOperations().retireAccount(accountCode, RETIRED_AT),
+            () ->
+                postingFactStore
+                    .storeMutationOperations()
+                    .retireAccount(
+                        accountCode, RETIRED_AT, SqliteAttestationTestSupport.authorizer()),
             "Failed to retire SQLite book account.");
       } catch (IOException exception) {
         throw new UncheckedIOException(exception);
@@ -378,10 +426,16 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
             () ->
                 postingFactStore
                     .storeMutationOperations()
-                    .amendAccount(nonCurrentAssetAmendment(accountCode), AMENDED_AT));
+                    .amendAccount(
+                        nonCurrentAssetAmendment(accountCode),
+                        AMENDED_AT,
+                        SqliteAttestationTestSupport.authorizer()));
         assertRuntimeFailure(
             () ->
-                postingFactStore.storeMutationOperations().retireAccount(accountCode, RETIRED_AT));
+                postingFactStore
+                    .storeMutationOperations()
+                    .retireAccount(
+                        accountCode, RETIRED_AT, SqliteAttestationTestSupport.authorizer()));
       }
 
       assertEquals(0, countRows(realDatabase.get(), "account"));

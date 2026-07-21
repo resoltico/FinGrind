@@ -80,7 +80,9 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                                 planner,
                             LocalDate currentUtcDate,
                             Instant sweptAt,
-                            PostingIdGenerator postingIdGenerator) {
+                            PostingIdGenerator postingIdGenerator,
+                            dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer
+                                attestationAuthorizer) {
                           throw new UnsupportedOperationException(
                               "Interim-result sweep is not under test here.");
                         }
@@ -94,7 +96,9 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                                 planner,
                             LocalDate currentUtcDate,
                             Instant sweptAt,
-                            PostingIdGenerator postingIdGenerator) {
+                            PostingIdGenerator postingIdGenerator,
+                            dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer
+                                attestationAuthorizer) {
                           throw new UnsupportedOperationException(
                               "Interim-result sweep is not under test here.");
                         }
@@ -106,20 +110,23 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                             dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner planner,
                             LocalDate currentUtcDate,
                             Instant closedAt,
-                            PostingIdGenerator postingIdGenerator) {
+                            PostingIdGenerator postingIdGenerator,
+                            dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer
+                                attestationAuthorizer) {
                           return postingFactStore.fiscalYearClose(
                               reportingPeriod,
                               bookIdentity,
                               planner,
                               currentUtcDate,
                               closedAt,
-                              postingIdGenerator);
+                              postingIdGenerator,
+                              attestationAuthorizer);
                         }
                       },
                       new SequencePostingIdGenerator(
                           "generated-sweep-1", "generated-close-1", "generated-close-2"),
                       CLOSED_CLOCK)
-                  .fiscalYearClose(FISCAL_YEAR));
+                  .fiscalYearClose(FISCAL_YEAR, SqliteAttestationTestSupport.authorizer()));
 
       assertEquals(
           new ClosedFiscalYearRecord(
@@ -175,7 +182,7 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                   closeSession,
                   new SequencePostingIdGenerator("generated-sweep-1"),
                   CLOSED_CLOCK)
-              .interimResultSweep(FISCAL_YEAR));
+              .interimResultSweep(FISCAL_YEAR, SqliteAttestationTestSupport.authorizer()));
 
       FiscalYearCloseOutcome.Closed closed =
           assertInstanceOf(
@@ -185,7 +192,7 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                       closeSession,
                       new SequencePostingIdGenerator("generated-close-1", "generated-close-2"),
                       CLOSED_CLOCK)
-                  .fiscalYearClose(FISCAL_YEAR));
+                  .fiscalYearClose(FISCAL_YEAR, SqliteAttestationTestSupport.authorizer()));
 
       assertEquals(
           List.of(new PostingId("generated-close-1"), new PostingId("generated-close-2")),
@@ -216,7 +223,8 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                 new AccountName("Capital"),
                 AccountType.EQUITY,
                 financialPositionTaxonomy(FinancialPositionLineClassification.EQUITY_CONTRIBUTION)),
-            CLOSED_AT));
+            CLOSED_AT,
+            SqliteAttestationTestSupport.authorizer()));
     assertEquals(
         declaredEquityAccount(
             "3100", "Owner Draw", FinancialPositionLineClassification.EQUITY_WITHDRAWAL),
@@ -226,7 +234,8 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                 new AccountName("Owner Draw"),
                 AccountType.EQUITY,
                 financialPositionTaxonomy(FinancialPositionLineClassification.EQUITY_WITHDRAWAL)),
-            CLOSED_AT));
+            CLOSED_AT,
+            SqliteAttestationTestSupport.authorizer()));
     assertEquals(
         declaredEquityAccount(
             "3200", "Result Holding", FinancialPositionLineClassification.RESULT_HOLDING),
@@ -236,7 +245,8 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                 new AccountName("Result Holding"),
                 AccountType.EQUITY,
                 financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING)),
-            CLOSED_AT));
+            CLOSED_AT,
+            SqliteAttestationTestSupport.authorizer()));
     assertEquals(
         declaredEquityAccount(
             "3300",
@@ -249,7 +259,8 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                 AccountType.EQUITY,
                 financialPositionTaxonomy(
                     FinancialPositionLineClassification.RETAINED_ACCUMULATED)),
-            CLOSED_AT));
+            CLOSED_AT,
+            SqliteAttestationTestSupport.authorizer()));
     assertEquals(
         new AccountDeclarationOutcome.Declared(
             new RegisteredAccount(
@@ -265,7 +276,8 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                 new AccountName("Operating Expense"),
                 AccountType.EXPENSE,
                 accountTaxonomy(AccountType.EXPENSE)),
-            CLOSED_AT));
+            CLOSED_AT,
+            SqliteAttestationTestSupport.authorizer()));
   }
 
   private static void commitFiscalYearActivity(SqlitePostingFactStore postingFactStore) {

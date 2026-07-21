@@ -19,7 +19,7 @@ import org.junit.jupiter.params.provider.MethodSource;
  * Proves pair publication leaves no final or owned-stage artifact at every interrupted checkpoint.
  */
 class SqliteProtectedBookPairPublicationFaultMatrixTest
-    extends SqliteProtectedBookMaintenanceStoreCoverageTestSupport {
+    extends SqliteArtifactPublicationTestSupport {
   private static final SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator
       NATIVE_LINK_CREATOR = Files::createLink;
   private static final SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator

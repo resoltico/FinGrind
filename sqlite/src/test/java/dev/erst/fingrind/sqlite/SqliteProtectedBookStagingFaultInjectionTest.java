@@ -27,8 +27,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /** Exercises every protected-book staging boundary against real encrypted book artifacts. */
-class SqliteProtectedBookStagingFaultInjectionTest
-    extends SqliteProtectedBookMaintenanceStoreCoverageTestSupport {
+class SqliteProtectedBookStagingFaultInjectionTest extends SqliteArtifactPublicationTestSupport {
 
   @ParameterizedTest(name = "backup: {0}")
   @MethodSource("backupStagingCheckpoints")

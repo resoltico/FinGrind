@@ -44,5 +44,4 @@ final class SqliteBookMaintenanceFiles {
         .sorted(Comparator.comparing(Path::toString))
         .toList();
   }
-
 }

@@ -42,10 +42,7 @@ class RequestProvenanceTest {
         NullPointerException.class,
         () ->
             new RequestProvenance(
-                null,
-                new IdempotencyKey("idem-1"),
-                new CausationId("cause-1"),
-                Optional.empty()));
+                null, new IdempotencyKey("idem-1"), new CausationId("cause-1"), Optional.empty()));
   }
 
   @org.jspecify.annotations.NullUnmarked

@@ -248,11 +248,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
   void maintenanceEnums_andPublicPathHints_publishCanonicalWireVocabulary() {
     assertIterableEquals(
         List.of(
-            "live-book",
-            "backup-source",
-            "backup-target",
-            "backup-key-target",
-            "restored-target"),
+            "live-book", "backup-source", "backup-target", "backup-key-target", "restored-target"),
         BookMaintenanceArtifactRole.wireValues());
     assertEquals("live-book", BookMaintenanceArtifactRole.LIVE_BOOK.wireValue());
     assertEquals("backup-source", BookMaintenanceArtifactRole.BACKUP_SOURCE.wireValue());
