@@ -7,7 +7,7 @@ from .evidence_fixtures import posting_evidence, posting_provenance
 
 def sale_request(
     *,
-    actor_prefix: str,
+    request_prefix: str,
     effective_date: str,
     cash_account_code: str,
     revenue_account_code: str,
@@ -26,16 +26,16 @@ def sale_request(
             "currencyCode": "EUR",
             "minorUnits": minor_units,
         },
-        "evidence": posting_evidence(actor_prefix, evidence_suffix, effective_date),
+        "evidence": posting_evidence(request_prefix, evidence_suffix, effective_date),
         "provenance": posting_provenance(
-            actor_prefix, command_suffix, idempotency_suffix, causation_suffix
+            request_prefix, command_suffix, idempotency_suffix, causation_suffix
         ),
     }
 
 
 def expense_request(
     *,
-    actor_prefix: str,
+    request_prefix: str,
     effective_date: str,
     expense_account_code: str,
     cash_account_code: str,
@@ -54,16 +54,16 @@ def expense_request(
             "currencyCode": "EUR",
             "minorUnits": minor_units,
         },
-        "evidence": posting_evidence(actor_prefix, evidence_suffix, effective_date),
+        "evidence": posting_evidence(request_prefix, evidence_suffix, effective_date),
         "provenance": posting_provenance(
-            actor_prefix, command_suffix, idempotency_suffix, causation_suffix
+            request_prefix, command_suffix, idempotency_suffix, causation_suffix
         ),
     }
 
 
 def raw_transfer_request(
     *,
-    actor_prefix: str,
+    request_prefix: str,
     effective_date: str,
     source_account_code: str,
     destination_account_code: str,
@@ -80,9 +80,9 @@ def raw_transfer_request(
             journal_line(destination_account_code, "DEBIT", minor_units),
             journal_line(source_account_code, "CREDIT", minor_units),
         ],
-        "evidence": posting_evidence(actor_prefix, evidence_suffix, effective_date),
+        "evidence": posting_evidence(request_prefix, evidence_suffix, effective_date),
         "provenance": posting_provenance(
-            actor_prefix, command_suffix, idempotency_suffix, causation_suffix
+            request_prefix, command_suffix, idempotency_suffix, causation_suffix
         ),
     }
 

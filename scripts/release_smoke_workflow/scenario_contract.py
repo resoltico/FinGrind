@@ -44,7 +44,7 @@ def assert_release_smoke_scenarios(
         docker.restored_book_key.argument
         == "restored odd/Rīga büro/nested/--entity restored [docker-acceptance].key"
     )
-    assert docker.actor_prefix == "docker-acceptance"
+    assert docker.request_prefix == "docker-acceptance"
     assert docker.accounting_basis == "CASH"
 
 

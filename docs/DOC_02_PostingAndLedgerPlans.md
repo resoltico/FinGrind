@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-07-18"
+updated: "2026-07-21"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7, tax-selection, applied-tax, fixed-assets, financing, realized-foreign-exchange]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented", "where is tax selection versus applied tax documented", "where are fixed asset financing and realized foreign exchange posting models documented"]
@@ -487,13 +487,16 @@ public record LedgerPlan(LedgerPlanId planId, List<LedgerStep> steps)
 public sealed interface LedgerStep
 ```
 
-- Families: `EnsureBook`, `DeclareAccount`, `DeclareTaxRegistration`, `PreflightEntry`,
+- Families: `DeclareAccount`, `DeclareTaxRegistration`, `PreflightEntry`,
   `PostEntry`, `InspectBook`, `ListAccounts`, `GetPosting`, `ListPostings`, `AccountBalance`,
   `Assert`
 - Purpose: keep plan execution exhaustively typed instead of routing through maps
 - Tax setup: `DeclareTaxRegistration` keeps account declaration and tax registration as separate
   ordered plan effects, so a plan can set up both prerequisite accounts and the registration in
   one atomic transaction without making tax registration own account creation
+- Attestation: a plan with one or more mutating steps commits those child changes and exactly one
+  signed `execute-plan` operation in the same SQLite transaction. The aggregate operation carries
+  the ordered immutable child preimages; it never emits a separate chain operation per child.
 - Surface: committed posting steps publish the typed `record-*` workflow kinds when the nested
   `PostEntryCommand` carries one business entry, while raw direct-journal fallback stays on the
   `post-entry` kind

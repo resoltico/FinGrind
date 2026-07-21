@@ -40,6 +40,9 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Fixed `execute-plan` attestation so every successful mutating plan appends exactly one signed
+  aggregate operation, with ordered immutable child preimages, rather than one chain operation per
+  child mutation. Query-only and assertion-only plans no longer require a signing credential.
 - Fixed the attested lifecycle boundary so `rekey-book` now requires and carries the same
   principal-bound encrypted credential triples as every other protected-book mutation. The old
   credential-less invocation is rejected; no compatibility path is retained.

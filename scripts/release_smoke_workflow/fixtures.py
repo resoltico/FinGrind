@@ -30,11 +30,11 @@ def prepare_fixture_directories(config: ReleaseSmokeConfig) -> None:
 
 
 def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
-    actor_prefix = config.actor_prefix
+    request_prefix = config.request_prefix
     write_json(
         config.request_sale.local_path,
         sale_request(
-            actor_prefix=actor_prefix,
+            request_prefix=request_prefix,
             effective_date="2026-04-07",
             cash_account_code=config.starter_cash_account_code,
             revenue_account_code=config.starter_revenue_account_code,
@@ -48,7 +48,7 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
     write_json(
         config.request_expense.local_path,
         expense_request(
-            actor_prefix=actor_prefix,
+            request_prefix=request_prefix,
             effective_date="2026-04-08",
             expense_account_code=config.expense_supplement_account_code,
             cash_account_code=config.starter_cash_account_code,
@@ -62,7 +62,7 @@ def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:
     write_json(
         config.request_raw_journal.local_path,
         raw_transfer_request(
-            actor_prefix=actor_prefix,
+            request_prefix=request_prefix,
             effective_date="2026-04-08",
             source_account_code=config.starter_cash_account_code,
             destination_account_code=config.bank_account_code,

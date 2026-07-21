@@ -84,7 +84,8 @@ def verify_help_and_template_surfaces(
         f"{config.label} print-request-template did not publish the canonical effectiveDate scaffold",
     )
     require(
-        payload_field(request_template, "provenance", "actorType") == "PERSON",
+        payload_field(request_template, "provenance", "commandId")
+        == "replace-before-commit-command-id",
         f"{config.label} print-request-template did not publish the canonical provenance scaffold",
     )
     plan_template = parse_json_output(
@@ -96,6 +97,6 @@ def verify_help_and_template_surfaces(
         f"{config.label} print-plan-template did not publish the canonical general-workflow scaffold",
     )
     require(
-        payload_field(plan_template, "steps", 0, "stepId") == "ensure-book",
-        f"{config.label} print-plan-template did not publish the canonical ensure-book step",
+        payload_field(plan_template, "steps", 0, "stepId") == "record-sale-settled",
+        f"{config.label} print-plan-template did not publish the canonical sale step",
     )

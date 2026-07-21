@@ -78,38 +78,11 @@ def assert_plan_template(document: dict[str, object]) -> None:
             "source-checkout launcher plan template did not publish the general-workflow plan"
         )
     steps = document.get("steps")
-    if not isinstance(steps, list) or len(steps) != 2:
+    if not isinstance(steps, list) or len(steps) != 1:
         raise SystemExit(
-            "source-checkout launcher plan template did not publish two workflow steps"
+            "source-checkout launcher plan template did not publish one workflow step"
         )
-    ensure_book_step = steps[0]
-    if (
-        not isinstance(ensure_book_step, dict)
-        or ensure_book_step.get("stepId") != "ensure-book"
-        or ensure_book_step.get("kind") != "ensure-book"
-    ):
-        raise SystemExit(
-            "source-checkout launcher plan template did not publish the ensure-book step"
-        )
-    ensure_book = ensure_book_step.get("ensureBook")
-    if not isinstance(ensure_book, dict):
-        raise SystemExit("source-checkout launcher plan template omitted the ensure-book scaffold")
-    if "businessActivityTags" in ensure_book:
-        raise SystemExit(
-            "source-checkout launcher plan template leaked retired business activity tags"
-        )
-    if ensure_book != {
-        "entityName": "Acme Studio",
-        "bookTemplateId": "OWNER_MANAGED_SERVICE",
-        "accountingBasis": "CASH",
-        "functionalCurrency": "EUR",
-        "fiscalYearStart": "01-01",
-        "bookStartEffectiveDate": "2026-01-01",
-    }:
-        raise SystemExit(
-            "source-checkout launcher plan template did not publish the canonical book scaffold"
-        )
-    sale = steps[1]
+    sale = steps[0]
     if (
         not isinstance(sale, dict)
         or sale.get("stepId") != "record-sale-settled"
@@ -144,9 +117,7 @@ def assert_plan_template(document: dict[str, object]) -> None:
             "source-checkout launcher plan template did not publish the canonical evidence scaffold"
         )
     if posting.get("provenance") != {
-        "actorId": "replace-before-commit-actor-id",
-        "actorType": "PERSON",
-        "commandId": "018f0000-0000-7000-8000-000000000001",
+        "commandId": "replace-before-commit-command-id",
         "idempotencyKey": "replace-before-commit-idempotency-key",
         "causationId": "replace-before-commit-causation-id",
     }:

@@ -83,7 +83,7 @@ def base_bridge_config(
         trial_balance_pdf=resolved_pdf_path,
         trial_balance_pdf_stderr_path=stderr_path,
         second_page_command_id="bridge-sale",
-        actor_prefix="bridge",
+        request_prefix="bridge",
         open_book_mode="book-key-file",
         entity_name="Acme Studio",
         accounting_kernel_profile="internal-management-bookkeeping-kernel",

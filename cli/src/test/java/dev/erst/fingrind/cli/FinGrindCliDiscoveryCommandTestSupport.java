@@ -134,9 +134,6 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
             "rekey-book",
             "backup-book",
             "restore-book",
-            "inspect-rekey-rollback",
-            "delete-rekey-rollback",
-            "restore-rekey-rollback",
             "declare-account",
             "amend-account",
             "retire-account",
@@ -147,6 +144,10 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
     assertEquals(
         List.of(
             "inspect-book",
+            "verify-book",
+            "attestation-review",
+            "export-attestation-receipt",
+            "verify-receipt",
             "list-accounts",
             "list-tax-registrations",
             "tax-obligation",

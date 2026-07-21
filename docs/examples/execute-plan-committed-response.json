@@ -1,1 +1,98 @@
-{"status":"ok","payload":{"planId":"tax-setup-demo-1","status":"succeeded","resultDetail":"full","summary":{"startedAt":"2026-04-07T12:00:00Z","finishedAt":"2026-04-07T12:00:00Z","stepCount":4,"succeededStepCount":4,"failedStepCount":0},"journal":{"startedAt":"2026-04-07T12:00:00Z","finishedAt":"2026-04-07T12:00:00Z","steps":[{"stepId":"ensure-book","kind":"ensure-book","status":"succeeded","startedAt":"2026-04-07T12:00:00Z","finishedAt":"2026-04-07T12:00:00Z","data":{"initializedAt":"2026-04-07T12:00:00Z","entityName":"Acme Studio","functionalCurrency":"EUR","fiscalYearStart":"01-01","bookStartEffectiveDate":"2026-01-01"}},{"stepId":"declare-tax-payable","kind":"declare-account","status":"succeeded","startedAt":"2026-04-07T12:00:00Z","finishedAt":"2026-04-07T12:00:00Z","data":{"outcome":"declared","account":{"accountCode":"tax-payable-vat","accountName":"VAT Payable","accountType":"LIABILITY","accountNodeKind":"POSTABLE","financialPositionLineClassification":"CURRENT_LIABILITY","normalBalance":"CREDIT","active":true,"declaredAt":"2026-04-07T12:00:00Z"}}},{"stepId":"declare-tax-recoverable","kind":"declare-account","status":"succeeded","startedAt":"2026-04-07T12:00:00Z","finishedAt":"2026-04-07T12:00:00Z","data":{"outcome":"declared","account":{"accountCode":"tax-recoverable-vat","accountName":"VAT Recoverable","accountType":"ASSET","accountNodeKind":"POSTABLE","financialPositionLineClassification":"CURRENT_ASSET","normalBalance":"DEBIT","active":true,"declaredAt":"2026-04-07T12:00:00Z"}}},{"stepId":"declare-tax-registration","kind":"declare-tax-registration","status":"succeeded","startedAt":"2026-04-07T12:00:00Z","finishedAt":"2026-04-07T12:00:00Z","data":{"outcome":"declared","taxRegistration":{"taxRegistrationId":"vat-lv","taxRegistrationName":"Latvia VAT","jurisdiction":"LV","registrationNumber":"LV40001234567","payableAccountCode":"tax-payable-vat","recoverableAccountCode":"tax-recoverable-vat","obligationFrequency":"MONTHLY","dueDaysAfterPeriodEnd":20,"taxCodes":[{"taxCode":"vat-standard-expense","taxCodeName":"VAT Standard Expense","ratePartsPerMillion":210000,"inclusionMode":"INCLUSIVE","applicationKind":"INPUT_EXPENSE_RECOVERABLE"},{"taxCode":"vat-standard-sale","taxCodeName":"VAT Standard Sale","ratePartsPerMillion":210000,"inclusionMode":"EXCLUSIVE","applicationKind":"OUTPUT_SALE"}],"declaredAt":"2026-04-07T12:00:00Z"}}}]}}}
+{
+  "status": "ok",
+  "payload": {
+    "planId": "tax-setup-demo-1",
+    "status": "succeeded",
+    "resultDetail": "full",
+    "summary": {
+      "startedAt": "2026-04-07T12:00:00Z",
+      "finishedAt": "2026-04-07T12:00:00Z",
+      "stepCount": 3,
+      "succeededStepCount": 3,
+      "failedStepCount": 0
+    },
+    "journal": {
+      "startedAt": "2026-04-07T12:00:00Z",
+      "finishedAt": "2026-04-07T12:00:00Z",
+      "steps": [
+        {
+          "stepId": "declare-tax-payable",
+          "kind": "declare-account",
+          "status": "succeeded",
+          "startedAt": "2026-04-07T12:00:00Z",
+          "finishedAt": "2026-04-07T12:00:00Z",
+          "data": {
+            "outcome": "declared",
+            "account": {
+              "accountCode": "tax-payable-vat",
+              "accountName": "VAT Payable",
+              "accountType": "LIABILITY",
+              "accountNodeKind": "POSTABLE",
+              "financialPositionLineClassification": "CURRENT_LIABILITY",
+              "normalBalance": "CREDIT",
+              "active": true,
+              "declaredAt": "2026-04-07T12:00:00Z"
+            }
+          }
+        },
+        {
+          "stepId": "declare-tax-recoverable",
+          "kind": "declare-account",
+          "status": "succeeded",
+          "startedAt": "2026-04-07T12:00:00Z",
+          "finishedAt": "2026-04-07T12:00:00Z",
+          "data": {
+            "outcome": "declared",
+            "account": {
+              "accountCode": "tax-recoverable-vat",
+              "accountName": "VAT Recoverable",
+              "accountType": "ASSET",
+              "accountNodeKind": "POSTABLE",
+              "financialPositionLineClassification": "CURRENT_ASSET",
+              "normalBalance": "DEBIT",
+              "active": true,
+              "declaredAt": "2026-04-07T12:00:00Z"
+            }
+          }
+        },
+        {
+          "stepId": "declare-tax-registration",
+          "kind": "declare-tax-registration",
+          "status": "succeeded",
+          "startedAt": "2026-04-07T12:00:00Z",
+          "finishedAt": "2026-04-07T12:00:00Z",
+          "data": {
+            "outcome": "declared",
+            "taxRegistration": {
+              "taxRegistrationId": "vat-lv",
+              "taxRegistrationName": "Latvia VAT",
+              "jurisdiction": "LV",
+              "registrationNumber": "LV40001234567",
+              "payableAccountCode": "tax-payable-vat",
+              "recoverableAccountCode": "tax-recoverable-vat",
+              "obligationFrequency": "MONTHLY",
+              "dueDaysAfterPeriodEnd": 20,
+              "taxCodes": [
+                {
+                  "taxCode": "vat-standard-expense",
+                  "taxCodeName": "VAT Standard Expense",
+                  "ratePartsPerMillion": 210000,
+                  "inclusionMode": "INCLUSIVE",
+                  "applicationKind": "INPUT_EXPENSE_RECOVERABLE"
+                },
+                {
+                  "taxCode": "vat-standard-sale",
+                  "taxCodeName": "VAT Standard Sale",
+                  "ratePartsPerMillion": 210000,
+                  "inclusionMode": "EXCLUSIVE",
+                  "applicationKind": "OUTPUT_SALE"
+                }
+              ],
+              "declaredAt": "2026-04-07T12:00:00Z"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

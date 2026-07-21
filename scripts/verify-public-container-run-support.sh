@@ -69,8 +69,6 @@ cat > "${report_root}/posting.json" <<'JSON'
     "approvals": []
   },
   "provenance": {
-    "actorId": "release-protocol",
-    "actorType": "AGENT",
     "commandId": "018f0000-0000-7000-8000-000000000001",
     "idempotencyKey": "release-protocol-idem-1",
     "causationId": "release-protocol-cause-1"
@@ -111,8 +109,6 @@ cat > "${report_root}/raw-transfer.json" <<'JSON'
     "approvals": []
   },
   "provenance": {
-    "actorId": "release-protocol",
-    "actorType": "AGENT",
     "commandId": "018f0000-0000-7000-8000-000000000001",
     "idempotencyKey": "release-protocol-idem-transfer",
     "causationId": "release-protocol-cause-transfer"

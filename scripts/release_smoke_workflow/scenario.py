@@ -138,7 +138,7 @@ def build_release_smoke_scenario(
             work_root / "reports odd" / f"trial balance [{normalized_scenario_id}].stderr.txt"
         ),
         second_page_command_id=normalized_scenario_id + "-sale",
-        actor_prefix=normalized_scenario_id,
+        request_prefix=normalized_scenario_id,
         entity_name=ENTITY_NAME,
         accounting_kernel_profile=ACCOUNTING_KERNEL_PROFILE,
         accounting_framework_position=ACCOUNTING_FRAMEWORK_POSITION,

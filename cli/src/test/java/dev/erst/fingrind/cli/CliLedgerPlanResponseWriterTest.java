@@ -265,7 +265,7 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
     CliPlanJsonModels.LedgerExecutionJournalPayload rejectedJournal =
         Objects.requireNonNull(rejectedPayload.journal(), "journal");
     List<CliPlanJsonModels.LedgerJournalEntryPayload> steps = rejectedJournal.steps();
-    assertEquals("ensure-book", steps.get(0).kind().wireValue());
+    assertEquals("inspect-book", steps.get(0).kind().wireValue());
     assertNull(steps.get(0).detailKind());
     assertNull(steps.get(0).boundaryCheckpoint());
     assertEquals("plan-boundary", steps.get(1).kind().wireValue());

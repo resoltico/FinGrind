@@ -42,7 +42,7 @@ class ReleaseSmokeConfig:
     trial_balance_pdf: SmokePath
     trial_balance_pdf_stderr_path: Path
     second_page_command_id: str
-    actor_prefix: str
+    request_prefix: str
     open_book_mode: str
     entity_name: str
     accounting_kernel_profile: str
@@ -81,7 +81,7 @@ class ReleaseSmokeScenario:
     trial_balance_pdf: SmokePath
     trial_balance_pdf_stderr_path: Path
     second_page_command_id: str
-    actor_prefix: str
+    request_prefix: str
     entity_name: str
     accounting_kernel_profile: str
     accounting_framework_position: str

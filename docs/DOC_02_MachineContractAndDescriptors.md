@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: CONTRACT_DISCOVERY
-updated: "2026-07-17"
+updated: "2026-07-21"
 route:
   keywords: [fingrind, machine-contract, discovery, request-shapes, response-shapes, templates, workflow, contract-errors]
   questions: ["where is MachineContract documented", "where are request and response descriptor types documented", "where are discovery templates and workflow descriptors documented"]
@@ -152,8 +152,8 @@ public final class ContractTemplates
 - `ContractTemplates`: canonical request template descriptors
 - `ContractPlanTemplates`: canonical ledger-plan template descriptors
 - `TemplateDescriptorType` is the sealed owner for the published template-descriptor inventory
-- `ContractPlanTemplates.EnsureBookTemplateDescriptor`, `.LedgerPlanTemplateDescriptor`,
-  `.LedgerPlanStepTemplateDescriptor`, `.LedgerPlanQueryTemplateDescriptor`, and
+- `ContractPlanTemplates.LedgerPlanTemplateDescriptor`, `.LedgerPlanStepTemplateDescriptor`,
+  `.LedgerPlanQueryTemplateDescriptor`, and
   `.LedgerAssertionTemplateDescriptor` are the nested typed ledger-plan template descriptors
 - `ContractTemplates.PostingRequestTemplateDescriptor`, `.JournalLineTemplateDescriptor`,
   `.ProvenanceTemplateDescriptor`, `.ReversalTemplateDescriptor`,

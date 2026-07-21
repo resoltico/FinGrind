@@ -171,9 +171,9 @@ evidence; FinGrind does not determine those matters.
 `execute-plan` runs one ordered ledger plan atomically and returns either a human-readable text
 summary or one JSON execution-journal envelope on stdout. Built-in default output is text;
 `--output json` keeps the machine envelope, and `--result-detail full` includes the per-step
-journal in either surface. `execute-plan` requires one through five aligned attestation
-credential triples, including when the submitted plan is query-only: the command always opens an
-attested protected-book execution session.
+journal in either surface. A plan that contains any mutation requires one through five aligned
+attestation credential triples; a query-only or assertion-only plan does not. A mutating plan
+creates exactly one signed `execute-plan` chain operation for all of its successful child changes.
 `preflight-entry`, the typed `record-*` commit commands, and raw `post-entry` all require an
 already initialized book plus declared active accounts for every referenced account, and they
 surface those failures as `account-state-violations` with structured `details.violations`. That

@@ -594,7 +594,7 @@ profiles in
 | Operation kinds | Required groups | Optional groups |
 |:--|:--|:--|
 | post-entry | D | X |
-| execute-plan | one or more independently ordered child rows from this table | none beyond the selected child rows |
+| execute-plan | one or more canonical child mutation bundles | none beyond the selected child bundles |
 | record-sale-settled, record-sale-on-credit, record-purchase-settled, record-purchase-on-credit, record-expense-settled, record-expense-on-credit | B | T |
 | record-receipt, record-payment | B | S |
 | record-owner-contribution, record-owner-withdrawal | B | none |
@@ -613,11 +613,14 @@ profiles in
 | record-realized-foreign-exchange-settlement | B, O2 | none |
 | record-reversal | B, R | none |
 
-`execute-plan` is one attested operation with exactly one 0100 request.command. Every
-request.posting stepOrder names one child operation kind and must independently satisfy that
-child's exact row after removing 0100 from its B group. Its effect records carry the same stepOrder
-or the generated postingId linked to that step; it cannot use the union of unrelated rows as a
-discretionary extension point. `record-reversal` names the admitted original posting in
+`execute-plan` is one attested operation with exactly one 0100 request.command. It retains each
+successful child mutation's canonical immutable request and effect bundle, rather than emitting a
+separate chain operation for each child. Every request.posting stepOrder names one posting child
+operation kind and must independently satisfy that child's exact row after removing 0100 from its
+B group. Its effect records carry the same stepOrder or the generated postingId linked to that
+step; account and tax-registration children retain their own canonical identity records. The
+aggregate cannot use the union of unrelated rows as a discretionary extension point.
+`record-reversal` names the admitted original posting in
 request.posting.priorPostingId and may reverse it only under the closed reversal relation in the
 semantic profiles.
 

@@ -6,11 +6,11 @@ from .path_support import normalize_reported_path, normalized_path_components
 
 
 def expected_source_document(
-    actor_prefix: str,
+    request_prefix: str,
     evidence_suffix: str,
     document_date: str,
 ) -> dict[str, str]:
-    return retained_source_document(actor_prefix, evidence_suffix, document_date)
+    return retained_source_document(request_prefix, evidence_suffix, document_date)
 
 
 def expected_reported_artifact_path(config: ReleaseSmokeConfig, smoke_path: SmokePath) -> str:

@@ -61,7 +61,7 @@ def load_config() -> ReleaseSmokeConfig:
         trial_balance_pdf=scenario.trial_balance_pdf,
         trial_balance_pdf_stderr_path=scenario.trial_balance_pdf_stderr_path,
         second_page_command_id=scenario.second_page_command_id,
-        actor_prefix=scenario.actor_prefix,
+        request_prefix=scenario.request_prefix,
         open_book_mode=require_env("FINGRIND_RELEASE_SMOKE_OPEN_BOOK_MODE"),
         entity_name=scenario.entity_name,
         accounting_kernel_profile=scenario.accounting_kernel_profile,

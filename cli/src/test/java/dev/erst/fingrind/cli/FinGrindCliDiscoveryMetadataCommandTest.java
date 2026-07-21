@@ -196,10 +196,9 @@ class FinGrindCliDiscoveryMetadataCommandTest extends FinGrindCliDiscoveryComman
     JsonNode json = new ObjectMapper().readTree(outputStream.toString(StandardCharsets.UTF_8));
     assertEquals("general-workflow", json.path("planId").stringValue());
     assertFalse(json.has("executionPolicy"));
-    assertEquals("ensure-book", json.path("steps").get(0).path("stepId").stringValue());
-    assertEquals("record-sale-settled", json.path("steps").get(1).path("stepId").stringValue());
-    assertEquals("record-sale-settled", json.path("steps").get(1).path("kind").stringValue());
-    assertTrue(json.path("steps").get(1).has("posting"));
+    assertEquals("record-sale-settled", json.path("steps").get(0).path("stepId").stringValue());
+    assertEquals("record-sale-settled", json.path("steps").get(0).path("kind").stringValue());
+    assertTrue(json.path("steps").get(0).has("posting"));
 
     outputStream.reset();
     exitCode = cli.run(new String[] {"print-plan-template", "tax-setup"});
@@ -207,10 +206,10 @@ class FinGrindCliDiscoveryMetadataCommandTest extends FinGrindCliDiscoveryComman
     JsonNode taxSetup = new ObjectMapper().readTree(outputStream.toString(StandardCharsets.UTF_8));
     assertEquals("tax-setup", taxSetup.path("planId").stringValue());
     assertEquals(
-        "declare-tax-registration", taxSetup.path("steps").get(3).path("stepId").stringValue());
+        "declare-tax-registration", taxSetup.path("steps").get(2).path("stepId").stringValue());
     assertEquals(
-        "declare-tax-registration", taxSetup.path("steps").get(3).path("kind").stringValue());
-    assertTrue(taxSetup.path("steps").get(3).has("declareTaxRegistration"));
+        "declare-tax-registration", taxSetup.path("steps").get(2).path("kind").stringValue());
+    assertTrue(taxSetup.path("steps").get(2).has("declareTaxRegistration"));
     assertFalse(taxSetup.toString().contains("\"posting\""));
   }
 }

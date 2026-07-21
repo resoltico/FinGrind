@@ -90,9 +90,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
     CliRequestException exception =
         assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
 
-    assertEquals(
-        "Ledger plans cannot initialize an attested book. Run open-book with explicit founder credentials before executing a plan.",
-        exception.getMessage());
+    assertRetiredGenesisStepRefusal(exception);
   }
 
   @Test
@@ -331,9 +329,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
     CliRequestException exception =
         assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
 
-    assertEquals(
-        "Ledger plans cannot initialize an attested book. Run open-book with explicit founder credentials before executing a plan.",
-        exception.getMessage());
+    assertRetiredGenesisStepRefusal(exception);
   }
 
   @Test
@@ -641,12 +637,8 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
         assertThrows(
             CliRequestException.class, () -> explicitNullReader.readLedgerPlan(Path.of("-")));
 
-    assertEquals(
-        "Ledger plans cannot initialize an attested book. Run open-book with explicit founder credentials before executing a plan.",
-        arrayFieldException.getMessage());
-    assertEquals(
-        "Ledger plans cannot initialize an attested book. Run open-book with explicit founder credentials before executing a plan.",
-        explicitNullException.getMessage());
+    assertRetiredGenesisStepRefusal(arrayFieldException);
+    assertRetiredGenesisStepRefusal(explicitNullException);
   }
 
   @Test
@@ -677,9 +669,7 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
 
     CliRequestException exception =
         assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
-    assertEquals(
-        "Ledger plans cannot initialize an attested book. Run open-book with explicit founder credentials before executing a plan.",
-        exception.getMessage());
+    assertRetiredGenesisStepRefusal(exception);
   }
 
   @Test
@@ -712,9 +702,13 @@ class CliLedgerPlanRequestReaderTest extends CliRequestReaderTestSupport {
     CliRequestException exception =
         assertThrows(CliRequestException.class, () -> requestReader.readLedgerPlan(Path.of("-")));
 
-    assertEquals(
-        "Ledger plans cannot initialize an attested book. Run open-book with explicit founder credentials before executing a plan.",
-        exception.getMessage());
+    assertRetiredGenesisStepRefusal(exception);
+  }
+
+  private static void assertRetiredGenesisStepRefusal(CliRequestException exception) {
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .startsWith("Unsupported value for kind: ensure-book."));
   }
 
   @Test
