@@ -1,5 +1,13 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.attestation.AttestationArtifactSnapshotReader;
+import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
+import dev.erst.fingrind.core.attestation.AttestationBackupArtifact;
+import dev.erst.fingrind.core.attestation.AttestationBackupArtifactVerification;
+import dev.erst.fingrind.core.attestation.AttestationEvidence;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationOperationPreimages;
+import dev.erst.fingrind.core.attestation.AttestationVerification;
 import dev.erst.fingrind.executor.maintenance.MaintenanceCompletion;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
@@ -8,14 +16,19 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRo
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditCompensationKind;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditKind;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
+import dev.erst.fingrind.executor.spi.AttestedProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.PreparedPairPublication;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import dev.erst.fingrind.executor.spi.StagedRestoredBookPair;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
@@ -23,7 +36,8 @@ import org.jspecify.annotations.Nullable;
  * SQLite-backed maintenance store for protected-book verification and staged artifact workflows.
  */
 public final class SqliteProtectedBookMaintenanceStore
-    extends SqliteProtectedBookMaintenanceArtifactStore {
+    extends SqliteProtectedBookMaintenanceArtifactStore
+    implements AttestedProtectedBookMaintenanceStore {
   private final SqlitePassphraseResolver passphraseResolver;
   private final SqliteProtectedBookVerificationSupport verificationSupport;
   private final SqliteProtectedBookMaintenanceAuditSupport auditSupport;
@@ -179,6 +193,121 @@ public final class SqliteProtectedBookMaintenanceStore
         sqliteVerifiedBook.passphraseCopy(),
         recordedAt,
         auditKind);
+  }
+
+  @Override
+  public List<AttestationEvidence> loadAttestationEvidence(VerifiedBook verifiedBook) {
+    SqliteVerifiedBook sqliteVerifiedBook = requireVerifiedBook(verifiedBook);
+    try (SqliteBookPassphrase passphrase = sqliteVerifiedBook.passphraseCopy();
+        SqliteNativeDatabase database =
+            SqliteNativeConnections.openWithoutRollbackArtifactWarning(
+                sqliteVerifiedBook.artifactPath(), passphrase, SqliteNativeOpenMode.READ_ONLY)) {
+      return SqliteAttestationEvidenceStore.loadAll(database);
+    }
+  }
+
+  @Override
+  public AttestationVerification appendAttestedOperation(
+      VerifiedBook verifiedBook,
+      String operationKind,
+      Instant recordedAt,
+      AttestationOperationPreimages preimages,
+      AttestationOperationAuthorizer authorizer,
+      @Nullable AttestationBackupAcknowledgement backupAcknowledgement) {
+    SqliteVerifiedBook sqliteVerifiedBook = requireVerifiedBook(verifiedBook);
+    try (SqliteBookPassphrase passphrase = sqliteVerifiedBook.passphraseCopy();
+        SqliteNativeDatabase database =
+            SqliteNativeConnections.openWithoutRollbackArtifactWarning(
+                sqliteVerifiedBook.artifactPath(),
+                passphrase,
+                SqliteNativeOpenMode.READ_WRITE_EXISTING)) {
+      database.executeStatement("begin immediate");
+      try {
+        AttestationVerification verification =
+            SqliteAttestationEvidenceStore.appendAuthorized(
+                database, operationKind, recordedAt, preimages, authorizer, backupAcknowledgement);
+        database.executeStatement("commit");
+        return verification;
+      } catch (RuntimeException exception) {
+        SqliteStoreOperations.rollbackQuietly(database);
+        throw exception;
+      }
+    }
+  }
+
+  @Override
+  public VerifiedBackupArtifact verifyBackupArtifact(
+      Path normalizedBackupArtifactPath, Path normalizedBackupKeyFilePath) {
+    Path checkedArtifactPath = normalize(normalizedBackupArtifactPath, "backupFilePath");
+    Path checkedKeyPath = normalize(normalizedBackupKeyFilePath, "backupKeyFilePath");
+    try {
+      SqliteProtectedBookStagingFiles.requireRegularNonSymlinkFile(checkedArtifactPath);
+      byte[] artifact = Files.readAllBytes(checkedArtifactPath);
+      SqliteOwnedStagedArtifact snapshotStage =
+          SqliteOwnedStagedArtifact.create(checkedArtifactPath, ".artifact-snapshot-", ".sqlite");
+      SqliteVerifiedBook[] snapshotBook = new SqliteVerifiedBook[1];
+      try {
+        AttestationArtifactSnapshotReader reader =
+            snapshot -> {
+              writeSnapshot(snapshotStage.stagedPath(), snapshot);
+              snapshotBook[0] = openVerifiedSnapshot(snapshotStage.stagedPath(), checkedKeyPath);
+              return loadAttestationEvidence(snapshotBook[0]);
+            };
+        AttestationBackupArtifactVerification verification =
+            AttestationBackupArtifact.verify(artifact, reader);
+        return new SqliteVerifiedBackupArtifact(snapshotStage, snapshotBook[0], verification);
+      } catch (RuntimeException exception) {
+        try {
+          if (snapshotBook[0] != null) {
+            snapshotBook[0].close();
+          }
+        } finally {
+          snapshotStage.discard();
+        }
+        throw exception;
+      }
+    } catch (java.io.IOException exception) {
+      throw new IllegalStateException("Failed to read the selected backup artifact.", exception);
+    } catch (SqliteCallerPathContractException exception) {
+      throw maintenanceRejection(ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE, exception);
+    }
+  }
+
+  private SqliteVerifiedBook openVerifiedSnapshot(Path snapshotPath, Path backupKeyPath) {
+    return SqliteBookKeyFile.loadDecision(backupKeyPath)
+        .fold(
+            passphrase -> {
+              BookVerification verification =
+                  verificationSupport.verifyResolvedBook(snapshotPath, passphrase);
+              if (verification instanceof SqliteVerifiedBook verifiedBook) {
+                return verifiedBook;
+              }
+              VerificationFailure failure = (VerificationFailure) verification;
+              throw new IllegalArgumentException(
+                  "Backup artifact snapshot cannot be opened with the selected backup key: "
+                      + failure.failure().name());
+            },
+            failure -> {
+              throw new IllegalArgumentException(
+                  "Backup artifact key cannot be opened: " + failure.code());
+            });
+  }
+
+  private static void writeSnapshot(Path stagedPath, byte[] snapshot) {
+    byte[] checkedSnapshot = Objects.requireNonNull(snapshot, "snapshot").clone();
+    try (FileChannel channel =
+        FileChannel.open(
+            stagedPath, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
+      ByteBuffer buffer = ByteBuffer.wrap(checkedSnapshot);
+      while (buffer.hasRemaining()) {
+        channel.write(buffer);
+      }
+      channel.force(true);
+      SqliteBookFileSecurity.hardenBookArtifacts(stagedPath);
+    } catch (java.io.IOException exception) {
+      throw new IllegalStateException(
+          "Failed to stage the encrypted backup artifact snapshot.", exception);
+    }
   }
 
   private MaintenanceDecision<BookVerification> verifyInitializedResolvedBook(

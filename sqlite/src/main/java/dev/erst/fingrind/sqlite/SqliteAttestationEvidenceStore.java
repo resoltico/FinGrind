@@ -1,5 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
+import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgementAdmission;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationOperationPreimages;
@@ -15,6 +17,7 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Transaction-local persistence boundary for immutable operation evidence and head
@@ -72,6 +75,17 @@ final class SqliteAttestationEvidenceStore {
       Instant recordedAt,
       AttestationOperationPreimages preimages,
       AttestationOperationAuthorizer authorizer) {
+    return appendAuthorized(activeDatabase, operationKind, recordedAt, preimages, authorizer, null);
+  }
+
+  /** Signs and appends one operation with optional exact-tuple backup acknowledgement admission. */
+  static AttestationVerification appendAuthorized(
+      SqliteNativeDatabase activeDatabase,
+      String operationKind,
+      Instant recordedAt,
+      AttestationOperationPreimages preimages,
+      AttestationOperationAuthorizer authorizer,
+      @Nullable AttestationBackupAcknowledgement backupAcknowledgement) {
     Objects.requireNonNull(activeDatabase, "activeDatabase");
     String checkedOperationKind = Objects.requireNonNull(operationKind, "operationKind");
     Instant checkedRecordedAt = Objects.requireNonNull(recordedAt, "recordedAt");
@@ -85,6 +99,20 @@ final class SqliteAttestationEvidenceStore {
                 () ->
                     new IllegalStateException(
                         "Protected-book mutation requires a persisted attestation genesis."));
+    if (backupAcknowledgement != null) {
+      switch (AttestationBackupAcknowledgementAdmission.evaluate(
+          persistedEvidence, backupAcknowledgement)) {
+        case APPEND -> {
+          // Continue into the shared signing and CAS boundary below.
+        }
+        case IDENTICAL_REPLAY -> {
+          return persistedVerification;
+        }
+        case CONFLICT ->
+            throw new SqliteAttestationBackupAcknowledgementConflictException(
+                backupAcknowledgement.backupId());
+      }
+    }
     AttestationEvidence candidateEvidence =
         checkedAuthorizer.authorize(
             new AttestationOperationRequest(

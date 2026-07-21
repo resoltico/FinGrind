@@ -6,8 +6,12 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionE
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
@@ -22,6 +26,7 @@ final class SqliteStagedBackupPair implements StagedBackupPair {
   private @Nullable SqliteBookPassphrase backupPassphrase;
   private boolean backupFilePublished;
   private boolean backupKeyFilePublished;
+  private boolean artifactSealed;
   private boolean finished;
 
   SqliteStagedBackupPair(
@@ -139,9 +144,49 @@ final class SqliteStagedBackupPair implements StagedBackupPair {
   @Override
   public MaintenanceDecision<ProtectedBookMaintenanceStore.BookVerification>
       verifyInitializedBackup() {
+    requireUnsealedSnapshot();
     return MaintenanceDecision.accepted(
         verificationSupport.verifyResolvedBook(
             stagedBackupFile.stagedPath(), currentBackupPassphrase().copy()));
+  }
+
+  @Override
+  public byte[] snapshot() {
+    requireUnsealedSnapshot();
+    stagedBackupFile.requireIntactFor(finalBackupFilePath);
+    try {
+      return Files.readAllBytes(stagedBackupFile.stagedPath());
+    } catch (IOException exception) {
+      throw new IllegalStateException(
+          "Failed to read the staged encrypted backup snapshot.", exception);
+    }
+  }
+
+  @Override
+  public void sealArtifact(byte[] artifact) {
+    requireUnsealedSnapshot();
+    byte[] checkedArtifact = Objects.requireNonNull(artifact, "artifact").clone();
+    byte[] snapshot = snapshot();
+    if (checkedArtifact.length <= snapshot.length
+        || !Arrays.equals(snapshot, Arrays.copyOf(checkedArtifact, snapshot.length))) {
+      throw new IllegalArgumentException(
+          "Backup artifact must begin with the exact staged encrypted snapshot.");
+    }
+    try (FileChannel channel =
+        FileChannel.open(
+            stagedBackupFile.stagedPath(),
+            StandardOpenOption.WRITE,
+            StandardOpenOption.TRUNCATE_EXISTING)) {
+      ByteBuffer buffer = ByteBuffer.wrap(checkedArtifact);
+      while (buffer.hasRemaining()) {
+        channel.write(buffer);
+      }
+      channel.force(true);
+      artifactSealed = true;
+    } catch (IOException exception) {
+      throw new IllegalStateException(
+          "Failed to seal the staged attested backup artifact.", exception);
+    }
   }
 
   @Override
@@ -207,6 +252,13 @@ final class SqliteStagedBackupPair implements StagedBackupPair {
 
   private SqliteBookPassphrase currentBackupPassphrase() {
     return Objects.requireNonNull(backupPassphrase, "backupPassphrase");
+  }
+
+  private void requireUnsealedSnapshot() {
+    if (artifactSealed) {
+      throw new IllegalStateException(
+          "The staged backup snapshot was already sealed into its attestation artifact.");
+    }
   }
 
   private static byte[] ownedPassphraseBytes(SqliteBookPassphrase passphrase) {
