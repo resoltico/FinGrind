@@ -2,7 +2,6 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.InventoryMovementKind;
-import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingOriginKind;
 import java.time.LocalDate;
 
@@ -79,6 +78,7 @@ class SqliteInventoryCostingFixtureSupport extends SqlitePostingFactStoreTestSup
       String recordedAt,
       String postingKind,
       PostingOriginKind postingOriginKind) {
+    String canonicalPostingId = TestPostingIds.valueForLabel(postingId);
     PostingFactEntryFields entryFields = entryFields(postingOriginKind);
     String accountCode =
         entryFields.accountPair()
@@ -142,7 +142,7 @@ class SqliteInventoryCostingFixtureSupport extends SqlitePostingFactStoreTestSup
         )
         """
             .formatted(
-                postingId,
+                canonicalPostingId,
                 postingKind,
                 postingOriginKind.wireValue(),
                 accountCode,
@@ -175,13 +175,7 @@ class SqliteInventoryCostingFixtureSupport extends SqlitePostingFactStoreTestSup
         movementKind,
         quantityDelta,
         costDeltaMinor,
-        new PostingId(
-            java.util
-                .UUID
-                .nameUUIDFromBytes(
-                    ("fingrind-test-postingid:" + postingId)
-                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
-                .toString()));
+        TestPostingIds.fromLabel(postingId));
   }
 
   private static PostingFactEntryFields entryFields(PostingOriginKind postingOriginKind) {

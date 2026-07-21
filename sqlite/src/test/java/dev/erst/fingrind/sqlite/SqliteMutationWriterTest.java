@@ -509,7 +509,8 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                           .findOneCommittedPosting(
                               failingDatabase,
                               SqlitePostingSql.FIND_POSTING_BY_ID,
-                              statement -> statement.bindText(1, postingId)));
+                              statement ->
+                                  statement.bindText(1, TestPostingIds.valueForLabel(postingId))));
 
           String message = Objects.requireNonNull(failure.getMessage());
           assertTrue(
@@ -770,7 +771,7 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
             .findOneCommittedPosting(
                 database,
                 SqlitePostingSql.FIND_POSTING_BY_ID,
-                statement -> statement.bindText(1, postingId))
+                statement -> statement.bindText(1, TestPostingIds.valueForLabel(postingId)))
             .orElseThrow();
 
     assertEquals(Optional.of(entry), persisted.callerAuthoredEntry());

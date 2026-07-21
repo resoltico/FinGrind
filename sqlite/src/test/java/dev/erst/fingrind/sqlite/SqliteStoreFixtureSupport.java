@@ -246,7 +246,13 @@ class SqliteStoreFixtureSupport {
             %d
         )
         """
-            .formatted(postingId, lineOrder, accountCode, entrySide, currencyCode, amountMinor));
+            .formatted(
+                TestPostingIds.valueForLabel(postingId),
+                lineOrder,
+                accountCode,
+                entrySide,
+                currencyCode,
+                amountMinor));
   }
 
   static void insertAuditEventRow(
