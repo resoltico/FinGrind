@@ -117,18 +117,18 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(
         accountsCsv.contains("accounts,account:1000,,account,accounts,1000,\"Cash, reserve\""));
     assertTrue(postingText.contains("Correlation id"));
-    assertTrue(postingText.contains("posting-0"));
-    assertTrue(postingText.contains("actor-1"));
-    assertTrue(postingText.contains("command-1"));
+    assertTrue(postingText.contains("e888fd00-a501-341d-9a6b-8d9059757d1b"));
+    assertFalse(postingText.contains("actor-1"));
+    assertTrue(postingText.contains("20aea0ba-3b2e-3428-af5b-f9ee3094522c"));
     assertTrue(postingText.contains("idem-1"));
     assertTrue(postingText.contains("cause-1"));
     assertTrue(postingText.contains("Correction"));
     assertTrue(postingRegisterText.contains("Next cursor"));
     assertTrue(postingRegisterText.contains(nextCursor.wireValue()));
-    assertTrue(postingRegisterCsv.contains("posting-1"));
+    assertTrue(postingRegisterCsv.contains("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     assertTrue(
         postingRegisterCsv.contains(
-            "postings,posting:posting-1,postings,2026-04-07,2026-04-07T10:15:30Z,posting-1"));
+            "postings,posting:bdc03c47-a16c-3688-a18f-2445894bbc69,postings,2026-04-07,2026-04-07T10:15:30Z,bdc03c47-a16c-3688-a18f-2445894bbc69"));
   }
 
   @Test
@@ -339,7 +339,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertEquals("4.00", ledgerTextRow.get(3));
     assertEquals("6.00 Debit", ledgerTextRow.get(4));
     assertEquals("2000", ledgerTextRow.get(5));
-    assertEquals("posting-1", ledgerTextRow.get(6));
+    assertEquals("bdc03c47-a16c-3688-a18f-2445894bbc69", ledgerTextRow.get(6));
 
     String emptyAccountsText =
         CliAccountPageOutputRenderer.renderText(
@@ -462,7 +462,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(preflightText.contains("2100"));
     assertTrue(preflightText.contains("12.10"));
     assertTrue(committedText.contains("Entry Committed"));
-    assertTrue(committedText.contains("posting-committed"));
+    assertTrue(committedText.contains("f8ff5c80-5d1e-3f21-abed-e0f33c801959"));
     assertTrue(committedText.contains("coverage-idem"));
     assertTrue(committedText.contains("Event class"));
     assertFalse(committedText.contains("Contained typed events"));
@@ -528,7 +528,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(accountLedgerText.contains("Opening Balances"));
     assertTrue(accountLedgerText.contains("2000"));
     assertTrue(accountLedgerCsv.contains("family,accountCode,postingId"));
-    assertTrue(accountLedgerCsv.contains("account-ledger,1000,posting-1"));
+    assertTrue(accountLedgerCsv.contains("account-ledger,1000,bdc03c47-a16c-3688-a18f-2445894bbc69"));
     List<String> accountLedgerCsvLines = accountLedgerCsv.lines().toList();
     int accountLedgerCsvColumnCount = csvFieldCount(accountLedgerCsvLines.getFirst());
     for (String line : accountLedgerCsvLines) {
@@ -571,7 +571,9 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertEquals("Reversal", CliQueryLabelFormatAccess.displayPostingRoleText(postingFact));
     assertEquals(
         "(not a reversal)", CliQueryLabelFormatAccess.reversalTargetText(directPostingFact));
-    assertEquals("posting-0", CliQueryLabelFormatAccess.reversalTargetText(postingFact));
+    assertEquals(
+        "e888fd00-a501-341d-9a6b-8d9059757d1b",
+        CliQueryLabelFormatAccess.reversalTargetText(postingFact));
     assertEquals(
         "Header", CliQueryLabelFormatAccess.displayAccountNodeKindLabel(AccountNodeKind.HEADER));
     assertEquals(
@@ -584,14 +586,21 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
         "document-idem-1", CliQueryRowFormatAccess.postingSourceDocumentIdsText(postingFact));
     assertEquals("(none)", CliQueryRowFormatAccess.postingApprovalsText(postingFact));
     assertEquals(
-        "manager-signoff approval-idem-1 by PERSON approver-approval-idem-1 APPROVED",
+        "manager-signoff approval-idem-1 by person approver-approval-idem-1 APPROVED",
         CliQueryRowFormatAccess.postingApprovalsText(
             CliResponseWriterTestSupport.postingFactWithApproval()));
     assertEquals(
         List.of("EUR", "10.00", "4.00", "6.00", "DEBIT"),
         CliQueryRowFormatAccess.balanceCsvRow(balance));
     assertEquals(
-        List.of("2026-04-07", "Reversal", "Reversal", "10.00", "10.00", "1000, 2000", "posting-1"),
+        List.of(
+            "2026-04-07",
+            "Reversal",
+            "Reversal",
+            "10.00",
+            "10.00",
+            "1000, 2000",
+            "bdc03c47-a16c-3688-a18f-2445894bbc69"),
         CliQueryRowFormatAccess.postingRegisterTextRow(postingFact));
     assertEquals(
         List.of(

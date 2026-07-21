@@ -116,7 +116,9 @@ class CliMutationCommandExecutorTest extends CliResponseWriterTestSupport {
     JsonNode envelope = readJson(outputStream);
     assertEquals(0, exitCode);
     assertEquals("ok", envelope.path("status").stringValue());
-    assertEquals("posting-1", envelope.path("payload").path("postingId").stringValue());
+    assertEquals(
+        "bdc03c47-a16c-3688-a18f-2445894bbc69",
+        envelope.path("payload").path("postingId").stringValue());
     assertNotNull(capturedCommand.get());
     assertEquals(
         dev.erst.fingrind.core.BookkeepingEntryKind.SALE_SETTLED,

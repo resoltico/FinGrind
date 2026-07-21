@@ -63,7 +63,7 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
     String json = outputStream.toString(StandardCharsets.UTF_8);
     assertJsonContains(json, "\"status\":\"rejected\"");
     assertJsonContains(json, "\"code\":\"reversal-target-not-found\"");
-    assertJsonContains(json, "\"priorPostingId\":\"posting-1\"");
+    assertJsonContains(json, "\"priorPostingId\":\"bdc03c47-a16c-3688-a18f-2445894bbc69\"");
   }
 
   @Test
@@ -82,7 +82,7 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
                 new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
     assertJsonContains(json, "\"code\":\"reversal-already-exists\"");
     assertTrue(json.contains("already has a full reversal"));
-    assertJsonContains(json, "\"priorPostingId\":\"posting-1\"");
+    assertJsonContains(json, "\"priorPostingId\":\"bdc03c47-a16c-3688-a18f-2445894bbc69\"");
   }
 
   @Test
@@ -93,7 +93,7 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
                 new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
     assertJsonContains(json, "\"code\":\"reversal-target-is-reversal\"");
     assertTrue(json.contains("cannot be reversed"));
-    assertJsonContains(json, "\"priorPostingId\":\"posting-1\"");
+    assertJsonContains(json, "\"priorPostingId\":\"bdc03c47-a16c-3688-a18f-2445894bbc69\"");
   }
 
   @Test
@@ -104,7 +104,7 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
                 new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
     assertJsonContains(json, "\"code\":\"reversal-does-not-negate-target\"");
     assertTrue(json.contains("does not negate posting"));
-    assertJsonContains(json, "\"priorPostingId\":\"posting-1\"");
+    assertJsonContains(json, "\"priorPostingId\":\"bdc03c47-a16c-3688-a18f-2445894bbc69\"");
   }
 
   @Test

@@ -126,7 +126,7 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
 
     assertEquals(2, lines.size());
     assertTrue(lines.getFirst().startsWith("family,accountCode,postingId,effectiveDate"));
-    assertTrue(csv.contains("account-ledger,1000,posting-approval-1,2026-04-07,EUR,EUR,1000"));
+    assertTrue(csv.contains("account-ledger,1000,0ffb246b-e007-33ab-95ab-b361f43f3cd9,2026-04-07,EUR,EUR,1000"));
     assertFalse(csv.contains("approval-ledger-approval"));
   }
 

@@ -170,7 +170,7 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "--book-key-file",
                   "book.key",
                   "--posting-id",
-                  "posting-1"
+                  "bdc03c47-a16c-3688-a18f-2445894bbc69"
                 }));
 
     assertEquals(Path.of("book.sqlite"), inspectBook.bookAccess().bookFilePath());
@@ -727,7 +727,7 @@ class CliReadQueryArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "--book-key-file",
                   "book.key",
                   "--posting-id",
-                  "posting-1",
+                  "bdc03c47-a16c-3688-a18f-2445894bbc69",
                   "--output",
                   "text"
                 }));

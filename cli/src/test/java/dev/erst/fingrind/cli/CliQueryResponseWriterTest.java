@@ -219,9 +219,11 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertFalse(
         missingInspectionOutput.toString(StandardCharsets.UTF_8).contains("\"initializedAt\""));
     assertJsonContains(getPostingOutput, "\"reason\":\"full reversal\"");
-    assertJsonContains(getPostingOutput, "\"priorPostingId\":\"posting-0\"");
+    assertJsonContains(
+        getPostingOutput, "\"priorPostingId\":\"e888fd00-a501-341d-9a6b-8d9059757d1b\"");
     assertJsonContains(getPostingRejectionOutput, "\"code\":\"posting-not-found\"");
-    assertJsonContains(getPostingRejectionOutput, "\"postingId\":\"posting-9\"");
+    assertJsonContains(
+        getPostingRejectionOutput, "\"postingId\":\"7982b5de-2f28-355e-9911-9ca85b4f5a67\"");
     assertJsonContains(listPostingsOutput, "\"postings\":[");
     assertJsonContains(listPostingsRejectionOutput, "\"accountCode\":\"9999\"");
     JsonNode balanceJson = readJson(balanceOutput);
@@ -294,7 +296,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(postingRegisterText.contains("Reversal"));
     assertTrue(postingRegisterText.contains("1000, 2000"));
     assertTrue(postingRegisterText.contains("10.00"));
-    assertTrue(postingRegisterText.contains("posting-"));
+    assertTrue(postingRegisterText.contains("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     ByteArrayOutputStream postingRegisterCsvOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(postingRegisterCsvOutput))
         .writeListPostingsResult(
@@ -306,7 +308,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             "exportFamily,rowId,recordKind,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversesPostingId,reversedByPostingId,currencyCode,debitTotal,creditTotal,accountCodes,sourceDocumentIds,sourceDocumentTypes,approvalIds,approvalDecisions,message"));
     assertTrue(
         postingRegisterCsv.contains(
-            "postings,posting:posting-1,postings,2026-04-07,2026-04-07T10:15:30Z,posting-1,STANDARD,REVERSAL,reversal,posting-0,,EUR,10.00,10.00,1000|2000,document-idem-1,cash-receipt,,,"));
+            "postings,posting:bdc03c47-a16c-3688-a18f-2445894bbc69,postings,2026-04-07,2026-04-07T10:15:30Z,bdc03c47-a16c-3688-a18f-2445894bbc69,STANDARD,REVERSAL,reversal,e888fd00-a501-341d-9a6b-8d9059757d1b,,EUR,10.00,10.00,1000|2000,document-idem-1,cash-receipt,,,"));
     assertTrue(postingRegisterCsv.contains("document-idem-1"));
     assertTrue(postingRegisterCsv.contains("cash-receipt"));
     assertTrue(postingRegisterCsv.contains("approval-idem-1") || postingRegisterCsv.contains(",,"));
@@ -522,7 +524,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(accountLedgerText.contains("EUR 10.00 Debit"));
     assertTrue(accountLedgerText.contains("Ledger Entries"));
     assertTrue(accountLedgerText.contains("Counterpart account codes"));
-    assertTrue(accountLedgerText.contains("posting-"));
+    assertTrue(accountLedgerText.contains("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     ByteArrayOutputStream accountLedgerJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(accountLedgerJsonOutput))
         .writeAccountLedgerResult(
@@ -554,7 +556,7 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
             .path("cursor")
             .isNull());
     JsonNode ledgerRow = accountLedgerJson.path("payload").path("rows").get(0);
-    assertEquals("posting-1", ledgerRow.path("postingId").stringValue());
+    assertEquals("bdc03c47-a16c-3688-a18f-2445894bbc69", ledgerRow.path("postingId").stringValue());
     assertEquals("2026-04-07", ledgerRow.path("effectiveDate").stringValue());
     assertEquals(
         "1000", ledgerRow.path("movement").path("debitTotal").path("minorUnits").stringValue());
@@ -569,7 +571,9 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     assertTrue(
         accountLedgerCsv.startsWith(
             "family,accountCode,postingId,effectiveDate,movementCurrencyCode,debitTotalCurrencyCode,debitTotalMinorUnits"));
-    assertTrue(accountLedgerCsv.contains("account-ledger,1000,posting-1,2026-04-07,EUR,EUR,1000"));
+    assertTrue(
+        accountLedgerCsv.contains(
+            "account-ledger,1000,bdc03c47-a16c-3688-a18f-2445894bbc69,2026-04-07,EUR,EUR,1000"));
   }
 
   @Test

@@ -371,6 +371,8 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
               "backup/entity.sqlite",
               "--new-backup-key-file",
               "backup/entity.key",
+              "--backup-id",
+              "018f0000-0000-7000-8000-000000000001",
               "--output",
               "json"
             });
@@ -436,7 +438,7 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             utf8PrintStream(diagnosticsStream),
             fixedClock());
-    int exitCode = cli.run(arguments);
+    int exitCode = cli.run(authenticatedArguments(arguments));
     return new ObservedInvocation(
         exitCode,
         outputStream.toString(StandardCharsets.UTF_8),
@@ -453,7 +455,7 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
             utf8PrintStream(diagnosticsStream),
             fixedClock(),
             workflow);
-    int exitCode = cli.run(arguments);
+    int exitCode = cli.run(authenticatedArguments(arguments));
     return new ObservedInvocation(
         exitCode,
         outputStream.toString(StandardCharsets.UTF_8),
@@ -480,6 +482,23 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
 
   private static JsonNode failureEnvelope(ObservedInvocation observed) throws IOException {
     return CliJsonObjectMappers.configuredObjectMapper().readTree(observed.stderr());
+  }
+
+  private String[] authenticatedArguments(String[] arguments) {
+    if (arguments.length == 0 || !"open-book".equals(arguments[0])) {
+      return attestedArguments(arguments);
+    }
+    int bookFileOption = java.util.List.of(arguments).indexOf("--book-file");
+    if (bookFileOption < 0 || bookFileOption + 1 == arguments.length) {
+      return arguments;
+    }
+    String[] founderCredentials =
+        founderAttestationArguments(tempDirectory.resolve("caller-path-attestation.sqlite"));
+    String[] authenticated =
+        java.util.Arrays.copyOf(arguments, arguments.length + founderCredentials.length);
+    System.arraycopy(
+        founderCredentials, 0, authenticated, arguments.length, founderCredentials.length);
+    return authenticated;
   }
 
   private Path createLoosePosixDirectory(String name) throws IOException {

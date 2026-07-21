@@ -37,7 +37,7 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
         CliPlanTextRenderer.renderLedgerPlanResult(succeededPlanResult(), PlanResultDetail.FULL);
 
     assertTrue(rendered.contains("Journal"));
-    assertTrue(rendered.contains("01. Ensure Book [succeeded]"));
+    assertTrue(rendered.contains("01. Inspect Book [succeeded]"));
     assertTrue(rendered.contains("02. Plan Boundary (Commit) [succeeded]"));
     assertTrue(rendered.contains("Outcome"));
     assertTrue(rendered.contains("State"));

@@ -39,10 +39,10 @@ class CliLatvianPayrollRegisterCsvRendererTest {
     assertTrue(payload.rows().get(0).settlements().isEmpty());
     assertEquals("reversed", payload.rows().get(1).runStatus());
     assertEquals(
-        "posting-payroll-run-reversal-2026-05", payload.rows().get(1).runReversalPostingId());
+        "2a645a3f-ac06-3a32-88bb-e7697a7af590", payload.rows().get(1).runReversalPostingId());
     assertEquals("reversed", payload.rows().get(1).settlements().getFirst().status());
     assertEquals(
-        "posting-net-wages-reversal-2026-05",
+        "b80b6a53-1882-3abd-94eb-14dbea809269",
         payload.rows().get(1).settlements().getFirst().reversalPostingId());
     assertTrue(csv.contains("unsettled"));
   }

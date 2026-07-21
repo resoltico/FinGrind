@@ -96,6 +96,20 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
     };
   }
 
+  /** Supplies the founder credentials required by direct open-book command fixtures. */
+  protected static String[] founderAttestationArguments(Path bookFilePath) {
+    Path founderKeyFilePath = attestationKeyFilePath(bookFilePath);
+    Path founderPassphraseFilePath = writeAttestationPassphraseFile(bookFilePath);
+    return new String[] {
+      ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
+      TEST_FOUNDER_PRINCIPAL_ID,
+      ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
+      founderKeyFilePath.toString(),
+      ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE,
+      founderPassphraseFilePath.toString()
+    };
+  }
+
   protected static String[] openBookStandardInputArguments(Path bookFilePath) {
     Path founderKeyFilePath = attestationKeyFilePath(bookFilePath);
     Path founderPassphraseFilePath = writeAttestationPassphraseFile(bookFilePath);

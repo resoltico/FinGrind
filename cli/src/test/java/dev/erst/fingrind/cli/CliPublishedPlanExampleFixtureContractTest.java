@@ -27,6 +27,9 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
         tempDirectory.resolve("books").resolve("acme-plan-assertion.sqlite");
 
     runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFile.toString());
+    runJsonCommand(openBookKeyFileArguments(planBookFile, bookKeyFile));
+    runJsonCommand(openBookKeyFileArguments(queryPlanBookFile, bookKeyFile));
+    runJsonCommand(openBookKeyFileArguments(assertionFailurePlanBookFile, bookKeyFile));
 
     assertJsonFixture(
         "execute-plan-committed-response.json",
@@ -162,6 +165,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
             """);
 
     runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFile.toString());
+    runJsonCommand(openBookKeyFileArguments(bookFile, bookKeyFile));
     JsonNode plan =
         runJsonCommand(
             "execute-plan",
@@ -179,7 +183,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
         plan.path("payload")
             .path("journal")
             .path("steps")
-            .get(3)
+            .get(2)
             .path("data")
             .path("outcome")
             .stringValue());
@@ -188,7 +192,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
         plan.path("payload")
             .path("journal")
             .path("steps")
-            .get(3)
+            .get(2)
             .path("data")
             .path("taxRegistration")
             .path("taxRegistrationId")

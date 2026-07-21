@@ -462,7 +462,7 @@ class CliRejectionPayloadMapperTest {
         Objects.requireNonNull(reversalTargetIsReversal.hint())
             .contains("fresh operational entry"));
     assertEquals(
-        "posting-reversal",
+        "d335bf0a-b735-3860-ba2e-fcb74daf48d5",
         assertInstanceOf(
                 CliRejectionJsonModels.PriorPostingDetails.class,
                 reversalTargetIsReversal.details())
@@ -541,13 +541,13 @@ class CliRejectionPayloadMapperTest {
         Objects.requireNonNull(resultHoldingAccountReserved.hint())
             .contains("generated close operations"));
     assertEquals(
-        "posting-2",
+        "41a95cd2-4a5f-3ef3-8a33-c2771905f362",
         assertInstanceOf(
                 CliRejectionJsonModels.PriorPostingDetails.class, reversalAlreadyExists.details())
             .priorPostingId());
     assertTrue(Objects.requireNonNull(reversalAlreadyExists.hint()).contains("existing reversal"));
     assertEquals(
-        "posting-3",
+        "6d857901-cb53-3986-a1d7-2f64319c76ce",
         assertInstanceOf(
                 CliRejectionJsonModels.PriorPostingDetails.class,
                 reversalDoesNotNegateTarget.details())

@@ -119,7 +119,7 @@ class CliPlanDetailTextRendererTest extends CliFixtureSupport {
                 true,
                 List.of(CliBookPayloadMapper.postingSummaryPayload(reversalPosting)))),
         "Postings",
-        "posting-1",
+        "bdc03c47-a16c-3688-a18f-2445894bbc69",
         "cursor-1");
     assertContainsAll(
         CliPlanDetailTextRenderer.renderStepData(

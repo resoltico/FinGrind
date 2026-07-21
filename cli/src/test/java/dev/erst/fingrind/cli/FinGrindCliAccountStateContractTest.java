@@ -363,7 +363,8 @@ class FinGrindCliAccountStateContractTest extends FinGrindCliTestSupport {
             fixedClock());
     int exitCode =
         cli.run(
-            new String[] {
+            jsonArguments(
+                new String[] {
               commandName,
               "--book-file",
               bookFilePath.toString(),
@@ -372,8 +373,8 @@ class FinGrindCliAccountStateContractTest extends FinGrindCliTestSupport {
               "--request-file",
               requestFile.toString(),
               "--output",
-              outputMode
-            });
+                  outputMode
+                }));
     return new ObservedInvocation(
         exitCode,
         outputStream.toString(StandardCharsets.UTF_8),
@@ -606,27 +607,17 @@ class FinGrindCliAccountStateContractTest extends FinGrindCliTestSupport {
   }
 
   private static String[] openTradingBookKeyFileArguments(Path bookFilePath, Path bookKeyFilePath) {
-    return new String[] {
-      "open-book",
-      "--book-file",
-      bookFilePath.toString(),
-      "--book-key-file",
-      bookKeyFilePath.toString(),
-      "--entity-name",
-      tradingBookIdentity().entityName().value(),
-      "--book-template-id",
-      tradingBookIdentity().bookDoctrine().bookTemplateId().wireValue(),
-      "--accounting-basis",
-      tradingBookIdentity().bookDoctrine().accountingBasis().wireValue(),
-      "--inventory-costing",
-      dev.erst.fingrind.core.InventoryCostingDoctrine.WEIGHTED_AVERAGE.wireValue(),
-      "--functional-currency",
-      tradingBookIdentity().functionalCurrency().code(),
-      "--fiscal-year-start",
-      tradingBookIdentity().fiscalYearStart().wireValue(),
-      "--book-start-effective-date",
-      tradingBookIdentity().bookStartEffectiveDate().toString()
-    };
+    String[] arguments = openBookKeyFileArguments(bookFilePath, bookKeyFilePath);
+    for (int index = 0; index < arguments.length; index++) {
+      if ("--book-template-id".equals(arguments[index])) {
+        arguments[index + 1] = tradingBookIdentity().bookDoctrine().bookTemplateId().wireValue();
+      }
+    }
+    String[] withInventoryCosting = java.util.Arrays.copyOf(arguments, arguments.length + 2);
+    withInventoryCosting[arguments.length] = "--inventory-costing";
+    withInventoryCosting[arguments.length + 1] =
+        dev.erst.fingrind.core.InventoryCostingDoctrine.WEIGHTED_AVERAGE.wireValue();
+    return withInventoryCosting;
   }
 
   private static RecordingWorkflow contractWorkflow(

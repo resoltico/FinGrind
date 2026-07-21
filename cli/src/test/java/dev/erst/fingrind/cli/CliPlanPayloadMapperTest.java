@@ -135,12 +135,12 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
 
     CliPlanJsonModels.PostingStepDataPayload posting =
         assertInstanceOf(CliPlanJsonModels.PostingStepDataPayload.class, steps.get(2).data());
-    assertEquals("posting-1", posting.posting().postingId());
+    assertEquals("018f0000-0000-7000-8000-000000000002", posting.posting().postingId());
     assertEquals(
         "approval-idem-1", posting.posting().evidence().approvals().getFirst().approvalId());
     assertEquals("APPROVED", posting.posting().evidence().approvals().getFirst().decision());
     assertEquals(
-        "prior-posting-1",
+        "018f0000-0000-7000-8000-000000000002",
         Objects.requireNonNull(posting.posting().reversal(), "reversal").priorPostingId());
     assertEquals(
         "operator reversal",
@@ -154,7 +154,7 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
     CliPlanJsonModels.PostingIdAssertionStepDataPayload postingAssertion =
         assertInstanceOf(
             CliPlanJsonModels.PostingIdAssertionStepDataPayload.class, steps.get(4).data());
-    assertEquals("posting-1", postingAssertion.postingId());
+    assertEquals("018f0000-0000-7000-8000-000000000002", postingAssertion.postingId());
 
     CliPlanJsonModels.AccountBalanceStepDataPayload balanceAssertion =
         assertInstanceOf(
@@ -272,7 +272,9 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
         assertInstanceOf(
             CliPlanJsonModels.PostingPageStepDataPayload.class,
             Objects.requireNonNull(payload.journal(), "journal").steps().getFirst().data());
-    assertEquals("prior-posting-1", postingPage.postings().getFirst().reversesPostingId());
+    assertEquals(
+        "018f0000-0000-7000-8000-000000000002",
+        postingPage.postings().getFirst().reversesPostingId());
   }
 
   @Test

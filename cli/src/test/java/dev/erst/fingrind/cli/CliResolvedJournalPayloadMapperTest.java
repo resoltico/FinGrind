@@ -65,7 +65,9 @@ class CliResolvedJournalPayloadMapperTest {
         List.of("CREDIT_SALE", "SETTLED_SALE"), payload.classification().containedTypedEvents());
     assertFalse(payload.classification().hasCashLine());
     assertEquals("INVOICE", payload.classification().evidenceClass());
-    assertEquals("posting-1", payload.classification().structural().reversesPriorPostingId());
+    assertEquals(
+        "bdc03c47-a16c-3688-a18f-2445894bbc69",
+        payload.classification().structural().reversesPriorPostingId());
   }
 
   @Test
