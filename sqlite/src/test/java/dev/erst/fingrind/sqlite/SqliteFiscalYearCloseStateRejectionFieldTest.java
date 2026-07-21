@@ -12,8 +12,8 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.executor.FiscalYearCloseService;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
+import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseRequiresGeneratedPostings;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
@@ -82,9 +82,7 @@ class SqliteFiscalYearCloseStateRejectionFieldTest extends SqlitePostingFactStor
           assertInstanceOf(
               FiscalYearCloseOutcome.Rejected.class,
               close(closeSession, LocalDate.parse("2027-01-01")));
-      assertInstanceOf(
-          BookkeepingAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings.class,
-          rejected.rejection());
+      assertInstanceOf(FiscalYearCloseRequiresGeneratedPostings.class, rejected.rejection());
       SqliteNativeDatabase database = requireStoreDatabase(store);
       assertEquals(0, countRows(database, "fiscal_year_close"));
       assertEquals(

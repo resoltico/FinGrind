@@ -5,7 +5,6 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
-import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseRequiresGeneratedPostings;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountRegistryDependency;
@@ -129,9 +128,9 @@ class BookkeepingAdministrationRejectionPublishedMapperTest {
             new BookkeepingAdministrationRejection.FiscalYearCloseFutureDate(
                 LocalDate.parse("2027-01-01"))));
     assertEquals(
-        new FiscalYearCloseRequiresGeneratedPostings(),
+        new dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseRequiresGeneratedPostings(),
         BookkeepingAdministrationRejectionPublishedMapper.toPublished(
-            new BookkeepingAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings()));
+            new FiscalYearCloseRequiresGeneratedPostings()));
     assertEquals(
         new BookAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary(
             LocalDate.parse("2026-12-15"),

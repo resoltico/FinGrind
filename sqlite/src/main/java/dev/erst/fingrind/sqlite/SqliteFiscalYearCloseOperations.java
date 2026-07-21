@@ -10,6 +10,7 @@ import dev.erst.fingrind.executor.bookkeeping.ClosedFiscalYearRecord;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseDraft;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner;
+import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseRequiresGeneratedPostings;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.RejectedCloseTargetSelection;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
@@ -104,8 +105,7 @@ final class SqliteFiscalYearCloseOperations {
                     closedAt);
             if (closeDraft.closePostingDrafts().isEmpty()) {
               return new FiscalYearCloseOutcome.Rejected(
-                  new BookkeepingAdministrationRejection
-                      .FiscalYearCloseRequiresGeneratedPostings());
+                  new FiscalYearCloseRequiresGeneratedPostings());
             }
             persistGeneratedUnsweptInterimResultSweep(
                 activeDatabase, closeDraft, postingIdGenerator, attestationAuthorizer);
