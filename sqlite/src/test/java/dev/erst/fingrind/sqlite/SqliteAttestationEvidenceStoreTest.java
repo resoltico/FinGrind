@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -346,6 +347,155 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
               failure.getMessage());
           database.executeStatement("rollback");
         });
+  }
+
+  @Test
+  void evidenceBoundary_rejectsMalformedHeadsOrdersAndCandidateChainsBeforePersistence()
+      throws Exception {
+    Path bookPath = tempDirectory.resolve("invalid-evidence-candidate.sqlite");
+    AttestationEvidence genesis = genesis(tempDirectory.resolve("invalid-candidate-founder.fgatk"));
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          SqliteBookSchemaBootstrap.initializeBook(database);
+          assertThrows(
+              IllegalArgumentException.class,
+              () -> SqliteAttestationEvidenceStore.append(database, new byte[31], genesis));
+
+          database.executeStatement("begin immediate");
+          AttestationVerification verification =
+              SqliteAttestationEvidenceStore.append(database, ZERO_HEAD, genesis);
+          IllegalArgumentException invalidCandidate =
+              assertThrows(
+                  IllegalArgumentException.class,
+                  () ->
+                      SqliteAttestationEvidenceStore.append(
+                          database, verification.operationHead(), genesis));
+          assertEquals("attestation-previous-head-invalid", invalidCandidate.getMessage());
+          database.executeStatement("rollback");
+        });
+  }
+
+  @Test
+  void durableEvidenceReader_rejectsNoncanonicalOrdersAndMalformedBase64() throws Exception {
+    Path noncanonicalBookPath = tempDirectory.resolve("noncanonical-order.sqlite");
+    withStandaloneDatabase(
+        bookAccess(noncanonicalBookPath),
+        database -> {
+          SqliteBookSchemaBootstrap.initializeBook(database);
+          insertRawEvidence(database, "0000000000000001", "AA==", "AA==", "AA==", "f".repeat(64));
+          IllegalStateException failure =
+              assertThrows(
+                  IllegalStateException.class,
+                  () -> SqliteAttestationEvidenceStore.loadAll(database));
+          assertEquals(
+              "Persisted attestation operation order is not a canonical contiguous sequence.",
+              failure.getMessage());
+        });
+
+    Path malformedBase64BookPath = tempDirectory.resolve("malformed-base64.sqlite");
+    withStandaloneDatabase(
+        bookAccess(malformedBase64BookPath),
+        database -> {
+          SqliteBookSchemaBootstrap.initializeBook(database);
+          insertRawEvidence(database, "0000000000000000", "!", "AA==", "AA==", "e".repeat(64));
+          IllegalStateException failure =
+              assertThrows(
+                  IllegalStateException.class,
+                  () -> SqliteAttestationEvidenceStore.loadAll(database));
+          assertEquals("Persisted attestation evidence is not valid base64.", failure.getMessage());
+        });
+  }
+
+  @Test
+  void authorizedOperations_rejectPersistedCorruptionBeforeTheyConsultCustody() throws Exception {
+    Path bookPath = tempDirectory.resolve("corrupt-persisted-evidence.sqlite");
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          SqliteBookSchemaBootstrap.initializeBook(database);
+          insertRawEvidence(database, "0000000000000000", "AA==", "AA==", "AA==", "d".repeat(64));
+          database.executeStatement("begin immediate");
+          IllegalStateException mutationFailure =
+              assertThrows(
+                  IllegalStateException.class,
+                  () ->
+                      SqliteAttestationEvidenceStore.appendAuthorized(
+                          database,
+                          "declare-account",
+                          Instant.parse("2026-07-21T00:00:00Z"),
+                          new dev.erst.fingrind.core.attestation.AttestationOperationPreimages(
+                              new byte[] {1}, new byte[] {2}),
+                          ignored -> {
+                            throw new AssertionError("Custody must not see corrupted evidence.");
+                          }));
+          assertTrue(
+              java.util.Objects.requireNonNullElse(mutationFailure.getMessage(), "")
+                  .startsWith("Persisted attestation evidence violates its canonical chain:"));
+          database.executeStatement("rollback");
+        });
+
+    Path planBookPath = tempDirectory.resolve("missing-plan-genesis.sqlite");
+    withStandaloneDatabase(
+        bookAccess(planBookPath),
+        database -> {
+          SqliteBookSchemaBootstrap.initializeBook(database);
+          AttestationPlanOperationAuthorizer authorizer =
+              new AttestationPlanOperationAuthorizer(
+                  ignored -> {
+                    throw new AssertionError("Custody must not be consulted without genesis.");
+                  });
+          authorizer.enterStep(0);
+          authorizer.collectChildMutation(
+              "declare-account",
+              new dev.erst.fingrind.core.attestation.AttestationOperationPreimages(
+                  new byte[] {1}, new byte[] {2}));
+          IllegalStateException planFailure =
+              assertThrows(
+                  IllegalStateException.class,
+                  () ->
+                      SqliteAttestationEvidenceStore.appendPlanAuthorized(
+                          database,
+                          "missing-genesis-plan",
+                          Instant.parse("2026-07-21T00:00:00Z"),
+                          authorizer));
+          assertEquals(
+              "Protected-book mutation requires a persisted attestation genesis.",
+              planFailure.getMessage());
+        });
+  }
+
+  private static void insertRawEvidence(
+      SqliteNativeDatabase database,
+      String order,
+      String envelope,
+      String request,
+      String effect,
+      String operationHead) {
+    try (SqliteNativeStatement statement = database.prepare(SqliteAttestationEvidenceSql.INSERT)) {
+      statement.bindText(1, order);
+      statement.bindText(2, envelope);
+      statement.bindText(3, request);
+      statement.bindText(4, effect);
+      statement.bindText(5, operationHead);
+      statement.step();
+    }
+  }
+
+  private static AttestationEvidence genesis(Path signerPath) throws Exception {
+    char[] passphrase = "sqlite attestation test passphrase".toCharArray();
+    AttestationPublicCredential publicCredential =
+        AttestationKeyFiles.create(signerPath, passphrase);
+    try (AttestationSigningCredential signer =
+        new AttestationSigningCredential(PRINCIPAL_ID, publicCredential, signerPath, passphrase)) {
+      return AttestationGenesis.create(
+          BOOK_ID,
+          attestationBookIdentity(),
+          Instant.parse("2026-07-21T00:00:00Z"),
+          List.of(signer));
+    } finally {
+      java.util.Arrays.fill(passphrase, '\0');
+    }
   }
 
   private static AttestationEvidence sign(
