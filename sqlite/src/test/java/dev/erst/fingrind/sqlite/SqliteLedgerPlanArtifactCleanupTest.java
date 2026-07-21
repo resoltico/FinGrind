@@ -57,6 +57,10 @@ class SqliteLedgerPlanArtifactCleanupTest extends SqliteNativeBridgeTestSupport 
     assertTrue(Files.exists(nonemptyDirectory.resolve("retained.txt")));
     assertEquals(
         boundary, SqliteLedgerPlanArtifactCleanup.nearestExistingAncestor(missingDirectory));
+    assertEquals(
+        boundary,
+        SqliteLedgerPlanArtifactCleanup.nearestExistingAncestor(
+            missingDirectory.resolve("nested")));
   }
 
   @Test
@@ -93,6 +97,14 @@ class SqliteLedgerPlanArtifactCleanupTest extends SqliteNativeBridgeTestSupport 
       assertSame(closeCause, closeFailure.getCause());
     }
     assertDoesNotThrow(() -> SqliteLedgerPlanArtifactCleanup.closeCreatedCleanupDatabase(null));
+    try (SqliteNativeDatabase database =
+        new SqliteNativeDatabase(MemorySegment.NULL) {
+          @Override
+          public void close() {}
+        }) {
+      assertDoesNotThrow(
+          () -> SqliteLedgerPlanArtifactCleanup.closeCreatedCleanupDatabase(database));
+    }
   }
 
   @Test

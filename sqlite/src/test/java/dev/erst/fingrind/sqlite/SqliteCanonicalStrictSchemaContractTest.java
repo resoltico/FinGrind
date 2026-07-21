@@ -13,6 +13,16 @@ import org.junit.jupiter.api.Test;
 /** Strict schema constraint tests for the canonical protected-book schema. */
 class SqliteCanonicalStrictSchemaContractTest extends SqlitePostingFactStoreTestSupport {
   @Test
+  void canonicalSchemaManifest_rejectsSchemaTextWithoutObjects() {
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () -> SqliteCanonicalSchemaManifest.parseObjectNames("-- no schema objects\n"));
+
+    assertEquals("SQLite canonical schema manifest found no schema objects.", failure.getMessage());
+  }
+
+  @Test
   void canonicalStrictSchema_rejectsNonLosslessTypeMismatches() {
     Path bookPath = tempDirectory.resolve("strict-datatype.sqlite");
     assertDoesNotThrow(

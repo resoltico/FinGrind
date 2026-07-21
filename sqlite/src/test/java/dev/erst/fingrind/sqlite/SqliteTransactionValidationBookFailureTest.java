@@ -21,6 +21,7 @@ class SqliteTransactionValidationBookFailureTest extends SqlitePostingFactStoreT
   private static final String BOOK_QUERY_FAILURE = "Failed to query SQLite book.";
   private static final String ACCRUAL_CUTOFF_QUERY_FAILURE =
       "Failed to query SQLite accrual cut-off.";
+  private static final TaxRegistrationId TAX_REGISTRATION_ID = new TaxRegistrationId("vat-lv");
 
   @Test
   void staleDatabaseReads_areTranslatedIntoTheValidationBoundaryFailure() throws Exception {
@@ -63,6 +64,19 @@ class SqliteTransactionValidationBookFailureTest extends SqlitePostingFactStoreT
           new SqliteTransactionValidationBook(
                   store.storeLifecycle().database(), store.postingReader())
               .allowsInitializedWorkflow());
+    }
+  }
+
+  @Test
+  void postingCapability_readsTaxRegistrationsFromAnOpenValidationBook() {
+    Path bookPath = tempDirectory.resolve("validation-tax-registration.sqlite");
+    try (SqlitePostingFactStore store = openStore(bookAccess(bookPath))) {
+      initializeBookWithMinimalNumericAccounts(store);
+      SqliteTransactionValidationBook validationBook =
+          new SqliteTransactionValidationBook(requireStoreDatabase(store), store.postingReader());
+      SqliteTransactionValidationPostingCapabilityView postingCapability = validationBook;
+
+      assertTrue(postingCapability.findTaxRegistration(TAX_REGISTRATION_ID).isEmpty());
     }
   }
 

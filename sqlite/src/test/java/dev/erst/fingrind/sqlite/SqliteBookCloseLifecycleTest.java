@@ -85,6 +85,14 @@ class SqliteBookCloseLifecycleTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
+  void openConfiguration_rejectsPragmaDriftWithTheSpecificOperatorMessage() {
+    assertOpenConfigurationFailure(
+        "pragma foreign_keys = off", "SQLite connection failed to keep foreign_keys enabled.");
+    assertOpenConfigurationFailure(
+        "pragma journal_mode = wal", "SQLite connection failed to enforce journal_mode=DELETE.");
+  }
+
+  @Test
   void closeAfterConfigurationFailure_closesOpenDatabase() throws Exception {
     Path bookPath = tempDirectory.resolve("configured-close.sqlite");
     try (SqliteNativeDatabase database = openNativeDatabase(bookAccess(bookPath))) {

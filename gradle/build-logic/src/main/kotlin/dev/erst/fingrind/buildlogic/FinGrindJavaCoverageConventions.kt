@@ -20,6 +20,7 @@ internal fun Project.configureJavaCoverageConventions() {
         extensions.configure(JacocoTaskExtension::class.java) {
             destinationFile = jacocoDestinationFile
         }
+        outputs.file(jacocoDestinationFile)
         doFirst {
             jacocoDestinationFile.parentFile.mkdirs()
             if (jacocoDestinationFile.exists() && !jacocoDestinationFile.delete()) {
