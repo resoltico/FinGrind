@@ -16,4 +16,10 @@ public final class AttestationKeyFiles {
     return AttestationFilePkcs8Custodian.createCredential(
         Objects.requireNonNull(path, "path"), ownedPassphrase);
   }
+
+  /** Reads the public credential published with an encrypted attestation key file. */
+  public static AttestationPublicCredential loadPublicCredential(Path path) throws IOException {
+    return AttestationFilePkcs8Custodian.readPublicCredential(
+        Objects.requireNonNull(path, "path"));
+  }
 }

@@ -21,7 +21,7 @@ import javax.crypto.spec.SecretKeySpec;
 /** File-backed encrypted PKCS#8 custodian; private keys exist only inside its signing seam. */
 final class AttestationFilePkcs8Custodian {
   private static final byte[] FORMAT_MAGIC = new byte[] {'F', 'G', 'A', 'T', 'K'};
-  private static final byte FORMAT_VERSION = 1;
+  private static final byte FORMAT_VERSION = 2;
   private static final String KEY_DERIVATION_ALGORITHM = "PBKDF2WithHmacSHA256";
   private static final String CIPHER_ALGORITHM = "AES/GCM/NoPadding";
   private static final int SALT_BYTE_COUNT = 16;
@@ -30,6 +30,13 @@ final class AttestationFilePkcs8Custodian {
   private static final int KEY_BIT_COUNT = 256;
   private static final int AUTHENTICATION_TAG_BIT_COUNT = 128;
   private static final int HEADER_BYTE_COUNT =
+      FORMAT_MAGIC.length
+          + Byte.BYTES
+          + Integer.BYTES
+          + SALT_BYTE_COUNT
+          + INITIALIZATION_VECTOR_BYTE_COUNT
+          + Short.BYTES;
+  private static final int ENCRYPTED_PAYLOAD_HEADER_BYTE_COUNT =
       FORMAT_MAGIC.length
           + Byte.BYTES
           + Integer.BYTES
@@ -45,15 +52,31 @@ final class AttestationFilePkcs8Custodian {
     return new AttestationPublicCredential(create(path, passphrase).getEncoded());
   }
 
+  static AttestationPublicCredential readPublicCredential(Path path) throws IOException {
+    byte[] encodedKeyFile = readEncryptedPrivateKey(Objects.requireNonNull(path, "path"));
+    ParsedKeyFile parsedKeyFile = null;
+    try {
+      parsedKeyFile = parse(encodedKeyFile);
+      return new AttestationPublicCredential(parsedKeyFile.spki());
+    } finally {
+      if (parsedKeyFile != null) {
+        parsedKeyFile.clear();
+      }
+      java.util.Arrays.fill(encodedKeyFile, (byte) 0);
+    }
+  }
+
   static PublicKey create(Path path, char[] passphrase) throws IOException {
     char[] ownedPassphrase = Objects.requireNonNull(passphrase, "passphrase");
     try {
       Objects.requireNonNull(path, "path");
       KeyPair keyPair = AttestationEd25519.generateKeyPair();
+      byte[] spki = keyPair.getPublic().getEncoded();
       byte[] encryptedPrivateKey = encrypt(keyPair.getPrivate(), ownedPassphrase);
       try {
-        AttestationKeyFilePublication.writeNewKeyFile(path, encryptedPrivateKey);
+        AttestationKeyFilePublication.writeNewKeyFile(path, encode(spki, encryptedPrivateKey));
       } finally {
+        java.util.Arrays.fill(spki, (byte) 0);
         java.util.Arrays.fill(encryptedPrivateKey, (byte) 0);
       }
       return keyPair.getPublic();
@@ -67,11 +90,11 @@ final class AttestationFilePkcs8Custodian {
     try {
       Objects.requireNonNull(path, "path");
       Objects.requireNonNull(payload, "payload");
-      byte[] encryptedPrivateKey = readEncryptedPrivateKey(path);
+      byte[] encodedKeyFile = readEncryptedPrivateKey(path);
       try {
-        return AttestationEd25519.sign(decrypt(encryptedPrivateKey, ownedPassphrase), payload);
+        return AttestationEd25519.sign(decrypt(encodedKeyFile, ownedPassphrase), payload);
       } finally {
-        java.util.Arrays.fill(encryptedPrivateKey, (byte) 0);
+        java.util.Arrays.fill(encodedKeyFile, (byte) 0);
       }
     } finally {
       java.util.Arrays.fill(ownedPassphrase, '\0');
@@ -113,7 +136,7 @@ final class AttestationFilePkcs8Custodian {
       } finally {
         java.util.Arrays.fill(encodedPrivateKey, (byte) 0);
       }
-      return ByteBuffer.allocate(HEADER_BYTE_COUNT + ciphertext.length)
+      return ByteBuffer.allocate(ENCRYPTED_PAYLOAD_HEADER_BYTE_COUNT + ciphertext.length)
           .put(FORMAT_MAGIC)
           .put(FORMAT_VERSION)
           .putInt(ITERATION_COUNT)
@@ -130,15 +153,10 @@ final class AttestationFilePkcs8Custodian {
   private static PrivateKey decrypt(byte[] encryptedPkcs8, char[] passphrase) {
     requirePassphrase(passphrase);
     try {
-      ByteBuffer encoded = ByteBuffer.wrap(encryptedPkcs8);
-      requireFormat(encoded);
-      int iterations = encoded.getInt();
-      if (iterations != ITERATION_COUNT) {
-        throw new IllegalArgumentException("Attestation key file has an unsupported work factor.");
-      }
-      byte[] salt = next(encoded, SALT_BYTE_COUNT);
-      byte[] initializationVector = next(encoded, INITIALIZATION_VECTOR_BYTE_COUNT);
-      byte[] ciphertext = next(encoded, encoded.remaining());
+      ParsedKeyFile parsedKeyFile = parse(encryptedPkcs8);
+      byte[] salt = parsedKeyFile.salt();
+      byte[] initializationVector = parsedKeyFile.initializationVector();
+      byte[] ciphertext = parsedKeyFile.ciphertext();
       if (ciphertext.length <= AUTHENTICATION_TAG_BIT_COUNT / Byte.SIZE) {
         throw new IllegalArgumentException("Attestation key file has no encrypted private key.");
       }
@@ -152,6 +170,10 @@ final class AttestationFilePkcs8Custodian {
         return KeyFactory.getInstance(AttestationAlgorithm.ED25519.jcaName())
             .generatePrivate(new PKCS8EncodedKeySpec(encodedPrivateKey));
       } finally {
+        java.util.Arrays.fill(parsedKeyFile.spki(), (byte) 0);
+        java.util.Arrays.fill(salt, (byte) 0);
+        java.util.Arrays.fill(initializationVector, (byte) 0);
+        java.util.Arrays.fill(ciphertext, (byte) 0);
         java.util.Arrays.fill(encodedPrivateKey, (byte) 0);
       }
     } catch (GeneralSecurityException exception) {
@@ -178,11 +200,73 @@ final class AttestationFilePkcs8Custodian {
     }
   }
 
-  private static void requireFormat(ByteBuffer encoded) {
+  private static byte[] encode(byte[] spki, byte[] ciphertext) {
+    byte[] checkedSpki = AttestationSpki.of(Objects.requireNonNull(spki, "spki")).bytes();
+    ByteBuffer encryptedPayload = ByteBuffer.wrap(Objects.requireNonNull(ciphertext, "ciphertext"));
+    requireEncryptedPayloadHeader(encryptedPayload);
+    byte[] salt = next(encryptedPayload, SALT_BYTE_COUNT);
+    byte[] initializationVector = next(encryptedPayload, INITIALIZATION_VECTOR_BYTE_COUNT);
+    byte[] encryptedPrivateKey = next(encryptedPayload, encryptedPayload.remaining());
+    try {
+      return ByteBuffer.allocate(HEADER_BYTE_COUNT + checkedSpki.length + encryptedPrivateKey.length)
+          .put(FORMAT_MAGIC)
+          .put(FORMAT_VERSION)
+          .putInt(ITERATION_COUNT)
+          .put(salt)
+          .put(initializationVector)
+          .putShort((short) checkedSpki.length)
+          .put(checkedSpki)
+          .put(encryptedPrivateKey)
+          .array();
+    } finally {
+      java.util.Arrays.fill(checkedSpki, (byte) 0);
+      java.util.Arrays.fill(salt, (byte) 0);
+      java.util.Arrays.fill(initializationVector, (byte) 0);
+      java.util.Arrays.fill(encryptedPrivateKey, (byte) 0);
+    }
+  }
+
+  private static ParsedKeyFile parse(byte[] encodedKeyFile) {
+    ByteBuffer encoded = ByteBuffer.wrap(Objects.requireNonNull(encodedKeyFile, "encodedKeyFile"));
     if (encoded.remaining() < HEADER_BYTE_COUNT + AUTHENTICATION_TAG_BIT_COUNT / Byte.SIZE
         || !java.util.Arrays.equals(next(encoded, FORMAT_MAGIC.length), FORMAT_MAGIC)
         || encoded.get() != FORMAT_VERSION) {
       throw new IllegalArgumentException("Attestation key file has an unsupported format.");
+    }
+    int iterations = encoded.getInt();
+    if (iterations != ITERATION_COUNT) {
+      throw new IllegalArgumentException("Attestation key file has an unsupported work factor.");
+    }
+    byte[] salt = next(encoded, SALT_BYTE_COUNT);
+    byte[] initializationVector = next(encoded, INITIALIZATION_VECTOR_BYTE_COUNT);
+    int spkiLength = Short.toUnsignedInt(encoded.getShort());
+    if (spkiLength == 0 || spkiLength > encoded.remaining()) {
+      throw new IllegalArgumentException("Attestation key file has an unsupported format.");
+    }
+    byte[] spki = next(encoded, spkiLength);
+    try {
+      AttestationSpki.of(spki);
+    } catch (IllegalArgumentException exception) {
+      java.util.Arrays.fill(salt, (byte) 0);
+      java.util.Arrays.fill(initializationVector, (byte) 0);
+      java.util.Arrays.fill(spki, (byte) 0);
+      throw new IllegalArgumentException("Attestation key file has an unsupported format.", exception);
+    }
+    return new ParsedKeyFile(salt, initializationVector, spki, next(encoded, encoded.remaining()));
+  }
+
+  private static void requireEncryptedPayloadHeader(ByteBuffer encoded) {
+    if (encoded.remaining()
+            < FORMAT_MAGIC.length
+                + Byte.BYTES
+                + Integer.BYTES
+                + SALT_BYTE_COUNT
+                + INITIALIZATION_VECTOR_BYTE_COUNT
+                + AUTHENTICATION_TAG_BIT_COUNT / Byte.SIZE
+        || !java.util.Arrays.equals(next(encoded, FORMAT_MAGIC.length), FORMAT_MAGIC)
+        || encoded.get() != FORMAT_VERSION
+        || encoded.getInt() != ITERATION_COUNT) {
+      throw new IllegalArgumentException("Attestation key file encryption failed.");
     }
   }
 
@@ -195,6 +279,44 @@ final class AttestationFilePkcs8Custodian {
   private static void requirePassphrase(char[] passphrase) {
     if (Objects.requireNonNull(passphrase, "passphrase").length == 0) {
       throw new IllegalArgumentException("Attestation key passphrase must not be empty.");
+    }
+  }
+
+  private static final class ParsedKeyFile {
+    private final byte[] salt;
+    private final byte[] initializationVector;
+    private final byte[] spki;
+    private final byte[] ciphertext;
+
+    private ParsedKeyFile(
+        byte[] salt, byte[] initializationVector, byte[] spki, byte[] ciphertext) {
+      this.salt = salt;
+      this.initializationVector = initializationVector;
+      this.spki = spki;
+      this.ciphertext = ciphertext;
+    }
+
+    private byte[] salt() {
+      return salt;
+    }
+
+    private byte[] initializationVector() {
+      return initializationVector;
+    }
+
+    private byte[] spki() {
+      return spki;
+    }
+
+    private byte[] ciphertext() {
+      return ciphertext;
+    }
+
+    private void clear() {
+      java.util.Arrays.fill(salt, (byte) 0);
+      java.util.Arrays.fill(initializationVector, (byte) 0);
+      java.util.Arrays.fill(spki, (byte) 0);
+      java.util.Arrays.fill(ciphertext, (byte) 0);
     }
   }
 

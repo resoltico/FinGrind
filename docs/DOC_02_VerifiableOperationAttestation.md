@@ -67,8 +67,10 @@ review finding identifiers. A structural refusal is an `AttestationVerificationE
 type, custodian handle, filesystem path, or mutable book state.
 
 `AttestationKeyFiles.create` is the sole v1 creation path for a new encrypted file-backed Ed25519
-credential. It publishes a no-clobber key file and returns `AttestationPublicCredential`, which
-contains only canonical public DER-SPKI bytes and its SHA-256 key identifier. An
+credential. It publishes a no-clobber key file and returns `AttestationPublicCredential`.
+`AttestationKeyFiles.loadPublicCredential` reads the public credential published with an existing
+encrypted key without decrypting its private material. A credential contains only canonical public
+DER-SPKI bytes and its SHA-256 key identifier. An
 `AttestationSigningCredential` binds that public credential to its book principal, encrypted key
 file, and short-lived caller-owned signing secret. `AttestationGenesis.create` accepts one through
 five distinct founder credentials, declares the complete initial registry and policy in immutable

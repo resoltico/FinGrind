@@ -176,6 +176,18 @@ class AttestationEd25519Test {
   }
 
   @Test
+  void keyFilePublishesTheCredentialNeededToReuseItsCustodian() throws Exception {
+    Path keyPath = temporaryDirectory.resolve("signing.pk8");
+    AttestationPublicCredential created =
+        AttestationKeyFiles.create(keyPath, "correct horse battery staple".toCharArray());
+
+    AttestationPublicCredential loaded = AttestationKeyFiles.loadPublicCredential(keyPath);
+
+    assertArrayEquals(created.spki(), loaded.spki());
+    assertArrayEquals(created.keyId(), loaded.keyId());
+  }
+
+  @Test
   void fileCustodianDoesNotPersistPlaintextPrivateKeysAndUsesFreshEncryptionMaterial() {
     var pair = AttestationEd25519.generateKeyPair();
     byte[] privateKeyEncoding = pair.getPrivate().getEncoded();
@@ -213,7 +225,7 @@ class AttestationEd25519Test {
         "Attestation key file has an unsupported format.", signingFailure(keyPath).getMessage());
 
     byte[] wrongVersion = persisted.clone();
-    wrongVersion[5] = 2;
+    wrongVersion[5] = 3;
     Files.write(keyPath, wrongVersion);
     assertEquals(
         "Attestation key file has an unsupported format.", signingFailure(keyPath).getMessage());
@@ -225,7 +237,8 @@ class AttestationEd25519Test {
         "Attestation key file has an unsupported work factor.",
         signingFailure(keyPath).getMessage());
 
-    Files.write(keyPath, Arrays.copyOf(persisted, 54));
+    int spkiLength = Short.toUnsignedInt(ByteBuffer.wrap(persisted).getShort(38));
+    Files.write(keyPath, Arrays.copyOf(persisted, 40 + spkiLength));
     assertEquals(
         "Attestation key file has no encrypted private key.", signingFailure(keyPath).getMessage());
 
