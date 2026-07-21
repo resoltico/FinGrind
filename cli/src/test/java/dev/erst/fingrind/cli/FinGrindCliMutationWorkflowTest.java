@@ -575,52 +575,56 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
   }
 
   private static String[] openTradingBookKeyFileArguments(Path bookFilePath, Path bookKeyFilePath) {
-    return new String[] {
-      "open-book",
-      "--book-file",
-      bookFilePath.toString(),
-      "--book-key-file",
-      bookKeyFilePath.toString(),
-      "--entity-name",
-      tradingBookIdentity().entityName().value(),
-      "--book-template-id",
-      tradingBookIdentity().bookDoctrine().bookTemplateId().wireValue(),
-      "--accounting-basis",
-      tradingBookIdentity().bookDoctrine().accountingBasis().wireValue(),
-      "--inventory-costing",
-      dev.erst.fingrind.core.InventoryCostingDoctrine.WEIGHTED_AVERAGE.wireValue(),
-      "--functional-currency",
-      tradingBookIdentity().functionalCurrency().code(),
-      "--fiscal-year-start",
-      tradingBookIdentity().fiscalYearStart().wireValue(),
-      "--book-start-effective-date",
-      tradingBookIdentity().bookStartEffectiveDate().toString()
-    };
+    return founderAttestedArguments(
+        bookFilePath,
+        new String[] {
+          "open-book",
+          "--book-file",
+          bookFilePath.toString(),
+          "--book-key-file",
+          bookKeyFilePath.toString(),
+          "--entity-name",
+          tradingBookIdentity().entityName().value(),
+          "--book-template-id",
+          tradingBookIdentity().bookDoctrine().bookTemplateId().wireValue(),
+          "--accounting-basis",
+          tradingBookIdentity().bookDoctrine().accountingBasis().wireValue(),
+          "--inventory-costing",
+          dev.erst.fingrind.core.InventoryCostingDoctrine.WEIGHTED_AVERAGE.wireValue(),
+          "--functional-currency",
+          tradingBookIdentity().functionalCurrency().code(),
+          "--fiscal-year-start",
+          tradingBookIdentity().fiscalYearStart().wireValue(),
+          "--book-start-effective-date",
+          tradingBookIdentity().bookStartEffectiveDate().toString()
+        });
   }
 
   private static String[] openAccrualTradingBookKeyFileArguments(
       Path bookFilePath, Path bookKeyFilePath) {
-    return new String[] {
-      "open-book",
-      "--book-file",
-      bookFilePath.toString(),
-      "--book-key-file",
-      bookKeyFilePath.toString(),
-      "--entity-name",
-      tradingBookIdentity().entityName().value(),
-      "--book-template-id",
-      tradingBookIdentity().bookDoctrine().bookTemplateId().wireValue(),
-      "--accounting-basis",
-      dev.erst.fingrind.core.AccountingBasis.ACCRUAL.wireValue(),
-      "--inventory-costing",
-      dev.erst.fingrind.core.InventoryCostingDoctrine.WEIGHTED_AVERAGE.wireValue(),
-      "--functional-currency",
-      tradingBookIdentity().functionalCurrency().code(),
-      "--fiscal-year-start",
-      tradingBookIdentity().fiscalYearStart().wireValue(),
-      "--book-start-effective-date",
-      tradingBookIdentity().bookStartEffectiveDate().toString()
-    };
+    return founderAttestedArguments(
+        bookFilePath,
+        new String[] {
+          "open-book",
+          "--book-file",
+          bookFilePath.toString(),
+          "--book-key-file",
+          bookKeyFilePath.toString(),
+          "--entity-name",
+          tradingBookIdentity().entityName().value(),
+          "--book-template-id",
+          tradingBookIdentity().bookDoctrine().bookTemplateId().wireValue(),
+          "--accounting-basis",
+          dev.erst.fingrind.core.AccountingBasis.ACCRUAL.wireValue(),
+          "--inventory-costing",
+          dev.erst.fingrind.core.InventoryCostingDoctrine.WEIGHTED_AVERAGE.wireValue(),
+          "--functional-currency",
+          tradingBookIdentity().functionalCurrency().code(),
+          "--fiscal-year-start",
+          tradingBookIdentity().fiscalYearStart().wireValue(),
+          "--book-start-effective-date",
+          tradingBookIdentity().bookStartEffectiveDate().toString()
+        });
   }
 
   private JsonNode recordEntry(
@@ -790,6 +794,8 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
                   bookKeyFilePath.toString(),
                   "--backup-file",
                   backupFilePath.toString(),
+                  "--backup-id",
+                  "018f0000-0000-7000-8000-000000000001",
                   "--new-backup-key-file",
                   backupKeyFilePath.toString()
                 })));
@@ -811,6 +817,8 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
                 bookKeyFilePath.toString(),
                 "--backup-file",
                 backupFilePath.toString(),
+                "--backup-id",
+                "018f0000-0000-7000-8000-000000000002",
                 "--new-backup-key-file",
                 secondBackupKeyFilePath.toString())));
     JsonNode failureEnvelope = new ObjectMapper().readTree(secondBackupOutput.toByteArray());
@@ -907,6 +915,8 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
                     bookKeyFilePath.toString(),
                     "--backup-file",
                     backupFilePath.toString(),
+                    "--backup-id",
+                    "018f0000-0000-7000-8000-000000000003",
                     "--new-backup-key-file",
                     backupKeyFilePath.toString())));
     ByteArrayOutputStream restoreOutput = new ByteArrayOutputStream();
@@ -914,7 +924,8 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
         0,
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(restoreOutput), fixedClock())
             .run(
-                jsonArguments(
+                attestedArgumentsForBook(
+                    bookFilePath,
                     "restore-book",
                     "--book-file",
                     restoredBookFilePath.toString(),
@@ -923,7 +934,9 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
                     "--backup-file",
                     backupFilePath.toString(),
                     "--backup-key-file",
-                    backupKeyFilePath.toString())));
+                    backupKeyFilePath.toString(),
+                    "--output",
+                    "json")));
     JsonNode restoreEnvelope = new ObjectMapper().readTree(restoreOutput.toByteArray());
     assertEquals("ok", restoreEnvelope.path("status").stringValue());
     assertEquals(

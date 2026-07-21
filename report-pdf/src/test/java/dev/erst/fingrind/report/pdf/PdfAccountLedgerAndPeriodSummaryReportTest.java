@@ -118,10 +118,10 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
             evidence("idem-reversal"),
             new CommittedProvenance(
                 new RequestProvenance(
-                    new CommandId("command-reversal"),
+                    new CommandId("019e26ff-0000-7002-8000-000000000001"),
                     new IdempotencyKey("idem-reversal"),
-                    new CausationId("cause-reversal"),
-                    Optional.of(new CorrelationId("corr-reversal"))),
+                    new CausationId("019e26ff-0000-7003-8000-000000000001"),
+                    Optional.of(new CorrelationId("019e26ff-0000-7004-8000-000000000001"))),
                 Instant.parse("2026-04-19T10:15:45Z"),
                 SourceChannel.CLI));
     AccountLedgerReport accountLedgerReport =
@@ -193,9 +193,9 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
             evidence("idem-self"),
             new CommittedProvenance(
                 new RequestProvenance(
-                    new CommandId("command-self"),
+                    new CommandId("019e26ff-0000-7002-8000-000000000009"),
                     new IdempotencyKey("idem-self"),
-                    new CausationId("cause-self"),
+                    new CausationId("019e26ff-0000-7003-8000-000000000009"),
                     Optional.empty()),
                 Instant.parse("2026-04-19T10:15:45Z"),
                 SourceChannel.CLI));

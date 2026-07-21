@@ -56,7 +56,10 @@ class PdfSharedReportSupportCoverageTest {
                 new ReportColumn("normalBalance", "Normal", ReportColumn.Alignment.LEFT),
                 new ReportColumn("active", "Active", ReportColumn.Alignment.LEFT),
                 new ReportColumn("netAmount", "Net", ReportColumn.Alignment.RIGHT),
-                new ReportColumn("entry", "Entry", ReportColumn.Alignment.LEFT)));
+                new ReportColumn("entry", "Entry", ReportColumn.Alignment.LEFT),
+                new ReportColumn("payrollRunId", "Payroll run", ReportColumn.Alignment.LEFT),
+                new ReportColumn("postingId", "Posting", ReportColumn.Alignment.LEFT),
+                new ReportColumn("postingRef", "Posting ref", ReportColumn.Alignment.LEFT)));
     assertEquals(2.6f, columns.get(0).widthWeight());
     assertEquals(1.9f, columns.get(1).widthWeight());
     assertEquals(1.9f, columns.get(2).widthWeight());
@@ -66,7 +69,10 @@ class PdfSharedReportSupportCoverageTest {
     assertEquals(0.85f, columns.get(6).widthWeight());
     assertEquals(0.85f, columns.get(7).widthWeight());
     assertEquals(PdfTableColumn.CellAlignment.RIGHT, columns.get(8).alignment());
-    assertEquals(1.2f, columns.get(9).widthWeight());
+    assertEquals(2.2f, columns.get(9).widthWeight());
+    assertEquals(1.9f, columns.get(10).widthWeight());
+    assertEquals(2.2f, columns.get(11).widthWeight());
+    assertEquals(2.2f, columns.get(12).widthWeight());
     assertEquals(11, PdfReportTableLayouts.accountActivityColumns().size());
     assertEquals(10, PdfReportTableLayouts.statementBalanceColumns().size());
     assertEquals(5, PdfReportTableLayouts.currencyBalanceSummaryColumns().size());

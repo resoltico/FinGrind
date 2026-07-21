@@ -23,7 +23,7 @@ final class BookMaintenanceRejectionNarrative {
       case BookMaintenanceRejection.SecretTargetOccupied _ ->
           "The selected generated-secret target already exists and FinGrind will not overwrite it.";
       case BookMaintenanceRejection.BookDestinationOccupied _ ->
-          "The selected destination book already exists; pass --replace-existing-book to replace it.";
+          "The selected destination book already exists and FinGrind will not replace it.";
       case BookMaintenanceRejection.ArtifactVerificationFailed _ ->
           "The selected protected-book artifact failed verification for its declared role.";
     };

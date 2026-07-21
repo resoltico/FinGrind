@@ -40,6 +40,13 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Fixed restore's clean-break contract across rejection messages and operator guides: an existing
+  destination is always refused, and the retired `--replace-existing-book` option is not suggested
+  or documented. Backup examples now require the stable backup ID and signing credential triples
+  that the public command contract requires.
+- Fixed CLI mutation failure precedence so an uninitialized book returns its typed initialization
+  refusal before any attestation credential is read. Widened account-ledger identifier columns so
+  canonical UUIDs remain legible in PDF output.
 - Fixed `execute-plan` attestation so every successful mutating plan appends exactly one signed
   aggregate operation, with ordered immutable child preimages, rather than one chain operation per
   child mutation. Query-only and assertion-only plans no longer require a signing credential.

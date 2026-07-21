@@ -83,7 +83,7 @@ fingrind attestation-review \
 ## Backups, Restores, And Receipts
 
 `backup-book` publishes an encrypted backup pair only to absent destinations, then appends the
-matching `backup-book` acknowledgement to the live chain. Supply a stable UUID with `--backup-id`.
+matching `backup-created` acknowledgement to the live chain. Supply a stable UUID with `--backup-id`.
 If publication succeeds but acknowledgement is interrupted, rerun the exact same command with the
 same book, backup paths, credentials, and backup ID; FinGrind resumes only that exact tuple.
 

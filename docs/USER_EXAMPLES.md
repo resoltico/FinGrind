@@ -196,7 +196,11 @@ fingrind \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --backup-file ./backup/books/acme.sqlite \
-  --new-backup-key-file ./backup/secrets/acme.book-key
+  --new-backup-key-file ./backup/secrets/acme.book-key \
+  --backup-id 86ba4e4e-e08d-45e5-9c42-631d0121d6ef \
+  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-key-file ./secrets/founder.fgatk \
+  --attestation-passphrase-file ./secrets/founder.passphrase
 ```
 
 That command refuses to run when the live book has blocking SQLite sidecars or stale rollback
@@ -205,26 +209,28 @@ If `./backup/books/` or `./backup/secrets/` does not exist yet, FinGrind creates
 directories with owner-only protection. If either directory already exists, keep it owner-only
 before you reuse that backup path.
 
-To restore, verify the backup pair and replace the live book path in one step:
+To restore, verify the backup pair into a new absent live-book path:
 
 ```bash
 fingrind \
   restore-book \
-  --book-file ./books/acme.sqlite \
+  --book-file ./books/acme-restored.sqlite \
   --new-book-key-file ./secrets/acme-restored.book-key \
   --backup-file ./backup/books/acme.sqlite \
   --backup-key-file ./backup/secrets/acme.book-key \
-  --replace-existing-book
+  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-key-file ./secrets/founder.fgatk \
+  --attestation-passphrase-file ./secrets/founder.passphrase
 ```
 
-After restore completes, reopen `./books/acme.sqlite` with `./secrets/acme-restored.book-key`
+After restore completes, reopen `./books/acme-restored.sqlite` with `./secrets/acme-restored.book-key`
 because the restored encrypted book is re-encrypted under that destination secret.
 If the selected live-book or live-key parent directory does not exist yet, FinGrind creates it
 with owner-only protection before publishing the restored pair. If either directory already
 exists, keep it owner-only before you reuse that restore target.
-Without `--replace-existing-book`, the selected `--book-file` must remain absent through final
-publication. If another process creates it while restore is staging, FinGrind leaves that book
-unchanged, removes its own staged artifacts, and rejects the restore.
+The selected `--book-file` must remain absent through final publication. If another process
+creates it while restore is staging, FinGrind leaves that book unchanged, removes its own staged
+artifacts, and rejects the restore.
 
 ## Verify One Attested Book
 

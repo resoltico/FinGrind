@@ -202,7 +202,7 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
             new BookMaintenanceRejection.BookDestinationOccupied(hint(Path.of("book.sqlite"))));
     assertNotNull(destinationBookEnvelope.hint());
     String destinationBookHint = Objects.requireNonNull(destinationBookEnvelope.hint());
-    assertTrue(destinationBookHint.contains("--replace-existing-book"));
+    assertTrue(destinationBookHint.contains("absent destination book path"));
     assertInstanceOf(
         CliRejectionJsonModels.BookFileDetails.class, destinationBookEnvelope.details());
   }

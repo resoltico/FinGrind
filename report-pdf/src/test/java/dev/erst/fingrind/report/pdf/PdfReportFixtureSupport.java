@@ -191,7 +191,7 @@ final class PdfReportFixtureSupport {
 
   static PostingFact postingFact(int index, String amount) {
     LocalDate effectiveDate = LocalDate.parse("2026-04-01").plusDays(index % 28);
-    PostingId postingId = new PostingId("posting-%03d".formatted(index));
+    PostingId postingId = new PostingId("019e26ff-0000-7000-8000-%012d".formatted(index));
     return new PostingFact(
         postingId,
         new JournalEntry(
@@ -205,7 +205,8 @@ final class PdfReportFixtureSupport {
                     money("EUR", amount)))),
         index % 5 == 0
             ? PostingLineage.reversal(
-                new ReversalReference(new PostingId("prior-%03d".formatted(index))),
+                new ReversalReference(
+                    new PostingId("019e26ff-0000-7001-8000-%012d".formatted(index))),
                 new ReversalReason("Automated reversal %03d".formatted(index)))
             : PostingLineage.direct(),
         PostingKind.STANDARD,
@@ -213,10 +214,10 @@ final class PdfReportFixtureSupport {
         evidence("idem-%03d".formatted(index)),
         new CommittedProvenance(
             new RequestProvenance(
-                new CommandId("command-%03d".formatted(index)),
+                new CommandId("019e26ff-0000-7002-8000-%012d".formatted(index)),
                 new IdempotencyKey("idem-%03d".formatted(index)),
-                new CausationId("cause-%03d".formatted(index)),
-                Optional.of(new CorrelationId("corr-%03d".formatted(index)))),
+                new CausationId("019e26ff-0000-7003-8000-%012d".formatted(index)),
+                Optional.of(new CorrelationId("019e26ff-0000-7004-8000-%012d".formatted(index)))),
             Instant.parse("2026-04-19T10:15:30Z").plusSeconds(index),
             SourceChannel.CLI));
   }

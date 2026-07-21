@@ -116,7 +116,7 @@ public sealed interface BookMaintenanceRejection
     }
   }
 
-  /** Rejection for restore commands lacking explicit consent to replace one existing book. */
+  /** Rejection for restore commands whose destination book path is already occupied. */
   record BookDestinationOccupied(Path bookFilePath) implements MaintenanceStateConflict {
     public BookDestinationOccupied {
       bookFilePath = normalizedPath(bookFilePath, "bookFilePath");

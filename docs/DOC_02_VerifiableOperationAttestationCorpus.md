@@ -14,7 +14,7 @@ stage: "Current public protocol 32 and protected-book format 51 contract"
 
 # Verifiable Operation Attestation Corpus
 
-This is the normative fixture source for the next protected-book attestation format. It extends the
+This is the normative fixture source for protected-book format 51. It extends the
 [core protocol](./DOC_02_VerifiableOperationAttestation.md), which owns the shared operation and
 envelope grammar, authorization rules, error taxonomy, and verifier precedence; the
 [semantic profiles](./DOC_02_VerifiableOperationAttestationProfiles.md), which own field-level

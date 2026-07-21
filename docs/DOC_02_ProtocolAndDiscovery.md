@@ -168,7 +168,7 @@ public final class ProtocolOptions
 - Scope: book access, passphrase sources, request files, report output, PDF export, pagination,
   posting lookup, date filters, and `execute-plan` result detail
 - `ProtocolBookAccessOptions` owns the protected-book file, key, passphrase, backup, restore,
-  replacement, and rollback option spellings; `ProtocolOptions` consumes its passphrase-source
+  generated-key, and rollback option spellings; `ProtocolOptions` consumes its passphrase-source
   vocabulary rather than duplicating it
 
 ## `ProtocolOptions.Request`, `ProtocolOptions.DateRange`, `ProtocolOptions.ReportQuery`, `ProtocolOptions.BookDefinition`, `ProtocolOptions.Presentation`, And `ProtocolOptions.Discovery`

@@ -165,7 +165,7 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
             occupiedGeneratedKeyFilePath.toString()),
         "secret-target-occupied");
     assertFalse(Files.exists(rejectedBackupFilePath));
-    assertFalse(Arrays.equals(sourceBookBefore, Files.readAllBytes(sourceBookFilePath)));
+    assertArrayEquals(sourceBookBefore, Files.readAllBytes(sourceBookFilePath));
     assertArrayEquals(occupiedKeyBefore, Files.readAllBytes(occupiedGeneratedKeyFilePath));
 
     Path backupFilePath = root.resolve("backup").resolve("entity.sqlite");
@@ -185,6 +185,7 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
             backupKeyFilePath.toString());
     assertEquals(0, backup.exitCode(), backup.output());
     assertArtifactPaths(backup, backupFilePath, backupKeyFilePath);
+    assertFalse(Arrays.equals(sourceBookBefore, Files.readAllBytes(sourceBookFilePath)));
     assertFalse(Arrays.equals(sourceKeyBefore, Files.readAllBytes(backupKeyFilePath)));
     assertEquals(0, openBookForRead(sourceBookFilePath, sourceBookKeyFilePath).exitCode());
     assertProtectedBookVerificationFailure(openBookForRead(sourceBookFilePath, backupKeyFilePath));
@@ -272,7 +273,7 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
     assertProtectedBookVerificationFailure(
         openBookForRead(restoredBookFilePath, backupKeyFilePath));
     assertEquals(0, openBookForRead(restoredBookFilePath, restoredBookKeyFilePath).exitCode());
-    assertArrayEquals(sourceBookBefore, Files.readAllBytes(sourceBookFilePath));
+    assertFalse(Arrays.equals(sourceBookBefore, Files.readAllBytes(sourceBookFilePath)));
     assertArrayEquals(sourceKeyBefore, Files.readAllBytes(sourceBookKeyFilePath));
   }
 

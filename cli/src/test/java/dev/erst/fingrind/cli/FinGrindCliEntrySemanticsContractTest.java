@@ -399,17 +399,16 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
 
     int exitCode =
         cli.run(
-            new String[] {
-              commandName,
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--request-file",
-              requestFile.toString(),
-              "--output",
-              outputMode
-            });
+            attestedArguments(
+                commandName,
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                requestFile.toString(),
+                "--output",
+                outputMode));
 
     assertEquals(2, exitCode, scenario.slug() + ":" + commandName + ":" + outputMode);
     assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
@@ -508,25 +507,28 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
                 fixedClock())
             .run(
                 jsonArguments(
-                    "open-book",
-                    "--book-file",
-                    bookFilePath.toString(),
-                    "--book-key-file",
-                    bookKeyFilePath.toString(),
-                    "--entity-name",
-                    tradingBookIdentity().entityName().value(),
-                    "--book-template-id",
-                    tradingBookIdentity().bookDoctrine().bookTemplateId().wireValue(),
-                    "--accounting-basis",
-                    accountingBasisWireValue,
-                    "--inventory-costing",
-                    dev.erst.fingrind.core.InventoryCostingDoctrine.WEIGHTED_AVERAGE.wireValue(),
-                    "--functional-currency",
-                    tradingBookIdentity().functionalCurrency().code(),
-                    "--fiscal-year-start",
-                    tradingBookIdentity().fiscalYearStart().wireValue(),
-                    "--book-start-effective-date",
-                    tradingBookIdentity().bookStartEffectiveDate().toString())));
+                    founderAttestedArguments(
+                        bookFilePath,
+                        "open-book",
+                        "--book-file",
+                        bookFilePath.toString(),
+                        "--book-key-file",
+                        bookKeyFilePath.toString(),
+                        "--entity-name",
+                        tradingBookIdentity().entityName().value(),
+                        "--book-template-id",
+                        tradingBookIdentity().bookDoctrine().bookTemplateId().wireValue(),
+                        "--accounting-basis",
+                        accountingBasisWireValue,
+                        "--inventory-costing",
+                        dev.erst.fingrind.core.InventoryCostingDoctrine.WEIGHTED_AVERAGE
+                            .wireValue(),
+                        "--functional-currency",
+                        tradingBookIdentity().functionalCurrency().code(),
+                        "--fiscal-year-start",
+                        tradingBookIdentity().fiscalYearStart().wireValue(),
+                        "--book-start-effective-date",
+                        tradingBookIdentity().bookStartEffectiveDate().toString()))));
   }
 
   private void declareAccount(Path bookFilePath, Path bookKeyFilePath, Path requestFile) {

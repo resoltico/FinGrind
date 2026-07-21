@@ -262,7 +262,7 @@ class RejectionNarrativeTest {
         RejectionNarrative.message(
                 new BookMaintenanceRejection.BookDestinationOccupied(
                     hint(java.nio.file.Path.of("books/acme.sqlite"))))
-            .contains("--replace-existing-book"));
+            .contains("will not replace it"));
     assertTrue(
         RejectionNarrative.message(
                 new BookMaintenanceRejection.ArtifactVerificationFailed(

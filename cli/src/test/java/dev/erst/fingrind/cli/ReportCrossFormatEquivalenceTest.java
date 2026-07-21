@@ -161,10 +161,10 @@ class ReportCrossFormatEquivalenceTest extends CliFixtureSupport {
             text, "payroll-run-2026-07-employee-001"),
         text);
     assertTrue(
-        ReportCrossFormatProjectionAssertions.containsNormalized(text, "STATE_REMITTANCE"), text);
+        ReportCrossFormatProjectionAssertions.containsNormalized(text, "State remittance"), text);
     assertTrue(
         ReportCrossFormatProjectionAssertions.containsNormalized(
-            text, "posting-state-remittance-2026-07"),
+            text, "210633ad-7df4-3735-a675-6fde1a7f2c55"),
         text);
     assertTrue(
         ReportCrossFormatProjectionAssertions.containsNormalized(

@@ -74,7 +74,7 @@ final class BookMaintenanceRejectionDescriptors {
         FieldShape.SECRET_TARGET),
     BOOK_DESTINATION_OCCUPIED(
         "book-destination-occupied",
-        "Restore command refused because the selected destination book already exists without explicit replacement consent.",
+        "Restore command refused because the selected destination book already exists and FinGrind will not replace it.",
         FieldShape.BOOK_DESTINATION),
     ARTIFACT_VERIFICATION_FAILED(
         "artifact-verification-failed",

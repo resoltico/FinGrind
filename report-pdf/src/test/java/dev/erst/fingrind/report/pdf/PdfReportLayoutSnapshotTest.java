@@ -72,7 +72,7 @@ class PdfReportLayoutSnapshotTest {
             new ReportSnapshotCase(
                 "account-ledger",
                 PdfReportLayoutFixtureModels.sampleAccountLedgerModel(),
-                "e000c000f800fc00fffefffefffffffef800c000f000f000c000fffe00000000")),
+                "e000c000f800fc00fffefffefffffffed800c000f000f000c000fffe00000000")),
         Map.entry(
             "period-summary",
             new ReportSnapshotCase(

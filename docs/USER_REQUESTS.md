@@ -42,8 +42,8 @@ it comes from `--request-file <path>` or `--request-file -`.
 `--new-book-key-file` target. `backup-book` likewise creates an independent secret at an absent
 `--new-backup-key-file` target. `restore-book` reads the backup through `--backup-key-file` and
 creates its destination secret through `--new-book-key-file`; it requires
-`--replace-existing-book` when the selected `--book-file` already exists, and without that
-option it refuses a destination that appears before final publication.
+an absent `--book-file` destination and refuses one that exists or appears before final
+publication; `--replace-existing-book` is not a supported option.
 
 Every generated-secret target also requires a filesystem that can publish an absent staged secret
 without replacement. FinGrind rejects a target that lacks that atomic no-replace primitive rather

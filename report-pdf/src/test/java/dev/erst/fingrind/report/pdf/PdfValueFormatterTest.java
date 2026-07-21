@@ -217,48 +217,50 @@ class PdfValueFormatterTest {
     assertEquals(
         "Direct",
         PdfPostingValueFormatter.postingRole(
-            postingFact("posting-1", "idem-1", PostingLineage.direct())));
+            postingFact(
+                "019e26ff-0000-7000-8000-000000000001", "idem-1", PostingLineage.direct())));
     assertEquals(
         "Reversal",
         PdfPostingValueFormatter.postingRole(
             new PostingFact(
-                new PostingId("posting-2"),
+                new PostingId("019e26ff-0000-7000-8000-000000000002"),
                 journalEntry(),
                 PostingLineage.reversal(
-                    new ReversalReference(new PostingId("posting-1")),
+                    new ReversalReference(new PostingId("019e26ff-0000-7000-8000-000000000001")),
                     new ReversalReason("undo test posting")),
                 PostingKind.STANDARD,
                 dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
                 evidence("idem-2"),
                 new CommittedProvenance(
                     new RequestProvenance(
-                        new CommandId("command-1"),
+                        new CommandId("019e26ff-0000-7002-8000-000000000001"),
                         new IdempotencyKey("idem-2"),
-                        new CausationId("cause-1"),
+                        new CausationId("019e26ff-0000-7003-8000-000000000001"),
                         Optional.empty()),
                     Instant.parse("2026-04-07T10:15:30Z"),
                     SourceChannel.CLI))));
     assertEquals(
         "(not a reversal)",
         PdfPostingValueFormatter.reversalTarget(
-            postingFact("posting-1", "idem-1", PostingLineage.direct())));
+            postingFact(
+                "019e26ff-0000-7000-8000-000000000001", "idem-1", PostingLineage.direct())));
     assertEquals(
-        "posting-1",
+        "019e26ff-0000-7000-8000-000000000001",
         PdfPostingValueFormatter.reversalTarget(
             new PostingFact(
-                new PostingId("posting-2"),
+                new PostingId("019e26ff-0000-7000-8000-000000000002"),
                 journalEntry(),
                 PostingLineage.reversal(
-                    new ReversalReference(new PostingId("posting-1")),
+                    new ReversalReference(new PostingId("019e26ff-0000-7000-8000-000000000001")),
                     new ReversalReason("undo test posting")),
                 PostingKind.STANDARD,
                 dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
                 evidence("idem-2"),
                 new CommittedProvenance(
                     new RequestProvenance(
-                        new CommandId("command-1"),
+                        new CommandId("019e26ff-0000-7002-8000-000000000001"),
                         new IdempotencyKey("idem-2"),
-                        new CausationId("cause-1"),
+                        new CausationId("019e26ff-0000-7003-8000-000000000001"),
                         Optional.empty()),
                     Instant.parse("2026-04-07T10:15:30Z"),
                     SourceChannel.CLI))));
@@ -362,13 +364,14 @@ class PdfValueFormatterTest {
 
   @Test
   void reversalTargetFormatsDirectAndReversalPostings() {
-    PostingFact direct = postingFact("posting-1", "idem-1", PostingLineage.direct());
+    PostingFact direct =
+        postingFact("019e26ff-0000-7000-8000-000000000001", "idem-1", PostingLineage.direct());
     PostingFact reversal =
         new PostingFact(
-            new PostingId("posting-2"),
+            new PostingId("019e26ff-0000-7000-8000-000000000002"),
             journalEntry(),
             PostingLineage.reversal(
-                new ReversalReference(new PostingId("posting-1")),
+                new ReversalReference(new PostingId("019e26ff-0000-7000-8000-000000000001")),
                 new ReversalReason("undo test posting")),
             PostingKind.STANDARD,
             dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
@@ -376,7 +379,8 @@ class PdfValueFormatterTest {
             direct.provenance());
 
     assertEquals("(not a reversal)", PdfPostingValueFormatter.reversalTarget(direct));
-    assertEquals("posting-1", PdfPostingValueFormatter.reversalTarget(reversal));
+    assertEquals(
+        "019e26ff-0000-7000-8000-000000000001", PdfPostingValueFormatter.reversalTarget(reversal));
   }
 
   private static PostingFact postingFact(
@@ -390,9 +394,9 @@ class PdfValueFormatterTest {
         evidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
-                new CommandId("command-1"),
+                new CommandId("019e26ff-0000-7002-8000-000000000001"),
                 new IdempotencyKey(idempotencyKey),
-                new CausationId("cause-1"),
+                new CausationId("019e26ff-0000-7003-8000-000000000001"),
                 Optional.empty()),
             Instant.parse("2026-04-07T10:15:30Z"),
             SourceChannel.CLI));

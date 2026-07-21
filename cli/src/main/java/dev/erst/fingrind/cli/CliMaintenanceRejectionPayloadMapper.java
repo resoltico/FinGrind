@@ -65,9 +65,7 @@ final class CliMaintenanceRejectionPayloadMapper {
       case BookMaintenanceRejection.SecretTargetOccupied _ ->
           "Choose one absent generated-secret target path, then rerun the maintenance command.";
       case BookMaintenanceRejection.BookDestinationOccupied _ ->
-          "Rerun "
-              + RESTORE_BOOK_OPERATION
-              + " with --replace-existing-book only after confirming that the selected destination book is the intended replacement target.";
+          "Choose an absent destination book path, then rerun " + RESTORE_BOOK_OPERATION + ".";
       case BookMaintenanceRejection.ArtifactVerificationFailed verificationFailed ->
           "Use an artifact that opens as an initialized FinGrind protected book for role "
               + verificationFailed.artifactRole().wireValue()
