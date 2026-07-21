@@ -155,6 +155,7 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
   @Test
   void reportingPeriodCloseCapabilitySessionCoversDraftHelperAndStoreContext() {
     Path missingBookPath = tempDirectory.resolve("period-transfer-session-coverage.sqlite");
+    Path blankBookPath = tempDirectory.resolve("period-transfer-session-blank.sqlite");
     LocalDate effectiveDate = LocalDate.parse("2026-04-07");
     Instant sweptAt = Instant.parse("2026-04-07T10:15:30Z");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(missingBookPath));
@@ -165,6 +166,20 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
           assertInstanceOf(
                   SqliteReportingPeriodCloseCapabilitySession.class, reportingPeriodCloseSession)
               .storeContext());
+      assertEquals(
+          new InterimResultSweepOutcome.Rejected(
+              new BookkeepingAdministrationRejection.BookNotInitialized()),
+          assertInstanceOf(
+                  SqliteReportingPeriodCloseCapabilitySession.class, reportingPeriodCloseSession)
+              .interimResultSweep(
+                  emptyInterimResultSweepDraft(effectiveDate, sweptAt),
+                  unusedPostingIdGenerator(),
+                  SqliteAttestationTestSupport.authorizer()));
+    }
+    createEmptySqliteFile(blankBookPath);
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(blankBookPath));
+        SqliteReportingPeriodCloseSession reportingPeriodCloseSession =
+            SqliteCapabilitySessions.reportingPeriodClose(postingFactStore)) {
       assertEquals(
           new InterimResultSweepOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
