@@ -41,6 +41,7 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
@@ -504,6 +505,33 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
                             DECLARED_AT,
                             SqliteAttestationTestSupport.authorizer()));
         assertEquals("forced tax-registration lookup failure", failure.getMessage());
+      }
+
+      AtomicInteger taxRegistrationLookups = new AtomicInteger();
+      try (SqliteStatementRedirectingDatabase disappearingWriteDatabase =
+              new SqliteStatementRedirectingDatabase(
+                  realDatabase.get(),
+                  sql -> {
+                    if (SqliteTaxSql.FIND_TAX_REGISTRATION_BY_ID.equals(sql)
+                        && taxRegistrationLookups.incrementAndGet() == 2) {
+                      return realDatabase.get().prepare("select 1 where ?1 is not null and 0");
+                    }
+                    return realDatabase.get().prepare(sql);
+                  });
+          StoreDatabaseSwap ignored =
+              swapStoreDatabase(postingFactStore, disappearingWriteDatabase)) {
+        assertEquals(
+            "Persisted SQLite tax registration disappeared after write: vat-lv",
+            assertThrows(
+                    IllegalStateException.class,
+                    () ->
+                        postingFactStore
+                            .storeMutationOperations()
+                            .declareTaxRegistration(
+                                taxRegistration(),
+                                DECLARED_AT,
+                                SqliteAttestationTestSupport.authorizer()))
+                .getMessage());
       }
 
       assertEquals(0, countRows(realDatabase.get(), "tax_registration"));
