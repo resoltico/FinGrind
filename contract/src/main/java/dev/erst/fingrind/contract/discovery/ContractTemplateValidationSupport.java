@@ -45,10 +45,7 @@ final class ContractTemplateValidationSupport {
   }
 
   static ProvenanceTemplateValues validateProvenanceTemplate(
-      String commandId,
-      String idempotencyKey,
-      String causationId,
-      @Nullable String correlationId) {
+      String commandId, String idempotencyKey, String causationId, @Nullable String correlationId) {
     String validatedCommandId = ContractDescriptorValidation.requireText(commandId, "commandId");
     String validatedIdempotencyKey =
         ContractDescriptorValidation.requireText(idempotencyKey, "idempotencyKey");
@@ -73,10 +70,7 @@ final class ContractTemplateValidationSupport {
           Optional.ofNullable(validatedCorrelationId).map(CorrelationId::new));
     }
     return new ProvenanceTemplateValues(
-        validatedCommandId,
-        validatedIdempotencyKey,
-        validatedCausationId,
-        validatedCorrelationId);
+        validatedCommandId, validatedIdempotencyKey, validatedCausationId, validatedCorrelationId);
   }
 
   static AccountingEvidenceTemplateValues validateAccountingEvidenceTemplate(
@@ -161,10 +155,7 @@ final class ContractTemplateValidationSupport {
   }
 
   private static boolean containsPlaceholderProvenance(
-      String commandId,
-      String idempotencyKey,
-      String causationId,
-      @Nullable String correlationId) {
+      String commandId, String idempotencyKey, String causationId, @Nullable String correlationId) {
     return ScaffoldPlaceholders.isReserved(commandId)
         || ScaffoldPlaceholders.isReserved(idempotencyKey)
         || ScaffoldPlaceholders.isReserved(causationId)

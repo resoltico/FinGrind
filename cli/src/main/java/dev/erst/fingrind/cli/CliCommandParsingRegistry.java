@@ -71,15 +71,6 @@ final class CliCommandParsingRegistry {
       binding(OperationId.BACKUP_BOOK, CliLifecycleMutationArguments::parseBackupBookCommand),
       binding(OperationId.RESTORE_BOOK, CliLifecycleMutationArguments::parseRestoreBookCommand),
       binding(
-          OperationId.INSPECT_REKEY_ROLLBACK,
-          CliLifecycleMutationArguments::parseInspectRekeyRollbackCommand),
-      binding(
-          OperationId.DELETE_REKEY_ROLLBACK,
-          CliLifecycleMutationArguments::parseDeleteRekeyRollbackCommand),
-      binding(
-          OperationId.RESTORE_REKEY_ROLLBACK,
-          CliLifecycleMutationArguments::parseRestoreRekeyRollbackCommand),
-      binding(
           OperationId.INTERIM_RESULT_SWEEP,
           CliLifecycleMutationArguments::parseInterimResultSweepCommand),
       binding(

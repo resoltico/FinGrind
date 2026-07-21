@@ -5,7 +5,6 @@ import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.contract.runtime.BookAccess.PassphraseSource;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
@@ -17,7 +16,6 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import org.jspecify.annotations.Nullable;
 
 /** Executes administrative CLI commands that mutate book setup or key material. */
 final class CliAdministrativeCommandExecutor {
@@ -151,6 +149,7 @@ final class CliAdministrativeCommandExecutor {
       BookAccess bookAccess,
       Path backupFilePath,
       Path backupBookKeyFilePath,
+      java.util.UUID backupId,
       OutputMode outputMode) {
     Optional<Integer> promptFailure =
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
@@ -162,7 +161,7 @@ final class CliAdministrativeCommandExecutor {
       return promptFailure.orElseThrow();
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
-        lifecycleWorkflow.backupBook(bookAccess, backupFilePath, backupBookKeyFilePath),
+        lifecycleWorkflow.backupBook(bookAccess, backupFilePath, backupBookKeyFilePath, backupId),
         result -> responseWriter.writeBackupBookResult(result, outputMode),
         CliAdministrativeExitCodes::exitCodeFor,
         failureWriter,
@@ -174,7 +173,8 @@ final class CliAdministrativeCommandExecutor {
       Path newBookKeyFilePath,
       Path backupFilePath,
       Path backupKeyFilePath,
-      boolean replaceExistingBook,
+      java.util.List<dev.erst.fingrind.core.attestation.AttestationCredentialSource>
+          attestationCredentialSources,
       OutputMode outputMode) {
     return CliCommandOutcomeWriter.writeResolvedResult(
         lifecycleWorkflow.restoreBook(
@@ -182,59 +182,8 @@ final class CliAdministrativeCommandExecutor {
             newBookKeyFilePath,
             backupFilePath,
             backupKeyFilePath,
-            replaceExistingBook),
+            attestationCredentialSources),
         result -> responseWriter.writeRestoreBookResult(result, outputMode),
-        CliAdministrativeExitCodes::exitCodeFor,
-        failureWriter,
-        outputMode);
-  }
-
-  int runInspectRekeyRollbackCommand(Path bookFilePath, OutputMode outputMode) {
-    return CliCommandOutcomeWriter.writeResolvedResult(
-        lifecycleWorkflow.inspectRekeyRollback(bookFilePath),
-        result -> responseWriter.writeInspectRekeyRollbackResult(result, outputMode),
-        CliAdministrativeExitCodes::exitCodeFor,
-        failureWriter,
-        outputMode);
-  }
-
-  int runRestoreRekeyRollbackCommand(
-      Path bookFilePath,
-      @Nullable Path rollbackArtifactPath,
-      PassphraseSource expectedPassphraseSource,
-      OutputMode outputMode) {
-    Optional<Integer> promptFailure =
-        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, expectedPassphraseSource)
-            .map(
-                failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, failureWriter, outputMode));
-    if (promptFailure.isPresent()) {
-      return promptFailure.orElseThrow();
-    }
-    return CliCommandOutcomeWriter.writeResolvedResult(
-        lifecycleWorkflow.restoreRekeyRollback(
-            bookFilePath, rollbackArtifactPath, expectedPassphraseSource),
-        result -> responseWriter.writeRestoreRekeyRollbackResult(result, outputMode),
-        CliAdministrativeExitCodes::exitCodeFor,
-        failureWriter,
-        outputMode);
-  }
-
-  int runDeleteRekeyRollbackCommand(
-      BookAccess bookAccess, @Nullable Path rollbackArtifactPath, OutputMode outputMode) {
-    Optional<Integer> promptFailure =
-        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
-            .map(
-                failure ->
-                    CliCommandOutcomeWriter.writeDeterministicFailure(
-                        failure, failureWriter, outputMode));
-    if (promptFailure.isPresent()) {
-      return promptFailure.orElseThrow();
-    }
-    return CliCommandOutcomeWriter.writeResolvedResult(
-        lifecycleWorkflow.deleteRekeyRollback(bookAccess, rollbackArtifactPath),
-        result -> responseWriter.writeDeleteRekeyRollbackResult(result, outputMode),
         CliAdministrativeExitCodes::exitCodeFor,
         failureWriter,
         outputMode);

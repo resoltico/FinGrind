@@ -60,10 +60,7 @@ public interface ContractTemplates extends ContractPostingRequestTemplates {
   }
 
   public record ProvenanceTemplateDescriptor(
-      String commandId,
-      String idempotencyKey,
-      String causationId,
-      @Nullable String correlationId)
+      String commandId, String idempotencyKey, String causationId, @Nullable String correlationId)
       implements TemplateDescriptorType {
     public ProvenanceTemplateDescriptor {
       var validated =

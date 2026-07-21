@@ -26,6 +26,8 @@ final class BookMaintenanceRejectionDescriptors {
           Descriptor.BACKUP_SOURCE_MATCHES_LIVE_BOOK;
       case BookMaintenanceRejection.ArtifactPathInvalid _ -> Descriptor.ARTIFACT_PATH_INVALID;
       case BookMaintenanceRejection.ArtifactBusy _ -> Descriptor.ARTIFACT_BUSY;
+      case BookMaintenanceRejection.BackupAcknowledgementConflict _ ->
+          Descriptor.BACKUP_ACKNOWLEDGEMENT_CONFLICT;
       case BookMaintenanceRejection.BackupDestinationAlreadyExists _ ->
           Descriptor.BACKUP_DESTINATION_ALREADY_EXISTS;
       case BookMaintenanceRejection.SecretTargetOccupied _ -> Descriptor.SECRET_TARGET_OCCUPIED;
@@ -33,14 +35,6 @@ final class BookMaintenanceRejectionDescriptors {
           Descriptor.BOOK_DESTINATION_OCCUPIED;
       case BookMaintenanceRejection.ArtifactVerificationFailed _ ->
           Descriptor.ARTIFACT_VERIFICATION_FAILED;
-      case BookMaintenanceRejection.NoRollbackArtifactsFound _ ->
-          Descriptor.NO_ROLLBACK_ARTIFACTS_FOUND;
-      case BookMaintenanceRejection.RollbackArtifactSelectionRequired _ ->
-          Descriptor.ROLLBACK_ARTIFACT_SELECTION_REQUIRED;
-      case BookMaintenanceRejection.RollbackArtifactNotFound _ ->
-          Descriptor.ROLLBACK_ARTIFACT_NOT_FOUND;
-      case BookMaintenanceRejection.RollbackArtifactNotForBook _ ->
-          Descriptor.ROLLBACK_ARTIFACT_NOT_FOR_BOOK;
     };
   }
 
@@ -66,6 +60,10 @@ final class BookMaintenanceRejectionDescriptors {
         "artifact-busy",
         "Maintenance command refused because the selected protected-book artifact is actively in use by another workflow or process and cannot be proven quiescent.",
         FieldShape.ARTIFACT_BUSY),
+    BACKUP_ACKNOWLEDGEMENT_CONFLICT(
+        "backup-acknowledgement-conflict",
+        "Backup acknowledgement refused because the supplied backup ID is already bound to a different immutable artifact tuple.",
+        FieldShape.BACKUP_ACKNOWLEDGEMENT_CONFLICT),
     BACKUP_DESTINATION_ALREADY_EXISTS(
         "backup-destination-already-exists",
         "Backup command refused because the selected backup destination file already exists and FinGrind will not overwrite it.",
@@ -81,23 +79,7 @@ final class BookMaintenanceRejectionDescriptors {
     ARTIFACT_VERIFICATION_FAILED(
         "artifact-verification-failed",
         "Maintenance command refused because the selected protected-book artifact did not verify as one initialized FinGrind book for the requested workflow.",
-        FieldShape.VERIFICATION),
-    NO_ROLLBACK_ARTIFACTS_FOUND(
-        "no-rollback-artifacts-found",
-        "Rekey recovery refused because no sibling rollback artifact exists for the selected book path.",
-        FieldShape.ROLLBACK_BOOK),
-    ROLLBACK_ARTIFACT_SELECTION_REQUIRED(
-        "rollback-artifact-selection-required",
-        "Rekey recovery refused because more than one rollback artifact exists and FinGrind requires one explicit artifact selection.",
-        FieldShape.ROLLBACK_SELECTION),
-    ROLLBACK_ARTIFACT_NOT_FOUND(
-        "rollback-artifact-not-found",
-        "Rekey recovery refused because the named rollback artifact path does not exist.",
-        FieldShape.ROLLBACK_MISSING),
-    ROLLBACK_ARTIFACT_NOT_FOR_BOOK(
-        "rollback-artifact-not-for-book",
-        "Rekey recovery refused because the named rollback artifact does not belong to the selected book path.",
-        FieldShape.ROLLBACK_NOT_FOR_BOOK);
+        FieldShape.VERIFICATION);
 
     private final String code;
     private final String description;
@@ -171,6 +153,14 @@ final class BookMaintenanceRejectionDescriptors {
             field("artifactPath", "Canonical absolute path for the busy protected-book artifact."));
       }
     },
+    BACKUP_ACKNOWLEDGEMENT_CONFLICT {
+      @Override
+      List<ContractResponse.FieldDescriptor> fields() {
+        return List.of(
+            field(
+                "backupId", "Canonical UUID whose conflicting acknowledgement reuse was refused."));
+      }
+    },
     BACKUP_DESTINATION {
       @Override
       List<ContractResponse.FieldDescriptor> fields() {
@@ -208,40 +198,6 @@ final class BookMaintenanceRejectionDescriptors {
             field(
                 "verificationFailure",
                 "Stable public verification failure code for the rejected artifact."));
-      }
-    },
-    ROLLBACK_BOOK {
-      @Override
-      List<ContractResponse.FieldDescriptor> fields() {
-        return List.of(
-            field("bookFile", "Canonical absolute path for the selected live book file."));
-      }
-    },
-    ROLLBACK_SELECTION {
-      @Override
-      List<ContractResponse.FieldDescriptor> fields() {
-        return List.of(
-            field("bookFile", "Canonical absolute path for the selected live book file."),
-            field(
-                "rollbackArtifacts",
-                "Canonical absolute sibling rollback artifact paths, in deterministic order, that require explicit selection."));
-      }
-    },
-    ROLLBACK_MISSING {
-      @Override
-      List<ContractResponse.FieldDescriptor> fields() {
-        return List.of(
-            field(
-                "rollbackArtifact", "Canonical absolute path for the missing rollback artifact."));
-      }
-    },
-    ROLLBACK_NOT_FOR_BOOK {
-      @Override
-      List<ContractResponse.FieldDescriptor> fields() {
-        return List.of(
-            field("bookFile", "Canonical absolute path for the selected live book file."),
-            field(
-                "rollbackArtifact", "Canonical absolute path for the rejected rollback artifact."));
       }
     };
 

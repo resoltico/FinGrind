@@ -59,12 +59,17 @@ record RekeyBook(BookAccess bookAccess, Path newBookKeyFilePath, OutputMode outp
 
 /** Administrative CLI command that exports one closed encrypted-book backup pair. */
 record BackupBook(
-    BookAccess bookAccess, Path backupFilePath, Path backupBookKeyFilePath, OutputMode outputMode)
+    BookAccess bookAccess,
+    Path backupFilePath,
+    Path backupBookKeyFilePath,
+    java.util.UUID backupId,
+    OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
   BackupBook {
     Objects.requireNonNull(bookAccess, "bookAccess");
     Objects.requireNonNull(backupFilePath, "backupFilePath");
     Objects.requireNonNull(backupBookKeyFilePath, "backupBookKeyFilePath");
+    Objects.requireNonNull(backupId, "backupId");
     Objects.requireNonNull(outputMode, "outputMode");
   }
 
@@ -72,7 +77,8 @@ record BackupBook(
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
-        .runBackupBookCommand(bookAccess, backupFilePath, backupBookKeyFilePath, outputMode);
+        .runBackupBookCommand(
+            bookAccess, backupFilePath, backupBookKeyFilePath, backupId, outputMode);
   }
 }
 
@@ -82,7 +88,8 @@ record RestoreBook(
     Path newBookKeyFilePath,
     Path backupFilePath,
     Path backupKeyFilePath,
-    boolean replaceExistingBook,
+    java.util.List<dev.erst.fingrind.core.attestation.AttestationCredentialSource>
+        attestationCredentialSources,
     OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
   RestoreBook {
@@ -90,6 +97,7 @@ record RestoreBook(
     Objects.requireNonNull(newBookKeyFilePath, "newBookKeyFilePath");
     Objects.requireNonNull(backupFilePath, "backupFilePath");
     Objects.requireNonNull(backupKeyFilePath, "backupKeyFilePath");
+    attestationCredentialSources = java.util.List.copyOf(attestationCredentialSources);
     Objects.requireNonNull(outputMode, "outputMode");
   }
 
@@ -102,67 +110,8 @@ record RestoreBook(
             newBookKeyFilePath,
             backupFilePath,
             backupKeyFilePath,
-            replaceExistingBook,
+            attestationCredentialSources,
             outputMode);
-  }
-}
-
-/** Administrative CLI command that inspects stale sibling rekey rollback artifacts. */
-record InspectRekeyRollback(Path bookFilePath, OutputMode outputMode)
-    implements CliCommand.OutputModeCommand {
-  InspectRekeyRollback {
-    Objects.requireNonNull(bookFilePath, "bookFilePath");
-    Objects.requireNonNull(outputMode, "outputMode");
-  }
-
-  @Override
-  public int execute(CliExecutionContext executionContext) {
-    return Objects.requireNonNull(executionContext, "executionContext")
-        .administrative()
-        .runInspectRekeyRollbackCommand(bookFilePath, outputMode);
-  }
-}
-
-/** Administrative CLI command that restores one selected sibling rekey rollback artifact. */
-record RestoreRekeyRollback(
-    Path bookFilePath,
-    @org.jspecify.annotations.Nullable Path rollbackArtifactPath,
-    BookAccess.PassphraseSource expectedPassphraseSource,
-    OutputMode outputMode)
-    implements CliCommand.OutputModeCommand {
-  RestoreRekeyRollback {
-    Objects.requireNonNull(bookFilePath, "bookFilePath");
-    Objects.requireNonNull(expectedPassphraseSource, "expectedPassphraseSource");
-    Objects.requireNonNull(outputMode, "outputMode");
-  }
-
-  @Override
-  public int execute(CliExecutionContext executionContext) {
-    return Objects.requireNonNull(executionContext, "executionContext")
-        .administrative()
-        .runRestoreRekeyRollbackCommand(
-            bookFilePath, rollbackArtifactPath, expectedPassphraseSource, outputMode);
-  }
-}
-
-/** Administrative CLI command that deletes one selected sibling rekey rollback artifact. */
-final class DeleteRekeyRollback extends CliBookNullablePathOutputModeCommand {
-  DeleteRekeyRollback(
-      BookAccess bookAccess,
-      @org.jspecify.annotations.Nullable Path rollbackArtifactPath,
-      OutputMode outputMode) {
-    super(bookAccess, rollbackArtifactPath, outputMode);
-  }
-
-  @Override
-  protected int executeCommand(
-      CliExecutionContext executionContext,
-      BookAccess bookAccess,
-      @org.jspecify.annotations.Nullable Path rollbackArtifactPath,
-      OutputMode outputMode) {
-    return executionContext
-        .administrative()
-        .runDeleteRekeyRollbackCommand(bookAccess, rollbackArtifactPath, outputMode);
   }
 }
 

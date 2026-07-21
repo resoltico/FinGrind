@@ -37,6 +37,8 @@ final class CliMaintenanceFailureOutputRenderer {
         rows.add(List.of("Artifact role", details.artifactRole()));
         rows.add(List.of("Artifact path", redactedPath(details.artifactPath())));
       }
+      case CliRejectionJsonModels.BackupAcknowledgementConflictDetails details ->
+          rows.add(List.of("Backup ID", details.backupId()));
       case CliRejectionJsonModels.BackupFileDetails details ->
           rows.add(List.of("Backup file", redactedPath(details.backupFile())));
       case CliRejectionJsonModels.SecretTargetDetails details ->

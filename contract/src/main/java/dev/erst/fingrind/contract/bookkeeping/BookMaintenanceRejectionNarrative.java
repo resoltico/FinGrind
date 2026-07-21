@@ -16,6 +16,8 @@ final class BookMaintenanceRejectionNarrative {
           "The selected protected-book artifact path violates the filesystem contract for its declared role.";
       case BookMaintenanceRejection.ArtifactBusy _ ->
           "The selected protected-book artifact is actively in use and cannot be maintained safely.";
+      case BookMaintenanceRejection.BackupAcknowledgementConflict _ ->
+          "The supplied backup ID is already bound to a different immutable backup acknowledgement.";
       case BookMaintenanceRejection.BackupDestinationAlreadyExists _ ->
           "The selected backup destination already exists and FinGrind will not overwrite it.";
       case BookMaintenanceRejection.SecretTargetOccupied _ ->
@@ -24,14 +26,6 @@ final class BookMaintenanceRejectionNarrative {
           "The selected destination book already exists; pass --replace-existing-book to replace it.";
       case BookMaintenanceRejection.ArtifactVerificationFailed _ ->
           "The selected protected-book artifact failed verification for its declared role.";
-      case BookMaintenanceRejection.NoRollbackArtifactsFound _ ->
-          "No sibling rekey rollback artifacts exist beside the selected book.";
-      case BookMaintenanceRejection.RollbackArtifactSelectionRequired _ ->
-          "More than one sibling rekey rollback artifact exists; choose one explicit rollback artifact path.";
-      case BookMaintenanceRejection.RollbackArtifactNotFound _ ->
-          "The selected rollback artifact does not exist.";
-      case BookMaintenanceRejection.RollbackArtifactNotForBook _ ->
-          "The selected rollback artifact does not belong to the selected book.";
     };
   }
 }

@@ -11,14 +11,11 @@ public sealed interface ProtectedBookMaintenanceRejection
         ProtectedBookMaintenanceRejection.BackupSourceMatchesLiveBook,
         ProtectedBookMaintenanceRejection.ArtifactPathInvalid,
         ProtectedBookMaintenanceRejection.ArtifactBusy,
+        ProtectedBookMaintenanceRejection.BackupAcknowledgementConflict,
         ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists,
         ProtectedBookMaintenanceRejection.SecretTargetOccupied,
         ProtectedBookMaintenanceRejection.BookDestinationOccupied,
-        ProtectedBookMaintenanceRejection.ArtifactVerificationFailed,
-        ProtectedBookMaintenanceRejection.NoRollbackArtifactsFound,
-        ProtectedBookMaintenanceRejection.RollbackArtifactSelectionRequired,
-        ProtectedBookMaintenanceRejection.RollbackArtifactNotFound,
-        ProtectedBookMaintenanceRejection.RollbackArtifactNotForBook {
+        ProtectedBookMaintenanceRejection.ArtifactVerificationFailed {
 
   /** Rejection for maintenance commands that require one clean closed live book path. */
   record BookHasBlockingArtifacts(Path bookFilePath, List<Path> blockingArtifactPaths)
@@ -77,6 +74,14 @@ public sealed interface ProtectedBookMaintenanceRejection
     }
   }
 
+  /** Rejection for a backup ID that is already bound to a different immutable acknowledgement. */
+  record BackupAcknowledgementConflict(java.util.UUID backupId)
+      implements ProtectedBookMaintenanceRejection {
+    public BackupAcknowledgementConflict {
+      Objects.requireNonNull(backupId, "backupId");
+    }
+  }
+
   /** Rejection for backup commands that refuse to overwrite one existing backup file. */
   record BackupDestinationAlreadyExists(Path backupFilePath)
       implements ProtectedBookMaintenanceRejection {
@@ -109,44 +114,6 @@ public sealed interface ProtectedBookMaintenanceRejection
       Objects.requireNonNull(artifactRole, "artifactRole");
       Objects.requireNonNull(artifactPath, "artifactPath");
       Objects.requireNonNull(verificationFailure, "verificationFailure");
-    }
-  }
-
-  /** Rejection for rekey-recovery commands when no sibling rollback artifact exists. */
-  record NoRollbackArtifactsFound(Path bookFilePath) implements ProtectedBookMaintenanceRejection {
-    public NoRollbackArtifactsFound {
-      Objects.requireNonNull(bookFilePath, "bookFilePath");
-    }
-  }
-
-  /** Rejection for rekey-recovery commands when more than one rollback artifact exists. */
-  record RollbackArtifactSelectionRequired(Path bookFilePath, List<Path> rollbackArtifactPaths)
-      implements ProtectedBookMaintenanceRejection {
-    public RollbackArtifactSelectionRequired {
-      Objects.requireNonNull(bookFilePath, "bookFilePath");
-      rollbackArtifactPaths =
-          List.copyOf(Objects.requireNonNull(rollbackArtifactPaths, "rollbackArtifactPaths"));
-      if (rollbackArtifactPaths.size() < 2) {
-        throw new IllegalArgumentException(
-            "rollbackArtifactPaths must contain at least two entries when selection is required.");
-      }
-    }
-  }
-
-  /** Rejection for rekey-recovery commands that name one absent rollback artifact. */
-  record RollbackArtifactNotFound(Path rollbackArtifactPath)
-      implements ProtectedBookMaintenanceRejection {
-    public RollbackArtifactNotFound {
-      Objects.requireNonNull(rollbackArtifactPath, "rollbackArtifactPath");
-    }
-  }
-
-  /** Rejection for rekey-recovery commands that name one non-sibling rollback artifact. */
-  record RollbackArtifactNotForBook(Path bookFilePath, Path rollbackArtifactPath)
-      implements ProtectedBookMaintenanceRejection {
-    public RollbackArtifactNotForBook {
-      Objects.requireNonNull(bookFilePath, "bookFilePath");
-      Objects.requireNonNull(rollbackArtifactPath, "rollbackArtifactPath");
     }
   }
 }

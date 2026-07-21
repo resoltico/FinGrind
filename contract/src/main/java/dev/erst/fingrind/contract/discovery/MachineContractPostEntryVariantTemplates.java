@@ -277,9 +277,6 @@ final class MachineContractPostEntryVariantTemplates {
 
   static ContractTemplates.ProvenanceTemplateDescriptor provenanceTemplate() {
     return new ContractTemplates.ProvenanceTemplateDescriptor(
-        SAMPLE_COMMAND_ID,
-        SAMPLE_IDEMPOTENCY_KEY,
-        SAMPLE_CAUSATION_ID,
-        null);
+        SAMPLE_COMMAND_ID, SAMPLE_IDEMPOTENCY_KEY, SAMPLE_CAUSATION_ID, null);
   }
 }

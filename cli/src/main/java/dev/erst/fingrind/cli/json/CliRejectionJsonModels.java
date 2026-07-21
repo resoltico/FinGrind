@@ -68,6 +68,7 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels, CliTaxRejecti
           BlockingArtifactsDetails,
           CliArtifactPathFailureDetails,
           ArtifactBusyDetails,
+          BackupAcknowledgementConflictDetails,
           ArtifactVerificationFailureDetails,
           BackupFileDetails,
           SecretTargetDetails,
@@ -82,6 +83,14 @@ public interface CliRejectionJsonModels extends CliPlanJsonModels, CliTaxRejecti
       if (violations.isEmpty()) {
         throw new IllegalArgumentException("violations must not be empty.");
       }
+    }
+  }
+
+  /** Details for an immutable backup acknowledgement identity conflict. */
+  record BackupAcknowledgementConflictDetails(String backupId)
+      implements MaintenanceRejectionDetails {
+    public BackupAcknowledgementConflictDetails {
+      backupId = requireText(backupId, "backupId");
     }
   }
 

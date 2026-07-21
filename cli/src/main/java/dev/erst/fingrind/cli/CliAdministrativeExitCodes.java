@@ -8,7 +8,6 @@ import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
-import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RetireAccountResult;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
@@ -42,15 +41,6 @@ final class CliAdministrativeExitCodes {
     return switch (result) {
       case RestoreBookResult.Restored _ -> 0;
       case RestoreBookResult.Rejected rejected -> exitCodeFor(rejected.rejection());
-    };
-  }
-
-  static int exitCodeFor(RekeyRollbackResult result) {
-    return switch (result) {
-      case RekeyRollbackResult.Inspected _ -> 0;
-      case RekeyRollbackResult.Restored _ -> 0;
-      case RekeyRollbackResult.Deleted _ -> 0;
-      case RekeyRollbackResult.Rejected rejected -> exitCodeFor(rejected.rejection());
     };
   }
 

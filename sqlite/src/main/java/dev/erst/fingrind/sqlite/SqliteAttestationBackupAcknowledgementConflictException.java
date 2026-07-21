@@ -1,19 +1,14 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.executor.maintenance.BackupAcknowledgementConflictException;
 import java.util.UUID;
 
 /** Raised when a backup-created operation reuses an existing backup ID with a different tuple. */
-final class SqliteAttestationBackupAcknowledgementConflictException extends RuntimeException {
+final class SqliteAttestationBackupAcknowledgementConflictException
+    extends BackupAcknowledgementConflictException {
   private static final long serialVersionUID = 1L;
 
-  private final UUID backupId;
-
   SqliteAttestationBackupAcknowledgementConflictException(UUID backupId) {
-    super("backup-acknowledgement-conflict");
-    this.backupId = java.util.Objects.requireNonNull(backupId, "backupId");
-  }
-
-  UUID backupId() {
-    return backupId;
+    super(backupId);
   }
 }

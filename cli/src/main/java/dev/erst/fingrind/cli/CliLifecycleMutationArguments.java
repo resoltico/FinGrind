@@ -26,18 +26,6 @@ final class CliLifecycleMutationArguments {
     return CliBackupRestoreArguments.parseRestoreBookCommand(arguments);
   }
 
-  static CliCommand parseInspectRekeyRollbackCommand(List<String> arguments) {
-    return CliRekeyRollbackArguments.parseInspectRekeyRollbackCommand(arguments);
-  }
-
-  static CliCommand parseDeleteRekeyRollbackCommand(List<String> arguments) {
-    return CliRekeyRollbackArguments.parseDeleteRekeyRollbackCommand(arguments);
-  }
-
-  static CliCommand parseRestoreRekeyRollbackCommand(List<String> arguments) {
-    return CliRekeyRollbackArguments.parseRestoreRekeyRollbackCommand(arguments);
-  }
-
   static CliCommand parseInterimResultSweepCommand(List<String> arguments) {
     return CliInterimResultSweepArguments.parseInterimResultSweepCommand(arguments);
   }

@@ -22,14 +22,14 @@ public final class ProtocolBookAccessOptions {
   /** Option selecting one backup-book file source or destination, depending on the workflow. */
   public static final String BACKUP_FILE = "--backup-file";
 
+  /** Caller-selected immutable backup identity used for acknowledgement idempotency and resume. */
+  public static final String BACKUP_ID = "--backup-id";
+
   /** Option selecting one existing backup-key-file source. */
   public static final String BACKUP_KEY_FILE = "--backup-key-file";
 
   /** Option selecting an absent target where FinGrind publishes one generated backup key file. */
   public static final String NEW_BACKUP_KEY_FILE = "--new-backup-key-file";
-
-  /** Explicitly authorizes restore-book to replace the selected existing book file. */
-  public static final String REPLACE_EXISTING_BOOK = "--replace-existing-book";
 
   /** Option selecting one explicit stale rollback-book artifact for rekey recovery. */
   public static final String ROLLBACK_BOOK_FILE = "--rollback-book-file";

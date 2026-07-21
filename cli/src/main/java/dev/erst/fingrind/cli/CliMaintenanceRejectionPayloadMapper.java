@@ -13,16 +13,10 @@ import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 final class CliMaintenanceRejectionPayloadMapper {
   private static final String BACKUP_BOOK_OPERATION =
       ProtocolCatalog.operationName(OperationId.BACKUP_BOOK);
-  private static final String DELETE_REKEY_ROLLBACK_OPERATION =
-      ProtocolCatalog.operationName(OperationId.DELETE_REKEY_ROLLBACK);
   private static final String INSPECT_BOOK_OPERATION =
       ProtocolCatalog.operationName(OperationId.INSPECT_BOOK);
-  private static final String INSPECT_REKEY_ROLLBACK_OPERATION =
-      ProtocolCatalog.operationName(OperationId.INSPECT_REKEY_ROLLBACK);
   private static final String RESTORE_BOOK_OPERATION =
       ProtocolCatalog.operationName(OperationId.RESTORE_BOOK);
-  private static final String RESTORE_REKEY_ROLLBACK_OPERATION =
-      ProtocolCatalog.operationName(OperationId.RESTORE_REKEY_ROLLBACK);
 
   private CliMaintenanceRejectionPayloadMapper() {}
 
@@ -43,11 +37,9 @@ final class CliMaintenanceRejectionPayloadMapper {
   private static String rejectionHint(BookMaintenanceRejection rejection) {
     return switch (rejection) {
       case BookMaintenanceRejection.BookHasBlockingArtifacts _ ->
-          "Close every process using the selected book, remove SQLite sidecars only by finishing or restoring the interrupted workflow, and rerun the maintenance command after "
+          "Close every process using the selected book, resolve its SQLite sidecars through the current lifecycle workflow, and rerun the maintenance command after "
               + INSPECT_BOOK_OPERATION
-              + " and "
-              + INSPECT_REKEY_ROLLBACK_OPERATION
-              + " confirm a clean closed-copy state.";
+              + " confirms a clean closed-copy state.";
       case BookMaintenanceRejection.BackupSourceHasBlockingArtifacts _ ->
           "Choose an encrypted backup copy with no sibling SQLite sidecars or rollback artifacts, or recreate the backup with "
               + BACKUP_BOOK_OPERATION
@@ -62,6 +54,10 @@ final class CliMaintenanceRejectionPayloadMapper {
           "Close the process using the "
               + artifactBusy.artifactRole().wireValue()
               + " artifact, wait for the active maintenance workflow to finish, then rerun the command.";
+      case BookMaintenanceRejection.BackupAcknowledgementConflict conflict ->
+          "Use a new --backup-id, or resume the exact backup whose immutable acknowledgement uses "
+              + conflict.backupId()
+              + ".";
       case BookMaintenanceRejection.BackupDestinationAlreadyExists _ ->
           "Choose a new --backup-file path or remove the existing encrypted backup copy yourself before rerunning "
               + BACKUP_BOOK_OPERATION
@@ -76,8 +72,6 @@ final class CliMaintenanceRejectionPayloadMapper {
           "Use an artifact that opens as an initialized FinGrind protected book for role "
               + verificationFailed.artifactRole().wireValue()
               + ", with the matching passphrase source for that artifact, then rerun the maintenance command.";
-      case BookMaintenanceRejection.RollbackArtifactRejection rollbackRejection ->
-          rollbackRejectionHint(rollbackRejection);
     };
   }
 
@@ -109,6 +103,9 @@ final class CliMaintenanceRejectionPayloadMapper {
           new CliRejectionJsonModels.ArtifactBusyDetails(
               artifactBusy.artifactRole().wireValue(),
               CliPublicPaths.absoluteValue(artifactBusy.artifactPath()));
+      case BookMaintenanceRejection.BackupAcknowledgementConflict conflict ->
+          new CliRejectionJsonModels.BackupAcknowledgementConflictDetails(
+              conflict.backupId().toString());
       case BookMaintenanceRejection.BackupDestinationAlreadyExists destinationAlreadyExists ->
           new CliRejectionJsonModels.BackupFileDetails(
               CliPublicPaths.absoluteValue(destinationAlreadyExists.backupFilePath()));
@@ -123,52 +120,6 @@ final class CliMaintenanceRejectionPayloadMapper {
               verificationFailed.artifactRole().wireValue(),
               CliPublicPaths.absoluteValue(verificationFailed.artifactPath()),
               verificationFailed.verificationFailure().wireValue());
-      case BookMaintenanceRejection.RollbackArtifactRejection rollbackRejection ->
-          rollbackRejectionDetails(rollbackRejection);
-    };
-  }
-
-  private static String rollbackRejectionHint(
-      BookMaintenanceRejection.RollbackArtifactRejection rejection) {
-    return switch (rejection) {
-      case BookMaintenanceRejection.NoRollbackArtifactsFound _ ->
-          "Rerun "
-              + INSPECT_REKEY_ROLLBACK_OPERATION
-              + " to confirm that no stale rollback copies remain.";
-      case BookMaintenanceRejection.RollbackArtifactSelectionRequired _ ->
-          "Rerun "
-              + RESTORE_REKEY_ROLLBACK_OPERATION
-              + " or "
-              + DELETE_REKEY_ROLLBACK_OPERATION
-              + " with an explicit --rollback-book-file path from details.rollbackArtifacts.";
-      case BookMaintenanceRejection.RollbackArtifactNotFound _ ->
-          "Choose an existing rollback artifact path returned by "
-              + INSPECT_REKEY_ROLLBACK_OPERATION
-              + " inspection output and rerun the command.";
-      case BookMaintenanceRejection.RollbackArtifactNotForBook _ ->
-          "Choose a rollback artifact that lives beside the selected --book-file and matches FinGrind's canonical rollback naming.";
-    };
-  }
-
-  private static CliRejectionJsonModels.@org.jspecify.annotations.Nullable RejectionDetails
-      rollbackRejectionDetails(BookMaintenanceRejection.RollbackArtifactRejection rejection) {
-    return switch (rejection) {
-      case BookMaintenanceRejection.NoRollbackArtifactsFound noRollbackArtifactsFound ->
-          new CliRejectionJsonModels.BookFileDetails(
-              CliPublicPaths.absoluteValue(noRollbackArtifactsFound.bookFilePath()));
-      case BookMaintenanceRejection.RollbackArtifactSelectionRequired selectionRequired ->
-          new CliRejectionJsonModels.RollbackArtifactSelectionDetails(
-              CliPublicPaths.absoluteValue(selectionRequired.bookFilePath()),
-              selectionRequired.rollbackArtifactPaths().stream()
-                  .map(CliPublicPaths::absoluteValue)
-                  .toList());
-      case BookMaintenanceRejection.RollbackArtifactNotFound rollbackArtifactNotFound ->
-          new CliRejectionJsonModels.RollbackArtifactDetails(
-              CliPublicPaths.absoluteValue(rollbackArtifactNotFound.rollbackArtifactPath()));
-      case BookMaintenanceRejection.RollbackArtifactNotForBook rollbackArtifactNotForBook ->
-          new CliRejectionJsonModels.RollbackArtifactMismatchDetails(
-              CliPublicPaths.absoluteValue(rollbackArtifactNotForBook.bookFilePath()),
-              CliPublicPaths.absoluteValue(rollbackArtifactNotForBook.rollbackArtifactPath()));
     };
   }
 

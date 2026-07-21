@@ -4,17 +4,16 @@ import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
-import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.contract.runtime.BookAccess.PassphraseSource;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
+import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.executor.AttestationCredentialException;
 import dev.erst.fingrind.executor.AttestationGenesisFactory;
@@ -29,7 +28,9 @@ import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 /** SQLite-backed lifecycle workflow for initialization, key rotation, backup, and rollback. */
@@ -108,8 +109,9 @@ final class SqliteCliLifecycleWorkflow implements CliBookLifecycleWorkflow {
 
   @Override
   public ContractDecision<BackupBookResult> backupBook(
-      BookAccess bookAccess, Path backupFilePath, Path backupBookKeyFilePath) {
-    return maintenanceService.backupBook(bookAccess, backupFilePath, backupBookKeyFilePath);
+      BookAccess bookAccess, Path backupFilePath, Path backupBookKeyFilePath, UUID backupId) {
+    return maintenanceService.backupBook(
+        bookAccess, backupFilePath, backupBookKeyFilePath, backupId);
   }
 
   @Override
@@ -118,28 +120,12 @@ final class SqliteCliLifecycleWorkflow implements CliBookLifecycleWorkflow {
       Path newBookKeyFilePath,
       Path backupFilePath,
       Path backupKeyFilePath,
-      boolean replaceExistingBook) {
+      List<AttestationCredentialSource> attestationCredentialSources) {
     return maintenanceService.restoreBook(
-        bookFilePath, newBookKeyFilePath, backupFilePath, backupKeyFilePath, replaceExistingBook);
-  }
-
-  @Override
-  public ContractDecision<RekeyRollbackResult> inspectRekeyRollback(Path bookFilePath) {
-    return maintenanceService.inspectRekeyRollback(bookFilePath);
-  }
-
-  @Override
-  public ContractDecision<RekeyRollbackResult> deleteRekeyRollback(
-      BookAccess bookAccess, @Nullable Path rollbackArtifactPath) {
-    return maintenanceService.deleteRekeyRollback(bookAccess, rollbackArtifactPath);
-  }
-
-  @Override
-  public ContractDecision<RekeyRollbackResult> restoreRekeyRollback(
-      Path bookFilePath,
-      @Nullable Path rollbackArtifactPath,
-      PassphraseSource expectedPassphraseSource) {
-    return maintenanceService.restoreRekeyRollback(
-        bookFilePath, rollbackArtifactPath, expectedPassphraseSource);
+        bookFilePath,
+        newBookKeyFilePath,
+        backupFilePath,
+        backupKeyFilePath,
+        attestationCredentialSources);
   }
 }

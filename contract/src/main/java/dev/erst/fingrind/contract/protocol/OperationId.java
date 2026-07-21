@@ -29,12 +29,6 @@ public enum OperationId implements WireValue {
   BACKUP_BOOK,
   /** Restores one encrypted-book backup pair onto one selected book path. */
   RESTORE_BOOK,
-  /** Inspects stale sibling rekey rollback artifacts for one selected book path. */
-  INSPECT_REKEY_ROLLBACK,
-  /** Deletes one selected stale sibling rekey rollback artifact. */
-  DELETE_REKEY_ROLLBACK,
-  /** Restores one selected stale sibling rekey rollback artifact onto the live book path. */
-  RESTORE_REKEY_ROLLBACK,
   /** Declares or reactivates one account. */
   DECLARE_ACCOUNT,
   /** Replaces the definition of a never-posted, unreferenced account. */

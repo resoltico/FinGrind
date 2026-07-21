@@ -23,8 +23,6 @@ sealed interface CliCommand
           RekeyBook,
           BackupBook,
           RestoreBook,
-          InspectRekeyRollback,
-          RestoreRekeyRollback,
           CliBookNullablePathOutputModeCommand,
           CliBookRequestOutputModeCommand,
           InterimResultSweep,

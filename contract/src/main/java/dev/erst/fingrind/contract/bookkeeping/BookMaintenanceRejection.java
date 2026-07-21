@@ -26,6 +26,7 @@ public sealed interface BookMaintenanceRejection
       permits BookHasBlockingArtifacts,
           BackupSourceHasBlockingArtifacts,
           ArtifactBusy,
+          BackupAcknowledgementConflict,
           BackupDestinationAlreadyExists,
           SecretTargetOccupied,
           BookDestinationOccupied {}
@@ -36,7 +37,7 @@ public sealed interface BookMaintenanceRejection
 
   /** Closed subfamily of refusals caused by an invalid maintenance request. */
   sealed interface MaintenanceRequestInvalid extends BookMaintenanceRejection
-      permits BackupSourceMatchesLiveBook, RollbackArtifactRejection {}
+      permits BackupSourceMatchesLiveBook {}
 
   /** Rejection for maintenance commands that require a clean closed live book path. */
   record BookHasBlockingArtifacts(Path bookFilePath, List<Path> blockingArtifactPaths)
@@ -93,6 +94,14 @@ public sealed interface BookMaintenanceRejection
     }
   }
 
+  /** Rejection for a backup ID that is already bound to another immutable acknowledgement. */
+  record BackupAcknowledgementConflict(java.util.UUID backupId)
+      implements MaintenanceStateConflict {
+    public BackupAcknowledgementConflict {
+      Objects.requireNonNull(backupId, "backupId");
+    }
+  }
+
   /** Rejection for backup commands that refuse to overwrite an existing encrypted backup file. */
   record BackupDestinationAlreadyExists(Path backupFilePath) implements MaintenanceStateConflict {
     public BackupDestinationAlreadyExists {
@@ -124,49 +133,6 @@ public sealed interface BookMaintenanceRejection
       Objects.requireNonNull(artifactRole, "artifactRole");
       artifactPath = normalizedPath(artifactPath, "artifactPath");
       Objects.requireNonNull(verificationFailure, "verificationFailure");
-    }
-  }
-
-  /** Closed subfamily of rekey-recovery refusals concerning rollback artifacts. */
-  sealed interface RollbackArtifactRejection extends MaintenanceRequestInvalid
-      permits NoRollbackArtifactsFound,
-          RollbackArtifactSelectionRequired,
-          RollbackArtifactNotFound,
-          RollbackArtifactNotForBook {}
-
-  /** Rejection for rekey-recovery commands when no sibling rollback artifact exists. */
-  record NoRollbackArtifactsFound(Path bookFilePath) implements RollbackArtifactRejection {
-    public NoRollbackArtifactsFound {
-      bookFilePath = normalizedPath(bookFilePath, "bookFilePath");
-    }
-  }
-
-  /** Rejection for rekey-recovery commands when more than one rollback artifact exists. */
-  record RollbackArtifactSelectionRequired(Path bookFilePath, List<Path> rollbackArtifactPaths)
-      implements RollbackArtifactRejection {
-    public RollbackArtifactSelectionRequired {
-      bookFilePath = normalizedPath(bookFilePath, "bookFilePath");
-      rollbackArtifactPaths = normalizedPaths(rollbackArtifactPaths, "rollbackArtifactPaths");
-      if (rollbackArtifactPaths.size() < 2) {
-        throw new IllegalArgumentException(
-            "rollbackArtifactPaths must contain at least two entries when selection is required.");
-      }
-    }
-  }
-
-  /** Rejection for rekey-recovery commands that name a rollback artifact that is absent. */
-  record RollbackArtifactNotFound(Path rollbackArtifactPath) implements RollbackArtifactRejection {
-    public RollbackArtifactNotFound {
-      rollbackArtifactPath = normalizedPath(rollbackArtifactPath, "rollbackArtifactPath");
-    }
-  }
-
-  /** Rejection for rekey-recovery commands that name a non-sibling or non-canonical artifact. */
-  record RollbackArtifactNotForBook(Path bookFilePath, Path rollbackArtifactPath)
-      implements RollbackArtifactRejection {
-    public RollbackArtifactNotForBook {
-      bookFilePath = normalizedPath(bookFilePath, "bookFilePath");
-      rollbackArtifactPath = normalizedPath(rollbackArtifactPath, "rollbackArtifactPath");
     }
   }
 

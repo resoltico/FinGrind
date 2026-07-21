@@ -4,13 +4,13 @@ import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
-import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
-import dev.erst.fingrind.contract.runtime.BookAccess.PassphraseSource;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import java.nio.file.Path;
-import org.jspecify.annotations.Nullable;
+import java.util.List;
+import java.util.UUID;
 
 /** Lifecycle seam for opening, protecting, backing up, and rolling back books. */
 interface CliBookLifecycleWorkflow {
@@ -22,7 +22,7 @@ interface CliBookLifecycleWorkflow {
 
   /** Creates a backup copy plus its companion key artifact. */
   ContractDecision<BackupBookResult> backupBook(
-      BookAccess bookAccess, Path backupFilePath, Path backupBookKeyFilePath);
+      BookAccess bookAccess, Path backupFilePath, Path backupBookKeyFilePath, UUID backupId);
 
   /** Restores one protected book from a backup artifact set. */
   ContractDecision<RestoreBookResult> restoreBook(
@@ -30,18 +30,5 @@ interface CliBookLifecycleWorkflow {
       Path newBookKeyFilePath,
       Path backupFilePath,
       Path backupKeyFilePath,
-      boolean replaceExistingBook);
-
-  /** Reads rollback metadata for the most recent interrupted rekey flow. */
-  ContractDecision<RekeyRollbackResult> inspectRekeyRollback(Path bookFilePath);
-
-  /** Deletes rollback artifacts once the operator accepts their removal. */
-  ContractDecision<RekeyRollbackResult> deleteRekeyRollback(
-      BookAccess bookAccess, @Nullable Path rollbackArtifactPath);
-
-  /** Restores the rollback snapshot back into the primary book location. */
-  ContractDecision<RekeyRollbackResult> restoreRekeyRollback(
-      Path bookFilePath,
-      @Nullable Path rollbackArtifactPath,
-      PassphraseSource expectedPassphraseSource);
+      List<AttestationCredentialSource> attestationCredentialSources);
 }

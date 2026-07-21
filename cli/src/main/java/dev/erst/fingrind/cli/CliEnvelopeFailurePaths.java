@@ -29,6 +29,7 @@ record CliEnvelopeFailurePaths(String path, List<String> relatedPaths) {
           new CliEnvelopeFailurePaths(value.artifactPath(), List.of());
       case CliRejectionJsonModels.ArtifactBusyDetails value ->
           new CliEnvelopeFailurePaths(value.artifactPath(), List.of());
+      case CliRejectionJsonModels.BackupAcknowledgementConflictDetails _ -> null;
       case CliRejectionJsonModels.ArtifactVerificationFailureDetails value ->
           new CliEnvelopeFailurePaths(value.artifactPath(), List.of());
       case CliRejectionJsonModels.BackupFileDetails value ->
