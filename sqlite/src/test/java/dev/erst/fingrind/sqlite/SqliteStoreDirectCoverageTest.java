@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
@@ -36,6 +37,7 @@ import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -447,9 +449,8 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
               List.of(
                   line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
                   line("2000", JournalLine.EntrySide.CREDIT, "10.00")));
-      CommittedPosting interimResultSweepPosting =
-          new CommittedPosting(
-              new PostingId("0485e481-7f56-30fd-92e2-92a099a486af"),
+      PostingDraft interimResultSweepDraft =
+          postingDraft(
               new JournalEntry(
                   LocalDate.parse("2026-04-07"),
                   List.of(
@@ -461,7 +462,17 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
               generatedEvidence("interim-result-sweep-1", "interim-result-sweep-plan"),
               interimResultSweepProvenance("EUR"));
       commitPosting(postingFactStore, operatingPosting);
-      commitPosting(postingFactStore, interimResultSweepPosting);
+      assertInstanceOf(
+          InterimResultSweepOutcome.Transferred.class,
+          postingFactStore.interimResultSweep(
+              new InterimResultSweepDraft(
+                  new ReportingPeriod(LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07")),
+                  new AccountCode("3200"),
+                  List.of(),
+                  FIXED_INSTANT,
+                  List.of(interimResultSweepDraft)),
+              () -> new PostingId("0485e481-7f56-30fd-92e2-92a099a486af"),
+              SqliteAttestationTestSupport.authorizer()));
 
       RegisteredAccount revenueAccount =
           postingFactStore.findAccount(new AccountCode("2000")).orElseThrow();
@@ -504,6 +515,41 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
       assertEquals(1, periodSummary.postingCount());
       assertEquals(2, periodSummary.postingLineCount());
       assertEquals(2, periodSummary.accountsTouched());
+    }
+  }
+
+  @Test
+  void commit_rejectsGeneratedClosePostingsOutsideTheirReportingPeriodWorkflow() {
+    Path bookPath = tempDirectory.resolve("generated-close-direct-commit.sqlite");
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
+      PostingDraft generatedCloseDraft =
+          postingDraft(
+              new JournalEntry(
+                  EFFECTIVE_DATE,
+                  List.of(
+                      line("2000", JournalLine.EntrySide.DEBIT, "10.00"),
+                      line("1000", JournalLine.EntrySide.CREDIT, "10.00"))),
+              dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
+              PostingKind.INTERIM_RESULT_SWEEP,
+              dev.erst.fingrind.core.PostingOriginKind.INTERIM_RESULT_SWEEP,
+              generatedEvidence("interim-result-sweep-direct", "interim-result-sweep-plan"),
+              interimResultSweepProvenance("EUR"));
+
+      IllegalArgumentException rejection =
+          assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  postingFactStore.commit(
+                      generatedCloseDraft,
+                      () -> new PostingId("0485e481-7f56-30fd-92e2-92a099a486af"),
+                      SqliteAttestationTestSupport.authorizer()));
+
+      assertEquals(
+          "Generated close postings must be committed through their reporting-period close workflow.",
+          rejection.getMessage());
+      assertEquals(
+          0, queryInt(requireStoreDatabase(postingFactStore), "select count(*) from posting_fact"));
     }
   }
 

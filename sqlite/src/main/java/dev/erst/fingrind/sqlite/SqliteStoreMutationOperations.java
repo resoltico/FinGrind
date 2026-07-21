@@ -114,6 +114,10 @@ final class SqliteStoreMutationOperations {
     lifecycle.ensureOpenSession();
     context.accessMode().requireWritableMutation();
     Objects.requireNonNull(postingDraft, "postingDraft");
+    if (postingDraft.postingKind().isGenerated()) {
+      throw new IllegalArgumentException(
+          "Generated close postings must be committed through their reporting-period close workflow.");
+    }
     AttestationOperationAuthorizer.require(attestationAuthorizer);
     if (Files.notExists(context.bookPath())) {
       return new PostingCommitResult.Rejected(new BookkeepingPostingRejection.BookNotInitialized());
