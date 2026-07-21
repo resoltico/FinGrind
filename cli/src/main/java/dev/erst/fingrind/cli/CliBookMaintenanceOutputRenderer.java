@@ -2,10 +2,13 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import java.util.List;
 
 /** Renders operator-facing text for attested protected-book maintenance workflows. */
 final class CliBookMaintenanceOutputRenderer {
+  private static final String BACKUP_BOOK_OPERATION = OperationId.BACKUP_BOOK.wireName();
+
   private CliBookMaintenanceOutputRenderer() {}
 
   static String renderBackupBookText(BackupBookResult.BackedUp backedUp) {
@@ -34,7 +37,9 @@ final class CliBookMaintenanceOutputRenderer {
                 List.of("Backup ID", pending.backupId().toString()),
                 List.of(
                     "Next action",
-                    "Rerun backup-book with these exact paths and --backup-id to resume acknowledgement."))));
+                    "Rerun "
+                        + BACKUP_BOOK_OPERATION
+                        + " with these exact paths and --backup-id to resume acknowledgement."))));
   }
 
   static String renderRestoreBookText(RestoreBookResult.Restored restored) {

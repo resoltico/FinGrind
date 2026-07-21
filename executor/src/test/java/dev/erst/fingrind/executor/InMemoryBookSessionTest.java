@@ -654,7 +654,13 @@ class InMemoryBookSessionTest {
       Instant recordedAt,
       List<JournalLine> lines) {
     return new CommittedPosting(
-        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new JournalEntry(effectiveDate, List.copyOf(lines)),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,
@@ -668,7 +674,14 @@ class InMemoryBookSessionTest {
         new PostingId("posting-" + idempotencyKey),
         reversalJournalEntry(),
         PostingLineageModel.reversal(
-            new ReversalReference(new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + priorPostingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString())),
+            new ReversalReference(
+                new PostingId(
+                    java.util
+                        .UUID
+                        .nameUUIDFromBytes(
+                            ("fingrind-test-postingid:" + priorPostingId)
+                                .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                        .toString())),
             new ReversalReason("historical full reversal")),
         PostingKind.STANDARD,
         dev.erst.fingrind.core.PostingOriginKind.REVERSAL,

@@ -34,7 +34,8 @@ class BookAuditEventTest {
         committedPosting(
             "posting-2",
             PostingLineageModel.reversal(
-                new dev.erst.fingrind.core.ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
+                new dev.erst.fingrind.core.ReversalReference(
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
                 new dev.erst.fingrind.core.ReversalReason("correction")));
 
     assertEquals(
@@ -323,7 +324,13 @@ class BookAuditEventTest {
   private static CommittedPosting committedPosting(
       String postingId, PostingLineageModel postingLineage) {
     return new CommittedPosting(
-        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new JournalEntry(
             LocalDate.parse("2026-05-12"),
             List.of(

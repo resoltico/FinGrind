@@ -220,7 +220,8 @@ class LedgerPlanServiceAssertionTest {
                       List.of(
                           new LedgerStep.Assert(
                               stepId("assert-posting-exists"),
-                              new LedgerAssertion.PostingExists(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))));
+                              new LedgerAssertion.PostingExists(
+                                  new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))));
       assertEquals(LedgerPlanStatus.REJECTED, postingExistsResult.status());
       assertEquals(
           BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),

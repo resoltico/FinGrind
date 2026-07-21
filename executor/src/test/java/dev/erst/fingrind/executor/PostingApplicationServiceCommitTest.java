@@ -340,7 +340,8 @@ class PostingApplicationServiceCommitTest {
     assertEquals(
         commitRejected(
             new IdempotencyKey("idem-reversal-duplicate"),
-            new PostingRejection.ReversalAlreadyExists(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
+            new PostingRejection.ReversalAlreadyExists(
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
         applicationService.commit(
             command(
                 "idem-reversal-duplicate",
@@ -489,7 +490,15 @@ class PostingApplicationServiceCommitTest {
   private static void assertCommitted(
       PostEntryResult result, String postingId, String idempotencyKey) {
     PostEntryResult.Committed committed = assertInstanceOf(PostEntryResult.Committed.class, result);
-    assertEquals(new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()), committed.postingId());
+    assertEquals(
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
+        committed.postingId());
     assertEquals(new IdempotencyKey(idempotencyKey), committed.idempotencyKey());
     assertEquals(LocalDate.parse("2026-04-07"), committed.effectiveDate());
     assertEquals(FIXED_CLOCK.instant(), committed.recordedAt());

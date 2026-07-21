@@ -456,7 +456,13 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
                       InventoryMovementKind.OPENING,
                       2L,
                       1_250L,
-                      new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString())));
+                      new PostingId(
+                          java.util
+                              .UUID
+                              .nameUUIDFromBytes(
+                                  ("fingrind-test-postingid:" + postingId)
+                                      .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                              .toString())));
         });
   }
 
@@ -739,7 +745,13 @@ class SqliteMutationWriterTest extends SqlitePostingFactStoreTestSupport {
             : dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct();
     CommittedPosting posting =
         new CommittedPosting(
-            new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
+            new PostingId(
+                java.util
+                    .UUID
+                    .nameUUIDFromBytes(
+                        ("fingrind-test-postingid:" + postingId)
+                            .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                    .toString()),
             resolvedEntry.journalEntry(),
             postingLineage,
             entry.postingKind(),

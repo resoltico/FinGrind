@@ -80,9 +80,11 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
         new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized()).rejection());
     assertEquals(postingFact, foundPosting(postingFact).postingFact());
     assertEquals(
-        new BookQueryRejection.PostingNotFound(new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362")),
+        new BookQueryRejection.PostingNotFound(
+            new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362")),
         new GetPostingResult.Rejected(
-                new BookQueryRejection.PostingNotFound(new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362")))
+                new BookQueryRejection.PostingNotFound(
+                    new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362")))
             .rejection());
     assertEquals(snapshot, new AccountBalanceResult.Reported(snapshot).snapshot());
     assertEquals(

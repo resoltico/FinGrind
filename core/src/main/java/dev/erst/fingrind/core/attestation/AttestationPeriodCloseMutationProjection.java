@@ -10,8 +10,6 @@ import java.util.Objects;
 
 /** Projects the aggregate generated effects of one attested reporting-period close. */
 public final class AttestationPeriodCloseMutationProjection {
-  private static final String INTERIM_RESULT_SWEEP = "interim-result-sweep";
-  private static final String FISCAL_YEAR_CLOSE = "fiscal-year-close";
   private static final String CLI = "cli";
   private static final int STEP_ORDER = 0;
 
@@ -19,11 +17,13 @@ public final class AttestationPeriodCloseMutationProjection {
 
   /** Projects one interim-result sweep and every generated posting that it persists. */
   public static AttestationOperationPreimages projectInterimResultSweep(
+      String operationKind,
       ReportingPeriod reportingPeriod,
       String resultHoldingAccountCode,
       int sweepOrder,
       List<CurrencyBalance> sweptTotals,
       List<AttestationClosePostingSnapshot> postings) {
+    String checkedOperationKind = Objects.requireNonNull(operationKind, "operationKind");
     ReportingPeriod checkedPeriod = Objects.requireNonNull(reportingPeriod, "reportingPeriod");
     String checkedResultHoldingAccountCode =
         requireText(resultHoldingAccountCode, "resultHoldingAccountCode");
@@ -31,10 +31,10 @@ public final class AttestationPeriodCloseMutationProjection {
         List.copyOf(Objects.requireNonNull(sweptTotals, "sweptTotals"));
     List<AttestationClosePostingSnapshot> checkedPostings = postings(postings);
     requirePositiveOrder(sweepOrder, "sweepOrder");
-    requirePostingKind(checkedPostings, INTERIM_RESULT_SWEEP);
+    requirePostingKind(checkedPostings, checkedOperationKind);
     return new AttestationOperationPreimages(
         requestPreimage(
-                INTERIM_RESULT_SWEEP, checkedPeriod, checkedResultHoldingAccountCode, null, null)
+                checkedOperationKind, checkedPeriod, checkedResultHoldingAccountCode, null, null)
             .encoded(),
         interimResultSweepEffect(
                 checkedPeriod,
@@ -47,12 +47,14 @@ public final class AttestationPeriodCloseMutationProjection {
 
   /** Projects one fiscal-year close and every generated posting that it persists. */
   public static AttestationOperationPreimages projectFiscalYearClose(
+      String operationKind,
       ReportingPeriod reportingPeriod,
       String capitalAccountCode,
       String resultHoldingAccountCode,
       String retainedResultAccountCode,
       int closeOrder,
       List<AttestationClosePostingSnapshot> postings) {
+    String checkedOperationKind = Objects.requireNonNull(operationKind, "operationKind");
     ReportingPeriod checkedPeriod = Objects.requireNonNull(reportingPeriod, "reportingPeriod");
     String checkedCapitalAccountCode = requireText(capitalAccountCode, "capitalAccountCode");
     String checkedResultHoldingAccountCode =
@@ -61,10 +63,10 @@ public final class AttestationPeriodCloseMutationProjection {
         requireText(retainedResultAccountCode, "retainedResultAccountCode");
     List<AttestationClosePostingSnapshot> checkedPostings = postings(postings);
     requirePositiveOrder(closeOrder, "closeOrder");
-    requirePostingKind(checkedPostings, FISCAL_YEAR_CLOSE);
+    requirePostingKind(checkedPostings, checkedOperationKind);
     return new AttestationOperationPreimages(
         requestPreimage(
-                FISCAL_YEAR_CLOSE,
+                checkedOperationKind,
                 checkedPeriod,
                 checkedResultHoldingAccountCode,
                 checkedCapitalAccountCode,

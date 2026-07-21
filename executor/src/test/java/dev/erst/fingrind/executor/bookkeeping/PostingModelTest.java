@@ -239,7 +239,13 @@ class PostingModelTest {
   }
 
   private static dev.erst.fingrind.core.PostingId postingId(String value) {
-    return new dev.erst.fingrind.core.PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + value).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString());
+    return new dev.erst.fingrind.core.PostingId(
+        java.util
+            .UUID
+            .nameUUIDFromBytes(
+                ("fingrind-test-postingid:" + value)
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+            .toString());
   }
 
   @SuppressWarnings("unchecked")

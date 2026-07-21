@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.workflow;
 
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
@@ -121,7 +122,9 @@ final class LedgerPlanStepExecutor {
     return new LedgerPlanStepOutcome.Rejected(
         new BookWorkflowFailure(
             "attestation-required",
-            "Ledger-plan mutation requires the signed execute-plan path, which is not yet available for this step.",
+            "Ledger-plan mutation requires the signed "
+                + OperationId.EXECUTE_PLAN.wireName()
+                + " path, which is not yet available for this step.",
             List.of(BookWorkflowFact.text("stepId", stepId))));
   }
 

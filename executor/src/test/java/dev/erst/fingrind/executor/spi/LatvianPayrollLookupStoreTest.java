@@ -33,10 +33,14 @@ class LatvianPayrollLookupStoreTest {
                 new LatvianPayrollRunId("run-1"), LatvianPayrollSettlementKind.NET_WAGES),
         "findActiveLatvianPayrollSettlement");
     assertUnsupported(
-        () -> store.findLatvianPayrollSettlementByPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
+        () ->
+            store.findLatvianPayrollSettlementByPosting(
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
         "findLatvianPayrollSettlementByPosting");
     assertUnsupported(
-        () -> store.findLatvianPayrollRunByOriginPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
+        () ->
+            store.findLatvianPayrollRunByOriginPosting(
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
         "findLatvianPayrollRunByOriginPosting");
     assertUnsupported(store::latvianPayrollSettlements, "latvianPayrollSettlements");
   }

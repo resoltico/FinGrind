@@ -89,7 +89,9 @@ class LedgerPlanContractTest {
             .kind());
     assertEquals(
         LedgerStepKind.GET_POSTING,
-        new LedgerStep.GetPosting(stepId("get"), new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")).kind());
+        new LedgerStep.GetPosting(
+                stepId("get"), new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))
+            .kind());
     assertEquals(
         LedgerStepKind.LIST_POSTINGS,
         new LedgerStep.ListPostings(
@@ -180,7 +182,8 @@ class LedgerPlanContractTest {
         new LedgerAssertion.AccountActive(new AccountCode("1000")).kind());
     assertEquals(
         LedgerAssertionKind.POSTING_EXISTS,
-        new LedgerAssertion.PostingExists(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")).kind());
+        new LedgerAssertion.PostingExists(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))
+            .kind());
     assertEquals(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS, assertion.kind());
     assertThrows(
         IllegalArgumentException.class,

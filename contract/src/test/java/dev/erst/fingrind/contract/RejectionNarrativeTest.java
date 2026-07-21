@@ -210,7 +210,8 @@ class RejectionNarrativeTest {
             .contains("9999"));
     assertTrue(
         RejectionNarrative.message(
-                new BookQueryRejection.PostingNotFound(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))
+                new BookQueryRejection.PostingNotFound(
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))
             .contains("bdc03c47-a16c-3688-a18f-2445894bbc69"));
   }
 
@@ -364,7 +365,8 @@ class RejectionNarrativeTest {
     assertTrue(retainedAccumulatedMessage.contains("RETAINED_ACCUMULATED"));
     assertTrue(
         RejectionNarrative.message(
-                new PostingRejection.ReversalTargetNotFound(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))
+                new PostingRejection.ReversalTargetNotFound(
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))
             .contains("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     assertTrue(
         RejectionNarrative.message(
@@ -373,11 +375,13 @@ class RejectionNarrativeTest {
             .contains("cannot be reversed"));
     assertTrue(
         RejectionNarrative.message(
-                new PostingRejection.ReversalAlreadyExists(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))
+                new PostingRejection.ReversalAlreadyExists(
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))
             .contains("full reversal"));
     assertTrue(
         RejectionNarrative.message(
-                new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))
+                new PostingRejection.ReversalDoesNotNegateTarget(
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))
             .contains("does not negate"));
   }
 
@@ -468,7 +472,8 @@ class RejectionNarrativeTest {
     assertTrue(
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(
-                    new PostingRejection.ReversalTargetNotFound(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))
+                    new PostingRejection.ReversalTargetNotFound(
+                        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))
             .contains("get-posting"));
     assertTrue(
         java.util.Objects.requireNonNull(
@@ -479,12 +484,14 @@ class RejectionNarrativeTest {
     assertTrue(
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(
-                    new PostingRejection.ReversalAlreadyExists(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))
+                    new PostingRejection.ReversalAlreadyExists(
+                        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))
             .contains("existing reversal"));
     assertTrue(
         java.util.Objects.requireNonNull(
                 RejectionNarrative.hint(
-                    new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))
+                    new PostingRejection.ReversalDoesNotNegateTarget(
+                        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))
             .contains("full negating journal entry"));
   }
 

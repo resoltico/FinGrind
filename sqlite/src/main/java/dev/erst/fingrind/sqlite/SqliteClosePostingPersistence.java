@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestFingerprint;
@@ -24,6 +25,10 @@ import java.util.UUID;
 
 /** Durable persistence for generated close postings inside SQLite close workflows. */
 final class SqliteClosePostingPersistence {
+  private static final String INTERIM_RESULT_SWEEP_OPERATION =
+      OperationId.INTERIM_RESULT_SWEEP.wireName();
+  private static final String FISCAL_YEAR_CLOSE_OPERATION =
+      OperationId.FISCAL_YEAR_CLOSE.wireName();
   private final SqliteStoreContext context;
   private final SqliteCommitFaultHook commitFaultHook;
   private final PostingAcceptancePolicy postingAcceptancePolicy;
@@ -110,9 +115,10 @@ final class SqliteClosePostingPersistence {
             closingPostings);
     SqliteAttestationEvidenceStore.appendAuthorized(
         activeDatabase,
-        "interim-result-sweep",
+        INTERIM_RESULT_SWEEP_OPERATION,
         interimResultSweepDraft.sweptAt(),
         AttestationPeriodCloseMutationProjection.projectInterimResultSweep(
+            INTERIM_RESULT_SWEEP_OPERATION,
             interimResultSweepDraft.reportingPeriod(),
             interimResultSweepDraft.resultHoldingAccountCode().value(),
             sweptInterimResult.sweepOrder(),
@@ -166,9 +172,10 @@ final class SqliteClosePostingPersistence {
             closePostings);
     SqliteAttestationEvidenceStore.appendAuthorized(
         activeDatabase,
-        "fiscal-year-close",
+        FISCAL_YEAR_CLOSE_OPERATION,
         closeDraft.closedAt(),
         AttestationPeriodCloseMutationProjection.projectFiscalYearClose(
+            FISCAL_YEAR_CLOSE_OPERATION,
             closeDraft.reportingPeriod(),
             closeDraft.capitalAccountCode().value(),
             closeDraft.resultHoldingAccountCode().value(),

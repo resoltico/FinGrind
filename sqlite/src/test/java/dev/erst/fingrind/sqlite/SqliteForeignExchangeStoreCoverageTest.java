@@ -90,7 +90,9 @@ class SqliteForeignExchangeStoreCoverageTest extends SqlitePostingFactStoreTestS
                     IllegalStateException.class,
                     () ->
                         invokeLoadForeignExchange(
-                            new SqlitePostingReader(), redirectedDatabase, new PostingId("099c15e8-f223-31cf-a21c-382e45f9e9cb")));
+                            new SqlitePostingReader(),
+                            redirectedDatabase,
+                            new PostingId("099c15e8-f223-31cf-a21c-382e45f9e9cb")));
             assertEquals(
                 "SQLite posting foreign-exchange query returned more than one row for posting sale.",
                 failure.getMessage());
@@ -152,7 +154,9 @@ class SqliteForeignExchangeStoreCoverageTest extends SqlitePostingFactStoreTestS
                     IllegalStateException.class,
                     () ->
                         invokeLoadForeignExchange(
-                            new SqlitePostingReader(), redirectedDatabase, new PostingId("099c15e8-f223-31cf-a21c-382e45f9e9cb")));
+                            new SqlitePostingReader(),
+                            redirectedDatabase,
+                            new PostingId("099c15e8-f223-31cf-a21c-382e45f9e9cb")));
             assertTrue(
                 NullTestSupport.messageOf(failure).contains("returned more than one row"),
                 failure.getMessage());
@@ -176,7 +180,13 @@ class SqliteForeignExchangeStoreCoverageTest extends SqlitePostingFactStoreTestS
     BookkeepingEntry.SaleSettled entry = saleEntryWithForeignExchange();
     CommittedPosting posting =
         new CommittedPosting(
-            new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingIdText).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
+            new PostingId(
+                java.util
+                    .UUID
+                    .nameUUIDFromBytes(
+                        ("fingrind-test-postingid:" + postingIdText)
+                            .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                    .toString()),
             entry.journalEntry(),
             PostingLineageModel.direct(),
             entry.postingKind(),

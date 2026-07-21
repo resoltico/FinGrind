@@ -314,7 +314,13 @@ class FiscalYearClosePlannerTest {
   private static CommittedPosting posting(
       String postingId, PostingKind postingKind, LocalDate effectiveDate, JournalLine... lines) {
     return new CommittedPosting(
-        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new JournalEntry(effectiveDate, List.of(lines)),
         PostingLineageModel.direct(),
         postingKind,

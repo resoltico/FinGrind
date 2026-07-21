@@ -301,7 +301,13 @@ class FiscalYearCloseDraftFactoryTest {
   private static CommittedPosting posting(
       String postingId, PostingKind postingKind, JournalLine... lines) {
     return new CommittedPosting(
-        new dev.erst.fingrind.core.PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
+        new dev.erst.fingrind.core.PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new JournalEntry(LocalDate.parse("2026-12-31"), List.of(lines)),
         PostingLineageModel.direct(),
         postingKind,

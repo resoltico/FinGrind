@@ -79,7 +79,8 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
               List.of(
                   line("2000", JournalLine.EntrySide.DEBIT, "10.00"),
                   line("3200", JournalLine.EntrySide.CREDIT, "10.00")));
-      CommittedPosting replayPosting = replayDraft.materialize(new PostingId("cd390bb5-f5ec-3a89-847d-b5c055b5ce3f"));
+      CommittedPosting replayPosting =
+          replayDraft.materialize(new PostingId("cd390bb5-f5ec-3a89-847d-b5c055b5ce3f"));
       assertEquals(
           new PostingCommitResult.Committed(replayPosting, false),
           postingFactStore.commit(
@@ -129,7 +130,8 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
               List.of(
                   line("3200", JournalLine.EntrySide.DEBIT, "10.00"),
                   line("3300", JournalLine.EntrySide.CREDIT, "10.00")));
-      CommittedPosting replayPosting = replayDraft.materialize(new PostingId("3bfbe1d7-5663-3bdc-ab95-57adb3409b51"));
+      CommittedPosting replayPosting =
+          replayDraft.materialize(new PostingId("3bfbe1d7-5663-3bdc-ab95-57adb3409b51"));
       assertEquals(
           new PostingCommitResult.Committed(replayPosting, false),
           postingFactStore.commit(
@@ -274,8 +276,10 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                   generatedProvenance("inventory-posting", "persist-second"),
                   () -> new PostingId("0ade5f8e-9609-3b94-bb31-5593699bbcb7"));
 
-      assertEquals(new PostingId("7383e00e-486e-310b-a663-7672ae9d4159"), reservePosting.postingId());
-      assertEquals(new PostingId("0ade5f8e-9609-3b94-bb31-5593699bbcb7"), inventoryPosting.postingId());
+      assertEquals(
+          new PostingId("7383e00e-486e-310b-a663-7672ae9d4159"), reservePosting.postingId());
+      assertEquals(
+          new PostingId("0ade5f8e-9609-3b94-bb31-5593699bbcb7"), inventoryPosting.postingId());
       assertEquals(
           2,
           queryInt(
@@ -379,7 +383,13 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
   private static CommittedProvenance generatedProvenance(String operationName, String token) {
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new CommandId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-commandid:" + operationName + ":" + token).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
+            new CommandId(
+                java.util
+                    .UUID
+                    .nameUUIDFromBytes(
+                        ("fingrind-test-commandid:" + operationName + ":" + token)
+                            .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                    .toString()),
             new IdempotencyKey(operationName + ":" + token),
             new CausationId(operationName + ":" + token),
             Optional.of(new CorrelationId(operationName + ":" + token)));

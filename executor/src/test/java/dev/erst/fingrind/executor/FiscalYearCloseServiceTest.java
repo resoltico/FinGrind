@@ -101,7 +101,8 @@ class FiscalYearCloseServiceTest {
   @Test
   void fiscalYearClose_passesResolvedExecutionContextIntoStore() {
     RecordingStore store = new RecordingStore();
-    PostingIdGenerator postingIdGenerator = () -> new PostingId("f69a68be-269e-3c0f-96ac-2e3f7d806a8b");
+    PostingIdGenerator postingIdGenerator =
+        () -> new PostingId("f69a68be-269e-3c0f-96ac-2e3f7d806a8b");
     FiscalYearCloseService service =
         new FiscalYearCloseService(
             () -> initializedLifecycleInspection(1001, 1, 1, FIXED_INSTANT),
@@ -135,7 +136,10 @@ class FiscalYearCloseServiceTest {
     RecordingStore store = new RecordingStore();
     FiscalYearCloseService service =
         new FiscalYearCloseService(
-            () -> inspection, store, () -> new PostingId("f69a68be-269e-3c0f-96ac-2e3f7d806a8b"), FIXED_CLOCK);
+            () -> inspection,
+            store,
+            () -> new PostingId("f69a68be-269e-3c0f-96ac-2e3f7d806a8b"),
+            FIXED_CLOCK);
 
     service.fiscalYearClose(FISCAL_YEAR_LABEL, TEST_AUTHORIZER);
 
@@ -147,7 +151,8 @@ class FiscalYearCloseServiceTest {
   @Test
   void fiscalYearClose_reportingPeriodOverloadPassesExplicitWindowIntoStore() {
     RecordingStore store = new RecordingStore();
-    PostingIdGenerator postingIdGenerator = () -> new PostingId("f69a68be-269e-3c0f-96ac-2e3f7d806a8b");
+    PostingIdGenerator postingIdGenerator =
+        () -> new PostingId("f69a68be-269e-3c0f-96ac-2e3f7d806a8b");
     FiscalYearCloseService service =
         new FiscalYearCloseService(
             () -> initializedLifecycleInspection(1001, 1, 1, FIXED_INSTANT),

@@ -232,7 +232,8 @@ class BookkeepingPublishedLanguageTranslatorTest {
   @Test
   void bookkeepingPublishedLanguageTranslator_translatesDirectAndReversalLineage() {
     ReversalReference reversalReference =
-        new ReversalReference(new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
+        new ReversalReference(
+            new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     ReversalReason reversalReason = new ReversalReason("duplicate entry");
 
     assertEquals(
@@ -329,7 +330,8 @@ class BookkeepingPublishedLanguageTranslatorTest {
                     CurrencyBalance.ofTotals(
                         Money.parse("EUR", "0.00"), Money.parse("EUR", "5.00"))),
                 sweptAt,
-                List.of(new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))),
+                List.of(
+                    new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))),
         BookkeepingPublishedLanguageTranslator.toPublished(
             new InterimResultSweepOutcome.Transferred(sweptInterimResult)));
     assertEquals(
@@ -370,7 +372,8 @@ class BookkeepingPublishedLanguageTranslatorTest {
                 new AccountCode("3200"),
                 new AccountCode("3300"),
                 closedAt,
-                List.of(new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
+                List.of(
+                    new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
             false),
         BookkeepingPublishedLanguageTranslator.toPublished(
             new FiscalYearCloseOutcome.Closed(closedFiscalYear, false)));
@@ -645,7 +648,8 @@ class BookkeepingPublishedLanguageTranslatorTest {
         new dev.erst.fingrind.contract.bookkeeping.ReversalTargetIsReversal(
             new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
         BookkeepingPublishedLanguageTranslator.toPublished(
-            new ReversalTargetIsReversal(new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
+            new ReversalTargetIsReversal(
+                new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     assertEquals(
         new PostingRejection.ReversalAlreadyExists(
             new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),

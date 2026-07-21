@@ -14,6 +14,7 @@ import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
+import dev.erst.fingrind.core.attestation.AttestationAccountMutationIntent;
 import dev.erst.fingrind.core.attestation.AttestationAccountMutationProjection;
 import dev.erst.fingrind.core.attestation.AttestationAccountSnapshot;
 import dev.erst.fingrind.core.attestation.AttestationEffectMutation;
@@ -117,7 +118,11 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
               true);
       var preimages =
           AttestationAccountMutationProjection.project(
-              "declare-account", account, account, AttestationEffectMutation.CREATE);
+              AttestationAccountMutationIntent.DECLARATION,
+              "declare-account",
+              account,
+              account,
+              AttestationEffectMutation.CREATE);
 
       withStandaloneDatabase(
           bookAccess(bookPath),

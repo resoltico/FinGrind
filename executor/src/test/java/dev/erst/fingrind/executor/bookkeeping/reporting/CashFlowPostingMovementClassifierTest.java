@@ -423,7 +423,13 @@ class CashFlowPostingMovementClassifierTest {
   private static CommittedPosting posting(
       String postingId, PostingOriginKind postingOriginKind, JournalLine... lines) {
     return new CommittedPosting(
-        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new JournalEntry(EFFECTIVE_DATE, List.of(lines)),
         PostingLineageModel.direct(),
         PostingKind.STANDARD,

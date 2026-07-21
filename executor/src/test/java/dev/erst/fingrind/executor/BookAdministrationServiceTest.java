@@ -279,7 +279,8 @@ class BookAdministrationServiceTest {
           new InterimResultSweepService(
                   bookSession,
                   bookSession,
-                  () -> new dev.erst.fingrind.core.PostingId("0485e481-7f56-30fd-92e2-92a099a486af"),
+                  () ->
+                      new dev.erst.fingrind.core.PostingId("0485e481-7f56-30fd-92e2-92a099a486af"),
                   FIXED_CLOCK)
               .interimResultSweep(
                   new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-07")),

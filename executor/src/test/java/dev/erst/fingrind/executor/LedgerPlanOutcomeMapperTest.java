@@ -443,7 +443,8 @@ class LedgerPlanOutcomeMapperTest {
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanRejectedOutcomes.postingRejection(
                 new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
-                    .ReversalDoesNotNegateTarget(new PostingId("6d857901-cb53-3986-a1d7-2f64319c76ce")));
+                    .ReversalDoesNotNegateTarget(
+                    new PostingId("6d857901-cb53-3986-a1d7-2f64319c76ce")));
     var functionalCurrencyMismatch =
         (LedgerPlanStepOutcome.Rejected)
             LedgerPlanRejectedOutcomes.postingRejection(

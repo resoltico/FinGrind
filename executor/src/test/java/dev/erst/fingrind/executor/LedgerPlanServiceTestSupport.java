@@ -104,7 +104,10 @@ final class LedgerPlanServiceTestSupport {
         FIXED_CLOCK.instant());
     PostEntryResult committed =
         new PostingApplicationService(
-                bookSession, bookSession, () -> new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"), FIXED_CLOCK)
+                bookSession,
+                bookSession,
+                () -> new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
+                FIXED_CLOCK)
             .commit(postEntryCommand("idem-setup"), TEST_AUTHORIZER);
     assertEquals(PostEntryResult.Committed.class, committed.getClass());
     return bookSession;

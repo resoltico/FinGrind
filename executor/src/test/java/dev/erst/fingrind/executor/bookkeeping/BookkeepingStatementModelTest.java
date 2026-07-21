@@ -414,7 +414,8 @@ class BookkeepingStatementModelTest {
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT),
                     currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT))));
     List<PostingDraft> closingPostings = new ArrayList<>(List.of(postingDraft()));
-    List<PostingId> sweepPostingIds = new ArrayList<>(List.of(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
+    List<PostingId> sweepPostingIds =
+        new ArrayList<>(List.of(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
 
     FinancialPositionView financialPositionView =
         new FinancialPositionView(

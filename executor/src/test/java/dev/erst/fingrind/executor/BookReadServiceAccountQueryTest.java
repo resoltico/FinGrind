@@ -198,7 +198,8 @@ class BookReadServiceAccountQueryTest {
       BookReadService service = readService(bookSession);
       assertEquals(
           new GetPostingResult.Rejected(
-              new BookQueryRejection.PostingNotFound(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
+              new BookQueryRejection.PostingNotFound(
+                  new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
           service.getPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
     }
   }
@@ -422,10 +423,23 @@ class BookReadServiceAccountQueryTest {
   private static CommittedPosting reversalPostingFact(
       String postingId, String idempotencyKey, String priorPostingId) {
     return new CommittedPosting(
-        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         PostingApplicationServiceTestSupport.reversalJournalEntry(),
         PostingLineageModel.reversal(
-            new ReversalReference(new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + priorPostingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString())),
+            new ReversalReference(
+                new PostingId(
+                    java.util
+                        .UUID
+                        .nameUUIDFromBytes(
+                            ("fingrind-test-postingid:" + priorPostingId)
+                                .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                        .toString())),
             new ReversalReason("operator reversal")),
         PostingKind.STANDARD,
         dev.erst.fingrind.core.PostingOriginKind.REVERSAL,

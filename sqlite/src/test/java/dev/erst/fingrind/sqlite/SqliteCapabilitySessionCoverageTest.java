@@ -312,7 +312,8 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
           planExecutionSession.findInventoryAccountState(new AccountCode("1400")));
       assertEquals(
           expectedAcquisitionMovements,
-          planExecutionSession.inventoryMovements(new PostingId("7383e00e-486e-310b-a663-7672ae9d4159")));
+          planExecutionSession.inventoryMovements(
+              new PostingId("7383e00e-486e-310b-a663-7672ae9d4159")));
 
       assertEquals(
           Optional.of(expectedState),
@@ -324,7 +325,9 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
       assertEquals(
           expectedAcquisitionMovements,
           validationBook.inventoryMovements(new PostingId("7383e00e-486e-310b-a663-7672ae9d4159")));
-      assertEquals(List.of(), validationBook.inventoryMovements(new PostingId("35b64143-46df-384f-898b-57d9ce1c50c1")));
+      assertEquals(
+          List.of(),
+          validationBook.inventoryMovements(new PostingId("35b64143-46df-384f-898b-57d9ce1c50c1")));
     }
   }
 

@@ -10,9 +10,6 @@ import java.util.Optional;
 
 /** Projects an account-registry request and its persisted semantic account effect. */
 public final class AttestationAccountMutationProjection {
-  private static final String DECLARE_ACCOUNT = "declare-account";
-  private static final String AMEND_ACCOUNT = "amend-account";
-  private static final String RETIRE_ACCOUNT = "retire-account";
   private static final String CLI = "cli";
 
   private AttestationAccountMutationProjection() {}
@@ -25,16 +22,19 @@ public final class AttestationAccountMutationProjection {
    * preserves reactivation, retained lifecycle identity, and account-definition amendments.
    */
   public static AttestationOperationPreimages project(
+      AttestationAccountMutationIntent mutationIntent,
       String operationKind,
       AttestationAccountSnapshot requested,
       AttestationAccountSnapshot persisted,
       AttestationEffectMutation effectMutation) {
+    AttestationAccountMutationIntent checkedMutationIntent =
+        Objects.requireNonNull(mutationIntent, "mutationIntent");
     String checkedOperationKind = Objects.requireNonNull(operationKind, "operationKind");
     AttestationAccountSnapshot checkedRequested = Objects.requireNonNull(requested, "requested");
     AttestationAccountSnapshot checkedPersisted = Objects.requireNonNull(persisted, "persisted");
     AttestationEffectMutation checkedEffectMutation =
         Objects.requireNonNull(effectMutation, "effectMutation");
-    requireSupportedOperation(checkedOperationKind, checkedEffectMutation);
+    checkedMutationIntent.requireCompatible(checkedEffectMutation);
     if (!checkedRequested.accountCode().equals(checkedPersisted.accountCode())) {
       throw new IllegalArgumentException(
           "Account attestation request and effect must retain accountCode.");
@@ -42,24 +42,6 @@ public final class AttestationAccountMutationProjection {
     return new AttestationOperationPreimages(
         requestPreimage(checkedOperationKind, checkedRequested).encoded(),
         effectPreimage(checkedPersisted, checkedEffectMutation).encoded());
-  }
-
-  private static void requireSupportedOperation(
-      String operationKind, AttestationEffectMutation effectMutation) {
-    boolean valid =
-        switch (operationKind) {
-          case DECLARE_ACCOUNT ->
-              effectMutation == AttestationEffectMutation.CREATE
-                  || effectMutation == AttestationEffectMutation.AMEND
-                  || effectMutation == AttestationEffectMutation.REACTIVATE;
-          case AMEND_ACCOUNT -> effectMutation == AttestationEffectMutation.AMEND;
-          case RETIRE_ACCOUNT -> effectMutation == AttestationEffectMutation.RETIRE;
-          default -> false;
-        };
-    if (!valid) {
-      throw new IllegalArgumentException(
-          "Account attestation operation kind and effect mutation are incompatible.");
-    }
   }
 
   private static AttestationPreimage requestPreimage(
@@ -159,9 +141,29 @@ public final class AttestationAccountMutationProjection {
       Optional<String> profitAndLoss,
       Optional<String> cashFlowAsset) {
     addClassification(
-        facts, recordType, snapshot, mutation, "financial-position", financialPosition);
+        facts,
+        recordType,
+        snapshot,
+        mutation,
+        ClassificationFamily.FINANCIAL_POSITION.token(),
+        financialPosition);
     addClassification(facts, recordType, snapshot, mutation, "profit-and-loss", profitAndLoss);
     addClassification(facts, recordType, snapshot, mutation, "cash-flow-asset", cashFlowAsset);
+  }
+
+  /** Canonical taxonomy-field vocabulary used by immutable account snapshots. */
+  private enum ClassificationFamily {
+    FINANCIAL_POSITION(String.join("-", "financial", "position"));
+
+    private final String token;
+
+    ClassificationFamily(String token) {
+      this.token = token;
+    }
+
+    String token() {
+      return token;
+    }
   }
 
   private static void addClassification(

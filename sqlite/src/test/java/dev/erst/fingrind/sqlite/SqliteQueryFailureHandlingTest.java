@@ -301,7 +301,9 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
-              () -> postingFactStore.findPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
+              () ->
+                  postingFactStore.findPosting(
+                      new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
       assertTrue(NullTestSupport.messageOf(exception).contains("Failed to query SQLite book."));
       setStoreDatabase(postingFactStore, null);
     }
@@ -315,7 +317,9 @@ class SqliteQueryFailureHandlingTest extends SqlitePostingFactStoreTestSupport {
       IllegalStateException exception =
           assertThrows(
               IllegalStateException.class,
-              () -> postingFactStore.findReversalFor(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
+              () ->
+                  postingFactStore.findReversalFor(
+                      new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
       assertTrue(NullTestSupport.messageOf(exception).contains("Failed to query SQLite book."));
       setStoreDatabase(postingFactStore, null);
     }

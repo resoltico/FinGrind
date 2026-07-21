@@ -110,7 +110,8 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                 new JournalLine(
                     new AccountCode("2000"), JournalLine.EntrySide.CREDIT, money("EUR", "10.00")))),
         PostingLineage.reversal(
-            new ReversalReference(new PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b")), new ReversalReason("Correction")),
+            new ReversalReference(new PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b")),
+            new ReversalReason("Correction")),
         PostingKind.STANDARD,
         dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         accountingEvidence("idem-1"),
@@ -538,7 +539,9 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         new AccountCode("3200"),
         new AccountCode("3300"),
         Instant.parse("2026-12-31T12:00:00Z"),
-        List.of(new PostingId("98be232b-af01-324d-b4fc-6f62636fae68"), new PostingId("548200b1-9743-3000-a75c-17a99ebf79b7")));
+        List.of(
+            new PostingId("98be232b-af01-324d-b4fc-6f62636fae68"),
+            new PostingId("548200b1-9743-3000-a75c-17a99ebf79b7")));
   }
 
   private static FinancialPositionRow financialPositionRow(

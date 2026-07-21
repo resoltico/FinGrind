@@ -10,7 +10,6 @@ import org.jspecify.annotations.Nullable;
 
 /** Projects a complete tax-registration request and its committed domain effect. */
 public final class AttestationTaxRegistrationMutationProjection {
-  private static final String OPERATION_KIND = "declare-tax-registration";
 
   private AttestationTaxRegistrationMutationProjection() {}
 
@@ -19,9 +18,11 @@ public final class AttestationTaxRegistrationMutationProjection {
    * declaration.
    */
   public static AttestationOperationPreimages project(
+      String operationKind,
       AttestationTaxRegistrationSnapshot requested,
       AttestationTaxRegistrationSnapshot persisted,
       AttestationEffectMutation effectMutation) {
+    String checkedOperationKind = Objects.requireNonNull(operationKind, "operationKind");
     AttestationTaxRegistrationSnapshot checkedRequested =
         Objects.requireNonNull(requested, "requested");
     AttestationTaxRegistrationSnapshot checkedPersisted =
@@ -37,13 +38,14 @@ public final class AttestationTaxRegistrationMutationProjection {
           "Tax-registration attestation request and effect must retain registrationId.");
     }
     return new AttestationOperationPreimages(
-        requestPreimage(checkedRequested).encoded(),
+        requestPreimage(checkedOperationKind, checkedRequested).encoded(),
         effectPreimage(checkedPersisted, checkedMutation).encoded());
   }
 
-  private static AttestationPreimage requestPreimage(AttestationTaxRegistrationSnapshot snapshot) {
+  private static AttestationPreimage requestPreimage(
+      String operationKind, AttestationTaxRegistrationSnapshot snapshot) {
     List<AttestationPreimage.Fact> facts = new ArrayList<>();
-    facts.add(command());
+    facts.add(command(operationKind));
     facts.add(registrationRequest(snapshot));
     snapshot.taxCodes().forEach(code -> facts.add(codeRequest(snapshot.registrationId(), code)));
     return AttestationPreimage.of(facts);
@@ -59,11 +61,11 @@ public final class AttestationTaxRegistrationMutationProjection {
     return AttestationPreimage.of(facts);
   }
 
-  private static AttestationPreimage.Fact command() {
+  private static AttestationPreimage.Fact command(String operationKind) {
     return new AttestationPreimage.Fact(
         0x0100,
         List.of(
-            presentToken(OPERATION_KIND),
+            presentToken(operationKind),
             AttestationField.absent(),
             AttestationField.absent(),
             presentToken("cli")));

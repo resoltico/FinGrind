@@ -124,7 +124,8 @@ class RequestFingerprintOwnerTest {
                 new BookkeepingEntry.Reversal(
                     testJournalEntry().effectiveDate(),
                     new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
-                        new ReversalReference(new PostingId("60bdb11d-299e-3a3e-ba72-9193afd14b09")),
+                        new ReversalReference(
+                            new PostingId("60bdb11d-299e-3a3e-ba72-9193afd14b09")),
                         new ReversalReason("operator reversal")),
                     null,
                     testJournalEntry()))

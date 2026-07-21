@@ -136,7 +136,9 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
               new AccountCode("3200"),
               new AccountCode("3300"),
               CLOSED_AT,
-              List.of(new PostingId("05dff89b-fb24-3b4f-a8eb-e522d8af750e"), new PostingId("6d593e82-86bd-3ca6-bdf6-3e8b7976791d"))),
+              List.of(
+                  new PostingId("05dff89b-fb24-3b4f-a8eb-e522d8af750e"),
+                  new PostingId("6d593e82-86bd-3ca6-bdf6-3e8b7976791d"))),
           closed.closedFiscalYear());
       assertEquals(
           Optional.of(FISCAL_YEAR.effectiveDateTo()),
@@ -195,7 +197,9 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                   .fiscalYearClose(FISCAL_YEAR, SqliteAttestationTestSupport.authorizer()));
 
       assertEquals(
-          List.of(new PostingId("05dff89b-fb24-3b4f-a8eb-e522d8af750e"), new PostingId("6d593e82-86bd-3ca6-bdf6-3e8b7976791d")),
+          List.of(
+              new PostingId("05dff89b-fb24-3b4f-a8eb-e522d8af750e"),
+              new PostingId("6d593e82-86bd-3ca6-bdf6-3e8b7976791d")),
           closed.closedFiscalYear().closePostingIds());
 
       SqliteNativeDatabase database = requireStoreDatabase(postingFactStore);
@@ -341,7 +345,13 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
       }
       int postingIndex = nextIndex;
       nextIndex++;
-      return new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingIds[postingIndex]).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString());
+      return new PostingId(
+          java.util
+              .UUID
+              .nameUUIDFromBytes(
+                  ("fingrind-test-postingid:" + postingIds[postingIndex])
+                      .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+              .toString());
     }
   }
 }

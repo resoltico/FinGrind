@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
@@ -26,6 +27,9 @@ import java.util.Optional;
 
 /** Administrative mutation operations over one SQLite-backed book session. */
 final class SqliteStoreAdministrationMutationOperations {
+  private static final String DECLARE_TAX_REGISTRATION_OPERATION =
+      OperationId.DECLARE_TAX_REGISTRATION.wireName();
+
   /** One mutation callback that borrows the session-owned SQLite handle without closing it. */
   @FunctionalInterface
   private interface BorrowedDatabaseAction<T> {
@@ -135,9 +139,10 @@ final class SqliteStoreAdministrationMutationOperations {
             }
             SqliteAttestationEvidenceStore.appendAuthorized(
                 activeDatabase,
-                "declare-tax-registration",
+                DECLARE_TAX_REGISTRATION_OPERATION,
                 declaredAt,
                 AttestationTaxRegistrationMutationProjection.project(
+                    DECLARE_TAX_REGISTRATION_OPERATION,
                     taxRegistrationSnapshot(command),
                     taxRegistrationSnapshot(candidate),
                     existingRegistration.isPresent()

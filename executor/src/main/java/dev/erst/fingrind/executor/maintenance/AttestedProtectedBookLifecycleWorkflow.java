@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.maintenance;
 
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailurePaths;
 import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
@@ -32,6 +33,9 @@ import java.util.UUID;
  * only exact evidence produced after the relevant SQLite transaction has observed its current head.
  */
 public final class AttestedProtectedBookLifecycleWorkflow {
+  private static final String BACKUP_BOOK_OPERATION = OperationId.BACKUP_BOOK.wireName();
+  private static final String RESTORE_BOOK_OPERATION = OperationId.RESTORE_BOOK.wireName();
+  private static final String REKEY_BOOK_OPERATION = OperationId.REKEY_BOOK.wireName();
   private final Clock clock;
   private final AttestedProtectedBookMaintenanceStore store;
 
@@ -382,9 +386,10 @@ public final class AttestedProtectedBookLifecycleWorkflow {
                                     artifact.verification().sourceOperationHead());
                             store.appendAttestedOperation(
                                 restoredBook,
-                                "restore-book",
+                                RESTORE_BOOK_OPERATION,
                                 clock.instant(),
-                                AttestationLifecycleMutationProjection.restoreBook(acknowledgement),
+                                AttestationLifecycleMutationProjection.restoreBook(
+                                    RESTORE_BOOK_OPERATION, acknowledgement),
                                 signingSession,
                                 null);
                             stagedRestore.commit();
@@ -430,9 +435,10 @@ public final class AttestedProtectedBookLifecycleWorkflow {
         try {
           store.appendAttestedOperation(
               liveBook,
-              "backup-created",
+              BACKUP_BOOK_OPERATION,
               clock.instant(),
-              AttestationLifecycleMutationProjection.backupCreated(acknowledgement),
+              AttestationLifecycleMutationProjection.backupBook(
+                  BACKUP_BOOK_OPERATION, acknowledgement),
               signingSession,
               acknowledgement);
           yield MaintenanceDecision.accepted(
@@ -497,9 +503,10 @@ public final class AttestedProtectedBookLifecycleWorkflow {
                   Instant recordedAt = clock.instant();
                   store.appendAttestedOperation(
                       rekeyedBook,
-                      "rekey-book",
+                      REKEY_BOOK_OPERATION,
                       recordedAt,
                       AttestationLifecycleMutationProjection.rekeyBook(
+                          REKEY_BOOK_OPERATION,
                           AttestationLifecycleState.nextKeyEpoch(sourceEvidence),
                           recordedAt,
                           java.util.Optional.empty()),

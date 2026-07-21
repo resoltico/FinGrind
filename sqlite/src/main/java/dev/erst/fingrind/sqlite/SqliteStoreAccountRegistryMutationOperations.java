@@ -1,6 +1,8 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.attestation.AttestationAccountMutationIntent;
 import dev.erst.fingrind.core.attestation.AttestationAccountMutationProjection;
 import dev.erst.fingrind.core.attestation.AttestationAccountSnapshot;
 import dev.erst.fingrind.core.attestation.AttestationEffectMutation;
@@ -20,6 +22,10 @@ import java.util.Optional;
 
 /** Account Registry mutations over one SQLite-backed book session. */
 final class SqliteStoreAccountRegistryMutationOperations {
+  private static final String DECLARE_ACCOUNT_OPERATION = OperationId.DECLARE_ACCOUNT.wireName();
+  private static final String AMEND_ACCOUNT_OPERATION = OperationId.AMEND_ACCOUNT.wireName();
+  private static final String RETIRE_ACCOUNT_OPERATION = OperationId.RETIRE_ACCOUNT.wireName();
+
   /** One mutation callback that borrows the session-owned SQLite handle without closing it. */
   @FunctionalInterface
   private interface BorrowedDatabaseAction<T> {
@@ -74,10 +80,11 @@ final class SqliteStoreAccountRegistryMutationOperations {
             RegisteredAccount declaredAccount = declaredAccount(declarationOutcome);
             SqliteAttestationEvidenceStore.appendAuthorized(
                 activeDatabase,
-                "declare-account",
+                DECLARE_ACCOUNT_OPERATION,
                 declaredAt,
                 AttestationAccountMutationProjection.project(
-                    "declare-account",
+                    AttestationAccountMutationIntent.DECLARATION,
+                    DECLARE_ACCOUNT_OPERATION,
                     requestedSnapshot(declaration),
                     snapshot(declaredAccount),
                     declarationMutation(declarationOutcome)),
@@ -137,10 +144,11 @@ final class SqliteStoreAccountRegistryMutationOperations {
             AccountAmendmentOutcome.Amended amended = (AccountAmendmentOutcome.Amended) outcome;
             SqliteAttestationEvidenceStore.appendAuthorized(
                 activeDatabase,
-                "amend-account",
+                AMEND_ACCOUNT_OPERATION,
                 amendedAt,
                 AttestationAccountMutationProjection.project(
-                    "amend-account",
+                    AttestationAccountMutationIntent.AMENDMENT,
+                    AMEND_ACCOUNT_OPERATION,
                     requestedSnapshot(amendment),
                     snapshot(amended.account()),
                     AttestationEffectMutation.AMEND),
@@ -201,10 +209,11 @@ final class SqliteStoreAccountRegistryMutationOperations {
             AccountRetirementOutcome.Retired retired = (AccountRetirementOutcome.Retired) outcome;
             SqliteAttestationEvidenceStore.appendAuthorized(
                 activeDatabase,
-                "retire-account",
+                RETIRE_ACCOUNT_OPERATION,
                 retiredAt,
                 AttestationAccountMutationProjection.project(
-                    "retire-account",
+                    AttestationAccountMutationIntent.RETIREMENT,
+                    RETIRE_ACCOUNT_OPERATION,
                     snapshot(existingAccount.orElseThrow()),
                     snapshot(retired.account()),
                     AttestationEffectMutation.RETIRE),

@@ -181,7 +181,8 @@ class ReportModelBuilderCoverageTest {
                         new dev.erst.fingrind.contract.bookkeeping.AccountLedgerPageCursor(
                             LocalDate.parse("2026-04-09"),
                             java.time.Instant.parse("2026-04-09T10:15:30Z"),
-                            new dev.erst.fingrind.core.PostingId("d335bf0a-b735-3860-ba2e-fcb74daf48d5")))),
+                            new dev.erst.fingrind.core.PostingId(
+                                "d335bf0a-b735-3860-ba2e-fcb74daf48d5")))),
                 List.of(ReportModelTestSupport.balance("EUR", "2.00", "0.00")),
                 List.of(
                     ReportModelTestSupport.accountLedgerEntry(

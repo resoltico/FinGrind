@@ -71,7 +71,8 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
                 new JournalLine(
                     new AccountCode("2000"), JournalLine.EntrySide.CREDIT, money("EUR", "10.00")))),
         PostingLineage.reversal(
-            new ReversalReference(new PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b")), new ReversalReason("full reversal")),
+            new ReversalReference(new PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b")),
+            new ReversalReason("full reversal")),
         PostingKind.STANDARD,
         dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         CliFixtureSupport.accountingEvidence("idem-1"),
@@ -96,7 +97,8 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
                 new JournalLine(
                     new AccountCode("2000"), JournalLine.EntrySide.CREDIT, money("EUR", "10.00")))),
         PostingLineage.reversal(
-            new ReversalReference(new PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b")), new ReversalReason("full reversal")),
+            new ReversalReference(new PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b")),
+            new ReversalReason("full reversal")),
         PostingKind.STANDARD,
         dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         CliFixtureSupport.accountingEvidenceWithApproval("idem-1"),

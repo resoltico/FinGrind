@@ -490,7 +490,13 @@ class ReportingContractTypesTest {
 
   private static PostingFact postingFact(String postingId, String idempotencyKey) {
     return new PostingFact(
-        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
             List.of(

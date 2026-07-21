@@ -331,7 +331,8 @@ class BookkeepingEntryTest {
                 new BookkeepingEntry.Reversal(
                     resolvedJournal.effectiveDate().plusDays(1),
                     new PostingLineage.Reversal(
-                        new ReversalReference(new PostingId("066ad76a-b654-302f-9fde-d2cb870550c6")),
+                        new ReversalReference(
+                            new PostingId("066ad76a-b654-302f-9fde-d2cb870550c6")),
                         new ReversalReason("operator reversal")),
                     null,
                     resolvedJournal));

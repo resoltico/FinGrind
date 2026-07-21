@@ -69,7 +69,9 @@ class LatvianPayrollSettlementAdmissionPolicyTest {
         policy.resolve(
             netWages(RUN_DATE),
             new SettlementBook(
-                Optional.of(run(Optional.of(new PostingId("4acb74fd-44af-3d9e-8af2-d1b8759c810e")))), Optional.empty()),
+                Optional.of(
+                    run(Optional.of(new PostingId("4acb74fd-44af-3d9e-8af2-d1b8759c810e")))),
+                Optional.empty()),
             "entry"),
         "latvian-payroll-run-reversed");
     assertRejection(

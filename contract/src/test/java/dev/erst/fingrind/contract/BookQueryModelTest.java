@@ -510,7 +510,8 @@ class BookQueryModelTest {
             BookQueryRejection.wireCode(
                 new BookQueryRejection.UnknownAccount(new AccountCode("1000"))),
             BookQueryRejection.wireCode(
-                new BookQueryRejection.PostingNotFound(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))));
+                new BookQueryRejection.PostingNotFound(
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))));
     assertEquals(
         List.of("query-book-not-initialized", "unknown-account", "posting-not-found"),
         BookQueryRejection.descriptors().stream()
@@ -542,7 +543,13 @@ class BookQueryModelTest {
 
   private static PostingFact postingFact(String postingId, String idempotencyKey) {
     return new PostingFact(
-        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         journalEntry(),
         PostingLineage.direct(),
         PostingKind.STANDARD,

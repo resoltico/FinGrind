@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.bookkeeping.AttestationReviewResult;
 import dev.erst.fingrind.contract.bookkeeping.ExportAttestationReceiptResult;
 import dev.erst.fingrind.contract.bookkeeping.VerifyAttestationReceiptResult;
 import dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
@@ -81,7 +82,9 @@ public final class AttestationInspectionService {
                         "The selected book's attestation chain is structurally invalid: "
                             + exception.code()
                             + ".",
-                        "Run verify-book and repair from a valid independently retained backup or receipt.",
+                        "Run "
+                            + OperationId.VERIFY_BOOK.wireName()
+                            + " and repair from a valid independently retained backup or receipt.",
                         "--book-file"));
               }
             },
@@ -125,7 +128,9 @@ public final class AttestationInspectionService {
               "The selected book's attestation chain is structurally invalid: "
                   + exception.code()
                   + ".",
-              "Run verify-book and repair from a valid independently retained backup or receipt.",
+              "Run "
+                  + OperationId.VERIFY_BOOK.wireName()
+                  + " and repair from a valid independently retained backup or receipt.",
               "--book-file"));
     }
     List<AttestationCredentialSource> sources;

@@ -9,8 +9,10 @@ import org.junit.jupiter.api.Test;
 class ReversalReferenceTest {
   @Test
   void constructor_acceptsValidReference() {
-    ReversalReference reversalReference = new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
-    assertEquals(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"), reversalReference.priorPostingId());
+    ReversalReference reversalReference =
+        new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
+    assertEquals(
+        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"), reversalReference.priorPostingId());
   }
 
   @Test

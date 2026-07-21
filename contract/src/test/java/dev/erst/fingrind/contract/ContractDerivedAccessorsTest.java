@@ -40,7 +40,8 @@ import org.junit.jupiter.api.Test;
 class ContractDerivedAccessorsTest extends ContractTestSupport {
   @Test
   void dateRangesLineagesPostingShapesAndPlanResultsExposeDerivedAccessors() {
-    ReversalReference reversalReference = new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
+    ReversalReference reversalReference =
+        new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     EffectiveDateRange unbounded = EffectiveDateRange.unbounded();
     EffectiveDateRange from = EffectiveDateRange.of(LocalDate.parse("2026-04-01"), null);
     EffectiveDateRange to = EffectiveDateRange.of(null, LocalDate.parse("2026-04-30"));

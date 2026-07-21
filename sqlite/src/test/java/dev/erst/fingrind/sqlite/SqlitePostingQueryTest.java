@@ -159,7 +159,8 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
       commitPosting(postingFactStore, postingFact);
       assertEquals(
-          Optional.empty(), postingFactStore.findPosting(new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6")));
+          Optional.empty(),
+          postingFactStore.findPosting(new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6")));
     }
   }
 

@@ -206,12 +206,18 @@ class TaxDiscoveryTemplateCoverageTest {
     assertEquals(
         ScaffoldPlaceholders.IDEMPOTENCY_KEY,
         new ContractTemplates.ProvenanceTemplateDescriptor(
-                "68b235c4-3e83-35cb-b580-361467f844e5", ScaffoldPlaceholders.IDEMPOTENCY_KEY, "cause-1", null)
+                "68b235c4-3e83-35cb-b580-361467f844e5",
+                ScaffoldPlaceholders.IDEMPOTENCY_KEY,
+                "cause-1",
+                null)
             .idempotencyKey());
     assertEquals(
         ScaffoldPlaceholders.CAUSATION_ID,
         new ContractTemplates.ProvenanceTemplateDescriptor(
-                "68b235c4-3e83-35cb-b580-361467f844e5", "idem-1", ScaffoldPlaceholders.CAUSATION_ID, null)
+                "68b235c4-3e83-35cb-b580-361467f844e5",
+                "idem-1",
+                ScaffoldPlaceholders.CAUSATION_ID,
+                null)
             .causationId());
     assertEquals(
         ScaffoldPlaceholders.COMMAND_ID,
@@ -224,7 +230,10 @@ class TaxDiscoveryTemplateCoverageTest {
     assertEquals(
         ScaffoldPlaceholders.COMMAND_ID,
         ContractTemplateValidationSupport.validateProvenanceTemplate(
-                "68b235c4-3e83-35cb-b580-361467f844e5", "idem-1", "cause-1", ScaffoldPlaceholders.COMMAND_ID)
+                "68b235c4-3e83-35cb-b580-361467f844e5",
+                "idem-1",
+                "cause-1",
+                ScaffoldPlaceholders.COMMAND_ID)
             .correlationId());
   }
 

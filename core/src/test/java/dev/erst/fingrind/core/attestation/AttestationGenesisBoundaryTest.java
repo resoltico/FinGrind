@@ -129,7 +129,11 @@ class AttestationGenesisBoundaryTest {
             true);
     AttestationOperationPreimages preimages =
         AttestationAccountMutationProjection.project(
-            "declare-account", account, account, AttestationEffectMutation.CREATE);
+            AttestationAccountMutationIntent.DECLARATION,
+            "declare-account",
+            account,
+            account,
+            AttestationEffectMutation.CREATE);
 
     try (AttestationSigningSession session =
         AttestationSigningSession.open(

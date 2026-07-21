@@ -62,7 +62,9 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
           postingFact(
               "posting-2",
               "idem-2",
-              Optional.of(new dev.erst.fingrind.core.ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
+              Optional.of(
+                  new dev.erst.fingrind.core.ReversalReference(
+                      new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
               Optional.of(new dev.erst.fingrind.core.ReversalReason("full reversal"))));
 
       assertInstanceOf(BookLifecycleInspection.Initialized.class, postingFactStore.inspectBook());
@@ -78,8 +80,14 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
       assertEquals(Optional.of(EFFECTIVE_DATE), postingFactStore.earliestPostingEffectiveDate());
       assertEquals(Optional.empty(), postingFactStore.transferredThroughEffectiveDate());
       assertTrue(postingFactStore.findExistingPosting(new IdempotencyKey("idem-1")).isPresent());
-      assertTrue(postingFactStore.findPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")).isPresent());
-      assertTrue(postingFactStore.findReversalFor(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")).isPresent());
+      assertTrue(
+          postingFactStore
+              .findPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))
+              .isPresent());
+      assertTrue(
+          postingFactStore
+              .findReversalFor(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))
+              .isPresent());
     }
   }
 
@@ -102,8 +110,13 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
               .keySet());
       assertTrue(validationBook.findAccount(new AccountCode("1000")).isPresent());
       assertTrue(validationBook.findExistingPosting(new IdempotencyKey("idem-1")).isPresent());
-      assertTrue(validationBook.findPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")).isPresent());
-      assertEquals(Optional.empty(), validationBook.findReversalFor(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
+      assertTrue(
+          validationBook
+              .findPosting(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))
+              .isPresent());
+      assertEquals(
+          Optional.empty(),
+          validationBook.findReversalFor(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")));
       assertEquals(1, validationBook.postings(EffectiveDateRange.unbounded()).size());
       assertEquals(Optional.of(EFFECTIVE_DATE), validationBook.earliestPostingEffectiveDate());
       assertEquals(Optional.empty(), validationBook.transferredThroughEffectiveDate());
@@ -479,7 +492,8 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
       assertEquals(PostingCoverage.NON_CLOSING_POSTINGS, accountLedger.postingCoverage());
       assertEquals(1, accountLedger.entries().size());
       assertEquals(
-          new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"), accountLedger.entries().getFirst().posting().postingId());
+          new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
+          accountLedger.entries().getFirst().posting().postingId());
 
       var periodSummary =
           postingFactStore.periodSummary(

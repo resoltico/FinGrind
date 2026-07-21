@@ -160,7 +160,8 @@ class PostingFactTest {
                     new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
                     sale.journalEntry(),
                     PostingLineage.reversal(
-                        new ReversalReference(new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362")),
+                        new ReversalReference(
+                            new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362")),
                         new ReversalReason("operator reversal")),
                     sale.postingKind(),
                     sale.postingOriginKind(),

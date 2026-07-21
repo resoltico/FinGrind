@@ -64,7 +64,13 @@ class ContractTestSupport {
 
   protected PostingFact postingFact(String postingId, String idempotencyKey) {
     return new PostingFact(
-        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         journalEntry(),
         PostingLineage.direct(),
         PostingKind.STANDARD,

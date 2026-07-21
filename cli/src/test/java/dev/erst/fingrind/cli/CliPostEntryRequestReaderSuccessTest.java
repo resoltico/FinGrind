@@ -413,7 +413,9 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
 
     assertEquals("idem-1", command.requestProvenance().idempotencyKey().value());
     assertEquals(
-        Optional.of(new ReversalReference(new dev.erst.fingrind.core.PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b"))),
+        Optional.of(
+            new ReversalReference(
+                new dev.erst.fingrind.core.PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b"))),
         entry.reversal().reversalReference());
     assertEquals(
         Optional.of(new ReversalReason("operator reversal")), entry.reversal().reversalReason());
@@ -728,7 +730,9 @@ class CliPostEntryRequestReaderSuccessTest extends CliRequestReaderTestSupport {
         assertInstanceOf(BookkeepingEntry.Reversal.class, command.entry());
 
     assertEquals(
-        Optional.of(new ReversalReference(new dev.erst.fingrind.core.PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b"))),
+        Optional.of(
+            new ReversalReference(
+                new dev.erst.fingrind.core.PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b"))),
         entry.reversal().reversalReference());
     assertEquals(
         Optional.of(new ReversalReason("operator reversal")), entry.reversal().reversalReason());

@@ -46,7 +46,10 @@ class BookReadQueryTranslatorTest {
             EFFECTIVE_DATE,
             20,
             Optional.of(
-                new PostingPageCursor(EFFECTIVE_DATE, FIXED_INSTANT, new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
+                new PostingPageCursor(
+                    EFFECTIVE_DATE,
+                    FIXED_INSTANT,
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
 
     assertEquals(
         new AccountRegistryQuery(
@@ -59,7 +62,9 @@ class BookReadQueryTranslatorTest {
             20,
             Optional.of(
                 new PostingHistoryCursor(
-                    EFFECTIVE_DATE, FIXED_INSTANT, new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))),
+                    EFFECTIVE_DATE,
+                    FIXED_INSTANT,
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))),
         BookReadQueryTranslator.fromPublished(postingsQuery));
     AccountLedgerQuery ledgerQuery =
         new AccountLedgerQuery(
@@ -69,7 +74,9 @@ class BookReadQueryTranslatorTest {
             25,
             Optional.of(
                 new AccountLedgerPageCursor(
-                    EFFECTIVE_DATE, FIXED_INSTANT, new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
+                    EFFECTIVE_DATE,
+                    FIXED_INSTANT,
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     assertEquals(
         new AccountLedgerCriteria(
             CASH_ACCOUNT.accountCode(),
@@ -78,7 +85,9 @@ class BookReadQueryTranslatorTest {
             25,
             Optional.of(
                 new dev.erst.fingrind.executor.bookkeeping.AccountLedgerCursor(
-                    EFFECTIVE_DATE, FIXED_INSTANT, new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))),
+                    EFFECTIVE_DATE,
+                    FIXED_INSTANT,
+                    new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))),
         BookReadQueryTranslator.fromPublished(ledgerQuery));
   }
 

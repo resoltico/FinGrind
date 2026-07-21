@@ -30,7 +30,9 @@ class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSup
           assertInstanceOf(
               BookkeepingEntry.SaleSettled.class,
               SqliteResolvedInventoryCostingReader.resolve(
-                  database, new PostingId("099c15e8-f223-31cf-a21c-382e45f9e9cb"), saleSettledWithInventoryRelief()));
+                  database,
+                  new PostingId("099c15e8-f223-31cf-a21c-382e45f9e9cb"),
+                  saleSettledWithInventoryRelief()));
       var resolvedCosting =
           Objects.requireNonNull(resolved.resolvedInventoryCosting(), "resolvedInventoryCosting");
 
@@ -55,7 +57,9 @@ class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSup
           assertInstanceOf(
               BookkeepingEntry.SaleOnCredit.class,
               SqliteResolvedInventoryCostingReader.resolve(
-                  database, new PostingId("099c15e8-f223-31cf-a21c-382e45f9e9cb"), saleOnCreditWithInventoryRelief()));
+                  database,
+                  new PostingId("099c15e8-f223-31cf-a21c-382e45f9e9cb"),
+                  saleOnCreditWithInventoryRelief()));
 
       assertEquals(
           Money.parse("EUR", "40.00"),
@@ -73,9 +77,12 @@ class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSup
 
       assertNull(
           SqliteResolvedInventoryCostingReader.resolve(
-              database, new PostingId("092aa3d9-cdb7-3194-a11e-754cc34214df"), saleOnCreditWithInventoryRelief()));
+              database,
+              new PostingId("092aa3d9-cdb7-3194-a11e-754cc34214df"),
+              saleOnCreditWithInventoryRelief()));
       assertNull(
-          SqliteResolvedInventoryCostingReader.resolve(database, new PostingId("092aa3d9-cdb7-3194-a11e-754cc34214df"), null));
+          SqliteResolvedInventoryCostingReader.resolve(
+              database, new PostingId("092aa3d9-cdb7-3194-a11e-754cc34214df"), null));
     }
   }
 
@@ -129,7 +136,15 @@ class SqliteResolvedInventoryCostingReaderTest extends SqliteNativeBridgeTestSup
             IllegalStateException.class,
             () ->
                 SqliteResolvedInventoryCostingReader.resolve(
-                    database, new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()), saleOnCreditWithInventoryRelief()));
+                    database,
+                    new PostingId(
+                        java.util
+                            .UUID
+                            .nameUUIDFromBytes(
+                                ("fingrind-test-postingid:" + postingId)
+                                    .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                            .toString()),
+                    saleOnCreditWithInventoryRelief()));
     assertEquals(expectedMessage, exception.getMessage());
   }
 

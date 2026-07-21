@@ -89,6 +89,12 @@ class SqliteInventoryValuationStorageReadTest extends SqliteInventoryCostingFixt
         kind,
         quantityDelta,
         costDeltaMinor,
-        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()));
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()));
   }
 }

@@ -155,7 +155,8 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
               "posting-cutoff-origin-reversal",
               "origin-reversal",
               LocalDate.parse("2026-04-15"));
-      assertEquals(new PostingId("58ff5c55-1e23-30b9-8910-ee2c966a36e9"), originReversal.postingId());
+      assertEquals(
+          new PostingId("58ff5c55-1e23-30b9-8910-ee2c966a36e9"), originReversal.postingId());
       assertCutoffState(database.value(), "100.00", "0.00", "2026-04-15");
       assertEquals(
           3, queryInt(database.value(), "select count(*) from accrual_cutoff_application"));
@@ -495,7 +496,13 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
       return Objects.requireNonNull(
           SqliteAccrualCutoffOriginatingEntryMapper.originatingEntry(
               database,
-              new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
+              new PostingId(
+                  java.util
+                      .UUID
+                      .nameUUIDFromBytes(
+                          ("fingrind-test-postingid:" + postingId)
+                              .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                      .toString()),
               postingRow,
               accrualJournalEntry(
                   postingId.startsWith("origin-")
@@ -682,7 +689,14 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
         acceptedPosting,
         new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
         committedProvenance(postingId),
-        () -> new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()));
+        () ->
+            new PostingId(
+                java.util
+                    .UUID
+                    .nameUUIDFromBytes(
+                        ("fingrind-test-postingid:" + postingId)
+                            .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                    .toString()));
   }
 
   private static CommittedPosting persistReversal(

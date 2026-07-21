@@ -83,7 +83,9 @@ final class SqliteCliLifecycleWorkflow implements CliBookLifecycleWorkflow {
           ContractErrors.Descriptor.INVALID_ATTESTATION_CREDENTIAL.failureAt(
               exception.credentialPath(),
               "FinGrind could not open the selected attestation founder credential.",
-              "Confirm the founder key and passphrase files are readable, distinct, and match, then rerun open-book.",
+              "Confirm the founder key and passphrase files are readable, distinct, and match, then rerun "
+                  + OperationId.OPEN_BOOK.wireName()
+                  + ".",
               ProtocolOptions.Attestation.FOUNDER_KEY_FILE));
     }
   }

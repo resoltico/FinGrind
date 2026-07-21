@@ -166,7 +166,13 @@ class PostingAcceptancePolicyInternalTest {
 
   private static CommittedPosting postingFact(String postingId) {
     return new CommittedPosting(
-        new dev.erst.fingrind.core.PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
+        new dev.erst.fingrind.core.PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
             List.of(

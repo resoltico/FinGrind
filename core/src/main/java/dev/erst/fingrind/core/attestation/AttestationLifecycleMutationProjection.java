@@ -13,23 +13,27 @@ public final class AttestationLifecycleMutationProjection {
   private AttestationLifecycleMutationProjection() {}
 
   /** Projects the one immutable acknowledgement that indexes a published backup artifact. */
-  public static AttestationOperationPreimages backupCreated(
-      AttestationBackupAcknowledgement acknowledgement) {
+  public static AttestationOperationPreimages backupBook(
+      String operationKind, AttestationBackupAcknowledgement acknowledgement) {
+    String checkedOperationKind = Objects.requireNonNull(operationKind, "operationKind");
     AttestationBackupAcknowledgement checked =
         Objects.requireNonNull(acknowledgement, "acknowledgement");
     return new AttestationOperationPreimages(
-        AttestationPreimage.of(List.of(command("backup-created"), backupRequest(0x0150, checked)))
+        AttestationPreimage.of(
+                List.of(command(checkedOperationKind), backupRequest(0x0150, checked)))
             .encoded(),
         AttestationPreimage.of(List.of(backupEffect(checked))).encoded());
   }
 
   /** Projects the restoration-derived continuation that preserves the original book identity. */
   public static AttestationOperationPreimages restoreBook(
-      AttestationBackupAcknowledgement acknowledgement) {
+      String operationKind, AttestationBackupAcknowledgement acknowledgement) {
+    String checkedOperationKind = Objects.requireNonNull(operationKind, "operationKind");
     AttestationBackupAcknowledgement checked =
         Objects.requireNonNull(acknowledgement, "acknowledgement");
     return new AttestationOperationPreimages(
-        AttestationPreimage.of(List.of(command("restore-book"), backupRequest(0x0160, checked)))
+        AttestationPreimage.of(
+                List.of(command(checkedOperationKind), backupRequest(0x0160, checked)))
             .encoded(),
         AttestationPreimage.of(
                 List.of(
@@ -48,14 +52,15 @@ public final class AttestationLifecycleMutationProjection {
 
   /** Projects one attested secret-material rotation without including secret material itself. */
   public static AttestationOperationPreimages rekeyBook(
-      BigInteger keyEpoch, Instant rekeyedAt, Optional<String> reason) {
+      String operationKind, BigInteger keyEpoch, Instant rekeyedAt, Optional<String> reason) {
+    String checkedOperationKind = Objects.requireNonNull(operationKind, "operationKind");
     BigInteger checkedKeyEpoch = Objects.requireNonNull(keyEpoch, "keyEpoch");
     Instant checkedRekeyedAt = Objects.requireNonNull(rekeyedAt, "rekeyedAt");
     Optional<String> checkedReason = Objects.requireNonNull(reason, "reason");
     return new AttestationOperationPreimages(
         AttestationPreimage.of(
                 List.of(
-                    command("rekey-book"),
+                    command(checkedOperationKind),
                     new AttestationPreimage.Fact(
                         0x0170,
                         List.of(

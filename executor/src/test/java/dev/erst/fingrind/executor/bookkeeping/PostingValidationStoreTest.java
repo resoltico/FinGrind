@@ -47,7 +47,13 @@ class PostingValidationStoreTest {
   private static CommittedPosting posting(
       String postingId, String idempotencyKey, PostingKind postingKind) {
     return new CommittedPosting(
-        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new JournalEntry(
             LocalDate.parse("2026-04-07"),
             List.of(

@@ -115,7 +115,13 @@ final class ReportModelTestSupport {
       JournalLine... lines) {
     String token = postingId.replace('-', '_');
     return new PostingFact(
-        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new JournalEntry(FIXTURE_DATE, List.of(lines)),
         postingLineage,
         PostingKind.STANDARD,
@@ -277,9 +283,13 @@ final class ReportModelTestSupport {
 
   private static RequestProvenance requestProvenance(String token) {
     return new RequestProvenance(
-        new CommandId(java.util.UUID.nameUUIDFromBytes(
-            ("fingrind-test-commandid:command-" + token)
-                .getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
+        new CommandId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-commandid:command-" + token)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         new IdempotencyKey("idem-" + token),
         new CausationId("cause-" + token),
         Optional.of(new CorrelationId("corr-" + token)));

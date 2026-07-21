@@ -77,7 +77,9 @@ class SqliteClosingMutationReadSupportCoverageTest extends SqlitePostingFactStor
             loaded.retainedAccumulatedAccountCode());
         assertEquals(closed.closedFiscalYear().closedAt(), loaded.closedAt());
         assertEquals(
-            List.of(new PostingId("1dd6c0b8-8a55-384b-8d9a-f9dadfefb140"), new PostingId("08e947c3-7bf0-35b9-b5dd-596eca04cc4c")),
+            List.of(
+                new PostingId("1dd6c0b8-8a55-384b-8d9a-f9dadfefb140"),
+                new PostingId("08e947c3-7bf0-35b9-b5dd-596eca04cc4c")),
             loaded.closePostingIds());
       }
     }
