@@ -461,6 +461,55 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
     }
   }
 
+  @Test
+  void taxDeclaration_rollsBackAndTranslatesNativeAndRuntimeStorageFailures() {
+    Path bookPath = tempDirectory.resolve("tax-declaration-storage-failures.sqlite");
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
+      openBookWithNoDeclaredAccounts(postingFactStore);
+      declareTaxAccounts(postingFactStore);
+      AtomicReference<SqliteNativeDatabase> realDatabase =
+          new AtomicReference<>(requireStoreDatabase(postingFactStore));
+
+      try (StoreDatabaseSwap ignored =
+          swapStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath))) {
+        assertNativeFailure(
+            () ->
+                postingFactStore
+                    .storeMutationOperations()
+                    .declareTaxRegistration(
+                        taxRegistration(), DECLARED_AT, SqliteAttestationTestSupport.authorizer()),
+            "Failed to declare SQLite tax registration.");
+      } catch (IOException exception) {
+        throw new UncheckedIOException(exception);
+      }
+
+      try (SqliteStatementRedirectingDatabase runtimeFailingDatabase =
+              new SqliteStatementRedirectingDatabase(
+                  realDatabase.get(),
+                  sql -> {
+                    if (SqliteTaxSql.FIND_TAX_REGISTRATION_BY_ID.equals(sql)) {
+                      throw new IllegalStateException("forced tax-registration lookup failure");
+                    }
+                    return realDatabase.get().prepare(sql);
+                  });
+          StoreDatabaseSwap ignored = swapStoreDatabase(postingFactStore, runtimeFailingDatabase)) {
+        IllegalStateException failure =
+            assertThrows(
+                IllegalStateException.class,
+                () ->
+                    postingFactStore
+                        .storeMutationOperations()
+                        .declareTaxRegistration(
+                            taxRegistration(),
+                            DECLARED_AT,
+                            SqliteAttestationTestSupport.authorizer()));
+        assertEquals("forced tax-registration lookup failure", failure.getMessage());
+      }
+
+      assertEquals(0, countRows(realDatabase.get(), "tax_registration"));
+    }
+  }
+
   private static void assertNativeFailure(ThrowingRunnable invocation, String expectedMessage) {
     IllegalStateException failure = assertThrows(IllegalStateException.class, invocation::run);
     assertTrue(NullTestSupport.messageOf(failure).contains(expectedMessage));
