@@ -31,7 +31,7 @@ final class AttestationPlanMutationProjection {
     List<AttestationPreimage.Fact> effectFacts = new ArrayList<>();
     for (AttestationPlanOperationAuthorizer.ChildMutation child : checkedChildren) {
       appendChildRequestFacts(requestFacts, child);
-      appendChildFacts(effectFacts, child.preimages().effect(), child.stepOrder(), false);
+      appendChildEffectFacts(effectFacts, child.preimages().effect(), child.stepOrder());
     }
     return new AttestationOperationPreimages(
         AttestationPreimage.of(requestFacts).encoded(),
@@ -61,15 +61,12 @@ final class AttestationPlanMutationProjection {
     }
   }
 
-  private static void appendChildFacts(
-      List<AttestationPreimage.Fact> target, byte[] encoded, int stepOrder, boolean request) {
+  private static void appendChildEffectFacts(
+      List<AttestationPreimage.Fact> target, byte[] encoded, int stepOrder) {
     AttestationPreimage decoded =
         AttestationPreimage.decode(encoded, AttestationAuthorizationFailure.PREIMAGE_INVALID);
     for (AttestationPreimage.Fact fact : decoded.records()) {
-      if (request && fact.recordTypeTag() == 0x0100) {
-        continue;
-      }
-      target.add(rewriteStepOrder(fact, stepOrder, request));
+      target.add(rewriteStepOrder(fact, stepOrder, false));
     }
   }
 

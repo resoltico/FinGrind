@@ -50,6 +50,47 @@ class AttestationArtifactVerifierTest {
   }
 
   @Test
+  void verifiesBackupArtifactsFromRawEvidenceAndNormalizesSnapshotReaderFailures() {
+    TestCredential founder = credential();
+    AttestationBook book = book(founder);
+    AttestationBookVerification verification = AttestationBookVerifier.verify(book);
+    byte[] snapshot = new byte[] {9, 8, 7, 6};
+    byte[] artifact = artifact(founder, verification, snapshot, AttestationHash.sha256(snapshot));
+
+    AttestationBackupArtifactVerification backup =
+        AttestationArtifactVerifier.verifyBackupArtifact(
+            artifact,
+            supplied -> {
+              assertTrue(Arrays.equals(snapshot, supplied));
+              return evidence(book);
+            });
+
+    assertEquals(verification.bookId(), backup.bookId());
+    assertEquals(verification.headOrder(), backup.sourceOrder());
+    assertEquals(verification.headOrder(), backup.sourceVerification().headOrder());
+    assertFailure(
+        AttestationAuthorizationFailure.MANIFEST_INVALID,
+        () -> AttestationArtifactVerifier.verifyBackupArtifact(artifact, ignored -> List.of()));
+    assertFailure(
+        AttestationAuthorizationFailure.MANIFEST_INVALID,
+        () ->
+            AttestationArtifactVerifier.verifyBackupArtifact(
+                artifact,
+                ignored -> {
+                  throw new IllegalStateException("reader failure");
+                }));
+    assertFailure(
+        AttestationAuthorizationFailure.UNSUPPORTED_VERSION,
+        () ->
+            AttestationArtifactVerifier.verifyBackupArtifact(
+                artifact,
+                ignored -> {
+                  throw new AttestationAuthorizationException(
+                      AttestationAuthorizationFailure.UNSUPPORTED_VERSION);
+                }));
+  }
+
+  @Test
   void rejectsManifestSnapshotMismatchBeforeManifestAuthorization() {
     TestCredential founder = credential();
     AttestationBook book = book(founder);
@@ -492,6 +533,17 @@ class AttestationArtifactVerifierTest {
         AttestationBookOperation.decode(
             envelope(successorPayload, founder), request.encoded(), effect.encoded());
     return new AttestationBook(List.of(genesis, successor));
+  }
+
+  private static List<AttestationEvidence> evidence(AttestationBook book) {
+    return book.operations().stream()
+        .map(
+            operation ->
+                new AttestationEvidence(
+                    operation.envelope().encoded(),
+                    operation.requestPreimage().encoded(),
+                    operation.effectPreimage().encoded()))
+        .toList();
   }
 
   private static byte[] envelopeBytes(

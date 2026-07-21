@@ -85,7 +85,7 @@ public final class AttestationAccountMutationProjection {
                     .orElse(null)),
             snapshot.unitOfMeasure() == null
                 ? AttestationField.absent()
-                : AttestationPreimageProjectionFields.token(snapshot.unitOfMeasure().token())));
+                : AttestationPreimageProjectionFields.text(snapshot.unitOfMeasure().token())));
   }
 
   private static AttestationPreimage.Fact accountEffect(
@@ -107,7 +107,7 @@ public final class AttestationAccountMutationProjection {
                     .orElse(null)),
             snapshot.unitOfMeasure() == null
                 ? AttestationField.absent()
-                : AttestationPreimageProjectionFields.token(snapshot.unitOfMeasure().token()),
+                : AttestationPreimageProjectionFields.text(snapshot.unitOfMeasure().token()),
             AttestationPreimageProjectionFields.present(
                 AttestationNumericFieldValue.booleanValue(snapshot.active()))));
   }
