@@ -86,9 +86,8 @@ Dynamic fields:
 - `payload.journal.startedAt`, `finishedAt`, and step timestamps are stamped from the
   FinGrind execution clock when `--result-detail full` is selected
 - plan-journal steps carry typed `data` records rather than generic fact arrays
-- successful `ensure-book` plan steps emit `initializedAt`, `entityName`, `functionalCurrency`,
-  `fiscalYearStart`, and `bookStartEffectiveDate`; the persisted initialized-book identity also
-  carries
+- plans never contain book-genesis steps: create the immutable initialized-book identity with
+  `open-book` before execution; its persisted identity carries
   `accountingKernelProfile`, `accountingBasis`, `accountingFrameworkPosition`, `entityForm`, and
   `bookTemplateId`
 - successful `declare-account` plan steps emit `outcome` plus `account`, using the shared

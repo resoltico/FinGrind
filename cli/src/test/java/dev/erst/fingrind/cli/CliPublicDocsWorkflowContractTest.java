@@ -82,7 +82,9 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             .path("documentDate")
             .stringValue());
     assertEquals(0, quickStartRequest.path("evidence").path("approvals").size());
-    assertEquals("PERSON", quickStartRequest.path("provenance").path("actorType").stringValue());
+    assertEquals(
+        "018f0000-0000-7000-8000-000000000001",
+        quickStartRequest.path("provenance").path("commandId").stringValue());
     assertEquals(
         "quick-start-idem-1",
         quickStartRequest.path("provenance").path("idempotencyKey").stringValue());
@@ -186,12 +188,12 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     JsonNode planRequest = readJson(planRequestFile);
     assertEquals("tax-setup-demo-1", planRequest.path("planId").stringValue());
     assertEquals(
-        "declare-tax-registration", planRequest.path("steps").get(3).path("kind").stringValue());
+        "declare-tax-registration", planRequest.path("steps").get(2).path("kind").stringValue());
     assertEquals(
         "tax-payable-vat",
         planRequest
             .path("steps")
-            .get(3)
+            .get(2)
             .path("declareTaxRegistration")
             .path("payableAccountCode")
             .stringValue());
@@ -206,6 +208,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertEquals("SALE_SETTLED", entrySemanticsRequest.path("entryKind").stringValue());
     runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFile.toString());
     runJsonCommand(openBookKeyFileArguments(bookFile, bookKeyFile));
+    runJsonCommand(openBookKeyFileArguments(planBookFile, bookKeyFile));
     runJsonCommand(
         "declare-account",
         "--book-file",
@@ -296,12 +299,12 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertEquals("tax-setup", rawPlanTemplate.path("planId").stringValue());
     assertEquals(
         "declare-tax-registration",
-        rawPlanTemplate.path("steps").get(3).path("kind").stringValue());
+        rawPlanTemplate.path("steps").get(2).path("kind").stringValue());
     assertEquals(
         "tax-payable-vat",
         rawPlanTemplate
             .path("steps")
-            .get(3)
+            .get(2)
             .path("declareTaxRegistration")
             .path("payableAccountCode")
             .stringValue());
@@ -321,7 +324,6 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertEquals("succeeded", planResult.path("payload").path("status").stringValue());
     assertJournalStepIds(
         planResult.path("payload").path("journal"),
-        "ensure-book",
         "declare-tax-payable",
         "declare-tax-recoverable",
         "declare-tax-registration");

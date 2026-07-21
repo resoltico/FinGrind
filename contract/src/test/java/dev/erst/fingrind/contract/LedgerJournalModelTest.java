@@ -132,7 +132,6 @@ class LedgerJournalModelTest extends ContractTestSupport {
   void journalKindsAndBoundaryCheckpointsPublishStableWireValues() {
     assertEquals(
         List.of(
-            "ensure-book",
             "declare-account",
             "declare-tax-registration",
             "preflight-entry",

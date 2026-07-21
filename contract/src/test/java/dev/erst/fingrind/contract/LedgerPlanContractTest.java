@@ -285,7 +285,6 @@ class LedgerPlanContractTest {
   void ledgerPlanKinds_areCanonical() {
     assertEquals(
         List.of(
-            LedgerStepKind.ENSURE_BOOK.wireValue(),
             LedgerStepKind.DECLARE_ACCOUNT.wireValue(),
             LedgerStepKind.DECLARE_TAX_REGISTRATION.wireValue(),
             LedgerStepKind.PREFLIGHT_ENTRY.wireValue(),

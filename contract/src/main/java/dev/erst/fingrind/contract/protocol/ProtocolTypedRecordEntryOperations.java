@@ -238,6 +238,7 @@ final class ProtocolTypedRecordEntryOperations {
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
             ProtocolOptions.Request.FILE + " <path|->",
+            ProtocolOptions.requiredAttestationCredentialSyntax(),
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),

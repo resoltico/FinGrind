@@ -76,13 +76,19 @@ final class MachineContractQuickStarts {
                         paths.bookKeyFile(),
                         paths.requestFile())),
             WorkflowStepDescriptor.command(
-                "%s %s --book-file %s --book-key-file %s --request-file %s"
+                "%s %s --book-file %s --book-key-file %s --request-file %s %s %s %s %s %s %s"
                     .formatted(
                         launcherCommand(surface),
                         ProtocolCatalog.operationName(OperationId.RECORD_SALE_SETTLED),
                         paths.bookFile(),
                         paths.bookKeyFile(),
-                        paths.requestFile())),
+                        paths.requestFile(),
+                        ProtocolOptions.Attestation.PRINCIPAL_ID,
+                        QUICK_START_FOUNDER_PRINCIPAL_ID,
+                        ProtocolOptions.Attestation.KEY_FILE,
+                        paths.founderKeyFile(),
+                        ProtocolOptions.Attestation.PASSPHRASE_FILE,
+                        paths.founderPassphraseFile())),
             WorkflowStepDescriptor.command(
                 "%s %s --book-file %s --book-key-file %s --output text"
                     .formatted(
@@ -108,7 +114,9 @@ final class MachineContractQuickStarts {
       case CONTAINER_DOCKER ->
           "Define a session-local fingrind wrapper backed by the published or locally built container image, then run this workflow through that logical launcher name.";
     }
-        + " Before open-book, create a nonempty owner-only founder passphrase file at "
+        + " Before "
+        + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
+        + ", create a nonempty owner-only founder passphrase file at "
         + quickStartPaths(surface).founderPassphraseFile()
         + "; the founder key path is created no-clobber when absent.";
   }

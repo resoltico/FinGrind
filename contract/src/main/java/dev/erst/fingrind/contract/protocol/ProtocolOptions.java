@@ -101,6 +101,16 @@ public final class ProtocolOptions {
     return ProtocolBookAccessOptions.passphraseSourceSyntax();
   }
 
+  /** Returns the required authorization-credential triple syntax for protected-book mutations. */
+  public static String requiredAttestationCredentialSyntax() {
+    return Attestation.PRINCIPAL_ID
+        + " <uuid> "
+        + Attestation.KEY_FILE
+        + " <path> "
+        + Attestation.PASSPHRASE_FILE
+        + " <path> (repeat one through five aligned triples)";
+  }
+
   /** Returns the rendered optional page-limit syntax. */
   public static String optionalLimitSyntax() {
     return "[%s <%d-%d>]"

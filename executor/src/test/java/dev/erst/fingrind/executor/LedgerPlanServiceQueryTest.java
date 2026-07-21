@@ -101,7 +101,13 @@ class LedgerPlanServiceQueryTest {
           getPostingFacts.stream()
               .anyMatch(
                   fact ->
-                      groupFact(fact, "provenance", "actorId", "actor-1", "sourceChannel", "CLI")));
+                      groupFact(
+                          fact,
+                          "provenance",
+                          "commandId",
+                          "018f0000-0000-7000-8000-000000000001",
+                          "sourceChannel",
+                          "CLI")));
       assertTrue(
           getPostingFacts.stream()
               .anyMatch(

@@ -15,7 +15,7 @@ final class MachineContractLedgerPlanVariantSchemas {
   static Map<String, Object> stepSchema() {
     return MachineContractSchemaSupport.oneOfSchema(
         "One executable ledger-plan step.",
-        Arrays.stream(LedgerStepKind.values())
+        LedgerStepKind.supportedPlanStepKinds().stream()
             .map(MachineContractLedgerPlanVariantSchemas::stepVariantSchema)
             .toList());
   }
@@ -39,10 +39,6 @@ final class MachineContractLedgerPlanVariantSchemas {
   }
 
   private static Map<String, Object> stepVariantSchema(LedgerStepKind kind) {
-    if (kind == LedgerStepKind.ENSURE_BOOK) {
-      return ledgerStepSchema(
-          kind, MachineContractLedgerPlanStepPayloadFieldSpecs.requiredEnsureBookField());
-    }
     if (kind == LedgerStepKind.INSPECT_BOOK) {
       return ledgerStepSchema(kind);
     }

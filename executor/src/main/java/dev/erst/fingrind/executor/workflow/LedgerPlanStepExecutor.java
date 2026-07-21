@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor.workflow;
 
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.PostingApplicationService;
@@ -127,7 +128,9 @@ final class LedgerPlanStepExecutor {
         List.of(),
         new BookWorkflowFailure(
             LedgerPlanStepOutcomes.missingBookCode(step),
-            "The selected book is not initialized. Create it with open-book before executing a plan.",
+            "The selected book is not initialized. Create it with "
+                + OperationId.OPEN_BOOK.wireName()
+                + " before executing a plan.",
             List.of()));
   }
 
@@ -135,7 +138,9 @@ final class LedgerPlanStepExecutor {
     return new LedgerPlanStepOutcome.Rejected(
         new BookWorkflowFailure(
             "book-genesis-requires-open-book",
-            "Ledger plans cannot create a book. Run open-book with explicit founder credentials first.",
+            "Ledger plans cannot create a book. Run "
+                + OperationId.OPEN_BOOK.wireName()
+                + " with explicit founder credentials first.",
             List.of(BookWorkflowFact.text("stepId", stepId))));
   }
 

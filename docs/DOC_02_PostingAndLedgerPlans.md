@@ -474,8 +474,8 @@ public record LedgerPlan(LedgerPlanId planId, List<LedgerStep> steps)
 ```
 
 - Purpose: bundle one ordered workflow with stable per-step ids
-- Validation: rejects blank plan ids, empty step lists, duplicate step ids, and `ensure-book`
-  outside the first step
+- Validation: rejects blank plan ids, empty step lists, duplicate step ids, and all
+  plan-contained book-genesis attempts
 - Boundary: executor translates this published plan into the internal workflow context before any
   bookkeeping step executes
 

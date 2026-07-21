@@ -184,7 +184,7 @@ fingrind preflight-entry --book-file ./books/acme.sqlite --book-key-file ./secre
 Then commit it:
 
 ```bash
-fingrind record-sale-settled --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json
+fingrind record-sale-settled --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-key-file ./secrets/acme-founder.fgatk --attestation-passphrase-file ./secrets/acme-founder.passphrase
 ```
 
 ## 7. Read The Result Back

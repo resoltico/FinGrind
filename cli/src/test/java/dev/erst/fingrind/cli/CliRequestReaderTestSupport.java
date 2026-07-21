@@ -122,18 +122,6 @@ class CliRequestReaderTestSupport extends CliFixtureSupport {
           "planId": "plan-1",
           "steps": [
             {
-              "stepId": "open",
-              "kind": "ensure-book",
-              "ensureBook": {
-                "entityName": "Acme Studio",
-                "bookTemplateId": "OWNER_MANAGED_SERVICE",
-                "accountingBasis": "CASH",
-                "functionalCurrency": "EUR",
-                "fiscalYearStart": "01-01",
-                "bookStartEffectiveDate": "2026-01-01"
-              }
-            },
-            {
               "stepId": "declare",
               "kind": "declare-account",
               "declareAccount": {

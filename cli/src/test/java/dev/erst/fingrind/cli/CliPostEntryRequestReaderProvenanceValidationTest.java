@@ -90,12 +90,14 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
   }
 
   @Test
-  void readPostEntryCommand_rejectsUnreplacedActorIdScaffoldPlaceholder() {
+  void readPostEntryCommand_rejectsUnreplacedCommandIdScaffoldPlaceholder() {
     CliRequestReader requestReader =
         new CliRequestReader(
             new ByteArrayInputStream(
                 validRequestJson(false)
-                    .replace("\"actor-1\"", "\"replace-before-commit-actor-id\"")
+                    .replace(
+                        "\"018f0000-0000-7000-8000-000000000001\"",
+                        "\"replace-before-commit-command-id\"")
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
@@ -103,7 +105,7 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
             CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
 
     assertEquals(
-        "Scaffold placeholder must be replaced before submission: provenance.actorId",
+        "Scaffold placeholder must be replaced before submission: provenance.commandId",
         exception.getMessage());
     assertEquals(
         CliJsonRequestHints.postEntryRequestHint(OperationId.PREFLIGHT_ENTRY),

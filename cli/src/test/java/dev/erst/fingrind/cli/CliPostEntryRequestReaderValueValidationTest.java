@@ -26,7 +26,6 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                         """
                 {
                   "entryKind": "SALE_SETTLED",
-                  "effectiveDate": "2026-04-07",
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
                   "amount": %s,
@@ -44,7 +43,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
         assertThrows(
             CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
 
-    assertEquals("Missing required field: actorId", exception.getMessage());
+    assertEquals("Missing required field: effectiveDate", exception.getMessage());
   }
 
   @Test
@@ -56,7 +55,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
                         """
                 {
                   "entryKind": "SALE_SETTLED",
-                  "effectiveDate": "2026-04-07",
+                  "effectiveDate": null,
                   "cashAccountCode": "1000",
                   "revenueAccountCode": "2000",
                   "amount": %s,
@@ -74,7 +73,7 @@ class CliPostEntryRequestReaderValueValidationTest extends CliRequestReaderTestS
         assertThrows(
             CliRequestException.class, () -> requestReader.readPostEntryCommand(Path.of("-")));
 
-    assertEquals("Missing required field: actorId", exception.getMessage());
+    assertEquals("Missing required field: effectiveDate", exception.getMessage());
   }
 
   @Test

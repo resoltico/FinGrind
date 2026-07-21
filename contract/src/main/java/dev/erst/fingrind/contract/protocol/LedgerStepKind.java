@@ -102,9 +102,14 @@ public enum LedgerStepKind implements WireValue, LedgerJournalKind {
     return Objects.requireNonNull(ENTRY_KIND_STEP_KINDS.get(entryKind), "entryKind");
   }
 
-  /** Returns every stable wire value in declaration order. */
+  /** Returns every ledger-plan step kind accepted by the public request format. */
+  public static List<LedgerStepKind> supportedPlanStepKinds() {
+    return Arrays.stream(values()).filter(kind -> kind != ENSURE_BOOK).toList();
+  }
+
+  /** Returns every public ledger-plan step wire value in declaration order. */
   public static List<String> wireValues() {
-    return WireValue.wireValues(LedgerStepKind.class);
+    return supportedPlanStepKinds().stream().map(LedgerStepKind::wireValue).toList();
   }
 
   /** Returns request-file operations that execute a ledger-plan step, in declaration order. */

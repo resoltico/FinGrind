@@ -27,8 +27,8 @@ fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acm
   --fiscal-year-start 01-01 \
   --book-start-effective-date 2026-01-01 \
   --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
-  --attestation-founder-key-file ./secrets/founder.fgatk \
-  --attestation-founder-passphrase-file ./secrets/founder.passphrase
+  --attestation-founder-key-file ./secrets/acme-founder.fgatk \
+  --attestation-founder-passphrase-file ./secrets/acme-founder.passphrase
 
 fingrind list-accounts --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
   --limit 10
@@ -39,7 +39,10 @@ fingrind print-request-template > ./request.json
 fingrind preflight-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
   --request-file ./request.json
 fingrind record-sale-settled --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key \
-  --request-file ./request.json
+  --request-file ./request.json \
+  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-key-file ./secrets/acme-founder.fgatk \
+  --attestation-passphrase-file ./secrets/acme-founder.passphrase
 fingrind trial-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --output text
 ```
 

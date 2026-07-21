@@ -30,7 +30,6 @@ class MachineContractPlanTemplateTest {
     assertEquals("tax-setup", template.planId());
     assertEquals(
         List.of(
-            LedgerStepKind.ENSURE_BOOK,
             LedgerStepKind.DECLARE_ACCOUNT,
             LedgerStepKind.DECLARE_ACCOUNT,
             LedgerStepKind.DECLARE_TAX_REGISTRATION),
@@ -38,19 +37,14 @@ class MachineContractPlanTemplateTest {
             .map(ContractPlanTemplates.LedgerPlanStepTemplateDescriptor::kind)
             .toList());
 
-    ContractPlanTemplates.LedgerPlanStepTemplateDescriptor ensureBook = template.steps().getFirst();
-    assertEquals("ensure-book", ensureBook.stepId());
-    assertEquals(
-        "OWNER_MANAGED_SERVICE", Objects.requireNonNull(ensureBook.ensureBook()).bookTemplateId());
-
-    ContractPlanTemplates.LedgerPlanStepTemplateDescriptor payable = template.steps().get(1);
+    ContractPlanTemplates.LedgerPlanStepTemplateDescriptor payable = template.steps().getFirst();
     assertEquals("declare-tax-payable", payable.stepId());
     assertEquals("tax-payable-vat", Objects.requireNonNull(payable.declareAccount()).accountCode());
     assertEquals(
         FinancialPositionLineClassification.CURRENT_LIABILITY,
         payable.declareAccount().financialPositionLineClassification());
 
-    ContractPlanTemplates.LedgerPlanStepTemplateDescriptor recoverable = template.steps().get(2);
+    ContractPlanTemplates.LedgerPlanStepTemplateDescriptor recoverable = template.steps().get(1);
     assertEquals("declare-tax-recoverable", recoverable.stepId());
     assertEquals(
         "tax-recoverable-vat", Objects.requireNonNull(recoverable.declareAccount()).accountCode());
@@ -98,17 +92,17 @@ class MachineContractPlanTemplateTest {
     assertEquals("fixed-asset-setup", fixedAssets.planId());
     assertEquals(
         "delivery-van",
-        Objects.requireNonNull(fixedAssets.steps().get(1).declareAccount()).accountCode());
+        Objects.requireNonNull(fixedAssets.steps().getFirst().declareAccount()).accountCode());
     assertEquals(
         "delivery-van",
-        Objects.requireNonNull(fixedAssets.steps().get(2).declareAccount()).contraOfAccountCode());
+        Objects.requireNonNull(fixedAssets.steps().get(1).declareAccount()).contraOfAccountCode());
     assertEquals("financing-setup", financing.planId());
     assertEquals(
         "term-loan-principal",
-        Objects.requireNonNull(financing.steps().get(1).declareAccount()).accountCode());
+        Objects.requireNonNull(financing.steps().getFirst().declareAccount()).accountCode());
     assertEquals(
         FinancialPositionLineClassification.NONCURRENT_LIABILITY,
-        Objects.requireNonNull(financing.steps().get(1).declareAccount())
+        Objects.requireNonNull(financing.steps().getFirst().declareAccount())
             .financialPositionLineClassification());
   }
 

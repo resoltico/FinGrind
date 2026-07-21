@@ -376,15 +376,9 @@ Current ledger-plan rules:
 - top-level fields are `planId` and `steps`
 - `planId` must be a non-blank string
 - `steps` must contain at least one object and every `stepId` must be unique
-- `ensure-book` is allowed only as the first step when a plan initializes a book
 - every step requires `stepId` and `kind`
-- `ensure-book` uses nested `ensureBook`, which requires `entityName`, `bookTemplateId`,
-  `accountingBasis`, `functionalCurrency`, `fiscalYearStart`, and `bookStartEffectiveDate`;
-  `bookStartEffectiveDate` is an ISO-8601 calendar date and becomes the immutable earliest
-  posting effective date for the book. `bookTemplateId` currently
-  accepts `OWNER_MANAGED_SERVICE` or `OWNER_MANAGED_TRADING`, `accountingBasis` accepts `CASH`
-  or `ACCRUAL`, and the runtime persists the built-in doctrine facts and echoes them back in
-  response payloads
+- plans target an already initialized attested book; use `open-book` to create its immutable
+  identity before executing a plan
 - `declare-account` uses nested `declareAccount`, which has the same shape and inventory-account
   `unitOfMeasure` rule as the standalone `declare-account` request
 - `declare-tax-registration` uses nested `declareTaxRegistration`; its payable and recoverable

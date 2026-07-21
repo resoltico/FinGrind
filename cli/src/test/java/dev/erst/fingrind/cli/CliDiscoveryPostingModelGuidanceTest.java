@@ -445,7 +445,7 @@ class CliDiscoveryPostingModelGuidanceTest extends CliDiscoveryHelpTextTestSuppo
 
     assertFalse(labels.contains("evidence"), labels.toString());
     assertFalse(labels.contains("evidence.sourceDocuments[].sourceDocumentId"), labels.toString());
-    assertFalse(labels.contains("provenance.actorId"), labels.toString());
+    assertFalse(labels.contains("provenance.commandId"), labels.toString());
   }
 
   @Test

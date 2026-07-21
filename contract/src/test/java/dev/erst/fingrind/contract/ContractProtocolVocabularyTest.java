@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract;
 
 import static dev.erst.fingrind.contract.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -148,7 +149,8 @@ class ContractProtocolVocabularyTest {
             "assert-account-balance"),
         LedgerAssertionKind.wireValues());
     assertEquals(List.of("text", "flag", "count", "money", "group"), LedgerFactKind.wireValues());
-    assertEquals("ensure-book", LedgerStepKind.wireValues().getFirst());
+    assertEquals("declare-account", LedgerStepKind.wireValues().getFirst());
+    assertFalse(LedgerStepKind.wireValues().contains("ensure-book"));
     assertThrows(NullPointerException.class, () -> LedgerStepKind.fromWireValue(nullOf()));
     assertThrows(IllegalArgumentException.class, () -> LedgerStepKind.fromWireValue("post_entry"));
     assertThrows(NullPointerException.class, () -> LedgerAssertionKind.fromWireValue(nullOf()));

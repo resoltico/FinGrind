@@ -81,8 +81,8 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
     assertDoesNotThrow(
         () ->
             CliLedgerPlanPostingStepParser.rejectFlattenedPostingPayload(
-                bareStepNode(LedgerStepKind.ENSURE_BOOK),
-                LedgerStepKind.ENSURE_BOOK,
+                bareStepNode(LedgerStepKind.INSPECT_BOOK),
+                LedgerStepKind.INSPECT_BOOK,
                 List.of("effectiveDate")));
     assertDoesNotThrow(
         () ->
@@ -159,7 +159,7 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
         assertInstanceOf(
             CliPlanJsonModels.CommittedEntryStepDataPayload.class,
             CliLedgerStepDataPayloadMapper.ledgerStepDataPayload(committedEntry));
-    assertEquals("posting-1", committedPayload.postingId());
+    assertEquals("018f0000-0000-7000-8000-000000000002", committedPayload.postingId());
     assertEquals("2026-05-15T10:00:03Z", committedPayload.recordedAt());
 
     String taxRegistrationText = CliPlanDetailTextRenderer.renderStepData(taxPayload);
@@ -194,7 +194,7 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
     ObjectNode stepNode = bareStepNode(kind);
     ObjectNode postingNode = postingRequestNode(operationId);
     ObjectNode provenanceNode = (ObjectNode) postingNode.path("provenance");
-    provenanceNode.put("commandId", "command-1");
+    provenanceNode.put("commandId", "018f0000-0000-7000-8000-000000000001");
     provenanceNode.put("idempotencyKey", "idem-1");
     provenanceNode.put("causationId", "cause-1");
     stepNode.set("posting", postingNode);
@@ -210,7 +210,7 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
         CliWireJson.jsonText(Objects.requireNonNull(MachineContract.requestTemplate(operationId)))
             .replace(ScaffoldPlaceholders.EFFECTIVE_DATE, "2026-04-07")
             .replace(ScaffoldPlaceholders.RECORDED_AT, "2026-04-07T12:00:00Z")
-            .replace(ScaffoldPlaceholders.COMMAND_ID, "command-1")
+            .replace(ScaffoldPlaceholders.COMMAND_ID, "018f0000-0000-7000-8000-000000000001")
             .replace(ScaffoldPlaceholders.IDEMPOTENCY_KEY, "idem-1")
             .replace(ScaffoldPlaceholders.CAUSATION_ID, "cause-1")
             .replace(ScaffoldPlaceholders.SOURCE_DOCUMENT_ID, "document-1")

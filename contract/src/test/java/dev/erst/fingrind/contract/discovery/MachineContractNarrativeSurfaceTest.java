@@ -56,56 +56,8 @@ class MachineContractNarrativeSurfaceTest {
     LedgerPlanRequestShapeDescriptor ledgerPlan =
         Objects.requireNonNull(
             Objects.requireNonNull(executePlanHelp.requestShapes()).ledgerPlan());
-    assertEquals(
-        new EnsureBookDescriptions(
-            "Seed template persisted on the selected protected book.",
-            "Accounting basis persisted on the selected protected book."),
-        ensureBookDescriptions(ledgerPlan));
+    assertFalse(containsTextFragment(ledgerPlan.schema(), "ensureBook"));
     assertFalse(containsTextFragment(ledgerPlan.schema(), "Starter-chart"));
-  }
-
-  private static EnsureBookDescriptions ensureBookDescriptions(
-      LedgerPlanRequestShapeDescriptor ledgerPlanRequestShape) {
-    Map<String, Object> stepsSchema =
-        ContractSchemaTestSupport.schemaProperty(ledgerPlanRequestShape.schema(), "steps");
-    Map<String, Object> stepItemSchema =
-        ContractSchemaTestSupport.objectMap(
-            ContractSchemaTestSupport.requiredValue(stepsSchema, "items"));
-    @SuppressWarnings("unchecked")
-    List<Object> stepVariants =
-        (List<Object>) ContractSchemaTestSupport.requiredValue(stepItemSchema, "oneOf");
-    Map<String, Object> ensureBookVariant =
-        stepVariants.stream()
-            .map(ContractSchemaTestSupport::objectMap)
-            .filter(
-                variant ->
-                    ContractSchemaTestSupport.objectMap(
-                            ContractSchemaTestSupport.requiredValue(variant, "properties"))
-                        .containsKey("ensureBook"))
-            .findFirst()
-            .orElseThrow(() -> new AssertionError("Missing ensureBook step schema variant"));
-    Map<String, Object> ensureBookSchema =
-        ContractSchemaTestSupport.objectMap(
-            ContractSchemaTestSupport.requiredValue(
-                ContractSchemaTestSupport.objectMap(
-                    ContractSchemaTestSupport.requiredValue(ensureBookVariant, "properties")),
-                "ensureBook"));
-    Map<String, Object> bookTemplateSchema =
-        ContractSchemaTestSupport.objectMap(
-            ContractSchemaTestSupport.requiredValue(
-                ContractSchemaTestSupport.objectMap(
-                    ContractSchemaTestSupport.requiredValue(ensureBookSchema, "properties")),
-                "bookTemplateId"));
-    Map<String, Object> accountingBasisSchema =
-        ContractSchemaTestSupport.objectMap(
-            ContractSchemaTestSupport.requiredValue(
-                ContractSchemaTestSupport.objectMap(
-                    ContractSchemaTestSupport.requiredValue(ensureBookSchema, "properties")),
-                "accountingBasis"));
-    return new EnsureBookDescriptions(
-        String.valueOf(ContractSchemaTestSupport.requiredValue(bookTemplateSchema, "description")),
-        String.valueOf(
-            ContractSchemaTestSupport.requiredValue(accountingBasisSchema, "description")));
   }
 
   private static boolean containsTextFragment(Object node, String fragment) {
@@ -118,7 +70,4 @@ class MachineContractNarrativeSurfaceTest {
     return node instanceof List<?> values
         && values.stream().anyMatch(value -> containsTextFragment(value, fragment));
   }
-
-  private record EnsureBookDescriptions(
-      String bookTemplateDescription, String accountingBasisDescription) {}
 }
