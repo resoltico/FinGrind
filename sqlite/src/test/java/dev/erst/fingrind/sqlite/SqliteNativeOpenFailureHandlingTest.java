@@ -22,6 +22,25 @@ import org.junit.jupiter.api.Test;
 /** Tests for the SQLite FFM binding layer. */
 class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport {
   @Test
+  void closedDatabasesRejectFurtherNativeAccess() {
+    Path bookPath = tempDirectory.resolve("closed-native.sqlite").toAbsolutePath().normalize();
+    int activeConnectionsBeforeOpen = SqliteNativeRuntimeActivity.activeConnectionCount();
+    SqliteNativeRuntimeActivity.recordOpeningConnection(bookPath, false);
+    try (Arena arena = Arena.ofConfined();
+        SqliteNativeDatabase database =
+            new SqliteNativeDatabase(
+                arena.allocate(1), bookPath, false, buildSqliteApi(defaultSqliteApiArguments()))) {
+      database.close();
+
+      IllegalStateException exception = assertThrows(IllegalStateException.class, database::handle);
+
+      assertEquals("SQLite native database handle is already closed.", exception.getMessage());
+      assertDoesNotThrow(database::close);
+    }
+    assertEquals(activeConnectionsBeforeOpen, SqliteNativeRuntimeActivity.activeConnectionCount());
+  }
+
+  @Test
   void close_defaultPublishesActivityMarkerOverload_closesOneOpenedHandle() throws Exception {
     AtomicInteger closeCalls = new AtomicInteger();
     Path bookPath = tempDirectory.resolve("native-close-overload.sqlite");
