@@ -37,6 +37,7 @@ import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -121,6 +122,50 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
       assertEquals(1, validationBook.postings(EffectiveDateRange.unbounded()).size());
       assertEquals(Optional.of(EFFECTIVE_DATE), validationBook.earliestPostingEffectiveDate());
       assertEquals(Optional.empty(), validationBook.transferredThroughEffectiveDate());
+    }
+  }
+
+  @Test
+  void postingCommit_rejectsAnAbsentBookAndReplaysAnAlreadyAttestedPosting() {
+    Path missingBookPath = tempDirectory.resolve("posting-commit-missing.sqlite");
+    CommittedPosting posting =
+        postingFact("posting-replayed", "idem-replayed", Optional.empty(), Optional.empty());
+    try (SqlitePostingFactStore missingStore = openStore(bookAccess(missingBookPath))) {
+      assertEquals(
+          new dev.erst.fingrind.executor.spi.PostingCommitResult.Rejected(
+              new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
+                  .BookNotInitialized()),
+          missingStore
+              .storeMutationOperations()
+              .commit(
+                  postingDraft(posting),
+                  () -> {
+                    throw new AssertionError(
+                        "A missing book must not allocate a posting identifier.");
+                  },
+                  SqliteAttestationTestSupport.authorizer()));
+    }
+
+    Path bookPath = tempDirectory.resolve("posting-commit-replay.sqlite");
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
+      assertInstanceOf(
+          PostingCommitResult.Committed.class, commitPosting(postingFactStore, posting));
+
+      PostingCommitResult.Committed replay =
+          assertInstanceOf(
+              PostingCommitResult.Committed.class,
+              postingFactStore
+                  .storeMutationOperations()
+                  .commit(
+                      postingDraft(posting),
+                      () -> {
+                        throw new AssertionError(
+                            "An idempotent replay must not allocate a posting ID.");
+                      },
+                      SqliteAttestationTestSupport.authorizer()));
+      assertEquals(posting, replay.postingFact());
+      assertTrue(replay.idempotentReplay());
     }
   }
 
