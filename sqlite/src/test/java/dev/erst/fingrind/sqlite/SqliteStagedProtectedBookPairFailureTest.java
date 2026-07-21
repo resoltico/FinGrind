@@ -104,6 +104,23 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
   }
 
   @Test
+  void untransferredVerifiedBackupSnapshot_closesItsBookAndDiscardsItsStage() throws Exception {
+    Path finalArtifactPath = tempDirectory.resolve("backup-snapshot").resolve("backup.sqlite");
+    Files.createDirectories(
+        Objects.requireNonNull(finalArtifactPath.getParent(), "artifact parent"));
+    SqliteOwnedStagedArtifact stage =
+        SqliteOwnedStagedArtifact.create(finalArtifactPath, ".snapshot-", ".sqlite");
+    Path stagePath = stage.stagedPath();
+    SqliteVerifiedBackupSnapshot snapshot = new SqliteVerifiedBackupSnapshot(stage);
+    snapshot.attachBook(new SqliteVerifiedBook(finalArtifactPath, testPassphrase()));
+
+    snapshot.close();
+    snapshot.close();
+
+    assertFalse(Files.exists(stagePath));
+  }
+
+  @Test
   void stagedBackupPair_rejectsAnOccupiedGeneratedKeyTargetAndCleansItsStage() throws Exception {
     Path stagedBackupPath = writeArtifact("backup-key-collision/staged.sqlite", "backup");
     Path stagedKeyPath = writeArtifact("backup-key-collision/staged.key", "key");
