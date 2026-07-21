@@ -353,7 +353,7 @@ class AttestationMutationProjectionCoverageTest {
     authorizer.enterStep(4);
     authorizer.collectChildMutation("record-reversal", child);
     assertTrue(authorizer.hasChildMutations());
-    assertFalse(authorizer.planPreimages("plan-2").request().length == 0);
+    assertNotEquals(0, authorizer.planPreimages("plan-2").request().length);
     assertThrows(IllegalStateException.class, () -> authorizer.enterStep(4));
     assertThrows(
         IllegalStateException.class,
