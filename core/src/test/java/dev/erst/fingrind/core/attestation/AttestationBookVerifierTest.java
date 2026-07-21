@@ -156,6 +156,39 @@ class AttestationBookVerifierTest {
   }
 
   @Test
+  void reportsMalformedPreimagesBeforeAnUnsupportedOperationPayloadAlgorithm() {
+    TestCredential founder = credential();
+    AttestationBookOperation genesis = genesis(founder);
+    AttestationBookOperation successor = successor(founder, genesis.envelope().head());
+    byte[] envelope = successor.envelope().encoded();
+    envelope[operationAlgorithmValueOffset(envelope) + "ed25519".length() - 1] = '8';
+
+    assertFailure(
+        AttestationAuthorizationFailure.PREIMAGE_INVALID,
+        () ->
+            AttestationBookOperation.decode(
+                envelope, new byte[0], successor.effectPreimage().encoded()));
+  }
+
+  @Test
+  void rejectsAnUnsupportedOperationPayloadAlgorithmAfterItsPreimagesAreValid() {
+    TestCredential founder = credential();
+    AttestationBookOperation genesis = genesis(founder);
+    AttestationBookOperation successor = successor(founder, genesis.envelope().head());
+    byte[] envelope = successor.envelope().encoded();
+    envelope[operationAlgorithmValueOffset(envelope) + "ed25519".length() - 1] = '8';
+    AttestationBookOperation unsupportedAlgorithm =
+        AttestationBookOperation.decode(
+            envelope, successor.requestPreimage().encoded(), successor.effectPreimage().encoded());
+
+    assertFailure(
+        AttestationAuthorizationFailure.KEY_ALGORITHM_INVALID,
+        () ->
+            AttestationBookVerifier.verify(
+                new AttestationBook(List.of(genesis, unsupportedAlgorithm))));
+  }
+
+  @Test
   void keepsReviewIntervalsAndBookResultAccessorsInternallyConsistent() {
     TestCredential founder = credential();
     AttestationBookOperation genesis = genesis(founder);
@@ -231,6 +264,14 @@ class AttestationBookVerifierTest {
     AttestationAuthorizationEnvelope envelope = signedGenesisEnvelope(context, founder);
     return AttestationBookOperation.decode(
         envelopeBytes(payload, envelope), request.encoded(), effect.encoded());
+  }
+
+  private static int operationAlgorithmValueOffset(byte[] envelope) {
+    int operationKindLengthOffset = 8 + 1 + 16 + Long.BYTES;
+    return operationKindLengthOffset
+        + 1
+        + Byte.toUnsignedInt(envelope[operationKindLengthOffset])
+        + 1;
   }
 
   private static AttestationBookOperation successor(

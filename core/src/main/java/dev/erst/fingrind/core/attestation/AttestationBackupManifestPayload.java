@@ -12,6 +12,7 @@ final class AttestationBackupManifestPayload implements AttestationPayload {
   private final BigInteger sourceOrder;
   private final AttestationHash sourceOperationHead;
   private final AttestationHash snapshotDigest;
+  private final String algorithmId;
 
   AttestationBackupManifestPayload(
       UUID bookId,
@@ -19,12 +20,29 @@ final class AttestationBackupManifestPayload implements AttestationPayload {
       BigInteger sourceOrder,
       AttestationHash sourceOperationHead,
       AttestationHash snapshotDigest) {
+    this(
+        bookId,
+        backupId,
+        sourceOrder,
+        sourceOperationHead,
+        snapshotDigest,
+        AttestationAlgorithm.ED25519.id());
+  }
+
+  private AttestationBackupManifestPayload(
+      UUID bookId,
+      UUID backupId,
+      BigInteger sourceOrder,
+      AttestationHash sourceOperationHead,
+      AttestationHash snapshotDigest,
+      String algorithmId) {
     this.bookId = Objects.requireNonNull(bookId, "bookId");
     this.backupId = Objects.requireNonNull(backupId, "backupId");
     this.sourceOrder =
         AttestationUnsignedEncoding.requireUnsigned(sourceOrder, Long.BYTES, "sourceOrder");
     this.sourceOperationHead = Objects.requireNonNull(sourceOperationHead, "sourceOperationHead");
     this.snapshotDigest = Objects.requireNonNull(snapshotDigest, "snapshotDigest");
+    this.algorithmId = Objects.requireNonNull(algorithmId, "algorithmId");
   }
 
   /** Decodes one complete backup-manifest payload at the raw attestation boundary. */
@@ -41,17 +59,15 @@ final class AttestationBackupManifestPayload implements AttestationPayload {
       throw new AttestationAuthorizationException(
           AttestationAuthorizationFailure.UNSUPPORTED_VERSION);
     }
+    UUID bookId = input.readUuid();
+    UUID backupId = input.readUuid();
+    BigInteger sourceOrder = input.readUnsigned(Long.BYTES);
+    AttestationHash sourceOperationHead = input.readHash();
+    AttestationHash snapshotDigest = input.readHash();
+    String algorithmId = AttestationCanonicalValueReader.token(input);
     AttestationBackupManifestPayload payload =
         new AttestationBackupManifestPayload(
-            input.readUuid(),
-            input.readUuid(),
-            input.readUnsigned(Long.BYTES),
-            input.readHash(),
-            input.readHash());
-    if (!AttestationAlgorithm.ED25519.id().equals(AttestationCanonicalValueReader.token(input))) {
-      throw new AttestationAuthorizationException(
-          AttestationAuthorizationFailure.KEY_ALGORITHM_INVALID);
-    }
+            bookId, backupId, sourceOrder, sourceOperationHead, snapshotDigest, algorithmId);
     input.requireAtEnd();
     return payload;
   }
@@ -66,7 +82,7 @@ final class AttestationBackupManifestPayload implements AttestationPayload {
     AttestationUnsignedEncoding.appendUnsigned(output, sourceOrder, Long.BYTES, "sourceOrder");
     AttestationEncoding.appendHash(output, sourceOperationHead);
     AttestationEncoding.appendHash(output, snapshotDigest);
-    AttestationTextEncoding.appendToken(output, AttestationAlgorithm.ED25519.id(), "algorithmId");
+    AttestationTextEncoding.appendToken(output, algorithmId, "algorithmId");
     return output.toByteArray();
   }
 
@@ -88,5 +104,10 @@ final class AttestationBackupManifestPayload implements AttestationPayload {
 
   AttestationHash snapshotDigest() {
     return snapshotDigest;
+  }
+
+  @Override
+  public String algorithmId() {
+    return algorithmId;
   }
 }

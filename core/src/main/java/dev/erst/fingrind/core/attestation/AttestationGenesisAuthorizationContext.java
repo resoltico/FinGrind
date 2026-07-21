@@ -9,12 +9,14 @@ final class AttestationGenesisAuthorizationContext {
   private static final byte[] ZERO_HEAD = new byte[AttestationHash.BYTE_LENGTH];
 
   private final byte[] payload;
+  private final String algorithmId;
   private final List<AttestationFounder> founders;
   private final AttestationGenesisInitialRegistry.InitialRegistry initialRegistry;
 
   private AttestationGenesisAuthorizationContext(
       AttestationOperationPayload payload, AttestationGenesisBootstrapEffect.Bootstrap bootstrap) {
     this.payload = payload.encoded();
+    algorithmId = payload.algorithmId();
     AttestationGenesisBootstrapEffect.Bootstrap checkedBootstrap =
         Objects.requireNonNull(bootstrap, "bootstrap");
     founders = checkedBootstrap.founders();
@@ -51,6 +53,10 @@ final class AttestationGenesisAuthorizationContext {
 
   byte[] payload() {
     return payload.clone();
+  }
+
+  String algorithmId() {
+    return algorithmId;
   }
 
   List<AttestationFounder> founders() {

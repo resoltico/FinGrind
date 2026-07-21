@@ -15,6 +15,7 @@ import org.jspecify.annotations.Nullable;
  */
 final class AttestationAuthorizationContext {
   private final byte[] payload;
+  private final String algorithmId;
   private final BigInteger resolvingOrder;
   private final AttestationCapability capability;
   private final @Nullable AttestationSourceChannel sourceChannel;
@@ -23,12 +24,14 @@ final class AttestationAuthorizationContext {
 
   private AttestationAuthorizationContext(
       byte[] payload,
+      String algorithmId,
       BigInteger resolvingOrder,
       AttestationCapability capability,
       @Nullable AttestationSourceChannel sourceChannel,
       @Nullable UUID systemWorkflowId,
       @Nullable AttestationSystemWorkflowKind requiredSystemWorkflowKind) {
     this.payload = Objects.requireNonNull(payload, "payload").clone();
+    this.algorithmId = Objects.requireNonNull(algorithmId, "algorithmId");
     this.resolvingOrder =
         AttestationUnsignedEncoding.requireUnsigned(resolvingOrder, Long.BYTES, "resolvingOrder");
     this.capability = Objects.requireNonNull(capability, "capability");
@@ -66,6 +69,7 @@ final class AttestationAuthorizationContext {
     }
     return new AttestationAuthorizationContext(
         payload.encoded(),
+        payload.algorithmId(),
         operationOrder.subtract(BigInteger.ONE),
         operationKind.capability(),
         sourceChannel,
@@ -79,6 +83,7 @@ final class AttestationAuthorizationContext {
     AttestationBackupManifestPayload checkedPayload = Objects.requireNonNull(payload, "payload");
     return new AttestationAuthorizationContext(
         checkedPayload.encoded(),
+        checkedPayload.algorithmId(),
         checkedPayload.sourceOrder(),
         AttestationCapability.BACKUP,
         null,
@@ -90,6 +95,7 @@ final class AttestationAuthorizationContext {
     AttestationReceiptPayload checkedPayload = Objects.requireNonNull(payload, "payload");
     return new AttestationAuthorizationContext(
         checkedPayload.encoded(),
+        checkedPayload.algorithmId(),
         checkedPayload.operationOrder(),
         AttestationCapability.ANCHOR,
         null,
@@ -103,6 +109,10 @@ final class AttestationAuthorizationContext {
 
   byte[] payload() {
     return payload.clone();
+  }
+
+  String algorithmId() {
+    return algorithmId;
   }
 
   BigInteger resolvingOrder() {

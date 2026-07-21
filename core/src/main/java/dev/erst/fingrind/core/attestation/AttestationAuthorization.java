@@ -27,6 +27,7 @@ final class AttestationAuthorization {
     requireExactQuorum(entries, quorum);
     requireDistinct(entries);
     requireAscending(entries);
+    requireAlgorithm(checkedContext.algorithmId());
 
     List<AttestationCredentialState> credentials =
         entries.stream().map(entry -> requireCredential(registry, entry, resolvingOrder)).toList();
@@ -50,6 +51,7 @@ final class AttestationAuthorization {
       throw failure(AttestationAuthorizationFailure.GENESIS_INVALID);
     }
     requireGenesisEnvelopeShape(entries);
+    requireAlgorithm(checkedContext.algorithmId());
     requireGenesisSignatures(
         AttestationRegistry.genesis(checkedFounders), entries, checkedEnvelope.payload());
   }
@@ -112,6 +114,12 @@ final class AttestationAuthorization {
       if (entries.get(index - 1).keyId().compareTo(entries.get(index).keyId()) >= 0) {
         throw failure(AttestationAuthorizationFailure.ENVELOPE_ORDER_INVALID);
       }
+    }
+  }
+
+  private static void requireAlgorithm(String algorithmId) {
+    if (!AttestationAlgorithm.ED25519.id().equals(algorithmId)) {
+      throw failure(AttestationAuthorizationFailure.KEY_ALGORITHM_INVALID);
     }
   }
 

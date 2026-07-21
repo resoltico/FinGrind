@@ -15,6 +15,7 @@ final class AttestationOperationPayload implements AttestationPayload {
   private final Instant recordedAt;
   private final AttestationHash requestDigest;
   private final AttestationHash effectDigest;
+  private final String algorithmId;
 
   AttestationOperationPayload(
       UUID bookId,
@@ -24,6 +25,26 @@ final class AttestationOperationPayload implements AttestationPayload {
       Instant recordedAt,
       AttestationHash requestDigest,
       AttestationHash effectDigest) {
+    this(
+        bookId,
+        operationOrder,
+        operationKind,
+        previousHead,
+        recordedAt,
+        requestDigest,
+        effectDigest,
+        AttestationAlgorithm.ED25519.id());
+  }
+
+  private AttestationOperationPayload(
+      UUID bookId,
+      BigInteger operationOrder,
+      String operationKind,
+      AttestationHash previousHead,
+      Instant recordedAt,
+      AttestationHash requestDigest,
+      AttestationHash effectDigest,
+      String algorithmId) {
     this.bookId = Objects.requireNonNull(bookId, "bookId");
     this.operationOrder =
         AttestationUnsignedEncoding.requireUnsigned(operationOrder, Long.BYTES, "operationOrder");
@@ -32,6 +53,7 @@ final class AttestationOperationPayload implements AttestationPayload {
     this.recordedAt = Objects.requireNonNull(recordedAt, "recordedAt");
     this.requestDigest = Objects.requireNonNull(requestDigest, "requestDigest");
     this.effectDigest = Objects.requireNonNull(effectDigest, "effectDigest");
+    this.algorithmId = Objects.requireNonNull(algorithmId, "algorithmId");
   }
 
   /** Decodes one complete operation payload at the raw attestation boundary. */
@@ -48,7 +70,7 @@ final class AttestationOperationPayload implements AttestationPayload {
     java.util.UUID bookId = input.readUuid();
     BigInteger operationOrder = input.readUnsigned(Long.BYTES);
     String operationKind = AttestationCanonicalValueReader.token(input);
-    requireEd25519(AttestationCanonicalValueReader.token(input));
+    String algorithmId = AttestationCanonicalValueReader.token(input);
     AttestationOperationPayload payload =
         new AttestationOperationPayload(
             bookId,
@@ -57,7 +79,8 @@ final class AttestationOperationPayload implements AttestationPayload {
             input.readHash(),
             AttestationCanonicalValueReader.instant(input),
             input.readHash(),
-            input.readHash());
+            input.readHash(),
+            algorithmId);
     input.requireAtEnd();
     return payload;
   }
@@ -71,7 +94,7 @@ final class AttestationOperationPayload implements AttestationPayload {
     AttestationUnsignedEncoding.appendUnsigned(
         output, operationOrder, Long.BYTES, "operationOrder");
     AttestationTextEncoding.appendToken(output, operationKind, "operationKind");
-    AttestationTextEncoding.appendToken(output, AttestationAlgorithm.ED25519.id(), "algorithmId");
+    AttestationTextEncoding.appendToken(output, algorithmId, "algorithmId");
     AttestationEncoding.appendHash(output, previousHead);
     AttestationTextEncoding.appendInstant(output, recordedAt, "recordedAt");
     AttestationEncoding.appendHash(output, requestDigest);
@@ -107,17 +130,15 @@ final class AttestationOperationPayload implements AttestationPayload {
     return effectDigest;
   }
 
+  @Override
+  public String algorithmId() {
+    return algorithmId;
+  }
+
   private static void requireVersion(AttestationByteReader input) {
     if (input.readUnsigned(Byte.BYTES).intValueExact() != 1) {
       throw new AttestationAuthorizationException(
           AttestationAuthorizationFailure.UNSUPPORTED_VERSION);
-    }
-  }
-
-  private static void requireEd25519(String algorithmId) {
-    if (!AttestationAlgorithm.ED25519.id().equals(algorithmId)) {
-      throw new AttestationAuthorizationException(
-          AttestationAuthorizationFailure.KEY_ALGORITHM_INVALID);
     }
   }
 }

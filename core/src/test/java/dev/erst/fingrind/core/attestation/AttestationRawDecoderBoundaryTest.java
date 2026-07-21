@@ -154,18 +154,17 @@ class AttestationRawDecoderBoundaryTest {
     assertFailure(
         AttestationAuthorizationFailure.UNSUPPORTED_VERSION,
         () -> AttestationBackupManifestPayload.decode(withVersion(manifestPayload, (byte) 2)));
-    assertFailure(
-        AttestationAuthorizationFailure.KEY_ALGORITHM_INVALID,
-        () -> AttestationBackupManifestPayload.decode(withAlgorithm(manifestPayload)));
+    assertEquals(
+        "ed25510",
+        AttestationBackupManifestPayload.decode(withAlgorithm(manifestPayload)).algorithmId());
     assertFailure(
         AttestationAuthorizationFailure.UNSUPPORTED_VERSION,
         () -> AttestationReceiptPayload.decode(withVersion(receiptPayload, (byte) 2)));
-    assertFailure(
-        AttestationAuthorizationFailure.KEY_ALGORITHM_INVALID,
-        () -> AttestationReceiptPayload.decode(withAlgorithm(receiptPayload)));
-    assertFailure(
-        AttestationAuthorizationFailure.KEY_ALGORITHM_INVALID,
-        () -> AttestationOperationPayload.decode(withOperationAlgorithm(operationPayload)));
+    assertEquals(
+        "ed25510", AttestationReceiptPayload.decode(withAlgorithm(receiptPayload)).algorithmId());
+    assertEquals(
+        "xd25519",
+        AttestationOperationPayload.decode(withOperationAlgorithm(operationPayload)).algorithmId());
 
     byte[] artifact =
         AttestationDocumentVectors.bytes(

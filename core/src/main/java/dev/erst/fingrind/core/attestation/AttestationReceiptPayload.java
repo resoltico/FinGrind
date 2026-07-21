@@ -12,17 +12,29 @@ final class AttestationReceiptPayload implements AttestationPayload {
   private final BigInteger operationOrder;
   private final AttestationHash operationHead;
   private final Instant receiptTimestamp;
+  private final String algorithmId;
 
   AttestationReceiptPayload(
       UUID bookId,
       BigInteger operationOrder,
       AttestationHash operationHead,
       Instant receiptTimestamp) {
+    this(
+        bookId, operationOrder, operationHead, receiptTimestamp, AttestationAlgorithm.ED25519.id());
+  }
+
+  private AttestationReceiptPayload(
+      UUID bookId,
+      BigInteger operationOrder,
+      AttestationHash operationHead,
+      Instant receiptTimestamp,
+      String algorithmId) {
     this.bookId = Objects.requireNonNull(bookId, "bookId");
     this.operationOrder =
         AttestationUnsignedEncoding.requireUnsigned(operationOrder, Long.BYTES, "operationOrder");
     this.operationHead = Objects.requireNonNull(operationHead, "operationHead");
     this.receiptTimestamp = Objects.requireNonNull(receiptTimestamp, "receiptTimestamp");
+    this.algorithmId = Objects.requireNonNull(algorithmId, "algorithmId");
   }
 
   /** Decodes one complete receipt payload at the raw attestation boundary. */
@@ -39,16 +51,14 @@ final class AttestationReceiptPayload implements AttestationPayload {
       throw new AttestationAuthorizationException(
           AttestationAuthorizationFailure.UNSUPPORTED_VERSION);
     }
+    UUID bookId = input.readUuid();
+    BigInteger operationOrder = input.readUnsigned(Long.BYTES);
+    AttestationHash operationHead = input.readHash();
+    Instant receiptTimestamp = AttestationCanonicalValueReader.instant(input);
+    String algorithmId = AttestationCanonicalValueReader.token(input);
     AttestationReceiptPayload payload =
         new AttestationReceiptPayload(
-            input.readUuid(),
-            input.readUnsigned(Long.BYTES),
-            input.readHash(),
-            AttestationCanonicalValueReader.instant(input));
-    if (!AttestationAlgorithm.ED25519.id().equals(AttestationCanonicalValueReader.token(input))) {
-      throw new AttestationAuthorizationException(
-          AttestationAuthorizationFailure.KEY_ALGORITHM_INVALID);
-    }
+            bookId, operationOrder, operationHead, receiptTimestamp, algorithmId);
     input.requireAtEnd();
     return payload;
   }
@@ -63,7 +73,7 @@ final class AttestationReceiptPayload implements AttestationPayload {
         output, operationOrder, Long.BYTES, "operationOrder");
     AttestationEncoding.appendHash(output, operationHead);
     AttestationTextEncoding.appendInstant(output, receiptTimestamp, "receiptTimestamp");
-    AttestationTextEncoding.appendToken(output, AttestationAlgorithm.ED25519.id(), "algorithmId");
+    AttestationTextEncoding.appendToken(output, algorithmId, "algorithmId");
     return output.toByteArray();
   }
 
@@ -81,5 +91,10 @@ final class AttestationReceiptPayload implements AttestationPayload {
 
   Instant receiptTimestamp() {
     return receiptTimestamp;
+  }
+
+  @Override
+  public String algorithmId() {
+    return algorithmId;
   }
 }

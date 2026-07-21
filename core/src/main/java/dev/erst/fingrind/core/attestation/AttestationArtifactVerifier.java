@@ -64,14 +64,23 @@ final class AttestationArtifactVerifier {
       AttestationBook decodedSnapshot =
           Objects.requireNonNull(snapshotDecoder, "snapshotDecoder").decode(artifact.snapshot());
       return AttestationBookVerifier.verify(decodedSnapshot);
+    } catch (AttestationAuthorizationException exception) {
+      if (exception.failure() == AttestationAuthorizationFailure.UNSUPPORTED_VERSION) {
+        throw exception;
+      }
+      throw manifestFailure(exception);
     } catch (RuntimeException exception) {
-      throw AttestationFormatFailure.classify(
-          exception, AttestationAuthorizationFailure.MANIFEST_INVALID);
+      throw manifestFailure(exception);
     }
   }
 
   private static AttestationAuthorizationException manifestFailure() {
     return new AttestationAuthorizationException(AttestationAuthorizationFailure.MANIFEST_INVALID);
+  }
+
+  private static AttestationAuthorizationException manifestFailure(Throwable cause) {
+    return new AttestationAuthorizationException(
+        AttestationAuthorizationFailure.MANIFEST_INVALID, cause);
   }
 
   private static AttestationAuthorizationException receiptFailure() {

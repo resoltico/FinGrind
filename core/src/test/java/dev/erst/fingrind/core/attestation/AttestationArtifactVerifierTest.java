@@ -82,6 +82,50 @@ class AttestationArtifactVerifierTest {
   }
 
   @Test
+  void normalizesAnInvalidSnapshotChainToTheManifestTaxonomy() {
+    TestCredential founder = credential();
+    AttestationBookVerification verification = AttestationBookVerifier.verify(book(founder));
+    byte[] snapshot = new byte[] {1, 2, 3, 4};
+    byte[] artifact = artifact(founder, verification, snapshot, AttestationHash.sha256(snapshot));
+
+    assertFailure(
+        AttestationAuthorizationFailure.MANIFEST_INVALID,
+        () ->
+            AttestationArtifactVerifier.verifyArtifact(
+                artifact,
+                ignored -> {
+                  throw new AttestationAuthorizationException(
+                      AttestationAuthorizationFailure.PREVIOUS_HEAD_INVALID);
+                }));
+    assertFailure(
+        AttestationAuthorizationFailure.UNSUPPORTED_VERSION,
+        () ->
+            AttestationArtifactVerifier.verifyArtifact(
+                artifact,
+                ignored -> {
+                  throw new AttestationAuthorizationException(
+                      AttestationAuthorizationFailure.UNSUPPORTED_VERSION);
+                }));
+  }
+
+  @Test
+  void reportsManifestPreambleFailureBeforeAnUnsupportedPayloadAlgorithm() {
+    TestCredential founder = credential();
+    AttestationBook book = book(founder);
+    AttestationBookVerification verification = AttestationBookVerifier.verify(book);
+    byte[] snapshot = new byte[] {1, 2, 3, 4};
+    byte[] artifact = artifact(founder, verification, snapshot, AttestationHash.sha256(snapshot));
+    byte[] tampered = artifact.clone();
+    tampered[manifestSnapshotDigestOffset(snapshot)] ^= 1;
+    tampered[manifestAlgorithmValueOffset(snapshot) + "ed25519".length() - 1] = '8';
+
+    assertFailure(
+        AttestationAuthorizationFailure.MANIFEST_INVALID,
+        () ->
+            AttestationArtifactVerifier.verifyArtifact(tampered, snapshotDecoder(snapshot, book)));
+  }
+
+  @Test
   void rejectsManifestWhoseSnapshotContainsOperationsPastItsDeclaredSourceHead() {
     TestCredential founder = credential();
     AttestationBook snapshotBook = book(founder);
@@ -122,6 +166,40 @@ class AttestationArtifactVerifierTest {
         () ->
             AttestationArtifactVerifier.verifyReceipt(
                 envelope(payload, founder), verification, AttestationReceiptRetention.INDEPENDENT));
+  }
+
+  @Test
+  void reportsReceiptPreambleFailureBeforeAnUnsupportedPayloadAlgorithm() {
+    TestCredential founder = credential();
+    AttestationBookVerification verification = AttestationBookVerifier.verify(book(founder));
+    AttestationReceiptPayload payload =
+        new AttestationReceiptPayload(
+            verification.bookId(),
+            verification.headOrder(),
+            AttestationHash.sha256(new byte[] {9}),
+            Instant.parse("2026-07-20T00:00:01.000Z"));
+    byte[] receipt = envelope(payload, founder);
+    receipt[receiptAlgorithmValueOffset() + "ed25519".length() - 1] = '8';
+
+    assertFailure(
+        AttestationAuthorizationFailure.RECEIPT_INVALID,
+        () ->
+            AttestationArtifactVerifier.verifyReceipt(
+                receipt, verification, AttestationReceiptRetention.INDEPENDENT));
+  }
+
+  @Test
+  void rejectsAnUnsupportedReceiptPayloadAlgorithmAfterItsPreambleIsValid() {
+    TestCredential founder = credential();
+    AttestationBookVerification verification = AttestationBookVerifier.verify(book(founder));
+    byte[] receipt = receipt(founder, verification);
+    receipt[receiptAlgorithmValueOffset() + "ed25519".length() - 1] = '8';
+
+    assertFailure(
+        AttestationAuthorizationFailure.KEY_ALGORITHM_INVALID,
+        () ->
+            AttestationArtifactVerifier.verifyReceipt(
+                receipt, verification, AttestationReceiptRetention.INDEPENDENT));
   }
 
   @Test
@@ -227,6 +305,14 @@ class AttestationArtifactVerifierTest {
 
   private static int manifestSnapshotDigestOffset(byte[] snapshot) {
     return manifestSourceHeadOffset(snapshot) + AttestationHash.BYTE_LENGTH;
+  }
+
+  private static int manifestAlgorithmValueOffset(byte[] snapshot) {
+    return manifestSnapshotDigestOffset(snapshot) + AttestationHash.BYTE_LENGTH + 1;
+  }
+
+  private static int receiptAlgorithmValueOffset() {
+    return 8 + 1 + 16 + Long.BYTES + AttestationHash.BYTE_LENGTH + 24 + 1;
   }
 
   private static int trailerSnapshotLengthOffset(byte[] artifact) {
