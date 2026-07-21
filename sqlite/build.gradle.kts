@@ -75,6 +75,7 @@ tasks.register<JavaExec>("refreshProtectedBookFixture") {
 }
 
 tasks.named<Test>("test") {
+    jvmArgs("--enable-native-access=dev.erst.fingrind.core")
     patchModule("dev.erst.fingrind.sqlite", sqliteWhiteBoxTestPatchPath)
     addReads("dev.erst.fingrind.sqlite", "ALL-UNNAMED")
     addOpens("dev.erst.fingrind.sqlite", "dev.erst.fingrind.sqlite", "ALL-UNNAMED")

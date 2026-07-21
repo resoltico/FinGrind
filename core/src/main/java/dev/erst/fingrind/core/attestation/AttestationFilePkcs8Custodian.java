@@ -40,6 +40,11 @@ final class AttestationFilePkcs8Custodian {
 
   private AttestationFilePkcs8Custodian() {}
 
+  static AttestationPublicCredential createCredential(Path path, char[] passphrase)
+      throws IOException {
+    return new AttestationPublicCredential(create(path, passphrase).getEncoded());
+  }
+
   static PublicKey create(Path path, char[] passphrase) throws IOException {
     char[] ownedPassphrase = Objects.requireNonNull(passphrase, "passphrase");
     try {

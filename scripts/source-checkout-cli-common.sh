@@ -58,7 +58,7 @@ fg_cli_wrapper_initialize() {
     )"
     fg_cli_wrapper_java_executable=''
     fg_cli_wrapper_application_module=''
-    fg_cli_wrapper_native_access_module=''
+    fg_cli_wrapper_native_access_modules=''
     fg_cli_wrapper_runtime_input_paths=()
 }
 
@@ -112,7 +112,7 @@ fg_cli_wrapper_load_runtime_manifest() {
 
     [[ -n "${fg_cli_wrapper_java_executable}" ]] || fg_cli_wrapper_die "${stale_message}"
     [[ -n "${fg_cli_wrapper_application_module}" ]] || fg_cli_wrapper_die "${stale_message}"
-    [[ -n "${fg_cli_wrapper_native_access_module}" ]] || fg_cli_wrapper_die "${stale_message}"
+    [[ -n "${fg_cli_wrapper_native_access_modules}" ]] || fg_cli_wrapper_die "${stale_message}"
     [[ -x "${fg_cli_wrapper_java_executable}" ]] || fg_cli_wrapper_die "${stale_message}"
 }
 
@@ -120,7 +120,7 @@ fg_cli_wrapper_runtime_manifest_is_usable() {
     fg_cli_wrapper_parse_runtime_manifest || return 1
     [[ -n "${fg_cli_wrapper_java_executable}" ]] || return 1
     [[ -n "${fg_cli_wrapper_application_module}" ]] || return 1
-    [[ -n "${fg_cli_wrapper_native_access_module}" ]] || return 1
+    [[ -n "${fg_cli_wrapper_native_access_modules}" ]] || return 1
     (( ${#fg_cli_wrapper_runtime_input_paths[@]} > 0 )) || return 1
     [[ -x "${fg_cli_wrapper_java_executable}" ]] || return 1
     return 0
@@ -169,7 +169,7 @@ fg_cli_wrapper_parse_runtime_manifest() {
 
     fg_cli_wrapper_java_executable=''
     fg_cli_wrapper_application_module=''
-    fg_cli_wrapper_native_access_module=''
+    fg_cli_wrapper_native_access_modules=''
     fg_cli_wrapper_runtime_input_paths=()
     while IFS="$(printf '\t')" read -r record_type record_value || [[ -n "${record_type}${record_value}" ]]; do
         case "${record_type}" in
@@ -179,8 +179,8 @@ fg_cli_wrapper_parse_runtime_manifest() {
             applicationModule)
                 fg_cli_wrapper_application_module="${record_value}"
                 ;;
-            nativeAccessModule)
-                fg_cli_wrapper_native_access_module="${record_value}"
+            nativeAccessModules)
+                fg_cli_wrapper_native_access_modules="${record_value}"
                 ;;
             runtimeInputPath)
                 [[ -n "${record_value}" ]] || return 1
@@ -198,7 +198,7 @@ fg_cli_wrapper_parse_runtime_manifest() {
                 ;;
         esac
     done < "${fg_cli_wrapper_source_checkout_runtime_manifest}"
-    [[ "${format_version}" == '4' ]] || return 1
+    [[ "${format_version}" == '5' ]] || return 1
     return 0
 }
 
@@ -209,9 +209,9 @@ fg_cli_wrapper_exec_java() {
     shift
 
     exec "${fg_cli_wrapper_java_executable}" \
-        "--enable-native-access=${fg_cli_wrapper_native_access_module}" \
-        "--add-opens=java.base/java.nio=${fg_cli_wrapper_native_access_module}" \
-        "--add-exports=java.base/sun.nio=${fg_cli_wrapper_native_access_module}" \
+        "--enable-native-access=${fg_cli_wrapper_native_access_modules}" \
+        "--add-opens=java.base/java.nio=${fg_cli_wrapper_application_module%%/*}" \
+        "--add-exports=java.base/sun.nio=${fg_cli_wrapper_application_module%%/*}" \
         "-Dfingrind.runtime.distribution=${runtime_distribution}" \
         "-Ddev.erst.fingrind.invocation=${invocation_label}" \
         "-Dfingrind.source-checkout.root=${fg_cli_wrapper_repo_root}" \

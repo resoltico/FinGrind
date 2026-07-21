@@ -13,7 +13,7 @@ updated: "2026-07-17"
 
 ```sql
 pragma application_id = 1179079236;
-pragma user_version = 50;
+pragma user_version = 51;
 
 create table if not exists book_meta (
     meta_key text primary key check (

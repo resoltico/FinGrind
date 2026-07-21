@@ -379,10 +379,10 @@ class CliDistributionBuildContractTest {
     assertTrue(shellWrapperCommon.contains("runtimeInputPath"));
     assertTrue(
         shellWrapperCommon.contains(
-            "--add-opens=java.base/java.nio=${fg_cli_wrapper_native_access_module}"));
+            "--add-opens=java.base/java.nio=${fg_cli_wrapper_application_module%%/*}"));
     assertTrue(
         shellWrapperCommon.contains(
-            "--add-exports=java.base/sun.nio=${fg_cli_wrapper_native_access_module}"));
+            "--add-exports=java.base/sun.nio=${fg_cli_wrapper_application_module%%/*}"));
     assertTrue(shellWrapperCommon.contains("./gradlew :cli:prepareSourceCheckoutCliRuntime"));
     assertTrue(
         shellWrapperCommon.contains(
@@ -396,10 +396,10 @@ class CliDistributionBuildContractTest {
     assertTrue(powerShellWrapperCommon.contains("runtimeInputPath"));
     assertTrue(
         powerShellWrapperCommon.contains(
-            "\"--add-opens=java.base/java.nio=$($RuntimeManifest.NativeAccessModule)\""));
+            "\"--add-opens=java.base/java.nio=$($RuntimeManifest.ApplicationModule.Split('/', 2)[0])\""));
     assertTrue(
         powerShellWrapperCommon.contains(
-            "\"--add-exports=java.base/sun.nio=$($RuntimeManifest.NativeAccessModule)\""));
+            "\"--add-exports=java.base/sun.nio=$($RuntimeManifest.ApplicationModule.Split('/', 2)[0])\""));
     assertTrue(powerShellWrapperCommon.contains("repo-locks/cli-runtime-prepare.lock"));
     assertTrue(powerShellWrapperCommon.contains("New-Item -ItemType Directory"));
     assertTrue(sourceCheckoutPowerShell.contains("source-checkout-cli-common.ps1"));
@@ -432,7 +432,9 @@ class CliDistributionBuildContractTest {
     assertTrue(
         posixBundleLauncher.contains(
             "application_module='dev.erst.fingrind.cli/dev.erst.fingrind.cli.App'"));
-    assertTrue(posixBundleLauncher.contains("--enable-native-access=dev.erst.fingrind.cli"));
+    assertTrue(
+        posixBundleLauncher.contains(
+            "--enable-native-access=dev.erst.fingrind.cli,dev.erst.fingrind.core"));
     assertTrue(
         posixBundleLauncher.contains("--add-opens=java.base/java.nio=dev.erst.fingrind.cli"));
     assertTrue(
@@ -445,7 +447,9 @@ class CliDistributionBuildContractTest {
     assertTrue(
         powerShellBundleLauncher.contains(
             "$applicationModule = \"dev.erst.fingrind.cli/dev.erst.fingrind.cli.App\""));
-    assertTrue(powerShellBundleLauncher.contains("--enable-native-access=dev.erst.fingrind.cli"));
+    assertTrue(
+        powerShellBundleLauncher.contains(
+            "--enable-native-access=dev.erst.fingrind.cli,dev.erst.fingrind.core"));
     assertTrue(
         powerShellBundleLauncher.contains("--add-opens=java.base/java.nio=dev.erst.fingrind.cli"));
     assertTrue(
@@ -458,7 +462,9 @@ class CliDistributionBuildContractTest {
     assertTrue(
         dockerEntrypoint.contains(
             "application_module=\"dev.erst.fingrind.cli/dev.erst.fingrind.cli.App\""));
-    assertTrue(dockerEntrypoint.contains("--enable-native-access=dev.erst.fingrind.cli"));
+    assertTrue(
+        dockerEntrypoint.contains(
+            "--enable-native-access=dev.erst.fingrind.cli,dev.erst.fingrind.core"));
     assertTrue(dockerEntrypoint.contains("--add-opens=java.base/java.nio=dev.erst.fingrind.cli"));
     assertTrue(dockerEntrypoint.contains("--add-exports=java.base/sun.nio=dev.erst.fingrind.cli"));
     assertTrue(dockerEntrypoint.contains("-D{{sqliteBundleHomeSystemProperty}}=\"${app_home}\""));

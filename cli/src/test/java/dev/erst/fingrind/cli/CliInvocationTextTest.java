@@ -111,19 +111,19 @@ class CliInvocationTextTest {
             null, "Linux", unnamedModule, "fingrind.jar");
 
     assertEquals(
-        "java --enable-native-access=dev.erst.fingrind.cli"
+        "java --enable-native-access=dev.erst.fingrind.cli,dev.erst.fingrind.core"
             + " --add-opens=java.base/java.nio=dev.erst.fingrind.cli"
             + " --add-exports=java.base/sun.nio=dev.erst.fingrind.cli --module-path fingrind.jar"
             + " --module dev.erst.fingrind.cli/dev.erst.fingrind.cli.App",
         launcherCommand);
     assertEquals(
-        "java --enable-native-access=dev.erst.fingrind.cli"
+        "java --enable-native-access=dev.erst.fingrind.cli,dev.erst.fingrind.core"
             + " --add-opens=java.base/java.nio=dev.erst.fingrind.cli"
             + " --add-exports=java.base/sun.nio=dev.erst.fingrind.cli --module-path fingrind.jar"
             + " --module dev.erst.fingrind.cli/dev.erst.fingrind.cli.App help",
         CliInvocationText.rewriteInvocationPrefix("fingrind help", launcherCommand));
     assertEquals(
-        "cat ./secrets/acme.book-key | java --enable-native-access=dev.erst.fingrind.cli"
+        "cat ./secrets/acme.book-key | java --enable-native-access=dev.erst.fingrind.cli,dev.erst.fingrind.core"
             + " --add-opens=java.base/java.nio=dev.erst.fingrind.cli"
             + " --add-exports=java.base/sun.nio=dev.erst.fingrind.cli --module-path fingrind.jar"
             + " --module dev.erst.fingrind.cli/dev.erst.fingrind.cli.App open-book --book-file"
@@ -153,7 +153,7 @@ class CliInvocationTextTest {
         CliInvocationText.launcherCommandForCurrentRuntime(
             null, "Linux", unnamedModule, "fingrind.txt"));
     assertEquals(
-        "java --enable-native-access=dev.erst.fingrind.cli"
+        "java --enable-native-access=dev.erst.fingrind.cli,dev.erst.fingrind.core"
             + " --add-opens=java.base/java.nio=dev.erst.fingrind.cli"
             + " --add-exports=java.base/sun.nio=dev.erst.fingrind.cli --module-path fingrind.jar"
             + " --module dev.erst.fingrind.cli/dev.erst.fingrind.cli.App",

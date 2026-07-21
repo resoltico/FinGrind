@@ -5,7 +5,7 @@ domain: BOOK_OPERATION_ATTESTATION
 updated: "2026-07-21"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["AttestedOperation", "AttestationEnvelope"]
+  symbols: ["AttestedOperation", "AttestationEnvelope", "AttestationEvidence", "AttestationGenesis", "AttestationKeyFiles", "AttestationOperationSigner", "AttestationPublicCredential", "AttestationSigningCredential", "AttestationVerification", "AttestationVerificationException", "AttestationVerifier"]
 route:
   keywords: [verifiable-operation-attestation, operation-head, attestation-envelope, principal-quorum, credential-purpose, autonomous-workflow, semantic-profile, failure-precedence, ed25519, stale-head]
   questions: ["what does FinGrind book-operation attestation prove", "how is an attested operation encoded", "which credential may authorize a system operation", "which semantic profile governs a typed operation"]
@@ -54,6 +54,27 @@ This protocol does not prove a real-world identity, human intent, complete exter
 coverage, or wall-clock truth. A retained independent receipt detects rollback, truncation, or
 alteration at or before its pinned head. An external witness can expose equivocation only if it
 observes both branches. No mechanism detects a fork that is never revealed.
+
+## AttestationEvidence, AttestationGenesis, AttestationKeyFiles, AttestationOperationSigner, AttestationPublicCredential, AttestationSigningCredential, AttestationVerification, AttestationVerificationException, And AttestationVerifier
+
+The exported `AttestationEvidence` value owns exactly one raw operation envelope, request
+preimage, and effect preimage. It defensively copies all byte input and output so a storage adapter
+cannot alter evidence after handing it to the verifier. `AttestationVerifier.verifyBook` is a pure
+boundary over a complete genesis-to-head evidence sequence. It returns `AttestationVerification`
+with the authenticated book identity, unsigned-64 head order, operation head, and non-persisted
+review finding identifiers. A structural refusal is an `AttestationVerificationException`; its
+`code` is the first stable attestation failure token. The verifier boundary owns no private-key
+type, custodian handle, filesystem path, or mutable book state.
+
+`AttestationKeyFiles.create` is the sole v1 creation path for a new encrypted file-backed Ed25519
+credential. It publishes a no-clobber key file and returns `AttestationPublicCredential`, which
+contains only canonical public DER-SPKI bytes and its SHA-256 key identifier. An
+`AttestationSigningCredential` binds that public credential to its book principal, encrypted key
+file, and short-lived caller-owned signing secret. `AttestationGenesis.create` accepts one through
+five distinct founder credentials, declares the complete initial registry and policy in immutable
+preimages, and produces the unanimous order-zero evidence. `AttestationOperationSigner` builds an
+ordered operation envelope only from canonical request and effect preimages; persistence performs
+the historical authorization and compare-and-swap admission.
 
 ## Profile Constants And Canonical Primitives
 

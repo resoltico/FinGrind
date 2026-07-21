@@ -17,6 +17,8 @@ import org.jspecify.annotations.Nullable;
 final class CliInvocationText {
   private static final String NEUTRAL_LAUNCHER_COMMAND = "fingrind";
   private static final String RAW_JAR_MODULE_NAME = "dev.erst.fingrind.cli";
+  private static final String RAW_JAR_NATIVE_ACCESS_MODULES =
+      RAW_JAR_MODULE_NAME + ",dev.erst.fingrind.core";
   private static final String RAW_JAR_APPLICATION_MODULE =
       "dev.erst.fingrind.cli/dev.erst.fingrind.cli.App";
   private static final Pattern COMMAND_PREFIX_PATTERN =
@@ -171,7 +173,7 @@ final class CliInvocationText {
 
   private static String rawJarLauncherCommand(String jarFileName) {
     return "java --enable-native-access="
-        + RAW_JAR_MODULE_NAME
+        + RAW_JAR_NATIVE_ACCESS_MODULES
         + " --add-opens=java.base/java.nio="
         + RAW_JAR_MODULE_NAME
         + " --add-exports=java.base/sun.nio="

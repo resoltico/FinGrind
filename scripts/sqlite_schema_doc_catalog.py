@@ -23,6 +23,14 @@ SECTIONS = [
         domain="SQLITE_SCHEMA_CORE_FOUNDATION",
     ),
     SchemaSection(
+        key="attestation-operation",
+        file_name="SCHEMA_CORE_01a_ATTESTATION_OPERATION.md",
+        title="SQLite Schema: Attestation Operation Evidence",
+        purpose="Canonical operation envelopes and signed request and effect preimages.",
+        coverage="`attestation_operation`.",
+        domain="SQLITE_SCHEMA_CORE_ATTESTATION_OPERATION",
+    ),
+    SchemaSection(
         key="account-table",
         file_name="SCHEMA_CORE_02_ACCOUNT_TABLE.md",
         title="SQLite Schema: Account Table",

@@ -3,6 +3,7 @@
 TABLE_SECTION_BY_NAME = {
     "book_meta": "foundation",
     "book_identity": "foundation",
+    "attestation_operation": "attestation-operation",
     "account": "account-table",
     "tax_registration": "tax-registration",
     "tax_registration_code": "tax-registration",

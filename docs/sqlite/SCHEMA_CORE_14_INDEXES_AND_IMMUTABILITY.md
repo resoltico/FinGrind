@@ -183,4 +183,16 @@ before delete on fiscal_year_close_posting
 begin
     select raise(fail, 'fiscal_year_close_posting rows are append-only.');
 end;
+
+create trigger if not exists attestation_operation_reject_update
+before update on attestation_operation
+begin
+    select raise(fail, 'attestation_operation rows are append-only.');
+end;
+
+create trigger if not exists attestation_operation_reject_delete
+before delete on attestation_operation
+begin
+    select raise(fail, 'attestation_operation rows are append-only.');
+end;
 ```

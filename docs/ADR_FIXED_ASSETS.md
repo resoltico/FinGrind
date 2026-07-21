@@ -37,4 +37,4 @@ The typed commands are `record-fixed-asset-capitalization`, `record-fixed-asset-
 
 ## Publication Condition
 
-Publication requires the typed commands, SQLite reversal state and durable constraints that bind lifecycle values to immutable posting facts, executor admission and resolution, request contracts and templates, read projection, fixed-asset register in every supported report format, end-to-end tests, and protected-book format `50`. Earlier book formats are rejected rather than upgraded in place. The release-boundary contract test verifies this condition against the public operation registry and this ADR.
+Publication requires the typed commands, SQLite reversal state and durable constraints that bind lifecycle values to immutable posting facts, executor admission and resolution, request contracts and templates, read projection, fixed-asset register in every supported report format, end-to-end tests, and protected-book format `51`. Earlier book formats are rejected rather than upgraded in place. The release-boundary contract test verifies this condition against the public operation registry and this ADR.

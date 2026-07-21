@@ -1,0 +1,165 @@
+package dev.erst.fingrind.sqlite;
+
+import dev.erst.fingrind.core.attestation.AttestationEvidence;
+import dev.erst.fingrind.core.attestation.AttestationVerification;
+import dev.erst.fingrind.core.attestation.AttestationVerificationException;
+import dev.erst.fingrind.core.attestation.AttestationVerifier;
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+
+/**
+ * Transaction-local persistence boundary for immutable operation evidence and head compare-and-swap.
+ *
+ * <p>Callers must already own the book's immediate SQLite write transaction. This class first
+ * verifies the persisted chain, compares the observed signing head, verifies the candidate chain,
+ * and only then appends the raw evidence. SQLite triggers prevent later replacement or deletion.
+ */
+final class SqliteAttestationEvidenceStore {
+  private static final byte[] GENESIS_PREVIOUS_HEAD = new byte[32];
+
+  private SqliteAttestationEvidenceStore() {}
+
+  static AttestationVerification append(
+      SqliteNativeDatabase activeDatabase,
+      byte[] observedHead,
+      AttestationEvidence candidateEvidence) {
+    Objects.requireNonNull(activeDatabase, "activeDatabase");
+    byte[] checkedObservedHead = requireHead(observedHead, "observedHead");
+    AttestationEvidence checkedCandidate =
+        Objects.requireNonNull(candidateEvidence, "candidateEvidence");
+    List<AttestationEvidence> persistedEvidence = loadAll(activeDatabase);
+    Optional<AttestationVerification> persistedVerification = verifyPersisted(persistedEvidence);
+    Head currentHead =
+        persistedVerification
+            .map(verification -> new Head(verification.operationHead(), verification.headOrder()))
+            .orElseGet(() -> new Head(GENESIS_PREVIOUS_HEAD, BigInteger.valueOf(-1L)));
+    if (!Arrays.equals(checkedObservedHead, currentHead.bytes())) {
+      throw new SqliteAttestationStaleHeadException(
+          checkedObservedHead, currentHead.bytes(), currentHead.order());
+    }
+
+    List<AttestationEvidence> completeEvidence = new ArrayList<>(persistedEvidence);
+    completeEvidence.add(checkedCandidate);
+    AttestationVerification candidateVerification = verifyCandidate(completeEvidence);
+    BigInteger expectedOrder = currentHead.order().add(BigInteger.ONE);
+    if (!candidateVerification.headOrder().equals(expectedOrder)) {
+      throw new IllegalArgumentException("attestation-preimage-invalid");
+    }
+    insert(activeDatabase, candidateVerification, checkedCandidate);
+    return candidateVerification;
+  }
+
+  static List<AttestationEvidence> loadAll(SqliteNativeDatabase activeDatabase) {
+    Objects.requireNonNull(activeDatabase, "activeDatabase");
+    try (SqliteNativeStatement statement =
+        activeDatabase.prepare(SqliteAttestationEvidenceSql.LOAD_ALL)) {
+      List<AttestationEvidence> evidence = new ArrayList<>();
+      while (statement.step() == SqliteNativeResultCode.code("ROW")) {
+        String persistedOrder = SqlitePostingMapper.requiredText(statement, 0);
+        String expectedOrder = orderHex(BigInteger.valueOf(evidence.size()));
+        if (!persistedOrder.equals(expectedOrder)) {
+          throw new IllegalStateException(
+              "Persisted attestation operation order is not a canonical contiguous sequence.");
+        }
+        evidence.add(
+            new AttestationEvidence(
+                decode(SqlitePostingMapper.requiredText(statement, 1)),
+                decode(SqlitePostingMapper.requiredText(statement, 2)),
+                decode(SqlitePostingMapper.requiredText(statement, 3))));
+      }
+      return List.copyOf(evidence);
+    }
+  }
+
+  private static Optional<AttestationVerification> verifyPersisted(
+      List<AttestationEvidence> evidence) {
+    if (evidence.isEmpty()) {
+      return Optional.empty();
+    }
+    try {
+      return Optional.of(AttestationVerifier.verifyBook(evidence));
+    } catch (AttestationVerificationException exception) {
+      throw new IllegalStateException(
+          "Persisted attestation evidence violates its canonical chain: " + exception.code(),
+          exception);
+    }
+  }
+
+  private static AttestationVerification verifyCandidate(List<AttestationEvidence> evidence) {
+    try {
+      return AttestationVerifier.verifyBook(evidence);
+    } catch (AttestationVerificationException exception) {
+      throw new IllegalArgumentException(exception.code(), exception);
+    }
+  }
+
+  private static void insert(
+      SqliteNativeDatabase activeDatabase,
+      AttestationVerification verification,
+      AttestationEvidence evidence) {
+    try (SqliteNativeStatement statement =
+        activeDatabase.prepare(SqliteAttestationEvidenceSql.INSERT)) {
+      statement.bindText(1, orderHex(verification.headOrder()));
+      statement.bindText(2, encode(evidence.operationEnvelope()));
+      statement.bindText(3, encode(evidence.requestPreimage()));
+      statement.bindText(4, encode(evidence.effectPreimage()));
+      statement.bindText(5, hex(verification.operationHead()));
+      statement.step();
+    }
+  }
+
+  private static byte[] requireHead(byte[] value, String name) {
+    byte[] checked = Arrays.copyOf(Objects.requireNonNull(value, name), value.length);
+    if (checked.length != 32) {
+      throw new IllegalArgumentException(name + " must contain exactly 32 bytes.");
+    }
+    return checked;
+  }
+
+  private static byte[] decode(String encoded) {
+    try {
+      return Base64.getDecoder().decode(encoded);
+    } catch (IllegalArgumentException exception) {
+      throw new IllegalStateException("Persisted attestation evidence is not valid base64.", exception);
+    }
+  }
+
+  private static String encode(byte[] value) {
+    return Base64.getEncoder().encodeToString(value);
+  }
+
+  private static String orderHex(BigInteger order) {
+    BigInteger checkedOrder = Objects.requireNonNull(order, "order");
+    if (checkedOrder.signum() < 0 || checkedOrder.bitLength() > Long.SIZE) {
+      throw new IllegalArgumentException("operation order must fit an unsigned 64-bit value.");
+    }
+    return "%016x".formatted(checkedOrder);
+  }
+
+  private static String hex(byte[] bytes) {
+    return java.util.HexFormat.of().formatHex(requireHead(bytes, "operationHead"));
+  }
+
+  private static final class Head {
+    private final byte[] bytes;
+    private final BigInteger order;
+
+    private Head(byte[] bytes, BigInteger order) {
+      this.bytes = requireHead(bytes, "bytes");
+      this.order = Objects.requireNonNull(order, "order");
+    }
+
+    private byte[] bytes() {
+      return bytes.clone();
+    }
+
+    private BigInteger order() {
+      return order;
+    }
+  }
+}

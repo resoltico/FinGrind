@@ -1,5 +1,5 @@
 pragma application_id = 1179079236;
-pragma user_version = 50;
+pragma user_version = 51;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -152,6 +152,22 @@ create table if not exists book_identity (
             book_template_id = 'OWNER_MANAGED_TRADING'
             and coalesce(costing_doctrine, '') = 'WEIGHTED_AVERAGE'
         )
+    )
+) strict;
+
+create table if not exists attestation_operation (
+    operation_order_hex text primary key check (
+        length(operation_order_hex) = 16
+        and operation_order_hex glob '[0-9a-f]*'
+        and operation_order_hex not glob '*[^0-9a-f]*'
+    ),
+    operation_envelope_base64 text not null check (length(operation_envelope_base64) > 0),
+    request_preimage_base64 text not null check (length(request_preimage_base64) > 0),
+    effect_preimage_base64 text not null check (length(effect_preimage_base64) > 0),
+    operation_head_hex text not null unique check (
+        length(operation_head_hex) = 64
+        and operation_head_hex glob '[0-9a-f]*'
+        and operation_head_hex not glob '*[^0-9a-f]*'
     )
 ) strict;
 
@@ -3828,4 +3844,16 @@ create trigger if not exists fiscal_year_close_posting_reject_delete
 before delete on fiscal_year_close_posting
 begin
     select raise(fail, 'fiscal_year_close_posting rows are append-only.');
+end;
+
+create trigger if not exists attestation_operation_reject_update
+before update on attestation_operation
+begin
+    select raise(fail, 'attestation_operation rows are append-only.');
+end;
+
+create trigger if not exists attestation_operation_reject_delete
+before delete on attestation_operation
+begin
+    select raise(fail, 'attestation_operation rows are append-only.');
 end;

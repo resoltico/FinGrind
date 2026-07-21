@@ -233,7 +233,7 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     javaInstallationDirectory.set(
                         sourceCheckoutJavaLauncher.map { it.metadata.installationPath },
                     )
-                    nativeAccessModule.set("dev.erst.fingrind.cli")
+                    nativeAccessModules.set("dev.erst.fingrind.cli,dev.erst.fingrind.core")
                     applicationModule.set("dev.erst.fingrind.cli/dev.erst.fingrind.cli.App")
                     runtimeInputs.from(sourceCheckoutRuntimeInputs)
                     runtimeInputPaths.set(

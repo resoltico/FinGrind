@@ -13,6 +13,7 @@ final class SqliteBookContract {
   static final String ACCRUAL_CUTOFF_APPLICATION_TABLE = "accrual_cutoff_application";
   static final String ACCRUAL_CUTOFF_TABLE = "accrual_cutoff";
   static final String AUDIT_EVENT_TABLE = "audit_event";
+  static final String ATTESTATION_OPERATION_TABLE = "attestation_operation";
   static final String BOOK_IDENTITY_TABLE = "book_identity";
   static final String BOOK_META_TABLE = "book_meta";
   static final String JOURNAL_LINE_TABLE = "journal_line";
@@ -47,6 +48,7 @@ final class SqliteBookContract {
           java.util.List.of(
               BOOK_META_TABLE,
               BOOK_IDENTITY_TABLE,
+              ATTESTATION_OPERATION_TABLE,
               ACCOUNT_TABLE,
               ACCRUAL_CUTOFF_TABLE,
               ACCRUAL_CUTOFF_APPLICATION_TABLE,
