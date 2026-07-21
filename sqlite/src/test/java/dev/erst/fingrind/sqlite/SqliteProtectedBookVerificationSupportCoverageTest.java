@@ -159,6 +159,9 @@ class SqliteProtectedBookVerificationSupportCoverageTest
         normalizedBookPath,
         ProtectedBookVerificationFailure.MISSING);
     assertEquals(
+        ProtectedBookVerificationFailure.MISSING,
+        VERIFICATION_SUPPORT.mapInspectionFailure(BookLifecycleInspection.Status.MISSING));
+    assertEquals(
         ProtectedBookVerificationFailure.FOREIGN_SQLITE,
         VERIFICATION_SUPPORT.mapInspectionFailure(BookLifecycleInspection.Status.FOREIGN_SQLITE));
     assertEquals(

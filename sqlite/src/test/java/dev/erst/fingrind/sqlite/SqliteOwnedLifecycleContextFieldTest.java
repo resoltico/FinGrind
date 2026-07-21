@@ -117,6 +117,12 @@ class SqliteOwnedLifecycleContextFieldTest extends SqlitePostingFactStoreTestSup
       assertEquals(
           FIXED_ASSET_ID, session.findFixedAsset(FIXED_ASSET_ID).orElseThrow().fixedAssetId());
       assertEquals(
+          FIXED_ASSET_ID,
+          session
+              .fixedAssets(Optional.of(LocalDate.parse("2026-07-15")))
+              .getFirst()
+              .fixedAssetId());
+      assertEquals(
           Money.parse("EUR", "0.00"),
           session.findFixedAsset(FIXED_ASSET_ID).orElseThrow().carryingAmount());
       assertEquals(

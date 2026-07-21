@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -62,6 +63,14 @@ class SqliteStoreSessionStateTrackerTest extends SqliteStoreFixtureSupport {
       assertSame(initialFailure, assertThrows(IllegalStateException.class, failed::ensureOpen));
       IllegalStateException replacementFailure = new IllegalStateException("replacement failure");
       assertSame(replacementFailure, failed.rememberTerminalFailure(replacementFailure));
+      assertEquals(
+          "Failed-session rejection.",
+          failed
+              .rememberedRejectedFailure(
+                  ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.failure(
+                      "Failed-session rejection.", null, null))
+              .failure()
+              .message());
 
       ContractFailureException storedRejected =
           new ContractFailureException(
@@ -100,5 +109,36 @@ class SqliteStoreSessionStateTrackerTest extends SqliteStoreFixtureSupport {
       assertSame(closeFailure, closed.rememberTerminalFailure(closeFailure));
       assertSame(closeFailure, assertThrows(IllegalStateException.class, closed::ensureOpen));
     }
+  }
+
+  @Test
+  void stateSnapshotsAndAccessModesRejectInvalidStateAtTheirExactBoundary() {
+    assertEquals(
+        "SQLite applicationId must be non-negative.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new SqliteBookStateSnapshot(-1, 0, SqliteBookState.BLANK_SQLITE))
+            .getMessage());
+    assertEquals(
+        "SQLite userVersion must be non-negative.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> new SqliteBookStateSnapshot(0, -1, SqliteBookState.BLANK_SQLITE))
+            .getMessage());
+
+    assertEquals(
+        "This FinGrind SQLite session is read-only and cannot mutate the book.",
+        assertThrows(
+                IllegalStateException.class,
+                SqliteStoreAccessMode.READ_ONLY::requireWritableMutation)
+            .getMessage());
+    assertDoesNotThrow(SqliteStoreAccessMode.READ_WRITE_EXISTING::requireWritableMutation);
+    assertEquals(
+        "This FinGrind SQLite session cannot initialize or create a book file.",
+        assertThrows(
+                IllegalStateException.class,
+                SqliteStoreAccessMode.READ_WRITE_EXISTING::requireWritableInitialization)
+            .getMessage());
+    assertDoesNotThrow(SqliteStoreAccessMode.READ_WRITE_CREATE::requireWritableInitialization);
   }
 }
