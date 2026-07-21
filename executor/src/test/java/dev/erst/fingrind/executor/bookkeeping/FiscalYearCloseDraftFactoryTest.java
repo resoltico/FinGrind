@@ -317,7 +317,7 @@ class FiscalYearCloseDraftFactoryTest {
         dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence(postingId),
         new CommittedProvenance(
             new RequestProvenance(
-                new CommandId("command-" + postingId),
+                dev.erst.fingrind.executor.TestCommandIds.fromLabel("command-" + postingId),
                 new IdempotencyKey("idem-" + postingId),
                 new CausationId("cause-" + postingId),
                 Optional.empty()),

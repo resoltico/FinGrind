@@ -37,7 +37,7 @@ import java.util.Optional;
 
 /** Builds one interim-result-sweep draft per currency close bucket. */
 final class InterimResultSweepDraftFactory {
-  private static final SourceChannel INTERIM_RESULT_SWEEP_SOURCE_CHANNEL = SourceChannel.CLI;
+  private static final SourceChannel INTERIM_RESULT_SWEEP_SOURCE_CHANNEL = SourceChannel.SYSTEM;
   private static final String INTERIM_RESULT_SWEEP_REQUEST_TOKEN = "interimResultSweep";
   private static final String INTERIM_RESULT_SWEEP_OPERATION =
       OperationId.INTERIM_RESULT_SWEEP.wireName();

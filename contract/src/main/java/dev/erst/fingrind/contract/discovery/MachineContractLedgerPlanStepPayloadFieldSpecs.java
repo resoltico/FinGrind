@@ -113,5 +113,4 @@ final class MachineContractLedgerPlanStepPayloadFieldSpecs {
         conditionalPostingIdField().description(),
         MachineContractLedgerPlanFieldSupport.acceptedSchema(conditionalPostingIdField()));
   }
-
 }

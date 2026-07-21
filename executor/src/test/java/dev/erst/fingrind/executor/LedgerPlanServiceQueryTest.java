@@ -97,7 +97,10 @@ class LedgerPlanServiceQueryTest {
 
       List<LedgerFact> getPostingFacts = result.journal().steps().get(1).facts();
       assertTrue(
-          getPostingFacts.stream().anyMatch(fact -> textFact(fact, "postingId", "posting-1")));
+          getPostingFacts.stream()
+              .anyMatch(
+                  fact ->
+                      textFact(fact, "postingId", TestPostingIds.fromLabel("posting-1").value())));
       assertTrue(
           getPostingFacts.stream()
               .anyMatch(
@@ -106,7 +109,7 @@ class LedgerPlanServiceQueryTest {
                           fact,
                           "provenance",
                           "commandId",
-                          "018f0000-0000-7000-8000-000000000001",
+                          "20aea0ba-3b2e-3428-af5b-f9ee3094522c",
                           "sourceChannel",
                           "CLI")));
       assertTrue(

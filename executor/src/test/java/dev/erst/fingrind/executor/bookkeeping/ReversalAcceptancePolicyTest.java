@@ -120,9 +120,7 @@ class ReversalAcceptancePolicyTest {
             BookkeepingPostingRejection.EntrySemanticsViolations.class,
             ReversalAcceptancePolicy.rejectionFor(
                     reversalRequest(
-                        "idem-prepayment-horizon",
-                        origin.postingId().value(),
-                        reversalJournalEntry()),
+                        "idem-prepayment-horizon", origin.postingId(), reversalJournalEntry()),
                     horizonStore)
                 .orElseThrow());
     assertEquals(
@@ -141,9 +139,7 @@ class ReversalAcceptancePolicyTest {
             BookkeepingPostingRejection.EntrySemanticsViolations.class,
             ReversalAcceptancePolicy.rejectionFor(
                     reversalRequest(
-                        "idem-prepayment-applied",
-                        origin.postingId().value(),
-                        reversalJournalEntry()),
+                        "idem-prepayment-applied", origin.postingId(), reversalJournalEntry()),
                     appliedStore)
                 .orElseThrow());
     assertEquals(
@@ -188,9 +184,7 @@ class ReversalAcceptancePolicyTest {
         () ->
             ReversalAcceptancePolicy.rejectionFor(
                 reversalRequest(
-                    "idem-missing-cutoff",
-                    prepaymentPosting.postingId().value(),
-                    reversalJournalEntry()),
+                    "idem-missing-cutoff", prepaymentPosting.postingId(), reversalJournalEntry()),
                 new PostingValidationStoreStub(
                     Map.of(prepaymentPosting.postingId(), prepaymentPosting))));
   }
@@ -206,14 +200,12 @@ class ReversalAcceptancePolicyTest {
         IllegalStateException.class,
         () ->
             ReversalAcceptancePolicy.rejectionFor(
-                reversalRequest(
-                    "idem-missing-payroll-run", runPosting.postingId().value(), runReversal),
+                reversalRequest("idem-missing-payroll-run", runPosting.postingId(), runReversal),
                 new PayrollPostingValidationStore(
                     runPosting, Optional.empty(), Optional.empty(), Map.of())));
     assertEntrySemanticsCode(
         ReversalAcceptancePolicy.rejectionFor(
-                reversalRequest(
-                    "idem-early-payroll-run", runPosting.postingId().value(), runReversal),
+                reversalRequest("idem-early-payroll-run", runPosting.postingId(), runReversal),
                 new PayrollPostingValidationStore(
                     runPosting, Optional.of(run), Optional.empty(), Map.of()))
             .orElseThrow(),
@@ -228,9 +220,7 @@ class ReversalAcceptancePolicyTest {
     assertEntrySemanticsCode(
         ReversalAcceptancePolicy.rejectionFor(
                 reversalRequest(
-                    "idem-active-payroll-settlement",
-                    runPosting.postingId().value(),
-                    currentRunReversal),
+                    "idem-active-payroll-settlement", runPosting.postingId(), currentRunReversal),
                 new PayrollPostingValidationStore(
                     runPosting,
                     Optional.of(run),
@@ -242,9 +232,7 @@ class ReversalAcceptancePolicyTest {
         Optional.empty(),
         ReversalAcceptancePolicy.rejectionFor(
             reversalRequest(
-                "idem-closed-payroll-settlements",
-                runPosting.postingId().value(),
-                currentRunReversal),
+                "idem-closed-payroll-settlements", runPosting.postingId(), currentRunReversal),
             new PayrollPostingValidationStore(
                 runPosting, Optional.of(run), Optional.empty(), Map.of())));
   }
@@ -273,7 +261,7 @@ class ReversalAcceptancePolicyTest {
             ReversalAcceptancePolicy.rejectionFor(
                 reversalRequest(
                     "idem-missing-" + settlementKind.wireValue(),
-                    settlementPosting.postingId().value(),
+                    settlementPosting.postingId(),
                     prematureReversal),
                 new PayrollPostingValidationStore(
                     settlementPosting, Optional.empty(), Optional.empty(), Map.of())));
@@ -281,7 +269,7 @@ class ReversalAcceptancePolicyTest {
         ReversalAcceptancePolicy.rejectionFor(
                 reversalRequest(
                     "idem-early-" + settlementKind.wireValue(),
-                    settlementPosting.postingId().value(),
+                    settlementPosting.postingId(),
                     prematureReversal),
                 new PayrollPostingValidationStore(
                     settlementPosting, Optional.empty(), Optional.of(settlementRecord), Map.of()))
@@ -292,7 +280,7 @@ class ReversalAcceptancePolicyTest {
         ReversalAcceptancePolicy.rejectionFor(
             reversalRequest(
                 "idem-admitted-" + settlementKind.wireValue(),
-                settlementPosting.postingId().value(),
+                settlementPosting.postingId(),
                 admissibleReversal),
             new PayrollPostingValidationStore(
                 settlementPosting, Optional.empty(), Optional.of(settlementRecord), Map.of())));
@@ -464,15 +452,15 @@ class ReversalAcceptancePolicyTest {
 
   static PostingRequestModel reversalRequest(
       String idempotencyKey, String priorPostingId, JournalEntry candidateJournalEntry) {
-    ReversalReference reversalReference =
-        new ReversalReference(
-            new PostingId(
-                java.util
-                    .UUID
-                    .nameUUIDFromBytes(
-                        ("fingrind-test-postingid:" + priorPostingId)
-                            .getBytes(java.nio.charset.StandardCharsets.UTF_8))
-                    .toString()));
+    return reversalRequest(
+        idempotencyKey,
+        dev.erst.fingrind.executor.TestPostingIds.fromLabel(priorPostingId),
+        candidateJournalEntry);
+  }
+
+  static PostingRequestModel reversalRequest(
+      String idempotencyKey, PostingId priorPostingId, JournalEntry candidateJournalEntry) {
+    ReversalReference reversalReference = new ReversalReference(priorPostingId);
     ReversalReason reversalReason = new ReversalReason("operator reversal");
     return new PostingCommand(
         PostingKind.STANDARD,
@@ -600,7 +588,7 @@ class ReversalAcceptancePolicyTest {
         ReversalAcceptancePolicy.rejectionFor(
             reversalRequest(
                 "idem-" + reversalCase.name(),
-                reversalCase.posting().postingId().value(),
+                reversalCase.posting().postingId(),
                 reversalJournalEntry()),
             new PostingValidationStoreStub(
                 Map.of(reversalCase.posting().postingId(), reversalCase.posting()),

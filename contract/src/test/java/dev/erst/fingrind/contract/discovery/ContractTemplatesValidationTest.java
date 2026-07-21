@@ -123,25 +123,18 @@ class ContractTemplatesValidationTest {
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "preflight",
               LedgerStepKind.PREFLIGHT_ENTRY,
-                            postingTemplate(),
+              postingTemplate(),
               null,
               null,
               null,
               null,
               null);
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-              "post",
-              LedgerStepKind.POST_ENTRY,
-                            postingTemplate(),
-              null,
-              null,
-              null,
-              null,
-              null);
+              "post", LedgerStepKind.POST_ENTRY, postingTemplate(), null, null, null, null, null);
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "declare",
               LedgerStepKind.DECLARE_ACCOUNT,
-                            null,
+              null,
               new ContractTemplates.DeclareAccountTemplateDescriptor(
                   "1000",
                   "Cash",
@@ -160,25 +153,18 @@ class ContractTemplatesValidationTest {
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "declare-tax",
               LedgerStepKind.DECLARE_TAX_REGISTRATION,
-                            null,
+              null,
               null,
               MachineContractTemplatesCatalog.declareTaxRegistrationTemplate(),
               null,
               null,
               null);
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-              "list-accounts",
-              LedgerStepKind.LIST_ACCOUNTS,
-                            null,
-              null,
-              null,
-              null,
-              null,
-              null);
+              "list-accounts", LedgerStepKind.LIST_ACCOUNTS, null, null, null, null, null, null);
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "list-postings",
               LedgerStepKind.LIST_POSTINGS,
-                            null,
+              null,
               null,
               null,
               new ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor(
@@ -188,7 +174,7 @@ class ContractTemplatesValidationTest {
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "balance",
               LedgerStepKind.ACCOUNT_BALANCE,
-                            null,
+              null,
               null,
               null,
               new ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor(
@@ -196,18 +182,11 @@ class ContractTemplatesValidationTest {
               null,
               null);
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-              "get-posting",
-              LedgerStepKind.GET_POSTING,
-                            null,
-              null,
-              null,
-              null,
-              null,
-              "posting-1");
+              "get-posting", LedgerStepKind.GET_POSTING, null, null, null, null, null, "posting-1");
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "assert",
               LedgerStepKind.ASSERT,
-                            null,
+              null,
               null,
               null,
               null,
@@ -231,7 +210,7 @@ class ContractTemplatesValidationTest {
             new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
                 "broken-balance",
                 LedgerStepKind.ACCOUNT_BALANCE,
-                                null,
+                null,
                 null,
                 null,
                 new ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor(
@@ -244,7 +223,7 @@ class ContractTemplatesValidationTest {
             new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
                 "missing-posting-id",
                 LedgerStepKind.GET_POSTING,
-                                null,
+                null,
                 null,
                 null,
                 null,

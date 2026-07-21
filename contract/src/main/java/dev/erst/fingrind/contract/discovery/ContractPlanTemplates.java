@@ -7,7 +7,6 @@ import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.core.BalanceSide;
-import dev.erst.fingrind.core.CanonicalTemporalText;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 

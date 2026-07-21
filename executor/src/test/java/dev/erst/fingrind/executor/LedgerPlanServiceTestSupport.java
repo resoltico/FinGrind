@@ -67,6 +67,7 @@ import java.util.Optional;
 final class LedgerPlanServiceTestSupport {
   static final Clock FIXED_CLOCK =
       Clock.fixed(Instant.parse("2026-04-17T10:15:30Z"), ZoneOffset.UTC);
+  private static final String RUNTIME_FAILURE_MESSAGE = "boom";
 
   private LedgerPlanServiceTestSupport() {}
 
@@ -247,6 +248,10 @@ final class LedgerPlanServiceTestSupport {
    */
   abstract static class DelegatingAtomicBookStore implements LedgerPlanSession {
     protected final InMemoryBookSession delegate = new InMemoryBookSession();
+
+    protected DelegatingAtomicBookStore() {
+      delegate.openBook(FIXED_CLOCK.instant(), bookIdentity(), List.of());
+    }
 
     @Override
     public BookLifecycleInspection inspectBook() {
@@ -500,16 +505,14 @@ final class LedgerPlanServiceTestSupport {
     }
   }
 
-  /** In-memory session that throws during open-book to exercise rollback-on-runtime-failure. */
+  /* In-memory session that throws while listing accounts to exercise rollback-on-runtime-failure. */
   static final class ThrowingLedgerPlanSession extends DelegatingAtomicBookStore {
     private boolean rollbackCalled;
 
     @Override
-    public BookOpeningOutcome openBook(
-        Instant initializedAt,
-        dev.erst.fingrind.core.BookIdentity bookIdentity,
-        List<AccountDeclaration> seededAccounts) {
-      throw new IllegalStateException("boom");
+    public dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage listAccounts(
+        dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery query) {
+      throw new IllegalStateException(RUNTIME_FAILURE_MESSAGE);
     }
 
     @Override
@@ -523,7 +526,7 @@ final class LedgerPlanServiceTestSupport {
     }
   }
 
-  /** Test-only seam split that throws during declare-account after a successful open-book step. */
+  /* Test-only seam split that throws during declare-account after a successful open-book step. */
   static final class DeclareRuntimeFailingLedgerPlanSession extends DelegatingAtomicBookStore {
     private boolean rollbackCalled;
 
@@ -546,7 +549,7 @@ final class LedgerPlanServiceTestSupport {
     }
   }
 
-  /** Test-only seam split that throws before any ledger-plan transaction begins. */
+  /* Test-only seam split that throws before any ledger-plan transaction begins. */
   static final class BeginFailingLedgerPlanSession extends DelegatingAtomicBookStore {
     @Override
     public void beginLedgerPlanTransaction() {
@@ -554,7 +557,7 @@ final class LedgerPlanServiceTestSupport {
     }
   }
 
-  /** Test-only seam split that throws while checking initialization before the first step runs. */
+  /* Test-only seam split that throws while checking initialization before the first step runs. */
   static final class InitializationCheckFailingLedgerPlanSession extends DelegatingAtomicBookStore {
     private boolean rollbackCalled;
 
@@ -574,7 +577,7 @@ final class LedgerPlanServiceTestSupport {
     }
   }
 
-  /** Test-only seam split that keeps queries uninitialized after a successful open-book step. */
+  /* Test-only seam split that keeps queries uninitialized after a successful open-book step. */
   static final class ListAccountsRejectingLedgerPlanSession extends DelegatingAtomicBookStore {
     @Override
     public BookLifecycleInspection inspectBook() {
@@ -582,7 +585,7 @@ final class LedgerPlanServiceTestSupport {
     }
   }
 
-  /** Test-only seam split that throws during commit so the outer finally rollback path runs. */
+  /* Test-only seam split that throws during commit so the outer finally rollback path runs. */
   static final class CommitFailingLedgerPlanSession extends DelegatingAtomicBookStore {
     private boolean rollbackCalled;
 
@@ -602,7 +605,7 @@ final class LedgerPlanServiceTestSupport {
     }
   }
 
-  /** Test-only seam split that throws during rollback after a deterministic plan failure. */
+  /* Test-only seam split that throws during rollback after a deterministic plan failure. */
   static final class RollbackFailingLedgerPlanSession extends DelegatingAtomicBookStore {
     @Override
     public void rollbackLedgerPlanTransaction() {
@@ -610,17 +613,13 @@ final class LedgerPlanServiceTestSupport {
     }
   }
 
-  /**
-   * Test-only seam split that throws during step execution and then throws again during rollback.
-   */
+  /* Test-only seam split that throws during step execution and then throws again during rollback. */
   static final class RuntimeRollbackFailingLedgerPlanSession extends DelegatingAtomicBookStore {
 
     @Override
-    public BookOpeningOutcome openBook(
-        Instant initializedAt,
-        dev.erst.fingrind.core.BookIdentity bookIdentity,
-        List<AccountDeclaration> seededAccounts) {
-      throw new IllegalStateException("boom");
+    public dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage listAccounts(
+        dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery query) {
+      throw new IllegalStateException(RUNTIME_FAILURE_MESSAGE);
     }
 
     @Override

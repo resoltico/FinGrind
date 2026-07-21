@@ -132,14 +132,16 @@ public enum LedgerStepKind implements WireValue, LedgerJournalKind {
           RECORD_OWNER_WITHDRAWAL,
           RECORD_OPENING_POSITION,
           RECORD_REVERSAL,
-          POST_ENTRY -> true;
+          POST_ENTRY ->
+          true;
       case PREFLIGHT_ENTRY,
           INSPECT_BOOK,
           LIST_ACCOUNTS,
           GET_POSTING,
           LIST_POSTINGS,
           ACCOUNT_BALANCE,
-          ASSERT -> false;
+          ASSERT ->
+          false;
     };
   }
 

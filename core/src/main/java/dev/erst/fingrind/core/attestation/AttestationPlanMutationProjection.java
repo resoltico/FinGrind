@@ -12,21 +12,8 @@ final class AttestationPlanMutationProjection {
   private static final String CLI = "cli";
   private static final Set<Integer> REQUEST_STEP_ORDER_TAGS =
       Set.of(
-          0x0120,
-          0x0121,
-          0x0122,
-          0x0123,
-          0x0124,
-          0x0126,
-          0x0127,
-          0x0128,
-          0x0129,
-          0x012A,
-          0x0130,
-          0x0131,
-          0x0132,
-          0x0133,
-          0x0134);
+          0x0120, 0x0121, 0x0122, 0x0123, 0x0124, 0x0126, 0x0127, 0x0128, 0x0129, 0x012A, 0x0130,
+          0x0131, 0x0132, 0x0133, 0x0134);
 
   private AttestationPlanMutationProjection() {}
 
@@ -47,7 +34,8 @@ final class AttestationPlanMutationProjection {
       appendChildFacts(effectFacts, child.preimages().effect(), child.stepOrder(), false);
     }
     return new AttestationOperationPreimages(
-        AttestationPreimage.of(requestFacts).encoded(), AttestationPreimage.of(effectFacts).encoded());
+        AttestationPreimage.of(requestFacts).encoded(),
+        AttestationPreimage.of(effectFacts).encoded());
   }
 
   private static void appendChildRequestFacts(
@@ -74,10 +62,7 @@ final class AttestationPlanMutationProjection {
   }
 
   private static void appendChildFacts(
-      List<AttestationPreimage.Fact> target,
-      byte[] encoded,
-      int stepOrder,
-      boolean request) {
+      List<AttestationPreimage.Fact> target, byte[] encoded, int stepOrder, boolean request) {
     AttestationPreimage decoded =
         AttestationPreimage.decode(encoded, AttestationAuthorizationFailure.PREIMAGE_INVALID);
     for (AttestationPreimage.Fact fact : decoded.records()) {

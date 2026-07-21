@@ -145,7 +145,8 @@ class PostingRouteReachabilityContractTest implements PostingRouteReachabilityCo
         priorPosting(
             cell,
             "prior-" + cellToken(cell),
-            new PostingId("posting-" + cellToken(cell).toLowerCase(java.util.Locale.ROOT)));
+            dev.erst.fingrind.executor.TestPostingIds.fromLabel(
+                "posting-" + cellToken(cell).toLowerCase(java.util.Locale.ROOT)));
     ReachabilityValidationBook book =
         new ReachabilityValidationBook(
             bookIdentity(cell), candidateAccount(cell), counterAuxiliaryAccount(), priorPosting);

@@ -18,7 +18,6 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
@@ -619,7 +618,7 @@ class InterimResultSweepServiceTest {
         postingEvidence(postingId, postingKind),
         new CommittedProvenance(
             new RequestProvenance(
-                new CommandId("command-" + postingId),
+                dev.erst.fingrind.executor.TestCommandIds.fromLabel("command-" + postingId),
                 new IdempotencyKey("idem-" + postingId),
                 new CausationId("cause-" + postingId),
                 Optional.of(new CorrelationId("corr-" + postingId))),
@@ -631,7 +630,8 @@ class InterimResultSweepServiceTest {
     String closeToken = PERIOD_DATE + ":" + PERIOD_DATE + ":" + FIXED_INSTANT.toEpochMilli();
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            new CommandId("interimResultSweep:" + closeToken + ":" + currencyCode),
+            dev.erst.fingrind.executor.TestCommandIds.fromLabel(
+                "interimResultSweep:" + closeToken + ":" + currencyCode),
             new IdempotencyKey("interimResultSweep:" + closeToken + ":" + currencyCode),
             new CausationId("interimResultSweep:" + closeToken),
             Optional.of(new CorrelationId("interimResultSweep:" + closeToken)));
@@ -660,7 +660,7 @@ class InterimResultSweepServiceTest {
             accountingEvidence(idempotencyKey),
             new CommittedProvenance(
                 new RequestProvenance(
-                    new dev.erst.fingrind.core.CommandId("command-" + postingId),
+                    dev.erst.fingrind.executor.TestCommandIds.fromLabel("command-" + postingId),
                     new dev.erst.fingrind.core.IdempotencyKey(idempotencyKey),
                     new dev.erst.fingrind.core.CausationId("cause-" + postingId),
                     Optional.empty()),
@@ -697,13 +697,17 @@ class InterimResultSweepServiceTest {
 
   /** Deterministic posting id generator for generated transfer postings. */
   private static final class SequencePostingIdGenerator implements PostingIdGenerator {
+    private static final List<PostingId> GENERATED_POSTING_IDS =
+        List.of(
+            new PostingId("f69a68be-269e-3c0f-96ac-2e3f7d806a8b"),
+            new PostingId("01f60e25-bdd4-3408-90ed-384699ceba97"));
     private int nextValue = 1;
 
     @Override
     public PostingId nextPostingId() {
-      int currentValue = nextValue;
-      nextValue = currentValue + 1;
-      return new PostingId("interim-result-sweep-" + currentValue);
+      PostingId nextPostingId = GENERATED_POSTING_IDS.get(nextValue - 1);
+      nextValue++;
+      return nextPostingId;
     }
   }
 
@@ -783,7 +787,8 @@ class InterimResultSweepServiceTest {
       recordedDraft = interimResultSweepDraft;
       List<PostingId> generatedPostingIds = new ArrayList<>();
       for (int index = 0; index < interimResultSweepDraft.closingPostings().size(); index++) {
-        generatedPostingIds.add(new PostingId("generated-" + (index + 1)));
+        generatedPostingIds.add(
+            dev.erst.fingrind.executor.TestPostingIds.fromLabel("generated-" + (index + 1)));
       }
       return new InterimResultSweepOutcome.Transferred(
           new dev.erst.fingrind.executor.bookkeeping.SweptInterimResult(

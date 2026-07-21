@@ -7,7 +7,8 @@ import java.util.Objects;
 /** Collects one plan's child mutation projections for a single final authorization. */
 public final class AttestationPlanOperationAuthorizer implements AttestationOperationAuthorizer {
   /** Immutable child mutation projection bound to its source-plan position. */
-  record ChildMutation(int stepOrder, String operationKind, AttestationOperationPreimages preimages) {
+  record ChildMutation(
+      int stepOrder, String operationKind, AttestationOperationPreimages preimages) {
     ChildMutation {
       if (stepOrder < 0) {
         throw new IllegalArgumentException("stepOrder must not be negative.");

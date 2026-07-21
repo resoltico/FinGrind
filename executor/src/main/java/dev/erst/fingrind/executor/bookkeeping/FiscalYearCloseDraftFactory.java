@@ -24,7 +24,7 @@ import org.jspecify.annotations.Nullable;
 
 /** Builds fiscal-year-close posting drafts for withdrawal settlement and retained accumulation. */
 final class FiscalYearCloseDraftFactory {
-  private static final SourceChannel FISCAL_YEAR_CLOSE_SOURCE_CHANNEL = SourceChannel.CLI;
+  private static final SourceChannel FISCAL_YEAR_CLOSE_SOURCE_CHANNEL = SourceChannel.SYSTEM;
 
   List<PostingDraft> withdrawalCloseDrafts(
       ReportingPeriod reportingPeriod,

@@ -37,7 +37,6 @@ import dev.erst.fingrind.core.BookEntityName;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -216,7 +215,12 @@ class OwnedLifecycleContextIntegrationTest {
   private static PostingApplicationService postingService(InMemoryBookSession session) {
     AtomicInteger sequence = new AtomicInteger();
     return new PostingApplicationService(
-        session, session, () -> new PostingId("lifecycle-" + sequence.incrementAndGet()), CLOCK);
+        session,
+        session,
+        () ->
+            dev.erst.fingrind.executor.TestPostingIds.fromLabel(
+                "lifecycle-" + sequence.incrementAndGet()),
+        CLOCK);
   }
 
   private static PostEntryResult.Committed commit(
@@ -251,7 +255,7 @@ class OwnedLifecycleContextIntegrationTest {
 
   private static RequestProvenance provenance(String token) {
     return new RequestProvenance(
-        new CommandId("lifecycle-command-" + token),
+        dev.erst.fingrind.executor.TestCommandIds.fromLabel("lifecycle-command-" + token),
         new IdempotencyKey("lifecycle-idempotency-" + token),
         new CausationId("lifecycle-cause-" + token),
         Optional.empty());

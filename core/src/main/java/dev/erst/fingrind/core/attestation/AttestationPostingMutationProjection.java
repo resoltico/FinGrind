@@ -1,13 +1,10 @@
 package dev.erst.fingrind.core.attestation;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.UUID;
-import org.jspecify.annotations.Nullable;
 
 /** Projects the complete direct-posting request and durable posting effect into fixed preimages. */
 public final class AttestationPostingMutationProjection {
@@ -57,10 +54,10 @@ public final class AttestationPostingMutationProjection {
     return new AttestationPreimage.Fact(
         0x0100,
         List.of(
-            presentToken(token(request.operationKind())),
-            presentText(request.idempotencyKey()),
-            presentText(request.causationId()),
-            presentToken(token(request.sourceChannel()))));
+            AttestationPreimageProjectionFields.token(token(request.operationKind())),
+            AttestationPreimageProjectionFields.text(request.idempotencyKey()),
+            AttestationPreimageProjectionFields.text(request.causationId()),
+            AttestationPreimageProjectionFields.token(token(request.sourceChannel()))));
   }
 
   private static AttestationPreimage.Fact postingRequest(
@@ -68,12 +65,12 @@ public final class AttestationPostingMutationProjection {
     return new AttestationPreimage.Fact(
         0x0120,
         List.of(
-            order(),
-            presentToken(token(request.operationKind())),
-            present(AttestationTextFieldValue.date(request.effectiveDate())),
-            presentToken(token(request.postingKind())),
-            optionalUuid(request.priorPostingId()),
-            optionalText(request.reversalReason())));
+            AttestationPreimageProjectionFields.unsigned32(OPERATION_STEP_ORDER),
+            AttestationPreimageProjectionFields.token(token(request.operationKind())),
+            AttestationPreimageProjectionFields.date(request.effectiveDate()),
+            AttestationPreimageProjectionFields.token(token(request.postingKind())),
+            AttestationPreimageProjectionFields.optionalUuid(request.priorPostingId()),
+            AttestationPreimageProjectionFields.optionalText(request.reversalReason())));
   }
 
   private static AttestationPreimage.Fact sourceDocumentRequest(
@@ -81,10 +78,10 @@ public final class AttestationPostingMutationProjection {
     return new AttestationPreimage.Fact(
         0x0124,
         List.of(
-            order(),
-            presentText(document.sourceDocumentId()),
-            presentText(document.sourceDocumentType()),
-            present(AttestationTextFieldValue.date(document.documentDate()))));
+            AttestationPreimageProjectionFields.unsigned32(OPERATION_STEP_ORDER),
+            AttestationPreimageProjectionFields.text(document.sourceDocumentId()),
+            AttestationPreimageProjectionFields.text(document.sourceDocumentType()),
+            AttestationPreimageProjectionFields.date(document.documentDate())));
   }
 
   private static AttestationPreimage.Fact journalLineRequest(
@@ -92,11 +89,12 @@ public final class AttestationPostingMutationProjection {
     return new AttestationPreimage.Fact(
         0x012A,
         List.of(
-            order(),
-            lineOrder(lineOrder),
-            presentText(line.accountCode()),
-            presentToken(token(line.side())),
-            money(line.currencyCode(), line.minorUnits()),
+            AttestationPreimageProjectionFields.unsigned32(OPERATION_STEP_ORDER),
+            AttestationPreimageProjectionFields.unsigned32(lineOrder),
+            AttestationPreimageProjectionFields.text(line.accountCode()),
+            AttestationPreimageProjectionFields.token(token(line.side())),
+            AttestationPreimageProjectionFields.money(
+                line.currencyCode(), line.minorUnits(), false),
             AttestationField.absent()));
   }
 
@@ -105,21 +103,19 @@ public final class AttestationPostingMutationProjection {
     return new AttestationPreimage.Fact(
         0x0020,
         List.of(
-            present(
-                AttestationNumericFieldValue.mutation(
-                    AttestationEffectMutation.CREATE.wireValue())),
-            present(AttestationBinaryFieldValue.uuid(effect.postingId())),
-            order(),
-            presentToken(token(effect.operationKind())),
-            presentToken(token(effect.postingKind())),
-            presentToken(token(effect.postingOriginKind())),
-            present(AttestationTextFieldValue.date(request.effectiveDate())),
-            present(AttestationTextFieldValue.instant(effect.recordedAt())),
-            optionalUuid(effect.priorPostingId()),
-            present(AttestationBinaryFieldValue.uuid(effect.commandId())),
-            presentText(request.idempotencyKey()),
-            presentText(request.causationId()),
-            presentToken(token(request.sourceChannel()))));
+            AttestationPreimageProjectionFields.mutation(),
+            AttestationPreimageProjectionFields.uuid(effect.postingId()),
+            AttestationPreimageProjectionFields.unsigned32(OPERATION_STEP_ORDER),
+            AttestationPreimageProjectionFields.token(token(effect.operationKind())),
+            AttestationPreimageProjectionFields.token(token(effect.postingKind())),
+            AttestationPreimageProjectionFields.token(token(effect.postingOriginKind())),
+            AttestationPreimageProjectionFields.date(request.effectiveDate()),
+            AttestationPreimageProjectionFields.instant(effect.recordedAt()),
+            AttestationPreimageProjectionFields.optionalUuid(effect.priorPostingId()),
+            AttestationPreimageProjectionFields.uuid(effect.commandId()),
+            AttestationPreimageProjectionFields.text(request.idempotencyKey()),
+            AttestationPreimageProjectionFields.text(request.causationId()),
+            AttestationPreimageProjectionFields.token(token(request.sourceChannel()))));
   }
 
   private static AttestationPreimage.Fact sourceDocumentEffect(
@@ -127,13 +123,11 @@ public final class AttestationPostingMutationProjection {
     return new AttestationPreimage.Fact(
         0x0021,
         List.of(
-            present(
-                AttestationNumericFieldValue.mutation(
-                    AttestationEffectMutation.CREATE.wireValue())),
-            present(AttestationBinaryFieldValue.uuid(postingId)),
-            presentText(document.sourceDocumentId()),
-            presentText(document.sourceDocumentType()),
-            present(AttestationTextFieldValue.date(document.documentDate()))));
+            AttestationPreimageProjectionFields.mutation(),
+            AttestationPreimageProjectionFields.uuid(postingId),
+            AttestationPreimageProjectionFields.text(document.sourceDocumentId()),
+            AttestationPreimageProjectionFields.text(document.sourceDocumentType()),
+            AttestationPreimageProjectionFields.date(document.documentDate())));
   }
 
   private static AttestationPreimage.Fact journalLineEffect(
@@ -141,66 +135,17 @@ public final class AttestationPostingMutationProjection {
     return new AttestationPreimage.Fact(
         0x0025,
         List.of(
-            present(
-                AttestationNumericFieldValue.mutation(
-                    AttestationEffectMutation.CREATE.wireValue())),
-            present(AttestationBinaryFieldValue.uuid(postingId)),
-            lineOrder(lineOrder),
-            presentText(line.accountCode()),
-            presentToken(token(line.side())),
-            money(line.currencyCode(), line.minorUnits()),
+            AttestationPreimageProjectionFields.mutation(),
+            AttestationPreimageProjectionFields.uuid(postingId),
+            AttestationPreimageProjectionFields.unsigned32(lineOrder),
+            AttestationPreimageProjectionFields.text(line.accountCode()),
+            AttestationPreimageProjectionFields.token(token(line.side())),
+            AttestationPreimageProjectionFields.money(
+                line.currencyCode(), line.minorUnits(), false),
             AttestationField.absent()));
-  }
-
-  private static AttestationField order() {
-    return present(
-        AttestationNumericFieldValue.unsigned32(BigInteger.valueOf(OPERATION_STEP_ORDER)));
-  }
-
-  private static AttestationField lineOrder(int lineOrder) {
-    if (lineOrder < 0) {
-      throw new IllegalArgumentException("lineOrder must not be negative.");
-    }
-    return present(AttestationNumericFieldValue.unsigned32(BigInteger.valueOf(lineOrder)));
-  }
-
-  private static AttestationField money(String currencyCode, long minorUnits) {
-    return present(
-        AttestationNumericFieldValue.money(currencyCode, false, BigInteger.valueOf(minorUnits)));
-  }
-
-  private static AttestationField optionalUuid(@Nullable String uuidText) {
-    return Optional.ofNullable(uuidText)
-        .<AttestationField>map(
-            value -> present(AttestationBinaryFieldValue.uuid(UUID.fromString(value))))
-        .orElseGet(AttestationField::absent);
-  }
-
-  private static AttestationField optionalUuid(@Nullable UUID value) {
-    return Optional.ofNullable(value)
-        .<AttestationField>map(uuid -> present(AttestationBinaryFieldValue.uuid(uuid)))
-        .orElseGet(AttestationField::absent);
-  }
-
-  private static AttestationField optionalText(@Nullable String value) {
-    return Optional.ofNullable(value)
-        .<AttestationField>map(AttestationPostingMutationProjection::presentText)
-        .orElseGet(AttestationField::absent);
   }
 
   private static String token(String value) {
     return Objects.requireNonNull(value, "value").toLowerCase(Locale.ROOT).replace('_', '-');
-  }
-
-  private static AttestationField present(AttestationFieldValue value) {
-    return AttestationField.present(value);
-  }
-
-  private static AttestationField presentText(String value) {
-    return present(AttestationTextFieldValue.text(value));
-  }
-
-  private static AttestationField presentToken(String value) {
-    return present(AttestationTextFieldValue.token(value));
   }
 }

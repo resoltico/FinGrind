@@ -26,7 +26,6 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalLine;
@@ -85,7 +84,7 @@ class LatvianPayrollLifecycleIntegrationTest {
       PostingApplicationService service = postingService(bookSession);
 
       PostEntryResult.Committed run = commit(service, monthlyPayroll(), "payroll-run");
-      assertEquals("posting-1", run.postingId().value());
+      assertEquals(TestPostingIds.fromLabel("posting-1"), run.postingId());
       assertEquals(
           List.of(
               "wage-expense:DEBIT:2000.00",
@@ -104,9 +103,9 @@ class LatvianPayrollLifecycleIntegrationTest {
               service, stateRemittance(LocalDate.parse("2026-08-05")), "payroll-state-remittance");
       PostEntryResult.Committed secondRun =
           commit(service, monthlyPayroll(SECOND_RUN_ID, SECOND_EMPLOYEE), "payroll-second-run");
-      assertEquals("posting-2", netWages.postingId().value());
-      assertEquals("posting-3", stateRemittance.postingId().value());
-      assertEquals("posting-4", secondRun.postingId().value());
+      assertEquals(TestPostingIds.fromLabel("posting-2"), netWages.postingId());
+      assertEquals(TestPostingIds.fromLabel("posting-3"), stateRemittance.postingId());
+      assertEquals(TestPostingIds.fromLabel("posting-4"), secondRun.postingId());
 
       PostEntryResult.CommitRejected duplicateSettlement =
           assertInstanceOf(
@@ -259,7 +258,9 @@ class LatvianPayrollLifecycleIntegrationTest {
     return new PostingApplicationService(
         bookSession,
         bookSession,
-        () -> new PostingId("posting-" + sequence.incrementAndGet()),
+        () ->
+            dev.erst.fingrind.executor.TestPostingIds.fromLabel(
+                "posting-" + sequence.incrementAndGet()),
         CLOCK);
   }
 
@@ -331,7 +332,7 @@ class LatvianPayrollLifecycleIntegrationTest {
         entry,
         evidence(token, sourceDocumentType(entry)),
         new RequestProvenance(
-            new CommandId("payroll-command-" + token),
+            dev.erst.fingrind.executor.TestCommandIds.fromLabel("payroll-command-" + token),
             new IdempotencyKey("payroll-idempotency-" + token),
             new CausationId("payroll-cause-" + token),
             Optional.empty()),

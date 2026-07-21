@@ -178,7 +178,7 @@ class ReversalLifecycleAcceptancePolicyTest {
         ReversalAcceptancePolicy.rejectionFor(
                 reversalRequest(
                     "idem-capitalization",
-                    capitalizationPosting.postingId().value(),
+                    capitalizationPosting.postingId(),
                     negatedJournal(
                         capitalizationPosting.journalEntry(), LocalDate.parse("2026-07-01"))),
                 new ReversalAcceptancePolicyTest.LifecyclePostingValidationStore(
@@ -207,7 +207,7 @@ class ReversalLifecycleAcceptancePolicyTest {
         ReversalAcceptancePolicy.rejectionFor(
                 reversalRequest(
                     "idem-borrowing",
-                    borrowingPosting.postingId().value(),
+                    borrowingPosting.postingId(),
                     negatedJournal(borrowingPosting.journalEntry(), LocalDate.parse("2026-07-01"))),
                 new ReversalAcceptancePolicyTest.LifecyclePostingValidationStore(
                     borrowingPosting,
@@ -248,7 +248,7 @@ class ReversalLifecycleAcceptancePolicyTest {
         ReversalAcceptancePolicy.rejectionFor(
                 reversalRequest(
                     "idem-obligation",
-                    obligationPosting.postingId().value(),
+                    obligationPosting.postingId(),
                     negatedJournal(
                         obligationPosting.journalEntry(), LocalDate.parse("2026-07-02"))),
                 new ReversalAcceptancePolicyTest.LifecyclePostingValidationStore(

@@ -477,16 +477,21 @@ class LedgerPlanOutcomeMapperTest {
         "opening-position-touches-nominal-account", openingBalanceNominalAccount.failure().code());
     assertEquals("reserved-result-classification", resultHoldingReserved.failure().code());
     assertEquals(
-        List.of(BookWorkflowFact.text("priorPostingId", "posting-1")),
+        List.of(
+            BookWorkflowFact.text("priorPostingId", TestPostingIds.fromLabel("posting-1").value())),
         reversalTargetNotFound.failure().facts());
     assertEquals(
-        List.of(BookWorkflowFact.text("priorPostingId", "posting-1b")),
+        List.of(
+            BookWorkflowFact.text(
+                "priorPostingId", TestPostingIds.fromLabel("posting-1b").value())),
         reversalTargetIsReversal.failure().facts());
     assertEquals(
-        List.of(BookWorkflowFact.text("priorPostingId", "posting-2")),
+        List.of(
+            BookWorkflowFact.text("priorPostingId", TestPostingIds.fromLabel("posting-2").value())),
         reversalAlreadyExists.failure().facts());
     assertEquals(
-        List.of(BookWorkflowFact.text("priorPostingId", "posting-3")),
+        List.of(
+            BookWorkflowFact.text("priorPostingId", TestPostingIds.fromLabel("posting-3").value())),
         reversalDoesNotNegateTarget.failure().facts());
     assertEquals(
         List.of(
@@ -653,7 +658,7 @@ class LedgerPlanOutcomeMapperTest {
   @Test
   void missingBookCode_usesTheBoundaryOwnedRejectionFamilyForEachWorkflowStep() {
     assertEquals(
-        BookAdministrationRejection.bookNotInitializedCode(),
+        BookkeepingQueryRejection.bookNotInitializedCode(),
         LedgerPlanStepOutcomes.missingBookCode(
             new BookWorkflowStep.InspectBook(internalStepId("open"))));
     assertEquals(

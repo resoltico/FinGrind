@@ -35,8 +35,8 @@ public final class AttestationGenesis {
       throw new IllegalArgumentException("Genesis requires between one and five founders.");
     }
     List<AttestationFounder> founderFacts =
-        checkedFounders.stream().map(AttestationGenesis::founder).toList();
-    requireDistinctFounderCredentials(founderFacts);
+        checkedFounders.stream().map(AttestationGenesisFounders::founder).toList();
+    AttestationGenesisFounders.requireDistinctCredentials(founderFacts);
     AttestationPreimage request = requestPreimage(checkedBookId, checkedBookIdentity, founderFacts);
     AttestationPreimage effect = effectPreimage(checkedBookId, checkedBookIdentity, founderFacts);
     return AttestationOperationSigner.sign(
@@ -86,25 +86,6 @@ public final class AttestationGenesis {
     return Arrays.equals(
         AttestationPreimage.of(List.of(left)).encoded(),
         AttestationPreimage.of(List.of(right)).encoded());
-  }
-
-  private static AttestationFounder founder(AttestationSigningCredential credential) {
-    AttestationSigningCredential checkedCredential =
-        Objects.requireNonNull(credential, "founders must not contain null");
-    AttestationPublicCredential publicCredential = checkedCredential.publicCredential();
-    return new AttestationFounder(
-        checkedCredential.principalId(),
-        AttestationHash.of(publicCredential.keyId()),
-        AttestationSpki.of(publicCredential.spki()));
-  }
-
-  private static void requireDistinctFounderCredentials(List<AttestationFounder> founders) {
-    long principalCount = founders.stream().map(AttestationFounder::principalId).distinct().count();
-    long keyCount = founders.stream().map(AttestationFounder::keyId).distinct().count();
-    if (principalCount != founders.size() || keyCount != founders.size()) {
-      throw new IllegalArgumentException(
-          "Genesis founders must have distinct principals and keys.");
-    }
   }
 
   private static AttestationPreimage requestPreimage(

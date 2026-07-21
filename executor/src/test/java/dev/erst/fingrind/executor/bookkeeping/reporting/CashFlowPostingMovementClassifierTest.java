@@ -14,7 +14,6 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceMath;
 import dev.erst.fingrind.core.CashFlowSectionKind;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.CurrencyBalance;
@@ -30,6 +29,7 @@ import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.executor.TestPostingIds;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
@@ -42,7 +42,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
-/** Direct coverage for cash-flow movement classification and allocation. */
+/* Direct coverage for cash-flow movement classification and allocation. */
 class CashFlowPostingMovementClassifierTest {
   private static final Instant DECLARED_AT = Instant.parse("2026-05-13T11:00:00Z");
   private static final LocalDate EFFECTIVE_DATE = LocalDate.parse("2026-04-07");
@@ -356,7 +356,9 @@ class CashFlowPostingMovementClassifierTest {
                         line("4000", JournalLine.EntrySide.CREDIT, "4.00"))));
 
     assertEquals(
-        "Posting posting-undeclared references undeclared account 4000 during cash-flow classification.",
+        "Posting "
+            + TestPostingIds.fromLabel("posting-undeclared").value()
+            + " references undeclared account 4000 during cash-flow classification.",
         failure.getMessage());
   }
 
@@ -450,7 +452,7 @@ class CashFlowPostingMovementClassifierTest {
   private static CommittedProvenance provenance(String token) {
     return new CommittedProvenance(
         new RequestProvenance(
-            new CommandId("command-" + token),
+            dev.erst.fingrind.executor.TestCommandIds.fromLabel("command-" + token),
             new IdempotencyKey("idem-" + token),
             new CausationId("cause-" + token),
             Optional.of(new CorrelationId("corr-" + token))),

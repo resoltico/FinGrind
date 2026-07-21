@@ -277,8 +277,8 @@ class BookReadServiceAccountQueryTest {
                   Optional.empty(),
                   dev.erst.fingrind.core.EffectiveDateRange.unbounded(),
                   List.of(
-                      BookkeepingPublishedLanguageTranslator.toPublished(reversalPosting),
-                      BookkeepingPublishedLanguageTranslator.toPublished(originalPosting)),
+                      BookkeepingPublishedLanguageTranslator.toPublished(originalPosting),
+                      BookkeepingPublishedLanguageTranslator.toPublished(reversalPosting)),
                   20,
                   Optional.empty(),
                   Map.of(originalPosting.postingId(), reversalPosting.postingId()))),

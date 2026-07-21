@@ -15,7 +15,6 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -330,7 +329,7 @@ class FiscalYearClosePlannerTest {
         accountingEvidence(postingId),
         new CommittedProvenance(
             new RequestProvenance(
-                new CommandId("command-" + postingId),
+                dev.erst.fingrind.executor.TestCommandIds.fromLabel("command-" + postingId),
                 new IdempotencyKey("idem-" + postingId),
                 new CausationId("cause-" + postingId),
                 Optional.of(new CorrelationId("corr-" + postingId))),

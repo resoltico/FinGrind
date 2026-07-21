@@ -2,7 +2,6 @@ package dev.erst.fingrind.core.attestation;
 
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.ReportingPeriod;
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -111,18 +110,22 @@ public final class AttestationPeriodCloseMutationProjection {
         new AttestationPreimage.Fact(
             0x0040,
             List.of(
-                mutation(),
-                unsigned64(sweepOrder),
-                date(reportingPeriod.effectiveDateFrom()),
-                date(reportingPeriod.effectiveDateTo()),
-                text(resultHoldingAccountCode))));
+                AttestationPreimageProjectionFields.mutation(),
+                AttestationPreimageProjectionFields.unsigned64(sweepOrder),
+                AttestationPreimageProjectionFields.date(reportingPeriod.effectiveDateFrom()),
+                AttestationPreimageProjectionFields.date(reportingPeriod.effectiveDateTo()),
+                AttestationPreimageProjectionFields.text(resultHoldingAccountCode))));
     for (CurrencyBalance sweptTotal : sweptTotals) {
       facts.add(interimResultSweepTotal(sweepOrder, sweptTotal));
     }
     for (AttestationClosePostingSnapshot posting : postings) {
       facts.add(
           new AttestationPreimage.Fact(
-              0x0042, List.of(mutation(), unsigned64(sweepOrder), uuid(posting.postingId()))));
+              0x0042,
+              List.of(
+                  AttestationPreimageProjectionFields.mutation(),
+                  AttestationPreimageProjectionFields.unsigned64(sweepOrder),
+                  AttestationPreimageProjectionFields.uuid(posting.postingId()))));
     }
     return AttestationPreimage.of(facts);
   }
@@ -139,17 +142,21 @@ public final class AttestationPeriodCloseMutationProjection {
         new AttestationPreimage.Fact(
             0x0043,
             List.of(
-                mutation(),
-                unsigned64(closeOrder),
-                date(reportingPeriod.effectiveDateFrom()),
-                date(reportingPeriod.effectiveDateTo()),
-                text(capitalAccountCode),
-                text(resultHoldingAccountCode),
-                text(retainedResultAccountCode))));
+                AttestationPreimageProjectionFields.mutation(),
+                AttestationPreimageProjectionFields.unsigned64(closeOrder),
+                AttestationPreimageProjectionFields.date(reportingPeriod.effectiveDateFrom()),
+                AttestationPreimageProjectionFields.date(reportingPeriod.effectiveDateTo()),
+                AttestationPreimageProjectionFields.text(capitalAccountCode),
+                AttestationPreimageProjectionFields.text(resultHoldingAccountCode),
+                AttestationPreimageProjectionFields.text(retainedResultAccountCode))));
     for (AttestationClosePostingSnapshot posting : postings) {
       facts.add(
           new AttestationPreimage.Fact(
-              0x0044, List.of(mutation(), unsigned64(closeOrder), uuid(posting.postingId()))));
+              0x0044,
+              List.of(
+                  AttestationPreimageProjectionFields.mutation(),
+                  AttestationPreimageProjectionFields.unsigned64(closeOrder),
+                  AttestationPreimageProjectionFields.uuid(posting.postingId()))));
     }
     return AttestationPreimage.of(facts);
   }
@@ -170,10 +177,10 @@ public final class AttestationPeriodCloseMutationProjection {
     return new AttestationPreimage.Fact(
         0x0100,
         List.of(
-            token(operationKind),
+            AttestationPreimageProjectionFields.token(tokenValue(operationKind)),
             AttestationField.absent(),
             AttestationField.absent(),
-            token(CLI)));
+            AttestationPreimageProjectionFields.token(CLI)));
   }
 
   private static AttestationPreimage.Fact postingRequest(
@@ -181,10 +188,10 @@ public final class AttestationPeriodCloseMutationProjection {
     return new AttestationPreimage.Fact(
         0x0120,
         List.of(
-            unsigned32(STEP_ORDER),
-            token(operationKind),
-            date(reportingPeriod.effectiveDateTo()),
-            token(operationKind),
+            AttestationPreimageProjectionFields.unsigned32(STEP_ORDER),
+            AttestationPreimageProjectionFields.token(tokenValue(operationKind)),
+            AttestationPreimageProjectionFields.date(reportingPeriod.effectiveDateTo()),
+            AttestationPreimageProjectionFields.token(tokenValue(operationKind)),
             AttestationField.absent(),
             AttestationField.absent()));
   }
@@ -198,32 +205,32 @@ public final class AttestationPeriodCloseMutationProjection {
     return new AttestationPreimage.Fact(
         0x0140,
         List.of(
-            token(operationKind),
-            date(reportingPeriod.effectiveDateFrom()),
-            date(reportingPeriod.effectiveDateTo()),
+            AttestationPreimageProjectionFields.token(tokenValue(operationKind)),
+            AttestationPreimageProjectionFields.date(reportingPeriod.effectiveDateFrom()),
+            AttestationPreimageProjectionFields.date(reportingPeriod.effectiveDateTo()),
             AttestationField.absent(),
-            text(resultHoldingAccountCode),
-            optionalText(capitalAccountCode),
-            optionalText(retainedResultAccountCode)));
+            AttestationPreimageProjectionFields.text(resultHoldingAccountCode),
+            AttestationPreimageProjectionFields.optionalText(capitalAccountCode),
+            AttestationPreimageProjectionFields.optionalText(retainedResultAccountCode)));
   }
 
   private static AttestationPreimage.Fact postingEffect(AttestationClosePostingSnapshot posting) {
     return new AttestationPreimage.Fact(
         0x0020,
         List.of(
-            mutation(),
-            uuid(posting.postingId()),
-            unsigned32(STEP_ORDER),
-            token(posting.postingKind()),
-            token(posting.postingKind()),
-            token(posting.postingOriginKind()),
-            date(posting.effectiveDate()),
-            instant(posting.recordedAt()),
+            AttestationPreimageProjectionFields.mutation(),
+            AttestationPreimageProjectionFields.uuid(posting.postingId()),
+            AttestationPreimageProjectionFields.unsigned32(STEP_ORDER),
+            AttestationPreimageProjectionFields.token(tokenValue(posting.postingKind())),
+            AttestationPreimageProjectionFields.token(tokenValue(posting.postingKind())),
+            AttestationPreimageProjectionFields.token(tokenValue(posting.postingOriginKind())),
+            AttestationPreimageProjectionFields.date(posting.effectiveDate()),
+            AttestationPreimageProjectionFields.instant(posting.recordedAt()),
             AttestationField.absent(),
-            uuid(posting.commandId()),
-            text(posting.idempotencyKey()),
-            text(posting.causationId()),
-            token(posting.sourceChannel())));
+            AttestationPreimageProjectionFields.uuid(posting.commandId()),
+            AttestationPreimageProjectionFields.text(posting.idempotencyKey()),
+            AttestationPreimageProjectionFields.text(posting.causationId()),
+            AttestationPreimageProjectionFields.token(tokenValue(posting.sourceChannel()))));
   }
 
   private static AttestationPreimage.Fact journalLineEffect(
@@ -231,12 +238,12 @@ public final class AttestationPeriodCloseMutationProjection {
     return new AttestationPreimage.Fact(
         0x0025,
         List.of(
-            mutation(),
-            uuid(posting.postingId()),
-            unsigned32(lineOrder),
-            text(line.accountCode()),
-            token(line.side()),
-            money(line.currencyCode(), line.minorUnits()),
+            AttestationPreimageProjectionFields.mutation(),
+            AttestationPreimageProjectionFields.uuid(posting.postingId()),
+            AttestationPreimageProjectionFields.unsigned32(lineOrder),
+            AttestationPreimageProjectionFields.text(line.accountCode()),
+            AttestationPreimageProjectionFields.token(tokenValue(line.side())),
+            AttestationPreimageProjectionFields.signedMoney(line.currencyCode(), line.minorUnits()),
             AttestationField.absent()));
   }
 
@@ -248,11 +255,12 @@ public final class AttestationPeriodCloseMutationProjection {
     return new AttestationPreimage.Fact(
         0x0041,
         List.of(
-            mutation(),
-            unsigned64(sweepOrder),
-            present(
+            AttestationPreimageProjectionFields.mutation(),
+            AttestationPreimageProjectionFields.unsigned64(sweepOrder),
+            AttestationPreimageProjectionFields.present(
                 AttestationTextFieldValue.currency(sweptTotal.debitTotal().currencyUnit().code())),
-            money(sweptTotal.debitTotal().currencyUnit().code(), signedTotal)));
+            AttestationPreimageProjectionFields.signedMoney(
+                sweptTotal.debitTotal().currencyUnit().code(), signedTotal)));
   }
 
   private static List<AttestationClosePostingSnapshot> postings(
@@ -293,56 +301,5 @@ public final class AttestationPeriodCloseMutationProjection {
 
   private static String tokenValue(String value) {
     return requireText(value, "value").toLowerCase(Locale.ROOT).replace('_', '-');
-  }
-
-  private static AttestationField mutation() {
-    return present(
-        AttestationNumericFieldValue.mutation(AttestationEffectMutation.CREATE.wireValue()));
-  }
-
-  private static AttestationField unsigned32(int value) {
-    if (value < 0) {
-      throw new IllegalArgumentException("Unsigned 32-bit values must not be negative.");
-    }
-    return present(AttestationNumericFieldValue.unsigned32(BigInteger.valueOf(value)));
-  }
-
-  private static AttestationField unsigned64(int value) {
-    return present(AttestationNumericFieldValue.unsigned64(BigInteger.valueOf(value)));
-  }
-
-  private static AttestationField uuid(java.util.UUID value) {
-    return present(AttestationBinaryFieldValue.uuid(value));
-  }
-
-  private static AttestationField date(java.time.LocalDate value) {
-    return present(AttestationTextFieldValue.date(value));
-  }
-
-  private static AttestationField instant(java.time.Instant value) {
-    return present(AttestationTextFieldValue.instant(value));
-  }
-
-  private static AttestationField text(String value) {
-    return present(AttestationTextFieldValue.text(value));
-  }
-
-  private static AttestationField token(String value) {
-    return present(AttestationTextFieldValue.token(tokenValue(value)));
-  }
-
-  private static AttestationField optionalText(@org.jspecify.annotations.Nullable String value) {
-    return value == null ? AttestationField.absent() : text(value);
-  }
-
-  private static AttestationField money(String currencyCode, long signedMinorUnits) {
-    boolean negative = signedMinorUnits < 0;
-    return present(
-        AttestationNumericFieldValue.money(
-            currencyCode, negative, BigInteger.valueOf(signedMinorUnits).abs()));
-  }
-
-  private static AttestationField present(AttestationFieldValue value) {
-    return AttestationField.present(value);
   }
 }

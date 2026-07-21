@@ -44,8 +44,7 @@ final class MachineContractLedgerPlanRoles {
     if (kind == LedgerStepKind.ASSERT) {
       return StepRole.ASSERT;
     }
-    if (kind == LedgerStepKind.DECLARE_ACCOUNT
-        || kind == LedgerStepKind.DECLARE_TAX_REGISTRATION) {
+    if (kind == LedgerStepKind.DECLARE_ACCOUNT || kind == LedgerStepKind.DECLARE_TAX_REGISTRATION) {
       return StepRole.ADMINISTRATION;
     }
     return StepRole.QUERY;

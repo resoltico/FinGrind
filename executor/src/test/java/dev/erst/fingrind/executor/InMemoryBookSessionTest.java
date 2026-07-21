@@ -19,7 +19,6 @@ import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.ComparativeSelection;
 import dev.erst.fingrind.core.CurrencyBalance;
@@ -287,8 +286,9 @@ class InMemoryBookSessionTest {
       bookSession.openBook(FIXED_INSTANT, bookIdentity(), List.of());
       declareDefaultAccounts(bookSession);
       CommittedPosting originalPosting = postingFact("idem-original");
-      CommittedPosting firstReversal = reversalFact("idem-reversal-1", "posting-idem-original");
-      CommittedPosting secondReversal = reversalFact("idem-reversal-2", "posting-idem-original");
+      CommittedPosting firstReversal = reversalFact("idem-reversal-1", originalPosting.postingId());
+      CommittedPosting secondReversal =
+          reversalFact("idem-reversal-2", originalPosting.postingId());
 
       assertEquals(
           new PostingCommitResult.Committed(originalPosting, false),
@@ -311,7 +311,7 @@ class InMemoryBookSessionTest {
           Optional.of(firstReversal),
           bookSession.findReversalFor(new PostingId("cedcf800-36e6-3c96-a365-1486d6d1bc3a")));
       CommittedPosting reversalOfReversal =
-          reversalFact("idem-reversal-1b", firstReversal.postingId().value());
+          reversalFact("idem-reversal-1b", firstReversal.postingId());
       assertEquals(
           new PostingCommitResult.Rejected(
               new dev.erst.fingrind.executor.bookkeeping.ReversalTargetIsReversal(
@@ -396,12 +396,12 @@ class InMemoryBookSessionTest {
 
       assertEquals(
           new PostingHistoryPage(
-              List.of(sameMomentHigherId),
+              List.of(sameMomentLowerId),
               1,
-              Optional.of(PostingHistoryCursor.fromPosting(sameMomentHigherId))),
+              Optional.of(PostingHistoryCursor.fromPosting(sameMomentLowerId))),
           firstPage);
       assertEquals(
-          new PostingHistoryPage(List.of(sameMomentLowerId, olderPosting), 5, Optional.empty()),
+          new PostingHistoryPage(List.of(sameMomentHigherId, olderPosting), 5, Optional.empty()),
           secondPage);
       assertEquals(
           new PostingHistoryPage(List.of(sameMomentLowerId), 5, Optional.empty()),
@@ -669,20 +669,12 @@ class InMemoryBookSessionTest {
         committedProvenance(idempotencyKey, recordedAt));
   }
 
-  private static CommittedPosting reversalFact(String idempotencyKey, String priorPostingId) {
+  private static CommittedPosting reversalFact(String idempotencyKey, PostingId priorPostingId) {
     return new CommittedPosting(
-        new PostingId("posting-" + idempotencyKey),
+        dev.erst.fingrind.executor.TestPostingIds.fromLabel("posting-" + idempotencyKey),
         reversalJournalEntry(),
         PostingLineageModel.reversal(
-            new ReversalReference(
-                new PostingId(
-                    java.util
-                        .UUID
-                        .nameUUIDFromBytes(
-                            ("fingrind-test-postingid:" + priorPostingId)
-                                .getBytes(java.nio.charset.StandardCharsets.UTF_8))
-                        .toString())),
-            new ReversalReason("historical full reversal")),
+            new ReversalReference(priorPostingId), new ReversalReason("historical full reversal")),
         PostingKind.STANDARD,
         dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
         accountingEvidence(idempotencyKey),
@@ -708,7 +700,7 @@ class InMemoryBookSessionTest {
       String idempotencyKey, Instant recordedAt) {
     return new CommittedProvenance(
         new RequestProvenance(
-            new CommandId("command-" + idempotencyKey),
+            dev.erst.fingrind.executor.TestCommandIds.fromLabel("command-" + idempotencyKey),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-1"),
             Optional.empty()),

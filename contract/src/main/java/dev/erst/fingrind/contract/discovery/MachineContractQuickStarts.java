@@ -100,20 +100,21 @@ final class MachineContractQuickStarts {
 
   private static String introNote(WorkflowSurface surface) {
     return switch (surface) {
-      case PATH_POSIX_SHELL -> "Run commands from a POSIX shell where fingrind is already on PATH.";
-      case BUNDLE_POSIX_SHELL ->
-          "Run commands from the extracted bundle root so the canonical launcher path resolves directly.";
-      case SOURCE_CHECKOUT_POSIX_SHELL ->
-          "Run commands from the repository root; the source-checkout wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
-      case SOURCE_CHECKOUT_WINDOWS_POWERSHELL ->
-          "Run commands from the repository root; the source-checkout wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
-      case DIRECT_JAVA_POSIX_SHELL ->
-          "Run commands from the repository root; the direct-Java wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
-      case DIRECT_JAVA_WINDOWS_POWERSHELL ->
-          "Run commands from the repository root; the direct-Java wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
-      case CONTAINER_DOCKER ->
-          "Define a session-local fingrind wrapper backed by the published or locally built container image, then run this workflow through that logical launcher name.";
-    }
+          case PATH_POSIX_SHELL ->
+              "Run commands from a POSIX shell where fingrind is already on PATH.";
+          case BUNDLE_POSIX_SHELL ->
+              "Run commands from the extracted bundle root so the canonical launcher path resolves directly.";
+          case SOURCE_CHECKOUT_POSIX_SHELL ->
+              "Run commands from the repository root; the source-checkout wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
+          case SOURCE_CHECKOUT_WINDOWS_POWERSHELL ->
+              "Run commands from the repository root; the source-checkout wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
+          case DIRECT_JAVA_POSIX_SHELL ->
+              "Run commands from the repository root; the direct-Java wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
+          case DIRECT_JAVA_WINDOWS_POWERSHELL ->
+              "Run commands from the repository root; the direct-Java wrapper refreshes the managed runtime, raw JAR, and Gradle-owned Java 26 toolchain manifest automatically when the checkout has moved.";
+          case CONTAINER_DOCKER ->
+              "Define a session-local fingrind wrapper backed by the published or locally built container image, then run this workflow through that logical launcher name.";
+        }
         + " Before "
         + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
         + ", create a nonempty owner-only founder passphrase file at "

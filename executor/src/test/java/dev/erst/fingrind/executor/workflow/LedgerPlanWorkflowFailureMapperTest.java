@@ -42,7 +42,8 @@ class LedgerPlanWorkflowFailureMapperTest {
 
     assertEquals("reversal-target-is-reversal", reversalTargetIsReversal.code());
     assertEquals(
-        java.util.List.of(BookWorkflowFact.text("priorPostingId", "posting-9")),
+        java.util.List.of(
+            BookWorkflowFact.text("priorPostingId", "7982b5de-2f28-355e-9911-9ca85b4f5a67")),
         reversalTargetIsReversal.facts());
   }
 

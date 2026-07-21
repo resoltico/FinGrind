@@ -12,7 +12,6 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CausationId;
-import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -157,7 +156,7 @@ class BookkeepingPostingServiceTest {
         PostingLineageModel.direct(),
         accountingEvidence(idempotencyKey),
         new RequestProvenance(
-            new CommandId("command-" + idempotencyKey),
+            dev.erst.fingrind.executor.TestCommandIds.fromLabel("command-" + idempotencyKey),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-" + idempotencyKey),
             Optional.of(new CorrelationId("corr-" + idempotencyKey))),
@@ -188,7 +187,7 @@ class BookkeepingPostingServiceTest {
         accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
-                new CommandId("command-" + postingId),
+                dev.erst.fingrind.executor.TestCommandIds.fromLabel("command-" + postingId),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-" + postingId),
                 Optional.of(new CorrelationId("corr-" + postingId))),

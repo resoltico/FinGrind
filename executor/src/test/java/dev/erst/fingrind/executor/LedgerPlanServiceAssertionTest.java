@@ -14,7 +14,6 @@ import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.service;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.stepId;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.textFact;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
@@ -50,7 +49,7 @@ class LedgerPlanServiceAssertionTest {
 
   @Test
   void execute_rollsBackOnAssertionFailure() {
-    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+    try (InMemoryBookSession bookSession = initializedBook()) {
       var result =
           service(bookSession)
               .execute(
@@ -73,7 +72,7 @@ class LedgerPlanServiceAssertionTest {
       assertEquals("cash", result.journal().steps().get(1).stepId().value());
       assertEquals("missing-posting", result.journal().steps().get(2).stepId().value());
       assertEquals("assertion-failed", result.journal().steps().getLast().requiredFailure().code());
-      assertFalse(bookSession.inspectBook().initialized());
+      assertTrue(bookSession.inspectBook().initialized());
     }
   }
 

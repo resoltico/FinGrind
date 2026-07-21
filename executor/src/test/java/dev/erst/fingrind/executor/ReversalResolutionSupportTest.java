@@ -104,7 +104,7 @@ class ReversalResolutionSupportTest {
             IllegalStateException.class,
             () -> ReversalResolutionSupport.resolve(unresolvedReversal, emptyBook));
     assertEquals(
-        "Reversal target posting-missing must exist before translation.",
+        "Reversal target 6045a122-24d5-3839-bfbe-fd3f0590e5b6 must exist before translation.",
         missingTarget.getMessage());
   }
 }

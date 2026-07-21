@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -221,6 +222,20 @@ class BookAdministrationServiceTest {
               AccountType.REVENUE,
               accountTaxonomy(AccountType.REVENUE)),
           TEST_AUTHORIZER);
+      service.declareAccount(
+          new AccountDeclaration(
+              new AccountCode("3000"),
+              new AccountName("Owner capital"),
+              AccountType.EQUITY,
+              financialPositionTaxonomy(FinancialPositionLineClassification.EQUITY_CONTRIBUTION)),
+          TEST_AUTHORIZER);
+      service.declareAccount(
+          new AccountDeclaration(
+              new AccountCode("3200"),
+              new AccountName("Retained earnings"),
+              AccountType.EQUITY,
+              financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING)),
+          TEST_AUTHORIZER);
 
       bookSession.commit(
           new dev.erst.fingrind.executor.bookkeeping.CommittedPosting(
@@ -233,7 +248,7 @@ class BookAdministrationServiceTest {
                           dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
                           dev.erst.fingrind.core.Money.parse("EUR", "10.00")),
                       new dev.erst.fingrind.core.JournalLine(
-                          new AccountCode("owner-capital"),
+                          new AccountCode("3000"),
                           dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
                           dev.erst.fingrind.core.Money.parse("EUR", "10.00")))),
               dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
