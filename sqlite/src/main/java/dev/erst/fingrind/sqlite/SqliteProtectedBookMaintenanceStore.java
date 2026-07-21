@@ -240,8 +240,6 @@ public final class SqliteProtectedBookMaintenanceStore
       throw new IllegalStateException("Failed to read the selected backup artifact.", exception);
     } catch (SqliteCallerPathContractException exception) {
       throw maintenanceRejection(ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE, exception);
-    } catch (ProtectedBookMaintenanceRejectionException exception) {
-      throw exception;
     } catch (RuntimeException exception) {
       throw new ProtectedBookMaintenanceRejectionException(
           new ProtectedBookMaintenanceRejection.ArtifactVerificationFailed(
