@@ -253,7 +253,8 @@ class PostingAcceptancePolicyInventoryAdmissionTest {
         PostingLineageModel.direct(),
         accountingEvidence(idempotencyKey),
         new RequestProvenance(
-            dev.erst.fingrind.executor.TestCommandIds.fromLabel("command-" + idempotencyKey),
+            dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                "command-" + idempotencyKey),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-" + idempotencyKey),
             Optional.of(new CorrelationId("corr-" + idempotencyKey))),

@@ -671,7 +671,8 @@ class InMemoryBookSessionTest {
 
   private static CommittedPosting reversalFact(String idempotencyKey, PostingId priorPostingId) {
     return new CommittedPosting(
-        dev.erst.fingrind.executor.TestPostingIds.fromLabel("posting-" + idempotencyKey),
+        dev.erst.fingrind.executor.ScenarioPostingIdentifiers.fromLabel(
+            "posting-" + idempotencyKey),
         reversalJournalEntry(),
         PostingLineageModel.reversal(
             new ReversalReference(priorPostingId), new ReversalReason("historical full reversal")),
@@ -700,7 +701,8 @@ class InMemoryBookSessionTest {
       String idempotencyKey, Instant recordedAt) {
     return new CommittedProvenance(
         new RequestProvenance(
-            dev.erst.fingrind.executor.TestCommandIds.fromLabel("command-" + idempotencyKey),
+            dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                "command-" + idempotencyKey),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-1"),
             Optional.empty()),

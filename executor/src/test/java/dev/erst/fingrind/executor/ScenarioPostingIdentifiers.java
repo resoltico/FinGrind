@@ -5,8 +5,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 /** Produces deterministic canonical posting identifiers from scenario labels in executor tests. */
-public final class TestPostingIds {
-  private TestPostingIds() {}
+public final class ScenarioPostingIdentifiers {
+  private ScenarioPostingIdentifiers() {}
 
   public static PostingId fromLabel(String label) {
     return new PostingId(

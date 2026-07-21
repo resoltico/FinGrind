@@ -100,7 +100,10 @@ class LedgerPlanServiceQueryTest {
           getPostingFacts.stream()
               .anyMatch(
                   fact ->
-                      textFact(fact, "postingId", TestPostingIds.fromLabel("posting-1").value())));
+                      textFact(
+                          fact,
+                          "postingId",
+                          ScenarioPostingIdentifiers.fromLabel("posting-1").value())));
       assertTrue(
           getPostingFacts.stream()
               .anyMatch(

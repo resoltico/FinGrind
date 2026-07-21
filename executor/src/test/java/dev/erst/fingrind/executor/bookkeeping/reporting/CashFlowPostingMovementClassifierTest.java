@@ -29,7 +29,7 @@ import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
-import dev.erst.fingrind.executor.TestPostingIds;
+import dev.erst.fingrind.executor.ScenarioPostingIdentifiers;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
@@ -42,7 +42,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
-/* Direct coverage for cash-flow movement classification and allocation. */
+/** Direct coverage for cash-flow movement classification and allocation. */
 class CashFlowPostingMovementClassifierTest {
   private static final Instant DECLARED_AT = Instant.parse("2026-05-13T11:00:00Z");
   private static final LocalDate EFFECTIVE_DATE = LocalDate.parse("2026-04-07");
@@ -357,7 +357,7 @@ class CashFlowPostingMovementClassifierTest {
 
     assertEquals(
         "Posting "
-            + TestPostingIds.fromLabel("posting-undeclared").value()
+            + ScenarioPostingIdentifiers.fromLabel("posting-undeclared").value()
             + " references undeclared account 4000 during cash-flow classification.",
         failure.getMessage());
   }
@@ -452,7 +452,7 @@ class CashFlowPostingMovementClassifierTest {
   private static CommittedProvenance provenance(String token) {
     return new CommittedProvenance(
         new RequestProvenance(
-            dev.erst.fingrind.executor.TestCommandIds.fromLabel("command-" + token),
+            dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel("command-" + token),
             new IdempotencyKey("idem-" + token),
             new CausationId("cause-" + token),
             Optional.of(new CorrelationId("corr-" + token))),

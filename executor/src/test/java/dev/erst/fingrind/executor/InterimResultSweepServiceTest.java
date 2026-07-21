@@ -618,7 +618,8 @@ class InterimResultSweepServiceTest {
         postingEvidence(postingId, postingKind),
         new CommittedProvenance(
             new RequestProvenance(
-                dev.erst.fingrind.executor.TestCommandIds.fromLabel("command-" + postingId),
+                dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                    "command-" + postingId),
                 new IdempotencyKey("idem-" + postingId),
                 new CausationId("cause-" + postingId),
                 Optional.of(new CorrelationId("corr-" + postingId))),
@@ -630,7 +631,7 @@ class InterimResultSweepServiceTest {
     String closeToken = PERIOD_DATE + ":" + PERIOD_DATE + ":" + FIXED_INSTANT.toEpochMilli();
     RequestProvenance requestProvenance =
         new RequestProvenance(
-            dev.erst.fingrind.executor.TestCommandIds.fromLabel(
+            dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
                 "interimResultSweep:" + closeToken + ":" + currencyCode),
             new IdempotencyKey("interimResultSweep:" + closeToken + ":" + currencyCode),
             new CausationId("interimResultSweep:" + closeToken),
@@ -660,7 +661,8 @@ class InterimResultSweepServiceTest {
             accountingEvidence(idempotencyKey),
             new CommittedProvenance(
                 new RequestProvenance(
-                    dev.erst.fingrind.executor.TestCommandIds.fromLabel("command-" + postingId),
+                    dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                        "command-" + postingId),
                     new dev.erst.fingrind.core.IdempotencyKey(idempotencyKey),
                     new dev.erst.fingrind.core.CausationId("cause-" + postingId),
                     Optional.empty()),
@@ -788,7 +790,8 @@ class InterimResultSweepServiceTest {
       List<PostingId> generatedPostingIds = new ArrayList<>();
       for (int index = 0; index < interimResultSweepDraft.closingPostings().size(); index++) {
         generatedPostingIds.add(
-            dev.erst.fingrind.executor.TestPostingIds.fromLabel("generated-" + (index + 1)));
+            dev.erst.fingrind.executor.ScenarioPostingIdentifiers.fromLabel(
+                "generated-" + (index + 1)));
       }
       return new InterimResultSweepOutcome.Transferred(
           new dev.erst.fingrind.executor.bookkeeping.SweptInterimResult(

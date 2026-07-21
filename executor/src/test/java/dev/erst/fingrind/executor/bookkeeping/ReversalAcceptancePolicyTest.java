@@ -454,7 +454,7 @@ class ReversalAcceptancePolicyTest {
       String idempotencyKey, String priorPostingId, JournalEntry candidateJournalEntry) {
     return reversalRequest(
         idempotencyKey,
-        dev.erst.fingrind.executor.TestPostingIds.fromLabel(priorPostingId),
+        dev.erst.fingrind.executor.ScenarioPostingIdentifiers.fromLabel(priorPostingId),
         candidateJournalEntry);
   }
 

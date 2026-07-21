@@ -258,7 +258,7 @@ final class LedgerPlanServiceTestSupport {
       return delegate.inspectBook();
     }
 
-    public BookOpeningOutcome openBook(
+    BookOpeningOutcome openBook(
         Instant initializedAt,
         dev.erst.fingrind.core.BookIdentity bookIdentity,
         List<AccountDeclaration> seededAccounts) {
@@ -505,7 +505,9 @@ final class LedgerPlanServiceTestSupport {
     }
   }
 
-  /* In-memory session that throws while listing accounts to exercise rollback-on-runtime-failure. */
+  /**
+   * In-memory session that throws while listing accounts to exercise rollback-on-runtime-failure.
+   */
   static final class ThrowingLedgerPlanSession extends DelegatingAtomicBookStore {
     private boolean rollbackCalled;
 
@@ -526,7 +528,7 @@ final class LedgerPlanServiceTestSupport {
     }
   }
 
-  /* Test-only seam split that throws during declare-account after a successful open-book step. */
+  /** Test seam that throws during declare-account after a successful open-book step. */
   static final class DeclareRuntimeFailingLedgerPlanSession extends DelegatingAtomicBookStore {
     private boolean rollbackCalled;
 
@@ -549,7 +551,7 @@ final class LedgerPlanServiceTestSupport {
     }
   }
 
-  /* Test-only seam split that throws before any ledger-plan transaction begins. */
+  /** Test seam that throws before any ledger-plan transaction begins. */
   static final class BeginFailingLedgerPlanSession extends DelegatingAtomicBookStore {
     @Override
     public void beginLedgerPlanTransaction() {
@@ -557,7 +559,7 @@ final class LedgerPlanServiceTestSupport {
     }
   }
 
-  /* Test-only seam split that throws while checking initialization before the first step runs. */
+  /** Test seam that throws while checking initialization before the first step runs. */
   static final class InitializationCheckFailingLedgerPlanSession extends DelegatingAtomicBookStore {
     private boolean rollbackCalled;
 
@@ -577,7 +579,7 @@ final class LedgerPlanServiceTestSupport {
     }
   }
 
-  /* Test-only seam split that keeps queries uninitialized after a successful open-book step. */
+  /** Test seam that keeps queries uninitialized after a successful open-book step. */
   static final class ListAccountsRejectingLedgerPlanSession extends DelegatingAtomicBookStore {
     @Override
     public BookLifecycleInspection inspectBook() {
@@ -585,7 +587,7 @@ final class LedgerPlanServiceTestSupport {
     }
   }
 
-  /* Test-only seam split that throws during commit so the outer finally rollback path runs. */
+  /** Test seam that throws during commit so the outer finally rollback path runs. */
   static final class CommitFailingLedgerPlanSession extends DelegatingAtomicBookStore {
     private boolean rollbackCalled;
 
@@ -605,7 +607,7 @@ final class LedgerPlanServiceTestSupport {
     }
   }
 
-  /* Test-only seam split that throws during rollback after a deterministic plan failure. */
+  /** Test seam that throws during rollback after a deterministic plan failure. */
   static final class RollbackFailingLedgerPlanSession extends DelegatingAtomicBookStore {
     @Override
     public void rollbackLedgerPlanTransaction() {
@@ -613,7 +615,7 @@ final class LedgerPlanServiceTestSupport {
     }
   }
 
-  /* Test-only seam split that throws during step execution and then throws again during rollback. */
+  /** Test seam that throws during step execution and then throws again during rollback. */
   static final class RuntimeRollbackFailingLedgerPlanSession extends DelegatingAtomicBookStore {
 
     @Override

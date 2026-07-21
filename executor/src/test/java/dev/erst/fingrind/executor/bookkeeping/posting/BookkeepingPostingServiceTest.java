@@ -156,7 +156,8 @@ class BookkeepingPostingServiceTest {
         PostingLineageModel.direct(),
         accountingEvidence(idempotencyKey),
         new RequestProvenance(
-            dev.erst.fingrind.executor.TestCommandIds.fromLabel("command-" + idempotencyKey),
+            dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                "command-" + idempotencyKey),
             new IdempotencyKey(idempotencyKey),
             new CausationId("cause-" + idempotencyKey),
             Optional.of(new CorrelationId("corr-" + idempotencyKey))),
@@ -187,7 +188,8 @@ class BookkeepingPostingServiceTest {
         accountingEvidence(idempotencyKey),
         new CommittedProvenance(
             new RequestProvenance(
-                dev.erst.fingrind.executor.TestCommandIds.fromLabel("command-" + postingId),
+                dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                    "command-" + postingId),
                 new IdempotencyKey(idempotencyKey),
                 new CausationId("cause-" + postingId),
                 Optional.of(new CorrelationId("corr-" + postingId))),

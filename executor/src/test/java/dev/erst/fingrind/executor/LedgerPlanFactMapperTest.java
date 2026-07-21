@@ -467,7 +467,7 @@ class LedgerPlanFactMapperTest {
         LedgerPlanFactMapper.postingFacts(
             BookkeepingPublishedLanguageTranslator.fromPublished(
                 new PostingFact(
-                    dev.erst.fingrind.executor.TestPostingIds.fromLabel(
+                    dev.erst.fingrind.executor.ScenarioPostingIdentifiers.fromLabel(
                         "posting-" + entry.entryKind().wireValue().toLowerCase(Locale.ROOT)),
                     persistedEntry.journalEntry(),
                     persistedEntry.postingLineage(),

@@ -329,7 +329,8 @@ class FiscalYearClosePlannerTest {
         accountingEvidence(postingId),
         new CommittedProvenance(
             new RequestProvenance(
-                dev.erst.fingrind.executor.TestCommandIds.fromLabel("command-" + postingId),
+                dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                    "command-" + postingId),
                 new IdempotencyKey("idem-" + postingId),
                 new CausationId("cause-" + postingId),
                 Optional.of(new CorrelationId("corr-" + postingId))),

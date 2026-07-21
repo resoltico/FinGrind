@@ -218,7 +218,7 @@ class OwnedLifecycleContextIntegrationTest {
         session,
         session,
         () ->
-            dev.erst.fingrind.executor.TestPostingIds.fromLabel(
+            dev.erst.fingrind.executor.ScenarioPostingIdentifiers.fromLabel(
                 "lifecycle-" + sequence.incrementAndGet()),
         CLOCK);
   }
@@ -255,7 +255,8 @@ class OwnedLifecycleContextIntegrationTest {
 
   private static RequestProvenance provenance(String token) {
     return new RequestProvenance(
-        dev.erst.fingrind.executor.TestCommandIds.fromLabel("lifecycle-command-" + token),
+        dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+            "lifecycle-command-" + token),
         new IdempotencyKey("lifecycle-idempotency-" + token),
         new CausationId("lifecycle-cause-" + token),
         Optional.empty());

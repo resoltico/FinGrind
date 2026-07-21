@@ -84,7 +84,7 @@ class LatvianPayrollLifecycleIntegrationTest {
       PostingApplicationService service = postingService(bookSession);
 
       PostEntryResult.Committed run = commit(service, monthlyPayroll(), "payroll-run");
-      assertEquals(TestPostingIds.fromLabel("posting-1"), run.postingId());
+      assertEquals(ScenarioPostingIdentifiers.fromLabel("posting-1"), run.postingId());
       assertEquals(
           List.of(
               "wage-expense:DEBIT:2000.00",
@@ -103,9 +103,9 @@ class LatvianPayrollLifecycleIntegrationTest {
               service, stateRemittance(LocalDate.parse("2026-08-05")), "payroll-state-remittance");
       PostEntryResult.Committed secondRun =
           commit(service, monthlyPayroll(SECOND_RUN_ID, SECOND_EMPLOYEE), "payroll-second-run");
-      assertEquals(TestPostingIds.fromLabel("posting-2"), netWages.postingId());
-      assertEquals(TestPostingIds.fromLabel("posting-3"), stateRemittance.postingId());
-      assertEquals(TestPostingIds.fromLabel("posting-4"), secondRun.postingId());
+      assertEquals(ScenarioPostingIdentifiers.fromLabel("posting-2"), netWages.postingId());
+      assertEquals(ScenarioPostingIdentifiers.fromLabel("posting-3"), stateRemittance.postingId());
+      assertEquals(ScenarioPostingIdentifiers.fromLabel("posting-4"), secondRun.postingId());
 
       PostEntryResult.CommitRejected duplicateSettlement =
           assertInstanceOf(
@@ -259,7 +259,7 @@ class LatvianPayrollLifecycleIntegrationTest {
         bookSession,
         bookSession,
         () ->
-            dev.erst.fingrind.executor.TestPostingIds.fromLabel(
+            dev.erst.fingrind.executor.ScenarioPostingIdentifiers.fromLabel(
                 "posting-" + sequence.incrementAndGet()),
         CLOCK);
   }
@@ -332,7 +332,8 @@ class LatvianPayrollLifecycleIntegrationTest {
         entry,
         evidence(token, sourceDocumentType(entry)),
         new RequestProvenance(
-            dev.erst.fingrind.executor.TestCommandIds.fromLabel("payroll-command-" + token),
+            dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                "payroll-command-" + token),
             new IdempotencyKey("payroll-idempotency-" + token),
             new CausationId("payroll-cause-" + token),
             Optional.empty()),

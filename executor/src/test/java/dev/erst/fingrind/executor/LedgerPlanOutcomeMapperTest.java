@@ -478,20 +478,23 @@ class LedgerPlanOutcomeMapperTest {
     assertEquals("reserved-result-classification", resultHoldingReserved.failure().code());
     assertEquals(
         List.of(
-            BookWorkflowFact.text("priorPostingId", TestPostingIds.fromLabel("posting-1").value())),
+            BookWorkflowFact.text(
+                "priorPostingId", ScenarioPostingIdentifiers.fromLabel("posting-1").value())),
         reversalTargetNotFound.failure().facts());
     assertEquals(
         List.of(
             BookWorkflowFact.text(
-                "priorPostingId", TestPostingIds.fromLabel("posting-1b").value())),
+                "priorPostingId", ScenarioPostingIdentifiers.fromLabel("posting-1b").value())),
         reversalTargetIsReversal.failure().facts());
     assertEquals(
         List.of(
-            BookWorkflowFact.text("priorPostingId", TestPostingIds.fromLabel("posting-2").value())),
+            BookWorkflowFact.text(
+                "priorPostingId", ScenarioPostingIdentifiers.fromLabel("posting-2").value())),
         reversalAlreadyExists.failure().facts());
     assertEquals(
         List.of(
-            BookWorkflowFact.text("priorPostingId", TestPostingIds.fromLabel("posting-3").value())),
+            BookWorkflowFact.text(
+                "priorPostingId", ScenarioPostingIdentifiers.fromLabel("posting-3").value())),
         reversalDoesNotNegateTarget.failure().facts());
     assertEquals(
         List.of(

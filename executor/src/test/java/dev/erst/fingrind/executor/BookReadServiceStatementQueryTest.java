@@ -714,7 +714,8 @@ class BookReadServiceStatementQueryTest {
         postingEvidence(postingId, postingKind),
         new CommittedProvenance(
             new RequestProvenance(
-                dev.erst.fingrind.executor.TestCommandIds.fromLabel("command-" + postingId),
+                dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                    "command-" + postingId),
                 new dev.erst.fingrind.core.IdempotencyKey("idem-" + postingId),
                 new dev.erst.fingrind.core.CausationId("cause-" + postingId),
                 Optional.empty()),
@@ -744,7 +745,8 @@ class BookReadServiceStatementQueryTest {
             accountingEvidence(idempotencyKey),
             new CommittedProvenance(
                 new RequestProvenance(
-                    dev.erst.fingrind.executor.TestCommandIds.fromLabel("command-" + postingId),
+                    dev.erst.fingrind.executor.ScenarioCommandIdentifiers.fromLabel(
+                        "command-" + postingId),
                     new dev.erst.fingrind.core.IdempotencyKey(idempotencyKey),
                     new dev.erst.fingrind.core.CausationId("cause-" + postingId),
                     Optional.empty()),
