@@ -33,7 +33,7 @@ import java.util.UUID;
  * only exact evidence produced after the relevant SQLite transaction has observed its current head.
  */
 public final class AttestedProtectedBookLifecycleWorkflow {
-  private static final String BACKUP_BOOK_OPERATION = OperationId.BACKUP_BOOK.wireName();
+  private static final String BACKUP_CREATED_OPERATION = "backup-created";
   private static final String RESTORE_BOOK_OPERATION = OperationId.RESTORE_BOOK.wireName();
   private static final String REKEY_BOOK_OPERATION = OperationId.REKEY_BOOK.wireName();
   private final Clock clock;
@@ -211,18 +211,8 @@ public final class AttestedProtectedBookLifecycleWorkflow {
       return failure(bookPath, "bookFilePath", "Failed to prepare restored-book publication.");
     }
     try (publication) {
-      ProtectedBookMaintenanceStore.LeaseAcquisition lease =
-          store.acquireManagedArtifactLease(
-              bookPath, ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET);
-      if (lease instanceof ProtectedBookMaintenanceStore.LeaseBusy busy) {
-        return rejectedRestore(
-            new ProtectedBookMaintenanceRejection.ArtifactBusy(
-                ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, busy.artifactPath()));
-      }
-      try (ProtectedBookMaintenanceStore.HeldLease ignoredLease =
-              (ProtectedBookMaintenanceStore.HeldLease) lease;
-          AttestedProtectedBookMaintenanceStore.VerifiedBackupArtifact artifact =
-              store.verifyBackupArtifact(artifactPath, backupKeyPath)) {
+      try (AttestedProtectedBookMaintenanceStore.VerifiedBackupArtifact artifact =
+          store.verifyBackupArtifact(artifactPath, backupKeyPath)) {
         return stageAndPublishRestore(bookPath, newKeyPath, publication, artifact, signingSession);
       }
     } catch (ProtectedBookMaintenanceRejectionException exception) {
@@ -427,10 +417,10 @@ public final class AttestedProtectedBookLifecycleWorkflow {
         try {
           store.appendAttestedOperation(
               liveBook,
-              BACKUP_BOOK_OPERATION,
+              BACKUP_CREATED_OPERATION,
               clock.instant(),
               AttestationLifecycleMutationProjection.backupBook(
-                  BACKUP_BOOK_OPERATION, acknowledgement),
+                  BACKUP_CREATED_OPERATION, acknowledgement),
               signingSession,
               acknowledgement);
           yield MaintenanceDecision.accepted(

@@ -249,7 +249,9 @@ public final class SqliteProtectedBookMaintenanceStore
       throw new IllegalStateException("Failed to read the selected backup artifact.", exception);
     } catch (SqliteCallerPathContractException exception) {
       throw maintenanceRejection(ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE, exception);
-    } catch (IllegalArgumentException exception) {
+    } catch (ProtectedBookMaintenanceRejectionException exception) {
+      throw exception;
+    } catch (RuntimeException exception) {
       throw new ProtectedBookMaintenanceRejectionException(
           new ProtectedBookMaintenanceRejection.ArtifactVerificationFailed(
               ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE,

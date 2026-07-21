@@ -365,14 +365,14 @@ class FinGrindCliAccountStateContractTest extends FinGrindCliTestSupport {
         cli.run(
             jsonArguments(
                 new String[] {
-              commandName,
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--request-file",
-              requestFile.toString(),
-              "--output",
+                  commandName,
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--request-file",
+                  requestFile.toString(),
+                  "--output",
                   outputMode
                 }));
     return new ObservedInvocation(

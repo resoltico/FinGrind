@@ -83,17 +83,17 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
     int exitCode =
         cli.run(
             new String[] {
-                "execute-plan",
-                "--book-file",
-                bookFilePath.toString(),
-                "--book-key-file",
-                bookKeyFilePath.toString(),
-                "--result-detail",
-                "full",
-                "--request-file",
-                planFile.toString(),
-                "--output",
-                "json"
+              "execute-plan",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--result-detail",
+              "full",
+              "--request-file",
+              planFile.toString(),
+              "--output",
+              "json"
             });
     assertEquals(6, exitCode, () -> outputStream.toString(StandardCharsets.UTF_8));
     assertJsonContains(outputStream, "\"status\":\"error\"");
@@ -112,17 +112,17 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
     int exitCode =
         executeCli.run(
             new String[] {
-                "execute-plan",
-                "--book-file",
-                bookFilePath.toString(),
-                "--book-key-file",
-                bookKeyFilePath.toString(),
-                "--result-detail",
-                "full",
-                "--request-file",
-                planFile.toString(),
-                "--output",
-                "json"
+              "execute-plan",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--result-detail",
+              "full",
+              "--request-file",
+              planFile.toString(),
+              "--output",
+              "json"
             });
     assertEquals(1, exitCode, () -> outputStream.toString(StandardCharsets.UTF_8));
     assertJsonContains(outputStream, "ensure-book");
@@ -176,43 +176,41 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
         0,
         declareCli.run(
             attestedArguments(
-              "declare-account",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--request-file",
-              cashRequest.toString()
-            )));
+                "declare-account",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                cashRequest.toString())));
     assertEquals(
         0,
         declareCli.run(
             attestedArguments(
-              "declare-account",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--request-file",
-              revenueRequest.toString()
-            )));
+                "declare-account",
+                "--book-file",
+                bookFilePath.toString(),
+                "--book-key-file",
+                bookKeyFilePath.toString(),
+                "--request-file",
+                revenueRequest.toString())));
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli executeCli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
     int exitCode =
         executeCli.run(
             new String[] {
-                "execute-plan",
-                "--book-file",
-                bookFilePath.toString(),
-                "--book-key-file",
-                bookKeyFilePath.toString(),
-                "--result-detail",
-                "full",
-                "--request-file",
-                planFile.toString(),
-                "--output",
-                "json"
+              "execute-plan",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              bookKeyFilePath.toString(),
+              "--result-detail",
+              "full",
+              "--request-file",
+              planFile.toString(),
+              "--output",
+              "json"
             });
     assertEquals(0, exitCode);
     JsonNode data =
@@ -298,5 +296,4 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
         }
         """;
   }
-
 }

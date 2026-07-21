@@ -38,15 +38,16 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
             .run(
-                attestedArguments(new String[] {
-                  "declare-account",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--request-file",
-                  declareCashFile.toString()
-                })));
+                attestedArguments(
+                    new String[] {
+                      "declare-account",
+                      "--book-file",
+                      bookFilePath.toString(),
+                      "--book-key-file",
+                      bookKeyFilePath.toString(),
+                      "--request-file",
+                      declareCashFile.toString()
+                    })));
     assertEquals(
         0,
         cli(
@@ -54,15 +55,16 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
             .run(
-                attestedArguments(new String[] {
-                  "declare-account",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--request-file",
-                  declareRevenueFile.toString()
-                })));
+                attestedArguments(
+                    new String[] {
+                      "declare-account",
+                      "--book-file",
+                      bookFilePath.toString(),
+                      "--book-key-file",
+                      bookKeyFilePath.toString(),
+                      "--request-file",
+                      declareRevenueFile.toString()
+                    })));
     ByteArrayOutputStream commitOutput = new ByteArrayOutputStream();
     assertEquals(
         0,
@@ -164,15 +166,16 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
         0,
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(defaultTextOutput), fixedClock())
             .run(
-                attestedArguments(new String[] {
-                  "list-accounts",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--output",
-                  "text"
-                })));
+                attestedArguments(
+                    new String[] {
+                      "list-accounts",
+                      "--book-file",
+                      bookFilePath.toString(),
+                      "--book-key-file",
+                      bookKeyFilePath.toString(),
+                      "--output",
+                      "text"
+                    })));
     String defaultText = defaultTextOutput.toString(StandardCharsets.UTF_8);
     assertFalse(defaultText.contains("Context"), defaultText);
     assertFalse(defaultText.contains("Seed template"), defaultText);
@@ -185,16 +188,17 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                 utf8PrintStream(withContextTextOutput),
                 fixedClock())
             .run(
-                attestedArguments(new String[] {
-                  "list-accounts",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--with-context",
-                  "--output",
-                  "text"
-                })));
+                attestedArguments(
+                    new String[] {
+                      "list-accounts",
+                      "--book-file",
+                      bookFilePath.toString(),
+                      "--book-key-file",
+                      bookKeyFilePath.toString(),
+                      "--with-context",
+                      "--output",
+                      "text"
+                    })));
     String withContextText = withContextTextOutput.toString(StandardCharsets.UTF_8);
     assertTrue(withContextText.contains("Context"), withContextText);
     assertTrue(withContextText.contains("Acme Studio"), withContextText);
@@ -235,15 +239,16 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
         0,
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(inspectOutput), fixedClock())
             .run(
-                attestedArguments(new String[] {
-                  "inspect-book",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--output",
-                  "text"
-                })));
+                attestedArguments(
+                    new String[] {
+                      "inspect-book",
+                      "--book-file",
+                      bookFilePath.toString(),
+                      "--book-key-file",
+                      bookKeyFilePath.toString(),
+                      "--output",
+                      "text"
+                    })));
     String inspectText = inspectOutput.toString(StandardCharsets.UTF_8);
     assertTrue(inspectText.contains("Entity"), inspectText);
     assertTrue(inspectText.contains("Acme Studio"), inspectText);
@@ -276,15 +281,16 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
             .run(
-                attestedArguments(new String[] {
-                  "declare-account",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--request-file",
-                  declareCashFile.toString()
-                })));
+                attestedArguments(
+                    new String[] {
+                      "declare-account",
+                      "--book-file",
+                      bookFilePath.toString(),
+                      "--book-key-file",
+                      bookKeyFilePath.toString(),
+                      "--request-file",
+                      declareCashFile.toString()
+                    })));
     assertEquals(
         0,
         cli(
@@ -292,15 +298,16 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
             .run(
-                attestedArguments(new String[] {
-                  "declare-account",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--request-file",
-                  declareRevenueFile.toString()
-                })));
+                attestedArguments(
+                    new String[] {
+                      "declare-account",
+                      "--book-file",
+                      bookFilePath.toString(),
+                      "--book-key-file",
+                      bookKeyFilePath.toString(),
+                      "--request-file",
+                      declareRevenueFile.toString()
+                    })));
 
     ByteArrayOutputStream commitOutput = new ByteArrayOutputStream();
     assertEquals(
@@ -330,18 +337,19 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                 utf8PrintStream(getPostingTextOutput),
                 fixedClock())
             .run(
-                attestedArguments(new String[] {
-                  "get-posting",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--posting-id",
-                  postingId,
-                  "--with-context",
-                  "--output",
-                  "text"
-                })));
+                attestedArguments(
+                    new String[] {
+                      "get-posting",
+                      "--book-file",
+                      bookFilePath.toString(),
+                      "--book-key-file",
+                      bookKeyFilePath.toString(),
+                      "--posting-id",
+                      postingId,
+                      "--with-context",
+                      "--output",
+                      "text"
+                    })));
     String getPostingText = getPostingTextOutput.toString(StandardCharsets.UTF_8);
     assertTrue(getPostingText.contains("Context"), getPostingText);
     assertTrue(getPostingText.contains("Seed template"), getPostingText);
@@ -423,15 +431,14 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
             .run(
-                new String[] {
-                  "declare-account",
-                  "--book-file",
-                  bookFilePath.toString(),
-                  "--book-key-file",
-                  bookKeyFilePath.toString(),
-                  "--request-file",
-                  declarationFile.toString()
-                }));
+                attestedArguments(
+                    "declare-account",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--request-file",
+                    declarationFile.toString())));
   }
 
   private Path writeRawBankTransferRequest() throws IOException {

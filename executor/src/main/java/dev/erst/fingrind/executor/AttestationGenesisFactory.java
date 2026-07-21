@@ -36,7 +36,8 @@ public final class AttestationGenesisFactory {
     }
   }
 
-  private static AttestationSigningCredential openFounderCredential(AttestationFounderInput founder) {
+  private static AttestationSigningCredential openFounderCredential(
+      AttestationFounderInput founder) {
     try {
       return AttestationKeyFiles.openOrCreateCredential(
           founder.principalId(), founder.encryptedKeyFilePath(), founder.passphraseFilePath());

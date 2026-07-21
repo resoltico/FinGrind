@@ -131,7 +131,9 @@ final class SqliteAttestationEvidenceStore {
     return append(activeDatabase, persistedVerification.operationHead(), candidateEvidence);
   }
 
-  /** Appends one aggregate execute-plan operation after all child domain mutations have succeeded. */
+  /**
+   * Appends one aggregate execute-plan operation after all child domain mutations have succeeded.
+   */
   static AttestationVerification appendPlanAuthorized(
       SqliteNativeDatabase activeDatabase,
       String planId,

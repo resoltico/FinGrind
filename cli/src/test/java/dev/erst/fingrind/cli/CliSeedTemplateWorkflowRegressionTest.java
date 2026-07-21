@@ -42,12 +42,12 @@ class CliSeedTemplateWorkflowRegressionTest extends CliBookWorkflowFixtureSuppor
         cli.run(
             FinGrindCliTestSupport.attestedArguments(
                 new String[] {
-              "declare-account",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--request-file",
+                  "declare-account",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--request-file",
                   requestFile.toString()
                 }));
 

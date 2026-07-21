@@ -66,7 +66,9 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
                             LedgerJournalStep.assertion(LedgerAssertionKind.POSTING_EXISTS),
                             startedAt,
                             finishedAt,
-                            List.of(LedgerFact.text("postingId", "018f0000-0000-7000-8000-000000000002"))),
+                            List.of(
+                                LedgerFact.text(
+                                    "postingId", "018f0000-0000-7000-8000-000000000002"))),
                         new LedgerJournalEntry.Succeeded(
                             stepId("assert-balance"),
                             LedgerJournalStep.assertion(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS),

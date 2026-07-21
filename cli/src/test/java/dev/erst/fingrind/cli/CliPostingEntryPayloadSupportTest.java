@@ -121,7 +121,8 @@ class CliPostingEntryPayloadSupportTest {
     assertNotNull(reversalPayload);
     assertEquals("REVERSAL", reversalPayload.entryKind());
     assertNotNull(reversalPayload.reversal());
-    assertEquals("bdc03c47-a16c-3688-a18f-2445894bbc69", reversalPayload.reversal().priorPostingId());
+    assertEquals(
+        "bdc03c47-a16c-3688-a18f-2445894bbc69", reversalPayload.reversal().priorPostingId());
     assertEquals("Correction", reversalPayload.reversal().reason());
   }
 

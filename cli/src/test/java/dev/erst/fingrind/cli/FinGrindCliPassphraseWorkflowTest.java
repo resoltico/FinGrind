@@ -232,23 +232,25 @@ class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
     int exitCode =
         cli.run(
             jsonArguments(
-                "open-book",
-                "--book-file",
-                bookFilePath.toString(),
-                "--book-key-file",
-                missingKeyFile.toString(),
-                "--entity-name",
-                "Acme Studio",
-                "--book-template-id",
-                "OWNER_MANAGED_SERVICE",
-                "--accounting-basis",
-                "CASH",
-                "--functional-currency",
-                "EUR",
-                "--fiscal-year-start",
-                "01-01",
-                "--book-start-effective-date",
-                "2026-01-01"));
+                founderAttestedArguments(
+                    bookFilePath,
+                    "open-book",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    missingKeyFile.toString(),
+                    "--entity-name",
+                    "Acme Studio",
+                    "--book-template-id",
+                    "OWNER_MANAGED_SERVICE",
+                    "--accounting-basis",
+                    "CASH",
+                    "--functional-currency",
+                    "EUR",
+                    "--fiscal-year-start",
+                    "01-01",
+                    "--book-start-effective-date",
+                    "2026-01-01")));
 
     assertEquals(6, exitCode);
     String outputText = outputStream.toString(StandardCharsets.UTF_8);

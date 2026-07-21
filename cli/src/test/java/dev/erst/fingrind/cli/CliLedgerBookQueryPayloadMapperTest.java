@@ -25,12 +25,14 @@ class CliLedgerBookQueryPayloadMapperTest {
                     LedgerFact.group(
                         "reversal",
                         List.of(
-                            LedgerFact.text("priorPostingId", "018f0000-0000-7000-8000-000000000002"),
+                            LedgerFact.text(
+                                "priorPostingId", "018f0000-0000-7000-8000-000000000002"),
                             LedgerFact.text("reason", "operator reversal"))))));
 
     assertNotNull(payload.entry());
     assertNotNull(payload.entry().reversal());
-    assertEquals("018f0000-0000-7000-8000-000000000002", payload.entry().reversal().priorPostingId());
+    assertEquals(
+        "018f0000-0000-7000-8000-000000000002", payload.entry().reversal().priorPostingId());
     assertEquals("operator reversal", payload.entry().reversal().reason());
     assertNull(payload.entry().openingBalances());
   }

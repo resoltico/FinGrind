@@ -1,7 +1,7 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import java.io.InputStream;
 import java.io.PrintStream;
@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /** Thin compatibility base that now composes smaller CLI fixture and workflow support classes. */
 class FinGrindCliTestSupport extends CliWorkflowDoubleSupport {
@@ -38,24 +39,51 @@ class FinGrindCliTestSupport extends CliWorkflowDoubleSupport {
    * text output instead of JSON.
    */
   protected static String[] attestedArguments(String... arguments) {
+    return attestedArgumentsForBook(null, arguments);
+  }
+
+  /**
+   * Supplies the founder credential belonging to the book whose attestation policy authorizes the
+   * command.
+   *
+   * <p>Maintenance commands such as restore target a new destination but must be authorized by the
+   * retained source book. Callers provide that source explicitly rather than inferring it from the
+   * destination argument.
+   */
+  protected static String[] attestedArgumentsForBook(
+      @Nullable Path attestationBookFile, String... arguments) {
     if (arguments.length == 0) {
       return arguments;
     }
     List<String> normalizedArguments = new ArrayList<>(List.of(arguments));
-    appendFixtureAttestationCredentials(normalizedArguments);
+    appendFixtureAttestationCredentials(normalizedArguments, attestationBookFile);
     return normalizedArguments.toArray(String[]::new);
   }
 
-  private static void appendFixtureAttestationCredentials(List<String> arguments) {
+  /** Supplies the founder credentials required by a direct open-book fixture command. */
+  protected static String[] founderAttestedArguments(Path bookFilePath, String... arguments) {
+    List<String> normalizedArguments = new ArrayList<>(List.of(arguments));
+    normalizedArguments.addAll(List.of(founderAttestationArguments(bookFilePath)));
+    return normalizedArguments.toArray(String[]::new);
+  }
+
+  private static void appendFixtureAttestationCredentials(
+      List<String> arguments, @Nullable Path attestationBookFile) {
     if ("open-book".equals(arguments.getFirst())
         || arguments.contains(ProtocolOptions.Attestation.PRINCIPAL_ID)) {
       return;
     }
-    int bookFileIndex = arguments.indexOf(ProtocolBookAccessOptions.BOOK_FILE);
-    if (bookFileIndex < 0 || bookFileIndex + 1 >= arguments.size()) {
+    Path bookFile = attestationBookFile;
+    if (bookFile == null) {
+      int bookFileIndex = arguments.indexOf(ProtocolBookAccessOptions.BOOK_FILE);
+      if (bookFileIndex < 0 || bookFileIndex + 1 >= arguments.size()) {
+        return;
+      }
+      bookFile = Path.of(arguments.get(bookFileIndex + 1));
+    }
+    if (bookFile == null) {
       return;
     }
-    Path bookFile = Path.of(arguments.get(bookFileIndex + 1));
     Path absoluteBookFile = bookFile.toAbsolutePath();
     String name = absoluteBookFile.getFileName().toString();
     arguments.addAll(

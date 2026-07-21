@@ -143,10 +143,14 @@ class CliRekeyArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "rekey-book",
                       "--book-file",
                       "book.sqlite",
-                      "--new-book-key-file", "replacement.key",
-                      "--attestation-principal-id", "10213243-5465-7687-98a9-babcbddceeff",
-                      "--attestation-key-file", "operator.fgatk",
-                      "--attestation-passphrase-file", "operator.passphrase"
+                      "--new-book-key-file",
+                      "replacement.key",
+                      "--attestation-principal-id",
+                      "10213243-5465-7687-98a9-babcbddceeff",
+                      "--attestation-key-file",
+                      "operator.fgatk",
+                      "--attestation-passphrase-file",
+                      "operator.passphrase"
                     }));
     assertEquals("--book-key-file", missingCurrentPassphraseSource.argument());
   }

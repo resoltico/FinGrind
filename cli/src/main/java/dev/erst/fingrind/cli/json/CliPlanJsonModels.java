@@ -152,8 +152,7 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
 
   /** Administrative setup facts in one execute-plan journal step. */
   sealed interface LedgerAdministrativeStepDataPayload extends LedgerStepDataPayload
-      permits AccountDeclarationStepDataPayload,
-          TaxRegistrationDeclarationStepDataPayload {}
+      permits AccountDeclarationStepDataPayload, TaxRegistrationDeclarationStepDataPayload {}
 
   /** Bookkeeping and read facts in one execute-plan journal step. */
   sealed interface LedgerBookkeepingStepDataPayload extends LedgerStepDataPayload

@@ -1,7 +1,7 @@
 package dev.erst.fingrind.executor.workflow;
 
-import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.PostingApplicationService;
@@ -77,7 +77,8 @@ final class LedgerPlanStepExecutor {
           case BookWorkflowStep.DeclareAccount declareAccount ->
               declareAccountOutcome(declareAccount.command(), attestationAuthorizer);
           case BookWorkflowStep.DeclareTaxRegistration declareTaxRegistration ->
-              declareTaxRegistrationOutcome(declareTaxRegistration.command(), attestationAuthorizer);
+              declareTaxRegistrationOutcome(
+                  declareTaxRegistration.command(), attestationAuthorizer);
           case BookWorkflowStep.PreflightEntry preflightEntry -> preflightOutcome(preflightEntry);
           case BookWorkflowStep.PostEntry postEntry ->
               postEntryOutcome(postEntry, attestationAuthorizer);
@@ -155,7 +156,8 @@ final class LedgerPlanStepExecutor {
   private LedgerPlanStepOutcome declareTaxRegistrationOutcome(
       dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand command,
       AttestationOperationAuthorizer attestationAuthorizer) {
-    return switch (taxAdministrationService.declareTaxRegistration(command, attestationAuthorizer)) {
+    return switch (taxAdministrationService.declareTaxRegistration(
+        command, attestationAuthorizer)) {
       case DeclareTaxRegistrationResult.Declared declared ->
           LedgerPlanStepOutcomes.stepSucceeded(
               LedgerPlanFactMapper.taxRegistrationFacts("declared", declared.registration()));

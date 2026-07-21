@@ -670,7 +670,7 @@ class FinGrindCliTaxWorkflowTest extends FinGrindCliTestSupport {
   }
 
   private String runText(int expectedExitCode, String... arguments) {
-    return runOutput(expectedExitCode, arguments);
+    return runOutput(expectedExitCode, attestedArguments(arguments));
   }
 
   private String runOutput(int expectedExitCode, String... arguments) {

@@ -73,12 +73,12 @@ class CliOpenBookArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "01-01",
                       "--book-start-effective-date",
                       "2026-01-01",
-                  "--attestation-founder-principal-id",
-                  "123e4567-e89b-12d3-a456-426614174000",
-                  "--attestation-founder-key-file",
-                  "founder.fgatk",
-                  "--attestation-founder-passphrase-file",
-                  "founder.passphrase"
+                      "--attestation-founder-principal-id",
+                      "123e4567-e89b-12d3-a456-426614174000",
+                      "--attestation-founder-key-file",
+                      "founder.fgatk",
+                      "--attestation-founder-passphrase-file",
+                      "founder.passphrase"
                     }));
 
     assertEquals("--tax-profile-file", exception.argument());
@@ -268,12 +268,12 @@ class CliOpenBookArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "01-01",
                       "--book-start-effective-date",
                       "2026-01-01",
-                  "--attestation-founder-principal-id",
-                  "123e4567-e89b-12d3-a456-426614174000",
-                  "--attestation-founder-key-file",
-                  "founder.fgatk",
-                  "--attestation-founder-passphrase-file",
-                  "founder.passphrase"
+                      "--attestation-founder-principal-id",
+                      "123e4567-e89b-12d3-a456-426614174000",
+                      "--attestation-founder-key-file",
+                      "founder.fgatk",
+                      "--attestation-founder-passphrase-file",
+                      "founder.passphrase"
                     }));
     CliArgumentsException serviceCosting =
         assertThrows(
@@ -300,12 +300,12 @@ class CliOpenBookArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "01-01",
                       "--book-start-effective-date",
                       "2026-01-01",
-                  "--attestation-founder-principal-id",
-                  "123e4567-e89b-12d3-a456-426614174000",
-                  "--attestation-founder-key-file",
-                  "founder.fgatk",
-                  "--attestation-founder-passphrase-file",
-                  "founder.passphrase"
+                      "--attestation-founder-principal-id",
+                      "123e4567-e89b-12d3-a456-426614174000",
+                      "--attestation-founder-key-file",
+                      "founder.fgatk",
+                      "--attestation-founder-passphrase-file",
+                      "founder.passphrase"
                     }));
 
     assertEquals(

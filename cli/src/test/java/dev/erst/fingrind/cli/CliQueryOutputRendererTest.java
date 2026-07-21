@@ -528,7 +528,8 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(accountLedgerText.contains("Opening Balances"));
     assertTrue(accountLedgerText.contains("2000"));
     assertTrue(accountLedgerCsv.contains("family,accountCode,postingId"));
-    assertTrue(accountLedgerCsv.contains("account-ledger,1000,bdc03c47-a16c-3688-a18f-2445894bbc69"));
+    assertTrue(
+        accountLedgerCsv.contains("account-ledger,1000,bdc03c47-a16c-3688-a18f-2445894bbc69"));
     List<String> accountLedgerCsvLines = accountLedgerCsv.lines().toList();
     int accountLedgerCsvColumnCount = csvFieldCount(accountLedgerCsvLines.getFirst());
     for (String line : accountLedgerCsvLines) {

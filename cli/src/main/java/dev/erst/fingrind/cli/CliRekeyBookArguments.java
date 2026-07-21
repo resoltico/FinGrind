@@ -1,8 +1,8 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
-import dev.erst.fingrind.contract.protocol.OutputMode;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.ListIterator;
@@ -12,9 +12,7 @@ import org.jspecify.annotations.Nullable;
 final class CliRekeyBookArguments {
   private static final CliBookArgumentParser.CommandArgumentSpec REKEY_BOOK_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
-          List.of(
-              ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
-              ProtocolOptions.Presentation.OUTPUT),
+          List.of(ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE, ProtocolOptions.Presentation.OUTPUT),
           List.of());
 
   private CliRekeyBookArguments() {}
@@ -43,9 +41,9 @@ final class CliRekeyBookArguments {
             outputMode =
                 CliOptionModes.requireOutputMode(
                     outputMode,
-                    CliOptionValues.requireValue(argumentIterator, ProtocolOptions.Presentation.OUTPUT),
-                    CliOptionModes.supportedOutputModes(
-                        OutputMode.JSON, OutputMode.TEXT));
+                    CliOptionValues.requireValue(
+                        argumentIterator, ProtocolOptions.Presentation.OUTPUT),
+                    CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
         default -> throw CliArgumentValueParser.unsupportedArgument(argument, List.of());
       }
     }

@@ -30,25 +30,27 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
 
     JsonCliRun result =
         runJson(
-            "open-book",
-            "--book-file",
-            existingBookFilePath.toString(),
-            "--book-key-file",
-            missingBookKeyFilePath.toString(),
-            "--entity-name",
-            "Occupied Destination",
-            "--functional-currency",
-            "EUR",
-            "--fiscal-year-start",
-            "01-01",
-            "--book-start-effective-date",
-            "2026-01-01",
-            "--book-start-effective-date",
-            "2026-01-01",
-            "--book-template-id",
-            "OWNER_MANAGED_SERVICE",
-            "--accounting-basis",
-            "CASH");
+            founderAttestedArguments(
+                existingBookFilePath,
+                "open-book",
+                "--book-file",
+                existingBookFilePath.toString(),
+                "--book-key-file",
+                missingBookKeyFilePath.toString(),
+                "--entity-name",
+                "Occupied Destination",
+                "--functional-currency",
+                "EUR",
+                "--fiscal-year-start",
+                "01-01",
+                "--book-start-effective-date",
+                "2026-01-01",
+                "--book-start-effective-date",
+                "2026-01-01",
+                "--book-template-id",
+                "OWNER_MANAGED_SERVICE",
+                "--accounting-basis",
+                "CASH"));
 
     assertEquals(7, result.exitCode(), result.output());
     assertEquals(
@@ -71,7 +73,7 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void run_restoreBook_acceptsALegacyBackupPairProtectedByItsSourceKey() throws IOException {
+  void run_restoreBookRejectsAnUnmanifestedLegacyBackupPair() throws IOException {
     Path root = tempDirectory.resolve("legacy-backup-restore");
     Path sourceBookFilePath = root.resolve("source").resolve("entity.sqlite");
     Path sourceBookKeyFilePath = writeBookKey(sourceBookFilePath);
@@ -94,22 +96,23 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
     Path restoredBookKeyFilePath = root.resolve("restored").resolve("entity.key");
     JsonCliRun restored =
         runJson(
-            "restore-book",
-            "--book-file",
-            restoredBookFilePath.toString(),
-            "--new-book-key-file",
-            restoredBookKeyFilePath.toString(),
-            "--backup-file",
-            legacyBackupFilePath.toString(),
-            "--backup-key-file",
-            legacyBackupKeyFilePath.toString());
+            attestedArgumentsForBook(
+                sourceBookFilePath,
+                "restore-book",
+                "--book-file",
+                restoredBookFilePath.toString(),
+                "--new-book-key-file",
+                restoredBookKeyFilePath.toString(),
+                "--backup-file",
+                legacyBackupFilePath.toString(),
+                "--backup-key-file",
+                legacyBackupKeyFilePath.toString()));
 
-    assertEquals(0, restored.exitCode(), restored.output());
-    assertArtifactPaths(restored, restoredBookFilePath, restoredBookKeyFilePath);
+    assertEquals(6, restored.exitCode(), restored.output());
+    assertEquals("artifact-verification-failed", restored.envelope().path("code").stringValue());
     assertEquals(0, openBookForRead(legacyBackupFilePath, legacyBackupKeyFilePath).exitCode());
-    assertEquals(0, openBookForRead(restoredBookFilePath, restoredBookKeyFilePath).exitCode());
-    assertProtectedBookVerificationFailure(
-        openBookForRead(restoredBookFilePath, legacyBackupKeyFilePath));
+    assertFalse(Files.exists(restoredBookFilePath));
+    assertFalse(Files.exists(restoredBookKeyFilePath));
   }
 
   @Test
@@ -156,11 +159,13 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
             sourceBookKeyFilePath.toString(),
             "--backup-file",
             rejectedBackupFilePath.toString(),
+            "--backup-id",
+            "018f0000-0000-7000-8000-000000000001",
             "--new-backup-key-file",
             occupiedGeneratedKeyFilePath.toString()),
         "secret-target-occupied");
     assertFalse(Files.exists(rejectedBackupFilePath));
-    assertArrayEquals(sourceBookBefore, Files.readAllBytes(sourceBookFilePath));
+    assertFalse(Arrays.equals(sourceBookBefore, Files.readAllBytes(sourceBookFilePath)));
     assertArrayEquals(occupiedKeyBefore, Files.readAllBytes(occupiedGeneratedKeyFilePath));
 
     Path backupFilePath = root.resolve("backup").resolve("entity.sqlite");
@@ -174,6 +179,8 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
             sourceBookKeyFilePath.toString(),
             "--backup-file",
             backupFilePath.toString(),
+            "--backup-id",
+            "018f0000-0000-7000-8000-000000000002",
             "--new-backup-key-file",
             backupKeyFilePath.toString());
     assertEquals(0, backup.exitCode(), backup.output());
@@ -192,19 +199,21 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
             .exitCode());
     byte[] destinationBookBefore = Files.readAllBytes(destinationBookFilePath);
     byte[] destinationKeyBefore = Files.readAllBytes(destinationBookKeyFilePath);
-    Path restoredBookKeyFilePath = root.resolve("destination").resolve("restored.key");
+    Path replacementKeyFilePath = root.resolve("destination").resolve("replacement.key");
 
     JsonCliRun restoreWithoutConsent =
         runJson(
-            "restore-book",
-            "--book-file",
-            destinationBookFilePath.toString(),
-            "--new-book-key-file",
-            restoredBookKeyFilePath.toString(),
-            "--backup-file",
-            backupFilePath.toString(),
-            "--backup-key-file",
-            backupKeyFilePath.toString());
+            attestedArgumentsForBook(
+                sourceBookFilePath,
+                "restore-book",
+                "--book-file",
+                destinationBookFilePath.toString(),
+                "--new-book-key-file",
+                replacementKeyFilePath.toString(),
+                "--backup-file",
+                backupFilePath.toString(),
+                "--backup-key-file",
+                backupKeyFilePath.toString()));
     assertMaintenanceCollision(restoreWithoutConsent, "book-destination-occupied");
     assertEquals(
         destinationBookFilePath.toAbsolutePath().normalize().toString(),
@@ -212,42 +221,45 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
         restoreWithoutConsent.output());
     assertArrayEquals(destinationBookBefore, Files.readAllBytes(destinationBookFilePath));
     assertArrayEquals(destinationKeyBefore, Files.readAllBytes(destinationBookKeyFilePath));
-    assertFalse(Files.exists(restoredBookKeyFilePath));
+    assertFalse(Files.exists(replacementKeyFilePath));
 
-    Files.writeString(restoredBookKeyFilePath, "occupied-secret");
-    byte[] occupiedRestoredKeyBefore = Files.readAllBytes(restoredBookKeyFilePath);
-    JsonCliRun bothDestinationsOccupied =
+    JsonCliRun deprecatedReplacement =
         runJson(
-            "restore-book",
-            "--book-file",
-            destinationBookFilePath.toString(),
-            "--new-book-key-file",
-            restoredBookKeyFilePath.toString(),
-            "--backup-file",
-            backupFilePath.toString(),
-            "--backup-key-file",
-            backupKeyFilePath.toString());
-    assertMaintenanceCollision(bothDestinationsOccupied, "book-destination-occupied");
+            attestedArgumentsForBook(
+                sourceBookFilePath,
+                "restore-book",
+                "--book-file",
+                destinationBookFilePath.toString(),
+                "--new-book-key-file",
+                replacementKeyFilePath.toString(),
+                "--backup-file",
+                backupFilePath.toString(),
+                "--backup-key-file",
+                backupKeyFilePath.toString(),
+                "--replace-existing-book"));
+    assertEquals(1, deprecatedReplacement.exitCode(), deprecatedReplacement.output());
+    assertEquals("invalid-request", deprecatedReplacement.envelope().path("code").stringValue());
     assertArrayEquals(destinationBookBefore, Files.readAllBytes(destinationBookFilePath));
-    assertArrayEquals(occupiedRestoredKeyBefore, Files.readAllBytes(restoredBookKeyFilePath));
-    Files.delete(restoredBookKeyFilePath);
 
+    Path restoredBookFilePath = root.resolve("restored").resolve("entity.sqlite");
+    Path restoredBookKeyFilePath = root.resolve("restored").resolve("entity.key");
     JsonCliRun restored =
         runJson(
-            "restore-book",
-            "--book-file",
-            destinationBookFilePath.toString(),
-            "--new-book-key-file",
-            restoredBookKeyFilePath.toString(),
-            "--backup-file",
-            backupFilePath.toString(),
-            "--backup-key-file",
-            backupKeyFilePath.toString(),
-            "--replace-existing-book");
+            attestedArgumentsForBook(
+                sourceBookFilePath,
+                "restore-book",
+                "--book-file",
+                restoredBookFilePath.toString(),
+                "--new-book-key-file",
+                restoredBookKeyFilePath.toString(),
+                "--backup-file",
+                backupFilePath.toString(),
+                "--backup-key-file",
+                backupKeyFilePath.toString()));
     assertEquals(0, restored.exitCode(), restored.output());
-    assertArtifactPaths(restored, destinationBookFilePath, restoredBookKeyFilePath);
+    assertArtifactPaths(restored, restoredBookFilePath, restoredBookKeyFilePath);
     assertEquals(
-        destinationBookFilePath.toAbsolutePath().normalize().toString(),
+        restoredBookFilePath.toAbsolutePath().normalize().toString(),
         restored.envelope().path("payload").path("bookFile").stringValue(),
         restored.output());
     assertEquals(
@@ -255,11 +267,11 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
         restored.envelope().path("payload").path("bookKeyFilePath").stringValue(),
         restored.output());
     assertTrue(Files.isRegularFile(restoredBookKeyFilePath));
+    assertEquals(
+        0, openBookForRead(destinationBookFilePath, destinationBookKeyFilePath).exitCode());
     assertProtectedBookVerificationFailure(
-        openBookForRead(destinationBookFilePath, destinationBookKeyFilePath));
-    assertProtectedBookVerificationFailure(
-        openBookForRead(destinationBookFilePath, backupKeyFilePath));
-    assertEquals(0, openBookForRead(destinationBookFilePath, restoredBookKeyFilePath).exitCode());
+        openBookForRead(restoredBookFilePath, backupKeyFilePath));
+    assertEquals(0, openBookForRead(restoredBookFilePath, restoredBookKeyFilePath).exitCode());
     assertArrayEquals(sourceBookBefore, Files.readAllBytes(sourceBookFilePath));
     assertArrayEquals(sourceKeyBefore, Files.readAllBytes(sourceBookKeyFilePath));
   }
@@ -302,6 +314,8 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
             rotatedSourceKeyFilePath.toString(),
             "--backup-file",
             backupFilePath.toString(),
+            "--backup-id",
+            "018f0000-0000-7000-8000-000000000003",
             "--new-backup-key-file",
             backupKeyFilePath.toString());
     assertEquals(0, backedUp.exitCode(), backedUp.output());
@@ -310,15 +324,17 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
     Path restoredBookFilePath = root.resolve("restored").resolve("entity.sqlite");
     JsonCliRun restored =
         runJson(
-            "restore-book",
-            "--book-file",
-            restoredBookFilePath.toString(),
-            "--new-book-key-file",
-            originalSourceKeyFilePath.toString(),
-            "--backup-file",
-            backupFilePath.toString(),
-            "--backup-key-file",
-            backupKeyFilePath.toString());
+            attestedArgumentsForBook(
+                sourceBookFilePath,
+                "restore-book",
+                "--book-file",
+                restoredBookFilePath.toString(),
+                "--new-book-key-file",
+                originalSourceKeyFilePath.toString(),
+                "--backup-file",
+                backupFilePath.toString(),
+                "--backup-key-file",
+                backupKeyFilePath.toString()));
     assertEquals(0, restored.exitCode(), restored.output());
     assertArtifactPaths(restored, restoredBookFilePath, originalSourceKeyFilePath);
     assertEquals(0, openBookForRead(sourceBookFilePath, rotatedSourceKeyFilePath).exitCode());

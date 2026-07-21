@@ -953,8 +953,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             }
           }
           """
-          .formatted(
-              entryKind, firstField, secondField, slug, sourceDocumentType, slug, slug);
+          .formatted(entryKind, firstField, secondField, slug, sourceDocumentType, slug, slug);
     }
   }
 }
