@@ -1,14 +1,12 @@
 package dev.erst.fingrind.core.attestation;
 
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.assertFailure;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -16,7 +14,6 @@ import org.junit.jupiter.api.Test;
 
 /** Executes the exact Slice 3 standalone-envelope rows from the normative static corpus. */
 class AttestationStaticEnvelopeCorpusAuthorizationTest {
-  private static final UUID BOOK_ID = UUID.fromString("00112233-4455-6677-8899-aabbccddeeff");
   private static final UUID PRINCIPAL_A = UUID.fromString("10213243-5465-7687-98a9-babcbddceeff");
   private static final UUID PRINCIPAL_B = UUID.fromString("11223344-5566-7788-99aa-bbccddeeff00");
   private static final UUID PRINCIPAL_C = UUID.fromString("22334455-6677-8899-aabb-ccddeeff0011");
@@ -45,9 +42,11 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
   void executesTheFixedByteMutationsForRowsN01ThroughN10() throws IOException {
     for (EnvelopeForm form : EnvelopeForm.values()) {
       RawEnvelope raw = rawEnvelope(form);
+      DecodedAuthorization decoded = decode(form, raw);
+      AttestationAuthorizationContext context = decoded.context();
       AttestationRegistry validRegistry =
           verifierRegistry(
-              form.capability(), 2, canonicalBindings(), List.of(), PRINCIPAL_A, PRINCIPAL_B);
+              context.capability(), 2, canonicalBindings(), List.of(), PRINCIPAL_A, PRINCIPAL_B);
       assertDoesNotThrow(() -> authorize(form, validRegistry, raw));
 
       assertFailure(
@@ -62,7 +61,7 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
               authorize(
                   form,
                   verifierRegistry(
-                      form.capability(),
+                      context.capability(),
                       1,
                       canonicalBindings(),
                       List.of(),
@@ -72,10 +71,20 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
 
       assertFailure(
           AttestationAuthorizationFailure.DUPLICATE_PRINCIPAL,
-          () -> authorize(form, validRegistry, raw.withSecondPrincipalId(raw.firstPrincipalId())));
+          () ->
+              authorize(
+                  form,
+                  validRegistry,
+                  raw.withSecondPrincipalId(
+                      decoded.authorizationEnvelope().entries().getFirst().principalId())));
       assertFailure(
           AttestationAuthorizationFailure.DUPLICATE_KEY,
-          () -> authorize(form, validRegistry, raw.withSecondKeyId(raw.firstKeyId())));
+          () ->
+              authorize(
+                  form,
+                  validRegistry,
+                  raw.withSecondKeyId(
+                      decoded.authorizationEnvelope().entries().getFirst().keyId())));
       assertFailure(
           AttestationAuthorizationFailure.ENVELOPE_ORDER_INVALID,
           () -> authorize(form, validRegistry, raw.withSwappedEntries()));
@@ -85,14 +94,12 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
               authorize(
                   form,
                   verifierRegistry(
-                      form.capability(),
+                      context.capability(),
                       2,
                       List.of(
                           binding(BigInteger.ZERO, PRINCIPAL_B, SPKI_B),
                           binding(
-                              form.expectedResolvingOrder().add(BigInteger.ONE),
-                              PRINCIPAL_A,
-                              SPKI_A)),
+                              context.resolvingOrder().add(BigInteger.ONE), PRINCIPAL_A, SPKI_A)),
                       List.of(),
                       PRINCIPAL_A,
                       PRINCIPAL_B),
@@ -103,12 +110,12 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
               authorize(
                   form,
                   verifierRegistry(
-                      form.capability(),
+                      context.capability(),
                       2,
                       canonicalBindings(),
                       List.of(
                           new AttestationCredentialRevocation(
-                              form.expectedResolvingOrder().subtract(BigInteger.ONE),
+                              context.resolvingOrder().subtract(BigInteger.ONE),
                               PRINCIPAL_A,
                               keyId(SPKI_A))),
                       PRINCIPAL_A,
@@ -123,7 +130,7 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
               authorize(
                   form,
                   verifierRegistry(
-                      form.capability(),
+                      context.capability(),
                       2,
                       List.of(
                           binding(BigInteger.ZERO, PRINCIPAL_B, AttestationSpki.of(X25519_SPKI)),
@@ -142,28 +149,41 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
   }
 
   @Test
-  void derivesThePublishedResolvingOrderForEachStandaloneEnvelopeForm() {
-    assertEquals(BigInteger.valueOf(41), EnvelopeForm.OPERATION.context().resolvingOrder());
-    assertEquals(BigInteger.valueOf(42), EnvelopeForm.MANIFEST.context().resolvingOrder());
-    assertEquals(BigInteger.valueOf(42), EnvelopeForm.RECEIPT.context().resolvingOrder());
+  void derivesThePublishedResolvingOrderForEachStandaloneEnvelopeForm() throws IOException {
+    assertEquals(
+        BigInteger.valueOf(41),
+        decode(EnvelopeForm.OPERATION, rawEnvelope(EnvelopeForm.OPERATION))
+            .context()
+            .resolvingOrder());
+    assertEquals(
+        BigInteger.valueOf(42),
+        decode(EnvelopeForm.MANIFEST, rawEnvelope(EnvelopeForm.MANIFEST))
+            .context()
+            .resolvingOrder());
+    assertEquals(
+        BigInteger.valueOf(42),
+        decode(EnvelopeForm.RECEIPT, rawEnvelope(EnvelopeForm.RECEIPT)).context().resolvingOrder());
   }
 
   private static void assertCapabilityFailure(EnvelopeForm form) throws IOException {
     RawEnvelope raw = rawEnvelope(form);
+    DecodedAuthorization decoded = decode(form, raw);
     AttestationSignatureEntry cEntry =
         new AttestationSignatureEntry(PRINCIPAL_C, KEY_C, form.cSignature());
-    AttestationSignatureEntry bEntry = raw.entries().getFirst();
+    AttestationSignatureEntry bEntry = decoded.authorizationEnvelope().entries().getFirst();
     RawEnvelope bAndC = raw.withEntries(List.of(cEntry, bEntry));
     assertEquals(
         List.of(KEY_C, bEntry.keyId()),
-        bAndC.entries().stream().map(AttestationSignatureEntry::keyId).toList());
+        decode(form, bAndC).authorizationEnvelope().entries().stream()
+            .map(AttestationSignatureEntry::keyId)
+            .toList());
     assertFailure(
         AttestationAuthorizationFailure.CAPABILITY_INVALID,
         () ->
             authorize(
                 form,
                 verifierRegistry(
-                    form.capability(),
+                    decoded.context().capability(),
                     2,
                     List.of(
                         binding(BigInteger.ZERO, PRINCIPAL_A, SPKI_A),
@@ -176,17 +196,20 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
   }
 
   private static RawEnvelope rawEnvelope(EnvelopeForm form) throws IOException {
-    RawEnvelope raw =
-        new RawEnvelope(
-            AttestationDocumentVectors.bytes(form.document(), form.vector(), "envelope"),
-            form.payloadLength());
-    assertArrayEquals(form.context().payload(), raw.payload());
-    return raw;
+    return new RawEnvelope(
+        AttestationDocumentVectors.bytes(form.document(), form.vector(), "envelope"),
+        form.payloadLength());
   }
 
   private static void authorize(
       EnvelopeForm form, AttestationRegistry registry, RawEnvelope envelope) {
-    AttestationAuthorization.requireAuthorized(registry, form.context(), envelope.asEnvelope());
+    DecodedAuthorization decoded = decode(form, envelope);
+    AttestationAuthorization.requireAuthorized(
+        registry, decoded.context(), decoded.authorizationEnvelope());
+  }
+
+  private static DecodedAuthorization decode(EnvelopeForm form, RawEnvelope envelope) {
+    return form.decode(envelope.encoded());
   }
 
   private static AttestationRegistry verifierRegistry(
@@ -232,95 +255,60 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
     return AttestationHash.sha256(spki.bytes());
   }
 
-  /** Selects one standalone signed structure and the context that its decoded payload creates. */
+  /** Selects one standalone signed structure and decodes its mutated corpus envelope. */
   private enum EnvelopeForm {
     OPERATION(
         AttestationDocumentVectors.PROTOCOL_DOCUMENT,
         "V-OP-02",
         181,
-        AttestationCapability.POST,
-        BigInteger.valueOf(41),
         "0000000000000000000000000000000000000000000000000000000000000000") {
       @Override
-      AttestationAuthorizationContext context() {
-        return AttestationAuthorizationContext.standaloneOperation(
-            new AttestationOperationPayload(
-                BOOK_ID,
-                BigInteger.valueOf(42),
-                AttestationOperationKind.RECORD_SALE_SETTLED.wireToken(),
-                AttestationHash.of(
-                    AttestationDocumentVectors.hex(
-                        "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f")),
-                Instant.parse("2026-07-17T03:34:00.485Z"),
-                AttestationHash.of(
-                    AttestationDocumentVectors.hex(
-                        "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f")),
-                AttestationHash.of(
-                    AttestationDocumentVectors.hex(
-                        "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f"))));
+      DecodedAuthorization decode(byte[] encoded) {
+        AttestationDecodedEnvelope<AttestationOperationPayload> decoded =
+            AttestationDecodedEnvelope.operation(encoded);
+        return new DecodedAuthorization(
+            AttestationAuthorizationContext.standaloneOperation(decoded.payload()),
+            decoded.authorizationEnvelope());
       }
     },
     MANIFEST(
         AttestationDocumentVectors.ARTIFACT_DOCUMENT,
         "V-MANIFEST-02",
         121,
-        AttestationCapability.BACKUP,
-        BigInteger.valueOf(42),
         "e68bc651ab5ee607fe5f5e5a122e58477950dc37b33794c95fc5671df28d6efaf408d460b75231b175b025276fff1e92981c942ab523602d0076a3250f8d5f0e") {
       @Override
-      AttestationAuthorizationContext context() {
-        return AttestationAuthorizationContext.manifest(
-            new AttestationBackupManifestPayload(
-                BOOK_ID,
-                UUID.fromString("ffeeddcc-bbaa-9988-7766-554433221100"),
-                BigInteger.valueOf(42),
-                AttestationHash.of(
-                    AttestationDocumentVectors.hex(
-                        "d7e8fb5126e2d1a7ff28398faec6bfa0e061ca1c74ffd4d1947ea5f70a339213")),
-                AttestationHash.of(
-                    AttestationDocumentVectors.hex(
-                        "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f"))));
+      DecodedAuthorization decode(byte[] encoded) {
+        AttestationDecodedEnvelope<AttestationBackupManifestPayload> decoded =
+            AttestationDecodedEnvelope.manifest(encoded);
+        return new DecodedAuthorization(
+            AttestationAuthorizationContext.manifest(decoded.payload()),
+            decoded.authorizationEnvelope());
       }
     },
     RECEIPT(
         AttestationDocumentVectors.ARTIFACT_DOCUMENT,
         "V-RECEIPT-02",
         97,
-        AttestationCapability.ANCHOR,
-        BigInteger.valueOf(42),
         "31f445e7dda739aa66fb025d965217c83d8df4a602adad8023539df5ac8cff46be999d06b8278439b201099b57519f699718c05dd0f0abdb0ca7a445cd835705") {
       @Override
-      AttestationAuthorizationContext context() {
-        return AttestationAuthorizationContext.receipt(
-            new AttestationReceiptPayload(
-                BOOK_ID,
-                BigInteger.valueOf(42),
-                AttestationHash.of(
-                    AttestationDocumentVectors.hex(
-                        "d7e8fb5126e2d1a7ff28398faec6bfa0e061ca1c74ffd4d1947ea5f70a339213")),
-                Instant.parse("2026-07-17T04:00:00Z")));
+      DecodedAuthorization decode(byte[] encoded) {
+        AttestationDecodedEnvelope<AttestationReceiptPayload> decoded =
+            AttestationDecodedEnvelope.receipt(encoded);
+        return new DecodedAuthorization(
+            AttestationAuthorizationContext.receipt(decoded.payload()),
+            decoded.authorizationEnvelope());
       }
     };
 
     private final String document;
     private final String vector;
     private final int payloadLength;
-    private final AttestationCapability capability;
-    private final BigInteger expectedResolvingOrder;
     private final String cSignatureHex;
 
-    EnvelopeForm(
-        String document,
-        String vector,
-        int payloadLength,
-        AttestationCapability capability,
-        BigInteger expectedResolvingOrder,
-        String cSignatureHex) {
+    EnvelopeForm(String document, String vector, int payloadLength, String cSignatureHex) {
       this.document = document;
       this.vector = vector;
       this.payloadLength = payloadLength;
-      this.capability = capability;
-      this.expectedResolvingOrder = expectedResolvingOrder;
       this.cSignatureHex = cSignatureHex;
     }
 
@@ -336,20 +324,17 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
       return payloadLength;
     }
 
-    AttestationCapability capability() {
-      return capability;
-    }
-
     byte[] cSignature() {
       return AttestationDocumentVectors.hex(cSignatureHex);
     }
 
-    BigInteger expectedResolvingOrder() {
-      return expectedResolvingOrder;
-    }
-
-    abstract AttestationAuthorizationContext context();
+    abstract DecodedAuthorization decode(byte[] encoded);
   }
+
+  /** The authorization inputs derived from one production-decoded corpus envelope. */
+  private record DecodedAuthorization(
+      AttestationAuthorizationContext context,
+      AttestationAuthorizationEnvelope authorizationEnvelope) {}
 
   /**
    * Retains raw fixture bytes and performs each corpus change as a byte mutation or byte rebuild.
@@ -365,27 +350,10 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
     RawEnvelope(byte[] encoded, int payloadLength) {
       this.encoded = encoded.clone();
       this.payloadLength = payloadLength;
-      AttestationDocumentVectors.entries(this.encoded, payloadLength);
     }
 
-    byte[] payload() {
-      return Arrays.copyOf(encoded, payloadLength);
-    }
-
-    List<AttestationSignatureEntry> entries() {
-      return AttestationDocumentVectors.entries(encoded, payloadLength);
-    }
-
-    AttestationAuthorizationEnvelope asEnvelope() {
-      return new AttestationAuthorizationEnvelope(payload(), entries());
-    }
-
-    UUID firstPrincipalId() {
-      return entries().getFirst().principalId();
-    }
-
-    AttestationHash firstKeyId() {
-      return entries().getFirst().keyId();
+    byte[] encoded() {
+      return encoded.clone();
     }
 
     RawEnvelope xorFinalSignatureByte() {
