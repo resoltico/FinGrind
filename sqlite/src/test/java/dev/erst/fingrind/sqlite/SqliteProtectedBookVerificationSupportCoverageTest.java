@@ -149,6 +149,92 @@ class SqliteProtectedBookVerificationSupportCoverageTest
         ProtectedBookVerificationFailure.MISSING);
   }
 
+  @Test
+  void inspectionMappers_coverEveryNoninitializedBookStateAndContractFailureBoundary() {
+    Path normalizedBookPath = tempDirectory.resolve("all-inspection-states.sqlite");
+    assertVerificationFailure(
+        VERIFICATION_SUPPORT.mapInspection(
+            normalizedBookPath,
+            new BookLifecycleInspection.Missing(SqliteBookContract.FORMAT_VERSION)),
+        normalizedBookPath,
+        ProtectedBookVerificationFailure.MISSING);
+    assertEquals(
+        ProtectedBookVerificationFailure.FOREIGN_SQLITE,
+        VERIFICATION_SUPPORT.mapInspectionFailure(BookLifecycleInspection.Status.FOREIGN_SQLITE));
+    assertEquals(
+        ProtectedBookVerificationFailure.UNSUPPORTED_FORMAT_VERSION,
+        VERIFICATION_SUPPORT.mapInspectionFailure(
+            BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION));
+    assertEquals(
+        ProtectedBookVerificationFailure.INCOMPLETE_FINGRIND,
+        VERIFICATION_SUPPORT.mapInspectionFailure(
+            BookLifecycleInspection.Status.INCOMPLETE_FINGRIND));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            VERIFICATION_SUPPORT.mapInspectionFailure(BookLifecycleInspection.Status.INITIALIZED));
+
+    assertEquals(
+        ProtectedBookVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED,
+        SqliteProtectedBookVerificationSupport.protectedBookVerificationFailure(
+            ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.failure(
+                "book verification failed", null, null)));
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            SqliteProtectedBookVerificationSupport.protectedBookVerificationFailure(
+                ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.failure(
+                    "invalid key", null, null)));
+  }
+
+  @Test
+  void inspectOpenedBook_mapsExistingFailureAndRetainsOnlyAUsableInitializedHandle() {
+    Path normalizedBookPath = tempDirectory.resolve("existing-inspection.sqlite");
+    AtomicBoolean existingSessionClosed = new AtomicBoolean(false);
+    try (SqliteBookPassphrase existingPassphrase =
+        SqliteBookPassphrase.fromUtf8Bytes(
+            "existing-inspection", "secret".getBytes(StandardCharsets.UTF_8))) {
+      assertVerificationFailure(
+          invokeInspectOpenedBook(
+              normalizedBookPath,
+              readSession(
+                  () ->
+                      new BookLifecycleInspection.Existing(
+                          BookLifecycleInspection.Status.FOREIGN_SQLITE,
+                          0,
+                          0,
+                          SqliteBookContract.FORMAT_VERSION),
+                  () -> existingSessionClosed.set(true)),
+              existingPassphrase),
+          normalizedBookPath,
+          ProtectedBookVerificationFailure.FOREIGN_SQLITE);
+      assertTrue(existingSessionClosed.get());
+      assertPassphraseZeroized(existingPassphrase);
+    }
+
+    AtomicBoolean initializedSessionClosed = new AtomicBoolean(false);
+    try (SqliteBookPassphrase initializedPassphrase =
+        SqliteBookPassphrase.fromUtf8Bytes(
+            "initialized-inspection", "secret".getBytes(StandardCharsets.UTF_8))) {
+      ProtectedBookMaintenanceStore.VerifiedBook verifiedBook =
+          (ProtectedBookMaintenanceStore.VerifiedBook)
+              invokeInspectOpenedBook(
+                  normalizedBookPath,
+                  readSession(
+                      () ->
+                          SqlitePostingFactFixtureSupport.initializedLifecycleInspection(
+                              SqliteBookContract.APPLICATION_ID,
+                              SqliteBookContract.FORMAT_VERSION,
+                              SqliteBookContract.FORMAT_VERSION,
+                              Instant.parse("2026-06-12T10:15:00Z")),
+                      () -> initializedSessionClosed.set(true)),
+                  initializedPassphrase);
+      assertEquals(normalizedBookPath, verifiedBook.artifactPath());
+      assertTrue(initializedSessionClosed.get());
+      verifiedBook.close();
+    }
+  }
+
   private static ProtectedBookMaintenanceStore.BookVerification invokeInspectOpenedBook(
       Path normalizedBookPath, SqliteReadSession session, SqliteBookPassphrase bookPassphrase) {
     try {
