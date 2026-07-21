@@ -152,11 +152,7 @@ public final class AttestationInspectionService {
         | NullPointerException exception) {
       return invalidAttestationCredentials(bookAccess.bookFilePath());
     }
-    try {
-      AttestationReceipt.verify(receipt, evidence, AttestationReceiptRetention.INDEPENDENT);
-    } catch (IllegalArgumentException exception) {
-      return invalidAttestationCredentials(bookAccess.bookFilePath());
-    }
+    AttestationReceipt.verify(receipt, evidence, AttestationReceiptRetention.INDEPENDENT);
     return publishReceipt(receiptPath, receipt, bookAccess.bookFilePath(), verification);
   }
 

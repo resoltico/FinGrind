@@ -66,6 +66,13 @@ class AttestationInspectionServiceTest {
         service
             .verifyReceipt(access, retainedDirectory.resolve("malformed.fgar"))
             .requireAccepted());
+    Path alteredReceiptPath = retainedDirectory.resolve("altered.fgar");
+    byte[] alteredReceipt = Files.readAllBytes(receiptPath);
+    alteredReceipt[alteredReceipt.length - 1] ^= 1;
+    Files.write(alteredReceiptPath, alteredReceipt);
+    assertInstanceOf(
+        VerifyAttestationReceiptResult.Invalid.class,
+        service.verifyReceipt(access, alteredReceiptPath).requireAccepted());
   }
 
   @Test
@@ -141,6 +148,14 @@ class AttestationInspectionServiceTest {
     assertInstanceOf(
         VerifyAttestationReceiptResult.Invalid.class,
         changedBook.verifyReceipt(access, receiptPath).requireAccepted());
+    BookAccess rootPathAccess =
+        new BookAccess(
+            Path.of("/"),
+            new BookAccess.PassphraseSource.KeyFile(bookPath.resolveSibling("book.key")),
+            List.of());
+    assertInstanceOf(
+        VerifyAttestationReceiptResult.Valid.class,
+        valid.verifyReceipt(rootPathAccess, receiptPath).requireAccepted());
   }
 
   @Test

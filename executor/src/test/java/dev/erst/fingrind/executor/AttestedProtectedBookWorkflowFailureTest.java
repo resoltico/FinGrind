@@ -9,6 +9,7 @@ import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookBackupOutcome;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRekeyOutcome;
@@ -280,6 +281,140 @@ class AttestedProtectedBookWorkflowFailureTest {
       assertInstanceOf(
           MaintenanceDecision.Failed.class,
           workflow(failedRekeyStaging).rekeyBook(access, rekeyPath(), session));
+    }
+  }
+
+  @Test
+  void classifiesRestoreAndRekeyLeaseAndVerificationBoundaryFailures() throws IOException {
+    AttestationMaintenanceTestSupport.CredentialFixture credential = credential();
+    ProtectedBookAccess access = access(credential);
+
+    AttestationMaintenanceTestSupport.Store blockedRestore =
+        store(credential, BackupArtifactPairState.ABSENT);
+    blockedRestore.setLiveBlockingArtifacts(List.of(bookPath().resolveSibling("book.sqlite-wal")));
+    try (var session = credential.openSession()) {
+      ProtectedBookRestoreOutcome.Rejected rejected =
+          assertInstanceOf(
+              ProtectedBookRestoreOutcome.Rejected.class,
+              accepted(
+                  workflow(blockedRestore)
+                      .restoreBook(
+                          temporaryDirectory.resolve("restored/book.sqlite"),
+                          temporaryDirectory.resolve("restored/book.key"),
+                          backupPath(),
+                          backupKeyPath(),
+                          session)));
+      assertInstanceOf(
+          ProtectedBookMaintenanceRejection.BookHasBlockingArtifacts.class, rejected.rejection());
+    }
+
+    AttestationMaintenanceTestSupport.Store rejectedLease =
+        store(credential, BackupArtifactPairState.ABSENT);
+    rejectedLease.setExistingLeaseFailure(
+        new ProtectedBookMaintenanceRejectionException(
+            new ProtectedBookMaintenanceRejection.ArtifactBusy(
+                ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE, backupPath())));
+    try (var session = credential.openSession()) {
+      ProtectedBookRestoreOutcome.Rejected rejected =
+          assertInstanceOf(
+              ProtectedBookRestoreOutcome.Rejected.class,
+              accepted(
+                  workflow(rejectedLease)
+                      .restoreBook(
+                          temporaryDirectory.resolve("restored/book.sqlite"),
+                          temporaryDirectory.resolve("restored/book.key"),
+                          backupPath(),
+                          backupKeyPath(),
+                          session)));
+      assertInstanceOf(ProtectedBookMaintenanceRejection.ArtifactBusy.class, rejected.rejection());
+    }
+
+    AttestationMaintenanceTestSupport.Store failedLease =
+        store(credential, BackupArtifactPairState.ABSENT);
+    failedLease.setExistingLeaseFailure(new IllegalStateException("lease service unavailable"));
+    try (var session = credential.openSession()) {
+      assertInstanceOf(
+          MaintenanceDecision.Failed.class,
+          workflow(failedLease)
+              .restoreBook(
+                  temporaryDirectory.resolve("restored/book.sqlite"),
+                  temporaryDirectory.resolve("restored/book.key"),
+                  backupPath(),
+                  backupKeyPath(),
+                  session));
+    }
+
+    AttestationMaintenanceTestSupport.Store failedArtifactVerification =
+        store(credential, BackupArtifactPairState.ABSENT);
+    failedArtifactVerification.setBackupArtifactVerificationFailure(
+        new IllegalStateException("artifact verification unavailable"));
+    try (var session = credential.openSession()) {
+      assertInstanceOf(
+          MaintenanceDecision.Failed.class,
+          workflow(failedArtifactVerification)
+              .restoreBook(
+                  temporaryDirectory.resolve("restored/book.sqlite"),
+                  temporaryDirectory.resolve("restored/book.key"),
+                  backupPath(),
+                  backupKeyPath(),
+                  session));
+    }
+
+    AttestationMaintenanceTestSupport.Store rejectedRekeyPublication =
+        store(credential, BackupArtifactPairState.ABSENT);
+    rejectedRekeyPublication.setPrepareFailure(
+        new ProtectedBookMaintenanceRejectionException(
+            new ProtectedBookMaintenanceRejection.SecretTargetOccupied(rekeyPath())));
+    try (var session = credential.openSession()) {
+      ProtectedBookRekeyOutcome.Rejected rejected =
+          assertInstanceOf(
+              ProtectedBookRekeyOutcome.Rejected.class,
+              accepted(workflow(rejectedRekeyPublication).rekeyBook(access, rekeyPath(), session)));
+      assertInstanceOf(
+          ProtectedBookMaintenanceRejection.SecretTargetOccupied.class, rejected.rejection());
+    }
+
+    AttestationMaintenanceTestSupport.Store rejectedLiveVerification =
+        store(credential, BackupArtifactPairState.ABSENT);
+    rejectedLiveVerification.setLiveVerification(
+        MaintenanceDecision.accepted(
+            new VerificationFailure(bookPath(), ProtectedBookVerificationFailure.MISSING)));
+    try (var session = credential.openSession()) {
+      ProtectedBookRekeyOutcome.Rejected rejected =
+          assertInstanceOf(
+              ProtectedBookRekeyOutcome.Rejected.class,
+              accepted(workflow(rejectedLiveVerification).rekeyBook(access, rekeyPath(), session)));
+      assertInstanceOf(
+          ProtectedBookMaintenanceRejection.ArtifactVerificationFailed.class, rejected.rejection());
+    }
+
+    AttestationMaintenanceTestSupport.Store failedRestoreVerification =
+        store(credential, BackupArtifactPairState.ABSENT);
+    assertInstanceOf(
+        ProtectedBookBackupOutcome.BackedUp.class,
+        accepted(backup(failedRestoreVerification, access, credential)));
+    failedRestoreVerification.setStagedRestoreVerification(
+        MaintenanceDecision.failed(storageFailure()));
+    try (var session = credential.openSession()) {
+      assertInstanceOf(
+          MaintenanceDecision.Failed.class,
+          workflow(failedRestoreVerification)
+              .restoreBook(
+                  temporaryDirectory.resolve("restored/book.sqlite"),
+                  temporaryDirectory.resolve("restored/book.key"),
+                  backupPath(),
+                  backupKeyPath(),
+                  session));
+    }
+
+    AttestationMaintenanceTestSupport.Store failedRekeyVerification =
+        store(credential, BackupArtifactPairState.ABSENT);
+    failedRekeyVerification.setStagedRestoreVerification(
+        MaintenanceDecision.failed(storageFailure()));
+    try (var session = credential.openSession()) {
+      assertInstanceOf(
+          MaintenanceDecision.Failed.class,
+          workflow(failedRekeyVerification).rekeyBook(access, rekeyPath(), session));
     }
   }
 

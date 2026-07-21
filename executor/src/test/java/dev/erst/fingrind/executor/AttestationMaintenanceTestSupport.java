@@ -105,6 +105,8 @@ final class AttestationMaintenanceTestSupport {
     private MaintenanceDecision<BookVerification> stagedRestoreVerification;
     private @Nullable RuntimeException prepareFailure;
     private @Nullable RuntimeException appendFailure;
+    private @Nullable RuntimeException existingLeaseFailure;
+    private @Nullable RuntimeException backupArtifactVerificationFailure;
     private byte @Nullable [] sealedArtifact;
 
     Store(Path bookPath, List<AttestationEvidence> evidence) {
@@ -147,6 +149,14 @@ final class AttestationMaintenanceTestSupport {
 
     void setExistingLease(LeaseAcquisition lease) {
       existingLease = Objects.requireNonNull(lease, "lease");
+    }
+
+    void setExistingLeaseFailure(RuntimeException failure) {
+      existingLeaseFailure = Objects.requireNonNull(failure, "failure");
+    }
+
+    void setBackupArtifactVerificationFailure(RuntimeException failure) {
+      backupArtifactVerificationFailure = Objects.requireNonNull(failure, "failure");
     }
 
     void setStagedBackup(MaintenanceDecision<StagedBackupPair> staged) {
@@ -228,6 +238,9 @@ final class AttestationMaintenanceTestSupport {
     @Override
     public LeaseAcquisition acquireExistingArtifactLease(
         Path normalizedArtifactPath, ProtectedBookMaintenanceArtifactRole artifactRole) {
+      if (existingLeaseFailure != null) {
+        throw existingLeaseFailure;
+      }
       return existingLease;
     }
 
@@ -292,6 +305,9 @@ final class AttestationMaintenanceTestSupport {
     @Override
     public VerifiedBackupArtifact verifyBackupArtifact(
         Path normalizedBackupArtifactPath, Path normalizedBackupKeyFilePath) {
+      if (backupArtifactVerificationFailure != null) {
+        throw backupArtifactVerificationFailure;
+      }
       byte[] artifact = Objects.requireNonNull(sealedArtifact, "sealedArtifact");
       AttestationArtifactSnapshotReader reader = ignored -> evidenceFor(snapshotBook);
       return new StubVerifiedBackupArtifact(
