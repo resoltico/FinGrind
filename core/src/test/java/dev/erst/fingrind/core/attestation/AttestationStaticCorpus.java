@@ -1,6 +1,7 @@
 package dev.erst.fingrind.core.attestation;
 
-import java.util.Arrays;
+import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
@@ -119,40 +120,6 @@ final class AttestationStaticCorpus {
       return edits(edit(offset, checkedBytes.length, checkedBytes));
     }
 
-    /**
-     * Produces the one exact replacement which turns one complete raw source into another.
-     *
-     * <p>The common prefix and suffix remain byte-for-byte anchored to the declared base. A corpus
-     * mutation is required to change its source: accepting an identity edit would make a negative
-     * fixture cosmetically byte-addressed while leaving its verifier input unchanged.
-     */
-    static Mutation between(byte[] baseSource, byte[] targetSource) {
-      byte[] checkedBase = Objects.requireNonNull(baseSource, "baseSource");
-      byte[] checkedTarget = Objects.requireNonNull(targetSource, "targetSource");
-      if (Arrays.equals(checkedBase, checkedTarget)) {
-        throw new IllegalArgumentException("corpus mutation must change its base source.");
-      }
-      int prefixLength = 0;
-      while (prefixLength < checkedBase.length
-          && prefixLength < checkedTarget.length
-          && checkedBase[prefixLength] == checkedTarget[prefixLength]) {
-        prefixLength++;
-      }
-      int suffixLength = 0;
-      while (suffixLength < checkedBase.length - prefixLength
-          && suffixLength < checkedTarget.length - prefixLength
-          && checkedBase[checkedBase.length - suffixLength - 1]
-              == checkedTarget[checkedTarget.length - suffixLength - 1]) {
-        suffixLength++;
-      }
-      return edits(
-          edit(
-              prefixLength,
-              checkedBase.length - prefixLength - suffixLength,
-              Arrays.copyOfRange(
-                  checkedTarget, prefixLength, checkedTarget.length - suffixLength)));
-    }
-
     static Mutation edits(Edit... edits) {
       return new Mutation(java.util.List.of(edits));
     }
@@ -196,10 +163,6 @@ final class AttestationStaticCorpus {
       return result;
     }
 
-    boolean leaves(byte[] baseSource, byte[] expectedSource) {
-      return Arrays.equals(apply(baseSource), expectedSource);
-    }
-
     /** One offset-addressed replacement in the base source. */
     static final class Edit {
       private final int offset;
@@ -230,10 +193,58 @@ final class AttestationStaticCorpus {
     }
   }
 
-  record PolicyFold(String summary) {
+  /** Concrete registry facts expected at one fixed historical resolving position. */
+  record PolicyFold(
+      BigInteger resolvingOrder,
+      AttestationCapability capability,
+      int quorum,
+      int eligiblePrincipalCount,
+      int operatorEligiblePrincipalCount,
+      int systemEligiblePrincipalCount,
+      boolean activeSystemWorkflow) {
     PolicyFold {
-      if (Objects.requireNonNull(summary, "summary").isBlank()) {
-        throw new IllegalArgumentException("policy fold summary must not be blank.");
+      Objects.requireNonNull(resolvingOrder, "resolvingOrder");
+      Objects.requireNonNull(capability, "capability");
+      if (resolvingOrder.signum() < 0
+          || quorum < 1
+          || eligiblePrincipalCount < 0
+          || operatorEligiblePrincipalCount < 0
+          || systemEligiblePrincipalCount < 0) {
+        throw new IllegalArgumentException("policy fold values must be non-negative and concrete.");
+      }
+    }
+
+    void requireMatches(AttestationRegistry registry) {
+      AttestationRegistry checkedRegistry = Objects.requireNonNull(registry, "registry");
+      boolean actualActiveSystemWorkflow =
+          checkedRegistry.hasActiveSystemWorkflow(
+                  AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP, resolvingOrder)
+              || checkedRegistry.hasActiveSystemWorkflow(
+                  AttestationSystemWorkflowKind.FISCAL_YEAR_CLOSE, resolvingOrder);
+      java.util.List<String> mismatches = new ArrayList<>();
+      if (checkedRegistry.quorumAt(capability, resolvingOrder) != quorum) {
+        mismatches.add("quorum");
+      }
+      if (checkedRegistry.eligiblePrincipalCount(capability, resolvingOrder)
+          != eligiblePrincipalCount) {
+        mismatches.add("eligible principals");
+      }
+      if (checkedRegistry.eligiblePrincipalCount(
+              capability, resolvingOrder, AttestationCredentialPurpose.OPERATOR)
+          != operatorEligiblePrincipalCount) {
+        mismatches.add("operator-purpose principals");
+      }
+      if (checkedRegistry.eligiblePrincipalCount(
+              capability, resolvingOrder, AttestationCredentialPurpose.SYSTEM)
+          != systemEligiblePrincipalCount) {
+        mismatches.add("system-purpose principals");
+      }
+      if (actualActiveSystemWorkflow != activeSystemWorkflow) {
+        mismatches.add("active system workflow");
+      }
+      if (!mismatches.isEmpty()) {
+        throw new AssertionError(
+            "Static corpus policy fold disagrees on " + String.join(", ", mismatches) + ".");
       }
     }
   }

@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: BOOK_OPERATION_ATTESTATION_CORPUS
-updated: "2026-07-20"
+updated: "2026-07-21"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["AttestationStaticCorpus", "AttestationVectors"]
@@ -32,6 +32,15 @@ records their complete bytes and any mutation as a byte offset plus replacement 
 protocol owns V-OP-01 and V-OP-02. The artifact protocol owns V-MANIFEST-02, V-RECEIPT-02, and
 V-CONTAINER-01. They are standalone envelope or parser vectors unless a row expressly names a
 complete book or artifact.
+
+The complete-book, artifact, and receipt sources are committed under
+`core/src/test/resources/dev/erst/fingrind/core/attestation/corpus/`. Each `source/<id>.b64` has
+an adjacent SHA-256 commitment and is checked against the independently repeated test constant.
+Each complete-book negative has `negative/<id>.meta` with its base ID, byte offset, replaced-byte
+count, and target SHA-256, plus `negative/<id>.delta.b64` with the replacement bytes. Both source
+and negative target hashes are independently repeated in the test code. The verifier tests decode
+those bytes directly; no encoder, signer, semantic fixture builder, or mutation derivation
+constructs a Slice-4 verifier input at test time.
 
 ## Static Corpus Common Facts
 

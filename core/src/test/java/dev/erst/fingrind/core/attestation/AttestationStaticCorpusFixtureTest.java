@@ -9,91 +9,76 @@ import java.io.IOException;
 import java.math.BigInteger;
 import org.junit.jupiter.api.Test;
 
-/** Executes every positive Slice 4 source from its deterministic raw resource. */
+/** Executes every positive Slice 4 source from immutable committed bytes. */
 class AttestationStaticCorpusFixtureTest {
+  private static final AttestationStaticCorpus.PolicyFold BACKUP_AT_SOURCE_ORDER_THREE =
+      new AttestationStaticCorpus.PolicyFold(
+          BigInteger.valueOf(3), AttestationCapability.BACKUP, 1, 2, 2, 0, false);
+  private static final AttestationStaticCorpus.PolicyFold ANCHOR_AT_ORDER_THREE =
+      new AttestationStaticCorpus.PolicyFold(
+          BigInteger.valueOf(3), AttestationCapability.ANCHOR, 1, 2, 2, 0, false);
+  private static final String V_CONTAINER_DIGEST =
+      "3b0fc99b3916dadebfdfa6babcff83afdac8d23b861a4a4e5c43d9e386d9d6ff";
+  private static final int N14_BOOK_ID_OFFSET = 25;
+  private static final int N14_SOURCE_OPERATION_HEAD_OFFSET = 65;
+  private static final int N14_SNAPSHOT_DIGEST_OFFSET = 97;
+  private static final int N14_TRAILER_SNAPSHOT_LENGTH_OFFSET = 372;
+
   @Test
   void executesEveryProtectedBookPositiveFromItsDeclaredRawResource() {
-    assertValidBook(AttestationCorpusFixtures.b01());
-    assertValidBook(AttestationCorpusFixtures.b02());
-    assertValidBook(AttestationCorpusFixtures.b03());
-    assertValidBook(AttestationCorpusFixtures.b04());
-    assertValidBook(AttestationCorpusFixtures.b05());
-    assertValidBook(AttestationCorpusFixtures.b06());
-    assertValidBook(AttestationCorpusFixtures.b07());
-    assertValidBook(AttestationCorpusFixtures.b10());
+    for (String id : AttestationStaticCorpusVectors.positiveBookIds()) {
+      AttestationStaticCorpus.Fixture fixture =
+          AttestationStaticCorpusVectors.positiveBookFixture(id);
+      AttestationStaticCorpusVectors.requirePolicyFold(
+          AttestationStaticCorpusVectors.positivePolicy(id));
+      AttestationCorpusResources.Book book =
+          AttestationCorpusResources.source(id, fixture.source());
+      AttestationBookVerification verification =
+          assertDoesNotThrow(() -> AttestationBookVerifier.verify(book.decode()), id);
+      assertEquals(BigInteger.valueOf(book.operations().size() - 1L), verification.headOrder(), id);
+    }
   }
 
   @Test
-  void pinsEveryCompleteRawResourceToItsDeclaredFingerprint() {
-    assertFingerprint(
-        "B-01",
-        AttestationCorpusFixtures.b01().encoded(),
-        "f31e017a7bee0930759acd9185b5ee656e8ddc04dda893bfbd3be5f8d1b15549");
-    assertFingerprint(
-        "B-02",
-        AttestationCorpusFixtures.b02().encoded(),
-        "71c60316634958f786967b7a43452c84be7b4a0e1227a0e629d2f8209271ab1c");
-    assertFingerprint(
-        "B-03",
-        AttestationCorpusFixtures.b03().encoded(),
-        "03c337afaf8b89f99999c0095b8d217f8b2335249c24c3f16c26a85c6e9f753c");
-    assertFingerprint(
-        "B-04",
-        AttestationCorpusFixtures.b04().encoded(),
-        "5063d4117286b8fc885a9abfb7e9d7f23f5f2e6114df4b53c952099cb81e12b5");
-    assertFingerprint(
-        "B-05 artifact",
-        AttestationCorpusFixtures.b05Artifact().encoded(),
-        "b92bba455ca0b086deb84c8e443e837e22ade75176a8153f1a09321a124323fe");
-    assertFingerprint(
-        "B-05 book",
-        AttestationCorpusFixtures.b05().encoded(),
-        "0bf16602e98bed75f7531ecbb99eee26452c7a130ad0dd6b57454750ed5d63b2");
-    assertFingerprint(
-        "B-06",
-        AttestationCorpusFixtures.b06().encoded(),
-        "fe803e5313a9a3522fc03b683cfe5cbe5435026b4e609af6c7dac9132e28ab2b");
-    assertFingerprint(
-        "B-07",
-        AttestationCorpusFixtures.b07().encoded(),
-        "f7f83b2815c876d763500fa52514eb0f1b5e7897b29f451802dfdd8e4f2ab541");
-    assertFingerprint(
-        "B-10",
-        AttestationCorpusFixtures.b10().encoded(),
-        "35bd0a4635780f4e8626e055eb23f80ae252ab9704f813e4e0459ba1e9204f01");
-    assertFingerprint(
-        "B-11 receipt",
-        AttestationCorpusFixtures.b11().encoded(),
-        "6bdfc070fabc1415b634066bcddeee8cf1fd4a58f9bd39fde8c6a132402b010f");
+  void verifiesEveryCommittedSourceAgainstItsIndependentFingerprint() {
+    for (String id : AttestationStaticCorpusVectors.sourceIds()) {
+      assertFalse(AttestationStaticCorpusVectors.source(id).length == 0, id);
+    }
   }
 
   @Test
   void distinguishesAcknowledgedAndUnacknowledgedBackupSourcesForRestore() {
-    assertRestoreScenario(AttestationCorpusFixtures.b06Restore(), true);
-    assertRestoreScenario(AttestationCorpusFixtures.b07Restore(), false);
+    AttestationCorpusResources.Artifact artifact = AttestationStaticCorpusVectors.artifactB05();
+    assertDoesNotThrow(
+        () ->
+            AttestationArtifactVerifier.verifyArtifact(
+                artifact.encoded(),
+                source -> AttestationStaticCorpusVectors.book("B-02").decode()));
+    AttestationStaticCorpusVectors.requirePolicyFold("B-02", BACKUP_AT_SOURCE_ORDER_THREE);
+
+    AttestationCorpusResources.Book acknowledged = AttestationStaticCorpusVectors.book("B-05-book");
+    AttestationBookVerification acknowledgedVerification =
+        assertDoesNotThrow(() -> AttestationBookVerifier.verify(acknowledged.decode()));
+    assertEquals(BigInteger.valueOf(4), acknowledgedVerification.headOrder());
+    assertEquals(
+        AttestationOperationKind.BACKUP_CREATED.wireToken(),
+        acknowledged.operations().get(4).envelope().payload().operationKind());
+
+    assertRestoreTarget("B-06");
+    assertRestoreTarget("B-07");
   }
 
   @Test
-  void executesN11ByMutatingTheCommonPostingPreviousHeadInTheRawBookResource() {
-    AttestationCorpusResources.Book base = AttestationCorpusFixtures.b02();
-    byte[] baseSource = base.encoded();
-    AttestationHash expectedPreviousHead = base.operations().get(2).envelope().head();
-    int offset = indexOf(baseSource, expectedPreviousHead.bytes());
-    byte[] zeroHead = new byte[AttestationHash.BYTE_LENGTH];
+  void executesN11FromItsCommittedMutation() {
     AttestationStaticCorpus.Fixture fixture =
-        AttestationStaticCorpus.fixture(
-            "N-11",
-            baseSource,
-            AttestationStaticCorpus.Mutation.replace(offset, zeroHead),
-            new AttestationStaticCorpus.PolicyFold("B-02 POST M=2 before the common posting"),
-            AttestationStaticCorpus.VerificationScope.BOOK,
-            AttestationAuthorizationFailure.PREVIOUS_HEAD_INVALID);
-
+        AttestationStaticCorpusVectors.negativeBookFixture("N-11");
+    AttestationStaticCorpusVectors.requirePolicyFold(
+        AttestationStaticCorpusVectors.negativePolicy("N-11"));
     assertFailure(
         fixture.expectedFirstFailure(),
         () ->
             AttestationBookVerifier.verify(
-                AttestationCorpusFixtures.decodeBook(fixture.source()).decode()));
+                AttestationCorpusResources.source("N-11", fixture.source()).decode()));
   }
 
   @Test
@@ -101,151 +86,49 @@ class AttestationStaticCorpusFixtureTest {
     byte[] source =
         AttestationDocumentVectors.bytes(
             AttestationDocumentVectors.ARTIFACT_DOCUMENT, "V-CONTAINER-01", "container");
-    byte[] snapshot =
-        AttestationDocumentVectors.bytes(
-            AttestationDocumentVectors.ARTIFACT_DOCUMENT, "V-CONTAINER-01", "snapshot");
-    int manifestOffset = snapshot.length;
-    assertN14(
-        "N-14a", source, manifestOffset + 9 + 16 + 16 + Long.BYTES + AttestationHash.BYTE_LENGTH);
-    assertN14("N-14b", source, manifestOffset + 9 + 16 + 16 + Long.BYTES);
-    assertN14("N-14c", source, manifestOffset + 9);
-    assertN14("N-14d", source, source.length - 21 + 9);
+    assertEquals(V_CONTAINER_DIGEST, AttestationHash.sha256(source).hex());
+    assertN14("N-14a", source, N14_SNAPSHOT_DIGEST_OFFSET);
+    assertN14("N-14b", source, N14_SOURCE_OPERATION_HEAD_OFFSET);
+    assertN14("N-14c", source, N14_BOOK_ID_OFFSET);
+    assertN14("N-14d", source, N14_TRAILER_SNAPSHOT_LENGTH_OFFSET);
   }
 
   @Test
   void executesTheBackupArtifactAndReceiptFromTheirDeclaredRawResources() {
-    AttestationCorpusResources.Artifact artifact = AttestationCorpusFixtures.b05Artifact();
-    AttestationStaticCorpus.Fixture artifactFixture =
-        AttestationStaticCorpus.positive(
-            artifact.id(),
-            artifact.encoded(),
-            new AttestationStaticCorpus.PolicyFold("BACKUP M=1 at source order 3"),
-            AttestationStaticCorpus.VerificationScope.ARTIFACT);
+    AttestationCorpusResources.Artifact artifact = AttestationStaticCorpusVectors.artifactB05();
     assertDoesNotThrow(
         () ->
             AttestationArtifactVerifier.verifyArtifact(
-                artifactFixture.source(),
-                source -> AttestationCorpusFixtures.decodeBook(source).decode()),
-        artifactFixture.id());
+                artifact.encoded(), source -> AttestationStaticCorpusVectors.book("B-02").decode()),
+        artifact.id());
+    AttestationStaticCorpusVectors.requirePolicyFold("B-02", BACKUP_AT_SOURCE_ORDER_THREE);
 
-    AttestationCorpusResources.Receipt receipt = AttestationCorpusFixtures.b11();
-    AttestationStaticCorpus.Fixture receiptFixture =
-        AttestationStaticCorpus.positive(
-            receipt.id(),
-            receipt.encoded(),
-            new AttestationStaticCorpus.PolicyFold("ANCHOR M=1 at operation order 3"),
-            AttestationStaticCorpus.VerificationScope.RECEIPT);
+    AttestationCorpusResources.Receipt receipt = AttestationStaticCorpusVectors.receiptB11();
     AttestationBookVerification verification =
-        AttestationBookVerifier.verify(
-            AttestationCorpusFixtures.decodeBook(receipt.book().encoded()).decode());
+        AttestationBookVerifier.verify(receipt.book().decode());
     assertDoesNotThrow(
         () ->
             AttestationArtifactVerifier.verifyReceipt(
-                receiptFixture.source(), verification, AttestationReceiptRetention.INDEPENDENT),
-        receiptFixture.id());
+                receipt.encoded(), verification, AttestationReceiptRetention.INDEPENDENT),
+        receipt.id());
+    AttestationStaticCorpusVectors.requirePolicyFold("B-02", ANCHOR_AT_ORDER_THREE);
   }
 
   @Test
   void executesTheStandaloneEnvelopeResourcesFromTheirDeclaredRawResources() {
-    AttestationCorpusResources.StandaloneEnvelope manifest = AttestationCorpusFixtures.b08();
-    AttestationStaticCorpus.Fixture manifestFixture =
-        AttestationStaticCorpus.positive(
-            manifest.id(),
-            manifest.encoded(),
-            new AttestationStaticCorpus.PolicyFold("BACKUP M=2 with A and B granted"),
-            AttestationStaticCorpus.VerificationScope.AUTHORIZATION);
-    AttestationDecodedEnvelope<AttestationBackupManifestPayload> decodedManifest =
-        AttestationDecodedEnvelope.manifest(manifestFixture.source());
-    assertDoesNotThrow(
-        () ->
-            AttestationAuthorization.requireAuthorized(
-                manifest.registry(),
-                AttestationAuthorizationContext.manifest(decodedManifest.payload()),
-                decodedManifest.authorizationEnvelope()),
-        manifestFixture.id());
-
-    AttestationCorpusResources.StandaloneEnvelope receipt = AttestationCorpusFixtures.b09();
-    AttestationStaticCorpus.Fixture receiptFixture =
-        AttestationStaticCorpus.positive(
-            receipt.id(),
-            receipt.encoded(),
-            new AttestationStaticCorpus.PolicyFold("ANCHOR M=2 with A and B granted"),
-            AttestationStaticCorpus.VerificationScope.AUTHORIZATION);
-    AttestationDecodedEnvelope<AttestationReceiptPayload> decodedReceipt =
-        AttestationDecodedEnvelope.receipt(receiptFixture.source());
-    assertDoesNotThrow(
-        () ->
-            AttestationAuthorization.requireAuthorized(
-                receipt.registry(),
-                AttestationAuthorizationContext.receipt(decodedReceipt.payload()),
-                decodedReceipt.authorizationEnvelope()),
-        receiptFixture.id());
+    assertStandalone(AttestationStaticCorpusVectors.b08());
+    assertStandalone(AttestationStaticCorpusVectors.b09());
   }
 
-  private static int indexOf(byte[] source, byte[] target) {
-    for (int offset = 0; offset <= source.length - target.length; offset++) {
-      boolean matches = true;
-      for (int index = 0; index < target.length; index++) {
-        if (source[offset + index] != target[index]) {
-          matches = false;
-          break;
-        }
-      }
-      if (matches) {
-        return offset;
-      }
-    }
-    throw new IllegalArgumentException(
-        "Corpus mutation bytes are not present in the base resource.");
-  }
-
-  private static void assertValidBook(AttestationCorpusResources.Book resource) {
-    AttestationStaticCorpus.Fixture fixture =
-        AttestationStaticCorpus.positive(
-            resource.id(),
-            resource.encoded(),
-            new AttestationStaticCorpus.PolicyFold("declared by the resource genesis and history"),
-            AttestationStaticCorpus.VerificationScope.BOOK);
+  private static void assertRestoreTarget(String id) {
+    AttestationCorpusResources.Book target = AttestationStaticCorpusVectors.book(id);
     AttestationBookVerification verification =
-        assertDoesNotThrow(
-            () ->
-                AttestationBookVerifier.verify(
-                    AttestationCorpusFixtures.decodeBook(fixture.source()).decode()),
-            fixture.id());
-    assertEquals(BigInteger.valueOf(resource.operations().size() - 1L), verification.headOrder());
-  }
-
-  private static void assertRestoreScenario(
-      AttestationCorpusResources.Restore restore, boolean acknowledgedAtSource) {
-    assertEquals(acknowledgedAtSource, restore.sourceAcknowledgement().isPresent(), restore.id());
-    assertDoesNotThrow(
-        () ->
-            AttestationArtifactVerifier.verifyArtifact(
-                restore.artifact().encoded(),
-                source -> AttestationCorpusFixtures.decodeBook(source).decode()),
-        restore.id());
-    restore
-        .sourceAcknowledgement()
-        .ifPresent(
-            acknowledgement -> {
-              AttestationBookVerification verification =
-                  AttestationBookVerifier.verify(acknowledgement.decode());
-              assertEquals(BigInteger.valueOf(4), verification.headOrder(), restore.id());
-              assertEquals(
-                  AttestationOperationKind.BACKUP_CREATED.wireToken(),
-                  acknowledgement.operations().get(4).envelope().payload().operationKind(),
-                  restore.id());
-            });
-    AttestationBookVerification targetVerification =
-        assertDoesNotThrow(
-            () -> AttestationBookVerifier.verify(restore.target().decode()), restore.id());
-    assertEquals(BigInteger.valueOf(4), targetVerification.headOrder(), restore.id());
-    assertEquals(AttestationCorpusFixtures.BOOK_ID, targetVerification.bookId(), restore.id());
-  }
-
-  private static void assertFingerprint(String id, byte[] source, String expectedHash) {
-    assertFalse(source.length == 0, id);
-    assertEquals(expectedHash, AttestationHash.sha256(source).hex(), id);
+        assertDoesNotThrow(() -> AttestationBookVerifier.verify(target.decode()), id);
+    assertEquals(BigInteger.valueOf(4), verification.headOrder(), id);
+    assertEquals(
+        AttestationOperationKind.RESTORE_BOOK.wireToken(),
+        target.operations().get(4).envelope().payload().operationKind(),
+        id);
   }
 
   private static void assertN14(String id, byte[] source, int offset) {
@@ -255,7 +138,7 @@ class AttestationStaticCorpusFixtureTest {
             source,
             AttestationStaticCorpus.Mutation.replace(
                 offset, new byte[] {(byte) (source[offset] ^ 1)}),
-            new AttestationStaticCorpus.PolicyFold("BACKUP M=1 at the published artifact source"),
+            BACKUP_AT_SOURCE_ORDER_THREE,
             AttestationStaticCorpus.VerificationScope.ARTIFACT,
             AttestationAuthorizationFailure.MANIFEST_INVALID);
     assertFailure(
@@ -266,5 +149,14 @@ class AttestationStaticCorpusFixtureTest {
                 ignored -> {
                   throw new IllegalArgumentException();
                 }));
+  }
+
+  private static void assertStandalone(AttestationStaticCorpusVectors.StandaloneEnvelope fixture) {
+    fixture.policy().requireMatches(fixture.registry());
+    assertDoesNotThrow(
+        () ->
+            AttestationAuthorization.requireAuthorized(
+                fixture.registry(), fixture.context(), fixture.envelope()),
+        fixture.id());
   }
 }

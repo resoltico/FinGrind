@@ -8,6 +8,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Immutable append-only credential, grant, and policy history resolved at an operation position.
@@ -112,7 +113,15 @@ final class AttestationRegistry {
   }
 
   int eligiblePrincipalCount(AttestationCapability capability, BigInteger resolvingOrder) {
-    return resolution.eligiblePrincipalCount(capability, resolvingOrder, null);
+    return eligiblePrincipalCount(capability, resolvingOrder, null);
+  }
+
+  /** Counts historically eligible principals, optionally constrained to one credential purpose. */
+  int eligiblePrincipalCount(
+      AttestationCapability capability,
+      BigInteger resolvingOrder,
+      @Nullable AttestationCredentialPurpose credentialPurpose) {
+    return resolution.eligiblePrincipalCount(capability, resolvingOrder, credentialPurpose);
   }
 
   boolean hasActiveSystemWorkflow(

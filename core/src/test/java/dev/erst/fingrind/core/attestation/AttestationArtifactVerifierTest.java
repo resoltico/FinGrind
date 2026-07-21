@@ -220,7 +220,8 @@ class AttestationArtifactVerifierTest {
         id,
         source,
         AttestationStaticCorpus.Mutation.replace(offset, replacement),
-        new AttestationStaticCorpus.PolicyFold("BACKUP M=1 at the snapshot head"),
+        new AttestationStaticCorpus.PolicyFold(
+            BigInteger.ONE, AttestationCapability.BACKUP, 1, 1, 1, 0, false),
         AttestationStaticCorpus.VerificationScope.ARTIFACT,
         AttestationAuthorizationFailure.MANIFEST_INVALID);
   }
