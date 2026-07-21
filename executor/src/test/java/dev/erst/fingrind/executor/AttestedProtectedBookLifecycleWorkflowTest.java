@@ -14,6 +14,7 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRekeyOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRestoreOutcome;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.BackupArtifactPairState;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.LeaseBusy;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Clock;
@@ -137,6 +138,43 @@ class AttestedProtectedBookLifecycleWorkflowTest {
       assertInstanceOf(
           ProtectedBookMaintenanceRejection.BackupSourceMatchesLiveBook.class,
           rejected.rejection());
+    }
+
+    AttestationMaintenanceTestSupport.Store sourceBlockingStore = store(bookPath, credential);
+    sourceBlockingStore.setBackupBlockingArtifacts(
+        List.of(backupPath.resolveSibling("book.fgba-wal")));
+    try (var session = credential.openSession()) {
+      ProtectedBookRestoreOutcome.Rejected rejected =
+          assertInstanceOf(
+              ProtectedBookRestoreOutcome.Rejected.class,
+              accepted(
+                  new AttestedProtectedBookLifecycleWorkflow(CLOCK, sourceBlockingStore)
+                      .restoreBook(
+                          temporaryDirectory.resolve("restored/book.sqlite"),
+                          temporaryDirectory.resolve("restored/book.key"),
+                          backupPath,
+                          backupKeyPath,
+                          session)));
+      assertInstanceOf(
+          ProtectedBookMaintenanceRejection.BackupSourceHasBlockingArtifacts.class,
+          rejected.rejection());
+    }
+
+    AttestationMaintenanceTestSupport.Store busySourceStore = store(bookPath, credential);
+    busySourceStore.setExistingLease(new LeaseBusy(backupPath));
+    try (var session = credential.openSession()) {
+      ProtectedBookRestoreOutcome.Rejected rejected =
+          assertInstanceOf(
+              ProtectedBookRestoreOutcome.Rejected.class,
+              accepted(
+                  new AttestedProtectedBookLifecycleWorkflow(CLOCK, busySourceStore)
+                      .restoreBook(
+                          temporaryDirectory.resolve("restored/book.sqlite"),
+                          temporaryDirectory.resolve("restored/book.key"),
+                          backupPath,
+                          backupKeyPath,
+                          session)));
+      assertInstanceOf(ProtectedBookMaintenanceRejection.ArtifactBusy.class, rejected.rejection());
     }
 
     AttestationMaintenanceTestSupport.Store rekeyStore = store(bookPath, credential);

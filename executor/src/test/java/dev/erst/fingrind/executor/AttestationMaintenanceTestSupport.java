@@ -95,8 +95,9 @@ final class AttestationMaintenanceTestSupport {
     private final byte[] snapshot = new byte[] {4, 8, 15, 16, 23, 42};
     private BackupArtifactPairState backupPairState = BackupArtifactPairState.ABSENT;
     private List<Path> liveBlockingArtifacts = List.of();
+    private List<Path> backupBlockingArtifacts = List.of();
     private LeaseAcquisition managedLease;
-    private final LeaseAcquisition existingLease;
+    private LeaseAcquisition existingLease;
     private MaintenanceDecision<BookVerification> liveVerification;
     private final MaintenanceDecision<StagedBackupPair> stagedBackup;
     private final MaintenanceDecision<StagedRestoredBookPair> stagedRestore;
@@ -132,8 +133,16 @@ final class AttestationMaintenanceTestSupport {
       liveBlockingArtifacts = List.copyOf(blockingArtifacts);
     }
 
+    void setBackupBlockingArtifacts(List<Path> blockingArtifacts) {
+      backupBlockingArtifacts = List.copyOf(blockingArtifacts);
+    }
+
     void setManagedLease(LeaseAcquisition lease) {
       managedLease = Objects.requireNonNull(lease, "lease");
+    }
+
+    void setExistingLease(LeaseAcquisition lease) {
+      existingLease = Objects.requireNonNull(lease, "lease");
     }
 
     void setPrepareFailure(RuntimeException failure) {
@@ -150,6 +159,10 @@ final class AttestationMaintenanceTestSupport {
 
     List<AttestationEvidence> restoredEvidence() {
       return evidenceFor(restoredBook);
+    }
+
+    void setLiveEvidence(List<AttestationEvidence> evidence) {
+      evidenceByBook.put(liveBook, List.copyOf(evidence));
     }
 
     @Override
@@ -179,7 +192,7 @@ final class AttestationMaintenanceTestSupport {
 
     @Override
     public List<Path> blockingArtifactsForBackupSource(Path normalizedBackupFilePath) {
-      return List.of();
+      return backupBlockingArtifacts;
     }
 
     @Override

@@ -9,6 +9,8 @@ import dev.erst.fingrind.core.attestation.AttestationSigningSession;
 import dev.erst.fingrind.core.attestation.AttestationVerifier;
 import dev.erst.fingrind.executor.spi.AttestedProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.HeldLease;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.LeaseAcquisition;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.PreparedPairPublication;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
 import dev.erst.fingrind.executor.spi.StagedRestoredBookPair;
@@ -63,29 +65,53 @@ public final class AttestedProtectedBookLifecycleWorkflow {
           new ProtectedBookMaintenanceRejection.BackupSourceMatchesLiveBook(
               bookPath, artifactPath));
     }
-    if (!store.blockingArtifactsForBook(bookPath).isEmpty()) {
+    List<Path> backupBlockingArtifacts = store.blockingArtifactsForBackupSource(artifactPath);
+    if (!backupBlockingArtifacts.isEmpty()) {
+      return AttestedProtectedBookMaintenanceDecisions.rejectedRestore(
+          new ProtectedBookMaintenanceRejection.BackupSourceHasBlockingArtifacts(
+              artifactPath, backupBlockingArtifacts));
+    }
+    List<Path> bookBlockingArtifacts = store.blockingArtifactsForBook(bookPath);
+    if (!bookBlockingArtifacts.isEmpty()) {
       return AttestedProtectedBookMaintenanceDecisions.rejectedRestore(
           new ProtectedBookMaintenanceRejection.BookHasBlockingArtifacts(
-              bookPath, store.blockingArtifactsForBook(bookPath)));
+              bookPath, bookBlockingArtifacts));
     }
-    PreparedPairPublication publication;
+    LeaseAcquisition sourceLease;
     try {
-      publication =
-          store.preparePairPublication(
-              newKeyPath,
-              bookPath,
-              RestoredBookTargetPolicy.REQUIRE_ABSENT,
-              ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
-              ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET);
+      sourceLease =
+          store.acquireExistingArtifactLease(
+              artifactPath, ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE);
     } catch (ProtectedBookMaintenanceRejectionException exception) {
       return AttestedProtectedBookMaintenanceDecisions.rejectedRestore(exception.rejection());
     } catch (RuntimeException exception) {
       return AttestedProtectedBookMaintenanceDecisions.failure(
-          bookPath, "bookFilePath", "Failed to prepare restored-book publication.");
+          artifactPath, "backupFilePath", "Failed to reserve the selected backup artifact.");
     }
-    try (publication) {
-      try (AttestedProtectedBookMaintenanceStore.VerifiedBackupArtifact artifact =
-          store.verifyBackupArtifact(artifactPath, backupKeyPath)) {
+    if (sourceLease instanceof ProtectedBookMaintenanceStore.LeaseBusy busy) {
+      return AttestedProtectedBookMaintenanceDecisions.rejectedRestore(
+          new ProtectedBookMaintenanceRejection.ArtifactBusy(
+              ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE, busy.artifactPath()));
+    }
+    try (HeldLease ignoredSourceLease = (HeldLease) sourceLease) {
+      PreparedPairPublication publication;
+      try {
+        publication =
+            store.preparePairPublication(
+                newKeyPath,
+                bookPath,
+                RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+                ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET);
+      } catch (ProtectedBookMaintenanceRejectionException exception) {
+        return AttestedProtectedBookMaintenanceDecisions.rejectedRestore(exception.rejection());
+      } catch (RuntimeException exception) {
+        return AttestedProtectedBookMaintenanceDecisions.failure(
+            bookPath, "bookFilePath", "Failed to prepare restored-book publication.");
+      }
+      try (publication;
+          AttestedProtectedBookMaintenanceStore.VerifiedBackupArtifact artifact =
+              store.verifyBackupArtifact(artifactPath, backupKeyPath)) {
         return stageAndPublishRestore(bookPath, newKeyPath, publication, artifact, signingSession);
       }
     } catch (ProtectedBookMaintenanceRejectionException exception) {
