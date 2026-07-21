@@ -7,9 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** Field-tests cleanup of protected-book files created by a rolled-back ledger plan. */
@@ -84,5 +87,40 @@ class SqliteLedgerPlanArtifactCleanupTest extends SqliteNativeBridgeTestSupport 
             () -> SqliteLedgerPlanArtifactCleanup.closeCreatedCleanupDatabase(failingDatabase));
     assertSame(closeCause, closeFailure.getCause());
     assertDoesNotThrow(() -> SqliteLedgerPlanArtifactCleanup.closeCreatedCleanupDatabase(null));
+  }
+
+  @Test
+  void parentCleanup_continuesPastDisappearedDirectoriesAndReportsFilesystemFailures() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath boundary = fileSystem.path("\\boundary");
+      AclFixturePath disappearedDirectory = fileSystem.path("\\boundary\\disappeared");
+      disappearedDirectory.exists = true;
+      disappearedDirectory.regularFile = false;
+      disappearedDirectory.failDeleteIfExistsWith(
+          new NoSuchFileException(disappearedDirectory.toString()));
+
+      assertDoesNotThrow(
+          () ->
+              SqliteLedgerPlanArtifactCleanup.deleteEmptyCreatedParentDirectories(
+                  disappearedDirectory, boundary));
+
+      AclFixturePath failingDirectory = fileSystem.path("\\boundary\\failing");
+      failingDirectory.exists = true;
+      failingDirectory.regularFile = false;
+      IOException cause = new IOException("simulated directory deletion failure");
+      failingDirectory.failDeleteIfExistsWith(cause);
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteLedgerPlanArtifactCleanup.deleteEmptyCreatedParentDirectories(
+                      failingDirectory, boundary));
+      assertSame(cause, failure.getCause());
+
+      assertDoesNotThrow(
+          () ->
+              SqliteLedgerPlanArtifactCleanup.deleteEmptyCreatedParentDirectories(
+                  fileSystem.path("\\orphan"), null));
+    }
   }
 }
