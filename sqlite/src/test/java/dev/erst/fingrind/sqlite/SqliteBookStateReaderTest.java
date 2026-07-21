@@ -12,6 +12,61 @@ import org.junit.jupiter.api.Test;
 /** Tests semantic integrity gating for initialized SQLite books. */
 class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
   @Test
+  void stateReader_distinguishesBlankForeignUnsupportedAndIncompleteBookHeaders() {
+    withStandaloneDatabase(
+        bookAccess(tempDirectory.resolve("book-state-blank.sqlite")),
+        database ->
+            assertEquals(
+                SqliteBookState.BLANK_SQLITE,
+                SqliteBookContract.BOOK_STATE_READER.bookState(database)));
+
+    withStandaloneDatabase(
+        bookAccess(tempDirectory.resolve("book-state-foreign.sqlite")),
+        database -> {
+          database.executeStatement("pragma application_id = 7");
+          database.executeStatement("pragma user_version = 1");
+          assertEquals(
+              SqliteBookState.FOREIGN_SQLITE,
+              SqliteBookContract.BOOK_STATE_READER.bookState(database));
+        });
+
+    withStandaloneDatabase(
+        bookAccess(tempDirectory.resolve("book-state-unsupported.sqlite")),
+        database -> {
+          database.executeStatement("pragma application_id = " + SqliteBookContract.APPLICATION_ID);
+          database.executeStatement(
+              "pragma user_version = " + (SqliteBookContract.FORMAT_VERSION + 1));
+          assertEquals(
+              SqliteBookState.UNSUPPORTED_FINGRIND_VERSION,
+              SqliteBookContract.BOOK_STATE_READER.bookState(database));
+        });
+
+    withStandaloneDatabase(
+        bookAccess(tempDirectory.resolve("book-state-incomplete.sqlite")),
+        database -> {
+          database.executeStatement("pragma application_id = " + SqliteBookContract.APPLICATION_ID);
+          database.executeStatement("pragma user_version = " + SqliteBookContract.FORMAT_VERSION);
+          assertEquals(
+              SqliteBookState.INCOMPLETE_FINGRIND,
+              SqliteBookContract.BOOK_STATE_READER.bookState(database));
+        });
+  }
+
+  @Test
+  void initializedMarker_requiresBothTheCanonicalTableAndTheInitializedTimestamp() {
+    Path bookPath = tempDirectory.resolve("book-state-initialized-marker.sqlite");
+    withStandaloneDatabase(
+        bookAccess(bookPath),
+        database -> {
+          assertEquals(false, SqliteBookContract.BOOK_STATE_READER.hasInitializedMarker(database));
+          SqliteBookSchemaBootstrap.initializeBook(database);
+          assertEquals(false, SqliteBookContract.BOOK_STATE_READER.hasInitializedMarker(database));
+          insertInitializedAtRow(database);
+          assertEquals(true, SqliteBookContract.BOOK_STATE_READER.hasInitializedMarker(database));
+        });
+  }
+
+  @Test
   void initializedBookState_recognizesHealthyInitializedBooks() {
     Path initializedBookPath = tempDirectory.resolve("book-state-initialized.sqlite");
     initializeBookOnDisk(initializedBookPath);
