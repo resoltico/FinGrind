@@ -463,6 +463,75 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
   }
 
   @Test
+  void openingAndAccountDeclaration_rollBackAndPropagateStorageFailures() {
+    Path bookPath = tempDirectory.resolve("opening-and-declaration-storage-failures.sqlite");
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
+      try (StoreDatabaseSwap ignored =
+          swapStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath))) {
+        assertNativeFailure(
+            () ->
+                postingFactStore.openAttestedBook(
+                    DECLARED_AT,
+                    bookIdentity(),
+                    List.of(),
+                    SqliteAttestationTestSupport.genesis(bookIdentity(), DECLARED_AT)),
+            "Failed to initialize SQLite book.");
+      } catch (IOException exception) {
+        throw new UncheckedIOException(exception);
+      }
+
+      openBookWithNoDeclaredAccounts(postingFactStore);
+      AtomicReference<SqliteNativeDatabase> realDatabase =
+          new AtomicReference<>(requireStoreDatabase(postingFactStore));
+      AccountDeclaration declaration =
+          new AccountDeclaration(
+              new AccountCode("1010"),
+              new AccountName("Cash reserve"),
+              AccountType.ASSET,
+              financialPositionTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET));
+      try (StoreDatabaseSwap ignored =
+          swapStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath))) {
+        assertNativeFailure(
+            () ->
+                postingFactStore
+                    .storeMutationOperations()
+                    .declareAccount(
+                        declaration, DECLARED_AT, SqliteAttestationTestSupport.authorizer()),
+            "Failed to declare SQLite book account.");
+      } catch (IOException exception) {
+        throw new UncheckedIOException(exception);
+      }
+
+      try (SqliteStatementRedirectingDatabase runtimeFailingDatabase =
+              new SqliteStatementRedirectingDatabase(
+                  realDatabase.get(),
+                  sql -> {
+                    if (SqlitePostingReadWriteSql.FIND_ACCOUNT_BY_CODE.equals(sql)) {
+                      throw new IllegalStateException("forced declaration lookup failure");
+                    }
+                    return realDatabase.get().prepare(sql);
+                  });
+          StoreDatabaseSwap ignored = swapStoreDatabase(postingFactStore, runtimeFailingDatabase)) {
+        IllegalStateException failure =
+            assertThrows(
+                IllegalStateException.class,
+                () ->
+                    postingFactStore
+                        .storeMutationOperations()
+                        .declareAccount(
+                            declaration, DECLARED_AT, SqliteAttestationTestSupport.authorizer()));
+        assertEquals("forced declaration lookup failure", failure.getMessage());
+      }
+
+      assertEquals(0, countRows(realDatabase.get(), "account"));
+      assertEquals(
+          0,
+          countRowsWhereTextEquals(
+              realDatabase.get(), "audit_event", "event_kind", "ACCOUNT_DECLARED"));
+    }
+  }
+
+  @Test
   void taxDeclaration_rollsBackAndTranslatesNativeAndRuntimeStorageFailures() {
     Path bookPath = tempDirectory.resolve("tax-declaration-storage-failures.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
