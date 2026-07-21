@@ -26,8 +26,7 @@ import org.junit.jupiter.api.Test;
 /** Covers durable evidence append, stale-head admission, and immutable-SQL backstops. */
 class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSupport {
   private static final UUID BOOK_ID = UUID.fromString("00112233-4455-6677-8899-aabbccddeeff");
-  private static final UUID PRINCIPAL_ID =
-      UUID.fromString("10213243-5465-7687-98a9-babcbddceeff");
+  private static final UUID PRINCIPAL_ID = UUID.fromString("10213243-5465-7687-98a9-babcbddceeff");
   private static final byte[] ZERO_HEAD = new byte[32];
 
   @Test
@@ -35,7 +34,8 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
     Path bookPath = tempDirectory.resolve("attested.sqlite");
     Path signerPath = tempDirectory.resolve("founder.fgatk");
     char[] passphrase = "sqlite attestation test passphrase".toCharArray();
-    AttestationPublicCredential publicCredential = AttestationKeyFiles.create(signerPath, passphrase);
+    AttestationPublicCredential publicCredential =
+        AttestationKeyFiles.create(signerPath, passphrase);
     try (AttestationSigningCredential signer =
         new AttestationSigningCredential(PRINCIPAL_ID, publicCredential, signerPath, passphrase)) {
       AttestationEvidence genesis =

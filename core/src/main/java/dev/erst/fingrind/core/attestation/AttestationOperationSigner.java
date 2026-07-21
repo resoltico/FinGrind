@@ -6,7 +6,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
-/** Creates one canonical signed operation envelope from previously projected immutable preimages. */
+/**
+ * Creates one canonical signed operation envelope from previously projected immutable preimages.
+ */
 public final class AttestationOperationSigner {
   private AttestationOperationSigner() {}
 
@@ -45,7 +47,10 @@ public final class AttestationOperationSigner {
             AttestationHash.sha256(checkedEffect.encoded()));
     List<AttestationSignatureEntry> entries =
         List.copyOf(Objects.requireNonNull(signers, "signers")).stream()
-            .map(signer -> Objects.requireNonNull(signer, "signers must not contain null").sign(payload.encoded()))
+            .map(
+                signer ->
+                    Objects.requireNonNull(signer, "signers must not contain null")
+                        .sign(payload.encoded()))
             .toList();
     return new AttestationEvidence(
         AttestationEnvelope.of(payload, entries).encoded(),

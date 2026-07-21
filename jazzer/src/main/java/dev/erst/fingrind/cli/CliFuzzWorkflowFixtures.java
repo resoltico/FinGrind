@@ -27,9 +27,11 @@ import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.executor.spi.PostingLookupStore;
 import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import dev.erst.fingrind.executor.spi.TaxAdministrationStore;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 
 /** Workflow and lifecycle fixtures shared by Jazzer harnesses. */
 public final class CliFuzzWorkflowFixtures {
@@ -57,7 +59,13 @@ public final class CliFuzzWorkflowFixtures {
 
   /** Returns the canonical open-book command used by workflow and replay setup for one currency. */
   public static OpenBookCommand openBookCommand(CurrencyUnit functionalCurrency) {
-    return new OpenBookCommand(bookIdentity(functionalCurrency));
+    return new OpenBookCommand(
+        bookIdentity(functionalCurrency),
+        List.of(
+            new dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput(
+                UUID.fromString("10213243-5465-7687-98a9-babcbddceeff"),
+                Path.of("/tmp/fingrind-jazzer-founder.fgatk"),
+                Path.of("/tmp/fingrind-jazzer-founder.passphrase"))));
   }
 
   /** Creates the fixed-clock administration service used by lifecycle-aware harnesses. */

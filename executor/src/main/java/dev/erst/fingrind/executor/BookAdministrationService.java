@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
@@ -42,6 +43,18 @@ public final class BookAdministrationService {
         clock.instant(),
         bookIdentity,
         BookTemplateAccounts.declarations(bookIdentity.bookDoctrine()));
+  }
+
+  /** Explicitly initializes one protected book with a signed genesis operation. */
+  public BookOpeningOutcome openAttestedBook(
+      BookIdentity bookIdentity, AttestationEvidence genesisEvidence) {
+    Objects.requireNonNull(bookIdentity, "bookIdentity");
+    Objects.requireNonNull(genesisEvidence, "genesisEvidence");
+    return bookStore.openAttestedBook(
+        clock.instant(),
+        bookIdentity,
+        BookTemplateAccounts.declarations(bookIdentity.bookDoctrine()),
+        genesisEvidence);
   }
 
   /** Declares or reactivates one account in the selected book. */

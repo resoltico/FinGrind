@@ -208,7 +208,8 @@ final class AttestationFilePkcs8Custodian {
     byte[] initializationVector = next(encryptedPayload, INITIALIZATION_VECTOR_BYTE_COUNT);
     byte[] encryptedPrivateKey = next(encryptedPayload, encryptedPayload.remaining());
     try {
-      return ByteBuffer.allocate(HEADER_BYTE_COUNT + checkedSpki.length + encryptedPrivateKey.length)
+      return ByteBuffer.allocate(
+              HEADER_BYTE_COUNT + checkedSpki.length + encryptedPrivateKey.length)
           .put(FORMAT_MAGIC)
           .put(FORMAT_VERSION)
           .putInt(ITERATION_COUNT)
@@ -250,7 +251,8 @@ final class AttestationFilePkcs8Custodian {
       java.util.Arrays.fill(salt, (byte) 0);
       java.util.Arrays.fill(initializationVector, (byte) 0);
       java.util.Arrays.fill(spki, (byte) 0);
-      throw new IllegalArgumentException("Attestation key file has an unsupported format.", exception);
+      throw new IllegalArgumentException(
+          "Attestation key file has an unsupported format.", exception);
     }
     return new ParsedKeyFile(salt, initializationVector, spki, next(encoded, encoded.remaining()));
   }

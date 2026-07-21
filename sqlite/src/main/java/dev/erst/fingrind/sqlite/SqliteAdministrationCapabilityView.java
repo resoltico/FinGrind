@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
@@ -37,6 +38,17 @@ interface SqliteAdministrationCapabilityView
       Instant initializedAt, BookIdentity bookIdentity, List<AccountDeclaration> seededAccounts) {
     storeThreadOwner().requireOwnerThread();
     return storeMutationOperations().openBook(initializedAt, bookIdentity, seededAccounts);
+  }
+
+  @Override
+  default BookOpeningOutcome openAttestedBook(
+      Instant initializedAt,
+      BookIdentity bookIdentity,
+      List<AccountDeclaration> seededAccounts,
+      AttestationEvidence genesisEvidence) {
+    storeThreadOwner().requireOwnerThread();
+    return storeMutationOperations()
+        .openAttestedBook(initializedAt, bookIdentity, seededAccounts, genesisEvidence);
   }
 
   @Override

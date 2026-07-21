@@ -59,9 +59,11 @@ public final class AttestationSigningCredential implements AutoCloseable {
     char[] signingPassphrase = passphrase.clone();
     byte[] signature;
     try {
-      signature = AttestationFilePkcs8Custodian.sign(encryptedPkcs8Path, signingPassphrase, checkedPayload);
+      signature =
+          AttestationFilePkcs8Custodian.sign(encryptedPkcs8Path, signingPassphrase, checkedPayload);
     } catch (IOException exception) {
-      throw new IllegalArgumentException("Attestation key file cannot be read for signing.", exception);
+      throw new IllegalArgumentException(
+          "Attestation key file cannot be read for signing.", exception);
     } finally {
       java.util.Arrays.fill(checkedPayload, (byte) 0);
     }

@@ -58,10 +58,12 @@ import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.StatementLineKind;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /** Shared contract test fixtures. */
 final class ContractFixtures {
@@ -80,7 +82,15 @@ final class ContractFixtures {
   }
 
   static OpenBookCommand openBookCommand() {
-    return new OpenBookCommand(bookIdentity());
+    return new OpenBookCommand(bookIdentity(), testFounders());
+  }
+
+  static List<dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput> testFounders() {
+    return List.of(
+        new dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput(
+            UUID.fromString("10213243-5465-7687-98a9-babcbddceeff"),
+            Path.of("/tmp/fingrind-contract-founder.fgatk"),
+            Path.of("/tmp/fingrind-contract-founder.passphrase")));
   }
 
   static PostingCoverage postingCoverage() {

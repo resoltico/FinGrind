@@ -25,7 +25,8 @@ public final class AttestationVerifier {
                       .map(
                           operation -> {
                             AttestationEvidence evidence =
-                                Objects.requireNonNull(operation, "operations must not contain null");
+                                Objects.requireNonNull(
+                                    operation, "operations must not contain null");
                             return AttestationBookOperation.decode(
                                 evidence.operationEnvelope(),
                                 evidence.requestPreimage(),

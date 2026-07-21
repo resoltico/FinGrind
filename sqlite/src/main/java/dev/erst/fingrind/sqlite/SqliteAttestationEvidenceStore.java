@@ -13,7 +13,8 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Transaction-local persistence boundary for immutable operation evidence and head compare-and-swap.
+ * Transaction-local persistence boundary for immutable operation evidence and head
+ * compare-and-swap.
  *
  * <p>Callers must already own the book's immediate SQLite write transaction. This class first
  * verifies the persisted chain, compares the observed signing head, verifies the candidate chain,
@@ -125,7 +126,8 @@ final class SqliteAttestationEvidenceStore {
     try {
       return Base64.getDecoder().decode(encoded);
     } catch (IllegalArgumentException exception) {
-      throw new IllegalStateException("Persisted attestation evidence is not valid base64.", exception);
+      throw new IllegalStateException(
+          "Persisted attestation evidence is not valid base64.", exception);
     }
   }
 

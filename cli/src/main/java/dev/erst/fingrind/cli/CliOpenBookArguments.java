@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
@@ -15,6 +16,7 @@ import dev.erst.fingrind.core.InventoryCostingDoctrine;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 /** Parses CLI arguments for `open-book`. */
@@ -29,6 +31,9 @@ final class CliOpenBookArguments {
               ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
               ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
               ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE,
+              ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
+              ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
+              ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE,
               ProtocolOptions.Presentation.OUTPUT),
           List.of(ProtocolOptions.BookDefinition.TIGHTEN_PARENTS));
 
@@ -47,7 +52,8 @@ final class CliOpenBookArguments {
                 resolveBookDoctrine(argumentValues),
                 requireFunctionalCurrency(argumentValues.functionalCurrency),
                 requireFiscalYearStart(argumentValues.fiscalYearStart),
-                requireBookStartEffectiveDate(argumentValues.bookStartEffectiveDate))),
+                requireBookStartEffectiveDate(argumentValues.bookStartEffectiveDate)),
+            resolveFounders(argumentValues)),
         argumentValues.tightenParents,
         CliOptionModes.resolvedOutputMode(argumentValues.outputMode));
   }
@@ -108,6 +114,23 @@ final class CliOpenBookArguments {
                   CliOptionValues.requireValue(
                       argumentIterator, ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE),
                   ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE);
+      case ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID ->
+          argumentValues.founderPrincipalIds.add(
+              CliArgumentValueParser.requireValidArgument(
+                  ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
+                  () ->
+                      UUID.fromString(
+                          CliOptionValues.requireValue(
+                              argumentIterator,
+                              ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID))));
+      case ProtocolOptions.Attestation.FOUNDER_KEY_FILE ->
+          argumentValues.founderKeyFiles.add(
+              CliOptionValues.requirePathOptionValue(
+                  argumentIterator, ProtocolOptions.Attestation.FOUNDER_KEY_FILE));
+      case ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE ->
+          argumentValues.founderPassphraseFiles.add(
+              CliOptionValues.requirePathOptionValue(
+                  argumentIterator, ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE));
       case ProtocolOptions.Presentation.OUTPUT ->
           argumentValues.outputMode =
               CliOptionModes.requireOutputMode(
@@ -127,6 +150,9 @@ final class CliOpenBookArguments {
                   ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
                   ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
                   ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE,
+                  ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
+                  ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
+                  ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE,
                   ProtocolOptions.BookDefinition.TIGHTEN_PARENTS,
                   ProtocolOptions.Presentation.OUTPUT));
     }
@@ -205,6 +231,40 @@ final class CliOpenBookArguments {
     return bookStartEffectiveDate;
   }
 
+  private static List<AttestationFounderInput> resolveFounders(
+      OpenBookArgumentValues argumentValues) {
+    int founderCount = argumentValues.founderPrincipalIds.size();
+    if (founderCount == 0) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
+          "At least one "
+              + ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID
+              + " argument is required to establish attested book authorization.");
+    }
+    if (founderCount > 5
+        || argumentValues.founderKeyFiles.size() != founderCount
+        || argumentValues.founderPassphraseFiles.size() != founderCount) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
+          "Provide one through five aligned founder triples: "
+              + ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID
+              + ", "
+              + ProtocolOptions.Attestation.FOUNDER_KEY_FILE
+              + ", and "
+              + ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE
+              + ".");
+    }
+    java.util.ArrayList<AttestationFounderInput> founders = new java.util.ArrayList<>(founderCount);
+    for (int index = 0; index < founderCount; index++) {
+      founders.add(
+          new AttestationFounderInput(
+              argumentValues.founderPrincipalIds.get(index),
+              argumentValues.founderKeyFiles.get(index),
+              argumentValues.founderPassphraseFiles.get(index)));
+    }
+    return List.copyOf(founders);
+  }
+
   /** Accumulates one parsed open-book argument set before required-field resolution runs. */
   static final class OpenBookArgumentValues {
     private @Nullable BookEntityName entityName;
@@ -215,6 +275,9 @@ final class CliOpenBookArguments {
     private @Nullable FiscalYearStart fiscalYearStart;
     private @Nullable LocalDate bookStartEffectiveDate;
     private @Nullable OutputMode outputMode;
+    private final List<UUID> founderPrincipalIds = new java.util.ArrayList<>();
+    private final List<java.nio.file.Path> founderKeyFiles = new java.util.ArrayList<>();
+    private final List<java.nio.file.Path> founderPassphraseFiles = new java.util.ArrayList<>();
     private boolean tightenParents;
   }
 }

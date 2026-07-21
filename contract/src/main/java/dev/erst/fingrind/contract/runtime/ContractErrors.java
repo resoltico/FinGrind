@@ -85,6 +85,11 @@ public final class ContractErrors {
         "Book access refused because the supplied passphrase source is empty, malformed, or otherwise does not satisfy the protected-book contract.",
         6,
         ContractResponse.FailureCategory.PRECONDITION),
+    INVALID_ATTESTATION_CREDENTIAL(
+        "invalid-attestation-credential",
+        "Attested-book authorization refused because a selected founder credential or passphrase source is invalid.",
+        6,
+        ContractResponse.FailureCategory.PRECONDITION),
     BOOK_MAINTENANCE_IN_PROGRESS(
         "book-maintenance-in-progress",
         "Book access refused because an exclusive FinGrind maintenance workflow currently holds the selected protected book.",

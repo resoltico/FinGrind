@@ -58,6 +58,15 @@ public final class ProtocolOptions {
     private BookDefinition() {}
   }
 
+  /** Attestation credential sources required for protected-book authorization. */
+  public static final class Attestation {
+    public static final String FOUNDER_PRINCIPAL_ID = "--attestation-founder-principal-id";
+    public static final String FOUNDER_KEY_FILE = "--attestation-founder-key-file";
+    public static final String FOUNDER_PASSPHRASE_FILE = "--attestation-founder-passphrase-file";
+
+    private Attestation() {}
+  }
+
   /** Text and artifact rendering options. */
   public static final class Presentation {
     public static final String WITH_CONTEXT = "--with-context";

@@ -11,6 +11,8 @@ import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
+import dev.erst.fingrind.core.attestation.AttestationEvidence;
+import dev.erst.fingrind.core.attestation.AttestationGenesis;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
@@ -97,6 +99,16 @@ abstract class AbstractInMemoryBookAdministrationSession
                               initializedAt)));
           return new BookOpeningOutcome.Opened(initializedAt, bookIdentity);
         });
+  }
+
+  @Override
+  public BookOpeningOutcome openAttestedBook(
+      Instant initializedAt,
+      BookIdentity bookIdentity,
+      List<AccountDeclaration> seededAccounts,
+      AttestationEvidence genesisEvidence) {
+    AttestationGenesis.requireMatchingBookIdentity(genesisEvidence, bookIdentity);
+    return openBook(initializedAt, bookIdentity, seededAccounts);
   }
 
   @Override

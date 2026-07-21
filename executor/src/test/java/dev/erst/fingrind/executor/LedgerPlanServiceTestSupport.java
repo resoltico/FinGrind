@@ -262,6 +262,16 @@ final class LedgerPlanServiceTestSupport {
     }
 
     @Override
+    public BookOpeningOutcome openAttestedBook(
+        Instant initializedAt,
+        dev.erst.fingrind.core.BookIdentity bookIdentity,
+        List<AccountDeclaration> seededAccounts,
+        dev.erst.fingrind.core.attestation.AttestationEvidence genesisEvidence) {
+      return delegate.openAttestedBook(
+          initializedAt, bookIdentity, seededAccounts, genesisEvidence);
+    }
+
+    @Override
     public AccountDeclarationOutcome declareAccount(
         AccountDeclaration declaration, Instant declaredAt) {
       return delegate.declareAccount(declaration, declaredAt);

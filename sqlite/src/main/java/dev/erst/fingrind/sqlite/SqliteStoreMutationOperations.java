@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.executor.bookkeeping.AcceptedPosting;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -64,6 +65,15 @@ final class SqliteStoreMutationOperations {
       BookIdentity bookIdentity,
       List<dev.erst.fingrind.executor.bookkeeping.AccountDeclaration> seededAccounts) {
     return administrationOperations.openBook(initializedAt, bookIdentity, seededAccounts);
+  }
+
+  dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome openAttestedBook(
+      Instant initializedAt,
+      BookIdentity bookIdentity,
+      List<dev.erst.fingrind.executor.bookkeeping.AccountDeclaration> seededAccounts,
+      AttestationEvidence genesisEvidence) {
+    return administrationOperations.openAttestedBook(
+        initializedAt, bookIdentity, seededAccounts, genesisEvidence);
   }
 
   dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome declareAccount(

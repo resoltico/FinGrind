@@ -35,6 +35,9 @@ import java.util.Optional;
 
 /** Shared test support for book lifecycle, inspection, and read-model fixtures. */
 class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
+  private static final String TEST_FOUNDER_PRINCIPAL_ID = "10213243-5465-7687-98a9-babcbddceeff";
+  private static final String TEST_FOUNDER_PASSPHRASE = "cli-test-attestation-founder-passphrase";
+
   protected static BookIdentity bookIdentity() {
     return new BookIdentity(
         new EntityProfile(new BookEntityName("Acme Studio")),
@@ -54,10 +57,18 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
   }
 
   protected static OpenBookCommand openBookCommand() {
-    return new OpenBookCommand(bookIdentity());
+    return new OpenBookCommand(
+        bookIdentity(),
+        List.of(
+            new dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput(
+                java.util.UUID.fromString("10213243-5465-7687-98a9-babcbddceeff"),
+                Path.of("/tmp/fingrind-cli-founder.fgatk"),
+                Path.of("/tmp/fingrind-cli-founder.passphrase"))));
   }
 
   protected static String[] openBookKeyFileArguments(Path bookFilePath, Path bookKeyFilePath) {
+    Path founderKeyFilePath = attestationKeyFilePath(bookFilePath);
+    Path founderPassphraseFilePath = writeAttestationPassphraseFile(bookFilePath);
     return new String[] {
       "open-book",
       ProtocolBookAccessOptions.BOOK_FILE,
@@ -75,11 +86,19 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
       ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
       bookIdentity().fiscalYearStart().wireValue(),
       ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE,
-      bookIdentity().bookStartEffectiveDate().toString()
+      bookIdentity().bookStartEffectiveDate().toString(),
+      ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
+      TEST_FOUNDER_PRINCIPAL_ID,
+      ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
+      founderKeyFilePath.toString(),
+      ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE,
+      founderPassphraseFilePath.toString()
     };
   }
 
   protected static String[] openBookStandardInputArguments(Path bookFilePath) {
+    Path founderKeyFilePath = attestationKeyFilePath(bookFilePath);
+    Path founderPassphraseFilePath = writeAttestationPassphraseFile(bookFilePath);
     return new String[] {
       "open-book",
       ProtocolBookAccessOptions.BOOK_FILE,
@@ -96,8 +115,29 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
       ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
       bookIdentity().fiscalYearStart().wireValue(),
       ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE,
-      bookIdentity().bookStartEffectiveDate().toString()
+      bookIdentity().bookStartEffectiveDate().toString(),
+      ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
+      TEST_FOUNDER_PRINCIPAL_ID,
+      ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
+      founderKeyFilePath.toString(),
+      ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE,
+      founderPassphraseFilePath.toString()
     };
+  }
+
+  private static Path attestationKeyFilePath(Path bookFilePath) {
+    return bookFilePath.resolveSibling(bookFilePath.getFileName() + ".founder.fgatk");
+  }
+
+  private static Path writeAttestationPassphraseFile(Path bookFilePath) {
+    Path passphrasePath =
+        bookFilePath.resolveSibling(bookFilePath.getFileName() + ".founder-passphrase");
+    try {
+      writeSecureKey(passphrasePath, TEST_FOUNDER_PASSPHRASE);
+      return passphrasePath;
+    } catch (java.io.IOException exception) {
+      throw new java.io.UncheckedIOException(exception);
+    }
   }
 
   protected static String[] openBookPromptArguments(Path bookFilePath) {

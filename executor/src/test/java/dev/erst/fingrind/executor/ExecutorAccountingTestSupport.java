@@ -277,7 +277,13 @@ public final class ExecutorAccountingTestSupport {
    * Returns one canonical open-book command for tests that need the public initialization shape.
    */
   public static OpenBookCommand openBookCommand() {
-    return new OpenBookCommand(bookIdentity());
+    return new OpenBookCommand(
+        bookIdentity(),
+        java.util.List.of(
+            new dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput(
+                java.util.UUID.fromString("10213243-5465-7687-98a9-babcbddceeff"),
+                java.nio.file.Path.of("/tmp/fingrind-executor-founder.fgatk"),
+                java.nio.file.Path.of("/tmp/fingrind-executor-founder.passphrase"))));
   }
 
   /** Returns one canonical local initialized-book inspection fixture. */

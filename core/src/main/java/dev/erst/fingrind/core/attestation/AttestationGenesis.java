@@ -4,6 +4,7 @@ import dev.erst.fingrind.core.BookIdentity;
 import java.math.BigInteger;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -49,6 +50,44 @@ public final class AttestationGenesis {
         checkedFounders);
   }
 
+  /**
+   * Verifies that one standalone genesis is valid and binds the supplied persisted book identity.
+   *
+   * <p>SQLite uses this before writing its ordinary book rows, so a valid genesis for a different
+   * entity cannot be paired with those rows in one protected-book transaction.
+   */
+  public static UUID requireMatchingBookIdentity(
+      AttestationEvidence evidence, BookIdentity bookIdentity) {
+    AttestationEvidence checkedEvidence = Objects.requireNonNull(evidence, "evidence");
+    BookIdentity checkedBookIdentity = Objects.requireNonNull(bookIdentity, "bookIdentity");
+    AttestationVerification verification = AttestationVerifier.verifyBook(List.of(checkedEvidence));
+    if (verification.headOrder().signum() != 0) {
+      throw new IllegalArgumentException(
+          "Attestation evidence must contain genesis at order zero.");
+    }
+    AttestationPreimage effect =
+        AttestationPreimage.decode(
+            checkedEvidence.effectPreimage(), AttestationAuthorizationFailure.GENESIS_INVALID);
+    AttestationPreimage.Fact expected =
+        bookIdentityEffect(verification.bookId(), checkedBookIdentity);
+    boolean matches =
+        effect.records().stream()
+            .filter(record -> record.recordTypeTag() == expected.recordTypeTag())
+            .anyMatch(record -> hasSameCanonicalEncoding(record, expected));
+    if (!matches) {
+      throw new IllegalArgumentException(
+          "Attestation genesis does not bind the supplied book identity.");
+    }
+    return verification.bookId();
+  }
+
+  private static boolean hasSameCanonicalEncoding(
+      AttestationPreimage.Fact left, AttestationPreimage.Fact right) {
+    return Arrays.equals(
+        AttestationPreimage.of(List.of(left)).encoded(),
+        AttestationPreimage.of(List.of(right)).encoded());
+  }
+
   private static AttestationFounder founder(AttestationSigningCredential credential) {
     AttestationSigningCredential checkedCredential =
         Objects.requireNonNull(credential, "founders must not contain null");
@@ -63,7 +102,8 @@ public final class AttestationGenesis {
     long principalCount = founders.stream().map(AttestationFounder::principalId).distinct().count();
     long keyCount = founders.stream().map(AttestationFounder::keyId).distinct().count();
     if (principalCount != founders.size() || keyCount != founders.size()) {
-      throw new IllegalArgumentException("Genesis founders must have distinct principals and keys.");
+      throw new IllegalArgumentException(
+          "Genesis founders must have distinct principals and keys.");
     }
   }
 
@@ -138,9 +178,7 @@ public final class AttestationGenesis {
         present(AttestationTextFieldValue.currency(identity.functionalCurrency().code())),
         present(AttestationNumericFieldValue.unsigned8(identity.fiscalYearStart().month())),
         present(AttestationNumericFieldValue.unsigned8(identity.fiscalYearStart().day())),
-        present(
-            AttestationTextFieldValue.date(
-                identity.bookStartEffectiveDate())));
+        present(AttestationTextFieldValue.date(identity.bookStartEffectiveDate())));
   }
 
   private static AttestationPreimage.Fact founderRequest(AttestationFounder founder) {
@@ -193,7 +231,8 @@ public final class AttestationGenesis {
         0x0103,
         List.of(
             presentToken(capability.token()),
-            present(AttestationNumericFieldValue.unsigned16(capability.genesisQuorum(founderCount)))));
+            present(
+                AttestationNumericFieldValue.unsigned16(capability.genesisQuorum(founderCount)))));
   }
 
   private static AttestationPreimage.Fact policyEffect(
@@ -203,7 +242,8 @@ public final class AttestationGenesis {
         List.of(
             present(AttestationNumericFieldValue.mutation(0)),
             presentToken(capability.token()),
-            present(AttestationNumericFieldValue.unsigned16(capability.genesisQuorum(founderCount)))));
+            present(
+                AttestationNumericFieldValue.unsigned16(capability.genesisQuorum(founderCount)))));
   }
 
   private static AttestationField present(AttestationFieldValue value) {

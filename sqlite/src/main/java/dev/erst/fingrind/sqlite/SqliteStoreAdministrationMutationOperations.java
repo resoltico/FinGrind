@@ -6,6 +6,8 @@ import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
 import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
 import dev.erst.fingrind.contract.tax.TaxDeclarationRejection;
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.attestation.AttestationEvidence;
+import dev.erst.fingrind.core.attestation.AttestationGenesis;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
@@ -37,6 +39,25 @@ final class SqliteStoreAdministrationMutationOperations {
 
   BookOpeningOutcome openBook(
       Instant initializedAt, BookIdentity bookIdentity, List<AccountDeclaration> seededAccounts) {
+    return initializeBook(initializedAt, bookIdentity, seededAccounts, null);
+  }
+
+  BookOpeningOutcome openAttestedBook(
+      Instant initializedAt,
+      BookIdentity bookIdentity,
+      List<AccountDeclaration> seededAccounts,
+      AttestationEvidence genesisEvidence) {
+    AttestationEvidence checkedGenesisEvidence =
+        Objects.requireNonNull(genesisEvidence, "genesisEvidence");
+    AttestationGenesis.requireMatchingBookIdentity(checkedGenesisEvidence, bookIdentity);
+    return initializeBook(initializedAt, bookIdentity, seededAccounts, checkedGenesisEvidence);
+  }
+
+  private BookOpeningOutcome initializeBook(
+      Instant initializedAt,
+      BookIdentity bookIdentity,
+      List<AccountDeclaration> seededAccounts,
+      @org.jspecify.annotations.Nullable AttestationEvidence genesisEvidence) {
     lifecycle.ensureOpenSession();
     context.accessMode().requireWritableInitialization();
     SqliteBookSchemaBootstrap.ensureParentDirectory(context.bookPath());
@@ -60,6 +81,9 @@ final class SqliteStoreAdministrationMutationOperations {
               RegisteredAccount declaredAccount =
                   RegisteredAccount.declareNew(seededAccount, initializedAt);
               SqliteAccountRegistryMutationWriter.upsertAccount(activeDatabase, declaredAccount);
+            }
+            if (genesisEvidence != null) {
+              SqliteAttestationEvidenceStore.append(activeDatabase, new byte[32], genesisEvidence);
             }
             SqliteAuditEventWriter.insertAuditEvent(
                 activeDatabase, BookAuditEvent.bookOpened(initializedAt));

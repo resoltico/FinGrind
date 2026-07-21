@@ -178,13 +178,17 @@ class BookAdministrationModelTest {
 
   @Test
   void openBookCommand_rejectsNullBookIdentity() {
-    assertThrows(NullPointerException.class, () -> new OpenBookCommand(nullOf()));
+    assertThrows(NullPointerException.class, () -> new OpenBookCommand(nullOf(), List.of()));
   }
 
   @Test
   void openBookCommand_acceptsNarrowDoctrineIdentity() {
     assertEquals(
-        "Acme Studio", new OpenBookCommand(bookIdentity()).bookIdentity().entityName().value());
+        "Acme Studio",
+        new OpenBookCommand(bookIdentity(), ContractFixtures.testFounders())
+            .bookIdentity()
+            .entityName()
+            .value());
   }
 
   private static BookIdentity bookIdentity() {
