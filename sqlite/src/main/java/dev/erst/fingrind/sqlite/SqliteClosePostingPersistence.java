@@ -43,9 +43,18 @@ final class SqliteClosePostingPersistence {
         acceptedPosting.materialize(
             Objects.requireNonNull(postingIdGenerator, "postingIdGenerator").nextPostingId(),
             Objects.requireNonNull(provenance, "provenance"));
+    persistMaterializedPosting(activeDatabase, acceptedPosting, postingFact, requestFingerprint);
+    return postingFact;
+  }
+
+  void persistMaterializedPosting(
+      SqliteNativeDatabase activeDatabase,
+      AcceptedPosting acceptedPosting,
+      CommittedPosting postingFact,
+      RequestFingerprint requestFingerprint) {
     SqliteMutationWriter.insertPostingFact(
         activeDatabase,
-        postingFact,
+        Objects.requireNonNull(postingFact, "postingFact"),
         Objects.requireNonNull(requestFingerprint, "requestFingerprint"));
     commitFaultHook.afterPostingFactInserted(postingFact);
     SqliteMutationWriter.insertJournalLines(activeDatabase, postingFact, commitFaultHook);
@@ -55,7 +64,6 @@ final class SqliteClosePostingPersistence {
     persistInventoryCosting(activeDatabase, postingFact.postingId(), acceptedPosting);
     SqliteAuditEventWriter.insertAuditEvent(
         activeDatabase, BookAuditEvent.postingCommitted(postingFact));
-    return postingFact;
   }
 
   dev.erst.fingrind.executor.bookkeeping.SweptInterimResult persistInterimResultSweep(

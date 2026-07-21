@@ -96,4 +96,13 @@ final class SqliteClosingMutationOperations {
     return postingPersistence.persistAcceptedPosting(
         activeDatabase, acceptedPosting, requestFingerprint, provenance, postingIdGenerator);
   }
+
+  void persistMaterializedPosting(
+      SqliteNativeDatabase activeDatabase,
+      AcceptedPosting acceptedPosting,
+      dev.erst.fingrind.core.RequestFingerprint requestFingerprint,
+      CommittedPosting postingFact) {
+    postingPersistence.persistMaterializedPosting(
+        activeDatabase, acceptedPosting, postingFact, requestFingerprint);
+  }
 }

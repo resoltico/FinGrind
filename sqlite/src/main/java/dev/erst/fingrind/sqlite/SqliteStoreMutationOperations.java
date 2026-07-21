@@ -3,10 +3,14 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
-import dev.erst.fingrind.executor.bookkeeping.AcceptedPosting;
+import dev.erst.fingrind.core.attestation.AttestationPostingEffectSnapshot;
+import dev.erst.fingrind.core.attestation.AttestationPostingEvidenceDocument;
+import dev.erst.fingrind.core.attestation.AttestationPostingLine;
+import dev.erst.fingrind.core.attestation.AttestationPostingMutationProjection;
+import dev.erst.fingrind.core.attestation.AttestationPostingRequestSnapshot;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
@@ -23,6 +27,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 /** Mutation operations over one SQLite-backed book session. */
 final class SqliteStoreMutationOperations {
@@ -99,9 +104,14 @@ final class SqliteStoreMutationOperations {
         command, declaredAt, attestationAuthorizer);
   }
 
-  PostingCommitResult commit(PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
+  PostingCommitResult commit(
+      PostingDraft postingDraft,
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     lifecycle.ensureOpenSession();
     context.accessMode().requireWritableMutation();
+    Objects.requireNonNull(postingDraft, "postingDraft");
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     if (Files.notExists(context.bookPath())) {
       return new PostingCommitResult.Rejected(new BookkeepingPostingRejection.BookNotInitialized());
     }
@@ -124,13 +134,23 @@ final class SqliteStoreMutationOperations {
                 yield new PostingCommitResult.Rejected(rejected.rejection());
               }
               case Decision.Accepted accepted -> {
+                PostingId postingId =
+                    Objects.requireNonNull(postingIdGenerator, "postingIdGenerator")
+                        .nextPostingId();
                 CommittedPosting postingFact =
-                    persistAcceptedPosting(
-                        activeDatabase,
-                        accepted.acceptedPosting(),
-                        accepted.requestFingerprint(),
-                        postingDraft.provenance(),
-                        Objects.requireNonNull(postingIdGenerator, "postingIdGenerator"));
+                    accepted.acceptedPosting().materialize(postingId, postingDraft.provenance());
+                SqliteAttestationEvidenceStore.appendAuthorized(
+                    activeDatabase,
+                    "post-entry",
+                    postingFact.provenance().recordedAt(),
+                    AttestationPostingMutationProjection.project(
+                        postingRequestSnapshot(postingDraft), postingEffectSnapshot(postingFact)),
+                    attestationAuthorizer);
+                closingOperations.persistMaterializedPosting(
+                    activeDatabase,
+                    accepted.acceptedPosting(),
+                    accepted.requestFingerprint(),
+                    postingFact);
                 SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
                 yield new PostingCommitResult.Committed(postingFact, false);
               }
@@ -196,13 +216,52 @@ final class SqliteStoreMutationOperations {
     return action.run(lifecycle.database());
   }
 
-  private CommittedPosting persistAcceptedPosting(
-      SqliteNativeDatabase activeDatabase,
-      AcceptedPosting acceptedPosting,
-      dev.erst.fingrind.core.RequestFingerprint requestFingerprint,
-      CommittedProvenance provenance,
-      PostingIdGenerator postingIdGenerator) {
-    return closingOperations.persistAcceptedPosting(
-        activeDatabase, acceptedPosting, requestFingerprint, provenance, postingIdGenerator);
+  private static AttestationPostingRequestSnapshot postingRequestSnapshot(
+      PostingDraft postingDraft) {
+    return new AttestationPostingRequestSnapshot(
+        "post-entry",
+        postingDraft.provenance().requestProvenance().idempotencyKey().value(),
+        postingDraft.provenance().requestProvenance().causationId().value(),
+        postingDraft.provenance().sourceChannel().wireValue(),
+        postingDraft.journalEntry().effectiveDate(),
+        postingDraft.postingKind().wireValue(),
+        postingDraft
+            .postingLineage()
+            .reversalReference()
+            .map(reference -> reference.priorPostingId().value())
+            .orElse(null),
+        postingDraft.postingLineage().reversalReason().map(reason -> reason.value()).orElse(null),
+        postingDraft.evidence().sourceDocuments().stream()
+            .map(
+                document ->
+                    new AttestationPostingEvidenceDocument(
+                        document.sourceDocumentId().value(),
+                        document.sourceDocumentType().value(),
+                        document.documentDate()))
+            .toList(),
+        postingDraft.journalEntry().lines().stream()
+            .map(
+                line ->
+                    new AttestationPostingLine(
+                        line.accountCode().value(),
+                        line.side().wireValue(),
+                        line.amount().currencyUnit().code(),
+                        line.amount().minorUnits()))
+            .toList());
+  }
+
+  private static AttestationPostingEffectSnapshot postingEffectSnapshot(CommittedPosting posting) {
+    return new AttestationPostingEffectSnapshot(
+        UUID.fromString(posting.postingId().value()),
+        "post-entry",
+        posting.postingKind().wireValue(),
+        posting.postingOriginKind().wireValue(),
+        posting.provenance().recordedAt(),
+        posting
+            .postingLineage()
+            .reversalReference()
+            .map(reference -> UUID.fromString(reference.priorPostingId().value()))
+            .orElse(null),
+        UUID.fromString(posting.provenance().requestProvenance().commandId().value()));
   }
 }

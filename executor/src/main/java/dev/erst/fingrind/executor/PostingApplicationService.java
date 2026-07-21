@@ -11,6 +11,7 @@ import dev.erst.fingrind.core.EffectiveDateHorizonPolicy;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
@@ -76,14 +77,16 @@ public final class PostingApplicationService {
   }
 
   /** Commits a request as one durable posting fact or returns a deterministic rejection. */
-  public CommitEntryResult commit(PostEntryCommand command) {
+  public CommitEntryResult commit(
+      PostEntryCommand command, AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(command, "command");
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     java.util.Optional<PostingRejection> rejection = applicationRejectionFor(command);
     if (rejection.isPresent()) {
       return rejectedCommit(command, rejection.orElseThrow());
     }
     PostingCommand postingCommand = localPostingCommand(command);
-    return switch (bookkeepingPostingService.commit(postingCommand)) {
+    return switch (bookkeepingPostingService.commit(postingCommand, attestationAuthorizer)) {
       case PostingCommitResult.Committed committed ->
           committedResult(
               committed.postingFact(),

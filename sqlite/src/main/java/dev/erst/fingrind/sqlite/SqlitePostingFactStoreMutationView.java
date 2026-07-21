@@ -49,9 +49,12 @@ interface SqlitePostingFactStoreMutationView {
 
   /** Commits one posting draft into the protected book. */
   default PostingCommitResult commit(
-      PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
+      PostingDraft postingDraft,
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().commit(postingDraft, postingIdGenerator);
+    return storeMutationOperations()
+        .commit(postingDraft, postingIdGenerator, attestationAuthorizer);
   }
 
   /** Commits a generated interim-result sweep into the protected book. */

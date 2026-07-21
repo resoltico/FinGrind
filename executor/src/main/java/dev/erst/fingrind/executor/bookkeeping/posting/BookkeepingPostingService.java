@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor.bookkeeping.posting;
 
 import dev.erst.fingrind.core.CommittedProvenance;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingCommand;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
@@ -50,8 +51,10 @@ public final class BookkeepingPostingService {
   }
 
   /** Commits one posting command into the selected book using the configured posting id source. */
-  public PostingCommitResult commit(PostingCommand command) {
+  public PostingCommitResult commit(
+      PostingCommand command, AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(command, "command");
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     return switch (acceptancePolicy.decisionFor(command, validationStore)) {
       case PostingAcceptancePolicy.Decision.Replay replay ->
           new PostingCommitResult.Committed(replay.postingFact(), true);
@@ -72,7 +75,8 @@ public final class BookkeepingPostingService {
                       accepted.acceptedPosting().sourceChannel()),
                   accepted.acceptedPosting().callerAuthoredEntry().orElse(null),
                   accepted.acceptedPosting().resolvedOriginatingEntry().orElse(null)),
-              postingIdGenerator);
+              postingIdGenerator,
+              attestationAuthorizer);
     };
   }
 }

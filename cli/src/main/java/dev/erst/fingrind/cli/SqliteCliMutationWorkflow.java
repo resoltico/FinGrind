@@ -232,14 +232,17 @@ final class SqliteCliMutationWorkflow implements CliBookMutationWorkflow {
   @Override
   public ContractDecision<CommitEntryResult> commit(
       BookAccess bookAccess, PostEntryCommand command) {
-    return SqliteCliWorkflowSessions.withPostingSession(
-        SqlitePostingSessions.openResolved(
-            bookAccess,
-            SqliteBookSessionMode.READ_WRITE_EXISTING,
-            passphraseResolver,
-            SqlitePassphraseIntent.EXISTING_SECRET),
-        bookSession ->
-            SqliteCliWorkflowSessions.postingApplicationService(bookSession, clock)
-                .commit(command));
+    return withAttestationAuthorization(
+        bookAccess,
+        authorizer ->
+            SqliteCliWorkflowSessions.withPostingSession(
+                SqlitePostingSessions.openResolved(
+                    bookAccess,
+                    SqliteBookSessionMode.READ_WRITE_EXISTING,
+                    passphraseResolver,
+                    SqlitePassphraseIntent.EXISTING_SECRET),
+                bookSession ->
+                    SqliteCliWorkflowSessions.postingApplicationService(bookSession, clock)
+                        .commit(command, authorizer)));
   }
 }

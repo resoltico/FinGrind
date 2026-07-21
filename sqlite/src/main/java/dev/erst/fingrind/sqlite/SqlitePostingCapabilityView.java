@@ -109,8 +109,11 @@ interface SqlitePostingCapabilityView extends SqlitePostingSession, SqliteReadCa
 
   @Override
   default PostingCommitResult commit(
-      PostingDraft postingDraft, PostingIdGenerator postingIdGenerator) {
+      PostingDraft postingDraft,
+      PostingIdGenerator postingIdGenerator,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().commit(postingDraft, postingIdGenerator);
+    return storeMutationOperations()
+        .commit(postingDraft, postingIdGenerator, attestationAuthorizer);
   }
 }
