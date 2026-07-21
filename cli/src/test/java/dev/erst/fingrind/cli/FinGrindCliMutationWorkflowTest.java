@@ -157,7 +157,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(
         0,
         cli.run(
-            new String[] {
+            attestedArguments(new String[] {
               "declare-account",
               "--book-file",
               bookFilePath.toString(),
@@ -165,7 +165,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               bookKeyFilePath.toString(),
               "--request-file",
               declareRevenueFile.toString()
-            }));
+            })));
     ByteArrayOutputStream listOutput = new ByteArrayOutputStream();
     cli = cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(listOutput), fixedClock());
     assertEquals(
@@ -319,7 +319,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(
         0,
         preflightTextCli.run(
-            new String[] {
+            attestedArguments(new String[] {
               "preflight-entry",
               "--book-file",
               bookFilePath.toString(),
@@ -329,7 +329,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               saleRequestFile.toString(),
               "--output",
               "text"
-            }));
+            })));
     String preflightText = preflightTextOutput.toString(StandardCharsets.UTF_8);
     assertTrue(preflightText.contains("Entry Preflight Passed"), preflightText);
     assertTrue(preflightText.contains("Journal lines"), preflightText);
@@ -779,7 +779,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(
         0,
         firstBackupCli.run(
-            new String[] {
+            attestedArguments(new String[] {
               "backup-book",
               "--book-file",
               bookFilePath.toString(),
@@ -789,7 +789,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
               backupFilePath.toString(),
               "--new-backup-key-file",
               backupKeyFilePath.toString()
-            }));
+            })));
 
     ByteArrayOutputStream secondBackupOutput = new ByteArrayOutputStream();
     FinGrindCli secondBackupCli =
@@ -847,7 +847,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
             .run(
-                new String[] {
+                attestedArguments(new String[] {
                   "declare-account",
                   "--book-file",
                   bookFilePath.toString(),
@@ -855,7 +855,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
                   bookKeyFilePath.toString(),
                   "--request-file",
                   declareCashFile.toString()
-                }));
+                })));
     assertEquals(
         0,
         cli(
@@ -863,7 +863,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
             .run(
-                new String[] {
+                attestedArguments(new String[] {
                   "declare-account",
                   "--book-file",
                   bookFilePath.toString(),
@@ -871,7 +871,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
                   bookKeyFilePath.toString(),
                   "--request-file",
                   declareRevenueFile.toString()
-                }));
+                })));
     assertEquals(
         0,
         cli(

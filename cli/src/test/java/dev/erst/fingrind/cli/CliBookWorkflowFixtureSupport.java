@@ -141,6 +141,8 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
   }
 
   protected static String[] openBookPromptArguments(Path bookFilePath) {
+    Path founderKeyFilePath = attestationKeyFilePath(bookFilePath);
+    Path founderPassphraseFilePath = writeAttestationPassphraseFile(bookFilePath);
     return new String[] {
       "open-book",
       ProtocolBookAccessOptions.BOOK_FILE,
@@ -159,7 +161,13 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
       ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
       bookIdentity().fiscalYearStart().wireValue(),
       ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE,
-      bookIdentity().bookStartEffectiveDate().toString()
+      bookIdentity().bookStartEffectiveDate().toString(),
+      ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
+      TEST_FOUNDER_PRINCIPAL_ID,
+      ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
+      founderKeyFilePath.toString(),
+      ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE,
+      founderPassphraseFilePath.toString()
     };
   }
 

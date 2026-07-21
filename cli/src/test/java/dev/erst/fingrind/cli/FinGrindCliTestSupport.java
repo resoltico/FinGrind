@@ -19,8 +19,7 @@ class FinGrindCliTestSupport extends CliWorkflowDoubleSupport {
     if (arguments.length == 0) {
       return arguments;
     }
-    List<String> normalizedArguments = new ArrayList<>(List.of(arguments));
-    appendFixtureAttestationCredentials(normalizedArguments);
+    List<String> normalizedArguments = new ArrayList<>(List.of(attestedArguments(arguments)));
     if (normalizedArguments.contains("--output")
         || ProtocolCatalog.findByToken(normalizedArguments.getFirst())
             .filter(operation -> !operation.outputModes().isEmpty())
@@ -28,6 +27,22 @@ class FinGrindCliTestSupport extends CliWorkflowDoubleSupport {
       return normalizedArguments.toArray(String[]::new);
     }
     normalizedArguments.addAll(List.of("--output", "json"));
+    return normalizedArguments.toArray(String[]::new);
+  }
+
+  /**
+   * Supplies the founder credential for fixture commands that mutate an already opened test book.
+   *
+   * <p>The production CLI intentionally has no ambient credential. Tests that exercise a real
+   * mutation must make the same credential choice as a caller, even when they assert the default
+   * text output instead of JSON.
+   */
+  protected static String[] attestedArguments(String... arguments) {
+    if (arguments.length == 0) {
+      return arguments;
+    }
+    List<String> normalizedArguments = new ArrayList<>(List.of(arguments));
+    appendFixtureAttestationCredentials(normalizedArguments);
     return normalizedArguments.toArray(String[]::new);
   }
 
