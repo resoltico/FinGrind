@@ -77,6 +77,15 @@ class MaintenanceValueContractsTest {
   }
 
   @Test
+  void translatesPublishedOpenBookIdentityWithoutRecreatingIt() {
+    OpenBookCommand command = ExecutorAccountingTestSupport.openBookCommand();
+
+    assertEquals(
+        command.bookIdentity(),
+        BookkeepingRequestPublishedLanguageTranslator.fromPublished(command));
+  }
+
+  @Test
   void rejectsUnattestedMaintenanceStoresBeforeInvokingAnyStorageOperation() {
     assertThrows(
         IllegalArgumentException.class,

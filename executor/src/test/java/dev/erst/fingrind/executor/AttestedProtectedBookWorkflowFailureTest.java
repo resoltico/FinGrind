@@ -208,6 +208,12 @@ class AttestedProtectedBookWorkflowFailureTest {
         store(credential, BackupArtifactPairState.COMPLETE);
     assertInstanceOf(
         MaintenanceDecision.Failed.class, backup(unreadableArtifact, access, credential));
+
+    AttestationMaintenanceTestSupport.Store failedLiveVerification =
+        store(credential, BackupArtifactPairState.ABSENT);
+    failedLiveVerification.setLiveVerification(MaintenanceDecision.failed(storageFailure()));
+    assertInstanceOf(
+        MaintenanceDecision.Failed.class, backup(failedLiveVerification, access, credential));
   }
 
   @Test
