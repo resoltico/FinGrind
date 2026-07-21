@@ -6,6 +6,7 @@ import dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
+import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseRequiresGeneratedPostings;
 import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -166,8 +167,7 @@ class BookAdministrationRejectionTest {
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.FiscalYearCloseFutureDate(
                     java.time.LocalDate.parse("2027-01-01"))),
-            BookAdministrationRejection.wireCode(
-                new BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings())));
+            BookAdministrationRejection.wireCode(new FiscalYearCloseRequiresGeneratedPostings())));
   }
 
   @Test

@@ -865,7 +865,7 @@ public sealed interface BookAdministrationRejection
   `InterimResultSweepMustStartAt`, `InterimResultSweepFutureDate`,
   `InterimResultSweepCrossesFiscalYearBoundary`, `FiscalYearCloseMustStartAt`,
   `FiscalYearCloseMustEndAt`, `FiscalYearClosePrecedesTransferredThroughHorizon`,
-  `FiscalYearCloseFutureDate`, `FiscalYearCloseRequiresGeneratedPostings`
+  `FiscalYearCloseFutureDate`, `FiscalYearCloseRequiresGeneratedPostings` (a top-level variant)
 - Fiscal-year close constraint: a close is rejected when its planner produces no durable close
   postings. The refusal persists no close record, audit event, or attestation operation.
 

@@ -17,6 +17,7 @@ import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
 import dev.erst.fingrind.contract.bookkeeping.ContraAccountInvalid;
+import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseRequiresGeneratedPostings;
 import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
@@ -153,7 +154,7 @@ class CliRejectionPayloadMapperTest {
         "--year",
         CliRejectionJsonModels.FiscalYearCloseFutureDateDetails.class);
     assertHint(
-        new BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings(),
+        new FiscalYearCloseRequiresGeneratedPostings(),
         "Post the accounting activity needed to produce a year-end close posting",
         null);
     assertHint(

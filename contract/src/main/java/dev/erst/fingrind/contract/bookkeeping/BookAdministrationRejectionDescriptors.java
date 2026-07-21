@@ -84,7 +84,7 @@ final class BookAdministrationRejectionDescriptors {
                   BookAdministrationRejection.FiscalYearCloseFutureDate.class,
                   Descriptor.FISCAL_YEAR_CLOSE_FUTURE_DATE),
               Map.entry(
-                  BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings.class,
+                  FiscalYearCloseRequiresGeneratedPostings.class,
                   Descriptor.FISCAL_YEAR_CLOSE_REQUIRES_GENERATED_POSTINGS));
 
   private BookAdministrationRejectionDescriptors() {}

@@ -25,6 +25,10 @@ Historical release notes older than `0.31.0` live in:
 
 ### Changed
 
+- Hard-broke the Java book-administration rejection surface so
+  `FiscalYearCloseRequiresGeneratedPostings` is a top-level sealed-family variant rather than a
+  nested member of `BookAdministrationRejection`. Its stable machine rejection code and CLI
+  behavior are unchanged.
 - Hard-broke close-planner construction to identity-bound factories. `InterimResultSweepPlanner`
   and `FiscalYearClosePlanner` now derive their accounting kernel from the initialized book
   identity, and no longer expose an unusable constructor parameter from an internal Java module

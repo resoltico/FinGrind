@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
+import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseRequiresGeneratedPostings;
 import java.util.Objects;
 
 /** Maps local bookkeeping-administration rejections into the published contract. */
@@ -61,7 +62,7 @@ public final class BookkeepingAdministrationRejectionPublishedMapper {
     }
     if (rejection
         instanceof BookkeepingAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings) {
-      return new BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings();
+      return new FiscalYearCloseRequiresGeneratedPostings();
     }
     if (rejection instanceof CloseTargetAccountCandidateMissing
         || rejection instanceof CloseTargetAccountCandidateAmbiguous) {

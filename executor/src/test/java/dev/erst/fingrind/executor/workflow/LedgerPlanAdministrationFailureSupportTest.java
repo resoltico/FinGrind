@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
+import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseRequiresGeneratedPostings;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountNodeKind;
 import dev.erst.fingrind.core.AccountTaxonomy;
@@ -119,7 +120,7 @@ class LedgerPlanAdministrationFailureSupportTest {
     assertEquals(
         List.of(),
         LedgerPlanAdministrationFailureSupport.facts(
-            new BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings()));
+            new FiscalYearCloseRequiresGeneratedPostings()));
   }
 
   @Test

@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
 import dev.erst.fingrind.contract.bookkeeping.ContraAccountInvalid;
+import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseRequiresGeneratedPostings;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
@@ -202,7 +203,7 @@ final class CliAdministrationRejectionPayloadMapper {
           + FISCAL_YEAR_CLOSE_OPERATION
           + ".";
     }
-    if (rejection instanceof BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings) {
+    if (rejection instanceof FiscalYearCloseRequiresGeneratedPostings) {
       return "Post the accounting activity needed to produce a year-end close posting, then rerun "
           + FISCAL_YEAR_CLOSE_OPERATION
           + ".";

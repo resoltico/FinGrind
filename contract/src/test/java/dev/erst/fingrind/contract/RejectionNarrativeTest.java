@@ -15,6 +15,7 @@ import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
 import dev.erst.fingrind.contract.bookkeeping.ContraAccountInvalid;
+import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseRequiresGeneratedPostings;
 import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
@@ -199,8 +200,7 @@ class RejectionNarrativeTest {
                     LocalDate.parse("2027-01-01")))
             .contains("2027-01-01"));
     assertTrue(
-        RejectionNarrative.message(
-                new BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings())
+        RejectionNarrative.message(new FiscalYearCloseRequiresGeneratedPostings())
             .contains("would not persist any generated close postings"));
   }
 

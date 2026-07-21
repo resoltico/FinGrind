@@ -3,6 +3,7 @@ package dev.erst.fingrind.executor.workflow;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
+import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseRequiresGeneratedPostings;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejectionPublishedMapper;
@@ -54,8 +55,7 @@ final class LedgerPlanAdministrationFailureSupport {
         || rejection
             instanceof BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon
         || rejection instanceof BookAdministrationRejection.FiscalYearCloseFutureDate
-        || rejection
-            instanceof BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings;
+        || rejection instanceof FiscalYearCloseRequiresGeneratedPostings;
   }
 
   private static List<BookWorkflowFact> closeWindowFacts(BookAdministrationRejection rejection) {
@@ -94,7 +94,7 @@ final class LedgerPlanAdministrationFailureSupport {
           List.of(
               BookWorkflowFact.text(
                   "attemptedEffectiveDateTo", conflict.attemptedEffectiveDateTo().toString()));
-      case BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings _ -> List.of();
+      case FiscalYearCloseRequiresGeneratedPostings _ -> List.of();
       default ->
           throw new IllegalStateException(
               "Unsupported published close-window rejection: " + rejection.getClass().getName());
