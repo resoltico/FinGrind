@@ -60,6 +60,29 @@ public final class AttestationKeyFiles {
     }
   }
 
+  /**
+   * Opens one existing encrypted credential bound to its declared principal.
+   *
+   * <p>Unlike genesis provisioning, this method refuses a missing credential path. Mutations must
+   * never silently create a key that has not first been enrolled by an attested operation.
+   */
+  public static AttestationSigningCredential openExistingCredential(
+      UUID principalId, Path encryptedKeyFilePath, Path passphraseFilePath) throws IOException {
+    UUID checkedPrincipalId = Objects.requireNonNull(principalId, "principalId");
+    Path checkedKeyPath = Objects.requireNonNull(encryptedKeyFilePath, "encryptedKeyFilePath");
+    if (!Files.isRegularFile(checkedKeyPath)) {
+      throw new IOException("Attestation encrypted key file does not exist.");
+    }
+    char[] passphrase =
+        readPassphraseFile(Objects.requireNonNull(passphraseFilePath, "passphraseFilePath"));
+    try {
+      return new AttestationSigningCredential(
+          checkedPrincipalId, loadPublicCredential(checkedKeyPath), checkedKeyPath, passphrase);
+    } finally {
+      Arrays.fill(passphrase, '\0');
+    }
+  }
+
   private static char[] readPassphraseFile(Path passphraseFilePath) throws IOException {
     byte[] encoded = readBounded(passphraseFilePath);
     try {
