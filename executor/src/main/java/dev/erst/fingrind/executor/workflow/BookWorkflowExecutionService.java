@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.workflow;
 
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
 import java.time.Clock;
 import java.time.Instant;
@@ -34,9 +35,11 @@ public final class BookWorkflowExecutionService {
             clock);
   }
 
-  /** Executes one local workflow plan atomically. */
-  public BookWorkflowExecutionResult execute(BookWorkflowPlan plan) {
+  /** Executes one authorized local workflow plan atomically. */
+  public BookWorkflowExecutionResult execute(
+      BookWorkflowPlan plan, AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(plan, "plan");
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     Instant startedAt = Instant.now(clock);
     List<BookWorkflowJournalEntry> entries = new ArrayList<>();
     List<BookWorkflowStep> steps = plan.steps();
@@ -55,7 +58,7 @@ public final class BookWorkflowExecutionService {
     }
 
     BookWorkflowStepExecutionState stepExecutionState =
-        executeSteps(plan, startedAt, steps, entries);
+        executeSteps(plan, startedAt, steps, entries, attestationAuthorizer);
     if (stepExecutionState.terminalResult() != null) {
       return Objects.requireNonNull(stepExecutionState.terminalResult(), "terminalResult");
     }
@@ -113,10 +116,18 @@ public final class BookWorkflowExecutionService {
       BookWorkflowPlan plan,
       Instant startedAt,
       List<BookWorkflowStep> steps,
-      List<BookWorkflowJournalEntry> entries) {
+      List<BookWorkflowJournalEntry> entries,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     BookWorkflowJournalEntry.Succeeded pendingSuccessfulStep = null;
     for (BookWorkflowStep step : steps) {
-      var stepOutcome = executeStep(plan.planId(), startedAt, entries, pendingSuccessfulStep, step);
+      var stepOutcome =
+          executeStep(
+              plan.planId(),
+              startedAt,
+              entries,
+              pendingSuccessfulStep,
+              step,
+              attestationAuthorizer);
       if (stepOutcome.terminalResult() != null) {
         return stepOutcome;
       }
@@ -132,10 +143,11 @@ public final class BookWorkflowExecutionService {
       Instant planStartedAt,
       List<BookWorkflowJournalEntry> entries,
       BookWorkflowJournalEntry.@Nullable Succeeded pendingSuccessfulStep,
-      BookWorkflowStep step) {
+      BookWorkflowStep step,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     Instant stepStartedAt = Instant.now(clock);
     try {
-      BookWorkflowJournalEntry stepEntry = stepExecutor.execute(step);
+      BookWorkflowJournalEntry stepEntry = stepExecutor.execute(step, attestationAuthorizer);
       return switch (stepEntry) {
         case BookWorkflowJournalEntry.Succeeded succeeded -> {
           appendPendingSuccess(entries, pendingSuccessfulStep);

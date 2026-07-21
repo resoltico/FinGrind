@@ -77,7 +77,7 @@ final class LedgerPlanServiceTestSupport {
             .execute(
                 new LedgerPlan(
                     planId("plan-assert"),
-                    List.of(new LedgerStep.Assert(stepId("assert"), assertion))));
+                    List.of(new LedgerStep.Assert(stepId("assert"), assertion))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
     assertEquals(LedgerPlanStatus.ASSERTION_FAILED, result.status());
   }

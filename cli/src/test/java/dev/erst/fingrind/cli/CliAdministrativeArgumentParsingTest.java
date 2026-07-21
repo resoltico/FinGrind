@@ -147,6 +147,12 @@ class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport
                   "book.key",
                   "--new-book-key-file",
                   "book-new.key",
+                  "--attestation-principal-id",
+                  "123e4567-e89b-12d3-a456-426614174000",
+                  "--attestation-key-file",
+                  "principal.fgatk",
+                  "--attestation-passphrase-file",
+                  "principal.passphrase",
                   "--output",
                   "text"
                 }));

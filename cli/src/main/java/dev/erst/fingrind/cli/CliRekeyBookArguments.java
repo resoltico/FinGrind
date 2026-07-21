@@ -22,17 +22,7 @@ final class CliRekeyBookArguments {
   static CliCommand parseRekeyBookCommand(List<String> arguments) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
         CliBookArgumentParser.parseBookAndCommandArguments(arguments, REKEY_BOOK_ARGUMENTS);
-    if (parsedArguments.bookAccess().attestationCredentialSources().isEmpty()) {
-      throw CliArgumentValueParser.invalid(
-          ProtocolOptions.Attestation.PRINCIPAL_ID,
-          "Provide one through five aligned attestation credential triples: "
-              + ProtocolOptions.Attestation.PRINCIPAL_ID
-              + ", "
-              + ProtocolOptions.Attestation.KEY_FILE
-              + ", and "
-              + ProtocolOptions.Attestation.PASSPHRASE_FILE
-              + ".");
-    }
+    CliBookArgumentParser.requireAttestationCredentials(parsedArguments.bookAccess());
     Path newBookKeyFilePath = null;
     @Nullable OutputMode outputMode = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();

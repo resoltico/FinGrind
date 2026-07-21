@@ -1,17 +1,6 @@
 {
   "planId" : "general-workflow",
   "steps" : [ {
-    "stepId" : "ensure-book",
-    "kind" : "ensure-book",
-    "ensureBook" : {
-      "entityName" : "Acme Studio",
-      "bookTemplateId" : "OWNER_MANAGED_SERVICE",
-      "accountingBasis" : "CASH",
-      "functionalCurrency" : "EUR",
-      "fiscalYearStart" : "01-01",
-      "bookStartEffectiveDate" : "2026-01-01"
-    }
-  }, {
     "stepId" : "record-sale-settled",
     "kind" : "record-sale-settled",
     "posting" : {
@@ -36,7 +25,7 @@
         "approvals" : [ ]
       },
       "provenance" : {
-        "commandId" : "replace-before-commit-command-id",
+        "commandId" : "018f0000-0000-7000-8000-000000000001",
         "idempotencyKey" : "replace-before-commit-idempotency-key",
         "causationId" : "replace-before-commit-causation-id"
       }

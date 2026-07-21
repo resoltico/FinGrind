@@ -35,7 +35,7 @@ class LedgerPlanServiceEnsureBookCoverageTest {
 
       var result =
           service(bookSession)
-              .execute(new LedgerPlan(planId("plan-conflict"), List.of(openBookStep("open"))));
+              .execute(new LedgerPlan(planId("plan-conflict"), List.of(openBookStep("open"))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(
@@ -50,7 +50,7 @@ class LedgerPlanServiceEnsureBookCoverageTest {
         new AlreadyInitializedRaceSession(initializedInspection(bookIdentity()))) {
       var result =
           service(bookSession)
-              .execute(new LedgerPlan(planId("plan-replay"), List.of(openBookStep("open"))));
+              .execute(new LedgerPlan(planId("plan-replay"), List.of(openBookStep("open"))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.SUCCEEDED, result.status());
       assertTrue(
@@ -66,7 +66,7 @@ class LedgerPlanServiceEnsureBookCoverageTest {
       var result =
           service(bookSession)
               .execute(
-                  new LedgerPlan(planId("plan-replay-conflict"), List.of(openBookStep("open"))));
+                  new LedgerPlan(planId("plan-replay-conflict"), List.of(openBookStep("open"))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(
@@ -82,7 +82,7 @@ class LedgerPlanServiceEnsureBookCoverageTest {
       var result =
           service(bookSession)
               .execute(
-                  new LedgerPlan(planId("plan-replay-missing"), List.of(openBookStep("open"))));
+                  new LedgerPlan(planId("plan-replay-missing"), List.of(openBookStep("open"))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(
@@ -97,7 +97,7 @@ class LedgerPlanServiceEnsureBookCoverageTest {
     try (SchemaRejectingOpenBookSession bookSession = new SchemaRejectingOpenBookSession()) {
       var result =
           service(bookSession)
-              .execute(new LedgerPlan(planId("plan-schema"), List.of(openBookStep("open"))));
+              .execute(new LedgerPlan(planId("plan-schema"), List.of(openBookStep("open"))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(

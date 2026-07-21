@@ -29,7 +29,6 @@ final class MachineContractPlanTemplates {
     return new ContractPlanTemplates.LedgerPlanTemplateDescriptor(
         "general-workflow",
         List.of(
-            ensureBook(),
             new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
                 ProtocolCatalog.operationName(OperationId.RECORD_SALE_SETTLED),
                 LedgerStepKind.RECORD_SALE_SETTLED,
@@ -46,7 +45,6 @@ final class MachineContractPlanTemplates {
     return new ContractPlanTemplates.LedgerPlanTemplateDescriptor(
         "tax-setup",
         List.of(
-            ensureBook(),
             declareAccount(
                 "declare-tax-payable",
                 "tax-payable-vat",
@@ -81,7 +79,6 @@ final class MachineContractPlanTemplates {
     return new ContractPlanTemplates.LedgerPlanTemplateDescriptor(
         "fixed-asset-setup",
         List.of(
-            ensureBook(),
             declareAccount(
                 "declare-delivery-van",
                 "delivery-van",
@@ -133,7 +130,6 @@ final class MachineContractPlanTemplates {
     return new ContractPlanTemplates.LedgerPlanTemplateDescriptor(
         "financing-setup",
         List.of(
-            ensureBook(),
             declareAccount(
                 "declare-term-loan-principal",
                 "term-loan-principal",
@@ -161,20 +157,6 @@ final class MachineContractPlanTemplates {
                 ProfitAndLossLineClassification.FINANCE_EXPENSE,
                 null,
                 null)));
-  }
-
-  private static ContractPlanTemplates.LedgerPlanStepTemplateDescriptor ensureBook() {
-    return new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-        "ensure-book",
-        LedgerStepKind.ENSURE_BOOK,
-        new ContractPlanTemplates.EnsureBookTemplateDescriptor(
-            "Acme Studio", "OWNER_MANAGED_SERVICE", "CASH", null, "EUR", "01-01", "2026-01-01"),
-        null,
-        null,
-        null,
-        null,
-        null,
-        null);
   }
 
   private static ContractPlanTemplates.LedgerPlanStepTemplateDescriptor declareAccount(

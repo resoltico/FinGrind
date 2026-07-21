@@ -64,7 +64,7 @@ class LedgerPlanServiceAssertionTest {
                           new LedgerStep.Assert(
                               stepId("missing-posting"),
                               new LedgerAssertion.PostingExists(
-                                  new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6"))))));
+                                  new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6"))))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.ASSERTION_FAILED, result.status());
       assertEquals(3, result.journal().steps().size());
@@ -120,7 +120,7 @@ class LedgerPlanServiceAssertionTest {
                                   null,
                                   null,
                                   Money.parse("EUR", "10.00"),
-                                  BalanceSide.DEBIT)))));
+                                  BalanceSide.DEBIT)))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.REJECTED, rejectedQueryResult.status());
       assertEquals(
@@ -143,7 +143,7 @@ class LedgerPlanServiceAssertionTest {
                                   null,
                                   null,
                                   Money.parse("EUR", "10.00"),
-                                  BalanceSide.CREDIT)))));
+                                  BalanceSide.CREDIT)))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.ASSERTION_FAILED, mismatchResult.status());
       assertEquals(
@@ -171,7 +171,7 @@ class LedgerPlanServiceAssertionTest {
                                   null,
                                   null,
                                   Money.parse("EUR", "9.00"),
-                                  BalanceSide.DEBIT)))));
+                                  BalanceSide.DEBIT)))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.ASSERTION_FAILED, amountMismatchResult.status());
       assertTrue(
@@ -192,7 +192,7 @@ class LedgerPlanServiceAssertionTest {
                       List.of(
                           new LedgerStep.Assert(
                               stepId("assert-account-declared"),
-                              new LedgerAssertion.AccountDeclared(new AccountCode("1000"))))));
+                              new LedgerAssertion.AccountDeclared(new AccountCode("1000"))))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
       assertEquals(LedgerPlanStatus.REJECTED, accountDeclaredResult.status());
       assertEquals(
           BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
@@ -206,7 +206,7 @@ class LedgerPlanServiceAssertionTest {
                       List.of(
                           new LedgerStep.Assert(
                               stepId("assert-account-active"),
-                              new LedgerAssertion.AccountActive(new AccountCode("1000"))))));
+                              new LedgerAssertion.AccountActive(new AccountCode("1000"))))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
       assertEquals(LedgerPlanStatus.REJECTED, accountActiveResult.status());
       assertEquals(
           BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
@@ -221,7 +221,7 @@ class LedgerPlanServiceAssertionTest {
                           new LedgerStep.Assert(
                               stepId("assert-posting-exists"),
                               new LedgerAssertion.PostingExists(
-                                  new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))));
+                                  new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
       assertEquals(LedgerPlanStatus.REJECTED, postingExistsResult.status());
       assertEquals(
           BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),

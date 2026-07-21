@@ -1,8 +1,13 @@
 package dev.erst.fingrind.executor.workflow;
 
-import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.PostingApplicationService;
+import dev.erst.fingrind.executor.TaxAdministrationService;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
@@ -23,8 +28,10 @@ import java.util.Objects;
 /** Executes one ledger-plan step and maps it into the canonical journal entry model. */
 final class LedgerPlanStepExecutor {
   private final Clock clock;
+  private final BookAdministrationService bookAdministrationService;
   private final BookkeepingReadService bookkeepingReadService;
   private final PostingApplicationService postingApplicationService;
+  private final TaxAdministrationService taxAdministrationService;
 
   LedgerPlanStepExecutor(
       BookAdministrationStore administrationStore,
@@ -43,9 +50,13 @@ final class LedgerPlanStepExecutor {
     Objects.requireNonNull(taxAdministrationStore, "taxAdministrationStore");
     Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
     this.clock = Objects.requireNonNull(clock, "clock");
+    this.bookAdministrationService =
+        new BookAdministrationService(readStore, administrationStore, accountCatalogStore, clock);
     this.bookkeepingReadService = new BookkeepingReadService(readStore);
     this.postingApplicationService =
         new PostingApplicationService(validationStore, commitStore, postingIdGenerator, clock);
+    this.taxAdministrationService =
+        new TaxAdministrationService(readStore, readStore, taxAdministrationStore, clock);
   }
 
   BookLifecycleInspection inspectBook() {
@@ -56,19 +67,21 @@ final class LedgerPlanStepExecutor {
     return bookkeepingReadService.allowsInitializedWorkflow();
   }
 
-  BookWorkflowJournalEntry execute(BookWorkflowStep step) {
+  BookWorkflowJournalEntry execute(
+      BookWorkflowStep step, AttestationOperationAuthorizer attestationAuthorizer) {
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     Instant startedAt = Instant.now(clock);
     LedgerPlanStepOutcome outcome =
         switch (step) {
           case BookWorkflowStep.EnsureBook ensureBook ->
-              attestationRequired(ensureBook.stepId().value());
+              openBookOnly(ensureBook.stepId().value());
           case BookWorkflowStep.DeclareAccount declareAccount ->
-              attestationRequired(declareAccount.stepId().value());
+              declareAccountOutcome(declareAccount.command(), attestationAuthorizer);
           case BookWorkflowStep.DeclareTaxRegistration declareTaxRegistration ->
-              attestationRequired(declareTaxRegistration.stepId().value());
+              declareTaxRegistrationOutcome(declareTaxRegistration.command(), attestationAuthorizer);
           case BookWorkflowStep.PreflightEntry preflightEntry -> preflightOutcome(preflightEntry);
           case BookWorkflowStep.PostEntry postEntry ->
-              attestationRequired(postEntry.stepId().value());
+              postEntryOutcome(postEntry, attestationAuthorizer);
           case BookWorkflowStep.InspectBook _ -> inspectBookOutcome();
           case BookWorkflowStep.ListAccounts listAccounts -> listAccountsOutcome(listAccounts);
           case BookWorkflowStep.GetPosting getPosting -> getPostingOutcome(getPosting);
@@ -114,18 +127,54 @@ final class LedgerPlanStepExecutor {
         List.of(),
         new BookWorkflowFailure(
             LedgerPlanStepOutcomes.missingBookCode(step),
-            "The selected book is not initialized and the plan does not begin with an ensure-book step.",
+            "The selected book is not initialized. Create it with open-book before executing a plan.",
             List.of()));
   }
 
-  private static LedgerPlanStepOutcome attestationRequired(String stepId) {
+  private static LedgerPlanStepOutcome openBookOnly(String stepId) {
     return new LedgerPlanStepOutcome.Rejected(
         new BookWorkflowFailure(
-            "attestation-required",
-            "Ledger-plan mutation requires the signed "
-                + OperationId.EXECUTE_PLAN.wireName()
-                + " path, which is not yet available for this step.",
+            "book-genesis-requires-open-book",
+            "Ledger plans cannot create a book. Run open-book with explicit founder credentials first.",
             List.of(BookWorkflowFact.text("stepId", stepId))));
+  }
+
+  private LedgerPlanStepOutcome declareAccountOutcome(
+      AccountDeclaration command, AttestationOperationAuthorizer attestationAuthorizer) {
+    return switch (bookAdministrationService.declareAccount(command, attestationAuthorizer)) {
+      case AccountDeclarationOutcome.Declared declared ->
+          LedgerPlanStepOutcomes.stepSucceeded(
+              LedgerPlanFactMapper.accountDeclarationFacts("declared", declared.account()));
+      case AccountDeclarationOutcome.Reactivated reactivated ->
+          LedgerPlanStepOutcomes.stepSucceeded(
+              LedgerPlanFactMapper.accountDeclarationFacts("reactivated", reactivated.account()));
+      case AccountDeclarationOutcome.Renamed renamed ->
+          LedgerPlanStepOutcomes.stepSucceeded(
+              LedgerPlanFactMapper.accountDeclarationFacts("renamed", renamed.account()));
+      case AccountDeclarationOutcome.Unchanged unchanged ->
+          LedgerPlanStepOutcomes.stepSucceeded(
+              LedgerPlanFactMapper.accountDeclarationFacts("unchanged", unchanged.account()));
+      case AccountDeclarationOutcome.Rejected rejected ->
+          LedgerPlanRejectedOutcomes.administrationRejection(rejected.rejection());
+    };
+  }
+
+  private LedgerPlanStepOutcome declareTaxRegistrationOutcome(
+      dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand command,
+      AttestationOperationAuthorizer attestationAuthorizer) {
+    return switch (taxAdministrationService.declareTaxRegistration(command, attestationAuthorizer)) {
+      case DeclareTaxRegistrationResult.Declared declared ->
+          LedgerPlanStepOutcomes.stepSucceeded(
+              LedgerPlanFactMapper.taxRegistrationFacts("declared", declared.registration()));
+      case DeclareTaxRegistrationResult.Updated updated ->
+          LedgerPlanStepOutcomes.stepSucceeded(
+              LedgerPlanFactMapper.taxRegistrationFacts("updated", updated.registration()));
+      case DeclareTaxRegistrationResult.Unchanged unchanged ->
+          LedgerPlanStepOutcomes.stepSucceeded(
+              LedgerPlanFactMapper.taxRegistrationFacts("unchanged", unchanged.registration()));
+      case DeclareTaxRegistrationResult.Rejected rejected ->
+          LedgerPlanRejectedOutcomes.taxDeclarationRejection(rejected.rejection());
+    };
   }
 
   private LedgerPlanStepOutcome preflightOutcome(BookWorkflowStep.PreflightEntry step) {
@@ -135,6 +184,20 @@ final class LedgerPlanStepExecutor {
               BookWorkflowFact.text("idempotencyKey", accepted.idempotencyKey().value()),
               BookWorkflowFact.text("effectiveDate", accepted.effectiveDate().toString()));
       case dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightRejected rejected ->
+          LedgerPlanRejectedOutcomes.postingRejection(rejected.rejection());
+    };
+  }
+
+  private LedgerPlanStepOutcome postEntryOutcome(
+      BookWorkflowStep.PostEntry step, AttestationOperationAuthorizer attestationAuthorizer) {
+    return switch (postingApplicationService.commit(step.command(), attestationAuthorizer)) {
+      case dev.erst.fingrind.contract.bookkeeping.PostEntryResult.Committed committed ->
+          LedgerPlanStepOutcomes.stepSucceeded(
+              BookWorkflowFact.text("postingId", committed.postingId().value()),
+              BookWorkflowFact.text("idempotencyKey", committed.idempotencyKey().value()),
+              BookWorkflowFact.text("effectiveDate", committed.effectiveDate().toString()),
+              BookWorkflowFact.text("recordedAt", committed.recordedAt().toString()));
+      case dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected rejected ->
           LedgerPlanRejectedOutcomes.postingRejection(rejected.rejection());
     };
   }

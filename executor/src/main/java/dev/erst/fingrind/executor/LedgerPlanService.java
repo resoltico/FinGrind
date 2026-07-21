@@ -3,6 +3,7 @@ package dev.erst.fingrind.executor;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanId;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.spi.AccountCatalogStore;
 import dev.erst.fingrind.executor.spi.BookAdministrationStore;
@@ -47,12 +48,14 @@ public final class LedgerPlanService {
             Objects.requireNonNull(clock, "clock"));
   }
 
-  /** Executes one plan atomically, committing only when every step succeeds. */
-  public LedgerPlanResult execute(LedgerPlan plan) {
+  /** Executes one signed plan atomically, committing only when every step succeeds. */
+  public LedgerPlanResult execute(
+      LedgerPlan plan, AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(plan, "plan");
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     return publishedResult(
         workflowExecutionService.execute(
-            BookWorkflowPublishedLanguageTranslator.fromPublished(plan)));
+            BookWorkflowPublishedLanguageTranslator.fromPublished(plan), attestationAuthorizer));
   }
 
   private static LedgerPlanResult publishedResult(BookWorkflowExecutionResult executionResult) {

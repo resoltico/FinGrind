@@ -203,26 +203,26 @@ final class SqliteCliMutationWorkflow implements CliBookMutationWorkflow {
 
   @Override
   public ContractDecision<LedgerPlanResult> executePlan(BookAccess bookAccess, LedgerPlan plan) {
-    boolean ensuresBook = plan.beginsWithEnsureBook();
-    return SqliteCliWorkflowSessions.withPlanExecutionSession(
-        SqlitePlanExecutionSessions.openResolved(
-            bookAccess,
-            passphraseResolver,
-            ensuresBook
-                ? SqlitePassphraseIntent.PLAN_SETUP_SECRET
-                : SqlitePassphraseIntent.EXISTING_SECRET),
-        bookSession ->
-            new LedgerPlanService(
-                    bookSession,
-                    bookSession,
-                    bookSession,
-                    bookSession,
-                    bookSession,
-                    bookSession,
-                    bookSession,
-                    new UuidV7PostingIdGenerator(),
-                    clock)
-                .execute(plan));
+    return withAttestationAuthorization(
+        bookAccess,
+        authorizer ->
+            SqliteCliWorkflowSessions.withPlanExecutionSession(
+                SqlitePlanExecutionSessions.openResolved(
+                    bookAccess,
+                    passphraseResolver,
+                    SqlitePassphraseIntent.EXISTING_SECRET),
+                bookSession ->
+                    new LedgerPlanService(
+                            bookSession,
+                            bookSession,
+                            bookSession,
+                            bookSession,
+                            bookSession,
+                            bookSession,
+                            bookSession,
+                            new UuidV7PostingIdGenerator(),
+                            clock)
+                        .execute(plan, authorizer)));
   }
 
   @Override
