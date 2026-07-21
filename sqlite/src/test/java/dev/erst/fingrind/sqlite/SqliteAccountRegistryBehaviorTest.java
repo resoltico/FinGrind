@@ -66,6 +66,15 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
               dev.erst.fingrind.core.AccountType.ASSET,
               NormalBalance.DEBIT,
               Instant.parse("2026-04-07T10:15:30Z")));
+      assertInstanceOf(
+          AccountDeclarationOutcome.Unchanged.class,
+          declareAccount(
+              postingFactStore,
+              new AccountCode("1000"),
+              new AccountName("Cash"),
+              dev.erst.fingrind.core.AccountType.ASSET,
+              NormalBalance.DEBIT,
+              Instant.parse("2026-04-07T10:15:30Z")));
       deactivateAccount(databasePath, "1000");
       assertEquals(
           new AccountDeclarationOutcome.Reactivated(
