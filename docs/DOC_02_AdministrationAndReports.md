@@ -844,8 +844,8 @@ public final class FiscalYearCloseService
 
 ## `BookAdministrationRejection`
 
-`BookAdministrationRejection` is the closed family of deterministic lifecycle and account-registry
-refusals.
+`BookAdministrationRejection` is the closed family of deterministic lifecycle, account-registry,
+and fiscal-period refusals.
 
 ```java
 public sealed interface BookAdministrationRejection
@@ -858,7 +858,10 @@ public sealed interface BookAdministrationRejection
   `CloseTargetAccountCandidateMissing`, `CloseTargetAccountCandidateAmbiguous`,
   `InterimResultSweepMustStartAt`, `InterimResultSweepFutureDate`,
   `InterimResultSweepCrossesFiscalYearBoundary`, `FiscalYearCloseMustStartAt`,
-  `FiscalYearCloseMustEndAt`, `FiscalYearCloseFutureDate`
+  `FiscalYearCloseMustEndAt`, `FiscalYearClosePrecedesTransferredThroughHorizon`,
+  `FiscalYearCloseFutureDate`, `FiscalYearCloseRequiresGeneratedPostings`
+- Fiscal-year close constraint: a close is rejected when its planner produces no durable close
+  postings. The refusal persists no close record, audit event, or attestation operation.
 
 ## `BookQueryRejection`
 

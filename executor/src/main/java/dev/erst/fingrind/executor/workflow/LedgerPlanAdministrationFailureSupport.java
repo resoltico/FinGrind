@@ -43,6 +43,8 @@ final class LedgerPlanAdministrationFailureSupport {
             instanceof
             BookkeepingAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon
         || rejection instanceof BookkeepingAdministrationRejection.FiscalYearCloseFutureDate
+        || rejection
+            instanceof BookkeepingAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings
         || rejection instanceof BookAdministrationRejection.InterimResultSweepMustStartAt
         || rejection instanceof BookAdministrationRejection.InterimResultSweepFutureDate
         || rejection
@@ -51,7 +53,9 @@ final class LedgerPlanAdministrationFailureSupport {
         || rejection instanceof BookAdministrationRejection.FiscalYearCloseMustEndAt
         || rejection
             instanceof BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon
-        || rejection instanceof BookAdministrationRejection.FiscalYearCloseFutureDate;
+        || rejection instanceof BookAdministrationRejection.FiscalYearCloseFutureDate
+        || rejection
+            instanceof BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings;
   }
 
   private static List<BookWorkflowFact> closeWindowFacts(BookAdministrationRejection rejection) {
@@ -90,6 +94,7 @@ final class LedgerPlanAdministrationFailureSupport {
           List.of(
               BookWorkflowFact.text(
                   "attemptedEffectiveDateTo", conflict.attemptedEffectiveDateTo().toString()));
+      case BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings _ -> List.of();
       default ->
           throw new IllegalStateException(
               "Unsupported published close-window rejection: " + rejection.getClass().getName());

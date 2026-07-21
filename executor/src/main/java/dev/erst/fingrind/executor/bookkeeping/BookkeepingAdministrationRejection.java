@@ -31,7 +31,8 @@ public sealed interface BookkeepingAdministrationRejection
         BookkeepingAdministrationRejection.FiscalYearCloseMustStartAt,
         BookkeepingAdministrationRejection.FiscalYearCloseMustEndAt,
         BookkeepingAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon,
-        BookkeepingAdministrationRejection.FiscalYearCloseFutureDate {
+        BookkeepingAdministrationRejection.FiscalYearCloseFutureDate,
+        BookkeepingAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings {
 
   /** Refusal for an explicit open-book request against an initialized book. */
   record BookAlreadyInitialized() implements BookkeepingAdministrationRejection {}
@@ -203,4 +204,7 @@ public sealed interface BookkeepingAdministrationRejection
       Objects.requireNonNull(attemptedEffectiveDateTo, "attemptedEffectiveDateTo");
     }
   }
+
+  /** Refusal for a fiscal-year close that would not persist any generated close posting. */
+  record FiscalYearCloseRequiresGeneratedPostings() implements BookkeepingAdministrationRejection {}
 }

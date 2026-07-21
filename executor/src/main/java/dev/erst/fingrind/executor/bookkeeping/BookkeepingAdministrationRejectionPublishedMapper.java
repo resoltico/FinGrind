@@ -59,6 +59,10 @@ public final class BookkeepingAdministrationRejectionPublishedMapper {
       return new BookAdministrationRejection.FiscalYearCloseFutureDate(
           conflict.attemptedEffectiveDateTo());
     }
+    if (rejection
+        instanceof BookkeepingAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings) {
+      return new BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings();
+    }
     if (rejection instanceof CloseTargetAccountCandidateMissing
         || rejection instanceof CloseTargetAccountCandidateAmbiguous) {
       return CloseTargetRejectionPublishedMapper.toPublished(rejection);

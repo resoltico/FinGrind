@@ -33,7 +33,8 @@ public sealed interface BookAdministrationRejection
         BookAdministrationRejection.FiscalYearCloseMustStartAt,
         BookAdministrationRejection.FiscalYearCloseMustEndAt,
         BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon,
-        BookAdministrationRejection.FiscalYearCloseFutureDate {
+        BookAdministrationRejection.FiscalYearCloseFutureDate,
+        BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings {
 
   /** Returns the stable wire code for one book-administration rejection instance. */
   static String wireCode(BookAdministrationRejection rejection) {
@@ -214,4 +215,7 @@ public sealed interface BookAdministrationRejection
       Objects.requireNonNull(attemptedEffectiveDateTo, "attemptedEffectiveDateTo");
     }
   }
+
+  /** Rejection for a fiscal-year close that would not persist any generated close posting. */
+  record FiscalYearCloseRequiresGeneratedPostings() implements BookAdministrationRejection {}
 }

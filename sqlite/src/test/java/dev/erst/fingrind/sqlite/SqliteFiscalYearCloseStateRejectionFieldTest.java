@@ -1,7 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -12,6 +11,7 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.executor.FiscalYearCloseService;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
+import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
 import java.nio.file.Path;
 import java.time.Clock;
@@ -77,8 +77,13 @@ class SqliteFiscalYearCloseStateRejectionFieldTest extends SqlitePostingFactStor
           "3300",
           "Retained accumulated",
           FinancialPositionLineClassification.RETAINED_ACCUMULATED);
-      assertThrows(
-          IllegalArgumentException.class, () -> close(closeSession, LocalDate.parse("2027-01-01")));
+      FiscalYearCloseOutcome.Rejected rejected =
+          assertInstanceOf(
+              FiscalYearCloseOutcome.Rejected.class,
+              close(closeSession, LocalDate.parse("2027-01-01")));
+      assertInstanceOf(
+          BookkeepingAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings.class,
+          rejected.rejection());
     }
   }
 

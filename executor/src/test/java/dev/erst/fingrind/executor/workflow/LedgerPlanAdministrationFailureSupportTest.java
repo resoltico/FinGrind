@@ -116,6 +116,10 @@ class LedgerPlanAdministrationFailureSupportTest {
         LedgerPlanAdministrationFailureSupport.facts(
             new BookAdministrationRejection.FiscalYearCloseFutureDate(
                 LocalDate.parse("2027-01-01"))));
+    assertEquals(
+        List.of(),
+        LedgerPlanAdministrationFailureSupport.facts(
+            new BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings()));
   }
 
   @Test

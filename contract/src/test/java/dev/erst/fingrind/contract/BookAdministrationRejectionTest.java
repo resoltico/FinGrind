@@ -43,7 +43,8 @@ class BookAdministrationRejectionTest {
             "fiscal-year-close-must-start-at",
             "fiscal-year-close-must-end-at",
             "fiscal-year-close-precedes-transferred-through-horizon",
-            "fiscal-year-close-future-date"),
+            "fiscal-year-close-future-date",
+            "fiscal-year-close-requires-generated-postings"),
         List.of(
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.BookAlreadyInitialized()),
@@ -164,7 +165,9 @@ class BookAdministrationRejectionTest {
                     java.time.LocalDate.parse("2026-03-31"))),
             BookAdministrationRejection.wireCode(
                 new BookAdministrationRejection.FiscalYearCloseFutureDate(
-                    java.time.LocalDate.parse("2027-01-01")))));
+                    java.time.LocalDate.parse("2027-01-01"))),
+            BookAdministrationRejection.wireCode(
+                new BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings())));
   }
 
   @Test
@@ -194,7 +197,8 @@ class BookAdministrationRejectionTest {
             "fiscal-year-close-must-start-at",
             "fiscal-year-close-must-end-at",
             "fiscal-year-close-precedes-transferred-through-horizon",
-            "fiscal-year-close-future-date"),
+            "fiscal-year-close-future-date",
+            "fiscal-year-close-requires-generated-postings"),
         BookAdministrationRejection.descriptors().stream()
             .map(ContractResponse.RejectionDescriptor::code)
             .toList());

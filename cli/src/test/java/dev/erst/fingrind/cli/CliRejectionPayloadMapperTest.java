@@ -153,6 +153,10 @@ class CliRejectionPayloadMapperTest {
         "--year",
         CliRejectionJsonModels.FiscalYearCloseFutureDateDetails.class);
     assertHint(
+        new BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings(),
+        "Post the accounting activity needed to produce a year-end close posting",
+        null);
+    assertHint(
         new BookAdministrationRejection.ParentAccountMissing(
             new AccountCode("4100"), new AccountCode("4000")),
         "Declare the requested parent account first",

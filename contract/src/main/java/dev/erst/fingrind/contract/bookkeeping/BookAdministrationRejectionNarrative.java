@@ -34,7 +34,9 @@ final class BookAdministrationRejectionNarrative {
         || rejection instanceof BookAdministrationRejection.FiscalYearCloseMustEndAt
         || rejection
             instanceof BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon
-        || rejection instanceof BookAdministrationRejection.FiscalYearCloseFutureDate;
+        || rejection instanceof BookAdministrationRejection.FiscalYearCloseFutureDate
+        || rejection
+            instanceof BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings;
   }
 
   static String lifecycleMessage(BookAdministrationRejection rejection) {
@@ -165,6 +167,8 @@ final class BookAdministrationRejectionNarrative {
       case BookAdministrationRejection.FiscalYearCloseFutureDate rejectionFutureDate ->
           "Fiscal-year close cannot end after the current UTC date; requested '%s'."
               .formatted(rejectionFutureDate.attemptedEffectiveDateTo());
+      case BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings _ ->
+          "Fiscal-year close would not persist any generated close postings for the selected period.";
       default ->
           throw new IllegalStateException("Unsupported close-window rejection: " + rejection);
     };

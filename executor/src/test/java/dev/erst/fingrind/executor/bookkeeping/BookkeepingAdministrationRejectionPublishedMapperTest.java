@@ -128,6 +128,10 @@ class BookkeepingAdministrationRejectionPublishedMapperTest {
             new BookkeepingAdministrationRejection.FiscalYearCloseFutureDate(
                 LocalDate.parse("2027-01-01"))));
     assertEquals(
+        new BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings(),
+        BookkeepingAdministrationRejectionPublishedMapper.toPublished(
+            new BookkeepingAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings()));
+    assertEquals(
         new BookAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary(
             LocalDate.parse("2026-12-15"),
             LocalDate.parse("2027-01-15"),

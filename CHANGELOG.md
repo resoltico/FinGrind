@@ -40,6 +40,8 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Fixed fiscal-year close admission so a period with no generated close postings returns a named
+  deterministic refusal before any close fact, audit event, or attestation operation is persisted.
 - Fixed restore's clean-break contract across rejection messages and operator guides: an existing
   destination is always refused, and the retired `--replace-existing-book` option is not suggested
   or documented. Backup examples now require the stable backup ID and signing credential triples

@@ -82,7 +82,10 @@ final class BookAdministrationRejectionDescriptors {
                   Descriptor.FISCAL_YEAR_CLOSE_PRECEDES_TRANSFERRED_THROUGH_HORIZON),
               Map.entry(
                   BookAdministrationRejection.FiscalYearCloseFutureDate.class,
-                  Descriptor.FISCAL_YEAR_CLOSE_FUTURE_DATE));
+                  Descriptor.FISCAL_YEAR_CLOSE_FUTURE_DATE),
+              Map.entry(
+                  BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings.class,
+                  Descriptor.FISCAL_YEAR_CLOSE_REQUIRES_GENERATED_POSTINGS));
 
   private BookAdministrationRejectionDescriptors() {}
 
@@ -156,7 +159,9 @@ final class BookAdministrationRejectionDescriptors {
     /** Descriptor for fiscal-year closes that precede the live transferred-through horizon. */
     FISCAL_YEAR_CLOSE_PRECEDES_TRANSFERRED_THROUGH_HORIZON,
     /** Descriptor for fiscal-year closes that target a future date. */
-    FISCAL_YEAR_CLOSE_FUTURE_DATE;
+    FISCAL_YEAR_CLOSE_FUTURE_DATE,
+    /** Descriptor for fiscal-year closes that would persist no generated postings. */
+    FISCAL_YEAR_CLOSE_REQUIRES_GENERATED_POSTINGS;
 
     String code() {
       return BookAdministrationRejectionDescriptorCatalog.code(this);

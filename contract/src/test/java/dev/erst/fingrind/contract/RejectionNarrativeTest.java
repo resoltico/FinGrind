@@ -198,6 +198,10 @@ class RejectionNarrativeTest {
                 new BookAdministrationRejection.FiscalYearCloseFutureDate(
                     LocalDate.parse("2027-01-01")))
             .contains("2027-01-01"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings())
+            .contains("would not persist any generated close postings"));
   }
 
   @Test

@@ -102,6 +102,11 @@ final class SqliteFiscalYearCloseOperations {
                     readSupport.loadLatestTransferredThroughEffectiveDateWithinPeriod(
                         activeDatabase, reportingPeriod),
                     closedAt);
+            if (closeDraft.closePostingDrafts().isEmpty()) {
+              return new FiscalYearCloseOutcome.Rejected(
+                  new BookkeepingAdministrationRejection
+                      .FiscalYearCloseRequiresGeneratedPostings());
+            }
             persistGeneratedUnsweptInterimResultSweep(
                 activeDatabase, closeDraft, postingIdGenerator, attestationAuthorizer);
             ClosedFiscalYearRecord closedFiscalYear =

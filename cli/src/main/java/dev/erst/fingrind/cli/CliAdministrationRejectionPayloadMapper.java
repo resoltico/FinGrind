@@ -202,6 +202,11 @@ final class CliAdministrationRejectionPayloadMapper {
           + FISCAL_YEAR_CLOSE_OPERATION
           + ".";
     }
+    if (rejection instanceof BookAdministrationRejection.FiscalYearCloseRequiresGeneratedPostings) {
+      return "Post the accounting activity needed to produce a year-end close posting, then rerun "
+          + FISCAL_YEAR_CLOSE_OPERATION
+          + ".";
+    }
     return "Choose a "
         + CliTemporalScopeText.firstOption(OperationId.FISCAL_YEAR_CLOSE)
         + " whose derived fiscal year end falls on or before the current UTC date, then rerun "

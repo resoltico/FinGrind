@@ -134,7 +134,14 @@ final class BookPeriodAdministrationRejectionDescriptorDefinitions {
                 List.of(
                     detailField(
                         "attemptedEffectiveDateTo",
-                        "Requested effectiveDateTo that lies after the current UTC date.")))));
+                        "Requested effectiveDateTo that lies after the current UTC date.")))),
+        Map.entry(
+            BookAdministrationRejectionDescriptors.Descriptor
+                .FISCAL_YEAR_CLOSE_REQUIRES_GENERATED_POSTINGS,
+            definition(
+                "fiscal-year-close-requires-generated-postings",
+                "Fiscal-year close refused because the selected period would not generate any durable close postings.",
+                List.of())));
   }
 
   private static BookAdministrationRejectionDescriptorDefinition definition(
