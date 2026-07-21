@@ -99,8 +99,10 @@ final class AttestationMaintenanceTestSupport {
     private LeaseAcquisition managedLease;
     private LeaseAcquisition existingLease;
     private MaintenanceDecision<BookVerification> liveVerification;
-    private final MaintenanceDecision<StagedBackupPair> stagedBackup;
-    private final MaintenanceDecision<StagedRestoredBookPair> stagedRestore;
+    private MaintenanceDecision<StagedBackupPair> stagedBackup;
+    private MaintenanceDecision<StagedRestoredBookPair> stagedRestore;
+    private MaintenanceDecision<BookVerification> stagedBackupVerification;
+    private MaintenanceDecision<BookVerification> stagedRestoreVerification;
     private @Nullable RuntimeException prepareFailure;
     private @Nullable RuntimeException appendFailure;
     private byte @Nullable [] sealedArtifact;
@@ -115,8 +117,10 @@ final class AttestationMaintenanceTestSupport {
       evidenceByBook.put(snapshotBook, checkedEvidence);
       evidenceByBook.put(restoredBook, checkedEvidence);
       liveVerification = MaintenanceDecision.accepted(liveBook);
-      stagedBackup = MaintenanceDecision.accepted(new StubStagedBackup(this, snapshotBook));
-      stagedRestore = MaintenanceDecision.accepted(new StubStagedRestore(restoredBook));
+      stagedBackup = MaintenanceDecision.accepted(new StubStagedBackup(this));
+      stagedRestore = MaintenanceDecision.accepted(new StubStagedRestore(this));
+      stagedBackupVerification = MaintenanceDecision.accepted(snapshotBook);
+      stagedRestoreVerification = MaintenanceDecision.accepted(restoredBook);
       managedLease = new StubLease(normalizedBookPath);
       existingLease = new StubLease(normalizedBookPath);
     }
@@ -145,6 +149,22 @@ final class AttestationMaintenanceTestSupport {
       existingLease = Objects.requireNonNull(lease, "lease");
     }
 
+    void setStagedBackup(MaintenanceDecision<StagedBackupPair> staged) {
+      stagedBackup = Objects.requireNonNull(staged, "staged");
+    }
+
+    void setStagedRestore(MaintenanceDecision<StagedRestoredBookPair> staged) {
+      stagedRestore = Objects.requireNonNull(staged, "staged");
+    }
+
+    void setStagedBackupVerification(MaintenanceDecision<BookVerification> verification) {
+      stagedBackupVerification = Objects.requireNonNull(verification, "verification");
+    }
+
+    void setStagedRestoreVerification(MaintenanceDecision<BookVerification> verification) {
+      stagedRestoreVerification = Objects.requireNonNull(verification, "verification");
+    }
+
     void setPrepareFailure(RuntimeException failure) {
       prepareFailure = Objects.requireNonNull(failure, "failure");
     }
@@ -163,6 +183,10 @@ final class AttestationMaintenanceTestSupport {
 
     void setLiveEvidence(List<AttestationEvidence> evidence) {
       evidenceByBook.put(liveBook, List.copyOf(evidence));
+    }
+
+    void setSnapshotEvidence(List<AttestationEvidence> evidence) {
+      evidenceByBook.put(snapshotBook, List.copyOf(evidence));
     }
 
     @Override
@@ -315,17 +339,15 @@ final class AttestationMaintenanceTestSupport {
   /** Represents the temporary backup pair before publication. */
   private static final class StubStagedBackup implements StagedBackupPair {
     private final Store store;
-    private final StubBook snapshotBook;
 
-    private StubStagedBackup(Store store, StubBook snapshotBook) {
+    private StubStagedBackup(Store store) {
       this.store = store;
-      this.snapshotBook = snapshotBook;
     }
 
     @Override
     public MaintenanceDecision<ProtectedBookMaintenanceStore.BookVerification>
         verifyInitializedBackup() {
-      return MaintenanceDecision.accepted(snapshotBook);
+      return store.stagedBackupVerification;
     }
 
     @Override
@@ -352,16 +374,16 @@ final class AttestationMaintenanceTestSupport {
 
   /** Represents the temporary restore pair before publication. */
   private static final class StubStagedRestore implements StagedRestoredBookPair {
-    private final StubBook restoredBook;
+    private final Store store;
 
-    private StubStagedRestore(StubBook restoredBook) {
-      this.restoredBook = restoredBook;
+    private StubStagedRestore(Store store) {
+      this.store = store;
     }
 
     @Override
     public MaintenanceDecision<ProtectedBookMaintenanceStore.BookVerification>
         verifyInitializedRestoredBook() {
-      return MaintenanceDecision.accepted(restoredBook);
+      return store.stagedRestoreVerification;
     }
 
     @Override
