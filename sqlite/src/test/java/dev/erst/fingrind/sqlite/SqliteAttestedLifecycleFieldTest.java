@@ -59,6 +59,20 @@ class SqliteAttestedLifecycleFieldTest extends SqliteArtifactPublicationTestSupp
                       signingSession)));
       assertEquals(backupPath.toAbsolutePath().normalize(), backup.backupFilePath());
       assertEquals(backupKeyPath.toAbsolutePath().normalize(), backup.backupBookKeyFilePath());
+      dev.erst.fingrind.executor.spi.AttestedProtectedBookMaintenanceStore.VerifiedBackupArtifact
+          verifiedBackupArtifact = store.verifyBackupArtifact(backupPath, backupKeyPath);
+      try (verifiedBackupArtifact) {
+        assertEquals(
+            UUID.fromString("bd80d27b-01f6-4ebd-8090-2fc5046a5c18"),
+            verifiedBackupArtifact.verification().backupId());
+        assertEquals(0, verifiedBackupArtifact.verification().sourceOrder().intValueExact());
+        assertInstanceOf(
+            dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.VerifiedBook.class,
+            verifiedBackupArtifact.snapshotBook());
+      }
+      verifiedBackupArtifact.close();
+      assertThrows(IllegalStateException.class, verifiedBackupArtifact::verification);
+      assertThrows(IllegalStateException.class, verifiedBackupArtifact::snapshotBook);
       Path malformedKeyPath = tempDirectory.resolve("backup").resolve("malformed-backup.key");
       Files.writeString(malformedKeyPath, "not a FinGrind backup key");
       assertInstanceOf(

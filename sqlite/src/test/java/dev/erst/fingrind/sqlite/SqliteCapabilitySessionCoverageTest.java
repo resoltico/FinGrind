@@ -252,6 +252,29 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
               sweptAt,
               unusedPostingIdGenerator(),
               SqliteAttestationTestSupport.authorizer()));
+      SqlitePostingFactStoreMutationView mutationView =
+          new SqlitePostingFactStoreMutationView() {
+            @Override
+            public SqliteThreadOwner storeThreadOwner() {
+              return postingFactStore.storeThreadOwner();
+            }
+
+            @Override
+            public SqliteStoreMutationOperations storeMutationOperations() {
+              return postingFactStore.storeMutationOperations();
+            }
+          };
+      assertEquals(
+          new InterimResultSweepOutcome.Rejected(
+              new BookkeepingAdministrationRejection.BookNotInitialized()),
+          mutationView.interimResultSweep(
+              reportingPeriod,
+              bookIdentity(),
+              planner,
+              effectiveDate,
+              sweptAt,
+              unusedPostingIdGenerator(),
+              SqliteAttestationTestSupport.authorizer()));
     }
     createEmptySqliteFile(blankBookPath);
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(blankBookPath));
