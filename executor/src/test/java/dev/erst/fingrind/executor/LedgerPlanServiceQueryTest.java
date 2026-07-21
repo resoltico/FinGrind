@@ -324,4 +324,25 @@ class LedgerPlanServiceQueryTest {
           result.journal().steps().getLast().requiredFailure().code());
     }
   }
+
+  @Test
+  void execute_reportsListAccountsRejectionWhenBookAvailabilityChangesAfterPlanAdmission() {
+    try (var bookSession =
+        new LedgerPlanServiceTestSupport.InitializationChangingLedgerPlanSession()) {
+      var result =
+          service(bookSession)
+              .execute(
+                  new LedgerPlan(
+                      planId("plan-list-accounts-availability-change"),
+                      List.of(
+                          new LedgerStep.ListAccounts(
+                              stepId("accounts"), new ListAccountsQuery(50, Optional.empty())))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+
+      assertEquals(LedgerPlanStatus.REJECTED, result.status());
+      assertEquals(
+          BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
+          result.journal().steps().getLast().requiredFailure().code());
+    }
+  }
 }

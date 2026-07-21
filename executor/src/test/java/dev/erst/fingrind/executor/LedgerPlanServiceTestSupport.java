@@ -587,6 +587,17 @@ final class LedgerPlanServiceTestSupport {
     }
   }
 
+  /** Simulates the book becoming unavailable between plan admission and a read-only step. */
+  static final class InitializationChangingLedgerPlanSession extends DelegatingAtomicBookStore {
+    private int initializationChecks;
+
+    @Override
+    public boolean allowsInitializedWorkflow() {
+      initializationChecks++;
+      return initializationChecks == 1;
+    }
+  }
+
   /** Test seam that throws during commit so the outer finally rollback path runs. */
   static final class CommitFailingLedgerPlanSession extends DelegatingAtomicBookStore {
     private boolean rollbackCalled;
