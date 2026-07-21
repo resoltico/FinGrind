@@ -161,6 +161,7 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `AttestationBackupArtifactVerification` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Backup Artifact Types` |
 | `AttestationClosePostingSnapshot` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationCredentialException` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |
+| `AttestationCredentialUseException` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |
 | `AttestationCredentialSource` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |
 | `AttestationEvidence` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationEvidence` |
 | `AttestationEffectMutation` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
@@ -547,6 +548,7 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `AccountPageCursor` | `DOC_02_AdministrationAndReports.md` | `AccountPageCursor` |
 | `BackupBookResult` | `DOC_02_AdministrationAndReports.md` | `BackupBookResult` |
 | `BookAdministrationRejection` | `DOC_02_AdministrationAndReports.md` | `BookAdministrationRejection` |
+| `FiscalYearCloseRequiresGeneratedPostings` | `DOC_02_AdministrationAndReports.md` | `BookAdministrationRejection` |
 | `CloseTargetAccountCandidateMissing` | `DOC_02_AdministrationAndReports.md` | `BookAdministrationRejection` |
 | `CloseTargetAccountCandidateAmbiguous` | `DOC_02_AdministrationAndReports.md` | `BookAdministrationRejection` |
 | `BookAdministrationService` | `DOC_02_AdministrationAndReports.md` | `BookAdministrationService` |

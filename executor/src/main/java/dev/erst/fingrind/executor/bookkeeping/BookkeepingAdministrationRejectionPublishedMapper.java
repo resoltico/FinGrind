@@ -20,52 +20,44 @@ public final class BookkeepingAdministrationRejectionPublishedMapper {
     if (rejection instanceof BookkeepingAdministrationRejection.BookContainsSchema) {
       return new BookAdministrationRejection.BookContainsSchema();
     }
-    if (rejection
-        instanceof BookkeepingAdministrationRejection.InterimResultSweepMustStartAt conflict) {
-      return new BookAdministrationRejection.InterimResultSweepMustStartAt(
-          conflict.requiredEffectiveDateFrom());
-    }
-    if (rejection
-        instanceof BookkeepingAdministrationRejection.InterimResultSweepFutureDate conflict) {
-      return new BookAdministrationRejection.InterimResultSweepFutureDate(
-          conflict.attemptedEffectiveDateTo());
-    }
-    if (rejection
-        instanceof
-        BookkeepingAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary conflict) {
-      return new BookAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary(
-          conflict.attemptedEffectiveDateFrom(),
-          conflict.attemptedEffectiveDateTo(),
-          conflict.fiscalYearStart());
-    }
-    if (rejection
-        instanceof BookkeepingAdministrationRejection.FiscalYearCloseMustStartAt conflict) {
-      return new BookAdministrationRejection.FiscalYearCloseMustStartAt(
-          conflict.requiredEffectiveDateFrom());
-    }
-    if (rejection instanceof BookkeepingAdministrationRejection.FiscalYearCloseMustEndAt conflict) {
-      return new BookAdministrationRejection.FiscalYearCloseMustEndAt(
-          conflict.requiredEffectiveDateTo());
-    }
-    if (rejection
-        instanceof
-        BookkeepingAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon
-            conflict) {
-      return new BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon(
-          conflict.attemptedEffectiveDateTo(), conflict.transferredThroughEffectiveDate());
-    }
-    if (rejection
-        instanceof BookkeepingAdministrationRejection.FiscalYearCloseFutureDate conflict) {
-      return new BookAdministrationRejection.FiscalYearCloseFutureDate(
-          conflict.attemptedEffectiveDateTo());
-    }
-    if (rejection instanceof FiscalYearCloseRequiresGeneratedPostings) {
-      return new dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseRequiresGeneratedPostings();
-    }
+    return publishFiscalWindowOrAccountRegistryRejection(rejection);
+  }
+
+  private static BookAdministrationRejection publishFiscalWindowOrAccountRegistryRejection(
+      BookkeepingAdministrationRejection rejection) {
     if (rejection instanceof CloseTargetAccountCandidateMissing
         || rejection instanceof CloseTargetAccountCandidateAmbiguous) {
       return CloseTargetRejectionPublishedMapper.toPublished(rejection);
     }
-    return AccountRegistryRejectionPublishedMapper.toPublished(rejection);
+    return switch (rejection) {
+      case BookkeepingAdministrationRejection.InterimResultSweepMustStartAt conflict ->
+          new BookAdministrationRejection.InterimResultSweepMustStartAt(
+              conflict.requiredEffectiveDateFrom());
+      case BookkeepingAdministrationRejection.InterimResultSweepFutureDate conflict ->
+          new BookAdministrationRejection.InterimResultSweepFutureDate(
+              conflict.attemptedEffectiveDateTo());
+      case BookkeepingAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary
+              conflict ->
+          new BookAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary(
+              conflict.attemptedEffectiveDateFrom(),
+              conflict.attemptedEffectiveDateTo(),
+              conflict.fiscalYearStart());
+      case BookkeepingAdministrationRejection.FiscalYearCloseMustStartAt conflict ->
+          new BookAdministrationRejection.FiscalYearCloseMustStartAt(
+              conflict.requiredEffectiveDateFrom());
+      case BookkeepingAdministrationRejection.FiscalYearCloseMustEndAt conflict ->
+          new BookAdministrationRejection.FiscalYearCloseMustEndAt(
+              conflict.requiredEffectiveDateTo());
+      case BookkeepingAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon
+              conflict ->
+          new BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon(
+              conflict.attemptedEffectiveDateTo(), conflict.transferredThroughEffectiveDate());
+      case BookkeepingAdministrationRejection.FiscalYearCloseFutureDate conflict ->
+          new BookAdministrationRejection.FiscalYearCloseFutureDate(
+              conflict.attemptedEffectiveDateTo());
+      case FiscalYearCloseRequiresGeneratedPostings _ ->
+          new dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseRequiresGeneratedPostings();
+      default -> AccountRegistryRejectionPublishedMapper.toPublished(rejection);
+    };
   }
 }

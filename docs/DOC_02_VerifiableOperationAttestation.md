@@ -100,7 +100,9 @@ effect preimages; persistence performs historical authorization and compare-and-
 `AttestationSigningSession` owns one short-lived private signing capability. Its executor factory,
 `AttestationSigningSessionFactory`, resolves a selected credential source without exposing private
 key bytes to the caller. `AttestationCredentialSource` names the accepted credential source,
-`AttestationCredentialException` reports a typed credential-resolution failure, and
+`AttestationCredentialException` reports an executor-facing credential-resolution failure, while
+`AttestationCredentialUseException` reports that one explicitly selected encrypted credential
+could not be read or verified and retains only its path plus a non-secret cause.
 `AttestationMutationAuthorization` couples an authorized mutation to the operation evidence it
 must append. These types are adapter seams: application code supplies a credential source and
 canonical mutation facts, while the session owns signing and zeroization.
