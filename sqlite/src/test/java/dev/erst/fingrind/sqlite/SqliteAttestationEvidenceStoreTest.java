@@ -30,6 +30,9 @@ import dev.erst.fingrind.core.attestation.AttestationPublicCredential;
 import dev.erst.fingrind.core.attestation.AttestationSigningCredential;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
 import java.io.IOException;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.math.BigInteger;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -409,6 +412,15 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
   }
 
   @Test
+  void evidenceOrderEncoding_rejectsValuesOutsideTheUnsigned64BitProtocolDomain() {
+    assertEquals("0000000000000000", encodeOrder(BigInteger.ZERO));
+    assertEquals(
+        "ffffffffffffffff", encodeOrder(BigInteger.ONE.shiftLeft(64).subtract(BigInteger.ONE)));
+    assertThrows(IllegalArgumentException.class, () -> encodeOrder(BigInteger.valueOf(-1L)));
+    assertThrows(IllegalArgumentException.class, () -> encodeOrder(BigInteger.ONE.shiftLeft(64)));
+  }
+
+  @Test
   void authorizedOperations_rejectPersistedCorruptionBeforeTheyConsultCustody() throws Exception {
     Path bookPath = tempDirectory.resolve("corrupt-persisted-evidence.sqlite");
     withStandaloneDatabase(
@@ -496,6 +508,25 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
           List.of(signer));
     } finally {
       java.util.Arrays.fill(passphrase, '\0');
+    }
+  }
+
+  private static String encodeOrder(BigInteger order) {
+    try {
+      MethodHandle orderHex =
+          MethodHandles.privateLookupIn(
+                  SqliteAttestationEvidenceStore.class, MethodHandles.lookup())
+              .findStatic(
+                  SqliteAttestationEvidenceStore.class,
+                  "orderHex",
+                  MethodType.methodType(String.class, BigInteger.class));
+      return (String) orderHex.invoke(order);
+    } catch (RuntimeException exception) {
+      throw exception;
+    } catch (Error error) {
+      throw error;
+    } catch (Throwable throwable) {
+      throw new AssertionError("Failed to invoke attestation order encoding.", throwable);
     }
   }
 

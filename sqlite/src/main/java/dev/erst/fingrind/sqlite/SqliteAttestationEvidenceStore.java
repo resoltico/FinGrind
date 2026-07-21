@@ -57,10 +57,6 @@ final class SqliteAttestationEvidenceStore {
     List<AttestationEvidence> completeEvidence = new ArrayList<>(persistedEvidence);
     completeEvidence.add(checkedCandidate);
     AttestationVerification candidateVerification = verifyCandidate(completeEvidence);
-    BigInteger expectedOrder = currentHead.order().add(BigInteger.ONE);
-    if (!candidateVerification.headOrder().equals(expectedOrder)) {
-      throw new IllegalArgumentException("attestation-preimage-invalid");
-    }
     insert(activeDatabase, candidateVerification, checkedCandidate);
     return candidateVerification;
   }
