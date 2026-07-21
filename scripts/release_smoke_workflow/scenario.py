@@ -3,10 +3,10 @@ from __future__ import annotations
 from pathlib import Path
 from uuid import NAMESPACE_URL, uuid5
 
-from .models import ReleaseSmokeFailure, ReleaseSmokeScenario, SmokePath
+from .models import ReleaseSmokeScenario
+from .scenario_paths import smoke_path
+from .scenario_validation import require_argument_path_mode, require_scenario_id
 
-ARGUMENT_PATH_MODE_ABSOLUTE = "absolute"
-ARGUMENT_PATH_MODE_WORK_ROOT_RELATIVE = "relative-to-work-root"
 UNICODE_WORKSPACE_SEGMENT = "Rīga büro"
 ENTITY_NAME = "Acme Studio"
 ACCOUNTING_KERNEL_PROFILE = "internal-management-bookkeeping-kernel"
@@ -187,53 +187,4 @@ def build_release_smoke_scenario(
         bank_account_name=BANK_ACCOUNT_NAME,
         expense_supplement_account_code=EXPENSE_SUPPLEMENT_ACCOUNT_CODE,
         expense_supplement_account_name=EXPENSE_SUPPLEMENT_ACCOUNT_NAME,
-    )
-
-
-def smoke_path(work_root: Path, argument_path_mode: str, relative_path: Path) -> SmokePath:
-    local_path = work_root / relative_path
-    if argument_path_mode == ARGUMENT_PATH_MODE_ABSOLUTE:
-        return SmokePath(
-            relative_path=relative_path, local_path=local_path, argument=str(local_path)
-        )
-    if argument_path_mode == ARGUMENT_PATH_MODE_WORK_ROOT_RELATIVE:
-        return SmokePath(
-            relative_path=relative_path,
-            local_path=local_path,
-            argument=relative_path.as_posix(),
-        )
-    raise ReleaseSmokeFailure("unsupported release-smoke argument path mode: " + argument_path_mode)
-
-
-def require_scenario_id(scenario_id: str) -> str:
-    normalized = scenario_id.strip()
-    if not normalized:
-        raise ReleaseSmokeFailure(
-            "environment variable FINGRIND_RELEASE_SMOKE_SCENARIO_ID must be one non-blank slug"
-        )
-    if normalized != normalized.lower():
-        raise ReleaseSmokeFailure(
-            "environment variable FINGRIND_RELEASE_SMOKE_SCENARIO_ID must be lowercase"
-        )
-    allowed = set("abcdefghijklmnopqrstuvwxyz0123456789-")
-    if any(character not in allowed for character in normalized):
-        raise ReleaseSmokeFailure(
-            "environment variable FINGRIND_RELEASE_SMOKE_SCENARIO_ID must contain only lowercase letters, digits, and hyphens"
-        )
-    if normalized.startswith("-") or normalized.endswith("-") or "--" in normalized:
-        raise ReleaseSmokeFailure(
-            "environment variable FINGRIND_RELEASE_SMOKE_SCENARIO_ID must use single internal hyphens only"
-        )
-    return normalized
-
-
-def require_argument_path_mode(argument_path_mode: str) -> str:
-    normalized = argument_path_mode.strip()
-    if normalized in (
-        ARGUMENT_PATH_MODE_ABSOLUTE,
-        ARGUMENT_PATH_MODE_WORK_ROOT_RELATIVE,
-    ):
-        return normalized
-    raise ReleaseSmokeFailure(
-        "environment variable FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE must be one of: absolute, relative-to-work-root"
     )
