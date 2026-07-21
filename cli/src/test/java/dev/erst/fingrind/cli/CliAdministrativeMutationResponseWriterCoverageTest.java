@@ -47,10 +47,12 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
     writer(openedText)
         .writeOpenBookResult(
             BOOK_PATH,
-            List.of(),
+            List.of(Path.of("books")),
             new OpenBookResult.Opened(Instant.parse("2026-07-21T10:20:30Z"), bookIdentity()),
             OutputMode.TEXT);
-    assertTrue(openedText.toString(StandardCharsets.UTF_8).contains("Book Initialized"));
+    String opened = openedText.toString(StandardCharsets.UTF_8);
+    assertTrue(opened.contains("Book Initialized"));
+    assertTrue(opened.contains("Tightened parent directory"));
 
     ByteArrayOutputStream rejectedOpen = new ByteArrayOutputStream();
     writer(rejectedOpen)
@@ -71,9 +73,11 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
 
     ByteArrayOutputStream generatedKeyText = new ByteArrayOutputStream();
     writer(generatedKeyText)
-        .writeGenerateBookKeyFileResult(generatedKeyFile, List.of(), OutputMode.TEXT);
-    assertTrue(
-        generatedKeyText.toString(StandardCharsets.UTF_8).contains("Book Key File Generated"));
+        .writeGenerateBookKeyFileResult(
+            generatedKeyFile, List.of(Path.of("keys")), OutputMode.TEXT);
+    String generatedKey = generatedKeyText.toString(StandardCharsets.UTF_8);
+    assertTrue(generatedKey.contains("Book Key File Generated"));
+    assertTrue(generatedKey.contains("Tightened parent directory"));
 
     ByteArrayOutputStream rekeyedJson = new ByteArrayOutputStream();
     writer(rekeyedJson)

@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection;
 import dev.erst.fingrind.contract.bookkeeping.AmendAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.RetireAccountResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
@@ -21,6 +22,26 @@ import org.junit.jupiter.api.Test;
 
 /** Contract coverage for Account Registry lifecycle response projection. */
 class CliAccountRegistryMutationResponseWriterTest extends CliResponseWriterTestSupport {
+  @Test
+  void writeDeclareAccountResult_preservesReactivatedAndRenamedOutcomes() {
+    DeclaredAccount account = account(true);
+
+    ByteArrayOutputStream reactivated = new ByteArrayOutputStream();
+    new CliAccountRegistryMutationResponseWriter(outputChannel(reactivated))
+        .writeDeclareAccountResult(new DeclareAccountResult.Reactivated(account), OutputMode.TEXT);
+    assertTrue(reactivated.toString(StandardCharsets.UTF_8).contains("Account Reactivated"));
+
+    ByteArrayOutputStream renamed = new ByteArrayOutputStream();
+    new CliAccountRegistryMutationResponseWriter(outputChannel(renamed))
+        .writeDeclareAccountResult(new DeclareAccountResult.Renamed(account), OutputMode.JSON);
+    assertJsonContains(renamed, "\"outcome\":\"renamed\"");
+
+    assertEquals(
+        0, CliAdministrativeExitCodes.exitCodeFor(new DeclareAccountResult.Reactivated(account)));
+    assertEquals(
+        0, CliAdministrativeExitCodes.exitCodeFor(new DeclareAccountResult.Renamed(account)));
+  }
+
   @Test
   void writeLifecycleResults_preservesOutcomeAndRejectionContractsAcrossOutputModes() {
     DeclaredAccount activeAccount = account(true);

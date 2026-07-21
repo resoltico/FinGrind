@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.ClosedFiscalYear;
 import dev.erst.fingrind.contract.bookkeeping.SweptInterimResult;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.ReportingPeriod;
@@ -60,5 +61,24 @@ class CliPeriodCloseOutputRendererCoverageTest extends CliFixtureSupport {
     assertTrue(rendered.contains("548200b1-9743-3000-a75c-17a99ebf79b7"), rendered);
     assertTrue(rendered.contains("Idempotent replay"), rendered);
     assertTrue(rendered.contains("No"), rendered);
+  }
+
+  @Test
+  void renderClosedFiscalYearText_rendersNoGeneratedPostingMarkerWhenNoPostingWasNeeded() {
+    ClosedFiscalYear noPostingClose =
+        new ClosedFiscalYear(
+            2,
+            new ReportingPeriod(LocalDate.parse("2025-01-01"), LocalDate.parse("2025-12-31")),
+            new AccountCode("3000"),
+            new AccountCode("3200"),
+            new AccountCode("3300"),
+            Instant.parse("2025-12-31T12:00:00Z"),
+            List.of());
+
+    String rendered =
+        CliPeriodCloseOutputRenderer.renderClosedFiscalYearText(noPostingClose, false);
+
+    assertTrue(rendered.contains("Generated fiscal-year-close postings"), rendered);
+    assertTrue(rendered.contains("(none)"), rendered);
   }
 }

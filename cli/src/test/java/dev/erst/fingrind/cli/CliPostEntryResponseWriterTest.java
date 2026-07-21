@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
@@ -19,6 +20,41 @@ import tools.jackson.databind.JsonNode;
 
 /** Unit tests for {@link CliResponseWriter}. */
 class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
+  @Test
+  void mutationWriter_rendersPreflightAndCommittedTextAndRejectsCsv() {
+    PostEntryResult.PreflightAccepted preflight =
+        CliPostEntryResultFixtures.preflightAccepted(
+            new IdempotencyKey("idem-text-preflight"), LocalDate.parse("2026-04-07"));
+    PostEntryResult.Committed committed =
+        CliPostEntryResultFixtures.committed(
+            new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
+            new IdempotencyKey("idem-text-committed"),
+            LocalDate.parse("2026-04-07"),
+            Instant.parse("2026-04-07T10:15:30Z"),
+            false);
+
+    ByteArrayOutputStream preflightText = new ByteArrayOutputStream();
+    new CliMutationResponseWriter(outputChannel(preflightText))
+        .writePostEntryResult(preflight, dev.erst.fingrind.contract.protocol.OutputMode.TEXT);
+    assertTrue(preflightText.toString(StandardCharsets.UTF_8).contains("Entry Preflight Passed"));
+
+    ByteArrayOutputStream committedText = new ByteArrayOutputStream();
+    CliMutationResponseWriter writer = new CliMutationResponseWriter(outputChannel(committedText));
+    writer.writePostEntryResult(committed, dev.erst.fingrind.contract.protocol.OutputMode.TEXT);
+    assertTrue(committedText.toString(StandardCharsets.UTF_8).contains("Entry Committed"));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            writer.writePostEntryResult(
+                preflight, dev.erst.fingrind.contract.protocol.OutputMode.CSV));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            writer.writePostEntryResult(
+                committed, dev.erst.fingrind.contract.protocol.OutputMode.CSV));
+  }
+
   @Test
   void writePostEntryResult_writesPreflightEnvelope() throws java.io.IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();

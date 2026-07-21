@@ -292,6 +292,25 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
             receipt, dev.erst.fingrind.contract.protocol.OutputMode.TEXT);
     assertTrue(receiptText.toString(StandardCharsets.UTF_8).contains("Attestation Receipt Valid"));
 
+    ByteArrayOutputStream emptyFindingsText = new ByteArrayOutputStream();
+    CliBookReadResponseWriter emptyFindingsWriter =
+        new CliBookReadResponseWriter(outputChannel(emptyFindingsText), fixedClock());
+    emptyFindingsWriter.writeAttestationReview(
+        new AttestationReviewResult(BOOK_ID, java.math.BigInteger.ZERO, List.of()),
+        dev.erst.fingrind.contract.protocol.OutputMode.TEXT);
+    emptyFindingsWriter.writeExportAttestationReceipt(
+        new ExportAttestationReceiptResult(
+            Path.of("receipts", "empty.fgr"),
+            BOOK_ID,
+            java.math.BigInteger.ZERO,
+            OPERATION_HEAD,
+            List.of()),
+        dev.erst.fingrind.contract.protocol.OutputMode.TEXT);
+    emptyFindingsWriter.writeVerifyAttestationReceipt(
+        new VerifyAttestationReceiptResult.Valid(BOOK_ID, java.math.BigInteger.ZERO, List.of()),
+        dev.erst.fingrind.contract.protocol.OutputMode.TEXT);
+    assertTrue(emptyFindingsText.toString(StandardCharsets.UTF_8).contains("(none)"));
+
     assertThrows(
         IllegalArgumentException.class,
         () ->
