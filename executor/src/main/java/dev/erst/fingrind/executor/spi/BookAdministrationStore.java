@@ -13,10 +13,6 @@ import java.util.List;
 
 /** Writes administrative book and account-registry mutations. */
 public interface BookAdministrationStore {
-  /** Explicitly initializes one new book if the selected path is currently empty. */
-  BookOpeningOutcome openBook(
-      Instant initializedAt, BookIdentity bookIdentity, List<AccountDeclaration> seededAccounts);
-
   /** Explicitly initializes one new book with its self-authorizing attestation genesis. */
   BookOpeningOutcome openAttestedBook(
       Instant initializedAt,

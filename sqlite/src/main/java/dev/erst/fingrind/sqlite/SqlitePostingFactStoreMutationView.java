@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
@@ -26,11 +27,15 @@ interface SqlitePostingFactStoreMutationView {
   /** Returns the mutation operations owner for this store. */
   SqliteStoreMutationOperations storeMutationOperations();
 
-  /** Initializes a previously unopened protected book. */
-  default BookOpeningOutcome openBook(
-      Instant initializedAt, BookIdentity bookIdentity, List<AccountDeclaration> seededAccounts) {
+  /** Initializes a previously unopened protected book with self-authorizing genesis evidence. */
+  default BookOpeningOutcome openAttestedBook(
+      Instant initializedAt,
+      BookIdentity bookIdentity,
+      List<AccountDeclaration> seededAccounts,
+      AttestationEvidence genesisEvidence) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().openBook(initializedAt, bookIdentity, seededAccounts);
+    return storeMutationOperations()
+        .openAttestedBook(initializedAt, bookIdentity, seededAccounts, genesisEvidence);
   }
 
   /** Declares a new account in the protected book. */

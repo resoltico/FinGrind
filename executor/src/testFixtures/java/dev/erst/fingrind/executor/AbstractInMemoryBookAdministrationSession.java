@@ -83,7 +83,7 @@ abstract class AbstractInMemoryBookAdministrationSession
     return declareAccount(declaration, declaredAt, TEST_SEED_AUTHORIZER);
   }
 
-  @Override
+  /** Test-fixture-only unsigned initialization helper for in-memory domain-state setup. */
   public BookOpeningOutcome openBook(
       Instant initializedAt, BookIdentity bookIdentity, List<AccountDeclaration> seededAccounts) {
     return InMemoryBookSessionSupport.withLock(

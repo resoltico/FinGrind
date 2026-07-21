@@ -42,11 +42,6 @@ final class SqliteStoreAdministrationMutationOperations {
     this.lifecycle = Objects.requireNonNull(lifecycle, "lifecycle");
   }
 
-  BookOpeningOutcome openBook(
-      Instant initializedAt, BookIdentity bookIdentity, List<AccountDeclaration> seededAccounts) {
-    return initializeBook(initializedAt, bookIdentity, seededAccounts, null);
-  }
-
   BookOpeningOutcome openAttestedBook(
       Instant initializedAt,
       BookIdentity bookIdentity,
@@ -55,14 +50,6 @@ final class SqliteStoreAdministrationMutationOperations {
     AttestationEvidence checkedGenesisEvidence =
         Objects.requireNonNull(genesisEvidence, "genesisEvidence");
     AttestationGenesis.requireMatchingBookIdentity(checkedGenesisEvidence, bookIdentity);
-    return initializeBook(initializedAt, bookIdentity, seededAccounts, checkedGenesisEvidence);
-  }
-
-  private BookOpeningOutcome initializeBook(
-      Instant initializedAt,
-      BookIdentity bookIdentity,
-      List<AccountDeclaration> seededAccounts,
-      @org.jspecify.annotations.Nullable AttestationEvidence genesisEvidence) {
     lifecycle.ensureOpenSession();
     context.accessMode().requireWritableInitialization();
     SqliteBookSchemaBootstrap.ensureParentDirectory(context.bookPath());
@@ -87,9 +74,8 @@ final class SqliteStoreAdministrationMutationOperations {
                   RegisteredAccount.declareNew(seededAccount, initializedAt);
               SqliteAccountRegistryMutationWriter.upsertAccount(activeDatabase, declaredAccount);
             }
-            if (genesisEvidence != null) {
-              SqliteAttestationEvidenceStore.append(activeDatabase, new byte[32], genesisEvidence);
-            }
+            SqliteAttestationEvidenceStore.append(
+                activeDatabase, new byte[32], checkedGenesisEvidence);
             SqliteAuditEventWriter.insertAuditEvent(
                 activeDatabase, BookAuditEvent.bookOpened(initializedAt));
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);

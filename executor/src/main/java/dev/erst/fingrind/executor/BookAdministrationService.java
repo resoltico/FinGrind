@@ -37,15 +37,6 @@ public final class BookAdministrationService {
     this.clock = Objects.requireNonNull(clock, "clock");
   }
 
-  /** Explicitly initializes a new book. */
-  public BookOpeningOutcome openBook(BookIdentity bookIdentity) {
-    Objects.requireNonNull(bookIdentity, "bookIdentity");
-    return bookStore.openBook(
-        clock.instant(),
-        bookIdentity,
-        BookTemplateAccounts.declarations(bookIdentity.bookDoctrine()));
-  }
-
   /** Explicitly initializes one protected book with a signed genesis operation. */
   public BookOpeningOutcome openAttestedBook(
       BookIdentity bookIdentity, AttestationEvidence genesisEvidence) {

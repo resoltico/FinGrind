@@ -61,13 +61,6 @@ final class SqliteStoreMutationOperations {
             this.postingAcceptancePolicy);
   }
 
-  dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome openBook(
-      Instant initializedAt,
-      BookIdentity bookIdentity,
-      List<dev.erst.fingrind.executor.bookkeeping.AccountDeclaration> seededAccounts) {
-    return administrationOperations.openBook(initializedAt, bookIdentity, seededAccounts);
-  }
-
   dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome openAttestedBook(
       Instant initializedAt,
       BookIdentity bookIdentity,

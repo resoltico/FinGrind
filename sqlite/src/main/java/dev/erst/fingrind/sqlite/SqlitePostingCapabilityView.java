@@ -42,13 +42,6 @@ interface SqlitePostingCapabilityView extends SqlitePostingSession, SqliteReadCa
   SqliteStoreMutationOperations storeMutationOperations();
 
   @Override
-  default BookOpeningOutcome openBook(
-      Instant initializedAt, BookIdentity bookIdentity, List<AccountDeclaration> seededAccounts) {
-    storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().openBook(initializedAt, bookIdentity, seededAccounts);
-  }
-
-  @Override
   default BookOpeningOutcome openAttestedBook(
       Instant initializedAt,
       BookIdentity bookIdentity,

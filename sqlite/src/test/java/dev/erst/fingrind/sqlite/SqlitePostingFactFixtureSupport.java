@@ -512,19 +512,27 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
     return postingFactStore.declareAccount(
         new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
             accountCode, accountName, accountType, accountTaxonomy),
-        declaredAt);
+        declaredAt,
+        SqliteAttestationTestSupport.authorizer());
   }
 
   static void openBookWithNoDeclaredAccounts(SqlitePostingFactStore postingFactStore) {
-    postingFactStore.openBook(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity(), List.of());
+    Instant initializedAt = Instant.parse("2026-04-07T10:15:30Z");
+    postingFactStore.openAttestedBook(
+        initializedAt,
+        bookIdentity(),
+        List.of(),
+        SqliteAttestationTestSupport.genesis(bookIdentity(), initializedAt));
   }
 
   static void openBookWithStarterTemplateAccounts(SqlitePostingFactStore postingFactStore) {
-    postingFactStore.openBook(
-        Instant.parse("2026-04-07T10:15:30Z"),
+    Instant initializedAt = Instant.parse("2026-04-07T10:15:30Z");
+    postingFactStore.openAttestedBook(
+        initializedAt,
         bookIdentity(),
         dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-            bookIdentity().bookDoctrine()));
+            bookIdentity().bookDoctrine()),
+        SqliteAttestationTestSupport.genesis(bookIdentity(), initializedAt));
   }
 
   static void initializeBookWithMinimalNumericAccounts(SqlitePostingFactStore postingFactStore) {
