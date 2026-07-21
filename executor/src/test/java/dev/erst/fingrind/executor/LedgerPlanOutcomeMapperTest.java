@@ -2,7 +2,6 @@ package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.stepId;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -70,8 +69,7 @@ class LedgerPlanOutcomeMapperTest {
 
   @Test
   void unexpectedExecutionFailure_omitsDetailWhenMessageIsBlank() {
-    LedgerStep step =
-        new LedgerStep.InspectBook(stepId("open"));
+    LedgerStep step = new LedgerStep.InspectBook(stepId("open"));
 
     var journalEntry =
         LedgerPlanUnexpectedOutcomes.unexpectedExecutionFailure(
@@ -84,8 +82,7 @@ class LedgerPlanOutcomeMapperTest {
 
   @Test
   void unexpectedExecutionFailure_omitsDetailWhenMessageIsNull() {
-    LedgerStep step =
-        new LedgerStep.InspectBook(stepId("open"));
+    LedgerStep step = new LedgerStep.InspectBook(stepId("open"));
 
     var journalEntry =
         LedgerPlanUnexpectedOutcomes.unexpectedExecutionFailure(
@@ -98,8 +95,7 @@ class LedgerPlanOutcomeMapperTest {
 
   @Test
   void unexpectedExecutionFailure_includesNonBlankDetail() {
-    LedgerStep step =
-        new LedgerStep.InspectBook(stepId("open"));
+    LedgerStep step = new LedgerStep.InspectBook(stepId("open"));
 
     var journalEntry =
         LedgerPlanUnexpectedOutcomes.unexpectedExecutionFailure(
@@ -115,9 +111,7 @@ class LedgerPlanOutcomeMapperTest {
 
   @Test
   void unexpectedPlanFailure_recordsCheckpointCleanupAndPriorFailureFacts() {
-    BookWorkflowStep step =
-        workflowStep(
-            new LedgerStep.InspectBook(stepId("open")));
+    BookWorkflowStep step = workflowStep(new LedgerStep.InspectBook(stepId("open")));
 
     var journalEntry =
         LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
@@ -171,9 +165,7 @@ class LedgerPlanOutcomeMapperTest {
 
   @Test
   void unexpectedPlanFailure_omitsDetailWhenMessageIsBlank() {
-    BookWorkflowStep step =
-        workflowStep(
-            new LedgerStep.InspectBook(stepId("open")));
+    BookWorkflowStep step = workflowStep(new LedgerStep.InspectBook(stepId("open")));
 
     var journalEntry =
         LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
@@ -193,9 +185,7 @@ class LedgerPlanOutcomeMapperTest {
 
   @Test
   void unexpectedPlanFailure_omitsDetailWhenMessageIsNull() {
-    BookWorkflowStep step =
-        workflowStep(
-            new LedgerStep.InspectBook(stepId("open")));
+    BookWorkflowStep step = workflowStep(new LedgerStep.InspectBook(stepId("open")));
 
     var journalEntry =
         LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(

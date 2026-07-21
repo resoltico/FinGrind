@@ -8,8 +8,8 @@ import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.countFact;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.flagFact;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.groupFact;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.initializedBook;
-import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.monetaryAmount;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.inspectBookStep;
+import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.monetaryAmount;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.planId;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.postEntryCommand;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.service;
@@ -59,7 +59,8 @@ class LedgerPlanServiceQueryTest {
                                   Optional.empty(), null, null, 50, Optional.empty())),
                           new LedgerStep.AccountBalance(
                               stepId("balance"),
-                              AccountBalanceQuery.unbounded(new AccountCode("1000"))))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+                              AccountBalanceQuery.unbounded(new AccountCode("1000"))))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.SUCCEEDED, result.status());
 
@@ -223,7 +224,8 @@ class LedgerPlanServiceQueryTest {
                       planId("plan-preflight"),
                       List.of(
                           new LedgerStep.PreflightEntry(
-                              stepId("preflight"), postEntryCommand("idem-2")))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+                              stepId("preflight"), postEntryCommand("idem-2")))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.REJECTED, preflightResult.status());
       assertEquals(
@@ -244,7 +246,8 @@ class LedgerPlanServiceQueryTest {
                       List.of(
                           new LedgerStep.GetPosting(
                               stepId("get"),
-                              new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6")))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+                              new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6")))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.REJECTED, getPostingResult.status());
       assertEquals(
@@ -264,7 +267,8 @@ class LedgerPlanServiceQueryTest {
                   new LedgerPlan(
                       planId("plan-list-postings"),
                       List.of(
-                          new LedgerStep.ListPostings(stepId("postings"), missingAccountQuery))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+                          new LedgerStep.ListPostings(stepId("postings"), missingAccountQuery))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.REJECTED, listPostingsResult.status());
       assertEquals(
@@ -282,7 +286,8 @@ class LedgerPlanServiceQueryTest {
                       List.of(
                           new LedgerStep.AccountBalance(
                               stepId("balance"),
-                              AccountBalanceQuery.unbounded(new AccountCode("9999"))))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+                              AccountBalanceQuery.unbounded(new AccountCode("9999"))))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.REJECTED, balanceResult.status());
       assertEquals(
@@ -304,7 +309,8 @@ class LedgerPlanServiceQueryTest {
                       List.of(
                           inspectBookStep("open"),
                           new LedgerStep.ListAccounts(
-                              stepId("accounts"), new ListAccountsQuery(50, Optional.empty())))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+                              stepId("accounts"), new ListAccountsQuery(50, Optional.empty())))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(

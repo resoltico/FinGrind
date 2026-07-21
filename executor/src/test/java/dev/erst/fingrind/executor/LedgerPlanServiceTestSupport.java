@@ -4,7 +4,6 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTH
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.openBookCommand;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
@@ -77,7 +76,8 @@ final class LedgerPlanServiceTestSupport {
             .execute(
                 new LedgerPlan(
                     planId("plan-assert"),
-                    List.of(new LedgerStep.Assert(stepId("assert"), assertion))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+                    List.of(new LedgerStep.Assert(stepId("assert"), assertion))),
+                ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
     assertEquals(LedgerPlanStatus.ASSERTION_FAILED, result.status());
   }

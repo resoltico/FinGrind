@@ -181,9 +181,7 @@ class LedgerPlanWorkflowFailureMapperTest {
                         "The payable account is not declared."))));
 
     assertEquals("tax-book-not-initialized", missingBook.code());
-    assertEquals(
-        "The selected book does not exist or has not been opened.",
-        missingBook.message());
+    assertEquals("The selected book does not exist or has not been opened.", missingBook.message());
     assertEquals(List.of(), missingBook.facts());
     assertEquals("tax-definition-violations", definitionViolations.code());
     assertEquals(

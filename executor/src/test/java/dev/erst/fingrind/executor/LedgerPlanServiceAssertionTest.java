@@ -6,9 +6,9 @@ import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.account;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.assertAssertionFailure;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.bookWithCommittedPosting;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.initializedBook;
+import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.inspectBookStep;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.monetaryAmount;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.moneyFact;
-import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.inspectBookStep;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.planId;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.service;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.stepId;
@@ -64,7 +64,8 @@ class LedgerPlanServiceAssertionTest {
                           new LedgerStep.Assert(
                               stepId("missing-posting"),
                               new LedgerAssertion.PostingExists(
-                                  new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6"))))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+                                  new PostingId("6045a122-24d5-3839-bfbe-fd3f0590e5b6"))))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.ASSERTION_FAILED, result.status());
       assertEquals(3, result.journal().steps().size());
@@ -120,7 +121,8 @@ class LedgerPlanServiceAssertionTest {
                                   null,
                                   null,
                                   Money.parse("EUR", "10.00"),
-                                  BalanceSide.DEBIT)))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+                                  BalanceSide.DEBIT)))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.REJECTED, rejectedQueryResult.status());
       assertEquals(
@@ -143,7 +145,8 @@ class LedgerPlanServiceAssertionTest {
                                   null,
                                   null,
                                   Money.parse("EUR", "10.00"),
-                                  BalanceSide.CREDIT)))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+                                  BalanceSide.CREDIT)))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.ASSERTION_FAILED, mismatchResult.status());
       assertEquals(
@@ -171,7 +174,8 @@ class LedgerPlanServiceAssertionTest {
                                   null,
                                   null,
                                   Money.parse("EUR", "9.00"),
-                                  BalanceSide.DEBIT)))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+                                  BalanceSide.DEBIT)))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.ASSERTION_FAILED, amountMismatchResult.status());
       assertTrue(
@@ -192,7 +196,8 @@ class LedgerPlanServiceAssertionTest {
                       List.of(
                           new LedgerStep.Assert(
                               stepId("assert-account-declared"),
-                              new LedgerAssertion.AccountDeclared(new AccountCode("1000"))))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+                              new LedgerAssertion.AccountDeclared(new AccountCode("1000"))))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
       assertEquals(LedgerPlanStatus.REJECTED, accountDeclaredResult.status());
       assertEquals(
           BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
@@ -206,7 +211,8 @@ class LedgerPlanServiceAssertionTest {
                       List.of(
                           new LedgerStep.Assert(
                               stepId("assert-account-active"),
-                              new LedgerAssertion.AccountActive(new AccountCode("1000"))))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+                              new LedgerAssertion.AccountActive(new AccountCode("1000"))))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
       assertEquals(LedgerPlanStatus.REJECTED, accountActiveResult.status());
       assertEquals(
           BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
@@ -221,7 +227,8 @@ class LedgerPlanServiceAssertionTest {
                           new LedgerStep.Assert(
                               stepId("assert-posting-exists"),
                               new LedgerAssertion.PostingExists(
-                                  new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+                                  new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
       assertEquals(LedgerPlanStatus.REJECTED, postingExistsResult.status());
       assertEquals(
           BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
