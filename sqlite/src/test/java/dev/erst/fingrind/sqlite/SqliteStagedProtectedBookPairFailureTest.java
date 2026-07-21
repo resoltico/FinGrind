@@ -240,6 +240,57 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
   }
 
   @Test
+  void stagedBackupPair_rollbackClosesBothPassphraseStatesAndRetainsOnlyARecordedPublication()
+      throws Exception {
+    Path missingKeyBackupPath = writeArtifact("backup-null-passphrase/staged.sqlite", "backup");
+    Path missingKeyPath = tempDirectory.resolve("backup-null-passphrase").resolve("missing.key");
+    Path missingKeyFinalBackupPath =
+        tempDirectory.resolve("backup-null-passphrase").resolve("backup.sqlite");
+    Path missingKeyFinalPath =
+        tempDirectory.resolve("backup-null-passphrase").resolve("backup.key");
+    try (SqliteBookPassphrase passphrase = testPassphrase();
+        SqliteStagedBackupPair stagedPair =
+            SqliteStagedBackupPairFactory.create(
+                SqliteOwnedStagedArtifact.recordExisting(
+                    missingKeyFinalBackupPath, missingKeyBackupPath),
+                missingKeyFinalBackupPath,
+                SqliteOwnedStagedArtifact.recordExisting(missingKeyFinalPath, missingKeyPath),
+                missingKeyFinalPath,
+                passphrase,
+                VERIFICATION_SUPPORT)) {
+      assertThrows(IllegalStateException.class, stagedPair::commit);
+    }
+    assertFalse(Files.exists(missingKeyBackupPath));
+
+    Path publishedStagePath = writeArtifact("backup-published-stage/staged.sqlite", "backup");
+    Path publishedKeyStagePath = writeArtifact("backup-published-stage/staged.key", "key");
+    Path publishedFinalPath =
+        tempDirectory.resolve("backup-published-stage").resolve("backup.sqlite");
+    Path publishedKeyFinalPath =
+        tempDirectory.resolve("backup-published-stage").resolve("backup.key");
+    SqliteOwnedStagedArtifact publishedStage =
+        SqliteOwnedStagedArtifact.recordExisting(publishedFinalPath, publishedStagePath);
+    SqliteOwnedStagedArtifact publishedKeyStage =
+        SqliteOwnedStagedArtifact.recordExisting(publishedKeyFinalPath, publishedKeyStagePath);
+    try (SqliteBookPassphrase passphrase = testPassphrase();
+        SqliteStagedBackupPair stagedPair =
+            SqliteStagedBackupPairFactory.create(
+                publishedStage,
+                publishedFinalPath,
+                publishedKeyStage,
+                publishedKeyFinalPath,
+                passphrase,
+                VERIFICATION_SUPPORT)) {
+      setPrivateField(stagedPair, "backupFilePublished", true);
+      stagedPair.rollback();
+    }
+
+    assertTrue(Files.exists(publishedStagePath));
+    assertFalse(Files.exists(publishedKeyStagePath));
+    publishedStage.discard();
+  }
+
+  @Test
   void stagedBackupPair_reclaimsItsPublishedKeyBeforeSecondaryCleanupFails() throws Exception {
     Path stagedBackupPath = writeArtifact("backup-cleanup-failure/staged.sqlite", "backup");
     Path stagedKeyPath = writeArtifact("backup-cleanup-failure/staged.key", "key");

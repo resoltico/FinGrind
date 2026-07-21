@@ -198,6 +198,50 @@ class SqliteStoreAdministrationMutationOperationsCoverageTest
     }
   }
 
+  @Test
+  void openAttestedBook_rollsBackAndRethrowsOneRuntimeSchemaInitializationFailure() {
+    Path bookPath = tempDirectory.resolve("runtime-open-failure.sqlite");
+    Instant initializedAt = Instant.parse("2026-04-07T10:15:30Z");
+    IllegalStateException schemaFailure =
+        new IllegalStateException("simulated schema runtime failure");
+    try (SqliteSessionSecret sessionSecret =
+            new SqliteSessionSecret(
+                SqliteBookPassphrase.fromCharacters("runtime open", TEST_BOOK_KEY.toCharArray()));
+        RuntimeSchemaFailingDatabase database = new RuntimeSchemaFailingDatabase(schemaFailure)) {
+      SqliteStoreContext context =
+          new SqliteStoreContext(
+              bookPath, SqliteStoreAccessMode.READ_WRITE_CREATE, SqliteNativeBootstrap::api);
+      SqliteStoreLifecycle lifecycle =
+          new SqliteStoreLifecycle(context, sessionSecret) {
+            @Override
+            SqliteNativeDatabase database() {
+              return database;
+            }
+
+            @Override
+            SqliteBookStateSnapshot stateSnapshot(SqliteNativeDatabase activeDatabase) {
+              return new SqliteBookStateSnapshot(0, 0, SqliteBookState.BLANK_SQLITE);
+            }
+          };
+      SqliteStoreAdministrationMutationOperations operations =
+          new SqliteStoreAdministrationMutationOperations(context, lifecycle);
+
+      assertEquals(
+          schemaFailure,
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  operations.openAttestedBook(
+                      initializedAt,
+                      SqlitePostingFactFixtureSupport.bookIdentity(),
+                      List.of(),
+                      SqliteAttestationTestSupport.genesis(
+                          SqlitePostingFactFixtureSupport.bookIdentity(), initializedAt))));
+      assertEquals(List.of("begin immediate", "rollback"), database.statements);
+      lifecycle.close();
+    }
+  }
+
   private static AttestationEffectMutation invokeDeclarationMutation(
       AccountDeclarationOutcome outcome) {
     try {
@@ -236,6 +280,30 @@ class SqliteStoreAdministrationMutationOperationsCoverageTest
     void executeScript(String sql) {
       throw new SqliteNativeException(
           SqliteNativeResultCode.code("IOERR"), "simulated schema initialization failure");
+    }
+
+    @Override
+    public void close() {}
+  }
+
+  /** Records transaction control while making only schema execution fail with a runtime error. */
+  private static final class RuntimeSchemaFailingDatabase extends SqliteNativeDatabase {
+    private final List<String> statements = new ArrayList<>();
+    private final IllegalStateException failure;
+
+    private RuntimeSchemaFailingDatabase(IllegalStateException failure) {
+      super(MemorySegment.NULL);
+      this.failure = Objects.requireNonNull(failure, "failure");
+    }
+
+    @Override
+    void executeStatement(String sql) {
+      statements.add(sql);
+    }
+
+    @Override
+    void executeScript(String sql) {
+      throw failure;
     }
 
     @Override

@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
@@ -16,9 +17,12 @@ import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.ClosedFiscalYearRecord;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.executor.spi.ReportingPeriodCloseStore;
+import java.lang.foreign.MemorySegment;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
@@ -223,6 +227,63 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
     }
   }
 
+  @Test
+  void fiscalYearClose_translatesAndRollsBackNativeReadFailuresInsideItsOwnedTransaction()
+      throws Exception {
+    Path bookPath = tempDirectory.resolve("fiscal-year-close-native-read-failure.sqlite");
+    Files.createFile(bookPath);
+    try (SqliteSessionSecret sessionSecret =
+            new SqliteSessionSecret(
+                SqliteBookPassphrase.fromCharacters(
+                    "fiscal year native failure", TEST_BOOK_KEY.toCharArray()));
+        QueryFailingDatabase database = new QueryFailingDatabase()) {
+      SqliteStoreContext context =
+          new SqliteStoreContext(
+              bookPath, SqliteStoreAccessMode.READ_WRITE_CREATE, SqliteNativeBootstrap::api);
+      SqliteStoreLifecycle lifecycle =
+          new SqliteStoreLifecycle(context, sessionSecret) {
+            @Override
+            SqliteNativeDatabase database() {
+              return database;
+            }
+
+            @Override
+            SqliteBookStateSnapshot stateSnapshot(SqliteNativeDatabase activeDatabase) {
+              return new SqliteBookStateSnapshot(
+                  SqliteBookContract.APPLICATION_ID,
+                  SqliteBookContract.FORMAT_VERSION,
+                  SqliteBookState.INITIALIZED_FINGRIND);
+            }
+          };
+      SqliteFiscalYearCloseOperations operations =
+          new SqliteFiscalYearCloseOperations(
+              new SqliteClosingMutationExecutionSupport(context, lifecycle),
+              new SqliteClosingMutationReadSupport(context),
+              new SqliteClosePostingPersistence(
+                  context, SqliteCommitFaultHook.NONE, PostingAcceptancePolicy.currentKernel()));
+
+      SqliteStorageFailureException failure =
+          assertThrows(
+              SqliteStorageFailureException.class,
+              () ->
+                  operations.fiscalYearClose(
+                      FISCAL_YEAR,
+                      bookIdentity(),
+                      dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner.forBookIdentity(
+                          bookIdentity()),
+                      LocalDate.ofInstant(CLOSED_AT, ZoneOffset.UTC),
+                      CLOSED_AT,
+                      new SequencePostingIdGenerator("not-allocated"),
+                      SqliteAttestationTestSupport.authorizer()));
+
+      assertEquals(
+          "Failed to close one SQLite fiscal year. SQLITE_IOERR: simulated fiscal-year read failure",
+          failure.getMessage());
+      assertEquals(List.of("begin immediate", "rollback"), database.statements);
+      lifecycle.close();
+    }
+  }
+
   private static void declareFiscalYearCloseAccounts(SqlitePostingFactStore postingFactStore) {
     assertEquals(
         declaredEquityAccount(
@@ -359,5 +420,28 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                       .getBytes(java.nio.charset.StandardCharsets.UTF_8))
               .toString());
     }
+  }
+
+  /** Records transaction control while failing every statement query with a native I/O error. */
+  private static final class QueryFailingDatabase extends SqliteNativeDatabase {
+    private final List<String> statements = new java.util.ArrayList<>();
+
+    private QueryFailingDatabase() {
+      super(MemorySegment.NULL);
+    }
+
+    @Override
+    SqliteNativeStatement prepare(String sql) {
+      throw new SqliteNativeException(
+          SqliteNativeResultCode.code("IOERR"), "simulated fiscal-year read failure");
+    }
+
+    @Override
+    void executeStatement(String sql) {
+      statements.add(sql);
+    }
+
+    @Override
+    public void close() {}
   }
 }
