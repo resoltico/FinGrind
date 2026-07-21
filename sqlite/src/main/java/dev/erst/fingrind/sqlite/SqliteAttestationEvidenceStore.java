@@ -6,6 +6,7 @@ import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationOperationPreimages;
 import dev.erst.fingrind.core.attestation.AttestationOperationRequest;
+import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
 import dev.erst.fingrind.core.attestation.AttestationVerificationException;
 import dev.erst.fingrind.core.attestation.AttestationVerifier;
@@ -99,6 +100,10 @@ final class SqliteAttestationEvidenceStore {
                 () ->
                     new IllegalStateException(
                         "Protected-book mutation requires a persisted attestation genesis."));
+    if (checkedAuthorizer instanceof AttestationPlanOperationAuthorizer planAuthorizer) {
+      planAuthorizer.collectChildMutation(checkedOperationKind, checkedPreimages);
+      return persistedVerification;
+    }
     if (backupAcknowledgement != null) {
       switch (AttestationBackupAcknowledgementAdmission.evaluate(
           persistedEvidence, backupAcknowledgement)) {
@@ -123,6 +128,41 @@ final class SqliteAttestationEvidenceStore {
                 checkedRecordedAt,
                 checkedPreimages.request(),
                 checkedPreimages.effect()));
+    return append(activeDatabase, persistedVerification.operationHead(), candidateEvidence);
+  }
+
+  /** Appends one aggregate execute-plan operation after all child domain mutations have succeeded. */
+  static AttestationVerification appendPlanAuthorized(
+      SqliteNativeDatabase activeDatabase,
+      String planId,
+      Instant recordedAt,
+      AttestationPlanOperationAuthorizer authorizer) {
+    Objects.requireNonNull(activeDatabase, "activeDatabase");
+    String checkedPlanId = Objects.requireNonNull(planId, "planId");
+    Instant checkedRecordedAt = Objects.requireNonNull(recordedAt, "recordedAt");
+    AttestationPlanOperationAuthorizer checkedAuthorizer =
+        Objects.requireNonNull(authorizer, "authorizer");
+    if (!checkedAuthorizer.hasChildMutations()) {
+      throw new IllegalArgumentException("execute-plan did not produce a mutating child step.");
+    }
+    List<AttestationEvidence> persistedEvidence = loadAll(activeDatabase);
+    AttestationVerification persistedVerification =
+        verifyPersisted(persistedEvidence)
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Protected-book mutation requires a persisted attestation genesis."));
+    AttestationOperationPreimages planPreimages = checkedAuthorizer.planPreimages(checkedPlanId);
+    AttestationEvidence candidateEvidence =
+        checkedAuthorizer.authorizePlan(
+            new AttestationOperationRequest(
+                persistedVerification.bookId(),
+                persistedVerification.headOrder().add(BigInteger.ONE),
+                "execute-plan",
+                persistedVerification.operationHead(),
+                checkedRecordedAt,
+                planPreimages.request(),
+                planPreimages.effect()));
     return append(activeDatabase, persistedVerification.operationHead(), candidateEvidence);
   }
 

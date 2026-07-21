@@ -508,14 +508,13 @@ class CliJsonModelValidationTest {
             List.of(
                 new CliPlanJsonModels.LedgerJournalEntryPayload(
                     "step-1",
-                    LedgerStepKind.ENSURE_BOOK,
+                    LedgerStepKind.INSPECT_BOOK,
                     null,
                     null,
                     LedgerStepStatus.SUCCEEDED,
                     "2026-05-14T10:00:00Z",
                     "2026-05-14T10:00:01Z",
-                    new CliPlanJsonModels.EnsureBookStepDataPayload(
-                        "2026-05-14T10:00:00Z", "Acme Studio", "EUR", "01-01", "2026-01-01"),
+                    new CliPlanJsonModels.BookInspectionStepDataPayload("initialized", true, true),
                     null)));
 
     assertThrows(
@@ -582,7 +581,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliPlanJsonModels.LedgerJournalEntryPayload(
                 "step-1",
-                LedgerStepKind.ENSURE_BOOK,
+                LedgerStepKind.INSPECT_BOOK,
                 null,
                 null,
                 LedgerStepStatus.SUCCEEDED,
@@ -595,7 +594,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliPlanJsonModels.LedgerJournalEntryPayload(
                 "step-1",
-                LedgerStepKind.ENSURE_BOOK,
+                LedgerStepKind.INSPECT_BOOK,
                 null,
                 null,
                 LedgerStepStatus.REJECTED,
@@ -662,7 +661,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliPlanJsonModels.LedgerJournalEntryPayload(
                 "step-1",
-                LedgerStepKind.ENSURE_BOOK,
+                LedgerStepKind.INSPECT_BOOK,
                 LedgerAssertionKind.ACCOUNT_DECLARED,
                 null,
                 LedgerStepStatus.SUCCEEDED,
@@ -688,7 +687,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliPlanJsonModels.LedgerJournalEntryPayload(
                 "step-1",
-                LedgerStepKind.ENSURE_BOOK,
+                LedgerStepKind.INSPECT_BOOK,
                 null,
                 LedgerBoundaryCheckpoint.BEGIN,
                 LedgerStepStatus.SUCCEEDED,
@@ -701,7 +700,7 @@ class CliJsonModelValidationTest {
         () ->
             new CliPlanJsonModels.LedgerJournalEntryPayload(
                 "step-1",
-                LedgerStepKind.ENSURE_BOOK,
+                LedgerStepKind.INSPECT_BOOK,
                 null,
                 null,
                 LedgerStepStatus.ASSERTION_FAILED,

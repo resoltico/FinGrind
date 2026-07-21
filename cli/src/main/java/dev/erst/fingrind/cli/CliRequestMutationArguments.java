@@ -78,7 +78,6 @@ final class CliRequestMutationArguments {
   static CliCommand parseExecutePlanCommand(List<String> arguments) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
         CliBookArgumentParser.parseRequestBoundCommandArguments(arguments, EXECUTE_PLAN_ARGUMENTS);
-    CliBookArgumentParser.requireAttestationCredentials(parsedArguments.bookAccess());
     @Nullable OutputMode outputMode = null;
     @Nullable PlanResultDetail resultDetail = null;
     ListIterator<String> argumentIterator = parsedArguments.commandArguments().listIterator();

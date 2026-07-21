@@ -234,7 +234,7 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
     LedgerJournalEntry.Succeeded standardEntry =
         new LedgerJournalEntry.Succeeded(
             stepId("open"),
-            LedgerJournalStep.standard(LedgerStepKind.ENSURE_BOOK),
+            LedgerJournalStep.standard(LedgerStepKind.INSPECT_BOOK),
             startedAt,
             finishedAt,
             List.of());

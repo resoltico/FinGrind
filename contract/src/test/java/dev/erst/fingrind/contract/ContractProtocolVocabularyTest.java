@@ -287,7 +287,6 @@ class ContractProtocolVocabularyTest {
             ContractTemplates.DeclareTaxCodeTemplateDescriptor.class,
             ContractPlanTemplates.LedgerPlanTemplateDescriptor.class,
             ContractPlanTemplates.LedgerPlanStepTemplateDescriptor.class,
-            ContractPlanTemplates.EnsureBookTemplateDescriptor.class,
             ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor.class,
             ContractTemplates.DeclareAccountTemplateDescriptor.class,
             ContractTemplates.RetireAccountTemplateDescriptor.class,
@@ -442,29 +441,6 @@ class ContractProtocolVocabularyTest {
                 null,
                 null,
                 null,
-                null,
-                null,
-                null,
-                null));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-                "open",
-                LedgerStepKind.ENSURE_BOOK,
-                null,
-                null,
-                new ContractTemplates.DeclareAccountTemplateDescriptor(
-                    "1000",
-                    "Cash",
-                    AccountType.ASSET,
-                    AccountNodeKind.POSTABLE,
-                    null,
-                    null,
-                    FinancialPositionLineClassification.CURRENT_ASSET,
-                    null,
-                    null,
-                    null),
                 null,
                 null,
                 null,

@@ -25,7 +25,6 @@ class ProtocolRequestFieldSetsTest {
         List.of(
             "stepId",
             "kind",
-            "ensureBook",
             "posting",
             "declareAccount",
             "declareTaxRegistration",
@@ -56,7 +55,6 @@ class ProtocolRequestFieldSetsTest {
     assertEquals("steps", ProtocolLedgerPlanFields.Plan.STEPS);
     assertEquals("stepId", ProtocolLedgerPlanFields.Step.STEP_ID);
     assertEquals("kind", ProtocolLedgerPlanFields.Step.KIND);
-    assertEquals("ensureBook", ProtocolLedgerPlanFields.Step.ENSURE_BOOK);
     assertEquals("posting", ProtocolLedgerPlanFields.Step.POSTING);
     assertEquals("declareAccount", ProtocolLedgerPlanFields.Step.DECLARE_ACCOUNT);
     assertEquals("declareTaxRegistration", ProtocolLedgerPlanFields.Step.DECLARE_TAX_REGISTRATION);

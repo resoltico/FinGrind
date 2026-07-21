@@ -21,6 +21,7 @@ import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.AttestationCredentialException;
 import dev.erst.fingrind.executor.AttestationMutationAuthorization;
 import dev.erst.fingrind.executor.BookAdministrationService;
@@ -44,6 +45,12 @@ import java.util.function.Function;
 
 /** SQLite-backed mutation workflow for administrative accounting and posting flows. */
 final class SqliteCliMutationWorkflow implements CliBookMutationWorkflow {
+  private static final AttestationOperationAuthorizer READ_ONLY_PLAN_AUTHORIZER =
+      request -> {
+        throw new IllegalStateException(
+            "A credential-free ledger plan must not authorize a protected-book mutation.");
+      };
+
   private final Clock clock;
   private final CliBookPassphraseResolver passphraseResolver;
 
@@ -203,26 +210,30 @@ final class SqliteCliMutationWorkflow implements CliBookMutationWorkflow {
 
   @Override
   public ContractDecision<LedgerPlanResult> executePlan(BookAccess bookAccess, LedgerPlan plan) {
-    return withAttestationAuthorization(
-        bookAccess,
-        authorizer ->
-            SqliteCliWorkflowSessions.withPlanExecutionSession(
-                SqlitePlanExecutionSessions.openResolved(
-                    bookAccess,
-                    passphraseResolver,
-                    SqlitePassphraseIntent.EXISTING_SECRET),
-                bookSession ->
-                    new LedgerPlanService(
-                            bookSession,
-                            bookSession,
-                            bookSession,
-                            bookSession,
-                            bookSession,
-                            bookSession,
-                            bookSession,
-                            new UuidV7PostingIdGenerator(),
-                            clock)
-                        .execute(plan, authorizer)));
+    if (plan.steps().stream().anyMatch(step -> step.kind().mutatesBook())) {
+      return withAttestationAuthorization(
+          bookAccess, authorizer -> executePlan(bookAccess, plan, authorizer));
+    }
+    return executePlan(bookAccess, plan, READ_ONLY_PLAN_AUTHORIZER);
+  }
+
+  private ContractDecision<LedgerPlanResult> executePlan(
+      BookAccess bookAccess, LedgerPlan plan, AttestationOperationAuthorizer authorizer) {
+    return SqliteCliWorkflowSessions.withPlanExecutionSession(
+        SqlitePlanExecutionSessions.openResolved(
+            bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET),
+        bookSession ->
+            new LedgerPlanService(
+                    bookSession,
+                    bookSession,
+                    bookSession,
+                    bookSession,
+                    bookSession,
+                    bookSession,
+                    bookSession,
+                    new UuidV7PostingIdGenerator(),
+                    clock)
+                .execute(plan, authorizer));
   }
 
   @Override

@@ -139,8 +139,8 @@ final class LedgerPlanServiceTestSupport {
     return new LedgerStepId(value);
   }
 
-  static LedgerStep.EnsureBook openBookStep(String value) {
-    return new LedgerStep.EnsureBook(stepId(value), openBookCommand());
+  static LedgerStep.InspectBook inspectBookStep(String value) {
+    return new LedgerStep.InspectBook(stepId(value));
   }
 
   static boolean textFact(LedgerFact fact, String name, String value) {

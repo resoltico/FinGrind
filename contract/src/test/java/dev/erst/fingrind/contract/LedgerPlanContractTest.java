@@ -43,10 +43,9 @@ import org.junit.jupiter.api.Test;
 class LedgerPlanContractTest {
   @Test
   void ledgerPlan_validatesMandatoryShape() {
-    LedgerStep step = new LedgerStep.EnsureBook(stepId("open"), ContractFixtures.openBookCommand());
+    LedgerStep step = new LedgerStep.InspectBook(stepId("inspect"));
     LedgerPlan plan = new LedgerPlan(planId("plan-1"), List.of(step));
     assertEquals(planId("plan-1"), plan.planId());
-    assertTrue(plan.beginsWithEnsureBook());
     assertThrows(IllegalArgumentException.class, () -> new LedgerPlan(planId(""), List.of(step)));
     assertThrows(IllegalArgumentException.class, () -> new LedgerPlan(planId("plan-1"), List.of()));
     assertThrows(
@@ -58,22 +57,10 @@ class LedgerPlanContractTest {
                     new LedgerStep.InspectBook(stepId("duplicate")),
                     new LedgerStep.ListAccounts(
                         stepId("duplicate"), new ListAccountsQuery(50, Optional.empty())))));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new LedgerPlan(
-                planId("plan-1"),
-                List.of(
-                    new LedgerStep.InspectBook(stepId("inspect")),
-                    new LedgerStep.EnsureBook(
-                        stepId("open"), ContractFixtures.openBookCommand()))));
   }
 
   @Test
   void stepRecords_publishCanonicalKindsAndRejectInvalidShape() {
-    assertEquals(
-        LedgerStepKind.ENSURE_BOOK,
-        new LedgerStep.EnsureBook(stepId("open"), ContractFixtures.openBookCommand()).kind());
     assertEquals(
         LedgerStepKind.DECLARE_ACCOUNT,
         new LedgerStep.DeclareAccount(
@@ -114,9 +101,6 @@ class LedgerPlanContractTest {
                 stepId("assert"), new LedgerAssertion.AccountDeclared(new AccountCode("1000")))
             .detailKind());
     assertThrows(
-        IllegalArgumentException.class,
-        () -> new LedgerStep.EnsureBook(stepId(" "), ContractFixtures.openBookCommand()));
-    assertThrows(
         NullPointerException.class, () -> new LedgerStep.Assert(stepId("assert"), nullOf()));
   }
 
@@ -125,7 +109,6 @@ class LedgerPlanContractTest {
     assertTrue(LedgerStepKind.PREFLIGHT_ENTRY.carriesPostingPayload());
     assertTrue(LedgerStepKind.RECORD_SALE_SETTLED.carriesPostingPayload());
     assertTrue(LedgerStepKind.POST_ENTRY.carriesPostingPayload());
-    assertFalse(LedgerStepKind.ENSURE_BOOK.carriesPostingPayload());
     assertFalse(LedgerStepKind.LIST_POSTINGS.carriesPostingPayload());
     assertFalse(LedgerStepKind.PREFLIGHT_ENTRY.commitsPosting());
     assertTrue(LedgerStepKind.RECORD_OWNER_WITHDRAWAL.commitsPosting());

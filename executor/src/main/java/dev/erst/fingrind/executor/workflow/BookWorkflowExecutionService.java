@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor.workflow;
 
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
 import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
 import java.time.Clock;
 import java.time.Instant;
@@ -39,7 +40,9 @@ public final class BookWorkflowExecutionService {
   public BookWorkflowExecutionResult execute(
       BookWorkflowPlan plan, AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(plan, "plan");
-    AttestationOperationAuthorizer.require(attestationAuthorizer);
+    AttestationPlanOperationAuthorizer planAuthorizer =
+        new AttestationPlanOperationAuthorizer(
+            AttestationOperationAuthorizer.require(attestationAuthorizer));
     Instant startedAt = Instant.now(clock);
     List<BookWorkflowJournalEntry> entries = new ArrayList<>();
     List<BookWorkflowStep> steps = plan.steps();
@@ -58,7 +61,7 @@ public final class BookWorkflowExecutionService {
     }
 
     BookWorkflowStepExecutionState stepExecutionState =
-        executeSteps(plan, startedAt, steps, entries, attestationAuthorizer);
+        executeSteps(plan, startedAt, steps, entries, planAuthorizer);
     if (stepExecutionState.terminalResult() != null) {
       return Objects.requireNonNull(stepExecutionState.terminalResult(), "terminalResult");
     }
@@ -66,6 +69,7 @@ public final class BookWorkflowExecutionService {
         plan.planId(),
         startedAt,
         entries,
+        planAuthorizer,
         Objects.requireNonNull(
             stepExecutionState.pendingSuccessfulStep(), "pendingSuccessfulStep"));
   }
@@ -114,9 +118,11 @@ public final class BookWorkflowExecutionService {
       Instant startedAt,
       List<BookWorkflowStep> steps,
       List<BookWorkflowJournalEntry> entries,
-      AttestationOperationAuthorizer attestationAuthorizer) {
+      AttestationPlanOperationAuthorizer attestationAuthorizer) {
     BookWorkflowJournalEntry.Succeeded pendingSuccessfulStep = null;
-    for (BookWorkflowStep step : steps) {
+    for (int stepOrder = 0; stepOrder < steps.size(); stepOrder++) {
+      BookWorkflowStep step = steps.get(stepOrder);
+      attestationAuthorizer.enterStep(stepOrder);
       var stepOutcome =
           executeStep(
               plan.planId(),
@@ -195,9 +201,12 @@ public final class BookWorkflowExecutionService {
       BookWorkflowPlanId planId,
       Instant startedAt,
       List<BookWorkflowJournalEntry> entries,
+      AttestationPlanOperationAuthorizer attestationAuthorizer,
       BookWorkflowJournalEntry.Succeeded pendingSuccessfulStep) {
     Instant commitStartedAt = Instant.now(clock);
     try {
+      transactionStore.appendPlanAttestation(
+          planId.value(), commitStartedAt, attestationAuthorizer);
       transactionStore.commitLedgerPlanTransaction();
     } catch (RuntimeException exception) {
       return boundaryFailureAfterRollback(

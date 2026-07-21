@@ -1,5 +1,8 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
+import java.time.Instant;
+
 /** Shared ledger-plan transaction defaults for SQLite capability wrappers. */
 interface SqlitePlanExecutionCapabilityView
     extends SqlitePlanExecutionSession, SqlitePostingCapabilityView {
@@ -31,5 +34,16 @@ interface SqlitePlanExecutionCapabilityView
   default void rollbackLedgerPlanTransaction() {
     storeThreadOwner().requireOwnerThread();
     storeLifecycle().transactions().rollback();
+  }
+
+  @Override
+  default void appendPlanAttestation(
+      String planId, Instant recordedAt, AttestationPlanOperationAuthorizer attestationAuthorizer) {
+    storeThreadOwner().requireOwnerThread();
+    if (!attestationAuthorizer.hasChildMutations()) {
+      return;
+    }
+    SqliteAttestationEvidenceStore.appendPlanAuthorized(
+        storeLifecycle().database(), planId, recordedAt, attestationAuthorizer);
   }
 }

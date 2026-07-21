@@ -71,7 +71,7 @@ class LedgerPlanOutcomeMapperTest {
   @Test
   void unexpectedExecutionFailure_omitsDetailWhenMessageIsBlank() {
     LedgerStep step =
-        new LedgerStep.EnsureBook(stepId("open"), ExecutorAccountingTestSupport.openBookCommand());
+        new LedgerStep.InspectBook(stepId("open"));
 
     var journalEntry =
         LedgerPlanUnexpectedOutcomes.unexpectedExecutionFailure(
@@ -85,7 +85,7 @@ class LedgerPlanOutcomeMapperTest {
   @Test
   void unexpectedExecutionFailure_omitsDetailWhenMessageIsNull() {
     LedgerStep step =
-        new LedgerStep.EnsureBook(stepId("open"), ExecutorAccountingTestSupport.openBookCommand());
+        new LedgerStep.InspectBook(stepId("open"));
 
     var journalEntry =
         LedgerPlanUnexpectedOutcomes.unexpectedExecutionFailure(
@@ -99,7 +99,7 @@ class LedgerPlanOutcomeMapperTest {
   @Test
   void unexpectedExecutionFailure_includesNonBlankDetail() {
     LedgerStep step =
-        new LedgerStep.EnsureBook(stepId("open"), ExecutorAccountingTestSupport.openBookCommand());
+        new LedgerStep.InspectBook(stepId("open"));
 
     var journalEntry =
         LedgerPlanUnexpectedOutcomes.unexpectedExecutionFailure(
@@ -117,8 +117,7 @@ class LedgerPlanOutcomeMapperTest {
   void unexpectedPlanFailure_recordsCheckpointCleanupAndPriorFailureFacts() {
     BookWorkflowStep step =
         workflowStep(
-            new LedgerStep.EnsureBook(
-                stepId("open"), ExecutorAccountingTestSupport.openBookCommand()));
+            new LedgerStep.InspectBook(stepId("open")));
 
     var journalEntry =
         LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
@@ -174,8 +173,7 @@ class LedgerPlanOutcomeMapperTest {
   void unexpectedPlanFailure_omitsDetailWhenMessageIsBlank() {
     BookWorkflowStep step =
         workflowStep(
-            new LedgerStep.EnsureBook(
-                stepId("open"), ExecutorAccountingTestSupport.openBookCommand()));
+            new LedgerStep.InspectBook(stepId("open")));
 
     var journalEntry =
         LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
@@ -197,8 +195,7 @@ class LedgerPlanOutcomeMapperTest {
   void unexpectedPlanFailure_omitsDetailWhenMessageIsNull() {
     BookWorkflowStep step =
         workflowStep(
-            new LedgerStep.EnsureBook(
-                stepId("open"), ExecutorAccountingTestSupport.openBookCommand()));
+            new LedgerStep.InspectBook(stepId("open")));
 
     var journalEntry =
         LedgerPlanUnexpectedOutcomes.unexpectedPlanFailure(
@@ -381,7 +378,7 @@ class LedgerPlanOutcomeMapperTest {
 
     assertEquals("administration-book-not-initialized", bookNotInitialized.failure().code());
     assertEquals(
-        "The selected book does not exist or has not been initialized with an ensure-book step.",
+        "The selected book does not exist or has not been opened.",
         bookNotInitialized.failure().message());
     assertEquals("book-contains-schema", bookContainsSchema.failure().code());
     assertEquals(
@@ -668,7 +665,7 @@ class LedgerPlanOutcomeMapperTest {
     assertEquals(
         BookAdministrationRejection.bookNotInitializedCode(),
         LedgerPlanStepOutcomes.missingBookCode(
-            new BookWorkflowStep.EnsureBook(internalStepId("open"), bookIdentity())));
+            new BookWorkflowStep.InspectBook(internalStepId("open"))));
     assertEquals(
         BookAdministrationRejection.bookNotInitializedCode(),
         LedgerPlanStepOutcomes.missingBookCode(

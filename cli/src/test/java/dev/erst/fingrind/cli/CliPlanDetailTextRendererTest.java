@@ -23,15 +23,6 @@ class CliPlanDetailTextRendererTest extends CliFixtureSupport {
   void renderStepData_rendersScalarPlanPayloadVariants() {
     assertContainsAll(
         CliPlanDetailTextRenderer.renderStepData(
-            new CliPlanJsonModels.EnsureBookStepDataPayload(
-                "2026-04-17T10:15:31Z", "Acme Studio", "EUR", "01-01", "2026-01-01")),
-        "Initialized at",
-        "Acme Studio",
-        "Functional currency",
-        "Fiscal year start",
-        "Book start effective date");
-    assertContainsAll(
-        CliPlanDetailTextRenderer.renderStepData(
             new CliPlanJsonModels.AccountDeclarationStepDataPayload(
                 "reactivated",
                 CliBookPayloadMapper.accountPayload(

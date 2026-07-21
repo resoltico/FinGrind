@@ -40,10 +40,8 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
     assertTrue(rendered.contains("01. Ensure Book [succeeded]"));
     assertTrue(rendered.contains("02. Plan Boundary (Commit) [succeeded]"));
     assertTrue(rendered.contains("Outcome"));
-    assertTrue(rendered.contains("Entity name"));
-    assertTrue(rendered.contains("Acme Studio"));
-    assertTrue(rendered.contains("Functional currency"));
-    assertTrue(rendered.contains("Fiscal year start"));
+    assertTrue(rendered.contains("State"));
+    assertTrue(rendered.contains("Initialized"));
     assertFalse(rendered.contains("Outcome shape"));
     assertFalse(rendered.contains("Succeeded"));
   }
@@ -78,18 +76,16 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
     Instant startedAt = Instant.parse("2026-04-17T10:15:30Z");
     Instant openFinishedAt = Instant.parse("2026-04-17T10:15:31Z");
     Instant commitFinishedAt = Instant.parse("2026-04-17T10:15:32Z");
-    LedgerJournalEntry.Succeeded openStep =
+    LedgerJournalEntry.Succeeded inspectStep =
         new LedgerJournalEntry.Succeeded(
-            stepId("open-book"),
-            LedgerJournalStep.standard(LedgerStepKind.ENSURE_BOOK),
+            stepId("inspect-book"),
+            LedgerJournalStep.standard(LedgerStepKind.INSPECT_BOOK),
             startedAt,
             openFinishedAt,
             List.of(
-                LedgerFact.text("initializedAt", openFinishedAt.toString()),
-                LedgerFact.text("entityName", "Acme Studio"),
-                LedgerFact.text("functionalCurrency", "EUR"),
-                LedgerFact.text("fiscalYearStart", "01-01"),
-                LedgerFact.text("bookStartEffectiveDate", "2026-01-01")));
+                LedgerFact.text("state", "initialized"),
+                LedgerFact.flag("initialized", true),
+                LedgerFact.flag("compatibleWithCurrentBinary", true)));
     LedgerJournalEntry.Succeeded commitStep =
         new LedgerJournalEntry.Succeeded(
             stepId("@plan-boundary:commit"),
@@ -99,7 +95,7 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
             List.of());
     return new LedgerPlanResult.Succeeded(
         planId("plan-success"),
-        new LedgerExecutionJournal(startedAt, commitFinishedAt, List.of(openStep, commitStep)));
+        new LedgerExecutionJournal(startedAt, commitFinishedAt, List.of(inspectStep, commitStep)));
   }
 
   private static LedgerPlanResult.AssertionFailed assertionFailedPlanResult() {

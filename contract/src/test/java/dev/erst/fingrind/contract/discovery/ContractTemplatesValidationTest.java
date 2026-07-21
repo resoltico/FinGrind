@@ -119,37 +119,11 @@ class ContractTemplatesValidationTest {
     assertDoesNotThrow(
         () -> {
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-              "open",
-              LedgerStepKind.ENSURE_BOOK,
-              new ContractPlanTemplates.EnsureBookTemplateDescriptor(
-                  "Acme Studio",
-                  "OWNER_MANAGED_SERVICE",
-                  "CASH",
-                  null,
-                  "EUR",
-                  "01-01",
-                  "2026-01-01"),
-              null,
-              null,
-              null,
-              null,
-              null,
-              null);
-          new ContractPlanTemplates.EnsureBookTemplateDescriptor(
-              "Acme Trading",
-              "OWNER_MANAGED_TRADING",
-              "CASH",
-              "WEIGHTED_AVERAGE",
-              "EUR",
-              "01-01",
-              "2026-01-01");
-          new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
-              "inspect", LedgerStepKind.INSPECT_BOOK, null, null, null, null, null, null, null);
+              "inspect", LedgerStepKind.INSPECT_BOOK, null, null, null, null, null, null);
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "preflight",
               LedgerStepKind.PREFLIGHT_ENTRY,
-              null,
-              postingTemplate(),
+                            postingTemplate(),
               null,
               null,
               null,
@@ -158,8 +132,7 @@ class ContractTemplatesValidationTest {
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "post",
               LedgerStepKind.POST_ENTRY,
-              null,
-              postingTemplate(),
+                            postingTemplate(),
               null,
               null,
               null,
@@ -168,8 +141,7 @@ class ContractTemplatesValidationTest {
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "declare",
               LedgerStepKind.DECLARE_ACCOUNT,
-              null,
-              null,
+                            null,
               new ContractTemplates.DeclareAccountTemplateDescriptor(
                   "1000",
                   "Cash",
@@ -188,8 +160,7 @@ class ContractTemplatesValidationTest {
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "declare-tax",
               LedgerStepKind.DECLARE_TAX_REGISTRATION,
-              null,
-              null,
+                            null,
               null,
               MachineContractTemplatesCatalog.declareTaxRegistrationTemplate(),
               null,
@@ -198,8 +169,7 @@ class ContractTemplatesValidationTest {
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "list-accounts",
               LedgerStepKind.LIST_ACCOUNTS,
-              null,
-              null,
+                            null,
               null,
               null,
               null,
@@ -208,8 +178,7 @@ class ContractTemplatesValidationTest {
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "list-postings",
               LedgerStepKind.LIST_POSTINGS,
-              null,
-              null,
+                            null,
               null,
               null,
               new ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor(
@@ -219,8 +188,7 @@ class ContractTemplatesValidationTest {
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "balance",
               LedgerStepKind.ACCOUNT_BALANCE,
-              null,
-              null,
+                            null,
               null,
               null,
               new ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor(
@@ -230,8 +198,7 @@ class ContractTemplatesValidationTest {
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "get-posting",
               LedgerStepKind.GET_POSTING,
-              null,
-              null,
+                            null,
               null,
               null,
               null,
@@ -240,8 +207,7 @@ class ContractTemplatesValidationTest {
           new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
               "assert",
               LedgerStepKind.ASSERT,
-              null,
-              null,
+                            null,
               null,
               null,
               null,
@@ -265,8 +231,7 @@ class ContractTemplatesValidationTest {
             new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
                 "broken-balance",
                 LedgerStepKind.ACCOUNT_BALANCE,
-                null,
-                null,
+                                null,
                 null,
                 null,
                 new ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor(
@@ -279,8 +244,7 @@ class ContractTemplatesValidationTest {
             new ContractPlanTemplates.LedgerPlanStepTemplateDescriptor(
                 "missing-posting-id",
                 LedgerStepKind.GET_POSTING,
-                null,
-                null,
+                                null,
                 null,
                 null,
                 null,
@@ -735,9 +699,8 @@ class ContractTemplatesValidationTest {
             () ->
                 ContractTemplateShapeValidator.stepRequirements(
                     java.util.Map.of(
-                        LedgerStepKind.ENSURE_BOOK,
+                        LedgerStepKind.INSPECT_BOOK,
                         new ContractTemplateStepShapeRequirements(
-                            ContractTemplateFieldPresence.REQUIRED,
                             ContractTemplateFieldPresence.FORBIDDEN,
                             ContractTemplateFieldPresence.FORBIDDEN,
                             ContractTemplateFieldPresence.FORBIDDEN,

@@ -6,7 +6,7 @@ import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.FIXED_CLOC
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.account;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.groupFact;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.initializedBook;
-import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.openBookStep;
+import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.inspectBookStep;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.planId;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.postEntryCommand;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.service;
@@ -67,7 +67,7 @@ class LedgerPlanServiceWorkflowTest {
                   new LedgerPlan(
                       planId("plan-1"),
                       List.of(
-                          openBookStep("open"),
+                          inspectBookStep("open"),
                           new LedgerStep.DeclareAccount(
                               stepId("cash"),
                               account("1000", "Cash", AccountType.ASSET, NormalBalance.DEBIT)),
@@ -116,7 +116,7 @@ class LedgerPlanServiceWorkflowTest {
       assertTrue(
           result.journal().steps().stream()
               .allMatch(step -> step.status() == LedgerStepStatus.SUCCEEDED));
-      assertEquals(LedgerStepKind.ENSURE_BOOK, result.journal().steps().getFirst().kind());
+      assertEquals(LedgerStepKind.INSPECT_BOOK, result.journal().steps().getFirst().kind());
       assertEquals(LedgerStepKind.ASSERT, result.journal().steps().getLast().kind());
       assertEquals(
           LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
@@ -137,7 +137,7 @@ class LedgerPlanServiceWorkflowTest {
                   new LedgerPlan(
                       planId("tax-setup"),
                       List.of(
-                          openBookStep("ensure-book"),
+                          inspectBookStep("inspect-book"),
                           new LedgerStep.DeclareAccount(
                               stepId("declare-tax-payable"),
                               new DeclareAccountCommand(
@@ -160,7 +160,7 @@ class LedgerPlanServiceWorkflowTest {
       assertEquals(LedgerPlanStatus.SUCCEEDED, result.status());
       assertEquals(
           List.of(
-              LedgerStepKind.ENSURE_BOOK,
+              LedgerStepKind.INSPECT_BOOK,
               LedgerStepKind.DECLARE_ACCOUNT,
               LedgerStepKind.DECLARE_ACCOUNT,
               LedgerStepKind.DECLARE_TAX_REGISTRATION),
@@ -209,7 +209,7 @@ class LedgerPlanServiceWorkflowTest {
                   new LedgerPlan(
                       planId("tax-setup-rejected"),
                       List.of(
-                          openBookStep("ensure-book"),
+                          inspectBookStep("inspect-book"),
                           new LedgerStep.DeclareAccount(
                               stepId("declare-tax-payable"),
                               new DeclareAccountCommand(
@@ -326,7 +326,7 @@ class LedgerPlanServiceWorkflowTest {
 
   private static List<LedgerStep> taxSetupSteps(DeclareTaxRegistrationCommand taxRegistration) {
     return List.of(
-        openBookStep("ensure-book"),
+        inspectBookStep("inspect-book"),
         new LedgerStep.DeclareAccount(
             stepId("declare-tax-payable"),
             new DeclareAccountCommand(
@@ -412,7 +412,7 @@ class LedgerPlanServiceWorkflowTest {
                   new LedgerPlan(
                       planId("plan-1"),
                       List.of(
-                          openBookStep("open"),
+                          inspectBookStep("open"),
                           new LedgerStep.DeclareAccount(
                               stepId("cash"),
                               account("1000", "Cash", AccountType.ASSET, NormalBalance.DEBIT)),
@@ -437,11 +437,11 @@ class LedgerPlanServiceWorkflowTest {
   }
 
   @Test
-  void execute_replaysEnsureBookAndRejectsConflictingRedeclaration() {
+  void execute_rejectsConflictingRedeclarationAndRejectsConflictingRedeclaration() {
     try (InMemoryBookSession bookSession = initializedBook()) {
       var openBookResult =
           service(bookSession)
-              .execute(new LedgerPlan(planId("plan-open"), List.of(openBookStep("open"))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+              .execute(new LedgerPlan(planId("plan-open"), List.of(inspectBookStep("open"))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.SUCCEEDED, openBookResult.status());
     }
@@ -534,7 +534,7 @@ class LedgerPlanServiceWorkflowTest {
         new LedgerPlanServiceTestSupport.ThrowingLedgerPlanSession()) {
       var service = service(bookSession);
 
-      var result = service.execute(new LedgerPlan(planId("plan-1"), List.of(openBookStep("open"))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+      var result = service.execute(new LedgerPlan(planId("plan-1"), List.of(inspectBookStep("open"))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(
@@ -566,7 +566,7 @@ class LedgerPlanServiceWorkflowTest {
               new LedgerPlan(
                   planId("plan-1"),
                   List.of(
-                      openBookStep("open"),
+                      inspectBookStep("open"),
                       new LedgerStep.DeclareAccount(
                           stepId("cash"),
                           account("1000", "Cash", AccountType.ASSET, NormalBalance.DEBIT)))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
@@ -588,7 +588,7 @@ class LedgerPlanServiceWorkflowTest {
         new LedgerPlanServiceTestSupport.BeginFailingLedgerPlanSession()) {
       var service = service(bookSession);
 
-      var result = service.execute(new LedgerPlan(planId("plan-1"), List.of(openBookStep("open"))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+      var result = service.execute(new LedgerPlan(planId("plan-1"), List.of(inspectBookStep("open"))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(
@@ -649,7 +649,7 @@ class LedgerPlanServiceWorkflowTest {
         new LedgerPlanServiceTestSupport.CommitFailingLedgerPlanSession()) {
       var service = service(bookSession);
 
-      var result = service.execute(new LedgerPlan(planId("plan-1"), List.of(openBookStep("open"))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+      var result = service.execute(new LedgerPlan(planId("plan-1"), List.of(inspectBookStep("open"))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(
@@ -723,7 +723,7 @@ class LedgerPlanServiceWorkflowTest {
         new LedgerPlanServiceTestSupport.RuntimeRollbackFailingLedgerPlanSession()) {
       var service = service(bookSession);
 
-      var result = service.execute(new LedgerPlan(planId("plan-1"), List.of(openBookStep("open"))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+      var result = service.execute(new LedgerPlan(planId("plan-1"), List.of(inspectBookStep("open"))), ExecutorAccountingTestSupport.TEST_AUTHORIZER);
 
       assertEquals(LedgerPlanStatus.REJECTED, result.status());
       assertEquals(
