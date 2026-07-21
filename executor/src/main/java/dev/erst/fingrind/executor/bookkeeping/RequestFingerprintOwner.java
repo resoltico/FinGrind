@@ -117,8 +117,7 @@ final class RequestFingerprintOwner {
       append(canonical, "approval[" + index + "].approvalId", approval.approvalId().value());
       append(canonical, "approval[" + index + "].approvalType", approval.approvalType().value());
       append(canonical, "approval[" + index + "].approverReference", approval.approverReference());
-      append(
-          canonical, "approval[" + index + "].approverType", approval.approverType());
+      append(canonical, "approval[" + index + "].approverType", approval.approverType());
       append(canonical, "approval[" + index + "].decision", approval.decision().wireValue());
       append(canonical, "approval[" + index + "].approvedAt", approval.approvedAt().toString());
     }

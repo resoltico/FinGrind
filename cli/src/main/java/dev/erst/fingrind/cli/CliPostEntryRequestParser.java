@@ -1,8 +1,6 @@
 package dev.erst.fingrind.cli;
 
 import static dev.erst.fingrind.cli.CliJsonFieldAccess.optionalText;
-import static dev.erst.fingrind.cli.CliJsonFieldAccess.requiredText;
-import static dev.erst.fingrind.cli.CliJsonScalarParsers.parseWireValue;
 import static dev.erst.fingrind.cli.CliJsonStructureAccess.rejectForbiddenField;
 import static dev.erst.fingrind.cli.CliJsonStructureAccess.rejectUnexpectedFields;
 import static dev.erst.fingrind.cli.CliJsonStructureAccess.requiredObject;

@@ -258,8 +258,8 @@ final class SqlitePostingMapper {
                   requiredText(approvalRows, SqlitePostingColumnIndexes.COL_APPROVAL_ID)),
               new ApprovalType(
                   requiredText(approvalRows, SqlitePostingColumnIndexes.COL_APPROVAL_TYPE)),
-            requiredText(approvalRows, SqlitePostingColumnIndexes.COL_APPROVER_REFERENCE),
-            requiredText(approvalRows, SqlitePostingColumnIndexes.COL_APPROVER_TYPE),
+              requiredText(approvalRows, SqlitePostingColumnIndexes.COL_APPROVER_REFERENCE),
+              requiredText(approvalRows, SqlitePostingColumnIndexes.COL_APPROVER_TYPE),
               ApprovalDecision.fromWireValue(
                   requiredText(approvalRows, SqlitePostingColumnIndexes.COL_APPROVAL_DECISION)),
               CanonicalTemporalText.parseUtcInstant(
