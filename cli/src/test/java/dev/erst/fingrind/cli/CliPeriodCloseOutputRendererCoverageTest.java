@@ -2,10 +2,43 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.SweptInterimResult;
+import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.ReportingPeriod;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 /** Coverage for close-output titles and idempotent replay rendering. */
 class CliPeriodCloseOutputRendererCoverageTest extends CliFixtureSupport {
+  @Test
+  void renderSweptInterimResultText_rendersMovementsAndTheNoMovementOutcome() {
+    String renderedWithMovements =
+        CliPeriodCloseOutputRenderer.renderSweptInterimResultText(sampleSweptInterimResult());
+
+    assertTrue(renderedWithMovements.contains("Interim Result Swept"), renderedWithMovements);
+    assertTrue(renderedWithMovements.contains("EUR 10.00 Credit"), renderedWithMovements);
+    assertTrue(renderedWithMovements.contains("98be232b-af01-324d-b4fc-6f62636fae68"));
+
+    SweptInterimResult noMovementResult =
+        new SweptInterimResult(
+            2,
+            new ReportingPeriod(LocalDate.parse("2026-05-01"), LocalDate.parse("2026-05-31")),
+            new AccountCode("3200"),
+            List.of(),
+            Instant.parse("2026-05-31T12:00:00Z"),
+            List.of());
+    String renderedWithoutMovements =
+        CliPeriodCloseOutputRenderer.renderSweptInterimResultText(noMovementResult);
+
+    assertTrue(renderedWithoutMovements.contains("Generated interim-result-sweep postings"));
+    assertTrue(renderedWithoutMovements.contains("(none)"));
+    assertTrue(
+        renderedWithoutMovements.contains(
+            "No closing movements were required for the selected reporting period."));
+  }
+
   @Test
   void renderClosedFiscalYearText_marksIdempotentReplayAsAlreadyClosed() {
     String rendered =
@@ -14,5 +47,18 @@ class CliPeriodCloseOutputRendererCoverageTest extends CliFixtureSupport {
     assertTrue(rendered.contains("Fiscal Year Already Closed"), rendered);
     assertTrue(rendered.contains("Idempotent replay"), rendered);
     assertTrue(rendered.contains("Yes"), rendered);
+  }
+
+  @Test
+  void renderClosedFiscalYearText_rendersFreshCloseAndAllGeneratedPostings() {
+    String rendered =
+        CliPeriodCloseOutputRenderer.renderClosedFiscalYearText(sampleClosedFiscalYear(), false);
+
+    assertTrue(rendered.contains("Fiscal Year Closed"), rendered);
+    assertTrue(rendered.contains("Generated fiscal-year-close postings"), rendered);
+    assertTrue(rendered.contains("98be232b-af01-324d-b4fc-6f62636fae68"), rendered);
+    assertTrue(rendered.contains("548200b1-9743-3000-a75c-17a99ebf79b7"), rendered);
+    assertTrue(rendered.contains("Idempotent replay"), rendered);
+    assertTrue(rendered.contains("No"), rendered);
   }
 }
