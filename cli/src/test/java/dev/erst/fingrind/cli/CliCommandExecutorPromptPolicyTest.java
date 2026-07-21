@@ -70,18 +70,11 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
         outputStream,
         () ->
             executor.runBackupBookCommand(
-                PROMPT_BOOK_ACCESS, BACKUP_FILE, BACKUP_KEY_FILE, OutputMode.JSON));
-    assertPromptFailure(
-        outputStream,
-        () ->
-            executor.runRestoreRekeyRollbackCommand(
-                BOOK_FILE,
-                null,
-                BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+                PROMPT_BOOK_ACCESS,
+                BACKUP_FILE,
+                BACKUP_KEY_FILE,
+                java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"),
                 OutputMode.JSON));
-    assertPromptFailure(
-        outputStream,
-        () -> executor.runDeleteRekeyRollbackCommand(PROMPT_BOOK_ACCESS, null, OutputMode.JSON));
     assertPromptFailure(
         outputStream,
         () -> executor.runDeclareAccountCommand(PROMPT_BOOK_ACCESS, REQUEST_FILE, OutputMode.JSON));

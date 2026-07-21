@@ -164,8 +164,6 @@ class CliPlanDetailTextRendererTest extends CliFixtureSupport {
             null,
             "2026-04-17",
             "2026-04-17T10:15:32Z",
-            "actor-1",
-            "AGENT",
             "command-1",
             "idem-1",
             "cause-1",

@@ -42,23 +42,24 @@ class CliJsonRequestCodecTest {
   void requestPlaceholderValues_rejectNestedScaffoldValuesAndKeepRealValues() throws Exception {
     var mapper = CliJsonObjectMappers.configuredObjectMapper();
     var realProvenance =
-        (tools.jackson.databind.node.ObjectNode) mapper.readTree("{\"actorId\":\"operator-1\"}");
+        (tools.jackson.databind.node.ObjectNode) mapper.readTree("{\"commandId\":\"command-1\"}");
     assertEquals(
-        "operator-1",
+        "command-1",
         CliRequestPlaceholderValues.requiredRealProvenanceText(
-            realProvenance, "actorId", ScaffoldPlaceholders.ACTOR_ID));
+            realProvenance, "commandId", ScaffoldPlaceholders.COMMAND_ID));
 
     var reservedProvenance =
         (tools.jackson.databind.node.ObjectNode)
-            mapper.readTree("{\"actorId\":\"%s\"}".formatted(ScaffoldPlaceholders.ACTOR_ID));
+            mapper.readTree(
+                "{\"commandId\":\"%s\"}".formatted(ScaffoldPlaceholders.COMMAND_ID));
     IllegalArgumentException provenanceFailure =
         assertThrows(
             IllegalArgumentException.class,
             () ->
                 CliRequestPlaceholderValues.requiredRealProvenanceText(
-                    reservedProvenance, "actorId", ScaffoldPlaceholders.ACTOR_ID));
+                    reservedProvenance, "commandId", ScaffoldPlaceholders.COMMAND_ID));
     assertEquals(
-        "Scaffold placeholder must be replaced before submission: provenance.actorId",
+        "Scaffold placeholder must be replaced before submission: provenance.commandId",
         provenanceFailure.getMessage());
 
     IllegalArgumentException topLevelFailure =
@@ -66,9 +67,9 @@ class CliJsonRequestCodecTest {
             IllegalArgumentException.class,
             () ->
                 CliRequestPlaceholderValues.requiredRealText(
-                    reservedProvenance, "actorId", ScaffoldPlaceholders.ACTOR_ID, null));
+                    reservedProvenance, "commandId", ScaffoldPlaceholders.COMMAND_ID, null));
     assertEquals(
-        "Scaffold placeholder must be replaced before submission: actorId",
+        "Scaffold placeholder must be replaced before submission: commandId",
         topLevelFailure.getMessage());
 
     var requestWithReservedSourceDocument =

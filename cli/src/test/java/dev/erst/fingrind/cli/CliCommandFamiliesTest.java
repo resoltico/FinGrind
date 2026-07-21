@@ -81,7 +81,7 @@ class CliCommandFamiliesTest {
     assertSame(reportOutput, reportCommand.output());
 
     assertSame(BOOK_ACCESS, nullablePathCommand.bookAccess());
-    assertEquals(Path.of("rollback.zip"), nullablePathCommand.rollbackArtifactPath());
+    assertEquals(Path.of("rollback.zip"), nullablePathCommand.optionalArtifactPath());
     assertSame(outputMode, nullablePathCommand.outputMode());
   }
 }

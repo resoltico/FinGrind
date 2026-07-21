@@ -194,7 +194,6 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
     ObjectNode stepNode = bareStepNode(kind);
     ObjectNode postingNode = postingRequestNode(operationId);
     ObjectNode provenanceNode = (ObjectNode) postingNode.path("provenance");
-    provenanceNode.put("actorId", "actor-1");
     provenanceNode.put("commandId", "command-1");
     provenanceNode.put("idempotencyKey", "idem-1");
     provenanceNode.put("causationId", "cause-1");
@@ -211,7 +210,6 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
         CliWireJson.jsonText(Objects.requireNonNull(MachineContract.requestTemplate(operationId)))
             .replace(ScaffoldPlaceholders.EFFECTIVE_DATE, "2026-04-07")
             .replace(ScaffoldPlaceholders.RECORDED_AT, "2026-04-07T12:00:00Z")
-            .replace(ScaffoldPlaceholders.ACTOR_ID, "actor-1")
             .replace(ScaffoldPlaceholders.COMMAND_ID, "command-1")
             .replace(ScaffoldPlaceholders.IDEMPOTENCY_KEY, "idem-1")
             .replace(ScaffoldPlaceholders.CAUSATION_ID, "cause-1")
@@ -219,7 +217,7 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
             .replace(ScaffoldPlaceholders.SOURCE_DOCUMENT_TYPE, "invoice.pdf")
             .replace(ScaffoldPlaceholders.APPROVAL_ID, "approval-1")
             .replace(ScaffoldPlaceholders.APPROVAL_TYPE, "manager-signoff")
-            .replace(ScaffoldPlaceholders.APPROVER_ID, "approver-1");
+            .replace(ScaffoldPlaceholders.APPROVER_REFERENCE, "approver-1");
     return (ObjectNode) CliJsonObjectMappers.configuredObjectMapper().readTree(requestJson);
   }
 

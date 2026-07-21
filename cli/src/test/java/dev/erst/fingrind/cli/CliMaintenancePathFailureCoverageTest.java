@@ -29,7 +29,6 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
     Path book = Path.of("books", "live.sqlite");
     Path backup = Path.of("backups", "source.sqlite");
     Path sidecar = Path.of("books", "live.sqlite-wal");
-    Path rollback = Path.of("books", "live.sqlite.rekey-rollback");
     List<MaintenancePathCase> cases =
         List.of(
             new MaintenancePathCase(
@@ -73,22 +72,7 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
                     backup,
                     BookMaintenanceVerificationFailure.MISSING),
                 backup,
-                List.of()),
-            new MaintenancePathCase(
-                new BookMaintenanceRejection.NoRollbackArtifactsFound(book), book, List.of()),
-            new MaintenancePathCase(
-                new BookMaintenanceRejection.RollbackArtifactSelectionRequired(
-                    book, List.of(rollback, Path.of("books", "other-rekey-rollback"))),
-                book,
-                List.of(rollback, Path.of("books", "other-rekey-rollback"))),
-            new MaintenancePathCase(
-                new BookMaintenanceRejection.RollbackArtifactNotFound(rollback),
-                rollback,
-                List.of()),
-            new MaintenancePathCase(
-                new BookMaintenanceRejection.RollbackArtifactNotForBook(book, rollback),
-                book,
-                List.of(rollback)));
+                List.of()));
 
     for (MaintenancePathCase pathCase : cases) {
       CliEnvelopeJsonModels.Envelope<?> envelope =
@@ -249,14 +233,7 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
     assertExitCodes(
         2,
         new BookMaintenanceRejection.BackupSourceMatchesLiveBook(
-            hint(Path.of("book.sqlite")), hint(Path.of("backup.sqlite"))),
-        new BookMaintenanceRejection.NoRollbackArtifactsFound(hint(Path.of("book.sqlite"))),
-        new BookMaintenanceRejection.RollbackArtifactSelectionRequired(
-            hint(Path.of("book.sqlite")),
-            List.of(hint(Path.of("first.sqlite")), hint(Path.of("second.sqlite")))),
-        new BookMaintenanceRejection.RollbackArtifactNotFound(hint(Path.of("rollback.sqlite"))),
-        new BookMaintenanceRejection.RollbackArtifactNotForBook(
-            hint(Path.of("book.sqlite")), hint(Path.of("rollback.sqlite"))));
+            hint(Path.of("book.sqlite")), hint(Path.of("backup.sqlite"))));
   }
 
   private static void assertMaintenanceHint(

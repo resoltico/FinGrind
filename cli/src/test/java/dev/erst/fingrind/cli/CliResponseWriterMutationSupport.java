@@ -7,7 +7,6 @@ import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
-import dev.erst.fingrind.contract.bookkeeping.RekeyRollbackResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
@@ -66,18 +65,6 @@ class CliResponseWriterMutationSupport extends CliResponseWriterDiscoverySupport
 
   void writeRestoreBookResult(RestoreBookResult result, OutputMode outputMode) {
     mutationWriter.writeRestoreBookResult(result, outputMode);
-  }
-
-  void writeInspectRekeyRollbackResult(RekeyRollbackResult result, OutputMode outputMode) {
-    mutationWriter.writeInspectRekeyRollbackResult(result, outputMode);
-  }
-
-  void writeRestoreRekeyRollbackResult(RekeyRollbackResult result, OutputMode outputMode) {
-    mutationWriter.writeRestoreRekeyRollbackResult(result, outputMode);
-  }
-
-  void writeDeleteRekeyRollbackResult(RekeyRollbackResult result, OutputMode outputMode) {
-    mutationWriter.writeDeleteRekeyRollbackResult(result, outputMode);
   }
 
   void writeDeclareAccountResult(DeclareAccountResult result) {

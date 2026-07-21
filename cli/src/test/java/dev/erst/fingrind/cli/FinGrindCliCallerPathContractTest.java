@@ -347,7 +347,8 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
           public dev.erst.fingrind.contract.runtime.ContractDecision<BackupBookResult> backupBook(
               dev.erst.fingrind.contract.runtime.BookAccess bookAccess,
               Path backupFilePath,
-              Path backupBookKeyFilePath) {
+              Path backupBookKeyFilePath,
+              java.util.UUID backupId) {
             return accepted(
                 new BackupBookResult.Rejected(
                     new BookMaintenanceRejection.ArtifactPathInvalid(
@@ -391,7 +392,8 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
               Path newBookKeyFilePath,
               Path backupFilePath,
               Path backupKeyFilePath,
-              boolean replaceExistingBook) {
+              java.util.List<dev.erst.fingrind.core.attestation.AttestationCredentialSource>
+                  attestationCredentialSources) {
             return accepted(
                 new RestoreBookResult.Rejected(
                     new BookMaintenanceRejection.ArtifactPathInvalid(

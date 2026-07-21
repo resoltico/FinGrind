@@ -76,7 +76,6 @@ class CliWireValueContractTest {
 
   private static Stream<Enum<?>[]> wireEnumFamilies() {
     return Stream.<Enum<?>[]>of(
-        ActorType.values(),
         BalanceSide.values(),
         NormalBalance.values(),
         JournalLine.EntrySide.values(),
