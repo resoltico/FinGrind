@@ -8,7 +8,13 @@ import dev.erst.fingrind.contract.bookkeeping.ExportAttestationReceiptResult;
 import dev.erst.fingrind.contract.bookkeeping.VerifyAttestationReceiptResult;
 import dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
+import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
+import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.VerificationFailure;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -54,6 +60,12 @@ class AttestationInspectionServiceTest {
     assertInstanceOf(
         dev.erst.fingrind.contract.runtime.ContractDecision.Rejected.class,
         service.exportReceipt(access, receiptPath));
+    Files.writeString(retainedDirectory.resolve("malformed.fgar"), "not an attestation receipt");
+    assertInstanceOf(
+        VerifyAttestationReceiptResult.Invalid.class,
+        service
+            .verifyReceipt(access, retainedDirectory.resolve("malformed.fgar"))
+            .requireAccepted());
   }
 
   @Test
@@ -97,6 +109,67 @@ class AttestationInspectionServiceTest {
     assertInstanceOf(
         dev.erst.fingrind.contract.runtime.ContractDecision.Rejected.class,
         valid.exportReceipt(credentialFreeAccess, temporaryDirectory.resolve("receipt.fgar")));
+    assertInstanceOf(
+        dev.erst.fingrind.contract.runtime.ContractDecision.Rejected.class,
+        structurallyInvalid.exportReceipt(access, temporaryDirectory.resolve("receipt.fgar")));
+
+    BookAccess unreadableCredentialAccess =
+        new BookAccess(
+            bookPath,
+            new BookAccess.PassphraseSource.KeyFile(bookPath.resolveSibling("book.key")),
+            List.of(
+                new AttestationCredentialSource(
+                    credential.source().principalId(),
+                    temporaryDirectory.resolve("missing.fgatk"),
+                    temporaryDirectory.resolve("missing.passphrase"))));
+    assertInstanceOf(
+        dev.erst.fingrind.contract.runtime.ContractDecision.Rejected.class,
+        valid.exportReceipt(
+            unreadableCredentialAccess, temporaryDirectory.resolve("receipt.fgar")));
+    assertInstanceOf(
+        dev.erst.fingrind.contract.runtime.ContractDecision.Rejected.class,
+        valid.exportReceipt(access, temporaryDirectory.resolve("missing-parent/receipt.fgar")));
+
+    Path retainedDirectory = Files.createDirectories(temporaryDirectory.resolve("retained"));
+    Path receiptPath = retainedDirectory.resolve("book.fgar");
+    valid.exportReceipt(access, receiptPath).requireAccepted();
+    AttestationInspectionService changedBook =
+        service(
+            bookPath,
+            List.of(
+                AttestationMaintenanceTestSupport.genesis(credential, RECORDED_AT.plusSeconds(1))));
+    assertInstanceOf(
+        VerifyAttestationReceiptResult.Invalid.class,
+        changedBook.verifyReceipt(access, receiptPath).requireAccepted());
+  }
+
+  @Test
+  void rejectsUnreadableProtectedBookStatesBeforeReadingAttestationEvidence() throws IOException {
+    AttestationMaintenanceTestSupport.CredentialFixture credential = credential();
+    Path bookPath = temporaryDirectory.resolve("book/live.sqlite");
+    BookAccess access = AttestationMaintenanceTestSupport.bookAccess(bookPath, credential);
+    AttestationMaintenanceTestSupport.Store verificationFailure =
+        new AttestationMaintenanceTestSupport.Store(bookPath, List.of(genesis(credential)));
+    verificationFailure.setLiveVerification(
+        MaintenanceDecision.accepted(
+            new VerificationFailure(bookPath, ProtectedBookVerificationFailure.MISSING)));
+    assertInstanceOf(
+        dev.erst.fingrind.contract.runtime.ContractDecision.Rejected.class,
+        new AttestationInspectionService(CLOCK, verificationFailure).verifyBook(access));
+
+    AttestationMaintenanceTestSupport.Store storageFailure =
+        new AttestationMaintenanceTestSupport.Store(bookPath, List.of(genesis(credential)));
+    storageFailure.setLiveVerification(
+        MaintenanceDecision.failed(
+            new MaintenanceFailure(
+                ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE,
+                "simulated protected-book storage failure",
+                null,
+                null,
+                null)));
+    assertInstanceOf(
+        dev.erst.fingrind.contract.runtime.ContractDecision.Rejected.class,
+        new AttestationInspectionService(CLOCK, storageFailure).verifyBook(access));
   }
 
   private AttestationInspectionService service(Path bookPath, List<AttestationEvidence> evidence) {
