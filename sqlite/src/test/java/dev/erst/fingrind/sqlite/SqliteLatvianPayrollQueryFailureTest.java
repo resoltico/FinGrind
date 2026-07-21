@@ -150,7 +150,7 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
                             RUN_POSTING_ID,
                             PostingOriginKind.LATVIAN_MONTHLY_PAYROLL));
             assertEquals(
-                "Latvian payroll posting payroll-run-posting has no durable payroll-run facts.",
+                "Latvian payroll posting 46292ace-d9a6-38c2-8d72-a1b0e45a0e0d has no durable payroll-run facts.",
                 missingRun.getMessage());
           }
 
@@ -168,7 +168,7 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
                             SETTLEMENT_POSTING_ID,
                             PostingOriginKind.LATVIAN_PAYROLL_STATE_REMITTANCE));
             assertEquals(
-                "Latvian payroll settlement posting payroll-net-wage-posting has no durable settlement facts.",
+                "Latvian payroll settlement posting 99e31f28-d419-38dc-a82a-793a21ea95cd has no durable settlement facts.",
                 missingSettlement.getMessage());
           }
 
@@ -192,7 +192,7 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
                             SETTLEMENT_POSTING_ID,
                             PostingOriginKind.LATVIAN_PAYROLL_NET_WAGE_SETTLEMENT));
             assertEquals(
-                "Latvian payroll settlement posting payroll-net-wage-posting has no durable payroll-run facts.",
+                "Latvian payroll settlement posting 99e31f28-d419-38dc-a82a-793a21ea95cd has no durable payroll-run facts.",
                 missingRunForSettlement.getMessage());
           }
         });
@@ -290,11 +290,14 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
             55000,
             31620,
             147380,
-            'payroll-run-posting',
+            '%s',
             null
         where ?1 is not null
         """
-        .formatted(taxBookHeldAtEmployer, dependantCount);
+        .formatted(
+            taxBookHeldAtEmployer,
+            dependantCount,
+            TestPostingIds.valueForLabel("payroll-run-posting"));
   }
 
   private static String duplicateSettlementRowsSql() {
@@ -306,13 +309,14 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
         select
             'NET_WAGES',
             'payroll-run-2026-06-employee-001',
-            'payroll-net-wage-posting',
+            '%s',
             '2026-07-01',
             'payroll-cash',
             null
         where ?1 is not null
           and ?2 is not null
-        """;
+        """
+        .formatted(TestPostingIds.valueForLabel("payroll-net-wage-posting"));
   }
 
   private static String settlementRowByOriginSql() {
@@ -320,11 +324,12 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
         select
             'NET_WAGES',
             'payroll-run-2026-06-employee-001',
-            'payroll-net-wage-posting',
+            '%s',
             '2026-07-01',
             'payroll-cash',
             null
         where ?1 is not null
-        """;
+        """
+        .formatted(TestPostingIds.valueForLabel("payroll-net-wage-posting"));
   }
 }

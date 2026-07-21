@@ -144,7 +144,7 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
               from latvian_payroll_run
               """));
         assertEquals(
-            "NET_WAGES:payroll-net-wage-posting;STATE_REMITTANCE:payroll-state-remittance-posting",
+            "NET_WAGES:99e31f28-d419-38dc-a82a-793a21ea95cd;STATE_REMITTANCE:d9306dfe-fcc0-36ef-ade7-29280d38c67f",
             queryText(
                 database,
                 """

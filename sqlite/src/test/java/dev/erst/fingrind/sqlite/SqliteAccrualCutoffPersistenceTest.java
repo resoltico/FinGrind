@@ -355,18 +355,29 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
               amount_minor integer not null
           );
           insert into accrual_cutoff values
-              ('prepayment', 'PREPAYMENT', 'origin-prepayment', '2026-04-01', '1410', '5100', 'EUR', 10000, '2026-04-01', '2026-04-30'),
-              ('deferred-revenue', 'DEFERRED_REVENUE', 'origin-deferred', '2026-04-01', '2300', '4000', 'EUR', 10000, '2026-04-01', '2026-04-30'),
-              ('accrued-expense', 'ACCRUED_EXPENSE', 'origin-accrued', '2026-04-01', '2200', '5100', 'EUR', 10000, null, null);
+              ('prepayment', 'PREPAYMENT', '%s', '2026-04-01', '1410', '5100', 'EUR', 10000, '2026-04-01', '2026-04-30'),
+              ('deferred-revenue', 'DEFERRED_REVENUE', '%s', '2026-04-01', '2300', '4000', 'EUR', 10000, '2026-04-01', '2026-04-30'),
+              ('accrued-expense', 'ACCRUED_EXPENSE', '%s', '2026-04-01', '2200', '5100', 'EUR', 10000, null, null);
           insert into accrual_cutoff_application values
-              ('recognition-prepayment', 'prepayment', 'RECOGNITION', '2026-04-02', 'EUR', 1000),
-              ('recognition-deferred', 'deferred-revenue', 'RECOGNITION', '2026-04-02', 'EUR', 1000),
-              ('recognition-accrued', 'accrued-expense', 'RECOGNITION', '2026-04-02', 'EUR', 1000),
-              ('settlement-prepayment', 'prepayment', 'SETTLEMENT', '2026-04-02', 'EUR', 1000),
-              ('settlement-accrued', 'accrued-expense', 'SETTLEMENT', '2026-04-02', 'EUR', 1000),
-              ('missing-cutoff-recognition', 'missing-cutoff', 'RECOGNITION', '2026-04-02', 'EUR', 1000),
-              ('missing-cutoff-settlement', 'missing-cutoff', 'SETTLEMENT', '2026-04-02', 'EUR', 1000);
-          """);
+              ('%s', 'prepayment', 'RECOGNITION', '2026-04-02', 'EUR', 1000),
+              ('%s', 'deferred-revenue', 'RECOGNITION', '2026-04-02', 'EUR', 1000),
+              ('%s', 'accrued-expense', 'RECOGNITION', '2026-04-02', 'EUR', 1000),
+              ('%s', 'prepayment', 'SETTLEMENT', '2026-04-02', 'EUR', 1000),
+              ('%s', 'accrued-expense', 'SETTLEMENT', '2026-04-02', 'EUR', 1000),
+              ('%s', 'missing-cutoff', 'RECOGNITION', '2026-04-02', 'EUR', 1000),
+              ('%s', 'missing-cutoff', 'SETTLEMENT', '2026-04-02', 'EUR', 1000);
+          """
+              .formatted(
+                  TestPostingIds.valueForLabel("origin-prepayment"),
+                  TestPostingIds.valueForLabel("origin-deferred"),
+                  TestPostingIds.valueForLabel("origin-accrued"),
+                  TestPostingIds.valueForLabel("recognition-prepayment"),
+                  TestPostingIds.valueForLabel("recognition-deferred"),
+                  TestPostingIds.valueForLabel("recognition-accrued"),
+                  TestPostingIds.valueForLabel("settlement-prepayment"),
+                  TestPostingIds.valueForLabel("settlement-accrued"),
+                  TestPostingIds.valueForLabel("missing-cutoff-recognition"),
+                  TestPostingIds.valueForLabel("missing-cutoff-settlement")));
 
       assertInstanceOf(
           AccrualCutoffBookkeepingEntryVariants.Prepayment.class,

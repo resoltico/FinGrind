@@ -15,12 +15,14 @@ import dev.erst.fingrind.executor.bookkeeping.ClosedFiscalYearRecord;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.lang.reflect.Proxy;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
+import java.util.Iterator;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -37,6 +39,25 @@ class SqliteClosingMutationReadSupportCoverageTest extends SqlitePostingFactStor
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
       declareAllCloseTargets(postingFactStore);
+      assertInstanceOf(
+          PostingCommitResult.Committed.class,
+          commitPosting(
+              postingFactStore,
+              postingFact(
+                  "close-read-revenue",
+                  "close-read-revenue-idempotency",
+                  LocalDate.parse("2026-12-31"),
+                  Instant.parse("2026-12-31T12:00:00Z"),
+                  List.of(
+                      line("1000", dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT, "10.00"),
+                      line(
+                          "2000", dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT, "10.00")))));
+      Iterator<PostingId> generatedPostingIds =
+          List.of(
+                  new PostingId("b244b900-4f37-3bc5-8921-71e87988c768"),
+                  new PostingId("400a867a-e8bc-3b8f-a362-4c7991b8e7c0"),
+                  new PostingId("f2d6b8e9-39e5-3979-85c7-77ea755bc401"))
+              .iterator();
 
       FiscalYearCloseOutcome.Closed closed =
           assertInstanceOf(
@@ -49,7 +70,7 @@ class SqliteClosingMutationReadSupportCoverageTest extends SqlitePostingFactStor
                       directClosePlanner(),
                       LocalDate.now(CLOSED_CLOCK),
                       CLOSED_CLOCK.instant(),
-                      () -> new PostingId("b244b900-4f37-3bc5-8921-71e87988c768"),
+                      generatedPostingIds::next,
                       SqliteAttestationTestSupport.authorizer()));
 
       SqliteClosingMutationReadSupport readSupport =
@@ -59,9 +80,9 @@ class SqliteClosingMutationReadSupportCoverageTest extends SqlitePostingFactStor
               requireStoreDatabase(postingFactStore),
               SqliteReportingPeriodCloseSql.FIND_FISCAL_YEAR_CLOSE_POSTING_IDS,
               """
-              select 'close-posting-a' where ?1 is not null
+              select '1dd6c0b8-8a55-384b-8d9a-f9dadfefb140' where ?1 is not null
               union all
-              select 'close-posting-b' where ?1 is not null
+              select '08e947c3-7bf0-35b9-b5dd-596eca04cc4c' where ?1 is not null
               """)) {
         ClosedFiscalYearRecord loaded =
             readSupport.loadFiscalYearClose(redirectedDatabase, FISCAL_YEAR_2026).orElseThrow();

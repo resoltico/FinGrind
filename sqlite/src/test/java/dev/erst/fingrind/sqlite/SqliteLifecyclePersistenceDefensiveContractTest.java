@@ -197,11 +197,13 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         """
         insert into fixed_asset values (
             'asset-1', 'asset', 'accumulated-depreciation', 'depreciation-expense',
-            'disposal-gain', 'disposal-loss', 'EUR', 12000, 0, '2026-01-01', 12, 'fixed-origin')
-        """);
+            'disposal-gain', 'disposal-loss', 'EUR', 12000, 0, '2026-01-01', 12, '%s')
+        """
+            .formatted(TestPostingIds.valueForLabel("fixed-origin")));
     assertTrue(SqliteFixedAssetStatementQueries.exists(database, new FixedAssetId("asset-1")));
     database.executeStatement(
-        "insert into fixed_asset_application values ('DISPOSAL', 'asset-1', 'EUR', 10000, 'fixed-application')");
+        "insert into fixed_asset_application values ('DISPOSAL', 'asset-1', 'EUR', 10000, '%s')"
+            .formatted(TestPostingIds.valueForLabel("fixed-application")));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -261,9 +263,11 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
   private static void assertWrongFinancingApplicationKind(
       SqliteNativeDatabase database, SqliteNativeStatement postingRow) {
     database.executeStatement(
-        "insert into financing_arrangement values ('arrangement-1', 'principal', 'interest-payable', 'financing-origin')");
+        "insert into financing_arrangement values ('arrangement-1', 'principal', 'interest-payable', '%s')"
+            .formatted(TestPostingIds.valueForLabel("financing-origin")));
     database.executeStatement(
-        "insert into financing_application values ('INTEREST_ACCRUAL', 'arrangement-1', 'EUR', 100, 'financing-application')");
+        "insert into financing_application values ('INTEREST_ACCRUAL', 'arrangement-1', 'EUR', 100, '%s')"
+            .formatted(TestPostingIds.valueForLabel("financing-application")));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -301,10 +305,12 @@ class SqliteLifecyclePersistenceDefensiveContractTest {
         """
         insert into foreign_currency_obligation values (
             'obligation-1', 'receivable', 'foreign-exchange-gain', 'foreign-exchange-loss',
-            'EUR', 10000, 'foreign-exchange-origin')
-        """);
+            'EUR', 10000, '%s')
+        """
+            .formatted(TestPostingIds.valueForLabel("foreign-exchange-origin")));
     database.executeStatement(
-        "insert into foreign_currency_obligation_settlement values ('obligation-1', 'foreign-exchange-settlement')");
+        "insert into foreign_currency_obligation_settlement values ('obligation-1', '%s')"
+            .formatted(TestPostingIds.valueForLabel("foreign-exchange-settlement")));
     RealizedForeignExchangeBookkeepingEntryVariants.Settlement loss =
         assertInstanceOf(
             RealizedForeignExchangeBookkeepingEntryVariants.Settlement.class,

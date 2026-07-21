@@ -29,7 +29,7 @@ public final class AttestationPeriodCloseMutationProjection {
         requireText(resultHoldingAccountCode, "resultHoldingAccountCode");
     List<CurrencyBalance> checkedTotals =
         List.copyOf(Objects.requireNonNull(sweptTotals, "sweptTotals"));
-    List<AttestationClosePostingSnapshot> checkedPostings = postings(postings);
+    List<AttestationClosePostingSnapshot> checkedPostings = optionalPostings(postings);
     requirePositiveOrder(sweepOrder, "sweepOrder");
     requirePostingKind(checkedPostings, checkedOperationKind);
     return new AttestationOperationPreimages(
@@ -61,7 +61,7 @@ public final class AttestationPeriodCloseMutationProjection {
         requireText(resultHoldingAccountCode, "resultHoldingAccountCode");
     String checkedRetainedResultAccountCode =
         requireText(retainedResultAccountCode, "retainedResultAccountCode");
-    List<AttestationClosePostingSnapshot> checkedPostings = postings(postings);
+    List<AttestationClosePostingSnapshot> checkedPostings = requiredPostings(postings);
     requirePositiveOrder(closeOrder, "closeOrder");
     requirePostingKind(checkedPostings, checkedOperationKind);
     return new AttestationOperationPreimages(
@@ -264,10 +264,14 @@ public final class AttestationPeriodCloseMutationProjection {
                 sweptTotal.debitTotal().currencyUnit().code(), signedTotal)));
   }
 
-  private static List<AttestationClosePostingSnapshot> postings(
+  private static List<AttestationClosePostingSnapshot> optionalPostings(
       List<AttestationClosePostingSnapshot> postings) {
-    List<AttestationClosePostingSnapshot> checked =
-        List.copyOf(Objects.requireNonNull(postings, "postings"));
+    return List.copyOf(Objects.requireNonNull(postings, "postings"));
+  }
+
+  private static List<AttestationClosePostingSnapshot> requiredPostings(
+      List<AttestationClosePostingSnapshot> postings) {
+    List<AttestationClosePostingSnapshot> checked = optionalPostings(postings);
     if (checked.isEmpty()) {
       throw new IllegalArgumentException(
           "A reporting-period close must persist at least one posting.");

@@ -93,7 +93,7 @@ class SqliteForeignExchangeStoreCoverageTest extends SqlitePostingFactStoreTestS
                             redirectedDatabase,
                             new PostingId("099c15e8-f223-31cf-a21c-382e45f9e9cb")));
             assertEquals(
-                "SQLite posting foreign-exchange query returned more than one row for posting sale.",
+                "SQLite posting foreign-exchange query returned more than one row for posting 099c15e8-f223-31cf-a21c-382e45f9e9cb.",
                 failure.getMessage());
           }
         });
