@@ -59,4 +59,40 @@ class SqliteProtectedBookStagingFilesTest extends SqliteNativeBridgeTestSupport 
     SqliteProtectedBookStagingFiles.resetStagedSecretFile(stagedSecret);
     assertFalse(Files.exists(stagedSecret));
   }
+
+  @Test
+  void stagingFileHelpers_wrapNativeAndFilesystemFailuresAtTheirPublicBoundaries()
+      throws Exception {
+    Path missingBook = tempDirectory.resolve("missing-source.sqlite");
+    Path stagedBackup = tempDirectory.resolve("staged-backup.sqlite");
+    try (SqliteBookPassphrase sourcePassphrase =
+        SqliteBookPassphrase.fromCharacters(
+            "missing staging source", TEST_BOOK_KEY.toCharArray())) {
+      SqliteProtectedBookStagingFiles.BackupExportFailure exportFailure =
+          assertThrows(
+              SqliteProtectedBookStagingFiles.BackupExportFailure.class,
+              () ->
+                  SqliteProtectedBookStagingFiles.exportBackupUsingSqlite(
+                      missingBook, stagedBackup, sourcePassphrase));
+      assertEquals(
+          SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_SOURCE_OPEN,
+          exportFailure.checkpoint());
+    }
+
+    Path nonDirectoryParent = tempDirectory.resolve("not-a-directory");
+    Files.writeString(nonDirectoryParent, "regular file");
+    Path impossibleChild = nonDirectoryParent.resolve("child.sqlite");
+    assertThrows(
+        SqliteCallerPathContractException.class,
+        () ->
+            SqliteProtectedBookStagingFiles.ensureSecureBackupFileParentDirectory(impossibleChild));
+    assertThrows(
+        SqliteCallerPathContractException.class,
+        () ->
+            SqliteProtectedBookStagingFiles.ensureSecureBackupKeyFileParentDirectory(
+                impossibleChild));
+    assertThrows(
+        SqliteCallerPathContractException.class,
+        () -> SqliteProtectedBookStagingFiles.hardenBookArtifacts(impossibleChild));
+  }
 }
