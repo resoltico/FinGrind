@@ -78,13 +78,13 @@ abstract class AbstractInMemoryBookAdministrationSession
   }
 
   /** Test-fixture-only account seeding that never represents a protected-book production write. */
-  public AccountDeclarationOutcome declareAccount(
+  protected AccountDeclarationOutcome declareAccount(
       AccountDeclaration declaration, Instant declaredAt) {
     return declareAccount(declaration, declaredAt, TEST_SEED_AUTHORIZER);
   }
 
   /** Test-fixture-only unsigned initialization helper for in-memory domain-state setup. */
-  public BookOpeningOutcome openBook(
+  protected BookOpeningOutcome openBook(
       Instant initializedAt, BookIdentity bookIdentity, List<AccountDeclaration> seededAccounts) {
     return InMemoryBookSessionSupport.withLock(
         lock,

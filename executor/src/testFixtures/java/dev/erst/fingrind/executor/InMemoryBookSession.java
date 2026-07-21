@@ -1,12 +1,32 @@
 package dev.erst.fingrind.executor;
 
+import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
+import java.time.Instant;
+import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 /** In-memory composite session used by executor tests and non-durable harness composition. */
 public final class InMemoryBookSession extends AbstractInMemoryBookReadSession
     implements LedgerPlanTransaction, AutoCloseable {
   private @Nullable InMemoryBookSessionSnapshot transactionSnapshot;
+
+  /** Seeds an account for tests without representing a protected-book production write. */
+  @Override
+  public AccountDeclarationOutcome declareAccount(
+      AccountDeclaration declaration, Instant declaredAt) {
+    return super.declareAccount(declaration, declaredAt);
+  }
+
+  /** Initializes this in-memory fixture without representing a protected-book production write. */
+  @Override
+  public BookOpeningOutcome openBook(
+      Instant initializedAt, BookIdentity bookIdentity, List<AccountDeclaration> seededAccounts) {
+    return super.openBook(initializedAt, bookIdentity, seededAccounts);
+  }
 
   @Override
   public void close() {
