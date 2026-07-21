@@ -5,6 +5,8 @@ import java.util.Objects;
 
 /** Typed operational refusal while opening a declared encrypted attestation credential source. */
 public final class AttestationCredentialException extends RuntimeException {
+  private static final long serialVersionUID = 1L;
+
   private final Path credentialPath;
 
   /** Captures the selected credential path without exposing secret content. */
