@@ -220,6 +220,67 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
   }
 
   @Test
+  void persistInterimResultSweep_rejectedGeneratedPostingThrowsAcceptanceFailure() {
+    Path bookPath = tempDirectory.resolve("close-persistence-sweep-rejected.sqlite");
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
+      declareCloseAccount(
+          postingFactStore,
+          "3200",
+          "Result Holding",
+          FinancialPositionLineClassification.RESULT_HOLDING);
+      PostingDraft existingDraft =
+          generatedPostingDraft(
+              "interim-result-sweep",
+              "conflict-eur",
+              PostingKind.INTERIM_RESULT_SWEEP,
+              PostingOriginKind.INTERIM_RESULT_SWEEP,
+              APRIL_2026.effectiveDateTo(),
+              List.of(
+                  line("2000", JournalLine.EntrySide.DEBIT, "10.00"),
+                  line("3200", JournalLine.EntrySide.CREDIT, "10.00")));
+      persistAcceptedGeneratedClosePosting(
+          postingFactStore, existingDraft, new PostingId("2fce7b0c-e8cb-3b3d-92b6-16e89f4fb41d"));
+      PostingDraft conflictingDraft =
+          generatedPostingDraft(
+              "interim-result-sweep",
+              "conflict-eur",
+              PostingKind.INTERIM_RESULT_SWEEP,
+              PostingOriginKind.INTERIM_RESULT_SWEEP,
+              APRIL_2026.effectiveDateTo(),
+              List.of(
+                  line("2000", JournalLine.EntrySide.DEBIT, "11.00"),
+                  line("3200", JournalLine.EntrySide.CREDIT, "11.00")));
+
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  closePostingPersistence(postingFactStore)
+                      .persistInterimResultSweep(
+                          requireStoreDatabase(postingFactStore),
+                          new dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft(
+                              APRIL_2026,
+                              new AccountCode("3200"),
+                              List.of(),
+                              FIXED_INSTANT,
+                              List.of(conflictingDraft)),
+                          () -> new PostingId("8add55e9-7295-3e68-aa20-51d9ff3abd38"),
+                          SqliteAttestationTestSupport.authorizer()));
+
+      assertTrue(
+          NullTestSupport.messageOf(failure)
+              .contains("Generated interim result sweep posting failed bookkeeping acceptance"));
+      assertEquals(
+          1, queryInt(requireStoreDatabase(postingFactStore), "select count(*) from posting_fact"));
+      assertEquals(
+          0,
+          queryInt(
+              requireStoreDatabase(postingFactStore), "select count(*) from interim_result_sweep"));
+    }
+  }
+
+  @Test
   void persistAcceptedPosting_persistsInventoryMovementsAndOnHandStates() {
     Path bookPath = tempDirectory.resolve("close-persistence-inventory-effects.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
@@ -243,7 +304,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
               600L);
 
       CommittedPosting reservePosting =
-          closePostingPersistence(postingFactStore)
+          closingMutationOperations(postingFactStore)
               .persistAcceptedPosting(
                   requireStoreDatabase(postingFactStore),
                   acceptedInventoryPosting(
@@ -342,6 +403,15 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
       SqlitePostingFactStore postingFactStore) {
     return new SqliteClosePostingPersistence(
         postingFactStore.storeContext(),
+        SqliteCommitFaultHook.NONE,
+        PostingAcceptancePolicy.currentKernel());
+  }
+
+  private static SqliteClosingMutationOperations closingMutationOperations(
+      SqlitePostingFactStore postingFactStore) {
+    return new SqliteClosingMutationOperations(
+        postingFactStore.storeContext(),
+        postingFactStore.storeLifecycle(),
         SqliteCommitFaultHook.NONE,
         PostingAcceptancePolicy.currentKernel());
   }
