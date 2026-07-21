@@ -176,4 +176,30 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
         missingBookPath,
         ProtectedBookVerificationFailure.MISSING);
   }
+
+  @Test
+  void verification_rejectsAnInvalidLiveBookPathAfterThePassphraseSourceHasResolved()
+      throws Exception {
+    Path bookDirectory = Files.createDirectory(tempDirectory.resolve("live-book-directory"));
+    SqliteProtectedBookMaintenanceStore store =
+        new SqliteProtectedBookMaintenanceStore(
+            (bookPath, passphraseSource, intent) ->
+                ContractDecision.accepted(
+                    SqliteBookPassphrase.fromUtf8Bytes(
+                        "resolved directory book test",
+                        TEST_BOOK_KEY.getBytes(java.nio.charset.StandardCharsets.UTF_8))));
+
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid rejection =
+        assertInstanceOf(
+            ProtectedBookMaintenanceRejection.ArtifactPathInvalid.class,
+            assertThrows(
+                    ProtectedBookMaintenanceRejectionException.class,
+                    () ->
+                        store.verifyInitializedBook(
+                            localAccess(bookAccess(bookDirectory)),
+                            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK))
+                .rejection());
+    assertEquals(ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, rejection.artifactRole());
+    assertEquals(bookDirectory.toAbsolutePath().normalize(), rejection.artifactPath());
+  }
 }
