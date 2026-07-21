@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput;
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -11,6 +12,7 @@ import dev.erst.fingrind.core.attestation.AttestationSigningSession;
 import dev.erst.fingrind.executor.AttestationGenesisFactory;
 import dev.erst.fingrind.executor.maintenance.AttestedProtectedBookLifecycleWorkflow;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookBackupOutcome;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRekeyOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRestoreOutcome;
 import java.nio.file.Files;
@@ -56,6 +58,15 @@ class SqliteAttestedLifecycleFieldTest extends SqliteArtifactPublicationTestSupp
                       signingSession)));
       assertEquals(backupPath.toAbsolutePath().normalize(), backup.backupFilePath());
       assertEquals(backupKeyPath.toAbsolutePath().normalize(), backup.backupBookKeyFilePath());
+      Path malformedKeyPath = tempDirectory.resolve("backup").resolve("malformed-backup.key");
+      Files.writeString(malformedKeyPath, "not a FinGrind backup key");
+      assertInstanceOf(
+          dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection
+              .ArtifactVerificationFailed.class,
+          assertThrows(
+                  ProtectedBookMaintenanceRejectionException.class,
+                  () -> store.verifyBackupArtifact(backupPath, malformedKeyPath))
+              .rejection());
 
       assertInstanceOf(
           ProtectedBookRekeyOutcome.Rekeyed.class,
