@@ -39,6 +39,8 @@ import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -166,6 +168,37 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                       SqliteAttestationTestSupport.authorizer()));
       assertEquals(posting, replay.postingFact());
       assertTrue(replay.idempotentReplay());
+    }
+  }
+
+  @Test
+  void preplannedInterimResultSweep_rollsBackNativeStorageFailures() {
+    ReportingPeriod reportingPeriod = new ReportingPeriod(EFFECTIVE_DATE, EFFECTIVE_DATE);
+    Path bookPath = tempDirectory.resolve("interim-result-sweep-storage-failures.sqlite");
+    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
+      initializeBookWithMinimalNumericAccounts(postingFactStore);
+      try (StoreDatabaseSwap ignored =
+          swapStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath))) {
+        assertCloseStorageFailure(
+            () ->
+                postingFactStore
+                    .storeMutationOperations()
+                    .interimResultSweep(
+                        emptyInterimResultSweepDraft(reportingPeriod),
+                        unusedPostingIdGenerator(),
+                        SqliteAttestationTestSupport.authorizer()));
+      } catch (IOException exception) {
+        throw new UncheckedIOException(exception);
+      }
+
+      assertEquals(0, countRows(requireStoreDatabase(postingFactStore), "interim_result_sweep"));
+      assertEquals(
+          0,
+          countRowsWhereTextEquals(
+              requireStoreDatabase(postingFactStore),
+              "audit_event",
+              "event_kind",
+              "INTERIM_RESULT_SWEPT"));
     }
   }
 
@@ -626,6 +659,25 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                       .map(balance -> balance.debitTotal().currencyUnit().code())
                       .toList());
         });
+  }
+
+  private static InterimResultSweepDraft emptyInterimResultSweepDraft(
+      ReportingPeriod reportingPeriod) {
+    return new InterimResultSweepDraft(
+        reportingPeriod, new AccountCode("3200"), List.of(), FIXED_INSTANT, List.of());
+  }
+
+  private static dev.erst.fingrind.executor.spi.PostingIdGenerator unusedPostingIdGenerator() {
+    return () -> {
+      throw new AssertionError("A rejected or failed close must not allocate a posting ID.");
+    };
+  }
+
+  private static void assertCloseStorageFailure(ThrowingRunnable invocation) {
+    IllegalStateException failure = assertThrows(IllegalStateException.class, invocation::run);
+    assertTrue(
+        NullTestSupport.messageOf(failure)
+            .contains("Failed to close one SQLite reporting period."));
   }
 
   private static CommittedProvenance interimResultSweepProvenance(String currencyCode) {
