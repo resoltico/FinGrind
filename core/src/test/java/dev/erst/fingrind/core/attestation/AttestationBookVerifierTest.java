@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -189,6 +190,33 @@ class AttestationBookVerifierTest {
   }
 
   @Test
+  void rejectsEveryBoundedAlternateLengthOperationAlgorithmAtTheSharedAlgorithmCheck() {
+    assertAlternateLengthOperationAlgorithmIsRejectedAtTheSharedCheck("ed2551");
+    assertAlternateLengthOperationAlgorithmIsRejectedAtTheSharedCheck("ed255190");
+  }
+
+  private static void assertAlternateLengthOperationAlgorithmIsRejectedAtTheSharedCheck(
+      String algorithmId) {
+    TestCredential founder = credential();
+    AttestationBookOperation genesis = genesis(founder);
+    AttestationBookOperation successor = successor(founder, genesis.envelope().head());
+    byte[] envelope =
+        replaceAlgorithmId(
+            successor.envelope().encoded(),
+            operationAlgorithmValueOffset(successor.envelope().encoded()) - 1,
+            algorithmId);
+    AttestationBookOperation unsupportedAlgorithm =
+        AttestationBookOperation.decode(
+            envelope, successor.requestPreimage().encoded(), successor.effectPreimage().encoded());
+
+    assertFailure(
+        AttestationAuthorizationFailure.KEY_ALGORITHM_INVALID,
+        () ->
+            AttestationBookVerifier.verify(
+                new AttestationBook(List.of(genesis, unsupportedAlgorithm))));
+  }
+
+  @Test
   void keepsReviewIntervalsAndBookResultAccessorsInternallyConsistent() {
     TestCredential founder = credential();
     AttestationBookOperation genesis = genesis(founder);
@@ -272,6 +300,23 @@ class AttestationBookVerifierTest {
         + 1
         + Byte.toUnsignedInt(envelope[operationKindLengthOffset])
         + 1;
+  }
+
+  private static byte[] replaceAlgorithmId(
+      byte[] encoded, int lengthOffset, String replacementAlgorithmId) {
+    byte[] replacement = replacementAlgorithmId.getBytes(StandardCharsets.US_ASCII);
+    int previousLength = Byte.toUnsignedInt(encoded[lengthOffset]);
+    byte[] replaced = new byte[encoded.length - previousLength + replacement.length];
+    System.arraycopy(encoded, 0, replaced, 0, lengthOffset);
+    replaced[lengthOffset] = (byte) replacement.length;
+    System.arraycopy(replacement, 0, replaced, lengthOffset + 1, replacement.length);
+    System.arraycopy(
+        encoded,
+        lengthOffset + 1 + previousLength,
+        replaced,
+        lengthOffset + 1 + replacement.length,
+        encoded.length - lengthOffset - 1 - previousLength);
+    return replaced;
   }
 
   private static AttestationBookOperation successor(

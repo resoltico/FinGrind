@@ -40,12 +40,17 @@ final class AttestationReceiptPayload implements AttestationPayload {
   /** Decodes one complete receipt payload at the raw attestation boundary. */
   static AttestationReceiptPayload decode(byte[] encoded) {
     return AttestationFormatFailure.decoding(
-        AttestationAuthorizationFailure.RECEIPT_INVALID, () -> decodeUnchecked(encoded));
+        AttestationAuthorizationFailure.RECEIPT_INVALID,
+        () -> {
+          AttestationByteReader input =
+              new AttestationByteReader(encoded, AttestationAuthorizationFailure.RECEIPT_INVALID);
+          AttestationReceiptPayload payload = decode(input);
+          input.requireAtEnd();
+          return payload;
+        });
   }
 
-  private static AttestationReceiptPayload decodeUnchecked(byte[] encoded) {
-    AttestationByteReader input =
-        new AttestationByteReader(encoded, AttestationAuthorizationFailure.RECEIPT_INVALID);
+  static AttestationReceiptPayload decode(AttestationByteReader input) {
     input.requireAscii("FGATTRC1");
     if (input.readUnsigned(Byte.BYTES).intValueExact() != 1) {
       throw new AttestationAuthorizationException(
@@ -55,12 +60,9 @@ final class AttestationReceiptPayload implements AttestationPayload {
     BigInteger operationOrder = input.readUnsigned(Long.BYTES);
     AttestationHash operationHead = input.readHash();
     Instant receiptTimestamp = AttestationCanonicalValueReader.instant(input);
-    String algorithmId = AttestationCanonicalValueReader.token(input);
-    AttestationReceiptPayload payload =
-        new AttestationReceiptPayload(
-            bookId, operationOrder, operationHead, receiptTimestamp, algorithmId);
-    input.requireAtEnd();
-    return payload;
+    String algorithmId = AttestationCanonicalValueReader.algorithmId(input);
+    return new AttestationReceiptPayload(
+        bookId, operationOrder, operationHead, receiptTimestamp, algorithmId);
   }
 
   @Override
@@ -73,7 +75,7 @@ final class AttestationReceiptPayload implements AttestationPayload {
         output, operationOrder, Long.BYTES, "operationOrder");
     AttestationEncoding.appendHash(output, operationHead);
     AttestationTextEncoding.appendInstant(output, receiptTimestamp, "receiptTimestamp");
-    AttestationTextEncoding.appendToken(output, algorithmId, "algorithmId");
+    AttestationTextEncoding.appendAlgorithmId(output, algorithmId);
     return output.toByteArray();
   }
 

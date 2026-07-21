@@ -3,7 +3,6 @@ package dev.erst.fingrind.core.attestation;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.Function;
 
 /**
  * One typed payload and its raw signature envelope, decoded without normalizing attacker input.
@@ -28,15 +27,8 @@ final class AttestationDecodedEnvelope<P extends AttestationPayload> {
   }
 
   static AttestationDecodedEnvelope<AttestationOperationPayload> operation(byte[] encoded) {
-    Objects.requireNonNull(encoded, "encoded");
-    if (encoded.length < 34) {
-      throw failure(AttestationAuthorizationFailure.PREIMAGE_INVALID);
-    }
-    int operationKindLength = Byte.toUnsignedInt(encoded[33]);
-    int payloadLength = 162 + operationKindLength;
     return decode(
         encoded,
-        payloadLength,
         AttestationOperationPayload::decode,
         AttestationAuthorizationFailure.PREIMAGE_INVALID);
   }
@@ -44,7 +36,6 @@ final class AttestationDecodedEnvelope<P extends AttestationPayload> {
   static AttestationDecodedEnvelope<AttestationBackupManifestPayload> manifest(byte[] encoded) {
     return decode(
         encoded,
-        121,
         AttestationBackupManifestPayload::decode,
         AttestationAuthorizationFailure.MANIFEST_INVALID);
   }
@@ -52,28 +43,21 @@ final class AttestationDecodedEnvelope<P extends AttestationPayload> {
   static AttestationDecodedEnvelope<AttestationReceiptPayload> receipt(byte[] encoded) {
     return decode(
         encoded,
-        97,
         AttestationReceiptPayload::decode,
         AttestationAuthorizationFailure.RECEIPT_INVALID);
   }
 
   private static <P extends AttestationPayload> AttestationDecodedEnvelope<P> decode(
-      byte[] encoded,
-      int payloadLength,
-      Function<byte[], P> payloadDecoder,
-      AttestationAuthorizationFailure failure) {
+      byte[] encoded, PayloadDecoder<P> payloadDecoder, AttestationAuthorizationFailure failure) {
     return AttestationFormatFailure.decoding(
-        failure, () -> decodeUnchecked(encoded, payloadLength, payloadDecoder, failure));
+        failure, () -> decodeUnchecked(encoded, payloadDecoder, failure));
   }
 
   private static <P extends AttestationPayload> AttestationDecodedEnvelope<P> decodeUnchecked(
-      byte[] encoded,
-      int payloadLength,
-      Function<byte[], P> payloadDecoder,
-      AttestationAuthorizationFailure failure) {
+      byte[] encoded, PayloadDecoder<P> payloadDecoder, AttestationAuthorizationFailure failure) {
     AttestationByteReader input = new AttestationByteReader(encoded, failure);
-    byte[] payloadBytes = input.readBytes(payloadLength);
-    P payload = payloadDecoder.apply(payloadBytes);
+    P payload = payloadDecoder.decode(input);
+    byte[] payloadBytes = input.sourceSlice(0, input.offset());
     int entryCount = input.readUnsigned(Short.BYTES).intValueExact();
     if (entryCount > MAX_ENTRY_COUNT) {
       throw input.failure();
@@ -104,8 +88,10 @@ final class AttestationDecodedEnvelope<P extends AttestationPayload> {
     return AttestationHash.sha256(encoded);
   }
 
-  private static AttestationAuthorizationException failure(
-      AttestationAuthorizationFailure failure) {
-    return new AttestationAuthorizationException(failure);
+  /** Decodes one complete typed payload while advancing the shared raw-envelope reader. */
+  @FunctionalInterface
+  private interface PayloadDecoder<P extends AttestationPayload> {
+    /** Returns the payload that occupies the reader's next complete raw prefix. */
+    P decode(AttestationByteReader input);
   }
 }

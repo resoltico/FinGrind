@@ -11,6 +11,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -203,6 +205,32 @@ class AttestationArtifactVerifierTest {
   }
 
   @Test
+  void rejectsEveryBoundedAlternateLengthArtifactAlgorithmAtTheSharedAlgorithmCheck() {
+    TestCredential founder = credential();
+    AttestationBook book = book(founder);
+    AttestationBookVerification verification = AttestationBookVerifier.verify(book);
+    byte[] snapshot = new byte[] {1, 2, 3, 4};
+    byte[] artifact = artifact(founder, verification, snapshot, AttestationHash.sha256(snapshot));
+    byte[] receipt = receipt(founder, verification);
+
+    for (String algorithmId : List.of("ed2551", "ed255190")) {
+      assertFailure(
+          AttestationAuthorizationFailure.KEY_ALGORITHM_INVALID,
+          () ->
+              AttestationArtifactVerifier.verifyArtifact(
+                  replaceManifestAlgorithmId(artifact, snapshot, algorithmId),
+                  snapshotDecoder(snapshot, book)));
+      assertFailure(
+          AttestationAuthorizationFailure.KEY_ALGORITHM_INVALID,
+          () ->
+              AttestationArtifactVerifier.verifyReceipt(
+                  replaceAlgorithmId(receipt, receiptAlgorithmValueOffset() - 1, algorithmId),
+                  verification,
+                  AttestationReceiptRetention.INDEPENDENT));
+    }
+  }
+
+  @Test
   void rejectsReceiptWithTheWrongBookAndAReferenceBeyondTheVerifiedHead() {
     TestCredential founder = credential();
     AttestationBookVerification verification = AttestationBookVerifier.verify(book(founder));
@@ -313,6 +341,36 @@ class AttestationArtifactVerifierTest {
 
   private static int receiptAlgorithmValueOffset() {
     return 8 + 1 + 16 + Long.BYTES + AttestationHash.BYTE_LENGTH + 24 + 1;
+  }
+
+  private static byte[] replaceManifestAlgorithmId(
+      byte[] artifact, byte[] snapshot, String replacementAlgorithmId) {
+    byte[] replaced =
+        replaceAlgorithmId(
+            artifact, manifestAlgorithmValueOffset(snapshot) - 1, replacementAlgorithmId);
+    int originalManifestLength =
+        ByteBuffer.wrap(artifact, artifact.length - Integer.BYTES, Integer.BYTES).getInt();
+    int replacementManifestLength = originalManifestLength + replaced.length - artifact.length;
+    ByteBuffer.wrap(replaced, replaced.length - Integer.BYTES, Integer.BYTES)
+        .putInt(replacementManifestLength);
+    return replaced;
+  }
+
+  private static byte[] replaceAlgorithmId(
+      byte[] encoded, int lengthOffset, String replacementAlgorithmId) {
+    byte[] replacement = replacementAlgorithmId.getBytes(StandardCharsets.US_ASCII);
+    int previousLength = Byte.toUnsignedInt(encoded[lengthOffset]);
+    byte[] replaced = new byte[encoded.length - previousLength + replacement.length];
+    System.arraycopy(encoded, 0, replaced, 0, lengthOffset);
+    replaced[lengthOffset] = (byte) replacement.length;
+    System.arraycopy(replacement, 0, replaced, lengthOffset + 1, replacement.length);
+    System.arraycopy(
+        encoded,
+        lengthOffset + 1 + previousLength,
+        replaced,
+        lengthOffset + 1 + replacement.length,
+        encoded.length - lengthOffset - 1 - previousLength);
+    return replaced;
   }
 
   private static int trailerSnapshotLengthOffset(byte[] artifact) {

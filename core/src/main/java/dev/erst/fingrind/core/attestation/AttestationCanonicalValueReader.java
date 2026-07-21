@@ -10,12 +10,22 @@ final class AttestationCanonicalValueReader {
   private AttestationCanonicalValueReader() {}
 
   static String token(AttestationByteReader input) {
+    return boundedToken(input, false);
+  }
+
+  static String algorithmId(AttestationByteReader input) {
+    return boundedToken(input, true);
+  }
+
+  private static String boundedToken(AttestationByteReader input, boolean algorithmId) {
     int start = input.offset();
-    String value =
-        new String(
-            input.readBytes(input.readUnsigned(Byte.BYTES).intValueExact()),
-            StandardCharsets.US_ASCII);
-    requireCanonical(input, AttestationTextFieldValue.token(value).encoded(), start);
+    int length = input.readUnsigned(Byte.BYTES).intValueExact();
+    String value = new String(input.readBytes(length), StandardCharsets.US_ASCII);
+    byte[] canonical =
+        algorithmId
+            ? AttestationTextFieldValue.algorithmId(value).encoded()
+            : AttestationTextFieldValue.token(value).encoded();
+    requireCanonical(input, canonical, start);
     return value;
   }
 

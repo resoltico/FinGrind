@@ -48,12 +48,17 @@ final class AttestationBackupManifestPayload implements AttestationPayload {
   /** Decodes one complete backup-manifest payload at the raw attestation boundary. */
   static AttestationBackupManifestPayload decode(byte[] encoded) {
     return AttestationFormatFailure.decoding(
-        AttestationAuthorizationFailure.MANIFEST_INVALID, () -> decodeUnchecked(encoded));
+        AttestationAuthorizationFailure.MANIFEST_INVALID,
+        () -> {
+          AttestationByteReader input =
+              new AttestationByteReader(encoded, AttestationAuthorizationFailure.MANIFEST_INVALID);
+          AttestationBackupManifestPayload payload = decode(input);
+          input.requireAtEnd();
+          return payload;
+        });
   }
 
-  private static AttestationBackupManifestPayload decodeUnchecked(byte[] encoded) {
-    AttestationByteReader input =
-        new AttestationByteReader(encoded, AttestationAuthorizationFailure.MANIFEST_INVALID);
+  static AttestationBackupManifestPayload decode(AttestationByteReader input) {
     input.requireAscii("FGATTBM1");
     if (input.readUnsigned(Byte.BYTES).intValueExact() != 1) {
       throw new AttestationAuthorizationException(
@@ -64,12 +69,9 @@ final class AttestationBackupManifestPayload implements AttestationPayload {
     BigInteger sourceOrder = input.readUnsigned(Long.BYTES);
     AttestationHash sourceOperationHead = input.readHash();
     AttestationHash snapshotDigest = input.readHash();
-    String algorithmId = AttestationCanonicalValueReader.token(input);
-    AttestationBackupManifestPayload payload =
-        new AttestationBackupManifestPayload(
-            bookId, backupId, sourceOrder, sourceOperationHead, snapshotDigest, algorithmId);
-    input.requireAtEnd();
-    return payload;
+    String algorithmId = AttestationCanonicalValueReader.algorithmId(input);
+    return new AttestationBackupManifestPayload(
+        bookId, backupId, sourceOrder, sourceOperationHead, snapshotDigest, algorithmId);
   }
 
   @Override
@@ -82,7 +84,7 @@ final class AttestationBackupManifestPayload implements AttestationPayload {
     AttestationUnsignedEncoding.appendUnsigned(output, sourceOrder, Long.BYTES, "sourceOrder");
     AttestationEncoding.appendHash(output, sourceOperationHead);
     AttestationEncoding.appendHash(output, snapshotDigest);
-    AttestationTextEncoding.appendToken(output, algorithmId, "algorithmId");
+    AttestationTextEncoding.appendAlgorithmId(output, algorithmId);
     return output.toByteArray();
   }
 

@@ -19,6 +19,8 @@ import java.util.regex.Pattern;
 /** Canonical text, bytes, date, instant, currency, and SPKI encodings. */
 final class AttestationTextEncoding {
   private static final int MAX_BYTES_LENGTH = 1_048_576;
+  private static final int MAX_TOKEN_LENGTH = 64;
+  private static final int MAX_ALGORITHM_ID_LENGTH = 32;
   private static final Pattern TOKEN = Pattern.compile("[a-z0-9]+(?:-[a-z0-9]+)*");
   private static final Pattern CURRENCY = Pattern.compile("[A-Z]{3}");
   private static final byte[] ED25519_SPKI_PREFIX =
@@ -34,12 +36,24 @@ final class AttestationTextEncoding {
   private AttestationTextEncoding() {}
 
   static void appendToken(ByteArrayOutputStream output, String value, String fieldName) {
+    appendBoundedToken(output, value, fieldName, MAX_TOKEN_LENGTH);
+  }
+
+  static void appendAlgorithmId(ByteArrayOutputStream output, String value) {
+    appendBoundedToken(output, value, "algorithmId", MAX_ALGORITHM_ID_LENGTH);
+  }
+
+  private static void appendBoundedToken(
+      ByteArrayOutputStream output, String value, String fieldName, int maximumLength) {
     Objects.requireNonNull(output, "output");
     Objects.requireNonNull(value, fieldName);
     byte[] bytes = value.getBytes(StandardCharsets.US_ASCII);
-    if (!TOKEN.matcher(value).matches() || bytes.length > 64) {
+    if (!TOKEN.matcher(value).matches() || bytes.length > maximumLength) {
       throw new IllegalArgumentException(
-          fieldName + " must be a lowercase ASCII kebab token of at most 64 bytes.");
+          fieldName
+              + " must be a lowercase ASCII kebab token of at most "
+              + maximumLength
+              + " bytes.");
     }
     AttestationUnsignedEncoding.appendByte(output, bytes.length, fieldName + " length");
     output.writeBytes(bytes);

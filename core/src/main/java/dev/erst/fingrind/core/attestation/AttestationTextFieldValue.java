@@ -13,6 +13,12 @@ final class AttestationTextFieldValue {
         output -> AttestationTextEncoding.appendToken(output, value, "token"));
   }
 
+  static AttestationFieldValue algorithmId(String value) {
+    return AttestationFieldValue.encode(
+        AttestationFieldType.TOKEN,
+        output -> AttestationTextEncoding.appendAlgorithmId(output, value));
+  }
+
   static AttestationFieldValue text(String value) {
     return AttestationFieldValue.encode(
         AttestationFieldType.TEXT,

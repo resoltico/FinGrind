@@ -33,7 +33,7 @@ manifestPayload =
   || sourceOrder(u64)
   || sourceOperationHead(hash)
   || snapshotDigest(hash)
-  || algorithmId(token = "ed25519")
+  || algorithmId(algorithm-id = "ed25519")
 
 manifestEnvelope = envelope(manifestPayload)
 
@@ -105,7 +105,7 @@ receiptPayload =
   || operationOrder(u64)
   || operationHead(hash)
   || receiptTimestamp(instant)
-  || algorithmId(token = "ed25519")
+  || algorithmId(algorithm-id = "ed25519")
 
 receiptEnvelope = envelope(receiptPayload)
 ~~~

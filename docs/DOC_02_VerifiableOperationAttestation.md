@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: BOOK_OPERATION_ATTESTATION
-updated: "2026-07-20"
+updated: "2026-07-21"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["AttestedOperation", "AttestationEnvelope"]
@@ -80,6 +80,7 @@ in the form YYYY-MM-DD and must denote a valid Gregorian calendar date.
 | spki | u16 byte length then DER SubjectPublicKeyInfo | length 1 through 4096; Ed25519 only |
 | bytes | u32 byte length then raw bytes | length at most 1,048,576; never secret material |
 | token | u8 byte length then lowercase ASCII kebab token | length 1 through 64 |
+| algorithm-id | u8 byte length then lowercase ASCII kebab token | length 1 through 32; version 1 value is ed25519 |
 | text | u32 byte length then NFC UTF-8 | length at most 1,048,576; no NUL |
 | currency | three uppercase ASCII letters | ISO-4217 code when a currency is used |
 | date | ten ASCII bytes | valid Gregorian date |
@@ -254,6 +255,13 @@ or an algorithmId per signature entry. Although the JDK supports ML-DSA key conv
 X.509 and PKCS#8 encodings, through [JEP 497](https://openjdk.org/jeps/497), adding it requires a
 new payload and envelope version rather than a compatibility branch.
 
+algorithmId has its own bounded wire grammar: its length prefix and one-through-32-byte lowercase
+ASCII kebab token are decoded as part of the payload before signature entries are framed. The
+Ed25519-only semantic rule is then enforced at shared envelope check 12, after the quorum,
+duplicate-principal, duplicate-key, and signature-entry-order checks. A malformed algorithm-id is
+a payload-grammar failure; a well-formed value other than ed25519 is
+attestation-key-algorithm-invalid.
+
 Version 1 also excludes PKCS#11, HSM, and OS-keychain custodians; RFC 3161 or other trusted
 timestamp countersigning; a live transparency log or witness service; cross-book or group
 attestation; automatic invalidation of historically valid work after a key compromise; and an
@@ -271,7 +279,7 @@ operationPayload =
   || bookId(uuid)
   || operationOrder(u64)
   || operationKind(token)
-  || algorithmId(token = "ed25519")
+  || algorithmId(algorithm-id = "ed25519")
   || previousHead(hash)
   || recordedAt(instant)
   || requestDigest(hash)

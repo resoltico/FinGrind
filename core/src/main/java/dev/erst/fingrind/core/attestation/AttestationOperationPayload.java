@@ -59,30 +59,32 @@ final class AttestationOperationPayload implements AttestationPayload {
   /** Decodes one complete operation payload at the raw attestation boundary. */
   static AttestationOperationPayload decode(byte[] encoded) {
     return AttestationFormatFailure.decoding(
-        AttestationAuthorizationFailure.PREIMAGE_INVALID, () -> decodeUnchecked(encoded));
+        AttestationAuthorizationFailure.PREIMAGE_INVALID,
+        () -> {
+          AttestationByteReader input =
+              new AttestationByteReader(encoded, AttestationAuthorizationFailure.PREIMAGE_INVALID);
+          AttestationOperationPayload payload = decode(input);
+          input.requireAtEnd();
+          return payload;
+        });
   }
 
-  private static AttestationOperationPayload decodeUnchecked(byte[] encoded) {
-    AttestationByteReader input =
-        new AttestationByteReader(encoded, AttestationAuthorizationFailure.PREIMAGE_INVALID);
+  static AttestationOperationPayload decode(AttestationByteReader input) {
     input.requireAscii("FGATTOP1");
     requireVersion(input);
     java.util.UUID bookId = input.readUuid();
     BigInteger operationOrder = input.readUnsigned(Long.BYTES);
     String operationKind = AttestationCanonicalValueReader.token(input);
-    String algorithmId = AttestationCanonicalValueReader.token(input);
-    AttestationOperationPayload payload =
-        new AttestationOperationPayload(
-            bookId,
-            operationOrder,
-            operationKind,
-            input.readHash(),
-            AttestationCanonicalValueReader.instant(input),
-            input.readHash(),
-            input.readHash(),
-            algorithmId);
-    input.requireAtEnd();
-    return payload;
+    String algorithmId = AttestationCanonicalValueReader.algorithmId(input);
+    return new AttestationOperationPayload(
+        bookId,
+        operationOrder,
+        operationKind,
+        input.readHash(),
+        AttestationCanonicalValueReader.instant(input),
+        input.readHash(),
+        input.readHash(),
+        algorithmId);
   }
 
   @Override
@@ -94,7 +96,7 @@ final class AttestationOperationPayload implements AttestationPayload {
     AttestationUnsignedEncoding.appendUnsigned(
         output, operationOrder, Long.BYTES, "operationOrder");
     AttestationTextEncoding.appendToken(output, operationKind, "operationKind");
-    AttestationTextEncoding.appendToken(output, algorithmId, "algorithmId");
+    AttestationTextEncoding.appendAlgorithmId(output, algorithmId);
     AttestationEncoding.appendHash(output, previousHead);
     AttestationTextEncoding.appendInstant(output, recordedAt, "recordedAt");
     AttestationEncoding.appendHash(output, requestDigest);
