@@ -20,6 +20,10 @@ preimages, an Ed25519 authorization envelope, and a SHA-256 operation head. The 
 transaction commits the accounting effect and the evidence together. FinGrind verifies the chain
 from genesis rather than trusting mutable audit rows, reports, or rendered output.
 
+Operation timestamps are recorded in UTC at millisecond precision. FinGrind canonicalizes the
+runtime clock value before it becomes a durable accounting fact or attestation preimage, so the
+persisted fact and its signed evidence always carry the same exact time.
+
 This proves that the book-recognized quorum authorized the recorded operation at its historical
 position. It does not prove a person's real-world identity, an external event's truth, or events
 that were never entered. An independently retained receipt can reveal rollback, truncation, or a

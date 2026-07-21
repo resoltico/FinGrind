@@ -26,6 +26,22 @@ class CommittedProvenanceTest {
   }
 
   @Test
+  void constructor_canonicalizesLiveClockPrecisionToMilliseconds() {
+    RequestProvenance requestProvenance =
+        new RequestProvenance(
+            new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
+            new IdempotencyKey("idem-1"),
+            new CausationId("cause-1"),
+            Optional.empty());
+
+    CommittedProvenance committedProvenance =
+        new CommittedProvenance(
+            requestProvenance, Instant.parse("2026-04-07T10:15:30.123456789Z"), SourceChannel.CLI);
+
+    assertEquals(Instant.parse("2026-04-07T10:15:30.123Z"), committedProvenance.recordedAt());
+  }
+
+  @Test
   @org.jspecify.annotations.NullUnmarked
   void constructor_rejectsNullRecordedAt() {
     RequestProvenance requestProvenance =

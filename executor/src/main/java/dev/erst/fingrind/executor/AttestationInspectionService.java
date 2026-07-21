@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
+import dev.erst.fingrind.core.attestation.AttestationCredentialUseException;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationReceipt;
 import dev.erst.fingrind.core.attestation.AttestationReceiptRetention;
@@ -147,9 +148,7 @@ public final class AttestationInspectionService {
               verification.headOrder(),
               verification.operationHead(),
               clock.instant());
-    } catch (AttestationCredentialException
-        | IllegalArgumentException
-        | NullPointerException exception) {
+    } catch (AttestationCredentialException | AttestationCredentialUseException exception) {
       return invalidAttestationCredentials(bookAccess.bookFilePath());
     }
     AttestationReceipt.verify(receipt, evidence, AttestationReceiptRetention.INDEPENDENT);

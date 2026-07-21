@@ -94,6 +94,23 @@ class AttestationCustodyBoundaryTest {
   }
 
   @Test
+  void preservesActionFailuresInsteadOfMisclassifyingThemAsCredentialFailures() throws IOException {
+    AttestationCredentialSource source = createCredentialSource("founder");
+
+    IllegalArgumentException actionFailure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                AttestationMutationAuthorization.withAuthorizer(
+                    List.of(source),
+                    ignored -> {
+                      throw new IllegalArgumentException("The posting request is invalid.");
+                    }));
+
+    assertEquals("The posting request is invalid.", actionFailure.getMessage());
+  }
+
+  @Test
   void preservesAllPublishedPassphraseSourceAlternativesAtTheMaintenanceBoundary() {
     Path bookPath = temporaryDirectory.resolve("book.sqlite");
     Path keyPath = temporaryDirectory.resolve("book.key");

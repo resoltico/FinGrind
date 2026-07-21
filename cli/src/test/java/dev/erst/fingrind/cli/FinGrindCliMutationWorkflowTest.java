@@ -5,9 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import dev.erst.fingrind.core.attestation.AttestationSigningSession;
 import dev.erst.fingrind.sqlite.SqliteBookSessionMode;
@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -289,7 +290,8 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
       }
     }
     assertEquals(0, cli.run(jsonArguments(openArguments)));
-    Path founderKeyPath = bookFilePath.resolveSibling(bookFilePath.getFileName() + ".founder.fgatk");
+    Path founderKeyPath =
+        bookFilePath.resolveSibling(bookFilePath.getFileName() + ".founder.fgatk");
     Path founderPassphrasePath =
         bookFilePath.resolveSibling(bookFilePath.getFileName() + ".founder-passphrase");
     assertEquals(
@@ -336,9 +338,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
             new BookAccess.PassphraseSource.KeyFile(bookKeyFilePath),
             List.of(
                 new AttestationCredentialSource(
-                    UUID.fromString(founderPrincipalId),
-                    founderKeyPath,
-                    founderPassphrasePath)));
+                    UUID.fromString(founderPrincipalId), founderKeyPath, founderPassphrasePath)));
     var command =
         new CliRequestReader(new ByteArrayInputStream(new byte[0]))
             .readPostEntryCommand(
@@ -352,10 +352,12 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
                   bookAccess,
                   SqliteBookSessionMode.READ_WRITE_EXISTING,
                   new CliBookPassphraseResolver(
-                      new ByteArrayInputStream(new byte[0]), CliBookPassphraseResolver.systemTerminal()),
+                      new ByteArrayInputStream(new byte[0]),
+                      CliBookPassphraseResolver.systemTerminal()),
                   SqlitePassphraseIntent.EXISTING_SECRET),
               bookSession ->
-                  SqliteCliWorkflowSessions.postingApplicationService(bookSession, fixedClock())
+                  SqliteCliWorkflowSessions.postingApplicationService(
+                          bookSession, Clock.systemUTC())
                       .commit(command, signingSession));
     }
     assertInstanceOf(

@@ -62,15 +62,16 @@ public final class AttestationSigningCredential implements AutoCloseable {
       signature =
           AttestationFilePkcs8Custodian.sign(encryptedPkcs8Path, signingPassphrase, checkedPayload);
     } catch (IOException exception) {
-      throw new IllegalArgumentException(
-          "Attestation key file cannot be read for signing.", exception);
+      throw new AttestationCredentialUseException(
+          encryptedPkcs8Path, "Attestation key file cannot be read for signing.", exception);
     } finally {
       java.util.Arrays.fill(checkedPayload, (byte) 0);
     }
     byte[] spki = publicCredential.spki();
     try {
       if (!AttestationEd25519.verifies(spki, payload, signature)) {
-        throw new IllegalArgumentException(
+        throw new AttestationCredentialUseException(
+            encryptedPkcs8Path,
             "Attestation key file does not match the declared public credential.");
       }
       return new AttestationSignatureEntry(

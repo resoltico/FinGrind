@@ -43,9 +43,7 @@ public final class AttestationSigningSession
     List<AttestationSigningCredential> opened = new ArrayList<>(checkedSources.size());
     try {
       for (AttestationCredentialSource source : checkedSources) {
-        opened.add(
-            AttestationKeyFiles.openExistingCredential(
-                source.principalId(), source.encryptedKeyFilePath(), source.passphraseFilePath()));
+        opened.add(openCredential(source));
       }
       return new AttestationSigningSession(opened);
     } catch (IOException | RuntimeException exception) {
@@ -122,6 +120,22 @@ public final class AttestationSigningSession
       if (!keyPaths.add(checkedSource.encryptedKeyFilePath())) {
         throw new IllegalArgumentException("Attestation authorization key files must be distinct.");
       }
+    }
+  }
+
+  private static AttestationSigningCredential openCredential(AttestationCredentialSource source)
+      throws IOException {
+    AttestationCredentialSource checkedSource = Objects.requireNonNull(source, "sources");
+    try {
+      return AttestationKeyFiles.openExistingCredential(
+          checkedSource.principalId(),
+          checkedSource.encryptedKeyFilePath(),
+          checkedSource.passphraseFilePath());
+    } catch (IOException | IllegalArgumentException exception) {
+      throw new AttestationCredentialUseException(
+          checkedSource.encryptedKeyFilePath(),
+          "Attestation credential source could not be opened.",
+          exception);
     }
   }
 }
