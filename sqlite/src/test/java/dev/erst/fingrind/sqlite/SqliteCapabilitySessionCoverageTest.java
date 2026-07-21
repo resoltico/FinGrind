@@ -21,6 +21,8 @@ import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.core.RequestFingerprint;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.WeightedAverageCostingMath;
+import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
+import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
@@ -112,6 +114,41 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
       assertEquals(List.of(), session.postings(period.effectiveDateRange()));
       assertEquals(Optional.empty(), session.earliestPostingEffectiveDate());
       assertEquals(Optional.empty(), session.transferredThroughEffectiveDate());
+    }
+  }
+
+  @Test
+  void planExecutionSession_commitsOnlyItsFinalAggregateAttestation() {
+    Path bookPath = tempDirectory.resolve("plan-session-attestation.sqlite");
+    try (SqlitePostingFactStore store = openStore(bookAccess(bookPath));
+        SqlitePlanExecutionSession session = SqliteCapabilitySessions.planExecution(store)) {
+      initializeBookWithMinimalNumericAccounts(store);
+      AttestationPlanOperationAuthorizer authorizer =
+          new AttestationPlanOperationAuthorizer(SqliteAttestationTestSupport.authorizer());
+
+      session.beginLedgerPlanTransaction();
+      session.appendPlanAttestation(
+          "no-op-plan", Instant.parse("2026-07-21T12:00:00Z"), authorizer);
+      assertEquals(
+          3, queryInt(requireStoreDatabase(store), "select count(*) from attestation_operation"));
+      authorizer.enterStep(0);
+      assertInstanceOf(
+          dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared.class,
+          session.declareAccount(
+              new AccountDeclaration(
+                  new AccountCode("3000"),
+                  new AccountName("Plan equity"),
+                  AccountType.EQUITY,
+                  financialPositionTaxonomy(
+                      FinancialPositionLineClassification.EQUITY_CONTRIBUTION)),
+              Instant.parse("2026-07-21T12:00:00Z"),
+              authorizer));
+      session.appendPlanAttestation(
+          "account-plan", Instant.parse("2026-07-21T12:00:01Z"), authorizer);
+      session.commitLedgerPlanTransaction();
+
+      assertEquals(
+          4, queryInt(requireStoreDatabase(store), "select count(*) from attestation_operation"));
     }
   }
 
