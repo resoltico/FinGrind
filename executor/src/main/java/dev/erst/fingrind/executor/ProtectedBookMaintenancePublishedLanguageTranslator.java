@@ -26,7 +26,17 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
     return switch (outcome) {
       case ProtectedBookBackupOutcome.BackedUp backedUp ->
           new BackupBookResult.BackedUp(
-              backedUp.bookFilePath(), backedUp.backupFilePath(), backedUp.backupBookKeyFilePath());
+              backedUp.bookFilePath(),
+              backedUp.backupFilePath(),
+              backedUp.backupBookKeyFilePath(),
+              backedUp.backupId(),
+              backedUp.acknowledgementResumed());
+      case ProtectedBookBackupOutcome.AcknowledgementPending pending ->
+          new BackupBookResult.AcknowledgementPending(
+              pending.bookFilePath(),
+              pending.backupFilePath(),
+              pending.backupBookKeyFilePath(),
+              pending.backupId());
       case ProtectedBookBackupOutcome.Rejected rejected ->
           new BackupBookResult.Rejected(toPublished(rejected.rejection()));
     };

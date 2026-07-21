@@ -25,7 +25,9 @@ final class CliMaintenanceMutationResponseWriter {
                   outputChannel.writeEnvelope(
                       CliEnvelopeMapper.successEnvelope(
                           new CliAdministrationJsonModels.BackupBookPayload(
-                              absolutePath(backedUp.bookFilePath())),
+                              absolutePath(backedUp.bookFilePath()),
+                              backedUp.backupId().toString(),
+                              backedUp.acknowledgementResumed() ? "resumed" : "acknowledged"),
                           CliEnvelopeMapper.successArtifacts(
                               CliEnvelopeMapper.successArtifact(
                                   ProtocolArtifactOutput.backupFileFormat(),
@@ -36,6 +38,30 @@ final class CliMaintenanceMutationResponseWriter {
               () ->
                   outputChannel.writeText(
                       CliBookMaintenanceOutputRenderer.renderBackupBookText(backedUp)),
+              () -> {
+                throw new IllegalArgumentException(
+                    CliOperationText.unsupportedCsvOutput(OperationId.BACKUP_BOOK));
+              });
+      case BackupBookResult.AcknowledgementPending pending ->
+          outputMode.run(
+              () ->
+                  outputChannel.writeEnvelope(
+                      CliEnvelopeMapper.successEnvelope(
+                          new CliAdministrationJsonModels.BackupBookPayload(
+                              absolutePath(pending.bookFilePath()),
+                              pending.backupId().toString(),
+                              "pending"),
+                          CliEnvelopeMapper.successArtifacts(
+                              CliEnvelopeMapper.successArtifact(
+                                  ProtocolArtifactOutput.backupFileFormat(),
+                                  pending.backupFilePath()),
+                              CliEnvelopeMapper.successArtifact(
+                                  ProtocolArtifactOutput.backupKeyFileFormat(),
+                                  pending.backupBookKeyFilePath())))),
+              () ->
+                  outputChannel.writeText(
+                      CliBookMaintenanceOutputRenderer.renderBackupAcknowledgementPendingText(
+                          pending)),
               () -> {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(OperationId.BACKUP_BOOK));

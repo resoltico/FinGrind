@@ -34,6 +34,10 @@ public interface ProtectedBookMaintenanceStore {
   /** Lists every artifact that blocks one clean backup-source restore workflow. */
   List<Path> blockingArtifactsForBackupSource(Path normalizedBackupFilePath);
 
+  /** Reports whether a requested external backup artifact and its companion key already exist. */
+  BackupArtifactPairState backupArtifactPairState(
+      Path normalizedBackupArtifactPath, Path normalizedBackupKeyFilePath);
+
   /** Acquires one exclusive maintenance lease for one existing protected-book artifact path. */
   LeaseAcquisition acquireExistingArtifactLease(
       Path normalizedArtifactPath, ProtectedBookMaintenanceArtifactRole artifactRole);
@@ -67,6 +71,18 @@ public interface ProtectedBookMaintenanceStore {
 
     /** Atomically replace the book path that the caller explicitly selected for replacement. */
     REPLACE_SELECTED
+  }
+
+  /** Existing-state classification for one externally published backup artifact pair. */
+  enum BackupArtifactPairState {
+    /** Neither final artifact exists, so a new no-clobber publication may be prepared. */
+    ABSENT,
+    /** Only the public backup artifact exists; a new publication must refuse. */
+    ARTIFACT_ONLY,
+    /** Only the companion backup key exists; a new publication must refuse. */
+    KEY_ONLY,
+    /** Both final artifacts exist and may be considered for exact-tuple acknowledgement resume. */
+    COMPLETE
   }
 
   /** Holds the reservations that make one staged pair safe to publish after source verification. */

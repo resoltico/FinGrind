@@ -3,6 +3,7 @@ package dev.erst.fingrind.executor.maintenance;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailurePaths;
 import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
+import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgementAdmission;
 import dev.erst.fingrind.core.attestation.AttestationBackupArtifact;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationLifecycleMutationProjection;
@@ -19,6 +20,7 @@ import dev.erst.fingrind.executor.spi.StagedRestoredBookPair;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -51,6 +53,29 @@ public final class AttestedProtectedBookLifecycleWorkflow {
     Path bookPath = store.normalize(bookAccess.bookFilePath(), "bookFilePath");
     Path backupPath = store.normalize(backupFilePath, "backupFilePath");
     Path backupKeyPath = store.normalize(backupBookKeyFilePath, "backupBookKeyFilePath");
+    UUID checkedBackupId = Objects.requireNonNull(backupId, "backupId");
+    return switch (store.backupArtifactPairState(backupPath, backupKeyPath)) {
+      case ABSENT ->
+          createBackupArtifact(
+              bookAccess, bookPath, backupPath, backupKeyPath, checkedBackupId, signingSession);
+      case ARTIFACT_ONLY ->
+          rejectedBackup(
+              new ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists(backupPath));
+      case KEY_ONLY ->
+          rejectedBackup(new ProtectedBookMaintenanceRejection.SecretTargetOccupied(backupKeyPath));
+      case COMPLETE ->
+          resumeBackupAcknowledgement(
+              bookAccess, bookPath, backupPath, backupKeyPath, checkedBackupId, signingSession);
+    };
+  }
+
+  private MaintenanceDecision<ProtectedBookBackupOutcome> createBackupArtifact(
+      ProtectedBookAccess bookAccess,
+      Path bookPath,
+      Path backupPath,
+      Path backupKeyPath,
+      UUID backupId,
+      AttestationSigningSession signingSession) {
     PreparedPairPublication publication;
     try {
       publication =
@@ -91,6 +116,57 @@ public final class AttestedProtectedBookLifecycleWorkflow {
     } catch (RuntimeException exception) {
       return failure(
           backupPath, "backupFilePath", "Failed to create the attested backup artifact.");
+    }
+  }
+
+  private MaintenanceDecision<ProtectedBookBackupOutcome> resumeBackupAcknowledgement(
+      ProtectedBookAccess bookAccess,
+      Path bookPath,
+      Path backupPath,
+      Path backupKeyPath,
+      UUID backupId,
+      AttestationSigningSession signingSession) {
+    List<Path> blocking = store.blockingArtifactsForBook(bookPath);
+    if (!blocking.isEmpty()) {
+      return rejectedBackup(
+          new ProtectedBookMaintenanceRejection.BookHasBlockingArtifacts(bookPath, blocking));
+    }
+    ProtectedBookMaintenanceStore.LeaseAcquisition lease =
+        store.acquireManagedArtifactLease(bookPath, ProtectedBookMaintenanceArtifactRole.LIVE_BOOK);
+    if (lease instanceof ProtectedBookMaintenanceStore.LeaseBusy busy) {
+      return rejectedBackup(
+          new ProtectedBookMaintenanceRejection.ArtifactBusy(
+              ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, busy.artifactPath()));
+    }
+    try (ProtectedBookMaintenanceStore.HeldLease ignoredLease =
+            (ProtectedBookMaintenanceStore.HeldLease) lease;
+        ProtectedBookMaintenanceStore.VerifiedBook liveBook = requireVerifiedBook(bookAccess);
+        AttestedProtectedBookMaintenanceStore.VerifiedBackupArtifact artifact =
+            store.verifyBackupArtifact(backupPath, backupKeyPath)) {
+      if (!artifact.verification().backupId().equals(backupId)) {
+        return rejectedBackup(
+            new ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists(backupPath));
+      }
+      List<AttestationEvidence> liveEvidence = store.loadAttestationEvidence(liveBook);
+      if (!artifactSourceIsLive(artifact.verification(), liveEvidence)) {
+        return rejectedBackup(
+            new ProtectedBookMaintenanceRejection.ArtifactVerificationFailed(
+                ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE,
+                backupPath,
+                ProtectedBookVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED));
+      }
+      AttestationBackupAcknowledgement acknowledgement =
+          new AttestationBackupAcknowledgement(
+              artifact.verification().backupId(),
+              artifact.verification().artifactDigest(),
+              artifact.verification().sourceOrder(),
+              artifact.verification().sourceOperationHead());
+      return acknowledgeBackup(
+          liveBook, bookPath, backupPath, backupKeyPath, acknowledgement, signingSession, true);
+    } catch (ProtectedBookMaintenanceRejectionException exception) {
+      return rejectedBackup(exception.rejection());
+    } catch (RuntimeException exception) {
+      return failure(backupPath, "backupFilePath", "Failed to resume the backup acknowledgement.");
     }
   }
 
@@ -254,23 +330,14 @@ public final class AttestedProtectedBookLifecycleWorkflow {
                                     verifiedArtifact.sourceOperationHead());
                             stagedBackup.sealArtifact(artifact);
                             stagedBackup.commit();
-                            try {
-                              store.appendAttestedOperation(
-                                  liveBook,
-                                  "backup-created",
-                                  clock.instant(),
-                                  AttestationLifecycleMutationProjection.backupCreated(
-                                      acknowledgement),
-                                  signingSession,
-                                  acknowledgement);
-                            } catch (BackupAcknowledgementConflictException exception) {
-                              return rejectedBackup(
-                                  new ProtectedBookMaintenanceRejection
-                                      .BackupAcknowledgementConflict(acknowledgement.backupId()));
-                            }
-                            return MaintenanceDecision.accepted(
-                                new ProtectedBookBackupOutcome.BackedUp(
-                                    bookPath, backupPath, backupKeyPath));
+                            return acknowledgeBackup(
+                                liveBook,
+                                bookPath,
+                                backupPath,
+                                backupKeyPath,
+                                acknowledgement,
+                                signingSession,
+                                false);
                           }
                         },
                         ignored ->
@@ -333,6 +400,79 @@ public final class AttestedProtectedBookLifecycleWorkflow {
               }
             },
             failure -> failure(bookPath, "bookFilePath", failure.message()));
+  }
+
+  private MaintenanceDecision<ProtectedBookBackupOutcome> acknowledgeBackup(
+      ProtectedBookMaintenanceStore.VerifiedBook liveBook,
+      Path bookPath,
+      Path backupPath,
+      Path backupKeyPath,
+      AttestationBackupAcknowledgement acknowledgement,
+      AttestationSigningSession signingSession,
+      boolean acknowledgementResumed) {
+    AttestationBackupAcknowledgementAdmission admission =
+        AttestationBackupAcknowledgementAdmission.evaluate(
+            store.loadAttestationEvidence(liveBook), acknowledgement);
+    return switch (admission) {
+      case CONFLICT ->
+          rejectedBackup(
+              new ProtectedBookMaintenanceRejection.BackupAcknowledgementConflict(
+                  acknowledgement.backupId()));
+      case IDENTICAL_REPLAY ->
+          MaintenanceDecision.accepted(
+              new ProtectedBookBackupOutcome.BackedUp(
+                  bookPath,
+                  backupPath,
+                  backupKeyPath,
+                  acknowledgement.backupId(),
+                  acknowledgementResumed));
+      case APPEND -> {
+        try {
+          store.appendAttestedOperation(
+              liveBook,
+              "backup-created",
+              clock.instant(),
+              AttestationLifecycleMutationProjection.backupCreated(acknowledgement),
+              signingSession,
+              acknowledgement);
+          yield MaintenanceDecision.accepted(
+              new ProtectedBookBackupOutcome.BackedUp(
+                  bookPath,
+                  backupPath,
+                  backupKeyPath,
+                  acknowledgement.backupId(),
+                  acknowledgementResumed));
+        } catch (BackupAcknowledgementConflictException exception) {
+          yield rejectedBackup(
+              new ProtectedBookMaintenanceRejection.BackupAcknowledgementConflict(
+                  acknowledgement.backupId()));
+        } catch (RuntimeException exception) {
+          yield MaintenanceDecision.accepted(
+              new ProtectedBookBackupOutcome.AcknowledgementPending(
+                  bookPath, backupPath, backupKeyPath, acknowledgement.backupId()));
+        }
+      }
+    };
+  }
+
+  private static boolean artifactSourceIsLive(
+      dev.erst.fingrind.core.attestation.AttestationBackupArtifactVerification artifact,
+      List<AttestationEvidence> liveEvidence) {
+    List<AttestationEvidence> checkedEvidence = List.copyOf(liveEvidence);
+    int sourceIndex;
+    try {
+      sourceIndex = artifact.sourceOrder().intValueExact();
+    } catch (ArithmeticException exception) {
+      return false;
+    }
+    if (sourceIndex < 0 || sourceIndex >= checkedEvidence.size()) {
+      return false;
+    }
+    AttestationVerification sourceVerification =
+        AttestationVerifier.verifyBook(checkedEvidence.subList(0, sourceIndex + 1));
+    return sourceVerification.bookId().equals(artifact.bookId())
+        && sourceVerification.headOrder().equals(artifact.sourceOrder())
+        && Arrays.equals(sourceVerification.operationHead(), artifact.sourceOperationHead());
   }
 
   private MaintenanceDecision<ProtectedBookRekeyOutcome> rekeyAndPublish(

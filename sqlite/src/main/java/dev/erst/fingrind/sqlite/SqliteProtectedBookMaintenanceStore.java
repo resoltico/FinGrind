@@ -15,6 +15,8 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditCompensationKind;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceAuditKind;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.AttestedProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.PreparedPairPublication;
@@ -106,6 +108,27 @@ public final class SqliteProtectedBookMaintenanceStore
       Path normalizedBookTargetPath, Path normalizedSecretTargetPath) {
     return Files.isRegularFile(normalizedBookTargetPath, LinkOption.NOFOLLOW_LINKS)
         && Files.isRegularFile(normalizedSecretTargetPath, LinkOption.NOFOLLOW_LINKS);
+  }
+
+  @Override
+  public BackupArtifactPairState backupArtifactPairState(
+      Path normalizedBackupArtifactPath, Path normalizedBackupKeyFilePath) {
+    Path artifactPath =
+        Objects.requireNonNull(normalizedBackupArtifactPath, "normalizedBackupArtifactPath");
+    Path keyPath =
+        Objects.requireNonNull(normalizedBackupKeyFilePath, "normalizedBackupKeyFilePath");
+    boolean artifactExists = Files.exists(artifactPath, LinkOption.NOFOLLOW_LINKS);
+    boolean keyExists = Files.exists(keyPath, LinkOption.NOFOLLOW_LINKS);
+    if (artifactExists && keyExists) {
+      return BackupArtifactPairState.COMPLETE;
+    }
+    if (artifactExists) {
+      return BackupArtifactPairState.ARTIFACT_ONLY;
+    }
+    if (keyExists) {
+      return BackupArtifactPairState.KEY_ONLY;
+    }
+    return BackupArtifactPairState.ABSENT;
   }
 
   @Override
@@ -270,6 +293,13 @@ public final class SqliteProtectedBookMaintenanceStore
       throw new IllegalStateException("Failed to read the selected backup artifact.", exception);
     } catch (SqliteCallerPathContractException exception) {
       throw maintenanceRejection(ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE, exception);
+    } catch (IllegalArgumentException exception) {
+      throw new ProtectedBookMaintenanceRejectionException(
+          new ProtectedBookMaintenanceRejection.ArtifactVerificationFailed(
+              ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE,
+              checkedArtifactPath,
+              ProtectedBookVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED),
+          exception);
     }
   }
 

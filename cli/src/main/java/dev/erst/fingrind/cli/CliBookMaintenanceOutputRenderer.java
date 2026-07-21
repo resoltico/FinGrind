@@ -15,8 +15,26 @@ final class CliBookMaintenanceOutputRenderer {
             List.of(
                 List.of("Book file", CliTextDisplay.path(backedUp.bookFilePath())),
                 List.of("Backup file", CliTextDisplay.path(backedUp.backupFilePath())),
+                List.of("Backup key file", CliTextDisplay.path(backedUp.backupBookKeyFilePath())),
+                List.of("Backup ID", backedUp.backupId().toString()),
                 List.of(
-                    "Backup key file", CliTextDisplay.path(backedUp.backupBookKeyFilePath())))));
+                    "Acknowledgement",
+                    backedUp.acknowledgementResumed() ? "resumed" : "acknowledged"))));
+  }
+
+  static String renderBackupAcknowledgementPendingText(
+      BackupBookResult.AcknowledgementPending pending) {
+    return CliTextFormat.renderTitledBlock(
+        "Book Backup Published — Acknowledgement Pending",
+        CliTextFormat.renderKeyValueBlock(
+            List.of(
+                List.of("Book file", CliTextDisplay.path(pending.bookFilePath())),
+                List.of("Backup file", CliTextDisplay.path(pending.backupFilePath())),
+                List.of("Backup key file", CliTextDisplay.path(pending.backupBookKeyFilePath())),
+                List.of("Backup ID", pending.backupId().toString()),
+                List.of(
+                    "Next action",
+                    "Rerun backup-book with these exact paths and --backup-id to resume acknowledgement."))));
   }
 
   static String renderRestoreBookText(RestoreBookResult.Restored restored) {

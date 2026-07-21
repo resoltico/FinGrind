@@ -33,6 +33,7 @@ final class CliAdministrativeExitCodes {
   static int exitCodeFor(BackupBookResult result) {
     return switch (result) {
       case BackupBookResult.BackedUp _ -> 0;
+      case BackupBookResult.AcknowledgementPending _ -> 4;
       case BackupBookResult.Rejected rejected -> exitCodeFor(rejected.rejection());
     };
   }

@@ -94,9 +94,12 @@ public interface CliAdministrationJsonModels {
     }
   }
 
-  record BackupBookPayload(String bookFile) implements CliSuccessPayload {
+  record BackupBookPayload(String bookFile, String backupId, String acknowledgementState)
+      implements CliSuccessPayload {
     public BackupBookPayload {
       bookFile = requireText(bookFile, "bookFile");
+      backupId = requireText(backupId, "backupId");
+      acknowledgementState = requireText(acknowledgementState, "acknowledgementState");
     }
   }
 
