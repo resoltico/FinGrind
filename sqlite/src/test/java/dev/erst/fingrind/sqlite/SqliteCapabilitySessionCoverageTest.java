@@ -11,7 +11,9 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
+import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.InventoryMovementKind;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
@@ -66,6 +68,59 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
           postingFactStore.storeContext(),
           assertInstanceOf(SqliteAdministrationCapabilitySession.class, administrationSession)
               .storeContext());
+    }
+  }
+
+  @Test
+  void readCapabilitySession_exposesEveryEmptyInitializedBookReadProjection() {
+    Path bookPath = tempDirectory.resolve("read-capability-session-coverage.sqlite");
+    try (SqlitePostingFactStore store = openStore(bookAccess(bookPath));
+        SqliteReadSession session = SqliteCapabilitySessions.read(store)) {
+      initializeBookWithMinimalNumericAccounts(store);
+      AccountCode cashAccountCode = new AccountCode("1000");
+      PostingId missingPostingId = new PostingId("fabb2aac-3f31-38f5-af1d-e7bc3dfdc9e2");
+
+      assertEquals(store.findAccount(cashAccountCode), session.findAccount(cashAccountCode));
+      assertEquals(
+          store.findAccounts(java.util.Set.of(cashAccountCode)),
+          session.findAccounts(java.util.Set.of(cashAccountCode)));
+      assertEquals(store.allAccounts(), session.allAccounts());
+      assertEquals(
+          store.listAccounts(firstAccountPage()), session.listAccounts(firstAccountPage()));
+      assertEquals(
+          Optional.empty(),
+          session.findExistingPosting(new IdempotencyKey("read-session-idempotency")));
+      assertEquals(Optional.empty(), session.findPosting(missingPostingId));
+      assertEquals(Optional.empty(), session.findReversalFor(missingPostingId));
+      assertEquals(
+          List.of(),
+          session
+              .listPostings(postingHistoryQuery(Optional.empty(), null, null, 50, Optional.empty()))
+              .postings());
+      assertEquals(List.of(), session.postings(EffectiveDateRange.unbounded()));
+      assertEquals(Optional.empty(), session.earliestPostingEffectiveDate());
+      assertEquals(Optional.empty(), session.transferredThroughEffectiveDate());
+      assertEquals(Optional.empty(), session.latestPostingEffectiveDate());
+      assertEquals(List.of(), session.financingArrangements());
+      assertFalse(
+          session.hasFinancingArrangement(
+              new dev.erst.fingrind.contract.bookkeeping.FinancingArrangementId(
+                  "read-session-financing")));
+      assertEquals(
+          Optional.empty(),
+          session.findFinancingArrangement(
+              new dev.erst.fingrind.contract.bookkeeping.FinancingArrangementId(
+                  "read-session-financing")));
+      assertEquals(List.of(), session.foreignCurrencyObligations());
+      assertFalse(
+          session.hasForeignCurrencyObligation(
+              new dev.erst.fingrind.contract.bookkeeping.ForeignCurrencyObligationId(
+                  "read-session-obligation")));
+      assertEquals(
+          Optional.empty(),
+          session.findForeignCurrencyObligation(
+              new dev.erst.fingrind.contract.bookkeeping.ForeignCurrencyObligationId(
+                  "read-session-obligation")));
     }
   }
 
