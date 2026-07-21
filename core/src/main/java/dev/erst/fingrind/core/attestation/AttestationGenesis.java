@@ -61,10 +61,6 @@ public final class AttestationGenesis {
     AttestationEvidence checkedEvidence = Objects.requireNonNull(evidence, "evidence");
     BookIdentity checkedBookIdentity = Objects.requireNonNull(bookIdentity, "bookIdentity");
     AttestationVerification verification = AttestationVerifier.verifyBook(List.of(checkedEvidence));
-    if (verification.headOrder().signum() != 0) {
-      throw new IllegalArgumentException(
-          "Attestation evidence must contain genesis at order zero.");
-    }
     AttestationPreimage effect =
         AttestationPreimage.decode(
             checkedEvidence.effectPreimage(), AttestationAuthorizationFailure.GENESIS_INVALID);

@@ -34,6 +34,10 @@ class AttestationLifecycleAdmissionCoverageTest {
         AttestationBackupAcknowledgementAdmission.IDENTICAL_REPLAY,
         AttestationBackupAcknowledgementAdmission.evaluate(List.of(matching), requested));
     assertEquals(
+        AttestationBackupAcknowledgementAdmission.APPEND,
+        AttestationBackupAcknowledgementAdmission.evaluate(
+            List.of(backupEvidence(otherBackupIdentity())), requested));
+    assertEquals(
         AttestationBackupAcknowledgementAdmission.CONFLICT,
         AttestationBackupAcknowledgementAdmission.evaluate(
             List.of(matching, backupEvidence(acknowledgement(18, 3, 4))), requested));
@@ -52,6 +56,20 @@ class AttestationLifecycleAdmissionCoverageTest {
     assertFalse(java.util.Arrays.equals(head, acknowledgement.sourceOperationHead()));
     assertTrue(acknowledgement.sameTuple(acknowledgement));
     assertFalse(acknowledgement.sameTuple(acknowledgement(1, 1, 2)));
+    assertFalse(
+        acknowledgement.sameTuple(
+            new AttestationBackupAcknowledgement(
+                acknowledgement.backupId(),
+                AttestationHash.sha256(new byte[] {7}).bytes(),
+                BigInteger.ZERO,
+                acknowledgement.sourceOperationHead())));
+    assertFalse(
+        acknowledgement.sameTuple(
+            new AttestationBackupAcknowledgement(
+                acknowledgement.backupId(),
+                acknowledgement.backupArtifactDigest(),
+                BigInteger.ZERO,
+                AttestationHash.sha256(new byte[] {8}).bytes())));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -79,6 +97,11 @@ class AttestationLifecycleAdmissionCoverageTest {
         () -> AttestationBackupAcknowledgementAdmission.from(malformed));
     assertThrows(
         NullPointerException.class, () -> AttestationBackupAcknowledgementAdmission.from(nullOf()));
+    assertEquals(
+        acknowledgement(17, 1, 2).backupId(),
+        java.util.Objects.requireNonNull(
+                AttestationBackupAcknowledgementAdmission.from(mixedBackupEvidence()))
+            .backupId());
   }
 
   @Test
@@ -88,6 +111,8 @@ class AttestationLifecycleAdmissionCoverageTest {
 
     assertEquals(BigInteger.ONE, AttestationLifecycleState.nextKeyEpoch(List.of()));
     assertEquals(BigInteger.TWO, AttestationLifecycleState.nextKeyEpoch(List.of(rekeyOne)));
+    assertEquals(
+        BigInteger.TWO, AttestationLifecycleState.nextKeyEpoch(List.of(mixedRekeyEvidence())));
     assertEquals(
         BigInteger.valueOf(3),
         AttestationLifecycleState.nextKeyEpoch(
@@ -139,6 +164,11 @@ class AttestationLifecycleAdmissionCoverageTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
+            new AttestationVerification(
+                BOOK_ID, BigInteger.ONE.shiftLeft(64), new byte[32], List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
             new AttestationBackupArtifactVerification(
                 new byte[0],
                 BOOK_ID,
@@ -148,6 +178,22 @@ class AttestationLifecycleAdmissionCoverageTest {
                 new byte[32],
                 new byte[32],
                 verification));
+    assertEquals(backup.backupId(), backup.backupId());
+    assertEquals(verification, backup.sourceVerification());
+    assertEquals(AttestationHash.BYTE_LENGTH, backup.snapshotDigest().length);
+    assertEquals(AttestationHash.BYTE_LENGTH, backup.artifactDigest().length);
+    AttestationReceiptVerificationResult receipt =
+        new AttestationReceiptVerificationResult(
+            BOOK_ID, BigInteger.ONE, verification.operationHead(), List.of());
+    assertEquals(BOOK_ID, receipt.bookId());
+    assertEquals(BigInteger.ONE, receipt.operationOrder());
+    assertArrayEquals(verification.operationHead(), receipt.operationHead());
+    assertEquals(List.of(), receipt.findings());
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new AttestationReceiptVerificationResult(
+                BOOK_ID, BigInteger.ZERO, new byte[31], List.of()));
   }
 
   private static AttestationBackupAcknowledgement acknowledgement(
@@ -157,6 +203,15 @@ class AttestationLifecycleAdmissionCoverageTest {
         AttestationHash.sha256(new byte[] {(byte) digestSeed}).bytes(),
         BigInteger.valueOf(order),
         AttestationHash.sha256(new byte[] {(byte) headSeed}).bytes());
+  }
+
+  private static AttestationBackupAcknowledgement otherBackupIdentity() {
+    AttestationBackupAcknowledgement baseline = acknowledgement(17, 1, 2);
+    return new AttestationBackupAcknowledgement(
+        UUID.fromString("bf27c01b-654b-499c-88d7-dc1a14969215"),
+        baseline.backupArtifactDigest(),
+        baseline.sourceOrder(),
+        baseline.sourceOperationHead());
   }
 
   private static AttestationEvidence backupEvidence(
@@ -176,6 +231,35 @@ class AttestationLifecycleAdmissionCoverageTest {
                 RECORDED_AT,
                 java.util.Optional.empty())
             .effect());
+  }
+
+  private static AttestationEvidence mixedBackupEvidence() {
+    AttestationPreimage backup =
+        AttestationPreimage.decode(
+            AttestationLifecycleMutationProjection.backupBook(
+                    AttestationOperationKind.BACKUP_CREATED.wireToken(), acknowledgement(17, 1, 2))
+                .effect(),
+            AttestationAuthorizationFailure.PREIMAGE_INVALID);
+    AttestationPreimage rekey =
+        AttestationPreimage.decode(
+            AttestationLifecycleMutationProjection.rekeyBook(
+                    AttestationOperationKind.REKEY_BOOK.wireToken(),
+                    BigInteger.ONE,
+                    RECORDED_AT,
+                    java.util.Optional.empty())
+                .effect(),
+            AttestationAuthorizationFailure.PREIMAGE_INVALID);
+    return evidence(
+        AttestationOperationKind.BACKUP_CREATED,
+        AttestationPreimage.of(
+                java.util.stream.Stream.concat(backup.records().stream(), rekey.records().stream())
+                    .toList())
+            .encoded());
+  }
+
+  private static AttestationEvidence mixedRekeyEvidence() {
+    AttestationEvidence mixedBackup = mixedBackupEvidence();
+    return evidence(AttestationOperationKind.REKEY_BOOK, mixedBackup.effectPreimage());
   }
 
   private static AttestationPreimage emptyPreimage() {

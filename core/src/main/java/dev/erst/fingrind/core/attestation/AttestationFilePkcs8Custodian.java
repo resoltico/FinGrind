@@ -203,7 +203,7 @@ final class AttestationFilePkcs8Custodian {
   private static byte[] encode(byte[] spki, byte[] ciphertext) {
     byte[] checkedSpki = AttestationSpki.of(Objects.requireNonNull(spki, "spki")).bytes();
     ByteBuffer encryptedPayload = ByteBuffer.wrap(Objects.requireNonNull(ciphertext, "ciphertext"));
-    requireEncryptedPayloadHeader(encryptedPayload);
+    encryptedPayload.position(FORMAT_MAGIC.length + Byte.BYTES + Integer.BYTES);
     byte[] salt = next(encryptedPayload, SALT_BYTE_COUNT);
     byte[] initializationVector = next(encryptedPayload, INITIALIZATION_VECTOR_BYTE_COUNT);
     byte[] encryptedPrivateKey = next(encryptedPayload, encryptedPayload.remaining());
@@ -245,31 +245,7 @@ final class AttestationFilePkcs8Custodian {
       throw new IllegalArgumentException("Attestation key file has an unsupported format.");
     }
     byte[] spki = next(encoded, spkiLength);
-    try {
-      AttestationSpki.of(spki);
-    } catch (IllegalArgumentException exception) {
-      java.util.Arrays.fill(salt, (byte) 0);
-      java.util.Arrays.fill(initializationVector, (byte) 0);
-      java.util.Arrays.fill(spki, (byte) 0);
-      throw new IllegalArgumentException(
-          "Attestation key file has an unsupported format.", exception);
-    }
     return new ParsedKeyFile(salt, initializationVector, spki, next(encoded, encoded.remaining()));
-  }
-
-  private static void requireEncryptedPayloadHeader(ByteBuffer encoded) {
-    if (encoded.remaining()
-            < FORMAT_MAGIC.length
-                + Byte.BYTES
-                + Integer.BYTES
-                + SALT_BYTE_COUNT
-                + INITIALIZATION_VECTOR_BYTE_COUNT
-                + AUTHENTICATION_TAG_BIT_COUNT / Byte.SIZE
-        || !java.util.Arrays.equals(next(encoded, FORMAT_MAGIC.length), FORMAT_MAGIC)
-        || encoded.get() != FORMAT_VERSION
-        || encoded.getInt() != ITERATION_COUNT) {
-      throw new IllegalArgumentException("Attestation key file encryption failed.");
-    }
   }
 
   private static byte[] next(ByteBuffer source, int byteCount) {

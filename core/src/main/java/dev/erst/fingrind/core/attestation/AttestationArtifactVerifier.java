@@ -149,12 +149,7 @@ final class AttestationArtifactVerifier {
   private static AttestationVerification publicVerification(
       AttestationBookVerification verification) {
     return new AttestationVerification(
-        verification.bookId(),
-        verification.headOrder(),
-        verification.head().bytes(),
-        verification.reviewFindings().stream()
-            .map(finding -> finding.review().keyId().toString())
-            .toList());
+        verification.bookId(), verification.headOrder(), verification.head().bytes(), List.of());
   }
 
   private static AttestationAuthorizationException manifestFailure() {

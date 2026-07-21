@@ -80,11 +80,53 @@ class AttestationBoundaryValueCoverageTest {
                 "payable",
                 "receivable",
                 "MONTHLY",
+                -1,
+                List.of(taxCode())));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new AttestationTaxRegistrationSnapshot(
+                "registration",
+                "name",
+                "LV",
+                null,
+                "payable",
+                "receivable",
+                "MONTHLY",
                 0,
                 List.of()));
     assertThrows(
         IllegalArgumentException.class,
+        () ->
+            new AttestationTaxRegistrationSnapshot(
+                " ",
+                "name",
+                "LV",
+                null,
+                "payable",
+                "receivable",
+                "MONTHLY",
+                0,
+                List.of(taxCode())));
+    assertThrows(
+        IllegalArgumentException.class,
         () -> new AttestationTaxCodeSnapshot("VAT", "name", 1_000_001, "EXCLUSIVE", "SALE"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new AttestationTaxCodeSnapshot("VAT", " ", 0, "EXCLUSIVE", "SALE"));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new AttestationTaxRegistrationSnapshot(
+                "registration",
+                "name",
+                "LV",
+                " ",
+                "payable",
+                "receivable",
+                "MONTHLY",
+                0,
+                List.of(taxCode())));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -131,6 +173,39 @@ class AttestationBoundaryValueCoverageTest {
                 1,
                 List.of(),
                 List.of(closePosting("interim-result-sweep", "interim-result-sweep", "cli"))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AttestationPeriodCloseMutationProjection.projectInterimResultSweep(
+                " ",
+                new dev.erst.fingrind.core.ReportingPeriod(EFFECTIVE_DATE, EFFECTIVE_DATE),
+                "3200",
+                1,
+                List.of(),
+                List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AttestationPeriodCloseMutationProjection.projectInterimResultSweep(
+                "interim-result-sweep",
+                new dev.erst.fingrind.core.ReportingPeriod(EFFECTIVE_DATE, EFFECTIVE_DATE),
+                " ",
+                1,
+                List.of(),
+                List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AttestationPeriodClosePreimageProjection.projectInterimResultSweep(
+                " ",
+                new dev.erst.fingrind.core.ReportingPeriod(EFFECTIVE_DATE, EFFECTIVE_DATE),
+                "3200",
+                1,
+                List.of(),
+                List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> closePosting("interim-result-sweep", "interim-result-sweep", " "));
     assertThrows(
         IllegalArgumentException.class,
         () -> AttestationPlanMutationProjection.project(" ", List.of()));
@@ -283,6 +358,16 @@ class AttestationBoundaryValueCoverageTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> AttestationGenesisFounders.requireDistinctCredentials(List.of(founder, founder)));
+    AttestationFounder sameKeyDifferentPrincipal =
+        new AttestationFounder(
+            UUID.randomUUID(),
+            founder.keyId(),
+            AttestationSpki.of(keyPair.getPublic().getEncoded()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AttestationGenesisFounders.requireDistinctCredentials(
+                List.of(founder, sameKeyDifferentPrincipal)));
   }
 
   @Test
@@ -302,7 +387,25 @@ class AttestationBoundaryValueCoverageTest {
           AttestationKeyFiles.loadPublicCredential(keyPath).keyId().length,
           reopened.publicCredential().keyId().length);
     }
+    Path loneNewlinePath = temporaryDirectory.resolve("lone-newline.passphrase");
+    Files.writeString(loneNewlinePath, "correct horse battery staple\n");
+    try (AttestationSigningCredential ignored =
+        AttestationKeyFiles.openOrCreateCredential(
+            UUID.randomUUID(), temporaryDirectory.resolve("lone-newline.fgatk"), loneNewlinePath)) {
+      assertTrue(ignored.publicCredential().keyId().length > 0);
+    }
+    Path noNewlinePath = temporaryDirectory.resolve("no-newline.passphrase");
+    Files.writeString(noNewlinePath, "correct horse battery staple");
+    try (AttestationSigningCredential ignored =
+        AttestationKeyFiles.openOrCreateCredential(
+            UUID.randomUUID(), temporaryDirectory.resolve("no-newline.fgatk"), noNewlinePath)) {
+      assertTrue(ignored.publicCredential().keyId().length > 0);
+    }
     Files.write(passphrasePath, new byte[0]);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> AttestationKeyFiles.openExistingCredential(principalId, keyPath, passphrasePath));
+    Files.writeString(passphrasePath, "\n");
     assertThrows(
         IllegalArgumentException.class,
         () -> AttestationKeyFiles.openExistingCredential(principalId, keyPath, passphrasePath));
@@ -327,8 +430,16 @@ class AttestationBoundaryValueCoverageTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> AttestationKeyFiles.loadPublicCredential(invalidLengthPath));
+    byte[] overlongSpkiLength = Files.readAllBytes(keyPath);
+    overlongSpkiLength[38] = (byte) 0x7F;
+    overlongSpkiLength[39] = (byte) 0xFF;
+    Path overlongSpkiLengthPath = temporaryDirectory.resolve("overlong-spki-length.fgatk");
+    Files.write(overlongSpkiLengthPath, overlongSpkiLength);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> AttestationKeyFiles.loadPublicCredential(overlongSpkiLengthPath));
     byte[] invalidSpki = Files.readAllBytes(keyPath);
-    invalidSpki[40] ^= 1;
+    invalidSpki[41] = 0;
     Path invalidSpkiPath = temporaryDirectory.resolve("invalid-spki.fgatk");
     Files.write(invalidSpkiPath, invalidSpki);
     assertThrows(
@@ -353,7 +464,28 @@ class AttestationBoundaryValueCoverageTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> new AttestationSigningCredential(principalId, credential, keyPath, new char[0]));
+    try (AttestationSigningCredential missing =
+        new AttestationSigningCredential(
+            principalId,
+            credential,
+            temporaryDirectory.resolve("missing-signing-key.fgatk"),
+            "passphrase".toCharArray())) {
+      assertThrows(IllegalArgumentException.class, () -> missing.sign(new byte[] {1}));
+    }
+    Path differentKeyPath = temporaryDirectory.resolve("different.fgatk");
+    AttestationPublicCredential differentCredential =
+        AttestationKeyFiles.create(differentKeyPath, "passphrase".toCharArray());
+    try (AttestationSigningCredential mismatched =
+        new AttestationSigningCredential(
+            principalId, differentCredential, keyPath, "passphrase".toCharArray())) {
+      assertThrows(IllegalArgumentException.class, () -> mismatched.sign(new byte[] {1}));
+    }
     assertThrows(IllegalArgumentException.class, () -> AttestationSigningSession.open(List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AttestationSigningSession.open(
+                List.of(source(1), source(2), source(3), source(4), source(5), source(6))));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -362,6 +494,16 @@ class AttestationBoundaryValueCoverageTest {
                     new AttestationCredentialSource(principalId, keyPath, passphrasePath),
                     new AttestationCredentialSource(
                         principalId, temporaryDirectory.resolve("other.fgatk"), passphrasePath))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AttestationSigningSession.open(
+                List.of(
+                    new AttestationCredentialSource(UUID.randomUUID(), keyPath, passphrasePath),
+                    new AttestationCredentialSource(
+                        UUID.randomUUID(),
+                        keyPath,
+                        temporaryDirectory.resolve("other.passphrase")))));
     try (AttestationSigningSession session =
         AttestationSigningSession.open(
             List.of(new AttestationCredentialSource(principalId, keyPath, passphrasePath)))) {
@@ -395,6 +537,13 @@ class AttestationBoundaryValueCoverageTest {
 
   private static AttestationTaxCodeSnapshot taxCode() {
     return new AttestationTaxCodeSnapshot("VAT", "Value-added tax", 210_000, "EXCLUSIVE", "SALE");
+  }
+
+  private AttestationCredentialSource source(int index) {
+    return new AttestationCredentialSource(
+        UUID.randomUUID(),
+        temporaryDirectory.resolve("source-" + index + ".fgatk"),
+        temporaryDirectory.resolve("source-" + index + ".passphrase"));
   }
 
   private static AttestationClosePostingSnapshot closePosting(String kind, String sourceChannel) {

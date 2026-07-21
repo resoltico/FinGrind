@@ -34,12 +34,7 @@ public final class AttestationVerifier {
                           })
                       .toList()));
       return new AttestationVerification(
-          verification.bookId(),
-          verification.headOrder(),
-          verification.head().bytes(),
-          verification.reviewFindings().stream()
-              .map(finding -> finding.review().keyId().toString())
-              .toList());
+          verification.bookId(), verification.headOrder(), verification.head().bytes(), List.of());
     } catch (AttestationAuthorizationException exception) {
       throw new AttestationVerificationException(exception.failure().code(), exception);
     }
