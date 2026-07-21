@@ -22,6 +22,6 @@ public record ProtectedBookAccess(
 
   /** Projects this local maintenance access back into the published contract shape. */
   public BookAccess toPublished() {
-    return new BookAccess(bookFilePath, passphraseSource.toPublished());
+    return new BookAccess(bookFilePath, passphraseSource.toPublished(), java.util.List.of());
   }
 }

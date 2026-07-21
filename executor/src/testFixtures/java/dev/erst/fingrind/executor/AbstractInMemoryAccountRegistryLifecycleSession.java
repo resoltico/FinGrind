@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRegistryDependency;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryLifecyclePolicy;
@@ -16,7 +17,11 @@ import java.util.List;
 abstract class AbstractInMemoryAccountRegistryLifecycleSession
     extends AbstractInMemoryBookAdministrationSession {
   @Override
-  public AccountAmendmentOutcome amendAccount(AccountDeclaration amendment, Instant amendedAt) {
+  public AccountAmendmentOutcome amendAccount(
+      AccountDeclaration amendment,
+      Instant amendedAt,
+      AttestationOperationAuthorizer attestationAuthorizer) {
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     return InMemoryBookSessionSupport.withLock(
         lock,
         () -> {
@@ -36,8 +41,25 @@ abstract class AbstractInMemoryAccountRegistryLifecycleSession
         });
   }
 
+  /**
+   * Test-fixture-only lifecycle seeding that never represents a protected-book production write.
+   */
+  AccountAmendmentOutcome amendAccount(AccountDeclaration amendment, Instant amendedAt) {
+    return amendAccount(
+        amendment,
+        amendedAt,
+        ignored -> {
+          throw new AssertionError(
+              "In-memory fixture seeding must not invoke an attestation signer.");
+        });
+  }
+
   @Override
-  public AccountRetirementOutcome retireAccount(AccountCode accountCode, Instant retiredAt) {
+  public AccountRetirementOutcome retireAccount(
+      AccountCode accountCode,
+      Instant retiredAt,
+      AttestationOperationAuthorizer attestationAuthorizer) {
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     return InMemoryBookSessionSupport.withLock(
         lock,
         () -> {
@@ -55,6 +77,19 @@ abstract class AbstractInMemoryAccountRegistryLifecycleSession
             accountsByCode.put(accountCode, retired.account());
           }
           return outcome;
+        });
+  }
+
+  /**
+   * Test-fixture-only lifecycle seeding that never represents a protected-book production write.
+   */
+  AccountRetirementOutcome retireAccount(AccountCode accountCode, Instant retiredAt) {
+    return retireAccount(
+        accountCode,
+        retiredAt,
+        ignored -> {
+          throw new AssertionError(
+              "In-memory fixture seeding must not invoke an attestation signer.");
         });
   }
 

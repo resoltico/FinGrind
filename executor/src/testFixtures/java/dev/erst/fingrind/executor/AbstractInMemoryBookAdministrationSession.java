@@ -13,6 +13,7 @@ import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationGenesis;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
@@ -41,6 +42,11 @@ abstract class AbstractInMemoryBookAdministrationSession
         BookLifecycleReader,
         AccountLookupStore,
         AccountCatalogStore {
+  private static final AttestationOperationAuthorizer TEST_SEED_AUTHORIZER =
+      ignored -> {
+        throw new AssertionError(
+            "In-memory fixture seeding must not invoke an attestation signer.");
+      };
   protected final ReentrantLock lock = new ReentrantLock();
   protected final Map<AccountCode, RegisteredAccount> accountsByCode =
       InMemoryBookSessionSupport.mutableMap();
@@ -69,6 +75,12 @@ abstract class AbstractInMemoryBookAdministrationSession
               initializedAt,
               bookIdentity);
         });
+  }
+
+  /** Test-fixture-only account seeding that never represents a protected-book production write. */
+  public AccountDeclarationOutcome declareAccount(
+      AccountDeclaration declaration, Instant declaredAt) {
+    return declareAccount(declaration, declaredAt, TEST_SEED_AUTHORIZER);
   }
 
   @Override
@@ -131,7 +143,10 @@ abstract class AbstractInMemoryBookAdministrationSession
 
   @Override
   public AccountDeclarationOutcome declareAccount(
-      AccountDeclaration declaration, Instant declaredAt) {
+      AccountDeclaration declaration,
+      Instant declaredAt,
+      AttestationOperationAuthorizer attestationAuthorizer) {
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     return InMemoryBookSessionSupport.withLock(
         lock,
         () -> {
@@ -161,9 +176,23 @@ abstract class AbstractInMemoryBookAdministrationSession
       AccountName accountName,
       AccountType accountType,
       AccountTaxonomy accountTaxonomy,
+      Instant declaredAt,
+      AttestationOperationAuthorizer attestationAuthorizer) {
+    return declareAccount(
+        new AccountDeclaration(accountCode, accountName, accountType, accountTaxonomy),
+        declaredAt,
+        attestationAuthorizer);
+  }
+
+  /** Test-fixture-only account seeding that never represents a protected-book production write. */
+  AccountDeclarationOutcome declareAccount(
+      AccountCode accountCode,
+      AccountName accountName,
+      AccountType accountType,
+      AccountTaxonomy accountTaxonomy,
       Instant declaredAt) {
     return declareAccount(
-        new AccountDeclaration(accountCode, accountName, accountType, accountTaxonomy), declaredAt);
+        accountCode, accountName, accountType, accountTaxonomy, declaredAt, TEST_SEED_AUTHORIZER);
   }
 
   @Override

@@ -5,6 +5,7 @@ import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.AcceptedPosting;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -77,18 +78,24 @@ final class SqliteStoreMutationOperations {
   }
 
   dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome declareAccount(
-      dev.erst.fingrind.executor.bookkeeping.AccountDeclaration declaration, Instant declaredAt) {
-    return accountRegistryOperations.declareAccount(declaration, declaredAt);
+      dev.erst.fingrind.executor.bookkeeping.AccountDeclaration declaration,
+      Instant declaredAt,
+      AttestationOperationAuthorizer attestationAuthorizer) {
+    return accountRegistryOperations.declareAccount(declaration, declaredAt, attestationAuthorizer);
   }
 
   dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome amendAccount(
-      dev.erst.fingrind.executor.bookkeeping.AccountDeclaration amendment, Instant amendedAt) {
-    return accountRegistryOperations.amendAccount(amendment, amendedAt);
+      dev.erst.fingrind.executor.bookkeeping.AccountDeclaration amendment,
+      Instant amendedAt,
+      AttestationOperationAuthorizer attestationAuthorizer) {
+    return accountRegistryOperations.amendAccount(amendment, amendedAt, attestationAuthorizer);
   }
 
   dev.erst.fingrind.executor.bookkeeping.AccountRetirementOutcome retireAccount(
-      dev.erst.fingrind.core.AccountCode accountCode, Instant retiredAt) {
-    return accountRegistryOperations.retireAccount(accountCode, retiredAt);
+      dev.erst.fingrind.core.AccountCode accountCode,
+      Instant retiredAt,
+      AttestationOperationAuthorizer attestationAuthorizer) {
+    return accountRegistryOperations.retireAccount(accountCode, retiredAt, attestationAuthorizer);
   }
 
   DeclareTaxRegistrationResult declareTaxRegistration(

@@ -63,6 +63,9 @@ public final class ProtocolOptions {
     public static final String FOUNDER_PRINCIPAL_ID = "--attestation-founder-principal-id";
     public static final String FOUNDER_KEY_FILE = "--attestation-founder-key-file";
     public static final String FOUNDER_PASSPHRASE_FILE = "--attestation-founder-passphrase-file";
+    public static final String PRINCIPAL_ID = "--attestation-principal-id";
+    public static final String KEY_FILE = "--attestation-key-file";
+    public static final String PASSPHRASE_FILE = "--attestation-passphrase-file";
 
     private Attestation() {}
   }

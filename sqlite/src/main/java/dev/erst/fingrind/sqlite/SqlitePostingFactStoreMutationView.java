@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
@@ -34,9 +35,11 @@ interface SqlitePostingFactStoreMutationView {
 
   /** Declares a new account in the protected book. */
   default AccountDeclarationOutcome declareAccount(
-      AccountDeclaration declaration, Instant declaredAt) {
+      AccountDeclaration declaration,
+      Instant declaredAt,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().declareAccount(declaration, declaredAt);
+    return storeMutationOperations().declareAccount(declaration, declaredAt, attestationAuthorizer);
   }
 
   /** Commits one posting draft into the protected book. */

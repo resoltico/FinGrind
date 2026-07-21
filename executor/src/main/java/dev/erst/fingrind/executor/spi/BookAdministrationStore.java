@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor.spi;
 
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
@@ -24,12 +25,20 @@ public interface BookAdministrationStore {
       AttestationEvidence genesisEvidence);
 
   /** Declares or reactivates one account in the selected book. */
-  AccountDeclarationOutcome declareAccount(AccountDeclaration declaration, Instant declaredAt);
+  AccountDeclarationOutcome declareAccount(
+      AccountDeclaration declaration,
+      Instant declaredAt,
+      AttestationOperationAuthorizer attestationAuthorizer);
 
   /** Replaces one account definition when the Account Registry admits the lifecycle change. */
-  AccountAmendmentOutcome amendAccount(AccountDeclaration amendment, Instant amendedAt);
+  AccountAmendmentOutcome amendAccount(
+      AccountDeclaration amendment,
+      Instant amendedAt,
+      AttestationOperationAuthorizer attestationAuthorizer);
 
   /** Retires one account when the Account Registry admits the lifecycle change. */
   AccountRetirementOutcome retireAccount(
-      dev.erst.fingrind.core.AccountCode accountCode, Instant retiredAt);
+      dev.erst.fingrind.core.AccountCode accountCode,
+      Instant retiredAt,
+      AttestationOperationAuthorizer attestationAuthorizer);
 }

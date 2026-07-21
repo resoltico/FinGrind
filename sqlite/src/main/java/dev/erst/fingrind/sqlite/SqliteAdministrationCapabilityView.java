@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
@@ -53,23 +54,29 @@ interface SqliteAdministrationCapabilityView
 
   @Override
   default AccountDeclarationOutcome declareAccount(
-      AccountDeclaration declaration, Instant declaredAt) {
+      AccountDeclaration declaration,
+      Instant declaredAt,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().declareAccount(declaration, declaredAt);
+    return storeMutationOperations().declareAccount(declaration, declaredAt, attestationAuthorizer);
   }
 
   @Override
   default dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome amendAccount(
-      AccountDeclaration amendment, Instant amendedAt) {
+      AccountDeclaration amendment,
+      Instant amendedAt,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().amendAccount(amendment, amendedAt);
+    return storeMutationOperations().amendAccount(amendment, amendedAt, attestationAuthorizer);
   }
 
   @Override
   default dev.erst.fingrind.executor.bookkeeping.AccountRetirementOutcome retireAccount(
-      dev.erst.fingrind.core.AccountCode accountCode, Instant retiredAt) {
+      dev.erst.fingrind.core.AccountCode accountCode,
+      Instant retiredAt,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations().retireAccount(accountCode, retiredAt);
+    return storeMutationOperations().retireAccount(accountCode, retiredAt, attestationAuthorizer);
   }
 
   @Override

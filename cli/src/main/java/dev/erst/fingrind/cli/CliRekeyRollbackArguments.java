@@ -59,7 +59,7 @@ final class CliRekeyRollbackArguments {
         parsedArguments.bookFilePath(), passphraseSource, null);
     CliBookPathValidator.validateStandardInputUsage(passphraseSource, null);
     return new DeleteRekeyRollback(
-        new BookAccess(parsedArguments.bookFilePath(), passphraseSource),
+        new BookAccess(parsedArguments.bookFilePath(), passphraseSource, java.util.List.of()),
         parsedArguments.rollbackArtifactPath(),
         CliOptionModes.resolvedOutputMode(parsedArguments.outputMode()));
   }

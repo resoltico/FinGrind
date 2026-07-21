@@ -48,7 +48,8 @@ final class ProtectedBookMaintenanceTestSupport {
     return new BookAccess(
         bookFilePath,
         new BookAccess.PassphraseSource.KeyFile(
-            bookFilePath.resolveSibling("book-passphrase.key").toAbsolutePath().normalize()));
+            bookFilePath.resolveSibling("book-passphrase.key").toAbsolutePath().normalize()),
+        List.of());
   }
 
   static Path path(Path tempDirectory, String relativePath) {

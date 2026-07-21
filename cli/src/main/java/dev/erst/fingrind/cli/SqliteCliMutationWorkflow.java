@@ -13,12 +13,16 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RetireAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.RetireAccountResult;
+import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
+import dev.erst.fingrind.executor.AttestationCredentialException;
+import dev.erst.fingrind.executor.AttestationMutationAuthorization;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.FiscalYearCloseService;
 import dev.erst.fingrind.executor.InterimResultSweepService;
@@ -36,6 +40,7 @@ import dev.erst.fingrind.sqlite.SqlitePostingSessions;
 import dev.erst.fingrind.sqlite.SqliteReportingPeriodCloseSessions;
 import java.time.Clock;
 import java.util.Objects;
+import java.util.function.Function;
 
 /** SQLite-backed mutation workflow for administrative accounting and posting flows. */
 final class SqliteCliMutationWorkflow implements CliBookMutationWorkflow {
@@ -50,48 +55,95 @@ final class SqliteCliMutationWorkflow implements CliBookMutationWorkflow {
   @Override
   public ContractDecision<DeclareAccountResult> declareAccount(
       BookAccess bookAccess, DeclareAccountCommand command) {
-    return SqliteCliWorkflowSessions.withAdministrationSession(
-        SqliteAdministrationSessions.openResolved(
-            bookAccess,
-            SqliteBookSessionMode.READ_WRITE_EXISTING,
-            passphraseResolver,
-            SqlitePassphraseIntent.EXISTING_SECRET),
-        bookSession ->
-            BookkeepingPublishedLanguageTranslator.toPublished(
-                new BookAdministrationService(bookSession, bookSession, bookSession, clock)
-                    .declareAccount(
-                        BookkeepingRequestPublishedLanguageTranslator.fromPublished(command))));
+    return withAttestationAuthorization(
+        bookAccess,
+        authorizer ->
+            SqliteCliWorkflowSessions.withAdministrationSession(
+                SqliteAdministrationSessions.openResolved(
+                    bookAccess,
+                    SqliteBookSessionMode.READ_WRITE_EXISTING,
+                    passphraseResolver,
+                    SqlitePassphraseIntent.EXISTING_SECRET),
+                bookSession ->
+                    BookkeepingPublishedLanguageTranslator.toPublished(
+                        new BookAdministrationService(bookSession, bookSession, bookSession, clock)
+                            .declareAccount(
+                                BookkeepingRequestPublishedLanguageTranslator.fromPublished(
+                                    command),
+                                authorizer))));
   }
 
   @Override
   public ContractDecision<AmendAccountResult> amendAccount(
       BookAccess bookAccess, AmendAccountCommand command) {
-    return SqliteCliWorkflowSessions.withAdministrationSession(
-        SqliteAdministrationSessions.openResolved(
-            bookAccess,
-            SqliteBookSessionMode.READ_WRITE_EXISTING,
-            passphraseResolver,
-            SqlitePassphraseIntent.EXISTING_SECRET),
-        bookSession ->
-            AccountRegistryPublishedLanguageTranslator.toPublished(
-                new BookAdministrationService(bookSession, bookSession, bookSession, clock)
-                    .amendAccount(
-                        AccountRegistryPublishedLanguageTranslator.fromPublished(command))));
+    return withAttestationAuthorization(
+        bookAccess,
+        authorizer ->
+            SqliteCliWorkflowSessions.withAdministrationSession(
+                SqliteAdministrationSessions.openResolved(
+                    bookAccess,
+                    SqliteBookSessionMode.READ_WRITE_EXISTING,
+                    passphraseResolver,
+                    SqlitePassphraseIntent.EXISTING_SECRET),
+                bookSession ->
+                    AccountRegistryPublishedLanguageTranslator.toPublished(
+                        new BookAdministrationService(bookSession, bookSession, bookSession, clock)
+                            .amendAccount(
+                                AccountRegistryPublishedLanguageTranslator.fromPublished(command),
+                                authorizer))));
   }
 
   @Override
   public ContractDecision<RetireAccountResult> retireAccount(
       BookAccess bookAccess, RetireAccountCommand command) {
-    return SqliteCliWorkflowSessions.withAdministrationSession(
-        SqliteAdministrationSessions.openResolved(
-            bookAccess,
-            SqliteBookSessionMode.READ_WRITE_EXISTING,
-            passphraseResolver,
-            SqlitePassphraseIntent.EXISTING_SECRET),
-        bookSession ->
-            AccountRegistryPublishedLanguageTranslator.toPublished(
-                new BookAdministrationService(bookSession, bookSession, bookSession, clock)
-                    .retireAccount(command.accountCode())));
+    return withAttestationAuthorization(
+        bookAccess,
+        authorizer ->
+            SqliteCliWorkflowSessions.withAdministrationSession(
+                SqliteAdministrationSessions.openResolved(
+                    bookAccess,
+                    SqliteBookSessionMode.READ_WRITE_EXISTING,
+                    passphraseResolver,
+                    SqlitePassphraseIntent.EXISTING_SECRET),
+                bookSession ->
+                    AccountRegistryPublishedLanguageTranslator.toPublished(
+                        new BookAdministrationService(bookSession, bookSession, bookSession, clock)
+                            .retireAccount(command.accountCode(), authorizer))));
+  }
+
+  private <T> ContractDecision<T> withAttestationAuthorization(
+      BookAccess bookAccess,
+      Function<
+              dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer,
+              ContractDecision<T>>
+          action) {
+    Objects.requireNonNull(bookAccess, "bookAccess");
+    Objects.requireNonNull(action, "action");
+    if (bookAccess.attestationCredentialSources().isEmpty()) {
+      return ContractDecision.rejected(
+          ContractErrors.Descriptor.INVALID_ATTESTATION_CREDENTIAL.failureAt(
+              bookAccess.bookFilePath(),
+              "Protected-book mutation requires at least one explicit attestation credential.",
+              "Provide aligned "
+                  + ProtocolOptions.Attestation.PRINCIPAL_ID
+                  + ", "
+                  + ProtocolOptions.Attestation.KEY_FILE
+                  + ", and "
+                  + ProtocolOptions.Attestation.PASSPHRASE_FILE
+                  + " arguments.",
+              ProtocolOptions.Attestation.PRINCIPAL_ID));
+    }
+    try {
+      return AttestationMutationAuthorization.withAuthorizer(
+          bookAccess.requireAttestationCredentialSources(), action);
+    } catch (AttestationCredentialException exception) {
+      return ContractDecision.rejected(
+          ContractErrors.Descriptor.INVALID_ATTESTATION_CREDENTIAL.failureAt(
+              exception.credentialPath(),
+              "FinGrind could not open the selected attestation authorization credential.",
+              "Confirm the credential key and passphrase files are readable, distinct, and match.",
+              ProtocolOptions.Attestation.KEY_FILE));
+    }
   }
 
   @Override

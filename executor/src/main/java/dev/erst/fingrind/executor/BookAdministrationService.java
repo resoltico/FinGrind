@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
+import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
@@ -58,8 +59,10 @@ public final class BookAdministrationService {
   }
 
   /** Declares or reactivates one account in the selected book. */
-  public AccountDeclarationOutcome declareAccount(AccountDeclaration command) {
+  public AccountDeclarationOutcome declareAccount(
+      AccountDeclaration command, AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(command, "command");
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     if (!lifecycleReader.allowsInitializedWorkflow()) {
       return new AccountDeclarationOutcome.Rejected(
           new BookkeepingAdministrationRejection.BookNotInitialized());
@@ -69,12 +72,14 @@ public final class BookAdministrationService {
     if (rejection.isPresent()) {
       return new AccountDeclarationOutcome.Rejected(rejection.orElseThrow());
     }
-    return bookStore.declareAccount(command, clock.instant());
+    return bookStore.declareAccount(command, clock.instant(), attestationAuthorizer);
   }
 
   /** Amends one never-posted and unreferenced account definition. */
-  public AccountAmendmentOutcome amendAccount(AccountDeclaration command) {
+  public AccountAmendmentOutcome amendAccount(
+      AccountDeclaration command, AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(command, "command");
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     if (!lifecycleReader.allowsInitializedWorkflow()) {
       return new AccountAmendmentOutcome.Rejected(
           new BookkeepingAdministrationRejection.BookNotInitialized());
@@ -84,16 +89,19 @@ public final class BookAdministrationService {
     if (rejection.isPresent()) {
       return new AccountAmendmentOutcome.Rejected(rejection.orElseThrow());
     }
-    return bookStore.amendAccount(command, clock.instant());
+    return bookStore.amendAccount(command, clock.instant(), attestationAuthorizer);
   }
 
   /** Retires one zero-balance account from ordinary authored posting use. */
-  public AccountRetirementOutcome retireAccount(dev.erst.fingrind.core.AccountCode accountCode) {
+  public AccountRetirementOutcome retireAccount(
+      dev.erst.fingrind.core.AccountCode accountCode,
+      AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(accountCode, "accountCode");
+    AttestationOperationAuthorizer.require(attestationAuthorizer);
     if (!lifecycleReader.allowsInitializedWorkflow()) {
       return new AccountRetirementOutcome.Rejected(
           new BookkeepingAdministrationRejection.BookNotInitialized());
     }
-    return bookStore.retireAccount(accountCode, clock.instant());
+    return bookStore.retireAccount(accountCode, clock.instant(), attestationAuthorizer);
   }
 }

@@ -5,8 +5,6 @@ import dev.erst.fingrind.executor.BookAdministrationService;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.TaxAdministrationService;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
@@ -72,13 +70,14 @@ final class LedgerPlanStepExecutor {
     LedgerPlanStepOutcome outcome =
         switch (step) {
           case BookWorkflowStep.EnsureBook ensureBook ->
-              ensureBookOutcome(ensureBook.bookIdentity());
+              attestationRequired(ensureBook.stepId().value());
           case BookWorkflowStep.DeclareAccount declareAccount ->
-              declareAccountOutcome(declareAccount.command());
+              attestationRequired(declareAccount.stepId().value());
           case BookWorkflowStep.DeclareTaxRegistration declareTaxRegistration ->
-              declareTaxRegistrationOutcome(declareTaxRegistration.command());
+              attestationRequired(declareTaxRegistration.stepId().value());
           case BookWorkflowStep.PreflightEntry preflightEntry -> preflightOutcome(preflightEntry);
-          case BookWorkflowStep.PostEntry postEntry -> postEntryOutcome(postEntry);
+          case BookWorkflowStep.PostEntry postEntry ->
+              attestationRequired(postEntry.stepId().value());
           case BookWorkflowStep.InspectBook _ -> inspectBookOutcome();
           case BookWorkflowStep.ListAccounts listAccounts -> listAccountsOutcome(listAccounts);
           case BookWorkflowStep.GetPosting getPosting -> getPostingOutcome(getPosting);
@@ -175,23 +174,12 @@ final class LedgerPlanStepExecutor {
     return LedgerPlanRejectedOutcomes.administrationRejection(rejection);
   }
 
-  private LedgerPlanStepOutcome declareAccountOutcome(AccountDeclaration command) {
-    return switch (bookAdministrationService.declareAccount(command)) {
-      case AccountDeclarationOutcome.Declared declared ->
-          LedgerPlanStepOutcomes.stepSucceeded(
-              LedgerPlanFactMapper.accountDeclarationFacts("declared", declared.account()));
-      case AccountDeclarationOutcome.Reactivated reactivated ->
-          LedgerPlanStepOutcomes.stepSucceeded(
-              LedgerPlanFactMapper.accountDeclarationFacts("reactivated", reactivated.account()));
-      case AccountDeclarationOutcome.Renamed renamed ->
-          LedgerPlanStepOutcomes.stepSucceeded(
-              LedgerPlanFactMapper.accountDeclarationFacts("renamed", renamed.account()));
-      case AccountDeclarationOutcome.Unchanged unchanged ->
-          LedgerPlanStepOutcomes.stepSucceeded(
-              LedgerPlanFactMapper.accountDeclarationFacts("unchanged", unchanged.account()));
-      case AccountDeclarationOutcome.Rejected rejected ->
-          LedgerPlanRejectedOutcomes.administrationRejection(rejected.rejection());
-    };
+  private static LedgerPlanStepOutcome attestationRequired(String stepId) {
+    return new LedgerPlanStepOutcome.Rejected(
+        new BookWorkflowFailure(
+            "attestation-required",
+            "Ledger-plan mutation requires the signed execute-plan path, which is not yet available for this step.",
+            List.of(BookWorkflowFact.text("stepId", stepId))));
   }
 
   private LedgerPlanStepOutcome declareTaxRegistrationOutcome(

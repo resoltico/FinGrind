@@ -273,20 +273,26 @@ final class LedgerPlanServiceTestSupport {
 
     @Override
     public AccountDeclarationOutcome declareAccount(
-        AccountDeclaration declaration, Instant declaredAt) {
-      return delegate.declareAccount(declaration, declaredAt);
+        AccountDeclaration declaration,
+        Instant declaredAt,
+        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
+      return delegate.declareAccount(declaration, declaredAt, attestationAuthorizer);
     }
 
     @Override
     public dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome amendAccount(
-        AccountDeclaration amendment, Instant amendedAt) {
-      return delegate.amendAccount(amendment, amendedAt);
+        AccountDeclaration amendment,
+        Instant amendedAt,
+        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
+      return delegate.amendAccount(amendment, amendedAt, attestationAuthorizer);
     }
 
     @Override
     public dev.erst.fingrind.executor.bookkeeping.AccountRetirementOutcome retireAccount(
-        AccountCode accountCode, Instant retiredAt) {
-      return delegate.retireAccount(accountCode, retiredAt);
+        AccountCode accountCode,
+        Instant retiredAt,
+        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
+      return delegate.retireAccount(accountCode, retiredAt, attestationAuthorizer);
     }
 
     @Override
@@ -503,7 +509,9 @@ final class LedgerPlanServiceTestSupport {
 
     @Override
     public AccountDeclarationOutcome declareAccount(
-        AccountDeclaration declaration, Instant declaredAt) {
+        AccountDeclaration declaration,
+        Instant declaredAt,
+        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
       throw new IllegalStateException("declare boom");
     }
 

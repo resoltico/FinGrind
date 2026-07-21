@@ -58,7 +58,8 @@ final class CliRekeyBookArguments {
         argumentValues.newBookKeyFilePath);
     CliBookPathValidator.validateStandardInputUsage(currentPassphraseSource, null);
     return new RekeyBook(
-        new BookAccess(argumentValues.bookAccess.bookFilePath, currentPassphraseSource),
+        new BookAccess(
+            argumentValues.bookAccess.bookFilePath, currentPassphraseSource, java.util.List.of()),
         argumentValues.newBookKeyFilePath,
         CliOptionModes.resolvedOutputMode(argumentValues.bookAccess.outputMode));
   }

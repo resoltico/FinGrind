@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -11,6 +12,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import org.jspecify.annotations.Nullable;
 
 /** Shared book-file and passphrase-source parsing for CLI commands that address one book. */
@@ -79,7 +81,10 @@ final class CliBookArgumentParser {
         argumentValues.bookFilePath, passphraseSource, argumentValues.requestFile);
     CliBookPathValidator.validateStandardInputUsage(passphraseSource, argumentValues.requestFile);
     return new ParsedBookArguments(
-        new BookAccess(argumentValues.bookFilePath, passphraseSource),
+        new BookAccess(
+            argumentValues.bookFilePath,
+            passphraseSource,
+            resolveAttestationCredentialSources(argumentValues)),
         argumentValues.requestFile,
         argumentValues.commandArguments);
   }
@@ -120,12 +125,61 @@ final class CliBookArgumentParser {
               CliBookPassphraseParser.requireSinglePassphraseSource(
                   argumentValues.passphraseSourceKind,
                   CliBookPassphraseParser.PassphraseSourceKind.INTERACTIVE_PROMPT);
+      case ProtocolOptions.Attestation.PRINCIPAL_ID ->
+          argumentValues.attestationPrincipalIds.add(
+              CliArgumentValueParser.requireValidArgument(
+                  ProtocolOptions.Attestation.PRINCIPAL_ID,
+                  () ->
+                      UUID.fromString(
+                          CliOptionValues.requireValue(
+                              argumentIterator, ProtocolOptions.Attestation.PRINCIPAL_ID))));
+      case ProtocolOptions.Attestation.KEY_FILE ->
+          argumentValues.attestationKeyFiles.add(
+              CliOptionValues.requirePathOptionValue(
+                  argumentIterator, ProtocolOptions.Attestation.KEY_FILE));
+      case ProtocolOptions.Attestation.PASSPHRASE_FILE ->
+          argumentValues.attestationPassphraseFiles.add(
+              CliOptionValues.requirePathOptionValue(
+                  argumentIterator, ProtocolOptions.Attestation.PASSPHRASE_FILE));
       case ProtocolOptions.Request.FILE ->
           applyRequestFileArgument(argumentValues, mode, commandArgumentSpec, argumentIterator);
       default ->
           applyCommandArgument(
               argumentValues, mode, commandArgumentSpec, argument, argumentIterator);
     }
+  }
+
+  private static List<AttestationCredentialSource> resolveAttestationCredentialSources(
+      ParsedBookArgumentValues argumentValues) {
+    int count = argumentValues.attestationPrincipalIds.size();
+    if (count == 0
+        && argumentValues.attestationKeyFiles.isEmpty()
+        && argumentValues.attestationPassphraseFiles.isEmpty()) {
+      return List.of();
+    }
+    if (count == 0
+        || count > 5
+        || argumentValues.attestationKeyFiles.size() != count
+        || argumentValues.attestationPassphraseFiles.size() != count) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.Attestation.PRINCIPAL_ID,
+          "Provide one through five aligned attestation credential triples: "
+              + ProtocolOptions.Attestation.PRINCIPAL_ID
+              + ", "
+              + ProtocolOptions.Attestation.KEY_FILE
+              + ", and "
+              + ProtocolOptions.Attestation.PASSPHRASE_FILE
+              + ".");
+    }
+    List<AttestationCredentialSource> sources = new ArrayList<>(count);
+    for (int index = 0; index < count; index++) {
+      sources.add(
+          new AttestationCredentialSource(
+              argumentValues.attestationPrincipalIds.get(index),
+              argumentValues.attestationKeyFiles.get(index),
+              argumentValues.attestationPassphraseFiles.get(index)));
+    }
+    return List.copyOf(sources);
   }
 
   private static void applyRequestFileArgument(
@@ -210,6 +264,9 @@ final class CliBookArgumentParser {
     private @Nullable Path bookKeyFilePath;
     private CliBookPassphraseParser.@Nullable PassphraseSourceKind passphraseSourceKind;
     private @Nullable Path requestFile;
+    private final List<UUID> attestationPrincipalIds = new ArrayList<>();
+    private final List<Path> attestationKeyFiles = new ArrayList<>();
+    private final List<Path> attestationPassphraseFiles = new ArrayList<>();
   }
 
   private static void registerOptions(
@@ -239,7 +296,10 @@ final class CliBookArgumentParser {
             ProtocolBookAccessOptions.BOOK_FILE,
             ProtocolBookAccessOptions.BOOK_KEY_FILE,
             ProtocolBookAccessOptions.BOOK_PASSPHRASE_STDIN,
-            ProtocolBookAccessOptions.BOOK_PASSPHRASE_PROMPT);
+            ProtocolBookAccessOptions.BOOK_PASSPHRASE_PROMPT,
+            ProtocolOptions.Attestation.PRINCIPAL_ID,
+            ProtocolOptions.Attestation.KEY_FILE,
+            ProtocolOptions.Attestation.PASSPHRASE_FILE);
     List<String> supportedArguments = new ArrayList<>(requiredArguments);
     if (mode.acceptsRequestFile()) {
       supportedArguments.add(ProtocolOptions.Request.FILE);
