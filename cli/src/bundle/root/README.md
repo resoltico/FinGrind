@@ -29,12 +29,13 @@ Quick start:
 1. Run `${bundleLauncherCommand} help`
 2. Let FinGrind create `./secrets/` and `./books/` securely, or keep any existing `./secrets/` and `./books/` directories owner-only before you reuse them
 3. Run `${bundleLauncherCommand} generate-book-key-file --new-book-key-file ./secrets/entity.book-key`
-4. Run `${bundleLauncherCommand} open-book --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01`
-5. Run `${bundleLauncherCommand} list-accounts --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --limit 10` to inspect the seeded accounts
-6. Copy the bundled first-sale sample with `cp ./quick-start-request.json ./request.json`
-7. Edit `./request.json` and replace the sample evidence and provenance values before real-world use
-8. Run `${bundleLauncherCommand} preflight-entry --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --request-file ./request.json`
-9. Run `${bundleLauncherCommand} record-sale-settled --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --request-file ./request.json`
+4. Prepare a separate nonempty owner-only UTF-8 founder passphrase file at `./secrets/entity-founder.passphrase`; FinGrind creates the absent founder credential at `./secrets/entity-founder.fgatk` exactly once
+5. Run `${bundleLauncherCommand} open-book --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-founder-key-file ./secrets/entity-founder.fgatk --attestation-founder-passphrase-file ./secrets/entity-founder.passphrase`
+6. Run `${bundleLauncherCommand} list-accounts --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --limit 10` to inspect the seeded accounts
+7. Copy the bundled first-sale sample with `cp ./quick-start-request.json ./request.json`
+8. Edit `./request.json` and replace the sample evidence and provenance values before real-world use
+9. Run `${bundleLauncherCommand} preflight-entry --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --request-file ./request.json`
+10. Run `${bundleLauncherCommand} record-sale-settled --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --request-file ./request.json --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-key-file ./secrets/entity-founder.fgatk --attestation-passphrase-file ./secrets/entity-founder.passphrase`
 
 Use `--accounting-basis ACCRUAL` when you want the accrual owner-managed service chart.
 Trading books can stay on the same typed path for stock acquisition through `${bundleLauncherCommand} print-request-template record-purchase-settled --book-template-id OWNER_MANAGED_TRADING` and `${bundleLauncherCommand} print-request-template record-purchase-on-credit --book-template-id OWNER_MANAGED_TRADING`.

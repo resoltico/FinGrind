@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: USER_EXAMPLES
-updated: "2026-07-21"
+updated: "2026-07-22"
 route:
   keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, financial-position, inventory-valuation, income-statement, cash-flow-statement, changes-in-equity, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
   questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
@@ -168,7 +168,10 @@ fingrind \
   rekey-book \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --new-book-key-file ./secrets/acme.rotated.book-key
+  --new-book-key-file ./secrets/acme.rotated.book-key \
+  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-key-file ./secrets/founder.fgatk \
+  --attestation-passphrase-file ./secrets/founder.passphrase
 ```
 
 `--new-book-key-file` must name an absent target on a filesystem that supports atomic no-replace
@@ -265,13 +268,19 @@ fingrind \
   declare-account \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --request-file ./declare-account-supplemental-cash-reserve.json
+  --request-file ./declare-account-supplemental-cash-reserve.json \
+  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-key-file ./secrets/founder.fgatk \
+  --attestation-passphrase-file ./secrets/founder.passphrase
 
 fingrind \
   declare-account \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --request-file ./declare-account-supplemental-misc-revenue.json
+  --request-file ./declare-account-supplemental-misc-revenue.json \
+  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-key-file ./secrets/founder.fgatk \
+  --attestation-passphrase-file ./secrets/founder.passphrase
 
 fingrind \
   list-accounts \
@@ -308,7 +317,10 @@ fingrind \
   amend-account \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --request-file ./cash-reserve-amend.json
+  --request-file ./cash-reserve-amend.json \
+  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-key-file ./secrets/founder.fgatk \
+  --attestation-passphrase-file ./secrets/founder.passphrase
 ```
 
 To retire an account, it must have a zero current balance and no live tax-registration or
@@ -322,7 +334,10 @@ fingrind \
   retire-account \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --request-file ./retire-account.json
+  --request-file ./retire-account.json \
+  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-key-file ./secrets/founder.fgatk \
+  --attestation-passphrase-file ./secrets/founder.passphrase
 ```
 
 ## Preflight And Commit One Entry
@@ -372,7 +387,10 @@ fingrind \
   record-sale-settled \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --request-file ./basic-posting-request.json
+  --request-file ./basic-posting-request.json \
+  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-key-file ./secrets/founder.fgatk \
+  --attestation-passphrase-file ./secrets/founder.passphrase
 ```
 
 One successful preflight response:
@@ -425,22 +443,24 @@ structural, not a Latvian VAT determination: verify registration, rate, deductio
 place-of-supply, invoice, and filing treatment against the primary sources listed in
 [DOC_00_PrimarySources.md](./DOC_00_PrimarySources.md).
 
-Or execute the checked-in runnable example plan directly against a fresh book:
+Or execute the checked-in runnable example plan against the initialized book established above:
 
 - `./ledger-plan-request.json`: copy [examples/ledger-plan-request.json](./examples/ledger-plan-request.json)
 
 ```bash
 fingrind \
   execute-plan \
-  --book-file ./books/acme-plan.sqlite \
+  --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --output json \
   --result-detail full \
-  --request-file ./ledger-plan-request.json
+  --request-file ./ledger-plan-request.json \
+  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-key-file ./secrets/founder.fgatk \
+  --attestation-passphrase-file ./secrets/founder.passphrase
 ```
 
 That plan:
-- ensures a new book exists with the declared identity
 - declares the required VAT payable account
 - declares the required VAT recoverable account
 - declares the tax registration only after its prerequisite accounts exist
@@ -468,11 +488,14 @@ After the tax-setup plan succeeds, use the checked-in query plan to inspect pagi
 ```bash
 fingrind \
   execute-plan \
-  --book-file ./books/acme-plan.sqlite \
+  --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --output json \
   --result-detail full \
-  --request-file ./ledger-plan-query-request.json
+  --request-file ./ledger-plan-query-request.json \
+  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-key-file ./secrets/founder.fgatk \
+  --attestation-passphrase-file ./secrets/founder.passphrase
 ```
 
 That committed journal keeps `count`, `pageLimit`, optional `nextCursor`, `hasMore`, and grouped

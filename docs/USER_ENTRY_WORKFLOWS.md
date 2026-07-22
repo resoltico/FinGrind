@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: USER_ENTRY_WORKFLOWS
-updated: "2026-07-16"
+updated: "2026-07-22"
 route:
   keywords: [fingrind, idempotency, stdin, reversal, preflight, commit, rejection, invalid-request, cursor, protected-book, interactive-prompt]
   questions: ["how do I retry a fingrind posting safely", "how do I send a fingrind request on stdin", "how do I reverse a fingrind posting", "how do I diagnose a fingrind rejection"]
@@ -67,7 +67,10 @@ fingrind \
   record-sale-settled \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
-  --request-file ./basic-posting-request.json
+  --request-file ./basic-posting-request.json \
+  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-key-file ./secrets/founder.fgatk \
+  --attestation-passphrase-file ./secrets/founder.passphrase
 ```
 
 One repeat commit response for the exact same normalized request:
@@ -164,6 +167,10 @@ One deterministic error example is checked in at [examples/protected-book-verifi
 
 ## Prompt Mode Requires A Supported Interactive Terminal
 
+Before this command, prepare a separate nonempty owner-only UTF-8 founder passphrase file at
+`./secrets/founder.passphrase`. FinGrind creates the absent founder credential at
+`./secrets/founder.fgatk` exactly once; do not reuse the book passphrase for that credential.
+
 ```bash
 fingrind \
   open-book \
@@ -173,7 +180,9 @@ fingrind \
   --accounting-basis CASH \
   --functional-currency EUR \
   --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 \
-  \
+  --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-founder-key-file ./secrets/founder.fgatk \
+  --attestation-founder-passphrase-file ./secrets/founder.passphrase \
   --book-passphrase-prompt
 ```
 
