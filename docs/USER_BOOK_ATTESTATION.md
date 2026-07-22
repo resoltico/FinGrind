@@ -11,7 +11,7 @@ route:
 # Protected-Book Attestation
 
 **Purpose**: Operate the immutable authorization evidence retained with every FinGrind protected-book mutation.
-**Prerequisites**: A FinGrind protocol-32 / format-51 binary, one book passphrase source, and an authorized founder or operator credential where a command requires signing.
+**Prerequisites**: A FinGrind protocol-33 / format-51 binary, one book passphrase source, and an authorized founder or operator credential where a command requires signing.
 
 ## What The Attestation Proves
 
@@ -65,6 +65,11 @@ one through 64 aligned credential triplets under the selected custody, matching 
 policy may require. A policy therefore never leaves its own public signing, backup, restore,
 rekey, receipt, or policy-repair path unreachable.
 
+Before generating a standalone credential, create its parent directory yourself. The target must
+sit beneath an existing real directory, never a symbolic link; FinGrind does not create credential
+parent directories or silently redirect secret output. The final credential file is no-clobber and
+owner-only, while the passphrase file remains a separately protected local secret.
+
 The file-backed credential format is public: it stores an Ed25519 PKCS#8 private key encrypted
 with PBKDF2-HMAC-SHA-256 (600,000 iterations, a fresh 16-byte salt) and AES-256-GCM (a fresh
 12-byte IV and a 128-bit tag). A passphrase file must be valid UTF-8, nonempty after one optional
@@ -100,6 +105,14 @@ Lifecycle request documents carry only that public DER SubjectPublicKeyInfo (SPK
 unpadded base64url in `credentialSpki`; they never carry a local credential path, a passphrase, a
 private key, a caller-chosen key ID, or an encrypted-key-file payload. FinGrind derives the key ID
 as SHA-256 of the SPKI and signs the resulting public binding facts.
+
+All four lifecycle request documents are emitted directly by the binary. Use
+`print-request-template enroll-key`, `print-request-template rollover-key`,
+`print-request-template revoke-key`, or `print-request-template alter-policy`; the full JSON help
+for each command carries that same `attestationRegistryTemplate` under `requestFile`. Template
+UUIDs are canonical RFC 4122 spellings and must be replaced with the operation's real identities.
+`credentialPurpose` is closed to the lowercase values `operator` and `system`; enrollment and
+rollover templates publish `operator` before any request is submitted.
 
 `enroll-key` binds a new credential to a principal. It does not grant a capability: use
 `alter-policy` to grant the principal the intended capability after enrollment. For example:
@@ -156,6 +169,10 @@ fingrind verify-book \
 
 Structural verification returns the first deterministic chain break. `--require-clean-attestation`
 also refuses a structurally valid chain that has compromise-review findings, with exit code 2.
+On success, `verify-book` publishes the full verified registry snapshot as `registry`: every
+credential binding and its active or revoked state, each effective capability quorum with eligible
+principal counts, principal capability grants, and system-workflow policies. This is read-only
+verification evidence reconstructed from the immutable chain, not a mutable administration view.
 `attestation-review` returns the same non-persisted findings without changing the book:
 
 ```bash

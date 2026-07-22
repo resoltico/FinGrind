@@ -98,6 +98,36 @@ final class MachineContractTemplatesCatalog {
     return new ContractTemplates.RetireAccountTemplateDescriptor("obsolete-account");
   }
 
+  static TemplateDescriptorType attestationRegistryTemplate(OperationId operationId) {
+    return switch (operationId) {
+      case ENROLL_KEY ->
+          new ContractAttestationRegistryTemplates.EnrollKeyTemplateDescriptor(
+              ContractAttestationRegistryTemplates.EXAMPLE_PRINCIPAL_ID,
+              ContractAttestationRegistryTemplates.EXAMPLE_CREDENTIAL_SPKI,
+              "operator");
+      case ROLLOVER_KEY ->
+          new ContractAttestationRegistryTemplates.RolloverKeyTemplateDescriptor(
+              ContractAttestationRegistryTemplates.EXAMPLE_PRINCIPAL_ID,
+              ContractAttestationRegistryTemplates.EXAMPLE_REPLACEMENT_CREDENTIAL_SPKI,
+              "operator",
+              ContractAttestationRegistryTemplates.EXAMPLE_CREDENTIAL_SPKI);
+      case REVOKE_KEY ->
+          new ContractAttestationRegistryTemplates.RevokeKeyTemplateDescriptor(
+              ContractAttestationRegistryTemplates.EXAMPLE_PRINCIPAL_ID,
+              ContractAttestationRegistryTemplates.EXAMPLE_CREDENTIAL_SPKI,
+              "credential-retired-by-authorized-policy");
+      case ALTER_POLICY ->
+          new ContractAttestationRegistryTemplates.AlterPolicyTemplateDescriptor(
+              List.of(
+                  new ContractAttestationRegistryTemplates.PolicyRuleTemplateDescriptor("post", 1)),
+              List.of(),
+              List.of());
+      default ->
+          throw new IllegalArgumentException(
+              "Operation " + operationId.wireName() + " has no attestation registry template.");
+    };
+  }
+
   static ContractPlanTemplates.LedgerPlanTemplateDescriptor planTemplate() {
     return MachineContractPlanTemplates.template(PlanTemplateTopic.GENERAL);
   }

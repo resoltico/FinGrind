@@ -1,31 +1,19 @@
 package dev.erst.fingrind.sqlite;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
-import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
-import dev.erst.fingrind.core.BookDoctrines;
-import dev.erst.fingrind.core.BookEntityName;
-import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
-import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EffectiveDateRange;
-import dev.erst.fingrind.core.EntityProfile;
-import dev.erst.fingrind.core.FinancialPositionLineClassification;
-import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
@@ -35,7 +23,6 @@ import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.PostingOriginKind;
-import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.RequestFingerprint;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.ReversalReason;
@@ -44,9 +31,6 @@ import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
-import dev.erst.fingrind.core.UnitOfMeasure;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
-import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
@@ -64,32 +48,7 @@ import java.util.Optional;
 import java.util.Set;
 
 /** Shared SQLite posting/book fixtures and native-handle doubles for split store tests. */
-class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
-  static BookIdentity bookIdentity() {
-    return new BookIdentity(
-        new EntityProfile(new BookEntityName("Acme Studio")),
-        BookDoctrines.INTERNAL_MANAGEMENT_OWNER_MANAGED_SERVICE,
-        CurrencyUnit.of("EUR"),
-        FiscalYearStart.parse("01-01"),
-        java.time.LocalDate.parse("2026-01-01"));
-  }
-
-  static BookOpeningOutcome.Opened openedBook(Instant initializedAt) {
-    return new BookOpeningOutcome.Opened(initializedAt, bookIdentity());
-  }
-
-  static BookLifecycleInspection.Initialized initializedLifecycleInspection(
-      int applicationId,
-      int detectedBookFormatVersion,
-      int supportedBookFormatVersion,
-      Instant initializedAt) {
-    return new BookLifecycleInspection.Initialized(
-        applicationId,
-        detectedBookFormatVersion,
-        supportedBookFormatVersion,
-        initializedAt,
-        bookIdentity());
-  }
+class SqlitePostingFactFixtureSupport extends SqlitePostingAccountFixtureSupport {
 
   static PostingCoverage allPostingKinds() {
     return PostingCoverage.ALL_POSTING_KINDS;
@@ -371,213 +330,6 @@ class SqlitePostingFactFixtureSupport extends SqliteStoreFixtureSupport {
     public Optional<LocalDate> transferredThroughEffectiveDate() {
       return Optional.empty();
     }
-  }
-
-  static DeclaredAccount publishedAccount(RegisteredAccount account) {
-    return BookkeepingPublishedLanguageTranslator.toPublished(account);
-  }
-
-  static AccountTaxonomy accountTaxonomy(AccountType accountType) {
-    return switch (accountType) {
-      case ASSET ->
-          new AccountTaxonomy(
-              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-              Optional.empty(),
-              Optional.empty(),
-              Optional.of(FinancialPositionLineClassification.CURRENT_ASSET),
-              Optional.empty(),
-              Optional.of(CashFlowAssetClassification.CASH_AND_CASH_EQUIVALENT));
-      case LIABILITY ->
-          new AccountTaxonomy(
-              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-              Optional.empty(),
-              Optional.empty(),
-              Optional.of(FinancialPositionLineClassification.CURRENT_LIABILITY),
-              Optional.empty(),
-              Optional.empty());
-      case EQUITY ->
-          new AccountTaxonomy(
-              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-              Optional.empty(),
-              Optional.empty(),
-              Optional.of(FinancialPositionLineClassification.OTHER_EQUITY),
-              Optional.empty(),
-              Optional.empty());
-      case REVENUE ->
-          new AccountTaxonomy(
-              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-              Optional.empty(),
-              Optional.empty(),
-              Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.OPERATING_REVENUE),
-              Optional.empty());
-      case EXPENSE ->
-          new AccountTaxonomy(
-              dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-              Optional.empty(),
-              Optional.empty(),
-              Optional.empty(),
-              Optional.of(ProfitAndLossLineClassification.OPERATING_EXPENSE),
-              Optional.empty());
-    };
-  }
-
-  static AccountTaxonomy accountTaxonomy(AccountType accountType, NormalBalance normalBalance) {
-    return SqlitePostingTaxonomyFixtures.accountTaxonomy(accountType, normalBalance);
-  }
-
-  static AccountTaxonomy financialPositionTaxonomy(
-      FinancialPositionLineClassification lineClassification) {
-    return new AccountTaxonomy(
-        dev.erst.fingrind.core.AccountNodeKind.POSTABLE,
-        Optional.empty(),
-        Optional.empty(),
-        Optional.of(lineClassification),
-        Optional.empty(),
-        lineClassification.accountType() == AccountType.ASSET
-            ? Optional.of(CashFlowAssetClassification.NON_CASH)
-            : Optional.empty());
-  }
-
-  static RegisteredAccount registeredAccount(
-      AccountCode accountCode,
-      AccountName accountName,
-      AccountType accountType,
-      NormalBalance normalBalance,
-      boolean active,
-      Instant declaredAt) {
-    return registeredAccount(
-        accountCode,
-        accountName,
-        accountType,
-        accountTaxonomy(accountType, normalBalance),
-        active,
-        declaredAt);
-  }
-
-  static RegisteredAccount registeredAccount(
-      AccountCode accountCode,
-      AccountName accountName,
-      AccountType accountType,
-      AccountTaxonomy accountTaxonomy,
-      boolean active,
-      Instant declaredAt) {
-    return new RegisteredAccount(
-        accountCode,
-        accountName,
-        accountType,
-        accountTaxonomy,
-        defaultUnitOfMeasure(accountTaxonomy).orElse(null),
-        active,
-        declaredAt);
-  }
-
-  private static Optional<UnitOfMeasure> defaultUnitOfMeasure(AccountTaxonomy accountTaxonomy) {
-    return accountTaxonomy
-        .financialPositionLineClassification()
-        .filter(classification -> classification == FinancialPositionLineClassification.INVENTORY)
-        .map(ignored -> new UnitOfMeasure("unit", 0));
-  }
-
-  static DeclaredAccount declaredAccount(
-      AccountCode accountCode,
-      AccountName accountName,
-      AccountType accountType,
-      NormalBalance normalBalance,
-      boolean active,
-      Instant declaredAt) {
-    return publishedAccount(
-        registeredAccount(
-            accountCode, accountName, accountType, normalBalance, active, declaredAt));
-  }
-
-  static AccountDeclarationOutcome declareAccount(
-      SqlitePostingFactStore postingFactStore,
-      AccountCode accountCode,
-      AccountName accountName,
-      AccountType accountType,
-      NormalBalance normalBalance,
-      Instant declaredAt) {
-    return declareAccount(
-        postingFactStore,
-        accountCode,
-        accountName,
-        accountType,
-        accountTaxonomy(accountType, normalBalance),
-        declaredAt);
-  }
-
-  static AccountDeclarationOutcome declareAccount(
-      SqlitePostingFactStore postingFactStore,
-      AccountCode accountCode,
-      AccountName accountName,
-      AccountType accountType,
-      AccountTaxonomy accountTaxonomy,
-      Instant declaredAt) {
-    return postingFactStore.declareAccount(
-        new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
-            accountCode, accountName, accountType, accountTaxonomy),
-        declaredAt,
-        SqliteAttestationTestSupport.authorizer());
-  }
-
-  static void openBookWithNoDeclaredAccounts(SqlitePostingFactStore postingFactStore) {
-    Instant initializedAt = Instant.parse("2026-04-07T10:15:30Z");
-    postingFactStore.openAttestedBook(
-        initializedAt,
-        bookIdentity(),
-        List.of(),
-        SqliteAttestationTestSupport.genesis(bookIdentity(), initializedAt));
-  }
-
-  static void openBookWithStarterTemplateAccounts(SqlitePostingFactStore postingFactStore) {
-    Instant initializedAt = Instant.parse("2026-04-07T10:15:30Z");
-    postingFactStore.openAttestedBook(
-        initializedAt,
-        bookIdentity(),
-        dev.erst.fingrind.executor.bookkeeping.BookTemplateAccounts.declarations(
-            bookIdentity().bookDoctrine()),
-        SqliteAttestationTestSupport.genesis(bookIdentity(), initializedAt));
-  }
-
-  static void initializeBookWithMinimalNumericAccounts(SqlitePostingFactStore postingFactStore) {
-    openBookWithNoDeclaredAccounts(postingFactStore);
-    declareMinimalNumericAccounts(postingFactStore);
-  }
-
-  static void declareMinimalNumericAccounts(SqlitePostingFactStore postingFactStore) {
-    assertEquals(
-        new AccountDeclarationOutcome.Declared(
-            registeredAccount(
-                new AccountCode("1000"),
-                new AccountName("Cash"),
-                dev.erst.fingrind.core.AccountType.ASSET,
-                NormalBalance.DEBIT,
-                true,
-                Instant.parse("2026-04-07T10:15:30Z"))),
-        declareAccount(
-            postingFactStore,
-            new AccountCode("1000"),
-            new AccountName("Cash"),
-            dev.erst.fingrind.core.AccountType.ASSET,
-            NormalBalance.DEBIT,
-            Instant.parse("2026-04-07T10:15:30Z")));
-    assertEquals(
-        new AccountDeclarationOutcome.Declared(
-            registeredAccount(
-                new AccountCode("2000"),
-                new AccountName("Revenue"),
-                dev.erst.fingrind.core.AccountType.REVENUE,
-                NormalBalance.CREDIT,
-                true,
-                Instant.parse("2026-04-07T10:15:30Z"))),
-        declareAccount(
-            postingFactStore,
-            new AccountCode("2000"),
-            new AccountName("Revenue"),
-            dev.erst.fingrind.core.AccountType.REVENUE,
-            NormalBalance.CREDIT,
-            Instant.parse("2026-04-07T10:15:30Z")));
   }
 
   static JournalEntry journalEntry(Optional<ReversalReference> reversalReference) {

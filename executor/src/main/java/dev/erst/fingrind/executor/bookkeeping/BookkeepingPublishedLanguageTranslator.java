@@ -107,7 +107,8 @@ public final class BookkeepingPublishedLanguageTranslator {
     Objects.requireNonNull(outcome, "outcome");
     return switch (outcome) {
       case BookOpeningOutcome.Opened opened ->
-          new OpenBookResult.Opened(opened.initializedAt(), opened.bookIdentity());
+          new OpenBookResult.Opened(
+              opened.initializedAt(), opened.bookIdentity(), opened.attestationTrustRoot());
       case BookOpeningOutcome.Rejected rejected ->
           new OpenBookResult.Rejected(toPublished(rejected.rejection()));
     };

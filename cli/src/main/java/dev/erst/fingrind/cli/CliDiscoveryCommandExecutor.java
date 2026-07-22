@@ -136,6 +136,12 @@ final class CliDiscoveryCommandExecutor {
     if (commandTopic == OperationId.RETIRE_ACCOUNT) {
       return MachineContract.retireAccountTemplate();
     }
+    if (commandTopic == OperationId.ENROLL_KEY
+        || commandTopic == OperationId.ROLLOVER_KEY
+        || commandTopic == OperationId.REVOKE_KEY
+        || commandTopic == OperationId.ALTER_POLICY) {
+      return MachineContract.attestationRegistryTemplate(commandTopic);
+    }
     if (ProtocolRequestTemplateTopics.supports(commandTopic)) {
       return Objects.requireNonNull(
           MachineContract.requestTemplate(commandTopic, bookTemplateId),

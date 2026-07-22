@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.discovery.ContractTemplates;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolRequestTemplateTopics;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.JournalLine;
 import java.util.List;
@@ -45,10 +46,7 @@ class CliDiscoveryHelpTextTestSupport {
 
   protected final Optional<String> expectedRequestTemplateSupportCommand(
       HelpDescriptor helpDescriptor, OperationId operationId) {
-    if (helpDescriptor.requestTemplate() != null
-        || helpDescriptor.declareAccountTemplate() != null
-        || helpDescriptor.declareTaxRegistrationTemplate() != null
-        || operationId == OperationId.RETIRE_ACCOUNT) {
+    if (ProtocolRequestTemplateTopics.supports(operationId)) {
       return Optional.of(
           CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
               + " "

@@ -29,6 +29,6 @@ public final class PostingTestFixtures {
 
   /** Wraps one fresh committed posting in the current commit-result success shape. */
   public static PostingCommitResult.Committed committed(CommittedPosting postingFact) {
-    return new PostingCommitResult.Committed(postingFact, false);
+    return new PostingCommitResult.Committed(postingFact, false, null);
   }
 }

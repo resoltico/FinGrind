@@ -18,6 +18,7 @@ import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.attestation.AttestationCompromiseReview;
+import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
 import dev.erst.fingrind.core.attestation.AttestationReviewFinding;
 import java.math.BigInteger;
 import java.nio.file.Path;
@@ -92,9 +93,18 @@ class AttestationContractTypesTest extends ContractTestSupport {
         new VerifyAttestationReceiptResult.Valid(BOOK_ID, BigInteger.TWO, warnings);
     VerifyBookAttestationResult.Valid reviewedBook =
         new VerifyBookAttestationResult.Valid(
-            BOOK_ID, BigInteger.TEN, OPERATION_HEAD, reviewFindings);
+            BOOK_ID,
+            BigInteger.TEN,
+            OPERATION_HEAD,
+            reviewFindings,
+            registry(BOOK_ID, BigInteger.TEN));
     VerifyBookAttestationResult.Valid cleanBook =
-        new VerifyBookAttestationResult.Valid(BOOK_ID, BigInteger.ZERO, OPERATION_HEAD, List.of());
+        new VerifyBookAttestationResult.Valid(
+            BOOK_ID,
+            BigInteger.ZERO,
+            OPERATION_HEAD,
+            List.of(),
+            registry(BOOK_ID, BigInteger.ZERO));
 
     warnings.clear();
     reviewFindings.clear();
@@ -159,17 +169,47 @@ class AttestationContractTypesTest extends ContractTestSupport {
         IllegalArgumentException.class,
         () ->
             new VerifyBookAttestationResult.Valid(
-                BOOK_ID, BigInteger.ONE.negate(), OPERATION_HEAD, List.of()));
+                BOOK_ID,
+                BigInteger.ONE.negate(),
+                OPERATION_HEAD,
+                List.of(),
+                registry(BOOK_ID, BigInteger.ZERO)));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new VerifyBookAttestationResult.Valid(
-                BOOK_ID, oversizedUnsignedOrder(), OPERATION_HEAD, List.of()));
+                BOOK_ID,
+                oversizedUnsignedOrder(),
+                OPERATION_HEAD,
+                List.of(),
+                registry(BOOK_ID, BigInteger.ZERO)));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new VerifyBookAttestationResult.Valid(
-                BOOK_ID, BigInteger.ZERO, OPERATION_HEAD.toUpperCase(Locale.ROOT), List.of()));
+                BOOK_ID,
+                BigInteger.ZERO,
+                OPERATION_HEAD.toUpperCase(Locale.ROOT),
+                List.of(),
+                registry(BOOK_ID, BigInteger.ZERO)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new VerifyBookAttestationResult.Valid(
+                UUID.fromString("30213243-5465-7687-98a9-babcbddceeff"),
+                BigInteger.ZERO,
+                OPERATION_HEAD,
+                List.of(),
+                registry(BOOK_ID, BigInteger.ZERO)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new VerifyBookAttestationResult.Valid(
+                BOOK_ID,
+                BigInteger.ONE,
+                OPERATION_HEAD,
+                List.of(),
+                registry(BOOK_ID, BigInteger.ZERO)));
     assertThrows(
         IllegalArgumentException.class,
         () -> new VerifyBookAttestationResult.Invalid("attestation-unpublished"));
@@ -177,7 +217,7 @@ class AttestationContractTypesTest extends ContractTestSupport {
 
   @Test
   void attestationVerificationFailures_areAnExactPublishedVocabulary() {
-    assertEquals(22, AttestationVerificationFailure.values().length);
+    assertEquals(23, AttestationVerificationFailure.values().length);
     assertEquals(
         AttestationVerificationFailure.SIGNATURE_INVALID,
         AttestationVerificationFailure.fromWireCode("attestation-signature-invalid"));
@@ -216,7 +256,11 @@ class AttestationContractTypesTest extends ContractTestSupport {
         NullPointerException.class,
         () ->
             new VerifyBookAttestationResult.Valid(
-                nullOf(), BigInteger.ZERO, OPERATION_HEAD, List.of()));
+                nullOf(),
+                BigInteger.ZERO,
+                OPERATION_HEAD,
+                List.of(),
+                registry(BOOK_ID, BigInteger.ZERO)));
 
     LedgerStep step = new LedgerStep.InspectBook(new LedgerStepId("inspect-book"));
 
@@ -234,5 +278,10 @@ class AttestationContractTypesTest extends ContractTestSupport {
 
   private static BigInteger oversizedUnsignedOrder() {
     return BigInteger.ONE.shiftLeft(Long.SIZE);
+  }
+
+  private static AttestationRegistryInspection registry(UUID bookId, BigInteger headOrder) {
+    return new AttestationRegistryInspection(
+        bookId, headOrder, OPERATION_HEAD, List.of(), List.of(), List.of(), List.of());
   }
 }

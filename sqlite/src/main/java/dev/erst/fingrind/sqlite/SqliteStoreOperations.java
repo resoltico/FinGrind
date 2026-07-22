@@ -90,7 +90,18 @@ final class SqliteStoreOperations {
   }
 
   private static boolean isProtectedBookVerificationResultCode(int resultCode) {
-    return SqliteNativeResultCode.matchesAny(resultCode, "NOTADB", "IOERR_BADKEY", "IOERR_CODEC");
+    return SqliteNativeResultCode.matchesAny(
+        resultCode,
+        "NOTADB",
+        "IOERR_BADKEY",
+        "IOERR_CODEC",
+        "CORRUPT",
+        "CORRUPT_VTAB",
+        "CORRUPT_SEQUENCE",
+        "CORRUPT_INDEX",
+        "IOERR_SHORT_READ",
+        "IOERR_DATA",
+        "IOERR_CORRUPTFS");
   }
 
   static IllegalStateException openRuntimeFailure(SqliteNativeException exception) {

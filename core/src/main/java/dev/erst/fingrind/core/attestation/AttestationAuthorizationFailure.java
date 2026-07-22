@@ -18,6 +18,7 @@ public enum AttestationAuthorizationFailure {
   KEY_ALGORITHM_INVALID("attestation-key-algorithm-invalid"),
   SIGNATURE_INVALID("attestation-signature-invalid"),
   CAPABILITY_INVALID("attestation-capability-invalid"),
+  POLICY_CAPACITY_INVALID("attestation-policy-capacity-invalid"),
   CREDENTIAL_PURPOSE_INVALID("attestation-credential-purpose-invalid"),
   SYSTEM_DERIVATION_INVALID("attestation-system-derivation-invalid"),
   GENESIS_INVALID("attestation-genesis-invalid"),

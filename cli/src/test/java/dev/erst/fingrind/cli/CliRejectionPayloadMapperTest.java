@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.cli.json.CliEntrySemanticsViolationPayload;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection;
+import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
@@ -54,6 +55,34 @@ import tools.jackson.databind.ObjectMapper;
 /** Unit tests for deterministic CLI rejection payload mapping. */
 class CliRejectionPayloadMapperTest {
   private static final Pattern HINT_FLAG_PATTERN = Pattern.compile("--[a-z0-9-]+");
+
+  @Test
+  void attestationRegistryMutationRejectedEnvelope_keepsTargetDiagnosticsExact() {
+    assertRegistryMutationDiagnostic(
+        AttestationVerificationFailure.DUPLICATE_PRINCIPAL, "repeats a principal", "rollover-key");
+    assertRegistryMutationDiagnostic(
+        AttestationVerificationFailure.DUPLICATE_KEY,
+        "already represented",
+        "different credential");
+    assertRegistryMutationDiagnostic(
+        AttestationVerificationFailure.KEY_NOT_ENROLLED, "not enrolled", "enrolled credential");
+    assertRegistryMutationDiagnostic(
+        AttestationVerificationFailure.KEY_REVOKED,
+        "already revoked",
+        "active enrolled credential");
+    assertRegistryMutationDiagnostic(
+        AttestationVerificationFailure.KEY_PRINCIPAL_MISMATCH,
+        "different principal",
+        "principal ID bound");
+    assertRegistryMutationDiagnostic(
+        AttestationVerificationFailure.POLICY_CAPACITY_INVALID,
+        "effective quorums impossible",
+        "eligible principals");
+    assertRegistryMutationDiagnostic(
+        AttestationVerificationFailure.QUORUM_BELOW,
+        "signing credentials do not authorize",
+        "capability grant");
+  }
 
   @Test
   void administrationRejectedEnvelope_coversEveryHintBranchAndDetailShape() {
@@ -756,6 +785,15 @@ class CliRejectionPayloadMapperTest {
 
     assertEquals("close-target-account-candidate-missing", envelope.code());
     assertTrue(Objects.requireNonNull(envelope.hint()).contains("retry amend-account"));
+  }
+
+  private static void assertRegistryMutationDiagnostic(
+      AttestationVerificationFailure failure, String expectedMessage, String expectedHint) {
+    var envelope = CliRejectionPayloadMapper.attestationRegistryMutationRejectedEnvelope(failure);
+
+    assertEquals(failure.wireCode(), envelope.code());
+    assertTrue(Objects.requireNonNull(envelope.message()).contains(expectedMessage));
+    assertTrue(Objects.requireNonNull(envelope.hint()).contains(expectedHint));
   }
 
   private static void assertHint(

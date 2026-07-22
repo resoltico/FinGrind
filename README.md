@@ -18,6 +18,7 @@ Public self-contained bundles support macOS on Apple Silicon and Intel, Linux on
 The following launcher-neutral example works wherever `fingrind` resolves to the CLI entrypoint.
 
 ```bash
+mkdir -p -m 700 ./secrets ./books
 fingrind generate-book-key-file --new-book-key-file ./secrets/acme.book-key
 # Before opening, prepare a separate nonempty owner-only UTF-8 passphrase file at
 # ./secrets/acme-founder.passphrase. FinGrind creates the absent founder key at

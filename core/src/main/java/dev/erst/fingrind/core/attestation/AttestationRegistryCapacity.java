@@ -21,14 +21,14 @@ final class AttestationRegistryCapacity {
       int quorum = resolution.quorumAt(capability, resolvingOrder);
       if (resolution.eligiblePrincipalCount(capability, resolvingOrder, null) < quorum) {
         throw new AttestationAuthorizationException(
-            AttestationAuthorizationFailure.CAPABILITY_INVALID);
+            AttestationAuthorizationFailure.POLICY_CAPACITY_INVALID);
       }
       if (capability.admitsCliOperation()
           && resolution.eligiblePrincipalCount(
                   capability, resolvingOrder, AttestationCredentialPurpose.OPERATOR)
               < quorum) {
         throw new AttestationAuthorizationException(
-            AttestationAuthorizationFailure.CAPABILITY_INVALID);
+            AttestationAuthorizationFailure.POLICY_CAPACITY_INVALID);
       }
       if (capability == AttestationCapability.CLOSE_PERIOD
           && resolution.hasActiveSystemWorkflowAt(resolvingOrder)
@@ -36,7 +36,7 @@ final class AttestationRegistryCapacity {
                   capability, resolvingOrder, AttestationCredentialPurpose.SYSTEM)
               < quorum) {
         throw new AttestationAuthorizationException(
-            AttestationAuthorizationFailure.CAPABILITY_INVALID);
+            AttestationAuthorizationFailure.POLICY_CAPACITY_INVALID);
       }
     }
   }

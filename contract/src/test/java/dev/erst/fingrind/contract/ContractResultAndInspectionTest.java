@@ -32,6 +32,8 @@ import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
+import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -57,7 +59,8 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
             List.of(CurrencyBalance.ofTotals(money("10.00"), money("0.00"))));
     assertEquals(
         Instant.parse("2026-04-07T10:15:30Z"),
-        new OpenBookResult.Opened(Instant.parse("2026-04-07T10:15:30Z"), bookIdentity())
+        new OpenBookResult.Opened(
+                Instant.parse("2026-04-07T10:15:30Z"), bookIdentity(), attestationTrustRoot())
             .initializedAt());
     assertEquals(
         new BookAdministrationRejection.BookAlreadyInitialized(),
@@ -101,6 +104,17 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
     assertEquals(
         new BookQueryRejection.BookNotInitialized(),
         new ListPostingsResult.Rejected(new BookQueryRejection.BookNotInitialized()).rejection());
+  }
+
+  private static AttestationRegistryInspection attestationTrustRoot() {
+    return new AttestationRegistryInspection(
+        java.util.UUID.fromString("10213243-5465-7687-98a9-babcbddceeff"),
+        BigInteger.ZERO,
+        "0".repeat(64),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of());
   }
 
   @Test

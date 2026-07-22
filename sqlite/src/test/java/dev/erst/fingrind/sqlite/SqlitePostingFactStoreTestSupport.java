@@ -1,6 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -59,5 +62,14 @@ class SqlitePostingFactStoreTestSupport extends SqliteStoreTestIntrospectionSupp
         SqlitePostingFactFixtureSupport.postingDraft(postingFact),
         postingFact::postingId,
         SqliteAttestationTestSupport.authorizer());
+  }
+
+  static void assertFreshCommittedPosting(
+      CommittedPosting expectedPosting, PostingCommitResult actualResult) {
+    PostingCommitResult.Committed committed =
+        assertInstanceOf(PostingCommitResult.Committed.class, actualResult);
+    assertEquals(expectedPosting, committed.postingFact());
+    assertFalse(committed.idempotentReplay());
+    assertNotNull(committed.attestationVerification());
   }
 }

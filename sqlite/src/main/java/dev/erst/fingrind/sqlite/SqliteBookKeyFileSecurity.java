@@ -25,6 +25,10 @@ final class SqliteBookKeyFileSecurity {
     SqliteBookKeyFileDirectorySecurity.ensureSecureParentDirectory(normalizedPath);
   }
 
+  static void requireExistingSecureParentDirectory(Path normalizedPath) throws IOException {
+    SqliteBookKeyFileDirectorySecurity.requireExistingSecureParentDirectory(normalizedPath);
+  }
+
   static void createSecureEmptyFile(Path normalizedPath) throws IOException {
     SqliteBookKeyFileArtifactSecurity.createSecureEmptyFile(normalizedPath);
   }

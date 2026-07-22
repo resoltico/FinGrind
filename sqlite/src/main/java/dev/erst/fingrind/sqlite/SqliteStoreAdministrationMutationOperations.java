@@ -14,6 +14,7 @@ import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationTaxCodeSnapshot;
 import dev.erst.fingrind.core.attestation.AttestationTaxRegistrationMutationProjection;
 import dev.erst.fingrind.core.attestation.AttestationTaxRegistrationSnapshot;
+import dev.erst.fingrind.core.attestation.AttestationVerifier;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
@@ -89,7 +90,11 @@ final class SqliteStoreAdministrationMutationOperations {
                     SqliteBookContract.FORMAT_VERSION,
                     SqliteBookState.INITIALIZED_FINGRIND));
             lifecycle.recordExclusiveNewBookInitialization();
-            return new BookOpeningOutcome.Opened(initializedAt, bookIdentity);
+            return new BookOpeningOutcome.Opened(
+                initializedAt,
+                bookIdentity,
+                AttestationVerifier.verifyAndInspectBook(List.of(checkedGenesisEvidence))
+                    .registry());
           } catch (SqliteNativeException exception) {
             SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
             throw SqliteStoreOperations.sqliteFailure(

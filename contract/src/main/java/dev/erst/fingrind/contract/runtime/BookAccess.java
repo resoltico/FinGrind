@@ -4,10 +4,8 @@ import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.core.attestation.AttestationAuthorizationLimits;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import java.nio.file.Path;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 /** One durable book file, its passphrase source, and optional mutation-authorization sources. */
 public record BookAccess(
@@ -26,7 +24,6 @@ public record BookAccess(
               + AttestationAuthorizationLimits.MAXIMUM_QUORUM
               + " attestation authorization credentials.");
     }
-    requireDistinctCredentialSources(attestationCredentialSources);
   }
 
   /** Requires the explicit one-through-64 credentials needed by a mutating protected-book call. */
@@ -36,25 +33,6 @@ public record BookAccess(
           "Protected-book mutation requires at least one attestation authorization credential.");
     }
     return attestationCredentialSources;
-  }
-
-  private static void requireDistinctCredentialSources(
-      List<AttestationCredentialSource> credentialSources) {
-    Set<java.util.UUID> principalIds = new HashSet<>();
-    Set<Path> keyPaths = new HashSet<>();
-    for (AttestationCredentialSource credentialSource : credentialSources) {
-      AttestationCredentialSource checkedSource =
-          Objects.requireNonNull(
-              credentialSource, "attestationCredentialSources must not contain null");
-      if (!principalIds.add(checkedSource.principalId())) {
-        throw new IllegalArgumentException(
-            "Attestation authorization credential principals must be distinct.");
-      }
-      if (!keyPaths.add(checkedSource.encryptedKeyFilePath())) {
-        throw new IllegalArgumentException(
-            "Attestation authorization credential key files must be distinct.");
-      }
-    }
   }
 
   /** Supported CLI-visible passphrase transport selections for one protected book command. */

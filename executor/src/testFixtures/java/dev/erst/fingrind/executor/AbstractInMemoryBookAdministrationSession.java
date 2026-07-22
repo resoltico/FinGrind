@@ -14,6 +14,8 @@ import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationGenesis;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
+import dev.erst.fingrind.core.attestation.AttestationVerifier;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryCursor;
@@ -27,6 +29,7 @@ import dev.erst.fingrind.executor.spi.AccountLookupStore;
 import dev.erst.fingrind.executor.spi.BookAdministrationStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.BookLifecycleReader;
+import java.math.BigInteger;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
@@ -34,6 +37,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.locks.ReentrantLock;
 
 /** Shared in-memory lifecycle and account-registry fixture state for executor tests. */
@@ -86,6 +90,15 @@ abstract class AbstractInMemoryBookAdministrationSession
   /** Test-fixture-only unsigned initialization helper for in-memory domain-state setup. */
   protected BookOpeningOutcome openBook(
       Instant initializedAt, BookIdentity bookIdentity, List<AccountDeclaration> seededAccounts) {
+    return openBook(
+        initializedAt, bookIdentity, seededAccounts, syntheticAttestationTrustRoot(bookIdentity));
+  }
+
+  private BookOpeningOutcome openBook(
+      Instant initializedAt,
+      BookIdentity bookIdentity,
+      List<AccountDeclaration> seededAccounts,
+      AttestationRegistryInspection attestationTrustRoot) {
     return InMemoryBookSessionSupport.withLock(
         lock,
         () -> {
@@ -109,7 +122,10 @@ abstract class AbstractInMemoryBookAdministrationSession
                               declaration.unitOfMeasure(),
                               true,
                               initializedAt)));
-          return new BookOpeningOutcome.Opened(initializedAt, bookIdentity);
+          return new BookOpeningOutcome.Opened(
+              initializedAt,
+              bookIdentity,
+              Objects.requireNonNull(attestationTrustRoot, "attestationTrustRoot"));
         });
   }
 
@@ -120,7 +136,24 @@ abstract class AbstractInMemoryBookAdministrationSession
       List<AccountDeclaration> seededAccounts,
       AttestationEvidence genesisEvidence) {
     AttestationGenesis.requireMatchingBookIdentity(genesisEvidence, bookIdentity);
-    return openBook(initializedAt, bookIdentity, seededAccounts);
+    return openBook(
+        initializedAt,
+        bookIdentity,
+        seededAccounts,
+        AttestationVerifier.verifyAndInspectBook(List.of(genesisEvidence)).registry());
+  }
+
+  private static AttestationRegistryInspection syntheticAttestationTrustRoot(
+      BookIdentity bookIdentity) {
+    return new AttestationRegistryInspection(
+        UUID.nameUUIDFromBytes(
+            bookIdentity.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8)),
+        BigInteger.ZERO,
+        "0".repeat(64),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of());
   }
 
   @Override

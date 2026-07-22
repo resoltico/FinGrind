@@ -17,7 +17,6 @@ import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
-import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -91,15 +90,9 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
               dev.erst.fingrind.core.AccountType.ASSET,
               NormalBalance.DEBIT,
               Instant.parse("2026-04-07T10:15:30Z")));
-      assertEquals(
-          new PostingCommitResult.Committed(postingOne, false),
-          commitPosting(postingFactStore, postingOne));
-      assertEquals(
-          new PostingCommitResult.Committed(postingTwo, false),
-          commitPosting(postingFactStore, postingTwo));
-      assertEquals(
-          new PostingCommitResult.Committed(postingThree, false),
-          commitPosting(postingFactStore, postingThree));
+      assertFreshCommittedPosting(postingOne, commitPosting(postingFactStore, postingOne));
+      assertFreshCommittedPosting(postingTwo, commitPosting(postingFactStore, postingTwo));
+      assertFreshCommittedPosting(postingThree, commitPosting(postingFactStore, postingThree));
       PostingHistoryQuery firstPageQuery =
           new PostingHistoryQuery(Optional.empty(), null, null, 2, Optional.empty());
       assertEquals(

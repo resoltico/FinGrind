@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
@@ -23,6 +24,16 @@ class SqliteBookKeyFileFilesystemSecurityCoverageTest {
           PosixFilePermission.OWNER_READ,
           PosixFilePermission.OWNER_WRITE,
           PosixFilePermission.OWNER_EXECUTE);
+
+  @Test
+  void ensureSecureParentDirectory_rejectsAParentlessTarget() {
+    SqliteCallerPathContractException rejection =
+        assertThrows(
+            SqliteCallerPathContractException.class,
+            () -> SqliteBookKeyFileDirectorySecurity.ensureSecureParentDirectory(Path.of("/")));
+
+    assertEquals(SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY, rejection.pathFailure());
+  }
 
   @Test
   void createSecureEmptyFile_hardensPosixAndAclFiles() throws Exception {

@@ -49,7 +49,11 @@ final class CliAdministrativeMutationResponseWriter {
                               CliAdministrativeMutationPayloadSupport
                                   .tightenedParentDirectoryPayloads(tightenedParentDirectories),
                               CliBookInspectionPayloadMapper.bookIdentityPayload(
-                                  opened.bookIdentity())))),
+                                  opened.bookIdentity()),
+                              opened.attestationTrustRoot().bookId().toString(),
+                              opened.attestationTrustRoot().operationHeadHex(),
+                              CliAttestationPayloadMapper.registryPayload(
+                                  opened.attestationTrustRoot())))),
               () ->
                   outputChannel.writeText(
                       CliBookAccessOutputRenderer.renderOpenBookText(
@@ -147,14 +151,19 @@ final class CliAdministrativeMutationResponseWriter {
                           new CliAdministrationJsonModels.AttestationRegistryMutationPayload(
                               CliPublicPaths.absoluteValue(mutated.bookFilePath()),
                               mutated.operationKind(),
-                              mutated.headOrder().toString()))),
+                              mutated.headOrder().toString(),
+                              mutated.operationHeadHex()))),
               () ->
                   outputChannel.writeText(
-                      "%s appended at attestation order %s for %s.%n"
-                          .formatted(
-                              operationId.wireName(),
-                              mutated.headOrder(),
-                              CliPublicPaths.absoluteValue(mutated.bookFilePath()))),
+                      CliTextFormat.renderTitledBlock(
+                          "Attestation Registry Updated",
+                          CliTextFormat.renderKeyValueBlock(
+                              List.of(
+                                  List.of("Operation", operationId.wireName()),
+                                  List.of("Book file", CliTextDisplay.path(mutated.bookFilePath())),
+                                  List.of("Operation kind", mutated.operationKind()),
+                                  List.of("Head order", mutated.headOrder().toString()),
+                                  List.of("Operation head", mutated.operationHeadHex()))))),
               () -> {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(operationId));
@@ -165,7 +174,7 @@ final class CliAdministrativeMutationResponseWriter {
               outputMode);
       case AttestationRegistryMutationResult.AuthorizationRejected rejected ->
           outputChannel.writeRejectedEnvelope(
-              CliRejectionPayloadMapper.attestationAuthorizationRejectedEnvelope(
+              CliRejectionPayloadMapper.attestationRegistryMutationRejectedEnvelope(
                   rejected.failure()),
               outputMode);
     }

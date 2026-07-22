@@ -65,6 +65,7 @@ passphrase source.
 For automation, generate a dedicated key file:
 
 ```bash
+mkdir -p -m 700 ./secrets ./books
 fingrind \
   generate-book-key-file \
   --new-book-key-file ./secrets/acme.book-key
@@ -72,8 +73,10 @@ fingrind \
 
 Keep that key outside the book directory. The examples below use `./secrets/` for passphrase
 material and `./books/` for encrypted books so ordinary book copies do not also copy the key.
-If `./secrets/` or `./books/` does not exist yet, FinGrind creates it with owner-only
-permissions. If either directory already exists, keep it owner-only before you reuse that path.
+`generate-book-key-file` requires the `./secrets/` parent to exist and remain owner-only; it
+never creates or weakens that secret directory. This setup creates both directories explicitly.
+On Windows PowerShell, use the owner-only directory preparation in
+[USER_QUICK_START.md](./USER_QUICK_START.md#3-create-a-key-file) before generating the key.
 
 The generated key file contains one non-empty single-line UTF-8 passphrase.
 One trailing newline is tolerated and stripped when loading an existing file.
@@ -414,7 +417,9 @@ The request shape is checked in at [examples/basic-posting-request.json](./examp
 One example committed response is checked in at
 [examples/basic-posting-committed-response.json](./examples/basic-posting-committed-response.json).
 This example uses the sale-first request language with `cashAccountCode`, `revenueAccountCode`,
-and one exact positive `amount`.
+and one exact positive `amount`. Its `attestationCommit` records the appended operation order and
+head; the published sample uses `<attestation-operation-head>` because every new book has a fresh
+cryptographic authority chain.
 
 ## Generate Or Run A Ledger Plan
 

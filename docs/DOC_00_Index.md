@@ -208,6 +208,13 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `ApprovalId` | `DOC_01_Core.md` | `ApprovalId` |
 | `ApprovalReference` | `DOC_01_Core.md` | `ApprovalReference` |
 | `ApprovalType` | `DOC_01_Core.md` | `ApprovalType` |
+| `AttestationBookInspection` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationBookInspection` And `AttestationRegistryInspection` |
+| `AttestationCommit` | `DOC_02_PostingAndLedgerPlans.md` | `PostEntryResult`, `PreflightEntryResult`, And `CommitEntryResult` |
+| `AttestationRegistryInspection` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationBookInspection` And `AttestationRegistryInspection` |
+| `AttestationRegistryInspection.CapabilityPolicy` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationBookInspection` And `AttestationRegistryInspection` |
+| `AttestationRegistryInspection.Credential` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationBookInspection` And `AttestationRegistryInspection` |
+| `AttestationRegistryInspection.PrincipalCapability` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationBookInspection` And `AttestationRegistryInspection` |
+| `AttestationRegistryInspection.SystemWorkflowPolicy` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationBookInspection` And `AttestationRegistryInspection` |
 | `BalanceMath` | `DOC_01_Core.md` | `BalanceMath` |
 | `BalanceSide` | `DOC_01_Core.md` | `BalanceSide` |
 | `BookDoctrine` | `DOC_01_Core_BookDoctrine.md` | `BookDoctrine` |
@@ -304,6 +311,14 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `CommandCatalogDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `CommandDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractDecision` | `DOC_02_MachineContractAndDescriptors.md` | `ContractErrors`, `ContractFailure`, `ContractFailurePaths`, `ContractDecision`, And `ContractFailureException` |
+| `ContractAttestationRegistryTemplates` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractAttestationRegistryTemplates.AlterPolicyTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractAttestationRegistryTemplates.CapabilityGrantTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractAttestationRegistryTemplates.EnrollKeyTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractAttestationRegistryTemplates.PolicyRuleTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractAttestationRegistryTemplates.RevokeKeyTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractAttestationRegistryTemplates.RolloverKeyTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractAttestationRegistryTemplates.SystemWorkflowPolicyTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractDiscovery` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractDiscoveryDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractErrors` | `DOC_02_MachineContractAndDescriptors.md` | `ContractErrors`, `ContractFailure`, `ContractFailurePaths`, `ContractDecision`, And `ContractFailureException` |

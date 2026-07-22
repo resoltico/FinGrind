@@ -9,7 +9,7 @@ scope:
 route:
   keywords: [verifiable-operation-attestation, backup-manifest, attestation-receipt, artifact-container, restore-book, backup-acknowledgement, receipt-anchor, no-clobber]
   questions: ["how is an attested backup artifact encoded", "how does FinGrind restore an attested snapshot", "what does an attestation receipt anchor", "which vectors prove backup and receipt envelopes"]
-stage: "Current public protocol 32 and protected-book format 51 contract"
+stage: "Current public protocol 33 and protected-book format 51 contract"
 ---
 
 # Verifiable Operation Attestation Artifacts

@@ -45,6 +45,9 @@ public enum AttestationVerificationFailure {
       "attestation-signature-invalid", "The attestation envelope contains an invalid signature."),
   CAPABILITY_INVALID(
       "attestation-capability-invalid", "The attestation authorization capability is not valid."),
+  POLICY_CAPACITY_INVALID(
+      "attestation-policy-capacity-invalid",
+      "The requested authority change would leave an effective quorum unsatisfiable."),
   CREDENTIAL_PURPOSE_INVALID(
       "attestation-credential-purpose-invalid", "The attestation credential purpose is not valid."),
   SYSTEM_DERIVATION_INVALID(

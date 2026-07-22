@@ -26,6 +26,8 @@ class CliPublicDocsContractSupport extends FinGrindCliTestSupport {
   private static final Pattern UUID_PATTERN =
       Pattern.compile(
           "\\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\b");
+  private static final Pattern ATTESTATION_OPERATION_HEAD_PATTERN =
+      Pattern.compile("(?<=\\\"operationHead\\\":\\\")[0-9a-f]{64}(?=\\\")");
 
   protected static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -230,7 +232,10 @@ class CliPublicDocsContractSupport extends FinGrindCliTestSupport {
   protected String canonicalizeExampleFixture(String text) {
     String pathCanonicalized =
         canonicalizeOwnedTemporaryPaths(trimSingleTerminalNewline(normalizeLineEndings(text)));
-    return canonicalizeGeneratedIds(pathCanonicalized);
+    String idCanonicalized = canonicalizeGeneratedIds(pathCanonicalized);
+    return ATTESTATION_OPERATION_HEAD_PATTERN
+        .matcher(idCanonicalized)
+        .replaceAll("<attestation-operation-head>");
   }
 
   protected JsonNode canonicalizeJsonFixture(JsonNode actual) {

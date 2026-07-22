@@ -142,13 +142,13 @@ final class MachineContractDomainDescriptors {
         List.of(
             new ContractResponse.FieldDescriptor(
                 ProtocolPostEntryFields.Provenance.COMMAND_ID,
-                "Caller-generated command identity for this request."),
+                "Caller-generated canonical UUID command identity for this request."),
             new ContractResponse.FieldDescriptor(
                 ProtocolPostEntryFields.Provenance.IDEMPOTENCY_KEY,
                 "Book-local idempotency key supplied by the caller."),
             new ContractResponse.FieldDescriptor(
                 ProtocolPostEntryFields.Provenance.CAUSATION_ID,
-                "Caller-supplied causation identifier."),
+                "Caller-supplied non-blank causation identifier for upstream traceability."),
             new ContractResponse.FieldDescriptor(
                 ProtocolPostEntryFields.Provenance.CORRELATION_ID,
                 "Optional caller-supplied correlation identifier.")),

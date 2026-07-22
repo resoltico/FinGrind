@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
+import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
 import dev.erst.fingrind.core.attestation.AttestationReviewFinding;
 import java.util.List;
 import java.util.Objects;
@@ -33,7 +34,8 @@ final class CliAttestationReadResponseWriter {
                               valid.headOrder().toString(),
                               valid.operationHeadHex(),
                               valid.reviewRequired(),
-                              reviewFindingPayloads(valid.reviewFindings())))),
+                              reviewFindingPayloads(valid.reviewFindings()),
+                              registryPayload(valid.registry())))),
               () ->
                   writeText(
                       valid.reviewRequired()
@@ -43,6 +45,20 @@ final class CliAttestationReadResponseWriter {
                           List.of("Book ID", valid.bookId().toString()),
                           List.of("Head order", valid.headOrder().toString()),
                           List.of("Operation head", valid.operationHeadHex()),
+                          List.of(
+                              "Attestation credentials",
+                              renderedCredentials(valid.registry().credentials())),
+                          List.of(
+                              "Effective quorum policy",
+                              renderedCapabilityPolicies(valid.registry().capabilityPolicies())),
+                          List.of(
+                              "Principal capabilities",
+                              renderedPrincipalCapabilities(
+                                  valid.registry().principalCapabilities())),
+                          List.of(
+                              "System workflow policies",
+                              renderedSystemWorkflowPolicies(
+                                  valid.registry().systemWorkflowPolicies())),
                           List.of(
                               "Review findings",
                               valid.reviewFindings().isEmpty()
@@ -195,6 +211,54 @@ final class CliAttestationReadResponseWriter {
                       + ", operationOrder="
                       + finding.operationOrder();
                 })
+            .toList());
+  }
+
+  private static CliAttestationJsonModels.AttestationRegistryPayload registryPayload(
+      AttestationRegistryInspection registry) {
+    return CliAttestationPayloadMapper.registryPayload(registry);
+  }
+
+  private static String renderedCapabilityPolicies(
+      List<AttestationRegistryInspection.CapabilityPolicy> policies) {
+    return CliAttestationPayloadMapper.renderedCapabilityPolicies(policies);
+  }
+
+  private static String renderedCredentials(
+      List<AttestationRegistryInspection.Credential> credentials) {
+    return CliAttestationPayloadMapper.renderedCredentials(credentials);
+  }
+
+  private static String renderedPrincipalCapabilities(
+      List<AttestationRegistryInspection.PrincipalCapability> principalCapabilities) {
+    return CliTextFormat.joined(
+        principalCapabilities.stream()
+            .map(
+                capability ->
+                    "principalId="
+                        + capability.principalId()
+                        + ", capability="
+                        + capability.capability()
+                        + ", eligible="
+                        + capability.eligible())
+            .toList());
+  }
+
+  private static String renderedSystemWorkflowPolicies(
+      List<AttestationRegistryInspection.SystemWorkflowPolicy> policies) {
+    if (policies.isEmpty()) {
+      return "(none)";
+    }
+    return CliTextFormat.joined(
+        policies.stream()
+            .map(
+                policy ->
+                    "workflowId="
+                        + policy.workflowId()
+                        + ", kind="
+                        + policy.workflowKind()
+                        + ", active="
+                        + policy.active())
             .toList());
   }
 

@@ -91,7 +91,7 @@ class SqliteCallerPathFailureMapperTest {
         "Choose a regular non-symlink protected-book path beneath a private owner-only parent directory. If the parent directory already exists, tighten it first; otherwise target a missing private directory so FinGrind can create it securely, then rerun the command.",
         SqliteBookFileSecuritySupport.invalidBookFilePathHint());
     assertEquals(
-        "Choose a regular non-symlink key file path beneath a private owner-only parent directory. If the parent directory already exists, tighten it first; otherwise target a missing private directory so FinGrind can create it securely, then rerun the command.",
+        "Create a private owner-only parent directory yourself, tighten it if needed, then choose a regular non-symlink key file path beneath it and rerun the command.",
         SqliteBookKeyFileSecuritySupport.generalKeyFileHint());
   }
 

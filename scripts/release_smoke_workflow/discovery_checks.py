@@ -85,7 +85,7 @@ def verify_help_and_template_surfaces(
     )
     require(
         payload_field(request_template, "provenance", "commandId")
-        == "replace-before-commit-command-id",
+        == "ffffffff-ffff-7fff-bfff-fffffffffff1",
         f"{config.label} print-request-template did not publish the canonical provenance scaffold",
     )
     plan_template = parse_json_output(

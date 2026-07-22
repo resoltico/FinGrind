@@ -11,7 +11,7 @@ Historical release notes older than `0.31.0` live in:
 
 ### Added
 
-- Added verifiable operation attestation to protected-book format `51` and CLI protocol `32`.
+- Added verifiable operation attestation to protected-book format `51` and CLI protocol `33`.
   Every mutation now carries immutable canonical request and committed-effect preimages, a
   historically authorized Ed25519 envelope, and a SHA-256 operation head. `verify-book`,
   `attestation-review`, `export-attestation-receipt`, and `verify-receipt` expose structural
@@ -66,6 +66,20 @@ Historical release notes older than `0.31.0` live in:
 - Changed verification observability and merge safety. The canonical `check.sh` gate now emits one structured report per executed stage and a bounded Java-compiler warning manifest, Gradle wrapper integrity validation is a dependency of the required GitHub `Gate`, and the parallel published-bundle matrix reads rather than races to write Gradle cache entries.
 
 ### Fixed
+
+- Fixed attestation operation observability and operator discovery. Every ordinary committed
+  posting now publishes its newly appended attestation order and head; `open-book` and
+  `verify-book` publish the chain-derived credential and policy trust root; registry mutations
+  publish their operation head with structured path handling; and all four registry request
+  templates are available through both `print-request-template` and full-detail JSON help.
+  Duplicate signing principal or key input now returns its exact typed attestation rejection,
+  infeasible post-mutation policy capacity has its own public refusal, and receipt-export help
+  accurately advertises repeated credential triplets.
+- Fixed secret-target and protected-book failure handling. Book-key and standalone attestation-key
+  generation now consistently require caller-created safe parent directories, while protected-book
+  ciphertext tampering is classified as a protected-book verification failure rather than a
+  generic storage runtime error. Lifecycle templates now use canonical UUID placeholders and
+  publish the lowercase credential-purpose vocabulary before submission.
 
 - Fixed receipt verification failure transport. Malformed selected receipt bytes remain
   `receipt-artifact-invalid`, while successfully decoded receipt version, tuple, signature, quorum,

@@ -178,7 +178,10 @@ public final class ProtectedBookMaintenanceService {
                               .Mutated
                           mutated ->
                       new AttestationRegistryMutationResult.Mutated(
-                          mutated.bookFilePath(), mutated.operationKind(), mutated.headOrder());
+                          mutated.bookFilePath(),
+                          mutated.operationKind(),
+                          mutated.headOrder(),
+                          mutated.operationHeadHex());
                   case dev.erst.fingrind.executor.maintenance.ProtectedBookRegistryMutationOutcome
                               .Rejected
                           rejected ->

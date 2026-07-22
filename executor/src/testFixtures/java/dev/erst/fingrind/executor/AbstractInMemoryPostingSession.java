@@ -174,7 +174,7 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifec
         () -> {
           return switch (postingAcceptancePolicy.decisionFor(postingDraft, this)) {
             case PostingAcceptancePolicy.Decision.Replay replay ->
-                new PostingCommitResult.Committed(replay.postingFact(), true);
+                new PostingCommitResult.Committed(replay.postingFact(), true, null);
             case PostingAcceptancePolicy.Decision.Rejected rejected ->
                 new PostingCommitResult.Rejected(rejected.rejection());
             case PostingAcceptancePolicy.Decision.Accepted accepted -> {
@@ -205,7 +205,7 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifec
               inventoryMovementsByPostingId.put(
                   postingFact.postingId(), accepted.acceptedPosting().inventoryMovements());
               inventoryStateByAccount.putAll(accepted.acceptedPosting().resultingInventoryStates());
-              yield new PostingCommitResult.Committed(postingFact, false);
+              yield new PostingCommitResult.Committed(postingFact, false, null);
             }
           };
         });

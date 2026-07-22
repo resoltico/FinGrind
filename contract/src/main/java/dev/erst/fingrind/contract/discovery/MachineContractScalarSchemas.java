@@ -14,6 +14,8 @@ final class MachineContractScalarSchemas {
   private static final String CURRENCY_CODE_PATTERN = "^[A-Z]{3}$";
   private static final String NON_NEGATIVE_INTEGER_STRING_PATTERN = "^(0|[1-9]\\d*)$";
   private static final String POSITIVE_INTEGER_STRING_PATTERN = "^[1-9]\\d*$";
+  private static final String CANONICAL_UUID_PATTERN =
+      "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$";
 
   private MachineContractScalarSchemas() {}
 
@@ -53,6 +55,18 @@ final class MachineContractScalarSchemas {
   static Map<String, Object> nonBlankStringSchema(String description) {
     return MachineContractSchemaSupport.orderedMap(
         "type", "string", "description", description, "pattern", NON_BLANK_TEXT_PATTERN);
+  }
+
+  static Map<String, Object> uuidStringSchema(String description) {
+    return MachineContractSchemaSupport.orderedMap(
+        "type",
+        "string",
+        "description",
+        description,
+        "format",
+        "uuid",
+        "pattern",
+        CANONICAL_UUID_PATTERN);
   }
 
   static Map<String, Object> tokenStringSchema(String description, String pattern, int maxLength) {

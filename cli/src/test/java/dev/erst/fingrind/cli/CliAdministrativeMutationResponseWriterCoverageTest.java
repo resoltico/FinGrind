@@ -44,7 +44,8 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
         .writeOpenBookResult(
             BOOK_PATH,
             List.of(Path.of("books")),
-            new OpenBookResult.Opened(Instant.parse("2026-07-21T10:20:30Z"), bookIdentity()),
+            new OpenBookResult.Opened(
+                Instant.parse("2026-07-21T10:20:30Z"), bookIdentity(), attestationTrustRoot()),
             OutputMode.JSON);
     assertJsonContains(openedJson, "\"entityName\":\"Acme Studio\"");
 
@@ -53,7 +54,8 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
         .writeOpenBookResult(
             BOOK_PATH,
             List.of(Path.of("books")),
-            new OpenBookResult.Opened(Instant.parse("2026-07-21T10:20:30Z"), bookIdentity()),
+            new OpenBookResult.Opened(
+                Instant.parse("2026-07-21T10:20:30Z"), bookIdentity(), attestationTrustRoot()),
             OutputMode.TEXT);
     String opened = openedText.toString(StandardCharsets.UTF_8);
     assertTrue(opened.contains("Book Initialized"));
@@ -112,7 +114,9 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
                     BOOK_PATH,
                     List.of(),
                     new OpenBookResult.Opened(
-                        Instant.parse("2026-07-21T10:20:30Z"), bookIdentity()),
+                        Instant.parse("2026-07-21T10:20:30Z"),
+                        bookIdentity(),
+                        attestationTrustRoot()),
                     OutputMode.CSV));
     assertThrows(
         IllegalArgumentException.class,
@@ -129,7 +133,8 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
     assertEquals(
         0,
         CliAdministrativeExitCodes.exitCodeFor(
-            new OpenBookResult.Opened(Instant.parse("2026-07-21T10:20:30Z"), bookIdentity())));
+            new OpenBookResult.Opened(
+                Instant.parse("2026-07-21T10:20:30Z"), bookIdentity(), attestationTrustRoot())));
     assertEquals(
         2,
         CliAdministrativeExitCodes.exitCodeFor(
@@ -229,7 +234,8 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
   @Test
   void writesEveryCredentialRegistryMutationOutcomeAcrossItsSupportedOutputFamilies() {
     AttestationRegistryMutationResult.Mutated mutated =
-        new AttestationRegistryMutationResult.Mutated(BOOK_PATH, "enroll-key", BigInteger.ONE);
+        new AttestationRegistryMutationResult.Mutated(
+            BOOK_PATH, "enroll-key", BigInteger.ONE, "0".repeat(64));
 
     ByteArrayOutputStream json = new ByteArrayOutputStream();
     writer(json)
@@ -239,9 +245,11 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
     ByteArrayOutputStream text = new ByteArrayOutputStream();
     writer(text)
         .writeAttestationRegistryMutationResult(OperationId.ENROLL_KEY, mutated, OutputMode.TEXT);
-    assertTrue(
-        text.toString(StandardCharsets.UTF_8)
-            .contains("enroll-key appended at attestation order 1"));
+    String renderedText = text.toString(StandardCharsets.UTF_8);
+    assertTrue(renderedText.contains("Attestation Registry Updated"));
+    assertTrue(renderedText.contains("Head order"));
+    assertTrue(renderedText.contains("Operation head"));
+    assertTrue(renderedText.contains("0".repeat(64)));
 
     assertThrows(
         IllegalArgumentException.class,

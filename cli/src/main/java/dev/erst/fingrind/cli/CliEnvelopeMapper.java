@@ -100,7 +100,12 @@ final class CliEnvelopeMapper {
             committed.effectiveDate().toString(),
             committed.recordedAt().toString(),
             committed.idempotentReplay(),
-            CliResolvedJournalPayloadMapper.resolvedJournalPayload(committed.resolvedJournal())));
+            CliResolvedJournalPayloadMapper.resolvedJournalPayload(committed.resolvedJournal()),
+            committed.attestationCommit() == null
+                ? null
+                : new CliMutationJsonModels.AttestationCommitPayload(
+                    committed.attestationCommit().operationOrder().toString(),
+                    committed.attestationCommit().operationHeadHex())));
   }
 
   static CliEnvelopeJsonModels.SuccessArtifact successArtifact(String format, Path path) {

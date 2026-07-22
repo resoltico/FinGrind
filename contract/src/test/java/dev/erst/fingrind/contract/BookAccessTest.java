@@ -42,7 +42,7 @@ class BookAccessTest {
   }
 
   @Test
-  void attestationCredentialSources_requireOneToSixtyFourDistinctPrincipalsAndKeyFiles() {
+  void attestationCredentialSources_preserveCandidatesForSigningAdmissionAndCapTheirCount() {
     AttestationCredentialSource first = credential("first", "first-key");
     AttestationCredentialSource second = credential("second", "second-key");
     BookAccess access =
@@ -60,20 +60,20 @@ class BookAccessTest {
                     BookAccess.PassphraseSource.StandardInput.INSTANCE,
                     List.of())
                 .requireAttestationCredentialSources());
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new BookAccess(
+    assertIterableEquals(
+        List.of(first, credential("first", "third-key")),
+        new BookAccess(
                 Path.of("books", "acme.sqlite"),
                 BookAccess.PassphraseSource.StandardInput.INSTANCE,
-                List.of(first, credential("first", "third-key"))));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            new BookAccess(
+                List.of(first, credential("first", "third-key")))
+            .requireAttestationCredentialSources());
+    assertIterableEquals(
+        List.of(first, credential("third", "first-key")),
+        new BookAccess(
                 Path.of("books", "acme.sqlite"),
                 BookAccess.PassphraseSource.StandardInput.INSTANCE,
-                List.of(first, credential("third", "first-key"))));
+                List.of(first, credential("third", "first-key")))
+            .requireAttestationCredentialSources());
     List<AttestationCredentialSource> maximumCredentials =
         credentials(AttestationAuthorizationLimits.MAXIMUM_QUORUM);
     assertIterableEquals(

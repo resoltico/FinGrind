@@ -5,11 +5,11 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountin
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.allPostingKinds;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.openedBook;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -79,9 +79,18 @@ class InMemoryBookSessionTest {
   void openBook_marksSessionInitializedAndRejectsSecondOpen() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       assertFalse(bookSession.inspectBook().initialized());
-      assertEquals(
-          openedBook(FIXED_INSTANT),
-          bookSession.openBook(FIXED_INSTANT, bookIdentity(), List.of()));
+      BookOpeningOutcome.Opened opened =
+          assertInstanceOf(
+              BookOpeningOutcome.Opened.class,
+              bookSession.openBook(FIXED_INSTANT, bookIdentity(), List.of()));
+      assertEquals(FIXED_INSTANT, opened.initializedAt());
+      assertEquals(bookIdentity(), opened.bookIdentity());
+      assertEquals(java.math.BigInteger.ZERO, opened.attestationTrustRoot().headOrder());
+      assertEquals("0".repeat(64), opened.attestationTrustRoot().operationHeadHex());
+      assertTrue(opened.attestationTrustRoot().credentials().isEmpty());
+      assertTrue(opened.attestationTrustRoot().capabilityPolicies().isEmpty());
+      assertTrue(opened.attestationTrustRoot().principalCapabilities().isEmpty());
+      assertTrue(opened.attestationTrustRoot().systemWorkflowPolicies().isEmpty());
       assertTrue(bookSession.inspectBook().initialized());
       assertEquals(
           new BookOpeningOutcome.Rejected(
@@ -291,7 +300,7 @@ class InMemoryBookSessionTest {
           reversalFact("idem-reversal-2", originalPosting.postingId());
 
       assertEquals(
-          new PostingCommitResult.Committed(originalPosting, false),
+          new PostingCommitResult.Committed(originalPosting, false, null),
           bookSession.commit(originalPosting));
       assertEquals(
           Optional.of(
@@ -301,11 +310,11 @@ class InMemoryBookSessionTest {
           Optional.of(originalPosting),
           bookSession.findPosting(new PostingId("cedcf800-36e6-3c96-a365-1486d6d1bc3a")));
       assertEquals(
-          new PostingCommitResult.Committed(originalPosting, true),
+          new PostingCommitResult.Committed(originalPosting, true, null),
           bookSession.commit(postingFact("idem-original")));
 
       assertEquals(
-          new PostingCommitResult.Committed(firstReversal, false),
+          new PostingCommitResult.Committed(firstReversal, false, null),
           bookSession.commit(firstReversal));
       assertEquals(
           Optional.of(firstReversal),

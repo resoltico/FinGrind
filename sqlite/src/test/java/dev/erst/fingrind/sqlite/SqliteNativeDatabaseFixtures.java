@@ -11,6 +11,12 @@ final class SqliteNativeDatabaseFixtures {
   private SqliteNativeDatabaseFixtures() {}
 
   static void writeSecureKeyFile(Path keyPath, String keyText) throws IOException {
+    Path parentDirectory = keyPath.toAbsolutePath().normalize().getParent();
+    if (parentDirectory == null) {
+      throw new IOException("SQLite native test key path must have a parent directory: " + keyPath);
+    }
+    Files.createDirectories(parentDirectory);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(parentDirectory);
     if (Files.notExists(keyPath)) {
       SqliteBookKeyFileGenerator.generate(keyPath);
     } else {

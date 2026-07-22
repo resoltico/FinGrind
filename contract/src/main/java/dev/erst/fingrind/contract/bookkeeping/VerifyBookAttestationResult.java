@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
+import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
 import dev.erst.fingrind.core.attestation.AttestationReviewFinding;
 import java.math.BigInteger;
 import java.util.List;
@@ -15,7 +16,8 @@ public sealed interface VerifyBookAttestationResult
       UUID bookId,
       BigInteger headOrder,
       String operationHeadHex,
-      List<AttestationReviewFinding> reviewFindings)
+      List<AttestationReviewFinding> reviewFindings,
+      AttestationRegistryInspection registry)
       implements VerifyBookAttestationResult {
     public Valid {
       Objects.requireNonNull(bookId, "bookId");
@@ -25,6 +27,10 @@ public sealed interface VerifyBookAttestationResult
       }
       operationHeadHex = requireOperationHeadHex(operationHeadHex);
       reviewFindings = List.copyOf(Objects.requireNonNull(reviewFindings, "reviewFindings"));
+      Objects.requireNonNull(registry, "registry");
+      if (!bookId.equals(registry.bookId()) || !headOrder.equals(registry.headOrder())) {
+        throw new IllegalArgumentException("registry must describe the verified attestation head.");
+      }
     }
 
     /** Returns whether a structurally valid chain nevertheless requires operator review. */

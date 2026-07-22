@@ -100,6 +100,7 @@ class FinGrindCliDiscoveryMetadataCommandTest extends FinGrindCliDiscoveryComman
   @Test
   void run_generatesBookKeyFileWithNonSecretMetadata() throws Exception {
     Path keyFilePath = tempDirectory.resolve("secrets").resolve("entity.book-key");
+    createExistingOwnerOnlyParentDirectory(keyFilePath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());

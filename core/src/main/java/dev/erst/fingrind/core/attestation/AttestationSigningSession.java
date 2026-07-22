@@ -119,11 +119,12 @@ public final class AttestationSigningSession
     for (AttestationCredentialSource source : sources) {
       AttestationCredentialSource checkedSource = Objects.requireNonNull(source, "sources");
       if (!principalIds.add(checkedSource.principalId())) {
-        throw new IllegalArgumentException(
-            "Attestation authorization principals must be distinct.");
+        throw AttestationAdmissionRejectedException.from(
+            AttestationAuthorizationFailure.DUPLICATE_PRINCIPAL);
       }
       if (!keyPaths.add(checkedSource.encryptedKeyFilePath())) {
-        throw new IllegalArgumentException("Attestation authorization key files must be distinct.");
+        throw AttestationAdmissionRejectedException.from(
+            AttestationAuthorizationFailure.DUPLICATE_KEY);
       }
     }
   }

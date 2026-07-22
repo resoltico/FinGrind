@@ -90,6 +90,11 @@ public final class ContractErrors {
         "Attested-book authorization refused because a selected founder credential or passphrase source is invalid.",
         6,
         ContractResponse.FailureCategory.PRECONDITION),
+    INVALID_ATTESTATION_KEY_FILE(
+        "invalid-attestation-key-file",
+        "Attestation credential generation or inspection refused because the selected credential-file path or its parent directory does not satisfy the credential-custody contract.",
+        6,
+        ContractResponse.FailureCategory.PRECONDITION),
     STALE_HEAD(
         "stale-head",
         "Attested-book mutation refused because the authenticated operation head advanced after signing and before atomic admission.",

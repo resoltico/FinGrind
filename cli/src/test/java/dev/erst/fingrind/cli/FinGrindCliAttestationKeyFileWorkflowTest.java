@@ -122,6 +122,25 @@ class FinGrindCliAttestationKeyFileWorkflowTest extends FinGrindCliTestSupport {
               "json"
             }));
     assertEquals(
+        ContractErrors.Descriptor.INVALID_ATTESTATION_KEY_FILE.code(),
+        new ObjectMapper().readTree(output.toByteArray()).path("code").stringValue());
+
+    output.reset();
+    assertEquals(
+        6,
+        cli.run(
+            new String[] {
+              "generate-attestation-key-file",
+              "--attestation-custodian",
+              "file-pkcs8",
+              "--new-attestation-key-file",
+              tempDirectory.resolve("secrets").resolve("invalid-passphrase.fgatk").toString(),
+              "--attestation-passphrase-file",
+              tempDirectory.resolve("missing.passphrase").toString(),
+              "--output",
+              "json"
+            }));
+    assertEquals(
         ContractErrors.Descriptor.INVALID_ATTESTATION_CREDENTIAL.code(),
         new ObjectMapper().readTree(output.toByteArray()).path("code").stringValue());
 
@@ -159,6 +178,55 @@ class FinGrindCliAttestationKeyFileWorkflowTest extends FinGrindCliTestSupport {
             }));
     assertEquals(
         ContractErrors.Descriptor.CUSTODIAN_NOT_SUPPORTED.code(),
+        new ObjectMapper().readTree(output.toByteArray()).path("code").stringValue());
+  }
+
+  @Test
+  void generate_refusesParentlessAndSymlinkedKeyTargetsBeforeCreatingACredential()
+      throws Exception {
+    Path passphraseFilePath = tempDirectory.resolve("secrets").resolve("operator.passphrase");
+    writeSecureKey(passphraseFilePath, "operator credential passphrase");
+    Path symlinkParent = tempDirectory.resolve("linked-secrets");
+    Files.createSymbolicLink(symlinkParent, tempDirectory.resolve("secrets"));
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(output), fixedClock());
+
+    assertEquals(
+        6,
+        cli.run(
+            new String[] {
+              "generate-attestation-key-file",
+              "--attestation-custodian",
+              "file-pkcs8",
+              "--new-attestation-key-file",
+              Path.of("/").toString(),
+              "--attestation-passphrase-file",
+              passphraseFilePath.toString(),
+              "--output",
+              "json"
+            }));
+    assertEquals(
+        ContractErrors.Descriptor.INVALID_ATTESTATION_KEY_FILE.code(),
+        new ObjectMapper().readTree(output.toByteArray()).path("code").stringValue());
+
+    output.reset();
+    assertEquals(
+        6,
+        cli.run(
+            new String[] {
+              "generate-attestation-key-file",
+              "--attestation-custodian",
+              "file-pkcs8",
+              "--new-attestation-key-file",
+              symlinkParent.resolve("operator.fgatk").toString(),
+              "--attestation-passphrase-file",
+              passphraseFilePath.toString(),
+              "--output",
+              "json"
+            }));
+    assertEquals(
+        ContractErrors.Descriptor.INVALID_ATTESTATION_KEY_FILE.code(),
         new ObjectMapper().readTree(output.toByteArray()).path("code").stringValue());
   }
 }

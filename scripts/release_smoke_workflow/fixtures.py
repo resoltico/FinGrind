@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -11,12 +12,13 @@ from .fixture_payloads import (
     raw_transfer_request,
     sale_request,
 )
-from .models import ReleaseSmokeConfig
+from .models import ReleaseSmokeConfig, ReleaseSmokeFailure
 
 
 def prepare_fixture_directories(config: ReleaseSmokeConfig) -> None:
-    # Security-sensitive book and key parents must be created by the CLI surface itself so the
-    # acceptance workflow proves the same owner-only hardening contract that real operators use.
+    # The public key-generation contract requires the caller to supply safe parent directories.
+    # The acceptance workflow therefore creates and secures its own artifact parents before it
+    # asks the binary to create any secret or protected-book file.
     for path in [
         config.request_sale.local_path,
         config.request_expense.local_path,
@@ -29,10 +31,60 @@ def prepare_fixture_directories(config: ReleaseSmokeConfig) -> None:
         config.trial_balance_pdf_stderr_path,
     ]:
         path.parent.mkdir(parents=True, exist_ok=True)
-    attestation_directory = config.attestation_founder_key.local_path.parent
-    attestation_directory.mkdir(parents=True, exist_ok=True)
+    for directory in {
+        config.book.local_path.parent,
+        config.book_key.local_path.parent,
+        config.attestation_founder_key.local_path.parent,
+        config.backup_book.local_path.parent,
+        config.backup_book_key.local_path.parent,
+        config.restored_book.local_path.parent,
+        config.restored_book_key.local_path.parent,
+        config.replacement_book_key.local_path.parent,
+    }:
+        prepare_owner_only_directory(directory)
+
+
+def prepare_owner_only_directory(directory: Path) -> None:
+    checked_directory = Path(directory)
+    checked_directory.mkdir(parents=True, exist_ok=True)
     if os.name == "posix":
-        attestation_directory.chmod(0o700)
+        checked_directory.chmod(0o700)
+    elif os.name == "nt":
+        secure_windows_directory(checked_directory)
+
+
+def secure_windows_directory(directory: Path) -> None:
+    powershell = """
+$directory = $args[0]
+$owner = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+$acl = Get-Acl -LiteralPath $directory
+$acl.SetAccessRuleProtection($true, $false)
+$acl.Access | ForEach-Object { [void]$acl.RemoveAccessRuleSpecific($_) }
+$acl.SetOwner($owner)
+$acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($owner, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow'))
+Set-Acl -LiteralPath $directory -AclObject $acl
+"""
+    completed = subprocess.run(
+        [
+            "powershell.exe",
+            "-NoLogo",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            powershell,
+            str(directory),
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        details = completed.stderr.strip() or completed.stdout.strip() or "PowerShell failed"
+        raise ReleaseSmokeFailure(
+            f"could not prepare an owner-only release-smoke directory {directory}: {details}"
+        )
 
 
 def write_acceptance_fixtures(config: ReleaseSmokeConfig) -> None:

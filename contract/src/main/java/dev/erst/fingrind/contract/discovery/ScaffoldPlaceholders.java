@@ -7,9 +7,9 @@ import java.util.Set;
 public final class ScaffoldPlaceholders {
   public static final String EFFECTIVE_DATE = "replace-before-commit-effective-date";
   public static final String RECORDED_AT = "replace-before-commit-recorded-at";
-  public static final String COMMAND_ID = "replace-before-commit-command-id";
+  public static final String COMMAND_ID = "ffffffff-ffff-7fff-bfff-fffffffffff1";
   public static final String IDEMPOTENCY_KEY = "replace-before-commit-idempotency-key";
-  public static final String CAUSATION_ID = "replace-before-commit-causation-id";
+  public static final String CAUSATION_ID = "ffffffff-ffff-7fff-bfff-fffffffffff2";
   public static final String SOURCE_DOCUMENT_ID = "replace-before-commit-source-document-id";
   public static final String SOURCE_DOCUMENT_TYPE = "replace-before-commit-source-document-type";
   public static final String APPROVAL_ID = "replace-before-commit-approval-id";

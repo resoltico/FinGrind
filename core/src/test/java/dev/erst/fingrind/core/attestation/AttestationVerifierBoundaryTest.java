@@ -52,4 +52,75 @@ class AttestationVerifierBoundaryTest {
 
     assertEquals("attestation-preimage-invalid", failure.code());
   }
+
+  @Test
+  void inspectsAValidChainAndAdmitsAProspectiveRegistryMutationAtItsHead() {
+    TestCredential founder = credential();
+    AttestationEvidence evidence = genesisEvidence(founder);
+
+    AttestationBookInspection inspection =
+        AttestationVerifier.verifyAndInspectBook(List.of(evidence));
+    assertEquals(AttestationAuthorizationTestSupport.BOOK_ID, inspection.registry().bookId());
+    AttestationVerifier.requireRegistryMutationAdmissible(
+        List.of(evidence),
+        new AttestationRegistryMutation.EnrollKey(
+            java.util.UUID.randomUUID(),
+            new AttestationPublicCredential(credential().pair().getPublic().getEncoded()),
+            AttestationCredentialPurpose.OPERATOR));
+
+    AttestationVerificationException invalidChain =
+        assertThrows(
+            AttestationVerificationException.class,
+            () ->
+                AttestationVerifier.requireRegistryMutationAdmissible(
+                    List.of(),
+                    new AttestationRegistryMutation.EnrollKey(
+                        java.util.UUID.randomUUID(),
+                        new AttestationPublicCredential(
+                            credential().pair().getPublic().getEncoded()),
+                        AttestationCredentialPurpose.OPERATOR)));
+    assertEquals("attestation-preimage-invalid", invalidChain.code());
+  }
+
+  @Test
+  void rejectsBookInspectionComponentsThatDoNotDescribeTheSameVerifiedHead() {
+    TestCredential founder = credential();
+    AttestationBookInspection inspection =
+        AttestationVerifier.verifyAndInspectBook(List.of(genesisEvidence(founder)));
+    AttestationVerification verification = inspection.verification();
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new AttestationBookInspection(
+                verification, registryInspection(java.util.UUID.randomUUID(), BigInteger.ZERO)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new AttestationBookInspection(
+                verification, registryInspection(verification.bookId(), BigInteger.ONE)));
+  }
+
+  private static AttestationEvidence genesisEvidence(TestCredential founder) {
+    AttestationPreimage request = genesisRequestPreimage(founder);
+    AttestationPreimage effect = genesisEffectPreimage(founder);
+    AttestationOperationPayload payload =
+        genesisPayload(
+            BigInteger.ZERO,
+            AttestationHash.of(new byte[AttestationHash.BYTE_LENGTH]),
+            request,
+            effect);
+    AttestationAuthorizationEnvelope authorization =
+        signedGenesisEnvelope(genesisContext(founder), founder);
+    return new AttestationEvidence(
+        AttestationEnvelope.of(payload, authorization.entries()).encoded(),
+        request.encoded(),
+        effect.encoded());
+  }
+
+  private static AttestationRegistryInspection registryInspection(
+      java.util.UUID bookId, BigInteger headOrder) {
+    return new AttestationRegistryInspection(
+        bookId, headOrder, "0".repeat(64), List.of(), List.of(), List.of(), List.of());
+  }
 }

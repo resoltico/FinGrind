@@ -27,17 +27,14 @@ final class ProtocolQueryOperations {
   }
 
   private static ProtocolOperation inspectBookOperation() {
-    return ProtocolOperationDefinitions.operation(
+    return ProtocolOperationDefinitions.jsonEnvelopeOperation(
         OperationId.INSPECT_BOOK,
         OperationCategory.QUERY,
         "Inspect Book",
-        List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
-        ExecutionMode.JSON_ENVELOPE,
-        List.of(OutputMode.JSON, OutputMode.TEXT),
         "Inspect the selected book for lifecycle state, format version, and compatibility.",
         List.of(
             ProtocolExampleStep.command(
@@ -49,19 +46,16 @@ final class ProtocolQueryOperations {
   }
 
   private static ProtocolOperation verifyBookOperation() {
-    return ProtocolOperationDefinitions.operation(
+    return ProtocolOperationDefinitions.jsonEnvelopeOperation(
         OperationId.VERIFY_BOOK,
         OperationCategory.QUERY,
         "Verify Book",
-        List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
             "[" + ProtocolOptions.Attestation.REVIEW_FILE + " <path>]",
             "[" + ProtocolOptions.Attestation.REQUIRE_CLEAN + "]",
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
-        ExecutionMode.JSON_ENVELOPE,
-        List.of(OutputMode.JSON, OutputMode.TEXT),
         "Verify every immutable attestation structure from genesis and report the first exact structural break, if any.",
         List.of(
             ProtocolExampleStep.command(
@@ -75,18 +69,15 @@ final class ProtocolQueryOperations {
   }
 
   private static ProtocolOperation attestationReviewOperation() {
-    return ProtocolOperationDefinitions.operation(
+    return ProtocolOperationDefinitions.jsonEnvelopeOperation(
         OperationId.ATTESTATION_REVIEW,
         OperationCategory.QUERY,
         "Attestation Review",
-        List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
             "[" + ProtocolOptions.Attestation.REVIEW_FILE + " <path>]",
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
-        ExecutionMode.JSON_ENVELOPE,
-        List.of(OutputMode.JSON, OutputMode.TEXT),
         "Report non-persisted compromise-review findings from a structurally valid attestation chain.",
         List.of(
             ProtocolExampleStep.command(
@@ -99,22 +90,16 @@ final class ProtocolQueryOperations {
   }
 
   private static ProtocolOperation exportAttestationReceiptOperation() {
-    return ProtocolOperationDefinitions.operation(
+    return ProtocolOperationDefinitions.jsonEnvelopeOperation(
         OperationId.EXPORT_ATTESTATION_RECEIPT,
         OperationCategory.QUERY,
         "Export Attestation Receipt",
-        List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
             ProtocolOptions.Attestation.RECEIPT_FILE + " <path>",
-            ProtocolOptions.Attestation.CUSTODIAN + " <file-pkcs8>",
-            ProtocolOptions.Attestation.PRINCIPAL_ID + " <uuid>",
-            ProtocolOptions.Attestation.KEY_FILE + " <path>",
-            ProtocolOptions.Attestation.PASSPHRASE_FILE + " <path>",
+            ProtocolOptions.requiredAttestationCredentialSyntax(),
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
-        ExecutionMode.JSON_ENVELOPE,
-        List.of(OutputMode.JSON, OutputMode.TEXT),
         "Publish an independently retained quorum-signed receipt without changing the selected book.",
         List.of(
             ProtocolExampleStep.command(
@@ -131,18 +116,15 @@ final class ProtocolQueryOperations {
   }
 
   private static ProtocolOperation verifyReceiptOperation() {
-    return ProtocolOperationDefinitions.operation(
+    return ProtocolOperationDefinitions.jsonEnvelopeOperation(
         OperationId.VERIFY_RECEIPT,
         OperationCategory.QUERY,
         "Verify Receipt",
-        List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
             ProtocolOptions.Attestation.RECEIPT_FILE + " <path>",
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
-        ExecutionMode.JSON_ENVELOPE,
-        List.of(OutputMode.JSON, OutputMode.TEXT),
         "Verify an independently retained receipt against the selected book's complete immutable chain.",
         List.of(
             ProtocolExampleStep.command(
@@ -211,19 +193,16 @@ final class ProtocolQueryOperations {
   }
 
   private static ProtocolOperation getPostingOperation() {
-    return ProtocolOperationDefinitions.operation(
+    return ProtocolOperationDefinitions.jsonEnvelopeOperation(
         OperationId.GET_POSTING,
         OperationCategory.QUERY,
         "Get Posting",
-        List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
             ProtocolOptions.Request.POSTING_ID + " <posting-id>",
             "[" + ProtocolOptions.Presentation.WITH_CONTEXT + "]",
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
-        ExecutionMode.JSON_ENVELOPE,
-        List.of(OutputMode.JSON, OutputMode.TEXT),
         "Return a committed posting by durable posting identifier.",
         List.of(
             ProtocolExampleStep.command(

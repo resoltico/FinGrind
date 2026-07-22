@@ -280,6 +280,9 @@ public sealed interface CommitEntryResult extends PostEntryResult
   `PreflightAccepted` at compile time
 - Success payload: both `PreflightAccepted` and `Committed` now carry one `resolvedJournal` so the
   public success surface can publish the exact expanded journal and its semantic classification
+- `Committed` additionally carries `AttestationCommit` when a newly accepted write appends its
+  immutable authorization operation; it publishes the unsigned operation order and lowercase-hex
+  operation head. An idempotent replay carries no new attestation commit.
 
 ## `PostingDraft`
 

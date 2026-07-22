@@ -6,8 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryHelpJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryRequestFileGuidanceJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.discovery.ContractPostingRequestTemplates;
 import dev.erst.fingrind.contract.discovery.ContractTemplates;
@@ -237,6 +237,54 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
   }
 
   @Test
+  void helpPayload_mapsEveryAttestationRegistryMutationRequestGuidance() {
+    assertAttestationRegistryMutationGuidance(
+        OperationId.ENROLL_KEY, List.of("principalId", "credentialSpki", "credentialPurpose"));
+    assertAttestationRegistryMutationGuidance(
+        OperationId.ROLLOVER_KEY,
+        List.of("principalId", "credentialSpki", "credentialPurpose", "predecessorCredentialSpki"));
+    assertAttestationRegistryMutationGuidance(
+        OperationId.REVOKE_KEY, List.of("principalId", "credentialSpki", "reason"));
+    assertAttestationRegistryMutationGuidance(
+        OperationId.ALTER_POLICY, List.of("systemWorkflowPolicies"));
+  }
+
+  @Test
+  void helpPayload_mapsEveryAttestationRegistryRequestTemplate() {
+    for (OperationId operationId :
+        List.of(
+            OperationId.ENROLL_KEY,
+            OperationId.ROLLOVER_KEY,
+            OperationId.REVOKE_KEY,
+            OperationId.ALTER_POLICY)) {
+      CliDiscoveryHelpJsonModels.CommandHelpPayload fullPayload =
+          assertInstanceOf(
+              CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+              CliDiscoveryPayloadMapperTest.fullHelpPayload(
+                  MachineContract.help(
+                      CliDiscoveryPayloadMapperTest.identity(),
+                      CliDiscoveryPayloadMapperTest.environment(),
+                      operationId)));
+      CliDiscoveryHelpJsonModels.CommandHelpPayload compactPayload =
+          assertInstanceOf(
+              CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+              CliDiscoveryPayloadMapperTest.compactHelpPayload(
+                  MachineContract.help(
+                      CliDiscoveryPayloadMapperTest.identity(),
+                      CliDiscoveryPayloadMapperTest.environment(),
+                      operationId)));
+
+      assertNotNull(fullPayload.requestFile(), operationId::wireName);
+      assertNotNull(fullPayload.requestFile().attestationRegistryTemplate(), operationId::wireName);
+      assertTrue(
+          Objects.requireNonNull(fullPayload.requestFile().shortcutCommand())
+              .contains(operationId.wireName()));
+      assertNotNull(compactPayload.requestFile(), operationId::wireName);
+      assertNull(compactPayload.requestFile().attestationRegistryTemplate(), operationId::wireName);
+    }
+  }
+
+  @Test
   void helpPayload_omitsDeclareTaxRegistrationRequestGuidanceWhenArtifactsAreMissing() {
     HelpDescriptor declareTaxRegistration =
         MachineContract.help(
@@ -301,7 +349,7 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
             CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
             CliDiscoveryPayloadMapperTest.fullHelpPayload(executePlan));
 
-    CliDiscoveryCommonJsonModels.RequestFileGuidancePayload requestFile =
+    CliDiscoveryRequestFileGuidanceJsonModels.RequestFileGuidancePayload requestFile =
         Objects.requireNonNull(payload.requestFile());
     assertEquals(
         "general-workflow", Objects.requireNonNull(requestFile.ledgerPlanTemplate()).planId());
@@ -407,6 +455,31 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
                         .EntryKindSemanticsDescriptor
                     ::entryKind)
             .toList());
+  }
+
+  private static void assertAttestationRegistryMutationGuidance(
+      OperationId operationId, List<String> expectedFields) {
+    HelpDescriptor helpDescriptor =
+        MachineContract.help(
+            CliDiscoveryPayloadMapperTest.identity(),
+            CliDiscoveryPayloadMapperTest.environment(),
+            operationId);
+    CliDiscoveryHelpJsonModels.CommandHelpPayload payload =
+        assertInstanceOf(
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+            CliDiscoveryPayloadMapperTest.fullHelpPayload(helpDescriptor));
+    String guidance = CliDiscoveryRequestGuidance.render(helpDescriptor, operationId);
+
+    assertNotNull(payload.requestFile());
+    for (String field : expectedFields) {
+      assertTrue(guidance.contains(field), guidance);
+    }
+    assertNotNull(payload.requestFile().attestationRegistryTemplate());
+    assertEquals(
+        CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+            + " "
+            + operationId.wireName(),
+        payload.requestFile().shortcutCommand());
   }
 
   private static HelpDescriptor helpDescriptorWithDeclareTaxRegistrationArtifacts(

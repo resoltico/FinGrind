@@ -9,7 +9,7 @@ scope:
 route:
   keywords: [verifiable-operation-attestation, semantic-profile, posting-role, autonomous-workflow, system-channel, journal-balance, request-effect-closure]
   questions: ["which request facts are admitted by an attested operation", "how are attested posting facts tied to journal effects", "what can start a system-channel attested operation", "how does FinGrind derive a system close"]
-stage: "Current public protocol 32 and protected-book format 51 contract"
+stage: "Current public protocol 33 and protected-book format 51 contract"
 ---
 
 # Verifiable Operation Attestation Semantic Profiles

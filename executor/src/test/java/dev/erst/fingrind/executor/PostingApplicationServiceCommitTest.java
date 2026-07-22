@@ -361,6 +361,14 @@ class PostingApplicationServiceCommitTest {
                 Optional.of(new ReversalReason("full reversal")),
                 reversalJournalEntry()),
             TEST_AUTHORIZER));
+    PostEntryResult.Committed attested =
+        assertInstanceOf(
+            PostEntryResult.Committed.class,
+            applicationService.commit(command("idem-attested"), TEST_AUTHORIZER));
+    dev.erst.fingrind.contract.bookkeeping.AttestationCommit attestationCommit =
+        java.util.Objects.requireNonNull(attested.attestationCommit());
+    assertEquals(java.math.BigInteger.ONE, attestationCommit.operationOrder());
+    assertEquals("00".repeat(32), attestationCommit.operationHeadHex());
   }
 
   @Test

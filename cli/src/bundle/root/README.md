@@ -27,7 +27,7 @@ ${unsupportedPublicBundleTargetsMarkdown}
 
 Quick start:
 1. Run `${bundleLauncherCommand} help`
-2. Let FinGrind create `./secrets/` and `./books/` securely, or keep any existing `./secrets/` and `./books/` directories owner-only before you reuse them
+2. Create owner-only `./secrets/` and `./books/` directories yourself (for example, `mkdir -p -m 700 ./secrets ./books` on macOS/Linux); FinGrind never creates or weakens the secret parent directory
 3. Run `${bundleLauncherCommand} generate-book-key-file --new-book-key-file ./secrets/entity.book-key`
 4. Prepare a separate nonempty owner-only UTF-8 founder passphrase file at `./secrets/entity-founder.passphrase`; FinGrind creates the absent founder credential at `./secrets/entity-founder.fgatk` exactly once
 5. Run `${bundleLauncherCommand} open-book --book-file ./books/entity.sqlite --book-key-file ./secrets/entity.book-key --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 --attestation-custodian file-pkcs8 --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-founder-key-file ./secrets/entity-founder.fgatk --attestation-founder-passphrase-file ./secrets/entity-founder.passphrase`

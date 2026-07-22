@@ -61,7 +61,10 @@ public interface CliAdministrationJsonModels {
       String bookFile,
       String initializedAt,
       java.util.List<String> tightenedParentDirectories,
-      BookIdentityPayload bookIdentity)
+      BookIdentityPayload bookIdentity,
+      String attestationBookId,
+      String genesisOperationHead,
+      CliAttestationJsonModels.AttestationRegistryPayload attestationTrustRoot)
       implements CliSuccessPayload {
     public OpenBookPayload {
       bookFile = requireText(bookFile, "bookFile");
@@ -69,6 +72,9 @@ public interface CliAdministrationJsonModels {
       tightenedParentDirectories =
           CliJsonModelValidation.copyList(tightenedParentDirectories, "tightenedParentDirectories");
       java.util.Objects.requireNonNull(bookIdentity, "bookIdentity");
+      attestationBookId = requireText(attestationBookId, "attestationBookId");
+      genesisOperationHead = requireText(genesisOperationHead, "genesisOperationHead");
+      java.util.Objects.requireNonNull(attestationTrustRoot, "attestationTrustRoot");
     }
   }
 
@@ -118,12 +124,14 @@ public interface CliAdministrationJsonModels {
     }
   }
 
-  record AttestationRegistryMutationPayload(String bookFile, String operationKind, String headOrder)
+  record AttestationRegistryMutationPayload(
+      String bookFile, String operationKind, String headOrder, String operationHead)
       implements CliSuccessPayload {
     public AttestationRegistryMutationPayload {
       bookFile = requireText(bookFile, "bookFile");
       operationKind = requireText(operationKind, "operationKind");
       headOrder = requireText(headOrder, "headOrder");
+      operationHead = requireText(operationHead, "operationHead");
     }
   }
 

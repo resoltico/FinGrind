@@ -13,6 +13,7 @@ import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.HeldLease;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.LeaseAcquisition;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -61,18 +62,14 @@ final class AttestedProtectedBookRegistryMutationWorkflow {
                 liveBook::close,
                 () -> {
                   AttestationVerification verification =
-                      store.appendAttestedOperation(
-                          liveBook,
-                          checkedMutation.operationKind(),
-                          clock.instant(),
-                          checkedMutation.preimages(),
-                          signingSession,
-                          null);
+                      store.appendAttestedRegistryMutation(
+                          liveBook, checkedMutation, clock.instant(), signingSession);
                   return MaintenanceDecision.accepted(
                       new ProtectedBookRegistryMutationOutcome.Mutated(
                           bookPath,
                           checkedMutation.operationKind().wireToken(),
-                          verification.headOrder()));
+                          verification.headOrder(),
+                          HexFormat.of().formatHex(verification.operationHead())));
                 });
           });
     } catch (AttestationStaleHeadException exception) {

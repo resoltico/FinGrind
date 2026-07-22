@@ -4,6 +4,7 @@ import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationOperationPreimages;
+import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
 import java.time.Instant;
@@ -21,6 +22,40 @@ final class SqliteAttestedOperationAppender {
       AttestationOperationPreimages preimages,
       AttestationOperationAuthorizer authorizer,
       @Nullable AttestationBackupAcknowledgement backupAcknowledgement) {
+    return append(
+        verifiedBook,
+        operationKind,
+        recordedAt,
+        preimages,
+        authorizer,
+        backupAcknowledgement,
+        null);
+  }
+
+  static AttestationVerification appendRegistryMutation(
+      SqliteVerifiedBook verifiedBook,
+      AttestationRegistryMutation mutation,
+      Instant recordedAt,
+      AttestationOperationAuthorizer authorizer) {
+    AttestationRegistryMutation checkedMutation = Objects.requireNonNull(mutation, "mutation");
+    return append(
+        verifiedBook,
+        checkedMutation.operationKind(),
+        recordedAt,
+        checkedMutation.preimages(),
+        authorizer,
+        null,
+        checkedMutation);
+  }
+
+  private static AttestationVerification append(
+      SqliteVerifiedBook verifiedBook,
+      AttestationOperationKind operationKind,
+      Instant recordedAt,
+      AttestationOperationPreimages preimages,
+      AttestationOperationAuthorizer authorizer,
+      @Nullable AttestationBackupAcknowledgement backupAcknowledgement,
+      @Nullable AttestationRegistryMutation registryMutation) {
     return retryStaleHead(
         retriesStaleHead(operationKind, backupAcknowledgement),
         () ->
@@ -30,7 +65,8 @@ final class SqliteAttestedOperationAppender {
                 recordedAt,
                 preimages,
                 authorizer,
-                backupAcknowledgement));
+                backupAcknowledgement,
+                registryMutation));
   }
 
   static <T> T retryStaleHead(boolean retryStaleHead, StaleHeadRetryAttempt<T> attempt) {
@@ -66,7 +102,8 @@ final class SqliteAttestedOperationAppender {
       Instant recordedAt,
       AttestationOperationPreimages preimages,
       AttestationOperationAuthorizer authorizer,
-      @Nullable AttestationBackupAcknowledgement backupAcknowledgement) {
+      @Nullable AttestationBackupAcknowledgement backupAcknowledgement,
+      @Nullable AttestationRegistryMutation registryMutation) {
     try (SqliteBookPassphrase passphrase = verifiedBook.passphraseCopy();
         SqliteNativeDatabase database =
             SqliteNativeConnections.open(
@@ -78,14 +115,17 @@ final class SqliteAttestedOperationAppender {
       database.executeStatement("begin immediate");
       try {
         AttestationVerification verification =
-            SqliteAttestationEvidenceStore.appendAuthorized(
-                database,
-                observedHead,
-                operationKind,
-                recordedAt,
-                preimages,
-                authorizer,
-                backupAcknowledgement);
+            registryMutation == null
+                ? SqliteAttestationEvidenceStore.appendAuthorized(
+                    database,
+                    observedHead,
+                    operationKind,
+                    recordedAt,
+                    preimages,
+                    authorizer,
+                    backupAcknowledgement)
+                : SqliteAttestationEvidenceStore.appendAuthorizedRegistryMutation(
+                    database, observedHead, registryMutation, recordedAt, authorizer);
         database.executeStatement("commit");
         return verification;
       } catch (RuntimeException exception) {

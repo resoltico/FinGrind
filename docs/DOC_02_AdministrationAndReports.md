@@ -209,7 +209,8 @@ public sealed interface OpenBookResult
 ```
 
 - Variants: `Opened`, `Rejected`
-- `Opened`: carries both the initialization instant and the persisted `BookIdentity`
+- `Opened`: carries the initialization instant, persisted `BookIdentity`, and chain-derived
+  genesis `AttestationRegistryInspection` trust root
 
 ## `DeclareAccountResult`
 

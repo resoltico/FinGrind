@@ -53,7 +53,7 @@ class AttestationRegistryCapacityTest {
     grants.addAll(allFounderGrants(secondOperator.principalId()));
     grants.addAll(allFounderGrants(system.principalId()));
     assertFailure(
-        AttestationAuthorizationFailure.CAPABILITY_INVALID,
+        AttestationAuthorizationFailure.POLICY_CAPACITY_INVALID,
         () ->
             AttestationRegistry.fromAcceptedHistory(
                 List.of(
@@ -136,7 +136,7 @@ class AttestationRegistryCapacityTest {
   void validatesOtherAcceptedHistoryCapacityCases() {
     TestCredential operator = credential();
     assertFailure(
-        AttestationAuthorizationFailure.CAPABILITY_INVALID,
+        AttestationAuthorizationFailure.POLICY_CAPACITY_INVALID,
         () ->
             AttestationRegistry.fromAcceptedHistory(
                 List.of(binding(0, operator)),
@@ -148,7 +148,7 @@ class AttestationRegistryCapacityTest {
     TestCredential firstSystem = credential();
     TestCredential secondSystem = credential();
     assertFailure(
-        AttestationAuthorizationFailure.CAPABILITY_INVALID,
+        AttestationAuthorizationFailure.POLICY_CAPACITY_INVALID,
         () ->
             AttestationRegistry.fromAcceptedHistory(
                 List.of(
@@ -195,7 +195,7 @@ class AttestationRegistryCapacityTest {
     TestCredential replacementSystem = credential();
     UUID workflowId = UUID.randomUUID();
     assertFailure(
-        AttestationAuthorizationFailure.CAPABILITY_INVALID,
+        AttestationAuthorizationFailure.POLICY_CAPACITY_INVALID,
         () ->
             AttestationRegistry.fromAcceptedHistory(
                 List.of(

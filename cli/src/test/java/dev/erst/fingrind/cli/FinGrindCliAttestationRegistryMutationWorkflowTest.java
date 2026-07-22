@@ -60,6 +60,29 @@ class FinGrindCliAttestationRegistryMutationWorkflowTest extends FinGrindCliTest
     assertEquals("enroll-key", payload.path("operationKind").stringValue());
     assertEquals("1", payload.path("headOrder").stringValue());
     assertTrue(payload.path("bookFile").stringValue().endsWith("entity.sqlite"));
+
+    ByteArrayOutputStream duplicateOutput = new ByteArrayOutputStream();
+    int duplicateExitCode =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(duplicateOutput), fixedClock())
+            .run(
+                jsonArguments(
+                    "enroll-key",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--request-file",
+                    requestFile.toString()));
+
+    assertEquals(2, duplicateExitCode, duplicateOutput.toString(StandardCharsets.UTF_8));
+    JsonNode duplicateEnvelope = new ObjectMapper().readTree(duplicateOutput.toByteArray());
+    assertEquals("attestation-duplicate-principal", duplicateEnvelope.path("code").stringValue());
+    assertTrue(
+        duplicateEnvelope.path("message").stringValue().contains("credential enrollment"),
+        duplicateEnvelope.toString());
+    assertTrue(
+        duplicateEnvelope.path("hint").stringValue().contains("rollover-key"),
+        duplicateEnvelope.toString());
   }
 
   @Test
@@ -136,7 +159,11 @@ class FinGrindCliAttestationRegistryMutationWorkflowTest extends FinGrindCliTest
                     "text"));
 
     assertEquals(0, exitCode, output.toString(StandardCharsets.UTF_8));
-    assertTrue(output.toString(StandardCharsets.UTF_8).contains("alter-policy appended"));
+    String rendered = output.toString(StandardCharsets.UTF_8);
+    assertTrue(rendered.contains("Attestation Registry Updated"), rendered);
+    assertTrue(rendered.contains("Operation      : alter-policy"), rendered);
+    assertTrue(rendered.contains("Head order"), rendered);
+    assertTrue(rendered.contains("Operation head"), rendered);
   }
 
   private void assertJsonMutationSucceeds(

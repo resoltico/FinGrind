@@ -9,7 +9,7 @@ scope:
 route:
   keywords: [verifiable-operation-attestation, static-corpus, golden-vectors, fixture-ledger, verifier-negative-cases, backup-artifact, live-cas]
   questions: ["which static fixtures verify FinGrind operation attestation", "how is the attestation corpus constructed", "which negative attestation vectors are required", "which artifact fixtures cover backup and restore"]
-stage: "Current public protocol 32 and protected-book format 51 contract"
+stage: "Current public protocol 33 and protected-book format 51 contract"
 ---
 
 # Verifiable Operation Attestation Corpus
@@ -127,11 +127,11 @@ from a fixture name.
 | N-14c | B-05's complete manifest-attested artifact: XOR byte 0 of the manifest bookId with 01. | attestation-manifest-invalid |
 | N-14d | B-05's complete manifest-attested artifact: XOR byte 0 of the trailer snapshotLength with 01. | attestation-manifest-invalid |
 | N-15 | B-09's standalone envelope resolver with active C and a valid policy state: A and B, but not C, have ANCHOR GRANT and M remains 2. Rebuild V-RECEIPT-02 as the two-entry raw envelope C then B: C has principalId 2233445566778899aabbccddeeff0011, keyId 788de5096f8b530eef97a4015cffb7cfeb260c23795b846bf8112682a93b1101, and signature 31f445e7dda739aa66fb025d965217c83d8df4a602adad8023539df5ac8cff46be999d06b8278439b201099b57519f699718c05dd0f0abdb0ca7a445cd835705; B's 112-byte entry is unchanged. | attestation-capability-invalid |
-| N-16 | B-04 at order 9: change C's order-4 credentialPurpose from system to operator while retaining its key, grant, request, envelope, and every other registry fact. The altered order-5 registry state first leaves CLOSE_PERIOD M=1 without any system-purpose eligible principal, so the verifier rejects that state before order 9. | attestation-capability-invalid |
+| N-16 | B-04 at order 9: change C's order-4 credentialPurpose from system to operator while retaining its key, grant, request, envelope, and every other registry fact. The altered order-5 registry state first leaves CLOSE_PERIOD M=1 without any system-purpose eligible principal, so the verifier rejects that state before order 9. | attestation-policy-capacity-invalid |
 | N-17 | B-02 common posting: add a fixed-asset 0060 effect record, recompute the effect digest, operation payload, and A/B signatures, but add no 0131 request record | attestation-request-profile-invalid |
 | N-18 | B-02 through 3; at 4 A and B enroll active operator-purpose C without POST GRANT. At 5 B and C sign an otherwise valid record-sale-settled envelope under the still-valid POST M=2 policy. | attestation-capability-invalid |
 | N-19 | B-04 at order 9: retain C's valid system-purpose key and signature but change request.period-close.effectiveTo, the linked request.posting effectiveDate, and posting.fact effectiveDate from 2026-12-30 to 2026-12-29, then recompute every affected digest and signature while leaving the workflow-derived interval and effects unchanged. | attestation-system-derivation-invalid |
-| N-20 | B-04's order-5 policy mutation with CLOSE_PERIOD changed from M=1 to M=2 while C remains its only system-purpose CLOSE_PERIOD principal and A/B remain operator-purpose principals. | attestation-capability-invalid |
+| N-20 | B-04's order-5 policy mutation with CLOSE_PERIOD changed from M=1 to M=2 while C remains its only system-purpose CLOSE_PERIOD principal and A/B remain operator-purpose principals. | attestation-policy-capacity-invalid |
 | N-21 | B-03 order 6: replace A2's keyId in both matching binding records with a different 32-byte hash while retaining A2's SPKI, then recompute the preimage digests, payload, and A1/B signatures. | attestation-request-profile-invalid |
 | N-22 | B-03 order 6: omit the rollover predecessorKeyId from both matching binding records, then recompute the preimage digests, payload, and A1/B signatures. | attestation-request-profile-invalid |
 | N-23 | B-03 order 6: replace the rollover predecessorKeyId in both matching binding records with B's active keyId, then recompute the preimage digests, payload, and A1/B signatures. | attestation-request-profile-invalid |

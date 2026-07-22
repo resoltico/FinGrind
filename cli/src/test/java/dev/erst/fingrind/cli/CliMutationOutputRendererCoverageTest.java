@@ -60,7 +60,8 @@ class CliMutationOutputRendererCoverageTest {
                 LocalDate.parse("2026-04-07"),
                 Instant.parse("2026-04-07T10:15:30Z"),
                 true,
-                resolvedJournal));
+                resolvedJournal,
+                null));
 
     assertTrue(preflight.contains("Contained typed events"));
     assertTrue(preflight.contains("(none)"));
@@ -204,7 +205,8 @@ class CliMutationOutputRendererCoverageTest {
                 LocalDate.parse("2026-04-07"),
                 Instant.parse("2026-04-07T10:15:30Z"),
                 false,
-                resolvedJournal));
+                resolvedJournal,
+                null));
 
     assertTrue(preflight.contains("Contained typed events"));
     assertTrue(preflight.contains("AP_SETTLEMENT, CREDIT_SALE"), preflight);

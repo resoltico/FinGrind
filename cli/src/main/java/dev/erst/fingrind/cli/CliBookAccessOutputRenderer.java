@@ -41,6 +41,18 @@ final class CliBookAccessOutputRenderer {
     rows.add(List.of("Book file", CliTextDisplay.path(bookFilePath)));
     rows.addAll(CliBookIdentityDisplay.rows(opened.bookIdentity()));
     rows.add(List.of("Initialized at", CliTextDisplay.instant(opened.initializedAt())));
+    rows.add(List.of("Attestation book ID", opened.attestationTrustRoot().bookId().toString()));
+    rows.add(List.of("Genesis operation head", opened.attestationTrustRoot().operationHeadHex()));
+    rows.add(
+        List.of(
+            "Founders",
+            CliAttestationPayloadMapper.renderedCredentials(
+                opened.attestationTrustRoot().credentials())));
+    rows.add(
+        List.of(
+            "Initial quorum policy",
+            CliAttestationPayloadMapper.renderedCapabilityPolicies(
+                opened.attestationTrustRoot().capabilityPolicies())));
     appendTightenedParentRows(rows, tightenedParentDirectories);
     return CliTextFormat.renderTitledBlock(
         "Book Initialized", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));

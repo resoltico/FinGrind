@@ -26,6 +26,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
     Path assertionFailurePlanBookFile =
         tempDirectory.resolve("books").resolve("acme-plan-assertion.sqlite");
 
+    createExistingOwnerOnlyParentDirectory(bookKeyFile);
     runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFile.toString());
     runJsonCommand(openBookKeyFileArguments(planBookFile, bookKeyFile));
     runJsonCommand(openBookKeyFileArguments(queryPlanBookFile, bookKeyFile));
@@ -164,6 +165,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
             }
             """);
 
+    createExistingOwnerOnlyParentDirectory(bookKeyFile);
     runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFile.toString());
     runJsonCommand(openBookKeyFileArguments(bookFile, bookKeyFile));
     JsonNode plan =
@@ -258,6 +260,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
 
     Files.createDirectories(booksDirectory);
     CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(booksDirectory);
+    createExistingOwnerOnlyParentDirectory(bookKeyFile);
     runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFile.toString());
     runJsonCommand(openBookKeyFileArguments(bookFile, bookKeyFile));
     runJsonCommand(

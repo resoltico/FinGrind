@@ -45,8 +45,10 @@ class SqliteBookKeyFileGeneratorTest {
   }
 
   @Test
-  void generate_createsOneNewSecureUtf8KeyFile() throws Exception {
+  void generate_createsOneNewSecureUtf8KeyFileInAnExistingSecureParent() throws Exception {
     Path keyFile = tempDirectory.resolve("keys").resolve("acme.book-key");
+    Path keyDirectory = Files.createDirectory(keyFile.getParent());
+    SqliteSecretTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(keyDirectory);
     GeneratedBookKeyFile generatedKeyFile = SqliteBookKeyFileGenerator.generate(keyFile);
     assertEquals(keyFile.toAbsolutePath().normalize(), generatedKeyFile.bookKeyFilePath());
     assertEquals("base64url-no-padding", generatedKeyFile.encoding());
@@ -72,6 +74,19 @@ class SqliteBookKeyFileGeneratorTest {
       assertEquals(
           generatedSecret.getBytes(StandardCharsets.UTF_8).length, passphrase.byteLength());
     }
+  }
+
+  @Test
+  void generate_rejectsAnAbsentParentDirectoryWithoutCreatingIt() {
+    Path keyFile = tempDirectory.resolve("absent-parent").resolve("acme.book-key");
+
+    ContractFailureException exception =
+        assertThrows(
+            ContractFailureException.class, () -> SqliteBookKeyFileGenerator.generate(keyFile));
+
+    assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, exception.failure().descriptor());
+    assertTrue(exception.failure().message().contains("parent directory"));
+    assertFalse(Files.exists(keyFile.getParent()));
   }
 
   @Test
@@ -208,7 +223,8 @@ class SqliteBookKeyFileGeneratorTest {
                               "owner-only required");
                         },
                         normalizedPath ->
-                            SqliteBookKeyFileGenerator.ensureParentDirectory(normalizedPath),
+                            SqliteBookKeyFileGenerator.requireExistingSecureParentDirectory(
+                                normalizedPath),
                         normalizedPath -> {
                           Files.createFile(normalizedPath);
                           return dev.erst.fingrind.contract.runtime.ContractDecision.accepted(
@@ -257,7 +273,7 @@ class SqliteBookKeyFileGeneratorTest {
             (normalizedPath, encodedPassphrase) -> {
               throw new AssertionError("The materializer must not run after stage rejection.");
             },
-            SqliteBookKeyFileGenerator::ensureParentDirectory,
+            SqliteBookKeyFileGenerator::requireExistingSecureParentDirectory,
             stagedPath ->
                 ContractDecision.rejected(
                     ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.failure(
@@ -278,13 +294,13 @@ class SqliteBookKeyFileGeneratorTest {
     SqliteCallerPathContractException missingParentDirectoryException =
         assertThrows(
             SqliteCallerPathContractException.class,
-            () -> SqliteBookKeyFileGenerator.ensureParentDirectory(Path.of("/")));
+            () -> SqliteBookKeyFileGenerator.requireExistingSecureParentDirectory(Path.of("/")));
     assertEquals(
         SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY,
         missingParentDirectoryException.pathFailure());
     assertTrue(
         NullTestSupport.messageOf(missingParentDirectoryException)
-            .contains("must resolve beneath a parent directory"));
+            .contains("existing parent directory"));
     Path zipArchive = tempDirectory.resolve("zipfs-book-key.zip");
     try (FileSystem zipFileSystem =
         FileSystems.newFileSystem(

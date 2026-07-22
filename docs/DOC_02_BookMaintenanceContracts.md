@@ -72,7 +72,7 @@ public sealed interface AttestationRegistryMutationResult
 ```
 
 - `Mutated` carries the canonical book path, closed operation token, and resulting attestation
-  head order.
+  head order and lowercase-hex operation head.
 - `Rejected` retains a deterministic `BookMaintenanceRejection` before admission.
 - `AuthorizationRejected` retains the exact closed `AttestationVerificationFailure` when the
   live historical signer, quorum, capability, or credential-purpose rule refuses admission.

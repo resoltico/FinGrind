@@ -35,9 +35,6 @@ import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
 import dev.erst.fingrind.core.attestation.AttestationVerifier;
 import java.io.IOException;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.math.BigInteger;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -114,13 +111,26 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
   }
 
   @Test
-  void candidateVerifierKeepsNonAuthorizationVerificationFailuresDistinct() {
-    IllegalArgumentException rejected =
+  void candidateVerifierTranslatesCanonicalVerificationFailuresToLiveAdmissionRefusals() {
+    AttestationAdmissionRejectedException rejected =
         assertThrows(
-            IllegalArgumentException.class,
+            AttestationAdmissionRejectedException.class,
             () -> SqliteAttestationCandidateVerifier.verify(List.of()));
 
+    assertEquals(AttestationAuthorizationFailure.PREIMAGE_INVALID, rejected.failure());
     assertEquals("attestation-preimage-invalid", rejected.getMessage());
+  }
+
+  @Test
+  void candidateVerifierReturnsTheVerifiedCandidate() {
+    AttestationEvidence genesis =
+        SqliteAttestationTestSupport.genesis(
+            attestationBookIdentity(), Instant.parse("2026-07-21T00:00:00Z"));
+
+    AttestationVerification verification =
+        SqliteAttestationCandidateVerifier.verify(List.of(genesis));
+
+    assertEquals(BigInteger.ZERO, verification.headOrder());
   }
 
   @Test
@@ -816,22 +826,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
   }
 
   private static String encodeOrder(BigInteger order) {
-    try {
-      MethodHandle orderHex =
-          MethodHandles.privateLookupIn(
-                  SqliteAttestationEvidenceStore.class, MethodHandles.lookup())
-              .findStatic(
-                  SqliteAttestationEvidenceStore.class,
-                  "orderHex",
-                  MethodType.methodType(String.class, BigInteger.class));
-      return (String) orderHex.invoke(order);
-    } catch (RuntimeException exception) {
-      throw exception;
-    } catch (Error error) {
-      throw error;
-    } catch (Throwable throwable) {
-      throw new AssertionError("Failed to invoke attestation order encoding.", throwable);
-    }
+    return SqliteAttestationEvidencePersistence.orderHex(order);
   }
 
   private static AttestationEvidence sign(

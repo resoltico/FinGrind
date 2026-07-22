@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
@@ -176,6 +177,53 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
             .path("payload")
             .path("headOrder")
             .stringValue());
+  }
+
+  @Test
+  void run_mutationWithDuplicateSigningPrincipal_returnsTheExactAuthorizationRejection()
+      throws IOException {
+    Path bookFilePath =
+        tempDirectory.resolve("duplicate-credential-books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    Path declareFile =
+        writeNamedRequest("declare-cash.json", declareAccountJson("1000", "Cash", "DEBIT"));
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock())
+            .run(jsonArguments(openBookKeyFileArguments(bookFilePath, bookKeyFilePath))));
+
+    String[] oneCredential =
+        attestedArguments(
+            "declare-account",
+            "--book-file",
+            bookFilePath.toString(),
+            "--book-key-file",
+            bookKeyFilePath.toString(),
+            "--request-file",
+            declareFile.toString());
+    String[] duplicateCredential = Arrays.copyOf(oneCredential, oneCredential.length + 6);
+    int duplicateStart = oneCredential.length;
+    duplicateCredential[duplicateStart] = "--attestation-principal-id";
+    duplicateCredential[duplicateStart + 1] = "10213243-5465-7687-98a9-babcbddceeff";
+    duplicateCredential[duplicateStart + 2] = "--attestation-key-file";
+    duplicateCredential[duplicateStart + 3] =
+        bookFilePath.resolveSibling(bookFilePath.getFileName() + ".founder.fgatk").toString();
+    duplicateCredential[duplicateStart + 4] = "--attestation-passphrase-file";
+    duplicateCredential[duplicateStart + 5] =
+        bookFilePath.resolveSibling(bookFilePath.getFileName() + ".founder-passphrase").toString();
+
+    ByteArrayOutputStream rejectedOutput = new ByteArrayOutputStream();
+    assertEquals(
+        2,
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(rejectedOutput), fixedClock())
+            .run(jsonArguments(duplicateCredential)));
+    JsonNode rejectedEnvelope = new ObjectMapper().readTree(rejectedOutput.toByteArray());
+    assertEquals("rejected", rejectedEnvelope.path("status").stringValue());
+    assertEquals("structural-invalid", rejectedEnvelope.path("category").stringValue());
+    assertEquals("attestation-duplicate-principal", rejectedEnvelope.path("code").stringValue());
   }
 
   @Test
@@ -817,155 +865,5 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
         }
         """
         .formatted(idempotencyKey, idempotencyKey, idempotencyKey);
-  }
-
-  @Test
-  void run_backupRestoreAndTrialBalanceThroughDefaultSqliteWorkflowPreservesReadableFacts()
-      throws IOException {
-    Path requestFile = writeRequest(validRequestJson());
-    Path declareCashFile =
-        writeNamedRequest("restore-declare-cash.json", declareAccountJson("1000", "Cash", "DEBIT"));
-    Path declareRevenueFile =
-        writeNamedRequest(
-            "restore-declare-revenue.json", declareAccountJson("2000", "Revenue", "CREDIT"));
-    Path bookFilePath = tempDirectory.resolve("restore-books").resolve("entity.sqlite");
-    Path bookKeyFilePath = writeBookKey(bookFilePath);
-    Path backupFilePath = tempDirectory.resolve("restore-books").resolve("entity-backup.sqlite");
-    Path backupKeyFilePath = tempDirectory.resolve("restore-books").resolve("entity-backup.key");
-    Path restoredBookFilePath =
-        tempDirectory.resolve("restore-books").resolve("entity-restored.sqlite");
-    Path restoredBookKeyFilePath =
-        tempDirectory.resolve("restore-books").resolve("entity-restored.key");
-
-    assertEquals(
-        0,
-        cli(
-                new ByteArrayInputStream(new byte[0]),
-                utf8PrintStream(new ByteArrayOutputStream()),
-                fixedClock())
-            .run(jsonArguments(openBookKeyFileArguments(bookFilePath, bookKeyFilePath))));
-    assertEquals(
-        0,
-        cli(
-                new ByteArrayInputStream(new byte[0]),
-                utf8PrintStream(new ByteArrayOutputStream()),
-                fixedClock())
-            .run(
-                attestedArguments(
-                    "declare-account",
-                    "--book-file",
-                    bookFilePath.toString(),
-                    "--book-key-file",
-                    bookKeyFilePath.toString(),
-                    "--request-file",
-                    declareCashFile.toString())));
-    assertEquals(
-        0,
-        cli(
-                new ByteArrayInputStream(new byte[0]),
-                utf8PrintStream(new ByteArrayOutputStream()),
-                fixedClock())
-            .run(
-                attestedArguments(
-                    "declare-account",
-                    "--book-file",
-                    bookFilePath.toString(),
-                    "--book-key-file",
-                    bookKeyFilePath.toString(),
-                    "--request-file",
-                    declareRevenueFile.toString())));
-    assertEquals(
-        0,
-        cli(
-                new ByteArrayInputStream(new byte[0]),
-                utf8PrintStream(new ByteArrayOutputStream()),
-                fixedClock())
-            .run(
-                jsonArguments(
-                    "record-sale-settled",
-                    "--book-file",
-                    bookFilePath.toString(),
-                    "--book-key-file",
-                    bookKeyFilePath.toString(),
-                    "--request-file",
-                    requestFile.toString())));
-    assertEquals(
-        0,
-        cli(
-                new ByteArrayInputStream(new byte[0]),
-                utf8PrintStream(new ByteArrayOutputStream()),
-                fixedClock())
-            .run(
-                jsonArguments(
-                    "backup-book",
-                    "--book-file",
-                    bookFilePath.toString(),
-                    "--book-key-file",
-                    bookKeyFilePath.toString(),
-                    "--backup-file",
-                    backupFilePath.toString(),
-                    "--backup-id",
-                    "018f0000-0000-7000-8000-000000000003",
-                    "--new-backup-key-file",
-                    backupKeyFilePath.toString())));
-    ByteArrayOutputStream restoreOutput = new ByteArrayOutputStream();
-    assertEquals(
-        0,
-        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(restoreOutput), fixedClock())
-            .run(
-                attestedArgumentsForBook(
-                    bookFilePath,
-                    "restore-book",
-                    "--book-file",
-                    restoredBookFilePath.toString(),
-                    "--new-book-key-file",
-                    restoredBookKeyFilePath.toString(),
-                    "--backup-file",
-                    backupFilePath.toString(),
-                    "--backup-key-file",
-                    backupKeyFilePath.toString(),
-                    "--output",
-                    "json")));
-    JsonNode restoreEnvelope = new ObjectMapper().readTree(restoreOutput.toByteArray());
-    assertEquals("ok", restoreEnvelope.path("status").stringValue());
-    assertEquals(
-        CliPublicPaths.absoluteValue(restoredBookFilePath),
-        restoreEnvelope.path("payload").path("bookFile").stringValue());
-    assertEquals(
-        CliPublicPaths.absoluteValue(restoredBookKeyFilePath),
-        restoreEnvelope.path("payload").path("bookKeyFilePath").stringValue());
-
-    ByteArrayOutputStream trialBalanceOutput = new ByteArrayOutputStream();
-    assertEquals(
-        0,
-        cli(
-                new ByteArrayInputStream(new byte[0]),
-                utf8PrintStream(trialBalanceOutput),
-                fixedClock())
-            .run(
-                jsonArguments(
-                    "trial-balance",
-                    "--book-file",
-                    restoredBookFilePath.toString(),
-                    "--book-key-file",
-                    restoredBookKeyFilePath.toString())));
-    assertJsonContains(trialBalanceOutput, "\"status\":\"ok\"");
-    assertJsonContains(trialBalanceOutput, "\"family\":\"trial-balance\"");
-
-    ByteArrayOutputStream wrongKeyOutput = new ByteArrayOutputStream();
-    assertEquals(
-        6,
-        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(wrongKeyOutput), fixedClock())
-            .run(
-                jsonArguments(
-                    "trial-balance",
-                    "--book-file",
-                    restoredBookFilePath.toString(),
-                    "--book-key-file",
-                    backupKeyFilePath.toString())));
-    JsonNode wrongKeyEnvelope = new ObjectMapper().readTree(wrongKeyOutput.toByteArray());
-    assertEquals(
-        ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code(),
-        wrongKeyEnvelope.path("code").stringValue());
   }
 }

@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.core.attestation.AttestationBookInspection;
 import dev.erst.fingrind.core.attestation.AttestationCompromiseReview;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
@@ -46,9 +47,9 @@ public final class AttestationInspectionService {
         .fold(
             evidence -> {
               try {
-                AttestationVerification verification =
-                    AttestationVerifier.verifyBook(evidence, checkedReviews);
-                return ContractDecision.accepted(validBookResult(verification));
+                AttestationBookInspection inspection =
+                    AttestationVerifier.verifyAndInspectBook(evidence, checkedReviews);
+                return ContractDecision.accepted(validBookResult(inspection));
               } catch (AttestationVerificationException exception) {
                 return ContractDecision.accepted(
                     new VerifyBookAttestationResult.Invalid(
@@ -141,11 +142,13 @@ public final class AttestationInspectionService {
   }
 
   private static VerifyBookAttestationResult.Valid validBookResult(
-      AttestationVerification verification) {
+      AttestationBookInspection inspection) {
+    AttestationVerification verification = inspection.verification();
     return new VerifyBookAttestationResult.Valid(
         verification.bookId(),
         verification.headOrder(),
         HexFormat.of().formatHex(verification.operationHead()),
-        verification.reviewFindings());
+        verification.reviewFindings(),
+        inspection.registry());
   }
 }

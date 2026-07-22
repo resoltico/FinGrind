@@ -5,10 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
@@ -87,6 +89,23 @@ class CliDiscoveryCommandExecutorTest {
                         CliDiscoveryCommandExecutor.requestTemplateFor(operationId, null))
                     .contains(marker),
                 operationId.wireName()));
+  }
+
+  @Test
+  void requestTemplateFor_supportsEveryAttestationRegistryMutationTopic() {
+    List.of(
+            OperationId.ENROLL_KEY,
+            OperationId.ROLLOVER_KEY,
+            OperationId.REVOKE_KEY,
+            OperationId.ALTER_POLICY)
+        .forEach(
+            operationId ->
+                assertEquals(
+                    CliWireJson.prettyJsonText(
+                        MachineContract.attestationRegistryTemplate(operationId)),
+                    CliWireJson.prettyJsonText(
+                        CliDiscoveryCommandExecutor.requestTemplateFor(operationId, null)),
+                    operationId.wireName()));
   }
 
   @Test

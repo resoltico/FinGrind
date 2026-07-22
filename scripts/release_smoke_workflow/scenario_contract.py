@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import re
+import stat
 import tempfile
 
 from contract_values import load_contract_values
@@ -82,6 +84,19 @@ def assert_fixture_generation(
         )
         prepare_fixture_directories(fixture_scenario)
         write_acceptance_fixtures(fixture_scenario)
+
+        if os.name == "posix":
+            for directory in {
+                fixture_scenario.book.local_path.parent,
+                fixture_scenario.book_key.local_path.parent,
+                fixture_scenario.attestation_founder_key.local_path.parent,
+                fixture_scenario.backup_book.local_path.parent,
+                fixture_scenario.backup_book_key.local_path.parent,
+                fixture_scenario.restored_book.local_path.parent,
+                fixture_scenario.restored_book_key.local_path.parent,
+                fixture_scenario.replacement_book_key.local_path.parent,
+            }:
+                assert stat.S_IMODE(directory.stat().st_mode) == 0o700
 
         assert (
             fixture_scenario.attestation_founder_passphrase.local_path.read_text(encoding="utf-8")

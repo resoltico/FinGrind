@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
@@ -12,6 +13,7 @@ import dev.erst.fingrind.core.JournalEntry;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationVerification;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingEffectiveDateBeforeBookStart;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
@@ -26,6 +28,7 @@ import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Application service that owns preflight and commit behavior for posting entries. */
 public final class PostingApplicationService {
@@ -91,6 +94,7 @@ public final class PostingApplicationService {
           committedResult(
               committed.postingFact(),
               committed.idempotentReplay(),
+              committed.attestationVerification(),
               resolvedJournal(
                   java.util.Objects.requireNonNullElse(
                       postingCommand.resolvedOriginatingEntry().orElse(null), command.entry()),
@@ -104,6 +108,7 @@ public final class PostingApplicationService {
   private static PostEntryResult.Committed committedResult(
       CommittedPosting committedPosting,
       boolean idempotentReplay,
+      @Nullable AttestationVerification attestationVerification,
       ResolvedJournal resolvedJournal) {
     return new PostEntryResult.Committed(
         committedPosting.postingId(),
@@ -111,7 +116,12 @@ public final class PostingApplicationService {
         committedPosting.journalEntry().effectiveDate(),
         committedPosting.provenance().recordedAt(),
         idempotentReplay,
-        resolvedJournal);
+        resolvedJournal,
+        attestationVerification == null
+            ? null
+            : new AttestationCommit(
+                attestationVerification.headOrder(),
+                java.util.HexFormat.of().formatHex(attestationVerification.operationHead())));
   }
 
   private static PostEntryResult.PreflightRejected rejectedPreflight(

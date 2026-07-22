@@ -63,6 +63,10 @@ final class AttestationBookVerification {
     return reviewFindings;
   }
 
+  AttestationRegistryInspection registryInspection() {
+    return registry.inspection(bookId, headOrder(), head().hex());
+  }
+
   /** One accepted chain position and its raw head. */
   record VerifiedOperation(
       BigInteger operationOrder, AttestationHash head, AttestationBookOperation operation) {

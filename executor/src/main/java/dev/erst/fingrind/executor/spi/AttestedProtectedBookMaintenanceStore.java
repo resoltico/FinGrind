@@ -5,6 +5,7 @@ import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationOperationPreimages;
+import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -33,6 +34,16 @@ public interface AttestedProtectedBookMaintenanceStore extends ProtectedBookMain
       AttestationOperationPreimages preimages,
       AttestationOperationAuthorizer authorizer,
       @Nullable AttestationBackupAcknowledgement backupAcknowledgement);
+
+  /**
+   * Admits one credential-registry mutation after validating its target against the authenticated
+   * current authority state in the same write transaction.
+   */
+  AttestationVerification appendAttestedRegistryMutation(
+      VerifiedBook verifiedBook,
+      AttestationRegistryMutation mutation,
+      Instant recordedAt,
+      AttestationOperationAuthorizer authorizer);
 
   /**
    * Verifies a manifest-attested backup artifact and opens a temporary verified snapshot source.

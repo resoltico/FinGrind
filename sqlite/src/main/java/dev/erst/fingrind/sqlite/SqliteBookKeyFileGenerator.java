@@ -64,7 +64,7 @@ public final class SqliteBookKeyFileGenerator {
     return generateDecision(
         bookKeyFilePath,
         generatedKeyFileMaterializer,
-        SqliteBookKeyFileGenerator::ensureParentDirectory,
+        SqliteBookKeyFileGenerator::requireExistingSecureParentDirectory,
         SqliteBookKeyFileGenerator::createStageFile);
   }
 
@@ -147,8 +147,8 @@ public final class SqliteBookKeyFileGenerator {
     }
   }
 
-  static void ensureParentDirectory(Path normalizedPath) throws IOException {
-    SqliteBookKeyFileSecurity.ensureSecureParentDirectory(normalizedPath);
+  static void requireExistingSecureParentDirectory(Path normalizedPath) throws IOException {
+    SqliteBookKeyFileSecurity.requireExistingSecureParentDirectory(normalizedPath);
   }
 
   private static ContractDecision<Path> createStageFile(Path normalizedPath) throws IOException {

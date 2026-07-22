@@ -46,6 +46,7 @@ import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationVerification;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
@@ -457,6 +458,15 @@ final class PostingApplicationServiceTestSupport {
               new PostingCommitResult.Rejected(
                   new dev.erst.fingrind.executor.bookkeeping.ReversalTargetIsReversal(
                       new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362")));
+          case "idem-attested" ->
+              new PostingCommitResult.Committed(
+                  postingFact,
+                  false,
+                  new AttestationVerification(
+                      java.util.UUID.fromString("018f0000-0000-7000-8000-000000000001"),
+                      java.math.BigInteger.ONE,
+                      new byte[32],
+                      List.of()));
           default -> throw new AssertionError("Unexpected test idempotency key: " + idempotencyKey);
         };
       }

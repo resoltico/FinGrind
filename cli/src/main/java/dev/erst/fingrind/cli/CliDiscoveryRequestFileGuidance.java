@@ -1,6 +1,6 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryRequestFileGuidanceJsonModels.RequestFileGuidancePayload;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
@@ -40,7 +40,7 @@ final class CliDiscoveryRequestFileGuidance {
 
   private CliDiscoveryRequestFileGuidance() {}
 
-  static Optional<CliDiscoveryCommonJsonModels.RequestFileGuidancePayload> forOperation(
+  static Optional<RequestFileGuidancePayload> forOperation(
       HelpDescriptor helpDescriptor, OperationId operationId, DiscoveryDetail detail) {
     if (POSTING_REQUEST_OPERATIONS.contains(operationId)) {
       return postingRequestGuidance(helpDescriptor, operationId, detail);
@@ -54,25 +54,28 @@ final class CliDiscoveryRequestFileGuidance {
     if (operationId == OperationId.RETIRE_ACCOUNT) {
       return retireAccountRequestGuidance(helpDescriptor, detail);
     }
+    if (isAttestationRegistryMutation(operationId)) {
+      return attestationRegistryRequestGuidance(operationId, detail);
+    }
     if (operationId == OperationId.EXECUTE_PLAN) {
       return ledgerPlanRequestGuidance(helpDescriptor, detail);
     }
     return Optional.empty();
   }
 
-  private static Optional<CliDiscoveryCommonJsonModels.RequestFileGuidancePayload>
-      postingRequestGuidance(
-          HelpDescriptor helpDescriptor, OperationId operationId, DiscoveryDetail detail) {
+  private static Optional<RequestFileGuidancePayload> postingRequestGuidance(
+      HelpDescriptor helpDescriptor, OperationId operationId, DiscoveryDetail detail) {
     if (helpDescriptor.requestShapes() == null
         || helpDescriptor.requestShapes().bookkeepingEntry() == null
         || helpDescriptor.requestTemplate() == null) {
       return Optional.empty();
     }
     return Optional.of(
-        new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
+        new RequestFileGuidancePayload(
             "Provide a posting JSON document through --request-file <path|->.",
             detail,
             detail == DiscoveryDetail.FULL ? helpDescriptor.requestTemplate() : null,
+            null,
             null,
             null,
             null,
@@ -90,20 +93,20 @@ final class CliDiscoveryRequestFileGuidance {
                 + operationId.wireName()));
   }
 
-  private static Optional<CliDiscoveryCommonJsonModels.RequestFileGuidancePayload>
-      accountDefinitionRequestGuidance(
-          HelpDescriptor helpDescriptor, OperationId operationId, DiscoveryDetail detail) {
+  private static Optional<RequestFileGuidancePayload> accountDefinitionRequestGuidance(
+      HelpDescriptor helpDescriptor, OperationId operationId, DiscoveryDetail detail) {
     if (helpDescriptor.requestShapes() == null
         || helpDescriptor.requestShapes().declareAccount() == null
         || helpDescriptor.declareAccountTemplate() == null) {
       return Optional.empty();
     }
     return Optional.of(
-        new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
+        new RequestFileGuidancePayload(
             "Provide an account-definition JSON document through --request-file <path|->.",
             detail,
             null,
             detail == DiscoveryDetail.FULL ? helpDescriptor.declareAccountTemplate() : null,
+            null,
             null,
             null,
             detail == DiscoveryDetail.FULL
@@ -120,20 +123,21 @@ final class CliDiscoveryRequestFileGuidance {
                 + operationId.wireName()));
   }
 
-  private static Optional<CliDiscoveryCommonJsonModels.RequestFileGuidancePayload>
-      declareTaxRegistrationRequestGuidance(HelpDescriptor helpDescriptor, DiscoveryDetail detail) {
+  private static Optional<RequestFileGuidancePayload> declareTaxRegistrationRequestGuidance(
+      HelpDescriptor helpDescriptor, DiscoveryDetail detail) {
     if (helpDescriptor.requestShapes() == null
         || helpDescriptor.requestShapes().declareTaxRegistration() == null
         || helpDescriptor.declareTaxRegistrationTemplate() == null) {
       return Optional.empty();
     }
     return Optional.of(
-        new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
+        new RequestFileGuidancePayload(
             "Provide a tax-registration declaration JSON document through --request-file <path|->.",
             detail,
             null,
             null,
             detail == DiscoveryDetail.FULL ? helpDescriptor.declareTaxRegistrationTemplate() : null,
+            null,
             null,
             detail == DiscoveryDetail.FULL
                 ? new ContractRequestShapes.RequestShapesDescriptor(
@@ -149,21 +153,22 @@ final class CliDiscoveryRequestFileGuidance {
                 + OperationId.DECLARE_TAX_REGISTRATION.wireName()));
   }
 
-  private static Optional<CliDiscoveryCommonJsonModels.RequestFileGuidancePayload>
-      ledgerPlanRequestGuidance(HelpDescriptor helpDescriptor, DiscoveryDetail detail) {
+  private static Optional<RequestFileGuidancePayload> ledgerPlanRequestGuidance(
+      HelpDescriptor helpDescriptor, DiscoveryDetail detail) {
     if (helpDescriptor.requestShapes() == null
         || helpDescriptor.requestShapes().ledgerPlan() == null
         || helpDescriptor.planTemplate() == null) {
       return Optional.empty();
     }
     return Optional.of(
-        new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
+        new RequestFileGuidancePayload(
             "Provide a ledger plan JSON document through --request-file <path|->.",
             detail,
             null,
             null,
             null,
             detail == DiscoveryDetail.FULL ? helpDescriptor.planTemplate() : null,
+            null,
             detail == DiscoveryDetail.FULL
                 ? new ContractRequestShapes.RequestShapesDescriptor(
                     helpDescriptor.requestShapes().schemaDialect(),
@@ -176,16 +181,17 @@ final class CliDiscoveryRequestFileGuidance {
             CliInvocationText.commandExample(OperationId.PRINT_PLAN_TEMPLATE)));
   }
 
-  private static Optional<CliDiscoveryCommonJsonModels.RequestFileGuidancePayload>
-      retireAccountRequestGuidance(HelpDescriptor helpDescriptor, DiscoveryDetail detail) {
+  private static Optional<RequestFileGuidancePayload> retireAccountRequestGuidance(
+      HelpDescriptor helpDescriptor, DiscoveryDetail detail) {
     if (helpDescriptor.requestShapes() == null
         || helpDescriptor.requestShapes().retireAccount() == null) {
       return Optional.empty();
     }
     return Optional.of(
-        new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
+        new RequestFileGuidancePayload(
             "Provide an account-retirement JSON document through --request-file <path|->.",
             detail,
+            null,
             null,
             null,
             null,
@@ -202,5 +208,32 @@ final class CliDiscoveryRequestFileGuidance {
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
                 + " "
                 + OperationId.RETIRE_ACCOUNT.wireName()));
+  }
+
+  private static Optional<RequestFileGuidancePayload> attestationRegistryRequestGuidance(
+      OperationId operationId, DiscoveryDetail detail) {
+    return Optional.of(
+        new RequestFileGuidancePayload(
+            "Provide an attestation credential or policy JSON document through --request-file <path|->.",
+            detail,
+            null,
+            null,
+            null,
+            null,
+            detail == DiscoveryDetail.FULL
+                ? dev.erst.fingrind.contract.discovery.MachineContract.attestationRegistryTemplate(
+                    operationId)
+                : null,
+            null,
+            CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+                + " "
+                + operationId.wireName()));
+  }
+
+  private static boolean isAttestationRegistryMutation(OperationId operationId) {
+    return operationId == OperationId.ENROLL_KEY
+        || operationId == OperationId.ROLLOVER_KEY
+        || operationId == OperationId.REVOKE_KEY
+        || operationId == OperationId.ALTER_POLICY;
   }
 }

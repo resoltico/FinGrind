@@ -139,9 +139,9 @@ final class MachineContractPostEntryNestedFieldSpecs {
     return List.of(
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.Provenance.COMMAND_ID,
-            "Caller-generated command identity for this request.",
-            MachineContractScalarSchemas.nonBlankStringSchema(
-                "Caller-generated command identity for this request.")),
+            "Caller-generated canonical UUID command identity for this request.",
+            MachineContractScalarSchemas.uuidStringSchema(
+                "Caller-generated canonical UUID command identity for this request.")),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.Provenance.IDEMPOTENCY_KEY,
             "Book-local idempotency key used to detect duplicate commit attempts. FinGrind accepts ASCII letters or digits followed by ASCII letters, digits, '.', '_', ':', '/', or '-'.",
@@ -151,9 +151,9 @@ final class MachineContractPostEntryNestedFieldSpecs {
                 IdempotencyKey.maxLength())),
         MachineContractFieldSpec.required(
             ProtocolPostEntryFields.Provenance.CAUSATION_ID,
-            "Caller-supplied causation identifier for upstream traceability.",
+            "Caller-supplied non-blank causation identifier for upstream traceability.",
             MachineContractScalarSchemas.nonBlankStringSchema(
-                "Caller-supplied causation identifier for upstream traceability.")),
+                "Caller-supplied non-blank causation identifier for upstream traceability.")),
         MachineContractFieldSpec.optional(
             ProtocolPostEntryFields.Provenance.CORRELATION_ID,
             "Optional correlation identifier for joining related calls.",

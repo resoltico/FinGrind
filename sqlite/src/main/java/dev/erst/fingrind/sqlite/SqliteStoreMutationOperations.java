@@ -137,7 +137,7 @@ final class SqliteStoreMutationOperations {
             return switch (decision) {
               case Decision.Replay replay -> {
                 SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
-                yield new PostingCommitResult.Committed(replay.postingFact(), true);
+                yield new PostingCommitResult.Committed(replay.postingFact(), true, null);
               }
               case Decision.Rejected rejected -> {
                 SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
@@ -149,21 +149,24 @@ final class SqliteStoreMutationOperations {
                         .nextPostingId();
                 CommittedPosting postingFact =
                     accepted.acceptedPosting().materialize(postingId, postingDraft.provenance());
-                SqliteAttestationEvidenceStore.appendAuthorized(
-                    activeDatabase,
-                    admission.observedHead(),
-                    POST_ENTRY_OPERATION,
-                    postingFact.provenance().recordedAt(),
-                    AttestationPostingMutationProjection.project(
-                        postingRequestSnapshot(postingDraft), postingEffectSnapshot(postingFact)),
-                    attestationAuthorizer);
+                dev.erst.fingrind.core.attestation.AttestationVerification attestationVerification =
+                    SqliteAttestationEvidenceStore.appendAuthorized(
+                        activeDatabase,
+                        admission.observedHead(),
+                        POST_ENTRY_OPERATION,
+                        postingFact.provenance().recordedAt(),
+                        AttestationPostingMutationProjection.project(
+                            postingRequestSnapshot(postingDraft),
+                            postingEffectSnapshot(postingFact)),
+                        attestationAuthorizer);
                 closingOperations.persistMaterializedPosting(
                     activeDatabase,
                     accepted.acceptedPosting(),
                     accepted.requestFingerprint(),
                     postingFact);
                 SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
-                yield new PostingCommitResult.Committed(postingFact, false);
+                yield new PostingCommitResult.Committed(
+                    postingFact, false, attestationVerification);
               }
             };
           } catch (SqliteNativeException exception) {

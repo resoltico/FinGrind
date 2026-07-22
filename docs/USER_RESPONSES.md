@@ -35,7 +35,7 @@ Every non-success JSON envelope carries `category` with exactly one of `structur
 Dynamic fields:
 - `capabilities.payload` is stable unless the public command contract or runtime surface changes
 - discovery JSON payloads from `help`, `capabilities`, and `version` publish
-  `payload.protocolVersion`, and the current hard-break line is `"32"`
+  `payload.protocolVersion`, and the current hard-break line is `"33"`
 - `docs/examples/request-template.json` and `docs/examples/ledger-plan-template.json` are
   checked-in source-copy companions for `print-request-template` and `print-plan-template`; they
   publish the minimal settled-sale request scaffold and the placeholder-first general ledger-plan
@@ -50,8 +50,10 @@ Dynamic fields:
   derived lowercase-hex `keyId`. `inspect-attestation-key-file` also requires that explicit
   custodian selection, returns the same two public fields, and never emits an artifact, private
   key, or passphrase.
-- `generate-book-key-file` succeeds only when the selected parent directory is already owner-only
-  or can be created as one missing private directory
+- `generate-book-key-file` succeeds only when the selected parent directory already exists and is
+  owner-only; it never creates, follows, or weakens a secret parent directory
+- `generate-attestation-key-file` likewise requires an existing non-symbolic-link parent directory
+  and never creates one while publishing an encrypted credential
 - `open-book.payload.initializedAt` is stamped from the FinGrind clock
 - `open-book.payload.bookIdentity.entityName`, `.accountingKernelProfile`,
   `.accountingBasis`, `.accountingFrameworkPosition`, `.entityForm`, `.bookTemplateId`,
@@ -83,6 +85,9 @@ Dynamic fields:
 - `committed.payload.postingId` is generated per successful commit as a UUID v7 value
 - `committed.payload.recordedAt` is stamped from the FinGrind commit clock, not caller input
 - `committed.payload.idempotentReplay` is true exactly when the submitted normalized request matched one already committed posting
+- a fresh committed posting carries `payload.attestationCommit.operationOrder` and
+  `.operationHead`, the exact newly appended immutable operation; an idempotent replay carries
+  `attestationCommit: null` because it appends nothing
 - `committed.payload.resolvedJournal` publishes the exact expanded journal plus semantic classification attached to the committed posting result
 - `get-posting.payload.posting.entry.latvianMonthlyPayroll.resolvedCalculation` publishes the exact executor-resolved contribution, tax, and net-wage facts retained with one Latvian payroll run, including the explicit `taxBookHeldAtEmployer` and `dependantCount` profile facts
 - `get-posting.payload.posting.entry.latvianPayrollSettlement.resolvedSettlement` publishes the exact executor-resolved liability accounts and payment components retained with one Latvian payroll settlement
@@ -298,6 +303,10 @@ Fixed-asset-register row payload:
 - `payload.bookFile`
 - `payload.initializedAt`
 - `payload.bookIdentity`, using the shared initialized-book identity payload
+- `payload.attestationBookId` and `payload.genesisOperationHead`
+- `payload.attestationTrustRoot`, the genesis registry snapshot using the same credential,
+  effective-capability-policy, principal-capability, and system-workflow-policy shapes returned by
+  `verify-book`
 
 ## Account Declaration Responses
 
@@ -356,14 +365,21 @@ and is not the restored live-book secret.
 `book-key-file` artifact. The key file is newly generated at the requested absent target.
 
 `enroll-key`, `rollover-key`, `revoke-key`, and `alter-policy` success returns
-`payload.bookFile`, `payload.operationKind`, and `payload.headOrder`. Each confirms that the
-named immutable authorization mutation was appended; it never exposes credential paths,
-passphrases, encrypted key contents, or a private signing result. An authorization refusal is a
-`structural-invalid` rejected envelope with the exact `attestation-*` code and exit code 2.
+`payload.bookFile`, `payload.operationKind`, `payload.headOrder`, and
+`payload.operationHead`. Each confirms that the named immutable authorization mutation was
+appended; JSON publishes the canonical absolute book path, while text redacts the local path. It
+never exposes credential paths, passphrases, encrypted key contents, or a private signing result.
+An authorization refusal is a `structural-invalid` rejected envelope with the exact
+`attestation-*` code and exit code 2. A change that would leave a live policy with insufficient
+eligible principals is the distinct `attestation-policy-capacity-invalid` refusal. An `enroll-key`
+request for an already represented principal is refused before signing as
+`attestation-duplicate-principal`; reusing an enrolled credential for another principal is
+`attestation-duplicate-key`.
 
-`verify-book` returns the verified book identity and immutable head, or the first typed structural
-failure. `attestation-review` returns non-persisted compromise-review findings for a structurally
-valid chain. `export-attestation-receipt` returns the no-clobber receipt artifact path, and
+`verify-book` returns the verified book identity, immutable head, and complete chain-derived
+credential and policy registry snapshot, or the first typed structural failure.
+`attestation-review` returns non-persisted compromise-review findings for a structurally valid
+chain. `export-attestation-receipt` returns the no-clobber receipt artifact path, and
 `verify-receipt` returns the receipt's verified anchor against the selected book. See
 [USER_BOOK_ATTESTATION.md](./USER_BOOK_ATTESTATION.md) for their distinct trust boundaries.
 

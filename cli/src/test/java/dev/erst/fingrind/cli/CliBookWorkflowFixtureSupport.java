@@ -28,10 +28,13 @@ import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.PostingCoverage;
+import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
+import java.math.BigInteger;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /** Shared test support for book lifecycle, inspection, and read-model fixtures. */
 class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
@@ -195,7 +198,18 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
   }
 
   protected static OpenBookResult.Opened openedBookResult(Instant initializedAt) {
-    return new OpenBookResult.Opened(initializedAt, bookIdentity());
+    return new OpenBookResult.Opened(initializedAt, bookIdentity(), attestationTrustRoot());
+  }
+
+  protected static AttestationRegistryInspection attestationTrustRoot() {
+    return new AttestationRegistryInspection(
+        UUID.fromString(TEST_FOUNDER_PRINCIPAL_ID),
+        BigInteger.ZERO,
+        "0".repeat(64),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of());
   }
 
   protected static BookInspection.Initialized initializedBookInspection(

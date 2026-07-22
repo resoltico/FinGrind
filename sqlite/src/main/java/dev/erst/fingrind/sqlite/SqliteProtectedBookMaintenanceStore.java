@@ -5,6 +5,7 @@ import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationOperationPreimages;
+import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
@@ -206,6 +207,16 @@ public final class SqliteProtectedBookMaintenanceStore
         preimages,
         authorizer,
         backupAcknowledgement);
+  }
+
+  @Override
+  public AttestationVerification appendAttestedRegistryMutation(
+      VerifiedBook verifiedBook,
+      AttestationRegistryMutation mutation,
+      Instant recordedAt,
+      AttestationOperationAuthorizer authorizer) {
+    return SqliteAttestedOperationAppender.appendRegistryMutation(
+        requireVerifiedBook(verifiedBook), mutation, recordedAt, authorizer);
   }
 
   @Override

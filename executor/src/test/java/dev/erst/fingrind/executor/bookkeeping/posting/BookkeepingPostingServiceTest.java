@@ -66,7 +66,7 @@ class BookkeepingPostingServiceTest {
           assertInstanceOf(
               PostingCommitResult.Committed.class, service.commit(command, TEST_AUTHORIZER));
       assertEquals(
-          new PostingCommitResult.Committed(firstCommit.postingFact(), false), firstCommit);
+          new PostingCommitResult.Committed(firstCommit.postingFact(), false, null), firstCommit);
       assertEquals(
           new PostingPreflightOutcome.Accepted(
               new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),

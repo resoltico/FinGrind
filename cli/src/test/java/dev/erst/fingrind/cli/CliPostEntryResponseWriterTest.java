@@ -5,12 +5,15 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.cli.json.CliMutationJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
 import java.io.ByteArrayOutputStream;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -86,6 +89,54 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
     assertJsonContains(outputStream, "\"eventClass\":\"SETTLED_SALE\"");
     assertJsonContains(outputStream, "\"accountCode\":\"1000\"");
     assertExpandedLines(readJson(outputStream));
+  }
+
+  @Test
+  void committedPosting_publishesTheNewAttestationPositionAndRejectsReplayClaims() {
+    AttestationCommit attestationCommit = new AttestationCommit(BigInteger.ONE, "a".repeat(64));
+    PostEntryResult.Committed committed =
+        new PostEntryResult.Committed(
+            new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
+            new IdempotencyKey("idem-attested"),
+            LocalDate.parse("2026-04-07"),
+            Instant.parse("2026-04-07T10:15:30Z"),
+            false,
+            CliPostEntryResultFixtures.resolvedJournal(),
+            attestationCommit);
+
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    new CliResponseWriter(utf8PrintStream(outputStream)).writePostEntryResult(committed);
+    assertJsonContains(outputStream, "\"attestationCommit\"");
+    assertJsonContains(outputStream, "\"operationOrder\":\"1\"");
+    assertTrue(
+        CliMutationOutputRenderer.renderCommittedText(committed).contains("Attestation order"));
+    assertTrue(
+        CliMutationOutputRenderer.renderCommittedText(committed).contains("Attestation head"));
+
+    CliMutationJsonModels.CommittedPostingPayload idempotentReplay =
+        new CliMutationJsonModels.CommittedPostingPayload(
+            "posting-1",
+            "idem-replay",
+            "2026-04-07",
+            "2026-04-07T10:15:30Z",
+            true,
+            CliResolvedJournalPayloadMapper.resolvedJournalPayload(
+                CliPostEntryResultFixtures.resolvedJournal()),
+            null);
+    assertEquals(null, idempotentReplay.attestationCommit());
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliMutationJsonModels.CommittedPostingPayload(
+                "posting-1",
+                "idem-replay",
+                "2026-04-07",
+                "2026-04-07T10:15:30Z",
+                true,
+                CliResolvedJournalPayloadMapper.resolvedJournalPayload(
+                    CliPostEntryResultFixtures.resolvedJournal()),
+                new CliMutationJsonModels.AttestationCommitPayload("1", "a".repeat(64))));
   }
 
   @Test

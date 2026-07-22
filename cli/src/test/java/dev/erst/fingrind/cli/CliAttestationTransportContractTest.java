@@ -15,6 +15,7 @@ import dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.attestation.AttestationCompromiseReview;
+import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
 import dev.erst.fingrind.core.attestation.AttestationReviewFinding;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -37,7 +38,11 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
     AttestationWorkflow workflow =
         new AttestationWorkflow(
             new VerifyBookAttestationResult.Valid(
-                BOOK_ID, java.math.BigInteger.TWO, OPERATION_HEAD, List.of()),
+                BOOK_ID,
+                java.math.BigInteger.TWO,
+                OPERATION_HEAD,
+                List.of(),
+                registry(java.math.BigInteger.TWO)),
             new AttestationReviewResult(
                 BOOK_ID, java.math.BigInteger.TWO, List.of(reviewFinding())),
             new ExportAttestationReceiptResult.Exported(
@@ -145,7 +150,11 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
     AttestationWorkflow workflow =
         new AttestationWorkflow(
             new VerifyBookAttestationResult.Valid(
-                BOOK_ID, java.math.BigInteger.ZERO, OPERATION_HEAD, List.of(reviewFinding())),
+                BOOK_ID,
+                java.math.BigInteger.ZERO,
+                OPERATION_HEAD,
+                List.of(reviewFinding()),
+                registry(java.math.BigInteger.ZERO)),
             new AttestationReviewResult(BOOK_ID, java.math.BigInteger.ZERO, List.of()),
             new ExportAttestationReceiptResult.Exported(
                 Path.of("receipts", "unused.fgr"),
@@ -407,25 +416,30 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
   void attestationVerificationPayload_keepsReviewStateDerivableAndCanonical() {
     CliAttestationJsonModels.VerifyBookPayload noReview =
         new CliAttestationJsonModels.VerifyBookPayload(
-            BOOK_ID.toString(), "0", OPERATION_HEAD, false, List.of());
+            BOOK_ID.toString(), "0", OPERATION_HEAD, false, List.of(), registryPayload());
     assertFalse(noReview.reviewRequired());
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new CliAttestationJsonModels.VerifyBookPayload(
-                BOOK_ID.toString(), "0", OPERATION_HEAD, true, List.of()));
+                BOOK_ID.toString(), "0", OPERATION_HEAD, true, List.of(), registryPayload()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new CliAttestationJsonModels.VerifyBookPayload(
-                BOOK_ID.toString(), "0", OPERATION_HEAD, false, List.of(reviewFindingPayload())));
+                BOOK_ID.toString(),
+                "0",
+                OPERATION_HEAD,
+                false,
+                List.of(reviewFindingPayload()),
+                registryPayload()));
   }
 
   @Test
   void successEnvelopes_omitEmptyArtifactsAndPreservePublishedArtifacts() {
     CliAttestationJsonModels.VerifyBookPayload payload =
         new CliAttestationJsonModels.VerifyBookPayload(
-            BOOK_ID.toString(), "0", OPERATION_HEAD, false, List.of());
+            BOOK_ID.toString(), "0", OPERATION_HEAD, false, List.of(), registryPayload());
     assertEquals(null, CliEnvelopeMapper.successEnvelope(payload, List.of()).artifacts());
     var artifacts =
         CliEnvelopeMapper.successEnvelope(
@@ -441,7 +455,11 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
         new CliBookReadResponseWriter(outputChannel(new ByteArrayOutputStream()), fixedClock());
     VerifyBookAttestationResult.Valid verification =
         new VerifyBookAttestationResult.Valid(
-            BOOK_ID, java.math.BigInteger.TWO, OPERATION_HEAD, List.of(reviewFinding()));
+            BOOK_ID,
+            java.math.BigInteger.TWO,
+            OPERATION_HEAD,
+            List.of(reviewFinding()),
+            registry(java.math.BigInteger.TWO));
     AttestationReviewResult review =
         new AttestationReviewResult(BOOK_ID, java.math.BigInteger.TWO, List.of(reviewFinding()));
     ExportAttestationReceiptResult.Exported exported =
@@ -526,7 +544,11 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
     new CliBookReadResponseWriter(outputChannel(boundedJson), fixedClock())
         .writeVerifyBookAttestation(
             new VerifyBookAttestationResult.Valid(
-                BOOK_ID, java.math.BigInteger.TWO, OPERATION_HEAD, List.of(boundedFinding)),
+                BOOK_ID,
+                java.math.BigInteger.TWO,
+                OPERATION_HEAD,
+                List.of(boundedFinding),
+                registry(java.math.BigInteger.TWO)),
             dev.erst.fingrind.contract.protocol.OutputMode.JSON);
     assertJsonContains(boundedJson, "\"lastAffectedOrder\":\"2\"");
 
@@ -631,6 +653,16 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
   private static CliAttestationJsonModels.AttestationReviewFindingPayload reviewFindingPayload() {
     return new CliAttestationJsonModels.AttestationReviewFindingPayload(
         "a".repeat(64), "0", null, "1");
+  }
+
+  private static AttestationRegistryInspection registry(java.math.BigInteger headOrder) {
+    return new AttestationRegistryInspection(
+        BOOK_ID, headOrder, OPERATION_HEAD, List.of(), List.of(), List.of(), List.of());
+  }
+
+  private static CliAttestationJsonModels.AttestationRegistryPayload registryPayload() {
+    return new CliAttestationJsonModels.AttestationRegistryPayload(
+        List.of(), List.of(), List.of(), List.of());
   }
 
   /** Configurable workflow double for the attestation transport matrix. */

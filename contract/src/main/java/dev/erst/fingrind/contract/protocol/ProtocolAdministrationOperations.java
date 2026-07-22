@@ -114,19 +114,16 @@ final class ProtocolAdministrationOperations {
   }
 
   private static ProtocolOperation declareAccountOperation() {
-    return ProtocolOperationDefinitions.operation(
+    return ProtocolOperationDefinitions.jsonEnvelopeOperation(
         OperationId.DECLARE_ACCOUNT,
         OperationCategory.ADMINISTRATION,
         "Declare Account",
-        List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
             ProtocolOptions.Request.FILE + " <path|->",
             ProtocolOptions.requiredAttestationCredentialSyntax(),
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
-        ExecutionMode.JSON_ENVELOPE,
-        List.of(OutputMode.JSON, OutputMode.TEXT),
         "Declare or reactivate an account in the selected book.",
         List.of(
             ProtocolExampleStep.command(
@@ -146,19 +143,16 @@ final class ProtocolAdministrationOperations {
   }
 
   private static ProtocolOperation declareTaxRegistrationOperation() {
-    return ProtocolOperationDefinitions.operation(
+    return ProtocolOperationDefinitions.jsonEnvelopeOperation(
         OperationId.DECLARE_TAX_REGISTRATION,
         OperationCategory.ADMINISTRATION,
         "Declare Tax Registration",
-        List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
             ProtocolOptions.Request.FILE + " <path|->",
             ProtocolOptions.requiredAttestationCredentialSyntax(),
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
-        ExecutionMode.JSON_ENVELOPE,
-        List.of(OutputMode.JSON, OutputMode.TEXT),
         "Declare or update an owned tax registration using already-declared payable and recoverable accounts; this command never creates accounts implicitly.",
         List.of(
             ProtocolExampleStep.command(
@@ -171,19 +165,16 @@ final class ProtocolAdministrationOperations {
   }
 
   private static ProtocolOperation amendAccountOperation() {
-    return ProtocolOperationDefinitions.operation(
+    return ProtocolOperationDefinitions.jsonEnvelopeOperation(
         OperationId.AMEND_ACCOUNT,
         OperationCategory.ADMINISTRATION,
         "Amend Account",
-        List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
             ProtocolOptions.Request.FILE + " <path|->",
             ProtocolOptions.requiredAttestationCredentialSyntax(),
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
-        ExecutionMode.JSON_ENVELOPE,
-        List.of(OutputMode.JSON, OutputMode.TEXT),
         "Replace the definition of a never-posted, unreferenced account without erasing its identity or lifecycle history.",
         List.of(
             ProtocolExampleStep.command(
@@ -196,19 +187,16 @@ final class ProtocolAdministrationOperations {
   }
 
   private static ProtocolOperation retireAccountOperation() {
-    return ProtocolOperationDefinitions.operation(
+    return ProtocolOperationDefinitions.jsonEnvelopeOperation(
         OperationId.RETIRE_ACCOUNT,
         OperationCategory.ADMINISTRATION,
         "Retire Account",
-        List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
             ProtocolOptions.Request.FILE + " <path|->",
             ProtocolOptions.requiredAttestationCredentialSyntax(),
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
-        ExecutionMode.JSON_ENVELOPE,
-        List.of(OutputMode.JSON, OutputMode.TEXT),
         "Retire a zero-balance account from new ordinary authored postings while preserving its ledger history and admitting historical reversals.",
         List.of(
             ProtocolExampleStep.command(

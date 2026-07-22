@@ -8,6 +8,7 @@ import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesSliceJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryHelpJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryRequestFileGuidanceJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryRequestInputSliceJsonModels;
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
@@ -361,13 +362,14 @@ class CliDiscoveryJsonModelCoverageTest {
 
   @Test
   void requestFileGuidancePayload_allowsDeclareTaxRegistrationTemplateAsTheOnlyArtifact() {
-    CliDiscoveryCommonJsonModels.RequestFileGuidancePayload payload =
-        new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
+    CliDiscoveryRequestFileGuidanceJsonModels.RequestFileGuidancePayload payload =
+        new CliDiscoveryRequestFileGuidanceJsonModels.RequestFileGuidancePayload(
             "Provide a tax-registration declaration JSON document through --request-file <path|->.",
             DiscoveryDetail.FULL,
             null,
             null,
             MachineContract.declareTaxRegistrationTemplate(),
+            null,
             null,
             null,
             null);

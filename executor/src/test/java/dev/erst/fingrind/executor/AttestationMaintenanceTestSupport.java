@@ -12,6 +12,7 @@ import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationOperationPreimages;
 import dev.erst.fingrind.core.attestation.AttestationOperationRequest;
+import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import dev.erst.fingrind.core.attestation.AttestationSigningSession;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
 import dev.erst.fingrind.core.attestation.AttestationVerifier;
@@ -103,18 +104,18 @@ final class AttestationMaintenanceTestSupport {
     }
   }
 
-  /** Mutable test double for the attested maintenance SPI. */
-  static final class Store implements AttestedProtectedBookMaintenanceStore {
-    private final BookHandles bookHandles;
-    private final EvidenceState evidenceState;
-    private final BackupArtifactState backupArtifactState = new BackupArtifactState();
-    private final AdmissionState admissionState;
-    private final StagingState stagingState;
-    private final FailureState failureState = new FailureState();
+  /** Mutable test double for maintenance workflows that do not need attestation persistence. */
+  static class MaintenanceStore implements ProtectedBookMaintenanceStore {
+    protected final BookHandles bookHandles;
+    protected final EvidenceState evidenceState;
+    protected final BackupArtifactState backupArtifactState = new BackupArtifactState();
+    protected final AdmissionState admissionState;
+    protected final StagingState stagingState;
+    protected final FailureState failureState = new FailureState();
     private final FixtureOverrides overrides;
 
-    Store(Path bookPath, List<AttestationEvidence> evidence) {
-      Path normalizedBookPath = normalize(bookPath, "bookPath");
+    MaintenanceStore(Path bookPath, List<AttestationEvidence> evidence) {
+      Path normalizedBookPath = normalizePath(bookPath, "bookPath");
       bookHandles = new BookHandles(normalizedBookPath);
       evidenceState = new EvidenceState(bookHandles, evidence);
       admissionState = new AdmissionState(normalizedBookPath, bookHandles.liveBook());
@@ -185,6 +186,10 @@ final class AttestationMaintenanceTestSupport {
 
     @Override
     public Path normalize(Path path, String argumentName) {
+      return normalizePath(path, argumentName);
+    }
+
+    private static Path normalizePath(Path path, String argumentName) {
       Objects.requireNonNull(argumentName, "argumentName");
       return Objects.requireNonNull(path, "path").toAbsolutePath().normalize();
     }
@@ -266,53 +271,7 @@ final class AttestationMaintenanceTestSupport {
       return stagingState.restore;
     }
 
-    @Override
-    public List<AttestationEvidence> loadAttestationEvidence(VerifiedBook verifiedBook) {
-      return evidenceFor((StubBook) verifiedBook);
-    }
-
-    @Override
-    public AttestationVerification appendAttestedOperation(
-        VerifiedBook verifiedBook,
-        AttestationOperationKind operationKind,
-        Instant recordedAt,
-        AttestationOperationPreimages preimages,
-        AttestationOperationAuthorizer authorizer,
-        @Nullable AttestationBackupAcknowledgement backupAcknowledgement) {
-      if (failureState.append != null) {
-        throw failureState.append;
-      }
-      StubBook book = (StubBook) verifiedBook;
-      AttestationVerification head = AttestationVerifier.verifyBook(evidenceFor(book));
-      AttestationEvidence appended =
-          authorizer.authorize(
-              new AttestationOperationRequest(
-                  head.bookId(),
-                  head.headOrder().add(BigInteger.ONE),
-                  operationKind.wireToken(),
-                  head.operationHead(),
-                  recordedAt,
-                  preimages.request(),
-                  preimages.effect()));
-      List<AttestationEvidence> appendedEvidence = new ArrayList<>(evidenceFor(book));
-      appendedEvidence.add(appended);
-      evidenceState.byBook.put(book, List.copyOf(appendedEvidence));
-      return AttestationVerifier.verifyBook(appendedEvidence);
-    }
-
-    @Override
-    public VerifiedBackupArtifact verifyBackupArtifact(
-        Path normalizedBackupArtifactPath, Path normalizedBackupKeyFilePath) {
-      if (failureState.backupArtifactVerification != null) {
-        throw failureState.backupArtifactVerification;
-      }
-      byte[] artifact = Objects.requireNonNull(backupArtifactState.sealed, "sealedArtifact");
-      AttestationArtifactSnapshotReader reader = ignored -> evidenceFor(bookHandles.snapshotBook());
-      return new StubVerifiedBackupArtifact(
-          AttestationBackupArtifact.verify(artifact, reader), bookHandles.snapshotBook());
-    }
-
-    private List<AttestationEvidence> evidenceFor(StubBook book) {
+    protected List<AttestationEvidence> evidenceFor(StubBook book) {
       return Objects.requireNonNull(evidenceState.byBook.get(book), "known verified book");
     }
 
@@ -376,7 +335,7 @@ final class AttestationMaintenanceTestSupport {
       private MaintenanceDecision<BookVerification> backupVerification;
       private MaintenanceDecision<BookVerification> restoreVerification;
 
-      private StagingState(Store store, BookHandles bookHandles) {
+      private StagingState(MaintenanceStore store, BookHandles bookHandles) {
         backup = MaintenanceDecision.accepted(new StubStagedBackup(store));
         restore = MaintenanceDecision.accepted(new StubStagedRestore(store));
         backupVerification = MaintenanceDecision.accepted(bookHandles.snapshotBook());
@@ -395,18 +354,90 @@ final class AttestationMaintenanceTestSupport {
     }
   }
 
+  /** Attested extension of the maintenance fixture with an in-memory evidence chain per book. */
+  static final class Store extends MaintenanceStore
+      implements AttestedProtectedBookMaintenanceStore {
+    Store(Path bookPath, List<AttestationEvidence> evidence) {
+      super(bookPath, evidence);
+    }
+
+    @Override
+    public List<AttestationEvidence> loadAttestationEvidence(VerifiedBook verifiedBook) {
+      return evidenceFor((StubBook) verifiedBook);
+    }
+
+    @Override
+    public AttestationVerification appendAttestedOperation(
+        VerifiedBook verifiedBook,
+        AttestationOperationKind operationKind,
+        Instant recordedAt,
+        AttestationOperationPreimages preimages,
+        AttestationOperationAuthorizer authorizer,
+        @Nullable AttestationBackupAcknowledgement backupAcknowledgement) {
+      if (failureState.append != null) {
+        throw failureState.append;
+      }
+      StubBook book = (StubBook) verifiedBook;
+      AttestationVerification head = AttestationVerifier.verifyBook(evidenceFor(book));
+      AttestationEvidence appended =
+          authorizer.authorize(
+              new AttestationOperationRequest(
+                  head.bookId(),
+                  head.headOrder().add(BigInteger.ONE),
+                  operationKind.wireToken(),
+                  head.operationHead(),
+                  recordedAt,
+                  preimages.request(),
+                  preimages.effect()));
+      List<AttestationEvidence> appendedEvidence = new ArrayList<>(evidenceFor(book));
+      appendedEvidence.add(appended);
+      evidenceState.byBook.put(book, List.copyOf(appendedEvidence));
+      return AttestationVerifier.verifyBook(appendedEvidence);
+    }
+
+    @Override
+    public AttestationVerification appendAttestedRegistryMutation(
+        VerifiedBook verifiedBook,
+        AttestationRegistryMutation mutation,
+        Instant recordedAt,
+        AttestationOperationAuthorizer authorizer) {
+      StubBook book = (StubBook) verifiedBook;
+      AttestationRegistryMutation checkedMutation = Objects.requireNonNull(mutation, "mutation");
+      AttestationVerifier.requireRegistryMutationAdmissible(evidenceFor(book), checkedMutation);
+      return appendAttestedOperation(
+          verifiedBook,
+          checkedMutation.operationKind(),
+          recordedAt,
+          checkedMutation.preimages(),
+          authorizer,
+          null);
+    }
+
+    @Override
+    public VerifiedBackupArtifact verifyBackupArtifact(
+        Path normalizedBackupArtifactPath, Path normalizedBackupKeyFilePath) {
+      if (failureState.backupArtifactVerification != null) {
+        throw failureState.backupArtifactVerification;
+      }
+      byte[] artifact = Objects.requireNonNull(backupArtifactState.sealed, "sealedArtifact");
+      AttestationArtifactSnapshotReader reader = ignored -> evidenceFor(bookHandles.snapshotBook());
+      return new StubVerifiedBackupArtifact(
+          AttestationBackupArtifact.verify(artifact, reader), bookHandles.snapshotBook());
+    }
+  }
+
   /** Groups the uncommon one-off fixture overrides used by lifecycle failure tests. */
   static final class FixtureOverrides {
-    private final Store.BackupArtifactState backupArtifactState;
-    private final Store.AdmissionState admissionState;
-    private final Store.StagingState stagingState;
-    private final Store.FailureState failureState;
+    private final MaintenanceStore.BackupArtifactState backupArtifactState;
+    private final MaintenanceStore.AdmissionState admissionState;
+    private final MaintenanceStore.StagingState stagingState;
+    private final MaintenanceStore.FailureState failureState;
 
     private FixtureOverrides(
-        Store.BackupArtifactState backupArtifactState,
-        Store.AdmissionState admissionState,
-        Store.StagingState stagingState,
-        Store.FailureState failureState) {
+        MaintenanceStore.BackupArtifactState backupArtifactState,
+        MaintenanceStore.AdmissionState admissionState,
+        MaintenanceStore.StagingState stagingState,
+        MaintenanceStore.FailureState failureState) {
       this.backupArtifactState = backupArtifactState;
       this.admissionState = admissionState;
       this.stagingState = stagingState;
@@ -474,9 +505,9 @@ final class AttestationMaintenanceTestSupport {
 
   /** Represents the temporary backup pair before publication. */
   private static final class StubStagedBackup implements StagedBackupPair {
-    private final Store store;
+    private final MaintenanceStore store;
 
-    private StubStagedBackup(Store store) {
+    private StubStagedBackup(MaintenanceStore store) {
       this.store = store;
     }
 
@@ -510,9 +541,9 @@ final class AttestationMaintenanceTestSupport {
 
   /** Represents the temporary restore pair before publication. */
   private static final class StubStagedRestore implements StagedRestoredBookPair {
-    private final Store store;
+    private final MaintenanceStore store;
 
-    private StubStagedRestore(Store store) {
+    private StubStagedRestore(MaintenanceStore store) {
       this.store = store;
     }
 

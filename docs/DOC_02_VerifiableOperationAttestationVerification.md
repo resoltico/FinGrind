@@ -5,16 +5,16 @@ domain: BOOK_OPERATION_ATTESTATION_VERIFICATION
 updated: "2026-07-22"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["AttestationAdmissionRejectedException", "AttestationAuthorizationException", "AttestationAuthorizationFailure", "AttestationCompromiseReview", "AttestationInspectionService", "AttestationReceiptArtifactException", "AttestationReviewFinding", "AttestationReviewResult", "AttestationStaleHeadException", "AttestationVerification", "AttestationVerificationException", "AttestationVerificationFailure", "AttestationVerifier", "VerifyBookAttestationResult"]
+  symbols: ["AttestationAdmissionRejectedException", "AttestationAuthorizationException", "AttestationAuthorizationFailure", "AttestationBookInspection", "AttestationCompromiseReview", "AttestationInspectionService", "AttestationReceiptArtifactException", "AttestationRegistryInspection", "AttestationReviewFinding", "AttestationReviewResult", "AttestationStaleHeadException", "AttestationVerification", "AttestationVerificationException", "AttestationVerificationFailure", "AttestationVerifier", "VerifyBookAttestationResult"]
 route:
   keywords: [attestation-verification, verifier-precedence, compromise-review, structural-invalid, stale-head, receipt-artifact, verification-rejection, clean-attestation]
   questions: ["how does FinGrind verify a protected-book attestation", "which attestation verification failure is reported first", "what does an attestation review finding mean", "how does FinGrind publish verification failures"]
-stage: "Current public protocol 32 and protected-book format 51 contract"
+stage: "Current public protocol 33 and protected-book format 51 contract"
 ---
 
 # Verifiable Operation Attestation Verification
 
-This document is the canonical verifier contract for FinGrind protocol 32 and protected-book
+This document is the canonical verifier contract for FinGrind protocol 33 and protected-book
 format 51. It defines verification result surfaces, compromise review, and deterministic failure
 precedence. The [core protocol](./DOC_02_VerifiableOperationAttestation.md) owns the immutable
 operation envelope, preimage grammar, historical authorization facts, and operation profiles that
@@ -25,6 +25,16 @@ owns manifest, receipt, and container shapes.
 
 `AttestationVerification` returns the authenticated book identity, unsigned-64 head order,
 operation head, and typed non-persisted review findings for a structurally valid chain.
+
+## `AttestationBookInspection` And `AttestationRegistryInspection`
+
+`AttestationVerifier.verifyAndInspectBook` returns an `AttestationBookInspection`: the verified
+head plus an immutable `AttestationRegistryInspection` reconstructed from the same chain. The
+registry snapshot contains all credential bindings (including active or revoked state and binding
+lineage), effective capability quorum with its eligible principal counts, principal capability
+decisions, and system-workflow policies. `VerifyBookAttestationResult.Valid` publishes that
+snapshot only when its book ID and head order exactly match the verification result. It is a
+read-only proof of the authority state at that historical head; it has no write or repair API.
 
 ## `AttestationVerificationException`
 
@@ -90,6 +100,7 @@ public enum AttestationVerificationFailure
 | `KEY_ALGORITHM_INVALID` | `attestation-key-algorithm-invalid` |
 | `SIGNATURE_INVALID` | `attestation-signature-invalid` |
 | `CAPABILITY_INVALID` | `attestation-capability-invalid` |
+| `POLICY_CAPACITY_INVALID` | `attestation-policy-capacity-invalid` |
 | `CREDENTIAL_PURPOSE_INVALID` | `attestation-credential-purpose-invalid` |
 | `SYSTEM_DERIVATION_INVALID` | `attestation-system-derivation-invalid` |
 | `GENESIS_INVALID` | `attestation-genesis-invalid` |
@@ -229,14 +240,15 @@ reviewRequired into exit 2.
 | attestation-envelope-order-invalid | envelope entries are not strictly keyId ascending | 2 |
 | attestation-quorum-below | sigCount is smaller than M | 2 |
 | attestation-quorum-excess | sigCount is larger than M | 2 |
-| attestation-duplicate-principal | a principal occurs more than once | 2 |
-| attestation-duplicate-key | a key occurs more than once | 2 |
+| attestation-duplicate-principal | a signature set or enroll-key request repeats a principal | 2 |
+| attestation-duplicate-key | a signature set or credential binding repeats a key | 2 |
 | attestation-key-not-enrolled | key was not active at the resolving position | 2 |
 | attestation-key-revoked | key was revoked at the resolving position | 2 |
 | attestation-key-principal-mismatch | key does not belong to the stated principal | 2 |
 | attestation-key-algorithm-invalid | non-Ed25519 key or algorithmId | 2 |
 | attestation-signature-invalid | signature does not verify | 2 |
-| attestation-capability-invalid | signer is not eligible or policy quorum is impossible | 2 |
+| attestation-capability-invalid | signer is not eligible for the capability | 2 |
+| attestation-policy-capacity-invalid | a policy change would leave its configured quorum unreachable | 2 |
 | attestation-credential-purpose-invalid | sourceChannel conflicts with enrolled credential purposes | 2 |
 | attestation-system-derivation-invalid | a system-channel close does not reproduce its one workflow derivation | 2 |
 | attestation-genesis-invalid | genesis order, founders, policy, declared key, or unanimity rule fails | 2 |

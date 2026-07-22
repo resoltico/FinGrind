@@ -12,6 +12,7 @@ import dev.erst.fingrind.contract.discovery.ArtifactOutputDescriptor;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractAttestationRegistryTemplates;
 import dev.erst.fingrind.contract.discovery.ContractDiscovery;
 import dev.erst.fingrind.contract.discovery.ContractFinancingTemplates;
 import dev.erst.fingrind.contract.discovery.ContractFixedAssetTemplates;
@@ -268,6 +269,13 @@ class ContractProtocolVocabularyTest {
     assertEquals(
         List.of(
             ContractPostingRequestTemplates.PostingRequestTemplateDescriptor.class,
+            ContractAttestationRegistryTemplates.EnrollKeyTemplateDescriptor.class,
+            ContractAttestationRegistryTemplates.RolloverKeyTemplateDescriptor.class,
+            ContractAttestationRegistryTemplates.RevokeKeyTemplateDescriptor.class,
+            ContractAttestationRegistryTemplates.AlterPolicyTemplateDescriptor.class,
+            ContractAttestationRegistryTemplates.PolicyRuleTemplateDescriptor.class,
+            ContractAttestationRegistryTemplates.CapabilityGrantTemplateDescriptor.class,
+            ContractAttestationRegistryTemplates.SystemWorkflowPolicyTemplateDescriptor.class,
             ContractSettlementTemplates.TaxSelectionTemplateDescriptor.class,
             ContractSettlementTemplates.SettlementAdjunctTemplateDescriptor.class,
             InventoryReliefTemplateDescriptor.class,

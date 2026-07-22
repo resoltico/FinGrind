@@ -14,7 +14,7 @@ import org.jspecify.annotations.Nullable;
 
 /** Canonical machine-readable contract assembler for the FinGrind CLI surface. */
 public final class MachineContract {
-  private static final String PROTOCOL_VERSION = "32";
+  private static final String PROTOCOL_VERSION = "33";
 
   private MachineContract() {}
 
@@ -132,6 +132,12 @@ public final class MachineContract {
   /** Builds the canonical minimal retire-account request template descriptor. */
   public static ContractTemplates.RetireAccountTemplateDescriptor retireAccountTemplate() {
     return MachineContractTemplatesCatalog.retireAccountTemplate();
+  }
+
+  /** Builds the canonical credential-registry or authority-policy request template. */
+  public static TemplateDescriptorType attestationRegistryTemplate(OperationId commandTopic) {
+    return MachineContractTemplatesCatalog.attestationRegistryTemplate(
+        Objects.requireNonNull(commandTopic, "commandTopic"));
   }
 
   /** Builds the canonical minimal declare-tax-registration request template descriptor. */

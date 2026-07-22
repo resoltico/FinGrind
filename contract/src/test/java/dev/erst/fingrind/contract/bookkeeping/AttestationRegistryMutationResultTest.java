@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract.bookkeeping;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigInteger;
 import java.nio.file.Path;
@@ -13,12 +14,18 @@ class AttestationRegistryMutationResultTest {
   void mutated_normalizesItsBookPathAndPreservesItsAuthenticatedHead() {
     AttestationRegistryMutationResult.Mutated result =
         new AttestationRegistryMutationResult.Mutated(
-            Path.of("build", "book.fgdb"), "enroll-key", BigInteger.ONE);
+            Path.of("build", "book.fgdb"), "enroll-key", BigInteger.ONE, "0".repeat(64));
 
     assertEquals(Path.of("build", "book.fgdb").toAbsolutePath().normalize(), result.bookFilePath());
     assertEquals("enroll-key", result.operationKind());
     assertEquals(BigInteger.ONE, result.headOrder());
+    assertEquals("0".repeat(64), result.operationHeadHex());
     assertInstanceOf(AttestationRegistryMutationResult.class, result);
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new AttestationRegistryMutationResult.Mutated(
+                Path.of("build", "book.fgdb"), "enroll-key", BigInteger.ONE, "not-a-head"));
   }
 
   @Test

@@ -207,7 +207,7 @@ class SqliteBookKeyFileSecurityTest {
               .contains("parent directory must use owner-only permissions"));
       assertTrue(
           java.util.Objects.requireNonNull(exception.failure().hint())
-              .contains("tighten it first"));
+              .contains("tighten it if needed"));
     }
   }
 

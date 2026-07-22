@@ -290,6 +290,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
     Path booksDirectory = java.util.Objects.requireNonNull(bookFile.getParent(), "booksDirectory");
     Files.createDirectories(booksDirectory);
     CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(booksDirectory);
+    createExistingOwnerOnlyParentDirectory(bookKeyFile);
     runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFile.toString());
     runJsonCommand("generate-book-key-file", "--new-book-key-file", brokenBookKeyFile.toString());
     Files.writeString(brokenBookFile, "not-a-protected-book", StandardCharsets.UTF_8);

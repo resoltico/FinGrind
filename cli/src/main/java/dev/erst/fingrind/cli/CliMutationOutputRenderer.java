@@ -78,6 +78,18 @@ final class CliMutationOutputRenderer {
         List.of(
             "Idempotent replay",
             CliQueryScopeText.displayBooleanLabel(committed.idempotentReplay())));
+    if (committed.attestationCommit() == null) {
+      rows.add(
+          List.of(
+              "Attestation",
+              committed.idempotentReplay()
+                  ? "No operation appended (idempotent replay)"
+                  : "No attestation operation was returned by the persistence adapter"));
+    } else {
+      rows.add(
+          List.of("Attestation order", committed.attestationCommit().operationOrder().toString()));
+      rows.add(List.of("Attestation head", committed.attestationCommit().operationHeadHex()));
+    }
     appendResolvedJournalRows(rows, committed.resolvedJournal());
     return CliTextFormat.renderTitledBlock(
         "Entry Committed",

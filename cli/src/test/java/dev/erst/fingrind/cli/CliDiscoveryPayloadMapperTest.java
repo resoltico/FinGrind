@@ -12,6 +12,7 @@ import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesSliceJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryHelpJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryRequestFileGuidanceJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryRequestInputSliceJsonModels;
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
@@ -852,8 +853,8 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
         assertThrows(
             IllegalArgumentException.class,
             () ->
-                new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
-                    "desc", DiscoveryDetail.COMPACT, null, null, null, null, null, null));
+                new CliDiscoveryRequestFileGuidanceJsonModels.RequestFileGuidancePayload(
+                    "desc", DiscoveryDetail.COMPACT, null, null, null, null, null, null, null));
 
     assertTrue(
         Objects.requireNonNull(failure.getMessage())
@@ -862,11 +863,12 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
 
   @Test
   void requestFileGuidancePayload_allowsSingleTemplateArtifactWithoutRequestShapes() {
-    CliDiscoveryCommonJsonModels.RequestFileGuidancePayload payload =
-        new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
+    CliDiscoveryRequestFileGuidanceJsonModels.RequestFileGuidancePayload payload =
+        new CliDiscoveryRequestFileGuidanceJsonModels.RequestFileGuidancePayload(
             "Provide a posting JSON document through --request-file <path|->.",
             DiscoveryDetail.COMPACT,
             MachineContract.requestTemplate(),
+            null,
             null,
             null,
             null,
@@ -884,10 +886,11 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
         MachineContract.help(identity(), environment(), OperationId.POST_ENTRY);
     dev.erst.fingrind.contract.discovery.ContractRequestShapes.RequestShapesDescriptor
         requestShapes = Objects.requireNonNull(postEntry.requestShapes());
-    CliDiscoveryCommonJsonModels.RequestFileGuidancePayload payload =
-        new CliDiscoveryCommonJsonModels.RequestFileGuidancePayload(
+    CliDiscoveryRequestFileGuidanceJsonModels.RequestFileGuidancePayload payload =
+        new CliDiscoveryRequestFileGuidanceJsonModels.RequestFileGuidancePayload(
             "Provide a posting JSON document through --request-file <path|->.",
             DiscoveryDetail.COMPACT,
+            null,
             null,
             null,
             null,

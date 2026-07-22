@@ -8,6 +8,7 @@ import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationOperationPreimages;
 import dev.erst.fingrind.core.attestation.AttestationOperationRequest;
 import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
 import dev.erst.fingrind.core.attestation.AttestationVerificationException;
@@ -16,7 +17,6 @@ import java.math.BigInteger;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -59,7 +59,8 @@ final class SqliteAttestationEvidenceStore {
     List<AttestationEvidence> completeEvidence = new ArrayList<>(persistedEvidence);
     completeEvidence.add(checkedCandidate);
     AttestationVerification candidateVerification = verifyCandidate(completeEvidence);
-    insert(activeDatabase, candidateVerification, checkedCandidate);
+    SqliteAttestationEvidencePersistence.insert(
+        activeDatabase, candidateVerification, checkedCandidate);
     return candidateVerification;
   }
 
@@ -88,6 +89,48 @@ final class SqliteAttestationEvidenceStore {
       AttestationOperationPreimages preimages,
       AttestationOperationAuthorizer authorizer,
       @Nullable AttestationBackupAcknowledgement backupAcknowledgement) {
+    return appendAuthorized(
+        activeDatabase,
+        observedHead,
+        operationKind,
+        recordedAt,
+        preimages,
+        authorizer,
+        backupAcknowledgement,
+        null);
+  }
+
+  /**
+   * Admits one registry mutation after its target has been checked against this transaction's
+   * authenticated authority head and before a custodian is asked to sign it.
+   */
+  static AttestationVerification appendAuthorizedRegistryMutation(
+      SqliteNativeDatabase activeDatabase,
+      ObservedHead observedHead,
+      AttestationRegistryMutation mutation,
+      Instant recordedAt,
+      AttestationOperationAuthorizer authorizer) {
+    AttestationRegistryMutation checkedMutation = Objects.requireNonNull(mutation, "mutation");
+    return appendAuthorized(
+        activeDatabase,
+        observedHead,
+        checkedMutation.operationKind(),
+        recordedAt,
+        checkedMutation.preimages(),
+        authorizer,
+        null,
+        checkedMutation);
+  }
+
+  private static AttestationVerification appendAuthorized(
+      SqliteNativeDatabase activeDatabase,
+      ObservedHead observedHead,
+      AttestationOperationKind operationKind,
+      Instant recordedAt,
+      AttestationOperationPreimages preimages,
+      AttestationOperationAuthorizer authorizer,
+      @Nullable AttestationBackupAcknowledgement backupAcknowledgement,
+      @Nullable AttestationRegistryMutation registryMutation) {
     Objects.requireNonNull(activeDatabase, "activeDatabase");
     ObservedHead checkedObservedHead = Objects.requireNonNull(observedHead, "observedHead");
     AttestationOperationKind checkedOperationKind =
@@ -113,6 +156,9 @@ final class SqliteAttestationEvidenceStore {
     if (checkedAuthorizer instanceof AttestationPlanOperationAuthorizer planAuthorizer) {
       planAuthorizer.collectChildMutation(checkedOperationKind.wireToken(), checkedPreimages);
       return persistedVerification;
+    }
+    if (registryMutation != null) {
+      AttestationVerifier.requireRegistryMutationAdmissible(persistedEvidence, registryMutation);
     }
     if (backupAcknowledgement != null) {
       AttestationBackupAcknowledgementAdmission admission =
@@ -209,25 +255,7 @@ final class SqliteAttestationEvidenceStore {
   }
 
   static List<AttestationEvidence> loadAll(SqliteNativeDatabase activeDatabase) {
-    Objects.requireNonNull(activeDatabase, "activeDatabase");
-    try (SqliteNativeStatement statement =
-        activeDatabase.prepare(SqliteAttestationEvidenceSql.LOAD_ALL)) {
-      List<AttestationEvidence> evidence = new ArrayList<>();
-      while (statement.step() == SqliteNativeResultCode.code("ROW")) {
-        String persistedOrder = SqlitePostingMapper.requiredText(statement, 0);
-        String expectedOrder = orderHex(BigInteger.valueOf(evidence.size()));
-        if (!persistedOrder.equals(expectedOrder)) {
-          throw new IllegalStateException(
-              "Persisted attestation operation order is not a canonical contiguous sequence.");
-        }
-        evidence.add(
-            new AttestationEvidence(
-                decode(SqlitePostingMapper.requiredText(statement, 1)),
-                decode(SqlitePostingMapper.requiredText(statement, 2)),
-                decode(SqlitePostingMapper.requiredText(statement, 3))));
-      }
-      return List.copyOf(evidence);
-    }
+    return SqliteAttestationEvidencePersistence.loadAll(activeDatabase);
   }
 
   private static Optional<AttestationVerification> verifyPersisted(
@@ -248,52 +276,12 @@ final class SqliteAttestationEvidenceStore {
     return SqliteAttestationCandidateVerifier.verify(evidence);
   }
 
-  private static void insert(
-      SqliteNativeDatabase activeDatabase,
-      AttestationVerification verification,
-      AttestationEvidence evidence) {
-    try (SqliteNativeStatement statement =
-        activeDatabase.prepare(SqliteAttestationEvidenceSql.INSERT)) {
-      statement.bindText(1, orderHex(verification.headOrder()));
-      statement.bindText(2, encode(evidence.operationEnvelope()));
-      statement.bindText(3, encode(evidence.requestPreimage()));
-      statement.bindText(4, encode(evidence.effectPreimage()));
-      statement.bindText(5, hex(verification.operationHead()));
-      statement.step();
-    }
-  }
-
   private static byte[] requireHead(byte[] value, String name) {
     byte[] checked = Arrays.copyOf(Objects.requireNonNull(value, name), value.length);
     if (checked.length != 32) {
       throw new IllegalArgumentException(name + " must contain exactly 32 bytes.");
     }
     return checked;
-  }
-
-  private static byte[] decode(String encoded) {
-    try {
-      return Base64.getDecoder().decode(encoded);
-    } catch (IllegalArgumentException exception) {
-      throw new IllegalStateException(
-          "Persisted attestation evidence is not valid base64.", exception);
-    }
-  }
-
-  private static String encode(byte[] value) {
-    return Base64.getEncoder().encodeToString(value);
-  }
-
-  private static String orderHex(BigInteger order) {
-    BigInteger checkedOrder = Objects.requireNonNull(order, "order");
-    if (checkedOrder.signum() < 0 || checkedOrder.bitLength() > Long.SIZE) {
-      throw new IllegalArgumentException("operation order must fit an unsigned 64-bit value.");
-    }
-    return "%016x".formatted(checkedOrder);
-  }
-
-  private static String hex(byte[] bytes) {
-    return java.util.HexFormat.of().formatHex(requireHead(bytes, "operationHead"));
   }
 
   /** Immutable verified operation-chain head read from the persisted evidence table. */

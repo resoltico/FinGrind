@@ -60,7 +60,7 @@ final class CliPostEntryResultFixtures {
       Instant recordedAt,
       boolean duplicate) {
     return new PostEntryResult.Committed(
-        postingId, idempotencyKey, effectiveDate, recordedAt, duplicate, RESOLVED_JOURNAL);
+        postingId, idempotencyKey, effectiveDate, recordedAt, duplicate, RESOLVED_JOURNAL, null);
   }
 
   static ResolvedJournal resolvedJournal() {

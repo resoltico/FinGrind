@@ -36,6 +36,7 @@ final class MachineContractQuickStarts {
         surface,
         List.of(
             WorkflowStepDescriptor.note(introNote(surface)),
+            secureParentPreparationCommand(surface),
             WorkflowStepDescriptor.command(
                 "%s %s %s %s"
                     .formatted(
@@ -98,6 +99,20 @@ final class MachineContractQuickStarts {
                         ProtocolCatalog.operationName(OperationId.TRIAL_BALANCE),
                         paths.bookFile(),
                         paths.bookKeyFile()))));
+  }
+
+  private static WorkflowStepDescriptor secureParentPreparationCommand(WorkflowSurface surface) {
+    return switch (surface) {
+      case SOURCE_CHECKOUT_WINDOWS_POWERSHELL, DIRECT_JAVA_WINDOWS_POWERSHELL ->
+          WorkflowStepDescriptor.command(
+              "@('.\\secrets', '.\\books') | ForEach-Object { New-Item -ItemType Directory -Force $_ | Out-Null; $owner = [System.Security.Principal.WindowsIdentity]::GetCurrent().User; $acl = Get-Acl $_; $acl.SetAccessRuleProtection($true, $false); $acl.Access | ForEach-Object { [void]$acl.RemoveAccessRuleSpecific($_) }; $acl.SetOwner($owner); $acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($owner, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow')); Set-Acl $_ $acl }");
+      case PATH_POSIX_SHELL,
+          BUNDLE_POSIX_SHELL,
+          SOURCE_CHECKOUT_POSIX_SHELL,
+          DIRECT_JAVA_POSIX_SHELL,
+          CONTAINER_DOCKER ->
+          WorkflowStepDescriptor.command("mkdir -p -m 700 ./secrets ./books");
+    };
   }
 
   private static String introNote(WorkflowSurface surface) {

@@ -6,13 +6,7 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireValue;
 
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractPlanTemplates.LedgerPlanTemplateDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractPostingRequestTemplates.PostingRequestTemplateDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractRequestShapes.RequestShapesDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareAccountTemplateDescriptor;
-import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareTaxRegistrationTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.SelectableOutputDefaultsDescriptor;
-import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import java.util.List;
@@ -84,32 +78,6 @@ public interface CliDiscoveryCommonJsonModels {
       category = requireText(category, "category");
       if (count < 0) {
         throw new IllegalArgumentException("count must not be negative.");
-      }
-    }
-  }
-
-  record RequestFileGuidancePayload(
-      String description,
-      DiscoveryDetail detail,
-      @Nullable PostingRequestTemplateDescriptor postingTemplate,
-      @Nullable DeclareAccountTemplateDescriptor declareAccountTemplate,
-      @Nullable DeclareTaxRegistrationTemplateDescriptor declareTaxRegistrationTemplate,
-      @Nullable LedgerPlanTemplateDescriptor ledgerPlanTemplate,
-      @Nullable RequestShapesDescriptor requestShapes,
-      @Nullable String shortcutCommand)
-      implements ProtocolSuccessPayload {
-    public RequestFileGuidancePayload {
-      description = requireText(description, "description");
-      detail = requireValue(detail, "detail");
-      shortcutCommand = requireOptionalText(shortcutCommand, "shortcutCommand");
-      if (postingTemplate == null
-          && declareAccountTemplate == null
-          && declareTaxRegistrationTemplate == null
-          && ledgerPlanTemplate == null
-          && requestShapes == null
-          && shortcutCommand == null) {
-        throw new IllegalArgumentException(
-            "At least one request-file guidance artifact must be present.");
       }
     }
   }

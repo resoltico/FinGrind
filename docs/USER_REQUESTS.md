@@ -25,8 +25,8 @@ requires it to remain owner-only:
   (`0400` or `0600`) on macOS/Linux or a Windows owner-only ACL on Windows; its containing
   directory must also remain owner-only, and the public examples keep this file under a separate
   `./secrets/` tree rather than beside the book. `generate-book-key-file --new-book-key-file`
-  creates a missing parent directory with owner-only protection, requires atomic no-replace
-  publication support from the target filesystem, and rejects a pre-existing non-private parent
+  requires an already existing owner-only parent directory, requires atomic no-replace publication
+  support from the target filesystem, and rejects a missing, symbolic-link, or non-private parent
   directory
 - `--book-passphrase-stdin` with one UTF-8 passphrase payload up to 4096 bytes from standard
   input
@@ -352,7 +352,10 @@ There is no delete-account request or command.
 
 ## Attestation Credential And Policy Requests
 
-`enroll-key`, `rollover-key`, `revoke-key`, and `alter-policy` accept strict JSON documents. They
+`enroll-key`, `rollover-key`, `revoke-key`, and `alter-policy` accept strict JSON documents. Run
+`print-request-template <command>` for each of those four commands to obtain its exact live
+scaffold; full-detail JSON help embeds the same template under
+`requestFile.attestationRegistryTemplate`. They
 are not posting requests and do not accept provenance, idempotency, key-file paths, passphrases,
 or private key bytes. `credentialSpki` and `predecessorCredentialSpki` are canonical unpadded
 base64url encodings of public Ed25519 DER SubjectPublicKeyInfo values. FinGrind derives key IDs
@@ -367,7 +370,7 @@ from those values; callers do not submit a key ID.
 ```
 
 The enrollment shape above has exactly `principalId`, `credentialSpki`, and
-`credentialPurpose`. `rollover-key` adds required `predecessorCredentialSpki`; both credentials
+`credentialPurpose`, which is exactly lowercase `operator` or `system`. `rollover-key` adds required `predecessorCredentialSpki`; both credentials
 must differ and the predecessor must be an active credential of the same principal at admission.
 `revoke-key` has `principalId`, `credentialSpki`, and optional non-blank `reason`.
 

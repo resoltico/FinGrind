@@ -128,7 +128,7 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
         observed
             .stderr()
             .contains(
-                "Choose a regular non-symlink key file path beneath a private owner-only parent directory."),
+                "Create a private owner-only parent directory yourself, tighten it if needed, then choose a regular non-symlink key file path beneath it and rerun the command."),
         observed.stderr());
     assertFalse(observed.stderr().contains("Choose one regular non-symlink"), observed.stderr());
     assertFalse(Files.exists(keyFilePath));

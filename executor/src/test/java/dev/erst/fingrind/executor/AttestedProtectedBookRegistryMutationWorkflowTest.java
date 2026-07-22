@@ -165,6 +165,55 @@ class AttestedProtectedBookRegistryMutationWorkflowTest {
   }
 
   @Test
+  void rejectsDuplicateRegistryEnrollmentBeforeSigningOrAppending() throws Exception {
+    AttestationMaintenanceTestSupport.CredentialFixture founder =
+        AttestationMaintenanceTestSupport.createCredential(temporaryDirectory);
+    Path enrolledKeyPath = temporaryDirectory.resolve("enrolled.fgatk");
+    char[] passphrase = "duplicate enrollment test key".toCharArray();
+    try {
+      AttestationKeyFiles.create(enrolledKeyPath, passphrase);
+    } finally {
+      java.util.Arrays.fill(passphrase, '\0');
+    }
+    var enrolled = AttestationKeyFiles.loadPublicCredential(enrolledKeyPath);
+    UUID enrolledPrincipal = UUID.fromString("01234567-89ab-4cde-8fab-0123456789ab");
+    Path bookPath = temporaryDirectory.resolve("book.sqlite");
+    AttestationMaintenanceTestSupport.Store store = store(bookPath, founder);
+    ProtectedBookAccess access =
+        ProtectedBookAccess.fromPublished(
+            AttestationMaintenanceTestSupport.bookAccess(bookPath, founder));
+    AttestationRegistryMutation.EnrollKey enrollment =
+        new AttestationRegistryMutation.EnrollKey(
+            enrolledPrincipal, enrolled, AttestationCredentialPurpose.OPERATOR);
+
+    try (var session = founder.openSession()) {
+      assertMutated(workflow(store).mutateRegistry(access, enrollment, session), "enroll-key", 1);
+
+      ProtectedBookRegistryMutationOutcome.AuthorizationRejected duplicatePrincipal =
+          assertInstanceOf(
+              ProtectedBookRegistryMutationOutcome.AuthorizationRejected.class,
+              accepted(workflow(store).mutateRegistry(access, enrollment, session)));
+      assertEquals(
+          AttestationAuthorizationFailure.DUPLICATE_PRINCIPAL, duplicatePrincipal.failure());
+
+      ProtectedBookRegistryMutationOutcome.AuthorizationRejected duplicateKey =
+          assertInstanceOf(
+              ProtectedBookRegistryMutationOutcome.AuthorizationRejected.class,
+              accepted(
+                  workflow(store)
+                      .mutateRegistry(
+                          access,
+                          new AttestationRegistryMutation.EnrollKey(
+                              UUID.fromString("01234567-89ab-4cde-8fab-0123456789ac"),
+                              enrolled,
+                              AttestationCredentialPurpose.OPERATOR),
+                          session)));
+      assertEquals(AttestationAuthorizationFailure.DUPLICATE_KEY, duplicateKey.failure());
+    }
+    assertEquals(2, store.liveEvidence().size());
+  }
+
+  @Test
   void classifiesRegistryMutationAdmissionRejections() throws Exception {
     AttestationMaintenanceTestSupport.CredentialFixture founder =
         AttestationMaintenanceTestSupport.createCredential(temporaryDirectory);

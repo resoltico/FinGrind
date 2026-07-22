@@ -24,6 +24,7 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
         writeNamedRequest(
             "owner-withdrawal.json", ownerWithdrawalRequestJson("withdrawal", "1000"));
 
+    createExistingOwnerOnlyParentDirectory(bookKeyFile);
     runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFile.toString());
     runJsonCommand(openBookKeyFileArguments(bookFile, bookKeyFile));
 

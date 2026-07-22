@@ -82,15 +82,32 @@ FinGrind protects each book. Start by creating one key file that will hold the s
 book:
 
 ```bash
+mkdir -p -m 700 ./secrets ./books
 fingrind generate-book-key-file --new-book-key-file ./secrets/acme.book-key
 ```
 
-That command creates the file for you and refuses to overwrite an existing one.
+That command creates the file for you and refuses to overwrite an existing one. Its parent must
+already exist and remain owner-only: FinGrind deliberately does not create or weaken a secret
+directory on the caller's behalf. This guide creates both directories explicitly. On Windows
+PowerShell, create the two directories and replace every inherited or explicit access rule with
+one current-owner full-control rule before generating a key:
+
+```powershell
+@('.\secrets', '.\books') | ForEach-Object {
+  New-Item -ItemType Directory -Force $_ | Out-Null
+  $owner = [System.Security.Principal.WindowsIdentity]::GetCurrent().User
+  $acl = Get-Acl $_
+  $acl.SetAccessRuleProtection($true, $false)
+  $acl.Access | ForEach-Object { [void]$acl.RemoveAccessRuleSpecific($_) }
+  $acl.SetOwner($owner)
+  $acl.AddAccessRule([System.Security.AccessControl.FileSystemAccessRule]::new($owner, 'FullControl', 'ContainerInherit,ObjectInherit', 'None', 'Allow'))
+  Set-Acl $_ $acl
+}
+```
+
 This guide keeps the key under `./secrets/` and the book under `./books/` on purpose so routine
 book copies do not automatically copy the unlocking secret too. Keep the `./secrets/` directory
-owner-only as well as the key file itself. Keep `./books/` owner-only too. If `./secrets/` or
-`./books/` does not exist yet, FinGrind creates it with owner-only permissions. If either
-directory already exists, keep it owner-only before you reuse that path.
+owner-only as well as the key file itself. Keep `./books/` owner-only too.
 
 ## 4. Prepare One Founder Credential
 

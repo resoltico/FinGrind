@@ -43,6 +43,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
                 Files.readString(
                     repositoryRoot().resolve("cli/src/bundle/root/quick-start-request.json"),
                     StandardCharsets.UTF_8)));
+    createExistingOwnerOnlyParentDirectory(bookKeyFile);
     JsonNode generatedKey =
         runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFile.toString());
     assertEquals("ok", generatedKey.path("status").stringValue());
@@ -206,6 +207,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     assertEquals("SALE_SETTLED", unknownAccountRequest.path("entryKind").stringValue());
     JsonNode entrySemanticsRequest = readJson(entrySemanticsRequestFile);
     assertEquals("SALE_SETTLED", entrySemanticsRequest.path("entryKind").stringValue());
+    createExistingOwnerOnlyParentDirectory(bookKeyFile);
     runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFile.toString());
     runJsonCommand(openBookKeyFileArguments(bookFile, bookKeyFile));
     runJsonCommand(openBookKeyFileArguments(planBookFile, bookKeyFile));

@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
-import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.nio.file.Path;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -55,12 +54,8 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
               requireStoreDatabase(postingFactStore),
               "select count(*) from audit_event where posting_id = 'posting-1'"));
 
-      assertEquals(
-          new PostingCommitResult.Committed(
-              postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()), false),
-          commitPosting(
-              postingFactStore,
-              postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())));
+      var retriedPosting = postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
+      assertFreshCommittedPosting(retriedPosting, commitPosting(postingFactStore, retriedPosting));
     }
   }
 
@@ -81,12 +76,9 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
                 SqliteNativeBootstrap::api,
                 faultHook)) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
-      assertEquals(
-          new PostingCommitResult.Committed(
-              postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty()), false),
-          commitPosting(
-              postingFactStore,
-              postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty())));
+      var originalPosting = postingFact("posting-1", "idem-1", Optional.empty(), Optional.empty());
+      assertFreshCommittedPosting(
+          originalPosting, commitPosting(postingFactStore, originalPosting));
 
       IllegalStateException failure =
           assertThrows(
@@ -118,23 +110,15 @@ class SqlitePostingAtomicityTest extends SqlitePostingFactStoreTestSupport {
               requireStoreDatabase(postingFactStore),
               "select count(*) from audit_event where posting_id = 'posting-2'"));
 
-      assertEquals(
-          new PostingCommitResult.Committed(
-              postingFact(
-                  "posting-2",
-                  "idem-2",
-                  Optional.of(
-                      new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
-                  Optional.of(new ReversalReason("full reversal"))),
-              false),
-          commitPosting(
-              postingFactStore,
-              postingFact(
-                  "posting-2",
-                  "idem-2",
-                  Optional.of(
-                      new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
-                  Optional.of(new ReversalReason("full reversal")))));
+      var retriedReversal =
+          postingFact(
+              "posting-2",
+              "idem-2",
+              Optional.of(
+                  new ReversalReference(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
+              Optional.of(new ReversalReason("full reversal")));
+      assertFreshCommittedPosting(
+          retriedReversal, commitPosting(postingFactStore, retriedReversal));
     }
   }
 

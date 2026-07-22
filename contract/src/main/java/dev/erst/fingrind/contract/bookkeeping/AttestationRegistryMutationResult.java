@@ -11,13 +11,24 @@ public sealed interface AttestationRegistryMutationResult
         AttestationRegistryMutationResult.AuthorizationRejected {
 
   /** One immutable authority-changing operation appended to the selected book. */
-  record Mutated(Path bookFilePath, String operationKind, BigInteger headOrder)
+  record Mutated(
+      Path bookFilePath, String operationKind, BigInteger headOrder, String operationHeadHex)
       implements AttestationRegistryMutationResult {
     public Mutated {
       bookFilePath =
           Objects.requireNonNull(bookFilePath, "bookFilePath").toAbsolutePath().normalize();
       Objects.requireNonNull(operationKind, "operationKind");
       Objects.requireNonNull(headOrder, "headOrder");
+      operationHeadHex = requireOperationHeadHex(operationHeadHex);
+    }
+
+    private static String requireOperationHeadHex(String value) {
+      String checked = Objects.requireNonNull(value, "operationHeadHex");
+      if (!checked.matches("[0-9a-f]{64}")) {
+        throw new IllegalArgumentException(
+            "operationHeadHex must contain 64 lowercase hexadecimal characters.");
+      }
+      return checked;
     }
   }
 

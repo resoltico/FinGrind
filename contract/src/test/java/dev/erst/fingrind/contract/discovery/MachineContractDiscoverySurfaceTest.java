@@ -534,21 +534,25 @@ class MachineContractDiscoverySurfaceTest {
   }
 
   private static QuickStartSteps quickStartSteps(WorkflowDescriptor workflow) {
-    assertEquals(10, workflow.steps().size());
+    assertEquals(11, workflow.steps().size());
     return new QuickStartSteps(
         assertInstanceOf(WorkflowStepDescriptor.Note.class, workflow.steps().get(0)),
         assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(1)),
         assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(2)),
         assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(3)),
         assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(4)),
-        assertInstanceOf(WorkflowStepDescriptor.Note.class, workflow.steps().get(5)),
+        assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(5)),
         assertInstanceOf(WorkflowStepDescriptor.Note.class, workflow.steps().get(6)),
-        assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(7)),
+        assertInstanceOf(WorkflowStepDescriptor.Note.class, workflow.steps().get(7)),
         assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(8)),
-        assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(9)));
+        assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(9)),
+        assertInstanceOf(WorkflowStepDescriptor.Command.class, workflow.steps().get(10)));
   }
 
   private static void assertCommonQuickStartSteps(QuickStartSteps steps) {
+    assertTrue(
+        steps.secureParentPreparation().text().contains("secrets"),
+        steps.secureParentPreparation().text());
     assertTrue(
         steps
             .generateKey()
@@ -680,6 +684,7 @@ class MachineContractDiscoverySurfaceTest {
 
   private record QuickStartSteps(
       WorkflowStepDescriptor.Note introNote,
+      WorkflowStepDescriptor.Command secureParentPreparation,
       WorkflowStepDescriptor.Command generateKey,
       WorkflowStepDescriptor.Command openBook,
       WorkflowStepDescriptor.Command listAccounts,

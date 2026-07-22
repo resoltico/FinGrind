@@ -32,7 +32,7 @@ class AttestationRegistryHistoryTest {
         policyEffect(AttestationCapability.POST, 2));
 
     assertFailure(
-        AttestationAuthorizationFailure.CAPABILITY_INVALID, history::requireAcceptedState);
+        AttestationAuthorizationFailure.POLICY_CAPACITY_INVALID, history::requireAcceptedState);
   }
 
   @Test
@@ -366,7 +366,7 @@ class AttestationRegistryHistoryTest {
                 workflowEffect(workflowId, "interim-result-sweep", null, null)));
     history.accept(AttestationOperationKind.ALTER_POLICY, BigInteger.valueOf(5), request, effect);
     assertFailure(
-        AttestationAuthorizationFailure.CAPABILITY_INVALID, history::requireAcceptedState);
+        AttestationAuthorizationFailure.POLICY_CAPACITY_INVALID, history::requireAcceptedState);
   }
 
   private static AttestationRegistryEffectDecoder.DecodedFacts decode(

@@ -548,6 +548,25 @@ public final class ProtocolAttestationRegistryRequestFields
   values shared by parser, documentation, and signed mutation projection. Each array may carry a
   given capability, principal-capability pair, or workflow ID only once, respectively.
 
+## `ProtocolRequestTemplateTopics` And `ContractAttestationRegistryTemplates`
+
+`ProtocolRequestTemplateTopics` registers all request-file commands that have a raw executable
+scaffold. `ContractAttestationRegistryTemplates` owns the four registry-specific templates.
+
+```java
+public final class ProtocolRequestTemplateTopics
+public final class ContractAttestationRegistryTemplates
+```
+
+- `print-request-template enroll-key`, `rollover-key`, `revoke-key`, and `alter-policy` emit the
+  exact corresponding lifecycle scaffold.
+- `help <command> --output json --detail full` embeds that same typed descriptor under
+  `payload.requestFile.attestationRegistryTemplate`; compact help deliberately keeps only the
+  command guidance and shortcut.
+- The enrollment and rollover templates publish the closed lowercase `operator` credential-purpose
+  token. All UUID examples are canonical RFC 4122 values, so every generated scaffold passes its
+  basic identifier grammar before the caller replaces its business facts.
+
 ## Attestation Credential Custody Commands
 
 `generate-attestation-key-file` owns the off-book private-credential creation boundary. It takes

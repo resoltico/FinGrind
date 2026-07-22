@@ -31,9 +31,11 @@ import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
 import dev.erst.fingrind.core.UnitOfMeasure;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -341,7 +343,18 @@ public final class ExecutorAccountingTestSupport {
 
   /** Returns one canonical book-opened outcome fixture. */
   public static BookOpeningOutcome.Opened openedBook(Instant initializedAt) {
-    return new BookOpeningOutcome.Opened(initializedAt, bookIdentity());
+    return new BookOpeningOutcome.Opened(initializedAt, bookIdentity(), attestationTrustRoot());
+  }
+
+  private static AttestationRegistryInspection attestationTrustRoot() {
+    return new AttestationRegistryInspection(
+        java.util.UUID.fromString("10213243-5465-7687-98a9-babcbddceeff"),
+        BigInteger.ZERO,
+        "0".repeat(64),
+        List.of(),
+        List.of(),
+        List.of(),
+        List.of());
   }
 
   /** Returns the default report coverage used by fixtures that include generated postings. */

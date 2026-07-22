@@ -115,9 +115,9 @@ def assert_plan_template(document: dict[str, object]) -> None:
             "source-checkout launcher plan template did not publish the canonical evidence scaffold"
         )
     if posting.get("provenance") != {
-        "commandId": "replace-before-commit-command-id",
+        "commandId": "ffffffff-ffff-7fff-bfff-fffffffffff1",
         "idempotencyKey": "replace-before-commit-idempotency-key",
-        "causationId": "replace-before-commit-causation-id",
+        "causationId": "ffffffff-ffff-7fff-bfff-fffffffffff2",
     }:
         raise SystemExit(
             "source-checkout launcher plan template did not publish the canonical provenance scaffold"

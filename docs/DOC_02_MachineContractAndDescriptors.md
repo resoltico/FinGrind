@@ -150,6 +150,8 @@ public final class ContractTemplates
   `.ReversalDescriptor`, `.PreflightDescriptor`, `.CommitGuarantee`, `.CurrencyDescriptor`, and
   `.BookkeepingKernelDescriptor` are the nested typed response descriptors
 - `ContractTemplates`: canonical request template descriptors
+- `ContractAttestationRegistryTemplates`: canonical credential-registry and authority-policy
+  request descriptors for `enroll-key`, `rollover-key`, `revoke-key`, and `alter-policy`
 - `ContractPlanTemplates`: canonical ledger-plan template descriptors
 - `TemplateDescriptorType` is the sealed owner for the published template-descriptor inventory
 - `ContractPlanTemplates.LedgerPlanTemplateDescriptor`, `.LedgerPlanStepTemplateDescriptor`,
@@ -160,6 +162,11 @@ public final class ContractTemplates
   `.DeclareAccountTemplateDescriptor`, `.DeclareTaxRegistrationTemplateDescriptor`,
   `.DeclareTaxCodeTemplateDescriptor`, and related evidence descriptors are the nested typed
   request template descriptors
+- `ContractAttestationRegistryTemplates.EnrollKeyTemplateDescriptor`,
+  `.RolloverKeyTemplateDescriptor`, `.RevokeKeyTemplateDescriptor`, and
+  `.AlterPolicyTemplateDescriptor` publish the exact lifecycle scaffold under full-detail command
+  help; their nested policy-rule, capability-grant, and workflow-policy descriptors make every
+  accepted registry field visible before request submission
 - `InventoryReliefTemplateDescriptor` is the top-level typed trading-sale relief descriptor
   reused by posting request templates instead of remaining buried as an anonymous object shape
 - `ForeignExchangeTemplateDescriptor` and `QuotedExchangeRateTemplateDescriptor` are the

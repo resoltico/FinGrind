@@ -27,7 +27,8 @@ public interface CliMutationJsonModels {
       String effectiveDate,
       String recordedAt,
       boolean idempotentReplay,
-      ResolvedJournalPayload resolvedJournal)
+      ResolvedJournalPayload resolvedJournal,
+      @Nullable AttestationCommitPayload attestationCommit)
       implements CliSuccessPayload {
     public CommittedPostingPayload {
       postingId = requireText(postingId, "postingId");
@@ -35,6 +36,17 @@ public interface CliMutationJsonModels {
       effectiveDate = requireText(effectiveDate, "effectiveDate");
       recordedAt = requireText(recordedAt, "recordedAt");
       Objects.requireNonNull(resolvedJournal, "resolvedJournal");
+      if (idempotentReplay && attestationCommit != null) {
+        throw new IllegalArgumentException(
+            "An idempotent replay must not report a newly appended attestation operation.");
+      }
+    }
+  }
+
+  record AttestationCommitPayload(String operationOrder, String operationHead) {
+    public AttestationCommitPayload {
+      operationOrder = requireText(operationOrder, "operationOrder");
+      operationHead = requireText(operationHead, "operationHead");
     }
   }
 

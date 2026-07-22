@@ -151,6 +151,25 @@ final class AttestationRegistry {
     AttestationRegistryCapacity.requireCapacityForAcceptedHistory(resolution);
   }
 
+  /**
+   * Refuses a prospective live registry mutation whose target is already incompatible with the
+   * authenticated authority state at the current head.
+   *
+   * <p>This deliberately happens before a custodian is asked to sign. Candidate-chain verification
+   * repeats the invariant independently after signing, but admission must return the
+   * target-specific refusal rather than disguise a caller mistake as a malformed preimage.
+   */
+  void requireMutationAdmissible(
+      AttestationRegistryMutation mutation, BigInteger currentHeadOrder) {
+    AttestationRegistryMutationAdmission.require(
+        resolution, Objects.requireNonNull(mutation, "mutation"), currentHeadOrder);
+  }
+
+  AttestationRegistryInspection inspection(
+      UUID bookId, BigInteger headOrder, String operationHeadHex) {
+    return resolution.inspection(bookId, headOrder, operationHeadHex);
+  }
+
   private static void requireDistinctFounders(List<AttestationFounder> founders) {
     if (founders.isEmpty() || founders.size() > 5) {
       throw new IllegalArgumentException(

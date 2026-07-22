@@ -9,6 +9,8 @@ import dev.erst.fingrind.core.attestation.AttestationKeyFiles;
 import dev.erst.fingrind.core.attestation.AttestationPublicCredential;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.Base64;
 import java.util.HexFormat;
@@ -17,7 +19,7 @@ import java.util.Objects;
 /** Executes standalone attestation-credential generation and public identity inspection. */
 final class CliAttestationKeyFileWorkflow {
   private static final String CREDENTIAL_FAILURE_HINT =
-      "Confirm the encrypted credential and passphrase files are regular readable files, the passphrase is valid UTF-8 and nonempty, and the new credential target has an existing parent directory.";
+      "Confirm the encrypted credential and passphrase files are regular readable files and the passphrase is valid UTF-8 and nonempty.";
 
   private final CliMutationResponseWriter responseWriter;
   private final CliFailureResponseWriter failureWriter;
@@ -34,6 +36,10 @@ final class CliAttestationKeyFileWorkflow {
       Path passphraseFilePath,
       OutputMode outputMode) {
     Path normalizedKeyPath = normalized(keyFilePath);
+    if (!hasExistingCredentialParent(normalizedKeyPath)) {
+      return invalidCredentialTarget(
+          normalizedKeyPath, ProtocolOptions.Attestation.NEW_KEY_FILE, outputMode);
+    }
     try {
       AttestationPublicCredential credential =
           switch (Objects.requireNonNull(custodian, "custodian")) {
@@ -86,6 +92,18 @@ final class CliAttestationKeyFileWorkflow {
         outputMode);
   }
 
+  private int invalidCredentialTarget(Path path, String option, OutputMode outputMode) {
+    return writeFailure(
+        ContractErrors.Descriptor.INVALID_ATTESTATION_KEY_FILE.failureAt(
+            path,
+            "The new attestation key file requires an existing non-symlink parent directory.",
+            "Create and secure the target parent directory yourself, then choose an absent "
+                + option
+                + " path beneath it.",
+            option),
+        outputMode);
+  }
+
   private int writeFailure(
       dev.erst.fingrind.contract.runtime.ContractFailure failure, OutputMode outputMode) {
     return CliCommandOutcomeWriter.writeDeterministicFailure(failure, failureWriter, outputMode);
@@ -101,5 +119,12 @@ final class CliAttestationKeyFileWorkflow {
 
   private static Path normalized(Path path) {
     return Objects.requireNonNull(path, "path").toAbsolutePath().normalize();
+  }
+
+  private static boolean hasExistingCredentialParent(Path keyFilePath) {
+    Path parent = keyFilePath.getParent();
+    return parent != null
+        && !Files.isSymbolicLink(parent)
+        && Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS);
   }
 }

@@ -280,7 +280,7 @@ final class AttestationStaticCorpusVectors {
             "N-16",
             "B-04",
             new PolicyFacts("N-16", 5, AttestationCapability.CLOSE_PERIOD, 1, 3, 3, 0, true),
-            AttestationAuthorizationFailure.CAPABILITY_INVALID),
+            AttestationAuthorizationFailure.POLICY_CAPACITY_INVALID),
         negative(
             "N-17",
             "B-02",
@@ -300,7 +300,7 @@ final class AttestationStaticCorpusVectors {
             "N-20",
             "B-04",
             new PolicyFacts("N-20", 5, AttestationCapability.CLOSE_PERIOD, 2, 3, 2, 1, true),
-            AttestationAuthorizationFailure.CAPABILITY_INVALID),
+            AttestationAuthorizationFailure.POLICY_CAPACITY_INVALID),
         negative(
             "N-21",
             "B-03",

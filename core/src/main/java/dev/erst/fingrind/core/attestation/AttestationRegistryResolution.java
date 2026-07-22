@@ -102,6 +102,16 @@ final class AttestationRegistryResolution {
         .isPresent();
   }
 
+  boolean hasCredentialBindingForPrincipal(UUID principalId, BigInteger resolvingOrder) {
+    UUID checkedPrincipalId = Objects.requireNonNull(principalId, "principalId");
+    BigInteger checkedOrder = Objects.requireNonNull(resolvingOrder, "resolvingOrder");
+    return bindings.stream()
+        .anyMatch(
+            binding ->
+                binding.principalId().equals(checkedPrincipalId)
+                    && binding.acceptedOrder().compareTo(checkedOrder) <= 0);
+  }
+
   boolean hasActiveSystemWorkflow(
       AttestationSystemWorkflowKind workflowKind, BigInteger resolvingOrder) {
     AttestationSystemWorkflowKind checkedWorkflowKind =
@@ -157,6 +167,15 @@ final class AttestationRegistryResolution {
     policyRules.forEach(rule -> orders.add(rule.acceptedOrder()));
     workflowPolicies.forEach(policy -> orders.add(policy.acceptedOrder()));
     return List.copyOf(orders);
+  }
+
+  AttestationRegistryInspection inspection(
+      UUID bookId, BigInteger headOrder, String operationHeadHex) {
+    UUID checkedBookId = Objects.requireNonNull(bookId, "bookId");
+    BigInteger checkedHeadOrder = Objects.requireNonNull(headOrder, "headOrder");
+    String checkedOperationHeadHex = Objects.requireNonNull(operationHeadHex, "operationHeadHex");
+    return AttestationRegistryInspectionAssembler.assemble(
+        this, bindings, workflowPolicies, checkedBookId, checkedHeadOrder, checkedOperationHeadHex);
   }
 
   private boolean isRevoked(AttestationHash keyId, BigInteger resolvingOrder) {

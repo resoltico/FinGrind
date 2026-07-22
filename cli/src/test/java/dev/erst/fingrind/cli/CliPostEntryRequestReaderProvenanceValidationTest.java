@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
@@ -97,7 +98,7 @@ class CliPostEntryRequestReaderProvenanceValidationTest extends CliRequestReader
                 validRequestJson(false)
                     .replace(
                         "\"018f0000-0000-7000-8000-000000000001\"",
-                        "\"replace-before-commit-command-id\"")
+                        "\"" + ScaffoldPlaceholders.COMMAND_ID + "\"")
                     .getBytes(StandardCharsets.UTF_8)));
 
     CliRequestException exception =
