@@ -11,6 +11,7 @@ final class ProtocolQueryOperations {
     List<ProtocolOperation> reports = ProtocolQueryReportCatalog.operations();
     return Stream.of(
             List.of(
+                ProtocolAttestationKeyFileOperations.inspectAttestationKeyFileOperation(),
                 inspectBookOperation(),
                 verifyBookOperation(),
                 attestationReviewOperation(),

@@ -20,6 +20,12 @@ final class CliLifecycleParserBindings {
           OperationId.GENERATE_BOOK_KEY_FILE,
           CliLifecycleMutationArguments::parseGenerateBookKeyFileCommand),
       CliCommandParsingRegistry.binding(
+          OperationId.GENERATE_ATTESTATION_KEY_FILE,
+          CliLifecycleMutationArguments::parseGenerateAttestationKeyFileCommand),
+      CliCommandParsingRegistry.binding(
+          OperationId.INSPECT_ATTESTATION_KEY_FILE,
+          CliLifecycleMutationArguments::parseInspectAttestationKeyFileCommand),
+      CliCommandParsingRegistry.binding(
           OperationId.OPEN_BOOK, CliLifecycleMutationArguments::parseOpenBookCommand),
       CliCommandParsingRegistry.binding(
           OperationId.REKEY_BOOK, CliLifecycleMutationArguments::parseRekeyBookCommand),

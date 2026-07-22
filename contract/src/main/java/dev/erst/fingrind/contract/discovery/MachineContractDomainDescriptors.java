@@ -124,7 +124,8 @@ final class MachineContractDomainDescriptors {
     if (DISCOVERY_OPERATIONS.contains(operationId)) {
       return DISCOVERY_EXIT_CODES;
     }
-    if (operationId == OperationId.GENERATE_BOOK_KEY_FILE) {
+    if (operationId == OperationId.GENERATE_BOOK_KEY_FILE
+        || operationId == OperationId.GENERATE_ATTESTATION_KEY_FILE) {
       return KEY_GENERATION_EXIT_CODES;
     }
     if (MAINTENANCE_OPERATIONS.contains(operationId)) {

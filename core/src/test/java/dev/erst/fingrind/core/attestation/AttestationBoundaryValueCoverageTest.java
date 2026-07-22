@@ -448,6 +448,19 @@ class AttestationBoundaryValueCoverageTest {
   }
 
   @Test
+  void fileCustody_createsOneCredentialFromAnExternalPassphraseFile() throws Exception {
+    Path keyPath = temporaryDirectory.resolve("generated-from-file.fgatk");
+    Path passphrasePath = temporaryDirectory.resolve("generated-from-file.passphrase");
+    Files.writeString(passphrasePath, "correct horse battery staple\n");
+
+    AttestationPublicCredential created = AttestationKeyFiles.create(keyPath, passphrasePath);
+
+    assertTrue(
+        java.util.Arrays.equals(
+            created.keyId(), AttestationKeyFiles.loadPublicCredential(keyPath).keyId()));
+  }
+
+  @Test
   void credentialSessionAndPublicValues_enforceCustodyBoundaries() throws Exception {
     Path keyPath = temporaryDirectory.resolve("credential.fgatk");
     Path passphrasePath = temporaryDirectory.resolve("credential.passphrase");

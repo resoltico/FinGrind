@@ -439,8 +439,10 @@ class MachineContractDiscoverySurfaceTest {
     assertExitCodes(OperationId.PRINT_REQUEST_TEMPLATE, List.of(0, 1, 70));
     assertExitCodes(OperationId.HELP, List.of(0, 1, 2, 70));
     assertExitCodes(OperationId.GENERATE_BOOK_KEY_FILE, List.of(0, 1, 2, 6, 7, 70));
+    assertExitCodes(OperationId.GENERATE_ATTESTATION_KEY_FILE, List.of(0, 1, 2, 6, 7, 70));
     assertExitCodes(OperationId.BACKUP_BOOK, List.of(0, 1, 2, 4, 5, 6, 7, 70));
     assertExitCodes(OperationId.EXECUTE_PLAN, List.of(0, 1, 2, 3, 4, 5, 6, 70));
+    assertExitCodes(OperationId.INSPECT_ATTESTATION_KEY_FILE, List.of(0, 1, 2, 4, 5, 6, 70));
     assertExitCodes(OperationId.OPEN_BOOK, List.of(0, 1, 2, 4, 5, 6, 70));
   }
 

@@ -22,6 +22,10 @@ Historical release notes older than `0.31.0` live in:
   strict public-SPKI request documents and exact historical authorization refusals. Credential and
   policy changes now have a complete immutable public operation path rather than an internal-only
   registry surface.
+- Added standalone `generate-attestation-key-file` and `inspect-attestation-key-file` commands.
+  Operators can now provision a no-clobber encrypted Ed25519 credential, obtain its exact public
+  SPKI for enrollment or rollover, and recover the public identity of an existing founder or
+  operator credential without exposing a passphrase or private key.
 - Added first-class contra-account taxonomy. A declared account can now identify the active postable account it reduces; the relationship is validated as a same-type, compatible-statement relationship, normal balance follows the contra role, account readback publishes `contraOfAccountCode`, and financial statements present the row as a reduction of its named account.
 - Added discoverable `retire-account` request scaffolding and named atomic setup plans for tax, fixed assets, and financing. Each setup plan declares the exact prerequisite account taxonomy before it declares or uses the bounded-context facts, while the default `print-plan-template` remains a general executable workflow.
 - Added an explicit Latvian monthly-payroll withholding profile to every payroll request, retained payroll run, plan fact, and readback. The supported 2026 calculation admits only `taxBookHeldAtEmployer: true` with `dependantCount: 0` and rejects all other profiles rather than assuming their tax treatment.

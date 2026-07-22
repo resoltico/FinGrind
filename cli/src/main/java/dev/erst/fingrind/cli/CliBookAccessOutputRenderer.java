@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
+import dev.erst.fingrind.contract.runtime.AttestationKeyFileMetadata;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import java.nio.file.Path;
 import java.util.List;
@@ -20,6 +21,18 @@ final class CliBookAccessOutputRenderer {
     appendTightenedParentRows(rows, tightenedParentDirectories);
     return CliTextFormat.renderTitledBlock(
         "Book Key File Generated", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
+  }
+
+  static String renderAttestationKeyFileMetadata(
+      String title, AttestationKeyFileMetadata metadata) {
+    return CliTextFormat.renderTitledBlock(
+        title,
+        CliTextFormat.renderKeyValueBlock(
+            List.of(
+                List.of(
+                    "Attestation key file", CliTextDisplay.path(metadata.attestationKeyFilePath())),
+                List.of("Credential SPKI", metadata.credentialSpki()),
+                List.of("Key ID", metadata.keyId()))));
   }
 
   static String renderOpenBookText(

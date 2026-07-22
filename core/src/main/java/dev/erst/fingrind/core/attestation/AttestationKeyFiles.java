@@ -30,6 +30,18 @@ public final class AttestationKeyFiles {
         Objects.requireNonNull(path, "path"), ownedPassphrase);
   }
 
+  /** Creates one new encrypted credential using the secret decoded from one passphrase file. */
+  public static AttestationPublicCredential create(Path path, Path passphraseFilePath)
+      throws IOException {
+    char[] passphrase =
+        readPassphraseFile(Objects.requireNonNull(passphraseFilePath, "passphraseFilePath"));
+    try {
+      return create(path, passphrase);
+    } finally {
+      Arrays.fill(passphrase, '\0');
+    }
+  }
+
   /** Reads the public credential published with an encrypted attestation key file. */
   public static AttestationPublicCredential loadPublicCredential(Path path) throws IOException {
     return AttestationFilePkcs8Custodian.readPublicCredential(Objects.requireNonNull(path, "path"));

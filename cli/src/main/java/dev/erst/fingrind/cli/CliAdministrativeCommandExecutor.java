@@ -26,6 +26,7 @@ final class CliAdministrativeCommandExecutor {
   private final CliBookLifecycleWorkflow lifecycleWorkflow;
   private final CliBookMutationWorkflow mutationWorkflow;
   private final CliAccountRegistryMutationActions accountRegistryCommands;
+  private final CliAttestationKeyFileWorkflow attestationKeyFileWorkflow;
 
   CliAdministrativeCommandExecutor(
       CliRequestReader requestReader,
@@ -41,6 +42,18 @@ final class CliAdministrativeCommandExecutor {
     this.accountRegistryCommands =
         new CliAccountRegistryMutationActions(
             this.requestReader, this.responseWriter, this.failureWriter, this.mutationWorkflow);
+    this.attestationKeyFileWorkflow =
+        new CliAttestationKeyFileWorkflow(this.responseWriter, this.failureWriter);
+  }
+
+  int runGenerateAttestationKeyFileCommand(
+      Path attestationKeyFilePath, Path passphraseFilePath, OutputMode outputMode) {
+    return attestationKeyFileWorkflow.generate(
+        attestationKeyFilePath, passphraseFilePath, outputMode);
+  }
+
+  int runInspectAttestationKeyFileCommand(Path attestationKeyFilePath, OutputMode outputMode) {
+    return attestationKeyFileWorkflow.inspect(attestationKeyFilePath, outputMode);
   }
 
   int runGenerateBookKeyFileCommand(

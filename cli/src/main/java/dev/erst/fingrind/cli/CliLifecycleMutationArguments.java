@@ -10,6 +10,14 @@ final class CliLifecycleMutationArguments {
     return CliBookKeyGenerationArguments.parseGenerateBookKeyFileCommand(arguments);
   }
 
+  static CliCommand parseGenerateAttestationKeyFileCommand(List<String> arguments) {
+    return CliAttestationKeyFileArguments.parseGenerateAttestationKeyFileCommand(arguments);
+  }
+
+  static CliCommand parseInspectAttestationKeyFileCommand(List<String> arguments) {
+    return CliAttestationKeyFileArguments.parseInspectAttestationKeyFileCommand(arguments);
+  }
+
   static CliCommand parseOpenBookCommand(List<String> arguments) {
     return CliOpenBookArguments.parseOpenBookCommand(arguments);
   }

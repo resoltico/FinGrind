@@ -25,6 +25,8 @@ final class MachineContractRequestInputDescriptors {
             operation(OperationId.VERSION),
             operation(OperationId.CAPABILITIES),
             operation(OperationId.GENERATE_BOOK_KEY_FILE),
+            operation(OperationId.GENERATE_ATTESTATION_KEY_FILE),
+            operation(OperationId.INSPECT_ATTESTATION_KEY_FILE),
             operation(OperationId.OPEN_BOOK),
             operation(OperationId.REKEY_BOOK),
             operation(OperationId.INTERIM_RESULT_SWEEP),

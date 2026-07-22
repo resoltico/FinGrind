@@ -548,6 +548,16 @@ public final class ProtocolAttestationRegistryRequestFields
   values shared by parser, documentation, and signed mutation projection. Each array may carry a
   given capability, principal-capability pair, or workflow ID only once, respectively.
 
+## Attestation Credential Custody Commands
+
+`generate-attestation-key-file` owns the off-book private-credential creation boundary. It takes
+an absent `--new-attestation-key-file` target plus a separate
+`--attestation-passphrase-file`, publishes the encrypted credential as an
+`attestation-key-file` artifact, and returns only `credentialSpki` and its derived `keyId`.
+`inspect-attestation-key-file` takes only `--attestation-key-file` and returns those same public
+values without decrypting the private key or reading a passphrase. Both commands are ordinary
+JSON-envelope surfaces in the machine contract; neither accepts a request document.
+
 ## `ProtocolBookRequestFieldSets`, `ProtocolPostingRequestFieldSets`, `ProtocolPostingNestedFieldSets`, And `ProtocolLedgerPlanRequestFieldSets`
 
 These protocol field-set owners are the canonical accepted-field registries across public request

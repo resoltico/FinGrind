@@ -10,6 +10,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RetireAccountResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.runtime.AttestationKeyFileMetadata;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import java.nio.file.Path;
@@ -75,6 +76,15 @@ final class CliMutationResponseWriter {
       OutputMode outputMode) {
     administrativeWriter.writeGenerateBookKeyFileResult(
         generatedKeyFile, tightenedParentDirectories, outputMode);
+  }
+
+  void writeGeneratedAttestationKeyFileResult(
+      AttestationKeyFileMetadata metadata, OutputMode outputMode) {
+    administrativeWriter.writeGeneratedAttestationKeyFileResult(metadata, outputMode);
+  }
+
+  void writeAttestationKeyFileMetadata(AttestationKeyFileMetadata metadata, OutputMode outputMode) {
+    administrativeWriter.writeAttestationKeyFileMetadata(metadata, outputMode);
   }
 
   void writeRekeyBookResult(

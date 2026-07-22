@@ -17,6 +17,7 @@ import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.SweptInterimResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.contract.runtime.AttestationKeyFileMetadata;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.CurrencyBalance;
@@ -267,6 +268,28 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
                 AttestationVerificationFailure.QUORUM_BELOW),
             OutputMode.JSON);
     assertJsonContains(authorizationRejected, "\"code\":\"attestation-quorum-below\"");
+  }
+
+  @Test
+  void writesAttestationCredentialMetadataWithoutEverRenderingPrivateMaterial() {
+    AttestationKeyFileMetadata metadata =
+        new AttestationKeyFileMetadata(
+            Path.of("keys", "operator.fgatk"), "MCowBQYDK2VwAyEApublic", "a1b2c3d4");
+
+    ByteArrayOutputStream generatedText = new ByteArrayOutputStream();
+    writer(generatedText).writeGeneratedAttestationKeyFileResult(metadata, OutputMode.TEXT);
+    assertTrue(
+        generatedText.toString(StandardCharsets.UTF_8).contains("Attestation Key File Generated"));
+
+    ByteArrayOutputStream inspectedText = new ByteArrayOutputStream();
+    writer(inspectedText).writeAttestationKeyFileMetadata(metadata, OutputMode.TEXT);
+    assertTrue(inspectedText.toString(StandardCharsets.UTF_8).contains("Credential SPKI"));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            writer(new ByteArrayOutputStream())
+                .writeAttestationKeyFileMetadata(metadata, OutputMode.CSV));
   }
 
   private static CliAdministrativeMutationResponseWriter writer(

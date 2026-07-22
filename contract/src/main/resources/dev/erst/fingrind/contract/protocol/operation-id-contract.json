@@ -6,6 +6,8 @@
   "PRINT_REQUEST_TEMPLATE": "print-request-template",
   "PRINT_PLAN_TEMPLATE": "print-plan-template",
   "GENERATE_BOOK_KEY_FILE": "generate-book-key-file",
+  "GENERATE_ATTESTATION_KEY_FILE": "generate-attestation-key-file",
+  "INSPECT_ATTESTATION_KEY_FILE": "inspect-attestation-key-file",
   "OPEN_BOOK": "open-book",
   "REKEY_BOOK": "rekey-book",
   "BACKUP_BOOK": "backup-book",

@@ -7,6 +7,7 @@ public record ProtocolArtifactOutput(String format, String option, String descri
   private static final String PDF_FORMAT = "pdf";
   private static final String BOOK_FILE_FORMAT = "book-file";
   private static final String BOOK_KEY_FILE_FORMAT = "book-key-file";
+  private static final String ATTESTATION_KEY_FILE_FORMAT = "attestation-key-file";
   private static final String BACKUP_FILE_FORMAT = "backup-file";
   private static final String BACKUP_KEY_FILE_FORMAT = "backup-key-file";
   private static final String ROLLBACK_BOOK_FILE_FORMAT = "rollback-book-file";
@@ -30,6 +31,11 @@ public record ProtocolArtifactOutput(String format, String option, String descri
           BOOK_KEY_FILE_FORMAT,
           ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE + " <path>",
           "Publishes the newly generated book key file for a staged rekey or restore workflow.");
+  private static final ProtocolArtifactOutput GENERATED_ATTESTATION_KEY_FILE =
+      new ProtocolArtifactOutput(
+          ATTESTATION_KEY_FILE_FORMAT,
+          ProtocolOptions.Attestation.NEW_KEY_FILE + " <path>",
+          "Publishes a newly generated owner-only encrypted Ed25519 attestation key file at an absent target path.");
   private static final ProtocolArtifactOutput NEW_BACKUP_KEY_FILE =
       new ProtocolArtifactOutput(
           BACKUP_KEY_FILE_FORMAT,
@@ -91,6 +97,16 @@ public record ProtocolArtifactOutput(String format, String option, String descri
   /** Returns the canonical generated book-key-file descriptor for rekey and restore workflows. */
   public static ProtocolArtifactOutput newBookKeyFile() {
     return NEW_BOOK_KEY_FILE;
+  }
+
+  /** Returns the canonical generated encrypted-attestation-key-file descriptor. */
+  public static ProtocolArtifactOutput generatedAttestationKeyFile() {
+    return GENERATED_ATTESTATION_KEY_FILE;
+  }
+
+  /** Returns the stable wire format published for encrypted attestation-key artifacts. */
+  public static String attestationKeyFileFormat() {
+    return ATTESTATION_KEY_FILE_FORMAT;
   }
 
   /** Returns the canonical backup-file descriptor. */

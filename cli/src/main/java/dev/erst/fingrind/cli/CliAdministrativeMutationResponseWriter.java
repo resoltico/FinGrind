@@ -24,10 +24,12 @@ import java.util.function.Function;
 final class CliAdministrativeMutationResponseWriter {
   private final CliOutputChannel outputChannel;
   private final CliAccountRegistryMutationResponseWriter accountRegistryWriter;
+  private final CliAttestationKeyFileResponseWriter attestationKeyFileWriter;
 
   CliAdministrativeMutationResponseWriter(CliOutputChannel outputChannel) {
     this.outputChannel = Objects.requireNonNull(outputChannel, "outputChannel");
     this.accountRegistryWriter = new CliAccountRegistryMutationResponseWriter(outputChannel);
+    this.attestationKeyFileWriter = new CliAttestationKeyFileResponseWriter(outputChannel);
   }
 
   void writeOpenBookResult(
@@ -91,6 +93,18 @@ final class CliAdministrativeMutationResponseWriter {
           throw new IllegalArgumentException(
               CliOperationText.unsupportedCsvOutput(OperationId.GENERATE_BOOK_KEY_FILE));
         });
+  }
+
+  void writeGeneratedAttestationKeyFileResult(
+      dev.erst.fingrind.contract.runtime.AttestationKeyFileMetadata metadata,
+      OutputMode outputMode) {
+    attestationKeyFileWriter.writeGeneratedResult(metadata, outputMode);
+  }
+
+  void writeAttestationKeyFileMetadata(
+      dev.erst.fingrind.contract.runtime.AttestationKeyFileMetadata metadata,
+      OutputMode outputMode) {
+    attestationKeyFileWriter.writeMetadata(metadata, outputMode);
   }
 
   void writeRekeyBookResult(

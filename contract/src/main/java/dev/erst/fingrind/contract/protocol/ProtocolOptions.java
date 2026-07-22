@@ -65,6 +65,7 @@ public final class ProtocolOptions {
     public static final String FOUNDER_PASSPHRASE_FILE = "--attestation-founder-passphrase-file";
     public static final String PRINCIPAL_ID = "--attestation-principal-id";
     public static final String KEY_FILE = "--attestation-key-file";
+    public static final String NEW_KEY_FILE = "--new-attestation-key-file";
     public static final String PASSPHRASE_FILE = "--attestation-passphrase-file";
     public static final String REQUIRE_CLEAN = "--require-clean-attestation";
     public static final String RECEIPT_FILE = "--receipt-file";

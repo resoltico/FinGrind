@@ -19,6 +19,8 @@ sealed interface CliCommand
           Capabilities,
           EnvironmentCommand,
           GenerateBookKeyFile,
+          GenerateAttestationKeyFile,
+          InspectAttestationKeyFile,
           OpenBook,
           RekeyBook,
           BackupBook,

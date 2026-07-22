@@ -91,6 +91,7 @@ class ProtocolCatalogTest {
     assertEquals(
         List.of(
             "generate-book-key-file",
+            "generate-attestation-key-file",
             "open-book",
             "rekey-book",
             "backup-book",
@@ -108,6 +109,7 @@ class ProtocolCatalogTest {
         ProtocolCatalog.operationNames(OperationCategory.ADMINISTRATION));
     assertEquals(
         List.of(
+            "inspect-attestation-key-file",
             "inspect-book",
             "verify-book",
             "attestation-review",
@@ -289,10 +291,14 @@ class ProtocolCatalogTest {
     assertEquals("pdf", ProtocolArtifactOutput.pdfFormat());
     assertEquals("book-file", ProtocolArtifactOutput.bookFileFormat());
     assertEquals("book-key-file", ProtocolArtifactOutput.bookKeyFileFormat());
+    assertEquals("attestation-key-file", ProtocolArtifactOutput.attestationKeyFileFormat());
     assertEquals("backup-file", ProtocolArtifactOutput.backupFileFormat());
     assertEquals("backup-key-file", ProtocolArtifactOutput.backupKeyFileFormat());
     assertEquals("rollback-book-file", ProtocolArtifactOutput.rollbackBookFileFormat());
     assertEquals("--new-book-key-file <path>", ProtocolArtifactOutput.newBookKeyFile().option());
+    assertEquals(
+        "--new-attestation-key-file <path>",
+        ProtocolArtifactOutput.generatedAttestationKeyFile().option());
     assertEquals("--book-file <path>", ProtocolArtifactOutput.bookFile().option());
     assertEquals(
         "--new-backup-key-file <path>", ProtocolArtifactOutput.newBackupKeyFile().option());

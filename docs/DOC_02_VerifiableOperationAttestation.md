@@ -87,6 +87,19 @@ Ed25519 credential. It publishes a no-clobber key file and returns `AttestationP
 encrypted key without decrypting its private material. A credential contains only canonical public
 DER-SPKI bytes and its SHA-256 key identifier.
 
+The public CLI makes those two safe custody operations available as
+`generate-attestation-key-file` and `inspect-attestation-key-file`: the generator emits the
+canonical base64url SPKI required by `enroll-key` or `rollover-key`, while inspection makes an
+existing credential's SPKI recoverable for revocation or predecessor selection without exposing
+private material.
+
+## `AttestationKeyFileMetadata`
+
+`AttestationKeyFileMetadata` is the public non-secret response value for standalone credential
+custody. It carries the selected credential-file path, canonical base64url `credentialSpki`, and
+the derived lowercase-hex SHA-256 `keyId`; the CLI publishes the key file itself only as the
+generator's artifact and never publishes private-key or passphrase material.
+
 ## `AttestationOperationSigner`
 
 `AttestationOperationSigner` builds an ordered operation envelope only from canonical request and

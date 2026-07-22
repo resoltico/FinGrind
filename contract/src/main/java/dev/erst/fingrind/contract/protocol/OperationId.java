@@ -21,6 +21,8 @@ public enum OperationId implements WireValue {
   PRINT_PLAN_TEMPLATE,
   /** Creates a generated owner-only book key file. */
   GENERATE_BOOK_KEY_FILE,
+  /** Creates one encrypted Ed25519 attestation credential and publishes its public identity. */
+  GENERATE_ATTESTATION_KEY_FILE,
   /** Initializes one protected book. */
   OPEN_BOOK,
   /** Rotates the passphrase protecting one book. */
@@ -49,6 +51,8 @@ public enum OperationId implements WireValue {
   INTERIM_RESULT_SWEEP,
   /** Closes one fiscal year into capital and retained accumulated targets. */
   FISCAL_YEAR_CLOSE,
+  /** Reads the public identity embedded in one encrypted attestation credential file. */
+  INSPECT_ATTESTATION_KEY_FILE,
   /** Inspects one book for lifecycle and compatibility state. */
   INSPECT_BOOK,
   /** Verifies the complete immutable attestation chain from genesis. */

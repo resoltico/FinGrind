@@ -19,7 +19,7 @@ payloads returned by the CLI.
 
 | Output | Returned By | Fields |
 |:-------|:------------|:-------|
-| success envelope | `help`, `version`, `capabilities`, `environment`, `generate-book-key-file`, `open-book`, `rekey-book`, `backup-book`, `restore-book`, `enroll-key`, `rollover-key`, `revoke-key`, `alter-policy`, `verify-book`, `attestation-review`, `export-attestation-receipt`, `verify-receipt`, `declare-account`, `amend-account`, `retire-account`, `declare-tax-registration`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`, `accrual-cutoff-schedule`, `fixed-asset-register`, `financing-register`, `realized-foreign-exchange-register`, `latvian-payroll-register`, `income-statement`, `cash-flow-statement`, `changes-in-equity`, `tax-obligation` | `status`, `payload`, optional `artifacts[]` |
+| success envelope | `help`, `version`, `capabilities`, `environment`, `generate-book-key-file`, `generate-attestation-key-file`, `inspect-attestation-key-file`, `open-book`, `rekey-book`, `backup-book`, `restore-book`, `enroll-key`, `rollover-key`, `revoke-key`, `alter-policy`, `verify-book`, `attestation-review`, `export-attestation-receipt`, `verify-receipt`, `declare-account`, `amend-account`, `retire-account`, `declare-tax-registration`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`, `accrual-cutoff-schedule`, `fixed-asset-register`, `financing-register`, `realized-foreign-exchange-register`, `latvian-payroll-register`, `income-statement`, `cash-flow-statement`, `changes-in-equity`, `tax-obligation` | `status`, `payload`, optional `artifacts[]` |
 | raw request document | `print-request-template`, `print-plan-template` | canonical posting-request, declare-account-request, declare-tax-registration-request, or AI-agent ledger-plan scaffold JSON |
 | `ok` | successful `preflight-entry` | `status`, `payload.idempotencyKey`, `payload.effectiveDate`, `payload.resolvedJournal` |
 | `ok` | successful typed `record-*` command, `post-entry`, or `record-reversal` | `status`, `payload.postingId`, `payload.idempotencyKey`, `payload.effectiveDate`, `payload.recordedAt`, `payload.idempotentReplay`, `payload.resolvedJournal` |
@@ -44,6 +44,10 @@ Dynamic fields:
   canonical successful artifact publication surface;
   each JSON entry carries `format` plus one canonical absolute `path`, and generated key files currently
   publish `format: "book-key-file"`
+- `generate-attestation-key-file --new-attestation-key-file` publishes the created encrypted
+  credential through `artifacts[]` as `format: "attestation-key-file"`; its payload exposes only
+  canonical `credentialSpki` and derived lowercase-hex `keyId`. `inspect-attestation-key-file`
+  returns the same two public fields and never emits an artifact, private key, or passphrase.
 - `generate-book-key-file` succeeds only when the selected parent directory is already owner-only
   or can be created as one missing private directory
 - `open-book.payload.initializedAt` is stamped from the FinGrind clock

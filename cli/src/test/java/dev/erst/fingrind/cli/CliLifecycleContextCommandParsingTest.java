@@ -75,6 +75,25 @@ class CliLifecycleContextCommandParsingTest {
                 "alter-policy", "--request-file", "alter-policy.json", "--output", "text")));
   }
 
+  @Test
+  void parse_attestationKeyFileCommands_acceptTheirStandaloneCustodyOptions() {
+    assertInstanceOf(
+        GenerateAttestationKeyFile.class,
+        CliCommandParsingRegistry.parse(
+            OperationId.GENERATE_ATTESTATION_KEY_FILE,
+            List.of(
+                "generate-attestation-key-file",
+                "--new-attestation-key-file",
+                "operator.fgatk",
+                "--attestation-passphrase-file",
+                "operator.passphrase")));
+    assertInstanceOf(
+        InspectAttestationKeyFile.class,
+        CliCommandParsingRegistry.parse(
+            OperationId.INSPECT_ATTESTATION_KEY_FILE,
+            List.of("inspect-attestation-key-file", "--attestation-key-file", "operator.fgatk")));
+  }
+
   private static List<String> commandArguments(String command, String... commandArguments) {
     List<String> arguments = new java.util.ArrayList<>();
     arguments.add(command);

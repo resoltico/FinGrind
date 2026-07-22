@@ -130,6 +130,7 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
     assertEquals(
         List.of(
             "generate-book-key-file",
+            "generate-attestation-key-file",
             "open-book",
             "rekey-book",
             "backup-book",
@@ -147,6 +148,7 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
         commandNames(payload.path("commands").path("administration")));
     assertEquals(
         List.of(
+            "inspect-attestation-key-file",
             "inspect-book",
             "verify-book",
             "attestation-review",

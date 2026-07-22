@@ -65,11 +65,29 @@ or support tickets.
 
 ## Credential And Policy Lifecycle
 
-Credential provisioning is an off-book custody step: create and retain the encrypted file-backed
-credential before seeking authorization to enroll it. Its public DER SubjectPublicKeyInfo (SPKI)
-is safe to share. Lifecycle request documents carry that public value as canonical unpadded
-base64url in `credentialSpki`; they never carry a local credential path, a passphrase, a private
-key, a key ID chosen by the caller, or an encrypted-key-file payload. FinGrind derives the key ID
+Credential provisioning is an off-book custody step. First prepare a distinct owner-only,
+nonempty UTF-8 passphrase file through your local secret-management procedure, then let FinGrind
+create the no-clobber encrypted credential and emit the exact public identity that an enrollment
+or rollover request needs:
+
+```bash
+fingrind generate-attestation-key-file \
+  --new-attestation-key-file ./secrets/operator.fgatk \
+  --attestation-passphrase-file ./secrets/operator.passphrase
+```
+
+The successful payload includes canonical unpadded base64url `credentialSpki` and its derived
+lowercase-hex `keyId`; it never includes the passphrase or private key. To recover the public
+identity of an existing founder or operator credential for rollover or revocation, use:
+
+```bash
+fingrind inspect-attestation-key-file \
+  --attestation-key-file ./secrets/founder.fgatk
+```
+
+Lifecycle request documents carry only that public DER SubjectPublicKeyInfo (SPKI) as canonical
+unpadded base64url in `credentialSpki`; they never carry a local credential path, a passphrase, a
+private key, a caller-chosen key ID, or an encrypted-key-file payload. FinGrind derives the key ID
 as SHA-256 of the SPKI and signs the resulting public binding facts.
 
 `enroll-key` binds a new credential to a principal. It does not grant a capability: use

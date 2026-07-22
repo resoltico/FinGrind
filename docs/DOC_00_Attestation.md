@@ -42,6 +42,7 @@ canonical references without widening the general API index.
 | `AttestationGrantState` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationRegistryMutation`, `AttestationCapability`, `AttestationCredentialPurpose`, `AttestationGrantState`, And `AttestationSystemWorkflowKind` |
 | `AttestationInspectionService` | `DOC_02_VerifiableOperationAttestationVerification.md` | `Attestation Inspection And Verification Results` |
 | `AttestationKeyFiles` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationKeyFiles` |
+| `AttestationKeyFileMetadata` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationKeyFileMetadata` |
 | `AttestationLifecycleMutationProjection` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationLifecycleState` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationMutationAuthorization` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |

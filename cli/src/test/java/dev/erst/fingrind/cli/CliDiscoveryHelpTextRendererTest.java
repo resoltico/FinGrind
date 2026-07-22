@@ -621,6 +621,7 @@ class CliDiscoveryHelpTextRendererTest extends CliDiscoveryHelpTextTestSupport {
                   OperationId.OPEN_BOOK));
 
       assertTrue(rendered.contains("./scripts/direct-java-cli.sh open-book --book-file <path>"));
+      assertTrue(rendered.contains("--book-start-effective-date <YYYY-MM-DD>"));
       assertFalse(rendered.contains("fingrind open-book --book-file <path>"));
     } finally {
       restoreRuntimeDistribution(previousDistribution);

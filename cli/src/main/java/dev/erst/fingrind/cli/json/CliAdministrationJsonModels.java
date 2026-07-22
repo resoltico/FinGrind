@@ -87,6 +87,14 @@ public interface CliAdministrationJsonModels {
     }
   }
 
+  record AttestationKeyFilePayload(String credentialSpki, String keyId)
+      implements CliSuccessPayload {
+    public AttestationKeyFilePayload {
+      credentialSpki = requireText(credentialSpki, "credentialSpki");
+      keyId = requireText(keyId, "keyId");
+    }
+  }
+
   record RekeyBookPayload(String bookFile, String newBookKeyFile) implements CliSuccessPayload {
     public RekeyBookPayload {
       bookFile = requireText(bookFile, "bookFile");

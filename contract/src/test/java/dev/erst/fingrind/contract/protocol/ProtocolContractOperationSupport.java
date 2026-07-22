@@ -112,6 +112,7 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
             Set.of(
                 "close-target-account-candidate-missing",
                 "account-state-violations",
+                "attestation-key-file",
                 "administration-book-not-initialized",
                 "assertion-failed",
                 "book-already-initialized",
