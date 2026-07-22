@@ -56,6 +56,14 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Fixed the attestation signing boundary to accept one through 64 distinct principal credentials,
+  the same exact-quorum range policy admits. A reachable policy can no longer strand public
+  mutation, backup, restore, rekey, receipt export, or policy repair behind more signers than a
+  public envelope can carry.
+- Fixed receipt-export authorization and registry-mutation exit handling. An insufficient or
+  otherwise unauthorized signer set now returns its exact `attestation-*` rejection with exit
+  code `2`, never an internal error or a successful process status, and receipt export leaves no
+  artifact behind.
 - Fixed backup retry after an interrupted owned companion-key publication. The next matching
   backup now claims both destinations, discards only its verifiable owned incomplete publication,
   and starts a fresh pair without deleting an unowned or complete artifact.

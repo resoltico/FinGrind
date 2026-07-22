@@ -268,6 +268,18 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
                 AttestationVerificationFailure.QUORUM_BELOW),
             OutputMode.JSON);
     assertJsonContains(authorizationRejected, "\"code\":\"attestation-quorum-below\"");
+    assertEquals(0, CliAttestationExitCodes.exitCodeFor(mutated));
+    assertEquals(
+        2,
+        CliAttestationExitCodes.exitCodeFor(
+            new AttestationRegistryMutationResult.Rejected(
+                new BookMaintenanceRejection.BackupDestinationAlreadyExists(
+                    Path.of("backup.sqlite")))));
+    assertEquals(
+        2,
+        CliAttestationExitCodes.exitCodeFor(
+            new AttestationRegistryMutationResult.AuthorizationRejected(
+                AttestationVerificationFailure.QUORUM_BELOW)));
   }
 
   @Test

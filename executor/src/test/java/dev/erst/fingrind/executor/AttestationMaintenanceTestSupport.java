@@ -45,8 +45,13 @@ final class AttestationMaintenanceTestSupport {
   private AttestationMaintenanceTestSupport() {}
 
   static CredentialFixture createCredential(Path directory) throws IOException {
-    Path keyPath = directory.resolve("founder.fgatk");
-    Path passphrasePath = directory.resolve("founder.passphrase");
+    return createCredential(directory, PRINCIPAL_ID, "founder");
+  }
+
+  static CredentialFixture createCredential(Path directory, UUID principalId, String fileStem)
+      throws IOException {
+    Path keyPath = directory.resolve(fileStem + ".fgatk");
+    Path passphrasePath = directory.resolve(fileStem + ".passphrase");
     char[] passphrase = "test attestation passphrase".toCharArray();
     try {
       AttestationKeyFiles.create(keyPath, passphrase);
@@ -55,18 +60,25 @@ final class AttestationMaintenanceTestSupport {
       java.util.Arrays.fill(passphrase, '\0');
     }
     return new CredentialFixture(
-        new AttestationCredentialSource(PRINCIPAL_ID, keyPath, passphrasePath));
+        new AttestationCredentialSource(principalId, keyPath, passphrasePath));
   }
 
   static AttestationEvidence genesis(CredentialFixture credential, Instant recordedAt) {
+    return genesis(List.of(credential), recordedAt);
+  }
+
+  static AttestationEvidence genesis(List<CredentialFixture> credentials, Instant recordedAt) {
     return AttestationGenesisFactory.create(
         ExecutorAccountingTestSupport.bookIdentity(),
         recordedAt,
-        List.of(
-            new dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput(
-                PRINCIPAL_ID,
-                credential.source().encryptedKeyFilePath(),
-                credential.source().passphraseFilePath())));
+        credentials.stream()
+            .map(
+                credential ->
+                    new dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput(
+                        credential.source().principalId(),
+                        credential.source().encryptedKeyFilePath(),
+                        credential.source().passphraseFilePath()))
+            .toList());
   }
 
   static BookAccess bookAccess(Path bookPath, CredentialFixture credential) {

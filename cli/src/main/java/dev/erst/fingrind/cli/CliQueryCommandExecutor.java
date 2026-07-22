@@ -71,7 +71,7 @@ final class CliQueryCommandExecutor {
         outputMode,
         ignored -> readWorkflow.exportAttestationReceipt(bookAccess, receiptFilePath),
         result -> responseWriter.writeExportAttestationReceipt(result, outputMode),
-        ignored -> 0);
+        CliAttestationExitCodes::exitCodeFor);
   }
 
   int runVerifyAttestationReceiptCommand(

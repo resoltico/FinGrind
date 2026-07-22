@@ -55,6 +55,9 @@ opened as the founder credential. Later signing commands require an existing enr
 `--attestation-principal-id`, `--attestation-key-file`, and
 `--attestation-passphrase-file`. Do not reuse a book key file as an attestation key file, copy an
 attestation passphrase into a command line, or store either secret alongside an exported receipt.
+Every later signing command accepts one through 64 aligned credential triples, matching the full
+exact-quorum range that a reachable policy may require. A policy therefore never leaves its own
+public signing, backup, restore, rekey, receipt, or policy-repair path unreachable.
 
 The file-backed credential format is public: it stores an Ed25519 PKCS#8 private key encrypted
 with PBKDF2-HMAC-SHA-256 (600,000 iterations, a fresh 16-byte salt) and AES-256-GCM (a fresh
@@ -189,6 +192,11 @@ fingrind verify-receipt \
   --book-key-file ./secrets/acme.book-key \
   --receipt-file ./receipts/acme.fgar
 ```
+
+Receipt export uses the historical `anchor` policy at the current head. A valid but insufficient,
+unenrolled, revoked, or otherwise unauthorized signer set returns the exact attestation rejection
+code, such as `attestation-quorum-below`, with exit code `2`; it never becomes a storage or
+internal error and no receipt artifact is created.
 
 For the canonical binary encoding and authorization policy, see
 [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md). For

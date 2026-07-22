@@ -122,36 +122,44 @@ final class CliBookReadResponseWriter {
   }
 
   void writeExportAttestationReceipt(ExportAttestationReceiptResult result, OutputMode outputMode) {
-    outputMode.run(
-        () ->
-            outputChannel.writeEnvelope(
-                CliEnvelopeMapper.successEnvelope(
-                    new CliAttestationJsonModels.ExportReceiptPayload(
-                        CliPublicPaths.absoluteValue(result.receiptFilePath()),
-                        result.bookId().toString(),
-                        result.operationOrder().toString(),
-                        result.operationHeadHex(),
-                        result.warnings()),
-                    CliEnvelopeMapper.successArtifacts(
-                        CliEnvelopeMapper.successArtifact(
-                            "attestation-receipt-v1", result.receiptFilePath())))),
-        () ->
-            writeAttestationText(
-                "Attestation Receipt Exported",
-                List.of(
-                    List.of("Receipt file", CliTextDisplay.path(result.receiptFilePath())),
-                    List.of("Book ID", result.bookId().toString()),
-                    List.of("Operation order", result.operationOrder().toString()),
-                    List.of("Operation head", result.operationHeadHex()),
-                    List.of(
-                        "Warnings",
-                        result.warnings().isEmpty()
-                            ? "(none)"
-                            : CliTextFormat.joined(result.warnings())))),
-        () -> {
-          throw new IllegalArgumentException(
-              CliOperationText.unsupportedCsvOutput(OperationId.EXPORT_ATTESTATION_RECEIPT));
-        });
+    switch (result) {
+      case ExportAttestationReceiptResult.Exported exported ->
+          outputMode.run(
+              () ->
+                  outputChannel.writeEnvelope(
+                      CliEnvelopeMapper.successEnvelope(
+                          new CliAttestationJsonModels.ExportReceiptPayload(
+                              CliPublicPaths.absoluteValue(exported.receiptFilePath()),
+                              exported.bookId().toString(),
+                              exported.operationOrder().toString(),
+                              exported.operationHeadHex(),
+                              exported.warnings()),
+                          CliEnvelopeMapper.successArtifacts(
+                              CliEnvelopeMapper.successArtifact(
+                                  "attestation-receipt-v1", exported.receiptFilePath())))),
+              () ->
+                  writeAttestationText(
+                      "Attestation Receipt Exported",
+                      List.of(
+                          List.of("Receipt file", CliTextDisplay.path(exported.receiptFilePath())),
+                          List.of("Book ID", exported.bookId().toString()),
+                          List.of("Operation order", exported.operationOrder().toString()),
+                          List.of("Operation head", exported.operationHeadHex()),
+                          List.of(
+                              "Warnings",
+                              exported.warnings().isEmpty()
+                                  ? "(none)"
+                                  : CliTextFormat.joined(exported.warnings())))),
+              () -> {
+                throw new IllegalArgumentException(
+                    CliOperationText.unsupportedCsvOutput(OperationId.EXPORT_ATTESTATION_RECEIPT));
+              });
+      case ExportAttestationReceiptResult.AuthorizationRejected rejected ->
+          outputChannel.writeRejectedEnvelope(
+              CliRejectionPayloadMapper.attestationAuthorizationRejectedEnvelope(
+                  rejected.failure()),
+              outputMode);
+    }
   }
 
   void writeVerifyAttestationReceipt(VerifyAttestationReceiptResult result, OutputMode outputMode) {

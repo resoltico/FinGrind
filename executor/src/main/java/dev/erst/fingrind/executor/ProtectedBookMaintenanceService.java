@@ -7,7 +7,6 @@ import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
-import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import dev.erst.fingrind.core.attestation.AttestationSigningSession;
@@ -118,7 +117,7 @@ public final class ProtectedBookMaintenanceService {
     } catch (AttestationCredentialException
         | IllegalArgumentException
         | NullPointerException exception) {
-      return invalidAttestationCredentials(checkedContextPath);
+      return AttestationCredentialRefusals.forOperation(checkedContextPath);
     }
     try (session) {
       return checkedAction.apply(session);
@@ -132,18 +131,9 @@ public final class ProtectedBookMaintenanceService {
     try {
       credentialSources = checkedBookAccess.requireAttestationCredentialSources();
     } catch (IllegalStateException exception) {
-      return invalidAttestationCredentials(checkedBookAccess.bookFilePath());
+      return AttestationCredentialRefusals.forOperation(checkedBookAccess.bookFilePath());
     }
     return withSigningSession(credentialSources, checkedBookAccess.bookFilePath(), action);
-  }
-
-  private static <T> ContractDecision<T> invalidAttestationCredentials(Path contextPath) {
-    return ContractDecision.rejected(
-        ContractErrors.Descriptor.INVALID_ATTESTATION_CREDENTIAL.failureAt(
-            contextPath,
-            "FinGrind could not open the selected attestation credentials.",
-            "Provide one through five readable existing attestation credential triples authorized for this operation.",
-            "--attestation-principal-id"));
   }
 
   private static ContractDecision<BackupBookResult> toPublishedBackup(

@@ -10,8 +10,14 @@ record AttestationPolicyRule(
     acceptedOrder =
         AttestationUnsignedEncoding.requireUnsigned(acceptedOrder, Long.BYTES, "acceptedOrder");
     Objects.requireNonNull(capability, "capability");
-    if (quorum < 1 || quorum > 64) {
-      throw new IllegalArgumentException("Attestation policy quorum must be between 1 and 64.");
+    if (quorum < AttestationAuthorizationLimits.MINIMUM_QUORUM
+        || quorum > AttestationAuthorizationLimits.MAXIMUM_QUORUM) {
+      throw new IllegalArgumentException(
+          "Attestation policy quorum must be between "
+              + AttestationAuthorizationLimits.MINIMUM_QUORUM
+              + " and "
+              + AttestationAuthorizationLimits.MAXIMUM_QUORUM
+              + ".");
     }
   }
 }

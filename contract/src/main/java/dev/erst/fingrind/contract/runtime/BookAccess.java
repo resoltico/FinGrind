@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract.runtime;
 
 import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
+import dev.erst.fingrind.core.attestation.AttestationAuthorizationLimits;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import java.nio.file.Path;
 import java.util.HashSet;
@@ -19,16 +20,16 @@ public record BookAccess(
     attestationCredentialSources =
         List.copyOf(
             Objects.requireNonNull(attestationCredentialSources, "attestationCredentialSources"));
-    if (attestationCredentialSources.size() > 5) {
+    if (attestationCredentialSources.size() > AttestationAuthorizationLimits.MAXIMUM_QUORUM) {
       throw new IllegalArgumentException(
-          "Book access may name at most five attestation authorization credentials.");
+          "Book access may name at most "
+              + AttestationAuthorizationLimits.MAXIMUM_QUORUM
+              + " attestation authorization credentials.");
     }
     requireDistinctCredentialSources(attestationCredentialSources);
   }
 
-  /**
-   * Requires the explicit one-through-five credentials needed by a mutating protected-book call.
-   */
+  /** Requires the explicit one-through-64 credentials needed by a mutating protected-book call. */
   public List<AttestationCredentialSource> requireAttestationCredentialSources() {
     if (attestationCredentialSources.isEmpty()) {
       throw new IllegalStateException(

@@ -26,7 +26,8 @@ public final class AttestationSigningSession
   }
 
   /**
-   * Opens one through five pre-existing encrypted credentials for a single authorization attempt.
+   * Opens one through the current policy maximum of pre-existing encrypted credentials for one
+   * authorization attempt.
    *
    * <p>Mutation credentials are never created implicitly: enrollment is a separate attested
    * operation. A missing file is therefore a typed credential-use refusal at the caller's boundary.
@@ -34,9 +35,14 @@ public final class AttestationSigningSession
   public static AttestationSigningSession open(List<AttestationCredentialSource> sources) {
     List<AttestationCredentialSource> checkedSources =
         List.copyOf(Objects.requireNonNull(sources, "sources"));
-    if (checkedSources.isEmpty() || checkedSources.size() > 5) {
+    if (checkedSources.isEmpty()
+        || checkedSources.size() > AttestationAuthorizationLimits.MAXIMUM_QUORUM) {
       throw new IllegalArgumentException(
-          "Attestation authorization requires one through five credentials.");
+          "Attestation authorization requires "
+              + AttestationAuthorizationLimits.MINIMUM_QUORUM
+              + " through "
+              + AttestationAuthorizationLimits.MAXIMUM_QUORUM
+              + " credentials.");
     }
     requireDistinctSources(checkedSources);
     List<AttestationSigningCredential> opened = new ArrayList<>(checkedSources.size());

@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract.protocol;
 
 import dev.erst.fingrind.core.ComparativeMode;
 import dev.erst.fingrind.core.WireValue;
+import dev.erst.fingrind.core.attestation.AttestationAuthorizationLimits;
 import java.util.List;
 
 /** Canonical public CLI option spellings used by the protocol catalog and parser. */
@@ -109,7 +110,9 @@ public final class ProtocolOptions {
         + Attestation.KEY_FILE
         + " <path> "
         + Attestation.PASSPHRASE_FILE
-        + " <path> (repeat one through five aligned triples)";
+        + " <path> (repeat one through "
+        + AttestationAuthorizationLimits.MAXIMUM_QUORUM
+        + " aligned triples)";
   }
 
   /** Returns the rendered optional page-limit syntax. */

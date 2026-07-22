@@ -145,11 +145,15 @@ receipt-not-independent.
 `AttestationReceipt` is the immutable off-chain anchor envelope. `AttestationReceiptFinding` and
 `AttestationReceiptRetention` classify its verification and independence status, while
 `AttestationReceiptVerificationResult` carries the verified anchor outcome. The public
-`ExportAttestationReceiptResult` reports no-clobber receipt publication, and
-`VerifyAttestationReceiptResult` reports receipt verification. Both remain non-mutating: neither
-command appends evidence or changes a book's head. A structurally invalid receipt publishes the
-exact closed `AttestationVerificationFailure` code in a `structural-invalid` rejected envelope;
-an unreadable or malformed receipt artifact uses `receipt-artifact-invalid`.
+`ExportAttestationReceiptResult` has two closed outcomes: `Exported` reports no-clobber receipt
+publication and `AuthorizationRejected` reports the exact historical authorization failure before
+any receipt staging or publication begins. `VerifyAttestationReceiptResult` reports receipt
+verification. All remain non-mutating: neither command appends evidence or changes a book's head.
+An insufficient otherwise-readable signing set, for example, returns the rejected envelope code
+`attestation-quorum-below` with exit code `2`, never `internal-error`, and leaves no receipt file.
+A structurally invalid receipt publishes the exact closed `AttestationVerificationFailure` code in
+a `structural-invalid` rejected envelope; an unreadable or malformed receipt artifact uses
+`receipt-artifact-invalid`.
 
 | Verifier holds | Detects | Does not detect |
 |:--|:--|:--|

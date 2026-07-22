@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.core.attestation.AttestationAuthorizationLimits;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -116,12 +117,14 @@ final class CliBackupRestoreArguments {
       RestoreBookArgumentValues values) {
     int count = values.principalIds.size();
     if (count == 0
-        || count > 5
+        || count > AttestationAuthorizationLimits.MAXIMUM_QUORUM
         || values.keyFiles.size() != count
         || values.passphraseFiles.size() != count) {
       throw CliArgumentValueParser.invalid(
           ProtocolOptions.Attestation.PRINCIPAL_ID,
-          "Provide one through five aligned attestation credential triples: "
+          "Provide one through "
+              + AttestationAuthorizationLimits.MAXIMUM_QUORUM
+              + " aligned attestation credential triples: "
               + ProtocolOptions.Attestation.PRINCIPAL_ID
               + ", "
               + ProtocolOptions.Attestation.KEY_FILE

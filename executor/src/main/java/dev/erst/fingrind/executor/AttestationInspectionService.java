@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.core.attestation.AttestationAuthorizationException;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import dev.erst.fingrind.core.attestation.AttestationCredentialUseException;
 import dev.erst.fingrind.core.attestation.AttestationDirectoryDurability;
@@ -141,7 +142,7 @@ public final class AttestationInspectionService {
     try {
       sources = bookAccess.requireAttestationCredentialSources();
     } catch (IllegalStateException exception) {
-      return invalidAttestationCredentials(bookAccess.bookFilePath());
+      return AttestationCredentialRefusals.forReceiptExport(bookAccess.bookFilePath());
     }
     byte[] receipt;
     try (AttestationSigningSession session = AttestationSigningSessionFactory.open(sources)) {
@@ -152,9 +153,15 @@ public final class AttestationInspectionService {
               verification.operationHead(),
               clock.instant());
     } catch (AttestationCredentialException | AttestationCredentialUseException exception) {
-      return invalidAttestationCredentials(bookAccess.bookFilePath());
+      return AttestationCredentialRefusals.forReceiptExport(bookAccess.bookFilePath());
     }
-    AttestationReceipt.verify(receipt, evidence, AttestationReceiptRetention.INDEPENDENT);
+    try {
+      AttestationReceipt.verify(receipt, evidence, AttestationReceiptRetention.INDEPENDENT);
+    } catch (AttestationAuthorizationException exception) {
+      return ContractDecision.accepted(
+          new ExportAttestationReceiptResult.AuthorizationRejected(
+              AttestationVerificationFailure.fromWireCode(exception.failure().code())));
+    }
     return publishReceipt(receiptPath, receipt, bookAccess.bookFilePath(), verification);
   }
 
@@ -209,7 +216,7 @@ public final class AttestationInspectionService {
       String cleanupWarning = deleteStagedReceipt(stagedPath);
       stagedPath = null;
       return ContractDecision.accepted(
-          new ExportAttestationReceiptResult(
+          new ExportAttestationReceiptResult.Exported(
               receiptPath,
               verification.bookId(),
               verification.headOrder(),
@@ -327,14 +334,5 @@ public final class AttestationInspectionService {
       warnings.add(cleanupWarning);
     }
     return List.copyOf(warnings);
-  }
-
-  private static <T> ContractDecision<T> invalidAttestationCredentials(Path bookPath) {
-    return ContractDecision.rejected(
-        ContractErrors.Descriptor.INVALID_ATTESTATION_CREDENTIAL.failureAt(
-            bookPath,
-            "FinGrind could not open the selected attestation credentials.",
-            "Provide one through five readable existing attestation credential triples authorized for receipt export.",
-            "--attestation-principal-id"));
   }
 }

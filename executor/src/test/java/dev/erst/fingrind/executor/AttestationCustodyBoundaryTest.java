@@ -65,7 +65,7 @@ class AttestationCustodyBoundaryTest {
         assertThrows(
             IllegalArgumentException.class, () -> AttestationSigningSessionFactory.open(List.of()));
     assertEquals(
-        "Protected-book mutation requires one through five attestation credentials.",
+        "Protected-book mutation requires 1 through 64 attestation credentials.",
         emptySigningSessionSelection.getMessage());
     AttestationCredentialException invalidSigningCredential =
         assertThrows(

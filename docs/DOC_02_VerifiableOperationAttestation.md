@@ -5,7 +5,7 @@ domain: BOOK_OPERATION_ATTESTATION
 updated: "2026-07-22"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["AttestedOperation", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationCapability", "AttestationCredentialPurpose", "AttestationEvidence", "AttestationGenesis", "AttestationGrantState", "AttestationKeyFiles", "AttestationOperationKind", "AttestationOperationSigner", "AttestationPublicCredential", "AttestationRegistryMutation", "AttestationSigningCredential", "AttestationSystemWorkflowKind"]
+  symbols: ["AttestedOperation", "AttestationAuthorizationLimits", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationCapability", "AttestationCredentialPurpose", "AttestationEvidence", "AttestationGenesis", "AttestationGrantState", "AttestationKeyFiles", "AttestationOperationKind", "AttestationOperationSigner", "AttestationPublicCredential", "AttestationRegistryMutation", "AttestationSigningCredential", "AttestationSystemWorkflowKind"]
 route:
   keywords: [verifiable-operation-attestation, operation-head, attestation-envelope, principal-quorum, credential-purpose, autonomous-workflow, semantic-profile, ed25519, immutable-preimage, operation-kind]
   questions: ["what does FinGrind book-operation attestation prove", "how is an attested operation encoded", "which credential may authorize a system operation", "which semantic profile governs a typed operation"]
@@ -78,6 +78,31 @@ evidence.
 `AttestationFounderInput` is the public open-book input that binds one founder principal to one
 credential and purpose. `AttestationGenesisFactory` translates those inputs into the canonical
 core genesis; it never accepts an implicit founder or a caller-provided genesis envelope.
+
+## `AttestationAuthorizationLimits`
+
+`AttestationAuthorizationLimits` owns the cardinality range shared by post-genesis policy and
+public signing boundaries.
+
+### Definition
+
+```java
+public final class AttestationAuthorizationLimits {
+  public static final int MINIMUM_QUORUM = 1;
+  public static final int MAXIMUM_QUORUM = 64;
+}
+```
+
+### Constraints
+
+- Genesis: one through five founders; this bootstrap boundary remains separate.
+- Post-genesis: one through 64 distinct credential triples, the complete exact-quorum range
+  admitted by `AttestationPolicyRule` and `AttestationRegistryMutation.PolicyRule`.
+- Reachability: an accepted policy always remains usable through public operation, manifest,
+  receipt, restore, rekey, and policy-mutation signing boundaries.
+- Compatibility: public protected-book format-51 / protocol-32 contract.
+
+---
 
 ## `AttestationKeyFiles`
 

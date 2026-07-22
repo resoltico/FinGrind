@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.core.attestation.AttestationAuthorizationLimits;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -66,7 +67,10 @@ final class CliAttestationCredentialArguments {
   }
 
   private void requireAlignedTripleCount(int count) {
-    if (count == 0 || count > 5 || keyFiles.size() != count || passphraseFiles.size() != count) {
+    if (count == 0
+        || count > AttestationAuthorizationLimits.MAXIMUM_QUORUM
+        || keyFiles.size() != count
+        || passphraseFiles.size() != count) {
       throw invalidTripleCount();
     }
   }
@@ -74,7 +78,9 @@ final class CliAttestationCredentialArguments {
   private static IllegalArgumentException invalidTripleCount() {
     return CliArgumentValueParser.invalid(
         ProtocolOptions.Attestation.PRINCIPAL_ID,
-        "Provide one through five aligned attestation credential triples: "
+        "Provide one through "
+            + AttestationAuthorizationLimits.MAXIMUM_QUORUM
+            + " aligned attestation credential triples: "
             + ProtocolOptions.Attestation.PRINCIPAL_ID
             + ", "
             + ProtocolOptions.Attestation.KEY_FILE

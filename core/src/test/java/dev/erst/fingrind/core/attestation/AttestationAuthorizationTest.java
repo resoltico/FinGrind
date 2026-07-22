@@ -57,6 +57,59 @@ class AttestationAuthorizationTest {
   }
 
   @Test
+  void acceptsThePolicyMaximumForEveryPublicSignedStructure() {
+    List<TestCredential> signers =
+        java.util.stream.IntStream.range(0, AttestationAuthorizationLimits.MAXIMUM_QUORUM)
+            .mapToObj(ignored -> credential())
+            .toList();
+    AttestationRegistry registry =
+        registry(
+            signers,
+            List.of(),
+            List.of(
+                new AttestationPolicyRule(
+                    BigInteger.ZERO,
+                    AttestationCapability.POST,
+                    AttestationAuthorizationLimits.MAXIMUM_QUORUM),
+                new AttestationPolicyRule(
+                    BigInteger.ZERO,
+                    AttestationCapability.BACKUP,
+                    AttestationAuthorizationLimits.MAXIMUM_QUORUM),
+                new AttestationPolicyRule(
+                    BigInteger.ZERO,
+                    AttestationCapability.ANCHOR,
+                    AttestationAuthorizationLimits.MAXIMUM_QUORUM),
+                new AttestationPolicyRule(
+                    BigInteger.ZERO,
+                    AttestationCapability.RESTORE,
+                    AttestationAuthorizationLimits.MAXIMUM_QUORUM),
+                new AttestationPolicyRule(
+                    BigInteger.ZERO,
+                    AttestationCapability.REKEY,
+                    AttestationAuthorizationLimits.MAXIMUM_QUORUM),
+                new AttestationPolicyRule(
+                    BigInteger.ZERO,
+                    AttestationCapability.ALTER_POLICY,
+                    AttestationAuthorizationLimits.MAXIMUM_QUORUM)));
+    TestCredential[] signerArray = signers.toArray(TestCredential[]::new);
+    List<AttestationAuthorizationContext> contexts =
+        List.of(
+            operationContext(),
+            operationContext(AttestationOperationKind.RESTORE_BOOK, AttestationSourceChannel.CLI),
+            operationContext(AttestationOperationKind.REKEY_BOOK, AttestationSourceChannel.CLI),
+            operationContext(AttestationOperationKind.ALTER_POLICY, AttestationSourceChannel.CLI),
+            manifestContext(),
+            receiptContext());
+
+    for (AttestationAuthorizationContext context : contexts) {
+      assertDoesNotThrow(
+          () ->
+              AttestationAuthorization.requireAuthorized(
+                  registry, context, signedEnvelope(context, signerArray)));
+    }
+  }
+
+  @Test
   void derivesCapabilityAndHistoricalPositionFromThePayloadBoundAuthorizationContext() {
     TestCredential signer = credential();
     AttestationAuthorizationContext context =

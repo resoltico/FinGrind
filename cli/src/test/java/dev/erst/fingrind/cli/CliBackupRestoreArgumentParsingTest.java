@@ -35,6 +35,18 @@ class CliBackupRestoreArgumentParsingTest {
   }
 
   @Test
+  void parseRestore_acceptsTheSixthCredentialRequiredByAnExactQuorum() {
+    List<String> arguments = restoreArguments(OutputMode.JSON);
+    appendCredentialTriples(arguments, 1, 6);
+
+    RestoreBook restore =
+        assertInstanceOf(
+            RestoreBook.class, CliBackupRestoreArguments.parseRestoreBookCommand(arguments));
+
+    assertEquals(6, restore.attestationCredentialSources().size());
+  }
+
+  @Test
   void parseBackup_rejectsMissingAndDuplicateRequiredFields() {
     assertArgument(
         "--backup-file",
@@ -150,16 +162,7 @@ class CliBackupRestoreArgumentParsingTest {
         () -> CliBackupRestoreArguments.parseRestoreBookCommand(sameKeyAndPassphrase));
 
     List<String> tooManyCredentials = restoreArguments(OutputMode.JSON);
-    for (int index = 1; index < 6; index++) {
-      tooManyCredentials.addAll(
-          List.of(
-              "--attestation-principal-id",
-              "00000000-0000-4000-8000-%012d".formatted(index),
-              "--attestation-key-file",
-              "keys/founder-%d.fgatk".formatted(index),
-              "--attestation-passphrase-file",
-              "keys/founder-%d.passphrase".formatted(index)));
-    }
+    appendCredentialTriples(tooManyCredentials, 1, 65);
     assertArgument(
         "--attestation-principal-id",
         () -> CliBackupRestoreArguments.parseRestoreBookCommand(tooManyCredentials));
@@ -209,6 +212,20 @@ class CliBackupRestoreArgumentParsingTest {
     int index = values.indexOf(option);
     values.subList(index, index + 2).clear();
     return values;
+  }
+
+  private static void appendCredentialTriples(
+      List<String> arguments, int startInclusive, int endExclusive) {
+    for (int index = startInclusive; index < endExclusive; index++) {
+      arguments.addAll(
+          List.of(
+              "--attestation-principal-id",
+              "00000000-0000-4000-8000-%012d".formatted(index),
+              "--attestation-key-file",
+              "keys/founder-%d.fgatk".formatted(index),
+              "--attestation-passphrase-file",
+              "keys/founder-%d.passphrase".formatted(index)));
+    }
   }
 
   private static void assertArgument(

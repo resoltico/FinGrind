@@ -220,7 +220,7 @@ final class CliAdministrativeCommandExecutor {
         lifecycleWorkflow.mutateRegistry(bookAccess, mutation),
         result ->
             responseWriter.writeAttestationRegistryMutationResult(operationId, result, outputMode),
-        ignored -> 0,
+        CliAttestationExitCodes::exitCodeFor,
         failureWriter,
         outputMode);
   }

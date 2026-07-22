@@ -71,9 +71,12 @@ class AttestationContractTypesTest extends ContractTestSupport {
     List<String> warnings = new ArrayList<>(List.of("review-key-rotation"));
     AttestationReviewResult review =
         new AttestationReviewResult(BOOK_ID, BigInteger.ZERO, warnings);
-    ExportAttestationReceiptResult exported =
-        new ExportAttestationReceiptResult(
+    ExportAttestationReceiptResult.Exported exported =
+        new ExportAttestationReceiptResult.Exported(
             Path.of("receipts", "book.fgatt"), BOOK_ID, BigInteger.ONE, OPERATION_HEAD, warnings);
+    ExportAttestationReceiptResult.AuthorizationRejected authorizationRejected =
+        new ExportAttestationReceiptResult.AuthorizationRejected(
+            AttestationVerificationFailure.QUORUM_BELOW);
     VerifyAttestationReceiptResult.Valid receipt =
         new VerifyAttestationReceiptResult.Valid(BOOK_ID, BigInteger.TWO, warnings);
     VerifyBookAttestationResult.Valid reviewedBook =
@@ -85,6 +88,7 @@ class AttestationContractTypesTest extends ContractTestSupport {
 
     assertEquals(List.of("review-key-rotation"), review.findings());
     assertEquals(List.of("review-key-rotation"), exported.warnings());
+    assertEquals(AttestationVerificationFailure.QUORUM_BELOW, authorizationRejected.failure());
     assertEquals(List.of("review-key-rotation"), receipt.findings());
     assertEquals(List.of("review-key-rotation"), reviewedBook.reviewFindings());
     assertEquals(
@@ -111,17 +115,17 @@ class AttestationContractTypesTest extends ContractTestSupport {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new ExportAttestationReceiptResult(
+            new ExportAttestationReceiptResult.Exported(
                 Path.of("receipt"), BOOK_ID, BigInteger.ONE.negate(), OPERATION_HEAD, List.of()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new ExportAttestationReceiptResult(
+            new ExportAttestationReceiptResult.Exported(
                 Path.of("receipt"), BOOK_ID, oversizedUnsignedOrder(), OPERATION_HEAD, List.of()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new ExportAttestationReceiptResult(
+            new ExportAttestationReceiptResult.Exported(
                 Path.of("receipt"),
                 BOOK_ID,
                 BigInteger.ZERO,

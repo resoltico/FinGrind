@@ -498,7 +498,7 @@ class AttestationBoundaryValueCoverageTest {
         IllegalArgumentException.class,
         () ->
             AttestationSigningSession.open(
-                List.of(source(1), source(2), source(3), source(4), source(5), source(6))));
+                java.util.stream.IntStream.rangeClosed(1, 65).mapToObj(this::source).toList()));
     assertThrows(
         IllegalArgumentException.class,
         () ->

@@ -1,16 +1,20 @@
 package dev.erst.fingrind.executor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.ExportAttestationReceiptResult;
 import dev.erst.fingrind.contract.bookkeeping.VerifyAttestationReceiptResult;
 import dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.core.attestation.AttestationCapability;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
+import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
@@ -24,6 +28,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -49,8 +54,10 @@ class AttestationInspectionServiceTest {
     assertEquals(0, verified.headOrder().intValueExact());
     assertEquals(verified.bookId(), service.review(access).requireAccepted().bookId());
 
-    ExportAttestationReceiptResult exported =
-        service.exportReceipt(access, receiptPath).requireAccepted();
+    ExportAttestationReceiptResult.Exported exported =
+        assertInstanceOf(
+            ExportAttestationReceiptResult.Exported.class,
+            service.exportReceipt(access, receiptPath).requireAccepted());
     assertEquals(List.of(), exported.warnings());
     assertTrue(Files.isRegularFile(receiptPath));
     assertInstanceOf(
@@ -99,14 +106,60 @@ class AttestationInspectionServiceTest {
     Path bookPath = bookDirectory.resolve("live.sqlite");
     AttestationInspectionService service = service(bookPath, List.of(genesis(credential)));
 
-    ExportAttestationReceiptResult exported =
-        service
-            .exportReceipt(
-                AttestationMaintenanceTestSupport.bookAccess(bookPath, credential),
-                bookDirectory.resolve("receipt.fgar"))
-            .requireAccepted();
+    ExportAttestationReceiptResult.Exported exported =
+        assertInstanceOf(
+            ExportAttestationReceiptResult.Exported.class,
+            service
+                .exportReceipt(
+                    AttestationMaintenanceTestSupport.bookAccess(bookPath, credential),
+                    bookDirectory.resolve("receipt.fgar"))
+                .requireAccepted());
 
     assertEquals(List.of("receipt-not-independent"), exported.warnings());
+  }
+
+  @Test
+  void returnsAuthorizationRejectionAndPublishesNoReceiptWhenTheSigningQuorumIsIncomplete()
+      throws IOException {
+    AttestationMaintenanceTestSupport.CredentialFixture first = credential();
+    AttestationMaintenanceTestSupport.CredentialFixture second =
+        AttestationMaintenanceTestSupport.createCredential(
+            temporaryDirectory,
+            UUID.fromString("01234567-89ab-4cde-8fab-0123456789ab"),
+            "cofounder");
+    Path bookPath = temporaryDirectory.resolve("book/live.sqlite");
+    Path receiptPath = temporaryDirectory.resolve("retained/incomplete.fgar");
+    AttestationMaintenanceTestSupport.Store store =
+        new AttestationMaintenanceTestSupport.Store(
+            bookPath,
+            List.of(
+                AttestationMaintenanceTestSupport.genesis(List.of(first, second), RECORDED_AT)));
+    BookAccess bothFounders =
+        new BookAccess(
+            bookPath,
+            new BookAccess.PassphraseSource.KeyFile(bookPath.resolveSibling("book.key")),
+            List.of(first.source(), second.source()));
+    new ProtectedBookMaintenanceService(CLOCK, store)
+        .mutateRegistry(
+            bothFounders,
+            new AttestationRegistryMutation.AlterPolicy(
+                List.of(
+                    new AttestationRegistryMutation.PolicyRule(AttestationCapability.ANCHOR, 2)),
+                List.of(),
+                List.of()))
+        .requireAccepted();
+    AttestationInspectionService service = new AttestationInspectionService(CLOCK, store);
+
+    ExportAttestationReceiptResult.AuthorizationRejected rejected =
+        assertInstanceOf(
+            ExportAttestationReceiptResult.AuthorizationRejected.class,
+            service
+                .exportReceipt(
+                    AttestationMaintenanceTestSupport.bookAccess(bookPath, first), receiptPath)
+                .requireAccepted());
+
+    assertEquals(AttestationVerificationFailure.QUORUM_BELOW, rejected.failure());
+    assertFalse(Files.exists(receiptPath));
   }
 
   @Test

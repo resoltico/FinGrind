@@ -5,8 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.core.attestation.AttestationAuthorizationLimits;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -40,7 +42,7 @@ class BookAccessTest {
   }
 
   @Test
-  void attestationCredentialSources_requireOneToFiveDistinctPrincipalsAndKeyFiles() {
+  void attestationCredentialSources_requireOneToSixtyFourDistinctPrincipalsAndKeyFiles() {
     AttestationCredentialSource first = credential("first", "first-key");
     AttestationCredentialSource second = credential("second", "second-key");
     BookAccess access =
@@ -72,19 +74,24 @@ class BookAccessTest {
                 Path.of("books", "acme.sqlite"),
                 BookAccess.PassphraseSource.StandardInput.INSTANCE,
                 List.of(first, credential("third", "first-key"))));
+    List<AttestationCredentialSource> maximumCredentials =
+        credentials(AttestationAuthorizationLimits.MAXIMUM_QUORUM);
+    assertIterableEquals(
+        maximumCredentials,
+        new BookAccess(
+                Path.of("books", "acme.sqlite"),
+                BookAccess.PassphraseSource.StandardInput.INSTANCE,
+                maximumCredentials)
+            .requireAttestationCredentialSources());
+    List<AttestationCredentialSource> tooManyCredentials = new ArrayList<>(maximumCredentials);
+    tooManyCredentials.add(credential("over-limit", "over-limit-key"));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new BookAccess(
                 Path.of("books", "acme.sqlite"),
                 BookAccess.PassphraseSource.StandardInput.INSTANCE,
-                List.of(
-                    credential("one", "one-key"),
-                    credential("two", "two-key"),
-                    credential("three", "three-key"),
-                    credential("four", "four-key"),
-                    credential("five", "five-key"),
-                    credential("six", "six-key"))));
+                tooManyCredentials));
   }
 
   private static AttestationCredentialSource credential(String principal, String keyName) {
@@ -92,5 +99,11 @@ class BookAccessTest {
         UUID.nameUUIDFromBytes(principal.getBytes(java.nio.charset.StandardCharsets.UTF_8)),
         Path.of("keys", keyName + ".fgatk"),
         Path.of("keys", keyName + ".passphrase"));
+  }
+
+  private static List<AttestationCredentialSource> credentials(int count) {
+    return java.util.stream.IntStream.range(0, count)
+        .mapToObj(index -> credential("principal-" + index, "key-" + index))
+        .toList();
   }
 }

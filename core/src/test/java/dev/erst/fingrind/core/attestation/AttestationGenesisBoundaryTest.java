@@ -112,6 +112,37 @@ class AttestationGenesisBoundaryTest {
   }
 
   @Test
+  void opensAndUsesSixDistinctCredentialsForOneExactQuorumEnvelope() throws Exception {
+    List<AttestationCredentialSource> sources = new java.util.ArrayList<>();
+    for (int index = 0; index < 6; index++) {
+      String credentialName = "quorum-" + index;
+      Path keyPath = temporaryDirectory.resolve(credentialName + ".fgatk");
+      Path passphrasePath = temporaryDirectory.resolve(credentialName + ".passphrase");
+      char[] passphrase = "test attestation passphrase".toCharArray();
+      try {
+        AttestationKeyFiles.create(keyPath, passphrase);
+        Files.writeString(passphrasePath, "test attestation passphrase\n");
+      } finally {
+        java.util.Arrays.fill(passphrase, '\0');
+      }
+      sources.add(new AttestationCredentialSource(UUID.randomUUID(), keyPath, passphrasePath));
+    }
+
+    byte[] receipt;
+    try (AttestationSigningSession session = AttestationSigningSession.open(sources)) {
+      receipt =
+          session.createReceipt(
+              UUID.fromString("00112233-4455-6677-8899-aabbccddeeff"),
+              BigInteger.ZERO,
+              new byte[32],
+              Instant.parse("2026-07-21T00:00:00Z"));
+    }
+
+    assertEquals(
+        6, AttestationDecodedEnvelope.receipt(receipt).authorizationEnvelope().entries().size());
+  }
+
+  @Test
   void projectsAndSignsTheCompleteAccountRegistryEffectAtTheObservedHead() throws Exception {
     Path keyPath = temporaryDirectory.resolve("account-operator.fgatk");
     Path passphrasePath = temporaryDirectory.resolve("account-operator.passphrase");

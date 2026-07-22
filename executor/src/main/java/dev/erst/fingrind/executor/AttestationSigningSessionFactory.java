@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import dev.erst.fingrind.core.attestation.AttestationAuthorizationLimits;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import dev.erst.fingrind.core.attestation.AttestationSigningSession;
 import java.nio.file.Path;
@@ -21,7 +22,11 @@ public final class AttestationSigningSessionFactory {
     } catch (IllegalArgumentException exception) {
       if (activePath == null) {
         throw new IllegalArgumentException(
-            "Protected-book mutation requires one through five attestation credentials.",
+            "Protected-book mutation requires "
+                + AttestationAuthorizationLimits.MINIMUM_QUORUM
+                + " through "
+                + AttestationAuthorizationLimits.MAXIMUM_QUORUM
+                + " attestation credentials.",
             exception);
       }
       throw new AttestationCredentialException(activePath, exception);

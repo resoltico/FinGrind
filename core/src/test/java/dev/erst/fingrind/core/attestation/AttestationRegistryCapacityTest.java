@@ -17,6 +17,33 @@ import org.junit.jupiter.api.Test;
 /** Proves that each accepted registry mutation preserves reachable quorums. */
 class AttestationRegistryCapacityTest {
   @Test
+  void acceptsThePolicyMaximumWhenEveryEligiblePrincipalCanSign() {
+    List<TestCredential> operators =
+        java.util.stream.IntStream.range(0, AttestationAuthorizationLimits.MAXIMUM_QUORUM)
+            .mapToObj(ignored -> credential())
+            .toList();
+    List<AttestationCredentialBinding> bindings =
+        operators.stream().map(operator -> binding(0, operator)).toList();
+    List<AttestationCapabilityGrant> grants =
+        operators.stream()
+            .flatMap(operator -> allFounderGrants(operator.principalId()).stream())
+            .toList();
+
+    assertDoesNotThrow(
+        () ->
+            AttestationRegistry.fromAcceptedHistory(
+                bindings,
+                List.of(),
+                grants,
+                List.of(
+                    new AttestationPolicyRule(
+                        BigInteger.ZERO,
+                        AttestationCapability.POST,
+                        AttestationAuthorizationLimits.MAXIMUM_QUORUM)),
+                List.of()));
+  }
+
+  @Test
   void rejectsAnAcceptedHistoryWhoseSystemWorkflowQuorumWouldBeImpossible() {
     TestCredential firstOperator = credential();
     TestCredential secondOperator = credential();

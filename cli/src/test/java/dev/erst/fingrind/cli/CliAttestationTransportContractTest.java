@@ -37,7 +37,7 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
                 BOOK_ID, java.math.BigInteger.TWO, OPERATION_HEAD, List.of()),
             new AttestationReviewResult(
                 BOOK_ID, java.math.BigInteger.TWO, List.of("retained backup overdue")),
-            new ExportAttestationReceiptResult(
+            new ExportAttestationReceiptResult.Exported(
                 Path.of("receipts", "current.fgr"),
                 BOOK_ID,
                 java.math.BigInteger.TWO,
@@ -118,6 +118,23 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
         invalidReceiptOutput
             .toString(StandardCharsets.UTF_8)
             .contains(AttestationVerificationFailure.RECEIPT_INVALID.wireCode()));
+
+    workflow.exportReceiptResult =
+        new ExportAttestationReceiptResult.AuthorizationRejected(
+            AttestationVerificationFailure.QUORUM_BELOW);
+    ByteArrayOutputStream rejectedReceiptExportOutput = new ByteArrayOutputStream();
+    assertEquals(
+        2,
+        cli(workflow, rejectedReceiptExportOutput)
+            .run(
+                command(
+                    "export-attestation-receipt",
+                    "--receipt-file",
+                    "receipts/current.fgr",
+                    "--output",
+                    "json")));
+    assertJsonContains(rejectedReceiptExportOutput, "\"status\":\"rejected\"");
+    assertJsonContains(rejectedReceiptExportOutput, "\"code\":\"attestation-quorum-below\"");
   }
 
   @Test
@@ -127,7 +144,7 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
             new VerifyBookAttestationResult.Valid(
                 BOOK_ID, java.math.BigInteger.ZERO, OPERATION_HEAD, List.of("review this")),
             new AttestationReviewResult(BOOK_ID, java.math.BigInteger.ZERO, List.of()),
-            new ExportAttestationReceiptResult(
+            new ExportAttestationReceiptResult.Exported(
                 Path.of("receipts", "unused.fgr"),
                 BOOK_ID,
                 java.math.BigInteger.ZERO,
@@ -255,17 +272,10 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
     applyCredential(keyWithoutPassphrase, "--attestation-key-file", "keys/principal.fgatk");
     assertThrows(IllegalArgumentException.class, keyWithoutPassphrase::resolveOptional);
 
-    CliAttestationCredentialArguments tooMany = new CliAttestationCredentialArguments();
-    for (int index = 0; index < 6; index++) {
-      applyCredential(
-          tooMany, "--attestation-principal-id", "00000000-0000-4000-8000-%012d".formatted(index));
-      applyCredential(
-          tooMany, "--attestation-key-file", "keys/principal-%d.fgatk".formatted(index));
-      applyCredential(
-          tooMany,
-          "--attestation-passphrase-file",
-          "keys/principal-%d.passphrase".formatted(index));
-    }
+    CliAttestationCredentialArguments sixCredentials = credentials(6);
+    assertEquals(6, sixCredentials.resolveOptional().size());
+
+    CliAttestationCredentialArguments tooMany = credentials(65);
     assertThrows(IllegalArgumentException.class, tooMany::resolveOptional);
     assertThrows(
         IllegalArgumentException.class,
@@ -318,8 +328,8 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
             BOOK_ID, java.math.BigInteger.TWO, OPERATION_HEAD, List.of("review this chain"));
     AttestationReviewResult review =
         new AttestationReviewResult(BOOK_ID, java.math.BigInteger.TWO, List.of("retain receipt"));
-    ExportAttestationReceiptResult exported =
-        new ExportAttestationReceiptResult(
+    ExportAttestationReceiptResult.Exported exported =
+        new ExportAttestationReceiptResult.Exported(
             Path.of("receipts", "current.fgr"),
             BOOK_ID,
             java.math.BigInteger.TWO,
@@ -357,6 +367,15 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
     assertTrue(
         exportedText.toString(StandardCharsets.UTF_8).contains("Attestation Receipt Exported"));
 
+    ByteArrayOutputStream authorizationRejectedJson = new ByteArrayOutputStream();
+    new CliBookReadResponseWriter(outputChannel(authorizationRejectedJson), fixedClock())
+        .writeExportAttestationReceipt(
+            new ExportAttestationReceiptResult.AuthorizationRejected(
+                AttestationVerificationFailure.QUORUM_BELOW),
+            dev.erst.fingrind.contract.protocol.OutputMode.JSON);
+    assertJsonContains(authorizationRejectedJson, "\"status\":\"rejected\"");
+    assertJsonContains(authorizationRejectedJson, "\"code\":\"attestation-quorum-below\"");
+
     ByteArrayOutputStream receiptText = new ByteArrayOutputStream();
     new CliBookReadResponseWriter(outputChannel(receiptText), fixedClock())
         .writeVerifyAttestationReceipt(
@@ -370,7 +389,7 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
         new AttestationReviewResult(BOOK_ID, java.math.BigInteger.ZERO, List.of()),
         dev.erst.fingrind.contract.protocol.OutputMode.TEXT);
     emptyFindingsWriter.writeExportAttestationReceipt(
-        new ExportAttestationReceiptResult(
+        new ExportAttestationReceiptResult.Exported(
             Path.of("receipts", "empty.fgr"),
             BOOK_ID,
             java.math.BigInteger.ZERO,
@@ -410,6 +429,23 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
     assertTrue(credentials.apply(option, iterator));
   }
 
+  private static CliAttestationCredentialArguments credentials(int count) {
+    CliAttestationCredentialArguments credentials = new CliAttestationCredentialArguments();
+    for (int index = 0; index < count; index++) {
+      applyCredential(
+          credentials,
+          "--attestation-principal-id",
+          "00000000-0000-4000-8000-%012d".formatted(index));
+      applyCredential(
+          credentials, "--attestation-key-file", "keys/principal-%d.fgatk".formatted(index));
+      applyCredential(
+          credentials,
+          "--attestation-passphrase-file",
+          "keys/principal-%d.passphrase".formatted(index));
+    }
+    return credentials;
+  }
+
   private FinGrindCli cli(AttestationWorkflow workflow, ByteArrayOutputStream outputStream) {
     return cli(
         new ByteArrayInputStream(new byte[0]),
@@ -437,7 +473,7 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
   private static final class AttestationWorkflow extends CliBookWorkflowAdapter {
     private VerifyBookAttestationResult verifyBookResult;
     private final AttestationReviewResult reviewResult;
-    private final ExportAttestationReceiptResult exportReceiptResult;
+    private ExportAttestationReceiptResult exportReceiptResult;
     private VerifyAttestationReceiptResult verifyReceiptResult;
 
     private AttestationWorkflow(
