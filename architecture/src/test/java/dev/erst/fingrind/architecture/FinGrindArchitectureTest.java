@@ -5,7 +5,10 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
+import com.tngtech.archunit.core.domain.JavaAccess;
 import com.tngtech.archunit.core.domain.JavaClass;
+import com.tngtech.archunit.core.domain.JavaConstructorCall;
+import com.tngtech.archunit.core.domain.JavaMethodCall;
 import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
@@ -44,6 +47,38 @@ final class FinGrindArchitectureTest {
           + "|java\\.security(\\.interfaces)?\\..*Private.*Key.*";
   private static final String ATTESTATION_DIRECTORY_FFM_TRANSPORT =
       "dev.erst.fingrind.core.attestation.AttestationDirectoryFfmTransport";
+  private static final String ATTESTATION_OPERATION_KIND =
+      "dev.erst.fingrind.core.attestation.AttestationOperationKind";
+  private static final String ATTESTATION_EVIDENCE_STORE =
+      "dev.erst.fingrind.sqlite.SqliteAttestationEvidenceStore";
+  private static final String RUNTIME_CLOCK_SEAM = "dev.erst.fingrind.core.SystemUtcClock";
+  private static final Set<String> RUNTIME_IO_SEAM =
+      Set.of(
+          "dev.erst.fingrind.cli.App",
+          "dev.erst.fingrind.cli.CliRuntimeEnvironment",
+          "dev.erst.fingrind.cli.CliPromptingConsoles",
+          "dev.erst.fingrind.cli.LauncherInvocationArguments");
+  private static final Set<String> MUTATION_ATTESTATION_BOUNDARIES =
+      Set.of(
+          "dev.erst.fingrind.sqlite.SqliteStoreMutationOperations",
+          "dev.erst.fingrind.sqlite.SqliteStoreAdministrationMutationOperations",
+          "dev.erst.fingrind.sqlite.SqliteStoreAccountRegistryMutationOperations",
+          "dev.erst.fingrind.sqlite.SqliteClosePostingPersistence",
+          "dev.erst.fingrind.sqlite.SqlitePlanExecutionCapabilityView",
+          "dev.erst.fingrind.sqlite.SqliteProtectedBookMaintenanceStore");
+  private static final Set<String> TYPED_OPERATION_CATALOG_BOUNDARIES =
+      Set.of(
+          "dev.erst.fingrind.sqlite.SqliteStoreMutationOperations",
+          "dev.erst.fingrind.sqlite.SqliteStoreAdministrationMutationOperations",
+          "dev.erst.fingrind.sqlite.SqliteStoreAccountRegistryMutationOperations",
+          "dev.erst.fingrind.sqlite.SqliteClosePostingPersistence",
+          "dev.erst.fingrind.sqlite.SqliteProtectedBookMaintenanceStore");
+  private static final Set<String> RAW_GENERIC_FAILURE_TYPES =
+      Set.of(
+          "java.lang.Throwable",
+          "java.lang.Exception",
+          "java.lang.RuntimeException",
+          "java.lang.Error");
 
   private FinGrindArchitectureTest() {}
 
@@ -167,6 +202,38 @@ final class FinGrindArchitectureTest {
       classes().should(dependOnCryptographicPrimitiveTypesOnlyInsideTheCryptoSeam());
 
   @ArchTest
+  static final ArchRule privateKeysDoNotCrossPublicAdapterBoundaries =
+      noClasses()
+          .that()
+          .resideInAnyPackage(
+              "dev.erst.fingrind.contract..",
+              "dev.erst.fingrind.cli..",
+              "dev.erst.fingrind.report.pdf..")
+          .should()
+          .dependOnClassesThat()
+          .haveNameMatching("java\\.security(\\.interfaces)?\\..*Private.*Key.*");
+
+  @ArchTest
+  static final ArchRule processStreamsAndEnvironmentAreConfinedToRuntimeIoSeams =
+      classes().should(accessProcessStreamsAndEnvironmentOnlyInsideRuntimeIoSeams());
+
+  @ArchTest
+  static final ArchRule wallClockAccessIsConfinedToTheRuntimeClockSeam =
+      classes().should(accessWallClockOnlyInsideTheRuntimeClockSeam());
+
+  @ArchTest
+  static final ArchRule durableMutationOwnersMustReachTheAttestationWrapper =
+      classes().should(reachAttestationEvidenceFromEveryDurableMutationBoundary());
+
+  @ArchTest
+  static final ArchRule durableMutationCatalogReferencesAreTyped =
+      classes().should(referenceTheTypedOperationCatalogAtEveryDurableMutationBoundary());
+
+  @ArchTest
+  static final ArchRule genericFailuresAreNeverConstructed =
+      classes().should(notConstructRawGenericFailureTypes());
+
+  @ArchTest
   static final ArchRule foreignMemoryIsConfinedToNativeInteropSeams =
       classes().should(dependOnForeignMemoryOnlyInsideNativeInteropSeams());
 
@@ -248,6 +315,180 @@ final class FinGrindArchitectureTest {
     return CRYPTOGRAPHIC_PRIMITIVE_SEAM.stream()
         .anyMatch(
             owner -> source.getName().equals(owner) || source.getName().startsWith(owner + "$"));
+  }
+
+  private static ArchCondition<JavaClass>
+      accessProcessStreamsAndEnvironmentOnlyInsideRuntimeIoSeams() {
+    return new ArchCondition<>(
+        "access process streams, console, or environment only inside runtime I/O seams") {
+      @Override
+      public void check(JavaClass source, ConditionEvents events) {
+        if (belongsToRuntimeIoSeam(source)) {
+          return;
+        }
+        source.getFieldAccessesFromSelf().stream()
+            .filter(access -> targetsSystemMember(access, Set.of("in", "out", "err")))
+            .forEach(access -> reportRuntimeIoViolation(source, access, events));
+        source.getMethodCallsFromSelf().stream()
+            .filter(access -> targetsSystemMember(access, Set.of("console", "getenv")))
+            .forEach(access -> reportRuntimeIoViolation(source, access, events));
+      }
+    };
+  }
+
+  private static ArchCondition<JavaClass> accessWallClockOnlyInsideTheRuntimeClockSeam() {
+    return new ArchCondition<>("access the wall clock only inside the runtime clock seam") {
+      @Override
+      public void check(JavaClass source, ConditionEvents events) {
+        if (belongsToRuntimeClockSeam(source)) {
+          return;
+        }
+        source.getMethodCallsFromSelf().stream()
+            .filter(FinGrindArchitectureTest::isWallClockAccess)
+            .forEach(
+                access ->
+                    events.add(
+                        SimpleConditionEvent.violated(
+                            source,
+                            source.getName()
+                                + " must receive time through an injected Clock rather than "
+                                + access.getDescription()
+                                + ".")));
+      }
+    };
+  }
+
+  private static ArchCondition<JavaClass>
+      reachAttestationEvidenceFromEveryDurableMutationBoundary() {
+    return new ArchCondition<>(
+        "reach the attestation evidence wrapper from every durable mutation boundary") {
+      @Override
+      public void check(JavaClass source, ConditionEvents events) {
+        if (!MUTATION_ATTESTATION_BOUNDARIES.contains(source.getName())) {
+          return;
+        }
+        boolean reachesEvidenceStore =
+            source.getTransitiveDependenciesFromSelf().stream()
+                .anyMatch(
+                    dependency ->
+                        ATTESTATION_EVIDENCE_STORE.equals(dependency.getTargetClass().getName()));
+        if (!reachesEvidenceStore) {
+          events.add(
+              SimpleConditionEvent.violated(
+                  source,
+                  source.getName()
+                      + " must route durable mutation persistence through "
+                      + ATTESTATION_EVIDENCE_STORE
+                      + "."));
+        }
+      }
+    };
+  }
+
+  private static ArchCondition<JavaClass>
+      referenceTheTypedOperationCatalogAtEveryDurableMutationBoundary() {
+    return new ArchCondition<>(
+        "reference the typed attestation operation catalog at every durable mutation boundary") {
+      @Override
+      public void check(JavaClass source, ConditionEvents events) {
+        if (!TYPED_OPERATION_CATALOG_BOUNDARIES.contains(source.getName())) {
+          return;
+        }
+        boolean referencesOperationKind =
+            source.getDirectDependenciesFromSelf().stream()
+                .anyMatch(
+                    dependency ->
+                        ATTESTATION_OPERATION_KIND.equals(dependency.getTargetClass().getName()));
+        if (!referencesOperationKind) {
+          events.add(
+              SimpleConditionEvent.violated(
+                  source,
+                  source.getName()
+                      + " must use "
+                      + ATTESTATION_OPERATION_KIND
+                      + " instead of a raw operation catalog literal."));
+        }
+      }
+    };
+  }
+
+  private static ArchCondition<JavaClass> notConstructRawGenericFailureTypes() {
+    return new ArchCondition<>("not construct raw generic failure types") {
+      @Override
+      public void check(JavaClass source, ConditionEvents events) {
+        source.getConstructorCallsFromSelf().stream()
+            .filter(call -> RAW_GENERIC_FAILURE_TYPES.contains(call.getTargetOwner().getName()))
+            .filter(call -> !isNamedDomainFailureSuperclassCall(source, call))
+            .forEach(
+                call ->
+                    events.add(
+                        SimpleConditionEvent.violated(
+                            source,
+                            source.getName()
+                                + " must use a domain-specific failure type rather than "
+                                + call.getTargetOwner().getName()
+                                + ".")));
+      }
+    };
+  }
+
+  private static boolean belongsToRuntimeIoSeam(JavaClass source) {
+    return RUNTIME_IO_SEAM.stream()
+        .anyMatch(
+            owner -> source.getName().equals(owner) || source.getName().startsWith(owner + "$"));
+  }
+
+  private static boolean belongsToRuntimeClockSeam(JavaClass source) {
+    return RUNTIME_CLOCK_SEAM.equals(source.getName())
+        || source.getName().startsWith(RUNTIME_CLOCK_SEAM + "$");
+  }
+
+  private static boolean targetsSystemMember(JavaAccess<?> access, Set<String> memberNames) {
+    return "java.lang.System".equals(access.getTargetOwner().getName())
+        && memberNames.contains(access.getTarget().getName());
+  }
+
+  private static boolean isWallClockAccess(JavaMethodCall access) {
+    String owner = access.getTargetOwner().getName();
+    String member = access.getTarget().getName();
+    return ("java.time.Clock".equals(owner) && member.startsWith("system"))
+        || (Set.of(
+                    "java.time.Instant",
+                    "java.time.LocalDate",
+                    "java.time.LocalDateTime",
+                    "java.time.OffsetDateTime",
+                    "java.time.ZonedDateTime")
+                .contains(owner)
+            && "now".equals(member)
+            && hasNoArguments(access))
+        || ("java.lang.System".equals(owner)
+            && Set.of("currentTimeMillis", "nanoTime").contains(member));
+  }
+
+  private static boolean hasNoArguments(JavaMethodCall access) {
+    return access
+        .getTarget()
+        .resolveMember()
+        .map(method -> method.getRawParameterTypes().isEmpty())
+        .orElseGet(() -> access.getTarget().getFullName().endsWith("()"));
+  }
+
+  private static boolean isNamedDomainFailureSuperclassCall(
+      JavaClass source, JavaConstructorCall call) {
+    return call.getOrigin().isConstructor()
+        && (source.getSimpleName().endsWith("Exception")
+            || source.getSimpleName().endsWith("Failure"));
+  }
+
+  private static void reportRuntimeIoViolation(
+      JavaClass source, JavaAccess<?> access, ConditionEvents events) {
+    events.add(
+        SimpleConditionEvent.violated(
+            source,
+            source.getName()
+                + " must receive process I/O through an explicit runtime seam rather than "
+                + access.getDescription()
+                + "."));
   }
 
   private static ArchCondition<JavaClass> dependOnForeignMemoryOnlyInsideNativeInteropSeams() {

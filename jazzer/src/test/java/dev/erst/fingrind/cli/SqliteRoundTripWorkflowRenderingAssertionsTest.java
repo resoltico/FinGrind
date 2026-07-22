@@ -177,7 +177,7 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
                         new IdempotencyKey("idem-1"), new PostingRejection.BookNotInitialized()))));
 
     assertEquals(
-        "posting-1",
+        JazzerPostEntryResultFixtures.fixturePostingId("posting-1").value(),
         SqliteRoundTripWorkflowDecisionAssertions.requireCommitted(
                 ContractDecision.accepted(
                     SqliteRoundTripWorkflowTestSupport.committed("posting-1")))

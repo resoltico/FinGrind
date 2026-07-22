@@ -21,7 +21,8 @@ class SqliteRoundTripWorkflowResourcesTest {
     BookAccess interactiveBook =
         new BookAccess(
             tempDirectory.resolve("interactive.sqlite"),
-            BookAccess.PassphraseSource.InteractivePrompt.INSTANCE);
+            BookAccess.PassphraseSource.InteractivePrompt.INSTANCE,
+            CliFuzzWorkflowFixtures.attestationCredentialSources());
     IllegalStateException prompt =
         assertThrows(
             IllegalStateException.class,

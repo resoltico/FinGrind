@@ -19,6 +19,7 @@ import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +28,17 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 class CliFuzzAccountLifecycleFixturesTest {
+  @Test
+  void attestation_credential_workspace_failure_is_reported() {
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            CliFuzzWorkflowFixtures.createAttestationCredential(
+                () -> {
+                  throw new IOException("simulated credential workspace failure");
+                }));
+  }
+
   @Test
   void lifecycle_helpers_manage_books_accounts_and_fail_fast_on_drift() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
@@ -92,10 +104,11 @@ class CliFuzzAccountLifecycleFixturesTest {
             () -> new BookLifecycleInspection.Missing(7),
             new CliFuzzFixtureStoreSupport.AbstractBookAdministrationStoreStub() {
               @Override
-              public BookOpeningOutcome openBook(
+              public BookOpeningOutcome openAttestedBook(
                   Instant initializedAt,
                   BookIdentity bookIdentity,
-                  List<dev.erst.fingrind.executor.bookkeeping.AccountDeclaration> seededAccounts) {
+                  List<dev.erst.fingrind.executor.bookkeeping.AccountDeclaration> seededAccounts,
+                  dev.erst.fingrind.core.attestation.AttestationEvidence genesisEvidence) {
                 return new BookOpeningOutcome.Opened(initializedAt.plusSeconds(1), bookIdentity);
               }
             },
@@ -113,7 +126,10 @@ class CliFuzzAccountLifecycleFixturesTest {
             new CliFuzzFixtureStoreSupport.AbstractBookAdministrationStoreStub() {
               @Override
               public AccountDeclarationOutcome declareAccount(
-                  AccountDeclaration declaration, Instant declaredAt) {
+                  AccountDeclaration declaration,
+                  Instant declaredAt,
+                  dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer
+                      attestationAuthorizer) {
                 return new AccountDeclarationOutcome.Declared(
                     new RegisteredAccount(
                         declaration.accountCode(),
@@ -138,7 +154,10 @@ class CliFuzzAccountLifecycleFixturesTest {
             new CliFuzzFixtureStoreSupport.AbstractBookAdministrationStoreStub() {
               @Override
               public AccountDeclarationOutcome declareAccount(
-                  AccountDeclaration declaration, Instant declaredAt) {
+                  AccountDeclaration declaration,
+                  Instant declaredAt,
+                  dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer
+                      attestationAuthorizer) {
                 return new AccountDeclarationOutcome.Declared(
                     new RegisteredAccount(
                         declaration.accountCode(),
@@ -178,7 +197,10 @@ class CliFuzzAccountLifecycleFixturesTest {
             new CliFuzzFixtureStoreSupport.AbstractBookAdministrationStoreStub() {
               @Override
               public AccountDeclarationOutcome declareAccount(
-                  AccountDeclaration declaration, Instant declaredAt) {
+                  AccountDeclaration declaration,
+                  Instant declaredAt,
+                  dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer
+                      attestationAuthorizer) {
                 RegisteredAccount account =
                     new RegisteredAccount(
                         declaration.accountCode(),

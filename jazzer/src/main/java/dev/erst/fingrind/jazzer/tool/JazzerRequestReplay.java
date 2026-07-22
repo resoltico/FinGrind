@@ -35,7 +35,9 @@ final class JazzerRequestReplay {
 
   static ReplayOutcome replayLedgerPlanRequest(byte[] input) {
     return replayLedgerPlanRequest(
-        input, CliFuzzFixtures::readLedgerPlan, LedgerPlanFuzzAssertions::executeAndAssert);
+        input,
+        CliFuzzFixtures::readLedgerPlan,
+        (plan, ignoredInput) -> LedgerPlanFuzzAssertions.executeAndAssert(plan));
   }
 
   static ReplayOutcome replayLedgerPlanRequest(

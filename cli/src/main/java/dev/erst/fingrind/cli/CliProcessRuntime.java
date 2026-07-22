@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.core.SystemUtcClock;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.time.Clock;
@@ -37,6 +38,6 @@ record CliRuntimeEnvironment(
   }
 
   static CliRuntimeEnvironment process() {
-    return new CliRuntimeEnvironment(System.in, System.out, System.err, Clock.systemUTC());
+    return new CliRuntimeEnvironment(System.in, System.out, System.err, SystemUtcClock.instance());
   }
 }

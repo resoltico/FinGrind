@@ -1,6 +1,5 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
-import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountingEvidence;
 import dev.erst.fingrind.core.BalanceMath;
@@ -25,6 +24,7 @@ import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.SourceDocumentId;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.core.SourceDocumentType;
+import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -39,8 +39,8 @@ import java.util.Optional;
 final class InterimResultSweepDraftFactory {
   private static final SourceChannel INTERIM_RESULT_SWEEP_SOURCE_CHANNEL = SourceChannel.SYSTEM;
   private static final String INTERIM_RESULT_SWEEP_REQUEST_TOKEN = "interimResultSweep";
-  private static final String INTERIM_RESULT_SWEEP_OPERATION =
-      OperationId.INTERIM_RESULT_SWEEP.wireName();
+  private static final AttestationOperationKind INTERIM_RESULT_SWEEP_OPERATION =
+      AttestationOperationKind.INTERIM_RESULT_SWEEP;
   private static final String GENERATED_PLAN_SUFFIX = "-plan";
 
   Optional<CurrencyCloseDraft> closingDraftForCurrency(
@@ -150,7 +150,8 @@ final class InterimResultSweepDraftFactory {
         List.of(
             new SourceDocumentReference(
                 new SourceDocumentId(INTERIM_RESULT_SWEEP_REQUEST_TOKEN + ":" + closeToken),
-                new SourceDocumentType(INTERIM_RESULT_SWEEP_OPERATION + GENERATED_PLAN_SUFFIX),
+                new SourceDocumentType(
+                    INTERIM_RESULT_SWEEP_OPERATION.wireToken() + GENERATED_PLAN_SUFFIX),
                 reportingPeriod.effectiveDateTo())),
         List.of());
   }

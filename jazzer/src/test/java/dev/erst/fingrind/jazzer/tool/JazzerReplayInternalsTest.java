@@ -87,7 +87,7 @@ class JazzerReplayInternalsTest {
         new ParsedLedgerPlanShapeReplayDetails(
             new LedgerPlanShapeDetails(
                 "plan-1",
-                5,
+                4,
                 parsedPlan.steps().getFirst().kind(),
                 parsedPlan.steps().getLast().kind(),
                 1,
@@ -285,15 +285,18 @@ class JazzerReplayInternalsTest {
     assertEquals(
         PostingLifecycleStatus.REVERSAL_ALREADY_EXISTS,
         JazzerReplayOutcomeSupport.rejectionStatus(
-            new PostingRejection.ReversalAlreadyExists(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
+            new PostingRejection.ReversalAlreadyExists(
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_DOES_NOT_NEGATE_TARGET,
         JazzerReplayOutcomeSupport.rejectionStatus(
-            new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362"))));
+            new PostingRejection.ReversalDoesNotNegateTarget(
+                new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362"))));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND,
         JazzerReplayOutcomeSupport.rejectionStatus(
-            new PostingRejection.ReversalTargetNotFound(new PostingId("6d857901-cb53-3986-a1d7-2f64319c76ce"))));
+            new PostingRejection.ReversalTargetNotFound(
+                new PostingId("6d857901-cb53-3986-a1d7-2f64319c76ce"))));
 
     PostEntryCommand command = parsedCommand();
     assertEquals(
@@ -434,7 +437,7 @@ class JazzerReplayInternalsTest {
                     CliFuzzFixtures.journalEntry(command),
                     CliFuzzFixtures.postingLineage(command),
                     command.entry().postingOriginKind(),
-                    mismatchedEvidence(command),
+                    mismatchedEvidence(),
                     command.requestProvenance(),
                     CliFuzzFixtures.fixedClock().instant(),
                     command.sourceChannel()),
@@ -503,7 +506,6 @@ class JazzerReplayInternalsTest {
     CliRequestReplayDetails details =
         new CliRequestReplayDetails(
             new ParsedPostingCommandDetails("2026-04-07", "idem-1", 2, false),
-            dev.erst.fingrind.core.ActorType.AGENT,
             dev.erst.fingrind.core.SourceChannel.CLI);
 
     FindingArtifact findingArtifact =
@@ -658,7 +660,13 @@ class JazzerReplayInternalsTest {
       java.time.Instant recordedAt,
       dev.erst.fingrind.core.SourceChannel sourceChannel) {
     return new PostingFact(
-        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
         journalEntry,
         postingLineage,
         PostingKind.STANDARD,
@@ -678,7 +686,7 @@ class JazzerReplayInternalsTest {
     return JazzerPostEntryResultFixtures.committed(command, postingId, idempotentReplay);
   }
 
-  private static AccountingEvidence mismatchedEvidence(PostEntryCommand command) {
+  private static AccountingEvidence mismatchedEvidence() {
     return new AccountingEvidence(
         List.of(
             new SourceDocumentReference(
@@ -689,8 +697,8 @@ class JazzerReplayInternalsTest {
             new ApprovalReference(
                 new ApprovalId("approval-evidence-mismatch"),
                 new ApprovalType("manager-signoff"),
-                command.requestProvenance().actorId(),
-                command.requestProvenance().actorType(),
+                "agent-evidence-mismatch",
+                "AGENT",
                 ApprovalDecision.REJECTED,
                 Instant.parse("2026-04-07T13:00:00Z"))));
   }

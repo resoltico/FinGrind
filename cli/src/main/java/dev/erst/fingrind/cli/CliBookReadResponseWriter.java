@@ -18,6 +18,7 @@ import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.tax.ListTaxRegistrationsResult;
 import dev.erst.fingrind.contract.tax.TaxQueryRejection;
 import dev.erst.fingrind.contract.tax.TaxRegistrationPage;
+import dev.erst.fingrind.core.SystemUtcClock;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
@@ -30,7 +31,7 @@ final class CliBookReadResponseWriter {
   private final Clock clock;
 
   CliBookReadResponseWriter(CliOutputChannel outputChannel) {
-    this(outputChannel, Clock.systemUTC());
+    this(outputChannel, SystemUtcClock.instance());
   }
 
   CliBookReadResponseWriter(CliOutputChannel outputChannel, Clock clock) {

@@ -111,7 +111,8 @@ class SqliteRoundTripWorkflowConcurrencyCoverageTest {
     assertTrue(replayResult instanceof Committed committed && committed.idempotentReplay());
     CommitEntryResult reversalTargetResult =
         SqliteRoundTripWorkflowTestSupport.commitRejected(
-            new PostingRejection.ReversalTargetNotFound(new PostingId("eed4f82c-57ee-3caf-9afb-271b05f48aa9")));
+            new PostingRejection.ReversalTargetNotFound(
+                new PostingId("eed4f82c-57ee-3caf-9afb-271b05f48aa9")));
     assertFalse(
         reversalTargetResult
                 instanceof
@@ -180,7 +181,8 @@ class SqliteRoundTripWorkflowConcurrencyCoverageTest {
                           new PostingRejection.ReversalTargetNotFound(
                               new PostingId("0feb0a6f-51da-3617-95a0-1a85821f337d")))
                     }));
-    SqliteRoundTripWorkflowTestSupport.assertMessageContains(acceptedRejection, "posting-private");
+    SqliteRoundTripWorkflowTestSupport.assertMessageContains(
+        acceptedRejection, "expected original-plus-replay outcome");
   }
 
   @Test
@@ -287,7 +289,8 @@ class SqliteRoundTripWorkflowConcurrencyCoverageTest {
                         SqliteRoundTripWorkflowTestSupport.committed("posting-2"))))
             .decision();
     assertEquals(
-        "posting-2",
+        dev.erst.fingrind.jazzer.support.JazzerPostEntryResultFixtures.fixturePostingId("posting-2")
+            .value(),
         assertInstanceOf(Committed.class, acceptedDecision.requireAccepted()).postingId().value());
 
     SqliteRoundTripWorkflowTestSupport.assertMessageContains(
@@ -345,7 +348,8 @@ class SqliteRoundTripWorkflowConcurrencyCoverageTest {
     BookAccess missingKeyBookAccess =
         new BookAccess(
             tempDirectory.resolve("missing-book.sqlite"),
-            new BookAccess.PassphraseSource.KeyFile(tempDirectory.resolve("missing-book.key")));
+            new BookAccess.PassphraseSource.KeyFile(tempDirectory.resolve("missing-book.key")),
+            CliFuzzWorkflowFixtures.attestationCredentialSources());
 
     ConcurrentCommitOutcome outcome =
         concurrentCommitTask(
@@ -420,7 +424,8 @@ class SqliteRoundTripWorkflowConcurrencyCoverageTest {
     BookAccess bookAccess =
         new BookAccess(
             tempDirectory.resolve("interrupt-book.sqlite"),
-            new BookAccess.PassphraseSource.KeyFile(tempDirectory.resolve("interrupt-book.key")));
+            new BookAccess.PassphraseSource.KeyFile(tempDirectory.resolve("interrupt-book.key")),
+            CliFuzzWorkflowFixtures.attestationCredentialSources());
 
     try {
       Thread.currentThread().interrupt();

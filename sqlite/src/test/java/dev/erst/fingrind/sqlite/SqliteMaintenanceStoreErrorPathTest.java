@@ -10,6 +10,7 @@ import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationLifecycleMutationProjection;
+import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
 import dev.erst.fingrind.core.attestation.AttestationVerifier;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
@@ -88,10 +89,10 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
               () ->
                   store.appendAttestedOperation(
                       verifiedBook,
-                      "rekey-book",
+                      AttestationOperationKind.REKEY_BOOK,
                       Instant.parse("2026-07-21T12:00:00Z"),
                       AttestationLifecycleMutationProjection.rekeyBook(
-                          "rekey-book",
+                          AttestationOperationKind.REKEY_BOOK.wireToken(),
                           java.math.BigInteger.ONE,
                           Instant.parse("2026-07-21T12:00:00Z"),
                           Optional.empty()),

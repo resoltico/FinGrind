@@ -24,6 +24,7 @@ import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationGenesis;
 import dev.erst.fingrind.core.attestation.AttestationKeyFiles;
 import dev.erst.fingrind.core.attestation.AttestationLifecycleMutationProjection;
+import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationOperationSigner;
 import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationPublicCredential;
@@ -142,7 +143,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
             AttestationVerification verification =
                 SqliteAttestationEvidenceStore.appendAuthorized(
                     database,
-                    "declare-account",
+                    AttestationOperationKind.DECLARE_ACCOUNT,
                     Instant.parse("2026-07-21T00:00:01Z"),
                     preimages,
                     request -> {
@@ -204,7 +205,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
             AttestationVerification backupVerification =
                 SqliteAttestationEvidenceStore.appendAuthorized(
                     database,
-                    "backup-created",
+                    AttestationOperationKind.BACKUP_CREATED,
                     Instant.parse("2026-07-21T00:00:01Z"),
                     AttestationLifecycleMutationProjection.backupBook(
                         "backup-created", acknowledgement),
@@ -214,7 +215,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
             AttestationVerification replayVerification =
                 SqliteAttestationEvidenceStore.appendAuthorized(
                     database,
-                    "backup-created",
+                    AttestationOperationKind.BACKUP_CREATED,
                     Instant.parse("2026-07-21T00:00:02Z"),
                     AttestationLifecycleMutationProjection.backupBook(
                         "backup-created", acknowledgement),
@@ -240,7 +241,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
                     () ->
                         SqliteAttestationEvidenceStore.appendAuthorized(
                             database,
-                            "backup-created",
+                            AttestationOperationKind.BACKUP_CREATED,
                             Instant.parse("2026-07-21T00:00:03Z"),
                             AttestationLifecycleMutationProjection.backupBook(
                                 "backup-created", conflictingAcknowledgement),
@@ -308,7 +309,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
             AttestationVerification persisted =
                 SqliteAttestationEvidenceStore.appendAuthorized(
                     database,
-                    "declare-account",
+                    AttestationOperationKind.DECLARE_ACCOUNT,
                     Instant.parse("2026-07-21T00:00:01Z"),
                     preimages,
                     authorizer);
@@ -339,7 +340,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
                   () ->
                       SqliteAttestationEvidenceStore.appendAuthorized(
                           database,
-                          "declare-account",
+                          AttestationOperationKind.DECLARE_ACCOUNT,
                           Instant.parse("2026-07-21T00:00:00Z"),
                           new dev.erst.fingrind.core.attestation.AttestationOperationPreimages(
                               new byte[] {1}, new byte[] {2}),
@@ -435,7 +436,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
                   () ->
                       SqliteAttestationEvidenceStore.appendAuthorized(
                           database,
-                          "declare-account",
+                          AttestationOperationKind.DECLARE_ACCOUNT,
                           Instant.parse("2026-07-21T00:00:00Z"),
                           new dev.erst.fingrind.core.attestation.AttestationOperationPreimages(
                               new byte[] {1}, new byte[] {2}),

@@ -9,8 +9,6 @@ import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.ActorId;
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
 import dev.erst.fingrind.core.CommittedProvenance;
@@ -56,7 +54,8 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
         () ->
             SqliteRoundTripWorkflowPersistenceAssertions.requireIdempotentReplay(
                 SqliteRoundTripWorkflowTestSupport.commitRejected(
-                    new PostingRejection.ReversalTargetNotFound(new PostingId("7982b5de-2f28-355e-9911-9ca85b4f5a67"))),
+                    new PostingRejection.ReversalTargetNotFound(
+                        new PostingId("7982b5de-2f28-355e-9911-9ca85b4f5a67"))),
                 SqliteRoundTripWorkflowTestSupport.committed("posting-1")));
     assertThrows(
         IllegalStateException.class,
@@ -65,14 +64,16 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
                 SqliteRoundTripWorkflowTestSupport.commitRejected(
                     new PostingRejection.IdempotencyKeyConflict()),
                 SqliteRoundTripWorkflowTestSupport.commitRejected(
-                    new PostingRejection.ReversalTargetNotFound(new PostingId("bb61d564-0257-33c2-99c7-ace95bae05f6")))));
+                    new PostingRejection.ReversalTargetNotFound(
+                        new PostingId("bb61d564-0257-33c2-99c7-ace95bae05f6")))));
   }
 
   @Test
   void reload_verification_covers_field_mismatch_paths() {
     PostEntryCommand command = SqliteRoundTripWorkflowTestSupport.basicValidCommand();
     PostingFact baseFact =
-        SqliteRoundTripWorkflowTestSupport.matchingPostingFact(command, new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
+        SqliteRoundTripWorkflowTestSupport.matchingPostingFact(
+            command, JazzerPostEntryResultFixtures.fixturePostingId("posting-1"));
     var committed = SqliteRoundTripWorkflowTestSupport.committed("posting-1");
 
     assertThrows(
@@ -80,7 +81,7 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
         () ->
             SqliteRoundTripWorkflowPersistenceAssertions.verifyReloadedPosting(
                 SqliteRoundTripWorkflowTestSupport.matchingPostingFact(
-                    command, new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362")),
+                    command, JazzerPostEntryResultFixtures.fixturePostingId("posting-2")),
                 committed,
                 command));
     assertThrows(
@@ -115,7 +116,8 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
                     baseFact.postingId(),
                     baseFact.journalEntry(),
                     PostingLineage.reversal(
-                        new ReversalReference(new PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b")),
+                        new ReversalReference(
+                            new PostingId("e888fd00-a501-341d-9a6b-8d9059757d1b")),
                         new ReversalReason("unexpected reversal")),
                     PostingKind.STANDARD,
                     dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
@@ -257,7 +259,8 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
     assertEquals(
         PostingLifecycleStatus.REVERSAL_TARGET_NOT_FOUND,
         PostingLifecycleStatusMapper.forRejection(
-            new PostingRejection.ReversalTargetNotFound(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
+            new PostingRejection.ReversalTargetNotFound(
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_TARGET_IS_REVERSAL,
         PostingLifecycleStatusMapper.forRejection(
@@ -266,11 +269,13 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
     assertEquals(
         PostingLifecycleStatus.REVERSAL_ALREADY_EXISTS,
         PostingLifecycleStatusMapper.forRejection(
-            new PostingRejection.ReversalAlreadyExists(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
+            new PostingRejection.ReversalAlreadyExists(
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
     assertEquals(
         PostingLifecycleStatus.REVERSAL_DOES_NOT_NEGATE_TARGET,
         PostingLifecycleStatusMapper.forRejection(
-            new PostingRejection.ReversalDoesNotNegateTarget(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
+            new PostingRejection.ReversalDoesNotNegateTarget(
+                new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))));
   }
 
   @Test
@@ -298,7 +303,8 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
             SqliteRoundTripWorkflowDecisionAssertions.requireDuplicateWorkflowPreflightAccepted(
                 new dev.erst.fingrind.contract.bookkeeping.PostEntryResult.PreflightRejected(
                     new IdempotencyKey("idem-1"),
-                    new PostingRejection.ReversalTargetNotFound(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))));
+                    new PostingRejection.ReversalTargetNotFound(
+                        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -310,7 +316,8 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
         () ->
             SqliteRoundTripWorkflowDecisionAssertions.requireCommittedReplay(
                 SqliteRoundTripWorkflowTestSupport.commitRejected(
-                    new PostingRejection.ReversalTargetNotFound(new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
+                    new PostingRejection.ReversalTargetNotFound(
+                        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
                 SqliteRoundTripWorkflowTestSupport.committed("posting-1")));
     assertThrows(
         IllegalStateException.class,

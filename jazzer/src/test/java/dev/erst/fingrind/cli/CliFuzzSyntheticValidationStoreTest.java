@@ -32,7 +32,8 @@ class CliFuzzSyntheticValidationStoreTest {
         Map.of(), store.findAccounts(Set.of(new AccountCode("1000"), new AccountCode("2000"))));
     assertTrue(store.findExistingPosting(new IdempotencyKey("idem-direct")).isEmpty());
     assertTrue(store.findPosting(new PostingId("beaef2d9-7837-39c8-b5dd-35ed3de7cf53")).isEmpty());
-    assertTrue(store.findReversalFor(new PostingId("beaef2d9-7837-39c8-b5dd-35ed3de7cf53")).isEmpty());
+    assertTrue(
+        store.findReversalFor(new PostingId("beaef2d9-7837-39c8-b5dd-35ed3de7cf53")).isEmpty());
     assertEquals(List.of(), store.postings(EffectiveDateRange.unbounded()));
     assertTrue(store.earliestPostingEffectiveDate().isEmpty());
     assertTrue(store.transferredThroughEffectiveDate().isEmpty());

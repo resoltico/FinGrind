@@ -10,8 +10,7 @@ final class JazzerReplayDetailsMapper {
 
   static CliRequestReplayDetails cliRequestDetails(PostEntryCommand command) {
     return new CliRequestReplayDetails(
-        JazzerReplayShapeDetails.parsedPostingCommandDetails(command),
-        command.sourceChannel());
+        JazzerReplayShapeDetails.parsedPostingCommandDetails(command), command.sourceChannel());
   }
 
   static UnparsedCliRequestReplayDetails unparsedCliRequestDetails() {

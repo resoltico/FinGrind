@@ -6,10 +6,10 @@ import dev.erst.fingrind.contract.bookkeeping.VerifyAttestationReceiptResult;
 import dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.core.SystemUtcClock;
 import dev.erst.fingrind.executor.AttestationInspectionService;
 import dev.erst.fingrind.sqlite.SqliteProtectedBookMaintenanceStore;
 import java.nio.file.Path;
-import java.time.Clock;
 
 /** SQLite implementation of non-mutating attestation inspection and receipt operations. */
 interface SqliteCliAttestationInspectionOperations extends CliAttestationInspectionReadWorkflow {
@@ -41,6 +41,6 @@ interface SqliteCliAttestationInspectionOperations extends CliAttestationInspect
 
   private AttestationInspectionService service() {
     return new AttestationInspectionService(
-        Clock.systemUTC(), new SqliteProtectedBookMaintenanceStore(passphraseResolver()));
+        SystemUtcClock.instance(), new SqliteProtectedBookMaintenanceStore(passphraseResolver()));
   }
 }

@@ -1,11 +1,11 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestFingerprint;
 import dev.erst.fingrind.core.attestation.AttestationClosePostingSnapshot;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationPeriodCloseMutationProjection;
 import dev.erst.fingrind.core.attestation.AttestationPostingLine;
 import dev.erst.fingrind.executor.bookkeeping.AcceptedPosting;
@@ -25,10 +25,10 @@ import java.util.UUID;
 
 /** Durable persistence for generated close postings inside SQLite close workflows. */
 final class SqliteClosePostingPersistence {
-  private static final String INTERIM_RESULT_SWEEP_OPERATION =
-      OperationId.INTERIM_RESULT_SWEEP.wireName();
-  private static final String FISCAL_YEAR_CLOSE_OPERATION =
-      OperationId.FISCAL_YEAR_CLOSE.wireName();
+  private static final AttestationOperationKind INTERIM_RESULT_SWEEP_OPERATION =
+      AttestationOperationKind.INTERIM_RESULT_SWEEP;
+  private static final AttestationOperationKind FISCAL_YEAR_CLOSE_OPERATION =
+      AttestationOperationKind.FISCAL_YEAR_CLOSE;
   private final SqliteStoreContext context;
   private final SqliteCommitFaultHook commitFaultHook;
   private final PostingAcceptancePolicy postingAcceptancePolicy;
@@ -118,7 +118,7 @@ final class SqliteClosePostingPersistence {
         INTERIM_RESULT_SWEEP_OPERATION,
         interimResultSweepDraft.sweptAt(),
         AttestationPeriodCloseMutationProjection.projectInterimResultSweep(
-            INTERIM_RESULT_SWEEP_OPERATION,
+            INTERIM_RESULT_SWEEP_OPERATION.wireToken(),
             interimResultSweepDraft.reportingPeriod(),
             interimResultSweepDraft.resultHoldingAccountCode().value(),
             sweptInterimResult.sweepOrder(),
@@ -175,7 +175,7 @@ final class SqliteClosePostingPersistence {
         FISCAL_YEAR_CLOSE_OPERATION,
         closeDraft.closedAt(),
         AttestationPeriodCloseMutationProjection.projectFiscalYearClose(
-            FISCAL_YEAR_CLOSE_OPERATION,
+            FISCAL_YEAR_CLOSE_OPERATION.wireToken(),
             closeDraft.reportingPeriod(),
             closeDraft.capitalAccountCode().value(),
             closeDraft.resultHoldingAccountCode().value(),

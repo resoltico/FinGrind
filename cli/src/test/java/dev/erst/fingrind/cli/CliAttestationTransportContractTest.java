@@ -226,7 +226,14 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
     applyCredential(credentials, "--attestation-principal-id", BOOK_ID.toString());
     applyCredential(credentials, "--attestation-key-file", "keys/principal.fgatk");
     applyCredential(credentials, "--attestation-passphrase-file", "keys/principal.passphrase");
-    assertEquals(1, credentials.resolveOptional().size());
+    UUID secondPrincipal = UUID.fromString("4b4a38fa-cf41-4d53-afc1-8d4e6cdf438c");
+    applyCredential(credentials, "--attestation-principal-id", secondPrincipal.toString());
+    applyCredential(credentials, "--attestation-key-file", "keys/second-principal.fgatk");
+    applyCredential(
+        credentials, "--attestation-passphrase-file", "keys/second-principal.passphrase");
+    assertEquals(
+        List.of(BOOK_ID, secondPrincipal),
+        credentials.resolveOptional().stream().map(source -> source.principalId()).toList());
 
     CliAttestationCredentialArguments incomplete = new CliAttestationCredentialArguments();
     applyCredential(incomplete, "--attestation-principal-id", BOOK_ID.toString());

@@ -31,7 +31,8 @@ import org.jspecify.annotations.Nullable;
  */
 final class SqliteAttestationEvidenceStore {
   private static final byte[] GENESIS_PREVIOUS_HEAD = new byte[32];
-  private static final String EXECUTE_PLAN = AttestationOperationKind.EXECUTE_PLAN.wireToken();
+  private static final AttestationOperationKind EXECUTE_PLAN =
+      AttestationOperationKind.EXECUTE_PLAN;
 
   private SqliteAttestationEvidenceStore() {}
 
@@ -70,7 +71,7 @@ final class SqliteAttestationEvidenceStore {
    */
   static AttestationVerification appendAuthorized(
       SqliteNativeDatabase activeDatabase,
-      String operationKind,
+      AttestationOperationKind operationKind,
       Instant recordedAt,
       AttestationOperationPreimages preimages,
       AttestationOperationAuthorizer authorizer) {
@@ -80,13 +81,14 @@ final class SqliteAttestationEvidenceStore {
   /** Signs and appends one operation with optional exact-tuple backup acknowledgement admission. */
   static AttestationVerification appendAuthorized(
       SqliteNativeDatabase activeDatabase,
-      String operationKind,
+      AttestationOperationKind operationKind,
       Instant recordedAt,
       AttestationOperationPreimages preimages,
       AttestationOperationAuthorizer authorizer,
       @Nullable AttestationBackupAcknowledgement backupAcknowledgement) {
     Objects.requireNonNull(activeDatabase, "activeDatabase");
-    String checkedOperationKind = Objects.requireNonNull(operationKind, "operationKind");
+    AttestationOperationKind checkedOperationKind =
+        Objects.requireNonNull(operationKind, "operationKind");
     Instant checkedRecordedAt = Objects.requireNonNull(recordedAt, "recordedAt");
     AttestationOperationPreimages checkedPreimages = Objects.requireNonNull(preimages, "preimages");
     AttestationOperationAuthorizer checkedAuthorizer =
@@ -99,7 +101,7 @@ final class SqliteAttestationEvidenceStore {
                     new IllegalStateException(
                         "Protected-book mutation requires a persisted attestation genesis."));
     if (checkedAuthorizer instanceof AttestationPlanOperationAuthorizer planAuthorizer) {
-      planAuthorizer.collectChildMutation(checkedOperationKind, checkedPreimages);
+      planAuthorizer.collectChildMutation(checkedOperationKind.wireToken(), checkedPreimages);
       return persistedVerification;
     }
     if (backupAcknowledgement != null) {
@@ -119,7 +121,7 @@ final class SqliteAttestationEvidenceStore {
             new AttestationOperationRequest(
                 persistedVerification.bookId(),
                 persistedVerification.headOrder().add(BigInteger.ONE),
-                checkedOperationKind,
+                checkedOperationKind.wireToken(),
                 persistedVerification.operationHead(),
                 checkedRecordedAt,
                 checkedPreimages.request(),
@@ -141,7 +143,8 @@ final class SqliteAttestationEvidenceStore {
     AttestationPlanOperationAuthorizer checkedAuthorizer =
         Objects.requireNonNull(authorizer, "authorizer");
     if (!checkedAuthorizer.hasChildMutations()) {
-      throw new IllegalArgumentException(EXECUTE_PLAN + " did not produce a mutating child step.");
+      throw new IllegalArgumentException(
+          EXECUTE_PLAN.wireToken() + " did not produce a mutating child step.");
     }
     List<AttestationEvidence> persistedEvidence = loadAll(activeDatabase);
     AttestationVerification persistedVerification =
@@ -156,7 +159,7 @@ final class SqliteAttestationEvidenceStore {
             new AttestationOperationRequest(
                 persistedVerification.bookId(),
                 persistedVerification.headOrder().add(BigInteger.ONE),
-                EXECUTE_PLAN,
+                EXECUTE_PLAN.wireToken(),
                 persistedVerification.operationHead(),
                 checkedRecordedAt,
                 planPreimages.request(),

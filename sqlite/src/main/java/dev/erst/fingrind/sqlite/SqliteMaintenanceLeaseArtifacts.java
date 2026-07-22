@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.SystemUtcClock;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileVisitResult;
@@ -107,7 +108,9 @@ final class SqliteMaintenanceLeaseArtifacts {
           Files.getLastModifiedTime(leasePath, LinkOption.NOFOLLOW_LINKS).toInstant();
       return leaseOwner != null
           ? leaseOwner.isLiveWhenUnlocked(lastModified, UNKNOWN_START_EXTERNAL_LEASE_GRACE_PERIOD)
-          : lastModified.plus(INCOMPLETE_LEASE_GRACE_PERIOD).isAfter(Instant.now());
+          : lastModified
+              .plus(INCOMPLETE_LEASE_GRACE_PERIOD)
+              .isAfter(Instant.now(SystemUtcClock.instance()));
     } catch (NoSuchFileException ignored) {
       return false;
     }

@@ -21,14 +21,91 @@ import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
 import dev.erst.fingrind.core.AccountType;
+import dev.erst.fingrind.core.CurrencyUnit;
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /** Covers deterministic ledger-plan assertion helpers shared by Jazzer harnesses. */
 class LedgerPlanFuzzAssertionsTest {
+  @TempDir Path tempDirectory;
+
+  @Test
+  void workspaceFailures_areReportedAndPreflightDeterminesTheFunctionalCurrency() throws Exception {
+    LedgerPlan preflightPlan =
+        CliFuzzFixtures.readLedgerPlan(fullSpectrumLedgerPlan().getBytes(UTF_8));
+    assertEquals(
+        CurrencyUnit.of("EUR"), LedgerPlanFuzzAssertions.functionalCurrency(preflightPlan));
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            LedgerPlanFuzzAssertions.executeAndAssert(
+                preflightPlan,
+                new LedgerPlanFuzzAssertions.LedgerPlanWorkspace() {
+                  @Override
+                  public Path create() throws IOException {
+                    throw new IOException("simulated workspace creation failure");
+                  }
+
+                  @Override
+                  public void prepare(Path workspace) {}
+
+                  @Override
+                  public void clean(Path workspace) {}
+                }));
+
+    Path preparationRoot = tempDirectory.resolve("preparation-failure");
+    Files.createDirectory(preparationRoot);
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            LedgerPlanFuzzAssertions.executeAndAssert(
+                preflightPlan,
+                new LedgerPlanFuzzAssertions.LedgerPlanWorkspace() {
+                  @Override
+                  public Path create() {
+                    return preparationRoot;
+                  }
+
+                  @Override
+                  public void prepare(Path workspace) throws IOException {
+                    throw new IOException("simulated workspace preparation failure");
+                  }
+
+                  @Override
+                  public void clean(Path workspace) throws IOException {
+                    SqliteRoundTripWorkflowResources.deleteRecursively(workspace);
+                  }
+                }));
+
+    Path cleanupRoot = tempDirectory.resolve("cleanup-failure");
+    Files.createDirectory(cleanupRoot);
+    LedgerPlanFuzzAssertions.cleanWorkspace(
+        cleanupRoot,
+        new LedgerPlanFuzzAssertions.LedgerPlanWorkspace() {
+          @Override
+          public Path create() {
+            return cleanupRoot;
+          }
+
+          @Override
+          public void prepare(Path workspace) {}
+
+          @Override
+          public void clean(Path workspace) throws IOException {
+            throw new IOException("simulated workspace cleanup failure");
+          }
+        });
+    assertTrue(Files.exists(cleanupRoot));
+  }
+
   @Test
   void journalScanSummary_rejects_negative_and_inverted_counts() throws Exception {
     IllegalArgumentException negativeListCount =
@@ -57,11 +134,6 @@ class LedgerPlanFuzzAssertionsTest {
             {
               "planId": "assertion-failure",
               "steps": [
-                {
-                  "stepId": "open",
-                  "kind": "ensure-book",
-                  "ensureBook": %s
-                },
                 %s,
                 %s,
                 {
@@ -86,7 +158,6 @@ class LedgerPlanFuzzAssertionsTest {
             }
             """
                 .formatted(
-                    canonicalOpenBookJson("EUR"),
                     declareOrdinaryAccountStepJson(
                             "declare-cash", "1000", "Cash", AccountType.ASSET)
                         .indent(16)
@@ -106,8 +177,6 @@ class LedgerPlanFuzzAssertionsTest {
                                     "document-idem-assertion",
                                     "cash-receipt",
                                     "2026-04-07",
-                                    "agent-1",
-                                    "AGENT",
                                     "command-1",
                                     "idem-assertion",
                                     "cause-1",
@@ -117,12 +186,11 @@ class LedgerPlanFuzzAssertionsTest {
                 .getBytes(UTF_8));
 
     LedgerPlanFuzzAssertions.ExecutionSnapshot successSnapshot =
-        LedgerPlanFuzzAssertions.executeAndAssert(successPlan, "success".getBytes(UTF_8));
+        LedgerPlanFuzzAssertions.executeAndAssert(successPlan);
     LedgerPlanFuzzAssertions.ExecutionSnapshot rejectedSnapshot =
-        LedgerPlanFuzzAssertions.executeAndAssert(rejectedPlan, "rejected".getBytes(UTF_8));
+        LedgerPlanFuzzAssertions.executeAndAssert(rejectedPlan);
     LedgerPlanFuzzAssertions.ExecutionSnapshot assertionFailedSnapshot =
-        LedgerPlanFuzzAssertions.executeAndAssert(
-            assertionFailurePlan, "assertion".getBytes(UTF_8));
+        LedgerPlanFuzzAssertions.executeAndAssert(assertionFailurePlan);
 
     assertEquals(LedgerPlanStatus.SUCCEEDED, successSnapshot.executionStatus());
     assertEquals(LedgerPlanStatus.REJECTED, rejectedSnapshot.executionStatus());
@@ -196,17 +264,16 @@ class LedgerPlanFuzzAssertionsTest {
 
   @Test
   void assertPlanResult_rejects_mismatched_metadata_and_incomplete_success() throws Exception {
-    LedgerPlan plan = CliFuzzFixtures.readLedgerPlan(basicValidLedgerPlan().getBytes(UTF_8));
-    LedgerJournalEntry.Succeeded openBookStep =
-        succeededEntry(
-            "open", LedgerStepKind.ENSURE_BOOK, List.of(LedgerFact.text("status", "opened")));
+    LedgerPlan plan = CliFuzzFixtures.readLedgerPlan(validLedgerPlanWithQueries().getBytes(UTF_8));
+    LedgerJournalEntry.Succeeded declareCashStep =
+        succeededEntry("declare-cash", LedgerStepKind.DECLARE_ACCOUNT, List.of());
     LedgerPlanResult.Succeeded truncatedSuccess =
         new LedgerPlanResult.Succeeded(
             new LedgerPlanId(plan.planId().value()),
             new LedgerExecutionJournal(
                 Instant.parse("2026-04-07T12:00:00Z"),
                 Instant.parse("2026-04-07T12:00:01Z"),
-                List.of(openBookStep)));
+                List.of(declareCashStep)));
 
     IllegalStateException mismatchedPlanId =
         assertThrows(
@@ -228,9 +295,8 @@ class LedgerPlanFuzzAssertionsTest {
   void assertPlanResult_rejects_journal_overflow_step_id_drift_and_step_kind_drift()
       throws Exception {
     LedgerPlan plan = CliFuzzFixtures.readLedgerPlan(basicValidLedgerPlan().getBytes(UTF_8));
-    LedgerJournalEntry.Succeeded openBookStep =
-        succeededEntry(
-            "open", LedgerStepKind.ENSURE_BOOK, List.of(LedgerFact.text("status", "opened")));
+    LedgerJournalEntry.Succeeded declareCashStep =
+        succeededEntry("declare-cash", LedgerStepKind.DECLARE_ACCOUNT, List.of());
 
     LedgerPlanResult.Succeeded journalOverflow =
         new LedgerPlanResult.Succeeded(
@@ -244,7 +310,7 @@ class LedgerPlanFuzzAssertionsTest {
                             .map(
                                 step ->
                                     succeededEntry(step.stepId().value(), step.kind(), List.of())),
-                        java.util.stream.Stream.of(openBookStep))
+                        java.util.stream.Stream.of(declareCashStep))
                     .toList()));
     IllegalStateException overflow =
         assertThrows(
@@ -259,8 +325,7 @@ class LedgerPlanFuzzAssertionsTest {
                 Instant.parse("2026-04-07T12:00:00Z"),
                 Instant.parse("2026-04-07T12:00:01Z"),
                 List.of(
-                    openBookStep,
-                    succeededEntry("drifted-step", plan.steps().get(1).kind(), List.of()))));
+                    succeededEntry("drifted-step", plan.steps().getFirst().kind(), List.of()))));
     IllegalStateException stepIdDrift =
         assertThrows(
             IllegalStateException.class,
@@ -274,10 +339,9 @@ class LedgerPlanFuzzAssertionsTest {
                 Instant.parse("2026-04-07T12:00:00Z"),
                 Instant.parse("2026-04-07T12:00:01Z"),
                 List.of(
-                    openBookStep,
                     succeededEntry(
-                        plan.steps().get(1).stepId().value(),
-                        LedgerStepKind.ENSURE_BOOK,
+                        plan.steps().getFirst().stepId().value(),
+                        LedgerStepKind.INSPECT_BOOK,
                         List.of()))));
     IllegalStateException stepKindDrift =
         assertThrows(
@@ -290,7 +354,9 @@ class LedgerPlanFuzzAssertionsTest {
   @Test
   void assertPlanResult_accepts_terminal_boundary_and_rejects_nonterminal_boundary()
       throws Exception {
-    LedgerPlan plan = CliFuzzFixtures.readLedgerPlan(basicValidLedgerPlan().getBytes(UTF_8));
+    LedgerPlan fullPlan =
+        CliFuzzFixtures.readLedgerPlan(validLedgerPlanWithQueries().getBytes(UTF_8));
+    LedgerPlan plan = new LedgerPlan(fullPlan.planId(), fullPlan.steps().subList(0, 2));
     List<LedgerJournalEntry> succeededSteps =
         plan.steps().stream()
             .map(step -> succeededEntry(step.stepId().value(), step.kind(), List.of()))
@@ -322,7 +388,7 @@ class LedgerPlanFuzzAssertionsTest {
                 Instant.parse("2026-04-07T12:00:01Z"),
                 List.of(
                     boundarySucceededEntry("@plan-boundary:begin", LedgerBoundaryCheckpoint.BEGIN),
-                    rejectedEntry("open", LedgerStepKind.ENSURE_BOOK, List.of()))));
+                    rejectedEntry("declare-cash", LedgerStepKind.DECLARE_ACCOUNT, List.of()))));
     IllegalStateException nonterminalBoundary =
         assertThrows(
             IllegalStateException.class,
@@ -340,7 +406,6 @@ class LedgerPlanFuzzAssertionsTest {
                 Instant.parse("2026-04-07T12:00:00Z"),
                 Instant.parse("2026-04-07T12:00:01Z"),
                 List.of(
-                    succeededEntry("open", LedgerStepKind.ENSURE_BOOK, List.of()),
                     succeededEntry("declare-cash", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
                     succeededEntry("declare-revenue", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
                     succeededEntry("post-sale", LedgerStepKind.RECORD_SALE_SETTLED, List.of()),
@@ -361,7 +426,10 @@ class LedgerPlanFuzzAssertionsTest {
                             LedgerFact.count("pageLimit", 1),
                             LedgerFact.flag("hasMore", false),
                             LedgerFact.group(
-                                "posting", List.of(LedgerFact.text("postingId", "018f0000-0000-7000-8000-000000000002"))))))));
+                                "posting",
+                                List.of(
+                                    LedgerFact.text(
+                                        "postingId", "018f0000-0000-7000-8000-000000000002"))))))));
 
     LedgerPlanFuzzAssertions.ExecutionSnapshot snapshot =
         LedgerPlanFuzzAssertions.assertPlanResult(plan, structuredQuerySuccess);
@@ -382,7 +450,6 @@ class LedgerPlanFuzzAssertionsTest {
                 Instant.parse("2026-04-07T12:00:00Z"),
                 Instant.parse("2026-04-07T12:00:01Z"),
                 List.of(
-                    succeededEntry("open", LedgerStepKind.ENSURE_BOOK, List.of()),
                     succeededEntry("declare-cash", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
                     succeededEntry("declare-revenue", LedgerStepKind.DECLARE_ACCOUNT, List.of()),
                     succeededEntry("preflight-sale", LedgerStepKind.PREFLIGHT_ENTRY, List.of()),
@@ -406,7 +473,10 @@ class LedgerPlanFuzzAssertionsTest {
                             LedgerFact.count("pageLimit", 2),
                             LedgerFact.flag("hasMore", false),
                             LedgerFact.group(
-                                "posting", List.of(LedgerFact.text("postingId", "018f0000-0000-7000-8000-000000000002"))))),
+                                "posting",
+                                List.of(
+                                    LedgerFact.text(
+                                        "postingId", "018f0000-0000-7000-8000-000000000002"))))),
                     succeededEntry("account-balance", LedgerStepKind.ACCOUNT_BALANCE, List.of()),
                     succeededAssertionEntry(
                         "assert-balance", LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS))));
@@ -430,7 +500,10 @@ class LedgerPlanFuzzAssertionsTest {
                 LedgerFact.count("count", 2),
                 LedgerFact.count("pageLimit", 1),
                 LedgerFact.flag("hasMore", false),
-                LedgerFact.group("posting", List.of(LedgerFact.text("postingId", "018f0000-0000-7000-8000-000000000002")))));
+                LedgerFact.group(
+                    "posting",
+                    List.of(
+                        LedgerFact.text("postingId", "018f0000-0000-7000-8000-000000000002")))));
     IllegalStateException invalidCount =
         assertThrows(
             IllegalStateException.class,
@@ -533,7 +606,7 @@ class LedgerPlanFuzzAssertionsTest {
             IllegalArgumentException.class,
             () ->
                 LedgerPlanListQueryAssertions.expectedListQueryGroupName(
-                    LedgerStepKind.ENSURE_BOOK));
+                    LedgerStepKind.INSPECT_BOOK));
     assertTrue(String.valueOf(wrongListQueryKind.getMessage()).contains("list-query journal kind"));
   }
 
@@ -594,17 +667,11 @@ class LedgerPlanFuzzAssertionsTest {
         {
           "planId": "plan-1",
           "steps": [
-            {
-              "stepId": "open",
-              "kind": "ensure-book",
-              "ensureBook": %s
-            },
             %s
           ]
         }
         """
         .formatted(
-            canonicalOpenBookJson("EUR"),
             declareOrdinaryAccountStepJson("declare-cash", "1000", "Cash", AccountType.ASSET)
                 .indent(12)
                 .stripLeading());
@@ -615,11 +682,6 @@ class LedgerPlanFuzzAssertionsTest {
         {
           "planId": "plan-query-1",
           "steps": [
-            {
-              "stepId": "open",
-              "kind": "ensure-book",
-              "ensureBook": %s
-            },
             %s,
             %s,
             {
@@ -645,7 +707,6 @@ class LedgerPlanFuzzAssertionsTest {
         }
         """
         .formatted(
-            canonicalOpenBookJson("EUR"),
             declareOrdinaryAccountStepJson("declare-cash", "1000", "Cash", AccountType.ASSET)
                 .indent(12)
                 .stripLeading(),
@@ -664,8 +725,6 @@ class LedgerPlanFuzzAssertionsTest {
                             "document-idem-query-1",
                             "cash-receipt",
                             "2026-04-07",
-                            "agent-1",
-                            "AGENT",
                             "command-query-1",
                             "idem-query-1",
                             "cause-query-1",
@@ -679,11 +738,6 @@ class LedgerPlanFuzzAssertionsTest {
         {
           "planId": "plan-spectrum-1",
           "steps": [
-            {
-              "stepId": "open",
-              "kind": "ensure-book",
-              "ensureBook": %s
-            },
             %s,
             %s,
             {
@@ -747,7 +801,6 @@ class LedgerPlanFuzzAssertionsTest {
         }
         """
         .formatted(
-            canonicalOpenBookJson("EUR"),
             declareOrdinaryAccountStepJson("declare-cash", "1000", "Cash", AccountType.ASSET)
                 .indent(12)
                 .stripLeading(),
@@ -766,8 +819,6 @@ class LedgerPlanFuzzAssertionsTest {
                             "document-idem-spectrum-1",
                             "cash-receipt",
                             "2026-04-07",
-                            "agent-1",
-                            "AGENT",
                             "command-spectrum-1",
                             "idem-spectrum-1",
                             "cause-spectrum-1",
@@ -785,8 +836,6 @@ class LedgerPlanFuzzAssertionsTest {
                             "document-idem-spectrum-2",
                             "cash-receipt",
                             "2026-04-07",
-                            "agent-1",
-                            "AGENT",
                             "command-spectrum-2",
                             "idem-spectrum-2",
                             "cause-spectrum-2",
@@ -807,22 +856,6 @@ class LedgerPlanFuzzAssertionsTest {
           ]
         }
         """;
-  }
-
-  private static String canonicalOpenBookJson(String functionalCurrency) {
-    return """
-        {
-          "entityName": "Acme Studio",
-          "bookTemplateId": "OWNER_MANAGED_SERVICE",
-          "accountingBasis": "CASH",
-          "functionalCurrency": "%s",
-          "fiscalYearStart": "01-01",
-          "bookStartEffectiveDate": "2026-01-01"
-        }
-        """
-        .formatted(functionalCurrency)
-        .indent(16)
-        .stripLeading();
   }
 
   private static Object newJournalScanSummary(

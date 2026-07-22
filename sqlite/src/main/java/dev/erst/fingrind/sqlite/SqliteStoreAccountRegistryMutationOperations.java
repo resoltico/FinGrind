@@ -1,12 +1,12 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.attestation.AttestationAccountMutationIntent;
 import dev.erst.fingrind.core.attestation.AttestationAccountMutationProjection;
 import dev.erst.fingrind.core.attestation.AttestationAccountSnapshot;
 import dev.erst.fingrind.core.attestation.AttestationEffectMutation;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
@@ -22,9 +22,12 @@ import java.util.Optional;
 
 /** Account Registry mutations over one SQLite-backed book session. */
 final class SqliteStoreAccountRegistryMutationOperations {
-  private static final String DECLARE_ACCOUNT_OPERATION = OperationId.DECLARE_ACCOUNT.wireName();
-  private static final String AMEND_ACCOUNT_OPERATION = OperationId.AMEND_ACCOUNT.wireName();
-  private static final String RETIRE_ACCOUNT_OPERATION = OperationId.RETIRE_ACCOUNT.wireName();
+  private static final AttestationOperationKind DECLARE_ACCOUNT_OPERATION =
+      AttestationOperationKind.DECLARE_ACCOUNT;
+  private static final AttestationOperationKind AMEND_ACCOUNT_OPERATION =
+      AttestationOperationKind.AMEND_ACCOUNT;
+  private static final AttestationOperationKind RETIRE_ACCOUNT_OPERATION =
+      AttestationOperationKind.RETIRE_ACCOUNT;
 
   /** One mutation callback that borrows the session-owned SQLite handle without closing it. */
   @FunctionalInterface
@@ -84,7 +87,7 @@ final class SqliteStoreAccountRegistryMutationOperations {
                 declaredAt,
                 AttestationAccountMutationProjection.project(
                     AttestationAccountMutationIntent.DECLARATION,
-                    DECLARE_ACCOUNT_OPERATION,
+                    DECLARE_ACCOUNT_OPERATION.wireToken(),
                     requestedSnapshot(declaration),
                     snapshot(declaredAccount),
                     declarationMutation(declarationOutcome)),
@@ -148,7 +151,7 @@ final class SqliteStoreAccountRegistryMutationOperations {
                 amendedAt,
                 AttestationAccountMutationProjection.project(
                     AttestationAccountMutationIntent.AMENDMENT,
-                    AMEND_ACCOUNT_OPERATION,
+                    AMEND_ACCOUNT_OPERATION.wireToken(),
                     requestedSnapshot(amendment),
                     snapshot(amended.account()),
                     AttestationEffectMutation.AMEND),
@@ -213,7 +216,7 @@ final class SqliteStoreAccountRegistryMutationOperations {
                 retiredAt,
                 AttestationAccountMutationProjection.project(
                     AttestationAccountMutationIntent.RETIREMENT,
-                    RETIRE_ACCOUNT_OPERATION,
+                    RETIRE_ACCOUNT_OPERATION.wireToken(),
                     snapshot(existingAccount.orElseThrow()),
                     snapshot(retired.account()),
                     AttestationEffectMutation.RETIRE),

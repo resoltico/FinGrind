@@ -33,7 +33,7 @@ record LedgerPlanShapeDetails(
     LedgerStepKind firstStepKind,
     LedgerStepKind lastStepKind,
     int assertionStepCount,
-    boolean beginsWithOpenBook) {
+    boolean startsWithMutatingStep) {
   LedgerPlanShapeDetails {
     planId = ReplayModelValidation.requireText(planId, "planId");
     stepCount = ReplayModelValidation.requireNonNegative(stepCount, "stepCount");

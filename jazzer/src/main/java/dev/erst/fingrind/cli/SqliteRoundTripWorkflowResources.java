@@ -34,7 +34,10 @@ final class SqliteRoundTripWorkflowResources {
   }
 
   static BookAccess keyFileBookAccess(Path bookPath, Path keyPath) {
-    return new BookAccess(bookPath, new BookAccess.PassphraseSource.KeyFile(keyPath));
+    return new BookAccess(
+        bookPath,
+        new BookAccess.PassphraseSource.KeyFile(keyPath),
+        CliFuzzWorkflowFixtures.attestationCredentialSources());
   }
 
   static void deleteRecursively(Path root) throws IOException {

@@ -25,6 +25,21 @@ class ProtocolUserCliMarkdownRendererTest {
   }
 
   @Test
+  void commandTableBlock_marksEveryQuorumAuthorizedMaintenanceCommandAsRepeatable() {
+    String block = ProtocolUserCliMarkdownRenderer.commandTableBlock();
+    String credentialSyntax =
+        "<code>"
+            + ProtocolOptions.requiredAttestationCredentialSyntax()
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+            + "</code>";
+
+    assertMaintenanceCommandUsesCredentialSyntax(block, "rekey-book", credentialSyntax);
+    assertMaintenanceCommandUsesCredentialSyntax(block, "backup-book", credentialSyntax);
+    assertMaintenanceCommandUsesCredentialSyntax(block, "restore-book", credentialSyntax);
+  }
+
+  @Test
   void updatedDocument_replacesOnlyTheGeneratedCommandTableBlock() {
     String original =
         """
@@ -186,5 +201,16 @@ class ProtocolUserCliMarkdownRendererTest {
     ProtocolUserCliDocumentSync.sync(document);
 
     assertEquals(synchronizedDocument, Files.readString(document));
+  }
+
+  private static void assertMaintenanceCommandUsesCredentialSyntax(
+      String block, String command, String credentialSyntax) {
+    int commandStart = block.indexOf("<code>" + command + "</code>");
+    assertTrue(commandStart >= 0, "missing command row for " + command);
+    int commandEnd = block.indexOf("</tr>", commandStart);
+    assertTrue(commandEnd >= 0, "unterminated command row for " + command);
+    assertTrue(
+        block.substring(commandStart, commandEnd).contains(credentialSyntax),
+        command + " must publish repeatable aligned attestation credential triples.");
   }
 }

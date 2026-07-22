@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: CORE
-updated: "2026-07-21"
+updated: "2026-07-22"
 route:
   keywords: [fingrind, core, account-code, account-name, accounting-basis, account-taxonomy, cash-flow-asset-classification, book-doctrine, currency-unit, quantity, unit-of-measure, inventory-costing, weighted-average, idempotency, temporal-text, fiscal-year-start, reachability]
   questions: ["what core value types does fingrind expose", "where do the core accounting invariants live", "how does account doctrine work in fingrind", "what account and identity primitives are in the fingrind core module", "where are quantity and weighted-average inventory costing primitives documented"]
@@ -580,6 +580,22 @@ public final class CryptographicPrimitives {
   failures propagate as `IOException`
 - Compatibility: exported core API; only the attestation crypto seam may directly use the guarded
   JCA primitive types
+
+## `SystemUtcClock`
+
+`SystemUtcClock` is the sole owner of the process UTC wall-clock source used by boundary defaults.
+
+```java
+public final class SystemUtcClock {
+  public static Clock instance();
+}
+```
+
+- Purpose: confine acquisition of ambient process time to one audited seam; application services
+  and domain code receive a `Clock` explicitly
+- Time zone: `instance()` returns the stable process UTC clock
+- Boundary: callers may use this only when a process-boundary default is required; persistence,
+  authorization, and business workflows must retain explicit clock injection
 
 ## `CurrencyUnit`
 

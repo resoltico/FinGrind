@@ -1,6 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
@@ -11,6 +10,7 @@ import dev.erst.fingrind.core.attestation.AttestationEffectMutation;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationGenesis;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationTaxCodeSnapshot;
 import dev.erst.fingrind.core.attestation.AttestationTaxRegistrationMutationProjection;
 import dev.erst.fingrind.core.attestation.AttestationTaxRegistrationSnapshot;
@@ -27,8 +27,8 @@ import java.util.Optional;
 
 /** Administrative mutation operations over one SQLite-backed book session. */
 final class SqliteStoreAdministrationMutationOperations {
-  private static final String DECLARE_TAX_REGISTRATION_OPERATION =
-      OperationId.DECLARE_TAX_REGISTRATION.wireName();
+  private static final AttestationOperationKind DECLARE_TAX_REGISTRATION_OPERATION =
+      AttestationOperationKind.DECLARE_TAX_REGISTRATION;
 
   /** One mutation callback that borrows the session-owned SQLite handle without closing it. */
   @FunctionalInterface
@@ -142,7 +142,7 @@ final class SqliteStoreAdministrationMutationOperations {
                 DECLARE_TAX_REGISTRATION_OPERATION,
                 declaredAt,
                 AttestationTaxRegistrationMutationProjection.project(
-                    DECLARE_TAX_REGISTRATION_OPERATION,
+                    DECLARE_TAX_REGISTRATION_OPERATION.wireToken(),
                     taxRegistrationSnapshot(command),
                     taxRegistrationSnapshot(candidate),
                     existingRegistration.isPresent()

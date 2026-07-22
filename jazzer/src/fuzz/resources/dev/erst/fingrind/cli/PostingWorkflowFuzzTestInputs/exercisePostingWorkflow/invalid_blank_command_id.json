@@ -15,12 +15,10 @@
         "documentDate": "2026-04-07"
       }
     ],
-    "approvals": [
-
-    ]
+    "approvals": []
   },
   "provenance": {
-    "commandId": "018f0000-0000-7000-8000-000000000001",
+    "commandId": "   ",
     "idempotencyKey": "idem-3",
     "causationId": "cause-3"
   }

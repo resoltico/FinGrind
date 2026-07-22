@@ -1,12 +1,12 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationPostingEffectSnapshot;
 import dev.erst.fingrind.core.attestation.AttestationPostingEvidenceDocument;
 import dev.erst.fingrind.core.attestation.AttestationPostingLine;
@@ -32,7 +32,8 @@ import java.util.UUID;
 
 /** Mutation operations over one SQLite-backed book session. */
 final class SqliteStoreMutationOperations {
-  private static final String POST_ENTRY_OPERATION = OperationId.POST_ENTRY.wireName();
+  private static final AttestationOperationKind POST_ENTRY_OPERATION =
+      AttestationOperationKind.POST_ENTRY;
 
   /** One mutation callback that borrows the session-owned SQLite handle without closing it. */
   @FunctionalInterface
@@ -244,7 +245,7 @@ final class SqliteStoreMutationOperations {
   private static AttestationPostingRequestSnapshot postingRequestSnapshot(
       PostingDraft postingDraft) {
     return new AttestationPostingRequestSnapshot(
-        POST_ENTRY_OPERATION,
+        POST_ENTRY_OPERATION.wireToken(),
         postingDraft.provenance().requestProvenance().idempotencyKey().value(),
         postingDraft.provenance().requestProvenance().causationId().value(),
         postingDraft.provenance().sourceChannel().wireValue(),
@@ -278,7 +279,7 @@ final class SqliteStoreMutationOperations {
   private static AttestationPostingEffectSnapshot postingEffectSnapshot(CommittedPosting posting) {
     return new AttestationPostingEffectSnapshot(
         UUID.fromString(posting.postingId().value()),
-        POST_ENTRY_OPERATION,
+        POST_ENTRY_OPERATION.wireToken(),
         posting.postingKind().wireValue(),
         posting.postingOriginKind().wireValue(),
         posting.provenance().recordedAt(),

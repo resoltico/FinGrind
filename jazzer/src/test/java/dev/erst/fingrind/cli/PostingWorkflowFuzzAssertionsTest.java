@@ -113,6 +113,6 @@ class PostingWorkflowFuzzAssertionsTest {
         () ->
             harness.exercisePostingWorkflow(
                 CliFuzzHarnessInvocationSupport.fuzzedBytes(
-                    CliFuzzRequestSeedSupport.invalidBlankActorRequestBytes())));
+                    CliFuzzRequestSeedSupport.invalidBlankCommandIdRequestBytes())));
   }
 }

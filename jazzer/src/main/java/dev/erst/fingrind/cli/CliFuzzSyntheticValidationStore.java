@@ -140,7 +140,7 @@ final class CliFuzzSyntheticValidationStore {
 
   private static RequestProvenance requestProvenance(String token) {
     return new RequestProvenance(
-        new CommandId("command-" + token),
+        new CommandId(token),
         new IdempotencyKey("idem-" + token),
         new CausationId("cause-" + token),
         Optional.of(new CorrelationId("corr-" + token)));

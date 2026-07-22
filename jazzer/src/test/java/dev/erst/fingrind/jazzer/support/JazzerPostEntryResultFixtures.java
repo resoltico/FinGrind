@@ -54,12 +54,24 @@ public final class JazzerPostEntryResultFixtures {
       PostEntryCommand command, String postingId, boolean idempotentReplay) {
     Objects.requireNonNull(command, "command");
     return new Committed(
-        new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString()),
+        fixturePostingId(postingId),
         command.requestProvenance().idempotencyKey(),
         CliFuzzFixtures.journalEntry(command).effectiveDate(),
         CliFuzzFixtures.fixedClock().instant(),
         idempotentReplay,
         resolvedJournal(command));
+  }
+
+  /** Returns the canonical synthetic posting identifier for one stable fixture label. */
+  public static PostingId fixturePostingId(String fixtureLabel) {
+    String checkedFixtureLabel = Objects.requireNonNull(fixtureLabel, "fixtureLabel");
+    return new PostingId(
+        java.util
+            .UUID
+            .nameUUIDFromBytes(
+                ("fingrind-test-postingid:" + checkedFixtureLabel)
+                    .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+            .toString());
   }
 
   /** Returns the resolved-journal payload expected on current success results. */

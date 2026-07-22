@@ -150,7 +150,7 @@ final class SqliteRoundTripWorkflowCommandDerivation {
   private static RequestProvenance buildDerivedRequestProvenance(
       RequestProvenance provenance, String stableToken) {
     return new RequestProvenance(
-        new CommandId("command-" + stableToken),
+        new CommandId(stableToken),
         new IdempotencyKey(stableToken),
         new CausationId("cause-" + stableToken),
         provenance.correlationId().map(ignored -> new CorrelationId("corr-" + stableToken)));

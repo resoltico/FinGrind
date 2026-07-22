@@ -9,6 +9,7 @@ import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationKeyFiles;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationOperationPreimages;
 import dev.erst.fingrind.core.attestation.AttestationOperationRequest;
 import dev.erst.fingrind.core.attestation.AttestationSigningSession;
@@ -258,7 +259,7 @@ final class AttestationMaintenanceTestSupport {
     @Override
     public AttestationVerification appendAttestedOperation(
         VerifiedBook verifiedBook,
-        String operationKind,
+        AttestationOperationKind operationKind,
         Instant recordedAt,
         AttestationOperationPreimages preimages,
         AttestationOperationAuthorizer authorizer,
@@ -273,7 +274,7 @@ final class AttestationMaintenanceTestSupport {
               new AttestationOperationRequest(
                   head.bookId(),
                   head.headOrder().add(BigInteger.ONE),
-                  operationKind,
+                  operationKind.wireToken(),
                   head.operationHead(),
                   recordedAt,
                   preimages.request(),

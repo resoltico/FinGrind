@@ -26,6 +26,7 @@ internal fun Project.configureJazzerVerificationLifecycle(
         dependsOn(sqliteWhiteBoxTestPatch)
         dependsOn(executorWhiteBoxTestPatch)
         enableUnnamedNativeAccess()
+        enableCoreNamedNativeAccess()
         allowSunMiscUnsafeMemoryAccess()
         disableClassDataSharing()
         patchModule(

@@ -4,7 +4,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
 import org.junit.jupiter.api.Test;
@@ -21,9 +20,7 @@ class JazzerReplayCliRequestTest {
     ReplayOutcome.Success success = assertInstanceOf(ReplayOutcome.Success.class, outcome);
     assertEquals(
         new CliRequestReplayDetails(
-            new ParsedPostingCommandDetails("2026-04-07", "idem-1", 2, false),
-            ActorType.AGENT,
-            SourceChannel.CLI),
+            new ParsedPostingCommandDetails("2026-04-07", "idem-1", 2, false), SourceChannel.CLI),
         success.details());
     assertEquals(ReplayOutcomeKind.SUCCESS, success.kind());
     assertEquals(ReplayOutcome.SUCCESS_MESSAGE, success.message());

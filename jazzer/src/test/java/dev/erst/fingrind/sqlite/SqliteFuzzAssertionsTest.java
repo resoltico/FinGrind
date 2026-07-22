@@ -237,8 +237,6 @@ class SqliteFuzzAssertionsTest {
                 "document-idem-1",
                 "cash-receipt",
                 "2026-04-07",
-                "actor-1",
-                "AGENT",
                 "command-1",
                 "idem-1",
                 "cause-1",

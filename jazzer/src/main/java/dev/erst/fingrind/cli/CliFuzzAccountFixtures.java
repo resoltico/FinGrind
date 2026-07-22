@@ -100,8 +100,12 @@ public final class CliFuzzAccountFixtures {
 
   private static DeclareAccountResult declareAccount(
       BookAdministrationService administrationService, DeclareAccountCommand command) {
-    return BookkeepingPublishedLanguageTranslator.toPublished(
-        administrationService.declareAccount(
-            BookkeepingRequestPublishedLanguageTranslator.fromPublished(command)));
+    var outcome =
+        CliFuzzWorkflowFixtures.withAttestationAuthorization(
+            attestationAuthorizer ->
+                administrationService.declareAccount(
+                    BookkeepingRequestPublishedLanguageTranslator.fromPublished(command),
+                    attestationAuthorizer));
+    return BookkeepingPublishedLanguageTranslator.toPublished(outcome);
   }
 }

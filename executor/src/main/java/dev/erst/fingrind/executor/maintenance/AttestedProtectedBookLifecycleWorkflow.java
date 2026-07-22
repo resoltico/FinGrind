@@ -1,10 +1,10 @@
 package dev.erst.fingrind.executor.maintenance;
 
-import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationLifecycleMutationProjection;
 import dev.erst.fingrind.core.attestation.AttestationLifecycleState;
+import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationSigningSession;
 import dev.erst.fingrind.core.attestation.AttestationVerifier;
 import dev.erst.fingrind.executor.spi.AttestedProtectedBookMaintenanceStore;
@@ -23,8 +23,10 @@ import java.util.UUID;
 
 /** Attested lifecycle owner for protected-book restore and rekey mutations. */
 public final class AttestedProtectedBookLifecycleWorkflow {
-  private static final String RESTORE_BOOK_OPERATION = OperationId.RESTORE_BOOK.wireName();
-  private static final String REKEY_BOOK_OPERATION = OperationId.REKEY_BOOK.wireName();
+  private static final AttestationOperationKind RESTORE_BOOK_OPERATION =
+      AttestationOperationKind.RESTORE_BOOK;
+  private static final AttestationOperationKind REKEY_BOOK_OPERATION =
+      AttestationOperationKind.REKEY_BOOK;
 
   private final Clock clock;
   private final AttestedProtectedBookMaintenanceStore store;
@@ -229,7 +231,7 @@ public final class AttestedProtectedBookLifecycleWorkflow {
                                 RESTORE_BOOK_OPERATION,
                                 clock.instant(),
                                 AttestationLifecycleMutationProjection.restoreBook(
-                                    RESTORE_BOOK_OPERATION, acknowledgement),
+                                    RESTORE_BOOK_OPERATION.wireToken(), acknowledgement),
                                 signingSession,
                                 null);
                             stagedRestore.commit();
@@ -274,7 +276,7 @@ public final class AttestedProtectedBookLifecycleWorkflow {
                       REKEY_BOOK_OPERATION,
                       recordedAt,
                       AttestationLifecycleMutationProjection.rekeyBook(
-                          REKEY_BOOK_OPERATION,
+                          REKEY_BOOK_OPERATION.wireToken(),
                           AttestationLifecycleState.nextKeyEpoch(sourceEvidence),
                           recordedAt,
                           java.util.Optional.empty()),

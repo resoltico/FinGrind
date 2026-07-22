@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.SystemUtcClock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
@@ -111,7 +112,9 @@ final class SqliteProcessIdentity {
       return false;
     }
     if (startEpochMillis == UNKNOWN_START_EPOCH_MILLIS) {
-      return markerLastModified.plus(unknownStartGracePeriod).isAfter(Instant.now());
+      return markerLastModified
+          .plus(unknownStartGracePeriod)
+          .isAfter(Instant.now(SystemUtcClock.instance()));
     }
     Optional<Instant> liveStartInstant = processHandle.get().info().startInstant();
     return liveStartInstant.map(instant -> instant.toEpochMilli() == startEpochMillis).orElse(true);

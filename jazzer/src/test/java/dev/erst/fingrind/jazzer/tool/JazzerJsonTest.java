@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.core.ActorType;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.core.WireValue;
 import dev.erst.fingrind.jazzer.tool.external.InaccessibleWireValueFixtures;
@@ -36,7 +35,6 @@ class JazzerJsonTest {
             ReplayOutcome.SUCCESS_MESSAGE,
             new CliRequestReplayDetails(
                 new ParsedPostingCommandDetails("2026-04-07", "idem-1", 2, false),
-                ActorType.AGENT,
                 SourceChannel.CLI));
     Path jsonPath = tempDirectory.resolve("replay-expectation.json");
 
@@ -46,7 +44,6 @@ class JazzerJsonTest {
 
     assertTrue(json.contains("\"outcomeKind\" : \"success\""));
     assertTrue(json.contains("\"type\" : \"CLI_REQUEST\""));
-    assertTrue(json.contains("\"actorType\" : \"AGENT\""));
     assertTrue(json.contains("\"sourceChannel\" : \"CLI\""));
     assertEquals(expectation, reloaded);
     assertInstanceOf(CliRequestReplayDetails.class, reloaded.details());

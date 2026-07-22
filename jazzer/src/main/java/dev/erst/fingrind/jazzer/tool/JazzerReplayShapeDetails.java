@@ -27,7 +27,7 @@ final class JazzerReplayShapeDetails {
         plan.steps().getFirst().kind(),
         plan.steps().getLast().kind(),
         assertionStepCount(plan),
-        plan.beginsWithEnsureBook());
+        plan.steps().getFirst().kind().mutatesBook());
   }
 
   private static int assertionStepCount(LedgerPlan plan) {

@@ -71,7 +71,14 @@ public final class CliFuzzFixtures {
   public static PostingIdGenerator postingIdGenerator(byte[] input) {
     Objects.requireNonNull(input, "input must not be null");
     String postingId = UUID.nameUUIDFromBytes(input).toString();
-    return () -> new PostingId(java.util.UUID.nameUUIDFromBytes(("fingrind-test-postingid:" + postingId).getBytes(java.nio.charset.StandardCharsets.UTF_8)).toString());
+    return () ->
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    ("fingrind-test-postingid:" + postingId)
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString());
   }
 
   /** Returns the deterministic clock shared by Jazzer harnesses and regression replay. */

@@ -160,6 +160,9 @@ corrupt_runtime_jar_help_stderr="${tmp_dir}/corrupt-runtime-jar-help.err"
 
 readonly book_file="${tmp_dir}/Nested Dir/Books/ledger launcher.db"
 readonly key_file="${tmp_dir}/Keys/book key.txt"
+readonly attestation_founder_principal_id='123e4567-e89b-12d3-a456-426614174000'
+readonly attestation_founder_key_file="${tmp_dir}/Keys/founder.fgatk"
+readonly attestation_founder_passphrase_file="${tmp_dir}/Keys/founder.passphrase"
 readonly entity_name='Launcher Smoke Co'
 readonly book_template_id='OWNER_MANAGED_SERVICE'
 readonly accounting_basis='CASH'
@@ -328,6 +331,9 @@ python3 "${launcher_contract_test_support}" \
     --path "${key_file}" \
     --label 'source-checkout launcher key generation'
 
+printf '%s\n' 'source-checkout-launcher-attestation-passphrase' >"${attestation_founder_passphrase_file}"
+chmod 600 "${attestation_founder_passphrase_file}"
+
 progress 'source-checkout open-book'
 "${launcher_wrapper}" \
     open-book \
@@ -338,6 +344,9 @@ progress 'source-checkout open-book'
     --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
     --fiscal-year-start "${fiscal_year_start}" --book-start-effective-date 2026-01-01 \
+    --attestation-founder-principal-id "${attestation_founder_principal_id}" \
+    --attestation-founder-key-file "${attestation_founder_key_file}" \
+    --attestation-founder-passphrase-file "${attestation_founder_passphrase_file}" \
     --output json >"${open_stdout}" 2>"${open_stderr}" ||
     die "source-checkout launcher open-book failed"
 
@@ -409,6 +418,9 @@ progress 'direct-java open-book'
     --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
     --fiscal-year-start "${fiscal_year_start}" --book-start-effective-date 2026-01-01 \
+    --attestation-founder-principal-id "${attestation_founder_principal_id}" \
+    --attestation-founder-key-file "${attestation_founder_key_file}" \
+    --attestation-founder-passphrase-file "${attestation_founder_passphrase_file}" \
     --output json >"${raw_open_stdout}" 2>"${raw_open_stderr}" ||
     die "developer direct-Java open-book failed"
 
@@ -462,6 +474,9 @@ java -jar "${raw_jar}" \
     --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
     --fiscal-year-start "${fiscal_year_start}" --book-start-effective-date 2026-01-01 \
+    --attestation-founder-principal-id "${attestation_founder_principal_id}" \
+    --attestation-founder-key-file "${attestation_founder_key_file}" \
+    --attestation-founder-passphrase-file "${attestation_founder_passphrase_file}" \
     --output json >"${raw_jar_open_stdout}" 2>"${raw_jar_open_stderr}"
 raw_jar_open_exit=$?
 set -e

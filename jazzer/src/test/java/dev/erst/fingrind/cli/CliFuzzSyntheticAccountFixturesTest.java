@@ -372,8 +372,6 @@ class CliFuzzSyntheticAccountFixturesTest {
                             "document-idem-manual-2",
                             "opening-balance-sheet",
                             "2026-04-08",
-                            "actor-manual-2",
-                            "PERSON",
                             "command-manual-2",
                             "idem-manual-2",
                             "cause-manual-2",
@@ -386,7 +384,8 @@ class CliFuzzSyntheticAccountFixturesTest {
                 LocalDate.parse("2026-04-13"),
                 new dev.erst.fingrind.contract.bookkeeping.PostingLineage.Reversal(
                     new dev.erst.fingrind.core.ReversalReference(
-                        new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
+                        new dev.erst.fingrind.core.PostingId(
+                            "bdc03c47-a16c-3688-a18f-2445894bbc69")),
                     new dev.erst.fingrind.core.ReversalReason("operator reversal")),
                 null,
                 new dev.erst.fingrind.core.JournalEntry(

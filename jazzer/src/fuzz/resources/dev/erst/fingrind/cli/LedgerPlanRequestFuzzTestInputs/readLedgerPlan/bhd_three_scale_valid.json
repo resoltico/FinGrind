@@ -2,18 +2,6 @@
   "planId": "seed-plan-bhd-1",
   "steps": [
     {
-      "stepId": "open-bhd",
-      "kind": "ensure-book",
-      "ensureBook": {
-        "entityName": "Plan Seed BHD",
-        "bookTemplateId": "OWNER_MANAGED_SERVICE",
-        "accountingBasis": "CASH",
-        "functionalCurrency": "BHD",
-        "fiscalYearStart": "01-01",
-        "bookStartEffectiveDate": "2026-01-01"
-      }
-    },
-    {
       "stepId": "declare-cash-bhd",
       "kind": "declare-account",
       "declareAccount": {

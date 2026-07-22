@@ -176,7 +176,7 @@ TEXT
             generate-book-key-file)
                 while [[ $# -gt 0 ]]; do
                     case "${1}" in
-                        --book-key-file)
+                        --new-book-key-file)
                             printf 'fake-key\n' > "$(translate_path "${2}")"
                             shift 2
                             ;;
@@ -332,7 +332,7 @@ TEXT
                             ;;
                     esac
                 done
-                [[ "${posting_id}" == '01963c70-8d65-7b56-8a64-3c92745d8f73' ]] || exit 1
+                [[ "${posting_id}" == '018f0000-0000-7000-8000-000000000002' ]] || exit 1
                 cat <<JSON
 {"status":"ok","payload":{"posting":{"postingId":"018f0000-0000-7000-8000-000000000002","postingKind":"STANDARD","postingOriginKind":"DIRECT_JOURNAL","reversalState":"direct","effectiveDate":"2026-04-08","recordedAt":"2026-04-08T12:05:00Z","commandId":"018f0000-0000-7000-8000-000000000001","idempotencyKey":"release-protocol-idem-transfer","causationId":"release-protocol-cause-transfer","sourceChannel":"CLI","evidence":{"sourceDocuments":[{"sourceDocumentId":"release-protocol-bank-deposit-1","sourceDocumentType":"bank-deposit","documentDate":"2026-04-08"}],"approvals":[]},"lines":[{"accountCode":"operating-bank","side":"DEBIT","amount":{"currencyCode":"EUR","minorUnits":"250"}},{"accountCode":"cash","side":"CREDIT","amount":{"currencyCode":"EUR","minorUnits":"250"}}]}}}
 JSON

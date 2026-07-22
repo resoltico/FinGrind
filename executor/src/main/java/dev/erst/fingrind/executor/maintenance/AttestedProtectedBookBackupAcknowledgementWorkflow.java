@@ -23,8 +23,8 @@ import java.util.UUID;
 
 /** Owns durable backup publication and its exactly-once attestation acknowledgement. */
 final class AttestedProtectedBookBackupAcknowledgementWorkflow {
-  private static final String BACKUP_CREATED_OPERATION =
-      AttestationOperationKind.BACKUP_CREATED.wireToken();
+  private static final AttestationOperationKind BACKUP_CREATED_OPERATION =
+      AttestationOperationKind.BACKUP_CREATED;
 
   private final Clock clock;
   private final AttestedProtectedBookMaintenanceStore store;
@@ -135,7 +135,7 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
               BACKUP_CREATED_OPERATION,
               clock.instant(),
               AttestationLifecycleMutationProjection.backupBook(
-                  BACKUP_CREATED_OPERATION, acknowledgement),
+                  BACKUP_CREATED_OPERATION.wireToken(), acknowledgement),
               signingSession,
               acknowledgement);
           yield MaintenanceDecision.accepted(

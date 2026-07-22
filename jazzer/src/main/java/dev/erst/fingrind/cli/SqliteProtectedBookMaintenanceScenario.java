@@ -19,7 +19,7 @@ enum SqliteProtectedBookMaintenanceScenario {
           lifecycleWorkflow, readWorkflow, sourceAccess, root);
     }
   },
-  LEGACY_BACKUP_RESTORE {
+  UNATTESTED_BACKUP_RESTORE_REJECTED {
     @Override
     void exercise(
         CliBookLifecycleWorkflow lifecycleWorkflow,
@@ -29,7 +29,7 @@ enum SqliteProtectedBookMaintenanceScenario {
         Path sourceKeyPath,
         Path root)
         throws IOException {
-      SqliteProtectedBookMaintenanceFuzzAssertions.exerciseLegacyBackupRestore(
+      SqliteProtectedBookMaintenanceFuzzAssertions.exerciseUnattestedBackupRestoreRejection(
           lifecycleWorkflow, readWorkflow, sourceBookPath, sourceKeyPath, root);
     }
   },
