@@ -3,8 +3,11 @@ package dev.erst.fingrind.executor;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
+import dev.erst.fingrind.core.attestation.AttestationAuthorizationFailure;
 import dev.erst.fingrind.core.attestation.AttestationVerifier;
 import dev.erst.fingrind.executor.maintenance.AttestedProtectedBookLifecycleWorkflow;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
@@ -117,8 +120,9 @@ class AttestedProtectedBookLifecycleWorkflowTest {
     }
 
     AttestationMaintenanceTestSupport.Store pendingStore = store(bookPath, credential);
-    pendingStore.setAppendFailure(
-        new IllegalStateException("simulated acknowledgment interruption"));
+    pendingStore
+        .overrides()
+        .appendFailure(new IllegalStateException("simulated acknowledgment interruption"));
     try (var session = credential.openSession()) {
       assertInstanceOf(
           ProtectedBookBackupOutcome.AcknowledgementPending.class,
@@ -126,6 +130,24 @@ class AttestedProtectedBookLifecycleWorkflowTest {
               new AttestedProtectedBookLifecycleWorkflow(CLOCK, pendingStore)
                   .backupBook(access, backupPath, backupKeyPath, BACKUP_ID, session)));
     }
+
+    AttestationMaintenanceTestSupport.Store authorizationRejectedStore =
+        store(bookPath, credential);
+    authorizationRejectedStore
+        .overrides()
+        .appendFailure(
+            AttestationAdmissionRejectedException.from(
+                AttestationAuthorizationFailure.QUORUM_BELOW));
+    try (var session = credential.openSession()) {
+      ProtectedBookBackupOutcome.AcknowledgementAuthorizationRejected rejected =
+          assertInstanceOf(
+              ProtectedBookBackupOutcome.AcknowledgementAuthorizationRejected.class,
+              accepted(
+                  new AttestedProtectedBookLifecycleWorkflow(CLOCK, authorizationRejectedStore)
+                      .backupBook(access, backupPath, backupKeyPath, BACKUP_ID, session)));
+      assertEquals(AttestationAuthorizationFailure.QUORUM_BELOW, rejected.failure());
+    }
+    assertEquals(BackupArtifactPairState.COMPLETE, authorizationRejectedStore.backupPairState());
 
     AttestationMaintenanceTestSupport.Store restoreStore = store(bookPath, credential);
     try (var session = credential.openSession()) {
@@ -189,6 +211,94 @@ class AttestedProtectedBookLifecycleWorkflowTest {
                       .rekeyBook(access, temporaryDirectory.resolve("rekeyed/book.key"), session)));
       assertInstanceOf(
           ProtectedBookMaintenanceRejection.BookHasBlockingArtifacts.class, rejected.rejection());
+    }
+  }
+
+  @Test
+  void rethrowsAdmissionRefusalsAtEveryUnpublishedLifecycleMutationBoundary() throws IOException {
+    AttestationMaintenanceTestSupport.CredentialFixture credential = credential();
+    Path bookPath = temporaryDirectory.resolve("live/book.sqlite");
+    ProtectedBookAccess access =
+        ProtectedBookAccess.fromPublished(
+            AttestationMaintenanceTestSupport.bookAccess(bookPath, credential));
+    Path backupPath = temporaryDirectory.resolve("retained/book.fgba");
+    Path backupKeyPath = temporaryDirectory.resolve("retained/book.key");
+
+    AttestationMaintenanceTestSupport.Store createStore = store(bookPath, credential);
+    createStore
+        .overrides()
+        .stagedBackupFailure(
+            AttestationAdmissionRejectedException.from(
+                AttestationAuthorizationFailure.KEY_REVOKED));
+    try (var session = credential.openSession()) {
+      AttestationAdmissionRejectedException rejected =
+          assertThrows(
+              AttestationAdmissionRejectedException.class,
+              () ->
+                  new AttestedProtectedBookLifecycleWorkflow(CLOCK, createStore)
+                      .backupBook(access, backupPath, backupKeyPath, BACKUP_ID, session));
+      assertEquals(AttestationAuthorizationFailure.KEY_REVOKED, rejected.failure());
+    }
+
+    AttestationMaintenanceTestSupport.Store resumeStore = store(bookPath, credential);
+    AttestedProtectedBookLifecycleWorkflow resumeWorkflow =
+        new AttestedProtectedBookLifecycleWorkflow(CLOCK, resumeStore);
+    try (var session = credential.openSession()) {
+      accepted(resumeWorkflow.backupBook(access, backupPath, backupKeyPath, BACKUP_ID, session));
+    }
+    resumeStore
+        .overrides()
+        .backupArtifactVerificationFailure(
+            AttestationAdmissionRejectedException.from(
+                AttestationAuthorizationFailure.CREDENTIAL_PURPOSE_INVALID));
+    try (var session = credential.openSession()) {
+      AttestationAdmissionRejectedException rejected =
+          assertThrows(
+              AttestationAdmissionRejectedException.class,
+              () ->
+                  resumeWorkflow.backupBook(access, backupPath, backupKeyPath, BACKUP_ID, session));
+      assertEquals(AttestationAuthorizationFailure.CREDENTIAL_PURPOSE_INVALID, rejected.failure());
+    }
+
+    AttestationMaintenanceTestSupport.Store restoreStore = store(bookPath, credential);
+    AttestedProtectedBookLifecycleWorkflow restoreWorkflow =
+        new AttestedProtectedBookLifecycleWorkflow(CLOCK, restoreStore);
+    try (var session = credential.openSession()) {
+      accepted(restoreWorkflow.backupBook(access, backupPath, backupKeyPath, BACKUP_ID, session));
+    }
+    restoreStore
+        .overrides()
+        .appendFailure(
+            AttestationAdmissionRejectedException.from(
+                AttestationAuthorizationFailure.CAPABILITY_INVALID));
+    try (var session = credential.openSession()) {
+      AttestationAdmissionRejectedException rejected =
+          assertThrows(
+              AttestationAdmissionRejectedException.class,
+              () ->
+                  restoreWorkflow.restoreBook(
+                      temporaryDirectory.resolve("restored/book.sqlite"),
+                      temporaryDirectory.resolve("restored/book.key"),
+                      backupPath,
+                      backupKeyPath,
+                      session));
+      assertEquals(AttestationAuthorizationFailure.CAPABILITY_INVALID, rejected.failure());
+    }
+
+    AttestationMaintenanceTestSupport.Store rekeyStore = store(bookPath, credential);
+    rekeyStore
+        .overrides()
+        .appendFailure(
+            AttestationAdmissionRejectedException.from(
+                AttestationAuthorizationFailure.QUORUM_BELOW));
+    try (var session = credential.openSession()) {
+      AttestationAdmissionRejectedException rejected =
+          assertThrows(
+              AttestationAdmissionRejectedException.class,
+              () ->
+                  new AttestedProtectedBookLifecycleWorkflow(CLOCK, rekeyStore)
+                      .rekeyBook(access, temporaryDirectory.resolve("rekeyed/book.key"), session));
+      assertEquals(AttestationAuthorizationFailure.QUORUM_BELOW, rejected.failure());
     }
   }
 

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import java.util.Objects;
 
@@ -17,5 +18,11 @@ final class CliFailureResponseWriter {
       return;
     }
     outputChannel.writeFailureText(CliFailureOutputRenderer.renderFailureText(failure));
+  }
+
+  void writeAttestationAuthorizationRejection(
+      AttestationVerificationFailure failure, OutputMode outputMode) {
+    outputChannel.writeRejectedEnvelope(
+        CliRejectionPayloadMapper.attestationAuthorizationRejectedEnvelope(failure), outputMode);
   }
 }

@@ -37,6 +37,14 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
               pending.backupFilePath(),
               pending.backupBookKeyFilePath(),
               pending.backupId());
+      case ProtectedBookBackupOutcome.AcknowledgementAuthorizationRejected rejected ->
+          new BackupBookResult.AcknowledgementAuthorizationRejected(
+              rejected.bookFilePath(),
+              rejected.backupFilePath(),
+              rejected.backupBookKeyFilePath(),
+              rejected.backupId(),
+              dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure.fromWireCode(
+                  rejected.failure().code()));
       case ProtectedBookBackupOutcome.Rejected rejected ->
           new BackupBookResult.Rejected(toPublished(rejected.rejection()));
     };

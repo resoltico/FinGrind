@@ -245,11 +245,7 @@ final class SqliteAttestationEvidenceStore {
   }
 
   private static AttestationVerification verifyCandidate(List<AttestationEvidence> evidence) {
-    try {
-      return AttestationVerifier.verifyBook(evidence);
-    } catch (AttestationVerificationException exception) {
-      throw new IllegalArgumentException(exception.code(), exception);
-    }
+    return SqliteAttestationCandidateVerifier.verify(evidence);
   }
 
   private static void insert(

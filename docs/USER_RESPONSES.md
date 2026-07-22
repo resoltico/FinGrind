@@ -332,6 +332,14 @@ for the current hard-break line.
 - `payload.bookFile`
 - `artifacts[]`, where the current entries are `backup-file` and `backup-key-file`
 
+When the backup pair has been published but its live-book acknowledgement is refused by current
+historical authorization, `backup-book` instead returns a `structural-invalid` rejected envelope
+with the exact `attestation-*` code and exit code `2`. Its message confirms that the pair remains
+published and its hint directs the caller to retain the pair and rerun the same `--backup-id` tuple
+after correcting the credential set or policy. This is distinct from a published
+`acknowledgementState: pending` response with exit code `4`, which represents an operational
+interruption rather than an authorization refusal.
+
 `restore-book` success returns:
 - `payload.bookFile`
 - `payload.bookKeyFilePath`

@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.contract.runtime.EnvironmentDescriptor;
+import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
 import dev.erst.fingrind.report.pdf.PdfReportService;
 import dev.erst.fingrind.sqlite.SqliteRuntime;
 import java.io.InputStream;
@@ -157,6 +158,12 @@ final class FinGrindCli {
       CliFailure failure = CliFailureMapper.contractFailure(exception.failure());
       failureWriter.writeFailure(failure, failureOutputMode);
       return CliExecutionPolicy.failureExitCode(failure);
+    } catch (AttestationAdmissionRejectedException exception) {
+      failureWriter.writeAttestationAuthorizationRejection(
+          dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure.fromWireCode(
+              exception.failure().code()),
+          failureOutputMode);
+      return CliAttestationExitCodes.authorizationRejectedExitCode();
     } catch (RuntimeException exception) {
       String errorId = nextInternalErrorId();
       CliFailure failure = CliFailureMapper.runtimeFailure(exception, errorId);

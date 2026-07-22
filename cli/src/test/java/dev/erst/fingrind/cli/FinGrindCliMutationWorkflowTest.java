@@ -114,6 +114,71 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
   }
 
   @Test
+  void run_mutationWithMismatchedSigningPrincipal_returnsExactAuthorizationRejection()
+      throws IOException {
+    Path bookFilePath = tempDirectory.resolve("authorization-books").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    Path declareFile =
+        writeNamedRequest("declare-cash.json", declareAccountJson("1000", "Cash", "DEBIT"));
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock())
+            .run(jsonArguments(openBookKeyFileArguments(bookFilePath, bookKeyFilePath))));
+
+    String bookName = bookFilePath.getFileName().toString();
+    ByteArrayOutputStream rejectedOutput = new ByteArrayOutputStream();
+    assertEquals(
+        2,
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(rejectedOutput), fixedClock())
+            .run(
+                jsonArguments(
+                    "declare-account",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--request-file",
+                    declareFile.toString(),
+                    "--attestation-principal-id",
+                    "00000000-0000-7000-8000-000000000001",
+                    "--attestation-key-file",
+                    bookFilePath.resolveSibling(bookName + ".founder.fgatk").toString(),
+                    "--attestation-passphrase-file",
+                    bookFilePath.resolveSibling(bookName + ".founder-passphrase").toString())));
+    JsonNode rejectedEnvelope = new ObjectMapper().readTree(rejectedOutput.toByteArray());
+    assertEquals("rejected", rejectedEnvelope.path("status").stringValue());
+    assertEquals("attestation-key-principal-mismatch", rejectedEnvelope.path("code").stringValue());
+
+    ByteArrayOutputStream verificationOutput = new ByteArrayOutputStream();
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(verificationOutput),
+                fixedClock())
+            .run(
+                new String[] {
+                  "verify-book",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--output",
+                  "json"
+                }));
+    assertEquals(
+        "0",
+        new ObjectMapper()
+            .readTree(verificationOutput.toByteArray())
+            .path("payload")
+            .path("headOrder")
+            .stringValue());
+  }
+
+  @Test
   void run_openBookDeclareAccountListAccountsAndCommitThroughDefaultSqliteWorkflow()
       throws IOException {
     Path requestFile = writeRequest(validRequestJson());

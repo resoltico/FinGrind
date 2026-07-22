@@ -56,6 +56,10 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Fixed live protected-book authorization-refusal transport. Every mutation and lifecycle admission
+  now returns its exact `attestation-*` rejected envelope with exit code `2` rather than degrading
+  into a runtime error. A backup pair published before an acknowledgement authorization refusal is
+  preserved and reported as that exact refusal, distinct from an operationally pending acknowledgement.
 - Fixed the attestation signing boundary to accept one through 64 distinct principal credentials,
   the same exact-quorum range policy admits. A reachable policy can no longer strand public
   mutation, backup, restore, rekey, receipt export, or policy repair behind more signers than a

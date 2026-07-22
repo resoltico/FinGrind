@@ -99,7 +99,9 @@ rotates the passphrase that protects one existing initialized book, and restores
 automatically if new-passphrase verification fails. `backup-book` publishes one
 manifest-attested encrypted backup pair for a closed book and requires an explicit `--backup-id`;
 if external publication succeeds before acknowledgement, rerun the exact command to resume that
-same acknowledgement. `restore-book` verifies the backup manifest and internal immutable chain,
+same acknowledgement. If authorization refuses that post-publication acknowledgement, FinGrind
+preserves the pair and returns the exact `attestation-*` rejection with exit code 2 rather than an
+acknowledgement-pending result. `restore-book` verifies the backup manifest and internal immutable chain,
 restores only to an absent live-book destination, and re-encrypts the restored book under a new
 `--new-book-key-file`. `verify-book`, `attestation-review`, `export-attestation-receipt`, and
 `verify-receipt` inspect attestation truth without mutating ordinary book state.
@@ -493,6 +495,7 @@ Use the extracted bundle launcher or the direct-Java wrapper for real process ex
 | missing `--new-book-key-file` on `rekey-book` | `1` | `invalid-request` | `A --new-book-key-file argument is required.` |
 | missing attestation credentials for `rekey-book` | `1` | `invalid-request` | `Provide one through 64 aligned attestation credential triples: ...` |
 | valid but insufficient or unauthorized attestation signers for a mutation, lifecycle command, or receipt export | `2` | exact `attestation-*` rejection such as `attestation-quorum-below` | `The selected signing credentials do not authorize this attestation action at the live book head.` |
+| insufficient or unauthorized signer set for a backup acknowledgement after pair publication | `2` | exact `attestation-*` rejection such as `attestation-quorum-below` | `The backup artifact was published, but the selected signing credentials do not authorize its source-book acknowledgement at the live book head.` |
 | missing `--request-file` | `1` | `invalid-request` | `A --request-file argument is required.` |
 | multiple passphrase sources | `1` | `invalid-request` | `Exactly one book passphrase source is permitted per command.` |
 | same path used for both files | `1` | `invalid-request` | `--book-file and --request-file must not point to the same path.` and similar |

@@ -126,6 +126,10 @@ final class AttestationMaintenanceTestSupport {
       backupArtifactState.pairState = Objects.requireNonNull(state, "state");
     }
 
+    BackupArtifactPairState backupPairState() {
+      return backupArtifactState.pairState;
+    }
+
     void setLiveBlockingArtifacts(List<Path> blockingArtifacts) {
       admissionState.liveBlockingArtifacts = List.copyOf(blockingArtifacts);
     }
@@ -152,10 +156,6 @@ final class AttestationMaintenanceTestSupport {
 
     void setPrepareFailure(RuntimeException failure) {
       failureState.prepare = Objects.requireNonNull(failure, "failure");
-    }
-
-    void setAppendFailure(RuntimeException failure) {
-      failureState.append = Objects.requireNonNull(failure, "failure");
     }
 
     List<AttestationEvidence> liveEvidence() {
@@ -418,6 +418,10 @@ final class AttestationMaintenanceTestSupport {
 
     void stagedBackupFailure(RuntimeException failure) {
       failureState.stagedBackup = Objects.requireNonNull(failure, "failure");
+    }
+
+    void appendFailure(RuntimeException failure) {
+      failureState.append = Objects.requireNonNull(failure, "failure");
     }
 
     void backupRecoveryFailure(RuntimeException failure) {

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
@@ -83,6 +84,27 @@ class CliMaintenanceMutationResponseWriterCoverageTest extends CliResponseWriter
     assertJsonContains(rejected, "\"code\":\"backup-acknowledgement-conflict\"");
     assertJsonContains(rejected, "\"backupId\":\"" + BACKUP_ID + "\"");
     assertEquals(7, CliAdministrativeExitCodes.exitCodeFor(conflict));
+  }
+
+  @Test
+  void writesPublishedBackupAcknowledgementAuthorizationRefusalAsAnExactRejection() {
+    BackupBookResult.AcknowledgementAuthorizationRejected rejected =
+        new BackupBookResult.AcknowledgementAuthorizationRejected(
+            BOOK_FILE,
+            BACKUP_FILE,
+            BACKUP_KEY_FILE,
+            BACKUP_ID,
+            AttestationVerificationFailure.QUORUM_BELOW);
+
+    ByteArrayOutputStream json = new ByteArrayOutputStream();
+    writer(json).writeBackupBookResult(rejected, OutputMode.JSON);
+    assertJsonContains(json, "\"status\":\"rejected\"");
+    assertJsonContains(json, "\"code\":\"attestation-quorum-below\"");
+
+    ByteArrayOutputStream text = new ByteArrayOutputStream();
+    writer(text).writeBackupBookResult(rejected, OutputMode.TEXT);
+    assertTrue(text.toString(StandardCharsets.UTF_8).contains("published backup pair"));
+    assertEquals(2, CliAdministrativeExitCodes.exitCodeFor(rejected));
   }
 
   private static CliMaintenanceMutationResponseWriter writer(ByteArrayOutputStream outputStream) {

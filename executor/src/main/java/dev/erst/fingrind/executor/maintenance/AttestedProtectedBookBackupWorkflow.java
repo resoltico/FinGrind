@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.maintenance;
 
+import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
 import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationSigningSession;
@@ -123,6 +124,8 @@ final class AttestedProtectedBookBackupWorkflow {
           });
     } catch (ProtectedBookMaintenanceRejectionException exception) {
       return AttestedProtectedBookMaintenanceDecisions.rejectedBackup(exception.rejection());
+    } catch (AttestationAdmissionRejectedException exception) {
+      throw exception;
     } catch (RuntimeException exception) {
       return AttestedProtectedBookMaintenanceDecisions.failure(
           backupPath, "backupFilePath", "Failed to create the attested backup artifact.");
@@ -199,6 +202,8 @@ final class AttestedProtectedBookBackupWorkflow {
           });
     } catch (ProtectedBookMaintenanceRejectionException exception) {
       return AttestedProtectedBookMaintenanceDecisions.rejectedBackup(exception.rejection());
+    } catch (AttestationAdmissionRejectedException exception) {
+      throw exception;
     } catch (RuntimeException exception) {
       return AttestedProtectedBookMaintenanceDecisions.failure(
           backupPath, "backupFilePath", "Failed to resume the backup acknowledgement.");

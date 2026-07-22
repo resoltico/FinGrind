@@ -73,6 +73,72 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
   }
 
   @Test
+  void run_planWithMismatchedSigningPrincipal_returnsExactAuthorizationRejectionAndRollsBack()
+      throws IOException {
+    Path planFile = writeNamedRequest("two-declaration-plan.json", twoAccountPlanJson());
+    Path bookFilePath = tempDirectory.resolve("plans").resolve("rejected-plan.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(new ByteArrayOutputStream()),
+                fixedClock())
+            .run(jsonArguments(openBookKeyFileArguments(bookFilePath, bookKeyFilePath))));
+
+    String bookName = bookFilePath.getFileName().toString();
+    ByteArrayOutputStream rejectedOutput = new ByteArrayOutputStream();
+    assertEquals(
+        2,
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(rejectedOutput), fixedClock())
+            .run(
+                jsonArguments(
+                    "execute-plan",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--result-detail",
+                    "full",
+                    "--request-file",
+                    planFile.toString(),
+                    "--attestation-principal-id",
+                    "00000000-0000-7000-8000-000000000001",
+                    "--attestation-key-file",
+                    bookFilePath.resolveSibling(bookName + ".founder.fgatk").toString(),
+                    "--attestation-passphrase-file",
+                    bookFilePath.resolveSibling(bookName + ".founder-passphrase").toString())));
+    JsonNode rejectedEnvelope = new ObjectMapper().readTree(rejectedOutput.toByteArray());
+    assertEquals("rejected", rejectedEnvelope.path("status").stringValue());
+    assertEquals("attestation-key-principal-mismatch", rejectedEnvelope.path("code").stringValue());
+
+    ByteArrayOutputStream verificationOutput = new ByteArrayOutputStream();
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(verificationOutput),
+                fixedClock())
+            .run(
+                new String[] {
+                  "verify-book",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--output",
+                  "json"
+                }));
+    assertEquals(
+        "0",
+        new ObjectMapper()
+            .readTree(verificationOutput.toByteArray())
+            .path("payload")
+            .path("headOrder")
+            .stringValue());
+  }
+
+  @Test
   void run_rejectsMutatingPlanWithoutAnAttestationCredential() throws IOException {
     Path planFile = writeNamedRequest("declare-plan.json", validPlanJson());
     Path bookFilePath = tempDirectory.resolve("plans").resolve("missing-book.sqlite");

@@ -64,7 +64,10 @@ Backup is a staged external-artifact operation:
    artifact-already-exists with exit 7.
 4. Best-effort append backup-created with backupId, backupArtifactDigest, sourceOrder H, and
    source head H. It compares-and-swaps the current live head; if that head advanced, it rebuilds
-   and re-signs the acknowledgement while retaining source H.
+   and re-signs the acknowledgement while retaining source H. An authorization refusal after the
+   pair is published returns its exact `attestation-*` rejection with exit code 2 and preserves
+   that pair for an exact-tuple retry. It is not acknowledgement-pending; that exit-4 outcome is
+   reserved for an operational interruption whose authorization result is not known.
 
 backup-created is idempotent only for the identical tuple bookId, backupId, backupArtifactDigest,
 and sourceHead. Exact replay is a no-op success. Any other reuse of backupId is

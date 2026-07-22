@@ -153,7 +153,7 @@ class ProtectedBookMaintenanceServiceTest {
             .requireAccepted());
 
     AttestationMaintenanceTestSupport.Store failed = store(bookPath, credential);
-    failed.setAppendFailure(new IllegalStateException("registry storage unavailable"));
+    failed.overrides().appendFailure(new IllegalStateException("registry storage unavailable"));
     assertInstanceOf(
         ContractDecision.Rejected.class,
         new ProtectedBookMaintenanceService(CLOCK, failed)

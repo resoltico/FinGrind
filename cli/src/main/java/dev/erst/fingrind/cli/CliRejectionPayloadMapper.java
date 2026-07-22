@@ -44,6 +44,22 @@ final class CliRejectionPayloadMapper {
         null);
   }
 
+  static CliEnvelopeJsonModels.Envelope<?> backupAcknowledgementAuthorizationRejectedEnvelope(
+      AttestationVerificationFailure failure) {
+    return new CliEnvelopeJsonModels.Envelope<>(
+        ProtocolEnvelopeStatus.REJECTED,
+        null,
+        failure.wireCode(),
+        "The backup artifact was published, but the selected signing credentials do not authorize its source-book acknowledgement at the live book head.",
+        "Retain the published backup pair. Confirm the enrolled credential, credential purpose, capability grant, and quorum, then rerun "
+            + OperationId.BACKUP_BOOK.wireName()
+            + " with the same backup ID.",
+        null,
+        null,
+        null,
+        null);
+  }
+
   static CliEnvelopeJsonModels.Envelope<?> queryRejectedEnvelope(BookQueryRejection rejection) {
     return CliQueryRejectionPayloadMapper.rejectedEnvelope(rejection);
   }

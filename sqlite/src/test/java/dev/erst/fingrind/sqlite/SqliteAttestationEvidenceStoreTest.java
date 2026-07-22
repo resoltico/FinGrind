@@ -18,6 +18,8 @@ import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.attestation.AttestationAccountMutationIntent;
 import dev.erst.fingrind.core.attestation.AttestationAccountMutationProjection;
 import dev.erst.fingrind.core.attestation.AttestationAccountSnapshot;
+import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
+import dev.erst.fingrind.core.attestation.AttestationAuthorizationFailure;
 import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
 import dev.erst.fingrind.core.attestation.AttestationEffectMutation;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
@@ -31,6 +33,7 @@ import dev.erst.fingrind.core.attestation.AttestationPublicCredential;
 import dev.erst.fingrind.core.attestation.AttestationSigningCredential;
 import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
+import dev.erst.fingrind.core.attestation.AttestationVerifier;
 import java.io.IOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -48,6 +51,77 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
   private static final UUID BOOK_ID = UUID.fromString("00112233-4455-6677-8899-aabbccddeeff");
   private static final UUID PRINCIPAL_ID = UUID.fromString("10213243-5465-7687-98a9-babcbddceeff");
   private static final byte[] ZERO_HEAD = new byte[32];
+
+  @Test
+  void candidateVerifierPreservesAuthorizationRefusalsAsLiveAdmissionFailures() throws Exception {
+    Path signerPath = tempDirectory.resolve("candidate-admission.fgatk");
+    char[] passphrase = "sqlite candidate admission passphrase".toCharArray();
+    AttestationPublicCredential publicCredential =
+        AttestationKeyFiles.create(signerPath, passphrase);
+    try (AttestationSigningCredential authorizedSigner =
+            new AttestationSigningCredential(
+                PRINCIPAL_ID, publicCredential, signerPath, passphrase);
+        AttestationSigningCredential mismatchedSigner =
+            new AttestationSigningCredential(
+                UUID.fromString("10213243-5465-7687-98a9-babcbddceefd"),
+                publicCredential,
+                signerPath,
+                passphrase)) {
+      AttestationEvidence genesis =
+          AttestationGenesis.create(
+              BOOK_ID,
+              attestationBookIdentity(),
+              Instant.parse("2026-07-21T00:00:00Z"),
+              List.of(authorizedSigner));
+      AttestationVerification genesisVerification =
+          AttestationVerifier.verifyBook(List.of(genesis));
+      AttestationAccountSnapshot account =
+          new AttestationAccountSnapshot(
+              new AccountCode("1010"),
+              new AccountName("Operating cash"),
+              AccountType.ASSET,
+              AccountTaxonomy.empty(),
+              null,
+              true);
+      var preimages =
+          AttestationAccountMutationProjection.project(
+              AttestationAccountMutationIntent.DECLARATION,
+              AttestationOperationKind.DECLARE_ACCOUNT.wireToken(),
+              account,
+              account,
+              AttestationEffectMutation.CREATE);
+      AttestationEvidence candidate =
+          AttestationOperationSigner.sign(
+              BOOK_ID,
+              BigInteger.ONE,
+              AttestationOperationKind.DECLARE_ACCOUNT.wireToken(),
+              genesisVerification.operationHead(),
+              Instant.parse("2026-07-21T00:00:01Z"),
+              preimages.request(),
+              preimages.effect(),
+              List.of(mismatchedSigner));
+
+      AttestationAdmissionRejectedException rejected =
+          assertThrows(
+              AttestationAdmissionRejectedException.class,
+              () -> SqliteAttestationCandidateVerifier.verify(List.of(genesis, candidate)));
+
+      assertEquals(AttestationAuthorizationFailure.KEY_PRINCIPAL_MISMATCH, rejected.failure());
+      assertEquals("attestation-key-principal-mismatch", rejected.getMessage());
+    } finally {
+      java.util.Arrays.fill(passphrase, '\0');
+    }
+  }
+
+  @Test
+  void candidateVerifierKeepsNonAuthorizationVerificationFailuresDistinct() {
+    IllegalArgumentException rejected =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> SqliteAttestationCandidateVerifier.verify(List.of()));
+
+    assertEquals("attestation-preimage-invalid", rejected.getMessage());
+  }
 
   @Test
   void appendsVerifiedGenesisRejectsAStaleHeadAndPreventsLaterEvidenceMutation() throws Exception {

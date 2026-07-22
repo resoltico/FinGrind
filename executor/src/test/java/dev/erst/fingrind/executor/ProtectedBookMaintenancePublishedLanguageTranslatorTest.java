@@ -4,10 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
+import dev.erst.fingrind.core.attestation.AttestationAuthorizationFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookBackupOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
@@ -43,6 +45,17 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
         ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
             new ProtectedBookBackupOutcome.AcknowledgementPending(
                 BOOK_PATH, BACKUP_PATH, KEY_PATH, BACKUP_ID)));
+    BackupBookResult.AcknowledgementAuthorizationRejected authorizationRejected =
+        assertInstanceOf(
+            BackupBookResult.AcknowledgementAuthorizationRejected.class,
+            ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
+                new ProtectedBookBackupOutcome.AcknowledgementAuthorizationRejected(
+                    BOOK_PATH,
+                    BACKUP_PATH,
+                    KEY_PATH,
+                    BACKUP_ID,
+                    AttestationAuthorizationFailure.QUORUM_BELOW)));
+    assertEquals(AttestationVerificationFailure.QUORUM_BELOW, authorizationRejected.failure());
     assertInstanceOf(
         RestoreBookResult.Restored.class,
         ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(

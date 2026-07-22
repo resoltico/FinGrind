@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.maintenance;
 
+import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
 import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationLifecycleMutationProjection;
@@ -134,6 +135,8 @@ public final class AttestedProtectedBookLifecycleWorkflow {
           });
     } catch (ProtectedBookMaintenanceRejectionException exception) {
       return AttestedProtectedBookMaintenanceDecisions.rejectedRestore(exception.rejection());
+    } catch (AttestationAdmissionRejectedException exception) {
+      throw exception;
     } catch (RuntimeException exception) {
       return AttestedProtectedBookMaintenanceDecisions.failure(
           bookPath, "bookFilePath", "Failed to restore the attested backup artifact.");
@@ -194,6 +197,8 @@ public final class AttestedProtectedBookLifecycleWorkflow {
           });
     } catch (ProtectedBookMaintenanceRejectionException exception) {
       return AttestedProtectedBookMaintenanceDecisions.rejectedRekey(exception.rejection());
+    } catch (AttestationAdmissionRejectedException exception) {
+      throw exception;
     } catch (RuntimeException exception) {
       return AttestedProtectedBookMaintenanceDecisions.failure(
           bookPath, "bookFilePath", "Failed to stage the attested rekey operation.");

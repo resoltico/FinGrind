@@ -66,6 +66,11 @@ final class CliMaintenanceMutationResponseWriter {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(OperationId.BACKUP_BOOK));
               });
+      case BackupBookResult.AcknowledgementAuthorizationRejected rejected ->
+          outputChannel.writeRejectedEnvelope(
+              CliRejectionPayloadMapper.backupAcknowledgementAuthorizationRejectedEnvelope(
+                  rejected.failure()),
+              outputMode);
       case BackupBookResult.Rejected rejected ->
           outputChannel.writeRejectedEnvelope(
               CliRejectionPayloadMapper.maintenanceRejectedEnvelope(rejected.rejection()),

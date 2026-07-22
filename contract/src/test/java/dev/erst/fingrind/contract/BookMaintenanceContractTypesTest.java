@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
@@ -178,6 +179,13 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
     BackupBookResult.AcknowledgementPending acknowledgementPending =
         new BackupBookResult.AcknowledgementPending(
             hint(bookFile), hint(backupFile), hint(backupKeyFile), backupId);
+    BackupBookResult.AcknowledgementAuthorizationRejected acknowledgementAuthorizationRejected =
+        new BackupBookResult.AcknowledgementAuthorizationRejected(
+            hint(bookFile),
+            hint(backupFile),
+            hint(backupKeyFile),
+            backupId,
+            AttestationVerificationFailure.QUORUM_BELOW);
     BackupBookResult.Rejected backupRejected = new BackupBookResult.Rejected(rejection);
     RestoreBookResult.Restored restored =
         new RestoreBookResult.Restored(
@@ -191,6 +199,10 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
     assertEquals(backupId, backedUp.backupId());
     assertFalse(backedUp.acknowledgementResumed());
     assertEquals(backupId, acknowledgementPending.backupId());
+    assertEquals(backupId, acknowledgementAuthorizationRejected.backupId());
+    assertEquals(
+        AttestationVerificationFailure.QUORUM_BELOW,
+        acknowledgementAuthorizationRejected.failure());
     assertEquals(rejection, backupRejected.rejection());
     assertEquals(hint(bookFile), restored.bookFilePath());
     assertEquals(
@@ -223,6 +235,11 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
             new BackupBookResult.BackedUp(
                 hint(bookFile), hint(backupFile), hint(backupKeyFile), nullOf(), false));
     assertThrows(NullPointerException.class, () -> new BackupBookResult.Rejected(nullOf()));
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new BackupBookResult.AcknowledgementAuthorizationRejected(
+                hint(bookFile), hint(backupFile), hint(backupKeyFile), backupId, nullOf()));
     assertThrows(
         NullPointerException.class,
         () ->

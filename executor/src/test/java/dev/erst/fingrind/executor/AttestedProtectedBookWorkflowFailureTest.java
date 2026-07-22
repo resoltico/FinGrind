@@ -1,8 +1,13 @@
 package dev.erst.fingrind.executor;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
+import dev.erst.fingrind.core.attestation.AttestationAuthorizationFailure;
+import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import dev.erst.fingrind.executor.maintenance.AttestedProtectedBookLifecycleWorkflow;
 import dev.erst.fingrind.executor.maintenance.BackupAcknowledgementConflictException;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
@@ -35,6 +40,36 @@ class AttestedProtectedBookWorkflowFailureTest {
   private static final UUID BACKUP_ID = UUID.fromString("018f0000-0000-7000-8000-000000000001");
 
   @TempDir Path temporaryDirectory;
+
+  @Test
+  void rethrowsNewBackupManifestAuthorizationRefusalsBeforePublishingTheArtifact()
+      throws IOException {
+    AttestationMaintenanceTestSupport.CredentialFixture credential = credential();
+    AttestationMaintenanceTestSupport.CredentialFixture mismatchedCredential =
+        new AttestationMaintenanceTestSupport.CredentialFixture(
+            new AttestationCredentialSource(
+                UUID.fromString("10213243-5465-7687-98a9-babcbddcee00"),
+                credential.source().encryptedKeyFilePath(),
+                credential.source().passphraseFilePath()));
+    ProtectedBookAccess access = access(credential);
+    AttestationMaintenanceTestSupport.Store store =
+        store(credential, BackupArtifactPairState.ABSENT);
+
+    AttestationAdmissionRejectedException rejected =
+        assertThrows(
+            AttestationAdmissionRejectedException.class,
+            () -> {
+              try (var session = mismatchedCredential.openSession()) {
+                workflow(store)
+                    .backupBook(access, backupPath(), backupKeyPath(), BACKUP_ID, session);
+              }
+            });
+
+    assertEquals(AttestationAuthorizationFailure.KEY_PRINCIPAL_MISMATCH, rejected.failure());
+    assertEquals(
+        BackupArtifactPairState.ABSENT,
+        store.backupArtifactPairState(backupPath(), backupKeyPath()));
+  }
 
   @Test
   void classifiesEveryBackupDestinationAndLiveBookAdmissionAlternative() throws IOException {
@@ -231,7 +266,7 @@ class AttestedProtectedBookWorkflowFailureTest {
 
     AttestationMaintenanceTestSupport.Store conflict =
         store(credential, BackupArtifactPairState.ABSENT);
-    conflict.setAppendFailure(new BackupAcknowledgementConflictException(BACKUP_ID));
+    conflict.overrides().appendFailure(new BackupAcknowledgementConflictException(BACKUP_ID));
     assertBackupRejection(
         conflict,
         access,
@@ -536,10 +571,12 @@ class AttestedProtectedBookWorkflowFailureTest {
     assertInstanceOf(
         ProtectedBookBackupOutcome.BackedUp.class,
         accepted(backup(restoreAppendRejection, access, credential)));
-    restoreAppendRejection.setAppendFailure(
-        new ProtectedBookMaintenanceRejectionException(
-            new ProtectedBookMaintenanceRejection.ArtifactBusy(
-                ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, bookPath())));
+    restoreAppendRejection
+        .overrides()
+        .appendFailure(
+            new ProtectedBookMaintenanceRejectionException(
+                new ProtectedBookMaintenanceRejection.ArtifactBusy(
+                    ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, bookPath())));
     try (var session = credential.openSession()) {
       ProtectedBookRestoreOutcome.Rejected rejected =
           assertInstanceOf(
@@ -557,10 +594,12 @@ class AttestedProtectedBookWorkflowFailureTest {
 
     AttestationMaintenanceTestSupport.Store rekeyAppendRejection =
         store(credential, BackupArtifactPairState.ABSENT);
-    rekeyAppendRejection.setAppendFailure(
-        new ProtectedBookMaintenanceRejectionException(
-            new ProtectedBookMaintenanceRejection.ArtifactBusy(
-                ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, bookPath())));
+    rekeyAppendRejection
+        .overrides()
+        .appendFailure(
+            new ProtectedBookMaintenanceRejectionException(
+                new ProtectedBookMaintenanceRejection.ArtifactBusy(
+                    ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, bookPath())));
     try (var session = credential.openSession()) {
       ProtectedBookRekeyOutcome.Rejected rejected =
           assertInstanceOf(

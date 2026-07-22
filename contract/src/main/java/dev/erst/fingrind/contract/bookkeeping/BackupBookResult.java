@@ -7,6 +7,7 @@ import java.util.Objects;
 public sealed interface BackupBookResult
     permits BackupBookResult.BackedUp,
         BackupBookResult.AcknowledgementPending,
+        BackupBookResult.AcknowledgementAuthorizationRejected,
         BackupBookResult.Rejected {
 
   /** Successful encrypted-book backup outcome. */
@@ -34,6 +35,23 @@ public sealed interface BackupBookResult
       backupFilePath = normalizedPath(backupFilePath, "backupFilePath");
       backupBookKeyFilePath = normalizedPath(backupBookKeyFilePath, "backupBookKeyFilePath");
       Objects.requireNonNull(backupId, "backupId");
+    }
+  }
+
+  /** Published backup whose source-book acknowledgement was refused by current authorization. */
+  record AcknowledgementAuthorizationRejected(
+      Path bookFilePath,
+      Path backupFilePath,
+      Path backupBookKeyFilePath,
+      java.util.UUID backupId,
+      AttestationVerificationFailure failure)
+      implements BackupBookResult {
+    public AcknowledgementAuthorizationRejected {
+      bookFilePath = normalizedPath(bookFilePath, "bookFilePath");
+      backupFilePath = normalizedPath(backupFilePath, "backupFilePath");
+      backupBookKeyFilePath = normalizedPath(backupBookKeyFilePath, "backupBookKeyFilePath");
+      Objects.requireNonNull(backupId, "backupId");
+      Objects.requireNonNull(failure, "failure");
     }
   }
 

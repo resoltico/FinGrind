@@ -54,6 +54,7 @@ import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
 import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
 import java.util.List;
 import java.util.Optional;
@@ -659,6 +660,89 @@ class LedgerPlanServiceWorkflowTest {
 
       assertSame(bookSession.staleHead(), staleHead);
       assertTrue(bookSession.rollbackCalled());
+    }
+  }
+
+  @Test
+  void execute_rethrowsAdmissionRejectionAndRollsBackWhenAChildWriteIsUnauthorized() {
+    try (LedgerPlanServiceTestSupport.DeclareAdmissionRejectedLedgerPlanSession bookSession =
+        new LedgerPlanServiceTestSupport.DeclareAdmissionRejectedLedgerPlanSession()) {
+      AttestationAdmissionRejectedException rejected =
+          assertThrows(
+              AttestationAdmissionRejectedException.class,
+              () ->
+                  service(bookSession)
+                      .execute(
+                          new LedgerPlan(
+                              planId("plan-admission-child"),
+                              List.of(
+                                  new LedgerStep.DeclareAccount(
+                                      stepId("cash"),
+                                      account(
+                                          "1000",
+                                          "Cash",
+                                          AccountType.ASSET,
+                                          NormalBalance.DEBIT)))),
+                          ExecutorAccountingTestSupport.TEST_AUTHORIZER));
+
+      assertSame(bookSession.admissionRejected(), rejected);
+      assertTrue(bookSession.rollbackCalled());
+    }
+  }
+
+  @Test
+  void execute_rethrowsAdmissionRejectionAndRollsBackWhenAggregateAdmissionIsUnauthorized() {
+    try (LedgerPlanServiceTestSupport.AggregateAdmissionRejectedLedgerPlanSession bookSession =
+        new LedgerPlanServiceTestSupport.AggregateAdmissionRejectedLedgerPlanSession()) {
+      AttestationAdmissionRejectedException rejected =
+          assertThrows(
+              AttestationAdmissionRejectedException.class,
+              () ->
+                  service(bookSession)
+                      .execute(
+                          new LedgerPlan(
+                              planId("plan-admission-aggregate"),
+                              List.of(
+                                  new LedgerStep.DeclareAccount(
+                                      stepId("cash"),
+                                      account(
+                                          "1000",
+                                          "Cash",
+                                          AccountType.ASSET,
+                                          NormalBalance.DEBIT)))),
+                          ExecutorAccountingTestSupport.TEST_AUTHORIZER));
+
+      assertSame(bookSession.admissionRejected(), rejected);
+      assertTrue(bookSession.rollbackCalled());
+    }
+  }
+
+  @Test
+  void execute_preservesAdmissionRejectionWhenRollbackAlsoFails() {
+    try (LedgerPlanServiceTestSupport.DeclareAdmissionRejectedLedgerPlanSession bookSession =
+        new LedgerPlanServiceTestSupport.DeclareAdmissionRejectedLedgerPlanSession(true)) {
+      AttestationAdmissionRejectedException rejected =
+          assertThrows(
+              AttestationAdmissionRejectedException.class,
+              () ->
+                  service(bookSession)
+                      .execute(
+                          new LedgerPlan(
+                              planId("plan-admission-rollback"),
+                              List.of(
+                                  new LedgerStep.DeclareAccount(
+                                      stepId("cash"),
+                                      account(
+                                          "1000",
+                                          "Cash",
+                                          AccountType.ASSET,
+                                          NormalBalance.DEBIT)))),
+                          ExecutorAccountingTestSupport.TEST_AUTHORIZER));
+
+      assertSame(bookSession.admissionRejected(), rejected);
+      assertTrue(bookSession.rollbackCalled());
+      assertEquals(1, rejected.getSuppressed().length);
+      assertEquals("rollback boom", rejected.getSuppressed()[0].getMessage());
     }
   }
 

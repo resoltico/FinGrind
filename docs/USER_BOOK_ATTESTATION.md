@@ -129,8 +129,8 @@ workflow ID. All four commands are ordinary attested mutations: their signer quo
 purpose, and capability are resolved at the preceding book head, and a successful change first
 governs the next operation.
 
-An unauthorized lifecycle attempt is a rejected envelope with the exact historical attestation
-code, such as `attestation-key-not-enrolled`, `attestation-quorum-below`, or
+An unauthorized protected-book mutation is a rejected envelope with the exact historical
+attestation code, such as `attestation-key-not-enrolled`, `attestation-quorum-below`, or
 `attestation-capability-invalid`, and exit code 2. It is never reported as a storage failure.
 
 ## Verify And Review
@@ -166,6 +166,11 @@ receipt, or unsupported format.
 matching `backup-created` acknowledgement to the live chain. Supply a stable UUID with `--backup-id`.
 If publication succeeds but acknowledgement is interrupted, rerun the exact same command with the
 same book, backup paths, credentials, and backup ID; FinGrind resumes only that exact tuple.
+If publication succeeds but the live-head authorization check refuses the acknowledgement, the
+command returns the exact `attestation-*` rejected code with exit code `2`. The published pair is
+preserved and is not reported as acknowledgement-pending; retain it, correct the signing
+credentials or policy, and rerun the same exact tuple. Exit code `4` acknowledgement-pending is
+reserved for an operational interruption whose authorization result was not determined.
 If a forced stop leaves only a FinGrind-owned generated backup-key fragment, the next exact
 `backup-book` invocation recovers that owned incomplete publication before destination admission
 and starts a fresh pair. It never deletes an unowned or complete destination artifact.

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.maintenance;
 
+import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
 import dev.erst.fingrind.core.attestation.AttestationAuthorizationException;
 import dev.erst.fingrind.core.attestation.AttestationAuthorizationFailure;
 import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
@@ -95,6 +96,9 @@ final class AttestedProtectedBookRegistryMutationWorkflow {
   private static Optional<AttestationAuthorizationFailure> historicalAuthorizationFailure(
       RuntimeException exception) {
     for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+      if (cause instanceof AttestationAdmissionRejectedException admissionRejected) {
+        return Optional.of(admissionRejected.failure());
+      }
       if (cause instanceof AttestationAuthorizationException authorizationException) {
         return Optional.of(authorizationException.failure());
       }

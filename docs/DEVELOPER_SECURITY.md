@@ -87,6 +87,9 @@ and policy facts; the parser derives the key ID from SPKI. Local credential path
 sources, and encrypted key bytes stay outside the signed request and effect preimages. Admission
 resolves the live historical registry at the preceding operation order and projects an expected
 authorization refusal as its exact `attestation-*` rejected result, never as a storage failure.
+That rule includes a backup acknowledgement attempted after its external pair is durably
+published: an authorization refusal preserves the pair, returns exit code `2`, and remains
+distinct from an operationally interrupted acknowledgement.
 
 ## Secret Transport And Lifecycle
 

@@ -20,6 +20,7 @@ canonical references without widening the general API index.
 | `AttestationAccountMutationIntent` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationAccountMutationIntent` |
 | `AttestationAccountMutationProjection` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationAccountSnapshot` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationAdmissionRejectedException` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationAdmissionRejectedException` |
 | `AttestationArtifactSnapshotReader` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Backup Artifact Types` |
 | `AttestationAuthorizationException` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationAuthorizationException` And `AttestationAuthorizationFailure` |
 | `AttestationAuthorizationFailure` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationAuthorizationException` And `AttestationAuthorizationFailure` |

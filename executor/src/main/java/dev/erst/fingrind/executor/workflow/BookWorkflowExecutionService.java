@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.workflow;
 
+import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
@@ -75,6 +76,12 @@ public final class BookWorkflowExecutionService {
           Objects.requireNonNull(
               stepExecutionState.pendingSuccessfulStep(), "pendingSuccessfulStep"));
     } catch (AttestationStaleHeadException exception) {
+      RuntimeException rollbackFailure = rollbackFailure();
+      if (rollbackFailure != null) {
+        exception.addSuppressed(rollbackFailure);
+      }
+      throw exception;
+    } catch (AttestationAdmissionRejectedException exception) {
       RuntimeException rollbackFailure = rollbackFailure();
       if (rollbackFailure != null) {
         exception.addSuppressed(rollbackFailure);
@@ -173,6 +180,8 @@ public final class BookWorkflowExecutionService {
       };
     } catch (AttestationStaleHeadException exception) {
       throw exception;
+    } catch (AttestationAdmissionRejectedException exception) {
+      throw exception;
     } catch (RuntimeException exception) {
       appendPendingSuccess(entries, pendingSuccessfulStep);
       return BookWorkflowStepExecutionState.terminal(
@@ -220,6 +229,8 @@ public final class BookWorkflowExecutionService {
           planId.value(), commitStartedAt, attestationAuthorizer);
       transactionStore.commitLedgerPlanTransaction();
     } catch (AttestationStaleHeadException exception) {
+      throw exception;
+    } catch (AttestationAdmissionRejectedException exception) {
       throw exception;
     } catch (RuntimeException exception) {
       return boundaryFailureAfterRollback(

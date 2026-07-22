@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
+import dev.erst.fingrind.core.attestation.AttestationAuthorizationFailure;
 import dev.erst.fingrind.core.attestation.AttestationCapability;
 import dev.erst.fingrind.core.attestation.AttestationCredentialPurpose;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
@@ -202,8 +204,10 @@ class AttestedProtectedBookRegistryMutationWorkflowTest {
             AttestationMaintenanceTestSupport.bookAccess(bookPath, founder));
 
     AttestationMaintenanceTestSupport.Store stale = store(bookPath, founder);
-    stale.setAppendFailure(
-        new AttestationStaleHeadException(new byte[] {1}, new byte[] {2}, BigInteger.ONE));
+    stale
+        .overrides()
+        .appendFailure(
+            new AttestationStaleHeadException(new byte[] {1}, new byte[] {2}, BigInteger.ONE));
     try (var session = founder.openSession()) {
       assertThrows(
           AttestationStaleHeadException.class,
@@ -211,12 +215,14 @@ class AttestedProtectedBookRegistryMutationWorkflowTest {
     }
 
     AttestationMaintenanceTestSupport.Store rejected = store(bookPath, founder);
-    rejected.setAppendFailure(
-        new ProtectedBookMaintenanceRejectionException(
-            new ProtectedBookMaintenanceRejection.ArtifactBusy(
-                dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole
-                    .LIVE_BOOK,
-                bookPath)));
+    rejected
+        .overrides()
+        .appendFailure(
+            new ProtectedBookMaintenanceRejectionException(
+                new ProtectedBookMaintenanceRejection.ArtifactBusy(
+                    dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole
+                        .LIVE_BOOK,
+                    bookPath)));
     try (var session = founder.openSession()) {
       ProtectedBookRegistryMutationOutcome.Rejected outcome =
           assertInstanceOf(
@@ -225,8 +231,24 @@ class AttestedProtectedBookRegistryMutationWorkflowTest {
       assertInstanceOf(ProtectedBookMaintenanceRejection.ArtifactBusy.class, outcome.rejection());
     }
 
+    AttestationMaintenanceTestSupport.Store authorizationRejected = store(bookPath, founder);
+    authorizationRejected
+        .overrides()
+        .appendFailure(
+            AttestationAdmissionRejectedException.from(
+                AttestationAuthorizationFailure.CREDENTIAL_PURPOSE_INVALID));
+    try (var session = founder.openSession()) {
+      ProtectedBookRegistryMutationOutcome.AuthorizationRejected outcome =
+          assertInstanceOf(
+              ProtectedBookRegistryMutationOutcome.AuthorizationRejected.class,
+              accepted(
+                  workflow(authorizationRejected)
+                      .mutateRegistry(access, policyMutation(), session)));
+      assertEquals(AttestationAuthorizationFailure.CREDENTIAL_PURPOSE_INVALID, outcome.failure());
+    }
+
     AttestationMaintenanceTestSupport.Store failed = store(bookPath, founder);
-    failed.setAppendFailure(new IllegalStateException("registry storage unavailable"));
+    failed.overrides().appendFailure(new IllegalStateException("registry storage unavailable"));
     try (var session = founder.openSession()) {
       assertInstanceOf(
           MaintenanceDecision.Failed.class,

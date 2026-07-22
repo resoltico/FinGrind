@@ -33,6 +33,8 @@ import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
+import dev.erst.fingrind.core.attestation.AttestationAuthorizationFailure;
 import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
@@ -595,6 +597,47 @@ final class LedgerPlanServiceTestSupport {
     }
   }
 
+  /** Test seam that rejects a child mutation with its exact historical authorization failure. */
+  static final class DeclareAdmissionRejectedLedgerPlanSession extends DelegatingAtomicBookStore {
+    private final AttestationAdmissionRejectedException admissionRejected =
+        AttestationAdmissionRejectedException.from(AttestationAuthorizationFailure.QUORUM_BELOW);
+    private final boolean failsRollback;
+    private boolean rollbackCalled;
+
+    DeclareAdmissionRejectedLedgerPlanSession() {
+      this(false);
+    }
+
+    DeclareAdmissionRejectedLedgerPlanSession(boolean failsRollback) {
+      this.failsRollback = failsRollback;
+    }
+
+    @Override
+    public AccountDeclarationOutcome declareAccount(
+        AccountDeclaration declaration,
+        Instant declaredAt,
+        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
+      throw admissionRejected;
+    }
+
+    @Override
+    public void rollbackLedgerPlanTransaction() {
+      rollbackCalled = true;
+      if (failsRollback) {
+        throw new IllegalStateException("rollback boom");
+      }
+      delegate.rollbackLedgerPlanTransaction();
+    }
+
+    AttestationAdmissionRejectedException admissionRejected() {
+      return admissionRejected;
+    }
+
+    boolean rollbackCalled() {
+      return rollbackCalled;
+    }
+  }
+
   /** Test seam that loses attestation admission after all mutating children have succeeded. */
   static final class AggregateStaleHeadLedgerPlanSession extends DelegatingAtomicBookStore {
     private final AttestationStaleHeadException staleHead =
@@ -617,6 +660,36 @@ final class LedgerPlanServiceTestSupport {
 
     AttestationStaleHeadException staleHead() {
       return staleHead;
+    }
+
+    boolean rollbackCalled() {
+      return rollbackCalled;
+    }
+  }
+
+  /** Test seam that rejects the aggregate plan admission with its exact authorization failure. */
+  static final class AggregateAdmissionRejectedLedgerPlanSession extends DelegatingAtomicBookStore {
+    private final AttestationAdmissionRejectedException admissionRejected =
+        AttestationAdmissionRejectedException.from(
+            AttestationAuthorizationFailure.CREDENTIAL_PURPOSE_INVALID);
+    private boolean rollbackCalled;
+
+    @Override
+    public void appendPlanAttestation(
+        String planId,
+        Instant recordedAt,
+        AttestationPlanOperationAuthorizer attestationAuthorizer) {
+      throw admissionRejected;
+    }
+
+    @Override
+    public void rollbackLedgerPlanTransaction() {
+      rollbackCalled = true;
+      delegate.rollbackLedgerPlanTransaction();
+    }
+
+    AttestationAdmissionRejectedException admissionRejected() {
+      return admissionRejected;
     }
 
     boolean rollbackCalled() {

@@ -1,8 +1,11 @@
 package dev.erst.fingrind.executor.maintenance;
 
+import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
+import dev.erst.fingrind.core.attestation.AttestationAuthorizationException;
 import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
 import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgementAdmission;
 import dev.erst.fingrind.core.attestation.AttestationBackupArtifact;
+import dev.erst.fingrind.core.attestation.AttestationBackupArtifactVerification;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationLifecycleMutationProjection;
 import dev.erst.fingrind.core.attestation.AttestationOperationKind;
@@ -72,8 +75,8 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
                                     Objects.requireNonNull(backupId, "backupId"),
                                     source.headOrder(),
                                     source.operationHead());
-                            var verifiedArtifact =
-                                AttestationBackupArtifact.verify(artifact, ignored -> evidence);
+                            AttestationBackupArtifactVerification verifiedArtifact =
+                                verifyNewBackupArtifact(artifact, evidence);
                             AttestationBackupAcknowledgement acknowledgement =
                                 new AttestationBackupAcknowledgement(
                                     verifiedArtifact.backupId(),
@@ -102,6 +105,19 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
             failure ->
                 AttestedProtectedBookMaintenanceDecisions.failure(
                     backupPath, "backupFilePath", failure.message()));
+  }
+
+  /**
+   * Verifies the manifest signed during this invocation and preserves an authorization refusal as a
+   * live admission result rather than an operational backup failure.
+   */
+  private static AttestationBackupArtifactVerification verifyNewBackupArtifact(
+      byte[] artifact, List<AttestationEvidence> sourceEvidence) {
+    try {
+      return AttestationBackupArtifact.verify(artifact, ignored -> sourceEvidence);
+    } catch (AttestationAuthorizationException exception) {
+      throw AttestationAdmissionRejectedException.from(exception);
+    }
   }
 
   MaintenanceDecision<ProtectedBookBackupOutcome> acknowledgeBackup(
@@ -149,6 +165,14 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
           yield AttestedProtectedBookMaintenanceDecisions.rejectedBackup(
               new ProtectedBookMaintenanceRejection.BackupAcknowledgementConflict(
                   acknowledgement.backupId()));
+        } catch (AttestationAdmissionRejectedException exception) {
+          yield MaintenanceDecision.accepted(
+              new ProtectedBookBackupOutcome.AcknowledgementAuthorizationRejected(
+                  bookPath,
+                  backupPath,
+                  backupKeyPath,
+                  acknowledgement.backupId(),
+                  exception.failure()));
         } catch (RuntimeException exception) {
           yield MaintenanceDecision.accepted(
               new ProtectedBookBackupOutcome.AcknowledgementPending(
