@@ -2,10 +2,10 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: USER_BOOK_ATTESTATION
-updated: "2026-07-21"
+updated: "2026-07-22"
 route:
-  keywords: [fingrind, book-attestation, ed25519, founder, verify-book, attestation-review, receipt, backup, restore, rekey]
-  questions: ["how does fingrind attest a book mutation", "how do I create founder credentials", "how do I verify a fingrind book", "how do I retain and verify an attestation receipt"]
+  keywords: [fingrind, book-attestation, ed25519, founder, enroll-key, rollover-key, revoke-key, alter-policy, verify-book, attestation-review, receipt, backup, restore, rekey]
+  questions: ["how does fingrind attest a book mutation", "how do I manage attestation credentials and policy", "how do I verify a fingrind book", "how do I retain and verify an attestation receipt"]
 ---
 
 # Protected-Book Attestation
@@ -63,6 +63,55 @@ trailing line ending, and at most 4,096 bytes. Private-key material, passphrases
 paths are not attestation payloads and must not be put in request JSON, logs, manifests, receipts,
 or support tickets.
 
+## Credential And Policy Lifecycle
+
+Credential provisioning is an off-book custody step: create and retain the encrypted file-backed
+credential before seeking authorization to enroll it. Its public DER SubjectPublicKeyInfo (SPKI)
+is safe to share. Lifecycle request documents carry that public value as canonical unpadded
+base64url in `credentialSpki`; they never carry a local credential path, a passphrase, a private
+key, a key ID chosen by the caller, or an encrypted-key-file payload. FinGrind derives the key ID
+as SHA-256 of the SPKI and signs the resulting public binding facts.
+
+`enroll-key` binds a new credential to a principal. It does not grant a capability: use
+`alter-policy` to grant the principal the intended capability after enrollment. For example:
+
+```json
+{
+  "principalId": "01234567-89ab-4cde-8fab-0123456789ab",
+  "credentialSpki": "MCowBQYDK2VwAyEAJYpWgBK4pHaKkIRKs9p8_6B01sG0SuOXLjI69Q5mGlI",
+  "credentialPurpose": "operator"
+}
+```
+
+```bash
+fingrind enroll-key \
+  --book-file ./books/acme.sqlite \
+  --book-key-file ./secrets/acme.book-key \
+  --request-file ./enroll-key.json \
+  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-key-file ./secrets/founder.fgatk \
+  --attestation-passphrase-file ./secrets/founder.passphrase
+```
+
+`rollover-key` binds a different new credential to the same principal and names the predecessor's
+public SPKI in `predecessorCredentialSpki`. Rollover never revokes the predecessor. Use
+`revoke-key` separately, with the credential's `credentialSpki` and an optional non-blank reason,
+once the old credential must no longer authorize future operations. Revocation is final.
+
+`alter-policy` changes only future policy. Its optional `policyRules`, `capabilityGrants`, and
+`systemWorkflowPolicies` arrays must contain at least one item in total. Each rule names a
+closed lowercase capability token and a quorum from 1 through 64. Each grant uses `grant` or
+`revoke`. A system workflow is active only when its exact account configuration is supplied;
+an interim-result sweep omits capital and retained-result accounts, while a fiscal-year close
+supplies both. A single policy request may not repeat a capability, principal-capability pair, or
+workflow ID. All four commands are ordinary attested mutations: their signer quorum, credential
+purpose, and capability are resolved at the preceding book head, and a successful change first
+governs the next operation.
+
+An unauthorized lifecycle attempt is a rejected envelope with the exact historical attestation
+code, such as `attestation-key-not-enrolled`, `attestation-quorum-below`, or
+`attestation-capability-invalid`, and exit code 2. It is never reported as a storage failure.
+
 ## Verify And Review
 
 Use `verify-book` before relying on a book copied from another system or a recovered artifact:
@@ -96,6 +145,9 @@ receipt, or unsupported format.
 matching `backup-created` acknowledgement to the live chain. Supply a stable UUID with `--backup-id`.
 If publication succeeds but acknowledgement is interrupted, rerun the exact same command with the
 same book, backup paths, credentials, and backup ID; FinGrind resumes only that exact tuple.
+If a forced stop leaves only a FinGrind-owned generated backup-key fragment, the next exact
+`backup-book` invocation recovers that owned incomplete publication before destination admission
+and starts a fresh pair. It never deletes an unowned or complete destination artifact.
 
 `restore-book` verifies the backup's internal chain and manifest before restoring it to an absent
 destination and appending a signed `restore-book` continuation. Restore uses the backup key to

@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: ADAPTERS
-updated: "2026-07-21"
+updated: "2026-07-22"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -711,6 +711,10 @@ acknowledgement from restore/rekey continuation, so an external artifact can be 
 live-book acknowledgement without pretending both resources share one transaction. The workflow
 permits only absent destinations, preserves the backup acknowledgement replay invariant, and
 requires an attested destination continuation before restore or rekey reports success.
+The same workflow owns live credential-registry and policy mutations. Its
+`ProtectedBookRegistryMutationOutcome` separates a successful appended operation, a deterministic
+maintenance refusal, and a historical authorization refusal before the published adapter projects
+them to `AttestationRegistryMutationResult`.
 
 ## Protection Boundary
 

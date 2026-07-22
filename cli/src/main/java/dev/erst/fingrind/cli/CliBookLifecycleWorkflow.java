@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationRegistryMutationResult;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
@@ -8,6 +9,7 @@ import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
+import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
@@ -31,4 +33,8 @@ interface CliBookLifecycleWorkflow {
       Path backupFilePath,
       Path backupKeyFilePath,
       List<AttestationCredentialSource> attestationCredentialSources);
+
+  /** Appends one public credential-registry or authorization-policy mutation. */
+  ContractDecision<AttestationRegistryMutationResult> mutateRegistry(
+      BookAccess bookAccess, AttestationRegistryMutation mutation);
 }

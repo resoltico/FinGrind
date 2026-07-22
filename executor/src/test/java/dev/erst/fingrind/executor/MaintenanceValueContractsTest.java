@@ -165,6 +165,12 @@ class MaintenanceValueContractsTest {
     }
 
     @Override
+    public void recoverInterruptedBackupPublication(
+        Path normalizedBackupArtifactPath, Path normalizedBackupKeyFilePath) {
+      throw unsupported();
+    }
+
+    @Override
     public LeaseAcquisition acquireExistingArtifactLease(
         Path normalizedArtifactPath,
         dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole artifactRole) {

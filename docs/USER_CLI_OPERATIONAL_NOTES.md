@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: USER_CLI_OPERATIONAL_NOTES
-updated: "2026-07-17"
+updated: "2026-07-22"
 route:
   keywords: [fingrind, cli, diagnostics, book-key-file, passphrase, backup, restore, pagination, report-output, runtime]
   questions: ["how does fingrind protect book keys", "what diagnostics does fingrind return", "how do fingrind reports and runtime contracts work"]
@@ -22,6 +22,11 @@ route:
 - `open-book` requires an absent `--book-file` destination. It rejects an existing path with `book-destination-occupied` before resolving its selected key or accessing the file, and creates missing parent directories for nested destinations with owner-only protection. When the parent already exists, FinGrind requires it to remain owner-only. If initialization fails after FinGrind creates an exclusive destination, it removes only that uninitialized book file and its SQLite sidecars so the same destination can be retried; it never removes a pre-existing or concurrently created artifact.
 - `generate-book-key-file --new-book-key-file` creates one new owner-only UTF-8 key file, requires a filesystem with atomic no-replace secret publication, and refuses to overwrite an existing path. When the selected parent directory does not exist, FinGrind creates it with owner-only protection; when the parent already exists, FinGrind requires it to remain owner-only. Generated files report `0600` on POSIX filesystems and `owner-only-acl` on Windows.
 - `backup-book` creates missing parent directories for nested `--backup-file` and `--new-backup-key-file` paths with owner-only protection. When either parent directory already exists, FinGrind requires it to remain owner-only before the backup pair is published.
+- If an interrupted `backup-book` leaves exactly a FinGrind-owned backup-key stage and final key,
+  retrying the same backup first leases both destinations and discards only that owned incomplete
+  publication before it re-evaluates the pair. An unowned key, an artifact-only destination, or a
+  complete backup pair remains a normal no-clobber refusal; FinGrind never guesses ownership from
+  a filename alone.
 - `restore-book` creates missing parent directories for nested `--book-file` and `--new-book-key-file` targets with owner-only protection. When either selected parent directory already exists, FinGrind requires it to remain owner-only before the restored live pair is published. The destination `--book-file` must remain absent through final publication; restore refuses any existing or racing destination without overwriting it.
 - `--book-key-file` must point to a non-empty single-line UTF-8 passphrase file no larger than 4096 bytes; one trailing LF or CRLF is tolerated and stripped, but embedded control characters are rejected.
 - Book key files must use POSIX owner-only permissions (`0400` or `0600`) on macOS/Linux or a Windows owner-only ACL on Windows, their containing directory must also remain owner-only, and the public examples keep those files under a separate `./secrets/` tree instead of beside the book.

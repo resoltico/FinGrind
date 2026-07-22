@@ -8,6 +8,7 @@ import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffScheduleQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccrualCutoffScheduleResult;
 import dev.erst.fingrind.contract.bookkeeping.AmendAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.AmendAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.AttestationRegistryMutationResult;
 import dev.erst.fingrind.contract.bookkeeping.AttestationReviewResult;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementQuery;
@@ -68,12 +69,13 @@ import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
+import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.UUID;
 
-/** Default test workflow adapter that fails fast on any unexpected CLI workflow call. */
-abstract class CliBookWorkflowAdapter implements CliBookWorkflow {
+/** Focused test adapter for protected-book lifecycle calls. */
+abstract class CliBookLifecycleWorkflowAdapter implements CliBookWorkflow {
   @Override
   public ContractDecision<OpenBookResult> openBook(BookAccess bookAccess, OpenBookCommand command) {
     throw unexpectedInvocation("openBook");
@@ -100,6 +102,20 @@ abstract class CliBookWorkflowAdapter implements CliBookWorkflow {
       List<AttestationCredentialSource> attestationCredentialSources) {
     throw unexpectedInvocation("restoreBook");
   }
+
+  @Override
+  public ContractDecision<AttestationRegistryMutationResult> mutateRegistry(
+      BookAccess bookAccess, AttestationRegistryMutation mutation) {
+    throw unexpectedInvocation("mutateRegistry");
+  }
+
+  protected RuntimeException unexpectedInvocation(String operationName) {
+    return new IllegalStateException(operationName + " should not be called in this test");
+  }
+}
+
+/** Default test workflow adapter that fails fast on any unexpected CLI workflow call. */
+abstract class CliBookWorkflowAdapter extends CliBookLifecycleWorkflowAdapter {
 
   @Override
   public ContractDecision<VerifyBookAttestationResult> verifyBookAttestation(
@@ -293,9 +309,5 @@ abstract class CliBookWorkflowAdapter implements CliBookWorkflow {
   public ContractDecision<CommitEntryResult> commit(
       BookAccess bookAccess, PostEntryCommand command) {
     throw unexpectedInvocation("commit");
-  }
-
-  protected RuntimeException unexpectedInvocation(String operationName) {
-    return new IllegalStateException(operationName + " should not be called in this test");
   }
 }

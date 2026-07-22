@@ -110,6 +110,15 @@ public interface CliAdministrationJsonModels {
     }
   }
 
+  record AttestationRegistryMutationPayload(String bookFile, String operationKind, String headOrder)
+      implements CliSuccessPayload {
+    public AttestationRegistryMutationPayload {
+      bookFile = requireText(bookFile, "bookFile");
+      operationKind = requireText(operationKind, "operationKind");
+      headOrder = requireText(headOrder, "headOrder");
+    }
+  }
+
   record SweptInterimResultPayload(
       int sweepOrder,
       String effectiveDateFrom,

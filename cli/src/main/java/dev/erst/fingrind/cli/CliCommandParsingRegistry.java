@@ -33,7 +33,7 @@ final class CliCommandParsingRegistry {
   private static Map<OperationId, Function<List<String>, CliCommand>> parserMap() {
     return ParserCatalog.bindingsAsMap(
         discoveryBindings(),
-        lifecycleBindings(),
+        CliLifecycleParserBindings.bindings(),
         queryBindings(),
         reportBindings(),
         writeBindings());
@@ -58,23 +58,6 @@ final class CliCommandParsingRegistry {
       binding(OperationId.ENVIRONMENT, CliDiscoveryArguments::parseEnvironment),
       binding(OperationId.PRINT_REQUEST_TEMPLATE, CliDiscoveryArguments::parsePrintRequestTemplate),
       binding(OperationId.PRINT_PLAN_TEMPLATE, CliDiscoveryArguments::parsePrintPlanTemplate)
-    };
-  }
-
-  private static ParserBinding[] lifecycleBindings() {
-    return new ParserBinding[] {
-      binding(
-          OperationId.GENERATE_BOOK_KEY_FILE,
-          CliLifecycleMutationArguments::parseGenerateBookKeyFileCommand),
-      binding(OperationId.OPEN_BOOK, CliLifecycleMutationArguments::parseOpenBookCommand),
-      binding(OperationId.REKEY_BOOK, CliLifecycleMutationArguments::parseRekeyBookCommand),
-      binding(OperationId.BACKUP_BOOK, CliLifecycleMutationArguments::parseBackupBookCommand),
-      binding(OperationId.RESTORE_BOOK, CliLifecycleMutationArguments::parseRestoreBookCommand),
-      binding(
-          OperationId.INTERIM_RESULT_SWEEP,
-          CliLifecycleMutationArguments::parseInterimResultSweepCommand),
-      binding(
-          OperationId.FISCAL_YEAR_CLOSE, CliLifecycleMutationArguments::parseFiscalYearCloseCommand)
     };
   }
 
@@ -163,8 +146,7 @@ final class CliCommandParsingRegistry {
         "No write-command parser is owned for " + operationId.wireName() + ".");
   }
 
-  private static ParserBinding binding(
-      OperationId operationId, Function<List<String>, CliCommand> parser) {
+  static ParserBinding binding(OperationId operationId, Function<List<String>, CliCommand> parser) {
     return new ParserBinding(operationId, parser);
   }
 
@@ -238,8 +220,8 @@ final class CliCommandParsingRegistry {
     }
   }
 
-  private record ParserBinding(OperationId operationId, Function<List<String>, CliCommand> parser) {
-    private ParserBinding {
+  static record ParserBinding(OperationId operationId, Function<List<String>, CliCommand> parser) {
+    ParserBinding {
       Objects.requireNonNull(operationId, "operationId");
       Objects.requireNonNull(parser, "parser");
     }

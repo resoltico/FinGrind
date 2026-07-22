@@ -2,10 +2,10 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-07-17"
+updated: "2026-07-22"
 route:
-  keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, tax-setup, declare-tax-registration, amend-account, retire-account, tax-obligation]
-  questions: ["where is protocol metadata documented in fingrind", "where is the tax setup request surface documented", "where are account lifecycle commands documented"]
+  keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, attestation credential, enroll-key, rollover-key, revoke-key, alter-policy, tax-setup, declare-tax-registration, amend-account, retire-account, tax-obligation]
+  questions: ["where is protocol metadata documented in fingrind", "where is the attestation credential and policy request surface documented", "where is the tax setup request surface documented", "where are account lifecycle commands documented"]
 ---
 
 # Contract Protocol And Discovery Reference
@@ -529,6 +529,24 @@ public final class ProtocolLedgerPlanFields
 - `ProtocolLedgerPlanFields.Plan`, `.Step`, `.Query`, and `.Assertion` group the canonical
   ledger-plan field families by JSON object scope; assertion `netAmount` is the same nested
   exact-money object shape
+
+## `ProtocolAttestationRegistryRequestFields`
+
+`ProtocolAttestationRegistryRequestFields` owns the strict JSON vocabulary for `enroll-key`,
+`rollover-key`, `revoke-key`, and `alter-policy`.
+
+```java
+public final class ProtocolAttestationRegistryRequestFields
+```
+
+- Credential operations use `principalId`, canonical base64url `credentialSpki`,
+  `credentialPurpose`, and, for rollover, `predecessorCredentialSpki`; revocation additionally
+  permits an optional `reason`.
+- Policy changes use optional `policyRules`, `capabilityGrants`, and
+  `systemWorkflowPolicies` arrays, but at least one must be nonempty. Nested fields own the
+  capability, quorum, grant state, workflow identity, workflow kind, account-code, and active
+  values shared by parser, documentation, and signed mutation projection. Each array may carry a
+  given capability, principal-capability pair, or workflow ID only once, respectively.
 
 ## `ProtocolBookRequestFieldSets`, `ProtocolPostingRequestFieldSets`, `ProtocolPostingNestedFieldSets`, And `ProtocolLedgerPlanRequestFieldSets`
 

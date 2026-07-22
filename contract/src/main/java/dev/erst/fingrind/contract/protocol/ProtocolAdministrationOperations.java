@@ -7,18 +7,20 @@ final class ProtocolAdministrationOperations {
   private ProtocolAdministrationOperations() {}
 
   static List<ProtocolOperation> operations() {
-    return List.of(
-        ProtocolBookMaintenanceOperations.generateBookKeyFileOperation(),
-        openBookOperation(),
-        ProtocolBookMaintenanceOperations.rekeyBookOperation(),
-        ProtocolBookMaintenanceOperations.backupBookOperation(),
-        ProtocolBookMaintenanceOperations.restoreBookOperation(),
-        declareAccountOperation(),
-        amendAccountOperation(),
-        retireAccountOperation(),
-        declareTaxRegistrationOperation(),
-        ProtocolPeriodCloseOperations.interimResultSweepOperation(),
-        ProtocolPeriodCloseOperations.fiscalYearCloseOperation());
+    List<ProtocolOperation> operations = new java.util.ArrayList<>();
+    operations.add(ProtocolBookMaintenanceOperations.generateBookKeyFileOperation());
+    operations.add(openBookOperation());
+    operations.add(ProtocolBookMaintenanceOperations.rekeyBookOperation());
+    operations.add(ProtocolBookMaintenanceOperations.backupBookOperation());
+    operations.add(ProtocolBookMaintenanceOperations.restoreBookOperation());
+    operations.addAll(ProtocolAttestationRegistryOperations.operations());
+    operations.add(declareAccountOperation());
+    operations.add(amendAccountOperation());
+    operations.add(retireAccountOperation());
+    operations.add(declareTaxRegistrationOperation());
+    operations.add(ProtocolPeriodCloseOperations.interimResultSweepOperation());
+    operations.add(ProtocolPeriodCloseOperations.fiscalYearCloseOperation());
+    return List.copyOf(operations);
   }
 
   private static ProtocolOperation openBookOperation() {

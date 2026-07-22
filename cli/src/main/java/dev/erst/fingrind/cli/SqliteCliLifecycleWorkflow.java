@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationRegistryMutationResult;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
@@ -15,6 +16,7 @@ import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
+import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import dev.erst.fingrind.executor.AttestationCredentialException;
 import dev.erst.fingrind.executor.AttestationGenesisFactory;
 import dev.erst.fingrind.executor.BookAdministrationService;
@@ -129,5 +131,11 @@ final class SqliteCliLifecycleWorkflow implements CliBookLifecycleWorkflow {
         backupFilePath,
         backupKeyFilePath,
         attestationCredentialSources);
+  }
+
+  @Override
+  public ContractDecision<AttestationRegistryMutationResult> mutateRegistry(
+      BookAccess bookAccess, AttestationRegistryMutation mutation) {
+    return maintenanceService.mutateRegistry(bookAccess, mutation);
   }
 }

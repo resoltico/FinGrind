@@ -5,6 +5,7 @@ import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationLifecycleMutationProjection;
 import dev.erst.fingrind.core.attestation.AttestationLifecycleState;
 import dev.erst.fingrind.core.attestation.AttestationOperationKind;
+import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import dev.erst.fingrind.core.attestation.AttestationSigningSession;
 import dev.erst.fingrind.core.attestation.AttestationVerifier;
 import dev.erst.fingrind.executor.spi.AttestedProtectedBookMaintenanceStore;
@@ -31,12 +32,15 @@ public final class AttestedProtectedBookLifecycleWorkflow {
   private final Clock clock;
   private final AttestedProtectedBookMaintenanceStore store;
   private final AttestedProtectedBookBackupWorkflow backupWorkflow;
+  private final AttestedProtectedBookRegistryMutationWorkflow registryMutationWorkflow;
 
   /** Creates one lifecycle workflow over an attested protected-book storage implementation. */
   public AttestedProtectedBookLifecycleWorkflow(Clock clock, ProtectedBookMaintenanceStore store) {
     this.clock = Objects.requireNonNull(clock, "clock");
     this.store = AttestedProtectedBookMaintenanceStore.require(store);
     backupWorkflow = new AttestedProtectedBookBackupWorkflow(this.clock, this.store);
+    registryMutationWorkflow =
+        new AttestedProtectedBookRegistryMutationWorkflow(this.clock, this.store);
   }
 
   /** Stages, verifies, seals, publishes, and acknowledges one manifest-attested backup artifact. */
@@ -194,6 +198,14 @@ public final class AttestedProtectedBookLifecycleWorkflow {
       return AttestedProtectedBookMaintenanceDecisions.failure(
           bookPath, "bookFilePath", "Failed to stage the attested rekey operation.");
     }
+  }
+
+  /** Appends one exact credential-registry or authorization-policy mutation to the live book. */
+  public MaintenanceDecision<ProtectedBookRegistryMutationOutcome> mutateRegistry(
+      ProtectedBookAccess bookAccess,
+      AttestationRegistryMutation mutation,
+      AttestationSigningSession signingSession) {
+    return registryMutationWorkflow.mutate(bookAccess, mutation, signingSession);
   }
 
   private MaintenanceDecision<ProtectedBookRestoreOutcome> stageAndPublishRestore(

@@ -3,7 +3,7 @@ package dev.erst.fingrind.core.attestation;
 import java.util.Locale;
 
 /** Closed autonomous workflow kinds that use the CLOSE_PERIOD capability. */
-enum AttestationSystemWorkflowKind {
+public enum AttestationSystemWorkflowKind {
   INTERIM_RESULT_SWEEP(false),
   FISCAL_YEAR_CLOSE(true);
 
@@ -13,7 +13,8 @@ enum AttestationSystemWorkflowKind {
     this.requiresCapitalAndRetainedResultAccounts = requiresCapitalAndRetainedResultAccounts;
   }
 
-  boolean requiresCapitalAndRetainedResultAccounts() {
+  /** Returns whether this workflow requires the fiscal-year capital and retained-result targets. */
+  public boolean requiresCapitalAndRetainedResultAccounts() {
     return requiresCapitalAndRetainedResultAccounts;
   }
 
@@ -27,7 +28,8 @@ enum AttestationSystemWorkflowKind {
     throw new AttestationAuthorizationException(failure);
   }
 
-  String wireToken() {
+  /** Returns the exact lowercase system-workflow token encoded into attestation preimages. */
+  public String wireToken() {
     return name().toLowerCase(Locale.ROOT).replace('_', '-');
   }
 }

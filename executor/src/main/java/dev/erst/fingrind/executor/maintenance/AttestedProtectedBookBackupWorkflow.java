@@ -36,6 +36,14 @@ final class AttestedProtectedBookBackupWorkflow {
     Path backupPath = store.normalize(backupFilePath, "backupFilePath");
     Path backupKeyPath = store.normalize(backupBookKeyFilePath, "backupBookKeyFilePath");
     UUID checkedBackupId = Objects.requireNonNull(backupId, "backupId");
+    try {
+      store.recoverInterruptedBackupPublication(backupPath, backupKeyPath);
+    } catch (ProtectedBookMaintenanceRejectionException exception) {
+      return AttestedProtectedBookMaintenanceDecisions.rejectedBackup(exception.rejection());
+    } catch (RuntimeException exception) {
+      return AttestedProtectedBookMaintenanceDecisions.failure(
+          backupPath, "backupFilePath", "Failed to recover an interrupted backup publication.");
+    }
     return switch (store.backupArtifactPairState(backupPath, backupKeyPath)) {
       case ABSENT ->
           createBackupArtifact(

@@ -5,7 +5,7 @@ domain: BOOK_OPERATION_ATTESTATION_VERIFICATION
 updated: "2026-07-22"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["AttestationInspectionService", "AttestationReviewResult", "AttestationStaleHeadException", "AttestationVerification", "AttestationVerificationException", "AttestationVerificationFailure", "AttestationVerifier", "VerifyBookAttestationResult"]
+  symbols: ["AttestationAuthorizationException", "AttestationAuthorizationFailure", "AttestationInspectionService", "AttestationReviewResult", "AttestationStaleHeadException", "AttestationVerification", "AttestationVerificationException", "AttestationVerificationFailure", "AttestationVerifier", "VerifyBookAttestationResult"]
 route:
   keywords: [attestation-verification, verifier-precedence, compromise-review, structural-invalid, stale-head, receipt-artifact, verification-rejection, clean-attestation]
   questions: ["how does FinGrind verify a protected-book attestation", "which attestation verification failure is reported first", "what does an attestation review finding mean", "how does FinGrind publish verification failures"]
@@ -39,6 +39,16 @@ condition to the `stale-head` precondition envelope; it never reports it as an i
 mutating `execute-plan` rolls back rather than converting this refusal into a plan journal. An
 acknowledged `backup-created` operation re-observes the chain and obtains a new authorization
 before retrying, while every other operation requires a fresh caller action.
+
+## `AttestationAuthorizationException` And `AttestationAuthorizationFailure`
+
+`AttestationAuthorizationException` carries the first deterministic historical authorization
+refusal. Its closed `AttestationAuthorizationFailure` value owns the same stable `attestation-*`
+code that the public `AttestationVerificationFailure` catalog publishes. Live credential and
+policy mutations translate this exception into a `structural-invalid` rejected envelope with exit
+code 2, preserving such conditions as insufficient quorum, an unenrolled or revoked key, an
+ineligible capability, and an invalid credential purpose instead of misclassifying them as
+storage failures.
 
 ## `AttestationVerificationFailure`
 

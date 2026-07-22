@@ -29,6 +29,14 @@ public enum OperationId implements WireValue {
   BACKUP_BOOK,
   /** Restores one encrypted-book backup pair onto one selected book path. */
   RESTORE_BOOK,
+  /** Enrolls one public attestation credential for a principal. */
+  ENROLL_KEY,
+  /** Adds one replacement public attestation credential for an enrolled principal. */
+  ROLLOVER_KEY,
+  /** Permanently revokes one enrolled public attestation credential. */
+  REVOKE_KEY,
+  /** Changes one or more future attestation quorum, grant, or system-workflow policy facts. */
+  ALTER_POLICY,
   /** Declares or reactivates one account. */
   DECLARE_ACCOUNT,
   /** Replaces the definition of a never-posted, unreferenced account. */

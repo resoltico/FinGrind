@@ -1,7 +1,7 @@
 package dev.erst.fingrind.core.attestation;
 
 /** Closed typed outcomes for historical attestation authorization. */
-enum AttestationAuthorizationFailure {
+public enum AttestationAuthorizationFailure {
   UNSUPPORTED_VERSION("attestation-unsupported-version"),
   PREIMAGE_INVALID("attestation-preimage-invalid"),
   PREVIOUS_HEAD_INVALID("attestation-previous-head-invalid"),
@@ -30,7 +30,8 @@ enum AttestationAuthorizationFailure {
     this.code = code;
   }
 
-  String code() {
+  /** Returns the stable public refusal code for this authorization failure. */
+  public String code() {
     return code;
   }
 }

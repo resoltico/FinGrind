@@ -19,7 +19,7 @@ payloads returned by the CLI.
 
 | Output | Returned By | Fields |
 |:-------|:------------|:-------|
-| success envelope | `help`, `version`, `capabilities`, `environment`, `generate-book-key-file`, `open-book`, `rekey-book`, `backup-book`, `restore-book`, `verify-book`, `attestation-review`, `export-attestation-receipt`, `verify-receipt`, `declare-account`, `amend-account`, `retire-account`, `declare-tax-registration`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`, `accrual-cutoff-schedule`, `fixed-asset-register`, `financing-register`, `realized-foreign-exchange-register`, `latvian-payroll-register`, `income-statement`, `cash-flow-statement`, `changes-in-equity`, `tax-obligation` | `status`, `payload`, optional `artifacts[]` |
+| success envelope | `help`, `version`, `capabilities`, `environment`, `generate-book-key-file`, `open-book`, `rekey-book`, `backup-book`, `restore-book`, `enroll-key`, `rollover-key`, `revoke-key`, `alter-policy`, `verify-book`, `attestation-review`, `export-attestation-receipt`, `verify-receipt`, `declare-account`, `amend-account`, `retire-account`, `declare-tax-registration`, `inspect-book`, `list-accounts`, `get-posting`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`, `accrual-cutoff-schedule`, `fixed-asset-register`, `financing-register`, `realized-foreign-exchange-register`, `latvian-payroll-register`, `income-statement`, `cash-flow-statement`, `changes-in-equity`, `tax-obligation` | `status`, `payload`, optional `artifacts[]` |
 | raw request document | `print-request-template`, `print-plan-template` | canonical posting-request, declare-account-request, declare-tax-registration-request, or AI-agent ledger-plan scaffold JSON |
 | `ok` | successful `preflight-entry` | `status`, `payload.idempotencyKey`, `payload.effectiveDate`, `payload.resolvedJournal` |
 | `ok` | successful typed `record-*` command, `post-entry`, or `record-reversal` | `status`, `payload.postingId`, `payload.idempotencyKey`, `payload.effectiveDate`, `payload.recordedAt`, `payload.idempotentReplay`, `payload.resolvedJournal` |
@@ -340,6 +340,12 @@ and is not the restored live-book secret.
 
 `rekey-book` success returns `payload.bookFile`, `payload.newBookKeyFile`, and one
 `book-key-file` artifact. The key file is newly generated at the requested absent target.
+
+`enroll-key`, `rollover-key`, `revoke-key`, and `alter-policy` success returns
+`payload.bookFile`, `payload.operationKind`, and `payload.headOrder`. Each confirms that the
+named immutable authorization mutation was appended; it never exposes credential paths,
+passphrases, encrypted key contents, or a private signing result. An authorization refusal is a
+`structural-invalid` rejected envelope with the exact `attestation-*` code and exit code 2.
 
 `verify-book` returns the verified book identity and immutable head, or the first typed structural
 failure. `attestation-review` returns non-persisted compromise-review findings for a structurally

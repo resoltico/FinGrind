@@ -126,13 +126,13 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
               sourceVerification.headOrder(),
               sourceVerification.operationHead());
       assertTrue(
-          SqliteProtectedBookMaintenanceStore.retriesStaleHead(
+          SqliteAttestedOperationAppender.retriesStaleHead(
               AttestationOperationKind.BACKUP_CREATED, acknowledgement));
       assertFalse(
-          SqliteProtectedBookMaintenanceStore.retriesStaleHead(
+          SqliteAttestedOperationAppender.retriesStaleHead(
               AttestationOperationKind.BACKUP_CREATED, null));
       assertFalse(
-          SqliteProtectedBookMaintenanceStore.retriesStaleHead(
+          SqliteAttestedOperationAppender.retriesStaleHead(
               AttestationOperationKind.REKEY_BOOK, acknowledgement));
 
       AttestationVerification backupVerification =
@@ -155,7 +155,7 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
     AtomicInteger attempts = new AtomicInteger();
     assertEquals(
         "accepted",
-        SqliteProtectedBookMaintenanceStore.retryStaleHead(
+        SqliteAttestedOperationAppender.retryStaleHead(
             true,
             () -> {
               if (attempts.getAndIncrement() == 0) {
@@ -169,7 +169,7 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
         assertThrows(
             AttestationStaleHeadException.class,
             () ->
-                SqliteProtectedBookMaintenanceStore.retryStaleHead(
+                SqliteAttestedOperationAppender.retryStaleHead(
                     false,
                     () -> {
                       throw staleHead;

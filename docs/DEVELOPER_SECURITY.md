@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: DEVELOPER_SECURITY
-updated: "2026-07-21"
+updated: "2026-07-22"
 route:
   keywords: [fingrind, security, threat-boundary, protected-book, sqlite3mc, key-lifecycle, runtime-provenance, ciphertext, passphrase, compile-options]
   questions: ["what is the fingrind security model", "what does protected-book-verification-failed mean", "what security boundary does fingrind promise", "how does fingrind handle passphrases sqlite runtime identity and attestation keys"]
@@ -80,6 +80,13 @@ path at genesis; later mutation signing refuses a missing credential path so an 
 never appear implicitly. See [USER_BOOK_ATTESTATION.md](./USER_BOOK_ATTESTATION.md) for the
 operator contract and [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md)
 for the canonical verification contract.
+
+Credential enrollment, rollover, revocation, and policy changes are ordinary signed operations.
+Their public request document carries only canonical base64url Ed25519 SPKI data, principal IDs,
+and policy facts; the parser derives the key ID from SPKI. Local credential paths, passphrase
+sources, and encrypted key bytes stay outside the signed request and effect preimages. Admission
+resolves the live historical registry at the preceding operation order and projects an expected
+authorization refusal as its exact `attestation-*` rejected result, never as a storage failure.
 
 ## Secret Transport And Lifecycle
 

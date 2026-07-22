@@ -350,6 +350,55 @@ without deleting the account or its journal history. A historical `record-revers
 retired account because it negates a retained posting rather than creating a new ordinary use.
 There is no delete-account request or command.
 
+## Attestation Credential And Policy Requests
+
+`enroll-key`, `rollover-key`, `revoke-key`, and `alter-policy` accept strict JSON documents. They
+are not posting requests and do not accept provenance, idempotency, key-file paths, passphrases,
+or private key bytes. `credentialSpki` and `predecessorCredentialSpki` are canonical unpadded
+base64url encodings of public Ed25519 DER SubjectPublicKeyInfo values. FinGrind derives key IDs
+from those values; callers do not submit a key ID.
+
+```json
+{
+  "principalId": "01234567-89ab-4cde-8fab-0123456789ab",
+  "credentialSpki": "MCowBQYDK2VwAyEAJYpWgBK4pHaKkIRKs9p8_6B01sG0SuOXLjI69Q5mGlI",
+  "credentialPurpose": "operator"
+}
+```
+
+The enrollment shape above has exactly `principalId`, `credentialSpki`, and
+`credentialPurpose`. `rollover-key` adds required `predecessorCredentialSpki`; both credentials
+must differ and the predecessor must be an active credential of the same principal at admission.
+`revoke-key` has `principalId`, `credentialSpki`, and optional non-blank `reason`.
+
+`alter-policy` accepts any nonempty combination of these arrays:
+
+```json
+{
+  "policyRules": [{ "capability": "close-period", "quorum": 1 }],
+  "capabilityGrants": [{
+    "principalId": "01234567-89ab-4cde-8fab-0123456789ab",
+    "capability": "close-period",
+    "state": "grant"
+  }],
+  "systemWorkflowPolicies": [{
+    "workflowId": "11111111-2222-4333-8444-555555555555",
+    "workflowKind": "interim-result-sweep",
+    "resultHoldingAccountCode": "3000",
+    "active": true
+  }]
+}
+```
+
+Capabilities are `post`, `approve`, `close-period`, `backup`, `anchor`, `restore`, `rekey`,
+`enroll-key`, `revoke-key`, and `alter-policy`. `quorum` is an integer from 1 through 64;
+`state` is `grant` or `revoke`. An active or retired `fiscal-year-close` workflow additionally
+repeats `capitalAccountCode` and `retainedResultAccountCode`; those fields are forbidden for an
+`interim-result-sweep` workflow. Unknown fields, duplicate object keys, noncanonical base64url,
+an entirely empty policy document, and duplicate identities in any one policy array are rejected.
+One `alter-policy` request may name a capability, principal-capability pair, or workflow ID at
+most once.
+
 ## Ledger-Plan Request Shape
 
 Inspect the canonical AI-agent scaffold:

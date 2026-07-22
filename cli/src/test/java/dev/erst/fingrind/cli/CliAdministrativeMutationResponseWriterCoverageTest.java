@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationRegistryMutationResult;
+import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.ClosedFiscalYear;
@@ -13,6 +15,7 @@ import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.SweptInterimResult;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.core.AccountCode;
@@ -20,6 +23,7 @@ import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReportingPeriod;
 import java.io.ByteArrayOutputStream;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -219,6 +223,50 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
         CliAdministrativeExitCodes.exitCodeFor(
             new FiscalYearCloseResult.Rejected(
                 new BookAdministrationRejection.BookNotInitialized())));
+  }
+
+  @Test
+  void writesEveryCredentialRegistryMutationOutcomeAcrossItsSupportedOutputFamilies() {
+    AttestationRegistryMutationResult.Mutated mutated =
+        new AttestationRegistryMutationResult.Mutated(BOOK_PATH, "enroll-key", BigInteger.ONE);
+
+    ByteArrayOutputStream json = new ByteArrayOutputStream();
+    writer(json)
+        .writeAttestationRegistryMutationResult(OperationId.ENROLL_KEY, mutated, OutputMode.JSON);
+    assertJsonContains(json, "\"operationKind\":\"enroll-key\"");
+
+    ByteArrayOutputStream text = new ByteArrayOutputStream();
+    writer(text)
+        .writeAttestationRegistryMutationResult(OperationId.ENROLL_KEY, mutated, OutputMode.TEXT);
+    assertTrue(
+        text.toString(StandardCharsets.UTF_8)
+            .contains("enroll-key appended at attestation order 1"));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            writer(new ByteArrayOutputStream())
+                .writeAttestationRegistryMutationResult(
+                    OperationId.ENROLL_KEY, mutated, OutputMode.CSV));
+
+    ByteArrayOutputStream rejected = new ByteArrayOutputStream();
+    writer(rejected)
+        .writeAttestationRegistryMutationResult(
+            OperationId.REVOKE_KEY,
+            new AttestationRegistryMutationResult.Rejected(
+                new BookMaintenanceRejection.BackupDestinationAlreadyExists(
+                    Path.of("backup.sqlite"))),
+            OutputMode.JSON);
+    assertJsonContains(rejected, "\"code\":\"backup-destination-already-exists\"");
+
+    ByteArrayOutputStream authorizationRejected = new ByteArrayOutputStream();
+    writer(authorizationRejected)
+        .writeAttestationRegistryMutationResult(
+            OperationId.ALTER_POLICY,
+            new AttestationRegistryMutationResult.AuthorizationRejected(
+                AttestationVerificationFailure.QUORUM_BELOW),
+            OutputMode.JSON);
+    assertJsonContains(authorizationRejected, "\"code\":\"attestation-quorum-below\"");
   }
 
   private static CliAdministrativeMutationResponseWriter writer(

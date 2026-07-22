@@ -5,7 +5,7 @@ domain: BOOK_OPERATION_ATTESTATION
 updated: "2026-07-22"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["AttestedOperation", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationEvidence", "AttestationGenesis", "AttestationKeyFiles", "AttestationOperationKind", "AttestationOperationSigner", "AttestationPublicCredential", "AttestationSigningCredential"]
+  symbols: ["AttestedOperation", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationCapability", "AttestationCredentialPurpose", "AttestationEvidence", "AttestationGenesis", "AttestationGrantState", "AttestationKeyFiles", "AttestationOperationKind", "AttestationOperationSigner", "AttestationPublicCredential", "AttestationRegistryMutation", "AttestationSigningCredential", "AttestationSystemWorkflowKind"]
 route:
   keywords: [verifiable-operation-attestation, operation-head, attestation-envelope, principal-quorum, credential-purpose, autonomous-workflow, semantic-profile, ed25519, immutable-preimage, operation-kind]
   questions: ["what does FinGrind book-operation attestation prove", "how is an attested operation encoded", "which credential may authorize a system operation", "which semantic profile governs a typed operation"]
@@ -244,6 +244,20 @@ respectively. The following tokens are likewise closed:
 Other token fields in the record catalog are the already-owned accounting vocabularies documented
 by their bounded contexts. Their values are normalized to their published lowercase wire token
 before preimage encoding; a display label, enum name, or localized text is never signed.
+
+## `AttestationRegistryMutation`, `AttestationCapability`, `AttestationCredentialPurpose`, `AttestationGrantState`, And `AttestationSystemWorkflowKind`
+
+`AttestationRegistryMutation` is the closed public command-domain owner for future credential and
+policy changes. Its `EnrollKey`, `RolloverKey`, `RevokeKey`, and `AlterPolicy` variants project
+the exact request and effect preimages defined in the record catalogue; no caller passes encoded
+preimage bytes or a mutable registry object. `PolicyRule`, `CapabilityGrant`, and
+`SystemWorkflowPolicy` are the closed nested facts of an `AlterPolicy` mutation.
+
+`AttestationCapability` owns the signed lower-case capability tokens. `AttestationCredentialPurpose`
+owns `operator` and `system`; `AttestationGrantState` owns `grant` and `revoke`; and
+`AttestationSystemWorkflowKind` owns `interim-result-sweep` and `fiscal-year-close`. A public
+lifecycle request carries a canonical base64url Ed25519 SPKI, from which FinGrind derives the
+keyId. Local credential paths and private custody material are not request or effect facts.
 
 The sourceChannel provenance rule and autonomous system-close derivation are owned by
 [DOC_02_VerifiableOperationAttestationProfiles.md](./DOC_02_VerifiableOperationAttestationProfiles.md).

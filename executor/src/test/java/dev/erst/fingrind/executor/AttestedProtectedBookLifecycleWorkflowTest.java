@@ -141,8 +141,9 @@ class AttestedProtectedBookLifecycleWorkflowTest {
     }
 
     AttestationMaintenanceTestSupport.Store sourceBlockingStore = store(bookPath, credential);
-    sourceBlockingStore.setBackupBlockingArtifacts(
-        List.of(backupPath.resolveSibling("book.fgba-wal")));
+    sourceBlockingStore
+        .overrides()
+        .backupBlockingArtifacts(List.of(backupPath.resolveSibling("book.fgba-wal")));
     try (var session = credential.openSession()) {
       ProtectedBookRestoreOutcome.Rejected rejected =
           assertInstanceOf(

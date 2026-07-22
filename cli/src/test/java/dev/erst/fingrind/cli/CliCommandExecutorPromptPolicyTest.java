@@ -77,6 +77,11 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
                 OutputMode.JSON));
     assertPromptFailure(
         outputStream,
+        () ->
+            executor.runAttestationRegistryMutationCommand(
+                OperationId.ENROLL_KEY, PROMPT_BOOK_ACCESS, REQUEST_FILE, OutputMode.JSON));
+    assertPromptFailure(
+        outputStream,
         () -> executor.runDeclareAccountCommand(PROMPT_BOOK_ACCESS, REQUEST_FILE, OutputMode.JSON));
     assertPromptFailure(
         outputStream,

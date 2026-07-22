@@ -12,6 +12,7 @@ import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.core.JournalEntryValidationException;
+import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -80,6 +81,16 @@ final class CliRequestReader {
         CliJsonRequestHints.declareTaxRegistrationRequestHint(),
         OperationId.DECLARE_TAX_REGISTRATION,
         CliPostingRequestParser::readDeclareTaxRegistrationCommand);
+  }
+
+  /** Reads one public credential-registry or authorization-policy mutation request. */
+  AttestationRegistryMutation readAttestationRegistryMutation(
+      Path requestFile, OperationId operationId) {
+    return parseRequest(
+        requestFile,
+        "Supply the documented JSON request fields for " + operationId.wireName() + ".",
+        operationId,
+        rootNode -> CliAttestationRegistryMutationRequestParser.read(rootNode, operationId));
   }
 
   /** Reads one AI-agent ledger plan from a JSON file or standard input. */

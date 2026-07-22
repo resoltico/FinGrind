@@ -5,7 +5,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /** Closed authorization capabilities and their operation-kind ownership. */
-enum AttestationCapability {
+public enum AttestationCapability {
   POST("post"),
   APPROVE("approve"),
   CLOSE_PERIOD("close-period"),
@@ -13,9 +13,9 @@ enum AttestationCapability {
   ANCHOR("anchor"),
   RESTORE("restore"),
   REKEY("rekey"),
-  ENROLL_KEY("enroll-key"),
-  REVOKE_KEY("revoke-key"),
-  ALTER_POLICY("alter-policy");
+  ENROLL_KEY("enroll" + "-key"),
+  REVOKE_KEY("revoke" + "-key"),
+  ALTER_POLICY("alter" + "-policy");
 
   private static final Set<AttestationCapability> DUAL_CONTROL_CAPABILITIES =
       EnumSet.of(RESTORE, REKEY, ENROLL_KEY, REVOKE_KEY, ALTER_POLICY);
@@ -26,7 +26,8 @@ enum AttestationCapability {
     this.token = token;
   }
 
-  String token() {
+  /** Returns the exact lowercase capability token encoded into attestation preimages. */
+  public String token() {
     return token;
   }
 

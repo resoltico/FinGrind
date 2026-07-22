@@ -187,6 +187,94 @@ final class DeclareTaxRegistration extends CliBookRequestOutputModeCommand {
   }
 }
 
+/** Administrative CLI command that appends one credential-enrollment attestation. */
+final class EnrollAttestationKey extends CliBookRequestOutputModeCommand {
+  EnrollAttestationKey(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
+    super(bookAccess, requestFile, outputMode);
+  }
+
+  @Override
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      Path requestFile,
+      OutputMode outputMode) {
+    return executionContext
+        .administrative()
+        .runAttestationRegistryMutationCommand(
+            dev.erst.fingrind.contract.protocol.OperationId.ENROLL_KEY,
+            bookAccess,
+            requestFile,
+            outputMode);
+  }
+}
+
+/** Administrative CLI command that appends one credential-rollover attestation. */
+final class RolloverAttestationKey extends CliBookRequestOutputModeCommand {
+  RolloverAttestationKey(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
+    super(bookAccess, requestFile, outputMode);
+  }
+
+  @Override
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      Path requestFile,
+      OutputMode outputMode) {
+    return executionContext
+        .administrative()
+        .runAttestationRegistryMutationCommand(
+            dev.erst.fingrind.contract.protocol.OperationId.ROLLOVER_KEY,
+            bookAccess,
+            requestFile,
+            outputMode);
+  }
+}
+
+/** Administrative CLI command that appends one credential-revocation attestation. */
+final class RevokeAttestationKey extends CliBookRequestOutputModeCommand {
+  RevokeAttestationKey(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
+    super(bookAccess, requestFile, outputMode);
+  }
+
+  @Override
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      Path requestFile,
+      OutputMode outputMode) {
+    return executionContext
+        .administrative()
+        .runAttestationRegistryMutationCommand(
+            dev.erst.fingrind.contract.protocol.OperationId.REVOKE_KEY,
+            bookAccess,
+            requestFile,
+            outputMode);
+  }
+}
+
+/** Administrative CLI command that appends one authorization-policy attestation. */
+final class AlterAttestationPolicy extends CliBookRequestOutputModeCommand {
+  AlterAttestationPolicy(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
+    super(bookAccess, requestFile, outputMode);
+  }
+
+  @Override
+  protected int executeCommand(
+      CliExecutionContext executionContext,
+      BookAccess bookAccess,
+      Path requestFile,
+      OutputMode outputMode) {
+    return executionContext
+        .administrative()
+        .runAttestationRegistryMutationCommand(
+            dev.erst.fingrind.contract.protocol.OperationId.ALTER_POLICY,
+            bookAccess,
+            requestFile,
+            outputMode);
+  }
+}
+
 /** Administrative CLI command that closes one contiguous reporting period. */
 record InterimResultSweep(
     BookAccess bookAccess, java.time.LocalDate throughEffectiveDate, OutputMode outputMode)

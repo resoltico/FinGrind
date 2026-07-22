@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliAdministrationJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AmendAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.AttestationRegistryMutationResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
@@ -117,6 +118,41 @@ final class CliAdministrativeMutationResponseWriter {
       case RekeyBookResult.Rejected rejected ->
           outputChannel.writeRejectedEnvelope(
               CliMaintenanceRejectionPayloadMapper.rejectedEnvelope(rejected.rejection()),
+              outputMode);
+    }
+  }
+
+  void writeAttestationRegistryMutationResult(
+      OperationId operationId, AttestationRegistryMutationResult result, OutputMode outputMode) {
+    switch (result) {
+      case AttestationRegistryMutationResult.Mutated mutated ->
+          outputMode.run(
+              () ->
+                  outputChannel.writeEnvelope(
+                      CliEnvelopeMapper.successEnvelope(
+                          new CliAdministrationJsonModels.AttestationRegistryMutationPayload(
+                              CliPublicPaths.absoluteValue(mutated.bookFilePath()),
+                              mutated.operationKind(),
+                              mutated.headOrder().toString()))),
+              () ->
+                  outputChannel.writeText(
+                      "%s appended at attestation order %s for %s.%n"
+                          .formatted(
+                              operationId.wireName(),
+                              mutated.headOrder(),
+                              CliPublicPaths.absoluteValue(mutated.bookFilePath()))),
+              () -> {
+                throw new IllegalArgumentException(
+                    CliOperationText.unsupportedCsvOutput(operationId));
+              });
+      case AttestationRegistryMutationResult.Rejected rejected ->
+          outputChannel.writeRejectedEnvelope(
+              CliMaintenanceRejectionPayloadMapper.rejectedEnvelope(rejected.rejection()),
+              outputMode);
+      case AttestationRegistryMutationResult.AuthorizationRejected rejected ->
+          outputChannel.writeRejectedEnvelope(
+              CliRejectionPayloadMapper.attestationAuthorizationRejectedEnvelope(
+                  rejected.failure()),
               outputMode);
     }
   }

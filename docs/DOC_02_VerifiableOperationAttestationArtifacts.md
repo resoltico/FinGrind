@@ -91,6 +91,7 @@ conflicting backup id after the exact-tuple check fails.
 | Crash point | Residual | Recovery |
 |:--|:--|:--|
 | after snapshot or blessing, before publication | staged local temporary file | discard locally; nothing was published |
+| after companion-key publication, before artifact publication | exact owned key final plus its owned stage record | the next identical backup atomically leases both destinations, discards only the owned incomplete key publication, then starts a fresh staged pair; an unowned key is never removed |
 | after publication, before acknowledgement | manifest-attested artifact and an understated source-book backup index | resume the identical acknowledgement |
 
 A manifest-attested artifact is never unattested or orphaned. Explicit discard is confirmed local

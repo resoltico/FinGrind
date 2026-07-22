@@ -3,7 +3,7 @@ package dev.erst.fingrind.core.attestation;
 import java.util.Objects;
 
 /** Signals the first deterministic historical-authorization refusal. */
-final class AttestationAuthorizationException extends IllegalArgumentException {
+public final class AttestationAuthorizationException extends IllegalArgumentException {
   private static final long serialVersionUID = 1L;
   private final AttestationAuthorizationFailure failure;
 
@@ -18,7 +18,8 @@ final class AttestationAuthorizationException extends IllegalArgumentException {
     this.failure = failure;
   }
 
-  AttestationAuthorizationFailure failure() {
+  /** Returns the exact authorization invariant that refused the operation. */
+  public AttestationAuthorizationFailure failure() {
     return failure;
   }
 }

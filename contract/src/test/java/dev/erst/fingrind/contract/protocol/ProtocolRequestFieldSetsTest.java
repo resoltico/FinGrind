@@ -625,4 +625,38 @@ class ProtocolRequestFieldSetsTest {
         ProtocolLedgerPlanRequestFieldSets.ledgerAssertionFields(
             LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS));
   }
+
+  @Test
+  void attestationRegistryMutationRequestFieldsAreClosedAndCanonical() {
+    assertEquals(
+        Set.of("principalId", "credentialSpki", "credentialPurpose"),
+        ProtocolAttestationRegistryRequestFields.enrollKeyFields());
+    assertEquals(
+        Set.of("principalId", "credentialSpki", "credentialPurpose", "predecessorCredentialSpki"),
+        ProtocolAttestationRegistryRequestFields.rolloverKeyFields());
+    assertEquals(
+        Set.of("principalId", "credentialSpki", "reason"),
+        ProtocolAttestationRegistryRequestFields.revokeKeyFields());
+    assertEquals(
+        Set.of("policyRules", "capabilityGrants", "systemWorkflowPolicies"),
+        ProtocolAttestationRegistryRequestFields.alterPolicyFields());
+    assertEquals(
+        Set.of("capability", "quorum"),
+        ProtocolAttestationRegistryRequestFields.policyRuleFields());
+    assertEquals(
+        Set.of("principalId", "capability", "state"),
+        ProtocolAttestationRegistryRequestFields.capabilityGrantFields());
+    assertEquals(
+        Set.of(
+            "workflowId",
+            "workflowKind",
+            "resultHoldingAccountCode",
+            "capitalAccountCode",
+            "retainedResultAccountCode",
+            "active"),
+        ProtocolAttestationRegistryRequestFields.systemWorkflowPolicyFields());
+    assertEquals(
+        List.of("policyRules", "capabilityGrants", "systemWorkflowPolicies"),
+        ProtocolAttestationRegistryRequestFields.alterPolicyArrayFields());
+  }
 }

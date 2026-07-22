@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseCommand;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
@@ -185,6 +186,28 @@ final class CliAdministrativeCommandExecutor {
             attestationCredentialSources),
         result -> responseWriter.writeRestoreBookResult(result, outputMode),
         CliAdministrativeExitCodes::exitCodeFor,
+        failureWriter,
+        outputMode);
+  }
+
+  int runAttestationRegistryMutationCommand(
+      OperationId operationId, BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
+    Optional<Integer> promptFailure =
+        CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
+            .map(
+                failure ->
+                    CliCommandOutcomeWriter.writeDeterministicFailure(
+                        failure, failureWriter, outputMode));
+    if (promptFailure.isPresent()) {
+      return promptFailure.orElseThrow();
+    }
+    dev.erst.fingrind.core.attestation.AttestationRegistryMutation mutation =
+        requestReader.readAttestationRegistryMutation(requestFile, operationId);
+    return CliCommandOutcomeWriter.writeResolvedResult(
+        lifecycleWorkflow.mutateRegistry(bookAccess, mutation),
+        result ->
+            responseWriter.writeAttestationRegistryMutationResult(operationId, result, outputMode),
+        ignored -> 0,
         failureWriter,
         outputMode);
   }

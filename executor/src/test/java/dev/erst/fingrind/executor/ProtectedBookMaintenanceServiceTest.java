@@ -1,12 +1,18 @@
 package dev.erst.fingrind.executor;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationRegistryMutationResult;
+import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.core.attestation.AttestationCapability;
+import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
+import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Clock;
@@ -103,7 +109,9 @@ class ProtectedBookMaintenanceServiceTest {
                 BACKUP_ID));
 
     AttestationMaintenanceTestSupport.Store restoreStore = store(bookPath, credential);
-    restoreStore.setExistingLeaseFailure(new IllegalStateException("backup lease unavailable"));
+    restoreStore
+        .overrides()
+        .existingLeaseFailure(new IllegalStateException("backup lease unavailable"));
     assertInstanceOf(
         ContractDecision.Rejected.class,
         new ProtectedBookMaintenanceService(CLOCK, restoreStore)
@@ -120,6 +128,61 @@ class ProtectedBookMaintenanceServiceTest {
         ContractDecision.Rejected.class,
         new ProtectedBookMaintenanceService(CLOCK, rekeyStore)
             .rekeyBook(access, temporaryDirectory.resolve("rekeyed/book.key")));
+  }
+
+  @Test
+  void projectsEveryPublishedRegistryMutationOutcome() throws IOException {
+    AttestationMaintenanceTestSupport.CredentialFixture credential = credential();
+    Path bookPath = temporaryDirectory.resolve("live/book.sqlite");
+    BookAccess access = AttestationMaintenanceTestSupport.bookAccess(bookPath, credential);
+
+    AttestationRegistryMutationResult.Mutated mutated =
+        assertInstanceOf(
+            AttestationRegistryMutationResult.Mutated.class,
+            service(bookPath, credential)
+                .mutateRegistry(access, policyMutation())
+                .requireAccepted());
+    assertEquals("alter-policy", mutated.operationKind());
+
+    AttestationMaintenanceTestSupport.Store blocked = store(bookPath, credential);
+    blocked.setLiveBlockingArtifacts(List.of(bookPath.resolveSibling("book.sqlite-wal")));
+    assertInstanceOf(
+        AttestationRegistryMutationResult.Rejected.class,
+        new ProtectedBookMaintenanceService(CLOCK, blocked)
+            .mutateRegistry(access, policyMutation())
+            .requireAccepted());
+
+    AttestationMaintenanceTestSupport.Store failed = store(bookPath, credential);
+    failed.setAppendFailure(new IllegalStateException("registry storage unavailable"));
+    assertInstanceOf(
+        ContractDecision.Rejected.class,
+        new ProtectedBookMaintenanceService(CLOCK, failed)
+            .mutateRegistry(access, policyMutation()));
+
+    AttestationCredentialSource mismatchedPrincipalCredential =
+        new AttestationCredentialSource(
+            UUID.fromString("01234567-89ab-4cde-8fab-0123456789ab"),
+            credential.source().encryptedKeyFilePath(),
+            credential.source().passphraseFilePath());
+    BookAccess unrecognizedAccess =
+        new BookAccess(
+            bookPath,
+            new BookAccess.PassphraseSource.KeyFile(bookPath.resolveSibling("book.key")),
+            List.of(mismatchedPrincipalCredential));
+    AttestationRegistryMutationResult.AuthorizationRejected rejected =
+        assertInstanceOf(
+            AttestationRegistryMutationResult.AuthorizationRejected.class,
+            service(bookPath, credential)
+                .mutateRegistry(unrecognizedAccess, policyMutation())
+                .requireAccepted());
+    assertEquals(AttestationVerificationFailure.KEY_PRINCIPAL_MISMATCH, rejected.failure());
+  }
+
+  private static AttestationRegistryMutation.AlterPolicy policyMutation() {
+    return new AttestationRegistryMutation.AlterPolicy(
+        List.of(new AttestationRegistryMutation.PolicyRule(AttestationCapability.CLOSE_PERIOD, 1)),
+        List.of(),
+        List.of());
   }
 
   private ProtectedBookMaintenanceService service(

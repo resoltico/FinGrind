@@ -26,6 +26,22 @@ final class CliLifecycleMutationArguments {
     return CliBackupRestoreArguments.parseRestoreBookCommand(arguments);
   }
 
+  static CliCommand parseEnrollKeyCommand(List<String> arguments) {
+    return CliAttestationRegistryMutationArguments.parseEnrollKeyCommand(arguments);
+  }
+
+  static CliCommand parseRolloverKeyCommand(List<String> arguments) {
+    return CliAttestationRegistryMutationArguments.parseRolloverKeyCommand(arguments);
+  }
+
+  static CliCommand parseRevokeKeyCommand(List<String> arguments) {
+    return CliAttestationRegistryMutationArguments.parseRevokeKeyCommand(arguments);
+  }
+
+  static CliCommand parseAlterPolicyCommand(List<String> arguments) {
+    return CliAttestationRegistryMutationArguments.parseAlterPolicyCommand(arguments);
+  }
+
   static CliCommand parseInterimResultSweepCommand(List<String> arguments) {
     return CliInterimResultSweepArguments.parseInterimResultSweepCommand(arguments);
   }

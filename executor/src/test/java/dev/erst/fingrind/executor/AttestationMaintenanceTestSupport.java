@@ -94,6 +94,7 @@ final class AttestationMaintenanceTestSupport {
     private final AdmissionState admissionState;
     private final StagingState stagingState;
     private final FailureState failureState = new FailureState();
+    private final FixtureOverrides overrides;
 
     Store(Path bookPath, List<AttestationEvidence> evidence) {
       Path normalizedBookPath = normalize(bookPath, "bookPath");
@@ -101,6 +102,8 @@ final class AttestationMaintenanceTestSupport {
       evidenceState = new EvidenceState(bookHandles, evidence);
       admissionState = new AdmissionState(normalizedBookPath, bookHandles.liveBook());
       stagingState = new StagingState(this, bookHandles);
+      overrides =
+          new FixtureOverrides(backupArtifactState, admissionState, stagingState, failureState);
     }
 
     void setLiveVerification(MaintenanceDecision<BookVerification> verification) {
@@ -115,24 +118,12 @@ final class AttestationMaintenanceTestSupport {
       admissionState.liveBlockingArtifacts = List.copyOf(blockingArtifacts);
     }
 
-    void setBackupBlockingArtifacts(List<Path> blockingArtifacts) {
-      admissionState.backupBlockingArtifacts = List.copyOf(blockingArtifacts);
-    }
-
     void setManagedLease(LeaseAcquisition lease) {
       admissionState.managedLease = Objects.requireNonNull(lease, "lease");
     }
 
     void setExistingLease(LeaseAcquisition lease) {
       admissionState.existingLease = Objects.requireNonNull(lease, "lease");
-    }
-
-    void setExistingLeaseFailure(RuntimeException failure) {
-      failureState.existingLease = Objects.requireNonNull(failure, "failure");
-    }
-
-    void setBackupArtifactVerificationFailure(RuntimeException failure) {
-      failureState.backupArtifactVerification = Objects.requireNonNull(failure, "failure");
     }
 
     void setStagedBackup(MaintenanceDecision<StagedBackupPair> staged) {
@@ -147,16 +138,8 @@ final class AttestationMaintenanceTestSupport {
       stagingState.backupVerification = Objects.requireNonNull(verification, "verification");
     }
 
-    void setStagedRestoreVerification(MaintenanceDecision<BookVerification> verification) {
-      stagingState.restoreVerification = Objects.requireNonNull(verification, "verification");
-    }
-
     void setPrepareFailure(RuntimeException failure) {
       failureState.prepare = Objects.requireNonNull(failure, "failure");
-    }
-
-    void setStagedBackupFailure(RuntimeException failure) {
-      failureState.stagedBackup = Objects.requireNonNull(failure, "failure");
     }
 
     void setAppendFailure(RuntimeException failure) {
@@ -177,6 +160,10 @@ final class AttestationMaintenanceTestSupport {
 
     void setSnapshotEvidence(List<AttestationEvidence> attestationEvidence) {
       evidenceState.byBook.put(bookHandles.snapshotBook(), List.copyOf(attestationEvidence));
+    }
+
+    FixtureOverrides overrides() {
+      return overrides;
     }
 
     @Override
@@ -213,6 +200,17 @@ final class AttestationMaintenanceTestSupport {
     public BackupArtifactPairState backupArtifactPairState(
         Path normalizedBackupArtifactPath, Path normalizedBackupKeyFilePath) {
       return backupArtifactState.pairState;
+    }
+
+    @Override
+    public void recoverInterruptedBackupPublication(
+        Path normalizedBackupArtifactPath, Path normalizedBackupKeyFilePath) {
+      if (failureState.backupRecovery != null) {
+        throw failureState.backupRecovery;
+      }
+      if (backupArtifactState.recoveredPairState != null) {
+        backupArtifactState.pairState = backupArtifactState.recoveredPairState;
+      }
     }
 
     @Override
@@ -335,6 +333,7 @@ final class AttestationMaintenanceTestSupport {
     /** Represents the externally observable backup pair and its sealed artifact bytes. */
     private static final class BackupArtifactState {
       private BackupArtifactPairState pairState = BackupArtifactPairState.ABSENT;
+      private @Nullable BackupArtifactPairState recoveredPairState;
       private byte @Nullable [] sealed;
     }
 
@@ -375,6 +374,55 @@ final class AttestationMaintenanceTestSupport {
       private @Nullable RuntimeException append;
       private @Nullable RuntimeException existingLease;
       private @Nullable RuntimeException backupArtifactVerification;
+      private @Nullable RuntimeException backupRecovery;
+    }
+  }
+
+  /** Groups the uncommon one-off fixture overrides used by lifecycle failure tests. */
+  static final class FixtureOverrides {
+    private final Store.BackupArtifactState backupArtifactState;
+    private final Store.AdmissionState admissionState;
+    private final Store.StagingState stagingState;
+    private final Store.FailureState failureState;
+
+    private FixtureOverrides(
+        Store.BackupArtifactState backupArtifactState,
+        Store.AdmissionState admissionState,
+        Store.StagingState stagingState,
+        Store.FailureState failureState) {
+      this.backupArtifactState = backupArtifactState;
+      this.admissionState = admissionState;
+      this.stagingState = stagingState;
+      this.failureState = failureState;
+    }
+
+    void recoveredBackupPairState(ProtectedBookMaintenanceStore.BackupArtifactPairState state) {
+      backupArtifactState.recoveredPairState = Objects.requireNonNull(state, "state");
+    }
+
+    void backupBlockingArtifacts(List<Path> blockingArtifacts) {
+      admissionState.backupBlockingArtifacts = List.copyOf(blockingArtifacts);
+    }
+
+    void stagedBackupFailure(RuntimeException failure) {
+      failureState.stagedBackup = Objects.requireNonNull(failure, "failure");
+    }
+
+    void backupRecoveryFailure(RuntimeException failure) {
+      failureState.backupRecovery = Objects.requireNonNull(failure, "failure");
+    }
+
+    void backupArtifactVerificationFailure(RuntimeException failure) {
+      failureState.backupArtifactVerification = Objects.requireNonNull(failure, "failure");
+    }
+
+    void existingLeaseFailure(RuntimeException failure) {
+      failureState.existingLease = Objects.requireNonNull(failure, "failure");
+    }
+
+    void stagedRestoreVerification(
+        MaintenanceDecision<ProtectedBookMaintenanceStore.BookVerification> verification) {
+      stagingState.restoreVerification = Objects.requireNonNull(verification, "verification");
     }
   }
 

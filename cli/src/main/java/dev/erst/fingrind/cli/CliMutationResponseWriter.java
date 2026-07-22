@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AmendAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.AttestationRegistryMutationResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
@@ -79,6 +80,13 @@ final class CliMutationResponseWriter {
   void writeRekeyBookResult(
       RekeyBookResult result, java.nio.file.Path newBookKeyFilePath, OutputMode outputMode) {
     administrativeWriter.writeRekeyBookResult(result, newBookKeyFilePath, outputMode);
+  }
+
+  void writeAttestationRegistryMutationResult(
+      dev.erst.fingrind.contract.protocol.OperationId operationId,
+      AttestationRegistryMutationResult result,
+      OutputMode outputMode) {
+    administrativeWriter.writeAttestationRegistryMutationResult(operationId, result, outputMode);
   }
 
   void writeBackupBookResult(

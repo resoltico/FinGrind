@@ -1,5 +1,7 @@
 package dev.erst.fingrind.executor;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationRegistryMutationResult;
+import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
@@ -7,6 +9,7 @@ import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
+import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import dev.erst.fingrind.core.attestation.AttestationSigningSession;
 import dev.erst.fingrind.executor.maintenance.AttestedProtectedBookLifecycleWorkflow;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
@@ -85,6 +88,21 @@ public final class ProtectedBookMaintenanceService {
                     session)));
   }
 
+  /** Appends one exact credential-registry or authorization-policy mutation to a protected book. */
+  public ContractDecision<AttestationRegistryMutationResult> mutateRegistry(
+      BookAccess bookAccess, AttestationRegistryMutation mutation) {
+    BookAccess checkedBookAccess = Objects.requireNonNull(bookAccess, "bookAccess");
+    AttestationRegistryMutation checkedMutation = Objects.requireNonNull(mutation, "mutation");
+    return withBookSigningSession(
+        checkedBookAccess,
+        session ->
+            toPublishedRegistryMutation(
+                workflow.mutateRegistry(
+                    ProtectedBookAccess.fromPublished(checkedBookAccess),
+                    checkedMutation,
+                    session)));
+  }
+
   private static <T> ContractDecision<T> withSigningSession(
       List<AttestationCredentialSource> credentialSources,
       Path contextPath,
@@ -155,6 +173,34 @@ public final class ProtectedBookMaintenanceService {
         outcome ->
             ContractDecision.accepted(
                 ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(outcome)),
+        failure -> ContractDecision.rejected(failure.toContractFailure()));
+  }
+
+  private static ContractDecision<AttestationRegistryMutationResult> toPublishedRegistryMutation(
+      MaintenanceDecision<
+              dev.erst.fingrind.executor.maintenance.ProtectedBookRegistryMutationOutcome>
+          decision) {
+    return decision.fold(
+        outcome ->
+            ContractDecision.accepted(
+                switch (outcome) {
+                  case dev.erst.fingrind.executor.maintenance.ProtectedBookRegistryMutationOutcome
+                              .Mutated
+                          mutated ->
+                      new AttestationRegistryMutationResult.Mutated(
+                          mutated.bookFilePath(), mutated.operationKind(), mutated.headOrder());
+                  case dev.erst.fingrind.executor.maintenance.ProtectedBookRegistryMutationOutcome
+                              .Rejected
+                          rejected ->
+                      new AttestationRegistryMutationResult.Rejected(
+                          ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
+                              rejected.rejection()));
+                  case dev.erst.fingrind.executor.maintenance.ProtectedBookRegistryMutationOutcome
+                              .AuthorizationRejected
+                          rejected ->
+                      new AttestationRegistryMutationResult.AuthorizationRejected(
+                          AttestationVerificationFailure.fromWireCode(rejected.failure().code()));
+                }),
         failure -> ContractDecision.rejected(failure.toContractFailure()));
   }
 }

@@ -140,6 +140,26 @@ class SqliteGeneratedSecretTargetMaintenanceStoreTest extends SqliteArtifactPubl
   }
 
   @Test
+  void interruptedOwnedBackupKeyPublication_isRecoveredBeforeBackupAdmission() throws Exception {
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+    Path finalBackupPath = tempDirectory.resolve("owned-backup-admission").resolve("backup.sqlite");
+    Path finalSecretPath = tempDirectory.resolve("owned-backup-admission").resolve("backup.key");
+    writeArtifact("owned-backup-admission/parent-ready", "ready");
+    SqliteOwnedStagedArtifact interruptedSecret =
+        SqliteOwnedStagedArtifact.create(finalSecretPath, ".backup-key-", ".tmp");
+    Files.writeString(interruptedSecret.stagedPath(), "interrupted-secret");
+    Files.createLink(finalSecretPath, interruptedSecret.stagedPath());
+
+    store.recoverInterruptedBackupPublication(finalBackupPath, finalSecretPath);
+
+    assertEquals(
+        ProtectedBookMaintenanceStore.BackupArtifactPairState.ABSENT,
+        store.backupArtifactPairState(finalBackupPath, finalSecretPath));
+    assertTrue(SqliteOwnedStageRecord.findFor(finalBackupPath).isEmpty());
+    assertTrue(SqliteOwnedStageRecord.findFor(finalSecretPath).isEmpty());
+  }
+
+  @Test
   void foreignGeneratedSecret_doesNotAuthorizeCompanionBookInspectionDuringRecovery()
       throws Exception {
     Path companionBookPath = writeArtifact("foreign-secret/book.sqlite", "unrelated-book");

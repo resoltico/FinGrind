@@ -34,6 +34,16 @@ public interface ProtectedBookMaintenanceStore {
   BackupArtifactPairState backupArtifactPairState(
       Path normalizedBackupArtifactPath, Path normalizedBackupKeyFilePath);
 
+  /**
+   * Recovers an incomplete publication that is provably owned by FinGrind before backup admission.
+   *
+   * <p>The implementation must hold both destination leases while it examines ownership. It may
+   * discard only the exact owned key-and-stage publication left by an interrupted attempt; caller
+   * supplied or otherwise unowned files remain occupied destinations.
+   */
+  void recoverInterruptedBackupPublication(
+      Path normalizedBackupArtifactPath, Path normalizedBackupKeyFilePath);
+
   /** Acquires one exclusive maintenance lease for one existing protected-book artifact path. */
   LeaseAcquisition acquireExistingArtifactLease(
       Path normalizedArtifactPath, ProtectedBookMaintenanceArtifactRole artifactRole);

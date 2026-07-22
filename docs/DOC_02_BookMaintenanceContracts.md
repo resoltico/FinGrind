@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: BOOK_MAINTENANCE_CONTRACT
-updated: "2026-07-16"
+updated: "2026-07-22"
 route:
   keywords: [fingrind, maintenance, backup, restore, rekey, rollback, protected book, artifact, path, rejection, public path hint]
   questions: ["where are protected-book maintenance rejections documented", "how does fingrind report maintenance paths", "what is PublicPathHint", "which contract owns backup and restore path failures"]
@@ -61,3 +61,18 @@ public final class RejectionNarrative
 ```
 
 - Purpose: prevent CLI rendering and other public rejection surfaces from leaking Java class names as rejection text.
+
+## `AttestationRegistryMutationResult`
+
+`AttestationRegistryMutationResult` is the public result family for a credential enrollment,
+rollover, revocation, or policy mutation.
+
+```java
+public sealed interface AttestationRegistryMutationResult
+```
+
+- `Mutated` carries the canonical book path, closed operation token, and resulting attestation
+  head order.
+- `Rejected` retains a deterministic `BookMaintenanceRejection` before admission.
+- `AuthorizationRejected` retains the exact closed `AttestationVerificationFailure` when the
+  live historical signer, quorum, capability, or credential-purpose rule refuses admission.

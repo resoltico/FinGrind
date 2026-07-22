@@ -130,6 +130,28 @@ final class SqliteProtectedBookPairPublicationPreparation {
     SqliteOwnedStagedArtifact.recoverFor(bookTargetPath);
   }
 
+  /** Recovers one owned interrupted backup publication while holding both final destinations. */
+  void recoverInterruptedBackupPublication(
+      Path normalizedSecretTargetPath,
+      Path normalizedBookTargetPath,
+      ProtectedBookMaintenanceArtifactRole bookArtifactRole,
+      ProtectedBookMaintenanceArtifactRole secretArtifactRole) {
+    Path secretTargetPath =
+        Objects.requireNonNull(normalizedSecretTargetPath, "normalizedSecretTargetPath");
+    Path bookTargetPath =
+        Objects.requireNonNull(normalizedBookTargetPath, "normalizedBookTargetPath");
+    try (SqlitePairPublicationPreparationResources resources =
+        new SqlitePairPublicationPreparationResources()) {
+      resources.holdBookTargetLease(
+          requireManagedTargetLease(
+              bookTargetPath, Objects.requireNonNull(bookArtifactRole, "bookArtifactRole")));
+      resources.holdSecretTargetLease(
+          requireManagedTargetLease(
+              secretTargetPath, Objects.requireNonNull(secretArtifactRole, "secretArtifactRole")));
+      recoverInterruptedPublication(secretTargetPath, bookTargetPath);
+    }
+  }
+
   static void prepareGeneratedSecretTarget(
       Path normalizedSecretTargetPath, GeneratedSecretTargetPreparation preparation) {
     Path checkedPath =

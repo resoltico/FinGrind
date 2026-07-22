@@ -5,7 +5,6 @@ import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationOperationPreimages;
-import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
@@ -123,6 +122,16 @@ public final class SqliteProtectedBookMaintenanceStore
   }
 
   @Override
+  public void recoverInterruptedBackupPublication(
+      Path normalizedBackupArtifactPath, Path normalizedBackupKeyFilePath) {
+    pairPublicationPreparation.recoverInterruptedBackupPublication(
+        Objects.requireNonNull(normalizedBackupKeyFilePath, "normalizedBackupKeyFilePath"),
+        Objects.requireNonNull(normalizedBackupArtifactPath, "normalizedBackupArtifactPath"),
+        ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+        ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET);
+  }
+
+  @Override
   public MaintenanceDecision<BookVerification> verifyInitializedBook(
       ProtectedBookAccess bookAccess, ProtectedBookMaintenanceArtifactRole artifactRole) {
     Objects.requireNonNull(bookAccess, "bookAccess");
@@ -190,79 +199,13 @@ public final class SqliteProtectedBookMaintenanceStore
       AttestationOperationAuthorizer authorizer,
       @Nullable AttestationBackupAcknowledgement backupAcknowledgement) {
     SqliteVerifiedBook sqliteVerifiedBook = requireVerifiedBook(verifiedBook);
-    boolean retryStaleHead = retriesStaleHead(operationKind, backupAcknowledgement);
-    return retryStaleHead(
-        retryStaleHead,
-        () ->
-            appendAttestedOperationAttempt(
-                sqliteVerifiedBook,
-                operationKind,
-                recordedAt,
-                preimages,
-                authorizer,
-                backupAcknowledgement));
-  }
-
-  static <T> T retryStaleHead(boolean retryStaleHead, StaleHeadRetryAttempt<T> attempt) {
-    StaleHeadRetryAttempt<T> checkedAttempt = Objects.requireNonNull(attempt, "attempt");
-    while (true) {
-      try {
-        return checkedAttempt.run();
-      } catch (AttestationStaleHeadException exception) {
-        if (!retryStaleHead) {
-          throw exception;
-        }
-      }
-    }
-  }
-
-  static boolean retriesStaleHead(
-      AttestationOperationKind operationKind,
-      @Nullable AttestationBackupAcknowledgement backupAcknowledgement) {
-    return operationKind == AttestationOperationKind.BACKUP_CREATED
-        && backupAcknowledgement != null;
-  }
-
-  /** Supplies one attempt to append an operation whose authenticated head may become stale. */
-  @FunctionalInterface
-  interface StaleHeadRetryAttempt<T> {
-    /** Performs one append attempt. */
-    T run();
-  }
-
-  private static AttestationVerification appendAttestedOperationAttempt(
-      SqliteVerifiedBook sqliteVerifiedBook,
-      AttestationOperationKind operationKind,
-      Instant recordedAt,
-      AttestationOperationPreimages preimages,
-      AttestationOperationAuthorizer authorizer,
-      @Nullable AttestationBackupAcknowledgement backupAcknowledgement) {
-    try (SqliteBookPassphrase passphrase = sqliteVerifiedBook.passphraseCopy();
-        SqliteNativeDatabase database =
-            SqliteNativeConnections.open(
-                sqliteVerifiedBook.artifactPath(),
-                passphrase,
-                SqliteNativeOpenMode.READ_WRITE_EXISTING)) {
-      SqliteAttestationEvidenceStore.ObservedHead observedHead =
-          SqliteAttestationEvidenceStore.observeRequired(database);
-      database.executeStatement("begin immediate");
-      try {
-        AttestationVerification verification =
-            SqliteAttestationEvidenceStore.appendAuthorized(
-                database,
-                observedHead,
-                operationKind,
-                recordedAt,
-                preimages,
-                authorizer,
-                backupAcknowledgement);
-        database.executeStatement("commit");
-        return verification;
-      } catch (RuntimeException exception) {
-        SqliteStoreOperations.rollbackQuietly(database);
-        throw exception;
-      }
-    }
+    return SqliteAttestedOperationAppender.append(
+        sqliteVerifiedBook,
+        operationKind,
+        recordedAt,
+        preimages,
+        authorizer,
+        backupAcknowledgement);
   }
 
   @Override
