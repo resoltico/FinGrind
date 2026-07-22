@@ -12,9 +12,13 @@ import java.util.UUID;
  * compare-and-swap boundary.
  */
 public record AttestationCredentialSource(
-    UUID principalId, Path encryptedKeyFilePath, Path passphraseFilePath) {
+    AttestationCustodian custodian,
+    UUID principalId,
+    Path encryptedKeyFilePath,
+    Path passphraseFilePath) {
   /** Normalizes credential-source paths and prevents an ambiguous one-file selection. */
   public AttestationCredentialSource {
+    Objects.requireNonNull(custodian, "custodian");
     Objects.requireNonNull(principalId, "principalId");
     encryptedKeyFilePath = normalize(encryptedKeyFilePath, "encryptedKeyFilePath");
     passphraseFilePath = normalize(passphraseFilePath, "passphraseFilePath");

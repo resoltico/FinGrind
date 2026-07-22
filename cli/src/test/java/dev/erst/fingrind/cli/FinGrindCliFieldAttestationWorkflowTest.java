@@ -118,7 +118,10 @@ class FinGrindCliFieldAttestationWorkflowTest extends FinGrindCliTestSupport {
             new BookAccess.PassphraseSource.KeyFile(bookKeyFilePath),
             List.of(
                 new AttestationCredentialSource(
-                    UUID.fromString(founderPrincipalId), founderKeyPath, founderPassphrasePath)));
+                    dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+                    UUID.fromString(founderPrincipalId),
+                    founderKeyPath,
+                    founderPassphrasePath)));
     var command =
         new CliRequestReader(new ByteArrayInputStream(new byte[0]))
             .readPostEntryCommand(
@@ -147,14 +150,16 @@ class FinGrindCliFieldAttestationWorkflowTest extends FinGrindCliTestSupport {
 
   private static String[] withFounderCredentials(
       String[] arguments, String principalId, Path keyPath, Path passphrasePath) {
-    String[] complete = Arrays.copyOf(arguments, arguments.length + 6);
+    String[] complete = Arrays.copyOf(arguments, arguments.length + 8);
     int credentialStart = arguments.length;
-    complete[credentialStart] = "--attestation-principal-id";
-    complete[credentialStart + 1] = principalId;
-    complete[credentialStart + 2] = "--attestation-key-file";
-    complete[credentialStart + 3] = keyPath.toString();
-    complete[credentialStart + 4] = "--attestation-passphrase-file";
-    complete[credentialStart + 5] = passphrasePath.toString();
+    complete[credentialStart] = "--attestation-custodian";
+    complete[credentialStart + 1] = "file-pkcs8";
+    complete[credentialStart + 2] = "--attestation-principal-id";
+    complete[credentialStart + 3] = principalId;
+    complete[credentialStart + 4] = "--attestation-key-file";
+    complete[credentialStart + 5] = keyPath.toString();
+    complete[credentialStart + 6] = "--attestation-passphrase-file";
+    complete[credentialStart + 7] = passphrasePath.toString();
     return complete;
   }
 }

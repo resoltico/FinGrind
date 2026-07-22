@@ -83,6 +83,8 @@ class CliLifecycleContextCommandParsingTest {
             OperationId.GENERATE_ATTESTATION_KEY_FILE,
             List.of(
                 "generate-attestation-key-file",
+                "--attestation-custodian",
+                "file-pkcs8",
                 "--new-attestation-key-file",
                 "operator.fgatk",
                 "--attestation-passphrase-file",
@@ -91,7 +93,12 @@ class CliLifecycleContextCommandParsingTest {
         InspectAttestationKeyFile.class,
         CliCommandParsingRegistry.parse(
             OperationId.INSPECT_ATTESTATION_KEY_FILE,
-            List.of("inspect-attestation-key-file", "--attestation-key-file", "operator.fgatk")));
+            List.of(
+                "inspect-attestation-key-file",
+                "--attestation-custodian",
+                "file-pkcs8",
+                "--attestation-key-file",
+                "operator.fgatk")));
   }
 
   private static List<String> commandArguments(String command, String... commandArguments) {

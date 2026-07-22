@@ -11,11 +11,12 @@ import org.jspecify.annotations.Nullable;
 final class CliAttestationArguments {
   private static final CliBookArgumentParser.CommandArgumentSpec VERIFY_BOOK_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
-          List.of(ProtocolOptions.Presentation.OUTPUT),
+          List.of(ProtocolOptions.Attestation.REVIEW_FILE, ProtocolOptions.Presentation.OUTPUT),
           List.of(ProtocolOptions.Attestation.REQUIRE_CLEAN));
   private static final CliBookArgumentParser.CommandArgumentSpec REVIEW_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
-          List.of(ProtocolOptions.Presentation.OUTPUT), List.of());
+          List.of(ProtocolOptions.Attestation.REVIEW_FILE, ProtocolOptions.Presentation.OUTPUT),
+          List.of());
   private static final CliBookArgumentParser.CommandArgumentSpec RECEIPT_ARGUMENTS =
       CliBookArgumentParser.commandArgumentSpec(
           List.of(ProtocolOptions.Attestation.RECEIPT_FILE, ProtocolOptions.Presentation.OUTPUT),
@@ -28,11 +29,17 @@ final class CliAttestationArguments {
         CliBookArgumentParser.parseBookAndCommandArguments(arguments, VERIFY_BOOK_ARGUMENTS);
     boolean requireClean = false;
     @Nullable OutputMode outputMode = null;
+    @Nullable Path reviewFilePath = null;
     ListIterator<String> iterator = parsedArguments.commandArguments().listIterator();
     while (iterator.hasNext()) {
       String argument = iterator.next();
       if (ProtocolOptions.Attestation.REQUIRE_CLEAN.equals(argument)) {
         requireClean = true;
+      } else if (ProtocolOptions.Attestation.REVIEW_FILE.equals(argument)) {
+        if (reviewFilePath != null) {
+          throw CliArgumentValueParser.invalid(argument, "Duplicate argument: " + argument);
+        }
+        reviewFilePath = CliOptionValues.requirePathOptionValue(iterator, argument);
       } else {
         outputMode =
             CliOptionModes.requireOutputMode(
@@ -42,14 +49,18 @@ final class CliAttestationArguments {
       }
     }
     return new VerifyBookAttestation(
-        parsedArguments.bookAccess(), requireClean, CliOptionModes.resolvedOutputMode(outputMode));
+        parsedArguments.bookAccess(),
+        reviewFilePath == null
+            ? List.of()
+            : new CliAttestationReviewFileReader().read(reviewFilePath),
+        requireClean,
+        CliOptionModes.resolvedOutputMode(outputMode));
   }
 
   static CliCommand parseAttestationReviewCommand(List<String> arguments) {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
         CliBookArgumentParser.parseBookAndCommandArguments(arguments, REVIEW_ARGUMENTS);
-    return new AttestationReview(
-        parsedArguments.bookAccess(), parseOutput(parsedArguments.commandArguments()));
+    return parseReviewCommand(parsedArguments);
   }
 
   static CliCommand parseExportReceiptCommand(List<String> arguments) {
@@ -97,17 +108,31 @@ final class CliAttestationArguments {
             CliOptionModes.resolvedOutputMode(outputMode));
   }
 
-  private static OutputMode parseOutput(List<String> arguments) {
+  private static CliCommand parseReviewCommand(
+      CliBookArgumentParser.ParsedBookArguments parsedArguments) {
     @Nullable OutputMode outputMode = null;
-    ListIterator<String> iterator = arguments.listIterator();
+    @Nullable Path reviewFilePath = null;
+    ListIterator<String> iterator = parsedArguments.commandArguments().listIterator();
     while (iterator.hasNext()) {
-      iterator.next();
-      outputMode =
-          CliOptionModes.requireOutputMode(
-              outputMode,
-              CliOptionValues.requireValue(iterator, ProtocolOptions.Presentation.OUTPUT),
-              CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
+      String argument = iterator.next();
+      if (ProtocolOptions.Attestation.REVIEW_FILE.equals(argument)) {
+        if (reviewFilePath != null) {
+          throw CliArgumentValueParser.invalid(argument, "Duplicate argument: " + argument);
+        }
+        reviewFilePath = CliOptionValues.requirePathOptionValue(iterator, argument);
+      } else {
+        outputMode =
+            CliOptionModes.requireOutputMode(
+                outputMode,
+                CliOptionValues.requireValue(iterator, ProtocolOptions.Presentation.OUTPUT),
+                CliOptionModes.supportedOutputModes(OutputMode.JSON, OutputMode.TEXT));
+      }
     }
-    return CliOptionModes.resolvedOutputMode(outputMode);
+    return new AttestationReview(
+        parsedArguments.bookAccess(),
+        reviewFilePath == null
+            ? List.of()
+            : new CliAttestationReviewFileReader().read(reviewFilePath),
+        CliOptionModes.resolvedOutputMode(outputMode));
   }
 }

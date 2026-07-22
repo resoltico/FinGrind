@@ -41,7 +41,10 @@ class SqliteCliAttestationCredentialFailureTest extends CliBookWorkflowFixtureSu
             new BookAccess.PassphraseSource.KeyFile(tempDirectory.resolve("book.key")),
             List.of(
                 new AttestationCredentialSource(
-                    PRINCIPAL_ID, missingCredential, tempDirectory.resolve("missing.passphrase"))));
+                    dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+                    PRINCIPAL_ID,
+                    missingCredential,
+                    tempDirectory.resolve("missing.passphrase"))));
     assertCredentialFailure(
         SqliteCliMutationAuthorization.withAttestationAuthorization(
             unreadableCredential,
@@ -63,6 +66,7 @@ class SqliteCliAttestationCredentialFailureTest extends CliBookWorkflowFixtureSu
             bookIdentity(),
             List.of(
                 new AttestationFounderInput(
+                    dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
                     PRINCIPAL_ID,
                     missingFounderKey,
                     tempDirectory.resolve("missing-founder.passphrase"))));

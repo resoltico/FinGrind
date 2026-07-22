@@ -131,10 +131,13 @@ public final class AttestationSigningSession
   private static AttestationSigningCredential openCredential(AttestationCredentialSource source) {
     AttestationCredentialSource checkedSource = Objects.requireNonNull(source, "sources");
     try {
-      return AttestationKeyFiles.openExistingCredential(
-          checkedSource.principalId(),
-          checkedSource.encryptedKeyFilePath(),
-          checkedSource.passphraseFilePath());
+      return switch (checkedSource.custodian()) {
+        case FILE_PKCS8 ->
+            AttestationKeyFiles.openExistingCredential(
+                checkedSource.principalId(),
+                checkedSource.encryptedKeyFilePath(),
+                checkedSource.passphraseFilePath());
+      };
     } catch (IOException | IllegalArgumentException exception) {
       throw new AttestationCredentialUseException(
           checkedSource.encryptedKeyFilePath(),

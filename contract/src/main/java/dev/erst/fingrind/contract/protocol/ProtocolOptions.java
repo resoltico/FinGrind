@@ -64,11 +64,13 @@ public final class ProtocolOptions {
     public static final String FOUNDER_PRINCIPAL_ID = "--attestation-founder-principal-id";
     public static final String FOUNDER_KEY_FILE = "--attestation-founder-key-file";
     public static final String FOUNDER_PASSPHRASE_FILE = "--attestation-founder-passphrase-file";
+    public static final String CUSTODIAN = "--attestation-custodian";
     public static final String PRINCIPAL_ID = "--attestation-principal-id";
     public static final String KEY_FILE = "--attestation-key-file";
     public static final String NEW_KEY_FILE = "--new-attestation-key-file";
     public static final String PASSPHRASE_FILE = "--attestation-passphrase-file";
     public static final String REQUIRE_CLEAN = "--require-clean-attestation";
+    public static final String REVIEW_FILE = "--attestation-review-file";
     public static final String RECEIPT_FILE = "--receipt-file";
 
     private Attestation() {}
@@ -103,16 +105,18 @@ public final class ProtocolOptions {
     return ProtocolBookAccessOptions.passphraseSourceSyntax();
   }
 
-  /** Returns the required authorization-credential triple syntax for protected-book mutations. */
+  /** Returns the required authorization-credential syntax for protected-book mutations. */
   public static String requiredAttestationCredentialSyntax() {
-    return Attestation.PRINCIPAL_ID
+    return Attestation.CUSTODIAN
+        + " <file-pkcs8> "
+        + Attestation.PRINCIPAL_ID
         + " <uuid> "
         + Attestation.KEY_FILE
         + " <path> "
         + Attestation.PASSPHRASE_FILE
         + " <path> (repeat one through "
         + AttestationAuthorizationLimits.MAXIMUM_QUORUM
-        + " aligned triples)";
+        + " aligned credential triplets under the selected custody)";
   }
 
   /** Returns the rendered optional page-limit syntax. */

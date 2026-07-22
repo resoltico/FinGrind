@@ -21,10 +21,14 @@ route:
 - `help`, `version`, `capabilities`, `print-request-template`, and `print-plan-template` reject extra arguments.
 - `open-book` requires an absent `--book-file` destination. It rejects an existing path with `book-destination-occupied` before resolving its selected key or accessing the file, and creates missing parent directories for nested destinations with owner-only protection. When the parent already exists, FinGrind requires it to remain owner-only. If initialization fails after FinGrind creates an exclusive destination, it removes only that uninitialized book file and its SQLite sidecars so the same destination can be retried; it never removes a pre-existing or concurrently created artifact.
 - `generate-book-key-file --new-book-key-file` creates one new owner-only UTF-8 key file, requires a filesystem with atomic no-replace secret publication, and refuses to overwrite an existing path. When the selected parent directory does not exist, FinGrind creates it with owner-only protection; when the parent already exists, FinGrind requires it to remain owner-only. Generated files report `0600` on POSIX filesystems and `owner-only-acl` on Windows.
-- `generate-attestation-key-file --new-attestation-key-file` publishes one no-clobber encrypted
-  Ed25519 key file and returns only its public SPKI and key ID. Its required
+- `generate-attestation-key-file --attestation-custodian file-pkcs8 --new-attestation-key-file`
+  publishes one no-clobber encrypted Ed25519 key file and returns only its public SPKI and key ID.
+  Its required
   `--attestation-passphrase-file` is independent custody material: keep it owner-only and do not
   reuse a book key, a founder passphrase, or a command-line value.
+- Every command that creates or opens private attestation material requires an explicit
+  `--attestation-custodian file-pkcs8`; `file-pkcs8` is the only shipped custodian. An explicit
+  unsupported selection is refused as `custodian-not-supported`, with no file-custody fallback.
 - `backup-book` creates missing parent directories for nested `--backup-file` and `--new-backup-key-file` paths with owner-only protection. When either parent directory already exists, FinGrind requires it to remain owner-only before the backup pair is published.
 - If an interrupted `backup-book` leaves exactly a FinGrind-owned backup-key stage and final key,
   retrying the same backup first leases both destinations and discards only that owned incomplete

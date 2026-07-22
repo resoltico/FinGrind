@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
+import dev.erst.fingrind.core.attestation.AttestationCustodian;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.ListIterator;
@@ -12,11 +13,15 @@ import org.jspecify.annotations.Nullable;
 final class CliAttestationKeyFileArguments {
   private static final List<String> GENERATE_OPTIONS =
       List.of(
+          ProtocolOptions.Attestation.CUSTODIAN,
           ProtocolOptions.Attestation.NEW_KEY_FILE,
           ProtocolOptions.Attestation.PASSPHRASE_FILE,
           ProtocolOptions.Presentation.OUTPUT);
   private static final List<String> INSPECT_OPTIONS =
-      List.of(ProtocolOptions.Attestation.KEY_FILE, ProtocolOptions.Presentation.OUTPUT);
+      List.of(
+          ProtocolOptions.Attestation.CUSTODIAN,
+          ProtocolOptions.Attestation.KEY_FILE,
+          ProtocolOptions.Presentation.OUTPUT);
 
   private CliAttestationKeyFileArguments() {}
 
@@ -26,6 +31,8 @@ final class CliAttestationKeyFileArguments {
         arguments,
         GENERATE_OPTIONS,
         Map.of(
+            ProtocolOptions.Attestation.CUSTODIAN,
+            parsed::readCustodian,
             ProtocolOptions.Attestation.NEW_KEY_FILE,
             parsed::readKeyFilePath,
             ProtocolOptions.Attestation.PASSPHRASE_FILE,
@@ -41,6 +48,8 @@ final class CliAttestationKeyFileArguments {
         arguments,
         INSPECT_OPTIONS,
         Map.of(
+            ProtocolOptions.Attestation.CUSTODIAN,
+            parsed::readCustodian,
             ProtocolOptions.Attestation.KEY_FILE,
             parsed::readKeyFilePath,
             ProtocolOptions.Presentation.OUTPUT,
@@ -80,6 +89,7 @@ final class CliAttestationKeyFileArguments {
 
   /** Holds and validates the generation command's unique option values. */
   private static final class GenerateArguments {
+    private @Nullable AttestationCustodian custodian;
     private @Nullable Path keyFilePath;
     private @Nullable Path passphraseFilePath;
     private @Nullable OutputMode outputMode;
@@ -91,6 +101,13 @@ final class CliAttestationKeyFileArguments {
       keyFilePath =
           CliOptionValues.requirePathOptionValue(
               iterator, ProtocolOptions.Attestation.NEW_KEY_FILE);
+    }
+
+    void readCustodian(ListIterator<String> iterator) {
+      if (custodian != null) {
+        throw duplicate(ProtocolOptions.Attestation.CUSTODIAN);
+      }
+      custodian = CliAttestationCustodianArgument.require(iterator);
     }
 
     void readPassphraseFilePath(ListIterator<String> iterator) {
@@ -111,6 +128,9 @@ final class CliAttestationKeyFileArguments {
     }
 
     CliCommand command() {
+      if (custodian == null) {
+        throw required(ProtocolOptions.Attestation.CUSTODIAN);
+      }
       if (keyFilePath == null) {
         throw required(ProtocolOptions.Attestation.NEW_KEY_FILE);
       }
@@ -118,12 +138,16 @@ final class CliAttestationKeyFileArguments {
         throw required(ProtocolOptions.Attestation.PASSPHRASE_FILE);
       }
       return new GenerateAttestationKeyFile(
-          keyFilePath, passphraseFilePath, CliOptionModes.resolvedOutputMode(outputMode));
+          custodian,
+          keyFilePath,
+          passphraseFilePath,
+          CliOptionModes.resolvedOutputMode(outputMode));
     }
   }
 
   /** Holds and validates the inspection command's unique option values. */
   private static final class InspectArguments {
+    private @Nullable AttestationCustodian custodian;
     private @Nullable Path keyFilePath;
     private @Nullable OutputMode outputMode;
 
@@ -135,6 +159,13 @@ final class CliAttestationKeyFileArguments {
           CliOptionValues.requirePathOptionValue(iterator, ProtocolOptions.Attestation.KEY_FILE);
     }
 
+    void readCustodian(ListIterator<String> iterator) {
+      if (custodian != null) {
+        throw duplicate(ProtocolOptions.Attestation.CUSTODIAN);
+      }
+      custodian = CliAttestationCustodianArgument.require(iterator);
+    }
+
     void readOutputMode(ListIterator<String> iterator) {
       outputMode =
           CliOptionModes.requireOutputMode(
@@ -144,11 +175,14 @@ final class CliAttestationKeyFileArguments {
     }
 
     CliCommand command() {
+      if (custodian == null) {
+        throw required(ProtocolOptions.Attestation.CUSTODIAN);
+      }
       if (keyFilePath == null) {
         throw required(ProtocolOptions.Attestation.KEY_FILE);
       }
       return new InspectAttestationKeyFile(
-          keyFilePath, CliOptionModes.resolvedOutputMode(outputMode));
+          custodian, keyFilePath, CliOptionModes.resolvedOutputMode(outputMode));
     }
   }
 }

@@ -108,7 +108,11 @@ final class SqliteAttestationTestSupport {
     }
 
     private AttestationCredentialSource credentialSource() {
-      return new AttestationCredentialSource(PRINCIPAL_ID, encryptedKeyPath, passphrasePath);
+      return new AttestationCredentialSource(
+          dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+          PRINCIPAL_ID,
+          encryptedKeyPath,
+          passphrasePath);
     }
   }
 }

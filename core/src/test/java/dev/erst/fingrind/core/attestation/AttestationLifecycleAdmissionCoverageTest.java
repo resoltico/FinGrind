@@ -136,8 +136,13 @@ class AttestationLifecycleAdmissionCoverageTest {
   @Test
   void verificationValueObjects_preserveImmutablePublicResults() {
     byte[] head = AttestationHash.sha256(new byte[] {9}).bytes();
+    AttestationReviewFinding finding =
+        new AttestationReviewFinding(
+            new AttestationCompromiseReview(
+                AttestationHash.sha256(new byte[] {8}).hex(), BigInteger.ZERO, null),
+            BigInteger.ONE);
     AttestationVerification verification =
-        new AttestationVerification(BOOK_ID, BigInteger.ONE, head, List.of("key-compromise"));
+        new AttestationVerification(BOOK_ID, BigInteger.ONE, head, List.of(finding));
     AttestationBackupArtifactVerification backup =
         new AttestationBackupArtifactVerification(
             new byte[] {1, 2},
@@ -151,7 +156,7 @@ class AttestationLifecycleAdmissionCoverageTest {
 
     head[0] ^= 1;
     assertTrue(verification.reviewRequired());
-    assertEquals(List.of("key-compromise"), verification.reviewFindings());
+    assertEquals(List.of(finding), verification.reviewFindings());
     assertArrayEquals(verification.operationHead(), backup.sourceOperationHead());
     assertArrayEquals(new byte[] {1, 2}, backup.snapshot());
     assertThrows(

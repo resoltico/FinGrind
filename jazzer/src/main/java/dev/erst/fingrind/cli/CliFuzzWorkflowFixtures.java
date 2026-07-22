@@ -191,8 +191,16 @@ public final class CliFuzzWorkflowFixtures {
         Arrays.fill(passphrase, '\0');
       }
       return new FuzzAttestationCredential(
-          new AttestationFounderInput(ATTESTATION_PRINCIPAL_ID, keyFile, passphraseFile),
-          new AttestationCredentialSource(ATTESTATION_PRINCIPAL_ID, keyFile, passphraseFile));
+          new AttestationFounderInput(
+              dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+              ATTESTATION_PRINCIPAL_ID,
+              keyFile,
+              passphraseFile),
+          new AttestationCredentialSource(
+              dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+              ATTESTATION_PRINCIPAL_ID,
+              keyFile,
+              passphraseFile));
     } catch (IOException exception) {
       throw new IllegalStateException(
           "Could not prepare the Jazzer attestation credential.", exception);

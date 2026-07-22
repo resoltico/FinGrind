@@ -44,10 +44,12 @@ Dynamic fields:
   canonical successful artifact publication surface;
   each JSON entry carries `format` plus one canonical absolute `path`, and generated key files currently
   publish `format: "book-key-file"`
-- `generate-attestation-key-file --new-attestation-key-file` publishes the created encrypted
-  credential through `artifacts[]` as `format: "attestation-key-file"`; its payload exposes only
-  canonical `credentialSpki` and derived lowercase-hex `keyId`. `inspect-attestation-key-file`
-  returns the same two public fields and never emits an artifact, private key, or passphrase.
+- `generate-attestation-key-file` requires `--attestation-custodian file-pkcs8` and
+  `--new-attestation-key-file`, and publishes the created encrypted credential through `artifacts[]` as
+  `format: "attestation-key-file"`; its payload exposes only canonical `credentialSpki` and
+  derived lowercase-hex `keyId`. `inspect-attestation-key-file` also requires that explicit
+  custodian selection, returns the same two public fields, and never emits an artifact, private
+  key, or passphrase.
 - `generate-book-key-file` succeeds only when the selected parent directory is already owner-only
   or can be created as one missing private directory
 - `open-book.payload.initializedAt` is stamped from the FinGrind clock

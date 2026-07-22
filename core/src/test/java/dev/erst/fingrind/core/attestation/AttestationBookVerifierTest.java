@@ -30,16 +30,49 @@ class AttestationBookVerifierTest {
     AttestationBookVerification verification =
         AttestationBookVerifier.verify(
             new AttestationBook(List.of(genesis, successor)),
-            List.of(new AttestationCompromiseReview(founder.keyId(), BigInteger.ONE, null)));
+            List.of(new AttestationCompromiseReview(founder.keyId().hex(), BigInteger.ONE, null)));
 
     assertEquals(BigInteger.ONE, verification.headOrder());
     assertEquals(successor.envelope().head(), verification.head());
     assertEquals(
         List.of(
             new AttestationReviewFinding(
-                new AttestationCompromiseReview(founder.keyId(), BigInteger.ONE, null),
+                new AttestationCompromiseReview(founder.keyId().hex(), BigInteger.ONE, null),
                 BigInteger.ONE)),
         verification.reviewFindings());
+  }
+
+  @Test
+  void canonicalizesNonOverlappingReviewsAndRejectsMalformedOrOverlappingIntervals() {
+    String firstKeyId = "a".repeat(64);
+    String secondKeyId = "b".repeat(64);
+    AttestationCompromiseReview first =
+        new AttestationCompromiseReview(firstKeyId, BigInteger.ZERO, BigInteger.ZERO);
+    AttestationCompromiseReview second =
+        new AttestationCompromiseReview(firstKeyId, BigInteger.ONE, BigInteger.ONE);
+    AttestationCompromiseReview otherCredential =
+        new AttestationCompromiseReview(secondKeyId, BigInteger.TWO, BigInteger.TWO);
+
+    assertEquals(
+        List.of(first, second, otherCredential),
+        AttestationCompromiseReview.canonicalize(List.of(otherCredential, second, first)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new AttestationCompromiseReview("A".repeat(64), BigInteger.ZERO, null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AttestationCompromiseReview.canonicalize(
+                List.of(
+                    new AttestationCompromiseReview(firstKeyId, BigInteger.ZERO, BigInteger.ONE),
+                    new AttestationCompromiseReview(firstKeyId, BigInteger.ONE, BigInteger.TWO))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AttestationCompromiseReview.canonicalize(
+                List.of(
+                    new AttestationCompromiseReview(firstKeyId, BigInteger.ZERO, null),
+                    new AttestationCompromiseReview(firstKeyId, BigInteger.TWO, null))));
   }
 
   @Test
@@ -223,7 +256,7 @@ class AttestationBookVerifierTest {
     AttestationBookVerification verification =
         AttestationBookVerifier.verify(new AttestationBook(List.of(genesis)));
     AttestationCompromiseReview review =
-        new AttestationCompromiseReview(founder.keyId(), BigInteger.ONE, BigInteger.TWO);
+        new AttestationCompromiseReview(founder.keyId().hex(), BigInteger.ONE, BigInteger.TWO);
 
     assertFalse(review.includes(BigInteger.ZERO));
     assertTrue(review.includes(BigInteger.ONE));
@@ -231,7 +264,9 @@ class AttestationBookVerifierTest {
     assertFalse(review.includes(BigInteger.valueOf(3)));
     assertThrows(
         IllegalArgumentException.class,
-        () -> new AttestationCompromiseReview(founder.keyId(), BigInteger.ONE, BigInteger.ZERO));
+        () ->
+            new AttestationCompromiseReview(
+                founder.keyId().hex(), BigInteger.ONE, BigInteger.ZERO));
     assertThrows(IllegalArgumentException.class, () -> new AttestationBook(List.of()));
     assertThrows(
         IllegalArgumentException.class,
@@ -274,8 +309,10 @@ class AttestationBookVerifierTest {
                 book,
                 List.of(
                     new AttestationCompromiseReview(
-                        AttestationHash.sha256(new byte[] {9}), BigInteger.ZERO, BigInteger.ZERO),
-                    new AttestationCompromiseReview(founder.keyId(), BigInteger.ONE, null)))
+                        AttestationHash.sha256(new byte[] {9}).hex(),
+                        BigInteger.ZERO,
+                        BigInteger.ZERO),
+                    new AttestationCompromiseReview(founder.keyId().hex(), BigInteger.ONE, null)))
             .reviewFindings());
   }
 

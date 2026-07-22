@@ -160,6 +160,7 @@ corrupt_runtime_jar_help_stderr="${tmp_dir}/corrupt-runtime-jar-help.err"
 
 readonly book_file="${tmp_dir}/Nested Dir/Books/ledger launcher.db"
 readonly key_file="${tmp_dir}/Keys/book key.txt"
+readonly attestation_custodian='file-pkcs8'
 readonly attestation_founder_principal_id='123e4567-e89b-12d3-a456-426614174000'
 readonly attestation_founder_key_file="${tmp_dir}/Keys/founder.fgatk"
 readonly attestation_founder_passphrase_file="${tmp_dir}/Keys/founder.passphrase"
@@ -344,6 +345,7 @@ progress 'source-checkout open-book'
     --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
     --fiscal-year-start "${fiscal_year_start}" --book-start-effective-date 2026-01-01 \
+    --attestation-custodian "${attestation_custodian}" \
     --attestation-founder-principal-id "${attestation_founder_principal_id}" \
     --attestation-founder-key-file "${attestation_founder_key_file}" \
     --attestation-founder-passphrase-file "${attestation_founder_passphrase_file}" \
@@ -418,6 +420,7 @@ progress 'direct-java open-book'
     --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
     --fiscal-year-start "${fiscal_year_start}" --book-start-effective-date 2026-01-01 \
+    --attestation-custodian "${attestation_custodian}" \
     --attestation-founder-principal-id "${attestation_founder_principal_id}" \
     --attestation-founder-key-file "${attestation_founder_key_file}" \
     --attestation-founder-passphrase-file "${attestation_founder_passphrase_file}" \
@@ -474,6 +477,7 @@ java -jar "${raw_jar}" \
     --accounting-basis "${accounting_basis}" \
     --functional-currency "${functional_currency}" \
     --fiscal-year-start "${fiscal_year_start}" --book-start-effective-date 2026-01-01 \
+    --attestation-custodian "${attestation_custodian}" \
     --attestation-founder-principal-id "${attestation_founder_principal_id}" \
     --attestation-founder-key-file "${attestation_founder_key_file}" \
     --attestation-founder-passphrase-file "${attestation_founder_passphrase_file}" \

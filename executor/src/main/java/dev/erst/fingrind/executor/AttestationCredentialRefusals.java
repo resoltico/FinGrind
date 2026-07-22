@@ -24,7 +24,7 @@ final class AttestationCredentialRefusals {
             "FinGrind could not open the selected attestation credentials.",
             "Provide one through "
                 + AttestationAuthorizationLimits.MAXIMUM_QUORUM
-                + " readable existing attestation credential triples authorized for "
+                + " readable existing attestation credential selections under the selected custody authorized for "
                 + authorizationScope,
             "--attestation-principal-id"));
   }

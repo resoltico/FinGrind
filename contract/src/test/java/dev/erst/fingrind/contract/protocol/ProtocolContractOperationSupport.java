@@ -16,6 +16,7 @@ import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus
 import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;
 import dev.erst.fingrind.contract.workflow.LedgerJournalKind;
 import dev.erst.fingrind.core.attestation.AttestationCapability;
+import dev.erst.fingrind.core.attestation.AttestationCustodian;
 import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -194,6 +195,10 @@ class ProtocolContractOperationSupport extends ProtocolContractRepositorySupport
     ids.addAll(
         java.util.Arrays.stream(AttestationCapability.values())
             .map(AttestationCapability::token)
+            .toList());
+    ids.addAll(
+        java.util.Arrays.stream(AttestationCustodian.values())
+            .map(AttestationCustodian::wireValue)
             .toList());
     ids.addAll(BookInspection.Status.wireValues());
     ids.addAll(CapabilityCatalog.entries().stream().map(CapabilityCatalogEntry::id).toList());

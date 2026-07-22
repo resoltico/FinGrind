@@ -57,6 +57,7 @@ final class ProtocolQueryOperations {
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
+            "[" + ProtocolOptions.Attestation.REVIEW_FILE + " <path>]",
             "[" + ProtocolOptions.Attestation.REQUIRE_CLEAN + "]",
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
@@ -64,11 +65,12 @@ final class ProtocolQueryOperations {
         "Verify every immutable attestation structure from genesis and report the first exact structural break, if any.",
         List.of(
             ProtocolExampleStep.command(
-                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s"
+                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./reviews/acme-compromise.json %s"
                     .formatted(
                         OperationId.VERIFY_BOOK.wireName(),
                         ProtocolBookAccessOptions.BOOK_FILE,
                         ProtocolBookAccessOptions.BOOK_KEY_FILE,
+                        ProtocolOptions.Attestation.REVIEW_FILE,
                         ProtocolOptions.Attestation.REQUIRE_CLEAN))));
   }
 
@@ -81,17 +83,19 @@ final class ProtocolQueryOperations {
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
+            "[" + ProtocolOptions.Attestation.REVIEW_FILE + " <path>]",
             ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),
         "Report non-persisted compromise-review findings from a structurally valid attestation chain.",
         List.of(
             ProtocolExampleStep.command(
-                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key"
+                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./reviews/acme-compromise.json"
                     .formatted(
                         OperationId.ATTESTATION_REVIEW.wireName(),
                         ProtocolBookAccessOptions.BOOK_FILE,
-                        ProtocolBookAccessOptions.BOOK_KEY_FILE))));
+                        ProtocolBookAccessOptions.BOOK_KEY_FILE,
+                        ProtocolOptions.Attestation.REVIEW_FILE))));
   }
 
   private static ProtocolOperation exportAttestationReceiptOperation() {
@@ -104,6 +108,7 @@ final class ProtocolQueryOperations {
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
             ProtocolOptions.currentPassphraseSourceSyntax(),
             ProtocolOptions.Attestation.RECEIPT_FILE + " <path>",
+            ProtocolOptions.Attestation.CUSTODIAN + " <file-pkcs8>",
             ProtocolOptions.Attestation.PRINCIPAL_ID + " <uuid>",
             ProtocolOptions.Attestation.KEY_FILE + " <path>",
             ProtocolOptions.Attestation.PASSPHRASE_FILE + " <path>",
@@ -113,12 +118,13 @@ final class ProtocolQueryOperations {
         "Publish an independently retained quorum-signed receipt without changing the selected book.",
         List.of(
             ProtocolExampleStep.command(
-                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./receipts/acme.fgar %s 123e4567-e89b-12d3-a456-426614174000 %s ./secrets/operator.fgatk %s ./secrets/operator.passphrase"
+                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./receipts/acme.fgar %s file-pkcs8 %s 123e4567-e89b-12d3-a456-426614174000 %s ./secrets/operator.fgatk %s ./secrets/operator.passphrase"
                     .formatted(
                         OperationId.EXPORT_ATTESTATION_RECEIPT.wireName(),
                         ProtocolBookAccessOptions.BOOK_FILE,
                         ProtocolBookAccessOptions.BOOK_KEY_FILE,
                         ProtocolOptions.Attestation.RECEIPT_FILE,
+                        ProtocolOptions.Attestation.CUSTODIAN,
                         ProtocolOptions.Attestation.PRINCIPAL_ID,
                         ProtocolOptions.Attestation.KEY_FILE,
                         ProtocolOptions.Attestation.PASSPHRASE_FILE))));

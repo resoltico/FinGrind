@@ -5,7 +5,7 @@ domain: BOOK_OPERATION_ATTESTATION_VERIFICATION
 updated: "2026-07-22"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["AttestationAdmissionRejectedException", "AttestationAuthorizationException", "AttestationAuthorizationFailure", "AttestationInspectionService", "AttestationReviewResult", "AttestationStaleHeadException", "AttestationVerification", "AttestationVerificationException", "AttestationVerificationFailure", "AttestationVerifier", "VerifyBookAttestationResult"]
+  symbols: ["AttestationAdmissionRejectedException", "AttestationAuthorizationException", "AttestationAuthorizationFailure", "AttestationCompromiseReview", "AttestationInspectionService", "AttestationReceiptArtifactException", "AttestationReviewFinding", "AttestationReviewResult", "AttestationStaleHeadException", "AttestationVerification", "AttestationVerificationException", "AttestationVerificationFailure", "AttestationVerifier", "VerifyBookAttestationResult"]
 route:
   keywords: [attestation-verification, verifier-precedence, compromise-review, structural-invalid, stale-head, receipt-artifact, verification-rejection, clean-attestation]
   questions: ["how does FinGrind verify a protected-book attestation", "which attestation verification failure is reported first", "what does an attestation review finding mean", "how does FinGrind publish verification failures"]
@@ -24,7 +24,7 @@ owns manifest, receipt, and container shapes.
 ## `AttestationVerification`
 
 `AttestationVerification` returns the authenticated book identity, unsigned-64 head order,
-operation head, and non-persisted review finding identifiers for a structurally valid chain.
+operation head, and typed non-persisted review findings for a structurally valid chain.
 
 ## `AttestationVerificationException`
 
@@ -108,6 +108,19 @@ exposing an unclassified internal token.
 `AttestationVerifier` is the pure complete-chain boundary; it owns no private-key type, custodian
 handle, filesystem path, or mutable book state.
 
+```java
+public static AttestationVerification verifyBook(List<AttestationEvidence> operations)
+public static AttestationVerification verifyBook(
+    List<AttestationEvidence> operations,
+    List<AttestationCompromiseReview> compromiseReviews)
+```
+
+`AttestationCompromiseReview` is an immutable external declaration with a lowercase 64-hex
+`credentialKeyId`, an unsigned-64 `firstAffectedOrder`, and an optional unsigned-64 inclusive
+`lastAffectedOrder`. `AttestationReviewFinding` binds that declaration to one unsigned-64
+`operationOrder`. The verifier canonicalizes declarations and rejects duplicate or overlapping
+intervals for a credential; callers never receive opaque review strings.
+
 ## `Attestation Inspection And Verification Results`
 
 `AttestationInspectionService` projects verifier facts for the selected protected book.
@@ -159,16 +172,47 @@ structure-specific resolving position is now known.
 Genesis performs checks 1 through 3, then validates founder declaration, operator-purpose
 requirement, and unanimity as attestation-genesis-invalid before applying any ordinary chain,
 historical-policy, or capability check. A malformed backup container that is not a valid manifest
-artifact is attestation-manifest-invalid; a receipt whose tuple does not bind the resolved book head
-is attestation-receipt-invalid. An unreadable or malformed selected receipt artifact is
-receipt-artifact-invalid.
+artifact is attestation-manifest-invalid. A selected receipt whose raw bytes cannot decode as a
+receipt artifact is receipt-artifact-invalid. Once the receipt decodes, its version, tuple,
+historical authorization, envelope, and chain checks retain their exact published code, such as
+attestation-unsupported-version, attestation-receipt-invalid, attestation-signature-invalid, or
+attestation-quorum-below; the executor does not flatten those semantic refusals into an artifact
+error.
 
 Compromise review is verifier input, never mutable book state. A review declaration is the tuple
 credential keyId, firstAffectedOrder, and optional lastAffectedOrder; an omitted end means the
 verified head. Its interval is inclusive. A valid operation signed by that credential in the
-interval receives a reviewRequired finding containing that tuple and the operation order.
-verify-book remains valid; require-clean-attestation changes any reviewRequired finding to exit 2.
-attestation-review is the same non-persisted, full finding report.
+interval receives a typed review finding containing that tuple and the operation order.
+`verify-book` remains structurally valid; `--require-clean-attestation` changes any finding to
+exit 2. `attestation-review` is the same non-persisted, full finding report.
+
+The CLI accepts declarations only through `--attestation-review-file <path>`. The file must be a
+regular bounded JSON file with no duplicate object keys or unknown fields:
+
+```json
+{
+  "compromiseReviews": [
+    {
+      "credentialKeyId": "8f0e9c3c96c8188db78dc9de35290a86f8d3a5c0b9e9d1d2a0e3fd48c6b7a901",
+      "firstAffectedOrder": "41",
+      "lastAffectedOrder": "57"
+    }
+  ]
+}
+```
+
+Orders are canonical unsigned-decimal strings. `lastAffectedOrder` may be omitted or JSON `null`;
+it then extends through the verified head. The declarations are sorted and checked for duplicate or
+overlapping inclusive intervals per credential before verification begins. The result payload
+returns `credentialKeyId`, `firstAffectedOrder`, nullable `lastAffectedOrder`, and
+`operationOrder`, all order values as decimal strings. A declaration file is not persisted in the
+book, backup, manifest, or receipt. Malformed declarations are an `invalid-request` refusal on
+`--attestation-review-file`, not a verification finding.
+
+Every command that creates or opens private attestation key material requires an explicit
+`--attestation-custodian file-pkcs8` selection. `file-pkcs8` is the only shipped custodian. Any
+other selected value, including `pkcs11`, is refused as `custodian-not-supported` with exit 2;
+FinGrind never falls back to file custody.
 
 The following are valid-result findings rather than structural failures: reviewRequired contains
 the compromise-review tuple and affected operation order; receipt-not-independent reports a receipt
@@ -198,7 +242,7 @@ reviewRequired into exit 2.
 | attestation-genesis-invalid | genesis order, founders, policy, declared key, or unanimity rule fails | 2 |
 | attestation-manifest-invalid | container, digest, source head, book identity, or BACKUP rule fails | 2 |
 | attestation-receipt-invalid | receipt does not match the book, head, or ANCHOR rule | 2 |
-| receipt-artifact-invalid | selected receipt artifact cannot be read or structurally parsed | 2 |
+| receipt-artifact-invalid | selected artifact is absent, non-regular, or its raw bytes cannot decode as a receipt | 2 |
 | stale-head | live head changed before CAS admission | 2 |
 | backup-acknowledgement-conflict | backupId was reused with different facts | 2 |
 | artifact-already-exists | no-clobber target already exists | 7 |

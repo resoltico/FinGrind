@@ -25,7 +25,7 @@ final class AttestationBookVerifier {
       AttestationBook book, List<AttestationCompromiseReview> compromiseReviews) {
     AttestationBook checkedBook = Objects.requireNonNull(book, "book");
     List<AttestationCompromiseReview> checkedReviews =
-        List.copyOf(Objects.requireNonNull(compromiseReviews, "compromiseReviews"));
+        AttestationCompromiseReview.canonicalize(compromiseReviews);
     List<AttestationBookVerification.VerifiedOperation> verifiedOperations = new ArrayList<>();
     AttestationRegistryHistory registryHistory = null;
     UUID bookId = null;

@@ -82,7 +82,11 @@ class AttestationGenesisBoundaryTest {
     }
 
     AttestationCredentialSource source =
-        new AttestationCredentialSource(principalId, keyPath, passphrasePath);
+        new AttestationCredentialSource(
+            dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+            principalId,
+            keyPath,
+            passphrasePath);
     try (AttestationSigningSession session = AttestationSigningSession.open(List.of(source))) {
       AttestationEvidence signed =
           session.authorize(
@@ -106,7 +110,10 @@ class AttestationGenesisBoundaryTest {
                 AttestationSigningSession.open(
                     List.of(
                         new AttestationCredentialSource(
-                            principalId, missingKeyPath, passphrasePath))));
+                            dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+                            principalId,
+                            missingKeyPath,
+                            passphrasePath))));
     assertEquals(missingKeyPath, failure.credentialPath());
     assertInstanceOf(java.io.IOException.class, failure.getCause());
   }
@@ -125,7 +132,12 @@ class AttestationGenesisBoundaryTest {
       } finally {
         java.util.Arrays.fill(passphrase, '\0');
       }
-      sources.add(new AttestationCredentialSource(UUID.randomUUID(), keyPath, passphrasePath));
+      sources.add(
+          new AttestationCredentialSource(
+              dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+              UUID.randomUUID(),
+              keyPath,
+              passphrasePath));
     }
 
     byte[] receipt;
@@ -177,7 +189,12 @@ class AttestationGenesisBoundaryTest {
 
     try (AttestationSigningSession session =
         AttestationSigningSession.open(
-            List.of(new AttestationCredentialSource(principalId, keyPath, passphrasePath)))) {
+            List.of(
+                new AttestationCredentialSource(
+                    dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+                    principalId,
+                    keyPath,
+                    passphrasePath)))) {
       AttestationEvidence declaration =
           session.authorize(
               new AttestationOperationRequest(

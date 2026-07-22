@@ -34,7 +34,8 @@ migration, alias, or compatibility layer.
 
 ## Founder And Operator Credentials
 
-`open-book` requires one through five aligned founder triples. Repeat each option in matching order:
+`open-book` requires one explicit custody selection and one through five aligned founder credential
+triplets. Repeat each founder option in matching order:
 
 ```bash
 fingrind open-book \
@@ -45,19 +46,24 @@ fingrind open-book \
   --accounting-basis CASH \
   --functional-currency EUR \
   --fiscal-year-start 01-01 \
+  --attestation-custodian file-pkcs8 \
   --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
   --attestation-founder-key-file ./secrets/founder.fgatk \
   --attestation-founder-passphrase-file ./secrets/founder.passphrase
 ```
 
 At genesis, a missing founder key path is created once and never overwritten; an existing path is
-opened as the founder credential. Later signing commands require an existing enrolled credential:
-`--attestation-principal-id`, `--attestation-key-file`, and
-`--attestation-passphrase-file`. Do not reuse a book key file as an attestation key file, copy an
-attestation passphrase into a command line, or store either secret alongside an exported receipt.
-Every later signing command accepts one through 64 aligned credential triples, matching the full
-exact-quorum range that a reachable policy may require. A policy therefore never leaves its own
-public signing, backup, restore, rekey, receipt, or policy-repair path unreachable.
+opened as the founder credential. Every command that creates or opens private attestation key
+material requires an explicit `--attestation-custodian file-pkcs8` selection. Later signing
+commands also require an existing enrolled credential: `--attestation-principal-id`,
+`--attestation-key-file`, and `--attestation-passphrase-file`. The only shipped custodian is
+`file-pkcs8`; an explicit unsupported selection, such as `pkcs11`, is refused as
+`custodian-not-supported` with exit code 2. FinGrind never falls back to file custody. Do not
+reuse a book key file as an attestation key file, copy an attestation passphrase into a command
+line, or store either secret alongside an exported receipt. Every later signing command accepts
+one through 64 aligned credential triplets under the selected custody, matching the full exact-quorum range that a reachable
+policy may require. A policy therefore never leaves its own public signing, backup, restore,
+rekey, receipt, or policy-repair path unreachable.
 
 The file-backed credential format is public: it stores an Ed25519 PKCS#8 private key encrypted
 with PBKDF2-HMAC-SHA-256 (600,000 iterations, a fresh 16-byte salt) and AES-256-GCM (a fresh
@@ -75,6 +81,7 @@ or rollover request needs:
 
 ```bash
 fingrind generate-attestation-key-file \
+  --attestation-custodian file-pkcs8 \
   --new-attestation-key-file ./secrets/operator.fgatk \
   --attestation-passphrase-file ./secrets/operator.passphrase
 ```
@@ -85,6 +92,7 @@ identity of an existing founder or operator credential for rollover or revocatio
 
 ```bash
 fingrind inspect-attestation-key-file \
+  --attestation-custodian file-pkcs8 \
   --attestation-key-file ./secrets/founder.fgatk
 ```
 
@@ -109,6 +117,7 @@ fingrind enroll-key \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --request-file ./enroll-key.json \
+  --attestation-custodian file-pkcs8 \
   --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
   --attestation-key-file ./secrets/founder.fgatk \
   --attestation-passphrase-file ./secrets/founder.passphrase
@@ -141,18 +150,42 @@ Use `verify-book` before relying on a book copied from another system or a recov
 fingrind verify-book \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
+  --attestation-review-file ./reviews/acme-compromise.json \
   --require-clean-attestation
 ```
 
 Structural verification returns the first deterministic chain break. `--require-clean-attestation`
 also refuses a structurally valid chain that has compromise-review findings, with exit code 2.
-`attestation-review` returns those non-persisted findings without changing the book:
+`attestation-review` returns the same non-persisted findings without changing the book:
 
 ```bash
 fingrind attestation-review \
   --book-file ./books/acme.sqlite \
-  --book-key-file ./secrets/acme.book-key
+  --book-key-file ./secrets/acme.book-key \
+  --attestation-review-file ./reviews/acme-compromise.json
 ```
+
+The review file is strict JSON and does not alter the book:
+
+```json
+{
+  "compromiseReviews": [
+    {
+      "credentialKeyId": "8f0e9c3c96c8188db78dc9de35290a86f8d3a5c0b9e9d1d2a0e3fd48c6b7a901",
+      "firstAffectedOrder": "41",
+      "lastAffectedOrder": "57"
+    }
+  ]
+}
+```
+
+`credentialKeyId` is 64 lowercase hexadecimal characters. The orders are unsigned-decimal
+strings, the interval is inclusive, and an omitted or `null` `lastAffectedOrder` runs through the
+verified head. FinGrind rejects unknown fields, duplicate JSON object keys, and duplicate or
+overlapping intervals for one credential as `invalid-request` on
+`--attestation-review-file`. A finding returns the declaration plus its affected
+`operationOrder`; JSON keeps an open-ended `lastAffectedOrder` as `null` rather than using a
+sentinel string.
 
 An invalid `verify-book` or `verify-receipt` JSON response is a rejected envelope with exit code
 `2`, category `structural-invalid`, and one exact attestation failure code. The response never
@@ -188,6 +221,7 @@ fingrind export-attestation-receipt \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --receipt-file ./receipts/acme.fgar \
+  --attestation-custodian file-pkcs8 \
   --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
   --attestation-key-file ./secrets/founder.fgatk \
   --attestation-passphrase-file ./secrets/founder.passphrase
@@ -202,6 +236,12 @@ Receipt export uses the historical `anchor` policy at the current head. A valid 
 unenrolled, revoked, or otherwise unauthorized signer set returns the exact attestation rejection
 code, such as `attestation-quorum-below`, with exit code `2`; it never becomes a storage or
 internal error and no receipt artifact is created.
+
+`verify-receipt` reports `receipt-artifact-invalid` only when the selected bytes cannot be decoded
+as a receipt artifact. Once decoded, receipt version, tuple, signature, quorum, and chain failures
+retain their exact codes, such as `attestation-unsupported-version`,
+`attestation-receipt-invalid`, `attestation-signature-invalid`, or
+`attestation-quorum-below`.
 
 For the canonical binary encoding and authorization policy, see
 [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md). For

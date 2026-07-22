@@ -44,12 +44,13 @@ final class MachineContractQuickStarts {
                         ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
                         paths.bookKeyFile())),
             WorkflowStepDescriptor.command(
-                "%s %s --book-file %s --book-key-file %s --entity-name \"Acme Studio\" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 %s %s %s %s %s %s"
+                "%s %s --book-file %s --book-key-file %s --entity-name \"Acme Studio\" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 %s file-pkcs8 %s %s %s %s %s %s"
                     .formatted(
                         launcherCommand(surface),
                         ProtocolCatalog.operationName(OperationId.OPEN_BOOK),
                         paths.bookFile(),
                         paths.bookKeyFile(),
+                        ProtocolOptions.Attestation.CUSTODIAN,
                         ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
                         QUICK_START_FOUNDER_PRINCIPAL_ID,
                         ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
@@ -76,13 +77,14 @@ final class MachineContractQuickStarts {
                         paths.bookKeyFile(),
                         paths.requestFile())),
             WorkflowStepDescriptor.command(
-                "%s %s --book-file %s --book-key-file %s --request-file %s %s %s %s %s %s %s"
+                "%s %s --book-file %s --book-key-file %s --request-file %s %s file-pkcs8 %s %s %s %s %s %s"
                     .formatted(
                         launcherCommand(surface),
                         ProtocolCatalog.operationName(OperationId.RECORD_SALE_SETTLED),
                         paths.bookFile(),
                         paths.bookKeyFile(),
                         paths.requestFile(),
+                        ProtocolOptions.Attestation.CUSTODIAN,
                         ProtocolOptions.Attestation.PRINCIPAL_ID,
                         QUICK_START_FOUNDER_PRINCIPAL_ID,
                         ProtocolOptions.Attestation.KEY_FILE,

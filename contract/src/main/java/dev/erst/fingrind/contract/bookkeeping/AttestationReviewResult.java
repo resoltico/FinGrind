@@ -1,12 +1,14 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
+import dev.erst.fingrind.core.attestation.AttestationReviewFinding;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
 /** Non-persisted compromise-review report derived from one verified immutable chain. */
-public record AttestationReviewResult(UUID bookId, BigInteger headOrder, List<String> findings) {
+public record AttestationReviewResult(
+    UUID bookId, BigInteger headOrder, List<AttestationReviewFinding> findings) {
   public AttestationReviewResult {
     Objects.requireNonNull(bookId, "bookId");
     Objects.requireNonNull(headOrder, "headOrder");

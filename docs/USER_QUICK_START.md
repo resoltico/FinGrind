@@ -104,7 +104,7 @@ the founder UUID. Keep both files outside the book directory.
 Create one new book file and protect it with that key:
 
 ```bash
-fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-founder-key-file ./secrets/acme-founder.fgatk --attestation-founder-passphrase-file ./secrets/acme-founder.passphrase
+fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 --attestation-custodian file-pkcs8 --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-founder-key-file ./secrets/acme-founder.fgatk --attestation-founder-passphrase-file ./secrets/acme-founder.passphrase
 ```
 
 If you accidentally rerun `open-book` against the same initialized file, the command is rejected
@@ -184,7 +184,7 @@ fingrind preflight-entry --book-file ./books/acme.sqlite --book-key-file ./secre
 Then commit it:
 
 ```bash
-fingrind record-sale-settled --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-key-file ./secrets/acme-founder.fgatk --attestation-passphrase-file ./secrets/acme-founder.passphrase
+fingrind record-sale-settled --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-key-file ./secrets/acme-founder.fgatk --attestation-passphrase-file ./secrets/acme-founder.passphrase
 ```
 
 ## 7. Read The Result Back

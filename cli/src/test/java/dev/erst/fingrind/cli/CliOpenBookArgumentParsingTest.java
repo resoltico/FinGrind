@@ -38,6 +38,8 @@ class CliOpenBookArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "01-01",
                   "--book-start-effective-date",
                   "2026-01-01",
+                  "--attestation-custodian",
+                  "file-pkcs8",
                   "--attestation-founder-principal-id",
                   "123e4567-e89b-12d3-a456-426614174000",
                   "--attestation-founder-key-file",
@@ -74,6 +76,8 @@ class CliOpenBookArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "01-01",
                       "--book-start-effective-date",
                       "2026-01-01",
+                      "--attestation-custodian",
+                      "file-pkcs8",
                       "--attestation-founder-principal-id",
                       "123e4567-e89b-12d3-a456-426614174000",
                       "--attestation-founder-key-file",
@@ -123,6 +127,8 @@ class CliOpenBookArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "01-01",
                   "--book-start-effective-date",
                   "2026-01-01",
+                  "--attestation-custodian",
+                  "file-pkcs8",
                   "--attestation-founder-principal-id",
                   "123e4567-e89b-12d3-a456-426614174000",
                   "--attestation-founder-key-file",
@@ -160,6 +166,8 @@ class CliOpenBookArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "01-01",
                   "--book-start-effective-date",
                   "2026-01-01",
+                  "--attestation-custodian",
+                  "file-pkcs8",
                   "--attestation-founder-principal-id",
                   "123e4567-e89b-12d3-a456-426614174000",
                   "--attestation-founder-key-file",
@@ -197,6 +205,8 @@ class CliOpenBookArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "01-01",
                   "--book-start-effective-date",
                   "2026-01-01",
+                  "--attestation-custodian",
+                  "file-pkcs8",
                   "--attestation-founder-principal-id",
                   "123e4567-e89b-12d3-a456-426614174000",
                   "--attestation-founder-key-file",
@@ -236,6 +246,8 @@ class CliOpenBookArgumentParsingTest extends CliArgumentParsingTestSupport {
                   "01-01",
                   "--book-start-effective-date",
                   "2026-01-01",
+                  "--attestation-custodian",
+                  "file-pkcs8",
                   "--attestation-founder-principal-id",
                   "123e4567-e89b-12d3-a456-426614174000",
                   "--attestation-founder-key-file",
@@ -266,6 +278,8 @@ class CliOpenBookArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "01-01",
                       "--book-start-effective-date",
                       "2026-01-01",
+                      "--attestation-custodian",
+                      "file-pkcs8",
                       "--attestation-founder-principal-id",
                       "123e4567-e89b-12d3-a456-426614174000",
                       "--attestation-founder-key-file",
@@ -298,6 +312,8 @@ class CliOpenBookArgumentParsingTest extends CliArgumentParsingTestSupport {
                       "01-01",
                       "--book-start-effective-date",
                       "2026-01-01",
+                      "--attestation-custodian",
+                      "file-pkcs8",
                       "--attestation-founder-principal-id",
                       "123e4567-e89b-12d3-a456-426614174000",
                       "--attestation-founder-key-file",
@@ -364,6 +380,14 @@ class CliOpenBookArgumentParsingTest extends CliArgumentParsingTestSupport {
             CliArgumentsException.class,
             () -> CliArguments.parse(tooManyFounders.toArray(String[]::new)));
     assertEquals("--attestation-founder-principal-id", tooMany.argument());
+
+    List<String> duplicateCustodian = new ArrayList<>(List.of(validOpenBookArguments()));
+    duplicateCustodian.addAll(List.of("--attestation-custodian", "file-pkcs8"));
+    CliArgumentsException duplicate =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> CliArguments.parse(duplicateCustodian.toArray(String[]::new)));
+    assertEquals("--attestation-custodian", duplicate.argument());
   }
 
   private static String[] validOpenBookArguments() {
@@ -385,6 +409,8 @@ class CliOpenBookArgumentParsingTest extends CliArgumentParsingTestSupport {
       "01-01",
       "--book-start-effective-date",
       "2026-01-01",
+      "--attestation-custodian",
+      "file-pkcs8",
       "--attestation-founder-principal-id",
       "123e4567-e89b-12d3-a456-426614174000",
       "--attestation-founder-key-file",

@@ -115,6 +115,11 @@ public final class ContractErrors {
         "Invocation refused because the selected output mode does not fit the understood command and runtime policy.",
         2,
         ContractResponse.FailureCategory.UNSUPPORTED_SELECTION),
+    CUSTODIAN_NOT_SUPPORTED(
+        "custodian-not-supported",
+        "Attestation-key custody refused because the selected custodian is not implemented by this FinGrind version.",
+        2,
+        ContractResponse.FailureCategory.UNSUPPORTED_SELECTION),
     PROTECTED_BOOK_VERIFICATION_FAILED(
         "protected-book-verification-failed",
         "Book access refused because FinGrind could not verify the selected protected book with the supplied passphrase source.",

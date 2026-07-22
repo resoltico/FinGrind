@@ -4,23 +4,30 @@ import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.core.attestation.AttestationAuthorizationLimits;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
+import dev.erst.fingrind.core.attestation.AttestationCustodian;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Objects;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 
-/**
- * Parses and resolves the ordered attestation credential triples shared by protected-book commands.
- */
+/** Parses ordered attestation credential selections under one explicit custody selection. */
 final class CliAttestationCredentialArguments {
   private final List<UUID> principalIds = new ArrayList<>();
   private final List<Path> keyFiles = new ArrayList<>();
   private final List<Path> passphraseFiles = new ArrayList<>();
+  private @Nullable AttestationCustodian custodian;
 
   boolean apply(String argument, ListIterator<String> argumentIterator) {
     switch (argument) {
+      case ProtocolOptions.Attestation.CUSTODIAN -> {
+        if (custodian != null) {
+          throw CliArgumentValueParser.invalid(argument, "Duplicate argument: " + argument);
+        }
+        custodian = CliAttestationCustodianArgument.require(argumentIterator);
+      }
       case ProtocolOptions.Attestation.PRINCIPAL_ID ->
           principalIds.add(
               CliArgumentValueParser.requireValidArgument(
@@ -46,15 +53,19 @@ final class CliAttestationCredentialArguments {
 
   List<AttestationCredentialSource> resolveOptional() {
     int count = principalIds.size();
-    if (count == 0 && keyFiles.isEmpty() && passphraseFiles.isEmpty()) {
+    if (count == 0 && keyFiles.isEmpty() && passphraseFiles.isEmpty() && custodian == null) {
       return List.of();
     }
-    requireAlignedTripleCount(count);
+    requireAlignedCredentialCount(count);
+    AttestationCustodian selectedCustodian = requireCustodian();
     List<AttestationCredentialSource> sources = new ArrayList<>(count);
     for (int index = 0; index < count; index++) {
       sources.add(
           new AttestationCredentialSource(
-              principalIds.get(index), keyFiles.get(index), passphraseFiles.get(index)));
+              selectedCustodian,
+              principalIds.get(index),
+              keyFiles.get(index),
+              passphraseFiles.get(index)));
     }
     return List.copyOf(sources);
   }
@@ -62,25 +73,38 @@ final class CliAttestationCredentialArguments {
   static void requirePresent(BookAccess bookAccess) {
     Objects.requireNonNull(bookAccess, "bookAccess");
     if (bookAccess.attestationCredentialSources().isEmpty()) {
-      throw invalidTripleCount();
+      throw invalidCredentialCount();
     }
   }
 
-  private void requireAlignedTripleCount(int count) {
+  private void requireAlignedCredentialCount(int count) {
     if (count == 0
         || count > AttestationAuthorizationLimits.MAXIMUM_QUORUM
         || keyFiles.size() != count
         || passphraseFiles.size() != count) {
-      throw invalidTripleCount();
+      throw invalidCredentialCount();
     }
   }
 
-  private static IllegalArgumentException invalidTripleCount() {
+  private AttestationCustodian requireCustodian() {
+    if (custodian == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.Attestation.CUSTODIAN,
+          "A "
+              + ProtocolOptions.Attestation.CUSTODIAN
+              + " argument is required for every attestation credential selection.");
+    }
+    return custodian;
+  }
+
+  private static IllegalArgumentException invalidCredentialCount() {
     return CliArgumentValueParser.invalid(
         ProtocolOptions.Attestation.PRINCIPAL_ID,
         "Provide one through "
             + AttestationAuthorizationLimits.MAXIMUM_QUORUM
-            + " aligned attestation credential triples: "
+            + " aligned attestation credential triplets after selecting "
+            + ProtocolOptions.Attestation.CUSTODIAN
+            + ": "
             + ProtocolOptions.Attestation.PRINCIPAL_ID
             + ", "
             + ProtocolOptions.Attestation.KEY_FILE

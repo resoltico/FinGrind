@@ -17,6 +17,8 @@ import dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.contract.workflow.LedgerStepId;
+import dev.erst.fingrind.core.attestation.AttestationCompromiseReview;
+import dev.erst.fingrind.core.attestation.AttestationReviewFinding;
 import java.math.BigInteger;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -43,7 +45,12 @@ class AttestationContractTypesTest extends ContractTestSupport {
         first.encryptedKeyFilePath());
     assertThrows(
         IllegalArgumentException.class,
-        () -> new AttestationFounderInput(BOOK_ID, Path.of("same"), Path.of("same")));
+        () ->
+            new AttestationFounderInput(
+                dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+                BOOK_ID,
+                Path.of("same"),
+                Path.of("same")));
     assertThrows(
         IllegalArgumentException.class, () -> new OpenBookCommand(bookIdentity(), List.of()));
     assertThrows(
@@ -69,8 +76,12 @@ class AttestationContractTypesTest extends ContractTestSupport {
   @Test
   void attestationResultTypes_validateUnsignedOrders_and_preserve_review_state() {
     List<String> warnings = new ArrayList<>(List.of("review-key-rotation"));
+    AttestationReviewFinding finding =
+        new AttestationReviewFinding(
+            new AttestationCompromiseReview("a".repeat(64), BigInteger.ZERO, null), BigInteger.ONE);
+    List<AttestationReviewFinding> reviewFindings = new ArrayList<>(List.of(finding));
     AttestationReviewResult review =
-        new AttestationReviewResult(BOOK_ID, BigInteger.ZERO, warnings);
+        new AttestationReviewResult(BOOK_ID, BigInteger.ZERO, reviewFindings);
     ExportAttestationReceiptResult.Exported exported =
         new ExportAttestationReceiptResult.Exported(
             Path.of("receipts", "book.fgatt"), BOOK_ID, BigInteger.ONE, OPERATION_HEAD, warnings);
@@ -80,17 +91,19 @@ class AttestationContractTypesTest extends ContractTestSupport {
     VerifyAttestationReceiptResult.Valid receipt =
         new VerifyAttestationReceiptResult.Valid(BOOK_ID, BigInteger.TWO, warnings);
     VerifyBookAttestationResult.Valid reviewedBook =
-        new VerifyBookAttestationResult.Valid(BOOK_ID, BigInteger.TEN, OPERATION_HEAD, warnings);
+        new VerifyBookAttestationResult.Valid(
+            BOOK_ID, BigInteger.TEN, OPERATION_HEAD, reviewFindings);
     VerifyBookAttestationResult.Valid cleanBook =
         new VerifyBookAttestationResult.Valid(BOOK_ID, BigInteger.ZERO, OPERATION_HEAD, List.of());
 
     warnings.clear();
+    reviewFindings.clear();
 
-    assertEquals(List.of("review-key-rotation"), review.findings());
+    assertEquals(List.of(finding), review.findings());
     assertEquals(List.of("review-key-rotation"), exported.warnings());
     assertEquals(AttestationVerificationFailure.QUORUM_BELOW, authorizationRejected.failure());
     assertEquals(List.of("review-key-rotation"), receipt.findings());
-    assertEquals(List.of("review-key-rotation"), reviewedBook.reviewFindings());
+    assertEquals(List.of(finding), reviewedBook.reviewFindings());
     assertEquals(
         Path.of("receipts", "book.fgatt").toAbsolutePath().normalize(), exported.receiptFilePath());
     assertTrue(reviewedBook.reviewRequired());
@@ -184,7 +197,12 @@ class AttestationContractTypesTest extends ContractTestSupport {
       attestationContracts_rejectNullRequiredValues_and_standardSteps_emitStandardJournalEntries() {
     assertThrows(
         NullPointerException.class,
-        () -> new AttestationFounderInput(nullOf(), Path.of("key"), Path.of("passphrase")));
+        () ->
+            new AttestationFounderInput(
+                dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+                nullOf(),
+                Path.of("key"),
+                Path.of("passphrase")));
     assertThrows(
         NullPointerException.class,
         () -> new OpenBookCommand(nullOf(), List.of(founder("first", "first-key"))));
@@ -208,6 +226,7 @@ class AttestationContractTypesTest extends ContractTestSupport {
 
   private static AttestationFounderInput founder(String principalName, String keyName) {
     return new AttestationFounderInput(
+        dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
         UUID.nameUUIDFromBytes(principalName.getBytes(java.nio.charset.StandardCharsets.UTF_8)),
         Path.of("keys", keyName + ".fgatk"),
         Path.of("keys", keyName + ".passphrase"));

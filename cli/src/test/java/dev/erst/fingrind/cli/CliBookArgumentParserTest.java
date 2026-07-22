@@ -84,6 +84,25 @@ class CliBookArgumentParserTest extends CliArgumentParsingTestSupport {
   }
 
   @Test
+  void parseBookAndCommandArguments_refusesAnUnregisteredCommandTail() {
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliBookArgumentParser.parseBookAndCommandArguments(
+                    List.of(
+                        "open-book",
+                        "--book-file",
+                        "book.sqlite",
+                        "--book-key-file",
+                        "book.key",
+                        "--unexpected"),
+                    CliBookArgumentParser.commandArgumentSpec(List.of("--output"), List.of())));
+
+    assertEquals("--unexpected", exception.argument());
+  }
+
+  @Test
   void parseRequestBoundArguments_acceptsRequestFileAndRejectsCommandStyleArguments() {
     CliBookArgumentParser.ParsedBookArguments parsedArguments =
         CliBookArgumentParser.parseRequestBoundArguments(
@@ -128,6 +147,7 @@ class CliBookArgumentParserTest extends CliArgumentParsingTestSupport {
             "--book-key-file",
             "--book-passphrase-stdin",
             "--book-passphrase-prompt",
+            "--attestation-custodian",
             "--attestation-principal-id",
             "--attestation-key-file",
             "--attestation-passphrase-file",

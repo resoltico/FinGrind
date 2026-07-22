@@ -52,6 +52,7 @@ final class CliBookAccessGrammar {
             ProtocolBookAccessOptions.BOOK_KEY_FILE,
             ProtocolBookAccessOptions.BOOK_PASSPHRASE_STDIN,
             ProtocolBookAccessOptions.BOOK_PASSPHRASE_PROMPT,
+            ProtocolOptions.Attestation.CUSTODIAN,
             ProtocolOptions.Attestation.PRINCIPAL_ID,
             ProtocolOptions.Attestation.KEY_FILE,
             ProtocolOptions.Attestation.PASSPHRASE_FILE);
@@ -101,6 +102,15 @@ final class CliBookAccessGrammar {
       CliBookArgumentParser.@Nullable CommandArgumentSpec commandArgumentSpec,
       String argument,
       ListIterator<String> argumentIterator) {
+    if (mode.collectsCommandArguments()) {
+      CliBookArgumentParser.CommandArgumentSpec selectedCommandArgumentSpec =
+          Objects.requireNonNull(commandArgumentSpec, "commandArgumentSpec");
+      if (selectedCommandArgumentSpec.supports(argument)) {
+        collectCommandArgument(
+            argumentValues, selectedCommandArgumentSpec, argument, argumentIterator);
+        return;
+      }
+    }
     if (argumentValues.attestationCredentials.apply(argument, argumentIterator)) {
       return;
     }
@@ -133,8 +143,8 @@ final class CliBookAccessGrammar {
       case ProtocolOptions.Request.FILE ->
           applyRequestFileArgument(argumentValues, mode, commandArgumentSpec, argumentIterator);
       default ->
-          applyCommandArgument(
-              argumentValues, mode, commandArgumentSpec, argument, argumentIterator);
+          throw CliArgumentValueParser.unsupportedArgument(
+              argument, supportedArguments(mode, commandArgumentSpec));
     }
   }
 
@@ -160,24 +170,13 @@ final class CliBookAccessGrammar {
             argumentValues.requestFile, argumentIterator, ProtocolOptions.Request.FILE);
   }
 
-  private static void applyCommandArgument(
+  private static void collectCommandArgument(
       ParsedBookArgumentValues argumentValues,
-      CliBookArgumentMode mode,
-      CliBookArgumentParser.@Nullable CommandArgumentSpec commandArgumentSpec,
+      CliBookArgumentParser.CommandArgumentSpec commandArgumentSpec,
       String argument,
       ListIterator<String> argumentIterator) {
-    if (!mode.collectsCommandArguments()) {
-      throw CliArgumentValueParser.unsupportedArgument(
-          argument, supportedArguments(mode, commandArgumentSpec));
-    }
-    CliBookArgumentParser.CommandArgumentSpec requiredCommandArgumentSpec =
-        Objects.requireNonNull(commandArgumentSpec, "commandArgumentSpec");
-    if (!requiredCommandArgumentSpec.supports(argument)) {
-      throw CliArgumentValueParser.unsupportedArgument(
-          argument, supportedArguments(mode, requiredCommandArgumentSpec));
-    }
     argumentValues.commandArguments.add(argument);
-    if (requiredCommandArgumentSpec.requiresValue(argument)) {
+    if (commandArgumentSpec.requiresValue(argument)) {
       argumentValues.commandArguments.add(CliOptionValues.requireValue(argumentIterator, argument));
     }
   }

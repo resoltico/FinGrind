@@ -69,8 +69,13 @@ class FinGrindCliTestSupport extends CliWorkflowDoubleSupport {
 
   private static void appendFixtureAttestationCredentials(
       List<String> arguments, @Nullable Path attestationBookFile) {
-    if ("open-book".equals(arguments.getFirst())
-        || arguments.contains(ProtocolOptions.Attestation.PRINCIPAL_ID)) {
+    if ("open-book".equals(arguments.getFirst())) {
+      return;
+    }
+    if (arguments.contains(ProtocolOptions.Attestation.PRINCIPAL_ID)) {
+      if (!arguments.contains(ProtocolOptions.Attestation.CUSTODIAN)) {
+        arguments.addAll(List.of(ProtocolOptions.Attestation.CUSTODIAN, "file-pkcs8"));
+      }
       return;
     }
     Path bookFile = attestationBookFile;
@@ -88,6 +93,8 @@ class FinGrindCliTestSupport extends CliWorkflowDoubleSupport {
     String name = absoluteBookFile.getFileName().toString();
     arguments.addAll(
         List.of(
+            ProtocolOptions.Attestation.CUSTODIAN,
+            "file-pkcs8",
             ProtocolOptions.Attestation.PRINCIPAL_ID,
             TEST_ATTESTATION_PRINCIPAL_ID,
             ProtocolOptions.Attestation.KEY_FILE,

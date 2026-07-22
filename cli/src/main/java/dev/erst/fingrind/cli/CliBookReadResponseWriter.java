@@ -1,7 +1,5 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.cli.json.CliAttestationJsonModels;
-import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.AttestationReviewResult;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
@@ -13,7 +11,6 @@ import dev.erst.fingrind.contract.bookkeeping.VerifyAttestationReceiptResult;
 import dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.contract.tax.ListTaxRegistrationsResult;
 import dev.erst.fingrind.contract.tax.TaxQueryRejection;
@@ -22,13 +19,13 @@ import dev.erst.fingrind.core.SystemUtcClock;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
-import java.util.List;
 import java.util.Objects;
 
 /** Renders non-report read-side CLI results through the shared output channel. */
 final class CliBookReadResponseWriter {
   private final CliOutputChannel outputChannel;
   private final Clock clock;
+  private final CliAttestationReadResponseWriter attestationWriter;
 
   CliBookReadResponseWriter(CliOutputChannel outputChannel) {
     this(outputChannel, SystemUtcClock.instance());
@@ -37,6 +34,7 @@ final class CliBookReadResponseWriter {
   CliBookReadResponseWriter(CliOutputChannel outputChannel, Clock clock) {
     this.outputChannel = Objects.requireNonNull(outputChannel, "outputChannel");
     this.clock = Objects.requireNonNull(clock, "clock");
+    this.attestationWriter = new CliAttestationReadResponseWriter(this.outputChannel);
   }
 
   void writeBookInspection(Path bookFilePath, BookInspection inspection, OutputMode outputMode) {
@@ -56,158 +54,19 @@ final class CliBookReadResponseWriter {
   }
 
   void writeVerifyBookAttestation(VerifyBookAttestationResult result, OutputMode outputMode) {
-    switch (result) {
-      case VerifyBookAttestationResult.Valid valid ->
-          outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliEnvelopeMapper.successEnvelope(
-                          new CliAttestationJsonModels.VerifyBookPayload(
-                              valid.bookId().toString(),
-                              valid.headOrder().toString(),
-                              valid.operationHeadHex(),
-                              valid.reviewRequired(),
-                              valid.reviewFindings()))),
-              () ->
-                  writeAttestationText(
-                      valid.reviewRequired()
-                          ? "Book Attestation Valid — Review Required"
-                          : "Book Attestation Valid",
-                      List.of(
-                          List.of("Book ID", valid.bookId().toString()),
-                          List.of("Head order", valid.headOrder().toString()),
-                          List.of("Operation head", valid.operationHeadHex()),
-                          List.of(
-                              "Review findings",
-                              valid.reviewFindings().isEmpty()
-                                  ? "(none)"
-                                  : CliTextFormat.joined(valid.reviewFindings())))),
-              () -> {
-                throw new IllegalArgumentException(
-                    CliOperationText.unsupportedCsvOutput(OperationId.VERIFY_BOOK));
-              });
-      case VerifyBookAttestationResult.Invalid invalid ->
-          writeAttestationRejected(
-              invalid.failureCode(),
-              "The selected book's attestation chain is structurally invalid.",
-              "Restore from a valid independently retained backup or use a verified receipt to investigate the break.",
-              outputMode);
-    }
+    attestationWriter.writeVerifyBook(result, outputMode);
   }
 
   void writeAttestationReview(AttestationReviewResult result, OutputMode outputMode) {
-    outputMode.run(
-        () ->
-            outputChannel.writeEnvelope(
-                CliEnvelopeMapper.successEnvelope(
-                    new CliAttestationJsonModels.AttestationReviewPayload(
-                        result.bookId().toString(),
-                        result.headOrder().toString(),
-                        result.findings()))),
-        () ->
-            writeAttestationText(
-                "Attestation Review",
-                List.of(
-                    List.of("Book ID", result.bookId().toString()),
-                    List.of("Head order", result.headOrder().toString()),
-                    List.of(
-                        "Findings",
-                        result.findings().isEmpty()
-                            ? "(none)"
-                            : CliTextFormat.joined(result.findings())))),
-        () -> {
-          throw new IllegalArgumentException(
-              CliOperationText.unsupportedCsvOutput(OperationId.ATTESTATION_REVIEW));
-        });
+    attestationWriter.writeReview(result, outputMode);
   }
 
   void writeExportAttestationReceipt(ExportAttestationReceiptResult result, OutputMode outputMode) {
-    switch (result) {
-      case ExportAttestationReceiptResult.Exported exported ->
-          outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliEnvelopeMapper.successEnvelope(
-                          new CliAttestationJsonModels.ExportReceiptPayload(
-                              CliPublicPaths.absoluteValue(exported.receiptFilePath()),
-                              exported.bookId().toString(),
-                              exported.operationOrder().toString(),
-                              exported.operationHeadHex(),
-                              exported.warnings()),
-                          CliEnvelopeMapper.successArtifacts(
-                              CliEnvelopeMapper.successArtifact(
-                                  "attestation-receipt-v1", exported.receiptFilePath())))),
-              () ->
-                  writeAttestationText(
-                      "Attestation Receipt Exported",
-                      List.of(
-                          List.of("Receipt file", CliTextDisplay.path(exported.receiptFilePath())),
-                          List.of("Book ID", exported.bookId().toString()),
-                          List.of("Operation order", exported.operationOrder().toString()),
-                          List.of("Operation head", exported.operationHeadHex()),
-                          List.of(
-                              "Warnings",
-                              exported.warnings().isEmpty()
-                                  ? "(none)"
-                                  : CliTextFormat.joined(exported.warnings())))),
-              () -> {
-                throw new IllegalArgumentException(
-                    CliOperationText.unsupportedCsvOutput(OperationId.EXPORT_ATTESTATION_RECEIPT));
-              });
-      case ExportAttestationReceiptResult.AuthorizationRejected rejected ->
-          outputChannel.writeRejectedEnvelope(
-              CliRejectionPayloadMapper.attestationAuthorizationRejectedEnvelope(
-                  rejected.failure()),
-              outputMode);
-    }
+    attestationWriter.writeExportReceipt(result, outputMode);
   }
 
   void writeVerifyAttestationReceipt(VerifyAttestationReceiptResult result, OutputMode outputMode) {
-    switch (result) {
-      case VerifyAttestationReceiptResult.Valid valid ->
-          outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliEnvelopeMapper.successEnvelope(
-                          new CliAttestationJsonModels.VerifyReceiptPayload(
-                              valid.bookId().toString(),
-                              valid.operationOrder().toString(),
-                              valid.findings()))),
-              () ->
-                  writeAttestationText(
-                      "Attestation Receipt Valid",
-                      List.of(
-                          List.of("Book ID", valid.bookId().toString()),
-                          List.of("Operation order", valid.operationOrder().toString()),
-                          List.of(
-                              "Findings",
-                              valid.findings().isEmpty()
-                                  ? "(none)"
-                                  : CliTextFormat.joined(valid.findings())))),
-              () -> {
-                throw new IllegalArgumentException(
-                    CliOperationText.unsupportedCsvOutput(OperationId.VERIFY_RECEIPT));
-              });
-      case VerifyAttestationReceiptResult.Invalid invalid ->
-          writeAttestationRejected(
-              invalid.failureCode(),
-              "The selected receipt is not valid for the selected book.",
-              "Confirm the receipt and book paths refer to the intended independently retained evidence.",
-              outputMode);
-    }
-  }
-
-  private void writeAttestationRejected(
-      String code, String message, String hint, OutputMode outputMode) {
-    outputChannel.writeRejectedEnvelope(
-        new CliEnvelopeJsonModels.Envelope<>(
-            ProtocolEnvelopeStatus.REJECTED, null, code, message, hint, null, null, null, null),
-        outputMode);
-  }
-
-  private void writeAttestationText(String title, List<List<String>> rows) {
-    outputChannel.writeText(
-        CliTextFormat.renderTitledBlock(title, CliTextFormat.renderKeyValueBlock(rows)));
+    attestationWriter.writeVerifyReceipt(result, outputMode);
   }
 
   void writeListAccountsResult(

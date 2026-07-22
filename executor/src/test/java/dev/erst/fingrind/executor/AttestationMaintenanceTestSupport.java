@@ -60,7 +60,11 @@ final class AttestationMaintenanceTestSupport {
       java.util.Arrays.fill(passphrase, '\0');
     }
     return new CredentialFixture(
-        new AttestationCredentialSource(principalId, keyPath, passphrasePath));
+        new AttestationCredentialSource(
+            dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+            principalId,
+            keyPath,
+            passphrasePath));
   }
 
   static AttestationEvidence genesis(CredentialFixture credential, Instant recordedAt) {
@@ -75,6 +79,7 @@ final class AttestationMaintenanceTestSupport {
             .map(
                 credential ->
                     new dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput(
+                        dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
                         credential.source().principalId(),
                         credential.source().encryptedKeyFilePath(),
                         credential.source().passphraseFilePath()))

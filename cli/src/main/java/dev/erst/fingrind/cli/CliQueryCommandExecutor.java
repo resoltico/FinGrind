@@ -7,7 +7,9 @@ import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.tax.ListTaxRegistrationsQuery;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.attestation.AttestationCompromiseReview;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -40,11 +42,14 @@ final class CliQueryCommandExecutor {
   }
 
   int runVerifyBookAttestationCommand(
-      BookAccess bookAccess, boolean requireCleanAttestation, OutputMode outputMode) {
+      BookAccess bookAccess,
+      List<AttestationCompromiseReview> compromiseReviews,
+      boolean requireCleanAttestation,
+      OutputMode outputMode) {
     return runPromptedQuery(
         bookAccess,
         outputMode,
-        readWorkflow::verifyBookAttestation,
+        ignored -> readWorkflow.verifyBookAttestation(bookAccess, compromiseReviews),
         result -> responseWriter.writeVerifyBookAttestation(result, outputMode),
         result ->
             switch (result) {
@@ -55,11 +60,14 @@ final class CliQueryCommandExecutor {
             });
   }
 
-  int runAttestationReviewCommand(BookAccess bookAccess, OutputMode outputMode) {
+  int runAttestationReviewCommand(
+      BookAccess bookAccess,
+      List<AttestationCompromiseReview> compromiseReviews,
+      OutputMode outputMode) {
     return runPromptedQuery(
         bookAccess,
         outputMode,
-        readWorkflow::reviewAttestation,
+        ignored -> readWorkflow.reviewAttestation(bookAccess, compromiseReviews),
         result -> responseWriter.writeAttestationReview(result, outputMode),
         ignored -> 0);
   }

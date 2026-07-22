@@ -33,6 +33,17 @@ Historical release notes older than `0.31.0` live in:
 
 ### Changed
 
+- Hard-broke private attestation-key custody selection. Every command that creates or opens
+  private attestation material now requires `--attestation-custodian file-pkcs8`; unsupported
+  selected custodians refuse as `custodian-not-supported`, and no implicit file-custody fallback
+  remains.
+- Changed compromise review from an internal-only verifier input to an explicit, strict
+  `--attestation-review-file` contract for `verify-book` and `attestation-review`. Its bounded
+  JSON input rejects duplicate or unknown fields, trailing content, and noncanonical order
+  spellings. Findings now publish typed credential interval and operation-order fields; review
+  declarations remain non-persisted and `--require-clean-attestation` returns exit 2 when they
+  match a valid chain.
+
 - Hard-broke the Java book-administration rejection surfaces so
   `FiscalYearCloseRequiresGeneratedPostings` is a top-level sealed-family variant rather than a
   nested member of either administration-rejection family. Its stable machine rejection code and
@@ -55,6 +66,10 @@ Historical release notes older than `0.31.0` live in:
 - Changed verification observability and merge safety. The canonical `check.sh` gate now emits one structured report per executed stage and a bounded Java-compiler warning manifest, Gradle wrapper integrity validation is a dependency of the required GitHub `Gate`, and the parallel published-bundle matrix reads rather than races to write Gradle cache entries.
 
 ### Fixed
+
+- Fixed receipt verification failure transport. Malformed selected receipt bytes remain
+  `receipt-artifact-invalid`, while successfully decoded receipt version, tuple, signature, quorum,
+  and underlying-chain failures now retain their exact published rejection codes.
 
 - Fixed live protected-book authorization-refusal transport. Every mutation and lifecycle admission
   now returns its exact `attestation-*` rejected envelope with exit code `2` rather than degrading

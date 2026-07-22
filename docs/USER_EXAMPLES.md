@@ -51,7 +51,7 @@ fingrind \
   --accounting-basis CASH \
   --functional-currency EUR \
   --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 \
-  --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-custodian file-pkcs8 --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
   --attestation-founder-key-file ./secrets/founder.fgatk \
   --attestation-founder-passphrase-file ./secrets/founder.passphrase \
   --book-passphrase-prompt
@@ -104,7 +104,7 @@ cat ./secrets/acme.book-key | \
     --accounting-basis CASH \
     --functional-currency EUR \
     --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 \
-    --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+    --attestation-custodian file-pkcs8 --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
     --attestation-founder-key-file ./secrets/founder.fgatk \
     --attestation-founder-passphrase-file ./secrets/founder.passphrase \
     --book-passphrase-stdin
@@ -113,7 +113,7 @@ cat ./secrets/acme.book-key | \
 On Windows PowerShell, the same stdin route is:
 
 ```powershell
-Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-founder-key-file .\secrets\founder.fgatk --attestation-founder-passphrase-file .\secrets\founder.passphrase --book-passphrase-stdin
+Get-Content -Raw .\secrets\acme.book-key | fingrind open-book --book-file .\books\acme.sqlite --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE --accounting-basis CASH --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 --attestation-custodian file-pkcs8 --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-founder-key-file .\secrets\founder.fgatk --attestation-founder-passphrase-file .\secrets\founder.passphrase --book-passphrase-stdin
 ```
 
 ## Initialize One Book
@@ -127,7 +127,7 @@ fingrind \
   --accounting-basis CASH \
   --functional-currency EUR \
   --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 \
-  --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-custodian file-pkcs8 --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
   --attestation-founder-key-file ./secrets/founder.fgatk \
   --attestation-founder-passphrase-file ./secrets/founder.passphrase \
   --book-key-file ./secrets/acme.book-key
@@ -169,7 +169,7 @@ fingrind \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --new-book-key-file ./secrets/acme.rotated.book-key \
-  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
   --attestation-key-file ./secrets/founder.fgatk \
   --attestation-passphrase-file ./secrets/founder.passphrase
 ```
@@ -201,7 +201,7 @@ fingrind \
   --backup-file ./backup/books/acme.sqlite \
   --new-backup-key-file ./backup/secrets/acme.book-key \
   --backup-id 86ba4e4e-e08d-45e5-9c42-631d0121d6ef \
-  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
   --attestation-key-file ./secrets/founder.fgatk \
   --attestation-passphrase-file ./secrets/founder.passphrase
 ```
@@ -221,7 +221,7 @@ fingrind \
   --new-book-key-file ./secrets/acme-restored.book-key \
   --backup-file ./backup/books/acme.sqlite \
   --backup-key-file ./backup/secrets/acme.book-key \
-  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
   --attestation-key-file ./secrets/founder.fgatk \
   --attestation-passphrase-file ./secrets/founder.passphrase
 ```
@@ -269,7 +269,7 @@ fingrind \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --request-file ./declare-account-supplemental-cash-reserve.json \
-  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
   --attestation-key-file ./secrets/founder.fgatk \
   --attestation-passphrase-file ./secrets/founder.passphrase
 
@@ -278,7 +278,7 @@ fingrind \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --request-file ./declare-account-supplemental-misc-revenue.json \
-  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
   --attestation-key-file ./secrets/founder.fgatk \
   --attestation-passphrase-file ./secrets/founder.passphrase
 
@@ -318,7 +318,7 @@ fingrind \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --request-file ./cash-reserve-amend.json \
-  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
   --attestation-key-file ./secrets/founder.fgatk \
   --attestation-passphrase-file ./secrets/founder.passphrase
 ```
@@ -335,7 +335,7 @@ fingrind \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --request-file ./retire-account.json \
-  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
   --attestation-key-file ./secrets/founder.fgatk \
   --attestation-passphrase-file ./secrets/founder.passphrase
 ```
@@ -388,7 +388,7 @@ fingrind \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --request-file ./basic-posting-request.json \
-  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
   --attestation-key-file ./secrets/founder.fgatk \
   --attestation-passphrase-file ./secrets/founder.passphrase
 ```
@@ -455,7 +455,7 @@ fingrind \
   --output json \
   --result-detail full \
   --request-file ./ledger-plan-request.json \
-  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
   --attestation-key-file ./secrets/founder.fgatk \
   --attestation-passphrase-file ./secrets/founder.passphrase
 ```
@@ -493,7 +493,7 @@ fingrind \
   --output json \
   --result-detail full \
   --request-file ./ledger-plan-query-request.json \
-  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
   --attestation-key-file ./secrets/founder.fgatk \
   --attestation-passphrase-file ./secrets/founder.passphrase
 ```

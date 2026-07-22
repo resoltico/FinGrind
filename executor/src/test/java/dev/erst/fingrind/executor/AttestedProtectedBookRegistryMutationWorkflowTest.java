@@ -139,6 +139,7 @@ class AttestedProtectedBookRegistryMutationWorkflowTest {
             AttestationMaintenanceTestSupport.bookAccess(bookPath, founder));
     AttestationCredentialSource unrecognizedSource =
         new AttestationCredentialSource(
+            dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
             UUID.fromString("01234567-89ab-4cde-8fab-0123456789ab"),
             unrecognizedKeyPath,
             unrecognizedPassphrasePath);

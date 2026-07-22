@@ -288,6 +288,7 @@ public final class ExecutorAccountingTestSupport {
         bookIdentity(),
         java.util.List.of(
             new dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput(
+                dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
                 java.util.UUID.fromString("10213243-5465-7687-98a9-babcbddceeff"),
                 java.nio.file.Path.of("/tmp/fingrind-executor-founder.fgatk"),
                 java.nio.file.Path.of("/tmp/fingrind-executor-founder.passphrase"))));

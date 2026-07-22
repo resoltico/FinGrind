@@ -4,6 +4,7 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.AttestationKeyFileMetadata;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.core.attestation.AttestationCustodian;
 import dev.erst.fingrind.core.attestation.AttestationKeyFiles;
 import dev.erst.fingrind.core.attestation.AttestationPublicCredential;
 import java.io.IOException;
@@ -27,11 +28,17 @@ final class CliAttestationKeyFileWorkflow {
     this.failureWriter = Objects.requireNonNull(failureWriter, "failureWriter");
   }
 
-  int generate(Path keyFilePath, Path passphraseFilePath, OutputMode outputMode) {
+  int generate(
+      AttestationCustodian custodian,
+      Path keyFilePath,
+      Path passphraseFilePath,
+      OutputMode outputMode) {
     Path normalizedKeyPath = normalized(keyFilePath);
     try {
       AttestationPublicCredential credential =
-          AttestationKeyFiles.create(normalizedKeyPath, passphraseFilePath);
+          switch (Objects.requireNonNull(custodian, "custodian")) {
+            case FILE_PKCS8 -> AttestationKeyFiles.create(normalizedKeyPath, passphraseFilePath);
+          };
       responseWriter.writeGeneratedAttestationKeyFileResult(
           metadata(normalizedKeyPath, credential), outputMode);
       return 0;
@@ -43,11 +50,15 @@ final class CliAttestationKeyFileWorkflow {
     }
   }
 
-  int inspect(Path keyFilePath, OutputMode outputMode) {
+  int inspect(AttestationCustodian custodian, Path keyFilePath, OutputMode outputMode) {
     Path normalizedKeyPath = normalized(keyFilePath);
     try {
       responseWriter.writeAttestationKeyFileMetadata(
-          metadata(normalizedKeyPath, AttestationKeyFiles.loadPublicCredential(normalizedKeyPath)),
+          metadata(
+              normalizedKeyPath,
+              switch (Objects.requireNonNull(custodian, "custodian")) {
+                case FILE_PKCS8 -> AttestationKeyFiles.loadPublicCredential(normalizedKeyPath);
+              }),
           outputMode);
       return 0;
     } catch (IOException | IllegalArgumentException exception) {

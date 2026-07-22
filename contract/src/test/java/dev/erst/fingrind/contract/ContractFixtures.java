@@ -86,6 +86,7 @@ final class ContractFixtures {
   static List<dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput> testFounders() {
     return List.of(
         new dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput(
+            dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
             UUID.fromString("10213243-5465-7687-98a9-babcbddceeff"),
             Path.of("/tmp/fingrind-contract-founder.fgatk"),
             Path.of("/tmp/fingrind-contract-founder.passphrase")));

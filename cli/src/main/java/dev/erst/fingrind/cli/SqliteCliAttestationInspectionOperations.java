@@ -7,9 +7,11 @@ import dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.SystemUtcClock;
+import dev.erst.fingrind.core.attestation.AttestationCompromiseReview;
 import dev.erst.fingrind.executor.AttestationInspectionService;
 import dev.erst.fingrind.sqlite.SqliteProtectedBookMaintenanceStore;
 import java.nio.file.Path;
+import java.util.List;
 
 /** SQLite implementation of non-mutating attestation inspection and receipt operations. */
 interface SqliteCliAttestationInspectionOperations extends CliAttestationInspectionReadWorkflow {
@@ -18,13 +20,14 @@ interface SqliteCliAttestationInspectionOperations extends CliAttestationInspect
 
   @Override
   default ContractDecision<VerifyBookAttestationResult> verifyBookAttestation(
-      BookAccess bookAccess) {
-    return service().verifyBook(bookAccess);
+      BookAccess bookAccess, List<AttestationCompromiseReview> compromiseReviews) {
+    return service().verifyBook(bookAccess, compromiseReviews);
   }
 
   @Override
-  default ContractDecision<AttestationReviewResult> reviewAttestation(BookAccess bookAccess) {
-    return service().review(bookAccess);
+  default ContractDecision<AttestationReviewResult> reviewAttestation(
+      BookAccess bookAccess, List<AttestationCompromiseReview> compromiseReviews) {
+    return service().review(bookAccess, compromiseReviews);
   }
 
   @Override

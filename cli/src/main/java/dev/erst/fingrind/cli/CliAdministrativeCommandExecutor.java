@@ -47,13 +47,19 @@ final class CliAdministrativeCommandExecutor {
   }
 
   int runGenerateAttestationKeyFileCommand(
-      Path attestationKeyFilePath, Path passphraseFilePath, OutputMode outputMode) {
+      dev.erst.fingrind.core.attestation.AttestationCustodian custodian,
+      Path attestationKeyFilePath,
+      Path passphraseFilePath,
+      OutputMode outputMode) {
     return attestationKeyFileWorkflow.generate(
-        attestationKeyFilePath, passphraseFilePath, outputMode);
+        custodian, attestationKeyFilePath, passphraseFilePath, outputMode);
   }
 
-  int runInspectAttestationKeyFileCommand(Path attestationKeyFilePath, OutputMode outputMode) {
-    return attestationKeyFileWorkflow.inspect(attestationKeyFilePath, outputMode);
+  int runInspectAttestationKeyFileCommand(
+      dev.erst.fingrind.core.attestation.AttestationCustodian custodian,
+      Path attestationKeyFilePath,
+      OutputMode outputMode) {
+    return attestationKeyFileWorkflow.inspect(custodian, attestationKeyFilePath, outputMode);
   }
 
   int runGenerateBookKeyFileCommand(

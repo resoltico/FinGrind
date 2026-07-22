@@ -61,6 +61,7 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
         bookIdentity(),
         List.of(
             new dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput(
+                dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
                 java.util.UUID.fromString("10213243-5465-7687-98a9-babcbddceeff"),
                 Path.of("/tmp/fingrind-cli-founder.fgatk"),
                 Path.of("/tmp/fingrind-cli-founder.passphrase"))));
@@ -87,6 +88,8 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
       bookIdentity().fiscalYearStart().wireValue(),
       ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE,
       bookIdentity().bookStartEffectiveDate().toString(),
+      ProtocolOptions.Attestation.CUSTODIAN,
+      "file-pkcs8",
       ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
       TEST_FOUNDER_PRINCIPAL_ID,
       ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
@@ -101,6 +104,8 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
     Path founderKeyFilePath = attestationKeyFilePath(bookFilePath);
     Path founderPassphraseFilePath = writeAttestationPassphraseFile(bookFilePath);
     return new String[] {
+      ProtocolOptions.Attestation.CUSTODIAN,
+      "file-pkcs8",
       ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
       TEST_FOUNDER_PRINCIPAL_ID,
       ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
@@ -130,6 +135,8 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
       bookIdentity().fiscalYearStart().wireValue(),
       ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE,
       bookIdentity().bookStartEffectiveDate().toString(),
+      ProtocolOptions.Attestation.CUSTODIAN,
+      "file-pkcs8",
       ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
       TEST_FOUNDER_PRINCIPAL_ID,
       ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
@@ -176,6 +183,8 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
       bookIdentity().fiscalYearStart().wireValue(),
       ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE,
       bookIdentity().bookStartEffectiveDate().toString(),
+      ProtocolOptions.Attestation.CUSTODIAN,
+      "file-pkcs8",
       ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
       TEST_FOUNDER_PRINCIPAL_ID,
       ProtocolOptions.Attestation.FOUNDER_KEY_FILE,

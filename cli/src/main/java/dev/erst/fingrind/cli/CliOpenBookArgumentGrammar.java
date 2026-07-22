@@ -18,6 +18,7 @@ final class CliOpenBookArgumentGrammar {
           ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
           ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
           ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE,
+          ProtocolOptions.Attestation.CUSTODIAN,
           ProtocolOptions.BookDefinition.TIGHTEN_PARENTS,
           ProtocolOptions.Presentation.OUTPUT);
 

@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.core.attestation.AttestationCustodianNotSupportedException;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.List;
@@ -80,6 +81,20 @@ final class CliArgumentValueParser {
         argument,
         message,
         CliInvocationText.helpSyntaxHint());
+  }
+
+  static CliArgumentsException unsupportedAttestationCustodian(
+      AttestationCustodianNotSupportedException exception) {
+    AttestationCustodianNotSupportedException checkedException =
+        Objects.requireNonNull(exception, "exception");
+    return new CliArgumentsException(
+        ContractErrors.Descriptor.CUSTODIAN_NOT_SUPPORTED.code(),
+        "--attestation-custodian",
+        "FinGrind does not implement the selected attestation custodian: "
+            + checkedException.custodian()
+            + ".",
+        "Select file-pkcs8 for a local encrypted PKCS#8 credential.",
+        checkedException);
   }
 
   static CliArgumentsException unsupportedArgument(String argument, List<String> supportedOptions) {

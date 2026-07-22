@@ -127,7 +127,7 @@ class CliBackupRestoreArgumentParsingTest {
                 restoreArgumentsWithout("--backup-key-file")));
 
     List<String> noCredentials = restoreArguments(OutputMode.JSON);
-    noCredentials.subList(9, 15).clear();
+    noCredentials.subList(9, 17).clear();
     assertArgument(
         "--attestation-principal-id",
         () -> CliBackupRestoreArguments.parseRestoreBookCommand(noCredentials));
@@ -138,25 +138,25 @@ class CliBackupRestoreArgumentParsingTest {
         "--book-file", () -> CliBackupRestoreArguments.parseRestoreBookCommand(duplicateBookFile));
 
     List<String> keyWithoutPrincipal = restoreArguments(OutputMode.JSON);
-    keyWithoutPrincipal.subList(9, 11).clear();
+    keyWithoutPrincipal.subList(11, 13).clear();
     assertArgument(
         "--attestation-principal-id",
         () -> CliBackupRestoreArguments.parseRestoreBookCommand(keyWithoutPrincipal));
 
     List<String> principalWithoutPassphrase = restoreArguments(OutputMode.JSON);
-    principalWithoutPassphrase.subList(13, 15).clear();
+    principalWithoutPassphrase.subList(15, 17).clear();
     assertArgument(
         "--attestation-principal-id",
         () -> CliBackupRestoreArguments.parseRestoreBookCommand(principalWithoutPassphrase));
 
     List<String> principalWithoutKey = restoreArguments(OutputMode.JSON);
-    principalWithoutKey.subList(11, 13).clear();
+    principalWithoutKey.subList(13, 15).clear();
     assertArgument(
         "--attestation-principal-id",
         () -> CliBackupRestoreArguments.parseRestoreBookCommand(principalWithoutKey));
 
     List<String> sameKeyAndPassphrase = restoreArguments(OutputMode.JSON);
-    sameKeyAndPassphrase.set(14, "keys/founder.fgatk");
+    sameKeyAndPassphrase.set(16, "keys/founder.fgatk");
     assertArgument(
         "--attestation-principal-id",
         () -> CliBackupRestoreArguments.parseRestoreBookCommand(sameKeyAndPassphrase));
@@ -166,6 +166,18 @@ class CliBackupRestoreArgumentParsingTest {
     assertArgument(
         "--attestation-principal-id",
         () -> CliBackupRestoreArguments.parseRestoreBookCommand(tooManyCredentials));
+
+    List<String> missingCustodian = restoreArguments(OutputMode.JSON);
+    missingCustodian.subList(9, 11).clear();
+    assertArgument(
+        "--attestation-custodian",
+        () -> CliBackupRestoreArguments.parseRestoreBookCommand(missingCustodian));
+
+    List<String> duplicateCustodian = restoreArguments(OutputMode.JSON);
+    duplicateCustodian.addAll(List.of("--attestation-custodian", "file-pkcs8"));
+    assertArgument(
+        "--attestation-custodian",
+        () -> CliBackupRestoreArguments.parseRestoreBookCommand(duplicateCustodian));
   }
 
   private static List<String> backupArguments(OutputMode outputMode) {
@@ -181,6 +193,14 @@ class CliBackupRestoreArgumentParsingTest {
         "backups/current.key",
         "--backup-id",
         "4ef958b9-13ae-40f3-a2b1-9714406b279f",
+        "--attestation-custodian",
+        "file-pkcs8",
+        "--attestation-principal-id",
+        PRINCIPAL_ID,
+        "--attestation-key-file",
+        "keys/founder.fgatk",
+        "--attestation-passphrase-file",
+        "keys/founder.passphrase",
         "--output",
         outputMode.wireValue());
   }
@@ -197,6 +217,8 @@ class CliBackupRestoreArgumentParsingTest {
             "backups/current.sqlite",
             "--backup-key-file",
             "backups/current.key",
+            "--attestation-custodian",
+            "file-pkcs8",
             "--attestation-principal-id",
             PRINCIPAL_ID,
             "--attestation-key-file",

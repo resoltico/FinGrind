@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
+import dev.erst.fingrind.core.attestation.AttestationCustodian;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.UUID;
@@ -11,9 +12,13 @@ import java.util.UUID;
  * unread until the core file-custody boundary creates the signed genesis operation.
  */
 public record AttestationFounderInput(
-    UUID principalId, Path encryptedKeyFilePath, Path passphraseFilePath) {
+    AttestationCustodian custodian,
+    UUID principalId,
+    Path encryptedKeyFilePath,
+    Path passphraseFilePath) {
   /** Normalizes filesystem inputs while retaining no secret material in the command contract. */
   public AttestationFounderInput {
+    Objects.requireNonNull(custodian, "custodian");
     Objects.requireNonNull(principalId, "principalId");
     encryptedKeyFilePath = normalize(encryptedKeyFilePath, "encryptedKeyFilePath");
     passphraseFilePath = normalize(passphraseFilePath, "passphraseFilePath");

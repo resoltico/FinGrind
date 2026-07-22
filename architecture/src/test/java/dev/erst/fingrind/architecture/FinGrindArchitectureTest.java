@@ -87,7 +87,7 @@ final class FinGrindArchitectureTest {
       Set.of(
           "dev.erst.fingrind.sqlite.SqliteStagedBackupPair",
           "dev.erst.fingrind.sqlite.SqliteStagedRestoredBookPair",
-          "dev.erst.fingrind.executor.AttestationInspectionService");
+          "dev.erst.fingrind.executor.AttestationReceiptOperations");
   private static final Set<String> RAW_GENERIC_FAILURE_TYPES =
       Set.of(
           "java.lang.Throwable",

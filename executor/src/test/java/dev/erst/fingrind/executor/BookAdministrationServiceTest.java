@@ -59,6 +59,7 @@ class BookAdministrationServiceTest {
                   FIXED_CLOCK.instant(),
                   List.of(
                       new dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput(
+                          dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
                           credential.source().principalId(),
                           credential.source().encryptedKeyFilePath(),
                           credential.source().passphraseFilePath())))));

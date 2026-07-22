@@ -50,13 +50,14 @@ final class ProtocolAttestationRegistryOperations {
             description,
             List.of(
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./%s %s 123e4567-e89b-12d3-a456-426614174000 %s ./secrets/operator.fgatk %s ./secrets/operator.passphrase"
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./%s %s file-pkcs8 %s 123e4567-e89b-12d3-a456-426614174000 %s ./secrets/operator.fgatk %s ./secrets/operator.passphrase"
                         .formatted(
                             operationId.wireName(),
                             ProtocolBookAccessOptions.BOOK_FILE,
                             ProtocolBookAccessOptions.BOOK_KEY_FILE,
                             ProtocolOptions.Request.FILE,
                             requestFileName,
+                            ProtocolOptions.Attestation.CUSTODIAN,
                             ProtocolOptions.Attestation.PRINCIPAL_ID,
                             ProtocolOptions.Attestation.KEY_FILE,
                             ProtocolOptions.Attestation.PASSPHRASE_FILE)))));

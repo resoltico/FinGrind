@@ -143,11 +143,13 @@ class AttestationEd25519Test {
   @Test
   void acceptsOnlyTheShippedCustodian() {
     assertEquals(AttestationCustodian.FILE_PKCS8, AttestationCustodian.require("file-pkcs8"));
+    assertEquals("file-pkcs8", AttestationCustodian.FILE_PKCS8.wireValue());
     AttestationCustodianNotSupportedException rejection =
         assertThrows(
             AttestationCustodianNotSupportedException.class,
             () -> AttestationCustodian.require("pkcs11"));
     assertEquals("custodian-not-supported: pkcs11", rejection.getMessage());
+    assertEquals("pkcs11", rejection.custodian());
   }
 
   @Test

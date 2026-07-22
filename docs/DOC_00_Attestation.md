@@ -31,10 +31,13 @@ canonical references without widening the general API index.
 | `AttestationBackupArtifactVerification` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Backup Artifact Types` |
 | `AttestationCapability` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationRegistryMutation`, `AttestationCapability`, `AttestationCredentialPurpose`, `AttestationGrantState`, And `AttestationSystemWorkflowKind` |
 | `AttestationClosePostingSnapshot` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationCompromiseReview` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationVerifier` |
 | `AttestationCredentialException` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |
 | `AttestationCredentialPurpose` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationRegistryMutation`, `AttestationCapability`, `AttestationCredentialPurpose`, `AttestationGrantState`, And `AttestationSystemWorkflowKind` |
 | `AttestationCredentialUseException` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |
 | `AttestationCredentialSource` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |
+| `AttestationCustodian` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationCustodian` And `AttestationCustodianNotSupportedException` |
+| `AttestationCustodianNotSupportedException` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationCustodian` And `AttestationCustodianNotSupportedException` |
 | `AttestationDirectoryDurability` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `AttestationDirectoryDurability` |
 | `AttestationEvidence` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationEvidence` |
 | `AttestationEffectMutation` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
@@ -62,11 +65,13 @@ canonical references without widening the general API index.
 | `AttestationPostingRequestSnapshot` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationPublicCredential` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationPublicCredential` |
 | `AttestationReceipt` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |
+| `AttestationReceiptArtifactException` | `DOC_02_VerifiableOperationAttestationVerification.md` | Verification, Compromise Review, And Failure Taxonomy |
 | `AttestationReceiptFinding` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |
 | `AttestationReceiptRetention` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |
 | `AttestationReceiptVerificationResult` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |
 | `AttestationRegistryMutation` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationRegistryMutation`, `AttestationCapability`, `AttestationCredentialPurpose`, `AttestationGrantState`, And `AttestationSystemWorkflowKind` |
 | `AttestationRegistryMutationResult` | `DOC_02_BookMaintenanceContracts.md` | `AttestationRegistryMutationResult` |
+| `AttestationReviewFinding` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationVerifier` |
 | `AttestationReviewResult` | `DOC_02_VerifiableOperationAttestationVerification.md` | `Attestation Inspection And Verification Results` |
 | `AttestationSigningSession` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |
 | `AttestationSigningSessionFactory` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |

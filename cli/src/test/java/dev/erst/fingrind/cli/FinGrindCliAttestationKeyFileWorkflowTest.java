@@ -32,6 +32,8 @@ class FinGrindCliAttestationKeyFileWorkflowTest extends FinGrindCliTestSupport {
         cli.run(
             new String[] {
               "generate-attestation-key-file",
+              "--attestation-custodian",
+              "file-pkcs8",
               "--new-attestation-key-file",
               keyFilePath.toString(),
               "--attestation-passphrase-file",
@@ -63,6 +65,8 @@ class FinGrindCliAttestationKeyFileWorkflowTest extends FinGrindCliTestSupport {
         cli.run(
             new String[] {
               "inspect-attestation-key-file",
+              "--attestation-custodian",
+              "file-pkcs8",
               "--attestation-key-file",
               keyFilePath.toString(),
               "--output",
@@ -85,6 +89,8 @@ class FinGrindCliAttestationKeyFileWorkflowTest extends FinGrindCliTestSupport {
     String[] command =
         new String[] {
           "generate-attestation-key-file",
+          "--attestation-custodian",
+          "file-pkcs8",
           "--new-attestation-key-file",
           keyFilePath.toString(),
           "--attestation-passphrase-file",
@@ -106,6 +112,8 @@ class FinGrindCliAttestationKeyFileWorkflowTest extends FinGrindCliTestSupport {
         cli.run(
             new String[] {
               "generate-attestation-key-file",
+              "--attestation-custodian",
+              "file-pkcs8",
               "--new-attestation-key-file",
               tempDirectory.resolve("missing").resolve("operator.fgatk").toString(),
               "--attestation-passphrase-file",
@@ -123,6 +131,8 @@ class FinGrindCliAttestationKeyFileWorkflowTest extends FinGrindCliTestSupport {
         cli.run(
             new String[] {
               "inspect-attestation-key-file",
+              "--attestation-custodian",
+              "file-pkcs8",
               "--attestation-key-file",
               tempDirectory.resolve("missing.fgatk").toString(),
               "--output",
@@ -130,6 +140,25 @@ class FinGrindCliAttestationKeyFileWorkflowTest extends FinGrindCliTestSupport {
             }));
     assertEquals(
         ContractErrors.Descriptor.INVALID_ATTESTATION_CREDENTIAL.code(),
+        new ObjectMapper().readTree(output.toByteArray()).path("code").stringValue());
+
+    output.reset();
+    assertEquals(
+        2,
+        cli.run(
+            new String[] {
+              "generate-attestation-key-file",
+              "--attestation-custodian",
+              "pkcs11",
+              "--new-attestation-key-file",
+              tempDirectory.resolve("unsupported.fgatk").toString(),
+              "--attestation-passphrase-file",
+              passphraseFilePath.toString(),
+              "--output",
+              "json"
+            }));
+    assertEquals(
+        ContractErrors.Descriptor.CUSTODIAN_NOT_SUPPORTED.code(),
         new ObjectMapper().readTree(output.toByteArray()).path("code").stringValue());
   }
 }

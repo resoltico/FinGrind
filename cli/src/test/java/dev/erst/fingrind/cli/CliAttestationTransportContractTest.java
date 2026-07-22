@@ -14,9 +14,12 @@ import dev.erst.fingrind.contract.bookkeeping.VerifyAttestationReceiptResult;
 import dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.core.attestation.AttestationCompromiseReview;
+import dev.erst.fingrind.core.attestation.AttestationReviewFinding;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.ListIterator;
@@ -36,7 +39,7 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
             new VerifyBookAttestationResult.Valid(
                 BOOK_ID, java.math.BigInteger.TWO, OPERATION_HEAD, List.of()),
             new AttestationReviewResult(
-                BOOK_ID, java.math.BigInteger.TWO, List.of("retained backup overdue")),
+                BOOK_ID, java.math.BigInteger.TWO, List.of(reviewFinding())),
             new ExportAttestationReceiptResult.Exported(
                 Path.of("receipts", "current.fgr"),
                 BOOK_ID,
@@ -60,7 +63,7 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
     assertEquals(
         0, cli(workflow, reviewOutput).run(command("attestation-review", "--output", "json")));
     assertJsonContains(reviewOutput, "\"headOrder\":\"2\"");
-    assertJsonContains(reviewOutput, "retained backup overdue");
+    assertJsonContains(reviewOutput, "\"credentialKeyId\"");
 
     ByteArrayOutputStream exportOutput = new ByteArrayOutputStream();
     assertEquals(
@@ -142,7 +145,7 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
     AttestationWorkflow workflow =
         new AttestationWorkflow(
             new VerifyBookAttestationResult.Valid(
-                BOOK_ID, java.math.BigInteger.ZERO, OPERATION_HEAD, List.of("review this")),
+                BOOK_ID, java.math.BigInteger.ZERO, OPERATION_HEAD, List.of(reviewFinding())),
             new AttestationReviewResult(BOOK_ID, java.math.BigInteger.ZERO, List.of()),
             new ExportAttestationReceiptResult.Exported(
                 Path.of("receipts", "unused.fgr"),
@@ -160,6 +163,97 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
     assertEquals(
         0,
         cli(workflow, new ByteArrayOutputStream()).run(command("verify-book", "--output", "json")));
+  }
+
+  @Test
+  void reviewDeclarations_areReadStrictlyAndSharedByVerifyAndReviewCommands() throws Exception {
+    Path reviewFile = tempDirectory.resolve("compromise-reviews.json");
+    Files.writeString(
+        reviewFile,
+        """
+        {"compromiseReviews":[{"credentialKeyId":"%s","firstAffectedOrder":"0"}]}
+        """
+            .formatted("a".repeat(64)));
+
+    VerifyBookAttestation verify =
+        assertInstanceOf(
+            VerifyBookAttestation.class,
+            CliAttestationArguments.parseVerifyBookCommand(
+                List.of(
+                    "verify-book",
+                    "--book-file",
+                    "book.sqlite",
+                    "--book-key-file",
+                    "book.key",
+                    "--attestation-review-file",
+                    reviewFile.toString())));
+    AttestationReview review =
+        assertInstanceOf(
+            AttestationReview.class,
+            CliAttestationArguments.parseAttestationReviewCommand(
+                List.of(
+                    "attestation-review",
+                    "--book-file",
+                    "book.sqlite",
+                    "--book-key-file",
+                    "book.key",
+                    "--attestation-review-file",
+                    reviewFile.toString())));
+
+    assertEquals(List.of(reviewDeclaration()), verify.compromiseReviews());
+    assertEquals(verify.compromiseReviews(), review.compromiseReviews());
+    assertThrows(
+        CliArgumentsException.class,
+        () ->
+            CliAttestationArguments.parseVerifyBookCommand(
+                List.of(
+                    "verify-book",
+                    "--book-file",
+                    "book.sqlite",
+                    "--book-key-file",
+                    "book.key",
+                    "--attestation-review-file",
+                    reviewFile.toString(),
+                    "--attestation-review-file",
+                    reviewFile.toString())));
+    assertThrows(
+        CliArgumentsException.class,
+        () ->
+            CliAttestationArguments.parseAttestationReviewCommand(
+                List.of(
+                    "attestation-review",
+                    "--book-file",
+                    "book.sqlite",
+                    "--book-key-file",
+                    "book.key",
+                    "--attestation-review-file",
+                    reviewFile.toString(),
+                    "--attestation-review-file",
+                    reviewFile.toString())));
+  }
+
+  @Test
+  void reviewDeclarations_rejectNonCanonicalOrdersAndTrailingJson() throws Exception {
+    Path reviewFile = tempDirectory.resolve("invalid-compromise-reviews.json");
+    Files.writeString(
+        reviewFile,
+        """
+        {"compromiseReviews":[{"credentialKeyId":"%s","firstAffectedOrder":"01"}]}
+        """
+            .formatted("a".repeat(64)));
+
+    CliArgumentsException nonCanonicalOrder =
+        assertThrows(CliArgumentsException.class, () -> parseVerifyBookWithReviewFile(reviewFile));
+    assertEquals("--attestation-review-file", nonCanonicalOrder.argument());
+
+    Files.writeString(
+        reviewFile,
+        """
+        {"compromiseReviews":[]} {"trailing":true}
+        """);
+    CliArgumentsException trailingJson =
+        assertThrows(CliArgumentsException.class, () -> parseVerifyBookWithReviewFile(reviewFile));
+    assertEquals("--attestation-review-file", trailingJson.argument());
   }
 
   @Test
@@ -235,11 +329,12 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void credentialTriples_areOptionalOnlyWhenEntirelyAbsentAndMustOtherwiseBeAligned() {
+  void credentialSelections_areOptionalOnlyWhenEntirelyAbsentAndMustOtherwiseBeAligned() {
     CliAttestationCredentialArguments credentials = new CliAttestationCredentialArguments();
     assertFalse(credentials.apply("--not-an-attestation-option", List.<String>of().listIterator()));
     assertEquals(List.of(), credentials.resolveOptional());
 
+    applyCredential(credentials, "--attestation-custodian", "file-pkcs8");
     applyCredential(credentials, "--attestation-principal-id", BOOK_ID.toString());
     applyCredential(credentials, "--attestation-key-file", "keys/principal.fgatk");
     applyCredential(credentials, "--attestation-passphrase-file", "keys/principal.passphrase");
@@ -251,6 +346,9 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
     assertEquals(
         List.of(BOOK_ID, secondPrincipal),
         credentials.resolveOptional().stream().map(source -> source.principalId()).toList());
+    assertEquals(
+        dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+        credentials.resolveOptional().getFirst().custodian());
 
     CliAttestationCredentialArguments incomplete = new CliAttestationCredentialArguments();
     applyCredential(incomplete, "--attestation-principal-id", BOOK_ID.toString());
@@ -271,6 +369,24 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
     applyCredential(keyWithoutPassphrase, "--attestation-principal-id", BOOK_ID.toString());
     applyCredential(keyWithoutPassphrase, "--attestation-key-file", "keys/principal.fgatk");
     assertThrows(IllegalArgumentException.class, keyWithoutPassphrase::resolveOptional);
+
+    CliAttestationCredentialArguments missingCustodian = new CliAttestationCredentialArguments();
+    applyCredential(missingCustodian, "--attestation-principal-id", BOOK_ID.toString());
+    applyCredential(missingCustodian, "--attestation-key-file", "keys/principal.fgatk");
+    applyCredential(missingCustodian, "--attestation-passphrase-file", "keys/principal.passphrase");
+    CliArgumentsException missingCustodianException =
+        assertThrows(CliArgumentsException.class, missingCustodian::resolveOptional);
+    assertEquals("--attestation-custodian", missingCustodianException.argument());
+
+    CliAttestationCredentialArguments custodianOnly = new CliAttestationCredentialArguments();
+    applyCredential(custodianOnly, "--attestation-custodian", "file-pkcs8");
+    assertThrows(IllegalArgumentException.class, custodianOnly::resolveOptional);
+
+    CliAttestationCredentialArguments duplicateCustodian = new CliAttestationCredentialArguments();
+    applyCredential(duplicateCustodian, "--attestation-custodian", "file-pkcs8");
+    assertThrows(
+        CliArgumentsException.class,
+        () -> applyCredential(duplicateCustodian, "--attestation-custodian", "file-pkcs8"));
 
     CliAttestationCredentialArguments sixCredentials = credentials(6);
     assertEquals(6, sixCredentials.resolveOptional().size());
@@ -302,7 +418,7 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
         IllegalArgumentException.class,
         () ->
             new CliAttestationJsonModels.VerifyBookPayload(
-                BOOK_ID.toString(), "0", OPERATION_HEAD, false, List.of("retain receipt")));
+                BOOK_ID.toString(), "0", OPERATION_HEAD, false, List.of(reviewFindingPayload())));
   }
 
   @Test
@@ -325,9 +441,9 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
         new CliBookReadResponseWriter(outputChannel(new ByteArrayOutputStream()), fixedClock());
     VerifyBookAttestationResult.Valid verification =
         new VerifyBookAttestationResult.Valid(
-            BOOK_ID, java.math.BigInteger.TWO, OPERATION_HEAD, List.of("review this chain"));
+            BOOK_ID, java.math.BigInteger.TWO, OPERATION_HEAD, List.of(reviewFinding()));
     AttestationReviewResult review =
-        new AttestationReviewResult(BOOK_ID, java.math.BigInteger.TWO, List.of("retain receipt"));
+        new AttestationReviewResult(BOOK_ID, java.math.BigInteger.TWO, List.of(reviewFinding()));
     ExportAttestationReceiptResult.Exported exported =
         new ExportAttestationReceiptResult.Exported(
             Path.of("receipts", "current.fgr"),
@@ -351,7 +467,7 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream reviewText = new ByteArrayOutputStream();
     new CliBookReadResponseWriter(outputChannel(reviewText), fixedClock())
         .writeAttestationReview(review, dev.erst.fingrind.contract.protocol.OutputMode.TEXT);
-    assertTrue(reviewText.toString(StandardCharsets.UTF_8).contains("retain receipt"));
+    assertTrue(reviewText.toString(StandardCharsets.UTF_8).contains("credentialKeyId="));
 
     ByteArrayOutputStream exportedJson = new ByteArrayOutputStream();
     new CliBookReadResponseWriter(outputChannel(exportedJson), fixedClock())
@@ -401,6 +517,26 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
         dev.erst.fingrind.contract.protocol.OutputMode.TEXT);
     assertTrue(emptyFindingsText.toString(StandardCharsets.UTF_8).contains("(none)"));
 
+    AttestationReviewFinding boundedFinding =
+        new AttestationReviewFinding(
+            new AttestationCompromiseReview(
+                "b".repeat(64), java.math.BigInteger.ONE, java.math.BigInteger.TWO),
+            java.math.BigInteger.TWO);
+    ByteArrayOutputStream boundedJson = new ByteArrayOutputStream();
+    new CliBookReadResponseWriter(outputChannel(boundedJson), fixedClock())
+        .writeVerifyBookAttestation(
+            new VerifyBookAttestationResult.Valid(
+                BOOK_ID, java.math.BigInteger.TWO, OPERATION_HEAD, List.of(boundedFinding)),
+            dev.erst.fingrind.contract.protocol.OutputMode.JSON);
+    assertJsonContains(boundedJson, "\"lastAffectedOrder\":\"2\"");
+
+    ByteArrayOutputStream boundedText = new ByteArrayOutputStream();
+    new CliBookReadResponseWriter(outputChannel(boundedText), fixedClock())
+        .writeAttestationReview(
+            new AttestationReviewResult(BOOK_ID, java.math.BigInteger.TWO, List.of(boundedFinding)),
+            dev.erst.fingrind.contract.protocol.OutputMode.TEXT);
+    assertTrue(boundedText.toString(StandardCharsets.UTF_8).contains("lastAffectedOrder=2"));
+
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -431,6 +567,7 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
 
   private static CliAttestationCredentialArguments credentials(int count) {
     CliAttestationCredentialArguments credentials = new CliAttestationCredentialArguments();
+    applyCredential(credentials, "--attestation-custodian", "file-pkcs8");
     for (int index = 0; index < count; index++) {
       applyCredential(
           credentials,
@@ -469,6 +606,33 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
     return arguments;
   }
 
+  private static VerifyBookAttestation parseVerifyBookWithReviewFile(Path reviewFile) {
+    return assertInstanceOf(
+        VerifyBookAttestation.class,
+        CliAttestationArguments.parseVerifyBookCommand(
+            List.of(
+                "verify-book",
+                "--book-file",
+                "book.sqlite",
+                "--book-key-file",
+                "book.key",
+                "--attestation-review-file",
+                reviewFile.toString())));
+  }
+
+  private static AttestationReviewFinding reviewFinding() {
+    return new AttestationReviewFinding(reviewDeclaration(), java.math.BigInteger.ONE);
+  }
+
+  private static AttestationCompromiseReview reviewDeclaration() {
+    return new AttestationCompromiseReview("a".repeat(64), java.math.BigInteger.ZERO, null);
+  }
+
+  private static CliAttestationJsonModels.AttestationReviewFindingPayload reviewFindingPayload() {
+    return new CliAttestationJsonModels.AttestationReviewFindingPayload(
+        "a".repeat(64), "0", null, "1");
+  }
+
   /** Configurable workflow double for the attestation transport matrix. */
   private static final class AttestationWorkflow extends CliBookWorkflowAdapter {
     private VerifyBookAttestationResult verifyBookResult;
@@ -489,12 +653,13 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
 
     @Override
     public ContractDecision<VerifyBookAttestationResult> verifyBookAttestation(
-        BookAccess bookAccess) {
+        BookAccess bookAccess, List<AttestationCompromiseReview> compromiseReviews) {
       return ContractDecision.accepted(verifyBookResult);
     }
 
     @Override
-    public ContractDecision<AttestationReviewResult> reviewAttestation(BookAccess bookAccess) {
+    public ContractDecision<AttestationReviewResult> reviewAttestation(
+        BookAccess bookAccess, List<AttestationCompromiseReview> compromiseReviews) {
       return ContractDecision.accepted(reviewResult);
     }
 

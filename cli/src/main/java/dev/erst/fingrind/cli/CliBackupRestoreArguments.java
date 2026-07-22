@@ -5,6 +5,7 @@ import dev.erst.fingrind.contract.protocol.ProtocolBookAccessOptions;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.core.attestation.AttestationAuthorizationLimits;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
+import dev.erst.fingrind.core.attestation.AttestationCustodian;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +21,7 @@ final class CliBackupRestoreArguments {
           ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE,
           ProtocolBookAccessOptions.BACKUP_FILE,
           ProtocolBookAccessOptions.BACKUP_KEY_FILE,
+          ProtocolOptions.Attestation.CUSTODIAN,
           ProtocolOptions.Attestation.PRINCIPAL_ID,
           ProtocolOptions.Attestation.KEY_FILE,
           ProtocolOptions.Attestation.PASSPHRASE_FILE,
@@ -86,6 +88,12 @@ final class CliBackupRestoreArguments {
                   values.backupBookKeyFilePath,
                   argumentIterator,
                   ProtocolBookAccessOptions.BACKUP_KEY_FILE);
+      case ProtocolOptions.Attestation.CUSTODIAN -> {
+        if (values.custodian != null) {
+          throw CliArgumentValueParser.invalid(argument, "Duplicate argument: " + argument);
+        }
+        values.custodian = CliAttestationCustodianArgument.require(argumentIterator);
+      }
       case ProtocolOptions.Attestation.PRINCIPAL_ID ->
           values.principalIds.add(
               CliArgumentValueParser.requireValidArgument(
@@ -124,7 +132,9 @@ final class CliBackupRestoreArguments {
           ProtocolOptions.Attestation.PRINCIPAL_ID,
           "Provide one through "
               + AttestationAuthorizationLimits.MAXIMUM_QUORUM
-              + " aligned attestation credential triples: "
+              + " aligned attestation credential triplets after selecting "
+              + ProtocolOptions.Attestation.CUSTODIAN
+              + ": "
               + ProtocolOptions.Attestation.PRINCIPAL_ID
               + ", "
               + ProtocolOptions.Attestation.KEY_FILE
@@ -132,11 +142,20 @@ final class CliBackupRestoreArguments {
               + ProtocolOptions.Attestation.PASSPHRASE_FILE
               + ".");
     }
+    if (values.custodian == null) {
+      throw CliArgumentValueParser.invalid(
+          ProtocolOptions.Attestation.CUSTODIAN,
+          "A "
+              + ProtocolOptions.Attestation.CUSTODIAN
+              + " argument is required for every attestation credential selection.");
+    }
+    AttestationCustodian custodian = values.custodian;
     try {
       List<AttestationCredentialSource> sources = new ArrayList<>(count);
       for (int index = 0; index < count; index++) {
         sources.add(
             new AttestationCredentialSource(
+                custodian,
                 values.principalIds.get(index),
                 values.keyFiles.get(index),
                 values.passphraseFiles.get(index)));
@@ -169,6 +188,7 @@ final class CliBackupRestoreArguments {
     private final List<UUID> principalIds = new ArrayList<>();
     private final List<Path> keyFiles = new ArrayList<>();
     private final List<Path> passphraseFiles = new ArrayList<>();
+    private @Nullable AttestationCustodian custodian;
     private @Nullable Path bookFilePath;
     private @Nullable Path newBookKeyFilePath;
     private @Nullable Path backupFilePath;

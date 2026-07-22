@@ -504,22 +504,39 @@ class AttestationBoundaryValueCoverageTest {
         () ->
             AttestationSigningSession.open(
                 List.of(
-                    new AttestationCredentialSource(principalId, keyPath, passphrasePath),
                     new AttestationCredentialSource(
-                        principalId, temporaryDirectory.resolve("other.fgatk"), passphrasePath))));
+                        dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+                        principalId,
+                        keyPath,
+                        passphrasePath),
+                    new AttestationCredentialSource(
+                        dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+                        principalId,
+                        temporaryDirectory.resolve("other.fgatk"),
+                        passphrasePath))));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             AttestationSigningSession.open(
                 List.of(
-                    new AttestationCredentialSource(UUID.randomUUID(), keyPath, passphrasePath),
                     new AttestationCredentialSource(
+                        dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+                        UUID.randomUUID(),
+                        keyPath,
+                        passphrasePath),
+                    new AttestationCredentialSource(
+                        dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
                         UUID.randomUUID(),
                         keyPath,
                         temporaryDirectory.resolve("other.passphrase")))));
     try (AttestationSigningSession session =
         AttestationSigningSession.open(
-            List.of(new AttestationCredentialSource(principalId, keyPath, passphrasePath)))) {
+            List.of(
+                new AttestationCredentialSource(
+                    dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+                    principalId,
+                    keyPath,
+                    passphrasePath)))) {
       session.close();
       assertThrows(IllegalStateException.class, () -> session.authorize(nullOf()));
       assertThrows(
@@ -530,6 +547,7 @@ class AttestationBoundaryValueCoverageTest {
         IllegalArgumentException.class,
         () ->
             new AttestationCredentialSource(
+                dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
                 principalId,
                 temporaryDirectory.resolve("same"),
                 temporaryDirectory.resolve("same")));
@@ -554,6 +572,7 @@ class AttestationBoundaryValueCoverageTest {
 
   private AttestationCredentialSource source(int index) {
     return new AttestationCredentialSource(
+        dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
         UUID.randomUUID(),
         temporaryDirectory.resolve("source-" + index + ".fgatk"),
         temporaryDirectory.resolve("source-" + index + ".passphrase"));

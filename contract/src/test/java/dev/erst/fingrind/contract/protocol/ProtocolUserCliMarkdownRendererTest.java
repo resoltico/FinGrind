@@ -211,6 +211,7 @@ class ProtocolUserCliMarkdownRendererTest {
     assertTrue(commandEnd >= 0, "unterminated command row for " + command);
     assertTrue(
         block.substring(commandStart, commandEnd).contains(credentialSyntax),
-        command + " must publish repeatable aligned attestation credential triples.");
+        command
+            + " must publish repeatable aligned attestation credential triplets under explicit custody.");
   }
 }

@@ -1,9 +1,11 @@
 package dev.erst.fingrind.cli.json;
 
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.copyList;
+import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /** Success payloads for non-mutating book-attestation verification and receipt operations. */
 public interface CliAttestationJsonModels {
@@ -12,7 +14,7 @@ public interface CliAttestationJsonModels {
       String headOrder,
       String operationHead,
       boolean reviewRequired,
-      List<String> reviewFindings)
+      List<AttestationReviewFindingPayload> reviewFindings)
       implements CliSuccessPayload {
     public VerifyBookPayload {
       bookId = requireText(bookId, "bookId");
@@ -25,12 +27,26 @@ public interface CliAttestationJsonModels {
     }
   }
 
-  record AttestationReviewPayload(String bookId, String headOrder, List<String> findings)
+  record AttestationReviewPayload(
+      String bookId, String headOrder, List<AttestationReviewFindingPayload> findings)
       implements CliSuccessPayload {
     public AttestationReviewPayload {
       bookId = requireText(bookId, "bookId");
       headOrder = requireText(headOrder, "headOrder");
       findings = copyList(findings, "findings");
+    }
+  }
+
+  record AttestationReviewFindingPayload(
+      String credentialKeyId,
+      String firstAffectedOrder,
+      @Nullable String lastAffectedOrder,
+      String operationOrder) {
+    public AttestationReviewFindingPayload {
+      credentialKeyId = requireText(credentialKeyId, "credentialKeyId");
+      firstAffectedOrder = requireText(firstAffectedOrder, "firstAffectedOrder");
+      lastAffectedOrder = requireOptionalText(lastAffectedOrder, "lastAffectedOrder");
+      operationOrder = requireText(operationOrder, "operationOrder");
     }
   }
 

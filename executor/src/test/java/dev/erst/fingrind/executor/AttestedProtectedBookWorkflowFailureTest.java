@@ -48,6 +48,7 @@ class AttestedProtectedBookWorkflowFailureTest {
     AttestationMaintenanceTestSupport.CredentialFixture mismatchedCredential =
         new AttestationMaintenanceTestSupport.CredentialFixture(
             new AttestationCredentialSource(
+                dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
                 UUID.fromString("10213243-5465-7687-98a9-babcbddcee00"),
                 credential.source().encryptedKeyFilePath(),
                 credential.source().passphraseFilePath()));

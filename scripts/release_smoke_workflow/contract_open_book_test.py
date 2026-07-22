@@ -4,6 +4,7 @@ import json
 import pathlib
 import tempfile
 
+from .attestation_arguments import signing_credential_arguments
 from .bridge_contract_support import base_bridge_config, smoke_path, write_bridge_script
 from .open_book_support import open_book
 
@@ -28,7 +29,9 @@ def assert_attested_open_book_arguments(repo_root: pathlib.Path) -> None:
         )
         payload = json.loads(open_book(config, {"openBook": "open-book"}))
         arguments = payload["arguments"]
-        assert arguments[-8:] == [
+        assert arguments[-10:] == [
+            "--attestation-custodian",
+            "file-pkcs8",
             "--attestation-founder-principal-id",
             "4bc17dd7-145f-4ea7-bb55-167ca2f6ac11",
             "--attestation-founder-key-file",
@@ -37,4 +40,14 @@ def assert_attested_open_book_arguments(repo_root: pathlib.Path) -> None:
             str(temporary_path / "fixture"),
             "--output",
             "json",
+        ]
+        assert signing_credential_arguments(config) == [
+            "--attestation-custodian",
+            "file-pkcs8",
+            "--attestation-principal-id",
+            "4bc17dd7-145f-4ea7-bb55-167ca2f6ac11",
+            "--attestation-key-file",
+            str(temporary_path / "fixture"),
+            "--attestation-passphrase-file",
+            str(temporary_path / "fixture"),
         ]

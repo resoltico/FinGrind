@@ -5,7 +5,7 @@ domain: BOOK_OPERATION_ATTESTATION
 updated: "2026-07-22"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["AttestedOperation", "AttestationAuthorizationLimits", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationCapability", "AttestationCredentialPurpose", "AttestationEvidence", "AttestationGenesis", "AttestationGrantState", "AttestationKeyFiles", "AttestationOperationKind", "AttestationOperationSigner", "AttestationPublicCredential", "AttestationRegistryMutation", "AttestationSigningCredential", "AttestationSystemWorkflowKind"]
+  symbols: ["AttestedOperation", "AttestationAuthorizationLimits", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationCapability", "AttestationCredentialPurpose", "AttestationCustodian", "AttestationCustodianNotSupportedException", "AttestationEvidence", "AttestationGenesis", "AttestationGrantState", "AttestationKeyFiles", "AttestationOperationKind", "AttestationOperationSigner", "AttestationPublicCredential", "AttestationRegistryMutation", "AttestationSigningCredential", "AttestationSystemWorkflowKind"]
 route:
   keywords: [verifiable-operation-attestation, operation-head, attestation-envelope, principal-quorum, credential-purpose, autonomous-workflow, semantic-profile, ed25519, immutable-preimage, operation-kind]
   questions: ["what does FinGrind book-operation attestation prove", "how is an attested operation encoded", "which credential may authorize a system operation", "which semantic profile governs a typed operation"]
@@ -96,7 +96,8 @@ public final class AttestationAuthorizationLimits {
 ### Constraints
 
 - Genesis: one through five founders; this bootstrap boundary remains separate.
-- Post-genesis: one through 64 distinct credential triples, the complete exact-quorum range
+- Post-genesis: one through 64 distinct credential triplets under one explicit custody selection,
+  the complete exact-quorum range
   admitted by `AttestationPolicyRule` and `AttestationRegistryMutation.PolicyRule`.
 - Reachability: an accepted policy always remains usable through public operation, manifest,
   receipt, restore, rekey, and policy-mutation signing boundaries.
@@ -113,10 +114,19 @@ encrypted key without decrypting its private material. A credential contains onl
 DER-SPKI bytes and its SHA-256 key identifier.
 
 The public CLI makes those two safe custody operations available as
-`generate-attestation-key-file` and `inspect-attestation-key-file`: the generator emits the
-canonical base64url SPKI required by `enroll-key` or `rollover-key`, while inspection makes an
-existing credential's SPKI recoverable for revocation or predecessor selection without exposing
-private material.
+`generate-attestation-key-file` and `inspect-attestation-key-file`. Both require the caller to
+select `--attestation-custodian file-pkcs8`; an unshipped selected custodian is refused rather than
+silently falling back. The generator emits the canonical base64url SPKI required by `enroll-key`
+or `rollover-key`, while inspection makes an existing credential's SPKI recoverable for revocation
+or predecessor selection without exposing private material.
+
+## `AttestationCustodian` And `AttestationCustodianNotSupportedException`
+
+`AttestationCustodian` is the closed explicit source of private attestation-key custody. Its only
+shipped wire value is `file-pkcs8`. The selection is exact: aliases, case normalization, and
+implicit file custody are absent. `AttestationCustodianNotSupportedException` retains an explicit
+unshipped value so the CLI can publish `custodian-not-supported` rather than misclassifying a
+selection failure as an invalid credential or storage error.
 
 ## `AttestationKeyFileMetadata`
 

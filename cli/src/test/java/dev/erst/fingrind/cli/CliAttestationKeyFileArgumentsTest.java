@@ -19,6 +19,8 @@ class CliAttestationKeyFileArgumentsTest {
             CliAttestationKeyFileArguments.parseGenerateAttestationKeyFileCommand(
                 List.of(
                     "generate-attestation-key-file",
+                    "--attestation-custodian",
+                    "file-pkcs8",
                     "--new-attestation-key-file",
                     "operator.fgatk",
                     "--attestation-passphrase-file",
@@ -31,15 +33,21 @@ class CliAttestationKeyFileArgumentsTest {
             CliAttestationKeyFileArguments.parseInspectAttestationKeyFileCommand(
                 List.of(
                     "inspect-attestation-key-file",
+                    "--attestation-custodian",
+                    "file-pkcs8",
                     "--attestation-key-file",
                     "operator.fgatk",
                     "--output",
                     "text")));
 
     assertEquals(Path.of("operator.fgatk"), generated.attestationKeyFilePath());
+    assertEquals(
+        dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8, generated.custodian());
     assertEquals(Path.of("operator.passphrase"), generated.passphraseFilePath());
     assertEquals(OutputMode.JSON, generated.outputMode());
     assertEquals(OutputMode.TEXT, inspected.outputMode());
+    assertEquals(
+        dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8, inspected.custodian());
   }
 
   @Test
@@ -109,5 +117,49 @@ class CliAttestationKeyFileArgumentsTest {
         () ->
             CliAttestationKeyFileArguments.parseInspectAttestationKeyFileCommand(
                 List.of("inspect-attestation-key-file", "--unsupported")));
+  }
+
+  @Test
+  void rejectsEveryIncompleteOrDuplicateExplicitCustodySelection() {
+    assertThrows(
+        CliArgumentsException.class,
+        () ->
+            CliAttestationKeyFileArguments.parseGenerateAttestationKeyFileCommand(
+                List.of(
+                    "generate-attestation-key-file",
+                    "--attestation-custodian",
+                    "file-pkcs8",
+                    "--attestation-custodian",
+                    "file-pkcs8")));
+    assertThrows(
+        CliArgumentsException.class,
+        () ->
+            CliAttestationKeyFileArguments.parseGenerateAttestationKeyFileCommand(
+                List.of("generate-attestation-key-file", "--attestation-custodian", "file-pkcs8")));
+    assertThrows(
+        CliArgumentsException.class,
+        () ->
+            CliAttestationKeyFileArguments.parseGenerateAttestationKeyFileCommand(
+                List.of(
+                    "generate-attestation-key-file",
+                    "--attestation-custodian",
+                    "file-pkcs8",
+                    "--new-attestation-key-file",
+                    "operator.fgatk")));
+    assertThrows(
+        CliArgumentsException.class,
+        () ->
+            CliAttestationKeyFileArguments.parseInspectAttestationKeyFileCommand(
+                List.of(
+                    "inspect-attestation-key-file",
+                    "--attestation-custodian",
+                    "file-pkcs8",
+                    "--attestation-custodian",
+                    "file-pkcs8")));
+    assertThrows(
+        CliArgumentsException.class,
+        () ->
+            CliAttestationKeyFileArguments.parseInspectAttestationKeyFileCommand(
+                List.of("inspect-attestation-key-file", "--attestation-custodian", "file-pkcs8")));
   }
 }

@@ -15,6 +15,7 @@ final class CliOpenBookArguments {
               ProtocolOptions.BookDefinition.FUNCTIONAL_CURRENCY,
               ProtocolOptions.BookDefinition.FISCAL_YEAR_START,
               ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE,
+              ProtocolOptions.Attestation.CUSTODIAN,
               ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
               ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
               ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE,

@@ -5,13 +5,19 @@ import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import java.util.ListIterator;
 import java.util.UUID;
 
-/** Parses founder credential triples and presentation selection for opening a book. */
+/** Parses founder credential triplets under one explicit custody selection for opening a book. */
 final class CliOpenBookFounderArguments {
   private CliOpenBookFounderArguments() {}
 
   static boolean apply(
       CliOpenBookArgumentValues values, String argument, ListIterator<String> argumentIterator) {
     switch (argument) {
+      case ProtocolOptions.Attestation.CUSTODIAN -> {
+        if (values.founders.custodian != null) {
+          throw CliArgumentValueParser.invalid(argument, "Duplicate argument: " + argument);
+        }
+        values.founders.custodian = CliAttestationCustodianArgument.require(argumentIterator);
+      }
       case ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID ->
           values.founders.principalIds.add(
               CliArgumentValueParser.requireValidArgument(

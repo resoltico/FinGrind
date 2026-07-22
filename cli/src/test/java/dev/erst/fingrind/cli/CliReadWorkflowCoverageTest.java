@@ -111,13 +111,15 @@ class CliReadWorkflowCoverageTest extends CliBookWorkflowFixtureSupport {
             new BookAccess.PassphraseSource.KeyFile(bookKeyFile),
             java.util.List.of(
                 new AttestationCredentialSource(
+                    dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
                     UUID.fromString("10213243-5465-7687-98a9-babcbddceeff"),
                     bookFile.resolveSibling(bookFile.getFileName() + ".founder.fgatk"),
                     bookFile.resolveSibling(bookFile.getFileName() + ".founder-passphrase"))));
     Path receiptDirectory = tempDirectory.resolve("receipts");
     java.nio.file.Files.createDirectories(receiptDirectory);
     Path receiptFile = receiptDirectory.resolve("current.fgr");
-    assertNotNull(workflow.reviewAttestation(attestedBookAccess).requireAccepted());
+    assertNotNull(
+        workflow.reviewAttestation(attestedBookAccess, java.util.List.of()).requireAccepted());
     assertNotNull(
         workflow.exportAttestationReceipt(attestedBookAccess, receiptFile).requireAccepted());
     assertInstanceOf(

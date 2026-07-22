@@ -8,6 +8,7 @@ import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.EntityProfile;
+import dev.erst.fingrind.core.attestation.AttestationCustodian;
 import java.util.ArrayList;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -69,7 +70,7 @@ final class CliOpenBookCommandFactory {
         || founderArguments.passphraseFiles.size() != founderCount) {
       throw CliArgumentValueParser.invalid(
           ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID,
-          "Provide one through five aligned founder triples: "
+          "Provide one through five aligned founder credential triplets under the selected custody: "
               + ProtocolOptions.Attestation.FOUNDER_PRINCIPAL_ID
               + ", "
               + ProtocolOptions.Attestation.FOUNDER_KEY_FILE
@@ -77,10 +78,13 @@ final class CliOpenBookCommandFactory {
               + ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE
               + ".");
     }
+    AttestationCustodian custodian =
+        require(founderArguments.custodian, ProtocolOptions.Attestation.CUSTODIAN);
     List<AttestationFounderInput> founders = new ArrayList<>(founderCount);
     for (int index = 0; index < founderCount; index++) {
       founders.add(
           new AttestationFounderInput(
+              custodian,
               founderArguments.principalIds.get(index),
               founderArguments.keyFiles.get(index),
               founderArguments.passphraseFiles.get(index)));

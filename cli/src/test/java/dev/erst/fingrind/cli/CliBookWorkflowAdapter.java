@@ -68,6 +68,7 @@ import dev.erst.fingrind.contract.tax.TaxObligationResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.attestation.AttestationCompromiseReview;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import java.nio.file.Path;
@@ -119,12 +120,13 @@ abstract class CliBookWorkflowAdapter extends CliBookLifecycleWorkflowAdapter {
 
   @Override
   public ContractDecision<VerifyBookAttestationResult> verifyBookAttestation(
-      BookAccess bookAccess) {
+      BookAccess bookAccess, List<AttestationCompromiseReview> compromiseReviews) {
     throw unexpectedInvocation("verifyBookAttestation");
   }
 
   @Override
-  public ContractDecision<AttestationReviewResult> reviewAttestation(BookAccess bookAccess) {
+  public ContractDecision<AttestationReviewResult> reviewAttestation(
+      BookAccess bookAccess, List<AttestationCompromiseReview> compromiseReviews) {
     throw unexpectedInvocation("reviewAttestation");
   }
 

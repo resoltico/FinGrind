@@ -14,6 +14,7 @@ final class ProtocolAttestationKeyFileOperations {
             "Generate Attestation Key File",
             List.of(),
             List.of(
+                ProtocolOptions.Attestation.CUSTODIAN + " <file-pkcs8>",
                 ProtocolOptions.Attestation.NEW_KEY_FILE + " <path>",
                 ProtocolOptions.Attestation.PASSPHRASE_FILE + " <path>",
                 ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
@@ -25,9 +26,10 @@ final class ProtocolAttestationKeyFileOperations {
                 ProtocolExampleStep.note(
                     "The passphrase file is caller-supplied custody material and must be a distinct owner-only UTF-8 secret file; FinGrind never prints it."),
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./secrets/operator.fgatk %s ./secrets/operator.passphrase"
+                    "fingrind %s %s file-pkcs8 %s ./secrets/operator.fgatk %s ./secrets/operator.passphrase"
                         .formatted(
                             OperationId.GENERATE_ATTESTATION_KEY_FILE.wireName(),
+                            ProtocolOptions.Attestation.CUSTODIAN,
                             ProtocolOptions.Attestation.NEW_KEY_FILE,
                             ProtocolOptions.Attestation.PASSPHRASE_FILE)))));
   }
@@ -40,6 +42,7 @@ final class ProtocolAttestationKeyFileOperations {
             "Inspect Attestation Key File",
             List.of(),
             List.of(
+                ProtocolOptions.Attestation.CUSTODIAN + " <file-pkcs8>",
                 ProtocolOptions.Attestation.KEY_FILE + " <path>",
                 ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
@@ -48,9 +51,10 @@ final class ProtocolAttestationKeyFileOperations {
             "Read the non-secret Ed25519 public identity embedded in the selected encrypted attestation credential without loading private key material or a passphrase.",
             List.of(
                 ProtocolExampleStep.command(
-                    "fingrind %s %s ./secrets/founder.fgatk"
+                    "fingrind %s %s file-pkcs8 %s ./secrets/founder.fgatk"
                         .formatted(
                             OperationId.INSPECT_ATTESTATION_KEY_FILE.wireName(),
+                            ProtocolOptions.Attestation.CUSTODIAN,
                             ProtocolOptions.Attestation.KEY_FILE)))));
   }
 }

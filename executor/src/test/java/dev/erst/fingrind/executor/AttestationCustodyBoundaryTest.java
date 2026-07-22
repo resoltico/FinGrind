@@ -39,7 +39,10 @@ class AttestationCustodyBoundaryTest {
             RECORDED_AT,
             List.of(
                 new AttestationFounderInput(
-                    PRINCIPAL_ID, source.encryptedKeyFilePath(), source.passphraseFilePath())));
+                    dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+                    PRINCIPAL_ID,
+                    source.encryptedKeyFilePath(),
+                    source.passphraseFilePath())));
 
     assertEquals(0, AttestationVerifier.verifyBook(List.of(genesis)).headOrder().intValueExact());
     try (AttestationSigningSession session =
@@ -59,7 +62,11 @@ class AttestationCustodyBoundaryTest {
     Files.writeString(passphrasePath, "test attestation passphrase\n");
     Files.writeString(invalidKeyPath, "not an encrypted attestation key");
     AttestationCredentialSource invalidSource =
-        new AttestationCredentialSource(PRINCIPAL_ID, invalidKeyPath, passphrasePath);
+        new AttestationCredentialSource(
+            dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+            PRINCIPAL_ID,
+            invalidKeyPath,
+            passphrasePath);
 
     IllegalArgumentException emptySigningSessionSelection =
         assertThrows(
@@ -88,6 +95,7 @@ class AttestationCustodyBoundaryTest {
                 RECORDED_AT,
                 List.of(
                     new AttestationFounderInput(
+                        dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
                         PRINCIPAL_ID,
                         invalidSource.encryptedKeyFilePath(),
                         invalidSource.passphraseFilePath()))));
@@ -140,6 +148,10 @@ class AttestationCustodyBoundaryTest {
     } finally {
       java.util.Arrays.fill(passphrase, '\0');
     }
-    return new AttestationCredentialSource(PRINCIPAL_ID, keyPath, passphrasePath);
+    return new AttestationCredentialSource(
+        dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+        PRINCIPAL_ID,
+        keyPath,
+        passphrasePath);
   }
 }

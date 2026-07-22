@@ -7,6 +7,7 @@ import dev.erst.fingrind.core.BookTemplateId;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.FiscalYearStart;
 import dev.erst.fingrind.core.InventoryCostingDoctrine;
+import dev.erst.fingrind.core.attestation.AttestationCustodian;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -29,6 +30,7 @@ final class CliOpenBookArgumentValues {
 
   /** Keeps the three repeated founder inputs aligned during one command-tail parse. */
   static final class FounderArguments {
+    @Nullable AttestationCustodian custodian;
     final List<UUID> principalIds = new ArrayList<>();
     final List<Path> keyFiles = new ArrayList<>();
     final List<Path> passphraseFiles = new ArrayList<>();

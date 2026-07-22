@@ -60,7 +60,7 @@ fingrind open-book --book-file ./books/acme.sqlite --book-key-file ./secrets/acm
   --entity-name "Acme Studio" --book-template-id OWNER_MANAGED_SERVICE \
   --accounting-basis CASH \
   --functional-currency EUR --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 \
-  --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-custodian file-pkcs8 --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
   --attestation-founder-key-file ./secrets/acme-founder.fgatk \
   --attestation-founder-passphrase-file ./secrets/acme-founder.passphrase
 ```
@@ -80,7 +80,7 @@ Replace the placeholder values in `./request.json`, then validate and commit:
 
 ```bash
 fingrind preflight-entry --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json
-fingrind record-sale-settled --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-key-file ./secrets/acme-founder.fgatk --attestation-passphrase-file ./secrets/acme-founder.passphrase
+fingrind record-sale-settled --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --request-file ./request.json --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 --attestation-key-file ./secrets/acme-founder.fgatk --attestation-passphrase-file ./secrets/acme-founder.passphrase
 ```
 
 Read a report and export a PDF back into the mounted host directory:

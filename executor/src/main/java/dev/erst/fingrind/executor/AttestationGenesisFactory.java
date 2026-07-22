@@ -39,8 +39,13 @@ public final class AttestationGenesisFactory {
   private static AttestationSigningCredential openFounderCredential(
       AttestationFounderInput founder) {
     try {
-      return AttestationKeyFiles.openOrCreateCredential(
-          founder.principalId(), founder.encryptedKeyFilePath(), founder.passphraseFilePath());
+      return switch (founder.custodian()) {
+        case FILE_PKCS8 ->
+            AttestationKeyFiles.openOrCreateCredential(
+                founder.principalId(),
+                founder.encryptedKeyFilePath(),
+                founder.passphraseFilePath());
+      };
     } catch (IOException | IllegalArgumentException exception) {
       throw new AttestationCredentialException(founder.encryptedKeyFilePath(), exception);
     }

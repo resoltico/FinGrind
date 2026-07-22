@@ -155,8 +155,10 @@ verification. All remain non-mutating: neither command appends evidence or chang
 An insufficient otherwise-readable signing set, for example, returns the rejected envelope code
 `attestation-quorum-below` with exit code `2`, never `internal-error`, and leaves no receipt file.
 A structurally invalid receipt publishes the exact closed `AttestationVerificationFailure` code in
-a `structural-invalid` rejected envelope; an unreadable or malformed receipt artifact uses
-`receipt-artifact-invalid`.
+a `structural-invalid` rejected envelope. An absent, non-regular, or raw-malformed selected receipt
+artifact uses `receipt-artifact-invalid`; an I/O failure while reading a regular selected file is a
+storage-runtime failure. Once raw bytes decode, receipt version, tuple, signature, quorum, and
+underlying-chain failures retain their own exact `attestation-*` code.
 
 | Verifier holds | Detects | Does not detect |
 |:--|:--|:--|

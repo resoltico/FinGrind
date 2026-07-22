@@ -47,8 +47,7 @@ final class AttestationArtifactVerifier {
       byte[] receiptBytes,
       AttestationBookVerification verification,
       AttestationReceiptRetention retention) {
-    AttestationDecodedEnvelope<AttestationReceiptPayload> receipt =
-        AttestationDecodedEnvelope.receipt(receiptBytes);
+    AttestationDecodedEnvelope<AttestationReceiptPayload> receipt = decodeReceipt(receiptBytes);
     AttestationReceiptPayload payload = receipt.payload();
     AttestationBookVerification checkedVerification =
         Objects.requireNonNull(verification, "verification");
@@ -144,6 +143,18 @@ final class AttestationArtifactVerifier {
                           checkedOperation.effectPreimage());
                     })
                 .toList()));
+  }
+
+  private static AttestationDecodedEnvelope<AttestationReceiptPayload> decodeReceipt(
+      byte[] receiptBytes) {
+    try {
+      return AttestationDecodedEnvelope.receipt(receiptBytes);
+    } catch (AttestationAuthorizationException exception) {
+      if (exception.failure() == AttestationAuthorizationFailure.UNSUPPORTED_VERSION) {
+        throw exception;
+      }
+      throw new AttestationReceiptArtifactException(exception);
+    }
   }
 
   private static AttestationVerification publicVerification(

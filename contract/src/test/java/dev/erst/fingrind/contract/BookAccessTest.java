@@ -96,6 +96,7 @@ class BookAccessTest {
 
   private static AttestationCredentialSource credential(String principal, String keyName) {
     return new AttestationCredentialSource(
+        dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
         UUID.nameUUIDFromBytes(principal.getBytes(java.nio.charset.StandardCharsets.UTF_8)),
         Path.of("keys", keyName + ".fgatk"),
         Path.of("keys", keyName + ".passphrase"));

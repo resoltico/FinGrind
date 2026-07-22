@@ -13,7 +13,18 @@ public final class AttestationVerifier {
    * @throws AttestationVerificationException when the first canonical attestation rule fails
    */
   public static AttestationVerification verifyBook(List<AttestationEvidence> operations) {
+    return verifyBook(operations, List.of());
+  }
+
+  /**
+   * Verifies one complete operation chain and derives non-persisted compromise-review findings.
+   *
+   * @throws AttestationVerificationException when the first canonical attestation rule fails
+   */
+  public static AttestationVerification verifyBook(
+      List<AttestationEvidence> operations, List<AttestationCompromiseReview> compromiseReviews) {
     Objects.requireNonNull(operations, "operations");
+    Objects.requireNonNull(compromiseReviews, "compromiseReviews");
     if (operations.isEmpty()) {
       throw new AttestationVerificationException("attestation-preimage-invalid");
     }
@@ -32,9 +43,13 @@ public final class AttestationVerifier {
                                 evidence.requestPreimage(),
                                 evidence.effectPreimage());
                           })
-                      .toList()));
+                      .toList()),
+              compromiseReviews);
       return new AttestationVerification(
-          verification.bookId(), verification.headOrder(), verification.head().bytes(), List.of());
+          verification.bookId(),
+          verification.headOrder(),
+          verification.head().bytes(),
+          verification.reviewFindings());
     } catch (AttestationAuthorizationException exception) {
       throw new AttestationVerificationException(exception.failure().code(), exception);
     }

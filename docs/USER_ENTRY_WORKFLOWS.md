@@ -68,7 +68,7 @@ fingrind \
   --book-file ./books/acme.sqlite \
   --book-key-file ./secrets/acme.book-key \
   --request-file ./basic-posting-request.json \
-  --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
   --attestation-key-file ./secrets/founder.fgatk \
   --attestation-passphrase-file ./secrets/founder.passphrase
 ```
@@ -180,7 +180,7 @@ fingrind \
   --accounting-basis CASH \
   --functional-currency EUR \
   --fiscal-year-start 01-01 --book-start-effective-date 2026-01-01 \
-  --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
+  --attestation-custodian file-pkcs8 --attestation-founder-principal-id 123e4567-e89b-12d3-a456-426614174000 \
   --attestation-founder-key-file ./secrets/founder.fgatk \
   --attestation-founder-passphrase-file ./secrets/founder.passphrase \
   --book-passphrase-prompt

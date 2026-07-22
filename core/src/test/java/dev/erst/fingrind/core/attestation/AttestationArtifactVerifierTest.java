@@ -8,6 +8,8 @@ import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.g
 import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.genesisRequestPreimage;
 import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.signedGenesisEnvelope;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
@@ -21,6 +23,28 @@ import org.junit.jupiter.api.Test;
 
 /** Proves that external artifacts bind to the book reconstructed from their own snapshot bytes. */
 class AttestationArtifactVerifierTest {
+  @Test
+  void distinguishesUndecodableReceiptBytesFromAnUnsupportedDecodedReceiptVersion() {
+    TestCredential founder = credential();
+    AttestationBookVerification verification = AttestationBookVerifier.verify(book(founder));
+
+    AttestationReceiptArtifactException malformed =
+        assertThrows(
+            AttestationReceiptArtifactException.class,
+            () ->
+                AttestationArtifactVerifier.verifyReceipt(
+                    new byte[] {0}, verification, AttestationReceiptRetention.INDEPENDENT));
+    assertInstanceOf(AttestationAuthorizationException.class, malformed.getCause());
+
+    byte[] unsupportedVersion = receipt(founder, verification);
+    unsupportedVersion["FGATTRC1".length()] = 2;
+    assertFailure(
+        AttestationAuthorizationFailure.UNSUPPORTED_VERSION,
+        () ->
+            AttestationArtifactVerifier.verifyReceipt(
+                unsupportedVersion, verification, AttestationReceiptRetention.INDEPENDENT));
+  }
+
   @Test
   void verifiesAManifestAgainstItsSnapshotChainAndReportsANonIndependentReceipt() {
     TestCredential founder = credential();

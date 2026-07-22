@@ -10,11 +10,14 @@ public final class AttestationVerification {
   private final UUID bookId;
   private final BigInteger headOrder;
   private final byte[] operationHead;
-  private final List<String> reviewFindings;
+  private final List<AttestationReviewFinding> reviewFindings;
 
-  /** Defensively owns the head bytes and immutable review finding codes. */
+  /** Defensively owns the head bytes and immutable compromise-review findings. */
   public AttestationVerification(
-      UUID bookId, BigInteger headOrder, byte[] operationHead, List<String> reviewFindings) {
+      UUID bookId,
+      BigInteger headOrder,
+      byte[] operationHead,
+      List<AttestationReviewFinding> reviewFindings) {
     this.bookId = Objects.requireNonNull(bookId, "bookId");
     this.headOrder = Objects.requireNonNull(headOrder, "headOrder");
     if (this.headOrder.signum() < 0 || this.headOrder.bitLength() > Long.SIZE) {
@@ -42,8 +45,8 @@ public final class AttestationVerification {
     return operationHead.clone();
   }
 
-  /** Returns immutable, non-persisted review finding identifiers. */
-  public List<String> reviewFindings() {
+  /** Returns immutable, non-persisted compromise-review findings. */
+  public List<AttestationReviewFinding> reviewFindings() {
     return reviewFindings;
   }
 

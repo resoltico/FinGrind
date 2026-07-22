@@ -115,7 +115,11 @@ class SqliteAttestedLifecycleFieldTest extends SqliteArtifactPublicationTestSupp
     Path encryptedKeyPath = credentialDirectory.resolve("founder.fgatk");
     Path passphrasePath = credentialDirectory.resolve("founder.passphrase");
     Files.writeString(passphrasePath, "field-test-attestation-passphrase\n");
-    return new AttestationCredentialSource(PRINCIPAL_ID, encryptedKeyPath, passphrasePath);
+    return new AttestationCredentialSource(
+        dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+        PRINCIPAL_ID,
+        encryptedKeyPath,
+        passphrasePath);
   }
 
   private BookAccess attestedBookAccess(
@@ -137,6 +141,7 @@ class SqliteAttestedLifecycleFieldTest extends SqliteArtifactPublicationTestSupp
             RECORDED_AT,
             List.of(
                 new AttestationFounderInput(
+                    dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
                     credentialSource.principalId(),
                     credentialSource.encryptedKeyFilePath(),
                     credentialSource.passphraseFilePath())));

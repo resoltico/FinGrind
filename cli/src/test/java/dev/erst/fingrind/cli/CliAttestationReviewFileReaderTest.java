@@ -1,0 +1,65 @@
+package dev.erst.fingrind.cli;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
+import dev.erst.fingrind.core.attestation.AttestationCompromiseReview;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+/** Exhaustively exercises strict compromise-review artifact admission and refusal paths. */
+class CliAttestationReviewFileReaderTest {
+  private static final String KEY_ID = "a".repeat(64);
+
+  @TempDir Path tempDirectory;
+
+  @Test
+  void readsCanonicalBoundedReviewsWithAnExplicitLastAffectedOrder() throws Exception {
+    Path reviewFile = tempDirectory.resolve("review.json");
+    Files.writeString(
+        reviewFile,
+        """
+        {"compromiseReviews":[{"credentialKeyId":"%s","firstAffectedOrder":"1","lastAffectedOrder":"3"}]}
+        """
+            .formatted(KEY_ID));
+
+    assertEquals(
+        List.of(new AttestationCompromiseReview(KEY_ID, BigInteger.ONE, BigInteger.valueOf(3))),
+        new CliAttestationReviewFileReader().read(reviewFile));
+  }
+
+  @Test
+  void refusesMissingDuplicateOversizedAndMalformedReviewArtifacts() throws Exception {
+    assertReviewFileArgument(
+        () -> new CliAttestationReviewFileReader().read(tempDirectory.resolve("missing.json")));
+
+    Path duplicateKeys = tempDirectory.resolve("duplicate-keys.json");
+    Files.writeString(duplicateKeys, "{\"compromiseReviews\":[],\"compromiseReviews\":[]}");
+    assertReviewFileArgument(() -> new CliAttestationReviewFileReader().read(duplicateKeys));
+
+    Path oversized = tempDirectory.resolve("oversized.json");
+    Files.write(oversized, new byte[ProtocolInteractionLimits.REQUEST_PAYLOAD_MAX_BYTES + 1]);
+    assertReviewFileArgument(() -> new CliAttestationReviewFileReader().read(oversized));
+
+    Path malformed = tempDirectory.resolve("malformed.json");
+    Files.writeString(malformed, "{not-json", StandardCharsets.UTF_8);
+    CliArgumentsException exception =
+        assertThrows(
+            CliArgumentsException.class,
+            () -> new CliAttestationReviewFileReader().read(malformed));
+    assertEquals("--attestation-review-file", exception.argument());
+    assertNotNull(exception.getCause());
+  }
+
+  private static void assertReviewFileArgument(org.junit.jupiter.api.function.Executable action) {
+    CliArgumentsException exception = assertThrows(CliArgumentsException.class, action);
+    assertEquals("--attestation-review-file", exception.argument());
+  }
+}

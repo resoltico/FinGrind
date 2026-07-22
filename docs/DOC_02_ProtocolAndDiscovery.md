@@ -551,12 +551,14 @@ public final class ProtocolAttestationRegistryRequestFields
 ## Attestation Credential Custody Commands
 
 `generate-attestation-key-file` owns the off-book private-credential creation boundary. It takes
-an absent `--new-attestation-key-file` target plus a separate
-`--attestation-passphrase-file`, publishes the encrypted credential as an
+an explicit `--attestation-custodian file-pkcs8`, an absent `--new-attestation-key-file` target,
+and a separate `--attestation-passphrase-file`, publishes the encrypted credential as an
 `attestation-key-file` artifact, and returns only `credentialSpki` and its derived `keyId`.
-`inspect-attestation-key-file` takes only `--attestation-key-file` and returns those same public
-values without decrypting the private key or reading a passphrase. Both commands are ordinary
-JSON-envelope surfaces in the machine contract; neither accepts a request document.
+`inspect-attestation-key-file` also requires the explicit custodian selection plus
+`--attestation-key-file`, and returns those same public values without decrypting the private key
+or reading a passphrase. `file-pkcs8` is the only shipped selection; another explicit value is a
+`custodian-not-supported` refusal rather than a fallback. Both commands are ordinary JSON-envelope
+surfaces in the machine contract; neither accepts a request document.
 
 ## `ProtocolBookRequestFieldSets`, `ProtocolPostingRequestFieldSets`, `ProtocolPostingNestedFieldSets`, And `ProtocolLedgerPlanRequestFieldSets`
 

@@ -12,8 +12,10 @@ import dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.core.attestation.AttestationCapability;
+import dev.erst.fingrind.core.attestation.AttestationCompromiseReview;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
+import dev.erst.fingrind.core.attestation.AttestationKeyFiles;
 import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
@@ -26,6 +28,7 @@ import java.nio.file.attribute.PosixFilePermission;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -50,9 +53,10 @@ class AttestationInspectionServiceTest {
 
     VerifyBookAttestationResult.Valid verified =
         assertInstanceOf(
-            VerifyBookAttestationResult.Valid.class, service.verifyBook(access).requireAccepted());
+            VerifyBookAttestationResult.Valid.class,
+            service.verifyBook(access, List.of()).requireAccepted());
     assertEquals(0, verified.headOrder().intValueExact());
-    assertEquals(verified.bookId(), service.review(access).requireAccepted().bookId());
+    assertEquals(verified.bookId(), service.review(access, List.of()).requireAccepted().bookId());
 
     ExportAttestationReceiptResult.Exported exported =
         assertInstanceOf(
@@ -70,18 +74,25 @@ class AttestationInspectionServiceTest {
         dev.erst.fingrind.contract.runtime.ContractDecision.Rejected.class,
         service.exportReceipt(access, receiptPath));
     Files.writeString(retainedDirectory.resolve("malformed.fgar"), "not an attestation receipt");
-    assertInstanceOf(
-        VerifyAttestationReceiptResult.Invalid.class,
-        service
-            .verifyReceipt(access, retainedDirectory.resolve("malformed.fgar"))
-            .requireAccepted());
+    VerifyAttestationReceiptResult.Invalid malformed =
+        assertInstanceOf(
+            VerifyAttestationReceiptResult.Invalid.class,
+            service
+                .verifyReceipt(access, retainedDirectory.resolve("malformed.fgar"))
+                .requireAccepted());
+    assertEquals(
+        AttestationVerificationFailure.RECEIPT_ARTIFACT_INVALID.wireCode(),
+        malformed.failureCode());
     Path alteredReceiptPath = retainedDirectory.resolve("altered.fgar");
     byte[] alteredReceipt = Files.readAllBytes(receiptPath);
     alteredReceipt[alteredReceipt.length - 1] ^= 1;
     Files.write(alteredReceiptPath, alteredReceipt);
-    assertInstanceOf(
-        VerifyAttestationReceiptResult.Invalid.class,
-        service.verifyReceipt(access, alteredReceiptPath).requireAccepted());
+    VerifyAttestationReceiptResult.Invalid altered =
+        assertInstanceOf(
+            VerifyAttestationReceiptResult.Invalid.class,
+            service.verifyReceipt(access, alteredReceiptPath).requireAccepted());
+    assertEquals(
+        AttestationVerificationFailure.SIGNATURE_INVALID.wireCode(), altered.failureCode());
     Path unreadableReceiptPath = retainedDirectory.resolve("unreadable.fgar");
     Files.writeString(unreadableReceiptPath, "unreadable receipt");
     Files.setPosixFilePermissions(unreadableReceiptPath, Set.of());
@@ -116,6 +127,39 @@ class AttestationInspectionServiceTest {
                 .requireAccepted());
 
     assertEquals(List.of("receipt-not-independent"), exported.warnings());
+  }
+
+  @Test
+  void appliesExternalCompromiseReviewDeclarationsWithoutChangingVerifiedEvidence()
+      throws IOException {
+    AttestationMaintenanceTestSupport.CredentialFixture credential = credential();
+    Path bookPath = temporaryDirectory.resolve("book/live.sqlite");
+    BookAccess access = AttestationMaintenanceTestSupport.bookAccess(bookPath, credential);
+    AttestationInspectionService service = service(bookPath, List.of(genesis(credential)));
+    AttestationCompromiseReview review =
+        new AttestationCompromiseReview(
+            HexFormat.of()
+                .formatHex(
+                    AttestationKeyFiles.loadPublicCredential(
+                            credential.source().encryptedKeyFilePath())
+                        .keyId()),
+            java.math.BigInteger.ZERO,
+            null);
+
+    VerifyBookAttestationResult.Valid verified =
+        assertInstanceOf(
+            VerifyBookAttestationResult.Valid.class,
+            service.verifyBook(access, List.of(review)).requireAccepted());
+
+    assertTrue(verified.reviewRequired());
+    assertEquals(
+        List.of(
+            new dev.erst.fingrind.core.attestation.AttestationReviewFinding(
+                review, java.math.BigInteger.ZERO)),
+        verified.reviewFindings());
+    assertEquals(
+        verified.reviewFindings(),
+        service.review(access, List.of(review)).requireAccepted().findings());
   }
 
   @Test
@@ -172,10 +216,10 @@ class AttestationInspectionServiceTest {
 
     assertInstanceOf(
         VerifyBookAttestationResult.Invalid.class,
-        structurallyInvalid.verifyBook(access).requireAccepted());
+        structurallyInvalid.verifyBook(access, List.of()).requireAccepted());
     assertInstanceOf(
         dev.erst.fingrind.contract.runtime.ContractDecision.Rejected.class,
-        structurallyInvalid.review(access));
+        structurallyInvalid.review(access, List.of()));
 
     AttestationInspectionService valid = service(bookPath, List.of(genesis(credential)));
     BookAccess credentialFreeAccess =
@@ -196,6 +240,7 @@ class AttestationInspectionServiceTest {
             new BookAccess.PassphraseSource.KeyFile(bookPath.resolveSibling("book.key")),
             List.of(
                 new AttestationCredentialSource(
+                    dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
                     credential.source().principalId(),
                     temporaryDirectory.resolve("missing.fgatk"),
                     temporaryDirectory.resolve("missing.passphrase"))));
@@ -248,7 +293,7 @@ class AttestationInspectionServiceTest {
             new VerificationFailure(bookPath, ProtectedBookVerificationFailure.MISSING)));
     assertInstanceOf(
         dev.erst.fingrind.contract.runtime.ContractDecision.Rejected.class,
-        new AttestationInspectionService(CLOCK, verificationFailure).verifyBook(access));
+        new AttestationInspectionService(CLOCK, verificationFailure).verifyBook(access, List.of()));
 
     AttestationMaintenanceTestSupport.Store storageFailure =
         new AttestationMaintenanceTestSupport.Store(bookPath, List.of(genesis(credential)));
@@ -262,7 +307,7 @@ class AttestationInspectionServiceTest {
                 null)));
     assertInstanceOf(
         dev.erst.fingrind.contract.runtime.ContractDecision.Rejected.class,
-        new AttestationInspectionService(CLOCK, storageFailure).verifyBook(access));
+        new AttestationInspectionService(CLOCK, storageFailure).verifyBook(access, List.of()));
   }
 
   private AttestationInspectionService service(Path bookPath, List<AttestationEvidence> evidence) {
@@ -288,12 +333,12 @@ class AttestationInspectionServiceTest {
 
     assertEquals(
         List.of("receipt-not-independent", "receipt-staging-cleanup-required:" + stagedDirectory),
-        AttestationInspectionService.receiptPublicationWarnings(
+        AttestationReceiptOperations.publicationWarnings(
             bookPath,
             receiptPath,
-            AttestationInspectionService.deleteStagedReceipt(stagedDirectory)));
+            AttestationReceiptOperations.deleteStagedReceipt(stagedDirectory)));
 
-    AttestationInspectionService.deleteStagedQuietly(stagedDirectory);
+    AttestationReceiptOperations.deleteStagedQuietly(stagedDirectory);
     assertTrue(Files.isDirectory(stagedDirectory));
     Files.delete(stagedDirectory.resolve("retained-after-failure"));
     Files.delete(stagedDirectory);

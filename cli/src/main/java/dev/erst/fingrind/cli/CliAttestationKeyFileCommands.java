@@ -1,14 +1,19 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.protocol.OutputMode;
+import dev.erst.fingrind.core.attestation.AttestationCustodian;
 import java.nio.file.Path;
 import java.util.Objects;
 
 /** Standalone CLI commands for off-book attestation credential custody. */
 record GenerateAttestationKeyFile(
-    Path attestationKeyFilePath, Path passphraseFilePath, OutputMode outputMode)
+    AttestationCustodian custodian,
+    Path attestationKeyFilePath,
+    Path passphraseFilePath,
+    OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
   GenerateAttestationKeyFile {
+    Objects.requireNonNull(custodian, "custodian");
     Objects.requireNonNull(attestationKeyFilePath, "attestationKeyFilePath");
     Objects.requireNonNull(passphraseFilePath, "passphraseFilePath");
     Objects.requireNonNull(outputMode, "outputMode");
@@ -19,14 +24,16 @@ record GenerateAttestationKeyFile(
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
         .runGenerateAttestationKeyFileCommand(
-            attestationKeyFilePath, passphraseFilePath, outputMode);
+            custodian, attestationKeyFilePath, passphraseFilePath, outputMode);
   }
 }
 
 /* Standalone CLI command that reveals only an encrypted credential's public identity. */
-record InspectAttestationKeyFile(Path attestationKeyFilePath, OutputMode outputMode)
+record InspectAttestationKeyFile(
+    AttestationCustodian custodian, Path attestationKeyFilePath, OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
   InspectAttestationKeyFile {
+    Objects.requireNonNull(custodian, "custodian");
     Objects.requireNonNull(attestationKeyFilePath, "attestationKeyFilePath");
     Objects.requireNonNull(outputMode, "outputMode");
   }
@@ -35,6 +42,6 @@ record InspectAttestationKeyFile(Path attestationKeyFilePath, OutputMode outputM
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
-        .runInspectAttestationKeyFileCommand(attestationKeyFilePath, outputMode);
+        .runInspectAttestationKeyFileCommand(custodian, attestationKeyFilePath, outputMode);
   }
 }

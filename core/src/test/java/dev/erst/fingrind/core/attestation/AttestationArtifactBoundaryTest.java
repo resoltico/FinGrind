@@ -47,7 +47,11 @@ class AttestationArtifactBoundaryTest {
     AttestationVerification source = AttestationVerifier.verifyBook(List.of(genesis));
     byte[] snapshot = new byte[] {4, 8, 15, 16, 23, 42};
     AttestationCredentialSource sourceCredential =
-        new AttestationCredentialSource(principalId, keyPath, passphrasePath);
+        new AttestationCredentialSource(
+            dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+            principalId,
+            keyPath,
+            passphrasePath);
     byte[] artifact;
     byte[] receipt;
     try (AttestationSigningSession session =

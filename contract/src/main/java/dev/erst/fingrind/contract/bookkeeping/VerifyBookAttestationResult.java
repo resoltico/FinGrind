@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
+import dev.erst.fingrind.core.attestation.AttestationReviewFinding;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Objects;
@@ -11,7 +12,10 @@ public sealed interface VerifyBookAttestationResult
 
   /** Complete valid chain and any non-persisted compromise-review findings. */
   record Valid(
-      UUID bookId, BigInteger headOrder, String operationHeadHex, List<String> reviewFindings)
+      UUID bookId,
+      BigInteger headOrder,
+      String operationHeadHex,
+      List<AttestationReviewFinding> reviewFindings)
       implements VerifyBookAttestationResult {
     public Valid {
       Objects.requireNonNull(bookId, "bookId");
