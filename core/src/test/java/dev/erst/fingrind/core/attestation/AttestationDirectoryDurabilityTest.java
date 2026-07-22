@@ -152,7 +152,7 @@ class AttestationDirectoryDurabilityTest {
         AttestationDirectoryDurability.OperatingSystem.WINDOWS,
         AttestationDirectoryDurability.operatingSystem("Windows 11"));
     assertEquals(
-        "Attestation key directory durability is supported only on macOS, Linux, and Windows. Detected: Solaris",
+        "Attestation-controlled artifact directory durability is supported only on macOS, Linux, and Windows. Detected: Solaris",
         assertThrows(
                 IOException.class, () -> AttestationDirectoryDurability.operatingSystem("Solaris"))
             .getMessage());
@@ -160,7 +160,7 @@ class AttestationDirectoryDurabilityTest {
     Module nativeAccessDisabled = ModuleLayer.boot().findModule("java.sql").orElseThrow();
     assertFalse(nativeAccessDisabled.isNativeAccessEnabled());
     assertEquals(
-        "Attestation key directory durability requires JVM native access. Rerun with --enable-native-access=java.sql.",
+        "Attestation-controlled artifact directory durability requires JVM native access. Rerun with --enable-native-access=java.sql.",
         assertThrows(
                 IOException.class,
                 () -> AttestationDirectoryDurability.requireNativeAccess(nativeAccessDisabled))
@@ -350,7 +350,8 @@ class AttestationDirectoryDurabilityTest {
 
   private static void assertDurabilityFailure(IOException exception) {
     assertEquals(
-        "Failed to make the published attestation key directory durable.", exception.getMessage());
+        "Failed to make the published attestation-controlled artifact directory durable.",
+        exception.getMessage());
   }
 
   /** Simulates a native platform binding and records both native close and resource release. */

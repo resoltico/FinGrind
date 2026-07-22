@@ -34,15 +34,7 @@ begin
             posting_fact.posting_id = new.posting_id
             and posting_fact.posting_kind <> 'FISCAL_YEAR_CLOSE'
     );
-    select raise(fail, 'fiscal-year-close links must reference system-authored postings.')
-    where exists (
-        select 1
-        from posting_fact
-        where
-            posting_fact.posting_id = new.posting_id
-            and posting_fact.actor_type <> 'SYSTEM'
-    );
-    select raise(fail, 'fiscal-year-close links must reference system-source postings.')
+    select raise(fail, 'fiscal-year-close links must reference system-generated postings.')
     where exists (
         select 1
         from posting_fact

@@ -127,6 +127,8 @@ final class SqliteStoreMutationOperations {
         activeDatabase -> {
           SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
           try {
+            SqliteAttestationEvidenceStore.ObservedHead observedHead =
+                SqliteAttestationEvidenceStore.observeRequired(activeDatabase);
             transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
             Decision decision =
                 postingAcceptancePolicy.decisionFor(
@@ -149,6 +151,7 @@ final class SqliteStoreMutationOperations {
                     accepted.acceptedPosting().materialize(postingId, postingDraft.provenance());
                 SqliteAttestationEvidenceStore.appendAuthorized(
                     activeDatabase,
+                    observedHead,
                     POST_ENTRY_OPERATION,
                     postingFact.provenance().recordedAt(),
                     AttestationPostingMutationProjection.project(

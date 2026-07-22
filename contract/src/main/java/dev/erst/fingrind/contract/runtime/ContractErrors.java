@@ -90,6 +90,11 @@ public final class ContractErrors {
         "Attested-book authorization refused because a selected founder credential or passphrase source is invalid.",
         6,
         ContractResponse.FailureCategory.PRECONDITION),
+    STALE_HEAD(
+        "stale-head",
+        "Attested-book mutation refused because the authenticated operation head advanced after signing and before atomic admission.",
+        2,
+        ContractResponse.FailureCategory.PRECONDITION),
     BOOK_MAINTENANCE_IN_PROGRESS(
         "book-maintenance-in-progress",
         "Book access refused because an exclusive FinGrind maintenance workflow currently holds the selected protected book.",
@@ -177,7 +182,22 @@ public final class ContractErrors {
       if (this == INVALID_REQUEST) {
         return invalidRequestDetailFields();
       }
+      if (this == STALE_HEAD) {
+        return staleHeadDetailFields();
+      }
       return List.of();
+    }
+
+    private static List<ContractResponse.FieldDescriptor> staleHeadDetailFields() {
+      return List.of(
+          new ContractResponse.FieldDescriptor(
+              "observedHead",
+              "Lowercase hexadecimal operation head used for the refused signature."),
+          new ContractResponse.FieldDescriptor(
+              "currentHead", "Lowercase hexadecimal operation head authenticated at admission."),
+          new ContractResponse.FieldDescriptor(
+              "currentOrder",
+              "Canonical decimal order of the authenticated current operation head."));
     }
 
     private static List<ContractResponse.FieldDescriptor> invalidRequestDetailFields() {

@@ -59,6 +59,11 @@ final class CliFailureOutputRenderer {
         case CliErrorJsonModels.InvalidRequestDetails invalidRequestDetails ->
             rows.add(
                 List.of("Violations", CliTextFormat.joined(invalidRequestDetails.violations())));
+        case CliErrorJsonModels.StaleHeadDetails staleHeadDetails -> {
+          rows.add(List.of("Observed head", staleHeadDetails.observedHead()));
+          rows.add(List.of("Current head", staleHeadDetails.currentHead()));
+          rows.add(List.of("Current order", staleHeadDetails.currentOrder()));
+        }
       }
     }
     if (document.pathFailure() != null) {

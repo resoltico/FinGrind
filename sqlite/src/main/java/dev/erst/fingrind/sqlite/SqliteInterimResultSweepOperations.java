@@ -116,10 +116,13 @@ final class SqliteInterimResultSweepOperations {
             if (!executionSupport.isInitializedBook(activeDatabase)) {
               return bookNotInitializedOutcome();
             }
+            SqliteAttestationEvidenceStore.ObservedHead observedHead =
+                SqliteAttestationEvidenceStore.observeRequired(activeDatabase);
             transactionOwnership = executionSupport.beginImmediateIfNeeded(activeDatabase);
             var sweptInterimResult =
                 postingPersistence.persistInterimResultSweep(
                     activeDatabase,
+                    observedHead,
                     interimResultSweepDraft,
                     postingIdGenerator,
                     attestationAuthorizer);
@@ -163,6 +166,8 @@ final class SqliteInterimResultSweepOperations {
             if (!executionSupport.isInitializedBook(activeDatabase)) {
               return bookNotInitializedOutcome();
             }
+            SqliteAttestationEvidenceStore.ObservedHead observedHead =
+                SqliteAttestationEvidenceStore.observeRequired(activeDatabase);
             transactionOwnership = executionSupport.beginImmediateIfNeeded(activeDatabase);
             List<RegisteredAccount> accounts = loadAllAccounts(activeDatabase);
             var resultHoldingSelection = planner.resultHoldingAccount(bookIdentity, accounts);
@@ -189,6 +194,7 @@ final class SqliteInterimResultSweepOperations {
             var sweptInterimResult =
                 postingPersistence.persistInterimResultSweep(
                     activeDatabase,
+                    observedHead,
                     new InterimResultSweepDraft(
                         sweepPlanning.requiredReportingPeriod(),
                         resultHoldingAccount.accountCode(),

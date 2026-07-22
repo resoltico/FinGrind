@@ -682,7 +682,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 50`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 51`
 
 ## `ProtectedBookFormatContract`
 

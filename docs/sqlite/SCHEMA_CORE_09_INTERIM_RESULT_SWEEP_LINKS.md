@@ -46,15 +46,7 @@ begin
             posting_fact.posting_id = new.posting_id
             and posting_fact.posting_kind <> 'INTERIM_RESULT_SWEEP'
     );
-    select raise(fail, 'interim-result-sweep links must reference system-authored postings.')
-    where exists (
-        select 1
-        from posting_fact
-        where
-            posting_fact.posting_id = new.posting_id
-            and posting_fact.actor_type <> 'SYSTEM'
-    );
-    select raise(fail, 'interim-result-sweep links must reference system-source postings.')
+    select raise(fail, 'interim-result-sweep links must reference system-generated postings.')
     where exists (
         select 1
         from posting_fact

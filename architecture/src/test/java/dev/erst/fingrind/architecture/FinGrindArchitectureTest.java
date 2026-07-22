@@ -51,6 +51,8 @@ final class FinGrindArchitectureTest {
       "dev.erst.fingrind.core.attestation.AttestationOperationKind";
   private static final String ATTESTATION_EVIDENCE_STORE =
       "dev.erst.fingrind.sqlite.SqliteAttestationEvidenceStore";
+  private static final String ATTESTATION_DIRECTORY_DURABILITY =
+      "dev.erst.fingrind.core.attestation.AttestationDirectoryDurability";
   private static final String RUNTIME_CLOCK_SEAM = "dev.erst.fingrind.core.SystemUtcClock";
   private static final Set<String> RUNTIME_IO_SEAM =
       Set.of(
@@ -73,6 +75,19 @@ final class FinGrindArchitectureTest {
           "dev.erst.fingrind.sqlite.SqliteStoreAccountRegistryMutationOperations",
           "dev.erst.fingrind.sqlite.SqliteClosePostingPersistence",
           "dev.erst.fingrind.sqlite.SqliteProtectedBookMaintenanceStore");
+  private static final Set<String> DURABLE_MUTATION_WRITERS =
+      Set.of(
+          "dev.erst.fingrind.sqlite.SqliteMutationWriter",
+          "dev.erst.fingrind.sqlite.SqliteAccountRegistryMutationWriter",
+          "dev.erst.fingrind.sqlite.SqliteAuditEventWriter",
+          "dev.erst.fingrind.sqlite.SqliteAccrualCutoffWriter");
+  private static final Set<String> STRUCTURAL_MUTATION_WRITER_OWNERS =
+      Set.of("dev.erst.fingrind.sqlite.SqliteBookIntegrityVerifier");
+  private static final Set<String> NO_CLOBBER_PUBLICATION_BOUNDARIES =
+      Set.of(
+          "dev.erst.fingrind.sqlite.SqliteStagedBackupPair",
+          "dev.erst.fingrind.sqlite.SqliteStagedRestoredBookPair",
+          "dev.erst.fingrind.executor.AttestationInspectionService");
   private static final Set<String> RAW_GENERIC_FAILURE_TYPES =
       Set.of(
           "java.lang.Throwable",
@@ -226,6 +241,14 @@ final class FinGrindArchitectureTest {
       classes().should(reachAttestationEvidenceFromEveryDurableMutationBoundary());
 
   @ArchTest
+  static final ArchRule durableMutationWritersMustBeOwnedByAnAttestedBoundary =
+      classes().should(attestEveryDurableMutationWriterCall());
+
+  @ArchTest
+  static final ArchRule noClobberPublicationsMustMakeDirectoryEntriesDurable =
+      classes().should(forceDirectoriesForNoClobberPublication());
+
+  @ArchTest
   static final ArchRule durableMutationCatalogReferencesAreTyped =
       classes().should(referenceTheTypedOperationCatalogAtEveryDurableMutationBoundary());
 
@@ -367,19 +390,80 @@ final class FinGrindArchitectureTest {
         if (!MUTATION_ATTESTATION_BOUNDARIES.contains(source.getName())) {
           return;
         }
-        boolean reachesEvidenceStore =
-            source.getTransitiveDependenciesFromSelf().stream()
-                .anyMatch(
-                    dependency ->
-                        ATTESTATION_EVIDENCE_STORE.equals(dependency.getTargetClass().getName()));
-        if (!reachesEvidenceStore) {
+        if (!callsAttestationEvidenceStore(source)) {
+          events.add(
+              SimpleConditionEvent.violated(
+                  source,
+                  source.getName() + " must directly call " + ATTESTATION_EVIDENCE_STORE + "."));
+        }
+      }
+    };
+  }
+
+  private static ArchCondition<JavaClass> attestEveryDurableMutationWriterCall() {
+    return new ArchCondition<>(
+        "invoke durable SQLite mutation writers only from an attestation evidence boundary") {
+      @Override
+      public void check(JavaClass source, ConditionEvents events) {
+        if (!callsDurableMutationWriter(source)
+            || DURABLE_MUTATION_WRITERS.contains(source.getName())
+            || STRUCTURAL_MUTATION_WRITER_OWNERS.contains(source.getName())) {
+          return;
+        }
+        if (!MUTATION_ATTESTATION_BOUNDARIES.contains(source.getName())) {
           events.add(
               SimpleConditionEvent.violated(
                   source,
                   source.getName()
-                      + " must route durable mutation persistence through "
+                      + " directly invokes a durable SQLite mutation writer but is not an "
+                      + "attestation mutation boundary."));
+          return;
+        }
+        if (!callsAttestationEvidenceStore(source)) {
+          events.add(
+              SimpleConditionEvent.violated(
+                  source,
+                  source.getName()
+                      + " directly invokes a durable SQLite mutation writer without directly "
+                      + "calling "
                       + ATTESTATION_EVIDENCE_STORE
                       + "."));
+        }
+      }
+    };
+  }
+
+  private static boolean callsDurableMutationWriter(JavaClass source) {
+    return source.getMethodCallsFromSelf().stream()
+        .anyMatch(call -> DURABLE_MUTATION_WRITERS.contains(call.getTargetOwner().getName()));
+  }
+
+  private static boolean callsAttestationEvidenceStore(JavaClass source) {
+    return source.getMethodCallsFromSelf().stream()
+        .anyMatch(call -> ATTESTATION_EVIDENCE_STORE.equals(call.getTargetOwner().getName()));
+  }
+
+  private static ArchCondition<JavaClass> forceDirectoriesForNoClobberPublication() {
+    return new ArchCondition<>(
+        "make no-clobber attestation publication directories durable before success") {
+      @Override
+      public void check(JavaClass source, ConditionEvents events) {
+        if (!NO_CLOBBER_PUBLICATION_BOUNDARIES.contains(source.getName())) {
+          return;
+        }
+        boolean callsDirectoryDurability =
+            source.getMethodCallsFromSelf().stream()
+                .anyMatch(
+                    call ->
+                        ATTESTATION_DIRECTORY_DURABILITY.equals(call.getTargetOwner().getName()));
+        if (!callsDirectoryDurability) {
+          events.add(
+              SimpleConditionEvent.violated(
+                  source,
+                  source.getName()
+                      + " must directly call "
+                      + ATTESTATION_DIRECTORY_DURABILITY
+                      + " before reporting a no-clobber publication as successful."));
         }
       }
     };

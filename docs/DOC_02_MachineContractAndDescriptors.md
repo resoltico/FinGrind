@@ -241,7 +241,7 @@ public final class ContractFailureException extends IllegalStateException
 
 - Purpose: distinguish malformed input and deterministic invocation failures from runtime failure
 - Contract: `ContractErrors.Descriptor` owns stable error codes such as `invalid-request`,
-  `invalid-page-cursor`, `protected-book-verification-failed`, `internal-defect`,
+  `invalid-page-cursor`, `protected-book-verification-failed`, `stale-head`, `internal-defect`,
   `internal-error`, `managed-runtime-failure`, `storage-runtime-failure`,
   `pdf-export-failure`, and `interactive-prompt-unavailable`, plus the published process
   `exitCode` for each deterministic machine error

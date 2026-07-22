@@ -169,8 +169,6 @@ create table if not exists posting_fact (
         and substr(recorded_at, 15, 2) between '00' and '59'
         and substr(recorded_at, 18, 2) between '00' and '59'
     ),
-    actor_id text not null check (length(trim(actor_id)) > 0),
-    actor_type text not null check (actor_type in ('PERSON', 'SYSTEM', 'AGENT')),
     command_id text not null check (length(trim(command_id)) > 0),
     idempotency_key text not null check (
         length(idempotency_key) between 1 and 128

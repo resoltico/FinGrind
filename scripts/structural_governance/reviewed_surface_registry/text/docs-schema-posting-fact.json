@@ -6,8 +6,8 @@
   "reviewedRoleName": "docs-schema-exact-table",
   "budgetVarianceReason": "The exact posting_fact DDL exceeds the companion logical-line budget after its admission triggers moved into their own responsibility page, and the renderer must preserve the canonical SQL text byte-for-byte.",
   "approval": {
-    "physicalLines": 346,
-    "logicalLines": 343,
+    "physicalLines": 344,
+    "logicalLines": 341,
     "importLikeLines": 1,
     "functions": 0,
     "nestedTypes": 0,

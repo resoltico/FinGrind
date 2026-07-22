@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -10,8 +11,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.sqlite.ManagedSqliteRuntimeUnavailableException;
+import dev.erst.fingrind.sqlite.SqliteAttestationStaleHeadException;
 import dev.erst.fingrind.sqlite.SqlitePersistenceInvariantException;
 import dev.erst.fingrind.sqlite.SqliteStorageFailureException;
+import java.math.BigInteger;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
@@ -62,6 +65,32 @@ class CliFailureMapperTest {
     assertEquals("--pdf-out", failure.argument());
     assertNotNull(failure.hint());
     assertTrue(failure.hint().contains("filesystem space"));
+  }
+
+  @Test
+  void runtimeFailure_mapsStaleHeadToThePublishedCasRefusal() {
+    CliFailure failure =
+        CliFailureMapper.runtimeFailure(
+            new SqliteAttestationStaleHeadException(
+                new byte[32],
+                new byte[] {
+                  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,
+                  24, 25, 26, 27, 28, 29, 30, 31, 32
+                },
+                BigInteger.valueOf(17L)));
+
+    assertNotNull(failure);
+    assertEquals("stale-head", failure.code());
+    assertNotNull(failure.hint());
+    assertTrue(failure.hint().contains("re-sign"));
+    var details =
+        assertInstanceOf(
+            dev.erst.fingrind.cli.json.CliErrorJsonModels.StaleHeadDetails.class,
+            failure.details());
+    assertEquals("0".repeat(64), details.observedHead());
+    assertEquals(
+        "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20", details.currentHead());
+    assertEquals("17", details.currentOrder());
   }
 
   @Test

@@ -50,6 +50,18 @@ class CliFailureOutputRendererTest {
     assertTrue(invalidRequest.contains("Violations"));
     assertTrue(invalidRequest.contains("accountCode is required"));
     assertTrue(invalidRequest.contains("amount must be positive"));
+
+    String staleHead =
+        CliFailureOutputRenderer.renderFailureText(
+            new CliFailure(
+                "stale-head",
+                "Signed head is stale.",
+                "Re-sign.",
+                null,
+                new CliErrorJsonModels.StaleHeadDetails("a".repeat(64), "b".repeat(64), "17")));
+    assertTrue(staleHead.contains("Observed head"));
+    assertTrue(staleHead.contains("Current head"));
+    assertTrue(staleHead.contains("Current order"));
   }
 
   @Test

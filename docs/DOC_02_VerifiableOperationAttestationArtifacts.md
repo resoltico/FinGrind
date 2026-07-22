@@ -2,10 +2,10 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: BOOK_OPERATION_ATTESTATION_ARTIFACTS
-updated: "2026-07-21"
+updated: "2026-07-22"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["BackupManifest", "AttestationBackupArtifact", "AttestationReceipt", "AttestationArtifactContainer"]
+  symbols: ["BackupManifest", "AttestationArtifactContainer", "AttestationBackupArtifact", "AttestationDirectoryDurability", "AttestationReceipt"]
 route:
   keywords: [verifiable-operation-attestation, backup-manifest, attestation-receipt, artifact-container, restore-book, backup-acknowledgement, receipt-anchor, no-clobber]
   questions: ["how is an attested backup artifact encoded", "how does FinGrind restore an attested snapshot", "what does an attestation receipt anchor", "which vectors prove backup and receipt envelopes"]
@@ -69,6 +69,14 @@ Backup is a staged external-artifact operation:
 backup-created is idempotent only for the identical tuple bookId, backupId, backupArtifactDigest,
 and sourceHead. Exact replay is a no-op success. Any other reuse of backupId is
 backup-acknowledgement-conflict with exit 2.
+
+## `AttestationDirectoryDurability`
+
+`AttestationDirectoryDurability.force` persists the parent-directory name change immediately
+after every no-clobber attestation artifact, companion key, restored-book, or receipt publication.
+It requires JVM native access for the core module and supports macOS, Linux, and Windows. A failed
+directory force fails the operation rather than reporting a publication whose final name might be
+lost after power failure.
 
 ## `Backup Artifact Types`
 

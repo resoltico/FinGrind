@@ -1,11 +1,13 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.attestation.AttestationDirectoryDurability;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.StagedRestoredBookPair;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
@@ -54,7 +56,9 @@ final class SqliteStagedRestoredBookPair implements StagedRestoredBookPair {
       stagedBookKeyFile.requireIntactFor(publication.secretTargetPath());
       publication.publishSecret(stagedBookKeyFile);
       bookKeyFilePublished = true;
+      forcePublishedDirectory(publication.secretTargetPath());
       publication.publishBook(stagedBookFile);
+      forcePublishedDirectory(publication.bookTargetPath());
       closeUnusedPassphrase();
     } catch (SqliteGeneratedSecretTargetOccupiedException exception) {
       try {
@@ -120,6 +124,13 @@ final class SqliteStagedRestoredBookPair implements StagedRestoredBookPair {
       closeUnusedPassphrase();
       finished = true;
     }
+  }
+
+  private static void forcePublishedDirectory(Path path) throws IOException {
+    AttestationDirectoryDurability.force(
+        Objects.requireNonNull(
+            Objects.requireNonNull(path, "path").toAbsolutePath().normalize().getParent(),
+            "published artifact parent"));
   }
 
   @Override

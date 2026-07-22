@@ -1,13 +1,16 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationLifecycleMutationProjection;
 import dev.erst.fingrind.core.attestation.AttestationOperationKind;
@@ -30,6 +33,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 /** Exercises real maintenance-store error handling at the durable attestation boundary. */
@@ -102,6 +106,74 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
                       null)));
       assertEquals(operationCount, store.loadAttestationEvidence(verifiedBook).size());
     }
+  }
+
+  @Test
+  void backupAcknowledgementAdmissionRetriesOnlyItsStaleHeadPrecondition() throws Exception {
+    Path bookPath = tempDirectory.resolve("backup-acknowledgement.sqlite");
+    BookAccess bookAccess = bookAccess(bookPath);
+    initializeBook(bookAccess);
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+    try (ProtectedBookMaintenanceStore.VerifiedBook verifiedBook =
+        verifiedBook(store, bookAccess)) {
+      AttestationVerification sourceVerification =
+          AttestationVerifier.verifyBook(store.loadAttestationEvidence(verifiedBook));
+      AttestationBackupAcknowledgement acknowledgement =
+          new AttestationBackupAcknowledgement(
+              UUID.fromString("c4de4521-4296-4f93-873c-17b8c625f44d"),
+              new byte[32],
+              sourceVerification.headOrder(),
+              sourceVerification.operationHead());
+      assertTrue(
+          SqliteProtectedBookMaintenanceStore.retriesStaleHead(
+              AttestationOperationKind.BACKUP_CREATED, acknowledgement));
+      assertFalse(
+          SqliteProtectedBookMaintenanceStore.retriesStaleHead(
+              AttestationOperationKind.BACKUP_CREATED, null));
+      assertFalse(
+          SqliteProtectedBookMaintenanceStore.retriesStaleHead(
+              AttestationOperationKind.REKEY_BOOK, acknowledgement));
+
+      AttestationVerification backupVerification =
+          store.appendAttestedOperation(
+              verifiedBook,
+              AttestationOperationKind.BACKUP_CREATED,
+              Instant.parse("2026-07-21T12:00:00Z"),
+              AttestationLifecycleMutationProjection.backupBook(
+                  AttestationOperationKind.BACKUP_CREATED.wireToken(), acknowledgement),
+              SqliteAttestationTestSupport.authorizer(),
+              acknowledgement);
+
+      assertEquals(
+          sourceVerification.headOrder().add(java.math.BigInteger.ONE),
+          backupVerification.headOrder());
+    }
+
+    SqliteAttestationStaleHeadException staleHead =
+        new SqliteAttestationStaleHeadException(
+            new byte[32], new byte[32], java.math.BigInteger.ONE);
+    AtomicInteger attempts = new AtomicInteger();
+    assertEquals(
+        "accepted",
+        SqliteProtectedBookMaintenanceStore.retryStaleHead(
+            true,
+            () -> {
+              if (attempts.getAndIncrement() == 0) {
+                throw staleHead;
+              }
+              return "accepted";
+            }));
+    assertEquals(2, attempts.get());
+    assertSame(
+        staleHead,
+        assertThrows(
+            SqliteAttestationStaleHeadException.class,
+            () ->
+                SqliteProtectedBookMaintenanceStore.retryStaleHead(
+                    false,
+                    () -> {
+                      throw staleHead;
+                    })));
   }
 
   @Test
@@ -243,10 +315,9 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
   private static void writeSnapshot(Path snapshotPath, byte[] snapshot) {
     try {
       MethodHandle writeSnapshot =
-          MethodHandles.privateLookupIn(
-                  SqliteProtectedBookMaintenanceStore.class, MethodHandles.lookup())
+          MethodHandles.privateLookupIn(SqliteBackupArtifactVerifier.class, MethodHandles.lookup())
               .findStatic(
-                  SqliteProtectedBookMaintenanceStore.class,
+                  SqliteBackupArtifactVerifier.class,
                   "writeSnapshot",
                   MethodType.methodType(void.class, Path.class, byte[].class));
       writeSnapshot.invoke(snapshotPath, snapshot);

@@ -63,30 +63,32 @@ final class SqliteAttestationEvidenceStore {
   }
 
   /**
-   * Signs and appends one operation while the caller owns the immediate write transaction.
-   *
-   * <p>The current head is loaded only after the transaction has begun; the authorizer therefore
-   * cannot reserve a sequence before a credential prompt. The candidate is then passed through the
-   * same full persisted-chain and compare-and-swap validation as externally supplied evidence.
+   * Admits a signature made against one authenticated head observed before the write transaction.
    */
   static AttestationVerification appendAuthorized(
       SqliteNativeDatabase activeDatabase,
+      ObservedHead observedHead,
       AttestationOperationKind operationKind,
       Instant recordedAt,
       AttestationOperationPreimages preimages,
       AttestationOperationAuthorizer authorizer) {
-    return appendAuthorized(activeDatabase, operationKind, recordedAt, preimages, authorizer, null);
+    return appendAuthorized(
+        activeDatabase, observedHead, operationKind, recordedAt, preimages, authorizer, null);
   }
 
-  /** Signs and appends one operation with optional exact-tuple backup acknowledgement admission. */
+  /**
+   * Admits a signature made against one authenticated head observed before the write transaction.
+   */
   static AttestationVerification appendAuthorized(
       SqliteNativeDatabase activeDatabase,
+      ObservedHead observedHead,
       AttestationOperationKind operationKind,
       Instant recordedAt,
       AttestationOperationPreimages preimages,
       AttestationOperationAuthorizer authorizer,
       @Nullable AttestationBackupAcknowledgement backupAcknowledgement) {
     Objects.requireNonNull(activeDatabase, "activeDatabase");
+    ObservedHead checkedObservedHead = Objects.requireNonNull(observedHead, "observedHead");
     AttestationOperationKind checkedOperationKind =
         Objects.requireNonNull(operationKind, "operationKind");
     Instant checkedRecordedAt = Objects.requireNonNull(recordedAt, "recordedAt");
@@ -100,6 +102,13 @@ final class SqliteAttestationEvidenceStore {
                 () ->
                     new IllegalStateException(
                         "Protected-book mutation requires a persisted attestation genesis."));
+    if (!Arrays.equals(
+        checkedObservedHead.operationHead(), persistedVerification.operationHead())) {
+      throw new SqliteAttestationStaleHeadException(
+          checkedObservedHead.operationHead(),
+          persistedVerification.operationHead(),
+          persistedVerification.headOrder());
+    }
     if (checkedAuthorizer instanceof AttestationPlanOperationAuthorizer planAuthorizer) {
       planAuthorizer.collectChildMutation(checkedOperationKind.wireToken(), checkedPreimages);
       return persistedVerification;
@@ -126,7 +135,18 @@ final class SqliteAttestationEvidenceStore {
                 checkedRecordedAt,
                 checkedPreimages.request(),
                 checkedPreimages.effect()));
-    return append(activeDatabase, persistedVerification.operationHead(), candidateEvidence);
+    return append(activeDatabase, checkedObservedHead.operationHead(), candidateEvidence);
+  }
+
+  static ObservedHead observeRequired(SqliteNativeDatabase activeDatabase) {
+    List<AttestationEvidence> persistedEvidence = loadAll(activeDatabase);
+    AttestationVerification verification =
+        verifyPersisted(persistedEvidence)
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Protected-book mutation requires a persisted attestation genesis."));
+    return new ObservedHead(verification.operationHead(), verification.headOrder());
   }
 
   /**
@@ -275,6 +295,25 @@ final class SqliteAttestationEvidenceStore {
 
     private BigInteger order() {
       return order;
+    }
+  }
+
+  /** Immutable authenticated head observed before one caller attempts write admission. */
+  static final class ObservedHead {
+    private final byte[] operationHead;
+    private final BigInteger operationOrder;
+
+    private ObservedHead(byte[] operationHead, BigInteger operationOrder) {
+      this.operationHead = requireHead(operationHead, "operationHead");
+      this.operationOrder = Objects.requireNonNull(operationOrder, "operationOrder");
+    }
+
+    byte[] operationHead() {
+      return operationHead.clone();
+    }
+
+    BigInteger operationOrder() {
+      return operationOrder;
     }
   }
 }

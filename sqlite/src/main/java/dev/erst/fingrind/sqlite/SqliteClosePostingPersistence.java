@@ -78,33 +78,18 @@ final class SqliteClosePostingPersistence {
 
   dev.erst.fingrind.executor.bookkeeping.SweptInterimResult persistInterimResultSweep(
       SqliteNativeDatabase activeDatabase,
+      SqliteAttestationEvidenceStore.ObservedHead observedHead,
       InterimResultSweepDraft interimResultSweepDraft,
       PostingIdGenerator postingIdGenerator,
       AttestationOperationAuthorizer attestationAuthorizer) {
-    SqliteTransactionValidationBook validationBook =
-        new SqliteTransactionValidationBook(activeDatabase, context.postingReader(), true);
-    PostingIdGenerator requiredPostingIdGenerator =
-        Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
     AttestationOperationAuthorizer requiredAttestationAuthorizer =
         AttestationOperationAuthorizer.require(attestationAuthorizer);
-    List<CommittedPosting> closingPostings = new java.util.ArrayList<>();
-    for (PostingDraft closingPostingDraft : interimResultSweepDraft.closingPostings()) {
-      switch (postingAcceptancePolicy.decisionFor(closingPostingDraft, validationBook)) {
-        case Decision.Replay replay -> closingPostings.add(replay.postingFact());
-        case Decision.Rejected rejected ->
-            throw new IllegalStateException(
-                "Generated interim result sweep posting failed bookkeeping acceptance: "
-                    + rejected.rejection());
-        case Decision.Accepted accepted ->
-            closingPostings.add(
-                persistAcceptedPosting(
-                    activeDatabase,
-                    accepted.acceptedPosting(),
-                    accepted.requestFingerprint(),
-                    closingPostingDraft.provenance(),
-                    requiredPostingIdGenerator));
-      }
-    }
+    List<CommittedPosting> closingPostings =
+        persistGeneratedClosePostings(
+            activeDatabase,
+            interimResultSweepDraft.closingPostings(),
+            postingIdGenerator,
+            "interim result sweep");
     SweptInterimResult sweptInterimResult =
         SqliteMutationWriter.insertInterimResultSweep(
             activeDatabase,
@@ -115,6 +100,7 @@ final class SqliteClosePostingPersistence {
             closingPostings);
     SqliteAttestationEvidenceStore.appendAuthorized(
         activeDatabase,
+        observedHead,
         INTERIM_RESULT_SWEEP_OPERATION,
         interimResultSweepDraft.sweptAt(),
         AttestationPeriodCloseMutationProjection.projectInterimResultSweep(
@@ -134,33 +120,18 @@ final class SqliteClosePostingPersistence {
 
   ClosedFiscalYearRecord persistFiscalYearClose(
       SqliteNativeDatabase activeDatabase,
+      SqliteAttestationEvidenceStore.ObservedHead observedHead,
       FiscalYearCloseDraft closeDraft,
       PostingIdGenerator postingIdGenerator,
       AttestationOperationAuthorizer attestationAuthorizer) {
-    SqliteTransactionValidationBook validationBook =
-        new SqliteTransactionValidationBook(activeDatabase, context.postingReader(), true);
-    PostingIdGenerator requiredPostingIdGenerator =
-        Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
     AttestationOperationAuthorizer requiredAttestationAuthorizer =
         AttestationOperationAuthorizer.require(attestationAuthorizer);
-    List<CommittedPosting> closePostings = new java.util.ArrayList<>();
-    for (PostingDraft closePostingDraft : closeDraft.closePostingDrafts()) {
-      switch (postingAcceptancePolicy.decisionFor(closePostingDraft, validationBook)) {
-        case Decision.Replay replay -> closePostings.add(replay.postingFact());
-        case Decision.Rejected rejected ->
-            throw new IllegalStateException(
-                "Generated fiscal year close posting failed bookkeeping acceptance: "
-                    + rejected.rejection());
-        case Decision.Accepted accepted ->
-            closePostings.add(
-                persistAcceptedPosting(
-                    activeDatabase,
-                    accepted.acceptedPosting(),
-                    accepted.requestFingerprint(),
-                    closePostingDraft.provenance(),
-                    requiredPostingIdGenerator));
-      }
-    }
+    List<CommittedPosting> closePostings =
+        persistGeneratedClosePostings(
+            activeDatabase,
+            closeDraft.closePostingDrafts(),
+            postingIdGenerator,
+            "fiscal year close");
     ClosedFiscalYearRecord closedFiscalYear =
         SqliteMutationWriter.insertFiscalYearClose(
             activeDatabase,
@@ -172,6 +143,7 @@ final class SqliteClosePostingPersistence {
             closePostings);
     SqliteAttestationEvidenceStore.appendAuthorized(
         activeDatabase,
+        observedHead,
         FISCAL_YEAR_CLOSE_OPERATION,
         closeDraft.closedAt(),
         AttestationPeriodCloseMutationProjection.projectFiscalYearClose(
@@ -188,6 +160,38 @@ final class SqliteClosePostingPersistence {
         BookAuditEvent.fiscalYearClosed(
             closedFiscalYear.closedAt(), closedFiscalYear.closeOrder()));
     return closedFiscalYear;
+  }
+
+  private List<CommittedPosting> persistGeneratedClosePostings(
+      SqliteNativeDatabase activeDatabase,
+      List<PostingDraft> postingDrafts,
+      PostingIdGenerator postingIdGenerator,
+      String closeOperation) {
+    SqliteTransactionValidationBook validationBook =
+        new SqliteTransactionValidationBook(activeDatabase, context.postingReader(), true);
+    PostingIdGenerator requiredPostingIdGenerator =
+        Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
+    List<CommittedPosting> postings = new java.util.ArrayList<>();
+    for (PostingDraft postingDraft : postingDrafts) {
+      switch (postingAcceptancePolicy.decisionFor(postingDraft, validationBook)) {
+        case Decision.Replay replay -> postings.add(replay.postingFact());
+        case Decision.Rejected rejected ->
+            throw new IllegalStateException(
+                "Generated "
+                    + closeOperation
+                    + " posting failed bookkeeping acceptance: "
+                    + rejected.rejection());
+        case Decision.Accepted accepted ->
+            postings.add(
+                persistAcceptedPosting(
+                    activeDatabase,
+                    accepted.acceptedPosting(),
+                    accepted.requestFingerprint(),
+                    postingDraft.provenance(),
+                    requiredPostingIdGenerator));
+      }
+    }
+    return postings;
   }
 
   private static void persistInventoryCosting(

@@ -11,6 +11,7 @@ import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import dev.erst.fingrind.core.attestation.AttestationCredentialUseException;
+import dev.erst.fingrind.core.attestation.AttestationDirectoryDurability;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationReceipt;
 import dev.erst.fingrind.core.attestation.AttestationReceiptRetention;
@@ -204,6 +205,7 @@ public final class AttestationInspectionService {
       stagedPath = Files.createTempFile(parent, ".fingrind-receipt-", ".fgar");
       writeAndForce(stagedPath, receipt);
       Files.createLink(receiptPath, stagedPath);
+      AttestationDirectoryDurability.force(parent);
       String cleanupWarning = deleteStagedReceipt(stagedPath);
       stagedPath = null;
       return ContractDecision.accepted(

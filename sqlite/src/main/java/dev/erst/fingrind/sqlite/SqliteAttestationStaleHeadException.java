@@ -5,14 +5,15 @@ import java.util.Arrays;
 import java.util.Objects;
 
 /** Typed refusal when a signature was made against a head that is no longer current. */
-final class SqliteAttestationStaleHeadException extends IllegalArgumentException {
+public final class SqliteAttestationStaleHeadException extends IllegalArgumentException {
   private static final long serialVersionUID = 1L;
 
   private final byte[] observedHead;
   private final byte[] currentHead;
   private final BigInteger currentOrder;
 
-  SqliteAttestationStaleHeadException(
+  /** Creates a refusal that carries the observed head and the current chain position. */
+  public SqliteAttestationStaleHeadException(
       byte[] observedHead, byte[] currentHead, BigInteger currentOrder) {
     super("stale-head");
     this.observedHead = copy(observedHead, "observedHead");
@@ -20,15 +21,15 @@ final class SqliteAttestationStaleHeadException extends IllegalArgumentException
     this.currentOrder = Objects.requireNonNull(currentOrder, "currentOrder");
   }
 
-  byte[] observedHead() {
+  public byte[] observedHead() {
     return observedHead.clone();
   }
 
-  byte[] currentHead() {
+  public byte[] currentHead() {
     return currentHead.clone();
   }
 
-  BigInteger currentOrder() {
+  public BigInteger currentOrder() {
     return currentOrder;
   }
 

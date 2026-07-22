@@ -9,7 +9,7 @@ public interface CliErrorJsonModels {
 
   /** Sealed marker for machine-readable CLI failure detail payloads. */
   sealed interface ErrorDetails extends CliEnvelopeJsonModels.EnvelopeDetails
-      permits InvalidJsonDetails, InvalidRequestDetails {}
+      permits InvalidJsonDetails, InvalidRequestDetails, StaleHeadDetails {}
 
   record InvalidJsonDetails(String parseMessage, int line, int column) implements ErrorDetails {
     public InvalidJsonDetails {
@@ -29,6 +29,15 @@ public interface CliErrorJsonModels {
       if (violations.isEmpty()) {
         throw new IllegalArgumentException("violations must not be empty.");
       }
+    }
+  }
+
+  record StaleHeadDetails(String observedHead, String currentHead, String currentOrder)
+      implements ErrorDetails {
+    public StaleHeadDetails {
+      observedHead = CliJsonModelValidation.requireText(observedHead, "observedHead");
+      currentHead = CliJsonModelValidation.requireText(currentHead, "currentHead");
+      currentOrder = CliJsonModelValidation.requireText(currentOrder, "currentOrder");
     }
   }
 }

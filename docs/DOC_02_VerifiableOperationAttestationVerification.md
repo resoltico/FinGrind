@@ -2,10 +2,10 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: BOOK_OPERATION_ATTESTATION_VERIFICATION
-updated: "2026-07-21"
+updated: "2026-07-22"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["AttestationInspectionService", "AttestationReviewResult", "AttestationVerification", "AttestationVerificationException", "AttestationVerificationFailure", "AttestationVerifier", "VerifyBookAttestationResult"]
+  symbols: ["AttestationInspectionService", "AttestationReviewResult", "AttestationVerification", "AttestationVerificationException", "AttestationVerificationFailure", "AttestationVerifier", "SqliteAttestationStaleHeadException", "VerifyBookAttestationResult"]
 route:
   keywords: [attestation-verification, verifier-precedence, compromise-review, structural-invalid, stale-head, receipt-artifact, verification-rejection, clean-attestation]
   questions: ["how does FinGrind verify a protected-book attestation", "which attestation verification failure is reported first", "what does an attestation review finding mean", "how does FinGrind publish verification failures"]
@@ -29,6 +29,15 @@ operation head, and non-persisted review finding identifiers for a structurally 
 ## `AttestationVerificationException`
 
 `AttestationVerificationException` identifies the first stable structural-failure token.
+
+## `SqliteAttestationStaleHeadException`
+
+`SqliteAttestationStaleHeadException` is the durable-write refusal when an authorization was
+created from an attestation head that another committed operation has superseded. It carries
+defensive copies of the observed head and current head plus the current unsigned-64 order. The CLI
+maps this condition to the `stale-head` precondition envelope; it never reports it as an internal
+error. An acknowledged `backup-created` operation re-observes the chain and obtains a new
+authorization before retrying, while every other operation requires a fresh caller action.
 
 ## `AttestationVerificationFailure`
 

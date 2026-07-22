@@ -228,7 +228,7 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
   }
 
   @Test
-  void fiscalYearClose_translatesAndRollsBackNativeReadFailuresInsideItsOwnedTransaction()
+  void fiscalYearClose_translatesNativeHeadObservationFailuresBeforeItsWriteTransaction()
       throws Exception {
     Path bookPath = tempDirectory.resolve("fiscal-year-close-native-read-failure.sqlite");
     Files.createFile(bookPath);
@@ -279,7 +279,7 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
       assertEquals(
           "Failed to close one SQLite fiscal year. SQLITE_IOERR: simulated fiscal-year read failure",
           failure.getMessage());
-      assertEquals(List.of("begin immediate", "rollback"), database.statements);
+      assertEquals(List.of(), database.statements);
       lifecycle.close();
     }
   }

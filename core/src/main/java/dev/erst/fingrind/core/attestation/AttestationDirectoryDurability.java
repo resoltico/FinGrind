@@ -6,14 +6,20 @@ import java.util.Locale;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
-/** Forces a directory's name changes after an attestation key is atomically published. */
-final class AttestationDirectoryDurability {
+/**
+ * Forces a directory's name changes after an attestation-controlled artifact is atomically
+ * published.
+ */
+public final class AttestationDirectoryDurability {
   private static final String DURABILITY_FAILURE =
-      "Failed to make the published attestation key directory durable.";
+      "Failed to make the published attestation-controlled artifact directory durable.";
 
   private AttestationDirectoryDurability() {}
 
-  static void force(Path directory) throws IOException {
+  /**
+   * Forces the supplied parent directory so a newly published artifact name survives power loss.
+   */
+  public static void force(Path directory) throws IOException {
     Objects.requireNonNull(directory, "directory");
     requireNativeAccess(AttestationDirectoryDurability.class.getModule());
     force(
@@ -63,7 +69,7 @@ final class AttestationDirectoryDurability {
       return OperatingSystem.POSIX;
     }
     throw new IOException(
-        "Attestation key directory durability is supported only on macOS, Linux, and Windows. Detected: "
+        "Attestation-controlled artifact directory durability is supported only on macOS, Linux, and Windows. Detected: "
             + normalizedName);
   }
 
@@ -71,7 +77,7 @@ final class AttestationDirectoryDurability {
     Objects.requireNonNull(module, "module");
     if (!module.isNativeAccessEnabled()) {
       throw new IOException(
-          "Attestation key directory durability requires JVM native access. Rerun with --enable-native-access="
+          "Attestation-controlled artifact directory durability requires JVM native access. Rerun with --enable-native-access="
               + nativeAccessTarget(module)
               + ".");
     }

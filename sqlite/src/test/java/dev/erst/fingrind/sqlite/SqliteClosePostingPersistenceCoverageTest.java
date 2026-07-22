@@ -86,6 +86,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
           closePostingPersistence(postingFactStore)
               .persistInterimResultSweep(
                   requireStoreDatabase(postingFactStore),
+                  observedHead(postingFactStore),
                   new dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft(
                       APRIL_2026,
                       new AccountCode("3200"),
@@ -134,6 +135,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
           closePostingPersistence(postingFactStore)
               .persistFiscalYearClose(
                   requireStoreDatabase(postingFactStore),
+                  observedHead(postingFactStore),
                   new FiscalYearCloseDraft(
                       FISCAL_YEAR_2026,
                       new AccountCode("3000"),
@@ -196,6 +198,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                   closePostingPersistence(postingFactStore)
                       .persistFiscalYearClose(
                           requireStoreDatabase(postingFactStore),
+                          observedHead(postingFactStore),
                           new FiscalYearCloseDraft(
                               FISCAL_YEAR_2026,
                               new AccountCode("3000"),
@@ -259,6 +262,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                   closePostingPersistence(postingFactStore)
                       .persistInterimResultSweep(
                           requireStoreDatabase(postingFactStore),
+                          observedHead(postingFactStore),
                           new dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft(
                               APRIL_2026,
                               new AccountCode("3200"),
@@ -405,6 +409,11 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
         postingFactStore.storeContext(),
         SqliteCommitFaultHook.NONE,
         PostingAcceptancePolicy.currentKernel());
+  }
+
+  private static SqliteAttestationEvidenceStore.ObservedHead observedHead(
+      SqlitePostingFactStore postingFactStore) {
+    return SqliteAttestationEvidenceStore.observeRequired(requireStoreDatabase(postingFactStore));
   }
 
   private static SqliteClosingMutationOperations closingMutationOperations(

@@ -156,7 +156,7 @@ What it asserts:
 | `posting-workflow` | `invalid_missing_reversal_reason.json` | invalid request for missing reversal reason inside `reversal` |
 | `posting-workflow` | `reversal_target_missing.json` | deterministic rejection for missing reversal target |
 | `posting-workflow` | `invalid_amount_exponent.json` | exponent notation rejection with reversal payload present |
-| `posting-workflow` | `invalid_blank_actor.json` | blank actor-id rejection |
+| `posting-workflow` | `invalid_blank_command_id.json` | blank command-id rejection |
 | `sqlite-book-roundtrip` | `basic_valid.json` | minimal durable round-trip with distinct system provenance |
 | `sqlite-book-roundtrip` | `invalid_missing_reversal_reason.json` | invalid request for missing reversal reason inside `reversal` |
 | `sqlite-book-roundtrip` | `reversal_target_missing.json` | missing reversal target rejects commit without persisting facts |

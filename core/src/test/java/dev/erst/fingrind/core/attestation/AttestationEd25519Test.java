@@ -441,7 +441,7 @@ class AttestationEd25519Test {
         AttestationDirectoryDurability.OperatingSystem.WINDOWS,
         AttestationDirectoryDurability.operatingSystem("Windows 11"));
     assertEquals(
-        "Attestation key directory durability is supported only on macOS, Linux, and Windows. Detected: Solaris",
+        "Attestation-controlled artifact directory durability is supported only on macOS, Linux, and Windows. Detected: Solaris",
         assertThrows(
                 IOException.class, () -> AttestationDirectoryDurability.operatingSystem("Solaris"))
             .getMessage());

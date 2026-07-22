@@ -392,6 +392,18 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
     assertTrue(
         responseModel.path("errorDescriptors").toString().contains("storage-runtime-failure"));
     assertTrue(responseModel.path("errorDescriptors").toString().contains("pdf-export-failure"));
+    JsonNode staleHeadDescriptor =
+        java.util.stream.StreamSupport.stream(
+                responseModel.path("errorDescriptors").spliterator(), false)
+            .filter(descriptor -> "stale-head".equals(descriptor.path("code").stringValue()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(2, staleHeadDescriptor.path("exitCode").intValue());
+    List<String> staleHeadDetailFields = new ArrayList<>();
+    staleHeadDescriptor
+        .path("detailFields")
+        .forEach(field -> staleHeadDetailFields.add(field.path("name").stringValue()));
+    assertEquals(List.of("observedHead", "currentHead", "currentOrder"), staleHeadDetailFields);
   }
 
   protected static JsonNode descriptorField(JsonNode fields, String fieldName) {

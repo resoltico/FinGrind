@@ -62,6 +62,8 @@ final class SqliteFiscalYearCloseOperations {
             if (!executionSupport.isInitializedBook(activeDatabase)) {
               return bookNotInitializedOutcome();
             }
+            SqliteAttestationEvidenceStore.ObservedHead observedHead =
+                SqliteAttestationEvidenceStore.observeRequired(activeDatabase);
             transactionOwnership = executionSupport.beginImmediateIfNeeded(activeDatabase);
             Optional<BookkeepingAdministrationRejection> closeWindowRejection =
                 planner.closeHorizonRejection(reportingPeriod, bookIdentity, currentUtcDate);
@@ -108,10 +110,18 @@ final class SqliteFiscalYearCloseOperations {
                   new FiscalYearCloseRequiresGeneratedPostings());
             }
             persistGeneratedUnsweptInterimResultSweep(
-                activeDatabase, closeDraft, postingIdGenerator, attestationAuthorizer);
+                activeDatabase,
+                observedHead,
+                closeDraft,
+                postingIdGenerator,
+                attestationAuthorizer);
             ClosedFiscalYearRecord closedFiscalYear =
                 postingPersistence.persistFiscalYearClose(
-                    activeDatabase, closeDraft, postingIdGenerator, attestationAuthorizer);
+                    activeDatabase,
+                    SqliteAttestationEvidenceStore.observeRequired(activeDatabase),
+                    closeDraft,
+                    postingIdGenerator,
+                    attestationAuthorizer);
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
             committed = true;
             return new FiscalYearCloseOutcome.Closed(closedFiscalYear, false);
@@ -172,6 +182,7 @@ final class SqliteFiscalYearCloseOperations {
 
   private void persistGeneratedUnsweptInterimResultSweep(
       SqliteNativeDatabase activeDatabase,
+      SqliteAttestationEvidenceStore.ObservedHead observedHead,
       FiscalYearCloseDraft closeDraft,
       PostingIdGenerator postingIdGenerator,
       AttestationOperationAuthorizer attestationAuthorizer) {
@@ -180,6 +191,7 @@ final class SqliteFiscalYearCloseOperations {
     }
     postingPersistence.persistInterimResultSweep(
         activeDatabase,
+        observedHead,
         closeDraft.unsweptInterimResultSweepDraft(),
         postingIdGenerator,
         attestationAuthorizer);

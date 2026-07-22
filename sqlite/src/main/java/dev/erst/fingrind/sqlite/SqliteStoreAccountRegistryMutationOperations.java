@@ -19,6 +19,7 @@ import java.nio.file.Files;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 /** Account Registry mutations over one SQLite-backed book session. */
 final class SqliteStoreAccountRegistryMutationOperations {
@@ -34,6 +35,15 @@ final class SqliteStoreAccountRegistryMutationOperations {
   private interface BorrowedDatabaseAction<T> {
     /** Runs one mutation callback against the active SQLite handle. */
     T run(SqliteNativeDatabase activeDatabase);
+  }
+
+  /** One admitted mutation that is committed with its attestation evidence. */
+  @FunctionalInterface
+  private interface AttestedMutation<T> {
+    /** Persists the mutation after its chain head was observed and the write transaction began. */
+    T run(
+        SqliteNativeDatabase activeDatabase,
+        SqliteAttestationEvidenceStore.ObservedHead observedHead);
   }
 
   private final SqliteStoreContext context;
@@ -59,52 +69,43 @@ final class SqliteStoreAccountRegistryMutationOperations {
     }
     return withBorrowedDatabase(
         activeDatabase -> {
-          SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
-          try {
-            if (!lifecycle.isInitializedBook(activeDatabase)) {
-              return new AccountDeclarationOutcome.Rejected(
-                  new BookkeepingAdministrationRejection.BookNotInitialized());
-            }
-
-            transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
-            Optional<RegisteredAccount> existingAccount =
-                SqliteAccountStatementQueries.findOneAccount(
-                    activeDatabase, declaration.accountCode());
-            AccountDeclarationOutcome declarationOutcome =
-                RegisteredAccount.declare(existingAccount.orElse(null), declaration, declaredAt);
-            if (declarationOutcome instanceof AccountDeclarationOutcome.Rejected rejected) {
-              SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-              return rejected;
-            }
-            if (declarationOutcome instanceof AccountDeclarationOutcome.Unchanged unchanged) {
-              SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-              return unchanged;
-            }
-            RegisteredAccount declaredAccount = declaredAccount(declarationOutcome);
-            SqliteAttestationEvidenceStore.appendAuthorized(
-                activeDatabase,
-                DECLARE_ACCOUNT_OPERATION,
-                declaredAt,
-                AttestationAccountMutationProjection.project(
-                    AttestationAccountMutationIntent.DECLARATION,
-                    DECLARE_ACCOUNT_OPERATION.wireToken(),
-                    requestedSnapshot(declaration),
-                    snapshot(declaredAccount),
-                    declarationMutation(declarationOutcome)),
-                attestationAuthorizer);
-            SqliteAccountRegistryMutationWriter.upsertAccount(activeDatabase, declaredAccount);
-            SqliteAuditEventWriter.insertAuditEvent(
-                activeDatabase, accountAuditEvent(declaredAt, declarationOutcome));
-            SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
-            return declarationOutcome;
-          } catch (SqliteNativeException exception) {
-            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-            throw SqliteStoreOperations.sqliteFailure(
-                "Failed to declare SQLite book account.", exception);
-          } catch (RuntimeException exception) {
-            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-            throw exception;
-          }
+          return executeAttestedMutation(
+              activeDatabase,
+              () ->
+                  new AccountDeclarationOutcome.Rejected(
+                      new BookkeepingAdministrationRejection.BookNotInitialized()),
+              "Failed to declare SQLite book account.",
+              (database, observedHead) -> {
+                Optional<RegisteredAccount> existingAccount =
+                    SqliteAccountStatementQueries.findOneAccount(
+                        database, declaration.accountCode());
+                AccountDeclarationOutcome declarationOutcome =
+                    RegisteredAccount.declare(
+                        existingAccount.orElse(null), declaration, declaredAt);
+                if (declarationOutcome instanceof AccountDeclarationOutcome.Rejected rejected) {
+                  return rejected;
+                }
+                if (declarationOutcome instanceof AccountDeclarationOutcome.Unchanged unchanged) {
+                  return unchanged;
+                }
+                RegisteredAccount declaredAccount = declaredAccount(declarationOutcome);
+                SqliteAttestationEvidenceStore.appendAuthorized(
+                    database,
+                    observedHead,
+                    DECLARE_ACCOUNT_OPERATION,
+                    declaredAt,
+                    AttestationAccountMutationProjection.project(
+                        AttestationAccountMutationIntent.DECLARATION,
+                        DECLARE_ACCOUNT_OPERATION.wireToken(),
+                        requestedSnapshot(declaration),
+                        snapshot(declaredAccount),
+                        declarationMutation(declarationOutcome)),
+                    attestationAuthorizer);
+                SqliteAccountRegistryMutationWriter.upsertAccount(database, declaredAccount);
+                SqliteAuditEventWriter.insertAuditEvent(
+                    database, accountAuditEvent(declaredAt, declarationOutcome));
+                return declarationOutcome;
+              });
         });
   }
 
@@ -123,53 +124,44 @@ final class SqliteStoreAccountRegistryMutationOperations {
     }
     return withBorrowedDatabase(
         activeDatabase -> {
-          SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
-          try {
-            if (!lifecycle.isInitializedBook(activeDatabase)) {
-              return new AccountAmendmentOutcome.Rejected(
-                  new BookkeepingAdministrationRejection.BookNotInitialized());
-            }
-            transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
-            Optional<RegisteredAccount> existingAccount =
-                SqliteAccountStatementQueries.findOneAccount(
-                    activeDatabase, amendment.accountCode());
-            AccountAmendmentOutcome outcome =
-                AccountRegistryLifecyclePolicy.amend(
-                    existingAccount.orElse(null),
-                    amendment,
-                    SqliteAccountLifecycleQueries.amendmentDependencies(
-                        activeDatabase, amendment.accountCode()));
-            if (outcome instanceof AccountAmendmentOutcome.Rejected
-                || outcome instanceof AccountAmendmentOutcome.Unchanged) {
-              SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-              return outcome;
-            }
-            AccountAmendmentOutcome.Amended amended = (AccountAmendmentOutcome.Amended) outcome;
-            SqliteAttestationEvidenceStore.appendAuthorized(
-                activeDatabase,
-                AMEND_ACCOUNT_OPERATION,
-                amendedAt,
-                AttestationAccountMutationProjection.project(
-                    AttestationAccountMutationIntent.AMENDMENT,
-                    AMEND_ACCOUNT_OPERATION.wireToken(),
-                    requestedSnapshot(amendment),
-                    snapshot(amended.account()),
-                    AttestationEffectMutation.AMEND),
-                attestationAuthorizer);
-            SqliteAccountRegistryMutationWriter.amendAccount(activeDatabase, amended.account());
-            SqliteAuditEventWriter.insertAuditEvent(
-                activeDatabase,
-                BookAuditEvent.accountAmended(amendedAt, amended.account().accountCode()));
-            SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
-            return outcome;
-          } catch (SqliteNativeException exception) {
-            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-            throw SqliteStoreOperations.sqliteFailure(
-                "Failed to amend SQLite book account.", exception);
-          } catch (RuntimeException exception) {
-            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-            throw exception;
-          }
+          return executeAttestedMutation(
+              activeDatabase,
+              () ->
+                  new AccountAmendmentOutcome.Rejected(
+                      new BookkeepingAdministrationRejection.BookNotInitialized()),
+              "Failed to amend SQLite book account.",
+              (database, observedHead) -> {
+                Optional<RegisteredAccount> existingAccount =
+                    SqliteAccountStatementQueries.findOneAccount(database, amendment.accountCode());
+                AccountAmendmentOutcome outcome =
+                    AccountRegistryLifecyclePolicy.amend(
+                        existingAccount.orElse(null),
+                        amendment,
+                        SqliteAccountLifecycleQueries.amendmentDependencies(
+                            database, amendment.accountCode()));
+                if (outcome instanceof AccountAmendmentOutcome.Rejected
+                    || outcome instanceof AccountAmendmentOutcome.Unchanged) {
+                  return outcome;
+                }
+                AccountAmendmentOutcome.Amended amended = (AccountAmendmentOutcome.Amended) outcome;
+                SqliteAttestationEvidenceStore.appendAuthorized(
+                    database,
+                    observedHead,
+                    AMEND_ACCOUNT_OPERATION,
+                    amendedAt,
+                    AttestationAccountMutationProjection.project(
+                        AttestationAccountMutationIntent.AMENDMENT,
+                        AMEND_ACCOUNT_OPERATION.wireToken(),
+                        requestedSnapshot(amendment),
+                        snapshot(amended.account()),
+                        AttestationEffectMutation.AMEND),
+                    attestationAuthorizer);
+                SqliteAccountRegistryMutationWriter.amendAccount(database, amended.account());
+                SqliteAuditEventWriter.insertAuditEvent(
+                    database,
+                    BookAuditEvent.accountAmended(amendedAt, amended.account().accountCode()));
+                return outcome;
+              });
         });
   }
 
@@ -188,53 +180,45 @@ final class SqliteStoreAccountRegistryMutationOperations {
     }
     return withBorrowedDatabase(
         activeDatabase -> {
-          SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
-          try {
-            if (!lifecycle.isInitializedBook(activeDatabase)) {
-              return new AccountRetirementOutcome.Rejected(
-                  new BookkeepingAdministrationRejection.BookNotInitialized());
-            }
-            transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
-            Optional<RegisteredAccount> existingAccount =
-                SqliteAccountStatementQueries.findOneAccount(activeDatabase, accountCode);
-            AccountRetirementOutcome outcome =
-                AccountRegistryLifecyclePolicy.retire(
-                    accountCode,
-                    existingAccount.orElse(null),
-                    SqliteAccountLifecycleQueries.retirementDependencies(
-                        activeDatabase, accountCode),
-                    SqliteAccountLifecycleQueries.currentBalanceZero(activeDatabase, accountCode));
-            if (outcome instanceof AccountRetirementOutcome.Rejected
-                || outcome instanceof AccountRetirementOutcome.Unchanged) {
-              SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-              return outcome;
-            }
-            AccountRetirementOutcome.Retired retired = (AccountRetirementOutcome.Retired) outcome;
-            SqliteAttestationEvidenceStore.appendAuthorized(
-                activeDatabase,
-                RETIRE_ACCOUNT_OPERATION,
-                retiredAt,
-                AttestationAccountMutationProjection.project(
-                    AttestationAccountMutationIntent.RETIREMENT,
-                    RETIRE_ACCOUNT_OPERATION.wireToken(),
-                    snapshot(existingAccount.orElseThrow()),
-                    snapshot(retired.account()),
-                    AttestationEffectMutation.RETIRE),
-                attestationAuthorizer);
-            SqliteAccountRegistryMutationWriter.retireAccount(activeDatabase, accountCode);
-            SqliteAuditEventWriter.insertAuditEvent(
-                activeDatabase,
-                BookAuditEvent.accountRetired(retiredAt, retired.account().accountCode()));
-            SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
-            return outcome;
-          } catch (SqliteNativeException exception) {
-            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-            throw SqliteStoreOperations.sqliteFailure(
-                "Failed to retire SQLite book account.", exception);
-          } catch (RuntimeException exception) {
-            SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-            throw exception;
-          }
+          return executeAttestedMutation(
+              activeDatabase,
+              () ->
+                  new AccountRetirementOutcome.Rejected(
+                      new BookkeepingAdministrationRejection.BookNotInitialized()),
+              "Failed to retire SQLite book account.",
+              (database, observedHead) -> {
+                Optional<RegisteredAccount> existingAccount =
+                    SqliteAccountStatementQueries.findOneAccount(database, accountCode);
+                AccountRetirementOutcome outcome =
+                    AccountRegistryLifecyclePolicy.retire(
+                        accountCode,
+                        existingAccount.orElse(null),
+                        SqliteAccountLifecycleQueries.retirementDependencies(database, accountCode),
+                        SqliteAccountLifecycleQueries.currentBalanceZero(database, accountCode));
+                if (outcome instanceof AccountRetirementOutcome.Rejected
+                    || outcome instanceof AccountRetirementOutcome.Unchanged) {
+                  return outcome;
+                }
+                AccountRetirementOutcome.Retired retired =
+                    (AccountRetirementOutcome.Retired) outcome;
+                SqliteAttestationEvidenceStore.appendAuthorized(
+                    database,
+                    observedHead,
+                    RETIRE_ACCOUNT_OPERATION,
+                    retiredAt,
+                    AttestationAccountMutationProjection.project(
+                        AttestationAccountMutationIntent.RETIREMENT,
+                        RETIRE_ACCOUNT_OPERATION.wireToken(),
+                        snapshot(existingAccount.orElseThrow()),
+                        snapshot(retired.account()),
+                        AttestationEffectMutation.RETIRE),
+                    attestationAuthorizer);
+                SqliteAccountRegistryMutationWriter.retireAccount(database, accountCode);
+                SqliteAuditEventWriter.insertAuditEvent(
+                    database,
+                    BookAuditEvent.accountRetired(retiredAt, retired.account().accountCode()));
+                return outcome;
+              });
         });
   }
 
@@ -300,6 +284,31 @@ final class SqliteStoreAccountRegistryMutationOperations {
           throw new IllegalArgumentException(
               "Rejected account declarations do not append attestation.");
     };
+  }
+
+  private <T> T executeAttestedMutation(
+      SqliteNativeDatabase activeDatabase,
+      Supplier<T> bookNotInitializedOutcome,
+      String failureMessage,
+      AttestedMutation<T> mutation) {
+    SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
+    try {
+      if (!lifecycle.isInitializedBook(activeDatabase)) {
+        return Objects.requireNonNull(bookNotInitializedOutcome, "bookNotInitializedOutcome").get();
+      }
+      SqliteAttestationEvidenceStore.ObservedHead observedHead =
+          SqliteAttestationEvidenceStore.observeRequired(activeDatabase);
+      transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
+      T outcome = mutation.run(activeDatabase, observedHead);
+      SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
+      return outcome;
+    } catch (SqliteNativeException exception) {
+      SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
+      throw SqliteStoreOperations.sqliteFailure(failureMessage, exception);
+    } catch (RuntimeException exception) {
+      SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
+      throw exception;
+    }
   }
 
   private <T> T withBorrowedDatabase(BorrowedDatabaseAction<T> action) {
