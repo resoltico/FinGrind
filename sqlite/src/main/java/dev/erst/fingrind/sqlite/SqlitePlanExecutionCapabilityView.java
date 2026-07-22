@@ -21,7 +21,7 @@ interface SqlitePlanExecutionCapabilityView
   @Override
   default void beginLedgerPlanTransaction() {
     storeThreadOwner().requireOwnerThread();
-    storeLifecycle().transactions().begin();
+    storeLifecycle().transactions().beginAttestedPlan();
   }
 
   @Override
@@ -44,6 +44,10 @@ interface SqlitePlanExecutionCapabilityView
       return;
     }
     SqliteAttestationEvidenceStore.appendPlanAuthorized(
-        storeLifecycle().database(), planId, recordedAt, attestationAuthorizer);
+        storeLifecycle().database(),
+        storeLifecycle().transactions().requireObservedAttestationHead(),
+        planId,
+        recordedAt,
+        attestationAuthorizer);
   }
 }

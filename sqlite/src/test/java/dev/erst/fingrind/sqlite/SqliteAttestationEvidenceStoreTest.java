@@ -29,6 +29,7 @@ import dev.erst.fingrind.core.attestation.AttestationOperationSigner;
 import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationPublicCredential;
 import dev.erst.fingrind.core.attestation.AttestationSigningCredential;
+import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
 import java.io.IOException;
 import java.lang.invoke.MethodHandle;
@@ -79,9 +80,9 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
                 SqliteAttestationEvidenceStore.loadAll(database).getFirst().operationEnvelope());
 
             database.executeStatement("begin immediate");
-            SqliteAttestationStaleHeadException staleHead =
+            AttestationStaleHeadException staleHead =
                 assertThrows(
-                    SqliteAttestationStaleHeadException.class,
+                    AttestationStaleHeadException.class,
                     () -> SqliteAttestationEvidenceStore.append(database, ZERO_HEAD, genesis));
             database.executeStatement("rollback");
             assertArrayEquals(ZERO_HEAD, staleHead.observedHead());
@@ -157,9 +158,9 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
         firstWriter.executeStatement("commit");
 
         secondWriter.executeStatement("begin immediate");
-        SqliteAttestationStaleHeadException staleHead =
+        AttestationStaleHeadException staleHead =
             assertThrows(
-                SqliteAttestationStaleHeadException.class,
+                AttestationStaleHeadException.class,
                 () ->
                     SqliteAttestationEvidenceStore.appendAuthorized(
                         secondWriter,
@@ -183,14 +184,17 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
   }
 
   @Test
-  void admissionFailsClosedWhenAttestationHistoryDisappearsAfterObservation() throws Exception {
-    Path bookPath = tempDirectory.resolve("attested-history-disappeared.sqlite");
-    Path signerPath = tempDirectory.resolve("history-disappeared-founder.fgatk");
-    char[] passphrase = "sqlite attestation test passphrase".toCharArray();
+  void planAdmissionRejectsAHeadObservedBeforeAnotherWriterCommitsWithoutSigning()
+      throws Exception {
+    Path bookPath = tempDirectory.resolve("observed-plan-head-cas.sqlite");
+    Path signerPath = tempDirectory.resolve("observed-plan-head-founder.fgatk");
+    char[] passphrase = "sqlite observed plan-head test passphrase".toCharArray();
     AttestationPublicCredential publicCredential =
         AttestationKeyFiles.create(signerPath, passphrase);
     try (AttestationSigningCredential signer =
-        new AttestationSigningCredential(PRINCIPAL_ID, publicCredential, signerPath, passphrase)) {
+            new AttestationSigningCredential(
+                PRINCIPAL_ID, publicCredential, signerPath, passphrase);
+        SqliteNativeDatabase firstWriter = openNativeDatabase(bookAccess(bookPath))) {
       AttestationEvidence genesis =
           AttestationGenesis.create(
               BOOK_ID,
@@ -212,6 +216,74 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
               account,
               account,
               AttestationEffectMutation.CREATE);
+      SqliteBookSchemaBootstrap.initializeBook(firstWriter);
+      firstWriter.executeStatement("begin immediate");
+      SqliteAttestationEvidenceStore.append(firstWriter, ZERO_HEAD, genesis);
+      firstWriter.executeStatement("commit");
+
+      try (SqliteNativeDatabase secondWriter = openNativeDatabase(bookAccess(bookPath))) {
+        SqliteAttestationEvidenceStore.ObservedHead firstObservedHead =
+            SqliteAttestationEvidenceStore.observeRequired(firstWriter);
+        SqliteAttestationEvidenceStore.ObservedHead staleObservedHead =
+            SqliteAttestationEvidenceStore.observeRequired(secondWriter);
+
+        firstWriter.executeStatement("begin immediate");
+        AttestationVerification currentVerification =
+            SqliteAttestationEvidenceStore.appendAuthorized(
+                firstWriter,
+                firstObservedHead,
+                AttestationOperationKind.DECLARE_ACCOUNT,
+                Instant.parse("2026-07-21T00:00:01Z"),
+                preimages,
+                request -> sign(request, signer));
+        firstWriter.executeStatement("commit");
+
+        AttestationPlanOperationAuthorizer planAuthorizer =
+            new AttestationPlanOperationAuthorizer(
+                ignored -> {
+                  throw new AssertionError("A stale plan must not reach the signer.");
+                });
+        planAuthorizer.enterStep(0);
+        planAuthorizer.collectChildMutation(
+            AttestationOperationKind.DECLARE_ACCOUNT.wireToken(), preimages);
+        secondWriter.executeStatement("begin immediate");
+        AttestationStaleHeadException staleHead =
+            assertThrows(
+                AttestationStaleHeadException.class,
+                () ->
+                    SqliteAttestationEvidenceStore.appendPlanAuthorized(
+                        secondWriter,
+                        staleObservedHead,
+                        "monthly-close",
+                        Instant.parse("2026-07-21T00:00:02Z"),
+                        planAuthorizer));
+        secondWriter.executeStatement("rollback");
+
+        assertArrayEquals(staleObservedHead.operationHead(), staleHead.observedHead());
+        assertArrayEquals(currentVerification.operationHead(), staleHead.currentHead());
+        assertEquals(currentVerification.headOrder(), staleHead.currentOrder());
+        assertEquals(2, countRows(firstWriter, "attestation_operation"));
+      }
+    } finally {
+      java.util.Arrays.fill(passphrase, '\0');
+    }
+  }
+
+  @Test
+  void admissionFailsClosedWhenAttestationHistoryDisappearsAfterObservation() throws Exception {
+    Path bookPath = tempDirectory.resolve("attested-history-disappeared.sqlite");
+    Path signerPath = tempDirectory.resolve("history-disappeared-founder.fgatk");
+    char[] passphrase = "sqlite attestation test passphrase".toCharArray();
+    AttestationPublicCredential publicCredential =
+        AttestationKeyFiles.create(signerPath, passphrase);
+    try (AttestationSigningCredential signer =
+        new AttestationSigningCredential(PRINCIPAL_ID, publicCredential, signerPath, passphrase)) {
+      AttestationEvidence genesis =
+          AttestationGenesis.create(
+              BOOK_ID,
+              attestationBookIdentity(),
+              Instant.parse("2026-07-21T00:00:00Z"),
+              List.of(signer));
       withStandaloneDatabase(
           bookAccess(bookPath),
           database -> {
@@ -229,12 +301,19 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
                 assertThrows(
                     IllegalStateException.class,
                     () ->
+                        SqliteAttestationEvidenceStore.requireCurrentObservedHead(
+                            database, observedHead));
+            IllegalStateException appendFailure =
+                assertThrows(
+                    IllegalStateException.class,
+                    () ->
                         SqliteAttestationEvidenceStore.appendAuthorized(
                             database,
                             observedHead,
                             AttestationOperationKind.DECLARE_ACCOUNT,
                             Instant.parse("2026-07-21T00:00:01Z"),
-                            preimages,
+                            new dev.erst.fingrind.core.attestation.AttestationOperationPreimages(
+                                new byte[] {1}, new byte[] {2}),
                             ignored -> {
                               throw new AssertionError(
                                   "Admission without genesis must not reach the signer.");
@@ -244,6 +323,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
             assertEquals(
                 "Protected-book mutation requires a persisted attestation genesis.",
                 failure.getMessage());
+            assertEquals(failure.getMessage(), appendFailure.getMessage());
           });
     } finally {
       java.util.Arrays.fill(passphrase, '\0');
@@ -443,6 +523,10 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
             SqliteBookSchemaBootstrap.initializeBook(database);
             database.executeStatement("begin immediate");
             SqliteAttestationEvidenceStore.append(database, ZERO_HEAD, genesis);
+            database.executeStatement("commit");
+            SqliteAttestationEvidenceStore.ObservedHead observedHead =
+                SqliteAttestationEvidenceStore.observeRequired(database);
+            database.executeStatement("begin immediate");
             AttestationPlanOperationAuthorizer authorizer =
                 new AttestationPlanOperationAuthorizer(request -> sign(request, signer));
             IllegalArgumentException emptyPlan =
@@ -451,6 +535,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
                     () ->
                         SqliteAttestationEvidenceStore.appendPlanAuthorized(
                             database,
+                            observedHead,
                             "monthly-close",
                             Instant.parse("2026-07-21T00:00:01Z"),
                             authorizer));
@@ -461,7 +546,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
             AttestationVerification persisted =
                 SqliteAttestationEvidenceStore.appendAuthorized(
                     database,
-                    SqliteAttestationEvidenceStore.observeRequired(database),
+                    observedHead,
                     AttestationOperationKind.DECLARE_ACCOUNT,
                     Instant.parse("2026-07-21T00:00:01Z"),
                     preimages,
@@ -469,7 +554,11 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
             assertEquals(0, persisted.headOrder().intValueExact());
             AttestationVerification finalVerification =
                 SqliteAttestationEvidenceStore.appendPlanAuthorized(
-                    database, "monthly-close", Instant.parse("2026-07-21T00:00:02Z"), authorizer);
+                    database,
+                    observedHead,
+                    "monthly-close",
+                    Instant.parse("2026-07-21T00:00:02Z"),
+                    authorizer);
             assertEquals(1, finalVerification.headOrder().intValueExact());
             assertEquals(2, countRows(database, "attestation_operation"));
             database.executeStatement("commit");
@@ -609,25 +698,10 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
         bookAccess(planBookPath),
         database -> {
           SqliteBookSchemaBootstrap.initializeBook(database);
-          AttestationPlanOperationAuthorizer authorizer =
-              new AttestationPlanOperationAuthorizer(
-                  ignored -> {
-                    throw new AssertionError("Custody must not be consulted without genesis.");
-                  });
-          authorizer.enterStep(0);
-          authorizer.collectChildMutation(
-              "declare-account",
-              new dev.erst.fingrind.core.attestation.AttestationOperationPreimages(
-                  new byte[] {1}, new byte[] {2}));
           IllegalStateException planFailure =
               assertThrows(
                   IllegalStateException.class,
-                  () ->
-                      SqliteAttestationEvidenceStore.appendPlanAuthorized(
-                          database,
-                          "missing-genesis-plan",
-                          Instant.parse("2026-07-21T00:00:00Z"),
-                          authorizer));
+                  () -> SqliteAttestationEvidenceStore.observeRequired(database));
           assertEquals(
               "Protected-book mutation requires a persisted attestation genesis.",
               planFailure.getMessage());

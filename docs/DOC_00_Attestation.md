@@ -73,6 +73,6 @@ canonical references without widening the general API index.
 | `BackupAcknowledgementConflictException` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Backup Artifact Types` |
 | `ExportAttestationReceiptResult` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |
 | `ProtocolOptions.Attestation` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptions` |
-| `SqliteAttestationStaleHeadException` | `DOC_02_VerifiableOperationAttestationVerification.md` | `SqliteAttestationStaleHeadException` |
+| `AttestationStaleHeadException` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationStaleHeadException` |
 | `VerifyAttestationReceiptResult` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Receipt Result Types` |
 | `VerifyBookAttestationResult` | `DOC_02_VerifiableOperationAttestationVerification.md` | `Attestation Inspection And Verification Results` |

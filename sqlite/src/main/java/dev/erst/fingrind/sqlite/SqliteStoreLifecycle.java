@@ -221,7 +221,6 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
         ownsUninitializedExclusiveNewBook = true;
         exclusiveNewBookPreexistingAncestorDirectory = preexistingAncestorDirectory;
       }
-      ledgerPlanTransactions.beginImmediateIfNeeded(openedDatabase);
       return ContractDecision.accepted(openedDatabase);
     } catch (SqliteCallerPathContractException exception) {
       ContractFailure callerPathFailure =
@@ -269,6 +268,14 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
           SqliteStoreLifecycle.this::cleanupCreatedMissingBookArtifacts);
     }
 
+    void beginAttestedPlan() {
+      threadOwner.requireOwnerThread();
+      ensureOpen();
+      ledgerPlanTransactions.beginAttestedPlan(
+          SqliteStoreLifecycle.this::database,
+          SqliteStoreLifecycle.this::cleanupCreatedMissingBookArtifacts);
+    }
+
     void commit() {
       threadOwner.requireOwnerThread();
       ensureOpen();
@@ -291,6 +298,20 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
       return SqliteTransactionOwnership.OWNED;
     }
 
+    SqliteAttestedWriteAdmission admitAttestedWrite(SqliteNativeDatabase activeDatabase) {
+      threadOwner.requireOwnerThread();
+      if (ledgerPlanTransactions.active()) {
+        ledgerPlanTransactions.beginImmediateIfNeeded(activeDatabase);
+        return new SqliteAttestedWriteAdmission(
+            ledgerPlanTransactions.requireObservedAttestationHead(),
+            SqliteTransactionOwnership.SHARED);
+      }
+      SqliteAttestationEvidenceStore.ObservedHead observedHead =
+          SqliteAttestationEvidenceStore.observeRequired(activeDatabase);
+      activeDatabase.executeStatement("begin immediate");
+      return new SqliteAttestedWriteAdmission(observedHead, SqliteTransactionOwnership.OWNED);
+    }
+
     boolean active() {
       threadOwner.requireOwnerThread();
       return ledgerPlanTransactions.active();
@@ -299,6 +320,11 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
     boolean begunInDatabase() {
       threadOwner.requireOwnerThread();
       return ledgerPlanTransactions.begunInDatabase();
+    }
+
+    SqliteAttestationEvidenceStore.ObservedHead requireObservedAttestationHead() {
+      threadOwner.requireOwnerThread();
+      return ledgerPlanTransactions.requireObservedAttestationHead();
     }
 
     void cleanupCreatedMissingBookArtifactsIfPresent() {

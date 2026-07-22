@@ -13,7 +13,10 @@ record NoLedgerPlanTransaction() implements LedgerPlanTransactionState {}
 
 /** Active ledger-plan transaction with explicit database and artifact tracking state. */
 record ActiveLedgerPlanTransaction(
-    DatabaseTransactionState databaseTransactionState, ArtifactCleanupState artifactCleanupState)
+    DatabaseTransactionState databaseTransactionState,
+    ArtifactCleanupState artifactCleanupState,
+    boolean capturesPlanAttestationHead,
+    SqliteAttestationEvidenceStore.@Nullable ObservedHead observedAttestationHead)
     implements LedgerPlanTransactionState {
   ActiveLedgerPlanTransaction {
     Objects.requireNonNull(databaseTransactionState, "databaseTransactionState");
@@ -32,8 +35,13 @@ record ActiveLedgerPlanTransaction(
     return artifactCleanupState.preexistingAncestorDirectory();
   }
 
-  ActiveLedgerPlanTransaction withBegunDatabase() {
-    return new ActiveLedgerPlanTransaction(new DatabaseTransactionBegun(), artifactCleanupState);
+  ActiveLedgerPlanTransaction withBegunDatabase(
+      SqliteAttestationEvidenceStore.@Nullable ObservedHead observedAttestationHead) {
+    return new ActiveLedgerPlanTransaction(
+        new DatabaseTransactionBegun(),
+        artifactCleanupState,
+        capturesPlanAttestationHead,
+        observedAttestationHead);
   }
 
   ActiveLedgerPlanTransaction withCreatedBookArtifacts() {
@@ -42,7 +50,9 @@ record ActiveLedgerPlanTransaction(
       case MissingBookArtifactsPending pending ->
           new ActiveLedgerPlanTransaction(
               databaseTransactionState,
-              new MissingBookArtifactsCreated(pending.preexistingAncestorDirectory()));
+              new MissingBookArtifactsCreated(pending.preexistingAncestorDirectory()),
+              capturesPlanAttestationHead,
+              observedAttestationHead);
       case MissingBookArtifactsCreated ignored -> this;
     };
   }

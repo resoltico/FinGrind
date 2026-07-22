@@ -24,6 +24,18 @@ final class SqliteLedgerPlanTransactionCoordinator {
   }
 
   void begin(Supplier<SqliteNativeDatabase> databaseSupplier, ArtifactCleanupAction cleanupAction) {
+    begin(databaseSupplier, cleanupAction, false);
+  }
+
+  void beginAttestedPlan(
+      Supplier<SqliteNativeDatabase> databaseSupplier, ArtifactCleanupAction cleanupAction) {
+    begin(databaseSupplier, cleanupAction, true);
+  }
+
+  private void begin(
+      Supplier<SqliteNativeDatabase> databaseSupplier,
+      ArtifactCleanupAction cleanupAction,
+      boolean capturesPlanAttestationHead) {
     context.accessMode().requireWritableMutation();
     if (transactionState instanceof ActiveLedgerPlanTransaction) {
       throw new IllegalStateException("Ledger plan transaction is already active.");
@@ -35,7 +47,11 @@ final class SqliteLedgerPlanTransactionCoordinator {
                 SqliteLedgerPlanArtifactCleanup.nearestExistingAncestor(context.bookPath()))
             : new NoArtifactCleanup();
     transactionState =
-        new ActiveLedgerPlanTransaction(new DatabaseTransactionDeferred(), artifactCleanupState);
+        new ActiveLedgerPlanTransaction(
+            new DatabaseTransactionDeferred(),
+            artifactCleanupState,
+            capturesPlanAttestationHead,
+            null);
     if (context.accessMode().defersMissingBookOpen() && missingBookAtStart) {
       return;
     }
@@ -100,8 +116,16 @@ final class SqliteLedgerPlanTransactionCoordinator {
   void beginImmediateIfNeeded(SqliteNativeDatabase activeDatabase) {
     if (transactionState instanceof ActiveLedgerPlanTransaction activeTransaction
         && !activeTransaction.begunInDatabase()) {
+      SqliteAttestationEvidenceStore.@Nullable ObservedHead observedAttestationHead =
+          activeTransaction.capturesPlanAttestationHead()
+              ? SqliteAttestationEvidenceStore.observeRequired(activeDatabase)
+              : null;
       activeDatabase.executeStatement("begin immediate");
-      transactionState = activeTransaction.withBegunDatabase();
+      transactionState = activeTransaction.withBegunDatabase(observedAttestationHead);
+      if (activeTransaction.capturesPlanAttestationHead()) {
+        SqliteAttestationEvidenceStore.requireCurrentObservedHead(
+            activeDatabase, requireObservedAttestationHead());
+      }
     }
   }
 
@@ -123,6 +147,20 @@ final class SqliteLedgerPlanTransactionCoordinator {
   boolean createdBookArtifacts() {
     return transactionState instanceof ActiveLedgerPlanTransaction activeTransaction
         && activeTransaction.createdBookArtifacts();
+  }
+
+  SqliteAttestationEvidenceStore.ObservedHead requireObservedAttestationHead() {
+    return switch (transactionState) {
+      case NoLedgerPlanTransaction _ ->
+          throw new IllegalStateException("No ledger plan transaction is active.");
+      case ActiveLedgerPlanTransaction activeTransaction -> {
+        if (activeTransaction.observedAttestationHead() == null) {
+          throw new IllegalStateException(
+              "A mutating ledger plan must observe its attestation head before write admission.");
+        }
+        yield activeTransaction.observedAttestationHead();
+      }
+    };
   }
 
   @Nullable Path preexistingAncestorDirectory() {

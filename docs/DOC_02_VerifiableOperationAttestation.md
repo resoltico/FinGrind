@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: BOOK_OPERATION_ATTESTATION
-updated: "2026-07-21"
+updated: "2026-07-22"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["AttestedOperation", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationEvidence", "AttestationGenesis", "AttestationKeyFiles", "AttestationOperationKind", "AttestationOperationSigner", "AttestationPublicCredential", "AttestationSigningCredential"]
@@ -638,6 +638,12 @@ operation kind and must independently satisfy that child's exact row after remov
 B group. Its effect records carry the same stepOrder or the generated postingId linked to that
 step; account and tax-registration children retain their own canonical identity records. The
 aggregate cannot use the union of unrelated rows as a discretionary extension point.
+The aggregate and every mutating child share the one authenticated head observed before the
+plan's first write admission. After the children succeed, FinGrind compares that same head before
+the aggregate signer runs. A concurrent advance is a `stale-head` refusal, not a plan journal
+entry: the full plan transaction rolls back and the caller re-signs against the reported current
+head.
+
 `record-reversal` names the admitted original posting in
 request.posting.priorPostingId and may reverse it only under the closed reversal relation in the
 semantic profiles.

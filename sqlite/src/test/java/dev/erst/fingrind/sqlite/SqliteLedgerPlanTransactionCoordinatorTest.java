@@ -77,6 +77,9 @@ class SqliteLedgerPlanTransactionCoordinatorTest {
                 SqliteStoreAccessMode.READ_WRITE_CREATE,
                 SqliteNativeBootstrap::api));
     try (RecordingDatabase database = new RecordingDatabase()) {
+      assertThrows(IllegalStateException.class, eager::requireObservedAttestationHead);
+      eager.beginImmediateIfNeeded(database);
+      assertTrue(database.statements.isEmpty());
 
       eager.begin(
           () -> database, ignored -> fail("existing-book transaction must not clean artifacts"));
@@ -84,6 +87,7 @@ class SqliteLedgerPlanTransactionCoordinatorTest {
       assertFalse(eager.begunInDatabase());
       assertFalse(eager.createdBookArtifacts());
       assertNull(eager.preexistingAncestorDirectory());
+      assertThrows(IllegalStateException.class, eager::requireObservedAttestationHead);
       assertThrows(IllegalStateException.class, () -> eager.begin(() -> database, ignored -> {}));
       eager.noteBookArtifactsMayMutate();
       assertFalse(eager.createdBookArtifacts());

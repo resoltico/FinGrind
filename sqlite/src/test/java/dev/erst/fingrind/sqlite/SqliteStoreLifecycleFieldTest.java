@@ -29,9 +29,12 @@ class SqliteStoreLifecycleFieldTest extends SqlitePostingFactStoreTestSupport {
       assertTrue(store.lifecycle.transactions().active());
       assertFalse(store.lifecycle.transactions().begunInDatabase());
       assertFalse(Files.exists(bookPath));
-      store.lifecycle.database();
-      assertTrue(store.lifecycle.transactions().begunInDatabase());
-      assertTrue(Files.isRegularFile(bookPath));
+      try (SqliteNativeDatabase activeDatabase = store.lifecycle.database()) {
+        assertFalse(store.lifecycle.transactions().begunInDatabase());
+        store.lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
+        assertTrue(store.lifecycle.transactions().begunInDatabase());
+        assertTrue(Files.isRegularFile(bookPath));
+      }
     }
 
     assertFalse(Files.exists(bookPath));

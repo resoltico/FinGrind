@@ -10,8 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
+import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
 import dev.erst.fingrind.sqlite.ManagedSqliteRuntimeUnavailableException;
-import dev.erst.fingrind.sqlite.SqliteAttestationStaleHeadException;
 import dev.erst.fingrind.sqlite.SqlitePersistenceInvariantException;
 import dev.erst.fingrind.sqlite.SqliteStorageFailureException;
 import java.math.BigInteger;
@@ -71,7 +71,7 @@ class CliFailureMapperTest {
   void runtimeFailure_mapsStaleHeadToThePublishedCasRefusal() {
     CliFailure failure =
         CliFailureMapper.runtimeFailure(
-            new SqliteAttestationStaleHeadException(
+            new AttestationStaleHeadException(
                 new byte[32],
                 new byte[] {
                   1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23,

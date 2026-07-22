@@ -2,7 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
-import dev.erst.fingrind.sqlite.SqliteAttestationStaleHeadException;
+import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
 import dev.erst.fingrind.sqlite.SqliteFailureClassifier;
 import java.util.HexFormat;
 import java.util.Objects;
@@ -28,7 +28,7 @@ final class CliFailureMapper {
   }
 
   static @Nullable CliFailure runtimeFailure(RuntimeException exception, @Nullable String errorId) {
-    if (exception instanceof SqliteAttestationStaleHeadException staleHead) {
+    if (exception instanceof AttestationStaleHeadException staleHead) {
       return new CliFailure(
           ContractErrors.Descriptor.STALE_HEAD.code(),
           "The attestation head advanced after this operation was signed, so FinGrind did not persist it.",

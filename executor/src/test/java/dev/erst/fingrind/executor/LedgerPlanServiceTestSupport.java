@@ -33,6 +33,8 @@ import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceChannel;
+import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
@@ -56,6 +58,7 @@ import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.executor.spi.ReportingPeriodCloseStore;
 import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import dev.erst.fingrind.executor.spi.TaxAdministrationStore;
+import java.math.BigInteger;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -544,6 +547,76 @@ final class LedgerPlanServiceTestSupport {
     public void rollbackLedgerPlanTransaction() {
       rollbackCalled = true;
       delegate.rollbackLedgerPlanTransaction();
+    }
+
+    boolean rollbackCalled() {
+      return rollbackCalled;
+    }
+  }
+
+  /** Test seam that loses attestation admission while a mutating child executes. */
+  static final class DeclareStaleHeadLedgerPlanSession extends DelegatingAtomicBookStore {
+    private final AttestationStaleHeadException staleHead =
+        new AttestationStaleHeadException(new byte[32], new byte[32], BigInteger.ONE);
+    private final boolean failsRollback;
+    private boolean rollbackCalled;
+
+    DeclareStaleHeadLedgerPlanSession() {
+      this(false);
+    }
+
+    DeclareStaleHeadLedgerPlanSession(boolean failsRollback) {
+      this.failsRollback = failsRollback;
+    }
+
+    @Override
+    public AccountDeclarationOutcome declareAccount(
+        AccountDeclaration declaration,
+        Instant declaredAt,
+        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
+      throw staleHead;
+    }
+
+    @Override
+    public void rollbackLedgerPlanTransaction() {
+      rollbackCalled = true;
+      if (failsRollback) {
+        throw new IllegalStateException("rollback boom");
+      }
+      delegate.rollbackLedgerPlanTransaction();
+    }
+
+    AttestationStaleHeadException staleHead() {
+      return staleHead;
+    }
+
+    boolean rollbackCalled() {
+      return rollbackCalled;
+    }
+  }
+
+  /** Test seam that loses attestation admission after all mutating children have succeeded. */
+  static final class AggregateStaleHeadLedgerPlanSession extends DelegatingAtomicBookStore {
+    private final AttestationStaleHeadException staleHead =
+        new AttestationStaleHeadException(new byte[32], new byte[32], BigInteger.ONE);
+    private boolean rollbackCalled;
+
+    @Override
+    public void appendPlanAttestation(
+        String planId,
+        Instant recordedAt,
+        AttestationPlanOperationAuthorizer attestationAuthorizer) {
+      throw staleHead;
+    }
+
+    @Override
+    public void rollbackLedgerPlanTransaction() {
+      rollbackCalled = true;
+      delegate.rollbackLedgerPlanTransaction();
+    }
+
+    AttestationStaleHeadException staleHead() {
+      return staleHead;
     }
 
     boolean rollbackCalled() {

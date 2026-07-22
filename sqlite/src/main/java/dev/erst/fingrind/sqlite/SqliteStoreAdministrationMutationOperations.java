@@ -123,9 +123,9 @@ final class SqliteStoreAdministrationMutationOperations {
                   new TaxDeclarationRejection.BookNotInitialized());
             }
 
-            SqliteAttestationEvidenceStore.ObservedHead observedHead =
-                SqliteAttestationEvidenceStore.observeRequired(activeDatabase);
-            transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
+            SqliteAttestedWriteAdmission admission =
+                lifecycle.transactions().admitAttestedWrite(activeDatabase);
+            transactionOwnership = admission.transactionOwnership();
             Optional<DeclaredTaxRegistration> existingRegistration =
                 SqliteTaxStatementQueries.findOneTaxRegistration(
                     activeDatabase, command.taxRegistrationId());
@@ -141,7 +141,7 @@ final class SqliteStoreAdministrationMutationOperations {
             }
             SqliteAttestationEvidenceStore.appendAuthorized(
                 activeDatabase,
-                observedHead,
+                admission.observedHead(),
                 DECLARE_TAX_REGISTRATION_OPERATION,
                 declaredAt,
                 AttestationTaxRegistrationMutationProjection.project(

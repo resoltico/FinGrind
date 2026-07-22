@@ -48,9 +48,10 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
-- Fixed attestation admission and publication durability. Every live protected-book mutation now
-  compares the head it observed before write admission, emits the documented `stale-head` refusal
-  with exact head details instead of an internal error, and re-signs a raced backup acknowledgement.
+- Fixed attestation admission and publication durability. Every live protected-book mutation,
+  including aggregate `execute-plan` admission, now compares the head it observed before write
+  admission, emits the documented `stale-head` refusal with exact head details instead of an
+  internal error, and re-signs a raced backup acknowledgement.
   Backup, restore, and receipt no-clobber publication now make the final directory entry durable
   before success is returned.
 - Fixed `verify-book` and `verify-receipt` invalid-result transport. Every structural attestation

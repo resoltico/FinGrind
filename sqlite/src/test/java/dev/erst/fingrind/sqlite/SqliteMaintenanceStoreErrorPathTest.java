@@ -14,6 +14,7 @@ import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationLifecycleMutationProjection;
 import dev.erst.fingrind.core.attestation.AttestationOperationKind;
+import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
 import dev.erst.fingrind.core.attestation.AttestationVerifier;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
@@ -149,9 +150,8 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
           backupVerification.headOrder());
     }
 
-    SqliteAttestationStaleHeadException staleHead =
-        new SqliteAttestationStaleHeadException(
-            new byte[32], new byte[32], java.math.BigInteger.ONE);
+    AttestationStaleHeadException staleHead =
+        new AttestationStaleHeadException(new byte[32], new byte[32], java.math.BigInteger.ONE);
     AtomicInteger attempts = new AtomicInteger();
     assertEquals(
         "accepted",
@@ -167,7 +167,7 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
     assertSame(
         staleHead,
         assertThrows(
-            SqliteAttestationStaleHeadException.class,
+            AttestationStaleHeadException.class,
             () ->
                 SqliteProtectedBookMaintenanceStore.retryStaleHead(
                     false,

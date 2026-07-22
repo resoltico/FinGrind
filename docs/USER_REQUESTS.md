@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: OPERATOR_REQUESTS
-updated: "2026-07-21"
+updated: "2026-07-22"
 route:
   keywords: [fingrind, request-json, provenance, reversal, idempotency, accrual-cutoff, fixed-assets, financing, realized-foreign-exchange, latvian-payroll, prepayment, deferred-revenue, accrued-expense, ledger-plan, execute-plan, tax-setup, account-declaration, account-lifecycle]
   questions: ["what request json does fingrind accept", "how do i record a fixed asset or depreciation", "how do i record financing interest", "how do i settle a foreign-currency receivable", "how do i record Latvian monthly payroll", "how do i record a prepayment or deferred revenue", "how do i settle an accrued expense", "what ledger plan shape does execute-plan accept", "how do i amend or retire an account in fingrind", "what posting request fields does fingrind accept"]
@@ -430,8 +430,9 @@ stdout may be text, JSON, or CSV where advertised, but failing single-command in
 same parseable diagnostics shape with the same top-level `message`, optional `hint`, and any typed
 detail payload that identifies the failing posting id, blocked close-reserved account code and
 classification, account-state violation set, or related deterministic repair data. `execute-plan`
-is the
-exception: its `REJECTED` and `ASSERTION_FAILED` outcomes are primary result envelopes on stdout.
+is the exception for business outcomes: its `REJECTED` and `ASSERTION_FAILED` outcomes are primary
+result envelopes on stdout. A `stale-head` admission refusal is instead a standard error envelope
+with the observed and current head details, because no plan outcome was admitted.
 
 ## Accepted Values
 

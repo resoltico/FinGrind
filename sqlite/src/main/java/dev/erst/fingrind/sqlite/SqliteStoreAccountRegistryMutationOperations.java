@@ -296,10 +296,10 @@ final class SqliteStoreAccountRegistryMutationOperations {
       if (!lifecycle.isInitializedBook(activeDatabase)) {
         return Objects.requireNonNull(bookNotInitializedOutcome, "bookNotInitializedOutcome").get();
       }
-      SqliteAttestationEvidenceStore.ObservedHead observedHead =
-          SqliteAttestationEvidenceStore.observeRequired(activeDatabase);
-      transactionOwnership = lifecycle.transactions().beginImmediateIfNeeded(activeDatabase);
-      T outcome = mutation.run(activeDatabase, observedHead);
+      SqliteAttestedWriteAdmission admission =
+          lifecycle.transactions().admitAttestedWrite(activeDatabase);
+      transactionOwnership = admission.transactionOwnership();
+      T outcome = mutation.run(activeDatabase, admission.observedHead());
       SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
       return outcome;
     } catch (SqliteNativeException exception) {

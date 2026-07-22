@@ -5,6 +5,7 @@ import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationOperationPreimages;
+import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
@@ -207,7 +208,7 @@ public final class SqliteProtectedBookMaintenanceStore
     while (true) {
       try {
         return checkedAttempt.run();
-      } catch (SqliteAttestationStaleHeadException exception) {
+      } catch (AttestationStaleHeadException exception) {
         if (!retryStaleHead) {
           throw exception;
         }

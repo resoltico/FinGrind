@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: OPERATOR_RESPONSES
-updated: "2026-07-21"
+updated: "2026-07-22"
 route:
   keywords: [fingrind, response-json, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, fixed-asset-register, output-mode, capabilities, execute-plan, tax-setup, amend-account, retire-account, report-output]
   questions: ["what response envelopes does fingrind return", "what does inspect-book return", "how does list-accounts pagination work in fingrind", "what execute-plan response does fingrind return", "what do amend-account and retire-account return", "what does fixed asset register return", "what report payloads does fingrind return"]
@@ -26,6 +26,7 @@ payloads returned by the CLI.
 | `ok` | successful `execute-plan` | `status`, `payload.planId`, `payload.status`, `payload.resultDetail`, `payload.summary`, and optional `payload.journal` |
 | `rejected` | deterministically rejected `execute-plan` | `status`, `category`, `payload.planId`, `payload.status`, `payload.resultDetail`, `payload.summary`, optional `payload.journal`, plus top-level `code` and `message` |
 | `error` | assertion-failed `execute-plan` | `status`, `category`, `payload.planId`, `payload.status`, `payload.resultDetail`, `payload.summary`, optional `payload.journal`, plus top-level `code` and `message` |
+| `error` | `stale-head` during `execute-plan` admission | standard error fields plus `details.observedHead`, `details.currentHead`, and `details.currentOrder`; no plan payload |
 | `rejected` | deterministic single-command business rejection | `status`, `category`, `code`, `message`, optional `idempotencyKey`, optional `details`, optional `path`, optional `relatedPaths` |
 | `error` | malformed input or runtime failure | `status`, `category`, `code`, `message`, optional `hint`, optional `argument`, optional `path`, optional `relatedPaths` |
 
@@ -443,6 +444,12 @@ rows. Use JSON when the complete semantic result and resolved query are needed. 
 - `finishedAt`
 - `steps[]`, where each entry includes `stepId`, `kind`, `status`, `startedAt`, `finishedAt`,
   typed `data`, optional `detailKind`, and optional `failure`
+
+When a mutating plan loses the attestation compare-and-swap race at either a child write or its
+final aggregate operation, FinGrind rolls back the entire plan and returns the standard
+`stale-head` error envelope with exit code `2`. It does not publish a rejected plan journal, since
+none of that plan's mutations was admitted; reload the book state, re-sign against `currentHead`,
+and retry.
 
 Commands that advertise `--output` default successful stdout to text; a per-command `--output ...`
 flag selects a supported alternative. Discovery, administration, write, and read/report commands

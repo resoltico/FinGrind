@@ -14,6 +14,8 @@ import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.stepId;
 import static dev.erst.fingrind.executor.LedgerPlanServiceTestSupport.textFact;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
@@ -52,6 +54,7 @@ import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
 import java.util.List;
 import java.util.Optional;
 import org.jspecify.annotations.Nullable;
@@ -602,6 +605,89 @@ class LedgerPlanServiceWorkflowTest {
       assertEquals(
           "unexpected-step-failure", result.journal().steps().getLast().requiredFailure().code());
       assertTrue(bookSession.rollbackCalled());
+    }
+  }
+
+  @Test
+  void execute_rethrowsStaleHeadAndRollsBackWhenAChildWriteLosesAdmission() {
+    try (LedgerPlanServiceTestSupport.DeclareStaleHeadLedgerPlanSession bookSession =
+        new LedgerPlanServiceTestSupport.DeclareStaleHeadLedgerPlanSession()) {
+      AttestationStaleHeadException staleHead =
+          assertThrows(
+              AttestationStaleHeadException.class,
+              () ->
+                  service(bookSession)
+                      .execute(
+                          new LedgerPlan(
+                              planId("plan-stale-child"),
+                              List.of(
+                                  new LedgerStep.DeclareAccount(
+                                      stepId("cash"),
+                                      account(
+                                          "1000",
+                                          "Cash",
+                                          AccountType.ASSET,
+                                          NormalBalance.DEBIT)))),
+                          ExecutorAccountingTestSupport.TEST_AUTHORIZER));
+
+      assertSame(bookSession.staleHead(), staleHead);
+      assertTrue(bookSession.rollbackCalled());
+    }
+  }
+
+  @Test
+  void execute_rethrowsStaleHeadAndRollsBackWhenAggregateAdmissionLosesTheHead() {
+    try (LedgerPlanServiceTestSupport.AggregateStaleHeadLedgerPlanSession bookSession =
+        new LedgerPlanServiceTestSupport.AggregateStaleHeadLedgerPlanSession()) {
+      AttestationStaleHeadException staleHead =
+          assertThrows(
+              AttestationStaleHeadException.class,
+              () ->
+                  service(bookSession)
+                      .execute(
+                          new LedgerPlan(
+                              planId("plan-stale-aggregate"),
+                              List.of(
+                                  new LedgerStep.DeclareAccount(
+                                      stepId("cash"),
+                                      account(
+                                          "1000",
+                                          "Cash",
+                                          AccountType.ASSET,
+                                          NormalBalance.DEBIT)))),
+                          ExecutorAccountingTestSupport.TEST_AUTHORIZER));
+
+      assertSame(bookSession.staleHead(), staleHead);
+      assertTrue(bookSession.rollbackCalled());
+    }
+  }
+
+  @Test
+  void execute_preservesStaleHeadWhenRollbackAlsoFails() {
+    try (LedgerPlanServiceTestSupport.DeclareStaleHeadLedgerPlanSession bookSession =
+        new LedgerPlanServiceTestSupport.DeclareStaleHeadLedgerPlanSession(true)) {
+      AttestationStaleHeadException staleHead =
+          assertThrows(
+              AttestationStaleHeadException.class,
+              () ->
+                  service(bookSession)
+                      .execute(
+                          new LedgerPlan(
+                              planId("plan-stale-rollback"),
+                              List.of(
+                                  new LedgerStep.DeclareAccount(
+                                      stepId("cash"),
+                                      account(
+                                          "1000",
+                                          "Cash",
+                                          AccountType.ASSET,
+                                          NormalBalance.DEBIT)))),
+                          ExecutorAccountingTestSupport.TEST_AUTHORIZER));
+
+      assertSame(bookSession.staleHead(), staleHead);
+      assertTrue(bookSession.rollbackCalled());
+      assertEquals(1, staleHead.getSuppressed().length);
+      assertEquals("rollback boom", staleHead.getSuppressed()[0].getMessage());
     }
   }
 

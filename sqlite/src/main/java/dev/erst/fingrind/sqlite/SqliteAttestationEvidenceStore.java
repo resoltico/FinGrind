@@ -8,6 +8,7 @@ import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationOperationPreimages;
 import dev.erst.fingrind.core.attestation.AttestationOperationRequest;
 import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
+import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
 import dev.erst.fingrind.core.attestation.AttestationVerificationException;
 import dev.erst.fingrind.core.attestation.AttestationVerifier;
@@ -51,7 +52,7 @@ final class SqliteAttestationEvidenceStore {
             .map(verification -> new Head(verification.operationHead(), verification.headOrder()))
             .orElseGet(() -> new Head(GENESIS_PREVIOUS_HEAD, BigInteger.valueOf(-1L)));
     if (!Arrays.equals(checkedObservedHead, currentHead.bytes())) {
-      throw new SqliteAttestationStaleHeadException(
+      throw new AttestationStaleHeadException(
           checkedObservedHead, currentHead.bytes(), currentHead.order());
     }
 
@@ -104,7 +105,7 @@ final class SqliteAttestationEvidenceStore {
                         "Protected-book mutation requires a persisted attestation genesis."));
     if (!Arrays.equals(
         checkedObservedHead.operationHead(), persistedVerification.operationHead())) {
-      throw new SqliteAttestationStaleHeadException(
+      throw new AttestationStaleHeadException(
           checkedObservedHead.operationHead(),
           persistedVerification.operationHead(),
           persistedVerification.headOrder());
@@ -150,14 +151,39 @@ final class SqliteAttestationEvidenceStore {
   }
 
   /**
+   * Verifies that one head observed before write admission remains the authenticated current head.
+   */
+  static AttestationVerification requireCurrentObservedHead(
+      SqliteNativeDatabase activeDatabase, ObservedHead observedHead) {
+    Objects.requireNonNull(activeDatabase, "activeDatabase");
+    ObservedHead checkedObservedHead = Objects.requireNonNull(observedHead, "observedHead");
+    AttestationVerification persistedVerification =
+        verifyPersisted(loadAll(activeDatabase))
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Protected-book mutation requires a persisted attestation genesis."));
+    if (!Arrays.equals(
+        checkedObservedHead.operationHead(), persistedVerification.operationHead())) {
+      throw new AttestationStaleHeadException(
+          checkedObservedHead.operationHead(),
+          persistedVerification.operationHead(),
+          persistedVerification.headOrder());
+    }
+    return persistedVerification;
+  }
+
+  /**
    * Appends one aggregate execute-plan operation after all child domain mutations have succeeded.
    */
   static AttestationVerification appendPlanAuthorized(
       SqliteNativeDatabase activeDatabase,
+      ObservedHead observedHead,
       String planId,
       Instant recordedAt,
       AttestationPlanOperationAuthorizer authorizer) {
     Objects.requireNonNull(activeDatabase, "activeDatabase");
+    ObservedHead checkedObservedHead = Objects.requireNonNull(observedHead, "observedHead");
     String checkedPlanId = Objects.requireNonNull(planId, "planId");
     Instant checkedRecordedAt = Objects.requireNonNull(recordedAt, "recordedAt");
     AttestationPlanOperationAuthorizer checkedAuthorizer =
@@ -166,13 +192,8 @@ final class SqliteAttestationEvidenceStore {
       throw new IllegalArgumentException(
           EXECUTE_PLAN.wireToken() + " did not produce a mutating child step.");
     }
-    List<AttestationEvidence> persistedEvidence = loadAll(activeDatabase);
     AttestationVerification persistedVerification =
-        verifyPersisted(persistedEvidence)
-            .orElseThrow(
-                () ->
-                    new IllegalStateException(
-                        "Protected-book mutation requires a persisted attestation genesis."));
+        requireCurrentObservedHead(activeDatabase, checkedObservedHead);
     AttestationOperationPreimages planPreimages = checkedAuthorizer.planPreimages(checkedPlanId);
     AttestationEvidence candidateEvidence =
         checkedAuthorizer.authorizePlan(
@@ -184,7 +205,7 @@ final class SqliteAttestationEvidenceStore {
                 checkedRecordedAt,
                 planPreimages.request(),
                 planPreimages.effect()));
-    return append(activeDatabase, persistedVerification.operationHead(), candidateEvidence);
+    return append(activeDatabase, checkedObservedHead.operationHead(), candidateEvidence);
   }
 
   static List<AttestationEvidence> loadAll(SqliteNativeDatabase activeDatabase) {
