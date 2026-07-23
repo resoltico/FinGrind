@@ -11,17 +11,25 @@ import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadOutcome;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
+import dev.erst.fingrind.executor.spi.AttestationPostingCommitmentStore;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 /** Application ownership for posting-inspection and history-query translation. */
 final class BookReadPostingQueryOperations {
   private final BookkeepingReadStore bookStore;
+  private final AttestationPostingCommitmentStore attestationCommitmentStore;
   private final BookkeepingReadService bookkeepingReadService;
 
   BookReadPostingQueryOperations(
-      BookkeepingReadStore bookStore, BookkeepingReadService bookkeepingReadService) {
+      BookkeepingReadStore bookStore,
+      AttestationPostingCommitmentStore attestationCommitmentStore,
+      BookkeepingReadService bookkeepingReadService) {
     this.bookStore = Objects.requireNonNull(bookStore, "bookStore");
+    this.attestationCommitmentStore =
+        Objects.requireNonNull(attestationCommitmentStore, "attestationCommitmentStore");
     this.bookkeepingReadService =
         Objects.requireNonNull(bookkeepingReadService, "bookkeepingReadService");
   }
@@ -29,10 +37,14 @@ final class BookReadPostingQueryOperations {
   GetPostingResult getPosting(PostingId postingId) {
     BookkeepingReadOutcome<CommittedPosting> outcome = bookkeepingReadService.getPosting(postingId);
     if (outcome instanceof BookkeepingReadOutcome.Reported<CommittedPosting> reported) {
+      Map<PostingId, dev.erst.fingrind.contract.bookkeeping.AttestationCommit> commitments =
+          AttestationPostingCommitmentProjection.resolve(
+              attestationCommitmentStore, Set.of(postingId));
       return new GetPostingResult.Found(
           bookkeepingReadService.requireInitializedBookIdentity(),
           BookkeepingPublishedLanguageTranslator.toPublished(reported.value()),
-          bookStore.findReversalFor(postingId).map(CommittedPosting::postingId));
+          bookStore.findReversalFor(postingId).map(CommittedPosting::postingId),
+          java.util.Optional.ofNullable(commitments.get(postingId)));
     }
     BookkeepingReadOutcome.Rejected<CommittedPosting> rejected =
         (BookkeepingReadOutcome.Rejected<CommittedPosting>) outcome;
@@ -46,8 +58,9 @@ final class BookReadPostingQueryOperations {
       case BookkeepingReadOutcome.Reported<PostingHistoryPage> reported ->
           new ListPostingsResult.Listed(
               query,
-              BookReadPostingBacklinkProjection.withReversalBacklinks(
+              BookReadPostingPageProjection.enrich(
                   bookStore,
+                  attestationCommitmentStore,
                   BookkeepingReadPagePublishedLanguageTranslator.toPublished(
                       bookkeepingReadService.requireInitializedBookIdentity(),
                       publishedQuery,

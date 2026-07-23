@@ -3,10 +3,12 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
@@ -32,6 +34,7 @@ import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner;
 import dev.erst.fingrind.executor.bookkeeping.InventoryAccountState;
 import dev.erst.fingrind.executor.bookkeeping.InventoryMovementRecord;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -194,8 +197,9 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
           new AttestationPlanOperationAuthorizer(SqliteAttestationTestSupport.authorizer());
 
       session.beginLedgerPlanTransaction();
-      session.appendPlanAttestation(
-          "no-op-plan", Instant.parse("2026-07-21T12:00:00Z"), authorizer);
+      assertNull(
+          session.appendPlanAttestation(
+              "no-op-plan", Instant.parse("2026-07-21T12:00:00Z"), authorizer));
       assertEquals(
           3, queryInt(requireStoreDatabase(store), "select count(*) from attestation_operation"));
       authorizer.enterStep(0);
@@ -210,10 +214,14 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
                       FinancialPositionLineClassification.EQUITY_CONTRIBUTION)),
               Instant.parse("2026-07-21T12:00:00Z"),
               authorizer));
-      session.appendPlanAttestation(
-          "account-plan", Instant.parse("2026-07-21T12:00:01Z"), authorizer);
+      AttestationCommit commitment =
+          Objects.requireNonNull(
+              session.appendPlanAttestation(
+                  "account-plan", Instant.parse("2026-07-21T12:00:01Z"), authorizer));
       session.commitLedgerPlanTransaction();
 
+      assertEquals(BigInteger.valueOf(3), commitment.operationOrder());
+      assertEquals(64, commitment.operationHeadHex().length());
       assertEquals(
           4, queryInt(requireStoreDatabase(store), "select count(*) from attestation_operation"));
     }

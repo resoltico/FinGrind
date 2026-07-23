@@ -273,7 +273,8 @@ class LedgerPlanFuzzAssertionsTest {
             new LedgerExecutionJournal(
                 Instant.parse("2026-04-07T12:00:00Z"),
                 Instant.parse("2026-04-07T12:00:01Z"),
-                List.of(declareCashStep)));
+                List.of(declareCashStep)),
+            null);
 
     IllegalStateException mismatchedPlanId =
         assertThrows(
@@ -311,7 +312,8 @@ class LedgerPlanFuzzAssertionsTest {
                                 step ->
                                     succeededEntry(step.stepId().value(), step.kind(), List.of())),
                         java.util.stream.Stream.of(declareCashStep))
-                    .toList()));
+                    .toList()),
+            null);
     IllegalStateException overflow =
         assertThrows(
             IllegalStateException.class,
@@ -324,8 +326,8 @@ class LedgerPlanFuzzAssertionsTest {
             new LedgerExecutionJournal(
                 Instant.parse("2026-04-07T12:00:00Z"),
                 Instant.parse("2026-04-07T12:00:01Z"),
-                List.of(
-                    succeededEntry("drifted-step", plan.steps().getFirst().kind(), List.of()))));
+                List.of(succeededEntry("drifted-step", plan.steps().getFirst().kind(), List.of()))),
+            null);
     IllegalStateException stepIdDrift =
         assertThrows(
             IllegalStateException.class,
@@ -342,7 +344,8 @@ class LedgerPlanFuzzAssertionsTest {
                     succeededEntry(
                         plan.steps().getFirst().stepId().value(),
                         LedgerStepKind.INSPECT_BOOK,
-                        List.of()))));
+                        List.of()))),
+            null);
     IllegalStateException stepKindDrift =
         assertThrows(
             IllegalStateException.class,
@@ -429,7 +432,8 @@ class LedgerPlanFuzzAssertionsTest {
                                 "posting",
                                 List.of(
                                     LedgerFact.text(
-                                        "postingId", "018f0000-0000-7000-8000-000000000002"))))))));
+                                        "postingId", "018f0000-0000-7000-8000-000000000002"))))))),
+            null);
 
     LedgerPlanFuzzAssertions.ExecutionSnapshot snapshot =
         LedgerPlanFuzzAssertions.assertPlanResult(plan, structuredQuerySuccess);
@@ -479,7 +483,8 @@ class LedgerPlanFuzzAssertionsTest {
                                         "postingId", "018f0000-0000-7000-8000-000000000002"))))),
                     succeededEntry("account-balance", LedgerStepKind.ACCOUNT_BALANCE, List.of()),
                     succeededAssertionEntry(
-                        "assert-balance", LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS))));
+                        "assert-balance", LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS))),
+            null);
 
     LedgerPlanFuzzAssertions.ExecutionSnapshot snapshot =
         LedgerPlanFuzzAssertions.assertPlanResult(plan, fullSpectrumSuccess);

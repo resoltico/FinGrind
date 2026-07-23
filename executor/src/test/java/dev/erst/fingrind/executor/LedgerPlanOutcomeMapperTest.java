@@ -23,7 +23,6 @@ import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.CausationId;
 import dev.erst.fingrind.core.CommandId;
-import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CorrelationId;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
@@ -39,9 +38,7 @@ import dev.erst.fingrind.executor.bookkeeping.AccountBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryQuery;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingQueryRejection;
-import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
-import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.workflow.BookWorkflowAssertion;
 import dev.erst.fingrind.executor.workflow.BookWorkflowAssertionStep;
 import dev.erst.fingrind.executor.workflow.BookWorkflowBoundaryCheckpoint;
@@ -52,7 +49,6 @@ import dev.erst.fingrind.executor.workflow.BookWorkflowPlan;
 import dev.erst.fingrind.executor.workflow.BookWorkflowPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.workflow.BookWorkflowStep;
 import dev.erst.fingrind.executor.workflow.BookWorkflowStepId;
-import dev.erst.fingrind.executor.workflow.LedgerPlanFactMapper;
 import dev.erst.fingrind.executor.workflow.LedgerPlanRejectedOutcomes;
 import dev.erst.fingrind.executor.workflow.LedgerPlanStepOutcome;
 import dev.erst.fingrind.executor.workflow.LedgerPlanStepOutcomes;
@@ -315,14 +311,6 @@ class LedgerPlanOutcomeMapperTest {
     assertEquals(
         "Ledger plan execution failed unexpectedly during rollback: rollback boom",
         rollback.failure().message());
-  }
-
-  @Test
-  void postingFacts_forCommittedPostingMatchesPublishedFactMapping() {
-    CommittedPosting posting = committedPosting();
-
-    assertEquals(
-        LedgerPlanFactMapper.postingFacts(posting), LedgerPlanStepOutcomes.postingFacts(posting));
   }
 
   @Test
@@ -758,33 +746,5 @@ class LedgerPlanOutcomeMapperTest {
             new CausationId("cause-1"),
             Optional.of(new CorrelationId("corr-1"))),
         SourceChannel.CLI);
-  }
-
-  private static CommittedPosting committedPosting() {
-    return new CommittedPosting(
-        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
-        new dev.erst.fingrind.core.JournalEntry(
-            LocalDate.parse("2026-05-05"),
-            List.of(
-                new dev.erst.fingrind.core.JournalLine(
-                    new AccountCode("1000"),
-                    dev.erst.fingrind.core.JournalLine.EntrySide.DEBIT,
-                    Money.parse("EUR", "10.00")),
-                new dev.erst.fingrind.core.JournalLine(
-                    new AccountCode("2000"),
-                    dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT,
-                    Money.parse("EUR", "10.00")))),
-        PostingLineageModel.direct(),
-        PostingKind.STANDARD,
-        dev.erst.fingrind.core.PostingOriginKind.REVERSAL,
-        accountingEvidence("idem-3"),
-        new CommittedProvenance(
-            new RequestProvenance(
-                new CommandId("20aea0ba-3b2e-3428-af5b-f9ee3094522c"),
-                new IdempotencyKey("idem-3"),
-                new CausationId("cause-1"),
-                Optional.of(new CorrelationId("corr-1"))),
-            FIXED_INSTANT,
-            SourceChannel.CLI));
   }
 }

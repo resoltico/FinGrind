@@ -137,6 +137,7 @@ class ContractTestSupport {
   }
 
   protected GetPostingResult.Found foundPosting(PostingFact postingFact) {
-    return new GetPostingResult.Found(bookIdentity(), postingFact, Optional.empty());
+    return new GetPostingResult.Found(
+        bookIdentity(), postingFact, Optional.empty(), Optional.empty());
   }
 }

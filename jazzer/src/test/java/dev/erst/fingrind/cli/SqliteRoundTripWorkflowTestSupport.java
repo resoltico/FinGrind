@@ -4,6 +4,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult.CommitRejected;
@@ -44,8 +45,10 @@ import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import dev.erst.fingrind.jazzer.support.JazzerPostEntryResultFixtures;
 import dev.erst.fingrind.sqlite.SqliteReadSession;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -251,6 +254,11 @@ final class SqliteRoundTripWorkflowTestSupport {
 
     @Override
     public Optional<StoredRequestPosting> findExistingPosting(IdempotencyKey idempotencyKey) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public Map<PostingId, AttestationCommit> attestationCommitsFor(Set<PostingId> postingIds) {
       throw new UnsupportedOperationException();
     }
 

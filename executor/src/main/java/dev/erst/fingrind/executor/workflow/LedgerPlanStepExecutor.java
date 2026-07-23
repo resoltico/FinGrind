@@ -1,9 +1,13 @@
 package dev.erst.fingrind.executor.workflow;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
+import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.executor.AttestationPostingCommitmentProjection;
 import dev.erst.fingrind.executor.BookAdministrationService;
+import dev.erst.fingrind.executor.BookWorkflowExecutionDependencies;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.TaxAdministrationService;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
@@ -11,53 +15,53 @@ import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
-import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadOutcome;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
-import dev.erst.fingrind.executor.spi.AccountCatalogStore;
-import dev.erst.fingrind.executor.spi.BookAdministrationStore;
+import dev.erst.fingrind.executor.spi.AttestationPostingCommitmentStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
-import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
-import dev.erst.fingrind.executor.spi.PostingCommitStore;
-import dev.erst.fingrind.executor.spi.PostingIdGenerator;
-import dev.erst.fingrind.executor.spi.TaxAdministrationStore;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import org.jspecify.annotations.Nullable;
 
 /** Executes one ledger-plan step and maps it into the canonical journal entry model. */
 final class LedgerPlanStepExecutor {
   private final Clock clock;
   private final BookAdministrationService bookAdministrationService;
   private final BookkeepingReadService bookkeepingReadService;
+  private final AttestationPostingCommitmentStore attestationCommitmentStore;
   private final PostingApplicationService postingApplicationService;
   private final TaxAdministrationService taxAdministrationService;
 
-  LedgerPlanStepExecutor(
-      BookAdministrationStore administrationStore,
-      AccountCatalogStore accountCatalogStore,
-      BookkeepingReadStore readStore,
-      PostingValidationStore validationStore,
-      PostingCommitStore commitStore,
-      TaxAdministrationStore taxAdministrationStore,
-      PostingIdGenerator postingIdGenerator,
-      Clock clock) {
-    Objects.requireNonNull(administrationStore, "administrationStore");
-    Objects.requireNonNull(accountCatalogStore, "accountCatalogStore");
-    Objects.requireNonNull(readStore, "readStore");
-    Objects.requireNonNull(validationStore, "validationStore");
-    Objects.requireNonNull(commitStore, "commitStore");
-    Objects.requireNonNull(taxAdministrationStore, "taxAdministrationStore");
-    Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
+  LedgerPlanStepExecutor(BookWorkflowExecutionDependencies dependencies, Clock clock) {
+    Objects.requireNonNull(dependencies, "dependencies");
+    this.attestationCommitmentStore =
+        Objects.requireNonNull(
+            dependencies.attestationCommitmentStore(), "attestationCommitmentStore");
     this.clock = Objects.requireNonNull(clock, "clock");
     this.bookAdministrationService =
-        new BookAdministrationService(readStore, administrationStore, accountCatalogStore, clock);
-    this.bookkeepingReadService = new BookkeepingReadService(readStore);
+        new BookAdministrationService(
+            dependencies.readStore(),
+            dependencies.administrationStore(),
+            dependencies.accountCatalogStore(),
+            clock);
+    this.bookkeepingReadService = new BookkeepingReadService(dependencies.readStore());
     this.postingApplicationService =
-        new PostingApplicationService(validationStore, commitStore, postingIdGenerator, clock);
+        new PostingApplicationService(
+            dependencies.validationStore(),
+            dependencies.commitStore(),
+            dependencies.postingIdGenerator(),
+            clock);
     this.taxAdministrationService =
-        new TaxAdministrationService(readStore, readStore, taxAdministrationStore, clock);
+        new TaxAdministrationService(
+            dependencies.readStore(),
+            dependencies.readStore(),
+            dependencies.taxAdministrationStore(),
+            clock);
   }
 
   BookLifecycleInspection inspectBook() {
@@ -221,7 +225,8 @@ final class LedgerPlanStepExecutor {
       case BookkeepingReadOutcome.Reported<dev.erst.fingrind.executor.bookkeeping.CommittedPosting>
               reported ->
           LedgerPlanStepOutcomes.stepSucceeded(
-              LedgerPlanStepOutcomes.postingFacts(reported.value())
+              LedgerPlanFactMapper.postingFacts(
+                      reported.value(), attestationCommitmentFor(reported.value().postingId()))
                   .toArray(BookWorkflowFact[]::new));
       case BookkeepingReadOutcome.Rejected<dev.erst.fingrind.executor.bookkeeping.CommittedPosting>
               rejected ->
@@ -233,7 +238,8 @@ final class LedgerPlanStepExecutor {
     return switch (bookkeepingReadService.listPostings(step.query())) {
       case BookkeepingReadOutcome.Reported<PostingHistoryPage> reported ->
           LedgerPlanStepOutcomes.stepSucceeded(
-              LedgerPlanFactMapper.postingPageFacts(reported.value()));
+              LedgerPlanFactMapper.postingPageFacts(
+                  reported.value(), attestationCommitmentsFor(reported.value())));
       case BookkeepingReadOutcome.Rejected<PostingHistoryPage> rejected ->
           LedgerPlanRejectedOutcomes.queryRejection(rejected.rejection());
     };
@@ -246,6 +252,18 @@ final class LedgerPlanStepExecutor {
       case BookkeepingReadOutcome.Rejected<AccountBalanceView> rejected ->
           LedgerPlanRejectedOutcomes.queryRejection(rejected.rejection());
     };
+  }
+
+  private @Nullable AttestationCommit attestationCommitmentFor(PostingId postingId) {
+    return AttestationPostingCommitmentProjection.resolve(
+            attestationCommitmentStore, Set.of(postingId))
+        .get(postingId);
+  }
+
+  private Map<PostingId, AttestationCommit> attestationCommitmentsFor(PostingHistoryPage page) {
+    Set<PostingId> postingIds = new LinkedHashSet<>();
+    page.postings().forEach(posting -> postingIds.add(posting.postingId()));
+    return AttestationPostingCommitmentProjection.resolve(attestationCommitmentStore, postingIds);
   }
 
   private LedgerPlanStepOutcome assertionOutcome(BookWorkflowAssertion assertion) {

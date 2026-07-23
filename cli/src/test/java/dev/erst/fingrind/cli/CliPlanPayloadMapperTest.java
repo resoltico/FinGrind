@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
 import dev.erst.fingrind.cli.json.CliPlanLedgerFactJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
@@ -18,6 +19,7 @@ import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
 import dev.erst.fingrind.contract.workflow.LedgerJournalStep;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
+import java.math.BigInteger;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
@@ -25,6 +27,67 @@ import org.junit.jupiter.api.Test;
 
 /** Focused coverage for typed ledger-plan payload mapping branches. */
 class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
+  @Test
+  void ledgerPlanPayload_exposesTheCommittedAggregateAttestationReference() {
+    Instant completedAt = Instant.parse("2026-05-15T10:00:01Z");
+    CliPlanJsonModels.LedgerPlanPayload payload =
+        CliPlanPayloadMapper.ledgerPlanPayload(
+            new LedgerPlanResult.Succeeded(
+                planId("plan-attested"),
+                new LedgerExecutionJournal(
+                    completedAt,
+                    completedAt,
+                    List.of(
+                        new LedgerJournalEntry.Succeeded(
+                            stepId("inspect"),
+                            LedgerJournalStep.standard(LedgerStepKind.INSPECT_BOOK),
+                            completedAt,
+                            completedAt,
+                            List.of()))),
+                new AttestationCommit(BigInteger.valueOf(42), "a".repeat(64))),
+            PlanResultDetail.SUMMARY);
+
+    assertEquals("42", Objects.requireNonNull(payload.attestationCommit()).operationOrder());
+    assertEquals("a".repeat(64), payload.attestationCommit().operationHead());
+  }
+
+  @Test
+  void ledgerPlanPayload_omitsAttestationCommitForEveryNonSucceededOutcome() {
+    Instant recordedAt = Instant.parse("2026-05-15T10:00:01Z");
+    LedgerJournalEntry.Rejected rejectedEntry =
+        new LedgerJournalEntry.Rejected(
+            stepId("rejected"),
+            LedgerJournalStep.standard(LedgerStepKind.INSPECT_BOOK),
+            recordedAt,
+            recordedAt,
+            List.of(),
+            new LedgerStepFailure("plan-rejected", "The plan was rejected.", List.of()));
+    LedgerJournalEntry.AssertionFailed assertionFailedEntry =
+        new LedgerJournalEntry.AssertionFailed(
+            stepId("assertion-failed"),
+            LedgerJournalStep.assertion(LedgerAssertionKind.ACCOUNT_DECLARED),
+            recordedAt,
+            recordedAt,
+            List.of(),
+            new LedgerStepFailure("assertion-failed", "The assertion failed.", List.of()));
+
+    CliPlanJsonModels.LedgerPlanPayload rejectedPayload =
+        CliPlanPayloadMapper.ledgerPlanPayload(
+            new LedgerPlanResult.Rejected(
+                planId("plan-rejected"),
+                new LedgerExecutionJournal(recordedAt, recordedAt, List.of(rejectedEntry))),
+            PlanResultDetail.SUMMARY);
+    CliPlanJsonModels.LedgerPlanPayload assertionFailedPayload =
+        CliPlanPayloadMapper.ledgerPlanPayload(
+            new LedgerPlanResult.AssertionFailed(
+                planId("plan-assertion-failed"),
+                new LedgerExecutionJournal(recordedAt, recordedAt, List.of(assertionFailedEntry))),
+            PlanResultDetail.SUMMARY);
+
+    assertNull(rejectedPayload.attestationCommit());
+    assertNull(assertionFailedPayload.attestationCommit());
+  }
+
   @Test
   void ledgerPlanPayload_mapsTypedWorkflowDataAndFailureFactKinds() {
     Instant startedAt = Instant.parse("2026-05-15T10:00:00Z");
@@ -116,7 +179,8 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
                                             "debitTotal", new MonetaryAmount("EUR", "1000")),
                                         LedgerFact.money(
                                             "creditTotal", new MonetaryAmount("EUR", "0")),
-                                        LedgerFact.text("balanceSide", "DEBIT")))))))),
+                                        LedgerFact.text("balanceSide", "DEBIT"))))))),
+                null),
             PlanResultDetail.FULL);
 
     List<CliPlanJsonModels.LedgerJournalEntryPayload> steps =
@@ -147,6 +211,11 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
     assertEquals(
         "operator reversal",
         Objects.requireNonNull(posting.posting().reversal(), "reversal").reason());
+    assertEquals(
+        "7",
+        Objects.requireNonNull(posting.posting().attestationCommit(), "attestationCommit")
+            .operationOrder());
+    assertEquals("a".repeat(64), posting.posting().attestationCommit().operationHead());
 
     CliPlanJsonModels.AccountCodeAssertionStepDataPayload accountAssertion =
         assertInstanceOf(
@@ -238,7 +307,8 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
                             LedgerJournalStep.standard(LedgerStepKind.LIST_POSTINGS),
                             startedAt,
                             finishedAt,
-                            postingPageFactsWithoutReversal())))),
+                            postingPageFactsWithoutReversal()))),
+                null),
             PlanResultDetail.FULL);
 
     CliPlanJsonModels.PostingPageStepDataPayload postingPage =
@@ -267,7 +337,8 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
                             LedgerJournalStep.standard(LedgerStepKind.LIST_POSTINGS),
                             startedAt,
                             finishedAt,
-                            postingPageFactsWithReversal())))),
+                            postingPageFactsWithReversal()))),
+                null),
             PlanResultDetail.FULL);
 
     CliPlanJsonModels.PostingPageStepDataPayload postingPage =
@@ -277,6 +348,11 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
     assertEquals(
         "018f0000-0000-7000-8000-000000000002",
         postingPage.postings().getFirst().reversesPostingId());
+    assertEquals(
+        "7",
+        Objects.requireNonNull(
+                postingPage.postings().getFirst().attestationCommit(), "attestationCommit")
+            .operationOrder());
   }
 
   @Test
@@ -296,7 +372,8 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
                             LedgerJournalStep.standard(LedgerStepKind.GET_POSTING),
                             startedAt,
                             finishedAt,
-                            postingFactsWithoutReversal())))),
+                            postingFactsWithoutReversal()))),
+                null),
             PlanResultDetail.FULL);
 
     CliPlanJsonModels.PostingStepDataPayload posting =
@@ -326,6 +403,11 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
         LedgerFact.text("postingKind", "STANDARD"),
         LedgerFact.text("postingOriginKind", "REVERSAL"),
         LedgerFact.text("reversalState", "reversal"),
+        LedgerFact.group(
+            "attestationCommit",
+            List.of(
+                LedgerFact.text("operationOrder", "7"),
+                LedgerFact.text("operationHead", "a".repeat(64)))),
         LedgerFact.text("effectiveDate", "2026-05-14"),
         LedgerFact.text("recordedAt", "2026-05-15T10:00:01Z"),
         LedgerFact.group(
@@ -471,6 +553,11 @@ class CliPlanPayloadMapperTest extends CliResponseWriterTestSupport {
             LedgerFact.text("postingKind", "STANDARD"),
             LedgerFact.text("postingOriginKind", "REVERSAL"),
             LedgerFact.text("reversalState", "reversal"),
+            LedgerFact.group(
+                "attestationCommit",
+                List.of(
+                    LedgerFact.text("operationOrder", "7"),
+                    LedgerFact.text("operationHead", "a".repeat(64)))),
             LedgerFact.text("priorPostingId", "018f0000-0000-7000-8000-000000000002"),
             LedgerFact.text("effectiveDate", "2026-05-14"),
             LedgerFact.text("recordedAt", "2026-05-15T10:00:01Z"),

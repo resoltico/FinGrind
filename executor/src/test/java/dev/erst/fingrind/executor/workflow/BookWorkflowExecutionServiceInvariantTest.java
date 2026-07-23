@@ -3,10 +3,14 @@ package dev.erst.fingrind.executor.workflow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.executor.workflow.BookWorkflowJournalEntry.Succeeded;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.math.BigInteger;
+import java.time.Instant;
+import java.util.List;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
@@ -22,6 +26,37 @@ class BookWorkflowExecutionServiceInvariantTest {
 
     assertEquals(
         "Exactly one of terminalResult or pendingSuccessfulStep must be present.",
+        exception.getMessage());
+  }
+
+  @Test
+  void executionResult_rejectsCommitmentWhenThePlanDidNotSucceed() {
+    BookWorkflowExecutionJournal rejectedJournal =
+        new BookWorkflowExecutionJournal(
+            Instant.EPOCH,
+            Instant.EPOCH,
+            List.of(
+                new BookWorkflowJournalEntry.Rejected(
+                    new BookWorkflowStepId("reject"),
+                    new BookWorkflowJournalDescriptor.Boundary(
+                        BookWorkflowBoundaryCheckpoint.COMMIT),
+                    Instant.EPOCH,
+                    Instant.EPOCH,
+                    List.of(),
+                    new BookWorkflowFailure("commit-failed", "Commit failed.", List.of()))));
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new BookWorkflowExecutionResult(
+                    new BookWorkflowPlanId("plan-1"),
+                    BookWorkflowExecutionStatus.REJECTED,
+                    rejectedJournal,
+                    new AttestationCommit(BigInteger.ONE, "a".repeat(64))));
+
+    assertEquals(
+        "Only a successfully committed plan may report an attestation commitment.",
         exception.getMessage());
   }
 

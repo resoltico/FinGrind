@@ -63,6 +63,10 @@ final class AttestationBookVerification {
     return reviewFindings;
   }
 
+  List<VerifiedOperation> operations() {
+    return operations;
+  }
+
   AttestationRegistryInspection registryInspection() {
     return registry.inspection(bookId, headOrder(), head().hex());
   }

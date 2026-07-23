@@ -582,7 +582,7 @@ class BookReadServiceStatementQueryTest {
             () ->
                 assertInstanceOf(
                         FinancialPositionResult.Reported.class,
-                        new BookReadService(bookStore)
+                        new BookReadService(bookStore, bookStore)
                             .financialPosition(
                                 new FinancialPositionQuery(
                                     Optional.of(PERIOD_DATE), ComparativeSelection.none())))
@@ -594,7 +594,7 @@ class BookReadServiceStatementQueryTest {
         List.of(),
         assertInstanceOf(
                 IncomeStatementResult.Reported.class,
-                new BookReadService(bookStore)
+                new BookReadService(bookStore, bookStore)
                     .incomeStatement(
                         new IncomeStatementQuery(
                             PERIOD_DATE, PERIOD_DATE, ComparativeSelection.none())))

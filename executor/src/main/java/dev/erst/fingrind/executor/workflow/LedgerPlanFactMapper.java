@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.workflow;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
 import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
@@ -9,6 +10,7 @@ import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.Money;
+import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.RequestProvenance;
 import dev.erst.fingrind.core.SourceDocumentReference;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
@@ -17,7 +19,12 @@ import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import org.jspecify.annotations.Nullable;
 
 /** Canonical machine-facing fact expansion for ledger-plan journal steps. */
 public final class LedgerPlanFactMapper {
@@ -133,18 +140,35 @@ public final class LedgerPlanFactMapper {
   }
 
   /** Expands one paginated posting-history result into workflow-owned machine facts. */
-  public static List<BookWorkflowFact> postingPageFacts(PostingHistoryPage page) {
+  public static List<BookWorkflowFact> postingPageFacts(
+      PostingHistoryPage page, Map<PostingId, AttestationCommit> attestationCommitsByPostingId) {
+    Objects.requireNonNull(page, "page");
+    Map<PostingId, AttestationCommit> commitments =
+        Map.copyOf(
+            Objects.requireNonNull(attestationCommitsByPostingId, "attestationCommitsByPostingId"));
+    Set<PostingId> pagePostingIds = new LinkedHashSet<>();
+    page.postings().forEach(posting -> pagePostingIds.add(posting.postingId()));
+    if (!pagePostingIds.containsAll(commitments.keySet())) {
+      throw new IllegalArgumentException(
+          "Posting-attestation facts contain a commitment outside the posting page.");
+    }
     List<BookWorkflowFact> facts = new ArrayList<>(pageFacts(page.postings().size(), page.limit()));
     page.nextCursor()
         .ifPresent(cursor -> facts.add(BookWorkflowFact.text("nextCursor", cursor.wireValue())));
     facts.add(BookWorkflowFact.flag("hasMore", page.hasMore()));
     page.postings()
-        .forEach(posting -> facts.add(BookWorkflowFact.group("posting", postingFacts(posting))));
+        .forEach(
+            posting ->
+                facts.add(
+                    BookWorkflowFact.group(
+                        "posting", postingFacts(posting, commitments.get(posting.postingId())))));
     return List.copyOf(facts);
   }
 
   /** Expands one committed posting into workflow-owned machine facts. */
-  public static List<BookWorkflowFact> postingFacts(CommittedPosting postingFact) {
+  public static List<BookWorkflowFact> postingFacts(
+      CommittedPosting postingFact, @Nullable AttestationCommit attestationCommit) {
+    Objects.requireNonNull(postingFact, "postingFact");
     List<BookWorkflowFact> facts = new ArrayList<>();
     facts.add(BookWorkflowFact.text("postingId", postingFact.postingId().value()));
     facts.add(BookWorkflowFact.text("postingKind", postingFact.postingKind().wireValue()));
@@ -162,6 +186,15 @@ public final class LedgerPlanFactMapper {
             "effectiveDate", postingFact.journalEntry().effectiveDate().toString()));
     facts.add(
         BookWorkflowFact.text("recordedAt", postingFact.provenance().recordedAt().toString()));
+    if (attestationCommit != null) {
+      facts.add(
+          BookWorkflowFact.group(
+              "attestationCommit",
+              List.of(
+                  BookWorkflowFact.text(
+                      "operationOrder", attestationCommit.operationOrder().toString()),
+                  BookWorkflowFact.text("operationHead", attestationCommit.operationHeadHex()))));
+    }
     facts.add(
         BookWorkflowFact.money("debitTotal", MonetaryAmount.of(postingDebitTotal(postingFact))));
     facts.add(

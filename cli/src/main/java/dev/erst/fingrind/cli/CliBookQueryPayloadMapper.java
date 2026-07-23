@@ -71,7 +71,8 @@ final class CliBookQueryPayloadMapper {
         CliReportPayloadMappingSupport.instant(generatedAt),
         CliBookPostingPayloadMapper.postingPayload(
             found.postingFact(),
-            found.reversedByPostingId().map(dev.erst.fingrind.core.PostingId::value).orElse(null)));
+            found.reversedByPostingId().map(dev.erst.fingrind.core.PostingId::value).orElse(null),
+            found.attestationCommit().orElse(null)));
   }
 
   static CliBookQueryJsonModels.PostingListPayload postingPagePayload(
@@ -95,7 +96,8 @@ final class CliBookQueryPayloadMapper {
                         java.util.Optional.ofNullable(
                                 page.reversedByPostingIds().get(posting.postingId()))
                             .map(dev.erst.fingrind.core.PostingId::value)
-                            .orElse(null)))
+                            .orElse(null),
+                        page.attestationCommitsByPostingId().get(posting.postingId())))
             .toList());
   }
 

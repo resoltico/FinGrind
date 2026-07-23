@@ -9,7 +9,7 @@ scope:
 route:
   keywords: [verifiable-operation-attestation, static-corpus, golden-vectors, fixture-ledger, verifier-negative-cases, backup-artifact, live-cas]
   questions: ["which static fixtures verify FinGrind operation attestation", "how is the attestation corpus constructed", "which negative attestation vectors are required", "which artifact fixtures cover backup and restore"]
-stage: "Current public protocol 34 and protected-book format 52 contract"
+stage: "Current public protocol 35 and protected-book format 52 contract"
 ---
 
 # Verifiable Operation Attestation Corpus

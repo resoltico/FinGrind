@@ -61,7 +61,7 @@ public final class CliFuzzAccountFixtures {
   public static List<DeclaredAccount> listAccounts(BookkeepingReadStore bookStore) {
     Objects.requireNonNull(bookStore, "bookStore must not be null");
     List<DeclaredAccount> accounts = new java.util.ArrayList<>();
-    BookReadService readService = new BookReadService(bookStore);
+    BookReadService readService = new BookReadService(bookStore, postingIds -> java.util.Map.of());
     Optional<AccountPageCursor> cursor = Optional.empty();
     while (true) {
       ListAccountsResult result = listAccountsPage(readService, cursor);

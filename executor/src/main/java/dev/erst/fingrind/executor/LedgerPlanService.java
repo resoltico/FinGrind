@@ -4,15 +4,7 @@ import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanId;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
-import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
-import dev.erst.fingrind.executor.spi.AccountCatalogStore;
-import dev.erst.fingrind.executor.spi.BookAdministrationStore;
-import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
-import dev.erst.fingrind.executor.spi.PostingCommitStore;
-import dev.erst.fingrind.executor.spi.PostingIdGenerator;
-import dev.erst.fingrind.executor.spi.TaxAdministrationStore;
-import dev.erst.fingrind.executor.workflow.BookWorkflowExecutionDependencies;
 import dev.erst.fingrind.executor.workflow.BookWorkflowExecutionResult;
 import dev.erst.fingrind.executor.workflow.BookWorkflowExecutionService;
 import dev.erst.fingrind.executor.workflow.BookWorkflowPublishedLanguageTranslator;
@@ -26,25 +18,12 @@ public final class LedgerPlanService {
   /** Creates a ledger-plan executor. */
   public LedgerPlanService(
       LedgerPlanTransaction transactionStore,
-      BookAdministrationStore administrationStore,
-      AccountCatalogStore accountCatalogStore,
-      BookkeepingReadStore readStore,
-      PostingValidationStore validationStore,
-      PostingCommitStore commitStore,
-      TaxAdministrationStore taxAdministrationStore,
-      PostingIdGenerator postingIdGenerator,
+      BookWorkflowExecutionDependencies dependencies,
       Clock clock) {
     this.workflowExecutionService =
         new BookWorkflowExecutionService(
             Objects.requireNonNull(transactionStore, "transactionStore"),
-            new BookWorkflowExecutionDependencies(
-                Objects.requireNonNull(administrationStore, "administrationStore"),
-                Objects.requireNonNull(accountCatalogStore, "accountCatalogStore"),
-                Objects.requireNonNull(readStore, "readStore"),
-                Objects.requireNonNull(validationStore, "validationStore"),
-                Objects.requireNonNull(commitStore, "commitStore"),
-                Objects.requireNonNull(taxAdministrationStore, "taxAdministrationStore"),
-                Objects.requireNonNull(postingIdGenerator, "postingIdGenerator")),
+            Objects.requireNonNull(dependencies, "dependencies"),
             Objects.requireNonNull(clock, "clock"));
   }
 
@@ -64,7 +43,9 @@ public final class LedgerPlanService {
     var publishedJournal =
         BookWorkflowPublishedLanguageTranslator.toPublished(executionResult.journal());
     return switch (executionResult.status()) {
-      case SUCCEEDED -> new LedgerPlanResult.Succeeded(publishedPlanId, publishedJournal);
+      case SUCCEEDED ->
+          new LedgerPlanResult.Succeeded(
+              publishedPlanId, publishedJournal, executionResult.attestationCommit());
       case REJECTED -> new LedgerPlanResult.Rejected(publishedPlanId, publishedJournal);
       case ASSERTION_FAILED ->
           new LedgerPlanResult.AssertionFailed(publishedPlanId, publishedJournal);

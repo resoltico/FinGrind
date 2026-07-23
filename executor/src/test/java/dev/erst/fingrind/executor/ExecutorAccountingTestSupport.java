@@ -410,11 +410,13 @@ public final class ExecutorAccountingTestSupport {
         postings,
         limit,
         nextCursor,
+        java.util.Map.of(),
         java.util.Map.of());
   }
 
   /** Builds one published posting lookup success rooted in the canonical test book identity. */
   public static GetPostingResult.Found foundPosting(PostingFact postingFact) {
-    return new GetPostingResult.Found(bookIdentity(), postingFact, Optional.empty());
+    return new GetPostingResult.Found(
+        bookIdentity(), postingFact, Optional.empty(), Optional.empty());
   }
 }

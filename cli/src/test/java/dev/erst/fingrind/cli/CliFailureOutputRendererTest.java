@@ -472,6 +472,7 @@ class CliFailureOutputRendererTest {
         PlanResultDetail.FULL,
         new CliPlanJsonModels.LedgerPlanSummaryPayload(
             "2026-05-13T10:15:30Z", "2026-05-13T10:15:31Z", 1, 0, 1, "step-1"),
+        null,
         new CliPlanJsonModels.LedgerExecutionJournalPayload(
             "2026-05-13T10:15:30Z",
             "2026-05-13T10:15:31Z",

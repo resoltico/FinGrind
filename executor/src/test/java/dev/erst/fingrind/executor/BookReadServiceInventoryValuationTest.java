@@ -67,7 +67,7 @@ class BookReadServiceInventoryValuationTest {
     InventoryValuationReport report =
         assertInstanceOf(
                 InventoryValuationResult.Reported.class,
-                new BookReadService(bookStore)
+                new BookReadService(bookStore, bookStore)
                     .inventoryValuation(
                         new InventoryValuationQuery(Optional.of(MOVEMENT_DATE), true)))
             .report();
@@ -94,7 +94,7 @@ class BookReadServiceInventoryValuationTest {
     InventoryValuationReport summary =
         assertInstanceOf(
                 InventoryValuationResult.Reported.class,
-                new BookReadService(bookStore)
+                new BookReadService(bookStore, bookStore)
                     .inventoryValuation(new InventoryValuationQuery(Optional.empty(), false)))
             .report();
     assertFalse(summary.includesMovements());

@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.workflow.LedgerBoundaryCheckpoint;
 import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
@@ -28,6 +29,16 @@ final class CliPlanTextRenderer {
     summaryRows.add(List.of("Finished at", CliTextDisplay.instant(journal.finishedAt())));
     summaryRows.add(List.of("Step count", Integer.toString(journal.steps().size())));
     summaryRows.add(List.of("Terminal step", displayStepKind(journal.terminalStep())));
+    if (result instanceof LedgerPlanResult.Succeeded succeeded) {
+      AttestationCommit attestationCommit = succeeded.attestationCommit();
+      if (attestationCommit == null) {
+        summaryRows.add(List.of("Attestation", "No operation appended (read-only plan)"));
+      } else {
+        summaryRows.add(
+            List.of("Attestation order", attestationCommit.operationOrder().toString()));
+        summaryRows.add(List.of("Attestation head", attestationCommit.operationHeadHex()));
+      }
+    }
     if (journal.status() != LedgerPlanStatus.SUCCEEDED) {
       LedgerJournalEntry.Failed failedStep = journal.requiredFailedStep();
       LedgerStepFailure failure = failedStep.requiredFailure();

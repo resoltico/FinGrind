@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
@@ -15,6 +16,7 @@ import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
 import dev.erst.fingrind.contract.workflow.LedgerJournalStep;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
+import java.math.BigInteger;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -29,7 +31,23 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
     assertTrue(rendered.contains("Execute Plan"));
     assertTrue(rendered.contains("Plan id"));
     assertTrue(rendered.contains("succeeded"));
+    assertTrue(rendered.contains("Attestation order"));
+    assertTrue(rendered.contains("42"));
+    assertTrue(rendered.contains("a".repeat(64)));
     assertFalse(rendered.contains("Journal"));
+  }
+
+  @Test
+  void renderLedgerPlanResult_summaryModeNamesTheReadOnlyAttestationOutcome() {
+    LedgerPlanResult.Succeeded attestedResult = succeededPlanResult();
+
+    String rendered =
+        CliPlanTextRenderer.renderLedgerPlanResult(
+            new LedgerPlanResult.Succeeded(attestedResult.planId(), attestedResult.journal(), null),
+            PlanResultDetail.SUMMARY);
+
+    assertTrue(rendered.contains("No operation appended (read-only plan)"));
+    assertFalse(rendered.contains("Attestation order"));
   }
 
   @Test
@@ -103,7 +121,8 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
             List.of());
     return new LedgerPlanResult.Succeeded(
         planId("plan-success"),
-        new LedgerExecutionJournal(startedAt, commitFinishedAt, List.of(inspectStep, commitStep)));
+        new LedgerExecutionJournal(startedAt, commitFinishedAt, List.of(inspectStep, commitStep)),
+        new AttestationCommit(BigInteger.valueOf(42), "a".repeat(64)));
   }
 
   private static LedgerPlanResult.AssertionFailed assertionFailedPlanResult() {

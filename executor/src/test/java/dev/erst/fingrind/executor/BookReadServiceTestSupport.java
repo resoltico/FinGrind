@@ -118,7 +118,7 @@ final class BookReadServiceTestSupport {
   }
 
   static BookReadService readService(InMemoryBookSession bookSession) {
-    return new BookReadService(bookSession);
+    return new BookReadService(bookSession, bookSession);
   }
 
   static BookkeepingReadService localReadService(InMemoryBookSession bookSession) {
@@ -126,7 +126,7 @@ final class BookReadServiceTestSupport {
   }
 
   static BookReadService readService(CountingFindAccountBookSession bookSession) {
-    return new BookReadService(bookSession);
+    return new BookReadService(bookSession, postingIds -> java.util.Map.of());
   }
 
   static BookkeepingReadService localReadService(CountingFindAccountBookSession bookSession) {

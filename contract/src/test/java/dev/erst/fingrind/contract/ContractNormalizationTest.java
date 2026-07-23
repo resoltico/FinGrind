@@ -158,6 +158,7 @@ class ContractNormalizationTest {
                         nullOf(),
                         10,
                         Optional.empty(),
+                        Map.of(),
                         Map.of()))
             .getMessage());
     assertEquals(

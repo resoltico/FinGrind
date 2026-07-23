@@ -1,17 +1,26 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.core.CanonicalTemporalText;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.attestation.AttestationOperationCommitment;
+import dev.erst.fingrind.core.attestation.AttestationPostingCommitmentInspection;
+import dev.erst.fingrind.core.attestation.AttestationVerificationException;
+import dev.erst.fingrind.core.attestation.AttestationVerifier;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
 import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** Posting-history and close-horizon reads over one SQLite-backed book session. */
 final class SqliteStorePostingQueryOperations {
@@ -70,6 +79,41 @@ final class SqliteStorePostingQueryOperations {
                     activeDatabase,
                     SqlitePostingSql.FIND_REVERSAL_FOR,
                     statement -> statement.bindText(1, priorPostingId.value())));
+  }
+
+  Map<PostingId, AttestationCommit> attestationCommitsFor(Set<PostingId> postingIds) {
+    lifecycle.ensureOpenSession();
+    Set<PostingId> checkedPostingIds = Set.copyOf(Objects.requireNonNull(postingIds, "postingIds"));
+    if (checkedPostingIds.isEmpty()) {
+      return Map.of();
+    }
+    return queryInitialized(
+        "Failed to query SQLite book.",
+        activeDatabase -> {
+          AttestationPostingCommitmentInspection inspection;
+          try {
+            inspection =
+                AttestationVerifier.verifyAndInspectPostingCommitments(
+                    SqliteAttestationEvidenceStore.loadAll(activeDatabase));
+          } catch (AttestationVerificationException exception) {
+            throw new SqliteProtectedBookVerificationException(exception);
+          }
+          Map<UUID, AttestationOperationCommitment> commitmentsByPostingId =
+              inspection.commitmentsByPostingId();
+          Map<PostingId, AttestationCommit> commitments = new ConcurrentHashMap<>();
+          for (PostingId postingId : checkedPostingIds) {
+            AttestationOperationCommitment commitment =
+                commitmentsByPostingId.get(UUID.fromString(postingId.value()));
+            if (commitment != null) {
+              commitments.put(postingId, attestationCommit(commitment));
+            }
+          }
+          return Map.copyOf(commitments);
+        });
+  }
+
+  private static AttestationCommit attestationCommit(AttestationOperationCommitment commitment) {
+    return new AttestationCommit(commitment.operationOrder(), commitment.operationHeadHex());
   }
 
   PostingHistoryPage listPostings(PostingHistoryQuery query) {

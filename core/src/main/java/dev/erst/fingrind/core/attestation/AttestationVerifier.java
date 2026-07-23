@@ -1,7 +1,10 @@
 package dev.erst.fingrind.core.attestation;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** Public, pure boundary for verification of persisted operation evidence. */
 public final class AttestationVerifier {
@@ -40,15 +43,51 @@ public final class AttestationVerifier {
     try {
       AttestationBookVerification verification = verifyEvidence(operations, compromiseReviews);
       return new AttestationBookInspection(
-          new AttestationVerification(
-              verification.bookId(),
-              verification.headOrder(),
-              verification.head().bytes(),
-              verification.reviewFindings()),
-          verification.registryInspection());
+          publicVerification(verification), verification.registryInspection());
     } catch (AttestationAuthorizationException exception) {
       throw new AttestationVerificationException(exception.failure().code(), exception);
     }
+  }
+
+  /**
+   * Verifies the complete chain and projects every signed posting fact to its committing operation
+   * reference.
+   *
+   * <p>The projection is derived only after cryptographic and semantic chain verification. It is
+   * therefore suitable for read-side provenance without creating a second persisted source of
+   * truth.
+   *
+   * @throws AttestationVerificationException when the first canonical attestation rule fails
+   */
+  public static AttestationPostingCommitmentInspection verifyAndInspectPostingCommitments(
+      List<AttestationEvidence> operations) {
+    Objects.requireNonNull(operations, "operations");
+    AttestationBookVerification verification;
+    try {
+      verification = verifyEvidence(operations, List.of());
+    } catch (AttestationAuthorizationException exception) {
+      throw new AttestationVerificationException(exception.failure().code(), exception);
+    }
+    Map<UUID, AttestationOperationCommitment> commitments = new ConcurrentHashMap<>();
+    for (AttestationBookVerification.VerifiedOperation verifiedOperation :
+        verification.operations()) {
+      AttestationOperationCommitment commitment = operationCommitment(verifiedOperation);
+      for (AttestationPreimage.Fact fact :
+          verifiedOperation.operation().effectPreimage().records()) {
+        if (fact.recordTypeTag() != 0x0020) {
+          continue;
+        }
+        UUID postingId =
+            AttestationPreimageValueReader.uuid(
+                fact, 1, AttestationAuthorizationFailure.PREIMAGE_INVALID);
+        if (commitments.putIfAbsent(postingId, commitment) != null) {
+          throw new AttestationVerificationException(
+              AttestationAuthorizationFailure.PREIMAGE_INVALID.code());
+        }
+      }
+    }
+    return new AttestationPostingCommitmentInspection(
+        publicVerification(verification), commitments);
   }
 
   /**
@@ -93,5 +132,19 @@ public final class AttestationVerifier {
                     })
                 .toList()),
         compromiseReviews);
+  }
+
+  private static AttestationVerification publicVerification(
+      AttestationBookVerification verification) {
+    return new AttestationVerification(
+        verification.bookId(),
+        verification.headOrder(),
+        verification.head().bytes(),
+        verification.reviewFindings());
+  }
+
+  private static AttestationOperationCommitment operationCommitment(
+      AttestationBookVerification.VerifiedOperation operation) {
+    return new AttestationOperationCommitment(operation.operationOrder(), operation.head().bytes());
   }
 }

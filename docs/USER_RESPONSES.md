@@ -35,7 +35,7 @@ Every non-success JSON envelope carries `category` with exactly one of `structur
 Dynamic fields:
 - `capabilities.payload` is stable unless the public command contract or runtime surface changes
 - discovery JSON payloads from `help`, `capabilities`, and `version` publish
-  `payload.protocolVersion`, and the current hard-break line is `"34"`
+  `payload.protocolVersion`, and the current hard-break line is `"35"`
 - `docs/examples/request-template.json` and `docs/examples/ledger-plan-template.json` are
   checked-in source-copy companions for `print-request-template` and `print-plan-template`; they
   publish the minimal settled-sale request scaffold and the placeholder-first general ledger-plan
@@ -88,6 +88,12 @@ Dynamic fields:
 - a fresh committed posting carries `payload.attestationCommit.operationOrder` and
   `.operationHead`, the exact newly appended immutable operation; an idempotent replay carries
   `attestationCommit: null` because it appends nothing
+- successful mutating `execute-plan` results carry `payload.attestationCommit` with the exact
+  committed operation order and head; a successful read-only plan carries `attestationCommit: null`
+- `get-posting` and each `list-postings` item carry `attestationCommit`, either `null` or the
+  exact operation order and head that committed the posting; the link is derived at read time from
+  the complete verified immutable operation chain, never copied into mutable posting state. The
+  corresponding full-journal `execute-plan` query-step data uses the same projection
 - `committed.payload.resolvedJournal` publishes the exact expanded journal plus semantic classification attached to the committed posting result
 - `get-posting.payload.posting.entry.latvianMonthlyPayroll.resolvedCalculation` publishes the exact executor-resolved contribution, tax, and net-wage facts retained with one Latvian payroll run, including the explicit `taxBookHeldAtEmployer` and `dependantCount` profile facts
 - `get-posting.payload.posting.entry.latvianPayrollSettlement.resolvedSettlement` publishes the exact executor-resolved liability accounts and payment components retained with one Latvian payroll settlement

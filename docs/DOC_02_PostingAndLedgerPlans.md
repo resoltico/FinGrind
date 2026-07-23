@@ -499,7 +499,10 @@ public sealed interface LedgerStep
   one atomic transaction without making tax registration own account creation
 - Attestation: a plan with one or more mutating steps commits those child changes and exactly one
   signed `execute-plan` operation in the same SQLite transaction. The aggregate operation carries
-  the ordered immutable child preimages; it never emits a separate chain operation per child.
+  the ordered immutable child preimages; it never emits a separate chain operation per child. Its
+  successful public result publishes the committed aggregate operation order and head only after
+  the surrounding transaction commits; a successful read-only plan publishes no operation
+  reference.
 - Surface: committed posting steps publish the typed `record-*` workflow kinds when the nested
   `PostEntryCommand` carries one business entry, while raw direct-journal fallback stays on the
   `post-entry` kind
@@ -662,6 +665,8 @@ public sealed interface LedgerPlanResult
   rollback failures use the dedicated `plan-boundary` kind plus a
   `boundaryCheckpoint`
 - Bound: `LedgerPlan` accepts at most 100 steps, which bounds full journal responses
+- Attestation: a successful mutating result carries the exact aggregate operation order and head;
+  a successful read-only result carries no attestation commit
 - Boundary: these are published workflow protocol outputs; executor keeps a separate local
   workflow journal model while the plan is actually executing
 
@@ -702,12 +707,35 @@ public final class BookkeepingPostingService
 public final class BookWorkflowExecutionService
 ```
 
-- Constructor: requires `LedgerPlanTransaction`, `BookAdministrationStore`, `BookkeepingReadStore`, `PostingValidationStore`, `PostingCommitStore`, `PostingIdGenerator`, and `Clock`
+- Constructor: requires `LedgerPlanTransaction`, `BookWorkflowExecutionDependencies`, and `Clock`
 - Surface: `execute(BookWorkflowPlan)`
 - Policy: runs the whole local plan inside one durable transaction and rolls back on the first
   rejected step or failed assertion
 - Boundary: this service stays inside the workflow context and returns one local
   `BookWorkflowExecutionResult`
+
+## `BookWorkflowExecutionDependencies`
+
+`BookWorkflowExecutionDependencies` groups the complete collaborator set required to execute one
+atomic local plan. It makes the attestation posting-commitment projection an explicit workflow
+dependency rather than smuggling it through the ordinary bookkeeping-read seam.
+
+```java
+public record BookWorkflowExecutionDependencies(
+    BookAdministrationStore administrationStore,
+    AccountCatalogStore accountCatalogStore,
+    BookkeepingReadStore readStore,
+    AttestationPostingCommitmentStore attestationCommitmentStore,
+    PostingValidationStore validationStore,
+    PostingCommitStore commitStore,
+    TaxAdministrationStore taxAdministrationStore,
+    PostingIdGenerator postingIdGenerator)
+```
+
+- Boundary: `AttestationPostingCommitmentStore` remains separate from `BookkeepingReadStore`, so
+  a plan query must explicitly receive the capability that verifies immutable operation evidence
+- Policy: `get-posting` and `list-postings` workflow steps use the same verified commitment
+  projection as their direct-query counterparts
 
 ## `LedgerPlanService`
 
@@ -717,7 +745,7 @@ public final class BookWorkflowExecutionService
 public final class LedgerPlanService
 ```
 
-- Constructor: requires `LedgerPlanTransaction`, `BookAdministrationStore`, `BookkeepingReadStore`, `PostingValidationStore`, `PostingCommitStore`, `PostingIdGenerator`, and `Clock`
+- Constructor: requires `LedgerPlanTransaction`, `BookWorkflowExecutionDependencies`, and `Clock`
 - Boundary: the service translates the public `LedgerPlan` into the local workflow model, delegates
   execution to `BookWorkflowExecutionService`, then projects the local execution result back into
   the public `LedgerPlanResult` surface

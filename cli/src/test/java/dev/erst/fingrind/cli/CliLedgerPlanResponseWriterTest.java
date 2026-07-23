@@ -63,7 +63,8 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
     responseWriter.writeLedgerPlanResult(
         new LedgerPlanResult.Succeeded(
             planId("plan-1"),
-            new LedgerExecutionJournal(startedAt, finishedAt, List.of(balanceEntry))),
+            new LedgerExecutionJournal(startedAt, finishedAt, List.of(balanceEntry)),
+            null),
         OutputMode.JSON,
         PlanResultDetail.FULL);
     JsonNode data =
@@ -310,7 +311,8 @@ class CliLedgerPlanResponseWriterTest extends CliResponseWriterTestSupport {
         CliPlanPayloadMapper.ledgerPlanPayload(
             new LedgerPlanResult.Succeeded(
                 planId("plan-1"),
-                new LedgerExecutionJournal(startedAt, finishedAt, List.of(summaryEntry))),
+                new LedgerExecutionJournal(startedAt, finishedAt, List.of(summaryEntry)),
+                null),
             PlanResultDetail.SUMMARY);
 
     assertEquals(1, payload.summary().stepCount());

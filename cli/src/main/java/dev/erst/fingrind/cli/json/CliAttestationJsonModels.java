@@ -10,6 +10,14 @@ import org.jspecify.annotations.Nullable;
 
 /** Success payloads for non-mutating book-attestation verification and receipt operations. */
 public interface CliAttestationJsonModels {
+  /** One authenticated operation reference returned by mutation and provenance query results. */
+  record AttestationCommitPayload(String operationOrder, String operationHead) {
+    public AttestationCommitPayload {
+      operationOrder = requireText(operationOrder, "operationOrder");
+      operationHead = requireText(operationHead, "operationHead");
+    }
+  }
+
   record VerifyBookPayload(
       String bookId,
       String headOrder,

@@ -123,18 +123,44 @@ final class LedgerPlanServiceTestSupport {
           T extends
               LedgerPlanTransaction & dev.erst.fingrind.executor.spi.AccountCatalogStore
                   & BookAdministrationStore & BookkeepingReadStore & PostingValidationStore
-                  & PostingCommitStore & TaxAdministrationStore>
+                  & PostingCommitStore & TaxAdministrationStore
+                  & dev.erst.fingrind.executor.spi.AttestationPostingCommitmentStore>
       LedgerPlanService service(T bookSession) {
     return new LedgerPlanService(
+        bookSession, workflowDependencies(bookSession, bookSession), FIXED_CLOCK);
+  }
+
+  static <
+          T extends
+              LedgerPlanTransaction & dev.erst.fingrind.executor.spi.AccountCatalogStore
+                  & BookAdministrationStore & BookkeepingReadStore & PostingValidationStore
+                  & PostingCommitStore & TaxAdministrationStore>
+      LedgerPlanService service(
+          T bookSession,
+          dev.erst.fingrind.executor.spi.AttestationPostingCommitmentStore
+              attestationCommitmentStore) {
+    return new LedgerPlanService(
+        bookSession, workflowDependencies(bookSession, attestationCommitmentStore), FIXED_CLOCK);
+  }
+
+  private static <
+          T extends
+              dev.erst.fingrind.executor.spi.AccountCatalogStore & BookAdministrationStore
+                  & BookkeepingReadStore & PostingValidationStore & PostingCommitStore
+                  & TaxAdministrationStore>
+      BookWorkflowExecutionDependencies workflowDependencies(
+          T bookSession,
+          dev.erst.fingrind.executor.spi.AttestationPostingCommitmentStore
+              attestationCommitmentStore) {
+    return new BookWorkflowExecutionDependencies(
         bookSession,
         bookSession,
         bookSession,
+        attestationCommitmentStore,
         bookSession,
         bookSession,
         bookSession,
-        bookSession,
-        () -> new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
-        FIXED_CLOCK);
+        () -> new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
   }
 
   static LedgerPlanId planId(String value) {
@@ -246,6 +272,7 @@ final class LedgerPlanServiceTestSupport {
           ReportingPeriodCloseStore,
           AccountCatalogStore,
           TaxAdministrationStore,
+          dev.erst.fingrind.executor.spi.AttestationPostingCommitmentStore,
           AutoCloseable {}
 
   /**
@@ -334,6 +361,12 @@ final class LedgerPlanServiceTestSupport {
     public java.util.Optional<dev.erst.fingrind.executor.bookkeeping.CommittedPosting> findPosting(
         PostingId postingId) {
       return delegate.findPosting(postingId);
+    }
+
+    @Override
+    public java.util.Map<PostingId, dev.erst.fingrind.contract.bookkeeping.AttestationCommit>
+        attestationCommitsFor(java.util.Set<PostingId> postingIds) {
+      return delegate.attestationCommitsFor(postingIds);
     }
 
     @Override
@@ -645,7 +678,7 @@ final class LedgerPlanServiceTestSupport {
     private boolean rollbackCalled;
 
     @Override
-    public void appendPlanAttestation(
+    public dev.erst.fingrind.contract.bookkeeping.AttestationCommit appendPlanAttestation(
         String planId,
         Instant recordedAt,
         AttestationPlanOperationAuthorizer attestationAuthorizer) {
@@ -675,7 +708,7 @@ final class LedgerPlanServiceTestSupport {
     private boolean rollbackCalled;
 
     @Override
-    public void appendPlanAttestation(
+    public dev.erst.fingrind.contract.bookkeeping.AttestationCommit appendPlanAttestation(
         String planId,
         Instant recordedAt,
         AttestationPlanOperationAuthorizer attestationAuthorizer) {

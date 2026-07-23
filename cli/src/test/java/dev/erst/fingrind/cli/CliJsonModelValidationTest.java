@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels;
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
@@ -521,12 +522,28 @@ class CliJsonModelValidationTest {
         IllegalArgumentException.class,
         () ->
             new CliPlanJsonModels.LedgerPlanPayload(
-                "plan-1", LedgerPlanStatus.SUCCEEDED, PlanResultDetail.FULL, summary, null));
+                "plan-1", LedgerPlanStatus.SUCCEEDED, PlanResultDetail.FULL, summary, null, null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new CliPlanJsonModels.LedgerPlanPayload(
-                "plan-1", LedgerPlanStatus.SUCCEEDED, PlanResultDetail.SUMMARY, summary, journal));
+                "plan-1",
+                LedgerPlanStatus.SUCCEEDED,
+                PlanResultDetail.SUMMARY,
+                summary,
+                null,
+                journal));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliPlanJsonModels.LedgerPlanPayload(
+                "plan-1",
+                LedgerPlanStatus.REJECTED,
+                PlanResultDetail.SUMMARY,
+                new CliPlanJsonModels.LedgerPlanSummaryPayload(
+                    "2026-05-14T10:00:00Z", "2026-05-14T10:00:01Z", 1, 0, 1, "step-1"),
+                new CliAttestationJsonModels.AttestationCommitPayload("1", "a".repeat(64)),
+                null));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -867,6 +884,7 @@ class CliJsonModelValidationTest {
             status == LedgerPlanStatus.SUCCEEDED ? 1 : 0,
             status == LedgerPlanStatus.SUCCEEDED ? 0 : 1,
             status == LedgerPlanStatus.SUCCEEDED ? null : "step-1"),
+        null,
         null);
   }
 
@@ -877,6 +895,7 @@ class CliJsonModelValidationTest {
         "STANDARD",
         "SALE_SETTLED",
         "ACTIVE",
+        null,
         null,
         null,
         "2026-05-14",

@@ -1,6 +1,8 @@
 package dev.erst.fingrind.contract.workflow;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Top-level result family for executing one canonical ledger plan. */
 public sealed interface LedgerPlanResult
@@ -23,9 +25,17 @@ public sealed interface LedgerPlanResult
   }
 
   /** Successful plan result that committed the atomic transaction. */
-  record Succeeded(LedgerPlanId planId, LedgerExecutionJournal journal)
+  record Succeeded(
+      LedgerPlanId planId,
+      LedgerExecutionJournal journal,
+      @Nullable AttestationCommit attestationCommit)
       implements LedgerPlanResult {
-    /** Validates one succeeded plan result. */
+    /**
+     * Validates one succeeded plan result.
+     *
+     * <p>A {@code null} commitment denotes a read-only successful plan, which appends no aggregate
+     * operation.
+     */
     public Succeeded {
       require(planId, journal, LedgerPlanStatus.SUCCEEDED);
     }

@@ -321,10 +321,10 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
     String postingRegisterCsv = postingRegisterCsvOutput.toString(StandardCharsets.UTF_8);
     assertTrue(
         postingRegisterCsv.startsWith(
-            "exportFamily,rowId,recordKind,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversesPostingId,reversedByPostingId,currencyCode,debitTotal,creditTotal,accountCodes,sourceDocumentIds,sourceDocumentTypes,approvalIds,approvalDecisions,message"));
+            "exportFamily,rowId,recordKind,effectiveDate,recordedAt,postingId,postingKind,postingOriginKind,reversalState,reversesPostingId,reversedByPostingId,attestationOperationOrder,attestationOperationHead,currencyCode,debitTotal,creditTotal,accountCodes,sourceDocumentIds,sourceDocumentTypes,approvalIds,approvalDecisions,message"));
     assertTrue(
         postingRegisterCsv.contains(
-            "postings,posting:bdc03c47-a16c-3688-a18f-2445894bbc69,postings,2026-04-07,2026-04-07T10:15:30Z,bdc03c47-a16c-3688-a18f-2445894bbc69,STANDARD,REVERSAL,reversal,e888fd00-a501-341d-9a6b-8d9059757d1b,,EUR,10.00,10.00,1000|2000,document-idem-1,cash-receipt,,,"));
+            "postings,posting:bdc03c47-a16c-3688-a18f-2445894bbc69,postings,2026-04-07,2026-04-07T10:15:30Z,bdc03c47-a16c-3688-a18f-2445894bbc69,STANDARD,REVERSAL,reversal,e888fd00-a501-341d-9a6b-8d9059757d1b,,,,EUR,10.00,10.00,1000|2000,document-idem-1,cash-receipt,,,"));
     assertTrue(postingRegisterCsv.contains("document-idem-1"));
     assertTrue(postingRegisterCsv.contains("cash-receipt"));
     assertTrue(postingRegisterCsv.contains("approval-idem-1") || postingRegisterCsv.contains(",,"));

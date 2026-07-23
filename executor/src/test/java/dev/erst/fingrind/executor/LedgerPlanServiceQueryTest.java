@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
@@ -34,8 +35,11 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
+import java.math.BigInteger;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests covering query-specific behavior in {@link LedgerPlanService}. */
@@ -210,6 +214,69 @@ class LedgerPlanServiceQueryTest {
                           && group.facts().stream()
                               .anyMatch(child -> textFact(child, "accountType", "ASSET"))));
       assertTrue(balanceFacts.stream().anyMatch(fact -> countFact(fact, "bucketCount", 1)));
+    }
+  }
+
+  @Test
+  void execute_projectsAuthenticatedAttestationCommitmentsInPostingQueryFacts() {
+    PostingId postingId = new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69");
+    AttestationCommit commitment = new AttestationCommit(BigInteger.valueOf(7), "a".repeat(64));
+    try (InMemoryBookSession bookSession = bookWithCommittedPosting()) {
+      var result =
+          LedgerPlanServiceTestSupport.service(
+                  bookSession,
+                  postingIds -> {
+                    assertEquals(Set.of(postingId), postingIds);
+                    return Map.of(postingId, commitment);
+                  })
+              .execute(
+                  new LedgerPlan(
+                      planId("plan-query-attestation"),
+                      List.of(
+                          new LedgerStep.GetPosting(stepId("get"), postingId),
+                          new LedgerStep.ListPostings(
+                              stepId("list"),
+                              new ListPostingsQuery(
+                                  Optional.empty(), null, null, 50, Optional.empty())))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+
+      assertEquals(LedgerPlanStatus.SUCCEEDED, result.status());
+      LedgerFact.Group getCommitment =
+          result.journal().steps().get(0).facts().stream()
+              .filter(
+                  fact ->
+                      fact instanceof LedgerFact.Group group
+                          && "attestationCommit".equals(group.name()))
+              .map(LedgerFact.Group.class::cast)
+              .findFirst()
+              .orElseThrow();
+      assertTrue(
+          groupFact(
+              getCommitment,
+              "attestationCommit",
+              "operationOrder",
+              "7",
+              "operationHead",
+              "a".repeat(64)));
+
+      LedgerFact.Group posting =
+          result.journal().steps().get(1).facts().stream()
+              .filter(
+                  fact -> fact instanceof LedgerFact.Group group && "posting".equals(group.name()))
+              .map(LedgerFact.Group.class::cast)
+              .findFirst()
+              .orElseThrow();
+      assertTrue(
+          posting.facts().stream()
+              .anyMatch(
+                  fact ->
+                      groupFact(
+                          fact,
+                          "attestationCommit",
+                          "operationOrder",
+                          "7",
+                          "operationHead",
+                          "a".repeat(64))));
     }
   }
 

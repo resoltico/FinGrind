@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels;
 import dev.erst.fingrind.cli.json.CliMutationJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
@@ -136,7 +137,7 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
                 true,
                 CliResolvedJournalPayloadMapper.resolvedJournalPayload(
                     CliPostEntryResultFixtures.resolvedJournal()),
-                new CliMutationJsonModels.AttestationCommitPayload("1", "a".repeat(64))));
+                new CliAttestationJsonModels.AttestationCommitPayload("1", "a".repeat(64))));
   }
 
   @Test

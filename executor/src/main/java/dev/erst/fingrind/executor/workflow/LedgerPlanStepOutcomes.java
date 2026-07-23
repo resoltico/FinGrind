@@ -2,7 +2,6 @@ package dev.erst.fingrind.executor.workflow;
 
 import dev.erst.fingrind.contract.workflow.LedgerPlanFailure;
 import dev.erst.fingrind.executor.bookkeeping.AccountBalanceView;
-import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import java.util.List;
 import java.util.Objects;
 
@@ -13,11 +12,6 @@ public final class LedgerPlanStepOutcomes {
   /** Returns one successful workflow step outcome containing the canonical balance fact payload. */
   public static LedgerPlanStepOutcome balanceFacts(AccountBalanceView view) {
     return stepSucceeded(LedgerPlanFactMapper.balanceFacts(view));
-  }
-
-  /** Expands one committed posting into the canonical workflow fact payload. */
-  public static List<BookWorkflowFact> postingFacts(CommittedPosting postingFact) {
-    return LedgerPlanFactMapper.postingFacts(postingFact);
   }
 
   /** Creates one local assertion-failure outcome with the supplied workflow facts. */

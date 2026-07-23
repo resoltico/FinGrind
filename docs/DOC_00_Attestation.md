@@ -54,6 +54,7 @@ canonical references without widening the general API index.
 | `AttestationLifecycleState` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationMutationAuthorization` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Signing Sessions And Authorization` |
 | `AttestationOperationAuthorizer` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationOperationCommitment` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationOperationCommitment` And `AttestationPostingCommitmentInspection` |
 | `AttestationOperationKind` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationOperationPreimages` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationOperationRequest` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
@@ -61,6 +62,9 @@ canonical references without widening the general API index.
 | `AttestationPeriodCloseMutationProjection` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationPlanOperationAuthorizer` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationPostingEffectSnapshot` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
+| `AttestationPostingCommitmentInspection` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationOperationCommitment` And `AttestationPostingCommitmentInspection` |
+| `AttestationPostingCommitmentProjection` | `DOC_03_BookSessionsAndAdapters.md` | `AttestationPostingCommitmentProjection` |
+| `AttestationPostingCommitmentStore` | `DOC_03_BookSessionsAndAdapters.md` | `AttestationPostingCommitmentStore` |
 | `AttestationPostingEvidenceDocument` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationPostingLine` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |
 | `AttestationPostingMutationProjection` | `DOC_02_VerifiableOperationAttestation.md` | `Attestation Mutation Projections` |

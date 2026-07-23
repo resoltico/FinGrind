@@ -1,7 +1,10 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
 import java.time.Instant;
+import java.util.HexFormat;
+import org.jspecify.annotations.Nullable;
 
 /** Shared ledger-plan transaction defaults for SQLite capability wrappers. */
 interface SqlitePlanExecutionCapabilityView
@@ -37,17 +40,20 @@ interface SqlitePlanExecutionCapabilityView
   }
 
   @Override
-  default void appendPlanAttestation(
+  default @Nullable AttestationCommit appendPlanAttestation(
       String planId, Instant recordedAt, AttestationPlanOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
     if (!attestationAuthorizer.hasChildMutations()) {
-      return;
+      return null;
     }
-    SqliteAttestationEvidenceStore.appendPlanAuthorized(
-        storeLifecycle().database(),
-        storeLifecycle().transactions().requireObservedAttestationHead(),
-        planId,
-        recordedAt,
-        attestationAuthorizer);
+    dev.erst.fingrind.core.attestation.AttestationVerification verification =
+        SqliteAttestationEvidenceStore.appendPlanAuthorized(
+            storeLifecycle().database(),
+            storeLifecycle().transactions().requireObservedAttestationHead(),
+            planId,
+            recordedAt,
+            attestationAuthorizer);
+    return new AttestationCommit(
+        verification.headOrder(), HexFormat.of().formatHex(verification.operationHead()));
   }
 }

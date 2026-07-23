@@ -24,6 +24,7 @@ import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationOperationRequest;
+import dev.erst.fingrind.executor.BookWorkflowExecutionDependencies;
 import dev.erst.fingrind.executor.LedgerPlanService;
 import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
 import dev.erst.fingrind.sqlite.SqliteBookSessionMode;
@@ -165,13 +166,15 @@ final class SqliteCliMutationWorkflow implements CliBookMutationWorkflow {
       AttestationOperationAuthorizer authorizer) {
     return new LedgerPlanService(
             bookSession,
-            bookSession,
-            bookSession,
-            bookSession,
-            bookSession,
-            bookSession,
-            bookSession,
-            new UuidV7PostingIdGenerator(),
+            new BookWorkflowExecutionDependencies(
+                bookSession,
+                bookSession,
+                bookSession,
+                bookSession,
+                bookSession,
+                bookSession,
+                bookSession,
+                new UuidV7PostingIdGenerator()),
             clock)
         .execute(plan, authorizer);
   }

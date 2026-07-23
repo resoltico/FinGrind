@@ -102,7 +102,10 @@ final class CliBookReadResponseWriter {
               () ->
                   outputChannel.writeText(
                       CliPostingOutputRenderer.renderPostingText(
-                          found.bookIdentity(), found.postingFact(), withContext)),
+                          found.bookIdentity(),
+                          found.postingFact(),
+                          found.attestationCommit().orElse(null),
+                          withContext)),
               () -> {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(OperationId.GET_POSTING));

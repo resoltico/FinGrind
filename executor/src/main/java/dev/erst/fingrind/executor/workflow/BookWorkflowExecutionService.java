@@ -1,9 +1,11 @@
 package dev.erst.fingrind.executor.workflow;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
+import dev.erst.fingrind.executor.BookWorkflowExecutionDependencies;
 import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
 import java.time.Clock;
 import java.time.Instant;
@@ -17,6 +19,7 @@ public final class BookWorkflowExecutionService {
   private final LedgerPlanTransaction transactionStore;
   private final Clock clock;
   private final LedgerPlanStepExecutor stepExecutor;
+  private final BookWorkflowExecutionResultFactory resultFactory;
 
   /** Creates one local workflow execution service. */
   public BookWorkflowExecutionService(
@@ -25,17 +28,9 @@ public final class BookWorkflowExecutionService {
       Clock clock) {
     this.transactionStore = Objects.requireNonNull(transactionStore, "transactionStore");
     this.clock = Objects.requireNonNull(clock, "clock");
+    resultFactory = new BookWorkflowExecutionResultFactory(this.clock);
     Objects.requireNonNull(dependencies, "dependencies");
-    this.stepExecutor =
-        new LedgerPlanStepExecutor(
-            dependencies.administrationStore(),
-            dependencies.accountCatalogStore(),
-            dependencies.readStore(),
-            dependencies.validationStore(),
-            dependencies.commitStore(),
-            dependencies.taxAdministrationStore(),
-            dependencies.postingIdGenerator(),
-            clock);
+    this.stepExecutor = new LedgerPlanStepExecutor(dependencies, clock);
   }
 
   /** Executes one authorized local workflow plan atomically. */
@@ -214,7 +209,8 @@ public final class BookWorkflowExecutionService {
           unexpectedFailure.requiredFailure());
     }
     entries.add(unexpectedFailure);
-    return result(planId, BookWorkflowExecutionStatus.REJECTED, planStartedAt, entries);
+    return resultFactory.result(
+        planId, BookWorkflowExecutionStatus.REJECTED, planStartedAt, entries);
   }
 
   private BookWorkflowExecutionResult commitSuccessfulPlan(
@@ -224,9 +220,11 @@ public final class BookWorkflowExecutionService {
       AttestationPlanOperationAuthorizer attestationAuthorizer,
       BookWorkflowJournalEntry.Succeeded pendingSuccessfulStep) {
     Instant commitStartedAt = Instant.now(clock);
+    @Nullable AttestationCommit attestationCommit;
     try {
-      transactionStore.appendPlanAttestation(
-          planId.value(), commitStartedAt, attestationAuthorizer);
+      attestationCommit =
+          transactionStore.appendPlanAttestation(
+              planId.value(), commitStartedAt, attestationAuthorizer);
       transactionStore.commitLedgerPlanTransaction();
     } catch (AttestationStaleHeadException exception) {
       throw exception;
@@ -245,7 +243,8 @@ public final class BookWorkflowExecutionService {
           null);
     }
     entries.add(pendingSuccessfulStep);
-    return result(planId, BookWorkflowExecutionStatus.SUCCEEDED, startedAt, entries);
+    return resultFactory.result(
+        planId, BookWorkflowExecutionStatus.SUCCEEDED, startedAt, entries, attestationCommit);
   }
 
   private static void appendPendingSuccess(
@@ -276,7 +275,7 @@ public final class BookWorkflowExecutionService {
           failed.requiredFailure());
     }
     entries.add(failed);
-    return result(planId, failedStatus(failed), startedAt, entries);
+    return resultFactory.result(planId, failedStatus(failed), startedAt, entries);
   }
 
   private BookWorkflowExecutionResult boundaryFailureAfterRollback(
@@ -304,7 +303,7 @@ public final class BookWorkflowExecutionService {
                 exception,
                 cleanupFailure,
                 priorFailure));
-    return result(
+    return resultFactory.result(
         context.planId(),
         BookWorkflowExecutionStatus.REJECTED,
         context.planStartedAt(),
@@ -326,16 +325,5 @@ public final class BookWorkflowExecutionService {
       case BookWorkflowJournalEntry.AssertionFailed _ ->
           BookWorkflowExecutionStatus.ASSERTION_FAILED;
     };
-  }
-
-  private BookWorkflowExecutionResult result(
-      BookWorkflowPlanId planId,
-      BookWorkflowExecutionStatus status,
-      Instant startedAt,
-      List<BookWorkflowJournalEntry> entries) {
-    return new BookWorkflowExecutionResult(
-        planId,
-        status,
-        new BookWorkflowExecutionJournal(startedAt, Instant.now(clock), List.copyOf(entries)));
   }
 }

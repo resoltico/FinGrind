@@ -116,6 +116,7 @@ final class ContractFixtures {
         postings,
         limit,
         nextCursor,
+        java.util.Map.of(),
         java.util.Map.of());
   }
 

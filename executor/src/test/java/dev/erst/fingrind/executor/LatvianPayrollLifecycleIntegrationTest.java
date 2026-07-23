@@ -149,7 +149,7 @@ class LatvianPayrollLifecycleIntegrationTest {
       LatvianPayrollRegisterResult.Reported register =
           assertInstanceOf(
               LatvianPayrollRegisterResult.Reported.class,
-              new BookReadService(bookSession)
+              new BookReadService(bookSession, bookSession)
                   .latvianPayrollRegister(new LatvianPayrollRegisterQuery()));
       assertEquals(2, register.report().rows().size());
       var row = register.report().rows().getFirst();
@@ -173,7 +173,7 @@ class LatvianPayrollLifecycleIntegrationTest {
       GetPostingResult.Found foundRun =
           assertInstanceOf(
               GetPostingResult.Found.class,
-              new BookReadService(bookSession).getPosting(run.postingId()));
+              new BookReadService(bookSession, bookSession).getPosting(run.postingId()));
       LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll resolvedRun =
           assertInstanceOf(
               LatvianPayrollBookkeepingEntryVariants.MonthlyPayroll.class,
@@ -186,7 +186,8 @@ class LatvianPayrollLifecycleIntegrationTest {
       GetPostingResult.Found foundStateRemittance =
           assertInstanceOf(
               GetPostingResult.Found.class,
-              new BookReadService(bookSession).getPosting(stateRemittance.postingId()));
+              new BookReadService(bookSession, bookSession)
+                  .getPosting(stateRemittance.postingId()));
       LatvianPayrollBookkeepingEntryVariants.StateRemittance resolvedStateRemittance =
           assertInstanceOf(
               LatvianPayrollBookkeepingEntryVariants.StateRemittance.class,

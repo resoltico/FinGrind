@@ -8,11 +8,13 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.PeriodAccountActivityRow;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.PostingPage;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
@@ -40,10 +42,12 @@ import dev.erst.fingrind.core.PostingKind;
 import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.core.ProfitAndLossLineClassification;
 import dev.erst.fingrind.core.StatementLineKind;
+import java.math.BigInteger;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -129,6 +133,41 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     assertTrue(
         postingRegisterCsv.contains(
             "postings,posting:bdc03c47-a16c-3688-a18f-2445894bbc69,postings,2026-04-07,2026-04-07T10:15:30Z,bdc03c47-a16c-3688-a18f-2445894bbc69"));
+  }
+
+  @Test
+  void postingRegisterRenderers_distinguishCommittedAndUncommittedAttestationLinks() {
+    PostingFact committedPosting = reversalPostingFact();
+    PostingFact uncommittedPosting =
+        new PostingFact(
+            new PostingId("2dc03c47-a16c-3688-a18f-2445894bbc69"),
+            committedPosting.journalEntry(),
+            committedPosting.postingLineage(),
+            committedPosting.postingKind(),
+            committedPosting.postingOriginKind(),
+            committedPosting.evidence(),
+            committedPosting.provenance(),
+            committedPosting.originatingEntry());
+    PostingPage page =
+        new PostingPage(
+            bookIdentity(),
+            Optional.empty(),
+            EffectiveDateRange.unbounded(),
+            List.of(committedPosting, uncommittedPosting),
+            10,
+            Optional.empty(),
+            Map.of(),
+            Map.of(
+                committedPosting.postingId(),
+                new AttestationCommit(BigInteger.valueOf(42), "a".repeat(64))));
+
+    String text = CliPostingOutputRenderer.renderPostingRegisterText(page, false);
+    String csv = CliPostingOutputRenderer.renderPostingRegisterCsv(page);
+
+    assertTrue(text.contains("Attestation commitments"));
+    assertTrue(text.contains("order 42; head " + "a".repeat(64)));
+    assertTrue(csv.contains(",42," + "a".repeat(64)));
+    assertTrue(csv.contains("posting:2dc03c47-a16c-3688-a18f-2445894bbc69"));
   }
 
   @Test

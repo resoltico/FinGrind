@@ -4,6 +4,7 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.copyList;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels.AttestationCommitPayload;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -40,13 +41,6 @@ public interface CliMutationJsonModels {
         throw new IllegalArgumentException(
             "An idempotent replay must not report a newly appended attestation operation.");
       }
-    }
-  }
-
-  record AttestationCommitPayload(String operationOrder, String operationHead) {
-    public AttestationCommitPayload {
-      operationOrder = requireText(operationOrder, "operationOrder");
-      operationHead = requireText(operationHead, "operationHead");
     }
   }
 

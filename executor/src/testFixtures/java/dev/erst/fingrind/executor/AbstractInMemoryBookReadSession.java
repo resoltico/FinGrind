@@ -24,6 +24,7 @@ import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceCriteria;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceRowView;
 import dev.erst.fingrind.executor.bookkeeping.TrialBalanceView;
+import dev.erst.fingrind.executor.spi.AttestationPostingCommitmentStore;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -35,7 +36,16 @@ import java.util.Optional;
 
 /** Shared in-memory read-model and reporting fixture state for executor tests. */
 abstract class AbstractInMemoryBookReadSession extends AbstractInMemoryReportingPeriodCloseSession
-    implements BookkeepingReadStore {
+    implements BookkeepingReadStore, AttestationPostingCommitmentStore {
+  @Override
+  public Map<
+          dev.erst.fingrind.core.PostingId,
+          dev.erst.fingrind.contract.bookkeeping.AttestationCommit>
+      attestationCommitsFor(java.util.Set<dev.erst.fingrind.core.PostingId> postingIds) {
+    Objects.requireNonNull(postingIds, "postingIds");
+    return Map.of();
+  }
+
   @Override
   public PostingHistoryPage listPostings(PostingHistoryQuery query) {
     return InMemoryBookSessionSupport.withLock(

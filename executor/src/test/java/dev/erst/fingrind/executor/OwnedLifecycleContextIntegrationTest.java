@@ -263,7 +263,7 @@ class OwnedLifecycleContextIntegrationTest {
   }
 
   private static void assertPublishedRegisters(InMemoryBookSession session) {
-    BookReadService reads = new BookReadService(session);
+    BookReadService reads = new BookReadService(session, session);
     FixedAssetRegisterResult.Reported fixedAssets =
         assertInstanceOf(
             FixedAssetRegisterResult.Reported.class,
@@ -306,7 +306,7 @@ class OwnedLifecycleContextIntegrationTest {
       PostEntryResult.Committed depreciation,
       PostEntryResult.Committed principalRepayment,
       PostEntryResult.Committed settlement) {
-    BookReadService reads = new BookReadService(session);
+    BookReadService reads = new BookReadService(session, session);
     assertInstanceOf(
         FixedAssetBookkeepingEntryVariants.Depreciation.class,
         found(reads, depreciation.postingId()).postingFact().callerAuthoredEntry().orElseThrow());

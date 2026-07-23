@@ -100,7 +100,8 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
                             dev.erst.fingrind.contract.protocol.LedgerStepKind.INSPECT_BOOK),
                         startedAt,
                         finishedAt,
-                        List.of()))));
+                        List.of()))),
+            null);
     LedgerPlanResult rejectedResult =
         new LedgerPlanResult.Rejected(
             planId("plan-rejected"),

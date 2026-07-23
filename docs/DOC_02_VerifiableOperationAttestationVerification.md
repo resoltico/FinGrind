@@ -9,12 +9,12 @@ scope:
 route:
   keywords: [attestation-verification, verifier-precedence, compromise-review, structural-invalid, stale-head, receipt-artifact, verification-rejection, clean-attestation]
   questions: ["how does FinGrind verify a protected-book attestation", "which attestation verification failure is reported first", "what does an attestation review finding mean", "how does FinGrind publish verification failures"]
-stage: "Current public protocol 34 and protected-book format 52 contract"
+stage: "Current public protocol 35 and protected-book format 52 contract"
 ---
 
 # Verifiable Operation Attestation Verification
 
-This document is the canonical verifier contract for FinGrind protocol 34 and protected-book
+This document is the canonical verifier contract for FinGrind protocol 35 and protected-book
 format 52. It defines verification result surfaces, compromise review, and deterministic failure
 precedence. The [core protocol](./DOC_02_VerifiableOperationAttestation.md) owns the immutable
 operation envelope, preimage grammar, historical authorization facts, and operation profiles that

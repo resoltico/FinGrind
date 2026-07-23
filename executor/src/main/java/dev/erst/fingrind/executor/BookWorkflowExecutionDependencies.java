@@ -1,7 +1,8 @@
-package dev.erst.fingrind.executor.workflow;
+package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.spi.AccountCatalogStore;
+import dev.erst.fingrind.executor.spi.AttestationPostingCommitmentStore;
 import dev.erst.fingrind.executor.spi.BookAdministrationStore;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import dev.erst.fingrind.executor.spi.PostingCommitStore;
@@ -14,6 +15,7 @@ public record BookWorkflowExecutionDependencies(
     BookAdministrationStore administrationStore,
     AccountCatalogStore accountCatalogStore,
     BookkeepingReadStore readStore,
+    AttestationPostingCommitmentStore attestationCommitmentStore,
     PostingValidationStore validationStore,
     PostingCommitStore commitStore,
     TaxAdministrationStore taxAdministrationStore,
@@ -23,6 +25,7 @@ public record BookWorkflowExecutionDependencies(
     Objects.requireNonNull(administrationStore, "administrationStore");
     Objects.requireNonNull(accountCatalogStore, "accountCatalogStore");
     Objects.requireNonNull(readStore, "readStore");
+    Objects.requireNonNull(attestationCommitmentStore, "attestationCommitmentStore");
     Objects.requireNonNull(validationStore, "validationStore");
     Objects.requireNonNull(commitStore, "commitStore");
     Objects.requireNonNull(taxAdministrationStore, "taxAdministrationStore");

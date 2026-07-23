@@ -21,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
@@ -49,6 +50,7 @@ import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingLookupOutcome;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
+import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -60,7 +62,10 @@ class BookReadServiceAccountQueryTest {
   void constructor_rejectsNullBookStore() {
     assertEquals(
         "bookStore",
-        assertThrows(NullPointerException.class, () -> new BookReadService(nullOf())).getMessage());
+        assertThrows(
+                NullPointerException.class,
+                () -> new BookReadService(nullOf(), postingIds -> Map.of()))
+            .getMessage());
   }
 
   @Test
@@ -281,7 +286,8 @@ class BookReadServiceAccountQueryTest {
                       BookkeepingPublishedLanguageTranslator.toPublished(reversalPosting)),
                   20,
                   Optional.empty(),
-                  Map.of(originalPosting.postingId(), reversalPosting.postingId()))),
+                  Map.of(originalPosting.postingId(), reversalPosting.postingId()),
+                  Map.of())),
           service.listPostings(
               new ListPostingsQuery(Optional.empty(), null, null, 20, Optional.empty())));
     }
@@ -314,6 +320,59 @@ class BookReadServiceAccountQueryTest {
     assertEquals(0, bookSession.inspectBookCalls());
     assertEquals(2, bookSession.allowsInitializedWorkflowCalls());
     assertEquals(2, bookSession.requireInitializedBookIdentityCalls());
+  }
+
+  @Test
+  void postingQueries_projectOnlyTheAuthenticatedOperationCommitmentProvidedForEachPosting() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      CommittedPosting posting = postingFact("posting-1", "idem-1");
+      bookSession.commit(posting);
+      AttestationCommit commitment = new AttestationCommit(BigInteger.valueOf(42), "a".repeat(64));
+      BookReadService service =
+          new BookReadService(
+              bookSession,
+              requestedPostingIds ->
+                  requestedPostingIds.contains(posting.postingId())
+                      ? Map.of(posting.postingId(), commitment)
+                      : Map.of());
+
+      GetPostingResult.Found found =
+          (GetPostingResult.Found) service.getPosting(posting.postingId());
+      assertEquals(Optional.of(commitment), found.attestationCommit());
+
+      ListPostingsResult.Listed listed =
+          (ListPostingsResult.Listed)
+              service.listPostings(
+                  new ListPostingsQuery(Optional.empty(), null, null, 20, Optional.empty()));
+      assertEquals(
+          Map.of(posting.postingId(), commitment), listed.page().attestationCommitsByPostingId());
+    }
+  }
+
+  @Test
+  void postingPageProjection_rejectsCommitmentsForPostingsOutsideTheRequestedPage() {
+    try (InMemoryBookSession bookSession = initializedBook()) {
+      declareDefaultAccounts(bookSession);
+      CommittedPosting posting = postingFact("posting-1", "idem-1");
+      bookSession.commit(posting);
+      AttestationCommit commitment = new AttestationCommit(BigInteger.valueOf(42), "a".repeat(64));
+      BookReadService service =
+          new BookReadService(
+              bookSession,
+              ignored -> Map.of(new PostingId("00000000-0000-4000-8000-000000000001"), commitment));
+
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  service.listPostings(
+                      new ListPostingsQuery(Optional.empty(), null, null, 20, Optional.empty())));
+
+      assertEquals(
+          "Posting-attestation projection returned a commitment outside the requested posting selection.",
+          exception.getMessage());
+    }
   }
 
   @Test

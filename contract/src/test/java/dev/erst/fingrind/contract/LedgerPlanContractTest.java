@@ -228,7 +228,7 @@ class LedgerPlanContractTest {
     assertEquals(LedgerPlanStatus.ASSERTION_FAILED, assertionFailedJournal.status());
     assertEquals(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS, rejected.detailKind());
     assertEquals(
-        planId("plan-1"), new LedgerPlanResult.Succeeded(planId("plan-1"), journal).planId());
+        planId("plan-1"), new LedgerPlanResult.Succeeded(planId("plan-1"), journal, null).planId());
     assertThrows(IllegalArgumentException.class, () -> LedgerFact.text("", "value"));
     assertThrows(IllegalArgumentException.class, () -> LedgerFact.text("count", " "));
     assertThrows(NullPointerException.class, () -> LedgerFact.text("count", nullOf()));

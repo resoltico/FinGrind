@@ -605,7 +605,8 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                     LedgerJournalStep.standard(LedgerStepKind.INSPECT_BOOK),
                     timestamp,
                     timestamp,
-                    List.of(LedgerFact.flag("ok", true), LedgerFact.count("count", 1))))));
+                    List.of(LedgerFact.flag("ok", true), LedgerFact.count("count", 1))))),
+        null);
   }
 
   protected static LedgerPlanResult assertionFailedPlanResult(String planId) {

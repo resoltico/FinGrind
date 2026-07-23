@@ -153,6 +153,7 @@ class CliPlanDetailTextRendererTest extends CliFixtureSupport {
             "ORIGINAL",
             null,
             null,
+            null,
             "2026-04-17",
             "2026-04-17T10:15:32Z",
             "command-1",

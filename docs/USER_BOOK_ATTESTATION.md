@@ -11,7 +11,7 @@ route:
 # Protected-Book Attestation
 
 **Purpose**: Operate the immutable authorization evidence retained with every FinGrind protected-book mutation.
-**Prerequisites**: A FinGrind protocol-34 / format-52 binary, one book passphrase source, and an authorized founder or operator credential where a command requires signing.
+**Prerequisites**: A FinGrind protocol-35 / format-52 binary, one book passphrase source, and an authorized founder or operator credential where a command requires signing.
 
 ## What The Attestation Proves
 

@@ -5,6 +5,8 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalT
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireValue;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels.AttestationCommitPayload;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
@@ -24,6 +26,7 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
       LedgerPlanStatus status,
       PlanResultDetail resultDetail,
       LedgerPlanSummaryPayload summary,
+      @JsonInclude(JsonInclude.Include.ALWAYS) @Nullable AttestationCommitPayload attestationCommit,
       @Nullable LedgerExecutionJournalPayload journal)
       implements CliSuccessPayload {
     public LedgerPlanPayload {
@@ -31,6 +34,10 @@ public interface CliPlanJsonModels extends CliBookQueryJsonModels, CliPlanLedger
       status = requireValue(status, "status");
       resultDetail = requireValue(resultDetail, "resultDetail");
       summary = requireValue(summary, "summary");
+      if (status != LedgerPlanStatus.SUCCEEDED && attestationCommit != null) {
+        throw new IllegalArgumentException(
+            "attestationCommit must be absent unless status is SUCCEEDED.");
+      }
       if (resultDetail == PlanResultDetail.FULL) {
         if (journal == null) {
           throw new IllegalArgumentException("journal must be present when resultDetail is full.");

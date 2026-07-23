@@ -163,6 +163,39 @@ public interface LedgerPlanTransaction
   transaction ownership on auditable narrow seams instead of one god-port
 - Lifecycle: the outer workflow or adapter owns `close()`, not these executor seams
 
+## `AttestationPostingCommitmentStore`
+
+`AttestationPostingCommitmentStore` is the separate read-side attestation port used to project an
+authenticated operation reference for requested postings.
+
+```java
+public interface AttestationPostingCommitmentStore
+```
+
+- Surface: `attestationCommitsFor(Set<PostingId>)` returns each requested posting's verified
+  `AttestationCommit`, when its attested operation contains that posting effect
+- Integrity: an adapter verifies the complete immutable attestation chain before returning any
+  commitment; invalid, incomplete, or ambiguous evidence is a protected-book verification failure
+- Boundary: this is deliberately not part of `BookkeepingReadStore`; ordinary bookkeeping lookup
+  does not authenticate evidence, and combining the two would make every bookkeeping reader claim
+  an attestation capability it does not have
+
+## `AttestationPostingCommitmentProjection`
+
+`AttestationPostingCommitmentProjection` bounds authenticated posting-commitment results to the
+exact posting selection requested by one caller.
+
+```java
+public final class AttestationPostingCommitmentProjection
+```
+
+- Surface: `resolve(AttestationPostingCommitmentStore, Set<PostingId>)` returns the immutable
+  requested subset of verified `AttestationCommit` values
+- Integrity: it rejects a store result that includes any posting outside the requested selection;
+  callers therefore cannot accidentally project authenticated evidence onto an unrelated posting
+- Boundary: direct posting queries and `execute-plan` posting-query steps share this projection,
+  so both paths publish the same cryptographically verified linkage
+
 ## `AccountCurrencyTotals`
 
 `AccountCurrencyTotals` is the executor-owned aggregate row used by statement reads and close

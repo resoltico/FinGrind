@@ -5,16 +5,16 @@ domain: BOOK_OPERATION_ATTESTATION
 updated: "2026-07-23"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["AttestedOperation", "AttestationAuthorizationLimits", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationCapability", "AttestationCredentialPurpose", "AttestationCustodian", "AttestationCustodianNotSupportedException", "AttestationEvidence", "AttestationGenesis", "AttestationGrantState", "AttestationKeyFiles", "AttestationOperationKind", "AttestationOperationSigner", "AttestationPublicCredential", "AttestationRegistryMutation", "AttestationSigningCredential", "AttestationSystemWorkflowKind"]
+  symbols: ["AttestedOperation", "AttestationAuthorizationLimits", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationCapability", "AttestationCredentialPurpose", "AttestationCustodian", "AttestationCustodianNotSupportedException", "AttestationEvidence", "AttestationGenesis", "AttestationGrantState", "AttestationKeyFiles", "AttestationOperationCommitment", "AttestationOperationKind", "AttestationOperationSigner", "AttestationPostingCommitmentInspection", "AttestationPublicCredential", "AttestationRegistryMutation", "AttestationSigningCredential", "AttestationSystemWorkflowKind"]
 route:
   keywords: [verifiable-operation-attestation, operation-head, attestation-envelope, principal-quorum, credential-purpose, autonomous-workflow, semantic-profile, ed25519, immutable-preimage, operation-kind]
   questions: ["what does FinGrind book-operation attestation prove", "how is an attested operation encoded", "which credential may authorize a system operation", "which semantic profile governs a typed operation"]
-stage: "Current public protocol 34 and protected-book format 52 contract"
+stage: "Current public protocol 35 and protected-book format 52 contract"
 ---
 
 # Verifiable Operation Attestation Protocol
 
-This is the normative contract for FinGrind protocol 34 and protected-book format 52. It is the
+This is the normative contract for FinGrind protocol 35 and protected-book format 52. It is the
 current public behavior. Earlier protected-book formats are rejected: there is no mode, migration,
 alias, or compatibility path.
 
@@ -62,6 +62,19 @@ cannot alter evidence after handing it to the verifier. The canonical verifier c
 result surfaces are owned by
 [DOC_02_VerifiableOperationAttestationVerification.md](./DOC_02_VerifiableOperationAttestationVerification.md).
 
+## `AttestationOperationCommitment` And `AttestationPostingCommitmentInspection`
+
+`AttestationOperationCommitment` is the public identity of one verified operation: its unsigned
+operation order and canonical lowercase-hex operation head. It is a reference to immutable
+evidence, not a mutable copy stored on an accounting fact.
+
+`AttestationPostingCommitmentInspection` pairs a complete successful
+`AttestationVerification` with the posting-to-operation commitments recovered from that verified
+chain. `AttestationVerifier.verifyAndInspectPostingCommitments` validates the complete chain
+before it exposes any mapping. It therefore never presents a posting link from invalid,
+truncated, or unauthorized evidence. A posting may resolve to at most one operation; ambiguous
+evidence is invalid rather than being resolved by ordering or storage-row preference.
+
 ## `AttestationAccountMutationIntent`
 
 `AttestationAccountMutationIntent` is the core semantic classification for a declaration,
@@ -101,7 +114,7 @@ public final class AttestationAuthorizationLimits {
   admitted by `AttestationPolicyRule` and `AttestationRegistryMutation.PolicyRule`.
 - Reachability: an accepted policy always remains usable through public operation, manifest,
   receipt, restore, rekey, and policy-mutation signing boundaries.
-- Compatibility: public protected-book format-52 / protocol-34 contract.
+- Compatibility: public protected-book format-52 / protocol-35 contract.
 
 ---
 
@@ -709,6 +722,13 @@ plan's first write admission. After the children succeed, FinGrind compares that
 the aggregate signer runs. A concurrent advance is a `stale-head` refusal, not a plan journal
 entry: the full plan transaction rolls back and the caller re-signs against the reported current
 head.
+
+After the transaction commits, a mutating `execute-plan` result publishes that aggregate
+operation's order and head. A successful read-only plan publishes no operation reference. Posting
+read surfaces derive a posting's reference only by verifying the complete operation chain and
+projecting the signed `posting.fact` effect record to its containing operation. They do not copy a
+backlink into mutable posting storage; invalid chain evidence refuses the query rather than
+publishing unauthenticated provenance.
 
 `record-reversal` names the admitted original posting in
 request.posting.priorPostingId and may reverse it only under the closed reversal relation in the

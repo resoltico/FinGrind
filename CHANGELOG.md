@@ -11,7 +11,7 @@ Historical release notes older than `0.31.0` live in:
 
 ### Added
 
-- Added verifiable operation attestation to protected-book format `52` and CLI protocol `34`.
+- Added verifiable operation attestation to protected-book format `52` and CLI protocol `35`.
   Every mutation now carries immutable canonical request and committed-effect preimages, a
   historically authorized Ed25519 envelope, and a SHA-256 operation head. `verify-book`,
   `attestation-review`, `export-attestation-receipt`, and `verify-receipt` expose structural
@@ -36,6 +36,11 @@ Historical release notes older than `0.31.0` live in:
 
 ### Changed
 
+- Hard-broke CLI protocol `35` so successful mutating `execute-plan` results publish the exact
+  committed attestation order and head, while `get-posting` and `list-postings` publish each
+  posting's authenticated operation linkage. Query-time linkage is reconstructed only from the
+  fully verified immutable operation chain; no duplicate mutable backlink is persisted.
+
 - Hard-broke the Java discovery-template facade. Attestation registry and compromise-review
   scaffolds now belong to `MachineContractAttestationTemplates`, separating that protocol family
   from the general discovery assembler and leaving no compatibility forwarding methods.
@@ -52,7 +57,7 @@ Historical release notes older than `0.31.0` live in:
 - Hard-broke attestation rollover semantics. A rollover now commits the successor binding and the
   predecessor's terminal `superseded` retirement in one immutable operation; the predecessor can
   no longer sign afterward. `revoked` remains the distinct terminal state for a separately
-  authorized security withdrawal. The book format and protocol advance to `52` and `34`; format
+  authorized security withdrawal. The book format and protocol advance to `52` and `35`; format
   `51` books are rejected rather than migrated or read through a compatibility layer.
 - Classified protected-book authentication and integrity failures consistently even when a later
   SQLite page read first exposes them. Such failures now always return

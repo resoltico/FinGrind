@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels.AttestationCommitPayload;
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
 import dev.erst.fingrind.cli.json.CliOpeningBalancePayload;
 import dev.erst.fingrind.cli.json.CliPostingEntryPayload;
@@ -36,6 +37,8 @@ final class CliLedgerBookQueryPayloadMapper {
     @Nullable List<LedgerFact> entryFacts = CliLedgerFactAccess.optionalGroupFacts(facts, "entry");
     @Nullable List<LedgerFact> reversalFacts =
         CliLedgerFactAccess.optionalGroupFacts(facts, "reversal");
+    @Nullable List<LedgerFact> attestationCommitFacts =
+        CliLedgerFactAccess.optionalGroupFacts(facts, "attestationCommit");
     return new CliBookQueryJsonModels.PostingPayload(
         CliLedgerFactAccess.requiredTextFact(facts, "postingId"),
         CliLedgerFactAccess.requiredTextFact(facts, "postingKind"),
@@ -45,6 +48,7 @@ final class CliLedgerBookQueryPayloadMapper {
             ? null
             : CliLedgerFactAccess.optionalTextFact(reversalFacts, "priorPostingId"),
         CliLedgerFactAccess.optionalTextFact(facts, "reversedByPostingId"),
+        attestationCommitPayload(attestationCommitFacts),
         CliLedgerFactAccess.requiredTextFact(facts, "effectiveDate"),
         CliLedgerFactAccess.requiredTextFact(facts, "recordedAt"),
         CliLedgerFactAccess.requiredTextFact(provenanceFacts, "commandId"),
@@ -65,6 +69,8 @@ final class CliLedgerBookQueryPayloadMapper {
     @Nullable List<LedgerFact> reversalFacts =
         CliLedgerFactAccess.optionalGroupFacts(facts, "reversal");
     List<LedgerFact> evidenceFacts = CliLedgerFactAccess.requiredGroupFacts(facts, "evidence");
+    @Nullable List<LedgerFact> attestationCommitFacts =
+        CliLedgerFactAccess.optionalGroupFacts(facts, "attestationCommit");
     return new CliBookQueryJsonModels.PostingSummaryPayload(
         CliLedgerFactAccess.requiredTextFact(facts, "postingId"),
         CliLedgerFactAccess.requiredTextFact(facts, "postingKind"),
@@ -74,6 +80,7 @@ final class CliLedgerBookQueryPayloadMapper {
             ? null
             : CliLedgerFactAccess.optionalTextFact(reversalFacts, "priorPostingId"),
         CliLedgerFactAccess.optionalTextFact(facts, "reversedByPostingId"),
+        attestationCommitPayload(attestationCommitFacts),
         CliLedgerFactAccess.requiredTextFact(facts, "effectiveDate"),
         CliLedgerFactAccess.requiredTextFact(facts, "recordedAt"),
         CliLedgerFactAccess.requiredMoneyFact(facts, "debitTotal"),
@@ -95,6 +102,15 @@ final class CliLedgerBookQueryPayloadMapper {
         CliLedgerFactAccess.groupedFacts(facts, "approval").stream()
             .map(CliLedgerBookQueryPayloadMapper::approvalPayload)
             .toList());
+  }
+
+  private static @Nullable AttestationCommitPayload attestationCommitPayload(
+      @Nullable List<LedgerFact> attestationCommitFacts) {
+    return attestationCommitFacts == null
+        ? null
+        : new AttestationCommitPayload(
+            CliLedgerFactAccess.requiredTextFact(attestationCommitFacts, "operationOrder"),
+            CliLedgerFactAccess.requiredTextFact(attestationCommitFacts, "operationHead"));
   }
 
   static CliBookQueryJsonModels.BalanceBucketPayload balanceBucketPayload(List<LedgerFact> facts) {

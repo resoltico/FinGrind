@@ -283,6 +283,7 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
         postings,
         limit,
         nextCursor,
+        java.util.Map.of(),
         java.util.Map.of());
   }
 
@@ -305,6 +306,7 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
   }
 
   protected static GetPostingResult.Found foundPosting(PostingFact postingFact) {
-    return new GetPostingResult.Found(bookIdentity(), postingFact, Optional.empty());
+    return new GetPostingResult.Found(
+        bookIdentity(), postingFact, Optional.empty(), Optional.empty());
   }
 }

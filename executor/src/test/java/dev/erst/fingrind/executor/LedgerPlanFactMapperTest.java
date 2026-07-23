@@ -2,8 +2,10 @@ package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
@@ -60,10 +62,12 @@ import dev.erst.fingrind.executor.bookkeeping.PostingHistoryPage;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
 import dev.erst.fingrind.executor.workflow.BookWorkflowFact;
 import dev.erst.fingrind.executor.workflow.LedgerPlanFactMapper;
+import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -85,7 +89,7 @@ class LedgerPlanFactMapperTest {
                     reversalPosting.provenance().recordedAt(),
                     reversalPosting.postingId())));
 
-    List<BookWorkflowFact> facts = LedgerPlanFactMapper.postingPageFacts(page);
+    List<BookWorkflowFact> facts = LedgerPlanFactMapper.postingPageFacts(page, java.util.Map.of());
 
     assertTrue(
         facts.stream()
@@ -142,6 +146,27 @@ class LedgerPlanFactMapperTest {
                                                         && "reason".equals(text.name())
                                                         && "operator reversal"
                                                             .equals(text.value())))));
+  }
+
+  @Test
+  void postingPageFacts_rejectsAttestationCommitmentsOutsideThePostingPage() {
+    dev.erst.fingrind.executor.bookkeeping.CommittedPosting posting =
+        BookkeepingPublishedLanguageTranslator.fromPublished(reversalPostingFact());
+    PostingHistoryPage page = new PostingHistoryPage(List.of(posting), 25, Optional.empty());
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                LedgerPlanFactMapper.postingPageFacts(
+                    page,
+                    Map.of(
+                        new PostingId("00000000-0000-4000-8000-000000000001"),
+                        new AttestationCommit(BigInteger.ONE, "a".repeat(64)))));
+
+    assertEquals(
+        "Posting-attestation facts contain a commitment outside the posting page.",
+        exception.getMessage());
   }
 
   @Test
@@ -215,7 +240,7 @@ class LedgerPlanFactMapperTest {
                     SourceChannel.CLI),
                 sale));
 
-    List<BookWorkflowFact> facts = LedgerPlanFactMapper.postingFacts(posting);
+    List<BookWorkflowFact> facts = LedgerPlanFactMapper.postingFacts(posting, null);
 
     assertTrue(
         facts.stream()
@@ -488,7 +513,8 @@ class LedgerPlanFactMapperTest {
                             Optional.empty()),
                         FIXED_INSTANT,
                         SourceChannel.CLI),
-                    persistedEntry)));
+                    persistedEntry)),
+            null);
     BookWorkflowFact.Group entryGroup =
         facts.stream()
             .filter(

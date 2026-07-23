@@ -15,6 +15,7 @@ import dev.erst.fingrind.contract.bookkeeping.AccountLedgerPagination;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerQuery;
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
@@ -54,6 +55,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -294,6 +296,34 @@ class BookQueryModelTest {
         () ->
             ContractFixtures.postingPage(
                 Optional.empty(), EffectiveDateRange.unbounded(), List.of(), 1, nullOf()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new PostingPage(
+                ContractFixtures.bookIdentity(),
+                Optional.empty(),
+                EffectiveDateRange.unbounded(),
+                List.of(postingFact("posting-1", "idem-1")),
+                1,
+                Optional.empty(),
+                Map.of(
+                    new PostingId("00000000-0000-4000-8000-000000000001"),
+                    postingFact("posting-1", "idem-1").postingId()),
+                Map.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new PostingPage(
+                ContractFixtures.bookIdentity(),
+                Optional.empty(),
+                EffectiveDateRange.unbounded(),
+                List.of(postingFact("posting-1", "idem-1")),
+                1,
+                Optional.empty(),
+                Map.of(),
+                Map.of(
+                    new PostingId("00000000-0000-4000-8000-000000000001"),
+                    new AttestationCommit(java.math.BigInteger.ONE, "a".repeat(64)))));
   }
 
   @Test
@@ -438,7 +468,7 @@ class BookQueryModelTest {
         NullPointerException.class,
         () ->
             new GetPostingResult.Found(
-                ContractFixtures.bookIdentity(), nullOf(), Optional.empty()));
+                ContractFixtures.bookIdentity(), nullOf(), Optional.empty(), Optional.empty()));
     assertThrows(NullPointerException.class, () -> new GetPostingResult.Rejected(nullOf()));
     assertThrows(
         NullPointerException.class, () -> new ListPostingsResult.Listed(nullOf(), nullOf()));

@@ -18,7 +18,8 @@ interface SqliteCliReadSessionOperations {
   /** Runs one bookkeeping read against a freshly opened protected book session. */
   default <T> ContractDecision<T> withBookRead(
       BookAccess bookAccess, Function<BookReadService, T> work) {
-    return withRead(bookAccess, bookSession -> work.apply(new BookReadService(bookSession)));
+    return withRead(
+        bookAccess, bookSession -> work.apply(new BookReadService(bookSession, bookSession)));
   }
 
   /** Runs one tax read against a freshly opened protected book session. */

@@ -1,6 +1,9 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels;
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels.AttestationCommitPayload;
 import dev.erst.fingrind.cli.json.CliPlanJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
@@ -21,9 +24,22 @@ final class CliLedgerPlanPayloadMapper {
         result.status(),
         resultDetail,
         summaryPayload,
+        attestationCommitPayload(result),
         resultDetail == PlanResultDetail.FULL
             ? ledgerExecutionJournalPayload(result.journal())
             : null);
+  }
+
+  private static @Nullable AttestationCommitPayload attestationCommitPayload(
+      LedgerPlanResult result) {
+    if (!(result instanceof LedgerPlanResult.Succeeded succeeded)) {
+      return null;
+    }
+    @Nullable AttestationCommit attestationCommit = succeeded.attestationCommit();
+    return attestationCommit == null
+        ? null
+        : new CliAttestationJsonModels.AttestationCommitPayload(
+            attestationCommit.operationOrder().toString(), attestationCommit.operationHeadHex());
   }
 
   private static CliPlanJsonModels.LedgerPlanSummaryPayload ledgerPlanSummaryPayload(

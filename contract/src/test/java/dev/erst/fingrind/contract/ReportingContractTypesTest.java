@@ -151,7 +151,10 @@ class ReportingContractTypesTest {
         new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized());
     GetPostingResult.Found foundPosting =
         new GetPostingResult.Found(
-            ContractFixtures.bookIdentity(), postingFact("posting-3", "idem-3"), Optional.empty());
+            ContractFixtures.bookIdentity(),
+            postingFact("posting-3", "idem-3"),
+            Optional.empty(),
+            Optional.empty());
     GetPostingResult.Rejected rejectedPosting =
         new GetPostingResult.Rejected(new BookQueryRejection.BookNotInitialized());
     ListPostingsResult.Listed listedPostings =

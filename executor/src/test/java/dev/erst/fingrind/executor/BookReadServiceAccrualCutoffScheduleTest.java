@@ -79,7 +79,7 @@ class BookReadServiceAccrualCutoffScheduleTest {
     AccrualCutoffScheduleReport report =
         assertInstanceOf(
                 AccrualCutoffScheduleResult.Reported.class,
-                new BookReadService(bookStore)
+                new BookReadService(bookStore, bookStore)
                     .accrualCutoffSchedule(new AccrualCutoffScheduleQuery(Optional.of(AS_OF))))
             .report();
 

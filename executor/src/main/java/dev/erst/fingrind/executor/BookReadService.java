@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.runtime.BookInspection;
 import dev.erst.fingrind.executor.bookkeeping.read.BookkeepingReadService;
+import dev.erst.fingrind.executor.spi.AttestationPostingCommitmentStore;
 import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
 import java.util.Objects;
 
@@ -12,6 +13,7 @@ public final class BookReadService
         BookReadStatementOperations,
         BookReadLifecycleOperations {
   private final BookkeepingReadStore bookStore;
+  private final AttestationPostingCommitmentStore attestationCommitmentStore;
   private final BookkeepingReadService bookkeepingReadService;
   private final BookReadCatalogQueryOperations catalogQueries;
   private final BookReadPostingQueryOperations postingQueries;
@@ -19,12 +21,18 @@ public final class BookReadService
   private final BookReadLifecycleQueryOperations lifecycleQueries;
 
   /** Creates the read entry point with its inspection and owned query capabilities. */
-  public BookReadService(BookkeepingReadStore bookStore) {
+  public BookReadService(
+      BookkeepingReadStore bookStore,
+      AttestationPostingCommitmentStore attestationCommitmentStore) {
     this.bookStore = Objects.requireNonNull(bookStore, "bookStore");
+    this.attestationCommitmentStore =
+        Objects.requireNonNull(attestationCommitmentStore, "attestationCommitmentStore");
     bookkeepingReadService = new BookkeepingReadService(this.bookStore);
     BookReportService reportService = new BookReportService(this.bookStore, bookkeepingReadService);
     catalogQueries = new BookReadCatalogQueryOperations(bookkeepingReadService);
-    postingQueries = new BookReadPostingQueryOperations(this.bookStore, bookkeepingReadService);
+    postingQueries =
+        new BookReadPostingQueryOperations(
+            this.bookStore, this.attestationCommitmentStore, bookkeepingReadService);
     statementQueries = new BookReadStatementQueryOperations(reportService);
     lifecycleQueries = new BookReadLifecycleQueryOperations(reportService);
   }

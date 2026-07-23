@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels;
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
 import dev.erst.fingrind.cli.json.CliMutationJsonModels;
@@ -103,7 +104,7 @@ final class CliEnvelopeMapper {
             CliResolvedJournalPayloadMapper.resolvedJournalPayload(committed.resolvedJournal()),
             committed.attestationCommit() == null
                 ? null
-                : new CliMutationJsonModels.AttestationCommitPayload(
+                : new CliAttestationJsonModels.AttestationCommitPayload(
                     committed.attestationCommit().operationOrder().toString(),
                     committed.attestationCommit().operationHeadHex())));
   }

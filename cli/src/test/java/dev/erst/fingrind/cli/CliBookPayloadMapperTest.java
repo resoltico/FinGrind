@@ -7,7 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
 import dev.erst.fingrind.cli.json.CliCloseTargetReadinessPayload;
 import dev.erst.fingrind.cli.json.CliPostingEntryPayload;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookDoctrines;
 import dev.erst.fingrind.core.BookEntityName;
@@ -16,8 +18,10 @@ import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.core.EntityProfile;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
+import java.math.BigInteger;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Focused regression tests for the book-query payload mappers. */
@@ -87,6 +91,21 @@ class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
     assertEquals("1000", amount.minorUnits());
     assertNull(entry.openingBalances());
     assertNull(entry.reversal());
+  }
+
+  @Test
+  void postingDetailsPayload_mapsTheAuthenticatedOperationCommitment() {
+    AttestationCommit commitment = new AttestationCommit(BigInteger.valueOf(42), "a".repeat(64));
+    CliBookQueryJsonModels.PostingPayload payload =
+        CliBookQueryPayloadMapper.postingDetailsPayload(
+                new GetPostingResult.Found(
+                    bookIdentity(), salePostingFact(), Optional.empty(), Optional.of(commitment)),
+                Instant.EPOCH)
+            .posting();
+
+    assertNotNull(payload.attestationCommit());
+    assertEquals("42", payload.attestationCommit().operationOrder());
+    assertEquals("a".repeat(64), payload.attestationCommit().operationHead());
   }
 
   @Test

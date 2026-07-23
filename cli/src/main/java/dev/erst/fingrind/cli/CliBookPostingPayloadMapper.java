@@ -1,6 +1,9 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels;
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels.AttestationCommitPayload;
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
@@ -14,11 +17,13 @@ final class CliBookPostingPayloadMapper {
   private CliBookPostingPayloadMapper() {}
 
   static CliBookQueryJsonModels.PostingPayload postingPayload(PostingFact postingFact) {
-    return postingPayload(postingFact, null);
+    return postingPayload(postingFact, null, null);
   }
 
   static CliBookQueryJsonModels.PostingPayload postingPayload(
-      PostingFact postingFact, @org.jspecify.annotations.Nullable String reversedByPostingId) {
+      PostingFact postingFact,
+      @org.jspecify.annotations.Nullable String reversedByPostingId,
+      @org.jspecify.annotations.Nullable AttestationCommit attestationCommit) {
     return new CliBookQueryJsonModels.PostingPayload(
         postingFact.postingId().value(),
         postingFact.postingKind().wireValue(),
@@ -26,6 +31,7 @@ final class CliBookPostingPayloadMapper {
         postingFact.reversalReference().isPresent() ? "reversal" : "direct",
         reversesPostingId(postingFact),
         reversedByPostingId,
+        attestationCommitPayload(attestationCommit),
         postingFact.journalEntry().effectiveDate().toString(),
         postingFact.provenance().recordedAt().toString(),
         postingFact.provenance().requestProvenance().commandId().value(),
@@ -61,6 +67,13 @@ final class CliBookPostingPayloadMapper {
 
   static CliBookQueryJsonModels.PostingSummaryPayload postingSummaryPayload(
       PostingFact postingFact, @org.jspecify.annotations.Nullable String reversedByPostingId) {
+    return postingSummaryPayload(postingFact, reversedByPostingId, null);
+  }
+
+  static CliBookQueryJsonModels.PostingSummaryPayload postingSummaryPayload(
+      PostingFact postingFact,
+      @org.jspecify.annotations.Nullable String reversedByPostingId,
+      @org.jspecify.annotations.Nullable AttestationCommit attestationCommit) {
     return new CliBookQueryJsonModels.PostingSummaryPayload(
         postingFact.postingId().value(),
         postingFact.postingKind().wireValue(),
@@ -68,6 +81,7 @@ final class CliBookPostingPayloadMapper {
         postingFact.reversalReference().isPresent() ? "reversal" : "direct",
         reversesPostingId(postingFact),
         reversedByPostingId,
+        attestationCommitPayload(attestationCommit),
         postingFact.journalEntry().effectiveDate().toString(),
         postingFact.provenance().recordedAt().toString(),
         MonetaryAmount.of(postingDebitTotal(postingFact)),
@@ -82,6 +96,15 @@ final class CliBookPostingPayloadMapper {
         postingFact.evidence().approvals().stream()
             .map(approval -> approval.approvalId().value())
             .toList());
+  }
+
+  private static @org.jspecify.annotations.Nullable AttestationCommitPayload
+      attestationCommitPayload(
+          @org.jspecify.annotations.Nullable AttestationCommit attestationCommit) {
+    return attestationCommit == null
+        ? null
+        : new CliAttestationJsonModels.AttestationCommitPayload(
+            attestationCommit.operationOrder().toString(), attestationCommit.operationHeadHex());
   }
 
   static CliBookQueryJsonModels.AccountingEvidencePayload evidencePayload(
