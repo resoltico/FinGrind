@@ -28,6 +28,8 @@ class CliPublicDocsContractSupport extends FinGrindCliTestSupport {
           "\\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\b");
   private static final Pattern ATTESTATION_OPERATION_HEAD_PATTERN =
       Pattern.compile("(?<=\\\"operationHead\\\":\\\")[0-9a-f]{64}(?=\\\")");
+  private static final Pattern ATTESTATION_CSV_OPERATION_HEAD_PATTERN =
+      Pattern.compile("(?<=,)[0-9a-f]{64}$");
 
   protected static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -233,8 +235,12 @@ class CliPublicDocsContractSupport extends FinGrindCliTestSupport {
     String pathCanonicalized =
         canonicalizeOwnedTemporaryPaths(trimSingleTerminalNewline(normalizeLineEndings(text)));
     String idCanonicalized = canonicalizeGeneratedIds(pathCanonicalized);
-    return ATTESTATION_OPERATION_HEAD_PATTERN
-        .matcher(idCanonicalized)
+    String jsonCanonicalized =
+        ATTESTATION_OPERATION_HEAD_PATTERN
+            .matcher(idCanonicalized)
+            .replaceAll("<attestation-operation-head>");
+    return ATTESTATION_CSV_OPERATION_HEAD_PATTERN
+        .matcher(jsonCanonicalized)
         .replaceAll("<attestation-operation-head>");
   }
 

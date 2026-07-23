@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.maintenance;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -7,10 +8,12 @@ import java.util.Objects;
 public sealed interface ProtectedBookRekeyOutcome
     permits ProtectedBookRekeyOutcome.Rekeyed, ProtectedBookRekeyOutcome.Rejected {
   /** Successful staged replacement of one selected live book and publication of its new key. */
-  record Rekeyed(Path bookFilePath, Path newBookKeyFilePath) implements ProtectedBookRekeyOutcome {
+  record Rekeyed(Path bookFilePath, Path newBookKeyFilePath, AttestationCommit attestationCommit)
+      implements ProtectedBookRekeyOutcome {
     public Rekeyed {
       Objects.requireNonNull(bookFilePath, "bookFilePath");
       Objects.requireNonNull(newBookKeyFilePath, "newBookKeyFilePath");
+      Objects.requireNonNull(attestationCommit, "attestationCommit");
     }
   }
 

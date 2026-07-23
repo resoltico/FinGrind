@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
 import dev.erst.fingrind.contract.bookkeeping.AccountPageCursor;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.GetPostingResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
@@ -343,7 +344,17 @@ public final class ExecutorAccountingTestSupport {
 
   /** Returns one canonical book-opened outcome fixture. */
   public static BookOpeningOutcome.Opened openedBook(Instant initializedAt) {
-    return new BookOpeningOutcome.Opened(initializedAt, bookIdentity(), attestationTrustRoot());
+    AttestationRegistryInspection trustRoot = attestationTrustRoot();
+    return new BookOpeningOutcome.Opened(
+        initializedAt,
+        bookIdentity(),
+        trustRoot,
+        new AttestationCommit(trustRoot.headOrder(), trustRoot.operationHeadHex()));
+  }
+
+  /** Returns one stable attestation commitment for fixture-only mutation outcomes. */
+  public static AttestationCommit attestationCommit() {
+    return new AttestationCommit(BigInteger.ONE, "a".repeat(64));
   }
 
   private static AttestationRegistryInspection attestationTrustRoot() {

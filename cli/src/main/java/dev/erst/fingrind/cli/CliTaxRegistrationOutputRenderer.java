@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
 import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
 import dev.erst.fingrind.contract.tax.TaxRate;
@@ -14,7 +15,9 @@ final class CliTaxRegistrationOutputRenderer {
   private CliTaxRegistrationOutputRenderer() {}
 
   static String renderTaxRegistrationMutationText(
-      String outcome, DeclaredTaxRegistration registration) {
+      String outcome,
+      DeclaredTaxRegistration registration,
+      @org.jspecify.annotations.Nullable AttestationCommit attestationCommit) {
     List<List<String>> rows = new ArrayList<>();
     rows.add(List.of("Outcome", outcome));
     rows.add(List.of("Tax registration id", registration.taxRegistrationId().value()));
@@ -36,6 +39,8 @@ final class CliTaxRegistrationOutputRenderer {
         List.of(
             "Due days after period end", Integer.toString(registration.dueDaysAfterPeriodEnd())));
     rows.add(List.of("Declared at", CliTextDisplay.instant(registration.declaredAt())));
+    CliAttestationCommitPresentation.appendTextRows(
+        rows, attestationCommit, "No operation appended (unchanged tax registration)");
     return CliTextFormat.renderTitledBlock(
         taxRegistrationMutationTitle(outcome),
         CliReportRenderSupport.joinSections(

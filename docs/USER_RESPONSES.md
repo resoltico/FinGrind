@@ -35,7 +35,7 @@ Every non-success JSON envelope carries `category` with exactly one of `structur
 Dynamic fields:
 - `capabilities.payload` is stable unless the public command contract or runtime surface changes
 - discovery JSON payloads from `help`, `capabilities`, and `version` publish
-  `payload.protocolVersion`, and the current hard-break line is `"35"`
+  `payload.protocolVersion`, and the current hard-break line is `"36"`
 - `docs/examples/request-template.json` and `docs/examples/ledger-plan-template.json` are
   checked-in source-copy companions for `print-request-template` and `print-plan-template`; they
   publish the minimal settled-sale request scaffold and the placeholder-first general ledger-plan
@@ -90,10 +90,20 @@ Dynamic fields:
   `attestationCommit: null` because it appends nothing
 - successful mutating `execute-plan` results carry `payload.attestationCommit` with the exact
   committed operation order and head; a successful read-only plan carries `attestationCommit: null`
+- every successful attested mutation uses that same `payload.attestationCommit` object: `open-book`,
+  account declaration, amendment, and retirement, tax-registration declaration, interim-result
+  sweep, fiscal-year close, backup acknowledgement, rekey, restore, and attestation-registry
+  mutation all publish the exact verified append that command created. A successful no-op or
+  idempotent replay publishes `attestationCommit: null` because it appended no operation.
 - `get-posting` and each `list-postings` item carry `attestationCommit`, either `null` or the
   exact operation order and head that committed the posting; the link is derived at read time from
   the complete verified immutable operation chain, never copied into mutable posting state. The
   corresponding full-journal `execute-plan` query-step data uses the same projection
+- every `account-ledger` row likewise carries `attestationCommit`; its CSV row table flattens that
+  object into `attestationOperationOrder` and `attestationOperationHead`. Text and PDF retain the
+  canonical per-row `Attestation order` reference and, when any row is attested, add a deduplicated
+  `Attestation Commitments` section that maps each order to its exact complete `Attestation head`.
+  An unavailable row commitment renders as `(none)`.
 - `committed.payload.resolvedJournal` publishes the exact expanded journal plus semantic classification attached to the committed posting result
 - `get-posting.payload.posting.entry.latvianMonthlyPayroll.resolvedCalculation` publishes the exact executor-resolved contribution, tax, and net-wage facts retained with one Latvian payroll run, including the explicit `taxBookHeldAtEmployer` and `dependantCount` profile facts
 - `get-posting.payload.posting.entry.latvianPayrollSettlement.resolvedSettlement` publishes the exact executor-resolved liability accounts and payment components retained with one Latvian payroll settlement
@@ -309,7 +319,8 @@ Fixed-asset-register row payload:
 - `payload.bookFile`
 - `payload.initializedAt`
 - `payload.bookIdentity`, using the shared initialized-book identity payload
-- `payload.attestationBookId` and `payload.genesisOperationHead`
+- `payload.attestationBookId` and `payload.attestationCommit`, whose order and head identify the
+  genesis operation exactly
 - `payload.attestationTrustRoot`, the genesis registry snapshot using the same credential,
   effective-capability-policy, principal-capability, and system-workflow-policy shapes returned by
   `verify-book`
@@ -319,6 +330,7 @@ Fixed-asset-register row payload:
 `declare-account` success returns:
 - `payload.outcome`, one of `declared`, `reactivated`, `renamed`, or `unchanged`
 - `payload.account`, using the shared declared-account payload
+- `payload.attestationCommit`, or `null` exactly for `unchanged`
 
 ## Book Inspection And Query Responses
 
@@ -347,6 +359,8 @@ for the current hard-break line.
 
 `backup-book` success returns:
 - `payload.bookFile`
+- `payload.attestationCommit`, or `null` only when the exact acknowledgement replay appended no
+  new operation
 - `artifacts[]`, where the current entries are `backup-file` and `backup-key-file`
 
 When the backup pair has been published but its live-book acknowledgement is refused by current
@@ -360,6 +374,7 @@ interruption rather than an authorization refusal.
 `restore-book` success returns:
 - `payload.bookFile`
 - `payload.bookKeyFilePath`
+- `payload.attestationCommit`
 - `artifacts[]`, where the current entries use `format: "book-file"` and
   `format: "book-key-file"`
 
@@ -367,12 +382,13 @@ interruption rather than an authorization refusal.
 file required to reopen the restored live `payload.bookFile`. The backup key remains source-only
 and is not the restored live-book secret.
 
-`rekey-book` success returns `payload.bookFile`, `payload.newBookKeyFile`, and one
-`book-key-file` artifact. The key file is newly generated at the requested absent target.
+`rekey-book` success returns `payload.bookFile`, `payload.newBookKeyFile`,
+`payload.attestationCommit`, and one `book-key-file` artifact. The key file is newly generated at
+the requested absent target.
 
 `enroll-key`, `rollover-key`, `revoke-key`, and `alter-policy` success returns
-`payload.bookFile`, `payload.operationKind`, `payload.headOrder`, and
-`payload.operationHead`. Each confirms that the named immutable authorization mutation was
+`payload.bookFile`, `payload.operationKind`, and `payload.attestationCommit`. Each confirms that
+the named immutable authorization mutation was
 appended; JSON publishes the canonical absolute book path, while text redacts the local path. It
 never exposes credential paths, passphrases, encrypted key contents, or a private signing result.
 An authorization refusal is a `structural-invalid` rejected envelope with the exact

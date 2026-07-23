@@ -180,8 +180,8 @@ public final class ProtectedBookMaintenanceService {
                       new AttestationRegistryMutationResult.Mutated(
                           mutated.bookFilePath(),
                           mutated.operationKind(),
-                          mutated.headOrder(),
-                          mutated.operationHeadHex());
+                          new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
+                              mutated.headOrder(), mutated.operationHeadHex()));
                   case dev.erst.fingrind.executor.maintenance.ProtectedBookRegistryMutationOutcome
                               .Rejected
                           rejected ->

@@ -381,7 +381,8 @@ class CliPdfReportExporterTest {
                 postingFact(),
                 balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT),
                 money("EUR", "10.00"),
-                BalanceSide.DEBIT)),
+                BalanceSide.DEBIT,
+                null)),
         List.of(balance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT)));
   }
 

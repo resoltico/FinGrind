@@ -137,6 +137,7 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DOC_02_VerifiableOperationAttestationVectors.md](./DOC_02_VerifiableOperationAttestationVectors.md): byte-for-byte operation-envelope conformance vectors for protected-book format 52
 - [DOC_02_MachineContractAndDescriptors.md](./DOC_02_MachineContractAndDescriptors.md)
 - [DOC_02_AdministrationAndReports.md](./DOC_02_AdministrationAndReports.md)
+- [DOC_02_PeriodCloseAndRejections.md](./DOC_02_PeriodCloseAndRejections.md)
 - [DOC_02_AccountRegistryLifecycle.md](./DOC_02_AccountRegistryLifecycle.md)
 - [DOC_02_AccrualCutoffs.md](./DOC_02_AccrualCutoffs.md)
 - [DOC_02_OwnedLifecycleContexts.md](./DOC_02_OwnedLifecycleContexts.md)

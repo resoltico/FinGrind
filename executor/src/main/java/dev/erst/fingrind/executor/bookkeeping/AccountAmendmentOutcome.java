@@ -1,6 +1,8 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Closed family of Account Registry outcomes for one account amendment. */
 public sealed interface AccountAmendmentOutcome
@@ -8,9 +10,15 @@ public sealed interface AccountAmendmentOutcome
         AccountAmendmentOutcome.Unchanged,
         AccountAmendmentOutcome.Rejected {
   /** The requested mutable definition replaced the prior definition. */
-  record Amended(RegisteredAccount account) implements AccountAmendmentOutcome {
+  record Amended(RegisteredAccount account, @Nullable AttestationCommit attestationCommit)
+      implements AccountAmendmentOutcome {
     public Amended {
       Objects.requireNonNull(account, "account");
+    }
+
+    /** Creates a pre-persistence amendment decision with no attestation append yet. */
+    public Amended(RegisteredAccount account) {
+      this(account, null);
     }
   }
 

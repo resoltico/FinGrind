@@ -20,6 +20,7 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.PostingCoverage;
 import dev.erst.fingrind.core.PostingOriginKind;
 import dev.erst.fingrind.core.ReportingPeriod;
+import java.math.BigInteger;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -185,11 +186,14 @@ class ReportModelBuilderCoverageTest {
                                 "d335bf0a-b735-3860-ba2e-fcb74daf48d5")))),
                 List.of(ReportModelTestSupport.balance("EUR", "2.00", "0.00")),
                 List.of(
-                    ReportModelTestSupport.accountLedgerEntry(
+                    new dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry(
                         directPosting,
                         ReportModelTestSupport.balance("EUR", "15.00", "0.00"),
-                        "17.00",
-                        dev.erst.fingrind.core.BalanceSide.DEBIT),
+                        dev.erst.fingrind.core.Money.parse("EUR", "17.00"),
+                        dev.erst.fingrind.core.BalanceSide.DEBIT,
+                        new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
+                            BigInteger.valueOf(42),
+                            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")),
                     ReportModelTestSupport.accountLedgerEntry(
                         reversalPosting,
                         ReportModelTestSupport.balance("EUR", "10.00", "0.00"),
@@ -210,6 +214,11 @@ class ReportModelBuilderCoverageTest {
                 List.of(ReportModelTestSupport.balance("EUR", "0.00", "0.00"))));
 
     assertEquals(2, populated.sections().getFirst().rows().size());
+    assertEquals(2, populated.sections().size());
+    assertEquals("Attestation Commitments", populated.sections().get(1).title());
+    assertEquals(
+        List.of("42", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
+        populated.sections().get(1).rows().getFirst().cells());
     assertTrue(
         populated.verdicts().stream()
             .anyMatch(verdict -> "Opening Balances".equals(verdict.label())));
@@ -225,6 +234,7 @@ class ReportModelBuilderCoverageTest {
                     "No ledger entries matched the selected scope.".equals(verdict.value())));
     assertFalse(
         empty.verdicts().stream().anyMatch(verdict -> "Opening Balances".equals(verdict.label())));
+    assertEquals(1, empty.sections().size());
   }
 
   @Test

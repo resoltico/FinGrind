@@ -80,7 +80,8 @@ class SqliteProtectedBookMaintenanceFuzzAssertionsTest {
                     path.resolveSibling("backup"),
                     path.resolveSibling("key"),
                     java.util.UUID.fromString("b89812f3-5389-4b9a-8d67-1d60bd41a8ce"),
-                    false)));
+                    false,
+                    CliFuzzAttestationFixtures.syntheticTrustRootCommitment())));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -89,7 +90,10 @@ class SqliteProtectedBookMaintenanceFuzzAssertionsTest {
                     new BookMaintenanceRejection.BackupDestinationAlreadyExists(path))));
     assertThrows(
         IllegalStateException.class,
-        () -> requireSecretTargetOccupied(new RekeyBookResult.Rekeyed(path)));
+        () ->
+            requireSecretTargetOccupied(
+                new RekeyBookResult.Rekeyed(
+                    path, CliFuzzAttestationFixtures.syntheticTrustRootCommitment())));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -100,7 +104,10 @@ class SqliteProtectedBookMaintenanceFuzzAssertionsTest {
         IllegalStateException.class,
         () ->
             requireDestinationOccupied(
-                new RestoreBookResult.Restored(path, path.resolveSibling("key"))));
+                new RestoreBookResult.Restored(
+                    path,
+                    path.resolveSibling("key"),
+                    CliFuzzAttestationFixtures.syntheticTrustRootCommitment())));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -111,7 +118,10 @@ class SqliteProtectedBookMaintenanceFuzzAssertionsTest {
         IllegalStateException.class,
         () ->
             requireArtifactVerificationFailure(
-                new RestoreBookResult.Restored(path, path.resolveSibling("key"))));
+                new RestoreBookResult.Restored(
+                    path,
+                    path.resolveSibling("key"),
+                    CliFuzzAttestationFixtures.syntheticTrustRootCommitment())));
     assertThrows(
         IllegalStateException.class,
         () ->

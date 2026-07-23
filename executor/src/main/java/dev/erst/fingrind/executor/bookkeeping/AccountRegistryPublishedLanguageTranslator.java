@@ -26,10 +26,11 @@ public final class AccountRegistryPublishedLanguageTranslator {
     return switch (outcome) {
       case AccountAmendmentOutcome.Amended amended ->
           new AmendAccountResult.Amended(
-              BookkeepingPublishedLanguageTranslator.toPublished(amended.account()));
+              BookkeepingPublishedLanguageTranslator.toPublished(amended.account()),
+              Objects.requireNonNull(amended.attestationCommit(), "attestationCommit"));
       case AccountAmendmentOutcome.Unchanged unchanged ->
           new AmendAccountResult.Unchanged(
-              BookkeepingPublishedLanguageTranslator.toPublished(unchanged.account()));
+              BookkeepingPublishedLanguageTranslator.toPublished(unchanged.account()), null);
       case AccountAmendmentOutcome.Rejected rejected ->
           new AmendAccountResult.Rejected(
               BookkeepingPublishedLanguageTranslator.toPublished(rejected.rejection()));
@@ -42,10 +43,11 @@ public final class AccountRegistryPublishedLanguageTranslator {
     return switch (outcome) {
       case AccountRetirementOutcome.Retired retired ->
           new RetireAccountResult.Retired(
-              BookkeepingPublishedLanguageTranslator.toPublished(retired.account()));
+              BookkeepingPublishedLanguageTranslator.toPublished(retired.account()),
+              Objects.requireNonNull(retired.attestationCommit(), "attestationCommit"));
       case AccountRetirementOutcome.Unchanged unchanged ->
           new RetireAccountResult.Unchanged(
-              BookkeepingPublishedLanguageTranslator.toPublished(unchanged.account()));
+              BookkeepingPublishedLanguageTranslator.toPublished(unchanged.account()), null);
       case AccountRetirementOutcome.Rejected rejected ->
           new RetireAccountResult.Rejected(
               BookkeepingPublishedLanguageTranslator.toPublished(rejected.rejection()));

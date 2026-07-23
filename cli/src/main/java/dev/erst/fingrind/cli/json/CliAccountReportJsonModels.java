@@ -4,6 +4,8 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.copyList;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels.AttestationCommitPayload;
 import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -121,7 +123,9 @@ public interface CliAccountReportJsonModels {
       String effectiveDate,
       CliReportValueJsonModels.BalancePayload movement,
       CliReportValueJsonModels.MoneyPayload runningNetAmount,
-      String runningBalanceSide) {
+      String runningBalanceSide,
+      @JsonInclude(JsonInclude.Include.ALWAYS)
+          @Nullable AttestationCommitPayload attestationCommit) {
     public AccountLedgerRowPayload {
       postingId = requireText(postingId, "postingId");
       effectiveDate = requireText(effectiveDate, "effectiveDate");

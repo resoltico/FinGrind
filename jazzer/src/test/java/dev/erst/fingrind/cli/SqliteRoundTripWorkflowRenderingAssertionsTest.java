@@ -203,7 +203,8 @@ class SqliteRoundTripWorkflowRenderingAssertionsTest {
             ContractDecision.accepted(
                 new DeclareAccountResult.Declared(
                     SqliteRoundTripWorkflowTestSupport.declaredAccount(
-                        new AccountCode("1000"), true)))));
+                        new AccountCode("1000"), true),
+                    CliFuzzAttestationFixtures.syntheticTrustRootCommitment()))));
     assertThrows(
         IllegalStateException.class,
         () ->

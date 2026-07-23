@@ -107,10 +107,24 @@ class BookAdministrationModelTest {
 
   @Test
   void declareAccountResultFamilies_rejectNullAccount() {
-    assertThrows(NullPointerException.class, () -> new DeclareAccountResult.Declared(nullOf()));
-    assertThrows(NullPointerException.class, () -> new DeclareAccountResult.Reactivated(nullOf()));
-    assertThrows(NullPointerException.class, () -> new DeclareAccountResult.Renamed(nullOf()));
-    assertThrows(NullPointerException.class, () -> new DeclareAccountResult.Unchanged(nullOf()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new DeclareAccountResult.Declared(nullOf(), attestationCommit()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new DeclareAccountResult.Reactivated(nullOf(), attestationCommit()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new DeclareAccountResult.Renamed(nullOf(), attestationCommit()));
+    assertThrows(
+        NullPointerException.class, () -> new DeclareAccountResult.Unchanged(nullOf(), null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new DeclareAccountResult.Unchanged(
+                ContractFixtures.declaredAccount(
+                    "1000", "Cash", AccountType.ASSET, true, Instant.parse("2026-04-07T10:15:30Z")),
+                attestationCommit()));
   }
 
   @Test
@@ -189,6 +203,11 @@ class BookAdministrationModelTest {
             .bookIdentity()
             .entityName()
             .value());
+  }
+
+  private static dev.erst.fingrind.contract.bookkeeping.AttestationCommit attestationCommit() {
+    return new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
+        java.math.BigInteger.ONE, "a".repeat(64));
   }
 
   private static BookIdentity bookIdentity() {

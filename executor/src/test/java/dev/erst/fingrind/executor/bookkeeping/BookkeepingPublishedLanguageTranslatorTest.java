@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.attestationCommit;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.openedBook;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
@@ -91,13 +92,13 @@ class BookkeepingPublishedLanguageTranslatorTest {
 
     DeclareAccountResult declared =
         BookkeepingPublishedLanguageTranslator.toPublished(
-            new AccountDeclarationOutcome.Declared(account));
+            new AccountDeclarationOutcome.Declared(account, attestationCommit()));
     DeclareAccountResult reactivated =
         BookkeepingPublishedLanguageTranslator.toPublished(
-            new AccountDeclarationOutcome.Reactivated(account));
+            new AccountDeclarationOutcome.Reactivated(account, attestationCommit()));
     DeclareAccountResult renamed =
         BookkeepingPublishedLanguageTranslator.toPublished(
-            new AccountDeclarationOutcome.Renamed(account));
+            new AccountDeclarationOutcome.Renamed(account, attestationCommit()));
     DeclareAccountResult unchanged =
         BookkeepingPublishedLanguageTranslator.toPublished(
             new AccountDeclarationOutcome.Unchanged(account));
@@ -152,7 +153,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
         AccountRegistryPublishedLanguageTranslator.fromPublished(command);
     AmendAccountResult amended =
         AccountRegistryPublishedLanguageTranslator.toPublished(
-            new AccountAmendmentOutcome.Amended(account));
+            new AccountAmendmentOutcome.Amended(account, attestationCommit()));
     AmendAccountResult unchanged =
         AccountRegistryPublishedLanguageTranslator.toPublished(
             new AccountAmendmentOutcome.Unchanged(account));
@@ -162,7 +163,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
                 new AccountRegistryLifecycleRejection.AccountNotFound(account.accountCode())));
     RetireAccountResult retired =
         AccountRegistryPublishedLanguageTranslator.toPublished(
-            new AccountRetirementOutcome.Retired(account));
+            new AccountRetirementOutcome.Retired(account, attestationCommit()));
     RetireAccountResult retirementUnchanged =
         AccountRegistryPublishedLanguageTranslator.toPublished(
             new AccountRetirementOutcome.Unchanged(account));
@@ -331,9 +332,10 @@ class BookkeepingPublishedLanguageTranslatorTest {
                         Money.parse("EUR", "0.00"), Money.parse("EUR", "5.00"))),
                 sweptAt,
                 List.of(
-                    new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))),
+                    new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
+            attestationCommit()),
         BookkeepingPublishedLanguageTranslator.toPublished(
-            new InterimResultSweepOutcome.Transferred(sweptInterimResult)));
+            new InterimResultSweepOutcome.Transferred(sweptInterimResult, attestationCommit())));
     assertEquals(
         new InterimResultSweepResult.Rejected(
             new dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing(
@@ -374,9 +376,25 @@ class BookkeepingPublishedLanguageTranslatorTest {
                 closedAt,
                 List.of(
                     new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
-            false),
+            false,
+            attestationCommit()),
         BookkeepingPublishedLanguageTranslator.toPublished(
-            new FiscalYearCloseOutcome.Closed(closedFiscalYear, false)));
+            new FiscalYearCloseOutcome.Closed(closedFiscalYear, false, attestationCommit())));
+    assertEquals(
+        new FiscalYearCloseResult.Closed(
+            new ClosedFiscalYear(
+                1,
+                reportingPeriod,
+                new AccountCode("3000"),
+                new AccountCode("3200"),
+                new AccountCode("3300"),
+                closedAt,
+                List.of(
+                    new dev.erst.fingrind.core.PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"))),
+            true,
+            null),
+        BookkeepingPublishedLanguageTranslator.toPublished(
+            new FiscalYearCloseOutcome.Closed(closedFiscalYear, true, null)));
     assertEquals(
         new FiscalYearCloseResult.Rejected(
             new BookAdministrationRejection.FiscalYearCloseMustEndAt(

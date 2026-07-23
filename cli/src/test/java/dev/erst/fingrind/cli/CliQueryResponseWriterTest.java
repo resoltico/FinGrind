@@ -650,7 +650,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
                     CliFixtureSupport.selfPostingFact(),
                     currencyBalance("EUR", "5.00", "0.00", "5.00", BalanceSide.DEBIT),
                     money("EUR", "5.00"),
-                    BalanceSide.DEBIT)),
+                    BalanceSide.DEBIT,
+                    null)),
             List.of(currencyBalance("EUR", "5.00", "0.00", "5.00", BalanceSide.DEBIT)));
     ByteArrayOutputStream directAccountLedgerJsonOutput = new ByteArrayOutputStream();
     new CliResponseWriter(utf8PrintStream(directAccountLedgerJsonOutput))
@@ -816,7 +817,8 @@ class CliQueryResponseWriterTest extends CliResponseWriterTestSupport {
                 postingFact(),
                 currencyBalance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT),
                 money("EUR", "10.00"),
-                BalanceSide.DEBIT)),
+                BalanceSide.DEBIT,
+                null)),
         List.of(currencyBalance("EUR", "10.00", "0.00", "10.00", BalanceSide.DEBIT)));
   }
 

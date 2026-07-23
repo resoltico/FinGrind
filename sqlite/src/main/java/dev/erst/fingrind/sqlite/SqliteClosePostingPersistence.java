@@ -8,6 +8,7 @@ import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationPeriodCloseMutationProjection;
 import dev.erst.fingrind.core.attestation.AttestationPostingLine;
+import dev.erst.fingrind.executor.AttestationCommitProjection;
 import dev.erst.fingrind.executor.bookkeeping.AcceptedPosting;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import dev.erst.fingrind.executor.bookkeeping.ClosedFiscalYearRecord;
@@ -76,7 +77,7 @@ final class SqliteClosePostingPersistence {
         activeDatabase, BookAuditEvent.postingCommitted(postingFact));
   }
 
-  dev.erst.fingrind.executor.bookkeeping.SweptInterimResult persistInterimResultSweep(
+  AttestedInterimResultSweep persistInterimResultSweep(
       SqliteNativeDatabase activeDatabase,
       SqliteAttestationEvidenceStore.ObservedHead observedHead,
       InterimResultSweepDraft interimResultSweepDraft,
@@ -98,27 +99,29 @@ final class SqliteClosePostingPersistence {
             interimResultSweepDraft.sweptTotals(),
             interimResultSweepDraft.sweptAt(),
             closingPostings);
-    SqliteAttestationEvidenceStore.appendAuthorized(
-        activeDatabase,
-        observedHead,
-        INTERIM_RESULT_SWEEP_OPERATION,
-        interimResultSweepDraft.sweptAt(),
-        AttestationPeriodCloseMutationProjection.projectInterimResultSweep(
-            INTERIM_RESULT_SWEEP_OPERATION.wireToken(),
-            interimResultSweepDraft.reportingPeriod(),
-            interimResultSweepDraft.resultHoldingAccountCode().value(),
-            sweptInterimResult.sweepOrder(),
-            sweptInterimResult.sweptTotals(),
-            closePostingSnapshots(closingPostings)),
-        requiredAttestationAuthorizer);
+    var verification =
+        SqliteAttestationEvidenceStore.appendAuthorized(
+            activeDatabase,
+            observedHead,
+            INTERIM_RESULT_SWEEP_OPERATION,
+            interimResultSweepDraft.sweptAt(),
+            AttestationPeriodCloseMutationProjection.projectInterimResultSweep(
+                INTERIM_RESULT_SWEEP_OPERATION.wireToken(),
+                interimResultSweepDraft.reportingPeriod(),
+                interimResultSweepDraft.resultHoldingAccountCode().value(),
+                sweptInterimResult.sweepOrder(),
+                sweptInterimResult.sweptTotals(),
+                closePostingSnapshots(closingPostings)),
+            requiredAttestationAuthorizer);
     SqliteAuditEventWriter.insertAuditEvent(
         activeDatabase,
         BookAuditEvent.interimResultSwept(
             interimResultSweepDraft.sweptAt(), sweptInterimResult.sweepOrder()));
-    return sweptInterimResult;
+    return new AttestedInterimResultSweep(
+        sweptInterimResult, AttestationCommitProjection.fromVerifiedAppend(verification));
   }
 
-  ClosedFiscalYearRecord persistFiscalYearClose(
+  AttestedFiscalYearClose persistFiscalYearClose(
       SqliteNativeDatabase activeDatabase,
       SqliteAttestationEvidenceStore.ObservedHead observedHead,
       FiscalYearCloseDraft closeDraft,
@@ -141,25 +144,45 @@ final class SqliteClosePostingPersistence {
             closeDraft.retainedAccumulatedAccountCode(),
             closeDraft.closedAt(),
             closePostings);
-    SqliteAttestationEvidenceStore.appendAuthorized(
-        activeDatabase,
-        observedHead,
-        FISCAL_YEAR_CLOSE_OPERATION,
-        closeDraft.closedAt(),
-        AttestationPeriodCloseMutationProjection.projectFiscalYearClose(
-            FISCAL_YEAR_CLOSE_OPERATION.wireToken(),
-            closeDraft.reportingPeriod(),
-            closeDraft.capitalAccountCode().value(),
-            closeDraft.resultHoldingAccountCode().value(),
-            closeDraft.retainedAccumulatedAccountCode().value(),
-            closedFiscalYear.closeOrder(),
-            closePostingSnapshots(closePostings)),
-        requiredAttestationAuthorizer);
+    var verification =
+        SqliteAttestationEvidenceStore.appendAuthorized(
+            activeDatabase,
+            observedHead,
+            FISCAL_YEAR_CLOSE_OPERATION,
+            closeDraft.closedAt(),
+            AttestationPeriodCloseMutationProjection.projectFiscalYearClose(
+                FISCAL_YEAR_CLOSE_OPERATION.wireToken(),
+                closeDraft.reportingPeriod(),
+                closeDraft.capitalAccountCode().value(),
+                closeDraft.resultHoldingAccountCode().value(),
+                closeDraft.retainedAccumulatedAccountCode().value(),
+                closedFiscalYear.closeOrder(),
+                closePostingSnapshots(closePostings)),
+            requiredAttestationAuthorizer);
     SqliteAuditEventWriter.insertAuditEvent(
         activeDatabase,
         BookAuditEvent.fiscalYearClosed(
             closedFiscalYear.closedAt(), closedFiscalYear.closeOrder()));
-    return closedFiscalYear;
+    return new AttestedFiscalYearClose(
+        closedFiscalYear, AttestationCommitProjection.fromVerifiedAppend(verification));
+  }
+
+  record AttestedInterimResultSweep(
+      SweptInterimResult sweptInterimResult,
+      dev.erst.fingrind.contract.bookkeeping.AttestationCommit attestationCommit) {
+    AttestedInterimResultSweep {
+      Objects.requireNonNull(sweptInterimResult, "sweptInterimResult");
+      Objects.requireNonNull(attestationCommit, "attestationCommit");
+    }
+  }
+
+  record AttestedFiscalYearClose(
+      ClosedFiscalYearRecord closedFiscalYear,
+      dev.erst.fingrind.contract.bookkeeping.AttestationCommit attestationCommit) {
+    AttestedFiscalYearClose {
+      Objects.requireNonNull(closedFiscalYear, "closedFiscalYear");
+      Objects.requireNonNull(attestationCommit, "attestationCommit");
+    }
   }
 
   private List<CommittedPosting> persistGeneratedClosePostings(

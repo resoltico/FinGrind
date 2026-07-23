@@ -15,6 +15,7 @@ import dev.erst.fingrind.core.attestation.AttestationTaxCodeSnapshot;
 import dev.erst.fingrind.core.attestation.AttestationTaxRegistrationMutationProjection;
 import dev.erst.fingrind.core.attestation.AttestationTaxRegistrationSnapshot;
 import dev.erst.fingrind.core.attestation.AttestationVerifier;
+import dev.erst.fingrind.executor.AttestationCommitProjection;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
@@ -79,8 +80,9 @@ final class SqliteStoreAdministrationMutationOperations {
                   RegisteredAccount.declareNew(seededAccount, initializedAt);
               SqliteAccountRegistryMutationWriter.upsertAccount(activeDatabase, declaredAccount);
             }
-            SqliteAttestationEvidenceStore.append(
-                activeDatabase, new byte[32], checkedGenesisEvidence);
+            var verification =
+                SqliteAttestationEvidenceStore.append(
+                    activeDatabase, new byte[32], checkedGenesisEvidence);
             SqliteAuditEventWriter.insertAuditEvent(
                 activeDatabase, BookAuditEvent.bookOpened(initializedAt));
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
@@ -94,7 +96,8 @@ final class SqliteStoreAdministrationMutationOperations {
                 initializedAt,
                 bookIdentity,
                 AttestationVerifier.verifyAndInspectBook(List.of(checkedGenesisEvidence))
-                    .registry());
+                    .registry(),
+                AttestationCommitProjection.fromVerifiedAppend(verification));
           } catch (SqliteNativeException exception) {
             SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
             throw SqliteStoreOperations.sqliteFailure(
@@ -142,21 +145,23 @@ final class SqliteStoreAdministrationMutationOperations {
                         .orElse(declaredAt));
             if (existingRegistration.filter(candidate::equals).isPresent()) {
               SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-              return new DeclareTaxRegistrationResult.Unchanged(existingRegistration.orElseThrow());
+              return new DeclareTaxRegistrationResult.Unchanged(
+                  existingRegistration.orElseThrow(), null);
             }
-            SqliteAttestationEvidenceStore.appendAuthorized(
-                activeDatabase,
-                admission.observedHead(),
-                DECLARE_TAX_REGISTRATION_OPERATION,
-                declaredAt,
-                AttestationTaxRegistrationMutationProjection.project(
-                    DECLARE_TAX_REGISTRATION_OPERATION.wireToken(),
-                    taxRegistrationSnapshot(command),
-                    taxRegistrationSnapshot(candidate),
-                    existingRegistration.isPresent()
-                        ? AttestationEffectMutation.AMEND
-                        : AttestationEffectMutation.CREATE),
-                attestationAuthorizer);
+            var verification =
+                SqliteAttestationEvidenceStore.appendAuthorized(
+                    activeDatabase,
+                    admission.observedHead(),
+                    DECLARE_TAX_REGISTRATION_OPERATION,
+                    declaredAt,
+                    AttestationTaxRegistrationMutationProjection.project(
+                        DECLARE_TAX_REGISTRATION_OPERATION.wireToken(),
+                        taxRegistrationSnapshot(command),
+                        taxRegistrationSnapshot(candidate),
+                        existingRegistration.isPresent()
+                            ? AttestationEffectMutation.AMEND
+                            : AttestationEffectMutation.CREATE),
+                    attestationAuthorizer);
             SqliteMutationWriter.upsertTaxRegistration(activeDatabase, candidate);
             DeclaredTaxRegistration persistedRegistration =
                 SqliteTaxStatementQueries.findOneTaxRegistration(
@@ -168,8 +173,12 @@ final class SqliteStoreAdministrationMutationOperations {
                                     + command.taxRegistrationId().value()));
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
             return existingRegistration.isPresent()
-                ? new DeclareTaxRegistrationResult.Updated(persistedRegistration)
-                : new DeclareTaxRegistrationResult.Declared(persistedRegistration);
+                ? new DeclareTaxRegistrationResult.Updated(
+                    persistedRegistration,
+                    AttestationCommitProjection.fromVerifiedAppend(verification))
+                : new DeclareTaxRegistrationResult.Declared(
+                    persistedRegistration,
+                    AttestationCommitProjection.fromVerifiedAppend(verification));
           } catch (SqliteNativeException exception) {
             SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
             throw SqliteStoreOperations.sqliteFailure(

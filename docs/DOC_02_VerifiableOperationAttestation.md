@@ -9,12 +9,12 @@ scope:
 route:
   keywords: [verifiable-operation-attestation, operation-head, attestation-envelope, principal-quorum, credential-purpose, autonomous-workflow, semantic-profile, ed25519, immutable-preimage, operation-kind]
   questions: ["what does FinGrind book-operation attestation prove", "how is an attested operation encoded", "which credential may authorize a system operation", "which semantic profile governs a typed operation"]
-stage: "Current public protocol 35 and protected-book format 52 contract"
+stage: "Current public protocol 36 and protected-book format 52 contract"
 ---
 
 # Verifiable Operation Attestation Protocol
 
-This is the normative contract for FinGrind protocol 35 and protected-book format 52. It is the
+This is the normative contract for FinGrind protocol 36 and protected-book format 52. It is the
 current public behavior. Earlier protected-book formats are rejected: there is no mode, migration,
 alias, or compatibility path.
 
@@ -114,7 +114,7 @@ public final class AttestationAuthorizationLimits {
   admitted by `AttestationPolicyRule` and `AttestationRegistryMutation.PolicyRule`.
 - Reachability: an accepted policy always remains usable through public operation, manifest,
   receipt, restore, rekey, and policy-mutation signing boundaries.
-- Compatibility: public protected-book format-52 / protocol-35 contract.
+- Compatibility: public protected-book format-52 / protocol-36 contract.
 
 ---
 

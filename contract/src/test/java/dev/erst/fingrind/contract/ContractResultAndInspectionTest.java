@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
 import dev.erst.fingrind.contract.bookkeeping.AccountPage;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
@@ -57,19 +58,46 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
             Optional.of(LocalDate.parse("2026-04-30")),
             PostingCoverage.ALL_POSTING_KINDS,
             List.of(CurrencyBalance.ofTotals(money("10.00"), money("0.00"))));
+    AttestationRegistryInspection trustRoot = attestationTrustRoot();
     assertEquals(
         Instant.parse("2026-04-07T10:15:30Z"),
         new OpenBookResult.Opened(
-                Instant.parse("2026-04-07T10:15:30Z"), bookIdentity(), attestationTrustRoot())
+                Instant.parse("2026-04-07T10:15:30Z"),
+                bookIdentity(),
+                trustRoot,
+                new AttestationCommit(trustRoot.headOrder(), trustRoot.operationHeadHex()))
             .initializedAt());
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new OpenBookResult.Opened(
+                Instant.parse("2026-04-07T10:15:30Z"),
+                bookIdentity(),
+                trustRoot,
+                new AttestationCommit(java.math.BigInteger.ONE, trustRoot.operationHeadHex())));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new OpenBookResult.Opened(
+                Instant.parse("2026-04-07T10:15:30Z"),
+                bookIdentity(),
+                trustRoot,
+                new AttestationCommit(trustRoot.headOrder(), "1".repeat(64))));
     assertEquals(
         new BookAdministrationRejection.BookAlreadyInitialized(),
         new OpenBookResult.Rejected(new BookAdministrationRejection.BookAlreadyInitialized())
             .rejection());
-    assertEquals(declaredAccount, new DeclareAccountResult.Declared(declaredAccount).account());
-    assertEquals(declaredAccount, new DeclareAccountResult.Reactivated(declaredAccount).account());
-    assertEquals(declaredAccount, new DeclareAccountResult.Renamed(declaredAccount).account());
-    assertEquals(declaredAccount, new DeclareAccountResult.Unchanged(declaredAccount).account());
+    assertEquals(
+        declaredAccount,
+        new DeclareAccountResult.Declared(declaredAccount, attestationCommit()).account());
+    assertEquals(
+        declaredAccount,
+        new DeclareAccountResult.Reactivated(declaredAccount, attestationCommit()).account());
+    assertEquals(
+        declaredAccount,
+        new DeclareAccountResult.Renamed(declaredAccount, attestationCommit()).account());
+    assertEquals(
+        declaredAccount, new DeclareAccountResult.Unchanged(declaredAccount, null).account());
     assertEquals(
         new BookAdministrationRejection.BookNotInitialized(),
         new DeclareAccountResult.Rejected(new BookAdministrationRejection.BookNotInitialized())

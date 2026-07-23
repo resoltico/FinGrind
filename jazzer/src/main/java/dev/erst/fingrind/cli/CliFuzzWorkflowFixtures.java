@@ -134,12 +134,13 @@ public final class CliFuzzWorkflowFixtures {
     Objects.requireNonNull(administrationService, "administrationService must not be null");
     OpenBookResult result =
         BookkeepingPublishedLanguageTranslator.toPublished(
-            administrationService.openAttestedBook(
-                bookIdentity(functionalCurrency),
-                AttestationGenesisFactory.create(
+            CliFuzzAttestationFixtures.completeOpeningOutcome(
+                administrationService.openAttestedBook(
                     bookIdentity(functionalCurrency),
-                    CliFuzzFixtures.fixedClock().instant(),
-                    List.of(ATTESTATION_CREDENTIAL.founderInput()))));
+                    AttestationGenesisFactory.create(
+                        bookIdentity(functionalCurrency),
+                        CliFuzzFixtures.fixedClock().instant(),
+                        List.of(ATTESTATION_CREDENTIAL.founderInput())))));
     OpenBookResult.Opened opened =
         switch (result) {
           case OpenBookResult.Opened accepted -> accepted;

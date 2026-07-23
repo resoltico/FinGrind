@@ -1,2 +1,2 @@
-family,accountCode,postingId,effectiveDate,movementCurrencyCode,debitTotalCurrencyCode,debitTotalMinorUnits,creditTotalCurrencyCode,creditTotalMinorUnits,netAmountCurrencyCode,netAmountMinorUnits,balanceSide,runningNetAmountCurrencyCode,runningNetAmountMinorUnits,runningBalanceSide
-account-ledger,cash,018f0000-0000-7000-8000-000000000001,2026-04-07,EUR,EUR,1000,EUR,0,EUR,1000,DEBIT,EUR,1000,DEBIT
+family,accountCode,postingId,effectiveDate,movementCurrencyCode,debitTotalCurrencyCode,debitTotalMinorUnits,creditTotalCurrencyCode,creditTotalMinorUnits,netAmountCurrencyCode,netAmountMinorUnits,balanceSide,runningNetAmountCurrencyCode,runningNetAmountMinorUnits,runningBalanceSide,attestationOperationOrder,attestationOperationHead
+account-ledger,cash,018f0000-0000-7000-8000-000000000001,2026-04-07,EUR,EUR,1000,EUR,0,EUR,1000,DEBIT,EUR,1000,DEBIT,3,<attestation-operation-head>

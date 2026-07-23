@@ -421,15 +421,14 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
           new DatabaseHandleRef(requireStoreDatabase(postingFactStore));
       assertEquals(Optional.empty(), postingSession.earliestPostingEffectiveDate());
       assertEquals(Optional.empty(), postingSession.transferredThroughEffectiveDate());
-      assertEquals(
-          new dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared(
-              registeredAccount(
-                  new AccountCode("1400"),
-                  new AccountName("Inventory"),
-                  AccountType.ASSET,
-                  financialPositionTaxonomy(FinancialPositionLineClassification.INVENTORY),
-                  true,
-                  Instant.parse("2026-04-07T10:30:00Z"))),
+      assertDeclaredWithAttestation(
+          registeredAccount(
+              new AccountCode("1400"),
+              new AccountName("Inventory"),
+              AccountType.ASSET,
+              financialPositionTaxonomy(FinancialPositionLineClassification.INVENTORY),
+              true,
+              Instant.parse("2026-04-07T10:30:00Z")),
           postingFactStore.declareAccount(
               new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
                   new AccountCode("1400"),
@@ -575,15 +574,14 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
       initializeBookWithMinimalNumericAccounts(postingFactStore);
       DatabaseHandleRef activeDatabase =
           new DatabaseHandleRef(requireStoreDatabase(postingFactStore));
-      assertEquals(
-          new dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared(
-              registeredAccount(
-                  new AccountCode("1400"),
-                  new AccountName("Inventory"),
-                  AccountType.ASSET,
-                  financialPositionTaxonomy(FinancialPositionLineClassification.INVENTORY),
-                  true,
-                  Instant.parse("2026-04-07T10:30:00Z"))),
+      assertDeclaredWithAttestation(
+          registeredAccount(
+              new AccountCode("1400"),
+              new AccountName("Inventory"),
+              AccountType.ASSET,
+              financialPositionTaxonomy(FinancialPositionLineClassification.INVENTORY),
+              true,
+              Instant.parse("2026-04-07T10:30:00Z")),
           postingFactStore.declareAccount(
               new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
                   new AccountCode("1400"),

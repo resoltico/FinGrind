@@ -17,7 +17,8 @@ class CliPeriodCloseOutputRendererCoverageTest extends CliFixtureSupport {
   @Test
   void renderSweptInterimResultText_rendersMovementsAndTheNoMovementOutcome() {
     String renderedWithMovements =
-        CliPeriodCloseOutputRenderer.renderSweptInterimResultText(sampleSweptInterimResult());
+        CliPeriodCloseOutputRenderer.renderSweptInterimResultText(
+            sampleSweptInterimResult(), attestationCommit());
 
     assertTrue(renderedWithMovements.contains("Interim Result Swept"), renderedWithMovements);
     assertTrue(renderedWithMovements.contains("EUR 10.00 Credit"), renderedWithMovements);
@@ -32,7 +33,8 @@ class CliPeriodCloseOutputRendererCoverageTest extends CliFixtureSupport {
             Instant.parse("2026-05-31T12:00:00Z"),
             List.of());
     String renderedWithoutMovements =
-        CliPeriodCloseOutputRenderer.renderSweptInterimResultText(noMovementResult);
+        CliPeriodCloseOutputRenderer.renderSweptInterimResultText(
+            noMovementResult, attestationCommit());
 
     assertTrue(renderedWithoutMovements.contains("Generated interim-result-sweep postings"));
     assertTrue(renderedWithoutMovements.contains("(none)"));
@@ -49,14 +51,16 @@ class CliPeriodCloseOutputRendererCoverageTest extends CliFixtureSupport {
             Instant.parse("2026-06-30T12:00:00Z"),
             List.of(new PostingId("98be232b-af01-324d-b4fc-6f62636fae68")));
     assertTrue(
-        CliPeriodCloseOutputRenderer.renderSweptInterimResultText(nonemptyPostingIdsWithoutTotals)
+        CliPeriodCloseOutputRenderer.renderSweptInterimResultText(
+                nonemptyPostingIdsWithoutTotals, attestationCommit())
             .contains("98be232b-af01-324d-b4fc-6f62636fae68"));
   }
 
   @Test
   void renderClosedFiscalYearText_marksIdempotentReplayAsAlreadyClosed() {
     String rendered =
-        CliPeriodCloseOutputRenderer.renderClosedFiscalYearText(sampleClosedFiscalYear(), true);
+        CliPeriodCloseOutputRenderer.renderClosedFiscalYearText(
+            sampleClosedFiscalYear(), true, null);
 
     assertTrue(rendered.contains("Fiscal Year Already Closed"), rendered);
     assertTrue(rendered.contains("Idempotent replay"), rendered);
@@ -66,7 +70,8 @@ class CliPeriodCloseOutputRendererCoverageTest extends CliFixtureSupport {
   @Test
   void renderClosedFiscalYearText_rendersFreshCloseAndAllGeneratedPostings() {
     String rendered =
-        CliPeriodCloseOutputRenderer.renderClosedFiscalYearText(sampleClosedFiscalYear(), false);
+        CliPeriodCloseOutputRenderer.renderClosedFiscalYearText(
+            sampleClosedFiscalYear(), false, attestationCommit());
 
     assertTrue(rendered.contains("Fiscal Year Closed"), rendered);
     assertTrue(rendered.contains("Generated fiscal-year-close postings"), rendered);
@@ -89,7 +94,8 @@ class CliPeriodCloseOutputRendererCoverageTest extends CliFixtureSupport {
             List.of());
 
     String rendered =
-        CliPeriodCloseOutputRenderer.renderClosedFiscalYearText(noPostingClose, false);
+        CliPeriodCloseOutputRenderer.renderClosedFiscalYearText(
+            noPostingClose, false, attestationCommit());
 
     assertTrue(rendered.contains("Generated fiscal-year-close postings"), rendered);
     assertTrue(rendered.contains("(none)"), rendered);

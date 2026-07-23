@@ -254,7 +254,9 @@ class CliMutationOutputRendererCoverageTest {
   void renderAccountDeclarationText_rendersInventoryUnitOfMeasureWhenPresent() {
     String rendered =
         CliMutationOutputRenderer.renderAccountDeclarationText(
-            "declared", CliIoFixtureSupport.inventoryDeclaredAccount("1400", "Inventory", "kg", 3));
+            "declared",
+            CliIoFixtureSupport.inventoryDeclaredAccount("1400", "Inventory", "kg", 3),
+            null);
 
     assertTrue(rendered.contains("Unit of measure"));
     assertTrue(rendered.contains("kg (scale 3)"));

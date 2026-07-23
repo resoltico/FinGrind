@@ -57,11 +57,13 @@ class CliRecordingWorkflow extends CliBookWorkflowAdapter {
           CliWorkflowDoubleSupport.hint(Path.of("books/unused.backup.sqlite")),
           CliWorkflowDoubleSupport.hint(Path.of("keys/unused.backup.key")),
           UUID.fromString("00000000-0000-0000-0000-000000000001"),
-          false);
+          false,
+          null);
   private RestoreBookResult restoreBookResult =
       new RestoreBookResult.Restored(
           CliWorkflowDoubleSupport.hint(Path.of("books/unused.sqlite")),
-          CliWorkflowDoubleSupport.hint(Path.of("keys/unused-restored.key")));
+          CliWorkflowDoubleSupport.hint(Path.of("keys/unused-restored.key")),
+          CliFixtureSupport.attestationCommit());
   private @Nullable LedgerPlanResult executePlanResult;
 
   CliRecordingWorkflow(

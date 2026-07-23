@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: BOOK_MAINTENANCE_CONTRACT
-updated: "2026-07-22"
+updated: "2026-07-23"
 route:
   keywords: [fingrind, maintenance, backup, restore, rekey, rollback, protected book, artifact, path, rejection, public path hint]
   questions: ["where are protected-book maintenance rejections documented", "how does fingrind report maintenance paths", "what is PublicPathHint", "which contract owns backup and restore path failures"]
@@ -71,8 +71,8 @@ rollover, revocation, or policy mutation.
 public sealed interface AttestationRegistryMutationResult
 ```
 
-- `Mutated` carries the canonical book path, closed operation token, and resulting attestation
-  head order and lowercase-hex operation head.
+- `Mutated` carries the canonical book path, closed operation token, and exact
+  `AttestationCommit` for the appended registry mutation.
 - `Rejected` retains a deterministic `BookMaintenanceRejection` before admission.
 - `AuthorizationRejected` retains the exact closed `AttestationVerificationFailure` when the
   live historical signer, quorum, capability, or credential-purpose rule refuses admission.

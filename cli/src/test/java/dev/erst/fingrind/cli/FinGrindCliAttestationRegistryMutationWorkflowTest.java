@@ -60,7 +60,7 @@ class FinGrindCliAttestationRegistryMutationWorkflowTest extends FinGrindCliTest
     assertEquals(0, exitCode, output.toString(StandardCharsets.UTF_8));
     JsonNode payload = new ObjectMapper().readTree(output.toByteArray()).path("payload");
     assertEquals("enroll-key", payload.path("operationKind").stringValue());
-    assertEquals("1", payload.path("headOrder").stringValue());
+    assertEquals("1", payload.path("attestationCommit").path("operationOrder").stringValue());
     assertTrue(payload.path("bookFile").stringValue().endsWith("entity.sqlite"));
 
     ByteArrayOutputStream duplicateOutput = new ByteArrayOutputStream();
@@ -176,9 +176,10 @@ class FinGrindCliAttestationRegistryMutationWorkflowTest extends FinGrindCliTest
     assertEquals(0, exitCode, output.toString(StandardCharsets.UTF_8));
     String rendered = output.toString(StandardCharsets.UTF_8);
     assertTrue(rendered.contains("Attestation Registry Updated"), rendered);
-    assertTrue(rendered.contains("Operation kind : alter-policy"), rendered);
-    assertTrue(rendered.contains("Head order"), rendered);
-    assertTrue(rendered.contains("Operation head"), rendered);
+    assertTrue(
+        rendered.replaceAll("\\s+", " ").contains("Operation kind : alter-policy"), rendered);
+    assertTrue(rendered.contains("Attestation order"), rendered);
+    assertTrue(rendered.contains("Attestation head"), rendered);
   }
 
   private void assertJsonMutationSucceeds(

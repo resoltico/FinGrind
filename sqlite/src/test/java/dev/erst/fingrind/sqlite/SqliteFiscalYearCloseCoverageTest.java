@@ -13,7 +13,6 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.executor.FiscalYearCloseService;
 import dev.erst.fingrind.executor.InterimResultSweepService;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.ClosedFiscalYearRecord;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
@@ -285,7 +284,7 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
   }
 
   private static void declareFiscalYearCloseAccounts(SqlitePostingFactStore postingFactStore) {
-    assertEquals(
+    assertDeclaredWithAttestation(
         declaredEquityAccount(
             "3000", "Capital", FinancialPositionLineClassification.EQUITY_CONTRIBUTION),
         postingFactStore.declareAccount(
@@ -296,7 +295,7 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                 financialPositionTaxonomy(FinancialPositionLineClassification.EQUITY_CONTRIBUTION)),
             CLOSED_AT,
             SqliteAttestationTestSupport.authorizer()));
-    assertEquals(
+    assertDeclaredWithAttestation(
         declaredEquityAccount(
             "3100", "Owner Draw", FinancialPositionLineClassification.EQUITY_WITHDRAWAL),
         postingFactStore.declareAccount(
@@ -307,7 +306,7 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                 financialPositionTaxonomy(FinancialPositionLineClassification.EQUITY_WITHDRAWAL)),
             CLOSED_AT,
             SqliteAttestationTestSupport.authorizer()));
-    assertEquals(
+    assertDeclaredWithAttestation(
         declaredEquityAccount(
             "3200", "Result Holding", FinancialPositionLineClassification.RESULT_HOLDING),
         postingFactStore.declareAccount(
@@ -318,7 +317,7 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                 financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING)),
             CLOSED_AT,
             SqliteAttestationTestSupport.authorizer()));
-    assertEquals(
+    assertDeclaredWithAttestation(
         declaredEquityAccount(
             "3300",
             "Retained Accumulated",
@@ -332,15 +331,14 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                     FinancialPositionLineClassification.RETAINED_ACCUMULATED)),
             CLOSED_AT,
             SqliteAttestationTestSupport.authorizer()));
-    assertEquals(
-        new AccountDeclarationOutcome.Declared(
-            new RegisteredAccount(
-                new AccountCode("5000"),
-                new AccountName("Operating Expense"),
-                AccountType.EXPENSE,
-                accountTaxonomy(AccountType.EXPENSE),
-                true,
-                CLOSED_AT)),
+    assertDeclaredWithAttestation(
+        new RegisteredAccount(
+            new AccountCode("5000"),
+            new AccountName("Operating Expense"),
+            AccountType.EXPENSE,
+            accountTaxonomy(AccountType.EXPENSE),
+            true,
+            CLOSED_AT),
         postingFactStore.declareAccount(
             new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
                 new AccountCode("5000"),
@@ -384,16 +382,15 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                 line("1000", dev.erst.fingrind.core.JournalLine.EntrySide.CREDIT, "10.00"))));
   }
 
-  private static AccountDeclarationOutcome declaredEquityAccount(
+  private static RegisteredAccount declaredEquityAccount(
       String accountCode, String accountName, FinancialPositionLineClassification classification) {
-    return new AccountDeclarationOutcome.Declared(
-        new RegisteredAccount(
-            new AccountCode(accountCode),
-            new AccountName(accountName),
-            AccountType.EQUITY,
-            financialPositionTaxonomy(classification),
-            true,
-            CLOSED_AT));
+    return new RegisteredAccount(
+        new AccountCode(accountCode),
+        new AccountName(accountName),
+        AccountType.EQUITY,
+        financialPositionTaxonomy(classification),
+        true,
+        CLOSED_AT);
   }
 
   /** Deterministic posting-id source for fiscal-year-close coverage paths. */

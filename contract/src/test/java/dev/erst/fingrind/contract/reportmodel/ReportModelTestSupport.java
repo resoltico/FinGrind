@@ -139,7 +139,8 @@ final class ReportModelTestSupport {
         postingFact,
         movement,
         Money.parse(movement.netAmount().currencyUnit().code(), runningAmountDecimal),
-        runningBalanceSide);
+        runningBalanceSide,
+        null);
   }
 
   static FinancialPositionRow financialPositionRow(

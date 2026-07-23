@@ -2,6 +2,7 @@ package dev.erst.fingrind.contract.bookkeeping;
 
 import java.nio.file.Path;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Result family for exporting one closed encrypted-book backup pair. */
 public sealed interface BackupBookResult
@@ -16,7 +17,8 @@ public sealed interface BackupBookResult
       Path backupFilePath,
       Path backupBookKeyFilePath,
       java.util.UUID backupId,
-      boolean acknowledgementResumed)
+      boolean acknowledgementResumed,
+      @Nullable AttestationCommit attestationCommit)
       implements BackupBookResult {
     public BackedUp {
       bookFilePath = normalizedPath(bookFilePath, "bookFilePath");

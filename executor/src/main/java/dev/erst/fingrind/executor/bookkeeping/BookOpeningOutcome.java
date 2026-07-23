@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
 import java.time.Instant;
@@ -12,13 +13,15 @@ public sealed interface BookOpeningOutcome
   record Opened(
       Instant initializedAt,
       BookIdentity bookIdentity,
-      AttestationRegistryInspection attestationTrustRoot)
+      AttestationRegistryInspection attestationTrustRoot,
+      AttestationCommit attestationCommit)
       implements BookOpeningOutcome {
     /** Validates one opened-book outcome. */
     public Opened {
       Objects.requireNonNull(initializedAt, "initializedAt");
       Objects.requireNonNull(bookIdentity, "bookIdentity");
       Objects.requireNonNull(attestationTrustRoot, "attestationTrustRoot");
+      Objects.requireNonNull(attestationCommit, "attestationCommit");
     }
   }
 

@@ -12,17 +12,17 @@ final class CliBookMaintenanceOutputRenderer {
   private CliBookMaintenanceOutputRenderer() {}
 
   static String renderBackupBookText(BackupBookResult.BackedUp backedUp) {
+    List<List<String>> rows = new java.util.ArrayList<>();
+    rows.add(List.of("Book file", CliTextDisplay.path(backedUp.bookFilePath())));
+    rows.add(List.of("Backup file", CliTextDisplay.path(backedUp.backupFilePath())));
+    rows.add(List.of("Backup key file", CliTextDisplay.path(backedUp.backupBookKeyFilePath())));
+    rows.add(List.of("Backup ID", backedUp.backupId().toString()));
+    rows.add(
+        List.of("Acknowledgement", backedUp.acknowledgementResumed() ? "resumed" : "acknowledged"));
+    CliAttestationCommitPresentation.appendTextRows(
+        rows, backedUp.attestationCommit(), "No operation appended (acknowledgement replay)");
     return CliTextFormat.renderTitledBlock(
-        "Book Backed Up",
-        CliTextFormat.renderKeyValueBlock(
-            List.of(
-                List.of("Book file", CliTextDisplay.path(backedUp.bookFilePath())),
-                List.of("Backup file", CliTextDisplay.path(backedUp.backupFilePath())),
-                List.of("Backup key file", CliTextDisplay.path(backedUp.backupBookKeyFilePath())),
-                List.of("Backup ID", backedUp.backupId().toString()),
-                List.of(
-                    "Acknowledgement",
-                    backedUp.acknowledgementResumed() ? "resumed" : "acknowledged"))));
+        "Book Backed Up", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
   static String renderBackupAcknowledgementPendingText(
@@ -43,11 +43,12 @@ final class CliBookMaintenanceOutputRenderer {
   }
 
   static String renderRestoreBookText(RestoreBookResult.Restored restored) {
+    List<List<String>> rows = new java.util.ArrayList<>();
+    rows.add(List.of("Book file", CliTextDisplay.path(restored.bookFilePath())));
+    rows.add(List.of("Book key file", CliTextDisplay.path(restored.bookKeyFilePath())));
+    CliAttestationCommitPresentation.appendTextRows(
+        rows, restored.attestationCommit(), "No attestation operation was returned");
     return CliTextFormat.renderTitledBlock(
-        "Book Restored",
-        CliTextFormat.renderKeyValueBlock(
-            List.of(
-                List.of("Book file", CliTextDisplay.path(restored.bookFilePath())),
-                List.of("Book key file", CliTextDisplay.path(restored.bookKeyFilePath())))));
+        "Book Restored", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 }

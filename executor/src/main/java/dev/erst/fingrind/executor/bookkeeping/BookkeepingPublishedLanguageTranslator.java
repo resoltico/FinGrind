@@ -108,7 +108,10 @@ public final class BookkeepingPublishedLanguageTranslator {
     return switch (outcome) {
       case BookOpeningOutcome.Opened opened ->
           new OpenBookResult.Opened(
-              opened.initializedAt(), opened.bookIdentity(), opened.attestationTrustRoot());
+              opened.initializedAt(),
+              opened.bookIdentity(),
+              opened.attestationTrustRoot(),
+              opened.attestationCommit());
       case BookOpeningOutcome.Rejected rejected ->
           new OpenBookResult.Rejected(toPublished(rejected.rejection()));
     };
@@ -119,13 +122,19 @@ public final class BookkeepingPublishedLanguageTranslator {
     Objects.requireNonNull(outcome, "outcome");
     return switch (outcome) {
       case AccountDeclarationOutcome.Declared declared ->
-          new DeclareAccountResult.Declared(toPublished(declared.account()));
+          new DeclareAccountResult.Declared(
+              toPublished(declared.account()),
+              Objects.requireNonNull(declared.attestationCommit(), "attestationCommit"));
       case AccountDeclarationOutcome.Reactivated reactivated ->
-          new DeclareAccountResult.Reactivated(toPublished(reactivated.account()));
+          new DeclareAccountResult.Reactivated(
+              toPublished(reactivated.account()),
+              Objects.requireNonNull(reactivated.attestationCommit(), "attestationCommit"));
       case AccountDeclarationOutcome.Renamed renamed ->
-          new DeclareAccountResult.Renamed(toPublished(renamed.account()));
+          new DeclareAccountResult.Renamed(
+              toPublished(renamed.account()),
+              Objects.requireNonNull(renamed.attestationCommit(), "attestationCommit"));
       case AccountDeclarationOutcome.Unchanged unchanged ->
-          new DeclareAccountResult.Unchanged(toPublished(unchanged.account()));
+          new DeclareAccountResult.Unchanged(toPublished(unchanged.account()), null);
       case AccountDeclarationOutcome.Rejected rejected ->
           new DeclareAccountResult.Rejected(toPublished(rejected.rejection()));
     };
@@ -136,7 +145,9 @@ public final class BookkeepingPublishedLanguageTranslator {
     Objects.requireNonNull(outcome, "outcome");
     return switch (outcome) {
       case InterimResultSweepOutcome.Transferred closed ->
-          new InterimResultSweepResult.Swept(toPublished(closed.sweptInterimResult()));
+          new InterimResultSweepResult.Swept(
+              toPublished(closed.sweptInterimResult()),
+              Objects.requireNonNull(closed.attestationCommit(), "attestationCommit"));
       case InterimResultSweepOutcome.Rejected rejected ->
           new InterimResultSweepResult.Rejected(toPublished(rejected.rejection()));
     };
@@ -148,7 +159,11 @@ public final class BookkeepingPublishedLanguageTranslator {
     return switch (outcome) {
       case FiscalYearCloseOutcome.Closed closed ->
           new FiscalYearCloseResult.Closed(
-              toPublished(closed.closedFiscalYear()), closed.idempotentReplay());
+              toPublished(closed.closedFiscalYear()),
+              closed.idempotentReplay(),
+              closed.idempotentReplay()
+                  ? null
+                  : Objects.requireNonNull(closed.attestationCommit(), "attestationCommit"));
       case FiscalYearCloseOutcome.Rejected rejected ->
           new FiscalYearCloseResult.Rejected(toPublished(rejected.rejection()));
     };

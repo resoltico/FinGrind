@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliTaxJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.tax.AppliedTax;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
 import dev.erst.fingrind.contract.tax.ListTaxRegistrationsQuery;
@@ -40,9 +41,13 @@ final class CliTaxPayloadMapper {
   }
 
   static CliTaxJsonModels.TaxRegistrationMutationPayload taxRegistrationMutationPayload(
-      String outcome, DeclaredTaxRegistration registration) {
+      String outcome,
+      DeclaredTaxRegistration registration,
+      @org.jspecify.annotations.Nullable AttestationCommit attestationCommit) {
     return new CliTaxJsonModels.TaxRegistrationMutationPayload(
-        outcome, taxRegistrationPayload(registration));
+        outcome,
+        taxRegistrationPayload(registration),
+        CliAttestationCommitPresentation.payload(attestationCommit));
   }
 
   static CliTaxJsonModels.TaxRegistrationListPayload taxRegistrationPagePayload(

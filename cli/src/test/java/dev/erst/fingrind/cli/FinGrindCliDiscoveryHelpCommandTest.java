@@ -666,7 +666,8 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
     RecordingWorkflow workflow =
         new RecordingWorkflow(
             openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
-            new RekeyBookResult.Rekeyed(java.nio.file.Path.of("unused.sqlite")),
+            new RekeyBookResult.Rekeyed(
+                java.nio.file.Path.of("unused.sqlite"), attestationCommit()),
             new DeclareAccountResult.Declared(
                 declaredAccount(
                     "1000",
@@ -674,7 +675,8 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
                     dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
-                    Instant.parse("2026-04-07T12:00:00Z"))),
+                    Instant.parse("2026-04-07T12:00:00Z")),
+                attestationCommit()),
             listedAccounts(accountPage(java.util.List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),

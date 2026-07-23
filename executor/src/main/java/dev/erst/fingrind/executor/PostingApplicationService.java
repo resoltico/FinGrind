@@ -1,6 +1,5 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
@@ -119,9 +118,7 @@ public final class PostingApplicationService {
         resolvedJournal,
         attestationVerification == null
             ? null
-            : new AttestationCommit(
-                attestationVerification.headOrder(),
-                java.util.HexFormat.of().formatHex(attestationVerification.operationHead())));
+            : AttestationCommitProjection.fromVerifiedAppend(attestationVerification));
   }
 
   private static PostEntryResult.PreflightRejected rejectedPreflight(

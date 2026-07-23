@@ -7,11 +7,13 @@ import java.util.Objects;
 public sealed interface RekeyBookResult permits RekeyBookResult.Rekeyed, RekeyBookResult.Rejected {
 
   /** Successful rekey outcome for one selected book file. */
-  record Rekeyed(Path bookFilePath) implements RekeyBookResult {
+  record Rekeyed(Path bookFilePath, AttestationCommit attestationCommit)
+      implements RekeyBookResult {
     /** Validates the selected book path. */
     public Rekeyed {
       bookFilePath =
           Objects.requireNonNull(bookFilePath, "bookFilePath").toAbsolutePath().normalize();
+      Objects.requireNonNull(attestationCommit, "attestationCommit");
     }
   }
 

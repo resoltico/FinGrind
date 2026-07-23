@@ -140,4 +140,9 @@ class ContractTestSupport {
     return new GetPostingResult.Found(
         bookIdentity(), postingFact, Optional.empty(), Optional.empty());
   }
+
+  protected dev.erst.fingrind.contract.bookkeeping.AttestationCommit attestationCommit() {
+    return new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
+        java.math.BigInteger.ONE, "a".repeat(64));
+  }
 }

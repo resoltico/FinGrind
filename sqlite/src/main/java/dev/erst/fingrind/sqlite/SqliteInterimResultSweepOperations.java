@@ -128,7 +128,8 @@ final class SqliteInterimResultSweepOperations {
                     attestationAuthorizer);
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
             committed = true;
-            return new InterimResultSweepOutcome.Transferred(sweptInterimResult);
+            return new InterimResultSweepOutcome.Transferred(
+                sweptInterimResult.sweptInterimResult(), sweptInterimResult.attestationCommit());
           } catch (SqliteNativeException exception) {
             throw SqliteStoreOperations.sqliteFailure(
                 "Failed to close one SQLite reporting period.", exception);
@@ -204,7 +205,8 @@ final class SqliteInterimResultSweepOperations {
                     postingIdGenerator,
                     attestationAuthorizer);
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
-            return new InterimResultSweepOutcome.Transferred(sweptInterimResult);
+            return new InterimResultSweepOutcome.Transferred(
+                sweptInterimResult.sweptInterimResult(), sweptInterimResult.attestationCommit());
           } catch (SqliteNativeException exception) {
             SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
             throw SqliteStoreOperations.sqliteFailure(

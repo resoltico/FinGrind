@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.maintenance;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.core.attestation.AttestationAuthorizationFailure;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -17,7 +18,8 @@ public sealed interface ProtectedBookBackupOutcome
       Path backupFilePath,
       Path backupBookKeyFilePath,
       java.util.UUID backupId,
-      boolean acknowledgementResumed)
+      boolean acknowledgementResumed,
+      @org.jspecify.annotations.Nullable AttestationCommit attestationCommit)
       implements ProtectedBookBackupOutcome {
     public BackedUp {
       Objects.requireNonNull(bookFilePath, "bookFilePath");

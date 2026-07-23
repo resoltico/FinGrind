@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
@@ -32,6 +33,8 @@ import java.util.Optional;
 /** Shared in-memory posting-validation and commit fixture state for executor tests. */
 abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifecycleSession
     implements PostingValidationStore, PostingCommitStore, TaxAdministrationStore {
+  private static final AttestationCommit TEST_ATTESTATION_COMMIT =
+      new AttestationCommit(java.math.BigInteger.ONE, "a".repeat(64));
   protected final Map<TaxRegistrationId, DeclaredTaxRegistration> taxRegistrationsById =
       InMemoryBookSessionSupport.mutableMap();
   protected final Map<IdempotencyKey, StoredRequestPosting> postingsByIdempotencyKey =
@@ -127,12 +130,12 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifec
                   command.taxCodes(),
                   existing == null ? declaredAt : existing.declaredAt());
           if (existing != null && existing.equals(candidate)) {
-            return new DeclareTaxRegistrationResult.Unchanged(existing);
+            return new DeclareTaxRegistrationResult.Unchanged(existing, null);
           }
           taxRegistrationsById.put(candidate.taxRegistrationId(), candidate);
           return existing == null
-              ? new DeclareTaxRegistrationResult.Declared(candidate)
-              : new DeclareTaxRegistrationResult.Updated(candidate);
+              ? new DeclareTaxRegistrationResult.Declared(candidate, TEST_ATTESTATION_COMMIT)
+              : new DeclareTaxRegistrationResult.Updated(candidate, TEST_ATTESTATION_COMMIT);
         });
   }
 

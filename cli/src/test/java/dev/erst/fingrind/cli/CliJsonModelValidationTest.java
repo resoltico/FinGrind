@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.cli.json.CliAdministrationJsonModels;
 import dev.erst.fingrind.cli.json.CliAttestationJsonModels;
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryCapabilitiesJsonModels;
@@ -41,6 +42,7 @@ import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 /** Pins constructor invariants for package-private CLI JSON transport models. */
@@ -98,6 +100,23 @@ class CliJsonModelValidationTest {
                 "2230",
                 new MonetaryAmount("EUR", "200000"),
                 null));
+  }
+
+  @Test
+  void closedFiscalYearPayload_keepsReplayAndAttestationCommitCoupled() {
+    CliAttestationJsonModels.AttestationCommitPayload commit =
+        new CliAttestationJsonModels.AttestationCommitPayload("12", "a".repeat(64));
+
+    assertEquals(commit, closedFiscalYearPayload(false, commit).attestationCommit());
+    assertEquals(null, closedFiscalYearPayload(true, null).attestationCommit());
+    assertEquals(
+        "An idempotent fiscal year close replay must not report a newly appended attestation operation.",
+        assertThrows(IllegalArgumentException.class, () -> closedFiscalYearPayload(true, commit))
+            .getMessage());
+    assertEquals(
+        "A newly closed fiscal year must report its attestation operation.",
+        assertThrows(IllegalArgumentException.class, () -> closedFiscalYearPayload(false, null))
+            .getMessage());
   }
 
   @Test
@@ -870,6 +889,22 @@ class CliJsonModelValidationTest {
         "DEBIT",
         true,
         "2026-05-14T10:00:00Z");
+  }
+
+  private static CliAdministrationJsonModels.ClosedFiscalYearPayload closedFiscalYearPayload(
+      boolean idempotentReplay,
+      CliAttestationJsonModels.@Nullable AttestationCommitPayload attestationCommit) {
+    return new CliAdministrationJsonModels.ClosedFiscalYearPayload(
+        1,
+        "2026-01-01",
+        "2026-12-31",
+        "3000",
+        "3900",
+        "3200",
+        "2027-01-01T00:00:00Z",
+        idempotentReplay,
+        List.of("posting-1"),
+        attestationCommit);
   }
 
   private static CliPlanJsonModels.LedgerPlanPayload samplePlanPayload(LedgerPlanStatus status) {

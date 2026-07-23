@@ -45,7 +45,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Direct contract-model coverage for tax types and tax-bearing bookkeeping entries. */
-class TaxContractTypesTest {
+class TaxContractTypesTest extends ContractTestSupport {
   private static final Instant DECLARED_AT = Instant.parse("2026-04-01T10:15:30Z");
 
   @Test
@@ -115,11 +115,14 @@ class TaxContractTypesTest {
             new MonetaryAmount("EUR", "0"));
 
     DeclareTaxRegistrationResult.Declared declared =
-        new DeclareTaxRegistrationResult.Declared(registration);
+        new DeclareTaxRegistrationResult.Declared(registration, attestationCommit());
     DeclareTaxRegistrationResult.Updated updated =
-        new DeclareTaxRegistrationResult.Updated(registration);
+        new DeclareTaxRegistrationResult.Updated(registration, attestationCommit());
     DeclareTaxRegistrationResult.Unchanged unchanged =
-        new DeclareTaxRegistrationResult.Unchanged(registration);
+        new DeclareTaxRegistrationResult.Unchanged(registration, null);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new DeclareTaxRegistrationResult.Unchanged(registration, attestationCommit()));
     new DeclareTaxRegistrationResult.Rejected(new TaxDeclarationRejection.BookNotInitialized());
     ListTaxRegistrationsResult.Listed listed =
         new ListTaxRegistrationsResult.Listed(

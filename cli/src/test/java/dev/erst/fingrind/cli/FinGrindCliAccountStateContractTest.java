@@ -622,8 +622,9 @@ class FinGrindCliAccountStateContractTest extends FinGrindCliTestSupport {
       PreflightEntryResult preflightResult, CommitEntryResult commitResult) {
     return new RecordingWorkflow(
         openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
-        new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
-        new DeclareAccountResult.Declared(declaredAccount("1000", "Cash", NormalBalance.DEBIT)),
+        new RekeyBookResult.Rekeyed(Path.of("unused.sqlite"), attestationCommit()),
+        new DeclareAccountResult.Declared(
+            declaredAccount("1000", "Cash", NormalBalance.DEBIT), attestationCommit()),
         listedAccounts(accountPage(List.of(), 50, Optional.empty())),
         preflightResult,
         commitResult);

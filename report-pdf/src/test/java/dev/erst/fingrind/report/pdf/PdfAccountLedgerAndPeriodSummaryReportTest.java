@@ -138,7 +138,8 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
                     reversalPosting,
                     balance("EUR", "0.00", "100.00", "100.00", BalanceSide.CREDIT),
                     money("EUR", "150.00"),
-                    BalanceSide.DEBIT)),
+                    BalanceSide.DEBIT,
+                    null)),
             List.of(balance("EUR", "250.00", "100.00", "150.00", BalanceSide.DEBIT)));
 
     String accountLedgerText = extractedText(render(PDF_REPORT_SERVICE, accountLedgerReport));
@@ -152,6 +153,36 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
     assertTrue(accountLedgerText.contains("000000000001"));
     assertTrue(accountLedgerText.contains("000000000000"));
     assertFalse(accountLedgerText.contains("..."));
+  }
+
+  @Test
+  void renderAccountLedgerPublishesFullAttestationHeadsInTheDedicatedCommitmentSection()
+      throws IOException {
+    AccountLedgerReport accountLedgerReport =
+        new AccountLedgerReport(
+            BOOK_IDENTITY,
+            CASH_ACCOUNT,
+            EffectiveDateRange.unbounded(),
+            PostingCoverage.ALL_POSTING_KINDS,
+            AccountLedgerPagination.firstPage(50),
+            List.of(),
+            List.of(
+                new AccountLedgerEntry(
+                    PdfReportFixtureSupport.postingFact(7, "100.00"),
+                    balance("EUR", "100.00", "0.00", "100.00", BalanceSide.DEBIT),
+                    money("EUR", "100.00"),
+                    BalanceSide.DEBIT,
+                    new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
+                        java.math.BigInteger.valueOf(7),
+                        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))),
+            List.of(balance("EUR", "100.00", "0.00", "100.00", BalanceSide.DEBIT)));
+
+    String accountLedgerText = extractedText(render(PDF_REPORT_SERVICE, accountLedgerReport));
+
+    assertTrue(accountLedgerText.contains("Attestation Commitments"));
+    assertTrue(
+        accountLedgerText.contains(
+            "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"));
   }
 
   @Test
@@ -213,7 +244,8 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
                     selfPosting,
                     balance("EUR", "10.00", "10.00", "0.00", BalanceSide.ZERO),
                     money("EUR", "0.00"),
-                    BalanceSide.ZERO)),
+                    BalanceSide.ZERO,
+                    null)),
             List.of(balance("EUR", "10.00", "10.00", "0.00", BalanceSide.ZERO)));
 
     String accountLedgerText = extractedText(render(PDF_REPORT_SERVICE, accountLedgerReport));

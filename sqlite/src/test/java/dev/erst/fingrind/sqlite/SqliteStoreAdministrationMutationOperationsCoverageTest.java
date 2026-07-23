@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
@@ -17,6 +18,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
+import java.math.BigInteger;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -111,6 +113,50 @@ class SqliteStoreAdministrationMutationOperationsCoverageTest
     assertTrue(
         Objects.requireNonNullElse(rejected.getMessage(), "")
             .contains("Rejected account declarations do not append audit"));
+  }
+
+  @Test
+  void withAttestationCommit_projectsOnlyDurableAccountDeclarationMutations() {
+    RegisteredAccount account =
+        SqlitePostingFactFixtureSupport.registeredAccount(
+            new AccountCode("2100"),
+            new AccountName("Trade creditors"),
+            AccountType.LIABILITY,
+            NormalBalance.CREDIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z"));
+    AttestationCommit attestationCommit = new AttestationCommit(BigInteger.ONE, "a".repeat(64));
+
+    assertEquals(
+        new AccountDeclarationOutcome.Declared(account, attestationCommit),
+        SqliteStoreAccountRegistryMutationOperations.withAttestationCommit(
+            new AccountDeclarationOutcome.Declared(account), attestationCommit));
+    assertEquals(
+        new AccountDeclarationOutcome.Reactivated(account, attestationCommit),
+        SqliteStoreAccountRegistryMutationOperations.withAttestationCommit(
+            new AccountDeclarationOutcome.Reactivated(account), attestationCommit));
+    assertEquals(
+        new AccountDeclarationOutcome.Renamed(account, attestationCommit),
+        SqliteStoreAccountRegistryMutationOperations.withAttestationCommit(
+            new AccountDeclarationOutcome.Renamed(account), attestationCommit));
+    assertEquals(
+        "An unchanged account declaration must not receive an attestation commitment.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    SqliteStoreAccountRegistryMutationOperations.withAttestationCommit(
+                        new AccountDeclarationOutcome.Unchanged(account), attestationCommit))
+            .getMessage());
+    assertEquals(
+        "A rejected account declaration must not receive an attestation commitment.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    SqliteStoreAccountRegistryMutationOperations.withAttestationCommit(
+                        new AccountDeclarationOutcome.Rejected(
+                            new BookkeepingAdministrationRejection.BookNotInitialized()),
+                        attestationCommit))
+            .getMessage());
   }
 
   @Test

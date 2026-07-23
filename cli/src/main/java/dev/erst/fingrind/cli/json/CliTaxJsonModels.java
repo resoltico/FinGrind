@@ -6,6 +6,8 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalT
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requirePositive;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels.AttestationCommitPayload;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import java.util.List;
@@ -55,7 +57,10 @@ public interface CliTaxJsonModels {
     }
   }
 
-  record TaxRegistrationMutationPayload(String outcome, DeclaredTaxRegistrationPayload registration)
+  record TaxRegistrationMutationPayload(
+      String outcome,
+      DeclaredTaxRegistrationPayload registration,
+      @JsonInclude(JsonInclude.Include.ALWAYS) @Nullable AttestationCommitPayload attestationCommit)
       implements CliSuccessPayload {
     public TaxRegistrationMutationPayload {
       outcome = requireText(outcome, "outcome");

@@ -368,7 +368,7 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     DeclaredAccount cashAccount = declaredAccount("1000", "Cash, reserve", NormalBalance.DEBIT);
     CurrencyBalance balance = eurDebitBalance();
     AccountLedgerEntry ledgerEntry =
-        new AccountLedgerEntry(postingFact, balance, money("EUR", "6.00"), BalanceSide.DEBIT);
+        new AccountLedgerEntry(postingFact, balance, money("EUR", "6.00"), BalanceSide.DEBIT, null);
 
     List<String> ledgerTextRow =
         CliQueryRowFormatAccess.accountLedgerTextRow(cashAccount, ledgerEntry);
@@ -458,12 +458,14 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
             openedBookResult(Instant.parse("2026-04-07T10:15:30Z")));
     String rekeyBookText =
         CliBookAccessOutputRenderer.renderRekeyBookText(
-            new RekeyBookResult.Rekeyed(Path.of("office/report.sqlite")),
+            new RekeyBookResult.Rekeyed(Path.of("office/report.sqlite"), attestationCommit()),
             Path.of("office/keys/rotated.key"));
     String declaredAccountText =
-        CliMutationOutputRenderer.renderAccountDeclarationText("declared", cashAccount);
+        CliMutationOutputRenderer.renderAccountDeclarationText(
+            "declared", cashAccount, attestationCommit());
     String childAccountText =
-        CliMutationOutputRenderer.renderAccountDeclarationText("renamed", childAccount);
+        CliMutationOutputRenderer.renderAccountDeclarationText(
+            "renamed", childAccount, attestationCommit());
     String preflightText =
         CliMutationOutputRenderer.renderPreflightAcceptedText(
             CliPostEntryResultFixtures.preflightAccepted(
@@ -514,11 +516,13 @@ class CliQueryOutputRendererTest extends FinGrindCliTestSupport {
     DeclaredAccount account = declaredAccount("1000", "Cash", NormalBalance.DEBIT);
 
     String reactivatedText =
-        CliMutationOutputRenderer.renderAccountDeclarationText("reactivated", account);
+        CliMutationOutputRenderer.renderAccountDeclarationText(
+            "reactivated", account, attestationCommit());
     String unchangedText =
-        CliMutationOutputRenderer.renderAccountDeclarationText("unchanged", account);
+        CliMutationOutputRenderer.renderAccountDeclarationText("unchanged", account, null);
     String fallbackText =
-        CliMutationOutputRenderer.renderAccountDeclarationText("updated", account);
+        CliMutationOutputRenderer.renderAccountDeclarationText(
+            "updated", account, attestationCommit());
 
     assertTrue(reactivatedText.contains("Account Reactivated"));
     assertTrue(unchangedText.contains("Account Unchanged"));

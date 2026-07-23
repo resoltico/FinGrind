@@ -27,7 +27,9 @@ final class CliMaintenanceMutationResponseWriter {
                           new CliAdministrationJsonModels.BackupBookPayload(
                               absolutePath(backedUp.bookFilePath()),
                               backedUp.backupId().toString(),
-                              backedUp.acknowledgementResumed() ? "resumed" : "acknowledged"),
+                              backedUp.acknowledgementResumed() ? "resumed" : "acknowledged",
+                              CliAttestationCommitPresentation.payload(
+                                  backedUp.attestationCommit())),
                           CliEnvelopeMapper.successArtifacts(
                               CliEnvelopeMapper.successArtifact(
                                   ProtocolArtifactOutput.backupFileFormat(),
@@ -50,7 +52,8 @@ final class CliMaintenanceMutationResponseWriter {
                           new CliAdministrationJsonModels.BackupBookPayload(
                               absolutePath(pending.bookFilePath()),
                               pending.backupId().toString(),
-                              "pending"),
+                              "pending",
+                              null),
                           CliEnvelopeMapper.successArtifacts(
                               CliEnvelopeMapper.successArtifact(
                                   ProtocolArtifactOutput.backupFileFormat(),
@@ -87,7 +90,9 @@ final class CliMaintenanceMutationResponseWriter {
                       CliEnvelopeMapper.successEnvelope(
                           new CliAdministrationJsonModels.RestoreBookPayload(
                               absolutePath(restored.bookFilePath()),
-                              absolutePath(restored.bookKeyFilePath())),
+                              absolutePath(restored.bookKeyFilePath()),
+                              CliAttestationCommitPresentation.payload(
+                                  restored.attestationCommit())),
                           CliEnvelopeMapper.successArtifacts(
                               CliEnvelopeMapper.successArtifact(
                                   ProtocolArtifactOutput.bookFileFormat(), restored.bookFilePath()),

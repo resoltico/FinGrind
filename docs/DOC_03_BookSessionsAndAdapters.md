@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: ADAPTERS
-updated: "2026-07-22"
+updated: "2026-07-23"
 route:
   keywords: [fingrind, adapters, seams, sqlite, sqlite3mc, session, posting-fact, ffm, key-file, runtime, classifier]
   questions: ["how are committed facts stored in fingrind", "what are the storage seams in fingrind", "what does the sqlite adapter do in fingrind", "how does fingrind describe its sqlite runtime"]
@@ -195,6 +195,22 @@ public final class AttestationPostingCommitmentProjection
   callers therefore cannot accidentally project authenticated evidence onto an unrelated posting
 - Boundary: direct posting queries and `execute-plan` posting-query steps share this projection,
   so both paths publish the same cryptographically verified linkage
+
+## `AttestationCommitProjection`
+
+`AttestationCommitProjection` converts one verified durable append into the public attestation
+identity returned by the command that created it.
+
+```java
+public final class AttestationCommitProjection
+```
+
+- Surface: `fromVerifiedAppend(AttestationVerification)` returns the verification's exact operation
+  order and lowercase-hex operation head as `AttestationCommit`.
+- Integrity: callers must use the verification returned by the completed append, never reread the
+  current chain head; a later append could otherwise overstate which operation this command made.
+- Boundary: bookkeeping, maintenance, tax, and registry write paths share this projection before
+  their public result translators and CLI renderers publish the commitment.
 
 ## `AccountCurrencyTotals`
 

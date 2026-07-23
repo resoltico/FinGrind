@@ -115,7 +115,7 @@ final class SqliteFiscalYearCloseOperations {
                 closeDraft,
                 postingIdGenerator,
                 attestationAuthorizer);
-            ClosedFiscalYearRecord closedFiscalYear =
+            var closedFiscalYear =
                 postingPersistence.persistFiscalYearClose(
                     activeDatabase,
                     SqliteAttestationEvidenceStore.observeRequired(activeDatabase),
@@ -124,7 +124,8 @@ final class SqliteFiscalYearCloseOperations {
                     attestationAuthorizer);
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
             committed = true;
-            return new FiscalYearCloseOutcome.Closed(closedFiscalYear, false);
+            return new FiscalYearCloseOutcome.Closed(
+                closedFiscalYear.closedFiscalYear(), false, closedFiscalYear.attestationCommit());
           } catch (SqliteNativeException exception) {
             throw SqliteStoreOperations.sqliteFailure(
                 "Failed to close one SQLite fiscal year.", exception);

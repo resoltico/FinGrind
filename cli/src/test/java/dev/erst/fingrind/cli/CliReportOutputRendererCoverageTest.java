@@ -44,7 +44,7 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
     java.util.List<String> lines = csv.lines().toList();
 
     assertEquals(
-        "family,accountCode,postingId,effectiveDate,movementCurrencyCode,debitTotalCurrencyCode,debitTotalMinorUnits,creditTotalCurrencyCode,creditTotalMinorUnits,netAmountCurrencyCode,netAmountMinorUnits,balanceSide,runningNetAmountCurrencyCode,runningNetAmountMinorUnits,runningBalanceSide",
+        "family,accountCode,postingId,effectiveDate,movementCurrencyCode,debitTotalCurrencyCode,debitTotalMinorUnits,creditTotalCurrencyCode,creditTotalMinorUnits,netAmountCurrencyCode,netAmountMinorUnits,balanceSide,runningNetAmountCurrencyCode,runningNetAmountMinorUnits,runningBalanceSide,attestationOperationOrder,attestationOperationHead",
         lines.getFirst());
     assertEquals(1, lines.size());
   }
@@ -118,7 +118,8 @@ class CliReportOutputRendererCoverageTest extends CliFixtureSupport {
                     postingFact,
                     CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00")),
                     money("EUR", "10.00"),
-                    BalanceSide.DEBIT)),
+                    BalanceSide.DEBIT,
+                    null)),
             List.of(CurrencyBalance.ofTotals(money("EUR", "10.00"), money("EUR", "0.00"))));
 
     String csv = CliQueryOutputRenderer.renderAccountLedgerCsv(report);

@@ -164,7 +164,8 @@ final class PdfReportFixtureSupport {
               postingFact(index, amount),
               balance("EUR", amount, "0.00", amount, BalanceSide.DEBIT),
               money("EUR", Integer.toString((index + 1) * 50)),
-              BalanceSide.DEBIT));
+              BalanceSide.DEBIT,
+              null));
     }
     return entries;
   }

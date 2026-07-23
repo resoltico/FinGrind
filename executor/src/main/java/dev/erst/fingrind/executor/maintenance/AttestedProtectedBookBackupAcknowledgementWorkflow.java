@@ -12,6 +12,7 @@ import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationSigningSession;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
 import dev.erst.fingrind.core.attestation.AttestationVerifier;
+import dev.erst.fingrind.executor.AttestationCommitProjection;
 import dev.erst.fingrind.executor.spi.AttestedProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.PreparedPairPublication;
@@ -143,24 +144,27 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
                   backupPath,
                   backupKeyPath,
                   acknowledgement.backupId(),
-                  acknowledgementResumed));
+                  acknowledgementResumed,
+                  null));
       case APPEND -> {
         try {
-          store.appendAttestedOperation(
-              liveBook,
-              BACKUP_CREATED_OPERATION,
-              clock.instant(),
-              AttestationLifecycleMutationProjection.backupBook(
-                  BACKUP_CREATED_OPERATION.wireToken(), acknowledgement),
-              signingSession,
-              acknowledgement);
+          AttestationVerification verification =
+              store.appendAttestedOperation(
+                  liveBook,
+                  BACKUP_CREATED_OPERATION,
+                  clock.instant(),
+                  AttestationLifecycleMutationProjection.backupBook(
+                      BACKUP_CREATED_OPERATION.wireToken(), acknowledgement),
+                  signingSession,
+                  acknowledgement);
           yield MaintenanceDecision.accepted(
               new ProtectedBookBackupOutcome.BackedUp(
                   bookPath,
                   backupPath,
                   backupKeyPath,
                   acknowledgement.backupId(),
-                  acknowledgementResumed));
+                  acknowledgementResumed,
+                  AttestationCommitProjection.fromVerifiedAppend(verification)));
         } catch (BackupAcknowledgementConflictException exception) {
           yield AttestedProtectedBookMaintenanceDecisions.rejectedBackup(
               new ProtectedBookMaintenanceRejection.BackupAcknowledgementConflict(

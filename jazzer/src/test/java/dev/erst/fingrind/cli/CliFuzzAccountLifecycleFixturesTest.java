@@ -112,7 +112,8 @@ class CliFuzzAccountLifecycleFixturesTest {
                 return new BookOpeningOutcome.Opened(
                     initializedAt.plusSeconds(1),
                     bookIdentity,
-                    CliFuzzAttestationFixtures.syntheticTrustRoot());
+                    CliFuzzAttestationFixtures.syntheticTrustRoot(),
+                    CliFuzzAttestationFixtures.syntheticTrustRootCommitment());
               }
             },
             new CliFuzzFixtureStoreSupport.AbstractBookAdministrationStoreStub() {},

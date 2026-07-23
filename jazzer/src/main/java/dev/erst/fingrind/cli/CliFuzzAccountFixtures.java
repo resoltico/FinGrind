@@ -106,6 +106,7 @@ public final class CliFuzzAccountFixtures {
                 administrationService.declareAccount(
                     BookkeepingRequestPublishedLanguageTranslator.fromPublished(command),
                     attestationAuthorizer));
-    return BookkeepingPublishedLanguageTranslator.toPublished(outcome);
+    return BookkeepingPublishedLanguageTranslator.toPublished(
+        CliFuzzAttestationFixtures.completeAccountDeclarationOutcome(outcome));
   }
 }

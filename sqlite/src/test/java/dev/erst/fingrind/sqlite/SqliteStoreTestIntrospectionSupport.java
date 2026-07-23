@@ -260,7 +260,8 @@ class SqliteStoreTestIntrospectionSupport extends SqlitePostingFactFixtureSuppor
   }
 
   static AccountLedgerReport published(AccountLedgerView view) {
-    return BookkeepingReadReportPublishedLanguageTranslator.toPublished(bookIdentity(), view);
+    return BookkeepingReadReportPublishedLanguageTranslator.toPublished(
+        bookIdentity(), view, java.util.Map.of());
   }
 
   static PeriodSummaryReport published(PeriodSummaryView view) {

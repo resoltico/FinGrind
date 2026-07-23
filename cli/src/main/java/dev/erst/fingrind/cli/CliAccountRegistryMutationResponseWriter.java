@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AmendAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.RetireAccountResult;
@@ -20,16 +21,32 @@ final class CliAccountRegistryMutationResponseWriter {
     switch (result) {
       case DeclareAccountResult.Declared declared ->
           writeAccountSuccess(
-              OperationId.DECLARE_ACCOUNT, "declared", declared.account(), outputMode);
+              OperationId.DECLARE_ACCOUNT,
+              "declared",
+              declared.account(),
+              declared.attestationCommit(),
+              outputMode);
       case DeclareAccountResult.Reactivated reactivated ->
           writeAccountSuccess(
-              OperationId.DECLARE_ACCOUNT, "reactivated", reactivated.account(), outputMode);
+              OperationId.DECLARE_ACCOUNT,
+              "reactivated",
+              reactivated.account(),
+              reactivated.attestationCommit(),
+              outputMode);
       case DeclareAccountResult.Renamed renamed ->
           writeAccountSuccess(
-              OperationId.DECLARE_ACCOUNT, "renamed", renamed.account(), outputMode);
+              OperationId.DECLARE_ACCOUNT,
+              "renamed",
+              renamed.account(),
+              renamed.attestationCommit(),
+              outputMode);
       case DeclareAccountResult.Unchanged unchanged ->
           writeAccountSuccess(
-              OperationId.DECLARE_ACCOUNT, "unchanged", unchanged.account(), outputMode);
+              OperationId.DECLARE_ACCOUNT,
+              "unchanged",
+              unchanged.account(),
+              unchanged.attestationCommit(),
+              outputMode);
       case DeclareAccountResult.Rejected rejected ->
           writeRejected(OperationId.DECLARE_ACCOUNT, rejected.rejection(), outputMode);
     }
@@ -38,10 +55,19 @@ final class CliAccountRegistryMutationResponseWriter {
   void writeAmendAccountResult(AmendAccountResult result, OutputMode outputMode) {
     switch (result) {
       case AmendAccountResult.Amended amended ->
-          writeAccountSuccess(OperationId.AMEND_ACCOUNT, "amended", amended.account(), outputMode);
+          writeAccountSuccess(
+              OperationId.AMEND_ACCOUNT,
+              "amended",
+              amended.account(),
+              amended.attestationCommit(),
+              outputMode);
       case AmendAccountResult.Unchanged unchanged ->
           writeAccountSuccess(
-              OperationId.AMEND_ACCOUNT, "unchanged", unchanged.account(), outputMode);
+              OperationId.AMEND_ACCOUNT,
+              "unchanged",
+              unchanged.account(),
+              unchanged.attestationCommit(),
+              outputMode);
       case AmendAccountResult.Rejected rejected ->
           writeRejected(OperationId.AMEND_ACCOUNT, rejected.rejection(), outputMode);
     }
@@ -50,26 +76,40 @@ final class CliAccountRegistryMutationResponseWriter {
   void writeRetireAccountResult(RetireAccountResult result, OutputMode outputMode) {
     switch (result) {
       case RetireAccountResult.Retired retired ->
-          writeAccountSuccess(OperationId.RETIRE_ACCOUNT, "retired", retired.account(), outputMode);
+          writeAccountSuccess(
+              OperationId.RETIRE_ACCOUNT,
+              "retired",
+              retired.account(),
+              retired.attestationCommit(),
+              outputMode);
       case RetireAccountResult.Unchanged unchanged ->
           writeAccountSuccess(
-              OperationId.RETIRE_ACCOUNT, "unchanged", unchanged.account(), outputMode);
+              OperationId.RETIRE_ACCOUNT,
+              "unchanged",
+              unchanged.account(),
+              unchanged.attestationCommit(),
+              outputMode);
       case RetireAccountResult.Rejected rejected ->
           writeRejected(OperationId.RETIRE_ACCOUNT, rejected.rejection(), outputMode);
     }
   }
 
   private void writeAccountSuccess(
-      OperationId operationId, String outcome, DeclaredAccount account, OutputMode outputMode) {
+      OperationId operationId,
+      String outcome,
+      DeclaredAccount account,
+      @org.jspecify.annotations.Nullable AttestationCommit attestationCommit,
+      OutputMode outputMode) {
     outputMode.run(
         () ->
             outputChannel.writeEnvelope(
                 CliEnvelopeMapper.successEnvelope(
                     CliAdministrativeMutationPayloadSupport.declareAccountPayload(
-                        outcome, account))),
+                        outcome, account, attestationCommit))),
         () ->
             outputChannel.writeText(
-                CliMutationOutputRenderer.renderAccountDeclarationText(outcome, account)),
+                CliMutationOutputRenderer.renderAccountDeclarationText(
+                    outcome, account, attestationCommit)),
         () -> {
           throw new IllegalArgumentException(CliOperationText.unsupportedCsvOutput(operationId));
         });

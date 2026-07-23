@@ -50,15 +50,14 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
     Path databasePath = tempDirectory.resolve("declare-accounts.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       openBookWithNoDeclaredAccounts(postingFactStore);
-      assertEquals(
-          new AccountDeclarationOutcome.Declared(
-              registeredAccount(
-                  new AccountCode("1000"),
-                  new AccountName("Cash"),
-                  dev.erst.fingrind.core.AccountType.ASSET,
-                  NormalBalance.DEBIT,
-                  true,
-                  Instant.parse("2026-04-07T10:15:30Z"))),
+      assertDeclaredWithAttestation(
+          registeredAccount(
+              new AccountCode("1000"),
+              new AccountName("Cash"),
+              dev.erst.fingrind.core.AccountType.ASSET,
+              NormalBalance.DEBIT,
+              true,
+              Instant.parse("2026-04-07T10:15:30Z")),
           declareAccount(
               postingFactStore,
               new AccountCode("1000"),
@@ -76,15 +75,14 @@ class SqliteAccountRegistryBehaviorTest extends SqlitePostingFactStoreTestSuppor
               NormalBalance.DEBIT,
               Instant.parse("2026-04-07T10:15:30Z")));
       deactivateAccount(databasePath, "1000");
-      assertEquals(
-          new AccountDeclarationOutcome.Reactivated(
-              registeredAccount(
-                  new AccountCode("1000"),
-                  new AccountName("Cash main"),
-                  dev.erst.fingrind.core.AccountType.ASSET,
-                  NormalBalance.DEBIT,
-                  true,
-                  Instant.parse("2026-04-07T10:15:30Z"))),
+      assertReactivatedWithAttestation(
+          registeredAccount(
+              new AccountCode("1000"),
+              new AccountName("Cash main"),
+              dev.erst.fingrind.core.AccountType.ASSET,
+              NormalBalance.DEBIT,
+              true,
+              Instant.parse("2026-04-07T10:15:30Z")),
           declareAccount(
               postingFactStore,
               new AccountCode("1000"),

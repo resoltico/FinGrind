@@ -1,7 +1,10 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -41,7 +44,12 @@ class SqlitePostingAccountFixtureSupport extends SqliteStoreFixtureSupport {
   }
 
   static BookOpeningOutcome.Opened openedBook(Instant initializedAt) {
-    return new BookOpeningOutcome.Opened(initializedAt, bookIdentity(), attestationTrustRoot());
+    AttestationRegistryInspection trustRoot = attestationTrustRoot();
+    return new BookOpeningOutcome.Opened(
+        initializedAt,
+        bookIdentity(),
+        trustRoot,
+        new AttestationCommit(trustRoot.headOrder(), trustRoot.operationHeadHex()));
   }
 
   static BookLifecycleInspection.Initialized initializedLifecycleInspection(
@@ -223,15 +231,14 @@ class SqlitePostingAccountFixtureSupport extends SqliteStoreFixtureSupport {
   }
 
   static void declareMinimalNumericAccounts(SqlitePostingFactStore postingFactStore) {
-    assertEquals(
-        new AccountDeclarationOutcome.Declared(
-            registeredAccount(
-                new AccountCode("1000"),
-                new AccountName("Cash"),
-                AccountType.ASSET,
-                NormalBalance.DEBIT,
-                true,
-                Instant.parse("2026-04-07T10:15:30Z"))),
+    assertDeclaredWithAttestation(
+        registeredAccount(
+            new AccountCode("1000"),
+            new AccountName("Cash"),
+            AccountType.ASSET,
+            NormalBalance.DEBIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z")),
         declareAccount(
             postingFactStore,
             new AccountCode("1000"),
@@ -239,15 +246,14 @@ class SqlitePostingAccountFixtureSupport extends SqliteStoreFixtureSupport {
             AccountType.ASSET,
             NormalBalance.DEBIT,
             Instant.parse("2026-04-07T10:15:30Z")));
-    assertEquals(
-        new AccountDeclarationOutcome.Declared(
-            registeredAccount(
-                new AccountCode("2000"),
-                new AccountName("Revenue"),
-                AccountType.REVENUE,
-                NormalBalance.CREDIT,
-                true,
-                Instant.parse("2026-04-07T10:15:30Z"))),
+    assertDeclaredWithAttestation(
+        registeredAccount(
+            new AccountCode("2000"),
+            new AccountName("Revenue"),
+            AccountType.REVENUE,
+            NormalBalance.CREDIT,
+            true,
+            Instant.parse("2026-04-07T10:15:30Z")),
         declareAccount(
             postingFactStore,
             new AccountCode("2000"),
@@ -255,6 +261,22 @@ class SqlitePostingAccountFixtureSupport extends SqliteStoreFixtureSupport {
             AccountType.REVENUE,
             NormalBalance.CREDIT,
             Instant.parse("2026-04-07T10:15:30Z")));
+  }
+
+  static void assertDeclaredWithAttestation(
+      RegisteredAccount expectedAccount, AccountDeclarationOutcome outcome) {
+    AccountDeclarationOutcome.Declared declared =
+        assertInstanceOf(AccountDeclarationOutcome.Declared.class, outcome);
+    assertEquals(expectedAccount, declared.account());
+    assertNotNull(declared.attestationCommit());
+  }
+
+  static void assertReactivatedWithAttestation(
+      RegisteredAccount expectedAccount, AccountDeclarationOutcome outcome) {
+    AccountDeclarationOutcome.Reactivated reactivated =
+        assertInstanceOf(AccountDeclarationOutcome.Reactivated.class, outcome);
+    assertEquals(expectedAccount, reactivated.account());
+    assertNotNull(reactivated.attestationCommit());
   }
 
   private static AttestationRegistryInspection attestationTrustRoot() {

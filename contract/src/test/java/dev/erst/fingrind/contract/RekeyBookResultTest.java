@@ -9,10 +9,11 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 /** Tests for {@link RekeyBookResult}. */
-class RekeyBookResultTest {
+class RekeyBookResultTest extends ContractTestSupport {
   @Test
   void variants_validateNonNullState() {
-    RekeyBookResult.Rekeyed rekeyed = new RekeyBookResult.Rekeyed(Path.of("book.sqlite"));
+    RekeyBookResult.Rekeyed rekeyed =
+        new RekeyBookResult.Rekeyed(Path.of("book.sqlite"), attestationCommit());
     RekeyBookResult.Rejected rejected =
         new RekeyBookResult.Rejected(
             new BookMaintenanceRejection.SecretTargetOccupied(Path.of("book.new-key")));
@@ -25,7 +26,9 @@ class RekeyBookResultTest {
 
   @Test
   void variants_rejectNullState() {
-    assertThrows(NullPointerException.class, () -> new RekeyBookResult.Rekeyed(nullOf()));
+    assertThrows(
+        NullPointerException.class,
+        () -> new RekeyBookResult.Rekeyed(nullOf(), attestationCommit()));
     assertThrows(NullPointerException.class, () -> new RekeyBookResult.Rejected(nullOf()));
   }
 }

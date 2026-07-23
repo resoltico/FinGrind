@@ -137,7 +137,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             List.of(eurDebitBalance),
             List.of(
                 new AccountLedgerEntry(
-                    postingFact, eurDebitBalance, money("EUR", "6.00"), BalanceSide.DEBIT)),
+                    postingFact, eurDebitBalance, money("EUR", "6.00"), BalanceSide.DEBIT, null)),
             List.of(eurDebitBalance));
     PeriodSummaryReport periodSummaryReport =
         new PeriodSummaryReport(

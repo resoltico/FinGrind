@@ -3,7 +3,6 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
 import java.time.Instant;
-import java.util.HexFormat;
 import org.jspecify.annotations.Nullable;
 
 /** Shared ledger-plan transaction defaults for SQLite capability wrappers. */
@@ -53,7 +52,6 @@ interface SqlitePlanExecutionCapabilityView
             planId,
             recordedAt,
             attestationAuthorizer);
-    return new AttestationCommit(
-        verification.headOrder(), HexFormat.of().formatHex(verification.operationHead()));
+    return dev.erst.fingrind.executor.AttestationCommitProjection.fromVerifiedAppend(verification);
   }
 }

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.runtime.BookFormatContract;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -125,7 +126,8 @@ abstract class AbstractInMemoryBookAdministrationSession
           return new BookOpeningOutcome.Opened(
               initializedAt,
               bookIdentity,
-              Objects.requireNonNull(attestationTrustRoot, "attestationTrustRoot"));
+              Objects.requireNonNull(attestationTrustRoot, "attestationTrustRoot"),
+              attestationCommit(attestationTrustRoot));
         });
   }
 
@@ -154,6 +156,12 @@ abstract class AbstractInMemoryBookAdministrationSession
         List.of(),
         List.of(),
         List.of());
+  }
+
+  private static AttestationCommit attestationCommit(
+      AttestationRegistryInspection attestationTrustRoot) {
+    return new AttestationCommit(
+        attestationTrustRoot.headOrder(), attestationTrustRoot.operationHeadHex());
   }
 
   @Override

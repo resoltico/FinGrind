@@ -1,6 +1,5 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
-import java.math.BigInteger;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -11,24 +10,13 @@ public sealed interface AttestationRegistryMutationResult
         AttestationRegistryMutationResult.AuthorizationRejected {
 
   /** One immutable authority-changing operation appended to the selected book. */
-  record Mutated(
-      Path bookFilePath, String operationKind, BigInteger headOrder, String operationHeadHex)
+  record Mutated(Path bookFilePath, String operationKind, AttestationCommit attestationCommit)
       implements AttestationRegistryMutationResult {
     public Mutated {
       bookFilePath =
           Objects.requireNonNull(bookFilePath, "bookFilePath").toAbsolutePath().normalize();
       Objects.requireNonNull(operationKind, "operationKind");
-      Objects.requireNonNull(headOrder, "headOrder");
-      operationHeadHex = requireOperationHeadHex(operationHeadHex);
-    }
-
-    private static String requireOperationHeadHex(String value) {
-      String checked = Objects.requireNonNull(value, "operationHeadHex");
-      if (!checked.matches("[0-9a-f]{64}")) {
-        throw new IllegalArgumentException(
-            "operationHeadHex must contain 64 lowercase hexadecimal characters.");
-      }
-      return checked;
+      Objects.requireNonNull(attestationCommit, "attestationCommit");
     }
   }
 

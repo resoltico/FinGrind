@@ -5,6 +5,7 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalT
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requirePositive;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels.AttestationCommitPayload;
 import org.jspecify.annotations.Nullable;
 
 /** Administration and inspection JSON records emitted by the CLI transport layer. */
@@ -63,7 +64,7 @@ public interface CliAdministrationJsonModels {
       java.util.List<String> tightenedParentDirectories,
       BookIdentityPayload bookIdentity,
       String attestationBookId,
-      String genesisOperationHead,
+      AttestationCommitPayload attestationCommit,
       CliAttestationJsonModels.AttestationRegistryPayload attestationTrustRoot)
       implements CliSuccessPayload {
     public OpenBookPayload {
@@ -73,7 +74,7 @@ public interface CliAdministrationJsonModels {
           CliJsonModelValidation.copyList(tightenedParentDirectories, "tightenedParentDirectories");
       java.util.Objects.requireNonNull(bookIdentity, "bookIdentity");
       attestationBookId = requireText(attestationBookId, "attestationBookId");
-      genesisOperationHead = requireText(genesisOperationHead, "genesisOperationHead");
+      java.util.Objects.requireNonNull(attestationCommit, "attestationCommit");
       java.util.Objects.requireNonNull(attestationTrustRoot, "attestationTrustRoot");
     }
   }
@@ -101,14 +102,26 @@ public interface CliAdministrationJsonModels {
     }
   }
 
-  record RekeyBookPayload(String bookFile, String newBookKeyFile) implements CliSuccessPayload {
+  record RekeyBookPayload(
+      String bookFile,
+      String newBookKeyFile,
+      @com.fasterxml.jackson.annotation.JsonInclude(
+              com.fasterxml.jackson.annotation.JsonInclude.Include.ALWAYS)
+          @Nullable AttestationCommitPayload attestationCommit)
+      implements CliSuccessPayload {
     public RekeyBookPayload {
       bookFile = requireText(bookFile, "bookFile");
       newBookKeyFile = requireText(newBookKeyFile, "newBookKeyFile");
     }
   }
 
-  record BackupBookPayload(String bookFile, String backupId, String acknowledgementState)
+  record BackupBookPayload(
+      String bookFile,
+      String backupId,
+      String acknowledgementState,
+      @com.fasterxml.jackson.annotation.JsonInclude(
+              com.fasterxml.jackson.annotation.JsonInclude.Include.ALWAYS)
+          @Nullable AttestationCommitPayload attestationCommit)
       implements CliSuccessPayload {
     public BackupBookPayload {
       bookFile = requireText(bookFile, "bookFile");
@@ -117,7 +130,13 @@ public interface CliAdministrationJsonModels {
     }
   }
 
-  record RestoreBookPayload(String bookFile, String bookKeyFilePath) implements CliSuccessPayload {
+  record RestoreBookPayload(
+      String bookFile,
+      String bookKeyFilePath,
+      @com.fasterxml.jackson.annotation.JsonInclude(
+              com.fasterxml.jackson.annotation.JsonInclude.Include.ALWAYS)
+          @Nullable AttestationCommitPayload attestationCommit)
+      implements CliSuccessPayload {
     public RestoreBookPayload {
       bookFile = requireText(bookFile, "bookFile");
       bookKeyFilePath = requireText(bookKeyFilePath, "bookKeyFilePath");
@@ -125,13 +144,12 @@ public interface CliAdministrationJsonModels {
   }
 
   record AttestationRegistryMutationPayload(
-      String bookFile, String operationKind, String headOrder, String operationHead)
+      String bookFile, String operationKind, AttestationCommitPayload attestationCommit)
       implements CliSuccessPayload {
     public AttestationRegistryMutationPayload {
       bookFile = requireText(bookFile, "bookFile");
       operationKind = requireText(operationKind, "operationKind");
-      headOrder = requireText(headOrder, "headOrder");
-      operationHead = requireText(operationHead, "operationHead");
+      java.util.Objects.requireNonNull(attestationCommit, "attestationCommit");
     }
   }
 
@@ -142,7 +160,8 @@ public interface CliAdministrationJsonModels {
       String resultHoldingAccountCode,
       java.util.List<CliBookQueryJsonModels.BalanceBucketPayload> sweptTotals,
       String sweptAt,
-      java.util.List<String> sweepPostingIds)
+      java.util.List<String> sweepPostingIds,
+      AttestationCommitPayload attestationCommit)
       implements CliSuccessPayload {
     public SweptInterimResultPayload {
       requirePositive(sweepOrder, "sweepOrder");
@@ -152,6 +171,7 @@ public interface CliAdministrationJsonModels {
       sweptTotals = CliJsonModelValidation.copyList(sweptTotals, "sweptTotals");
       sweptAt = requireText(sweptAt, "sweptAt");
       sweepPostingIds = CliJsonModelValidation.copyList(sweepPostingIds, "sweepPostingIds");
+      java.util.Objects.requireNonNull(attestationCommit, "attestationCommit");
     }
   }
 
@@ -164,7 +184,10 @@ public interface CliAdministrationJsonModels {
       String retainedAccumulatedAccountCode,
       String closedAt,
       boolean idempotentReplay,
-      java.util.List<String> closePostingIds)
+      java.util.List<String> closePostingIds,
+      @com.fasterxml.jackson.annotation.JsonInclude(
+              com.fasterxml.jackson.annotation.JsonInclude.Include.ALWAYS)
+          @Nullable AttestationCommitPayload attestationCommit)
       implements CliSuccessPayload {
     public ClosedFiscalYearPayload {
       requirePositive(closeOrder, "closeOrder");
@@ -176,6 +199,14 @@ public interface CliAdministrationJsonModels {
           requireText(retainedAccumulatedAccountCode, "retainedAccumulatedAccountCode");
       closedAt = requireText(closedAt, "closedAt");
       closePostingIds = CliJsonModelValidation.copyList(closePostingIds, "closePostingIds");
+      if (idempotentReplay && attestationCommit != null) {
+        throw new IllegalArgumentException(
+            "An idempotent fiscal year close replay must not report a newly appended attestation operation.");
+      }
+      if (!idempotentReplay && attestationCommit == null) {
+        throw new IllegalArgumentException(
+            "A newly closed fiscal year must report its attestation operation.");
+      }
     }
   }
 

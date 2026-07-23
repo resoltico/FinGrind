@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.ClosedFiscalYear;
 import dev.erst.fingrind.contract.bookkeeping.SweptInterimResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
@@ -9,7 +10,9 @@ import java.util.List;
 final class CliPeriodCloseOutputRenderer {
   private CliPeriodCloseOutputRenderer() {}
 
-  static String renderSweptInterimResultText(SweptInterimResult sweptInterimResult) {
+  static String renderSweptInterimResultText(
+      SweptInterimResult sweptInterimResult,
+      @org.jspecify.annotations.Nullable AttestationCommit attestationCommit) {
     List<List<String>> rows = new java.util.ArrayList<>();
     rows.add(List.of("Sweep order", Integer.toString(sweptInterimResult.sweepOrder())));
     rows.add(
@@ -39,12 +42,16 @@ final class CliPeriodCloseOutputRenderer {
           List.of(
               "Outcome", "No closing movements were required for the selected reporting period."));
     }
+    CliAttestationCommitPresentation.appendTextRows(
+        rows, attestationCommit, "No attestation operation was returned");
     return CliTextFormat.renderTitledBlock(
         "Interim Result Swept", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
   static String renderClosedFiscalYearText(
-      ClosedFiscalYear closedFiscalYear, boolean idempotentReplay) {
+      ClosedFiscalYear closedFiscalYear,
+      boolean idempotentReplay,
+      @org.jspecify.annotations.Nullable AttestationCommit attestationCommit) {
     List<List<String>> rows = new java.util.ArrayList<>();
     rows.add(List.of("Close order", Integer.toString(closedFiscalYear.closeOrder())));
     rows.add(
@@ -70,6 +77,12 @@ final class CliPeriodCloseOutputRenderer {
                     .map(dev.erst.fingrind.core.PostingId::value)
                     .collect(java.util.stream.Collectors.joining(", "))));
     rows.add(List.of("Idempotent replay", CliQueryScopeText.displayBooleanLabel(idempotentReplay)));
+    CliAttestationCommitPresentation.appendTextRows(
+        rows,
+        attestationCommit,
+        idempotentReplay
+            ? "No operation appended (idempotent replay)"
+            : "No attestation operation was returned");
     return CliTextFormat.renderTitledBlock(
         idempotentReplay ? "Fiscal Year Already Closed" : "Fiscal Year Closed",
         CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));

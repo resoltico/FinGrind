@@ -36,7 +36,12 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
             BackupBookResult.BackedUp.class,
             ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
                 new ProtectedBookBackupOutcome.BackedUp(
-                    BOOK_PATH, BACKUP_PATH, KEY_PATH, BACKUP_ID, true)));
+                    BOOK_PATH,
+                    BACKUP_PATH,
+                    KEY_PATH,
+                    BACKUP_ID,
+                    true,
+                    ExecutorAccountingTestSupport.attestationCommit())));
     assertEquals(BACKUP_ID, backedUp.backupId());
     assertTrue(backedUp.acknowledgementResumed());
 
@@ -59,11 +64,13 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
     assertInstanceOf(
         RestoreBookResult.Restored.class,
         ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-            new ProtectedBookRestoreOutcome.Restored(BOOK_PATH, KEY_PATH)));
+            new ProtectedBookRestoreOutcome.Restored(
+                BOOK_PATH, KEY_PATH, ExecutorAccountingTestSupport.attestationCommit())));
     assertInstanceOf(
         RekeyBookResult.Rekeyed.class,
         ProtectedBookMaintenancePublishedLanguageTranslator.toPublished(
-            new ProtectedBookRekeyOutcome.Rekeyed(BOOK_PATH, KEY_PATH)));
+            new ProtectedBookRekeyOutcome.Rekeyed(
+                BOOK_PATH, KEY_PATH, ExecutorAccountingTestSupport.attestationCommit())));
   }
 
   @Test

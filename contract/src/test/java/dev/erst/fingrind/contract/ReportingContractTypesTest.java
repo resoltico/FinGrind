@@ -109,7 +109,8 @@ class ReportingContractTypesTest {
             postingFact("posting-1", "idem-1"),
             EUR_DEBIT_BALANCE,
             Money.parse("EUR", "15.00"),
-            BalanceSide.DEBIT);
+            BalanceSide.DEBIT,
+            null);
     AccountLedgerReport accountLedgerReport =
         new AccountLedgerReport(
             ContractFixtures.bookIdentity(),
@@ -299,7 +300,11 @@ class ReportingContractTypesTest {
         NullPointerException.class,
         () ->
             new AccountLedgerEntry(
-                nullOf(), EUR_DEBIT_BALANCE, EUR_DEBIT_BALANCE.netAmount(), BalanceSide.DEBIT));
+                nullOf(),
+                EUR_DEBIT_BALANCE,
+                EUR_DEBIT_BALANCE.netAmount(),
+                BalanceSide.DEBIT,
+                null));
     assertThrows(NullPointerException.class, () -> new AccountLedgerResult.Reported(nullOf()));
     assertThrows(NullPointerException.class, () -> new AccountLedgerResult.Rejected(nullOf()));
     assertThrows(

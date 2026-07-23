@@ -42,7 +42,8 @@ final class CliBookAccessOutputRenderer {
     rows.addAll(CliBookIdentityDisplay.rows(opened.bookIdentity()));
     rows.add(List.of("Initialized at", CliTextDisplay.instant(opened.initializedAt())));
     rows.add(List.of("Attestation book ID", opened.attestationTrustRoot().bookId().toString()));
-    rows.add(List.of("Genesis operation head", opened.attestationTrustRoot().operationHeadHex()));
+    CliAttestationCommitPresentation.appendTextRows(
+        rows, opened.attestationCommit(), "No attestation operation was returned");
     rows.add(
         List.of(
             "Founders",
@@ -62,6 +63,8 @@ final class CliBookAccessOutputRenderer {
     List<List<String>> rows = new java.util.ArrayList<>();
     rows.add(List.of("Book file", CliTextDisplay.path(rekeyed.bookFilePath())));
     rows.add(List.of("New book key file", CliTextDisplay.path(newBookKeyFilePath)));
+    CliAttestationCommitPresentation.appendTextRows(
+        rows, rekeyed.attestationCommit(), "No attestation operation was returned");
     return CliTextFormat.renderTitledBlock(
         "Book Rekeyed", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }

@@ -124,6 +124,7 @@ final class ReportCrossFormatPdfFacts {
     private void consumeNormalizedLine(String expected) {
       skipNoise();
       String expectedNormalized = normalized(expected);
+      String expectedCompact = compact(expected);
       StringBuilder actual = new StringBuilder();
       int startIndex = index;
       while (index < lines.size()) {
@@ -136,11 +137,10 @@ final class ReportCrossFormatPdfFacts {
         }
         actual.append(lines.get(index));
         index++;
-        String actualNormalized = normalized(actual.toString());
-        if (actualNormalized.equals(expectedNormalized)) {
+        if (compact(actual.toString()).equals(expectedCompact)) {
           return;
         }
-        if (actualNormalized.length() > expectedNormalized.length()) {
+        if (compact(actual.toString()).length() > expectedCompact.length()) {
           break;
         }
       }
@@ -181,6 +181,10 @@ final class ReportCrossFormatPdfFacts {
 
     private static String normalized(String value) {
       return value.replaceAll("\\s+", " ").trim();
+    }
+
+    private static String compact(String value) {
+      return value.replaceAll("\\s+", "");
     }
   }
 }

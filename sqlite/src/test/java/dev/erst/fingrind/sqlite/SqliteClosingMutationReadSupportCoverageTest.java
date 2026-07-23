@@ -10,7 +10,6 @@ import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReportingPeriod;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.ClosedFiscalYearRecord;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner;
@@ -168,15 +167,14 @@ class SqliteClosingMutationReadSupportCoverageTest extends SqlitePostingFactStor
       String accountCode,
       String accountName,
       FinancialPositionLineClassification classification) {
-    assertEquals(
-        new AccountDeclarationOutcome.Declared(
-            new RegisteredAccount(
-                new AccountCode(accountCode),
-                new AccountName(accountName),
-                AccountType.EQUITY,
-                financialPositionTaxonomy(classification),
-                true,
-                CLOSED_CLOCK.instant())),
+    assertDeclaredWithAttestation(
+        new RegisteredAccount(
+            new AccountCode(accountCode),
+            new AccountName(accountName),
+            AccountType.EQUITY,
+            financialPositionTaxonomy(classification),
+            true,
+            CLOSED_CLOCK.instant()),
         postingFactStore.declareAccount(
             new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
                 new AccountCode(accountCode),

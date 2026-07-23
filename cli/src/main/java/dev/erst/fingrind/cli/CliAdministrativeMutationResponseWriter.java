@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliAdministrationJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AmendAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.AttestationRegistryMutationResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
@@ -14,11 +15,10 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
+import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
-import java.util.function.BiFunction;
-import java.util.function.Function;
 
 /** Renders administrative CLI mutation results through the shared output channel. */
 final class CliAdministrativeMutationResponseWriter {
@@ -51,7 +51,8 @@ final class CliAdministrativeMutationResponseWriter {
                               CliBookInspectionPayloadMapper.bookIdentityPayload(
                                   opened.bookIdentity()),
                               opened.attestationTrustRoot().bookId().toString(),
-                              opened.attestationTrustRoot().operationHeadHex(),
+                              CliAttestationCommitPresentation.requiredPayload(
+                                  opened.attestationCommit()),
                               CliAttestationPayloadMapper.registryPayload(
                                   opened.attestationTrustRoot())))),
               () ->
@@ -121,7 +122,9 @@ final class CliAdministrativeMutationResponseWriter {
                       CliEnvelopeMapper.successEnvelope(
                           new CliAdministrationJsonModels.RekeyBookPayload(
                               CliPublicPaths.absoluteValue(rekeyed.bookFilePath()),
-                              CliPublicPaths.absoluteValue(newBookKeyFilePath)),
+                              CliPublicPaths.absoluteValue(newBookKeyFilePath),
+                              CliAttestationCommitPresentation.payload(
+                                  rekeyed.attestationCommit())),
                           CliEnvelopeMapper.successArtifacts(
                               CliEnvelopeMapper.successArtifact(
                                   ProtocolArtifactOutput.bookKeyFileFormat(),
@@ -151,18 +154,13 @@ final class CliAdministrativeMutationResponseWriter {
                           new CliAdministrationJsonModels.AttestationRegistryMutationPayload(
                               CliPublicPaths.absoluteValue(mutated.bookFilePath()),
                               mutated.operationKind(),
-                              mutated.headOrder().toString(),
-                              mutated.operationHeadHex()))),
+                              CliAttestationCommitPresentation.requiredPayload(
+                                  mutated.attestationCommit())))),
               () ->
                   outputChannel.writeText(
                       CliTextFormat.renderTitledBlock(
                           "Attestation Registry Updated",
-                          CliTextFormat.renderKeyValueBlock(
-                              List.of(
-                                  List.of("Book file", CliTextDisplay.path(mutated.bookFilePath())),
-                                  List.of("Operation kind", mutated.operationKind()),
-                                  List.of("Head order", mutated.headOrder().toString()),
-                                  List.of("Operation head", mutated.operationHeadHex()))))),
+                          CliTextFormat.renderKeyValueBlock(registryMutationRows(mutated)))),
               () -> {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(operationId));
@@ -191,27 +189,21 @@ final class CliAdministrativeMutationResponseWriter {
               OperationId.DECLARE_TAX_REGISTRATION,
               "declared",
               declared.registration(),
-              registration ->
-                  CliTaxPayloadMapper.taxRegistrationMutationPayload("declared", registration),
-              CliTaxOutputRenderer::renderTaxRegistrationMutationText,
+              declared.attestationCommit(),
               outputMode);
       case DeclareTaxRegistrationResult.Updated updated ->
           writeMutationSuccess(
               OperationId.DECLARE_TAX_REGISTRATION,
               "updated",
               updated.registration(),
-              registration ->
-                  CliTaxPayloadMapper.taxRegistrationMutationPayload("updated", registration),
-              CliTaxOutputRenderer::renderTaxRegistrationMutationText,
+              updated.attestationCommit(),
               outputMode);
       case DeclareTaxRegistrationResult.Unchanged unchanged ->
           writeMutationSuccess(
               OperationId.DECLARE_TAX_REGISTRATION,
               "unchanged",
               unchanged.registration(),
-              registration ->
-                  CliTaxPayloadMapper.taxRegistrationMutationPayload("unchanged", registration),
-              CliTaxOutputRenderer::renderTaxRegistrationMutationText,
+              unchanged.attestationCommit(),
               outputMode);
       case DeclareTaxRegistrationResult.Rejected rejected ->
           outputChannel.writeRejectedEnvelope(
@@ -228,18 +220,22 @@ final class CliAdministrativeMutationResponseWriter {
     accountRegistryWriter.writeRetireAccountResult(result, outputMode);
   }
 
-  private <T> void writeMutationSuccess(
+  private void writeMutationSuccess(
       OperationId operationId,
       String outcome,
-      T subject,
-      Function<T, dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload> payloadFactory,
-      BiFunction<String, T, String> textRenderer,
+      DeclaredTaxRegistration registration,
+      @org.jspecify.annotations.Nullable AttestationCommit attestationCommit,
       OutputMode outputMode) {
     outputMode.run(
         () ->
             outputChannel.writeEnvelope(
-                CliEnvelopeMapper.successEnvelope(payloadFactory.apply(subject))),
-        () -> outputChannel.writeText(textRenderer.apply(outcome, subject)),
+                CliEnvelopeMapper.successEnvelope(
+                    CliTaxPayloadMapper.taxRegistrationMutationPayload(
+                        outcome, registration, attestationCommit))),
+        () ->
+            outputChannel.writeText(
+                CliTaxOutputRenderer.renderTaxRegistrationMutationText(
+                    outcome, registration, attestationCommit)),
         () -> {
           throw new IllegalArgumentException(CliOperationText.unsupportedCsvOutput(operationId));
         });
@@ -271,11 +267,13 @@ final class CliAdministrativeMutationResponseWriter {
                               swept.sweptInterimResult().sweptAt().toString(),
                               swept.sweptInterimResult().sweepPostingIds().stream()
                                   .map(dev.erst.fingrind.core.PostingId::value)
-                                  .toList()))),
+                                  .toList(),
+                              CliAttestationCommitPresentation.requiredPayload(
+                                  swept.attestationCommit())))),
               () ->
                   outputChannel.writeText(
                       CliPeriodCloseOutputRenderer.renderSweptInterimResultText(
-                          swept.sweptInterimResult())),
+                          swept.sweptInterimResult(), swept.attestationCommit())),
               () -> {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(OperationId.INTERIM_RESULT_SWEEP));
@@ -314,11 +312,15 @@ final class CliAdministrativeMutationResponseWriter {
                               closed.idempotentReplay(),
                               closed.closedFiscalYear().closePostingIds().stream()
                                   .map(dev.erst.fingrind.core.PostingId::value)
-                                  .toList()))),
+                                  .toList(),
+                              CliAttestationCommitPresentation.payload(
+                                  closed.attestationCommit())))),
               () ->
                   outputChannel.writeText(
                       CliPeriodCloseOutputRenderer.renderClosedFiscalYearText(
-                          closed.closedFiscalYear(), closed.idempotentReplay())),
+                          closed.closedFiscalYear(),
+                          closed.idempotentReplay(),
+                          closed.attestationCommit())),
               () -> {
                 throw new IllegalArgumentException(
                     CliOperationText.unsupportedCsvOutput(OperationId.FISCAL_YEAR_CLOSE));
@@ -329,5 +331,15 @@ final class CliAdministrativeMutationResponseWriter {
                   OperationId.FISCAL_YEAR_CLOSE, rejected.rejection()),
               outputMode);
     }
+  }
+
+  private static List<List<String>> registryMutationRows(
+      AttestationRegistryMutationResult.Mutated mutated) {
+    List<List<String>> rows = new java.util.ArrayList<>();
+    rows.add(List.of("Book file", CliTextDisplay.path(mutated.bookFilePath())));
+    rows.add(List.of("Operation kind", mutated.operationKind()));
+    CliAttestationCommitPresentation.appendTextRows(
+        rows, mutated.attestationCommit(), "No attestation operation was returned");
+    return List.copyOf(rows);
   }
 }

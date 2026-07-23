@@ -198,7 +198,13 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
   }
 
   protected static OpenBookResult.Opened openedBookResult(Instant initializedAt) {
-    return new OpenBookResult.Opened(initializedAt, bookIdentity(), attestationTrustRoot());
+    AttestationRegistryInspection trustRoot = attestationTrustRoot();
+    return new OpenBookResult.Opened(
+        initializedAt,
+        bookIdentity(),
+        trustRoot,
+        new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
+            trustRoot.headOrder(), trustRoot.operationHeadHex()));
   }
 
   protected static AttestationRegistryInspection attestationTrustRoot() {

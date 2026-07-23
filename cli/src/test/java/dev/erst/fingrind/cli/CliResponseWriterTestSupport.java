@@ -60,6 +60,11 @@ import tools.jackson.databind.ObjectMapper;
 class CliResponseWriterTestSupport extends CliIoFixtureSupport {
   protected CliResponseWriterTestSupport() {}
 
+  protected static dev.erst.fingrind.contract.bookkeeping.AttestationCommit attestationCommit() {
+    return new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
+        java.math.BigInteger.ONE, "a".repeat(64));
+  }
+
   static PostingFact postingFact() {
     return new PostingFact(
         new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),

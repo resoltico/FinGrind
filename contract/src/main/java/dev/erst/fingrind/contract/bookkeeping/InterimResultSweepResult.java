@@ -7,9 +7,11 @@ public sealed interface InterimResultSweepResult
     permits InterimResultSweepResult.Swept, InterimResultSweepResult.Rejected {
 
   /** Successful interim-result-sweep outcome carrying the durable sweep fact. */
-  record Swept(SweptInterimResult sweptInterimResult) implements InterimResultSweepResult {
+  record Swept(SweptInterimResult sweptInterimResult, AttestationCommit attestationCommit)
+      implements InterimResultSweepResult {
     public Swept {
       Objects.requireNonNull(sweptInterimResult, "sweptInterimResult");
+      Objects.requireNonNull(attestationCommit, "attestationCommit");
     }
   }
 

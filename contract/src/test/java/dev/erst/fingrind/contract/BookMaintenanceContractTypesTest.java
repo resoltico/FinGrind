@@ -175,7 +175,7 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
     UUID backupId = UUID.randomUUID();
     BackupBookResult.BackedUp backedUp =
         new BackupBookResult.BackedUp(
-            hint(bookFile), hint(backupFile), hint(backupKeyFile), backupId, false);
+            hint(bookFile), hint(backupFile), hint(backupKeyFile), backupId, false, null);
     BackupBookResult.AcknowledgementPending acknowledgementPending =
         new BackupBookResult.AcknowledgementPending(
             hint(bookFile), hint(backupFile), hint(backupKeyFile), backupId);
@@ -189,7 +189,9 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
     BackupBookResult.Rejected backupRejected = new BackupBookResult.Rejected(rejection);
     RestoreBookResult.Restored restored =
         new RestoreBookResult.Restored(
-            hint(bookFile), hint(bookFile.resolveSibling("acme-restored.book-key")));
+            hint(bookFile),
+            hint(bookFile.resolveSibling("acme-restored.book-key")),
+            attestationCommit());
     RestoreBookResult.Rejected restoreRejected = new RestoreBookResult.Rejected(rejection);
     BookMigrationPolicy migrationPolicy = BookMigrationPolicy.current(9);
 
@@ -218,22 +220,22 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
         NullPointerException.class,
         () ->
             new BackupBookResult.BackedUp(
-                nullOf(), hint(backupFile), hint(backupKeyFile), backupId, false));
+                nullOf(), hint(backupFile), hint(backupKeyFile), backupId, false, null));
     assertThrows(
         NullPointerException.class,
         () ->
             new BackupBookResult.BackedUp(
-                hint(bookFile), nullOf(), hint(backupKeyFile), backupId, false));
+                hint(bookFile), nullOf(), hint(backupKeyFile), backupId, false, null));
     assertThrows(
         NullPointerException.class,
         () ->
             new BackupBookResult.BackedUp(
-                hint(bookFile), hint(backupFile), nullOf(), backupId, false));
+                hint(bookFile), hint(backupFile), nullOf(), backupId, false, null));
     assertThrows(
         NullPointerException.class,
         () ->
             new BackupBookResult.BackedUp(
-                hint(bookFile), hint(backupFile), hint(backupKeyFile), nullOf(), false));
+                hint(bookFile), hint(backupFile), hint(backupKeyFile), nullOf(), false, null));
     assertThrows(NullPointerException.class, () -> new BackupBookResult.Rejected(nullOf()));
     assertThrows(
         NullPointerException.class,
@@ -244,9 +246,12 @@ class BookMaintenanceContractTypesTest extends ContractTestSupport {
         NullPointerException.class,
         () ->
             new RestoreBookResult.Restored(
-                nullOf(), hint(bookFile.resolveSibling("acme-restored.book-key"))));
+                nullOf(),
+                hint(bookFile.resolveSibling("acme-restored.book-key")),
+                attestationCommit()));
     assertThrows(
-        NullPointerException.class, () -> new RestoreBookResult.Restored(hint(bookFile), nullOf()));
+        NullPointerException.class,
+        () -> new RestoreBookResult.Restored(hint(bookFile), nullOf(), attestationCommit()));
     assertThrows(NullPointerException.class, () -> new RestoreBookResult.Rejected(nullOf()));
     assertThrows(
         NullPointerException.class,

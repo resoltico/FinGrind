@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.maintenance;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -8,10 +9,12 @@ public sealed interface ProtectedBookRestoreOutcome
     permits ProtectedBookRestoreOutcome.Restored, ProtectedBookRestoreOutcome.Rejected {
 
   /** Successful restore outcome. */
-  record Restored(Path bookFilePath, Path bookKeyFilePath) implements ProtectedBookRestoreOutcome {
+  record Restored(Path bookFilePath, Path bookKeyFilePath, AttestationCommit attestationCommit)
+      implements ProtectedBookRestoreOutcome {
     public Restored {
       Objects.requireNonNull(bookFilePath, "bookFilePath");
       Objects.requireNonNull(bookKeyFilePath, "bookKeyFilePath");
+      Objects.requireNonNull(attestationCommit, "attestationCommit");
     }
   }
 

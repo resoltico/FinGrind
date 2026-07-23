@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: CONTRACT_REPORT_MODEL
-updated: "2026-07-16"
+updated: "2026-07-23"
 scope:
   paths: ["contract/src/main/java/dev/erst/fingrind/contract/reportmodel"]
   symbols: ["ReportModel", "ReportCsvProjection", "InventoryValuationReportModelBuilder"]
@@ -80,6 +80,10 @@ public final class TaxObligationReportModelBuilder
 - Purpose: keep report-family semantics local while projecting one shared content spine outward
 - Family coverage: account balance, trial balance, account ledger, period summary, financial
   position, income statement, cash receipts and payments, changes in equity, and tax obligation
+- Account-ledger attestation semantics: each ledger row retains its attestation order as a compact
+  row reference; when rows are attested, a deduplicated `Attestation Commitments` section maps
+  each referenced order to its complete 64-character operation head. This keeps the ledger table
+  readable while preserving the exact verification identity in text and PDF projections.
 
 ## `InventoryValuationReportModelBuilder`
 

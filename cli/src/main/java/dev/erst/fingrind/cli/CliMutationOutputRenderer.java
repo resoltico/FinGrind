@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.ResolvedJournal;
@@ -12,44 +13,52 @@ import java.util.List;
 final class CliMutationOutputRenderer {
   private CliMutationOutputRenderer() {}
 
-  static String renderAccountDeclarationText(String outcome, DeclaredAccount account) {
+  static String renderAccountDeclarationText(
+      String outcome,
+      DeclaredAccount account,
+      @org.jspecify.annotations.Nullable AttestationCommit attestationCommit) {
+    List<List<String>> rows = new java.util.ArrayList<>();
+    rows.add(List.of("Outcome", outcome));
+    rows.add(List.of("Account code", account.accountCode().value()));
+    rows.add(List.of("Account name", account.accountName().value()));
+    rows.add(
+        List.of(
+            "Parent account",
+            account
+                .accountTaxonomy()
+                .parentAccountCode()
+                .map(parent -> parent.value())
+                .orElse("(none)")));
+    rows.add(
+        List.of(
+            "Account type", CliAccountStatementLabels.displayLineTypeLabel(account.accountType())));
+    rows.add(
+        List.of(
+            "Financial-position line",
+            account
+                .accountTaxonomy()
+                .financialPositionLineClassification()
+                .map(CliAccountStatementLabels::displayFinancialPositionLineClassification)
+                .orElse("(none)")));
+    rows.add(
+        List.of(
+            "Profit-and-loss line",
+            account
+                .accountTaxonomy()
+                .profitAndLossLineClassification()
+                .map(CliAccountStatementLabels::displayProfitAndLossLineClassification)
+                .orElse("(none)")));
+    rows.add(List.of("Unit of measure", displayUnitOfMeasure(account)));
+    rows.add(
+        List.of(
+            "Normal balance",
+            CliAccountStatementLabels.displayNormalBalanceLabel(account.normalBalance())));
+    rows.add(List.of("Active", CliQueryScopeText.displayBooleanLabel(account.active())));
+    rows.add(List.of("Declared at", CliTextDisplay.instant(account.declaredAt())));
+    CliAttestationCommitPresentation.appendTextRows(
+        rows, attestationCommit, "No operation appended (unchanged account definition)");
     return CliTextFormat.renderTitledBlock(
-        accountDeclarationTitle(outcome),
-        CliTextFormat.renderKeyValueBlock(
-            List.of(
-                List.of("Outcome", outcome),
-                List.of("Account code", account.accountCode().value()),
-                List.of("Account name", account.accountName().value()),
-                List.of(
-                    "Parent account",
-                    account
-                        .accountTaxonomy()
-                        .parentAccountCode()
-                        .map(parent -> parent.value())
-                        .orElse("(none)")),
-                List.of(
-                    "Account type",
-                    CliAccountStatementLabels.displayLineTypeLabel(account.accountType())),
-                List.of(
-                    "Financial-position line",
-                    account
-                        .accountTaxonomy()
-                        .financialPositionLineClassification()
-                        .map(CliAccountStatementLabels::displayFinancialPositionLineClassification)
-                        .orElse("(none)")),
-                List.of(
-                    "Profit-and-loss line",
-                    account
-                        .accountTaxonomy()
-                        .profitAndLossLineClassification()
-                        .map(CliAccountStatementLabels::displayProfitAndLossLineClassification)
-                        .orElse("(none)")),
-                List.of("Unit of measure", displayUnitOfMeasure(account)),
-                List.of(
-                    "Normal balance",
-                    CliAccountStatementLabels.displayNormalBalanceLabel(account.normalBalance())),
-                List.of("Active", CliQueryScopeText.displayBooleanLabel(account.active())),
-                List.of("Declared at", CliTextDisplay.instant(account.declaredAt())))));
+        accountDeclarationTitle(outcome), CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
   static String renderPreflightAcceptedText(PostEntryResult.PreflightAccepted accepted) {
@@ -78,18 +87,12 @@ final class CliMutationOutputRenderer {
         List.of(
             "Idempotent replay",
             CliQueryScopeText.displayBooleanLabel(committed.idempotentReplay())));
-    if (committed.attestationCommit() == null) {
-      rows.add(
-          List.of(
-              "Attestation",
-              committed.idempotentReplay()
-                  ? "No operation appended (idempotent replay)"
-                  : "No attestation operation was returned by the persistence adapter"));
-    } else {
-      rows.add(
-          List.of("Attestation order", committed.attestationCommit().operationOrder().toString()));
-      rows.add(List.of("Attestation head", committed.attestationCommit().operationHeadHex()));
-    }
+    CliAttestationCommitPresentation.appendTextRows(
+        rows,
+        committed.attestationCommit(),
+        committed.idempotentReplay()
+            ? "No operation appended (idempotent replay)"
+            : "No attestation operation was returned by the persistence adapter");
     appendResolvedJournalRows(rows, committed.resolvedJournal());
     return CliTextFormat.renderTitledBlock(
         "Entry Committed",

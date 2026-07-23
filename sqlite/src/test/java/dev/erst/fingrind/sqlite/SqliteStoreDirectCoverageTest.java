@@ -281,15 +281,14 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
     Path bookPath = tempDirectory.resolve("interim-result-sweep-direct.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
-      assertEquals(
-          new dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared(
-              new dev.erst.fingrind.executor.bookkeeping.RegisteredAccount(
-                  new AccountCode("3200"),
-                  new AccountName("Retained Earnings"),
-                  AccountType.EQUITY,
-                  financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
-                  true,
-                  FIXED_INSTANT)),
+      assertDeclaredWithAttestation(
+          new dev.erst.fingrind.executor.bookkeeping.RegisteredAccount(
+              new AccountCode("3200"),
+              new AccountName("Retained Earnings"),
+              AccountType.EQUITY,
+              financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
+              true,
+              FIXED_INSTANT),
           postingFactStore.declareAccount(
               new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
                   new AccountCode("3200"),
@@ -401,15 +400,14 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
         SqliteReportingPeriodCloseSession reportingPeriodCloseSession =
             SqliteCapabilitySessions.reportingPeriodClose(postingFactStore)) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
-      assertEquals(
-          new dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared(
-              new RegisteredAccount(
-                  new AccountCode("3200"),
-                  new AccountName("Retained Earnings"),
-                  AccountType.EQUITY,
-                  financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
-                  true,
-                  FIXED_INSTANT)),
+      assertDeclaredWithAttestation(
+          new RegisteredAccount(
+              new AccountCode("3200"),
+              new AccountName("Retained Earnings"),
+              AccountType.EQUITY,
+              financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
+              true,
+              FIXED_INSTANT),
           postingFactStore.declareAccount(
               new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
                   new AccountCode("3200"),
@@ -469,15 +467,14 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
     Path bookPath = tempDirectory.resolve("account-totals-direct.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
-      assertEquals(
-          new dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared(
-              new RegisteredAccount(
-                  new AccountCode("3200"),
-                  new AccountName("Retained Earnings"),
-                  AccountType.EQUITY,
-                  financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
-                  true,
-                  FIXED_INSTANT)),
+      assertDeclaredWithAttestation(
+          new RegisteredAccount(
+              new AccountCode("3200"),
+              new AccountName("Retained Earnings"),
+              AccountType.EQUITY,
+              financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
+              true,
+              FIXED_INSTANT),
           postingFactStore.declareAccount(
               new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
                   new AccountCode("3200"),
@@ -574,15 +571,14 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
     Path bookPath = tempDirectory.resolve("non-closing-read-coverage.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
-      assertEquals(
-          new dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared(
-              new RegisteredAccount(
-                  new AccountCode("3200"),
-                  new AccountName("Retained Earnings"),
-                  AccountType.EQUITY,
-                  financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
-                  true,
-                  FIXED_INSTANT)),
+      assertDeclaredWithAttestation(
+          new RegisteredAccount(
+              new AccountCode("3200"),
+              new AccountName("Retained Earnings"),
+              AccountType.EQUITY,
+              financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING),
+              true,
+              FIXED_INSTANT),
           postingFactStore.declareAccount(
               new dev.erst.fingrind.executor.bookkeeping.AccountDeclaration(
                   new AccountCode("3200"),

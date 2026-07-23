@@ -45,9 +45,13 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
             BOOK_PATH,
             List.of(Path.of("books")),
             new OpenBookResult.Opened(
-                Instant.parse("2026-07-21T10:20:30Z"), bookIdentity(), attestationTrustRoot()),
+                Instant.parse("2026-07-21T10:20:30Z"),
+                bookIdentity(),
+                attestationTrustRoot(),
+                genesisCommit()),
             OutputMode.JSON);
     assertJsonContains(openedJson, "\"entityName\":\"Acme Studio\"");
+    assertJsonContains(openedJson, "\"attestationCommit\":");
 
     ByteArrayOutputStream openedText = new ByteArrayOutputStream();
     writer(openedText)
@@ -55,11 +59,16 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
             BOOK_PATH,
             List.of(Path.of("books")),
             new OpenBookResult.Opened(
-                Instant.parse("2026-07-21T10:20:30Z"), bookIdentity(), attestationTrustRoot()),
+                Instant.parse("2026-07-21T10:20:30Z"),
+                bookIdentity(),
+                attestationTrustRoot(),
+                genesisCommit()),
             OutputMode.TEXT);
     String opened = openedText.toString(StandardCharsets.UTF_8);
     assertTrue(opened.contains("Book Initialized"));
     assertTrue(opened.contains("Tightened parent directory"));
+    assertTrue(opened.contains("Attestation order"));
+    assertTrue(opened.contains("Attestation head"));
 
     ByteArrayOutputStream rejectedOpen = new ByteArrayOutputStream();
     writer(rejectedOpen)
@@ -88,12 +97,14 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
 
     ByteArrayOutputStream rekeyedJson = new ByteArrayOutputStream();
     writer(rekeyedJson)
-        .writeRekeyBookResult(new RekeyBookResult.Rekeyed(BOOK_PATH), KEY_PATH, OutputMode.JSON);
+        .writeRekeyBookResult(
+            new RekeyBookResult.Rekeyed(BOOK_PATH, attestationCommit()), KEY_PATH, OutputMode.JSON);
     assertJsonContains(rekeyedJson, "\"status\":\"ok\"");
 
     ByteArrayOutputStream rekeyedText = new ByteArrayOutputStream();
     writer(rekeyedText)
-        .writeRekeyBookResult(new RekeyBookResult.Rekeyed(BOOK_PATH), KEY_PATH, OutputMode.TEXT);
+        .writeRekeyBookResult(
+            new RekeyBookResult.Rekeyed(BOOK_PATH, attestationCommit()), KEY_PATH, OutputMode.TEXT);
     assertTrue(rekeyedText.toString(StandardCharsets.UTF_8).contains("Book Rekeyed"));
 
     ByteArrayOutputStream rejectedRekey = new ByteArrayOutputStream();
@@ -116,7 +127,8 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
                     new OpenBookResult.Opened(
                         Instant.parse("2026-07-21T10:20:30Z"),
                         bookIdentity(),
-                        attestationTrustRoot()),
+                        attestationTrustRoot(),
+                        genesisCommit()),
                     OutputMode.CSV));
     assertThrows(
         IllegalArgumentException.class,
@@ -128,18 +140,26 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
         () ->
             writer(new ByteArrayOutputStream())
                 .writeRekeyBookResult(
-                    new RekeyBookResult.Rekeyed(BOOK_PATH), KEY_PATH, OutputMode.CSV));
+                    new RekeyBookResult.Rekeyed(BOOK_PATH, attestationCommit()),
+                    KEY_PATH,
+                    OutputMode.CSV));
 
     assertEquals(
         0,
         CliAdministrativeExitCodes.exitCodeFor(
             new OpenBookResult.Opened(
-                Instant.parse("2026-07-21T10:20:30Z"), bookIdentity(), attestationTrustRoot())));
+                Instant.parse("2026-07-21T10:20:30Z"),
+                bookIdentity(),
+                attestationTrustRoot(),
+                genesisCommit())));
     assertEquals(
         2,
         CliAdministrativeExitCodes.exitCodeFor(
             new OpenBookResult.Rejected(new BookAdministrationRejection.BookAlreadyInitialized())));
-    assertEquals(0, CliAdministrativeExitCodes.exitCodeFor(new RekeyBookResult.Rekeyed(BOOK_PATH)));
+    assertEquals(
+        0,
+        CliAdministrativeExitCodes.exitCodeFor(
+            new RekeyBookResult.Rekeyed(BOOK_PATH, attestationCommit())));
     assertEquals(
         7,
         CliAdministrativeExitCodes.exitCodeFor(
@@ -153,13 +173,15 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
     ByteArrayOutputStream sweepJson = new ByteArrayOutputStream();
     writer(sweepJson)
         .writeInterimResultSweepResult(
-            new InterimResultSweepResult.Swept(sampleSweptInterimResult()), OutputMode.JSON);
+            new InterimResultSweepResult.Swept(sampleSweptInterimResult(), attestationCommit()),
+            OutputMode.JSON);
     assertJsonContains(sweepJson, "\"sweepOrder\":1");
 
     ByteArrayOutputStream sweepText = new ByteArrayOutputStream();
     writer(sweepText)
         .writeInterimResultSweepResult(
-            new InterimResultSweepResult.Swept(sampleSweptInterimResult()), OutputMode.TEXT);
+            new InterimResultSweepResult.Swept(sampleSweptInterimResult(), attestationCommit()),
+            OutputMode.TEXT);
     assertTrue(sweepText.toString(StandardCharsets.UTF_8).contains("Interim Result Swept"));
 
     ByteArrayOutputStream rejectedSweep = new ByteArrayOutputStream();
@@ -173,13 +195,15 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
     ByteArrayOutputStream closeJson = new ByteArrayOutputStream();
     writer(closeJson)
         .writeFiscalYearCloseResult(
-            new FiscalYearCloseResult.Closed(sampleClosedFiscalYear(), false), OutputMode.JSON);
+            new FiscalYearCloseResult.Closed(sampleClosedFiscalYear(), false, attestationCommit()),
+            OutputMode.JSON);
     assertJsonContains(closeJson, "\"idempotentReplay\":false");
 
     ByteArrayOutputStream closeText = new ByteArrayOutputStream();
     writer(closeText)
         .writeFiscalYearCloseResult(
-            new FiscalYearCloseResult.Closed(sampleClosedFiscalYear(), true), OutputMode.TEXT);
+            new FiscalYearCloseResult.Closed(sampleClosedFiscalYear(), true, null),
+            OutputMode.TEXT);
     assertTrue(closeText.toString(StandardCharsets.UTF_8).contains("Fiscal Year Already Closed"));
 
     ByteArrayOutputStream rejectedClose = new ByteArrayOutputStream();
@@ -193,7 +217,8 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
     ByteArrayOutputStream accountJson = new ByteArrayOutputStream();
     writer(accountJson)
         .writeDeclareAccountResult(
-            new DeclareAccountResult.Declared(declaredCashAccount()), OutputMode.JSON);
+            new DeclareAccountResult.Declared(declaredCashAccount(), attestationCommit()),
+            OutputMode.JSON);
     assertJsonContains(accountJson, "\"outcome\":\"declared\"");
 
     assertThrows(
@@ -201,20 +226,22 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
         () ->
             writer(new ByteArrayOutputStream())
                 .writeInterimResultSweepResult(
-                    new InterimResultSweepResult.Swept(sampleSweptInterimResult()),
+                    new InterimResultSweepResult.Swept(
+                        sampleSweptInterimResult(), attestationCommit()),
                     OutputMode.CSV));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             writer(new ByteArrayOutputStream())
                 .writeFiscalYearCloseResult(
-                    new FiscalYearCloseResult.Closed(sampleClosedFiscalYear(), false),
+                    new FiscalYearCloseResult.Closed(
+                        sampleClosedFiscalYear(), false, attestationCommit()),
                     OutputMode.CSV));
 
     assertEquals(
         0,
         CliAdministrativeExitCodes.exitCodeFor(
-            new InterimResultSweepResult.Swept(sampleSweptInterimResult())));
+            new InterimResultSweepResult.Swept(sampleSweptInterimResult(), attestationCommit())));
     assertEquals(
         2,
         CliAdministrativeExitCodes.exitCodeFor(
@@ -223,7 +250,8 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
     assertEquals(
         0,
         CliAdministrativeExitCodes.exitCodeFor(
-            new FiscalYearCloseResult.Closed(sampleClosedFiscalYear(), false)));
+            new FiscalYearCloseResult.Closed(
+                sampleClosedFiscalYear(), false, attestationCommit())));
     assertEquals(
         2,
         CliAdministrativeExitCodes.exitCodeFor(
@@ -235,7 +263,10 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
   void writesEveryCredentialRegistryMutationOutcomeAcrossItsSupportedOutputFamilies() {
     AttestationRegistryMutationResult.Mutated mutated =
         new AttestationRegistryMutationResult.Mutated(
-            BOOK_PATH, "enroll-key", BigInteger.ONE, "0".repeat(64));
+            BOOK_PATH,
+            "enroll-key",
+            new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
+                BigInteger.ONE, "0".repeat(64)));
 
     ByteArrayOutputStream json = new ByteArrayOutputStream();
     writer(json)
@@ -247,8 +278,8 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
         .writeAttestationRegistryMutationResult(OperationId.ENROLL_KEY, mutated, OutputMode.TEXT);
     String renderedText = text.toString(StandardCharsets.UTF_8);
     assertTrue(renderedText.contains("Attestation Registry Updated"));
-    assertTrue(renderedText.contains("Head order"));
-    assertTrue(renderedText.contains("Operation head"));
+    assertTrue(renderedText.contains("Attestation order"));
+    assertTrue(renderedText.contains("Attestation head"));
     assertTrue(renderedText.contains("0".repeat(64)));
 
     assertThrows(
@@ -315,6 +346,11 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
   private static CliAdministrativeMutationResponseWriter writer(
       ByteArrayOutputStream outputStream) {
     return new CliAdministrativeMutationResponseWriter(outputChannel(outputStream));
+  }
+
+  private static dev.erst.fingrind.contract.bookkeeping.AttestationCommit genesisCommit() {
+    return new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
+        BigInteger.ZERO, "0".repeat(64));
   }
 
   private static SweptInterimResult sampleSweptInterimResult() {

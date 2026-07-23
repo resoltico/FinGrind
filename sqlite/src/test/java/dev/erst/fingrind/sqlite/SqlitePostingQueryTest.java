@@ -16,7 +16,6 @@ import dev.erst.fingrind.core.JournalLine;
 import dev.erst.fingrind.core.NormalBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.attestation.AttestationVerification;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryCursor;
 import dev.erst.fingrind.executor.bookkeeping.PostingHistoryQuery;
@@ -154,15 +153,14 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
                 line("2000", JournalLine.EntrySide.CREDIT, "EUR", "30.00")));
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath))) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
-      assertEquals(
-          new AccountDeclarationOutcome.Declared(
-              registeredAccount(
-                  new AccountCode("3000"),
-                  new AccountName("Receivable"),
-                  dev.erst.fingrind.core.AccountType.ASSET,
-                  NormalBalance.DEBIT,
-                  true,
-                  Instant.parse("2026-04-07T10:15:30Z"))),
+      assertDeclaredWithAttestation(
+          registeredAccount(
+              new AccountCode("3000"),
+              new AccountName("Receivable"),
+              dev.erst.fingrind.core.AccountType.ASSET,
+              NormalBalance.DEBIT,
+              true,
+              Instant.parse("2026-04-07T10:15:30Z")),
           declareAccount(
               postingFactStore,
               new AccountCode("3000"),

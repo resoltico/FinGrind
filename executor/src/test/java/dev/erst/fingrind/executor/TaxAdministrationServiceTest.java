@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.attestationCommit;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
@@ -122,7 +123,7 @@ class TaxAdministrationServiceTest {
     DeclaredTaxRegistration registration = declaredRegistration(command, DECLARED_AT);
     RecordingTaxAdministrationStore store =
         new RecordingTaxAdministrationStore(
-            new DeclareTaxRegistrationResult.Declared(registration));
+            new DeclareTaxRegistrationResult.Declared(registration, attestationCommit()));
     TaxAdministrationService service =
         new TaxAdministrationService(
             () -> initializedLifecycleInspection(1001, 25, 25, FIXED_CLOCK.instant()),

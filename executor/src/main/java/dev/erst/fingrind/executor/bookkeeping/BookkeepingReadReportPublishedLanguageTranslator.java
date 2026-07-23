@@ -14,9 +14,11 @@ import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.CurrencyUnit;
+import dev.erst.fingrind.core.PostingId;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /** Projects bookkeeping read reports into the public bookkeeping contract. */
@@ -51,9 +53,16 @@ public final class BookkeepingReadReportPublishedLanguageTranslator {
   }
 
   /** Projects one local account-ledger view back into the public published language. */
-  public static AccountLedgerReport toPublished(BookIdentity bookIdentity, AccountLedgerView view) {
+  public static AccountLedgerReport toPublished(
+      BookIdentity bookIdentity,
+      AccountLedgerView view,
+      Map<PostingId, dev.erst.fingrind.contract.bookkeeping.AttestationCommit>
+          attestationCommitsByPostingId) {
     Objects.requireNonNull(bookIdentity, "bookIdentity");
     Objects.requireNonNull(view, "view");
+    Map<PostingId, dev.erst.fingrind.contract.bookkeeping.AttestationCommit> commitments =
+        Map.copyOf(
+            Objects.requireNonNull(attestationCommitsByPostingId, "attestationCommitsByPostingId"));
     return new AccountLedgerReport(
         bookIdentity,
         BookkeepingPublishedLanguageTranslator.toPublished(view.account()),
@@ -64,9 +73,7 @@ public final class BookkeepingReadReportPublishedLanguageTranslator {
             view.cursor().map(BookkeepingReadReportPublishedLanguageTranslator::toPublished),
             view.nextCursor().map(BookkeepingReadReportPublishedLanguageTranslator::toPublished)),
         normalizedOpeningLedgerBalances(bookIdentity, view),
-        view.entries().stream()
-            .map(BookkeepingReadReportPublishedLanguageTranslator::toPublished)
-            .toList(),
+        view.entries().stream().map(entry -> toPublished(entry, commitments)).toList(),
         normalizedClosingLedgerBalances(bookIdentity, view));
   }
 
@@ -125,13 +132,17 @@ public final class BookkeepingReadReportPublishedLanguageTranslator {
         BookkeepingPublishedLanguageTranslator.toPublished(row.account()), row.balance());
   }
 
-  private static AccountLedgerEntry toPublished(AccountLedgerEntryView entry) {
+  private static AccountLedgerEntry toPublished(
+      AccountLedgerEntryView entry,
+      Map<PostingId, dev.erst.fingrind.contract.bookkeeping.AttestationCommit>
+          attestationCommitsByPostingId) {
     Objects.requireNonNull(entry, "entry");
     return new AccountLedgerEntry(
         BookkeepingPublishedLanguageTranslator.toPublished(entry.posting()),
         entry.movement(),
         entry.runningNetAmount(),
-        entry.runningBalanceSide());
+        entry.runningBalanceSide(),
+        attestationCommitsByPostingId.get(entry.posting().postingId()));
   }
 
   private static PeriodCurrencySummary toPublished(PeriodCurrencySummaryView row) {

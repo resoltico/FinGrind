@@ -8,10 +8,12 @@ public sealed interface RestoreBookResult
     permits RestoreBookResult.Restored, RestoreBookResult.Rejected {
 
   /** Successful restore outcome. */
-  record Restored(Path bookFilePath, Path bookKeyFilePath) implements RestoreBookResult {
+  record Restored(Path bookFilePath, Path bookKeyFilePath, AttestationCommit attestationCommit)
+      implements RestoreBookResult {
     public Restored {
       bookFilePath = normalizedPath(bookFilePath, "bookFilePath");
       bookKeyFilePath = normalizedPath(bookKeyFilePath, "bookKeyFilePath");
+      Objects.requireNonNull(attestationCommit, "attestationCommit");
     }
   }
 

@@ -220,7 +220,7 @@ The same full descriptor publishes the canonical ordered `capabilityCatalog`; us
 `capabilities --output json --focus capability-catalog` when automation needs only the published
 capability scope and operative boundaries for partial capabilities.
 Discovery JSON payloads from `help`, `capabilities`, and `version` also publish one
-`protocolVersion` field. The current hard-break line is `"35"`.
+`protocolVersion` field. The current hard-break line is `"36"`.
 Commands that advertise `--output` default successful stdout to text. A per-command `--output ...`
 flag selects a supported alternative.
 Discovery, administration, write, and query/report commands can render operator-facing

@@ -8,7 +8,9 @@ import dev.erst.fingrind.core.attestation.AttestationLifecycleState;
 import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import dev.erst.fingrind.core.attestation.AttestationSigningSession;
+import dev.erst.fingrind.core.attestation.AttestationVerification;
 import dev.erst.fingrind.core.attestation.AttestationVerifier;
+import dev.erst.fingrind.executor.AttestationCommitProjection;
 import dev.erst.fingrind.executor.spi.AttestedProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.HeldLease;
@@ -243,17 +245,22 @@ public final class AttestedProtectedBookLifecycleWorkflow {
                                     artifact.verification().artifactDigest(),
                                     artifact.verification().sourceOrder(),
                                     artifact.verification().sourceOperationHead());
-                            store.appendAttestedOperation(
-                                restoredBook,
-                                RESTORE_BOOK_OPERATION,
-                                clock.instant(),
-                                AttestationLifecycleMutationProjection.restoreBook(
-                                    RESTORE_BOOK_OPERATION.wireToken(), acknowledgement),
-                                signingSession,
-                                null);
+                            AttestationVerification appendVerification =
+                                store.appendAttestedOperation(
+                                    restoredBook,
+                                    RESTORE_BOOK_OPERATION,
+                                    clock.instant(),
+                                    AttestationLifecycleMutationProjection.restoreBook(
+                                        RESTORE_BOOK_OPERATION.wireToken(), acknowledgement),
+                                    signingSession,
+                                    null);
                             stagedRestore.commit();
                             return MaintenanceDecision.accepted(
-                                new ProtectedBookRestoreOutcome.Restored(bookPath, newKeyPath));
+                                new ProtectedBookRestoreOutcome.Restored(
+                                    bookPath,
+                                    newKeyPath,
+                                    AttestationCommitProjection.fromVerifiedAppend(
+                                        appendVerification)));
                           }
                         },
                         ignored ->
@@ -288,20 +295,24 @@ public final class AttestedProtectedBookLifecycleWorkflow {
                 try (ProtectedBookMaintenanceStore.VerifiedBook rekeyedBook =
                     (ProtectedBookMaintenanceStore.VerifiedBook) verification) {
                   Instant recordedAt = clock.instant();
-                  store.appendAttestedOperation(
-                      rekeyedBook,
-                      REKEY_BOOK_OPERATION,
-                      recordedAt,
-                      AttestationLifecycleMutationProjection.rekeyBook(
-                          REKEY_BOOK_OPERATION.wireToken(),
-                          AttestationLifecycleState.nextKeyEpoch(sourceEvidence),
+                  AttestationVerification appendVerification =
+                      store.appendAttestedOperation(
+                          rekeyedBook,
+                          REKEY_BOOK_OPERATION,
                           recordedAt,
-                          java.util.Optional.empty()),
-                      signingSession,
-                      null);
+                          AttestationLifecycleMutationProjection.rekeyBook(
+                              REKEY_BOOK_OPERATION.wireToken(),
+                              AttestationLifecycleState.nextKeyEpoch(sourceEvidence),
+                              recordedAt,
+                              java.util.Optional.empty()),
+                          signingSession,
+                          null);
                   stagedRekey.commit();
                   return MaintenanceDecision.accepted(
-                      new ProtectedBookRekeyOutcome.Rekeyed(bookPath, newKeyPath));
+                      new ProtectedBookRekeyOutcome.Rekeyed(
+                          bookPath,
+                          newKeyPath,
+                          AttestationCommitProjection.fromVerifiedAppend(appendVerification)));
                 }
               },
               ignored ->

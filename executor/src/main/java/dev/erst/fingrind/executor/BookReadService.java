@@ -28,7 +28,9 @@ public final class BookReadService
     this.attestationCommitmentStore =
         Objects.requireNonNull(attestationCommitmentStore, "attestationCommitmentStore");
     bookkeepingReadService = new BookkeepingReadService(this.bookStore);
-    BookReportService reportService = new BookReportService(this.bookStore, bookkeepingReadService);
+    BookReportService reportService =
+        new BookReportService(
+            this.bookStore, this.attestationCommitmentStore, bookkeepingReadService);
     catalogQueries = new BookReadCatalogQueryOperations(bookkeepingReadService);
     postingQueries =
         new BookReadPostingQueryOperations(

@@ -30,7 +30,8 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
               backedUp.backupFilePath(),
               backedUp.backupBookKeyFilePath(),
               backedUp.backupId(),
-              backedUp.acknowledgementResumed());
+              backedUp.acknowledgementResumed(),
+              backedUp.attestationCommit());
       case ProtectedBookBackupOutcome.AcknowledgementPending pending ->
           new BackupBookResult.AcknowledgementPending(
               pending.bookFilePath(),
@@ -55,7 +56,8 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
     Objects.requireNonNull(outcome, "outcome");
     return switch (outcome) {
       case ProtectedBookRestoreOutcome.Restored restored ->
-          new RestoreBookResult.Restored(restored.bookFilePath(), restored.bookKeyFilePath());
+          new RestoreBookResult.Restored(
+              restored.bookFilePath(), restored.bookKeyFilePath(), restored.attestationCommit());
       case ProtectedBookRestoreOutcome.Rejected rejected ->
           new RestoreBookResult.Rejected(toPublished(rejected.rejection()));
     };
@@ -66,7 +68,7 @@ public final class ProtectedBookMaintenancePublishedLanguageTranslator {
     Objects.requireNonNull(outcome, "outcome");
     return switch (outcome) {
       case ProtectedBookRekeyOutcome.Rekeyed rekeyed ->
-          new RekeyBookResult.Rekeyed(rekeyed.bookFilePath());
+          new RekeyBookResult.Rekeyed(rekeyed.bookFilePath(), rekeyed.attestationCommit());
       case ProtectedBookRekeyOutcome.Rejected rejected ->
           new RekeyBookResult.Rejected(toPublished(rejected.rejection()));
     };

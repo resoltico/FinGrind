@@ -14,18 +14,22 @@ class AttestationRegistryMutationResultTest {
   void mutated_normalizesItsBookPathAndPreservesItsAuthenticatedHead() {
     AttestationRegistryMutationResult.Mutated result =
         new AttestationRegistryMutationResult.Mutated(
-            Path.of("build", "book.fgdb"), "enroll-key", BigInteger.ONE, "0".repeat(64));
+            Path.of("build", "book.fgdb"),
+            "enroll-key",
+            new AttestationCommit(BigInteger.ONE, "0".repeat(64)));
 
     assertEquals(Path.of("build", "book.fgdb").toAbsolutePath().normalize(), result.bookFilePath());
     assertEquals("enroll-key", result.operationKind());
-    assertEquals(BigInteger.ONE, result.headOrder());
-    assertEquals("0".repeat(64), result.operationHeadHex());
+    assertEquals(BigInteger.ONE, result.attestationCommit().operationOrder());
+    assertEquals("0".repeat(64), result.attestationCommit().operationHeadHex());
     assertInstanceOf(AttestationRegistryMutationResult.class, result);
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new AttestationRegistryMutationResult.Mutated(
-                Path.of("build", "book.fgdb"), "enroll-key", BigInteger.ONE, "not-a-head"));
+                Path.of("build", "book.fgdb"),
+                "enroll-key",
+                new AttestationCommit(BigInteger.ONE, "not-a-head")));
   }
 
   @Test

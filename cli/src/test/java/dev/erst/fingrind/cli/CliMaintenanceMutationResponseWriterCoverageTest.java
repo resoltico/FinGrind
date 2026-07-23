@@ -49,7 +49,8 @@ class CliMaintenanceMutationResponseWriterCoverageTest extends CliResponseWriter
   @Test
   void writesResumedBackupRestorationAndAcknowledgementConflictWithoutFlatteningTheirMeaning() {
     BackupBookResult.BackedUp resumed =
-        new BackupBookResult.BackedUp(BOOK_FILE, BACKUP_FILE, BACKUP_KEY_FILE, BACKUP_ID, true);
+        new BackupBookResult.BackedUp(
+            BOOK_FILE, BACKUP_FILE, BACKUP_KEY_FILE, BACKUP_ID, true, attestationCommit());
     ByteArrayOutputStream resumedText = new ByteArrayOutputStream();
     writer(resumedText).writeBackupBookResult(resumed, OutputMode.TEXT);
     assertTrue(resumedText.toString(StandardCharsets.UTF_8).contains("resumed"));
@@ -61,13 +62,15 @@ class CliMaintenanceMutationResponseWriterCoverageTest extends CliResponseWriter
         () -> writer(new ByteArrayOutputStream()).writeBackupBookResult(resumed, OutputMode.CSV));
 
     BackupBookResult.BackedUp acknowledged =
-        new BackupBookResult.BackedUp(BOOK_FILE, BACKUP_FILE, BACKUP_KEY_FILE, BACKUP_ID, false);
+        new BackupBookResult.BackedUp(
+            BOOK_FILE, BACKUP_FILE, BACKUP_KEY_FILE, BACKUP_ID, false, attestationCommit());
     ByteArrayOutputStream acknowledgedJson = new ByteArrayOutputStream();
     writer(acknowledgedJson).writeBackupBookResult(acknowledged, OutputMode.JSON);
     assertJsonContains(acknowledgedJson, "\"acknowledgementState\":\"acknowledged\"");
 
     RestoreBookResult.Restored restored =
-        new RestoreBookResult.Restored(BOOK_FILE, Path.of("keys", "restored.key"));
+        new RestoreBookResult.Restored(
+            BOOK_FILE, Path.of("keys", "restored.key"), attestationCommit());
     ByteArrayOutputStream restoredText = new ByteArrayOutputStream();
     writer(restoredText).writeRestoreBookResult(restored, OutputMode.TEXT);
     assertTrue(restoredText.toString(StandardCharsets.UTF_8).contains("Book Restored"));

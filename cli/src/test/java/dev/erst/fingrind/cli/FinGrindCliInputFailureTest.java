@@ -33,7 +33,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     RecordingWorkflow workflow =
         new RecordingWorkflow(
             openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
-            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
+            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite"), attestationCommit()),
             new DeclareAccountResult.Declared(
                 declaredAccount(
                     "1000",
@@ -41,7 +41,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
-                    Instant.parse("2026-04-07T12:00:00Z"))),
+                    Instant.parse("2026-04-07T12:00:00Z")),
+                attestationCommit()),
             listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
@@ -95,7 +96,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     RecordingWorkflow workflow =
         new RecordingWorkflow(
             openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
-            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
+            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite"), attestationCommit()),
             new DeclareAccountResult.Declared(
                 declaredAccount(
                     "1000",
@@ -103,7 +104,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
-                    Instant.parse("2026-04-07T12:00:00Z"))),
+                    Instant.parse("2026-04-07T12:00:00Z")),
+                attestationCommit()),
             listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
@@ -160,7 +162,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     RecordingWorkflow workflow =
         new RecordingWorkflow(
             openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
-            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
+            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite"), attestationCommit()),
             new DeclareAccountResult.Declared(
                 declaredAccount(
                     "1000",
@@ -168,7 +170,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
-                    Instant.parse("2026-04-07T12:00:00Z"))),
+                    Instant.parse("2026-04-07T12:00:00Z")),
+                attestationCommit()),
             listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
@@ -221,7 +224,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     RecordingWorkflow workflow =
         new RecordingWorkflow(
             openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
-            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
+            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite"), attestationCommit()),
             new DeclareAccountResult.Declared(
                 declaredAccount(
                     "1000",
@@ -229,7 +232,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
-                    Instant.parse("2026-04-07T12:00:00Z"))),
+                    Instant.parse("2026-04-07T12:00:00Z")),
+                attestationCommit()),
             listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
@@ -300,7 +304,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     RecordingWorkflow workflow =
         new RecordingWorkflow(
             openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
-            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
+            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite"), attestationCommit()),
             new DeclareAccountResult.Declared(
                 declaredAccount(
                     "1000",
@@ -308,7 +312,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
-                    Instant.parse("2026-04-07T12:00:00Z"))),
+                    Instant.parse("2026-04-07T12:00:00Z")),
+                attestationCommit()),
             listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
@@ -377,7 +382,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     RecordingWorkflow workflow =
         new RecordingWorkflow(
             openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
-            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
+            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite"), attestationCommit()),
             new DeclareAccountResult.Declared(
                 declaredAccount(
                     "1000",
@@ -385,7 +390,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
-                    Instant.parse("2026-04-07T12:00:00Z"))),
+                    Instant.parse("2026-04-07T12:00:00Z")),
+                attestationCommit()),
             listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
@@ -435,7 +441,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     RecordingWorkflow workflow =
         new RecordingWorkflow(
             openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
-            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
+            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite"), attestationCommit()),
             new DeclareAccountResult.Declared(
                 declaredAccount(
                     "1000",
@@ -443,7 +449,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
-                    Instant.parse("2026-04-07T12:00:00Z"))),
+                    Instant.parse("2026-04-07T12:00:00Z")),
+                attestationCommit()),
             listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
@@ -493,7 +500,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     RecordingWorkflow workflow =
         new RecordingWorkflow(
             openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
-            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
+            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite"), attestationCommit()),
             new DeclareAccountResult.Declared(
                 declaredAccount(
                     "1000",
@@ -501,7 +508,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
-                    Instant.parse("2026-04-07T12:00:00Z"))),
+                    Instant.parse("2026-04-07T12:00:00Z")),
+                attestationCommit()),
             listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
@@ -557,7 +565,7 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
     RecordingWorkflow workflow =
         new RecordingWorkflow(
             openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
-            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite")),
+            new RekeyBookResult.Rekeyed(Path.of("unused.sqlite"), attestationCommit()),
             new DeclareAccountResult.Declared(
                 declaredAccount(
                     "1000",
@@ -565,7 +573,8 @@ class FinGrindCliInputFailureTest extends FinGrindCliTestSupport {
                     dev.erst.fingrind.core.AccountType.ASSET,
                     NormalBalance.DEBIT,
                     true,
-                    Instant.parse("2026-04-07T12:00:00Z"))),
+                    Instant.parse("2026-04-07T12:00:00Z")),
+                attestationCommit()),
             listedAccounts(accountPage(List.of(), 50, Optional.empty())),
             CliPostEntryResultFixtures.preflightAccepted(
                 new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),

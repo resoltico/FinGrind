@@ -243,7 +243,8 @@ class CliFixtureSupport extends CliIoFixtureSupport {
         AccountLedgerPagination.firstPage(50),
         List.of(balance),
         List.of(
-            new AccountLedgerEntry(postingFact, balance, money("EUR", "6.00"), BalanceSide.DEBIT)),
+            new AccountLedgerEntry(
+                postingFact, balance, money("EUR", "6.00"), BalanceSide.DEBIT, null)),
         List.of(balance));
   }
 
@@ -261,7 +262,8 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                 postingFact,
                 CurrencyBalance.ofTotals(money("EUR", "5.00"), money("EUR", "5.00")),
                 money("EUR", "0.00"),
-                BalanceSide.ZERO)),
+                BalanceSide.ZERO,
+                null)),
         List.of());
   }
 
@@ -638,5 +640,10 @@ class CliFixtureSupport extends CliIoFixtureSupport {
 
   protected static LedgerStepId stepId(String value) {
     return new LedgerStepId(value);
+  }
+
+  protected static dev.erst.fingrind.contract.bookkeeping.AttestationCommit attestationCommit() {
+    return new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
+        java.math.BigInteger.ONE, "a".repeat(64));
   }
 }

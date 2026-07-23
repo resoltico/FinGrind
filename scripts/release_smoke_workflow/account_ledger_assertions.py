@@ -22,8 +22,12 @@ ACCOUNT_LEDGER_CSV_HEADER: Final[list[str]] = [
     "runningNetAmountCurrencyCode",
     "runningNetAmountMinorUnits",
     "runningBalanceSide",
+    "attestationOperationOrder",
+    "attestationOperationHead",
 ]
 POSTING_ID_PATTERN: Final[str] = r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+ATTESTATION_OPERATION_ORDER_PATTERN: Final[str] = r"^[1-9][0-9]*$"
+ATTESTATION_OPERATION_HEAD_PATTERN: Final[str] = r"^[0-9a-f]{64}$"
 
 
 def assert_account_ledger_csv(config: ReleaseSmokeConfig, account_ledger_csv_output: str) -> None:
@@ -67,6 +71,10 @@ def assert_account_ledger_csv(config: ReleaseSmokeConfig, account_ledger_csv_out
         running_balance_side="DEBIT",
         row_name="expense ledger row",
     )
+    require(
+        rows[0]["attestationOperationOrder"] != rows[1]["attestationOperationOrder"],
+        f"{config.label} account-ledger CSV output did not link fresh postings to distinct operations",
+    )
 
 
 def _assert_ledger_row(
@@ -104,4 +112,14 @@ def _assert_ledger_row(
         row["postingId"],
         POSTING_ID_PATTERN,
         f"{config.label} account-ledger CSV output did not render a canonical posting identifier for the {row_name}",
+    )
+    require_match(
+        row["attestationOperationOrder"],
+        ATTESTATION_OPERATION_ORDER_PATTERN,
+        f"{config.label} account-ledger CSV output did not render an attestation operation order for the {row_name}",
+    )
+    require_match(
+        row["attestationOperationHead"],
+        ATTESTATION_OPERATION_HEAD_PATTERN,
+        f"{config.label} account-ledger CSV output did not render an attestation operation head for the {row_name}",
     )

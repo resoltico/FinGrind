@@ -96,12 +96,12 @@ class BookkeepingReadReportPublishedLanguageTranslatorTest {
     assertEquals(
         List.of(currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO)),
         BookkeepingReadReportPublishedLanguageTranslator.toPublished(
-                bookIdentity(), emptyBoundedLedger)
+                bookIdentity(), emptyBoundedLedger, java.util.Map.of())
             .openingBalances());
     assertEquals(
         List.of(currencyBalance("0.00", "0.00", "0.00", BalanceSide.ZERO)),
         BookkeepingReadReportPublishedLanguageTranslator.toPublished(
-                bookIdentity(), emptyBoundedLedger)
+                bookIdentity(), emptyBoundedLedger, java.util.Map.of())
             .closingBalances());
   }
 
@@ -122,12 +122,12 @@ class BookkeepingReadReportPublishedLanguageTranslatorTest {
     assertEquals(
         List.of(),
         BookkeepingReadReportPublishedLanguageTranslator.toPublished(
-                bookIdentity(), minimumBoundLedger)
+                bookIdentity(), minimumBoundLedger, java.util.Map.of())
             .openingBalances());
     assertEquals(
         List.of(),
         BookkeepingReadReportPublishedLanguageTranslator.toPublished(
-                bookIdentity(), minimumBoundLedger)
+                bookIdentity(), minimumBoundLedger, java.util.Map.of())
             .closingBalances());
   }
 
@@ -148,12 +148,12 @@ class BookkeepingReadReportPublishedLanguageTranslatorTest {
     assertEquals(
         List.of(),
         BookkeepingReadReportPublishedLanguageTranslator.toPublished(
-                bookIdentity(), unboundedLedger)
+                bookIdentity(), unboundedLedger, java.util.Map.of())
             .openingBalances());
     assertEquals(
         List.of(),
         BookkeepingReadReportPublishedLanguageTranslator.toPublished(
-                bookIdentity(), unboundedLedger)
+                bookIdentity(), unboundedLedger, java.util.Map.of())
             .closingBalances());
   }
 
@@ -174,12 +174,12 @@ class BookkeepingReadReportPublishedLanguageTranslatorTest {
     assertEquals(
         List.of(currencyBalance("3.00", "0.00", "3.00", BalanceSide.DEBIT)),
         BookkeepingReadReportPublishedLanguageTranslator.toPublished(
-                bookIdentity(), populatedLedger)
+                bookIdentity(), populatedLedger, java.util.Map.of())
             .openingBalances());
     assertEquals(
         List.of(currencyBalance("13.00", "0.00", "13.00", BalanceSide.DEBIT)),
         BookkeepingReadReportPublishedLanguageTranslator.toPublished(
-                bookIdentity(), populatedLedger)
+                bookIdentity(), populatedLedger, java.util.Map.of())
             .closingBalances());
   }
 
@@ -213,7 +213,7 @@ class BookkeepingReadReportPublishedLanguageTranslatorTest {
                 new AccountLedgerPageCursor(
                     nextCursor.effectiveDate(), nextCursor.recordedAt(), nextCursor.postingId()))),
         BookkeepingReadReportPublishedLanguageTranslator.toPublished(
-                bookIdentity(), paginatedLedger)
+                bookIdentity(), paginatedLedger, java.util.Map.of())
             .pagination());
   }
 
