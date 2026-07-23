@@ -112,7 +112,8 @@ class FinGrindCliDiscoveryHelpCommandTestSupport extends FinGrindCliDiscoveryCom
     HelpDescriptor helpDescriptor =
         MachineContract.help(
             CliDiscoveryTestSupport.identity(), CliDiscoveryTestSupport.environment(), operationId);
-    if (ProtocolRequestTemplateTopics.supports(operationId)) {
+    if (ProtocolRequestTemplateTopics.supports(operationId)
+        || operationId == OperationId.ATTESTATION_REVIEW) {
       return Optional.of(
           CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
               + " "

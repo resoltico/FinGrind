@@ -18,6 +18,8 @@ class FinGrindCliAttestationRegistryMutationWorkflowTest extends FinGrindCliTest
       "MCowBQYDK2VwAyEAJYpWgBK4pHaKkIRKs9p8_6B01sG0SuOXLjI69Q5mGlI";
   private static final String REPLACEMENT_CREDENTIAL_SPKI =
       "MCowBQYDK2VwAyEAJYpWgBK4pHaKkIRKs9p8_6B01sG0SuOXLjI69Q5mGlM";
+  private static final String STANDBY_CREDENTIAL_SPKI =
+      "MCowBQYDK2VwAyEAJYpWgBK4pHaKkIRKs9p8_6B01sG0SuOXLjI69Q5mGlQ";
 
   @Test
   void run_enrollKeyAppendsOneVerifiableAuthorityMutation() throws IOException {
@@ -126,10 +128,21 @@ class FinGrindCliAttestationRegistryMutationWorkflowTest extends FinGrindCliTest
             {
               "principalId": "01234567-89ab-4cde-8fab-0123456789ab",
               "credentialSpki": "%s",
-              "reason": "superseded"
+              "reason": "device retired"
             }
             """
-                .formatted(CREDENTIAL_SPKI));
+                .formatted(REPLACEMENT_CREDENTIAL_SPKI));
+    Path standbyEnrollmentRequest =
+        writeNamedRequest(
+            "enroll-standby.json",
+            """
+            {
+              "principalId": "fedcba98-7654-4cde-8fab-0123456789ab",
+              "credentialSpki": "%s",
+              "credentialPurpose": "system"
+            }
+            """
+                .formatted(STANDBY_CREDENTIAL_SPKI));
     Path policyRequest =
         writeNamedRequest(
             "policy.json",
@@ -141,6 +154,8 @@ class FinGrindCliAttestationRegistryMutationWorkflowTest extends FinGrindCliTest
 
     assertJsonMutationSucceeds(bookFilePath, bookKeyFilePath, "enroll-key", enrollmentRequest);
     assertJsonMutationSucceeds(bookFilePath, bookKeyFilePath, "rollover-key", rolloverRequest);
+    assertJsonMutationSucceeds(
+        bookFilePath, bookKeyFilePath, "enroll-key", standbyEnrollmentRequest);
     assertJsonMutationSucceeds(bookFilePath, bookKeyFilePath, "revoke-key", revocationRequest);
 
     ByteArrayOutputStream output = new ByteArrayOutputStream();
@@ -161,7 +176,7 @@ class FinGrindCliAttestationRegistryMutationWorkflowTest extends FinGrindCliTest
     assertEquals(0, exitCode, output.toString(StandardCharsets.UTF_8));
     String rendered = output.toString(StandardCharsets.UTF_8);
     assertTrue(rendered.contains("Attestation Registry Updated"), rendered);
-    assertTrue(rendered.contains("Operation      : alter-policy"), rendered);
+    assertTrue(rendered.contains("Operation kind : alter-policy"), rendered);
     assertTrue(rendered.contains("Head order"), rendered);
     assertTrue(rendered.contains("Operation head"), rendered);
   }

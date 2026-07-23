@@ -9,6 +9,7 @@ import dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
 import dev.erst.fingrind.core.attestation.AttestationReviewFinding;
 import java.util.List;
@@ -22,52 +23,58 @@ final class CliAttestationReadResponseWriter {
     this.outputChannel = Objects.requireNonNull(outputChannel, "outputChannel");
   }
 
-  void writeVerifyBook(VerifyBookAttestationResult result, OutputMode outputMode) {
+  void writeVerifyBook(
+      VerifyBookAttestationResult result, boolean requireCleanAttestation, OutputMode outputMode) {
     switch (result) {
-      case VerifyBookAttestationResult.Valid valid ->
-          outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliEnvelopeMapper.successEnvelope(
-                          new CliAttestationJsonModels.VerifyBookPayload(
-                              valid.bookId().toString(),
-                              valid.headOrder().toString(),
-                              valid.operationHeadHex(),
-                              valid.reviewRequired(),
-                              reviewFindingPayloads(valid.reviewFindings()),
-                              registryPayload(valid.registry())))),
-              () ->
-                  writeText(
-                      valid.reviewRequired()
-                          ? "Book Attestation Valid — Review Required"
-                          : "Book Attestation Valid",
-                      List.of(
-                          List.of("Book ID", valid.bookId().toString()),
-                          List.of("Head order", valid.headOrder().toString()),
-                          List.of("Operation head", valid.operationHeadHex()),
-                          List.of(
-                              "Attestation credentials",
-                              renderedCredentials(valid.registry().credentials())),
-                          List.of(
-                              "Effective quorum policy",
-                              renderedCapabilityPolicies(valid.registry().capabilityPolicies())),
-                          List.of(
-                              "Principal capabilities",
-                              renderedPrincipalCapabilities(
-                                  valid.registry().principalCapabilities())),
-                          List.of(
-                              "System workflow policies",
-                              renderedSystemWorkflowPolicies(
-                                  valid.registry().systemWorkflowPolicies())),
-                          List.of(
-                              "Review findings",
-                              valid.reviewFindings().isEmpty()
-                                  ? "(none)"
-                                  : renderedReviewFindings(valid.reviewFindings())))),
-              () -> {
-                throw new IllegalArgumentException(
-                    CliOperationText.unsupportedCsvOutput(OperationId.VERIFY_BOOK));
-              });
+      case VerifyBookAttestationResult.Valid valid -> {
+        if (requireCleanAttestation && valid.reviewRequired()) {
+          writeReviewRequired(valid, outputMode);
+          return;
+        }
+        outputMode.run(
+            () ->
+                outputChannel.writeEnvelope(
+                    CliEnvelopeMapper.successEnvelope(
+                        new CliAttestationJsonModels.VerifyBookPayload(
+                            valid.bookId().toString(),
+                            valid.headOrder().toString(),
+                            valid.operationHeadHex(),
+                            valid.reviewRequired(),
+                            reviewFindingPayloads(valid.reviewFindings()),
+                            registryPayload(valid.registry())))),
+            () ->
+                writeText(
+                    valid.reviewRequired()
+                        ? "Book Attestation Valid — Review Required"
+                        : "Book Attestation Valid",
+                    List.of(
+                        List.of("Book ID", valid.bookId().toString()),
+                        List.of("Head order", valid.headOrder().toString()),
+                        List.of("Operation head", valid.operationHeadHex()),
+                        List.of(
+                            "Attestation credentials",
+                            renderedCredentials(valid.registry().credentials())),
+                        List.of(
+                            "Effective quorum policy",
+                            renderedCapabilityPolicies(valid.registry().capabilityPolicies())),
+                        List.of(
+                            "Principal capabilities",
+                            renderedPrincipalCapabilities(
+                                valid.registry().principalCapabilities())),
+                        List.of(
+                            "System workflow policies",
+                            renderedSystemWorkflowPolicies(
+                                valid.registry().systemWorkflowPolicies())),
+                        List.of(
+                            "Review findings",
+                            valid.reviewFindings().isEmpty()
+                                ? "(none)"
+                                : renderedReviewFindings(valid.reviewFindings())))),
+            () -> {
+              throw new IllegalArgumentException(
+                  CliOperationText.unsupportedCsvOutput(OperationId.VERIFY_BOOK));
+            });
+      }
       case VerifyBookAttestationResult.Invalid invalid ->
           writeRejected(
               invalid.failureCode(),
@@ -75,6 +82,38 @@ final class CliAttestationReadResponseWriter {
               "Restore from a valid independently retained backup or use a verified receipt to investigate the break.",
               outputMode);
     }
+  }
+
+  private void writeReviewRequired(VerifyBookAttestationResult.Valid valid, OutputMode outputMode) {
+    outputMode.run(
+        () ->
+            outputChannel.writeEnvelope(
+                new CliEnvelopeJsonModels.Envelope<>(
+                    ProtocolEnvelopeStatus.REJECTED,
+                    null,
+                    ContractErrors.Descriptor.ATTESTATION_REVIEW_REQUIRED.code(),
+                    "The attestation chain is structurally valid, but declared compromise review findings prevent the required clean result.",
+                    "Run "
+                        + OperationId.ATTESTATION_REVIEW.wireName()
+                        + " or "
+                        + OperationId.VERIFY_BOOK.wireName()
+                        + " without --require-clean-attestation to inspect the findings, then resolve the operational incident before accepting further work.",
+                    null,
+                    null,
+                    null,
+                    null)),
+        () ->
+            writeText(
+                "Book Attestation Review Required",
+                List.of(
+                    List.of("Book ID", valid.bookId().toString()),
+                    List.of("Head order", valid.headOrder().toString()),
+                    List.of("Operation head", valid.operationHeadHex()),
+                    List.of("Review findings", renderedReviewFindings(valid.reviewFindings())))),
+        () -> {
+          throw new IllegalArgumentException(
+              CliOperationText.unsupportedCsvOutput(OperationId.VERIFY_BOOK));
+        });
   }
 
   void writeReview(AttestationReviewResult result, OutputMode outputMode) {
@@ -195,23 +234,24 @@ final class CliAttestationReadResponseWriter {
   }
 
   private static String renderedReviewFindings(List<AttestationReviewFinding> findings) {
-    return CliTextFormat.joined(
+    return CliTextFormat.renderBulletedBlock(
         findings.stream()
             .map(
                 finding -> {
                   var review = finding.compromiseReview();
                   return "credentialKeyId="
                       + review.credentialKeyId()
-                      + ", firstAffectedOrder="
+                      + "\n  firstAffectedOrder="
                       + review.firstAffectedOrder()
-                      + ", lastAffectedOrder="
+                      + "\n  lastAffectedOrder="
                       + (review.lastAffectedOrder() == null
                           ? "through-head"
                           : review.lastAffectedOrder())
-                      + ", operationOrder="
+                      + "\n  operationOrder="
                       + finding.operationOrder();
                 })
-            .toList());
+            .toList(),
+        Integer.MAX_VALUE);
   }
 
   private static CliAttestationJsonModels.AttestationRegistryPayload registryPayload(
@@ -231,17 +271,20 @@ final class CliAttestationReadResponseWriter {
 
   private static String renderedPrincipalCapabilities(
       List<AttestationRegistryInspection.PrincipalCapability> principalCapabilities) {
-    return CliTextFormat.joined(
-        principalCapabilities.stream()
-            .map(
-                capability ->
-                    "principalId="
-                        + capability.principalId()
-                        + ", capability="
-                        + capability.capability()
-                        + ", eligible="
-                        + capability.eligible())
-            .toList());
+    return principalCapabilities.isEmpty()
+        ? "(none)"
+        : CliTextFormat.renderBulletedBlock(
+            principalCapabilities.stream()
+                .map(
+                    capability ->
+                        "principalId="
+                            + capability.principalId()
+                            + "\n  capability="
+                            + capability.capability()
+                            + "\n  eligible="
+                            + capability.eligible())
+                .toList(),
+            Integer.MAX_VALUE);
   }
 
   private static String renderedSystemWorkflowPolicies(
@@ -249,17 +292,18 @@ final class CliAttestationReadResponseWriter {
     if (policies.isEmpty()) {
       return "(none)";
     }
-    return CliTextFormat.joined(
+    return CliTextFormat.renderBulletedBlock(
         policies.stream()
             .map(
                 policy ->
                     "workflowId="
                         + policy.workflowId()
-                        + ", kind="
+                        + "\n  kind="
                         + policy.workflowKind()
-                        + ", active="
+                        + "\n  active="
                         + policy.active())
-            .toList());
+            .toList(),
+        Integer.MAX_VALUE);
   }
 
   private void writeRejected(String code, String message, String hint, OutputMode outputMode) {

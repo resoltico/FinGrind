@@ -89,6 +89,7 @@ public final class AttestationLifecycleMutationProjection {
         checked.credential(),
         "enroll",
         checked.purpose().token(),
+        Optional.empty(),
         Optional.empty());
   }
 
@@ -96,16 +97,18 @@ public final class AttestationLifecycleMutationProjection {
   static AttestationOperationPreimages rolloverKey(
       AttestationRegistryMutation.RolloverKey mutation) {
     AttestationRegistryMutation.RolloverKey checked = Objects.requireNonNull(mutation, "mutation");
+    AttestationHash predecessorKeyId = AttestationHash.of(checked.predecessorCredential().keyId());
     return binding(
         checked.operationKind().wireToken(),
         checked.principalId(),
         checked.credential(),
         "rollover",
         checked.purpose().token(),
-        Optional.of(AttestationHash.of(checked.predecessorCredential().keyId())));
+        Optional.of(predecessorKeyId),
+        Optional.of(AttestationCredentialRetirementState.SUPERSEDED));
   }
 
-  /** Projects one exact public credential-revocation operation. */
+  /** Projects one exact public revoked credential-retirement operation. */
   static AttestationOperationPreimages revokeKey(AttestationRegistryMutation.RevokeKey mutation) {
     AttestationRegistryMutation.RevokeKey checked = Objects.requireNonNull(mutation, "mutation");
     AttestationHash keyId = AttestationHash.of(checked.credential().keyId());
@@ -114,10 +117,13 @@ public final class AttestationLifecycleMutationProjection {
                 List.of(
                     command(checked.operationKind().wireToken()),
                     new AttestationPreimage.Fact(
-                        0x0181,
+                        0x0185,
                         List.of(
                             present(AttestationBinaryFieldValue.hash(keyId)),
                             present(AttestationBinaryFieldValue.uuid(checked.principalId())),
+                            present(
+                                AttestationTextFieldValue.token(
+                                    AttestationCredentialRetirementState.REVOKED.token())),
                             checked
                                 .reason()
                                 .<AttestationField>map(AttestationLifecycleMutationProjection::text)
@@ -126,11 +132,14 @@ public final class AttestationLifecycleMutationProjection {
         AttestationPreimage.of(
                 List.of(
                     new AttestationPreimage.Fact(
-                        0x0004,
+                        0x0009,
                         List.of(
                             present(AttestationNumericFieldValue.mutation(0)),
                             present(AttestationBinaryFieldValue.hash(keyId)),
                             present(AttestationBinaryFieldValue.uuid(checked.principalId())),
+                            present(
+                                AttestationTextFieldValue.token(
+                                    AttestationCredentialRetirementState.REVOKED.token())),
                             checked
                                 .reason()
                                 .<AttestationField>map(AttestationLifecycleMutationProjection::text)
@@ -216,13 +225,14 @@ public final class AttestationLifecycleMutationProjection {
             present(AttestationTextFieldValue.token(CLI))));
   }
 
-  private static AttestationOperationPreimages binding(
+  static AttestationOperationPreimages binding(
       String operationKind,
       java.util.UUID principalId,
       AttestationPublicCredential credential,
       String action,
       String purpose,
-      Optional<AttestationHash> predecessorKeyId) {
+      Optional<AttestationHash> predecessorKeyId,
+      Optional<AttestationCredentialRetirementState> predecessorRetirementState) {
     AttestationPublicCredential checkedCredential =
         Objects.requireNonNull(credential, "credential");
     AttestationHash keyId = AttestationHash.of(checkedCredential.keyId());
@@ -230,33 +240,58 @@ public final class AttestationLifecycleMutationProjection {
         Objects.requireNonNull(predecessorKeyId, "predecessorKeyId")
             .<AttestationField>map(value -> present(AttestationBinaryFieldValue.hash(value)))
             .orElseGet(AttestationField::absent);
+    if (predecessorKeyId.isPresent() != predecessorRetirementState.isPresent()) {
+      throw new IllegalArgumentException(
+          "A credential rollover must project its predecessor retirement in the same operation.");
+    }
+    List<AttestationPreimage.Fact> requestFacts = new java.util.ArrayList<>();
+    requestFacts.add(command(operationKind));
+    requestFacts.add(
+        new AttestationPreimage.Fact(
+            0x0180,
+            List.of(
+                present(AttestationBinaryFieldValue.uuid(principalId)),
+                present(AttestationBinaryFieldValue.hash(keyId)),
+                present(AttestationTextFieldValue.token(action)),
+                present(AttestationBinaryFieldValue.spki(checkedCredential.spki())),
+                present(AttestationTextFieldValue.token(purpose)),
+                predecessor)));
+    List<AttestationPreimage.Fact> effectFacts = new java.util.ArrayList<>();
+    effectFacts.add(
+        new AttestationPreimage.Fact(
+            0x0002,
+            List.of(
+                present(AttestationNumericFieldValue.mutation(0)),
+                present(AttestationBinaryFieldValue.uuid(principalId)),
+                present(AttestationBinaryFieldValue.hash(keyId)),
+                present(AttestationTextFieldValue.token(action)),
+                present(AttestationBinaryFieldValue.spki(checkedCredential.spki())),
+                present(AttestationTextFieldValue.token(purpose)),
+                predecessor)));
+    if (predecessorKeyId.isPresent()) {
+      AttestationHash checkedPredecessor = predecessorKeyId.orElseThrow();
+      AttestationCredentialRetirementState checkedState = predecessorRetirementState.orElseThrow();
+      requestFacts.add(
+          new AttestationPreimage.Fact(
+              0x0185,
+              List.of(
+                  present(AttestationBinaryFieldValue.hash(checkedPredecessor)),
+                  present(AttestationBinaryFieldValue.uuid(principalId)),
+                  present(AttestationTextFieldValue.token(checkedState.token())),
+                  AttestationField.absent())));
+      effectFacts.add(
+          new AttestationPreimage.Fact(
+              0x0009,
+              List.of(
+                  present(AttestationNumericFieldValue.mutation(0)),
+                  present(AttestationBinaryFieldValue.hash(checkedPredecessor)),
+                  present(AttestationBinaryFieldValue.uuid(principalId)),
+                  present(AttestationTextFieldValue.token(checkedState.token())),
+                  AttestationField.absent())));
+    }
     return new AttestationOperationPreimages(
-        AttestationPreimage.of(
-                List.of(
-                    command(operationKind),
-                    new AttestationPreimage.Fact(
-                        0x0180,
-                        List.of(
-                            present(AttestationBinaryFieldValue.uuid(principalId)),
-                            present(AttestationBinaryFieldValue.hash(keyId)),
-                            present(AttestationTextFieldValue.token(action)),
-                            present(AttestationBinaryFieldValue.spki(checkedCredential.spki())),
-                            present(AttestationTextFieldValue.token(purpose)),
-                            predecessor))))
-            .encoded(),
-        AttestationPreimage.of(
-                List.of(
-                    new AttestationPreimage.Fact(
-                        0x0002,
-                        List.of(
-                            present(AttestationNumericFieldValue.mutation(0)),
-                            present(AttestationBinaryFieldValue.uuid(principalId)),
-                            present(AttestationBinaryFieldValue.hash(keyId)),
-                            present(AttestationTextFieldValue.token(action)),
-                            present(AttestationBinaryFieldValue.spki(checkedCredential.spki())),
-                            present(AttestationTextFieldValue.token(purpose)),
-                            predecessor))))
-            .encoded());
+        AttestationPreimage.of(requestFacts).encoded(),
+        AttestationPreimage.of(effectFacts).encoded());
   }
 
   private static AttestationPreimage.Fact backupRequest(

@@ -183,7 +183,7 @@ FinGrind's current public model is:
   stored, while `normalBalance` is derived from `accountType` plus classification doctrine
 - every posting line references a declared active account
 - the canonical book schema uses SQLite `STRICT` tables and opened handles disable `trusted_schema`
-- the current supported on-disk format is `51`, owned by `BookFormatContract`
+- the current supported on-disk format is `52`, owned by `BookFormatContract`
 - `inspect-book` publishes one explicit hard-break migration policy for the active format line:
   no in-place upgrade path, no older-format acceptance, and no newer-format acceptance
 - FinGrind is in an alpha hard-break line, so schema evolution advances by replacing the current

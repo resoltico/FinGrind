@@ -24,8 +24,11 @@ class AttestationRegistryInspectionTest {
         AttestationRegistry.fromVerifierFacts(
             List.of(binding(0, founder), binding(0, revoked)),
             List.of(
-                new AttestationCredentialRevocation(
-                    BigInteger.ONE, revoked.principalId(), revoked.keyId())),
+                new AttestationCredentialRetirement(
+                    BigInteger.ONE,
+                    revoked.principalId(),
+                    revoked.keyId(),
+                    AttestationCredentialRetirementState.REVOKED)),
             java.util.stream.Stream.concat(
                     allFounderGrants(founder.principalId()).stream(),
                     allFounderGrants(revoked.principalId()).stream())
@@ -60,7 +63,12 @@ class AttestationRegistryInspectionTest {
             List.of(
                 binding(0, founder),
                 AttestationAuthorizationTestSupport.rollover(1, replacement, founder.keyId())),
-            List.of(),
+            List.of(
+                new AttestationCredentialRetirement(
+                    BigInteger.ONE,
+                    founder.principalId(),
+                    founder.keyId(),
+                    AttestationCredentialRetirementState.SUPERSEDED)),
             allFounderGrants(founder.principalId()),
             defaultRules(1),
             List.of());
@@ -75,6 +83,13 @@ class AttestationRegistryInspectionTest {
             .findFirst()
             .orElseThrow()
             .predecessorKeyId());
+    assertEquals(
+        "superseded",
+        inspection.credentials().stream()
+            .filter(entry -> entry.keyId().equals(founder.keyId().hex()))
+            .findFirst()
+            .orElseThrow()
+            .state());
   }
 
   @Test

@@ -4,18 +4,32 @@ import org.jspecify.annotations.Nullable;
 
 /** Resolves a key's enrollment state at one historical operation position. */
 record AttestationCredentialState(
-    @Nullable AttestationCredentialBinding binding, boolean active, boolean revoked) {
+    @Nullable AttestationCredentialBinding binding,
+    @Nullable AttestationCredentialRetirementState retirementState) {
 
   static AttestationCredentialState notEnrolled() {
-    return new AttestationCredentialState(null, false, false);
+    return new AttestationCredentialState(null, null);
   }
 
   static AttestationCredentialState active(AttestationCredentialBinding binding) {
-    return new AttestationCredentialState(binding, true, false);
+    return new AttestationCredentialState(binding, null);
   }
 
-  static AttestationCredentialState revoked(AttestationCredentialBinding binding) {
-    return new AttestationCredentialState(binding, false, true);
+  static AttestationCredentialState retired(
+      AttestationCredentialBinding binding, AttestationCredentialRetirementState state) {
+    return new AttestationCredentialState(binding, state);
+  }
+
+  boolean active() {
+    return binding != null && retirementState == null;
+  }
+
+  boolean revoked() {
+    return retirementState == AttestationCredentialRetirementState.REVOKED;
+  }
+
+  boolean superseded() {
+    return retirementState == AttestationCredentialRetirementState.SUPERSEDED;
   }
 
   AttestationCredentialBinding requireBinding() {

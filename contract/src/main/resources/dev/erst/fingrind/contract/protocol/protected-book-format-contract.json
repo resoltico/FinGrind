@@ -1,6 +1,6 @@
 {
   "applicationId": 1179079236,
-  "formatVersion": 51,
+  "formatVersion": 52,
   "cipher": "chacha20",
   "legacyMode": false,
   "pageSize": 4096,

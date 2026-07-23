@@ -135,6 +135,9 @@ final class AttestationAuthorization {
     if (credential.revoked()) {
       throw failure(AttestationAuthorizationFailure.KEY_REVOKED);
     }
+    if (credential.superseded()) {
+      throw failure(AttestationAuthorizationFailure.KEY_SUPERSEDED);
+    }
     if (!credential.binding().principalId().equals(entry.principalId())) {
       throw failure(AttestationAuthorizationFailure.KEY_PRINCIPAL_MISMATCH);
     }

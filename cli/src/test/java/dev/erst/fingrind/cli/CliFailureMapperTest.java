@@ -13,6 +13,7 @@ import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
 import dev.erst.fingrind.sqlite.ManagedSqliteRuntimeUnavailableException;
 import dev.erst.fingrind.sqlite.SqlitePersistenceInvariantException;
+import dev.erst.fingrind.sqlite.SqliteProtectedBookVerificationException;
 import dev.erst.fingrind.sqlite.SqliteStorageFailureException;
 import java.math.BigInteger;
 import java.nio.file.Path;
@@ -110,6 +111,22 @@ class CliFailureMapperTest {
     assertEquals("storage-runtime-failure", storageFailure.code());
     assertNotNull(storageFailure.hint());
     assertTrue(storageFailure.hint().contains("book file path"));
+  }
+
+  @Test
+  void runtimeFailure_mapsProtectedBookVerificationToTheOpaquePublicFailure() {
+    CliFailure failure =
+        CliFailureMapper.runtimeFailure(
+            new SqliteProtectedBookVerificationException(
+                new IllegalStateException("native failure withheld")));
+
+    assertNotNull(failure);
+    assertEquals("protected-book-verification-failed", failure.code());
+    assertTrue(failure.message().contains("authenticate and verify"));
+    assertNotNull(failure.hint());
+    assertTrue(failure.hint().contains("damaged or tampered"));
+    assertFalse(failure.message().contains("native failure withheld"));
+    assertFalse(failure.hint().contains("native failure withheld"));
   }
 
   @Test

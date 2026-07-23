@@ -50,7 +50,8 @@ final class CliQueryCommandExecutor {
         bookAccess,
         outputMode,
         ignored -> readWorkflow.verifyBookAttestation(bookAccess, compromiseReviews),
-        result -> responseWriter.writeVerifyBookAttestation(result, outputMode),
+        result ->
+            responseWriter.writeVerifyBookAttestation(result, requireCleanAttestation, outputMode),
         result ->
             switch (result) {
               case dev.erst.fingrind.contract.bookkeeping.VerifyBookAttestationResult.Valid valid ->

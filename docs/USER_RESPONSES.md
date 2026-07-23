@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: OPERATOR_RESPONSES
-updated: "2026-07-22"
+updated: "2026-07-23"
 route:
   keywords: [fingrind, response-json, payload, rejection, inspect-book, list-postings, account-balance, trial-balance, account-ledger, period-summary, fixed-asset-register, output-mode, capabilities, execute-plan, tax-setup, amend-account, retire-account, report-output]
   questions: ["what response envelopes does fingrind return", "what does inspect-book return", "how does list-accounts pagination work in fingrind", "what execute-plan response does fingrind return", "what do amend-account and retire-account return", "what does fixed asset register return", "what report payloads does fingrind return"]
@@ -35,7 +35,7 @@ Every non-success JSON envelope carries `category` with exactly one of `structur
 Dynamic fields:
 - `capabilities.payload` is stable unless the public command contract or runtime surface changes
 - discovery JSON payloads from `help`, `capabilities`, and `version` publish
-  `payload.protocolVersion`, and the current hard-break line is `"33"`
+  `payload.protocolVersion`, and the current hard-break line is `"34"`
 - `docs/examples/request-template.json` and `docs/examples/ledger-plan-template.json` are
   checked-in source-copy companions for `print-request-template` and `print-plan-template`; they
   publish the minimal settled-sale request scaffold and the placeholder-first general ledger-plan

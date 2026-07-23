@@ -214,19 +214,21 @@ Disclosure rules:
 
 ## Failure Semantics
 
-`protected-book-verification-failed` means FinGrind could not verify the selected protected book
-with the supplied passphrase source.
+`protected-book-verification-failed` means FinGrind could not authenticate and verify the selected
+protected book.
 
 Publicly reported causes include:
 - wrong secret
-- damaged or truncated ciphertext
+- damaged, truncated, or tampered ciphertext
 - a protected SQLite file outside the supported FinGrind protected-book format
 
 FinGrind intentionally does not invent false precision at this boundary. The encrypted-header
 validation path can converge on storage verification families such as `SQLITE_NOTADB`,
 `SQLITE_IOERR_BADKEY`, and `SQLITE_IOERR_CODEC` for wrong-key, damaged ciphertext, and
 unsupported protected-file variants. The public contract therefore reports one truthful
-verification failure instead of pretending every such failure is a passphrase mistake.
+verification failure instead of pretending every such failure is a passphrase mistake. This typed
+failure is preserved even when a later SQLite page read, rather than initial connection setup,
+first exposes the protected-book integrity problem.
 
 ## Evidence
 

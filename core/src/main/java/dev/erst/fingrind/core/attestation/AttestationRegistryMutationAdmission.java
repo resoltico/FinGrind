@@ -76,5 +76,8 @@ final class AttestationRegistryMutationAdmission {
     if (state.revoked()) {
       throw new AttestationAuthorizationException(AttestationAuthorizationFailure.KEY_REVOKED);
     }
+    if (state.superseded()) {
+      throw new AttestationAuthorizationException(AttestationAuthorizationFailure.KEY_SUPERSEDED);
+    }
   }
 }

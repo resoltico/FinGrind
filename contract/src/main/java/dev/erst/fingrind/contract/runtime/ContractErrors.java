@@ -13,6 +13,14 @@ public final class ContractErrors {
     return Descriptor.descriptors();
   }
 
+  /** Creates the one honest public failure for protected-book authentication or integrity loss. */
+  public static ContractFailure protectedBookVerificationFailure() {
+    return Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.failure(
+        "FinGrind could not authenticate and verify the selected protected book.",
+        "The supplied secret may be wrong, or the protected book may be damaged or tampered with. FinGrind cannot distinguish those causes before decryption. Confirm the intended book and secret; recover only from independently retained verified evidence.",
+        null);
+  }
+
   /** Stable descriptor for a deterministic CLI error code. */
   public enum Descriptor {
     UNKNOWN_COMMAND(
@@ -98,6 +106,11 @@ public final class ContractErrors {
     STALE_HEAD(
         "stale-head",
         "Attested-book mutation refused because the authenticated operation head advanced after signing and before atomic admission.",
+        2,
+        ContractResponse.FailureCategory.PRECONDITION),
+    ATTESTATION_REVIEW_REQUIRED(
+        "attestation-review-required",
+        "Verification found a declared credential-compromise review condition while the caller required a clean attestation result.",
         2,
         ContractResponse.FailureCategory.PRECONDITION),
     BOOK_MAINTENANCE_IN_PROGRESS(

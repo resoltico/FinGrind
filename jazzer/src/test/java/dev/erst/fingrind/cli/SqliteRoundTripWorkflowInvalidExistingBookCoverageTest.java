@@ -75,7 +75,8 @@ class SqliteRoundTripWorkflowInvalidExistingBookCoverageTest {
                         ContractDecision.accepted(
                             new OpenBookResult.Opened(
                                 CliFuzzFixtures.fixedClock().instant(),
-                                CliFuzzWorkflowFixtures.bookIdentity())),
+                                CliFuzzWorkflowFixtures.bookIdentity(),
+                                CliFuzzAttestationFixtures.syntheticTrustRoot())),
                     bookPath));
     SqliteRoundTripWorkflowTestSupport.assertMessageContains(
         openedBook, "unexpectedly opened as a valid book");

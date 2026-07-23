@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: CONTRACT_DISCOVERY
-updated: "2026-07-21"
+updated: "2026-07-23"
 route:
   keywords: [fingrind, machine-contract, discovery, request-shapes, response-shapes, templates, workflow, contract-errors]
   questions: ["where is MachineContract documented", "where are request and response descriptor types documented", "where are discovery templates and workflow descriptors documented"]
@@ -17,7 +17,7 @@ contract failures.
 ## `MachineContract`
 
 `MachineContract` is the public discovery assembler for `help`, `version`, `capabilities`,
-`print-request-template`, and `print-plan-template`.
+ordinary request templates, and plan templates.
 
 ```java
 public final class MachineContract
@@ -35,7 +35,7 @@ public final class MachineContract
 - Command-help behavior: `help(OperationId)` and the CLI `<command> --help` alias both scope the
   rendered discovery payload to one selected operation, while the CLI help renderer rewrites
   canonical `fingrind ...` examples and repair hints to the active launcher surface such as
-  `./bin/fingrind` or `.\\bin\\fingrind.ps1`; request-file commands additionally inline the
+  `./bin/fingrind` or `.\\bin\\fingrind.ps1`; structured-input commands additionally inline the
   canonical request template, accepted field tables, and enum vocabularies so a caller can form a
   valid payload from the CLI alone, and typed `record-*` help narrows that payload guidance to the
   selected business-event variant instead of restating the full union write shape
@@ -46,6 +46,23 @@ public final class MachineContract
   `print-request-template` / `print-plan-template` through the same canonical serializer so
   machine fixtures remain byte-identical to live command output and the checked-in public examples
   stay semantically aligned without drifting away from the placeholder scaffold contract
+
+## `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates`
+
+Attestation administration and review scaffolds are a separate public contract family, rather
+than additional responsibilities on the general discovery assembler.
+
+```java
+public final class MachineContractAttestationTemplates
+```
+
+- `registryTemplate(OperationId)` emits the exact typed scaffold for `enroll-key`,
+  `rollover-key`, `revoke-key`, or `alter-policy`; unsupported operation IDs refuse rather than
+  returning an ambiguous empty template.
+- `reviewFileTemplate()` emits the complete non-persisted compromise-review declaration accepted
+  by `verify-book` and `attestation-review`, with affected orders encoded as strings.
+- This owner deliberately replaced the former general-assembler template methods in protocol 34;
+  Java consumers must use this specific attestation contract instead of a compatibility facade.
 
 ## `ScaffoldPlaceholders`, `WorkflowSurface`, `WorkflowDescriptor`, `WorkflowStepKind`, And `WorkflowStepDescriptor`
 

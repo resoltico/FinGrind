@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.util.Objects;
 
 /** Shared SQLite-specific assertions for Jazzer harnesses. */
 public final class SqliteFuzzAssertions {
@@ -84,14 +85,18 @@ public final class SqliteFuzzAssertions {
         "jazzer deterministic book passphrase", TEST_BOOK_KEY.toCharArray());
   }
 
-  /** Writes one deterministic secure key file that resolves to the shared Jazzer passphrase. */
+  /** Writes one deterministic secure key file and prepares its direct parent first. */
   public static void writeDeterministicBookKeyFile(Path keyFilePath) throws java.io.IOException {
-    if (Files.notExists(keyFilePath)) {
-      SqliteBookKeyFileGenerator.generate(keyFilePath);
+    Path normalizedKeyFilePath = keyFilePath.toAbsolutePath().normalize();
+    Path parentDirectory =
+        Objects.requireNonNull(normalizedKeyFilePath.getParent(), "normalizedKeyFilePath parent");
+    prepareSecureArtifactDirectory(parentDirectory);
+    if (Files.notExists(normalizedKeyFilePath)) {
+      SqliteBookKeyFileGenerator.generate(normalizedKeyFilePath);
     } else {
-      SqliteBookKeyFile.loadDecision(keyFilePath).requireAccepted().close();
+      SqliteBookKeyFile.loadDecision(normalizedKeyFilePath).requireAccepted().close();
     }
-    Files.writeString(keyFilePath, TEST_BOOK_KEY, StandardCharsets.UTF_8);
+    Files.writeString(normalizedKeyFilePath, TEST_BOOK_KEY, StandardCharsets.UTF_8);
   }
 
   /** Creates or hardens one owner-only directory for deterministic SQLite fuzz artifacts. */

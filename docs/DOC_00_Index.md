@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: INDEX
-updated: "2026-07-22"
+updated: "2026-07-23"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session, tax, account-registry, account-lifecycle, journal, money, quantity, inventory costing, weighted average, posting]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSessions", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService", "which doc file covers the tax surface", "which doc file covers account lifecycle", "which doc file covers quantity and weighted-average inventory costing primitives"]
@@ -101,12 +101,12 @@ route:
 | `DOC_01_DecimalBoundaries.md` | exact-money boundary, exact-quantity boundary, and future non-money decimal-domain rules |
 | `DOC_02_Application.md` | routing overview for the split `contract` and `executor` reference spine |
 | `DOC_02_ProtocolAndDiscovery.md` | exported `contract` protocol metadata, runtime/distribution facts, request-field vocabularies, and protected-book format owners |
-| `DOC_02_VerifiableOperationAttestation.md` | current operation, authorization, preimage, and envelope contract for protected-book format 51 |
-| `DOC_02_VerifiableOperationAttestationVerification.md` | current verifier procedure, compromise review, and structural-failure contract for protected-book format 51 |
-| `DOC_02_VerifiableOperationAttestationProfiles.md` | current field-level posting profiles and autonomous system-close derivations for protected-book format 51 |
+| `DOC_02_VerifiableOperationAttestation.md` | current operation, authorization, preimage, and envelope contract for protected-book format 52 |
+| `DOC_02_VerifiableOperationAttestationVerification.md` | current verifier procedure, compromise review, and structural-failure contract for protected-book format 52 |
+| `DOC_02_VerifiableOperationAttestationProfiles.md` | current field-level posting profiles and autonomous system-close derivations for protected-book format 52 |
 | `DOC_02_VerifiableOperationAttestationArtifacts.md` | current backup-manifest, artifact-publication, restore, receipt, anchor, and artifact-vector contract |
 | `DOC_02_VerifiableOperationAttestationCorpus.md` | current positive and negative source fixtures, including backup, restore, rekey, system-initiation, and live-CAS coverage |
-| `DOC_02_VerifiableOperationAttestationVectors.md` | byte-for-byte operation-envelope conformance vectors for protected-book format 51 |
+| `DOC_02_VerifiableOperationAttestationVectors.md` | byte-for-byte operation-envelope conformance vectors for protected-book format 52 |
 | `DOC_02_MachineContractAndDescriptors.md` | exported machine-contract assembly, discovery descriptors, templates, workflow scaffolds, and deterministic contract-error owners |
 | `DOC_02_AdministrationAndReports.md` | exported administration/query/report models and exported `executor` administration and read services |
 | `DOC_02_AccountRegistryLifecycle.md` | exported account amendment and retirement commands, results, and durable-history lifecycle rules |
@@ -311,14 +311,17 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `CommandCatalogDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `CommandDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractDecision` | `DOC_02_MachineContractAndDescriptors.md` | `ContractErrors`, `ContractFailure`, `ContractFailurePaths`, `ContractDecision`, And `ContractFailureException` |
-| `ContractAttestationRegistryTemplates` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractAttestationRegistryTemplates.AlterPolicyTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractAttestationRegistryTemplates.CapabilityGrantTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractAttestationRegistryTemplates.EnrollKeyTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractAttestationRegistryTemplates.PolicyRuleTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractAttestationRegistryTemplates.RevokeKeyTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractAttestationRegistryTemplates.RolloverKeyTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractAttestationRegistryTemplates.SystemWorkflowPolicyTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractAttestationRegistryTemplates` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates` |
+| `ContractAttestationRegistryTemplates.AlterPolicyTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates` |
+| `ContractAttestationRegistryTemplates.CapabilityGrantTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates` |
+| `ContractAttestationRegistryTemplates.EnrollKeyTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates` |
+| `ContractAttestationRegistryTemplates.PolicyRuleTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates` |
+| `ContractAttestationRegistryTemplates.RevokeKeyTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates` |
+| `ContractAttestationRegistryTemplates.RolloverKeyTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates` |
+| `ContractAttestationRegistryTemplates.SystemWorkflowPolicyTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates` |
+| `ContractAttestationReviewTemplates` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates` |
+| `ContractAttestationReviewTemplates.AttestationReviewFileTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates` |
+| `ContractAttestationReviewTemplates.CompromiseReviewTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates` |
 | `ContractDiscovery` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractDiscoveryDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `ContractErrors` | `DOC_02_MachineContractAndDescriptors.md` | `ContractErrors`, `ContractFailure`, `ContractFailurePaths`, `ContractDecision`, And `ContractFailureException` |
@@ -395,6 +398,7 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `ExitCodeDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `HelpDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
 | `MachineContract` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContract` |
+| `MachineContractAttestationTemplates` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates` |
 | `MonetaryAmount` | `DOC_02_ProtocolAndDiscovery.md` | `MonetaryAmount` |
 | `OperationCategory` | `DOC_02_ProtocolAndDiscovery.md` | `OperationCategory` |
 | `OperationId` | `DOC_02_ProtocolAndDiscovery.md` | `OperationId` |
@@ -674,7 +678,8 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `TrialBalanceCriteria` | `DOC_03_BookSessionsAndAdapters.md` | `AccountRegistryCursor`, `AccountRegistryQuery`, `AccountRegistryPage`, `PostingHistoryCursor`, `PostingHistoryQuery`, `PostingHistoryPage`, `AccountBalanceCriteria`, `AccountBalanceView`, `TrialBalanceCriteria`, `TrialBalanceRowView`, `TrialBalanceView`, `AccountLedgerCriteria`, `AccountLedgerEntryView`, `AccountLedgerView`, `PeriodSummaryCriteria`, `PeriodCurrencySummaryView`, `PeriodAccountActivityView`, And `PeriodSummaryView` |
 | `TrialBalanceRowView` | `DOC_03_BookSessionsAndAdapters.md` | `AccountRegistryCursor`, `AccountRegistryQuery`, `AccountRegistryPage`, `PostingHistoryCursor`, `PostingHistoryQuery`, `PostingHistoryPage`, `AccountBalanceCriteria`, `AccountBalanceView`, `TrialBalanceCriteria`, `TrialBalanceRowView`, `TrialBalanceView`, `AccountLedgerCriteria`, `AccountLedgerEntryView`, `AccountLedgerView`, `PeriodSummaryCriteria`, `PeriodCurrencySummaryView`, `PeriodAccountActivityView`, And `PeriodSummaryView` |
 | `TrialBalanceView` | `DOC_03_BookSessionsAndAdapters.md` | `AccountRegistryCursor`, `AccountRegistryQuery`, `AccountRegistryPage`, `PostingHistoryCursor`, `PostingHistoryQuery`, `PostingHistoryPage`, `AccountBalanceCriteria`, `AccountBalanceView`, `TrialBalanceCriteria`, `TrialBalanceRowView`, `TrialBalanceView`, `AccountLedgerCriteria`, `AccountLedgerEntryView`, `AccountLedgerView`, `PeriodSummaryCriteria`, `PeriodCurrencySummaryView`, `PeriodAccountActivityView`, And `PeriodSummaryView` |
-| `UnsupportedManagedSqliteLibraryIdentityException` | `DOC_03_BookSessionsAndAdapters.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, `SqlitePersistenceInvariantException`, And `SqliteStorageFailureException` |
-| `UnsupportedSqliteCompileOptionsException` | `DOC_03_BookSessionsAndAdapters.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, `SqlitePersistenceInvariantException`, And `SqliteStorageFailureException` |
+| `UnsupportedManagedSqliteLibraryIdentityException` | `DOC_03_BookSessionsAndAdapters.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, `SqlitePersistenceInvariantException`, `SqliteProtectedBookVerificationException`, And `SqliteStorageFailureException` |
+| `UnsupportedSqliteCompileOptionsException` | `DOC_03_BookSessionsAndAdapters.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, `SqlitePersistenceInvariantException`, `SqliteProtectedBookVerificationException`, And `SqliteStorageFailureException` |
+| `SqliteProtectedBookVerificationException` | `DOC_03_BookSessionsAndAdapters.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, `SqlitePersistenceInvariantException`, `SqliteProtectedBookVerificationException`, And `SqliteStorageFailureException` |
 | `App` | `DOC_04_CliAndPdfAdapters.md` | `App` |
 | `PdfReportService` | `DOC_04_CliAndPdfAdapters.md` | `PdfReportService` |

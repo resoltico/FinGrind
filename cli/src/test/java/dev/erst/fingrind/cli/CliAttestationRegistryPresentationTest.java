@@ -28,14 +28,16 @@ class CliAttestationRegistryPresentationTest {
 
     ByteArrayOutputStream textOutput = new ByteArrayOutputStream();
     new CliAttestationReadResponseWriter(outputChannel(textOutput))
-        .writeVerifyBook(result, OutputMode.TEXT);
+        .writeVerifyBook(result, false, OutputMode.TEXT);
     String text = textOutput.toString(StandardCharsets.UTF_8);
-    assertTrue(text.contains("principalId=" + PRINCIPAL_ID + ", capability=post, eligible=true"));
-    assertTrue(text.contains("workflowId=" + WORKFLOW_ID + ", kind=year-end-close, active=true"));
+    assertTrue(text.contains("principalId=" + PRINCIPAL_ID + "\n"));
+    assertTrue(text.contains("capability=post\n"));
+    assertTrue(text.contains("workflowId=" + WORKFLOW_ID + "\n"));
+    assertTrue(text.contains("kind=year-end-close\n"));
 
     ByteArrayOutputStream jsonOutput = new ByteArrayOutputStream();
     new CliAttestationReadResponseWriter(outputChannel(jsonOutput))
-        .writeVerifyBook(result, OutputMode.JSON);
+        .writeVerifyBook(result, false, OutputMode.JSON);
     String json = jsonOutput.toString(StandardCharsets.UTF_8);
     assertTrue(json.contains("\"workflowId\":\"" + WORKFLOW_ID + "\""));
     assertTrue(json.contains("\"resultHoldingAccountCode\":\"3900\""));

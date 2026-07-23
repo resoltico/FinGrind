@@ -14,6 +14,7 @@ public enum AttestationAuthorizationFailure {
   DUPLICATE_KEY("attestation-duplicate-key"),
   KEY_NOT_ENROLLED("attestation-key-not-enrolled"),
   KEY_REVOKED("attestation-key-revoked"),
+  KEY_SUPERSEDED("attestation-key-superseded"),
   KEY_PRINCIPAL_MISMATCH("attestation-key-principal-mismatch"),
   KEY_ALGORITHM_INVALID("attestation-key-algorithm-invalid"),
   SIGNATURE_INVALID("attestation-signature-invalid"),

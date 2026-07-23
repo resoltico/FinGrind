@@ -3,6 +3,7 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.cli.json.CliDiscoveryRequestFileGuidanceJsonModels.RequestFileGuidancePayload;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
+import dev.erst.fingrind.contract.discovery.MachineContractAttestationTemplates;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import java.util.Optional;
@@ -53,6 +54,9 @@ final class CliDiscoveryRequestFileGuidance {
     }
     if (operationId == OperationId.RETIRE_ACCOUNT) {
       return retireAccountRequestGuidance(helpDescriptor, detail);
+    }
+    if (operationId == OperationId.ATTESTATION_REVIEW) {
+      return attestationReviewRequestGuidance(detail);
     }
     if (isAttestationRegistryMutation(operationId)) {
       return attestationRegistryRequestGuidance(operationId, detail);
@@ -221,13 +225,31 @@ final class CliDiscoveryRequestFileGuidance {
             null,
             null,
             detail == DiscoveryDetail.FULL
-                ? dev.erst.fingrind.contract.discovery.MachineContract.attestationRegistryTemplate(
-                    operationId)
+                ? MachineContractAttestationTemplates.registryTemplate(operationId)
                 : null,
             null,
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
                 + " "
                 + operationId.wireName()));
+  }
+
+  private static Optional<RequestFileGuidancePayload> attestationReviewRequestGuidance(
+      DiscoveryDetail detail) {
+    return Optional.of(
+        new RequestFileGuidancePayload(
+            "Provide a compromise-review JSON document through --attestation-review-file <path|->.",
+            detail,
+            null,
+            null,
+            null,
+            null,
+            detail == DiscoveryDetail.FULL
+                ? MachineContractAttestationTemplates.reviewFileTemplate()
+                : null,
+            null,
+            CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+                + " "
+                + OperationId.ATTESTATION_REVIEW.wireName()));
   }
 
   private static boolean isAttestationRegistryMutation(OperationId operationId) {

@@ -44,16 +44,20 @@ class AttestedProtectedBookRegistryMutationWorkflowTest {
         AttestationMaintenanceTestSupport.createCredential(temporaryDirectory);
     Path enrolledKeyPath = temporaryDirectory.resolve("enrolled.fgatk");
     Path rolloverKeyPath = temporaryDirectory.resolve("rollover.fgatk");
+    Path standbyKeyPath = temporaryDirectory.resolve("standby.fgatk");
     char[] passphrase = "registry mutation test key".toCharArray();
     try {
       AttestationKeyFiles.create(enrolledKeyPath, passphrase);
       AttestationKeyFiles.create(rolloverKeyPath, passphrase);
+      AttestationKeyFiles.create(standbyKeyPath, passphrase);
     } finally {
       java.util.Arrays.fill(passphrase, '\0');
     }
     var enrolled = AttestationKeyFiles.loadPublicCredential(enrolledKeyPath);
     var rollover = AttestationKeyFiles.loadPublicCredential(rolloverKeyPath);
+    var standby = AttestationKeyFiles.loadPublicCredential(standbyKeyPath);
     UUID enrolledPrincipal = UUID.fromString("01234567-89ab-4cde-8fab-0123456789ab");
+    UUID standbyPrincipal = UUID.fromString("fedcba98-7654-4cde-8fab-0123456789ab");
     Path bookPath = temporaryDirectory.resolve("book.sqlite");
     AttestationMaintenanceTestSupport.Store store =
         new AttestationMaintenanceTestSupport.Store(
@@ -84,11 +88,19 @@ class AttestedProtectedBookRegistryMutationWorkflowTest {
       assertMutated(
           workflow.mutateRegistry(
               access,
+              new AttestationRegistryMutation.EnrollKey(
+                  standbyPrincipal, standby, AttestationCredentialPurpose.SYSTEM),
+              session),
+          "enroll-key",
+          3);
+      assertMutated(
+          workflow.mutateRegistry(
+              access,
               new AttestationRegistryMutation.RevokeKey(
-                  enrolledPrincipal, enrolled, java.util.Optional.of("device retired")),
+                  enrolledPrincipal, rollover, java.util.Optional.of("device retired")),
               session),
           "revoke-key",
-          3);
+          4);
       assertMutated(
           workflow.mutateRegistry(
               access,
@@ -98,7 +110,7 @@ class AttestedProtectedBookRegistryMutationWorkflowTest {
                           AttestationCapability.CLOSE_PERIOD, 1)),
                   List.of(
                       new AttestationRegistryMutation.CapabilityGrant(
-                          enrolledPrincipal,
+                          standbyPrincipal,
                           AttestationCapability.CLOSE_PERIOD,
                           dev.erst.fingrind.core.attestation.AttestationGrantState.GRANT)),
                   List.of(
@@ -111,7 +123,7 @@ class AttestedProtectedBookRegistryMutationWorkflowTest {
                           true))),
               session),
           "alter-policy",
-          4);
+          5);
     }
   }
 
@@ -328,8 +340,12 @@ class AttestedProtectedBookRegistryMutationWorkflowTest {
       MaintenanceDecision<ProtectedBookRegistryMutationOutcome> decision,
       String operationKind,
       int headOrder) {
+    ProtectedBookRegistryMutationOutcome outcome = accepted(decision);
     ProtectedBookRegistryMutationOutcome.Mutated mutated =
-        assertInstanceOf(ProtectedBookRegistryMutationOutcome.Mutated.class, accepted(decision));
+        assertInstanceOf(
+            ProtectedBookRegistryMutationOutcome.Mutated.class,
+            outcome,
+            () -> "outcome=" + outcome);
     assertEquals(operationKind, mutated.operationKind());
     assertEquals(java.math.BigInteger.valueOf(headOrder), mutated.headOrder());
   }

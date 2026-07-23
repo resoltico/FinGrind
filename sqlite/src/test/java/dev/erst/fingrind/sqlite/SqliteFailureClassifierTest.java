@@ -52,6 +52,13 @@ class SqliteFailureClassifierTest {
             new RuntimeException(
                 new SqlitePersistenceInvariantException("deterministic invariant leaked"))));
     assertEquals(
+        SqliteFailureClassifier.Category.PROTECTED_BOOK_VERIFICATION,
+        SqliteFailureClassifier.classify(
+            new RuntimeException(
+                new SqliteProtectedBookVerificationException(
+                    new SqliteNativeException(
+                        SqliteNativeResultCode.code("CORRUPT"), "corrupt")))));
+    assertEquals(
         SqliteFailureClassifier.Category.STORAGE,
         SqliteFailureClassifier.classify(
             new RuntimeException(new SqliteStorageFailureException("storage failure"))));

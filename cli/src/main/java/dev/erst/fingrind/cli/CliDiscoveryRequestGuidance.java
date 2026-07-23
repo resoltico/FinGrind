@@ -60,6 +60,9 @@ final class CliDiscoveryRequestGuidance {
     if (operationId == OperationId.RETIRE_ACCOUNT) {
       return renderRetireAccountRequestGuidance(helpDescriptor);
     }
+    if (operationId == OperationId.ATTESTATION_REVIEW) {
+      return renderAttestationReviewRequestGuidance();
+    }
     if (isAttestationRegistryMutation(operationId)) {
       return renderAttestationRegistryRequestGuidance(operationId);
     }
@@ -74,6 +77,7 @@ final class CliDiscoveryRequestGuidance {
         || operationId == OperationId.DECLARE_ACCOUNT
         || operationId == OperationId.AMEND_ACCOUNT
         || operationId == OperationId.RETIRE_ACCOUNT
+        || operationId == OperationId.ATTESTATION_REVIEW
         || isAttestationRegistryMutation(operationId)) {
       return CliDiscoveryCommandHelpSupport.SupportEntry.command(
           "Request template",
@@ -197,6 +201,18 @@ final class CliDiscoveryRequestGuidance {
             CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
                 + " "
                 + operationId.wireName()));
+  }
+
+  private static String renderAttestationReviewRequestGuidance() {
+    return CliDiscoveryTextSupport.section(
+        "Input Contract",
+        requestFileGuidance(
+            "Pass a compromise-review JSON document through --attestation-review-file <path|->. "
+                + "Each compromiseReviews entry identifies a credentialKeyId and its inclusive "
+                + "firstAffectedOrder and lastAffectedOrder as canonical strings.",
+            CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+                + " "
+                + OperationId.ATTESTATION_REVIEW.wireName()));
   }
 
   private static String attestationRegistryFieldGuidance(OperationId operationId) {

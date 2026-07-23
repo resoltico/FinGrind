@@ -114,10 +114,11 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
                       2,
                       canonicalBindings(),
                       List.of(
-                          new AttestationCredentialRevocation(
+                          new AttestationCredentialRetirement(
                               context.resolvingOrder().subtract(BigInteger.ONE),
                               PRINCIPAL_A,
-                              keyId(SPKI_A))),
+                              keyId(SPKI_A),
+                              AttestationCredentialRetirementState.REVOKED)),
                       PRINCIPAL_A,
                       PRINCIPAL_B),
                   raw));
@@ -216,7 +217,7 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
       AttestationCapability capability,
       int quorum,
       List<AttestationCredentialBinding> bindings,
-      List<AttestationCredentialRevocation> revocations,
+      List<AttestationCredentialRetirement> retirements,
       UUID... grantedPrincipals) {
     List<AttestationCapabilityGrant> grants =
         Arrays.stream(grantedPrincipals)
@@ -227,7 +228,7 @@ class AttestationStaticEnvelopeCorpusAuthorizationTest {
             .toList();
     return AttestationRegistry.fromVerifierFacts(
         bindings,
-        revocations,
+        retirements,
         grants,
         List.of(new AttestationPolicyRule(BigInteger.ZERO, capability, quorum)),
         List.of());

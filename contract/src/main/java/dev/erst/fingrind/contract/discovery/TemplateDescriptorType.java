@@ -12,6 +12,8 @@ public sealed interface TemplateDescriptorType
         ContractAttestationRegistryTemplates.PolicyRuleTemplateDescriptor,
         ContractAttestationRegistryTemplates.CapabilityGrantTemplateDescriptor,
         ContractAttestationRegistryTemplates.SystemWorkflowPolicyTemplateDescriptor,
+        ContractAttestationReviewTemplates.AttestationReviewFileTemplateDescriptor,
+        ContractAttestationReviewTemplates.CompromiseReviewTemplateDescriptor,
         ContractSettlementTemplates.TaxSelectionTemplateDescriptor,
         ContractSettlementTemplates.SettlementAdjunctTemplateDescriptor,
         InventoryReliefTemplateDescriptor,

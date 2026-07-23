@@ -231,7 +231,9 @@ final class RolloverAttestationKey extends CliBookRequestOutputModeCommand {
   }
 }
 
-/** Administrative CLI command that appends one credential-revocation attestation. */
+/**
+ * Administrative CLI command that appends one terminal revoked credential-retirement attestation.
+ */
 final class RevokeAttestationKey extends CliBookRequestOutputModeCommand {
   RevokeAttestationKey(BookAccess bookAccess, Path requestFile, OutputMode outputMode) {
     super(bookAccess, requestFile, outputMode);

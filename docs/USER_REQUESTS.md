@@ -355,7 +355,7 @@ There is no delete-account request or command.
 `enroll-key`, `rollover-key`, `revoke-key`, and `alter-policy` accept strict JSON documents. Run
 `print-request-template <command>` for each of those four commands to obtain its exact live
 scaffold; full-detail JSON help embeds the same template under
-`requestFile.attestationRegistryTemplate`. They
+`requestFile.attestationTemplate`. They
 are not posting requests and do not accept provenance, idempotency, key-file paths, passphrases,
 or private key bytes. `credentialSpki` and `predecessorCredentialSpki` are canonical unpadded
 base64url encodings of public Ed25519 DER SubjectPublicKeyInfo values. FinGrind derives key IDs
@@ -372,7 +372,15 @@ from those values; callers do not submit a key ID.
 The enrollment shape above has exactly `principalId`, `credentialSpki`, and
 `credentialPurpose`, which is exactly lowercase `operator` or `system`. `rollover-key` adds required `predecessorCredentialSpki`; both credentials
 must differ and the predecessor must be an active credential of the same principal at admission.
-`revoke-key` has `principalId`, `credentialSpki`, and optional non-blank `reason`.
+The accepted rollover projects a same-operation terminal `superseded` retirement for that
+predecessor; the predecessor cannot sign the next operation. `revoke-key` has `principalId`,
+`credentialSpki`, and optional non-blank `reason`; it instead projects the distinct terminal
+`revoked` retirement.
+
+`print-request-template attestation-review` emits the complete strict document accepted by
+`--attestation-review-file` on `verify-book` and `attestation-review`. Its
+`firstAffectedOrder` and `lastAffectedOrder` fields are canonical unsigned-decimal strings, not
+JSON numbers.
 
 `alter-policy` accepts any nonempty combination of these arrays:
 

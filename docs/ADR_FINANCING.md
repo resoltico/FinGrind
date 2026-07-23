@@ -37,4 +37,4 @@ The typed commands are `record-financing-borrowing`, `record-financing-principal
 
 ## Publication Condition
 
-Publication requires typed commands, durable reversal-aware storage that binds lifecycle amounts to immutable posting facts, executor admission and resolution, request contracts and templates, register reporting, end-to-end tests, and protected-book format `51`. Earlier book formats are rejected rather than upgraded in place. The release-boundary contract test verifies this condition against the public operation registry and this ADR.
+Publication requires typed commands, durable reversal-aware storage that binds lifecycle amounts to immutable posting facts, executor admission and resolution, request contracts and templates, register reporting, end-to-end tests, and protected-book format `52`. Earlier book formats are rejected rather than upgraded in place. The release-boundary contract test verifies this condition against the public operation registry and this ADR.

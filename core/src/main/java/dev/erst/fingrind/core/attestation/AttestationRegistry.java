@@ -18,15 +18,15 @@ final class AttestationRegistry {
 
   private AttestationRegistry(
       List<AttestationCredentialBinding> bindings,
-      List<AttestationCredentialRevocation> revocations,
+      List<AttestationCredentialRetirement> retirements,
       List<AttestationCapabilityGrant> grants,
       List<AttestationPolicyRule> policyRules,
       List<AttestationSystemWorkflowPolicy> workflowPolicies) {
     List<AttestationCredentialBinding> sortedBindings =
         AttestationRegistryFacts.sorted(bindings, AttestationCredentialBinding::acceptedOrder);
-    List<AttestationCredentialRevocation> sortedRevocations =
+    List<AttestationCredentialRetirement> sortedRetirements =
         AttestationRegistryFacts.sorted(
-            revocations, AttestationCredentialRevocation::acceptedOrder);
+            retirements, AttestationCredentialRetirement::acceptedOrder);
     List<AttestationCapabilityGrant> sortedGrants =
         AttestationRegistryFacts.sorted(grants, AttestationCapabilityGrant::acceptedOrder);
     List<AttestationPolicyRule> sortedPolicyRules =
@@ -37,13 +37,13 @@ final class AttestationRegistry {
     resolution =
         new AttestationRegistryResolution(
             sortedBindings,
-            sortedRevocations,
+            sortedRetirements,
             sortedGrants,
             sortedPolicyRules,
             sortedWorkflowPolicies,
             AttestationRegistryValidator.indexAndValidate(
                 sortedBindings,
-                sortedRevocations,
+                sortedRetirements,
                 sortedGrants,
                 sortedPolicyRules,
                 sortedWorkflowPolicies));
@@ -52,13 +52,13 @@ final class AttestationRegistry {
   /** Resolves untrusted facts so a verifier can classify their first protocol failure. */
   static AttestationRegistry fromVerifierFacts(
       List<AttestationCredentialBinding> bindings,
-      List<AttestationCredentialRevocation> revocations,
+      List<AttestationCredentialRetirement> retirements,
       List<AttestationCapabilityGrant> grants,
       List<AttestationPolicyRule> policyRules,
       List<AttestationSystemWorkflowPolicy> workflowPolicies) {
     return new AttestationRegistry(
         Objects.requireNonNull(bindings, "bindings"),
-        Objects.requireNonNull(revocations, "revocations"),
+        Objects.requireNonNull(retirements, "retirements"),
         Objects.requireNonNull(grants, "grants"),
         Objects.requireNonNull(policyRules, "policyRules"),
         Objects.requireNonNull(workflowPolicies, "workflowPolicies"));
@@ -67,12 +67,12 @@ final class AttestationRegistry {
   /** Validates an accepted registry history, including every post-mutation quorum state. */
   static AttestationRegistry fromAcceptedHistory(
       List<AttestationCredentialBinding> bindings,
-      List<AttestationCredentialRevocation> revocations,
+      List<AttestationCredentialRetirement> retirements,
       List<AttestationCapabilityGrant> grants,
       List<AttestationPolicyRule> policyRules,
       List<AttestationSystemWorkflowPolicy> workflowPolicies) {
     AttestationRegistry registry =
-        fromVerifierFacts(bindings, revocations, grants, policyRules, workflowPolicies);
+        fromVerifierFacts(bindings, retirements, grants, policyRules, workflowPolicies);
     AttestationRegistryValidator.requireAcceptedCredentialAlgorithms(bindings);
     registry.requireAcceptedCapacity();
     return registry;

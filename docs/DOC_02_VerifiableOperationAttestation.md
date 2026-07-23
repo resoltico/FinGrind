@@ -2,19 +2,19 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: BOOK_OPERATION_ATTESTATION
-updated: "2026-07-22"
+updated: "2026-07-23"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["AttestedOperation", "AttestationAuthorizationLimits", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationCapability", "AttestationCredentialPurpose", "AttestationCustodian", "AttestationCustodianNotSupportedException", "AttestationEvidence", "AttestationGenesis", "AttestationGrantState", "AttestationKeyFiles", "AttestationOperationKind", "AttestationOperationSigner", "AttestationPublicCredential", "AttestationRegistryMutation", "AttestationSigningCredential", "AttestationSystemWorkflowKind"]
 route:
   keywords: [verifiable-operation-attestation, operation-head, attestation-envelope, principal-quorum, credential-purpose, autonomous-workflow, semantic-profile, ed25519, immutable-preimage, operation-kind]
   questions: ["what does FinGrind book-operation attestation prove", "how is an attested operation encoded", "which credential may authorize a system operation", "which semantic profile governs a typed operation"]
-stage: "Current public protocol 33 and protected-book format 51 contract"
+stage: "Current public protocol 34 and protected-book format 52 contract"
 ---
 
 # Verifiable Operation Attestation Protocol
 
-This is the normative contract for FinGrind protocol 33 and protected-book format 51. It is the
+This is the normative contract for FinGrind protocol 34 and protected-book format 52. It is the
 current public behavior. Earlier protected-book formats are rejected: there is no mode, migration,
 alias, or compatibility path.
 
@@ -101,13 +101,13 @@ public final class AttestationAuthorizationLimits {
   admitted by `AttestationPolicyRule` and `AttestationRegistryMutation.PolicyRule`.
 - Reachability: an accepted policy always remains usable through public operation, manifest,
   receipt, restore, rekey, and policy-mutation signing boundaries.
-- Compatibility: public protected-book format-51 / protocol-33 contract.
+- Compatibility: public protected-book format-52 / protocol-34 contract.
 
 ---
 
 ## `AttestationKeyFiles`
 
-`AttestationKeyFiles.create` is the sole format-51 creation path for a new encrypted file-backed
+`AttestationKeyFiles.create` is the sole format-52 creation path for a new encrypted file-backed
 Ed25519 credential. It publishes a no-clobber key file and returns `AttestationPublicCredential`.
 `AttestationKeyFiles.loadPublicCredential` reads the public credential published with an existing
 encrypted key without decrypting its private material. A credential contains only canonical public
@@ -218,7 +218,7 @@ in the form YYYY-MM-DD and must denote a valid Gregorian calendar date.
 No signed payload contains passphrases, private keys, custodian handles, environment values, local
 paths, encrypted-key bytes, or presentation-only path hints. A preimage has at most 1,000,000
 records and 16 MiB of encoded bytes. An authorization quorum is in the inclusive range 1 through
-64. The post-operation fold of every policy, binding, revocation, grant, or system-workflow-policy
+64. The post-operation fold of every policy, binding, credential retirement, grant, or system-workflow-policy
 mutation must leave each configured quorum no greater than its eligible-principal count. It must
 also leave each capability's quorum no greater than its operator-purpose eligible-principal count
 whenever that capability admits a cli operation. If an active system-workflow policy exists, the
@@ -228,7 +228,7 @@ count. A system workflow is therefore never activated into an impossible all-sys
 ## Principal Registry, Policy, And Operation Kinds
 
 Registry and policy facts are append-only. For operation order N greater than zero, policy and key
-eligibility resolve from the fold through N minus one. A binding or revocation committed at N first
+eligibility resolve from the fold through N minus one. A binding or credential retirement committed at N first
 affects N plus one. No record may set a retrospective or future-effective credential interval.
 
 For every capability, its effective policy rule at a resolving position is the
@@ -238,7 +238,8 @@ alter-policy operation replaces only the effective quorum of each capability it 
 alter another capability or rewrite its predecessor. There can be at most one policy-change record
 for a capability in one operation because a duplicate complete per-type sort key is invalid.
 
-An active credential is an enrolled or rolled-over Ed25519 key that has not been revoked. Every
+An active credential is an enrolled or rolled-over Ed25519 key that has not reached either terminal
+retirement state: superseded or revoked. Every
 binding also has one immutable credentialPurpose: operator or system. A cli operation has only
 operator-purpose envelope credentials; a system operation has only system-purpose envelope
 credentials. Purpose does not constrain a manifest or receipt because neither carries a source
@@ -257,10 +258,12 @@ equal to SHA-256 of its canonical Ed25519 DER-SPKI. A keyId may occur in exactly
 the entire book history and therefore belongs permanently to one principal. An enroll binding has
 an absent predecessorKeyId. A rollover binding has a predecessorKeyId that is different from the
 new keyId and identifies an active credential of the same principal at the preceding resolving
-position. Rollover adds the new credential; it never implicitly revokes or changes the predecessor.
-Only an explicit credential.revocation of that principal's active binding retires a credential, and
-revocation is final: no later binding may reuse its keyId. A binding or revocation that violates
-these rules is an invalid request/effect profile.
+position. Its same operation must also carry exactly one credential.retirement fact for that
+predecessor with retirementState superseded. Superseded and revoked are distinct terminal states:
+supersession records an orderly replacement and revocation records a separately authorized
+withdrawal. Neither terminal credential may sign or be retired again, and no later binding may
+reuse its keyId. A binding or credential retirement that violates these rules is an invalid
+request/effect profile.
 
 Every policy rule is capability plus concrete quorum M. Distinct principals and distinct keys are
 unconditional envelope invariants, so there is no persisted require-distinct-principals switch.
@@ -518,10 +521,10 @@ allowed, or forbidden; a record not allowed by that profile is attestation-reque
 | 0160 | request.restore | backupId:uuid!, backupArtifactDigest:hash!, sourceOrder:u64!, sourceHead:hash! | backupId |
 | 0170 | request.rekey | keyEpoch:u64!, reason:text? | keyEpoch |
 | 0180 | request.credential-binding | principalId:uuid!, keyId:hash!, bindingAction:token!, spki:spki!, credentialPurpose:token!, predecessorKeyId:hash? | principalId, keyId |
-| 0181 | request.credential-revocation | keyId:hash!, principalId:uuid!, reason:text? | keyId |
 | 0182 | request.policy-change | capability:token!, quorum:u16! | capability |
 | 0183 | request.principal-capability-grant | principalId:uuid!, capability:token!, grantState:token! | principalId, capability |
 | 0184 | request.system-workflow-policy | workflowId:uuid!, workflowKind:token!, resultHoldingAccountCode:text!, capitalAccountCode:text?, retainedResultAccountCode:text?, active:bool! | workflowId |
+| 0185 | request.credential-retirement | keyId:hash!, principalId:uuid!, retirementState:token!, reason:text? | keyId |
 
 ### Effect Record Catalog
 
@@ -530,11 +533,11 @@ allowed, or forbidden; a record not allowed by that profile is attestation-reque
 | 0001 | book.identity | mutation:u8!, bookId:uuid!, entityName:text!, kernelProfile:token!, accountingBasis:token!, frameworkPosition:token!, entityForm:token!, template:token!, costingDoctrine:token?, functionalCurrency:currency!, fiscalYearStartMonth:u8!, fiscalYearStartDay:u8!, bookStartDate:date! | bookId |
 | 0002 | principal.key-binding | mutation:u8!, principalId:uuid!, keyId:hash!, bindingAction:token!, spki:spki!, credentialPurpose:token!, predecessorKeyId:hash? | principalId, keyId |
 | 0003 | principal.capability-grant | mutation:u8!, principalId:uuid!, capability:token!, grantState:token! | principalId, capability |
-| 0004 | credential.revocation | mutation:u8!, keyId:hash!, principalId:uuid!, reason:text? | keyId |
 | 0005 | policy.capability-rule | mutation:u8!, capability:token!, quorum:u16! | capability |
 | 0006 | backup.acknowledgement | mutation:u8!, backupId:uuid!, backupArtifactDigest:hash!, sourceOrder:u64!, sourceHead:hash! | backupId |
 | 0007 | book.key-epoch | mutation:u8!, keyEpoch:u64!, rekeyedAt:instant! | keyEpoch |
 | 0008 | system.workflow-policy | mutation:u8!, workflowId:uuid!, workflowKind:token!, resultHoldingAccountCode:text!, capitalAccountCode:text?, retainedResultAccountCode:text?, active:bool! | workflowId |
+| 0009 | credential.retirement | mutation:u8!, keyId:hash!, principalId:uuid!, retirementState:token!, reason:text? | keyId |
 | 0010 | account.state | mutation:u8!, accountCode:text!, accountName:text!, accountType:token!, nodeKind:token!, parentAccountCode:text?, unitOfMeasure:text?, active:bool! | accountCode |
 | 0011 | account.classification | mutation:u8!, accountCode:text!, classificationFamily:token!, classification:token! | accountCode, classificationFamily |
 | 0012 | account.relationship | mutation:u8!, accountCode:text!, relationshipKind:token!, targetAccountCode:text? | accountCode, relationshipKind |
@@ -598,7 +601,7 @@ or semantic mutation outside the effect catalog and operation profile.
 | backup-created | no derivation beyond the acknowledged verified artifact tuple |
 | restore-book | restoration provenance derived from the verified manifest and the new restoration-derived chain position |
 | rekey-book | the resulting key epoch and recorded rekey instant |
-| enroll-key, rollover-key, revoke-key, alter-policy | only the binding, revocation, capability-grant, capability-policy, and system-workflow-policy facts explicitly requested |
+| enroll-key, rollover-key, revoke-key, alter-policy | only the binding, credential-retirement, capability-grant, capability-policy, and system-workflow-policy facts explicitly requested |
 
 An operation with an effect fact that is neither request-supported nor in this table is
 attestation-request-profile-invalid. A profile may be narrowed by its operation kind, but it may
@@ -618,8 +621,9 @@ never be widened by an adapter, a database trigger, or a future implementation c
 | backup-created | 0100, 0150 | 0006 |
 | restore-book | 0100, 0160 | 00A0 |
 | rekey-book | 0100, 0170 | 0007 |
-| enroll-key or rollover-key | 0100, 0180 | 0002 |
-| revoke-key | 0100, 0181 | 0004 |
+| enroll-key | 0100, 0180 | 0002 |
+| rollover-key | 0100, 0180, 0185 | 0002, 0009 |
+| revoke-key | 0100, 0185 | 0009 |
 | alter-policy | 0100; one or more of 0182, 0183, 0184 | matching 0003, 0005, 0008 only |
 
 For alter-policy, each request record maps to exactly one effect record of its paired kind: 0182 to

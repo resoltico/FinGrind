@@ -15,7 +15,7 @@ public enum OperationId implements WireValue {
   CAPABILITIES,
   /** Prints live runtime, distribution, and SQLite provenance facts. */
   ENVIRONMENT,
-  /** Prints the canonical minimal posting-request scaffold JSON document. */
+  /** Prints a canonical JSON scaffold for a selected structured-input topic. */
   PRINT_REQUEST_TEMPLATE,
   /** Prints the canonical minimal AI-agent ledger-plan scaffold JSON document. */
   PRINT_PLAN_TEMPLATE,

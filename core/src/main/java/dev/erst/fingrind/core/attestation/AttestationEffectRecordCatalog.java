@@ -34,11 +34,6 @@ final class AttestationEffectRecordCatalog {
             "mutation:u8!, principalId:uuid!, capability:token!, grantState:token!",
             1,
             2),
-        record(
-            0x0004,
-            "credential.revocation",
-            "mutation:u8!, keyId:hash!, principalId:uuid!, reason:text?",
-            1),
         record(0x0005, "policy.capability-rule", "mutation:u8!, capability:token!, quorum:u16!", 1),
         record(
             0x0006,
@@ -50,6 +45,11 @@ final class AttestationEffectRecordCatalog {
             0x0008,
             "system.workflow-policy",
             "mutation:u8!, workflowId:uuid!, workflowKind:token!, resultHoldingAccountCode:text!, capitalAccountCode:text?, retainedResultAccountCode:text?, active:bool!",
+            1),
+        record(
+            0x0009,
+            "credential.retirement",
+            "mutation:u8!, keyId:hash!, principalId:uuid!, retirementState:token!, reason:text?",
             1),
         record(
             0x0010,

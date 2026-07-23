@@ -35,7 +35,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
-import java.security.KeyPair;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -251,8 +250,11 @@ class AttestationAuthorizationTest {
         AttestationRegistry.fromVerifierFacts(
             List.of(binding(0, founder)),
             List.of(
-                new AttestationCredentialRevocation(
-                    BigInteger.ONE, founder.principalId(), founder.keyId())),
+                new AttestationCredentialRetirement(
+                    BigInteger.ONE,
+                    founder.principalId(),
+                    founder.keyId(),
+                    AttestationCredentialRetirementState.REVOKED)),
             allFounderGrants(founder.principalId()),
             defaultRules(1),
             List.of());
@@ -440,7 +442,11 @@ class AttestationAuthorizationTest {
                     AttestationCredentialPurpose.OPERATOR,
                     null)),
             List.of(
-                new AttestationCredentialRevocation(BigInteger.ONE, x25519Principal, x25519KeyId)),
+                new AttestationCredentialRetirement(
+                    BigInteger.ONE,
+                    x25519Principal,
+                    x25519KeyId,
+                    AttestationCredentialRetirementState.REVOKED)),
             allFounderGrants(x25519Principal),
             defaultRules(1),
             List.of());
@@ -633,10 +639,16 @@ class AttestationAuthorizationTest {
         AttestationRegistry.fromVerifierFacts(
             List.of(binding(0, first), binding(0, second), binding(2, future)),
             List.of(
-                new AttestationCredentialRevocation(
-                    BigInteger.ONE, second.principalId(), second.keyId()),
-                new AttestationCredentialRevocation(
-                    BigInteger.valueOf(3), first.principalId(), first.keyId())),
+                new AttestationCredentialRetirement(
+                    BigInteger.ONE,
+                    second.principalId(),
+                    second.keyId(),
+                    AttestationCredentialRetirementState.REVOKED),
+                new AttestationCredentialRetirement(
+                    BigInteger.valueOf(3),
+                    first.principalId(),
+                    first.keyId(),
+                    AttestationCredentialRetirementState.REVOKED)),
             List.of(
                 new AttestationCapabilityGrant(
                     BigInteger.ZERO,
@@ -694,40 +706,6 @@ class AttestationAuthorizationTest {
     assertFailure(
         AttestationAuthorizationFailure.CAPABILITY_INVALID,
         () -> authorize(registry, signedEnvelope(ineligible)));
-  }
-
-  @Test
-  void admitsRolloverOnlyFromAnActiveCredentialOfTheSamePrincipal() {
-    TestCredential original = credential();
-    TestCredential unrelated = credential();
-    KeyPair replacementPair = AttestationEd25519.generateKeyPair();
-    TestCredential replacement =
-        new TestCredential(
-            original.principalId(),
-            replacementPair,
-            AttestationEd25519.keyId(replacementPair.getPublic()));
-    AttestationCredentialBinding rollover =
-        new AttestationCredentialBinding(
-            BigInteger.ONE,
-            replacement.principalId(),
-            replacement.keyId(),
-            AttestationCredentialBinding.BindingAction.ROLLOVER,
-            AttestationSpki.of(replacement.pair().getPublic().getEncoded()),
-            AttestationCredentialPurpose.OPERATOR,
-            original.keyId());
-    AttestationRegistry registry =
-        AttestationRegistry.fromVerifierFacts(
-            List.of(binding(0, original), binding(0, unrelated), rollover),
-            List.of(
-                new AttestationCredentialRevocation(
-                    BigInteger.ONE, unrelated.principalId(), unrelated.keyId()),
-                new AttestationCredentialRevocation(
-                    BigInteger.valueOf(3), original.principalId(), original.keyId())),
-            allFounderGrants(original.principalId()),
-            defaultRules(1),
-            List.of());
-
-    assertDoesNotThrow(() -> authorize(registry, signedEnvelope(replacement)));
   }
 
   @Test

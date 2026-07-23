@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import java.util.List;
 
 /** Executable request scaffolds for attestation credential and policy administration. */
@@ -12,6 +13,40 @@ public final class ContractAttestationRegistryTemplates {
   public static final String EXAMPLE_PRINCIPAL_ID = "018f0000-0000-7000-8000-000000000003";
 
   private ContractAttestationRegistryTemplates() {}
+
+  static TemplateDescriptorType template(OperationId operationId) {
+    return switch (operationId) {
+      case ENROLL_KEY ->
+          new EnrollKeyTemplateDescriptor(
+              EXAMPLE_PRINCIPAL_ID, EXAMPLE_CREDENTIAL_SPKI, "operator");
+      case ROLLOVER_KEY ->
+          new RolloverKeyTemplateDescriptor(
+              EXAMPLE_PRINCIPAL_ID,
+              EXAMPLE_REPLACEMENT_CREDENTIAL_SPKI,
+              "operator",
+              EXAMPLE_CREDENTIAL_SPKI);
+      case REVOKE_KEY ->
+          new RevokeKeyTemplateDescriptor(
+              EXAMPLE_PRINCIPAL_ID,
+              EXAMPLE_CREDENTIAL_SPKI,
+              "credential-retired-by-authorized-policy");
+      case ALTER_POLICY ->
+          new AlterPolicyTemplateDescriptor(
+              List.of(new PolicyRuleTemplateDescriptor("post", 1)),
+              List.of(new CapabilityGrantTemplateDescriptor(EXAMPLE_PRINCIPAL_ID, "post", "grant")),
+              List.of(
+                  new SystemWorkflowPolicyTemplateDescriptor(
+                      "018f0000-0000-7000-8000-000000000004",
+                      OperationId.FISCAL_YEAR_CLOSE.wireName(),
+                      "current-year-result",
+                      "owner-capital",
+                      "retained-earnings",
+                      true)));
+      default ->
+          throw new IllegalArgumentException(
+              "Operation " + operationId.wireName() + " has no attestation registry template.");
+    };
+  }
 
   /** Minimal credential-enrollment request using the lowercase operator purpose token. */
   public record EnrollKeyTemplateDescriptor(
@@ -43,7 +78,7 @@ public final class ContractAttestationRegistryTemplates {
     }
   }
 
-  /** Minimal irreversible credential-revocation request. */
+  /** Minimal irreversible revoked credential-retirement request. */
   public record RevokeKeyTemplateDescriptor(
       String principalId, String credentialSpki, String reason) implements TemplateDescriptorType {
     public RevokeKeyTemplateDescriptor {

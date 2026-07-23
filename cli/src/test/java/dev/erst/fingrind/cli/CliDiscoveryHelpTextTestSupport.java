@@ -46,7 +46,8 @@ class CliDiscoveryHelpTextTestSupport {
 
   protected final Optional<String> expectedRequestTemplateSupportCommand(
       HelpDescriptor helpDescriptor, OperationId operationId) {
-    if (ProtocolRequestTemplateTopics.supports(operationId)) {
+    if (ProtocolRequestTemplateTopics.supports(operationId)
+        || operationId == OperationId.ATTESTATION_REVIEW) {
       return Optional.of(
           CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
               + " "

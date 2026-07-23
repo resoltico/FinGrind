@@ -23,7 +23,7 @@ public interface CliDiscoveryRequestFileGuidanceJsonModels {
       @Nullable DeclareAccountTemplateDescriptor declareAccountTemplate,
       @Nullable DeclareTaxRegistrationTemplateDescriptor declareTaxRegistrationTemplate,
       @Nullable LedgerPlanTemplateDescriptor ledgerPlanTemplate,
-      @Nullable TemplateDescriptorType attestationRegistryTemplate,
+      @Nullable TemplateDescriptorType attestationTemplate,
       @Nullable RequestShapesDescriptor requestShapes,
       @Nullable String shortcutCommand)
       implements ProtocolSuccessPayload {
@@ -35,7 +35,7 @@ public interface CliDiscoveryRequestFileGuidanceJsonModels {
           && declareAccountTemplate == null
           && declareTaxRegistrationTemplate == null
           && ledgerPlanTemplate == null
-          && attestationRegistryTemplate == null
+          && attestationTemplate == null
           && requestShapes == null
           && shortcutCommand == null) {
         throw new IllegalArgumentException(

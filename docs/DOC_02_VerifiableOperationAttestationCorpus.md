@@ -2,19 +2,19 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: BOOK_OPERATION_ATTESTATION_CORPUS
-updated: "2026-07-21"
+updated: "2026-07-23"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["AttestationStaticCorpus", "AttestationStaticCorpusVectors", "AttestationStaticArtifactCorpusVectors"]
 route:
   keywords: [verifiable-operation-attestation, static-corpus, golden-vectors, fixture-ledger, verifier-negative-cases, backup-artifact, live-cas]
   questions: ["which static fixtures verify FinGrind operation attestation", "how is the attestation corpus constructed", "which negative attestation vectors are required", "which artifact fixtures cover backup and restore"]
-stage: "Current public protocol 33 and protected-book format 51 contract"
+stage: "Current public protocol 34 and protected-book format 52 contract"
 ---
 
 # Verifiable Operation Attestation Corpus
 
-This is the normative fixture source for protected-book format 51. It extends the
+This is the normative fixture source for protected-book format 52. It extends the
 [core protocol](./DOC_02_VerifiableOperationAttestation.md), which owns the shared operation and
 envelope grammar and authorization rules; the
 [verification protocol](./DOC_02_VerifiableOperationAttestationVerification.md), which owns
@@ -87,7 +87,7 @@ not supply an unstated record, identifier, time, signer, policy fact, or first f
 |:--|:--|:--|
 | B-01 | book A genesis at order 0 with founder A as an operator-purpose credential; every initial M is 1 because founderCount is 1; envelope contains only A | valid |
 | B-02 | book A genesis at 0 with operator-purpose founders A and B; set post M=2; declare accounts 1000 and 4000 at 1 and 2, then append the common posting at 3 signed by A and B | valid |
-| B-03 | B-02 through 3; at 4 A1 and B enroll C with credentialPurpose operator, at 5 A1 and B retain POST M=2 and grant C POST, at 6 A1 and B add A2 by rollover from A1 with operator purpose and predecessorKeyId A1, at 7 B and C append record-sale-settled using IDs ending 07/08, idempotencyKey fixture-sale-2, sourceChannel cli, source document fixture-receipt-2, effectiveDate 2026-12-31, and the same postingKind, originKind, account roles, money role, and EUR 100.00 journal lines as the common posting, and at 8 A2 and B revoke C | valid |
+| B-03 | B-02 through 3; at 4 A1 and B enroll C with credentialPurpose operator, at 5 A1 and B retain POST M=2 and grant C POST, at 6 A1 and B add A2 by rollover from A1 with operator purpose and predecessorKeyId A1 while the same request/effect pair retires A1 as superseded, at 7 B and C append record-sale-settled using IDs ending 07/08, idempotencyKey fixture-sale-2, sourceChannel cli, source document fixture-receipt-2, effectiveDate 2026-12-31, and the same postingKind, originKind, account roles, money role, and EUR 100.00 journal lines as the common posting, and at 8 A2 and B revoke C | valid |
 | B-04 | B-02 through 3; at 4 A and B enroll C with credentialPurpose system. At 5 A and B retain CLOSE_PERIOD M=1, grant C CLOSE_PERIOD, and create active system workflow policy sweep workflow with kind interim-result-sweep and result holding 3000, plus active close workflow with kind fiscal-year-close and result holding 3000, capital 3100, and retained result 3200. At 6, 7, and 8 A and B declare accounts 3000, 3100, and 3200. At 9 C alone appends sourceChannel system interim-result-sweep naming sweep workflow for 2026-01-01 through 2026-12-30 into result holding 3000. Its derived request.posting has stepOrder 0, operationKind interim-result-sweep, postingKind period-close, and effectiveDate 2026-12-30; its posting/command IDs end 03/04; journal lines debit 4000 and credit 3000 EUR 100.00; sweepOrder 1; EUR total 100.00; and its posting link. At 10 C alone appends sourceChannel system fiscal-year-close naming close workflow for 2026-01-01 through 2026-12-31 with capital 3100, result holding 3000, and retained result 3200. Its derived request.posting has stepOrder 0, operationKind fiscal-year-close, postingKind period-close, and effectiveDate 2026-12-31; its posting/command IDs end 05/06; journal lines debit 3000 and credit 3200 EUR 100.00; closeOrder 1; and its posting link. | valid |
 | B-05 | B-02 through the common posting at sourceOrder 3. `B-05.snapshot` is the fixed raw snapshot source carrying exactly that committed evidence; no rekey, VACUUM, page-size change, or intervening operation is represented. The core corpus framing is test-only and is not a persisted snapshot format: the SQLite adapter remains responsible for producing and decoding the required consistent SQLite online-backup copy under the artifact protocol. Its manifest is signed by A under BACKUP M=1. The artifact's source head is the order-3 head and its whole-container digest is the SHA-256 of that named derived resource. A appends backup-created at order 4 with the fixture backup ID and that exact tuple. | valid |
 | B-06 | B-05 snapshot source, not its order-4 acknowledgement. The staged destination is exactly B-02 through order 3 and preserves book A. A and B append restore-book at order 4 with the B-05 backup ID, its derived artifact digest, sourceOrder 3, source head 3, and historicalSnapshotAuthorization true; publication uses the no-replacement protocol. | valid |
@@ -116,6 +116,7 @@ from a fixture name.
 | N-06 | each two-signature base: swap the complete A and B envelope entries without changing sigCount | attestation-envelope-order-invalid |
 | N-07 | each signed base: resolve against a registry in which the named signer binding begins at source position plus 1 | attestation-key-not-enrolled |
 | N-08 | each signed base: resolve against a registry in which the named signer is revoked at source position minus 1 | attestation-key-revoked |
+| N-08b | each signed base: resolve against a registry in which the named signer is superseded at source position minus 1 | attestation-key-superseded |
 | N-09 | each two-principal base resolved with A, B, and active C: replace A's principalId with C's while retaining A's keyId and signature, so no duplicate principal occurs | attestation-key-principal-mismatch |
 | N-10 | each signed base: use X25519 SPKI 302a300506032b656e032100000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f and keyId 6625748c7ed4ff8a552c6453609a8892c494e624a5ad97854b2161461c098e7f; retain all other position facts | attestation-key-algorithm-invalid |
 | N-11 | B-02 common posting: replace previousHead with 32 zero bytes | attestation-previous-head-invalid |

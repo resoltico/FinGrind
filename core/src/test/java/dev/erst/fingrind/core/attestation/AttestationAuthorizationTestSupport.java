@@ -98,7 +98,7 @@ final class AttestationAuthorizationTestSupport {
 
   static AttestationRegistry registry(
       List<TestCredential> credentials,
-      List<AttestationCredentialRevocation> revocations,
+      List<AttestationCredentialRetirement> retirements,
       List<AttestationPolicyRule> policyRules) {
     List<AttestationCredentialBinding> bindings =
         credentials.stream().map(credential -> binding(0, credential)).toList();
@@ -107,7 +107,7 @@ final class AttestationAuthorizationTestSupport {
       grants.addAll(allFounderGrants(credential.principalId()));
     }
     return AttestationRegistry.fromVerifierFacts(
-        bindings, revocations, grants, policyRules, List.of());
+        bindings, retirements, grants, policyRules, List.of());
   }
 
   static List<AttestationCapabilityGrant> allFounderGrants(UUID principalId) {

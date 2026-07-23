@@ -476,11 +476,31 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
     ByteArrayOutputStream verificationText = new ByteArrayOutputStream();
     new CliBookReadResponseWriter(outputChannel(verificationText), fixedClock())
         .writeVerifyBookAttestation(
-            verification, dev.erst.fingrind.contract.protocol.OutputMode.TEXT);
+            verification, false, dev.erst.fingrind.contract.protocol.OutputMode.TEXT);
     assertTrue(
         verificationText
             .toString(StandardCharsets.UTF_8)
             .contains("Book Attestation Valid — Review Required"));
+
+    ByteArrayOutputStream strictVerificationJson = new ByteArrayOutputStream();
+    new CliBookReadResponseWriter(outputChannel(strictVerificationJson), fixedClock())
+        .writeVerifyBookAttestation(
+            verification, true, dev.erst.fingrind.contract.protocol.OutputMode.JSON);
+    assertJsonContains(strictVerificationJson, "\"status\":\"rejected\"");
+    assertJsonContains(strictVerificationJson, "\"code\":\"attestation-review-required\"");
+    assertFalse(strictVerificationJson.toString(StandardCharsets.UTF_8).contains("\"payload\":"));
+
+    ByteArrayOutputStream strictVerificationText = new ByteArrayOutputStream();
+    new CliBookReadResponseWriter(outputChannel(strictVerificationText), fixedClock())
+        .writeVerifyBookAttestation(
+            verification, true, dev.erst.fingrind.contract.protocol.OutputMode.TEXT);
+    String reviewRequiredText = strictVerificationText.toString(StandardCharsets.UTF_8);
+    assertTrue(reviewRequiredText.contains("Book Attestation Review Required"));
+    assertTrue(reviewRequiredText.contains("Book ID"));
+    assertTrue(reviewRequiredText.contains("Head order"));
+    assertTrue(reviewRequiredText.contains("Operation head"));
+    assertTrue(reviewRequiredText.contains("Review findings"));
+    assertTrue(reviewRequiredText.contains("credentialKeyId="));
 
     ByteArrayOutputStream reviewText = new ByteArrayOutputStream();
     new CliBookReadResponseWriter(outputChannel(reviewText), fixedClock())
@@ -549,8 +569,21 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
                 OPERATION_HEAD,
                 List.of(boundedFinding),
                 registry(java.math.BigInteger.TWO)),
+            false,
             dev.erst.fingrind.contract.protocol.OutputMode.JSON);
     assertJsonContains(boundedJson, "\"lastAffectedOrder\":\"2\"");
+
+    AttestationReviewFinding openEndedFinding =
+        new AttestationReviewFinding(
+            new AttestationCompromiseReview("c".repeat(64), java.math.BigInteger.ONE, null),
+            java.math.BigInteger.TWO);
+    ByteArrayOutputStream openEndedJson = new ByteArrayOutputStream();
+    new CliBookReadResponseWriter(outputChannel(openEndedJson), fixedClock())
+        .writeAttestationReview(
+            new AttestationReviewResult(
+                BOOK_ID, java.math.BigInteger.TWO, List.of(openEndedFinding)),
+            dev.erst.fingrind.contract.protocol.OutputMode.JSON);
+    assertJsonContains(openEndedJson, "\"lastAffectedOrder\":null");
 
     ByteArrayOutputStream boundedText = new ByteArrayOutputStream();
     new CliBookReadResponseWriter(outputChannel(boundedText), fixedClock())
@@ -563,7 +596,12 @@ class CliAttestationTransportContractTest extends FinGrindCliTestSupport {
         IllegalArgumentException.class,
         () ->
             writer.writeVerifyBookAttestation(
-                verification, dev.erst.fingrind.contract.protocol.OutputMode.CSV));
+                verification, false, dev.erst.fingrind.contract.protocol.OutputMode.CSV));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            writer.writeVerifyBookAttestation(
+                verification, true, dev.erst.fingrind.contract.protocol.OutputMode.CSV));
     assertThrows(
         IllegalArgumentException.class,
         () ->

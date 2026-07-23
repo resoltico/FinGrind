@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.discovery.MachineContract;
+import dev.erst.fingrind.contract.discovery.MachineContractAttestationTemplates;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -102,10 +102,18 @@ class CliDiscoveryCommandExecutorTest {
             operationId ->
                 assertEquals(
                     CliWireJson.prettyJsonText(
-                        MachineContract.attestationRegistryTemplate(operationId)),
+                        MachineContractAttestationTemplates.registryTemplate(operationId)),
                     CliWireJson.prettyJsonText(
                         CliDiscoveryCommandExecutor.requestTemplateFor(operationId, null)),
                     operationId.wireName()));
+  }
+
+  @Test
+  void requestTemplateFor_supportsTheAttestationReviewFileTopic() {
+    assertEquals(
+        CliWireJson.prettyJsonText(MachineContractAttestationTemplates.reviewFileTemplate()),
+        CliWireJson.prettyJsonText(
+            CliDiscoveryCommandExecutor.requestTemplateFor(OperationId.ATTESTATION_REVIEW, null)));
   }
 
   @Test

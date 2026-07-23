@@ -57,36 +57,43 @@ final class CliAttestationPayloadMapper {
   }
 
   static String renderedCredentials(List<AttestationRegistryInspection.Credential> credentials) {
-    return CliTextFormat.joined(
-        credentials.stream()
-            .map(
-                credential ->
-                    "principalId="
-                        + credential.principalId()
-                        + ", keyId="
-                        + credential.keyId()
-                        + ", purpose="
-                        + credential.credentialPurpose()
-                        + ", state="
-                        + credential.state())
-            .toList());
+    return credentials.isEmpty()
+        ? "(none)"
+        : CliTextFormat.renderBulletedBlock(
+            credentials.stream()
+                .map(
+                    credential ->
+                        "principalId="
+                            + credential.principalId()
+                            + "\n  keyId="
+                            + credential.keyId()
+                            + "\n  purpose="
+                            + credential.credentialPurpose()
+                            + "\n  state="
+                            + credential.state())
+                .toList(),
+            Integer.MAX_VALUE);
   }
 
   static String renderedCapabilityPolicies(
       List<AttestationRegistryInspection.CapabilityPolicy> policies) {
-    return CliTextFormat.joined(
-        policies.stream()
-            .map(
-                policy ->
-                    policy.capability()
-                        + " quorum="
-                        + policy.quorum()
-                        + ", eligible="
-                        + policy.eligiblePrincipalCount()
-                        + ", operatorEligible="
-                        + policy.eligibleOperatorPrincipalCount()
-                        + ", systemEligible="
-                        + policy.eligibleSystemPrincipalCount())
-            .toList());
+    return policies.isEmpty()
+        ? "(none)"
+        : CliTextFormat.renderBulletedBlock(
+            policies.stream()
+                .map(
+                    policy ->
+                        "capability="
+                            + policy.capability()
+                            + "\n  quorum="
+                            + policy.quorum()
+                            + "\n  eligiblePrincipals="
+                            + policy.eligiblePrincipalCount()
+                            + "\n  eligibleOperatorPrincipals="
+                            + policy.eligibleOperatorPrincipalCount()
+                            + "\n  eligibleSystemPrincipals="
+                            + policy.eligibleSystemPrincipalCount())
+                .toList(),
+            Integer.MAX_VALUE);
   }
 }

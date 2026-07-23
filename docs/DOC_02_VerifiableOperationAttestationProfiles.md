@@ -2,19 +2,19 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: BOOK_OPERATION_ATTESTATION_PROFILES
-updated: "2026-07-21"
+updated: "2026-07-23"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["AttestationSemanticProfile", "SystemWorkflowPolicy"]
 route:
   keywords: [verifiable-operation-attestation, semantic-profile, posting-role, autonomous-workflow, system-channel, journal-balance, request-effect-closure]
   questions: ["which request facts are admitted by an attested operation", "how are attested posting facts tied to journal effects", "what can start a system-channel attested operation", "how does FinGrind derive a system close"]
-stage: "Current public protocol 33 and protected-book format 51 contract"
+stage: "Current public protocol 34 and protected-book format 52 contract"
 ---
 
 # Verifiable Operation Attestation Semantic Profiles
 
-This document is the canonical field-level admission owner for protected-book format 51.
+This document is the canonical field-level admission owner for protected-book format 52.
 [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md)
 owns the wire grammar, record tags, and envelope. The
 [verification protocol](./DOC_02_VerifiableOperationAttestationVerification.md) owns the failure

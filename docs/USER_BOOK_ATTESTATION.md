@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: USER_BOOK_ATTESTATION
-updated: "2026-07-22"
+updated: "2026-07-23"
 route:
   keywords: [fingrind, book-attestation, ed25519, founder, enroll-key, rollover-key, revoke-key, alter-policy, verify-book, attestation-review, receipt, backup, restore, rekey]
   questions: ["how does fingrind attest a book mutation", "how do I manage attestation credentials and policy", "how do I verify a fingrind book", "how do I retain and verify an attestation receipt"]
@@ -11,7 +11,7 @@ route:
 # Protected-Book Attestation
 
 **Purpose**: Operate the immutable authorization evidence retained with every FinGrind protected-book mutation.
-**Prerequisites**: A FinGrind protocol-33 / format-51 binary, one book passphrase source, and an authorized founder or operator credential where a command requires signing.
+**Prerequisites**: A FinGrind protocol-34 / format-52 binary, one book passphrase source, and an authorized founder or operator credential where a command requires signing.
 
 ## What The Attestation Proves
 
@@ -29,7 +29,7 @@ position. It does not prove a person's real-world identity, an external event's 
 that were never entered. An independently retained receipt can reveal rollback, truncation, or a
 changed chain before its recorded head; it cannot reveal a fork that no independent observer sees.
 
-Format 51 is a hard break. Earlier protected-book formats are rejected. There is no reader mode,
+Format 52 is a hard break. Earlier protected-book formats are rejected. There is no reader mode,
 migration, alias, or compatibility layer.
 
 ## Founder And Operator Credentials
@@ -109,10 +109,14 @@ as SHA-256 of the SPKI and signs the resulting public binding facts.
 All four lifecycle request documents are emitted directly by the binary. Use
 `print-request-template enroll-key`, `print-request-template rollover-key`,
 `print-request-template revoke-key`, or `print-request-template alter-policy`; the full JSON help
-for each command carries that same `attestationRegistryTemplate` under `requestFile`. Template
+for each command carries that same `attestationTemplate` under `requestFile`. Template
 UUIDs are canonical RFC 4122 spellings and must be replaced with the operation's real identities.
 `credentialPurpose` is closed to the lowercase values `operator` and `system`; enrollment and
 rollover templates publish `operator` before any request is submitted.
+
+`print-request-template attestation-review` emits the distinct non-persisted
+`--attestation-review-file` scaffold. Its full-detail JSON help also publishes the scaffold as
+`requestFile.attestationTemplate`.
 
 `enroll-key` binds a new credential to a principal. It does not grant a capability: use
 `alter-policy` to grant the principal the intended capability after enrollment. For example:
@@ -137,9 +141,11 @@ fingrind enroll-key \
 ```
 
 `rollover-key` binds a different new credential to the same principal and names the predecessor's
-public SPKI in `predecessorCredentialSpki`. Rollover never revokes the predecessor. Use
-`revoke-key` separately, with the credential's `credentialSpki` and an optional non-blank reason,
-once the old credential must no longer authorize future operations. Revocation is final.
+public SPKI in `predecessorCredentialSpki`. Its one signed operation records both the replacement
+binding and a terminal `superseded` retirement of that predecessor, so the predecessor cannot sign
+the next operation. Use `revoke-key`, with the credential's `credentialSpki` and an optional
+non-blank reason, for a separately authorized security withdrawal. Supersession and revocation
+are both final, auditable, and distinct states.
 
 `alter-policy` changes only future policy. Its optional `policyRules`, `capabilityGrants`, and
 `systemWorkflowPolicies` arrays must contain at least one item in total. Each rule names a
@@ -168,9 +174,10 @@ fingrind verify-book \
 ```
 
 Structural verification returns the first deterministic chain break. `--require-clean-attestation`
-also refuses a structurally valid chain that has compromise-review findings, with exit code 2.
-On success, `verify-book` publishes the full verified registry snapshot as `registry`: every
-credential binding and its active or revoked state, each effective capability quorum with eligible
+also returns a rejected `attestation-review-required` envelope for a structurally valid chain that
+has compromise-review findings, with exit code 2 and no success payload. On success,
+`verify-book` publishes the full verified registry snapshot as `registry`: every credential binding
+and its active, superseded, or revoked state, each effective capability quorum with eligible
 principal counts, principal capability grants, and system-workflow policies. This is read-only
 verification evidence reconstructed from the immutable chain, not a mutable administration view.
 `attestation-review` returns the same non-persisted findings without changing the book:

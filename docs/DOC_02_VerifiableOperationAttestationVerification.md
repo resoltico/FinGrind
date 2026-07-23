@@ -2,20 +2,20 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: BOOK_OPERATION_ATTESTATION_VERIFICATION
-updated: "2026-07-22"
+updated: "2026-07-23"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["AttestationAdmissionRejectedException", "AttestationAuthorizationException", "AttestationAuthorizationFailure", "AttestationBookInspection", "AttestationCompromiseReview", "AttestationInspectionService", "AttestationReceiptArtifactException", "AttestationRegistryInspection", "AttestationReviewFinding", "AttestationReviewResult", "AttestationStaleHeadException", "AttestationVerification", "AttestationVerificationException", "AttestationVerificationFailure", "AttestationVerifier", "VerifyBookAttestationResult"]
 route:
   keywords: [attestation-verification, verifier-precedence, compromise-review, structural-invalid, stale-head, receipt-artifact, verification-rejection, clean-attestation]
   questions: ["how does FinGrind verify a protected-book attestation", "which attestation verification failure is reported first", "what does an attestation review finding mean", "how does FinGrind publish verification failures"]
-stage: "Current public protocol 33 and protected-book format 51 contract"
+stage: "Current public protocol 34 and protected-book format 52 contract"
 ---
 
 # Verifiable Operation Attestation Verification
 
-This document is the canonical verifier contract for FinGrind protocol 33 and protected-book
-format 51. It defines verification result surfaces, compromise review, and deterministic failure
+This document is the canonical verifier contract for FinGrind protocol 34 and protected-book
+format 52. It defines verification result surfaces, compromise review, and deterministic failure
 precedence. The [core protocol](./DOC_02_VerifiableOperationAttestation.md) owns the immutable
 operation envelope, preimage grammar, historical authorization facts, and operation profiles that
 this verifier consumes; the [artifact protocol](./DOC_02_VerifiableOperationAttestationArtifacts.md)
@@ -30,7 +30,7 @@ operation head, and typed non-persisted review findings for a structurally valid
 
 `AttestationVerifier.verifyAndInspectBook` returns an `AttestationBookInspection`: the verified
 head plus an immutable `AttestationRegistryInspection` reconstructed from the same chain. The
-registry snapshot contains all credential bindings (including active or revoked state and binding
+registry snapshot contains all credential bindings (including active, superseded, or revoked state and binding
 lineage), effective capability quorum with its eligible principal counts, principal capability
 decisions, and system-workflow policies. `VerifyBookAttestationResult.Valid` publishes that
 snapshot only when its book ID and head order exactly match the verification result. It is a
@@ -57,7 +57,7 @@ refusal. Its closed `AttestationAuthorizationFailure` value owns the same stable
 code that the public `AttestationVerificationFailure` catalog publishes. Live credential and
 policy mutations translate this exception into a `structural-invalid` rejected envelope with exit
 code 2, preserving such conditions as insufficient quorum, an unenrolled or revoked key, an
-ineligible capability, and an invalid credential purpose instead of misclassifying them as
+ineligible capability, a superseded or revoked credential, and an invalid credential purpose instead of misclassifying them as
 storage failures.
 
 ## `AttestationAdmissionRejectedException`
@@ -96,6 +96,7 @@ public enum AttestationVerificationFailure
 | `DUPLICATE_KEY` | `attestation-duplicate-key` |
 | `KEY_NOT_ENROLLED` | `attestation-key-not-enrolled` |
 | `KEY_REVOKED` | `attestation-key-revoked` |
+| `KEY_SUPERSEDED` | `attestation-key-superseded` |
 | `KEY_PRINCIPAL_MISMATCH` | `attestation-key-principal-mismatch` |
 | `KEY_ALGORITHM_INVALID` | `attestation-key-algorithm-invalid` |
 | `SIGNATURE_INVALID` | `attestation-signature-invalid` |
@@ -194,8 +195,10 @@ Compromise review is verifier input, never mutable book state. A review declarat
 credential keyId, firstAffectedOrder, and optional lastAffectedOrder; an omitted end means the
 verified head. Its interval is inclusive. A valid operation signed by that credential in the
 interval receives a typed review finding containing that tuple and the operation order.
-`verify-book` remains structurally valid; `--require-clean-attestation` changes any finding to
-exit 2. `attestation-review` is the same non-persisted, full finding report.
+`verify-book` remains structurally valid without the strict flag. With
+`--require-clean-attestation`, any finding becomes the rejected
+`attestation-review-required` envelope with exit 2 and no success payload.
+`attestation-review` is the same non-persisted, full finding report.
 
 The CLI accepts declarations only through `--attestation-review-file <path>`. The file must be a
 regular bounded JSON file with no duplicate object keys or unknown fields:
@@ -227,8 +230,9 @@ FinGrind never falls back to file custody.
 
 The following are valid-result findings rather than structural failures: reviewRequired contains
 the compromise-review tuple and affected operation order; receipt-not-independent reports a receipt
-retained within the book's trust boundary. Both have exit 0 unless require-clean-attestation turns
-reviewRequired into exit 2.
+retained within the book's trust boundary. Both have exit 0 unless
+`--require-clean-attestation` turns reviewRequired into the rejected
+`attestation-review-required` result with exit 2.
 
 | Exact result | Meaning | Exit |
 |:--|:--|:--:|

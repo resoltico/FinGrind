@@ -217,7 +217,7 @@ class AttestationContractTypesTest extends ContractTestSupport {
 
   @Test
   void attestationVerificationFailures_areAnExactPublishedVocabulary() {
-    assertEquals(23, AttestationVerificationFailure.values().length);
+    assertEquals(24, AttestationVerificationFailure.values().length);
     assertEquals(
         AttestationVerificationFailure.SIGNATURE_INVALID,
         AttestationVerificationFailure.fromWireCode("attestation-signature-invalid"));
@@ -227,6 +227,9 @@ class AttestationContractTypesTest extends ContractTestSupport {
     assertEquals(
         "The selected receipt artifact cannot be verified.",
         AttestationVerificationFailure.RECEIPT_ARTIFACT_INVALID.description());
+    assertEquals(
+        AttestationVerificationFailure.KEY_SUPERSEDED,
+        AttestationVerificationFailure.fromWireCode("attestation-key-superseded"));
     assertThrows(
         IllegalArgumentException.class,
         () -> AttestationVerificationFailure.fromWireCode(" attestation-signature-invalid "));

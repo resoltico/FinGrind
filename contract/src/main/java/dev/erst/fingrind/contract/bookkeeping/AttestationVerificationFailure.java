@@ -36,6 +36,9 @@ public enum AttestationVerificationFailure {
       "attestation-key-not-enrolled",
       "The attestation envelope uses a key not enrolled at that position."),
   KEY_REVOKED("attestation-key-revoked", "The attestation envelope uses a revoked key."),
+  KEY_SUPERSEDED(
+      "attestation-key-superseded",
+      "The attestation envelope uses a credential superseded by rollover."),
   KEY_PRINCIPAL_MISMATCH(
       "attestation-key-principal-mismatch",
       "The attestation key does not belong to its asserted principal."),

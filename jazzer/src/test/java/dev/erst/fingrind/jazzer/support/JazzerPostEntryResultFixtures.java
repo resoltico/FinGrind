@@ -59,7 +59,8 @@ public final class JazzerPostEntryResultFixtures {
         CliFuzzFixtures.journalEntry(command).effectiveDate(),
         CliFuzzFixtures.fixedClock().instant(),
         idempotentReplay,
-        resolvedJournal(command));
+        resolvedJournal(command),
+        null);
   }
 
   /** Returns the canonical synthetic posting identifier for one stable fixture label. */

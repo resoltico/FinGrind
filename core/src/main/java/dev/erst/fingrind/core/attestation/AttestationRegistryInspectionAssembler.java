@@ -83,7 +83,10 @@ final class AttestationRegistryInspectionAssembler {
         binding.action().name().toLowerCase(java.util.Locale.ROOT),
         binding.acceptedOrder(),
         binding.predecessorKeyId() == null ? null : binding.predecessorKeyId().hex(),
-        state.active() ? "active" : "revoked");
+        state.active()
+            ? "active"
+            : java.util.Objects.requireNonNull(state.retirementState(), "credential retirement")
+                .token());
   }
 
   private static AttestationRegistryInspection.CapabilityPolicy capabilityPolicyInspection(

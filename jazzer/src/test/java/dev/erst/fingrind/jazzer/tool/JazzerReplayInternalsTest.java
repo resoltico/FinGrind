@@ -332,7 +332,8 @@ class JazzerReplayInternalsTest {
                     CliFuzzFixtures.journalEntry(command).effectiveDate(),
                     CliFuzzFixtures.fixedClock().instant(),
                     false,
-                    JazzerPostEntryResultFixtures.resolvedJournal(command))));
+                    JazzerPostEntryResultFixtures.resolvedJournal(command),
+                    null)));
   }
 
   @Test

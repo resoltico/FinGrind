@@ -109,7 +109,10 @@ class CliFuzzAccountLifecycleFixturesTest {
                   BookIdentity bookIdentity,
                   List<dev.erst.fingrind.executor.bookkeeping.AccountDeclaration> seededAccounts,
                   dev.erst.fingrind.core.attestation.AttestationEvidence genesisEvidence) {
-                return new BookOpeningOutcome.Opened(initializedAt.plusSeconds(1), bookIdentity);
+                return new BookOpeningOutcome.Opened(
+                    initializedAt.plusSeconds(1),
+                    bookIdentity,
+                    CliFuzzAttestationFixtures.syntheticTrustRoot());
               }
             },
             new CliFuzzFixtureStoreSupport.AbstractBookAdministrationStoreStub() {},

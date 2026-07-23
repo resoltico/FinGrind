@@ -239,7 +239,8 @@ class PostingWorkflowInvariantAssertionsTest {
                     CliFuzzFixtures.journalEntry(command).effectiveDate(),
                     CliFuzzFixtures.fixedClock().instant(),
                     true,
-                    JazzerPostEntryResultFixtures.resolvedJournal(command)),
+                    JazzerPostEntryResultFixtures.resolvedJournal(command),
+                    null),
                 committed));
     assertThrows(
         IllegalStateException.class,
@@ -251,7 +252,8 @@ class PostingWorkflowInvariantAssertionsTest {
                     CliFuzzFixtures.journalEntry(command).effectiveDate().plusDays(1),
                     CliFuzzFixtures.fixedClock().instant(),
                     true,
-                    JazzerPostEntryResultFixtures.resolvedJournal(command)),
+                    JazzerPostEntryResultFixtures.resolvedJournal(command),
+                    null),
                 committed));
     assertThrows(
         IllegalStateException.class,
@@ -263,7 +265,8 @@ class PostingWorkflowInvariantAssertionsTest {
                     CliFuzzFixtures.journalEntry(command).effectiveDate(),
                     CliFuzzFixtures.fixedClock().instant().plusSeconds(1),
                     true,
-                    JazzerPostEntryResultFixtures.resolvedJournal(command)),
+                    JazzerPostEntryResultFixtures.resolvedJournal(command),
+                    null),
                 committed));
     assertThrows(
         IllegalStateException.class,

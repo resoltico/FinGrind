@@ -1,6 +1,7 @@
 package dev.erst.fingrind.core.attestation;
 
 import static dev.erst.fingrind.core.NullTestSupport.nullOf;
+import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.credential;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -253,6 +254,25 @@ class AttestationMutationProjectionCoverageTest {
                 AttestationLifecycleMutationProjection.rekeyBook(
                         "rekey-book", BigInteger.TWO, RECORDED_AT, Optional.empty())
                     .request())));
+  }
+
+  @Test
+  void credentialProjection_rejectsAnUnpairedRolloverRetirement() {
+    TestCredential credential = credential();
+    AttestationPublicCredential publicCredential =
+        new AttestationPublicCredential(credential.pair().getPublic().getEncoded());
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AttestationLifecycleMutationProjection.binding(
+                "rollover-key",
+                credential.principalId(),
+                publicCredential,
+                "rollover",
+                "operator",
+                Optional.of(AttestationHash.sha256(new byte[] {7})),
+                Optional.empty()));
   }
 
   @Test

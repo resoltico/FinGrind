@@ -54,6 +54,9 @@ final class SqliteStoreOperations {
           message + " An upstream invariant should have rejected this request before commit.",
           exception);
     }
+    if (isProtectedBookVerificationResultCode(exception.resultCode())) {
+      return new SqliteProtectedBookVerificationException(exception);
+    }
     String detail =
         normalizedNativeDetail(
             Objects.requireNonNullElse(exception.getMessage(), "SQLite native failure."),
@@ -80,11 +83,7 @@ final class SqliteStoreOperations {
   static Optional<ContractFailure> protectedBookVerificationFailure(
       SqliteNativeException exception) {
     if (isProtectedBookVerificationResultCode(exception.resultCode())) {
-      return Optional.of(
-          ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.failure(
-              "FinGrind could not verify the selected protected book with the supplied passphrase source.",
-              "Possible causes include the wrong secret, a damaged or truncated book file, or a protected SQLite file outside the supported FinGrind format. Confirm the intended book file and passphrase source, then rerun the intended command against that same protected book.",
-              null));
+      return Optional.of(ContractErrors.protectedBookVerificationFailure());
     }
     return Optional.empty();
   }

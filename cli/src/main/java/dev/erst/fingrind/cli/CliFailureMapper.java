@@ -66,6 +66,8 @@ final class CliFailureMapper {
               null);
       case PERSISTENCE_INVARIANT ->
           errorId == null ? null : internalPersistenceInvariantError(errorId);
+      case PROTECTED_BOOK_VERIFICATION ->
+          CliFailure.fromContractFailure(ContractErrors.protectedBookVerificationFailure());
       case STORAGE ->
           new CliFailure(
               ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE.code(),

@@ -6,7 +6,9 @@ import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSup
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.interimWorkflow;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.rollover;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -38,8 +40,11 @@ class AttestationRegistryValidatorTest {
             AttestationRegistry.fromVerifierFacts(
                 List.of(),
                 List.of(
-                    new AttestationCredentialRevocation(
-                        BigInteger.ONE, first.principalId(), first.keyId())),
+                    new AttestationCredentialRetirement(
+                        BigInteger.ONE,
+                        first.principalId(),
+                        first.keyId(),
+                        AttestationCredentialRetirementState.REVOKED)),
                 List.of(),
                 List.of(),
                 List.of()));
@@ -49,8 +54,11 @@ class AttestationRegistryValidatorTest {
             AttestationRegistry.fromVerifierFacts(
                 List.of(binding(0, first)),
                 List.of(
-                    new AttestationCredentialRevocation(
-                        BigInteger.ONE, UUID.randomUUID(), first.keyId())),
+                    new AttestationCredentialRetirement(
+                        BigInteger.ONE,
+                        UUID.randomUUID(),
+                        first.keyId(),
+                        AttestationCredentialRetirementState.REVOKED)),
                 List.of(),
                 List.of(),
                 List.of()));
@@ -60,8 +68,11 @@ class AttestationRegistryValidatorTest {
             AttestationRegistry.fromVerifierFacts(
                 List.of(binding(1, first)),
                 List.of(
-                    new AttestationCredentialRevocation(
-                        BigInteger.ONE, first.principalId(), first.keyId())),
+                    new AttestationCredentialRetirement(
+                        BigInteger.ONE,
+                        first.principalId(),
+                        first.keyId(),
+                        AttestationCredentialRetirementState.REVOKED)),
                 List.of(),
                 List.of(),
                 List.of()));
@@ -71,10 +82,16 @@ class AttestationRegistryValidatorTest {
             AttestationRegistry.fromVerifierFacts(
                 List.of(binding(0, first)),
                 List.of(
-                    new AttestationCredentialRevocation(
-                        BigInteger.ONE, first.principalId(), first.keyId()),
-                    new AttestationCredentialRevocation(
-                        BigInteger.TWO, first.principalId(), first.keyId())),
+                    new AttestationCredentialRetirement(
+                        BigInteger.ONE,
+                        first.principalId(),
+                        first.keyId(),
+                        AttestationCredentialRetirementState.REVOKED),
+                    new AttestationCredentialRetirement(
+                        BigInteger.TWO,
+                        first.principalId(),
+                        first.keyId(),
+                        AttestationCredentialRetirementState.REVOKED)),
                 List.of(),
                 List.of(),
                 List.of()));
@@ -125,8 +142,11 @@ class AttestationRegistryValidatorTest {
             AttestationRegistry.fromVerifierFacts(
                 List.of(binding(0, first), rollover(2, samePrincipalReplacement, first.keyId())),
                 List.of(
-                    new AttestationCredentialRevocation(
-                        BigInteger.ONE, first.principalId(), first.keyId())),
+                    new AttestationCredentialRetirement(
+                        BigInteger.ONE,
+                        first.principalId(),
+                        first.keyId(),
+                        AttestationCredentialRetirementState.REVOKED)),
                 List.of(),
                 List.of(),
                 List.of()));
@@ -166,6 +186,83 @@ class AttestationRegistryValidatorTest {
                 List.of(),
                 List.of(),
                 List.of(duplicateWorkflow, duplicateWorkflow)));
+  }
+
+  @Test
+  void requiresAnExactSameOperationSupersessionForEveryRollover() {
+    TestCredential predecessor = credential();
+    TestCredential rawReplacement = credential();
+    TestCredential replacement =
+        new TestCredential(
+            predecessor.principalId(), rawReplacement.pair(), rawReplacement.keyId());
+    AttestationCredentialBinding rollover = rollover(1, replacement, predecessor.keyId());
+    AttestationCredentialRetirement supersession =
+        retirement(1, predecessor, AttestationCredentialRetirementState.SUPERSEDED);
+
+    assertEquals(
+        supersession,
+        AttestationRegistryValidator.matchingSupersession(rollover, List.of(supersession)));
+    TestCredential other = credential();
+    assertNull(
+        AttestationRegistryValidator.matchingSupersession(
+            rollover,
+            List.of(retirement(1, other, AttestationCredentialRetirementState.SUPERSEDED))));
+    TestCredential rawOtherKey = credential();
+    TestCredential otherKey =
+        new TestCredential(predecessor.principalId(), rawOtherKey.pair(), rawOtherKey.keyId());
+    assertNull(
+        AttestationRegistryValidator.matchingSupersession(
+            rollover,
+            List.of(retirement(1, otherKey, AttestationCredentialRetirementState.SUPERSEDED))));
+    assertDoesNotThrow(
+        () ->
+            AttestationRegistry.fromVerifierFacts(
+                List.of(binding(0, predecessor), rollover),
+                List.of(supersession),
+                List.of(),
+                List.of(),
+                List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AttestationRegistry.fromVerifierFacts(
+                List.of(binding(0, predecessor), rollover),
+                List.of(retirement(1, predecessor, AttestationCredentialRetirementState.REVOKED)),
+                List.of(),
+                List.of(),
+                List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AttestationRegistry.fromVerifierFacts(
+                List.of(binding(0, predecessor), rollover),
+                List.of(
+                    retirement(2, predecessor, AttestationCredentialRetirementState.SUPERSEDED)),
+                List.of(),
+                List.of(),
+                List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AttestationRegistry.fromVerifierFacts(
+                List.of(binding(0, predecessor)),
+                List.of(supersession),
+                List.of(),
+                List.of(),
+                List.of()));
+    TestCredential rawDuplicate = credential();
+    TestCredential duplicate =
+        new TestCredential(predecessor.principalId(), rawDuplicate.pair(), rawDuplicate.keyId());
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            AttestationRegistry.fromVerifierFacts(
+                List.of(
+                    binding(0, predecessor), rollover, rollover(1, duplicate, predecessor.keyId())),
+                List.of(supersession),
+                List.of(),
+                List.of(),
+                List.of()));
   }
 
   @Test
@@ -237,6 +334,12 @@ class AttestationRegistryValidatorTest {
                     interimWorkflow(0, originalWorkflowId, true),
                     interimWorkflow(1, originalWorkflowId, false),
                     interimWorkflow(2, originalWorkflowId, true))));
+  }
+
+  private static AttestationCredentialRetirement retirement(
+      int order, TestCredential credential, AttestationCredentialRetirementState state) {
+    return new AttestationCredentialRetirement(
+        BigInteger.valueOf(order), credential.principalId(), credential.keyId(), state);
   }
 
   @Test

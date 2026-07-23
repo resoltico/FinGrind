@@ -22,7 +22,7 @@ final class AttestationRegistryEffectDecoder {
 
   record DecodedFacts(
       List<AttestationCredentialBinding> bindings,
-      List<AttestationCredentialRevocation> revocations,
+      List<AttestationCredentialRetirement> retirements,
       List<AttestationCapabilityGrant> grants,
       List<AttestationPolicyRule> policyRules,
       List<AttestationSystemWorkflowPolicy> workflowPolicies) {}

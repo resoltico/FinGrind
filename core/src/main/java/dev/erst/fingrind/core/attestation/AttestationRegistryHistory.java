@@ -14,7 +14,7 @@ import java.util.Objects;
  */
 final class AttestationRegistryHistory {
   private final List<AttestationCredentialBinding> bindings = new ArrayList<>();
-  private final List<AttestationCredentialRevocation> revocations = new ArrayList<>();
+  private final List<AttestationCredentialRetirement> retirements = new ArrayList<>();
   private final List<AttestationCapabilityGrant> grants = new ArrayList<>();
   private final List<AttestationPolicyRule> policyRules = new ArrayList<>();
   private final List<AttestationSystemWorkflowPolicy> workflowPolicies = new ArrayList<>();
@@ -35,7 +35,7 @@ final class AttestationRegistryHistory {
 
   private AttestationRegistryHistory(AttestationRegistryHistory source) {
     bindings.addAll(source.bindings);
-    revocations.addAll(source.revocations);
+    retirements.addAll(source.retirements);
     grants.addAll(source.grants);
     policyRules.addAll(source.policyRules);
     workflowPolicies.addAll(source.workflowPolicies);
@@ -57,7 +57,7 @@ final class AttestationRegistryHistory {
   AttestationRegistry registry() {
     try {
       return AttestationRegistry.fromVerifierFacts(
-          bindings, revocations, grants, policyRules, workflowPolicies);
+          bindings, retirements, grants, policyRules, workflowPolicies);
     } catch (RuntimeException exception) {
       throw AttestationFormatFailure.classify(
           exception, AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID);
@@ -95,7 +95,7 @@ final class AttestationRegistryHistory {
           AttestationRegistryEffectDecoder.decode(
               operationKind, operationOrder, requestPreimage, effectPreimage);
       bindings.addAll(decoded.bindings());
-      revocations.addAll(decoded.revocations());
+      retirements.addAll(decoded.retirements());
       grants.addAll(decoded.grants());
       policyRules.addAll(decoded.policyRules());
       workflowPolicies.addAll(decoded.workflowPolicies());

@@ -82,11 +82,21 @@ final class CliRejectionPayloadMapper {
       case KEY_NOT_ENROLLED ->
           new AuthorizationDiagnostic(
               "The requested rollover or revocation target is not enrolled at the current attestation head.",
-              "Inspect the current attestation registry and select an enrolled credential.");
+              "Run "
+                  + OperationId.VERIFY_BOOK.wireName()
+                  + " to inspect the current attestation registry, then select an enrolled credential.");
       case KEY_REVOKED ->
           new AuthorizationDiagnostic(
               "The requested rollover or revocation target is already revoked at the current attestation head.",
-              "Select an active enrolled credential; revoked credentials cannot be changed again.");
+              "Run "
+                  + OperationId.VERIFY_BOOK.wireName()
+                  + " to inspect the current registry; select an active enrolled credential instead.");
+      case KEY_SUPERSEDED ->
+          new AuthorizationDiagnostic(
+              "The requested rollover or revocation target was already superseded by a replacement credential at the current attestation head.",
+              "Run "
+                  + OperationId.VERIFY_BOOK.wireName()
+                  + " to identify the active replacement credential; superseded credentials cannot be changed again.");
       case KEY_PRINCIPAL_MISMATCH ->
           new AuthorizationDiagnostic(
               "The requested credential belongs to a different principal in the current attestation registry.",

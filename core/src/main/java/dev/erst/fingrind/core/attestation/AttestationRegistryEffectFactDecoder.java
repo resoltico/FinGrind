@@ -11,7 +11,7 @@ final class AttestationRegistryEffectFactDecoder {
       BigInteger operationOrder, AttestationRegistryEffectSets effects) {
     return new AttestationRegistryEffectDecoder.DecodedFacts(
         effects.bindings().stream().map(fact -> binding(operationOrder, fact)).toList(),
-        effects.revocations().stream().map(fact -> revocation(operationOrder, fact)).toList(),
+        effects.retirements().stream().map(fact -> retirement(operationOrder, fact)).toList(),
         effects.grants().stream().map(fact -> grant(operationOrder, fact)).toList(),
         effects.policyRules().stream().map(fact -> policy(operationOrder, fact)).toList(),
         effects.workflowPolicies().stream().map(fact -> workflow(operationOrder, fact)).toList());
@@ -47,14 +47,22 @@ final class AttestationRegistryEffectFactDecoder {
             fact, 6, AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID));
   }
 
-  private static AttestationCredentialRevocation revocation(
+  private static AttestationCredentialRetirement retirement(
       BigInteger operationOrder, AttestationPreimage.Fact fact) {
-    return new AttestationCredentialRevocation(
+    AttestationCredentialRetirementState state =
+        switch (AttestationPreimageValueReader.token(
+            fact, 3, AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID)) {
+          case "superseded" -> AttestationCredentialRetirementState.SUPERSEDED;
+          case "revoked" -> AttestationCredentialRetirementState.REVOKED;
+          default -> throw failure();
+        };
+    return new AttestationCredentialRetirement(
         operationOrder,
         AttestationPreimageValueReader.uuid(
             fact, 2, AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID),
         AttestationPreimageValueReader.hash(
-            fact, 1, AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID));
+            fact, 1, AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID),
+        state);
   }
 
   private static AttestationCapabilityGrant grant(

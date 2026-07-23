@@ -2,19 +2,19 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: BOOK_OPERATION_ATTESTATION_ARTIFACTS
-updated: "2026-07-22"
+updated: "2026-07-23"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["BackupManifest", "AttestationArtifactContainer", "AttestationBackupArtifact", "AttestationDirectoryDurability", "AttestationReceipt"]
 route:
   keywords: [verifiable-operation-attestation, backup-manifest, attestation-receipt, artifact-container, restore-book, backup-acknowledgement, receipt-anchor, no-clobber]
   questions: ["how is an attested backup artifact encoded", "how does FinGrind restore an attested snapshot", "what does an attestation receipt anchor", "which vectors prove backup and receipt envelopes"]
-stage: "Current public protocol 33 and protected-book format 51 contract"
+stage: "Current public protocol 34 and protected-book format 52 contract"
 ---
 
 # Verifiable Operation Attestation Artifacts
 
-This document is the canonical artifact subprotocol for protected-book format 51: backup manifests,
+This document is the canonical artifact subprotocol for protected-book format 52: backup manifests,
 artifact publication and restore, off-chain receipts, and artifact golden vectors.
 [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md) owns the
 shared envelope grammar and historical authorization; the

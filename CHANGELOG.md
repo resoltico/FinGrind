@@ -11,7 +11,7 @@ Historical release notes older than `0.31.0` live in:
 
 ### Added
 
-- Added verifiable operation attestation to protected-book format `51` and CLI protocol `33`.
+- Added verifiable operation attestation to protected-book format `52` and CLI protocol `34`.
   Every mutation now carries immutable canonical request and committed-effect preimages, a
   historically authorized Ed25519 envelope, and a SHA-256 operation head. `verify-book`,
   `attestation-review`, `export-attestation-receipt`, and `verify-receipt` expose structural
@@ -26,6 +26,9 @@ Historical release notes older than `0.31.0` live in:
   Operators can now provision a no-clobber encrypted Ed25519 credential, obtain its exact public
   SPKI for enrollment or rollover, and recover the public identity of an existing founder or
   operator credential without exposing a passphrase or private key.
+- Added a complete `print-request-template attestation-review` scaffold with string-form review
+  order values, and expanded the `alter-policy` scaffold to exercise policy, grant, and workflow
+  mutations together.
 - Added first-class contra-account taxonomy. A declared account can now identify the active postable account it reduces; the relationship is validated as a same-type, compatible-statement relationship, normal balance follows the contra role, account readback publishes `contraOfAccountCode`, and financial statements present the row as a reduction of its named account.
 - Added discoverable `retire-account` request scaffolding and named atomic setup plans for tax, fixed assets, and financing. Each setup plan declares the exact prerequisite account taxonomy before it declares or uses the bounded-context facts, while the default `print-plan-template` remains a general executable workflow.
 - Added an explicit Latvian monthly-payroll withholding profile to every payroll request, retained payroll run, plan fact, and readback. The supported 2026 calculation admits only `taxBookHeldAtEmployer: true` with `dependantCount: 0` and rejects all other profiles rather than assuming their tax treatment.
@@ -33,6 +36,9 @@ Historical release notes older than `0.31.0` live in:
 
 ### Changed
 
+- Hard-broke the Java discovery-template facade. Attestation registry and compromise-review
+  scaffolds now belong to `MachineContractAttestationTemplates`, separating that protocol family
+  from the general discovery assembler and leaving no compatibility forwarding methods.
 - Hard-broke private attestation-key custody selection. Every command that creates or opens
   private attestation material now requires `--attestation-custodian file-pkcs8`; unsupported
   selected custodians refuse as `custodian-not-supported`, and no implicit file-custody fallback
@@ -41,8 +47,17 @@ Historical release notes older than `0.31.0` live in:
   `--attestation-review-file` contract for `verify-book` and `attestation-review`. Its bounded
   JSON input rejects duplicate or unknown fields, trailing content, and noncanonical order
   spellings. Findings now publish typed credential interval and operation-order fields; review
-  declarations remain non-persisted and `--require-clean-attestation` returns exit 2 when they
-  match a valid chain.
+  declarations remain non-persisted and `--require-clean-attestation` returns the rejected
+  `attestation-review-required` envelope with exit 2 when they match a valid chain.
+- Hard-broke attestation rollover semantics. A rollover now commits the successor binding and the
+  predecessor's terminal `superseded` retirement in one immutable operation; the predecessor can
+  no longer sign afterward. `revoked` remains the distinct terminal state for a separately
+  authorized security withdrawal. The book format and protocol advance to `52` and `34`; format
+  `51` books are rejected rather than migrated or read through a compatibility layer.
+- Classified protected-book authentication and integrity failures consistently even when a later
+  SQLite page read first exposes them. Such failures now always return
+  `protected-book-verification-failed` instead of the generic storage runtime result, without
+  falsely distinguishing a wrong secret from damage or tampering.
 
 - Hard-broke the Java book-administration rejection surfaces so
   `FiscalYearCloseRequiresGeneratedPostings` is a top-level sealed-family variant rather than a
@@ -151,8 +166,8 @@ Historical release notes older than `0.31.0` live in:
 - Closed the unreleased next-format operation-attestation contract around historical policy and
   credential identity. The latest capability policy rule is now the only effective rule at a
   position; credential bindings prove their SPKI-derived key identity and one-principal ownership;
-  rollover adds rather than silently retires a credential; and the fixture ledger names the exact
-  rollover signer and binding-rejection cases. Receipt independence now has one result name, and
+  rollover atomically supersedes its predecessor; and the fixture ledger names the exact rollover
+  signer and binding-rejection cases. Receipt independence now has one result name, and
   artifact vectors route to their canonical protocol.
 - Corrected the unreleased next-format operation-attestation contract so close operations carry a
   derived posting request, system provenance requires an all-system viable quorum, tax-inclusive

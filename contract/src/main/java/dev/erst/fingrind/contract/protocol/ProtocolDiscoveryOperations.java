@@ -84,7 +84,7 @@ final class ProtocolDiscoveryOperations {
                     + String.join("|", dev.erst.fingrind.core.BookTemplateId.wireValues())
                     + ">]"),
             ExecutionMode.RAW_JSON,
-            "Print the canonical minimal request scaffold JSON document for a request-file command.",
+            "Print the canonical minimal JSON scaffold for a selected structured-input topic.",
             List.of(
                 ProtocolExampleStep.command(
                     "fingrind %s > request.json"

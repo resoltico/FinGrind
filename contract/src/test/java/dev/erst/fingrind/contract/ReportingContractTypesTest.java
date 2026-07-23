@@ -399,9 +399,11 @@ class ReportingContractTypesTest {
     ContractFailure withCause =
         ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.failure(
             "Wrong key", "Use the correct key file.", "--book-key-file");
+    ContractFailure protectedBookVerificationFailure =
+        ContractErrors.protectedBookVerificationFailure();
     ContractDecision<String> accepted = ContractDecision.accepted("ok");
     ContractDecision<String> rejected = ContractDecision.rejected(withoutCause);
-    assertEquals(23, descriptors.size());
+    assertEquals(24, descriptors.size());
     assertEquals("unknown-command", descriptors.getFirst().code());
     assertTrue(
         descriptors.stream()
@@ -424,6 +426,10 @@ class ReportingContractTypesTest {
             .anyMatch(descriptor -> "storage-runtime-failure".equals(descriptor.code())));
     assertTrue(
         descriptors.stream()
+            .anyMatch(
+                descriptor -> "protected-book-verification-failed".equals(descriptor.code())));
+    assertTrue(
+        descriptors.stream()
             .anyMatch(descriptor -> "pdf-export-failure".equals(descriptor.code())));
     assertEquals("invalid-page-cursor", ContractErrors.Descriptor.INVALID_PAGE_CURSOR.code());
     assertEquals(1, ContractErrors.Descriptor.INVALID_PAGE_CURSOR.exitCode());
@@ -444,6 +450,11 @@ class ReportingContractTypesTest {
     assertEquals("protected-book-verification-failed", withCause.code());
     assertEquals("Use the correct key file.", withCause.hint());
     assertEquals("--book-key-file", withCause.argument());
+    assertSame(
+        ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED,
+        protectedBookVerificationFailure.descriptor());
+    assertTrue(protectedBookVerificationFailure.message().contains("authenticate and verify"));
+    assertNull(protectedBookVerificationFailure.argument());
     assertEquals("accepted:ok", accepted.fold(value -> "accepted:" + value, ignored -> "rejected"));
     assertEquals(
         "rejected:invalid-page-cursor",

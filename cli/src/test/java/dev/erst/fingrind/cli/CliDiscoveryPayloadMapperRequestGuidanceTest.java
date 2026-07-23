@@ -250,6 +250,36 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
   }
 
   @Test
+  void helpPayload_mapsAttestationReviewFileGuidance() {
+    HelpDescriptor helpDescriptor =
+        MachineContract.help(
+            CliDiscoveryPayloadMapperTest.identity(),
+            CliDiscoveryPayloadMapperTest.environment(),
+            OperationId.ATTESTATION_REVIEW);
+    CliDiscoveryHelpJsonModels.CommandHelpPayload fullPayload =
+        assertInstanceOf(
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+            CliDiscoveryPayloadMapperTest.fullHelpPayload(helpDescriptor));
+    CliDiscoveryHelpJsonModels.CommandHelpPayload compactPayload =
+        assertInstanceOf(
+            CliDiscoveryHelpJsonModels.CommandHelpPayload.class,
+            CliDiscoveryPayloadMapperTest.compactHelpPayload(helpDescriptor));
+
+    assertNotNull(fullPayload.requestFile());
+    assertNotNull(fullPayload.requestFile().attestationTemplate());
+    assertEquals(
+        CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
+            + " "
+            + OperationId.ATTESTATION_REVIEW.wireName(),
+        fullPayload.requestFile().shortcutCommand());
+    assertTrue(
+        CliDiscoveryRequestGuidance.render(helpDescriptor, OperationId.ATTESTATION_REVIEW)
+            .contains("compromiseReviews"));
+    assertNotNull(compactPayload.requestFile());
+    assertNull(compactPayload.requestFile().attestationTemplate());
+  }
+
+  @Test
   void helpPayload_mapsEveryAttestationRegistryRequestTemplate() {
     for (OperationId operationId :
         List.of(
@@ -275,12 +305,12 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
                       operationId)));
 
       assertNotNull(fullPayload.requestFile(), operationId::wireName);
-      assertNotNull(fullPayload.requestFile().attestationRegistryTemplate(), operationId::wireName);
+      assertNotNull(fullPayload.requestFile().attestationTemplate(), operationId::wireName);
       assertTrue(
           Objects.requireNonNull(fullPayload.requestFile().shortcutCommand())
               .contains(operationId.wireName()));
       assertNotNull(compactPayload.requestFile(), operationId::wireName);
-      assertNull(compactPayload.requestFile().attestationRegistryTemplate(), operationId::wireName);
+      assertNull(compactPayload.requestFile().attestationTemplate(), operationId::wireName);
     }
   }
 
@@ -474,7 +504,7 @@ class CliDiscoveryPayloadMapperRequestGuidanceTest extends CliResponseWriterTest
     for (String field : expectedFields) {
       assertTrue(guidance.contains(field), guidance);
     }
-    assertNotNull(payload.requestFile().attestationRegistryTemplate());
+    assertNotNull(payload.requestFile().attestationTemplate());
     assertEquals(
         CliInvocationText.commandExample(OperationId.PRINT_REQUEST_TEMPLATE)
             + " "

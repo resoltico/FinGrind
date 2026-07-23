@@ -12,6 +12,7 @@ import dev.erst.fingrind.contract.discovery.ContractAttestationRegistryTemplates
 import dev.erst.fingrind.contract.discovery.ContractAttestationRegistryTemplates.RevokeKeyTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractAttestationRegistryTemplates.RolloverKeyTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractAttestationRegistryTemplates.SystemWorkflowPolicyTemplateDescriptor;
+import dev.erst.fingrind.contract.discovery.ContractAttestationReviewTemplates.AttestationReviewFileTemplateDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -23,19 +24,19 @@ class ContractAttestationRegistryTemplatesTest {
     EnrollKeyTemplateDescriptor enroll =
         assertInstanceOf(
             EnrollKeyTemplateDescriptor.class,
-            MachineContract.attestationRegistryTemplate(OperationId.ENROLL_KEY));
+            MachineContractAttestationTemplates.registryTemplate(OperationId.ENROLL_KEY));
     RolloverKeyTemplateDescriptor rollover =
         assertInstanceOf(
             RolloverKeyTemplateDescriptor.class,
-            MachineContract.attestationRegistryTemplate(OperationId.ROLLOVER_KEY));
+            MachineContractAttestationTemplates.registryTemplate(OperationId.ROLLOVER_KEY));
     RevokeKeyTemplateDescriptor revoke =
         assertInstanceOf(
             RevokeKeyTemplateDescriptor.class,
-            MachineContract.attestationRegistryTemplate(OperationId.REVOKE_KEY));
+            MachineContractAttestationTemplates.registryTemplate(OperationId.REVOKE_KEY));
     AlterPolicyTemplateDescriptor alter =
         assertInstanceOf(
             AlterPolicyTemplateDescriptor.class,
-            MachineContract.attestationRegistryTemplate(OperationId.ALTER_POLICY));
+            MachineContractAttestationTemplates.registryTemplate(OperationId.ALTER_POLICY));
 
     assertEquals(ContractAttestationRegistryTemplates.EXAMPLE_PRINCIPAL_ID, enroll.principalId());
     assertEquals(
@@ -44,11 +45,18 @@ class ContractAttestationRegistryTemplatesTest {
     assertEquals(
         ContractAttestationRegistryTemplates.EXAMPLE_CREDENTIAL_SPKI, revoke.credentialSpki());
     assertEquals(List.of(new PolicyRuleTemplateDescriptor("post", 1)), alter.policyRules());
+    assertEquals(1, alter.capabilityGrants().size());
+    assertEquals(1, alter.systemWorkflowPolicies().size());
+    AttestationReviewFileTemplateDescriptor review =
+        MachineContractAttestationTemplates.reviewFileTemplate();
+    assertEquals("41", review.compromiseReviews().getFirst().firstAffectedOrder());
+    assertEquals("57", review.compromiseReviews().getFirst().lastAffectedOrder());
     assertThrows(
         IllegalArgumentException.class,
-        () -> MachineContract.attestationRegistryTemplate(OperationId.HELP));
+        () -> MachineContractAttestationTemplates.registryTemplate(OperationId.HELP));
     assertThrows(
-        NullPointerException.class, () -> MachineContract.attestationRegistryTemplate(nullOf()));
+        NullPointerException.class,
+        () -> MachineContractAttestationTemplates.registryTemplate(nullOf()));
   }
 
   @Test
@@ -81,6 +89,9 @@ class ContractAttestationRegistryTemplatesTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> new AlterPolicyTemplateDescriptor(List.of(), List.of(), List.of()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> new AttestationReviewFileTemplateDescriptor(List.of()));
     assertThrows(IllegalArgumentException.class, () -> new PolicyRuleTemplateDescriptor("post", 0));
   }
 }

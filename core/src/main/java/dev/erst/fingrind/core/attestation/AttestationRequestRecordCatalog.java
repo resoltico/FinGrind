@@ -164,11 +164,6 @@ final class AttestationRequestRecordCatalog {
             "principalId:uuid!, keyId:hash!, bindingAction:token!, spki:spki!, credentialPurpose:token!, predecessorKeyId:hash?",
             0,
             1),
-        record(
-            0x0181,
-            "request.credential-revocation",
-            "keyId:hash!, principalId:uuid!, reason:text?",
-            0),
         record(0x0182, "request.policy-change", "capability:token!, quorum:u16!", 0),
         record(
             0x0183,
@@ -180,6 +175,11 @@ final class AttestationRequestRecordCatalog {
             0x0184,
             "request.system-workflow-policy",
             "workflowId:uuid!, workflowKind:token!, resultHoldingAccountCode:text!, capitalAccountCode:text?, retainedResultAccountCode:text?, active:bool!",
+            0),
+        record(
+            0x0185,
+            "request.credential-retirement",
+            "keyId:hash!, principalId:uuid!, retirementState:token!, reason:text?",
             0));
   }
 }

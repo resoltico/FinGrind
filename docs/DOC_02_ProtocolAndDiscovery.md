@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-07-22"
+updated: "2026-07-23"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, attestation credential, enroll-key, rollover-key, revoke-key, alter-policy, tax-setup, declare-tax-registration, amend-account, retire-account, tax-obligation]
   questions: ["where is protocol metadata documented in fingrind", "where is the attestation credential and policy request surface documented", "where is the tax setup request surface documented", "where are account lifecycle commands documented"]
@@ -550,18 +550,23 @@ public final class ProtocolAttestationRegistryRequestFields
 
 ## `ProtocolRequestTemplateTopics` And `ContractAttestationRegistryTemplates`
 
-`ProtocolRequestTemplateTopics` registers all request-file commands that have a raw executable
-scaffold. `ContractAttestationRegistryTemplates` owns the four registry-specific templates.
+`ProtocolRequestTemplateTopics` registers every structured-input topic that has a raw executable
+scaffold. `ContractAttestationRegistryTemplates` owns the four registry-specific templates, and
+`ContractAttestationReviewTemplates` owns the complete non-persisted compromise-review document.
 
 ```java
 public final class ProtocolRequestTemplateTopics
 public final class ContractAttestationRegistryTemplates
+public final class ContractAttestationReviewTemplates
 ```
 
 - `print-request-template enroll-key`, `rollover-key`, `revoke-key`, and `alter-policy` emit the
   exact corresponding lifecycle scaffold.
+- `print-request-template attestation-review` emits the complete
+  `--attestation-review-file` document, including canonical string-form order values rather than
+  JSON numbers.
 - `help <command> --output json --detail full` embeds that same typed descriptor under
-  `payload.requestFile.attestationRegistryTemplate`; compact help deliberately keeps only the
+  `payload.requestFile.attestationTemplate`; compact help deliberately keeps only the
   command guidance and shortcut.
 - The enrollment and rollover templates publish the closed lowercase `operator` credential-purpose
   token. All UUID examples are canonical RFC 4122 values, so every generated scaffold passes its
@@ -731,7 +736,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 51`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 52`
 
 ## `ProtectedBookFormatContract`
 

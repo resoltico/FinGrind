@@ -6,7 +6,7 @@ import java.util.List;
 /** Verifies that each authority effect is an exact projection of a same-kind request fact. */
 final class AttestationRegistryEffectProjection {
   private static final int BINDING_REQUEST = 0x0180;
-  private static final int REVOCATION_REQUEST = 0x0181;
+  private static final int RETIREMENT_REQUEST = 0x0185;
   private static final int POLICY_REQUEST = 0x0182;
   private static final int GRANT_REQUEST = 0x0183;
   private static final int WORKFLOW_REQUEST = 0x0184;
@@ -31,14 +31,16 @@ final class AttestationRegistryEffectProjection {
         5,
         6);
     requireProjection(
-        AttestationPreimageFields.records(requestPreimage, REVOCATION_REQUEST),
-        effects.revocations(),
+        AttestationPreimageFields.records(requestPreimage, RETIREMENT_REQUEST),
+        effects.retirements(),
         0,
         1,
         1,
         2,
         2,
-        3);
+        3,
+        3,
+        4);
     requireProjection(
         AttestationPreimageFields.records(requestPreimage, GRANT_REQUEST),
         effects.grants(),

@@ -198,6 +198,15 @@ class SqliteFuzzAssertionsTest {
   }
 
   @Test
+  void sqliteAssertions_create_and_harden_missing_key_file_parent() throws Exception {
+    Path keyFile = tempDirectory.resolve("new-artifacts").resolve("entity.book-key");
+
+    SqliteFuzzAssertions.writeDeterministicBookKeyFile(keyFile);
+
+    assertEquals("fingrind-jazzer-book-key", Files.readString(keyFile, UTF_8));
+  }
+
+  @Test
   void sqliteAssertions_prepareSecureArtifactDirectory_hardens_existing_directory_roots()
       throws Exception {
     Path artifactDirectory = tempDirectory.resolve("existing-artifacts");

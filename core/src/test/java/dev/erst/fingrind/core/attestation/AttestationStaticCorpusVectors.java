@@ -19,7 +19,7 @@ final class AttestationStaticCorpusVectors {
       Map.ofEntries(
           Map.entry("B-01", "f31e017a7bee0930759acd9185b5ee656e8ddc04dda893bfbd3be5f8d1b15549"),
           Map.entry("B-02", "71c60316634958f786967b7a43452c84be7b4a0e1227a0e629d2f8209271ab1c"),
-          Map.entry("B-03", "03c337afaf8b89f99999c0095b8d217f8b2335249c24c3f16c26a85c6e9f753c"),
+          Map.entry("B-03", "ac21bb3b01e3a834a227e31d64f606c56153b4215b53ee00022fd33f3507eb90"),
           Map.entry("B-04", "5063d4117286b8fc885a9abfb7e9d7f23f5f2e6114df4b53c952099cb81e12b5"),
           Map.entry(
               "B-05-artifact", "b92bba455ca0b086deb84c8e443e837e22ade75176a8153f1a09321a124323fe"),
@@ -40,13 +40,13 @@ final class AttestationStaticCorpusVectors {
           Map.entry("N-18", "bf4973306473f9d957ae8fa25ecb41a51efbd9515ed6461bf22860b3dc72744a"),
           Map.entry("N-19", "54a1ce360475d06ae4ade156f2f509e707d5b1a0a759c8e9895fe2d039fd006c"),
           Map.entry("N-20", "9a21f7c462037a94a42f3b520617e9b2cea4cf27c1fa6cb5c86123681907c27b"),
-          Map.entry("N-21", "ab71fe0111cf792df92bc0d863c3ebd2cb5737dc8557303a81ce4c101855694a"),
-          Map.entry("N-22", "2b854ed9456e69005301c121ba58db7eb3f41d8225c740dbc809935933cbd9c8"),
-          Map.entry("N-23", "8e518ca47df3ee826717a415bf748483fa04d062d82b87a75f1a1427214b11c4"),
+          Map.entry("N-21", "fbb5daabad2e28ba20f846332b83d7ea2401eb588039ebf8e626d22ad1a164a1"),
+          Map.entry("N-22", "10b4b28d75097abaa4fb0b3f6454d5bb0635376dddd705088936680b0290eb7a"),
+          Map.entry("N-23", "26d60bd4ea9d16887db712b835e05c39db19f2625d1da06e4d7b7d067b7a9a73"),
           Map.entry("N-24", "65c801937b7fec89dec54f141602f7e5bba3f73edf3c84e3a6edd9153681ab7a"),
           Map.entry("N-25", "a09875306c25dc7c01c4f23b4480a8c020b212b055cc6265ebaa271e4944f052"),
-          Map.entry("N-26", "664b4cc6a03d93a3c484d4359b5e77335f292c299175fca700b60697cbb4c685"),
-          Map.entry("N-27", "9b90d59877e1fc5df506111d02a6715580cd63359cfed060169c7a4a9af1a319"));
+          Map.entry("N-26", "da4cad368b125e19bffe0673bed7bc2caac77c7d48dd50aa290ac462cd018ca9"),
+          Map.entry("N-27", "9313454c3e632d8df35215b9f72cd7a71b1fce089c72bf1078184d7f7a49796f"));
   private static final Map<String, PositiveBook> POSITIVE_BOOKS = positiveBooks();
   private static final Map<String, NegativeBook> NEGATIVE_BOOKS = negativeBooks();
   private static final UUID PRINCIPAL_A = UUID.fromString("10213243-5465-7687-98a9-babcbddceeff");

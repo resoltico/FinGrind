@@ -4,6 +4,7 @@ import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSup
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.credential;
 import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.replaceFirstRecord;
 import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.withField;
+import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.withoutRecords;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.math.BigInteger;
@@ -63,7 +64,7 @@ class AttestationRegistryHistoryTest {
             AttestationOperationKind.REVOKE_KEY,
             revocationRequest(credential),
             revocationEffect(credential));
-    assertEquals(1, revocation.revocations().size());
+    assertEquals(1, revocation.retirements().size());
 
     AttestationRegistryEffectDecoder.DecodedFacts policy =
         decode(
@@ -222,6 +223,9 @@ class AttestationRegistryHistoryTest {
             List.of(grantEffect(credential, AttestationCapability.POST, "other"))));
     assertDecoderFailure(
         AttestationPreimage.of(
+            List.of(retirementEffectFact(credential.principalId(), credential.keyId(), "other"))));
+    assertDecoderFailure(
+        AttestationPreimage.of(
             List.of(
                 new AttestationPreimage.Fact(
                     0x0003,
@@ -242,6 +246,102 @@ class AttestationRegistryHistoryTest {
             .grants()
             .getFirst()
             .state());
+  }
+
+  @Test
+  void ownershipRequiresTheExactCredentialTransitionShapes() {
+    TestCredential predecessor = credential();
+    TestCredential rawReplacement = credential();
+    TestCredential replacement =
+        new TestCredential(
+            predecessor.principalId(), rawReplacement.pair(), rawReplacement.keyId());
+    AttestationPreimage rollover =
+        bindingEffect(replacement, "rollover", "operator", predecessor.keyId());
+    AttestationPreimage invalidEnrollment = withoutRecords(rollover, 0x0009);
+
+    assertFailure(
+        AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
+        () ->
+            AttestationRegistryEffectOwnership.require(
+                AttestationOperationKind.ENROLL_KEY,
+                AttestationRegistryEffectSets.from(invalidEnrollment)));
+    assertFailure(
+        AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
+        () ->
+            AttestationRegistryEffectOwnership.require(
+                AttestationOperationKind.ROLLOVER_KEY,
+                AttestationRegistryEffectSets.from(revocationEffect(predecessor))));
+    AttestationPreimage invalidRolloverBindingAction =
+        effects(
+            bindingEffect(replacement, "enroll", "operator", null),
+            AttestationPreimage.of(
+                List.of(
+                    retirementEffectFact(
+                        predecessor.principalId(), predecessor.keyId(), "superseded"))));
+    assertFailure(
+        AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
+        () ->
+            AttestationRegistryEffectOwnership.require(
+                AttestationOperationKind.ROLLOVER_KEY,
+                AttestationRegistryEffectSets.from(invalidRolloverBindingAction)));
+    AttestationPreimage invalidRolloverState =
+        replaceFirstRecord(
+            rollover,
+            0x0009,
+            record -> withField(record, 3, present(AttestationTextFieldValue.token("revoked"))));
+    assertFailure(
+        AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
+        () ->
+            AttestationRegistryEffectOwnership.require(
+                AttestationOperationKind.ROLLOVER_KEY,
+                AttestationRegistryEffectSets.from(invalidRolloverState)));
+    AttestationPreimage invalidRolloverPrincipal =
+        replaceFirstRecord(
+            rollover,
+            0x0009,
+            record ->
+                withField(record, 2, present(AttestationBinaryFieldValue.uuid(UUID.randomUUID()))));
+    assertFailure(
+        AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
+        () ->
+            AttestationRegistryEffectOwnership.require(
+                AttestationOperationKind.ROLLOVER_KEY,
+                AttestationRegistryEffectSets.from(invalidRolloverPrincipal)));
+    AttestationPreimage invalidRolloverPredecessor =
+        replaceFirstRecord(
+            rollover,
+            0x0009,
+            record ->
+                withField(
+                    record,
+                    1,
+                    present(
+                        AttestationBinaryFieldValue.hash(AttestationHash.sha256(new byte[] {9})))));
+    assertFailure(
+        AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
+        () ->
+            AttestationRegistryEffectOwnership.require(
+                AttestationOperationKind.ROLLOVER_KEY,
+                AttestationRegistryEffectSets.from(invalidRolloverPredecessor)));
+    AttestationPreimage rolloverWithPolicy =
+        effects(rollover, policyEffect(AttestationCapability.POST, 1));
+    assertFailure(
+        AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
+        () ->
+            AttestationRegistryEffectOwnership.require(
+                AttestationOperationKind.ROLLOVER_KEY,
+                AttestationRegistryEffectSets.from(rolloverWithPolicy)));
+    AttestationPreimage invalidRevocation =
+        replaceFirstRecord(
+            revocationEffect(predecessor),
+            0x0009,
+            record -> withField(record, 3, present(AttestationTextFieldValue.token("superseded"))));
+    assertFailure(
+        AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
+        () ->
+            AttestationRegistryEffectOwnership.require(
+                AttestationOperationKind.REVOKE_KEY,
+                AttestationRegistryEffectSets.from(invalidRevocation)));
   }
 
   @Test
@@ -290,8 +390,16 @@ class AttestationRegistryHistoryTest {
             history.accept(
                 AttestationOperationKind.ROLLOVER_KEY, BigInteger.ONE, n21Request, n21Effect));
 
-    AttestationPreimage n22Request = bindingRequest(a2, "rollover", "operator", null);
-    AttestationPreimage n22Effect = bindingEffect(a2, "rollover", "operator", null);
+    AttestationPreimage n22Request =
+        replaceFirstRecord(
+            bindingRequest(a2, "enroll", "operator", null),
+            0x0180,
+            record -> withField(record, 2, present(AttestationTextFieldValue.token("rollover"))));
+    AttestationPreimage n22Effect =
+        replaceFirstRecord(
+            bindingEffect(a2, "enroll", "operator", null),
+            0x0002,
+            record -> withField(record, 3, present(AttestationTextFieldValue.token("rollover"))));
     assertFailure(
         AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
         () ->
@@ -408,19 +516,22 @@ class AttestationRegistryHistoryTest {
       String action,
       String purpose,
       @Nullable AttestationHash predecessorKeyId) {
-    return AttestationPreimage.of(
-        List.of(
-            new AttestationPreimage.Fact(
-                0x0180,
-                List.of(
-                    present(AttestationBinaryFieldValue.uuid(credential.principalId())),
-                    present(AttestationBinaryFieldValue.hash(credential.keyId())),
-                    present(AttestationTextFieldValue.token(action)),
-                    present(
-                        AttestationBinaryFieldValue.spki(
-                            credential.pair().getPublic().getEncoded())),
-                    present(AttestationTextFieldValue.token(purpose)),
-                    optionalHash(predecessorKeyId)))));
+    List<AttestationPreimage.Fact> records = new java.util.ArrayList<>();
+    records.add(
+        new AttestationPreimage.Fact(
+            0x0180,
+            List.of(
+                present(AttestationBinaryFieldValue.uuid(credential.principalId())),
+                present(AttestationBinaryFieldValue.hash(credential.keyId())),
+                present(AttestationTextFieldValue.token(action)),
+                present(
+                    AttestationBinaryFieldValue.spki(credential.pair().getPublic().getEncoded())),
+                present(AttestationTextFieldValue.token(purpose)),
+                optionalHash(predecessorKeyId))));
+    if ("rollover".equals(action)) {
+      records.add(retirementRequestFact(credential.principalId(), predecessorKeyId, "superseded"));
+    }
+    return AttestationPreimage.of(records);
   }
 
   private static AttestationPreimage bindingEffect(
@@ -428,30 +539,34 @@ class AttestationRegistryHistoryTest {
       String action,
       String purpose,
       @Nullable AttestationHash predecessorKeyId) {
-    return AttestationPreimage.of(
-        List.of(
-            new AttestationPreimage.Fact(
-                0x0002,
-                List.of(
-                    present(AttestationNumericFieldValue.mutation(0)),
-                    present(AttestationBinaryFieldValue.uuid(credential.principalId())),
-                    present(AttestationBinaryFieldValue.hash(credential.keyId())),
-                    present(AttestationTextFieldValue.token(action)),
-                    present(
-                        AttestationBinaryFieldValue.spki(
-                            credential.pair().getPublic().getEncoded())),
-                    present(AttestationTextFieldValue.token(purpose)),
-                    optionalHash(predecessorKeyId)))));
+    List<AttestationPreimage.Fact> records = new java.util.ArrayList<>();
+    records.add(
+        new AttestationPreimage.Fact(
+            0x0002,
+            List.of(
+                present(AttestationNumericFieldValue.mutation(0)),
+                present(AttestationBinaryFieldValue.uuid(credential.principalId())),
+                present(AttestationBinaryFieldValue.hash(credential.keyId())),
+                present(AttestationTextFieldValue.token(action)),
+                present(
+                    AttestationBinaryFieldValue.spki(credential.pair().getPublic().getEncoded())),
+                present(AttestationTextFieldValue.token(purpose)),
+                optionalHash(predecessorKeyId))));
+    if ("rollover".equals(action)) {
+      records.add(retirementEffectFact(credential.principalId(), predecessorKeyId, "superseded"));
+    }
+    return AttestationPreimage.of(records);
   }
 
   private static AttestationPreimage revocationRequest(TestCredential credential) {
     return AttestationPreimage.of(
         List.of(
             new AttestationPreimage.Fact(
-                0x0181,
+                0x0185,
                 List.of(
                     present(AttestationBinaryFieldValue.hash(credential.keyId())),
                     present(AttestationBinaryFieldValue.uuid(credential.principalId())),
+                    present(AttestationTextFieldValue.token("revoked")),
                     AttestationField.absent()))));
   }
 
@@ -459,12 +574,36 @@ class AttestationRegistryHistoryTest {
     return AttestationPreimage.of(
         List.of(
             new AttestationPreimage.Fact(
-                0x0004,
+                0x0009,
                 List.of(
                     present(AttestationNumericFieldValue.mutation(0)),
                     present(AttestationBinaryFieldValue.hash(credential.keyId())),
                     present(AttestationBinaryFieldValue.uuid(credential.principalId())),
+                    present(AttestationTextFieldValue.token("revoked")),
                     AttestationField.absent()))));
+  }
+
+  private static AttestationPreimage.Fact retirementRequestFact(
+      UUID principalId, @Nullable AttestationHash keyId, String state) {
+    return new AttestationPreimage.Fact(
+        0x0185,
+        List.of(
+            optionalHash(keyId),
+            present(AttestationBinaryFieldValue.uuid(principalId)),
+            present(AttestationTextFieldValue.token(state)),
+            AttestationField.absent()));
+  }
+
+  private static AttestationPreimage.Fact retirementEffectFact(
+      UUID principalId, @Nullable AttestationHash keyId, String state) {
+    return new AttestationPreimage.Fact(
+        0x0009,
+        List.of(
+            present(AttestationNumericFieldValue.mutation(0)),
+            optionalHash(keyId),
+            present(AttestationBinaryFieldValue.uuid(principalId)),
+            present(AttestationTextFieldValue.token(state)),
+            AttestationField.absent()));
   }
 
   private static AttestationPreimage.Fact grantRequest(

@@ -15,7 +15,7 @@ import org.jspecify.annotations.Nullable;
 /** Historical query engine for immutable attestation registry facts. */
 final class AttestationRegistryResolution {
   private final List<AttestationCredentialBinding> bindings;
-  private final List<AttestationCredentialRevocation> revocations;
+  private final List<AttestationCredentialRetirement> retirements;
   private final List<AttestationCapabilityGrant> grants;
   private final List<AttestationPolicyRule> policyRules;
   private final List<AttestationSystemWorkflowPolicy> workflowPolicies;
@@ -23,13 +23,13 @@ final class AttestationRegistryResolution {
 
   AttestationRegistryResolution(
       List<AttestationCredentialBinding> bindings,
-      List<AttestationCredentialRevocation> revocations,
+      List<AttestationCredentialRetirement> retirements,
       List<AttestationCapabilityGrant> grants,
       List<AttestationPolicyRule> policyRules,
       List<AttestationSystemWorkflowPolicy> workflowPolicies,
       Map<AttestationHash, AttestationCredentialBinding> bindingByKey) {
     this.bindings = List.copyOf(bindings);
-    this.revocations = List.copyOf(revocations);
+    this.retirements = List.copyOf(retirements);
     this.grants = List.copyOf(grants);
     this.policyRules = List.copyOf(policyRules);
     this.workflowPolicies = List.copyOf(workflowPolicies);
@@ -54,9 +54,9 @@ final class AttestationRegistryResolution {
     if (binding == null || binding.acceptedOrder().compareTo(checkedOrder) > 0) {
       return AttestationCredentialState.notEnrolled();
     }
-    return isRevoked(checkedKeyId, checkedOrder)
-        ? AttestationCredentialState.revoked(binding)
-        : AttestationCredentialState.active(binding);
+    return retirementAt(checkedKeyId, checkedOrder)
+        .map(retirement -> AttestationCredentialState.retired(binding, retirement.state()))
+        .orElseGet(() -> AttestationCredentialState.active(binding));
   }
 
   boolean isEligible(
@@ -162,7 +162,7 @@ final class AttestationRegistryResolution {
   List<BigInteger> mutationOrders() {
     Set<BigInteger> orders = new TreeSet<>();
     bindings.forEach(binding -> orders.add(binding.acceptedOrder()));
-    revocations.forEach(revocation -> orders.add(revocation.acceptedOrder()));
+    retirements.forEach(retirement -> orders.add(retirement.acceptedOrder()));
     grants.forEach(grant -> orders.add(grant.acceptedOrder()));
     policyRules.forEach(rule -> orders.add(rule.acceptedOrder()));
     workflowPolicies.forEach(policy -> orders.add(policy.acceptedOrder()));
@@ -178,12 +178,12 @@ final class AttestationRegistryResolution {
         this, bindings, workflowPolicies, checkedBookId, checkedHeadOrder, checkedOperationHeadHex);
   }
 
-  private boolean isRevoked(AttestationHash keyId, BigInteger resolvingOrder) {
-    return revocations.stream()
-        .anyMatch(
-            revocation ->
-                revocation.keyId().equals(keyId)
-                    && revocation.acceptedOrder().compareTo(resolvingOrder) <= 0);
+  private Optional<AttestationCredentialRetirement> retirementAt(
+      AttestationHash keyId, BigInteger resolvingOrder) {
+    return retirements.stream()
+        .filter(retirement -> retirement.keyId().equals(keyId))
+        .filter(retirement -> retirement.acceptedOrder().compareTo(resolvingOrder) <= 0)
+        .min(Comparator.comparing(AttestationCredentialRetirement::acceptedOrder));
   }
 
   private Optional<AttestationCapabilityGrant> latestGrant(

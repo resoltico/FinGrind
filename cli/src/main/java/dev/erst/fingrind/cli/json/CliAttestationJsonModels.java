@@ -4,6 +4,7 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.copyList;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -114,7 +115,7 @@ public interface CliAttestationJsonModels {
   record AttestationReviewFindingPayload(
       String credentialKeyId,
       String firstAffectedOrder,
-      @Nullable String lastAffectedOrder,
+      @JsonInclude(JsonInclude.Include.ALWAYS) @Nullable String lastAffectedOrder,
       String operationOrder) {
     public AttestationReviewFindingPayload {
       credentialKeyId = requireText(credentialKeyId, "credentialKeyId");

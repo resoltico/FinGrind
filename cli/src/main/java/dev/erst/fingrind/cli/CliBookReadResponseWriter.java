@@ -53,8 +53,9 @@ final class CliBookReadResponseWriter {
         });
   }
 
-  void writeVerifyBookAttestation(VerifyBookAttestationResult result, OutputMode outputMode) {
-    attestationWriter.writeVerifyBook(result, outputMode);
+  void writeVerifyBookAttestation(
+      VerifyBookAttestationResult result, boolean requireCleanAttestation, OutputMode outputMode) {
+    attestationWriter.writeVerifyBook(result, requireCleanAttestation, outputMode);
   }
 
   void writeAttestationReview(AttestationReviewResult result, OutputMode outputMode) {

@@ -319,6 +319,10 @@ grep -Fq 'steps[].posting.evidence.sourceDocuments[].documentDate' "${corrupt_ru
     "source-checkout launcher corrupt-JAR refresh did not restore the prepared application"
 
 progress 'source-checkout key generation'
+# Key creation deliberately accepts only a caller-owned, owner-only parent.  Prepare the
+# disposable fixture exactly as a real operator must, rather than weakening the command contract.
+mkdir -p "$(dirname "${key_file}")"
+chmod 700 "$(dirname "${key_file}")"
 "${launcher_wrapper}" generate-book-key-file --new-book-key-file "${key_file}" --output json >"${key_stdout}" 2>"${key_stderr}" ||
     die "source-checkout launcher key generation failed"
 

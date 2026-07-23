@@ -13,6 +13,7 @@ import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractAttestationRegistryTemplates;
+import dev.erst.fingrind.contract.discovery.ContractAttestationReviewTemplates;
 import dev.erst.fingrind.contract.discovery.ContractDiscovery;
 import dev.erst.fingrind.contract.discovery.ContractFinancingTemplates;
 import dev.erst.fingrind.contract.discovery.ContractFixedAssetTemplates;
@@ -137,7 +138,7 @@ class ContractProtocolVocabularyTest {
     assertEquals(
         BookkeepingEntryKind.SALE_SETTLED, BookkeepingEntryKind.fromWireValue("SALE_SETTLED"));
     assertEquals(1_179_079_236, BookFormatContract.APPLICATION_ID);
-    assertEquals(51, BookFormatContract.FORMAT_VERSION);
+    assertEquals(52, BookFormatContract.FORMAT_VERSION);
     assertNotEquals(0, BookFormatContract.APPLICATION_ID);
     assertEquals(
         List.of(
@@ -276,6 +277,8 @@ class ContractProtocolVocabularyTest {
             ContractAttestationRegistryTemplates.PolicyRuleTemplateDescriptor.class,
             ContractAttestationRegistryTemplates.CapabilityGrantTemplateDescriptor.class,
             ContractAttestationRegistryTemplates.SystemWorkflowPolicyTemplateDescriptor.class,
+            ContractAttestationReviewTemplates.AttestationReviewFileTemplateDescriptor.class,
+            ContractAttestationReviewTemplates.CompromiseReviewTemplateDescriptor.class,
             ContractSettlementTemplates.TaxSelectionTemplateDescriptor.class,
             ContractSettlementTemplates.SettlementAdjunctTemplateDescriptor.class,
             InventoryReliefTemplateDescriptor.class,

@@ -5,6 +5,7 @@ import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSup
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.binding;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.credential;
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.defaultRules;
+import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.rollover;
 import static dev.erst.fingrind.core.attestation.AttestationGenesisTestSupport.founder;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
@@ -104,8 +105,11 @@ class AttestationRegistryMutationAdmissionTest {
         AttestationRegistry.fromVerifierFacts(
             List.of(binding(0, founder)),
             List.of(
-                new AttestationCredentialRevocation(
-                    BigInteger.ONE, founder.principalId(), founder.keyId())),
+                new AttestationCredentialRetirement(
+                    BigInteger.ONE,
+                    founder.principalId(),
+                    founder.keyId(),
+                    AttestationCredentialRetirementState.REVOKED)),
             allFounderGrants(founder.principalId()),
             defaultRules(1),
             List.of());
@@ -116,6 +120,35 @@ class AttestationRegistryMutationAdmissionTest {
             registry.requireMutationAdmissible(
                 new AttestationRegistryMutation.RevokeKey(
                     founder.principalId(), publicCredential(founder), Optional.empty()),
+                BigInteger.ONE));
+  }
+
+  @Test
+  void rejectsMutationOfAnAlreadySupersededCredential() {
+    TestCredential predecessor = credential();
+    TestCredential rawReplacement = credential();
+    TestCredential replacement =
+        new TestCredential(
+            predecessor.principalId(), rawReplacement.pair(), rawReplacement.keyId());
+    AttestationRegistry registry =
+        AttestationRegistry.fromVerifierFacts(
+            List.of(binding(0, predecessor), rollover(1, replacement, predecessor.keyId())),
+            List.of(
+                new AttestationCredentialRetirement(
+                    BigInteger.ONE,
+                    predecessor.principalId(),
+                    predecessor.keyId(),
+                    AttestationCredentialRetirementState.SUPERSEDED)),
+            allFounderGrants(predecessor.principalId()),
+            defaultRules(1),
+            List.of());
+
+    assertFailure(
+        AttestationAuthorizationFailure.KEY_SUPERSEDED,
+        () ->
+            registry.requireMutationAdmissible(
+                new AttestationRegistryMutation.RevokeKey(
+                    predecessor.principalId(), publicCredential(predecessor), Optional.empty()),
                 BigInteger.ONE));
   }
 

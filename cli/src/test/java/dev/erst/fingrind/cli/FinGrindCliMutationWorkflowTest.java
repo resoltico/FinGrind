@@ -111,7 +111,7 @@ class FinGrindCliMutationWorkflowTest extends FinGrindCliTestSupport {
         ContractErrors.Descriptor.PROTECTED_BOOK_VERIFICATION_FAILED.code(),
         failureEnvelope.path("code").stringValue());
     assertTrue(failureEnvelope.path("message").stringValue().contains("verify"));
-    assertTrue(failureEnvelope.path("hint").stringValue().contains("damaged or truncated"));
+    assertTrue(failureEnvelope.path("hint").stringValue().contains("damaged or tampered"));
   }
 
   @Test

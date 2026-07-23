@@ -159,7 +159,6 @@ final class CliAdministrativeMutationResponseWriter {
                           "Attestation Registry Updated",
                           CliTextFormat.renderKeyValueBlock(
                               List.of(
-                                  List.of("Operation", operationId.wireName()),
                                   List.of("Book file", CliTextDisplay.path(mutated.bookFilePath())),
                                   List.of("Operation kind", mutated.operationKind()),
                                   List.of("Head order", mutated.headOrder().toString()),

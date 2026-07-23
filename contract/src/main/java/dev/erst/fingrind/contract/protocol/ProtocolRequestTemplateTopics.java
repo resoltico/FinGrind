@@ -50,7 +50,8 @@ public final class ProtocolRequestTemplateTopics {
           OperationId.ENROLL_KEY,
           OperationId.ROLLOVER_KEY,
           OperationId.REVOKE_KEY,
-          OperationId.ALTER_POLICY);
+          OperationId.ALTER_POLICY,
+          OperationId.ATTESTATION_REVIEW);
 
   private ProtocolRequestTemplateTopics() {}
 

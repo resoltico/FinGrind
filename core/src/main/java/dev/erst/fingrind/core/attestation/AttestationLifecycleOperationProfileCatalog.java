@@ -51,15 +51,22 @@ final class AttestationLifecycleOperationProfileCatalog {
             AttestationOperationProfileCatalog.tags(0x0100, 0x0180),
             AttestationOperationProfileCatalog.tags(0x0002),
             AttestationOperationProfileCatalog.tags(0x0002)),
-        AttestationOperationKind.ENROLL_KEY,
+        AttestationOperationKind.ENROLL_KEY);
+    AttestationOperationProfileCatalog.associate(
+        profiles,
+        AttestationOperationProfileCatalog.profile(
+            AttestationOperationProfileCatalog.tags(0x0100, 0x0180, 0x0185),
+            AttestationOperationProfileCatalog.tags(0x0100, 0x0180, 0x0185),
+            AttestationOperationProfileCatalog.tags(0x0002, 0x0009),
+            AttestationOperationProfileCatalog.tags(0x0002, 0x0009)),
         AttestationOperationKind.ROLLOVER_KEY);
     AttestationOperationProfileCatalog.associate(
         profiles,
         AttestationOperationProfileCatalog.profile(
-            AttestationOperationProfileCatalog.tags(0x0100, 0x0181),
-            AttestationOperationProfileCatalog.tags(0x0100, 0x0181),
-            AttestationOperationProfileCatalog.tags(0x0004),
-            AttestationOperationProfileCatalog.tags(0x0004)),
+            AttestationOperationProfileCatalog.tags(0x0100, 0x0185),
+            AttestationOperationProfileCatalog.tags(0x0100, 0x0185),
+            AttestationOperationProfileCatalog.tags(0x0009),
+            AttestationOperationProfileCatalog.tags(0x0009)),
         AttestationOperationKind.REVOKE_KEY);
     AttestationOperationProfileCatalog.associate(
         profiles,

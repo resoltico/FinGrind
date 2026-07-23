@@ -600,7 +600,7 @@ public final class SqliteFailureClassifier
 - `SqliteFailureClassifier.Category`: stable classification family with `MANAGED_RUNTIME`,
   `PERSISTENCE_INVARIANT`, `STORAGE`, and `OTHER`
 
-## `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, `SqlitePersistenceInvariantException`, And `SqliteStorageFailureException`
+## `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, `SqlitePersistenceInvariantException`, `SqliteProtectedBookVerificationException`, And `SqliteStorageFailureException`
 
 These public exception types distinguish important SQLite failure categories.
 
@@ -609,6 +609,7 @@ public final class ManagedSqliteRuntimeUnavailableException extends IllegalState
 public final class UnsupportedManagedSqliteLibraryIdentityException extends IllegalStateException
 public final class UnsupportedSqliteCompileOptionsException extends IllegalStateException
 public final class SqlitePersistenceInvariantException extends IllegalStateException
+public final class SqliteProtectedBookVerificationException extends IllegalStateException
 public final class SqliteStorageFailureException extends IllegalStateException
 ```
 
@@ -621,6 +622,8 @@ public final class SqliteStorageFailureException extends IllegalStateException
 - `UnsupportedSqliteCompileOptionsException`: loaded runtime is missing required hardening options
 - `SqlitePersistenceInvariantException`: SQLite rejected one write through a persistence invariant
   that FinGrind should have rejected before commit, so the CLI classifies it as `internal-error`
+- `SqliteProtectedBookVerificationException`: the protected-book key or authentication material
+  did not verify the selected SQLite file, so the CLI emits the dedicated verification refusal
 - `SqliteStorageFailureException`: storage operation failed after the runtime was already available
 
 ## `SqliteAdministrationSession`, `SqliteReadSession`, `SqlitePostingSession`, `SqliteReportingPeriodCloseSession`, `SqlitePlanExecutionSession`, `SqliteAdministrationSessions`, `SqliteReadSessions`, `SqlitePostingSessions`, `SqliteReportingPeriodCloseSessions`, `SqlitePlanExecutionSessions`, `SqliteBookSessionMode`, `SqlitePassphraseIntent`, `SqlitePassphraseResolver`, And `SqliteBookSessions`

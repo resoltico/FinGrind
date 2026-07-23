@@ -71,7 +71,7 @@ final class CliAttestationReviewFileReader {
     JsonNode lastAffectedOrderNode =
         CliJsonStructureAccess.nullableField(review, LAST_AFFECTED_ORDER);
     BigInteger lastAffectedOrder =
-        lastAffectedOrderNode == null
+        lastAffectedOrderNode == null || lastAffectedOrderNode.isNull()
             ? null
             : requireCanonicalUnsignedDecimal(requiredText(review, LAST_AFFECTED_ORDER), context);
     return new AttestationCompromiseReview(credentialKeyId, firstAffectedOrder, lastAffectedOrder);

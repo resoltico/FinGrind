@@ -203,8 +203,11 @@ class AttestationRegistryCapacityTest {
                     binding(0, initialSystem, AttestationCredentialPurpose.SYSTEM),
                     binding(2, replacementSystem, AttestationCredentialPurpose.SYSTEM)),
                 List.of(
-                    new AttestationCredentialRevocation(
-                        BigInteger.ONE, initialSystem.principalId(), initialSystem.keyId())),
+                    new AttestationCredentialRetirement(
+                        BigInteger.ONE,
+                        initialSystem.principalId(),
+                        initialSystem.keyId(),
+                        AttestationCredentialRetirementState.REVOKED)),
                 List.of(
                     new AttestationCapabilityGrant(
                         BigInteger.ZERO,

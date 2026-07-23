@@ -23,7 +23,7 @@ final class ProtocolBookMaintenanceOperations {
             "Create a new owner-only UTF-8 book key file with a generated high-entropy passphrase.",
             List.of(
                 ProtocolExampleStep.note(
-                    "Choose a missing private parent directory so FinGrind can create it securely, or rerun with --tighten-parents to tighten the existing named parent directory first."),
+                    "Create and restrict the parent directory yourself; --tighten-parents can tighten the selected existing parent directory before FinGrind publishes the new key file."),
                 ProtocolExampleStep.command(
                     "fingrind %s %s ./secrets/acme.book-key"
                         .formatted(

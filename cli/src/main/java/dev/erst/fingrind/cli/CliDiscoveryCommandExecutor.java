@@ -8,6 +8,7 @@ import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareAccountTemp
 import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareTaxRegistrationTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
 import dev.erst.fingrind.contract.discovery.MachineContract;
+import dev.erst.fingrind.contract.discovery.MachineContractAttestationTemplates;
 import dev.erst.fingrind.contract.discovery.PlanTemplateTopic;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.OperationCategory;
@@ -130,6 +131,9 @@ final class CliDiscoveryCommandExecutor {
     if (commandTopic == OperationId.DECLARE_TAX_REGISTRATION) {
       return MachineContract.declareTaxRegistrationTemplate();
     }
+    if (commandTopic == OperationId.ATTESTATION_REVIEW) {
+      return MachineContractAttestationTemplates.reviewFileTemplate();
+    }
     if (commandTopic == OperationId.DECLARE_ACCOUNT || commandTopic == OperationId.AMEND_ACCOUNT) {
       return MachineContract.declareAccountTemplate();
     }
@@ -140,7 +144,7 @@ final class CliDiscoveryCommandExecutor {
         || commandTopic == OperationId.ROLLOVER_KEY
         || commandTopic == OperationId.REVOKE_KEY
         || commandTopic == OperationId.ALTER_POLICY) {
-      return MachineContract.attestationRegistryTemplate(commandTopic);
+      return MachineContractAttestationTemplates.registryTemplate(commandTopic);
     }
     if (ProtocolRequestTemplateTopics.supports(commandTopic)) {
       return Objects.requireNonNull(

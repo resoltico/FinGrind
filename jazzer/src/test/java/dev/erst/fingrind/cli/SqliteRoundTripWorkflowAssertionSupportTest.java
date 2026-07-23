@@ -330,7 +330,8 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
                     java.time.Instant.parse("2026-04-07T12:00:00Z"),
                     true,
                     JazzerPostEntryResultFixtures.resolvedJournal(
-                        SqliteRoundTripWorkflowTestSupport.basicValidCommand())),
+                        SqliteRoundTripWorkflowTestSupport.basicValidCommand()),
+                    null),
                 SqliteRoundTripWorkflowTestSupport.committed("posting-1")));
     assertThrows(
         IllegalStateException.class,
@@ -343,7 +344,8 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
                     java.time.Instant.parse("2026-04-07T12:00:00Z"),
                     true,
                     JazzerPostEntryResultFixtures.resolvedJournal(
-                        SqliteRoundTripWorkflowTestSupport.basicValidCommand())),
+                        SqliteRoundTripWorkflowTestSupport.basicValidCommand()),
+                    null),
                 SqliteRoundTripWorkflowTestSupport.committed("posting-1")));
     assertThrows(
         IllegalStateException.class,
@@ -356,7 +358,8 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
                     java.time.Instant.parse("2026-04-07T12:00:00Z"),
                     true,
                     JazzerPostEntryResultFixtures.resolvedJournal(
-                        SqliteRoundTripWorkflowTestSupport.basicValidCommand())),
+                        SqliteRoundTripWorkflowTestSupport.basicValidCommand()),
+                    null),
                 SqliteRoundTripWorkflowTestSupport.committed("posting-1")));
     assertThrows(
         IllegalStateException.class,
@@ -369,7 +372,8 @@ class SqliteRoundTripWorkflowAssertionSupportTest {
                     java.time.Instant.parse("2026-04-07T12:00:01Z"),
                     true,
                     JazzerPostEntryResultFixtures.resolvedJournal(
-                        SqliteRoundTripWorkflowTestSupport.basicValidCommand())),
+                        SqliteRoundTripWorkflowTestSupport.basicValidCommand()),
+                    null),
                 SqliteRoundTripWorkflowTestSupport.committed("posting-1")));
     assertThrows(
         IllegalStateException.class,

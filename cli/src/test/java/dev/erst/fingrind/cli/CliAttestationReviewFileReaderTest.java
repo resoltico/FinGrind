@@ -36,6 +36,31 @@ class CliAttestationReviewFileReaderTest {
   }
 
   @Test
+  void readsOpenEndedReviewsWhenLastAffectedOrderIsOmittedOrNull() throws Exception {
+    Path omittedEnd = tempDirectory.resolve("omitted-end.json");
+    Files.writeString(
+        omittedEnd,
+        """
+        {"compromiseReviews":[{"credentialKeyId":"%s","firstAffectedOrder":"1"}]}
+        """
+            .formatted(KEY_ID));
+    Path nullEnd = tempDirectory.resolve("null-end.json");
+    Files.writeString(
+        nullEnd,
+        """
+        {"compromiseReviews":[{"credentialKeyId":"%s","firstAffectedOrder":"1","lastAffectedOrder":null}]}
+        """
+            .formatted(KEY_ID));
+
+    List<AttestationCompromiseReview> expected =
+        List.of(new AttestationCompromiseReview(KEY_ID, BigInteger.ONE, null));
+    CliAttestationReviewFileReader reader = new CliAttestationReviewFileReader();
+
+    assertEquals(expected, reader.read(omittedEnd));
+    assertEquals(expected, reader.read(nullEnd));
+  }
+
+  @Test
   void refusesMissingDuplicateOversizedAndMalformedReviewArtifacts() throws Exception {
     assertReviewFileArgument(
         () -> new CliAttestationReviewFileReader().read(tempDirectory.resolve("missing.json")));

@@ -16,13 +16,13 @@ final class AttestationRegistryValidator {
 
   static Map<AttestationHash, AttestationCredentialBinding> indexAndValidate(
       List<AttestationCredentialBinding> bindings,
-      List<AttestationCredentialRevocation> revocations,
+      List<AttestationCredentialRetirement> retirements,
       List<AttestationCapabilityGrant> grants,
       List<AttestationPolicyRule> policyRules,
       List<AttestationSystemWorkflowPolicy> workflowPolicies) {
     Map<AttestationHash, AttestationCredentialBinding> bindingByKey = indexBindings(bindings);
-    validateRevocations(revocations, bindingByKey);
-    validateRolloverPredecessors(bindings, revocations, bindingByKey);
+    validateRetirements(retirements, bindingByKey);
+    validateRolloverPredecessors(bindings, retirements, bindingByKey);
     validateFactUniqueness(grants, policyRules, workflowPolicies);
     validateWorkflowPolicyHistory(workflowPolicies);
     return bindingByKey;
@@ -49,50 +49,99 @@ final class AttestationRegistryValidator {
     return Map.copyOf(result);
   }
 
-  private static void validateRevocations(
-      List<AttestationCredentialRevocation> revocations,
+  private static void validateRetirements(
+      List<AttestationCredentialRetirement> retirements,
       Map<AttestationHash, AttestationCredentialBinding> bindingByKey) {
-    Set<AttestationHash> revokedKeys = new HashSet<>();
-    for (AttestationCredentialRevocation revocation : revocations) {
-      AttestationCredentialBinding binding = bindingByKey.get(revocation.keyId());
+    Set<AttestationHash> retiredKeys = new HashSet<>();
+    for (AttestationCredentialRetirement retirement : retirements) {
+      AttestationCredentialBinding binding = bindingByKey.get(retirement.keyId());
       if (binding == null
-          || !binding.principalId().equals(revocation.principalId())
-          || binding.acceptedOrder().compareTo(revocation.acceptedOrder()) >= 0
-          || !revokedKeys.add(revocation.keyId())) {
+          || !binding.principalId().equals(retirement.principalId())
+          || binding.acceptedOrder().compareTo(retirement.acceptedOrder()) >= 0
+          || !retiredKeys.add(retirement.keyId())) {
         throw new IllegalArgumentException(
-            "Attestation credential revocation must retire one prior active binding.");
+            "Attestation credential retirement must transition one prior active binding exactly once.");
       }
     }
   }
 
   private static void validateRolloverPredecessors(
       List<AttestationCredentialBinding> bindings,
-      List<AttestationCredentialRevocation> revocations,
+      List<AttestationCredentialRetirement> retirements,
       Map<AttestationHash, AttestationCredentialBinding> bindingByKey) {
+    Set<AttestationCredentialRetirement> ownedSupersessions = new HashSet<>();
     for (AttestationCredentialBinding binding : bindings) {
       if (binding.action() == AttestationCredentialBinding.BindingAction.ROLLOVER) {
-        AttestationCredentialBinding predecessor = bindingByKey.get(binding.predecessorKeyId());
-        BigInteger precedingOrder = binding.acceptedOrder().subtract(BigInteger.ONE);
-        if (predecessor == null
-            || !predecessor.principalId().equals(binding.principalId())
-            || !isActiveAt(predecessor, precedingOrder, revocations)) {
-          throw new IllegalArgumentException(
-              "Attestation rollover predecessor must be an active credential of the same principal.");
-        }
+        requireActiveRolloverPredecessor(binding, retirements, bindingByKey);
+        ownedSupersessions.add(
+            requireUnownedSupersession(binding, retirements, ownedSupersessions));
       }
     }
+    requireEverySupersessionOwned(retirements, ownedSupersessions);
+  }
+
+  private static void requireActiveRolloverPredecessor(
+      AttestationCredentialBinding binding,
+      List<AttestationCredentialRetirement> retirements,
+      Map<AttestationHash, AttestationCredentialBinding> bindingByKey) {
+    AttestationCredentialBinding predecessor = bindingByKey.get(binding.predecessorKeyId());
+    BigInteger precedingOrder = binding.acceptedOrder().subtract(BigInteger.ONE);
+    if (predecessor == null
+        || !predecessor.principalId().equals(binding.principalId())
+        || !isActiveAt(predecessor, precedingOrder, retirements)) {
+      throw new IllegalArgumentException(
+          "Attestation rollover must target an active predecessor of the same principal.");
+    }
+  }
+
+  private static AttestationCredentialRetirement requireUnownedSupersession(
+      AttestationCredentialBinding binding,
+      List<AttestationCredentialRetirement> retirements,
+      Set<AttestationCredentialRetirement> ownedSupersessions) {
+    AttestationCredentialRetirement supersession = matchingSupersession(binding, retirements);
+    if (supersession == null || ownedSupersessions.contains(supersession)) {
+      throw new IllegalArgumentException(
+          "Attestation rollover must own exactly one same-operation predecessor supersession.");
+    }
+    return supersession;
+  }
+
+  private static void requireEverySupersessionOwned(
+      List<AttestationCredentialRetirement> retirements,
+      Set<AttestationCredentialRetirement> ownedSupersessions) {
+    for (AttestationCredentialRetirement retirement : retirements) {
+      if (retirement.state() == AttestationCredentialRetirementState.SUPERSEDED
+          && !ownedSupersessions.contains(retirement)) {
+        throw new IllegalArgumentException(
+            "A superseded credential retirement must be owned by one same-operation rollover.");
+      }
+    }
+  }
+
+  static @org.jspecify.annotations.Nullable AttestationCredentialRetirement matchingSupersession(
+      AttestationCredentialBinding binding, List<AttestationCredentialRetirement> retirements) {
+    AttestationHash predecessorKeyId = java.util.Objects.requireNonNull(binding.predecessorKeyId());
+    return retirements.stream()
+        .filter(
+            retirement ->
+                retirement.state() == AttestationCredentialRetirementState.SUPERSEDED
+                    && retirement.acceptedOrder().equals(binding.acceptedOrder())
+                    && retirement.principalId().equals(binding.principalId())
+                    && retirement.keyId().equals(predecessorKeyId))
+        .findFirst()
+        .orElse(null);
   }
 
   private static boolean isActiveAt(
       AttestationCredentialBinding binding,
       BigInteger resolvingOrder,
-      List<AttestationCredentialRevocation> revocations) {
+      List<AttestationCredentialRetirement> retirements) {
     return binding.acceptedOrder().compareTo(resolvingOrder) <= 0
-        && revocations.stream()
+        && retirements.stream()
             .noneMatch(
-                revocation ->
-                    revocation.keyId().equals(binding.keyId())
-                        && revocation.acceptedOrder().compareTo(resolvingOrder) <= 0);
+                retirement ->
+                    retirement.keyId().equals(binding.keyId())
+                        && retirement.acceptedOrder().compareTo(resolvingOrder) <= 0);
   }
 
   private static void validateFactUniqueness(

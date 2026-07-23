@@ -71,6 +71,10 @@ class CliRejectionPayloadMapperTest {
         "already revoked",
         "active enrolled credential");
     assertRegistryMutationDiagnostic(
+        AttestationVerificationFailure.KEY_SUPERSEDED,
+        "already superseded",
+        "active replacement credential");
+    assertRegistryMutationDiagnostic(
         AttestationVerificationFailure.KEY_PRINCIPAL_MISMATCH,
         "different principal",
         "principal ID bound");
