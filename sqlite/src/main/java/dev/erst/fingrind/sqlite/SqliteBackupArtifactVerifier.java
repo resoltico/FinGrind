@@ -158,7 +158,8 @@ final class SqliteBackupArtifactVerifier {
     }
   }
 
-  private static void writeSnapshot(Path stagedPath, byte[] snapshot) {
+  /** Writes one exact artifact snapshot to its already private, maintenance-owned stage. */
+  static void writeSnapshot(Path stagedPath, byte[] snapshot) {
     byte[] checkedSnapshot = Objects.requireNonNull(snapshot, "snapshot").clone();
     try (FileChannel channel = SqliteSecureRegularFileAccess.openTruncatingWrite(stagedPath)) {
       writeSnapshotBytes(channel, checkedSnapshot);

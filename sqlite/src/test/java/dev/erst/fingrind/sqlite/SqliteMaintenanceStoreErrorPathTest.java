@@ -29,9 +29,6 @@ import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.WorkflowSourceMember;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.WorkflowSourceMembers;
 import java.io.IOException;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
@@ -299,11 +296,30 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
       IllegalStateException snapshotWriteFailure =
           assertThrows(
               IllegalStateException.class,
-              () -> writeSnapshot(snapshotStage, new byte[] {1, 2, 3}));
+              () ->
+                  SqliteBackupArtifactVerifier.writeSnapshot(snapshotStage, new byte[] {1, 2, 3}));
       assertEquals(
           "Failed to stage the encrypted backup artifact snapshot.",
           snapshotWriteFailure.getMessage());
       assertSame(snapshotWriteCause, snapshotWriteFailure.getCause());
+
+      AclFixturePath zeroProgressSnapshot = fileSystem.path("\\zero-progress-snapshot.sqlite");
+      zeroProgressSnapshot.exists = true;
+      zeroProgressSnapshot.regularFile = true;
+      zeroProgressSnapshot.returnZeroProgressFromNextWrite();
+
+      IllegalStateException zeroProgressFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteBackupArtifactVerifier.writeSnapshot(
+                      zeroProgressSnapshot, new byte[] {1, 2, 3}));
+      assertEquals(
+          "Failed to stage the encrypted backup artifact snapshot.",
+          zeroProgressFailure.getMessage());
+      assertEquals(
+          "Failed to write the complete encrypted backup artifact snapshot.",
+          java.util.Objects.requireNonNull(zeroProgressFailure.getCause()).getMessage());
     }
   }
 
@@ -329,24 +345,6 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
                       SqliteProtectedBookMaintenanceArtifactStore.requireVerifiedBook(
                           foreignHandle))
               .getMessage());
-    }
-  }
-
-  private static void writeSnapshot(Path snapshotPath, byte[] snapshot) {
-    try {
-      MethodHandle writeSnapshot =
-          MethodHandles.privateLookupIn(SqliteBackupArtifactVerifier.class, MethodHandles.lookup())
-              .findStatic(
-                  SqliteBackupArtifactVerifier.class,
-                  "writeSnapshot",
-                  MethodType.methodType(void.class, Path.class, byte[].class));
-      writeSnapshot.invoke(snapshotPath, snapshot);
-    } catch (RuntimeException exception) {
-      throw exception;
-    } catch (Error error) {
-      throw error;
-    } catch (Throwable throwable) {
-      throw new AssertionError("Failed to invoke encrypted backup snapshot staging.", throwable);
     }
   }
 
