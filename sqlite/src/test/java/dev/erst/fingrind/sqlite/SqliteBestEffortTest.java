@@ -64,4 +64,12 @@ class SqliteBestEffortTest {
                   throw new IllegalStateException("reporter failure");
                 }));
   }
+
+  @Test
+  void retainedEvidenceReleaseUsesItsStandardReporterWithoutEscalatingTheFailure() {
+    assertDoesNotThrow(
+        () ->
+            SqliteBestEffort.reportRetainedEvidenceReleaseFailure(
+                "release retained stage", new IOException("retain evidence")));
+  }
 }
