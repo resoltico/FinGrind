@@ -747,6 +747,53 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
   }
 
   @Test
+  void completionEvidenceRejectsChangedMembersAndMetadataAboveItsBound() throws Exception {
+    SqliteProtectedBookPairPublicationRecord changedMember = retainedRecord("completion-change");
+    Files.createLink(changedMember.bookTargetPath, changedMember.bookStagePath);
+    Files.createLink(changedMember.secretTargetPath, changedMember.secretStagePath);
+    Files.delete(changedMember.bookTargetPath);
+    Files.writeString(changedMember.bookTargetPath, "changed final member");
+
+    IOException changedFinalMember =
+        assertThrows(
+            IOException.class,
+            () ->
+                SqliteProtectedBookPairPublicationEvidenceLifecycle.confirmCompletedPublication(
+                    changedMember, (ignoredStep, ignoredParent) -> {}));
+    assertTrue(
+        Objects.requireNonNull(changedFinalMember.getMessage(), "changed-member message")
+            .contains("final members changed"));
+
+    String oversizedSegment =
+        "x".repeat(SqliteSecureRegularFileAccess.MAXIMUM_RECOVERY_METADATA_BYTES);
+    SqliteProtectedBookPairPublicationRecord oversizedRecord =
+        new SqliteProtectedBookPairPublicationRecord(
+            new SqliteProtectedBookPairPublicationRecord.Components(
+                UUID.randomUUID(),
+                new SqliteProtectedBookPairPublicationRecord.PairPaths(
+                    Path.of("/synthetic-book", "book.sqlite"),
+                    Path.of("/synthetic-secret", "book.key"),
+                    Path.of("/synthetic-book", oversizedSegment),
+                    Path.of("/synthetic-secret", "key.stage")),
+                new SqliteProtectedBookPairPublicationRecord.PairDigests(
+                    new byte[32], new byte[32], null),
+                RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                backupBinding(Path.of("/synthetic-source"))));
+
+    IOException oversizedMetadata =
+        assertThrows(
+            IOException.class,
+            () ->
+                SqlitePairPublicationEvidenceRecovery.writeNew(
+                    tempDirectory.resolve("oversized-evidence"),
+                    oversizedRecord,
+                    SqliteProtectedBookPairPublicationEvidenceKind.CLAIM));
+    assertTrue(
+        Objects.requireNonNull(oversizedMetadata.getMessage(), "oversized-metadata message")
+            .contains("exceeds its supported size"));
+  }
+
+  @Test
   void workflowBlocksPartialPrepublicationVisibilityInsteadOfReinterpretingItAsNewWork()
       throws Exception {
     SqliteProtectedBookPairPublicationRecord record =
