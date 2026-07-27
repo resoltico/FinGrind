@@ -99,18 +99,14 @@ def _load_command_fragment(fragment_path: Path, category: str) -> dict[str, Any]
 
 def _require_complete_fragment_set(directory: Path, expected_paths: set[Path]) -> None:
     actual_paths = {
-        path.relative_to(directory)
-        for path in directory.rglob("*.json")
-        if path.is_file()
+        path.relative_to(directory) for path in directory.rglob("*.json") if path.is_file()
     }
     if actual_paths == expected_paths:
         return
     unexpected = sorted(str(path) for path in actual_paths - expected_paths)
     missing = sorted(str(path) for path in expected_paths - actual_paths)
     difference = (
-        f"unexpected fragment {unexpected[0]}"
-        if unexpected
-        else f"missing fragment {missing[0]}"
+        f"unexpected fragment {unexpected[0]}" if unexpected else f"missing fragment {missing[0]}"
     )
     raise ReleaseSmokeFailure(
         f"Java-generated capability baseline fragment set is incomplete: {difference}"
@@ -134,7 +130,11 @@ def _fragment_path(directory: Path, path_text: object) -> Path:
             "Java-generated capability baseline index contains an invalid command fragment path"
         )
     relative_path = Path(path_text)
-    if relative_path.is_absolute() or ".." in relative_path.parts or relative_path.suffix != ".json":
+    if (
+        relative_path.is_absolute()
+        or ".." in relative_path.parts
+        or relative_path.suffix != ".json"
+    ):
         raise ReleaseSmokeFailure(
             f"Java-generated capability baseline index contains an unsafe command fragment path: "
             f"{path_text!r}"
