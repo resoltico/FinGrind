@@ -15,6 +15,7 @@ import dev.erst.fingrind.contract.runtime.ContractFailureDetails;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -256,6 +257,61 @@ class SqliteBookKeyFileGeneratorTest {
 
     assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
     assertFalse(Files.exists(keyFile));
+  }
+
+  @Test
+  void generateDecisionRetainsAndRejectsAStageThatNoLongerProvesOwnerOnlySecurity()
+      throws Exception {
+    assumeTrue(supportsPosix(tempDirectory), "the host filesystem must expose POSIX permissions");
+    Path keyFile = tempDirectory.resolve("revalidated-stage.book-key");
+    Path insecureStage = Files.writeString(tempDirectory.resolve("insecure-stage.tmp"), "secret");
+    Files.setPosixFilePermissions(
+        insecureStage,
+        Set.of(
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE,
+            PosixFilePermission.GROUP_READ));
+
+    ContractFailure failure =
+        SqliteBookKeyFileGenerator.generateDecision(
+                keyFile,
+                Files::createLink,
+                ignored -> {},
+                (ignoredFinalPath, ignoredEncodedPassphrase) ->
+                    new ArtifactPublicationRetention(insecureStage))
+            .requireRejected();
+
+    assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
+    assertEquals(
+        insecureStage,
+        java.util.Objects.requireNonNull(failure.retainedStage()).retainedStagePath());
+    assertFalse(Files.exists(keyFile));
+  }
+
+  @Test
+  void generateDecisionRetainsStageEvidenceWhenStageMaterializationReportsAFailure()
+      throws Exception {
+    Path keyFile = tempDirectory.resolve("failed-materialization.book-key");
+    SqliteOwnedStagedArtifact stage =
+        SqliteOwnedStagedArtifact.create(keyFile, ".injected-materialization-", ".tmp");
+    try {
+      ContractFailure failure =
+          SqliteBookKeyFileGenerator.generateDecision(
+                  keyFile,
+                  Files::createLink,
+                  ignored -> {},
+                  (ignoredFinalPath, ignoredEncodedPassphrase) -> {
+                    throw new SqliteBookKeyFileRetainedStageMaterializationFailure(
+                        new ArtifactPublicationRetention(stage.stagedPath()),
+                        new IOException("injected stage materialization failure"));
+                  })
+              .requireRejected();
+
+      assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
+      assertRetainedStage(failure, keyFile, false);
+    } finally {
+      stage.releaseRetained();
+    }
   }
 
   @Test

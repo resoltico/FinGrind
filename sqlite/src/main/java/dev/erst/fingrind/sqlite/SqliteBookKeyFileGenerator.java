@@ -37,6 +37,13 @@ public final class SqliteBookKeyFileGenerator {
     void force(Path parentDirectory) throws IOException;
   }
 
+  /** Injectable private-stage creation boundary for retained-stage failure evidence. */
+  @FunctionalInterface
+  interface RetainedStageCreator {
+    /** Creates and returns the exact retained stage for one normalized final key-file path. */
+    ArtifactPublicationRetention create(Path normalizedBookKeyFilePath, byte[] encodedPassphrase);
+  }
+
   private SqliteBookKeyFileGenerator() {}
 
   /** Creates one new key file and returns non-secret metadata about the created artifact. */
@@ -60,8 +67,27 @@ public final class SqliteBookKeyFileGenerator {
       Path bookKeyFilePath,
       SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator finalLinkCreator,
       ParentDirectoryForcer parentDirectoryForcer) {
+    return generateDecision(
+        bookKeyFilePath,
+        finalLinkCreator,
+        parentDirectoryForcer,
+        SqliteBookKeyFileGenerator::createRetainedStage);
+  }
+
+  /**
+   * Creates one key file through explicit final-link, directory-durability, and stage boundaries.
+   *
+   * <p>The package-visible stage creator keeps retained-stage failure semantics independently
+   * executable: a failed publication must report the exact already-materialized private stage.
+   */
+  static ContractDecision<GeneratedBookKeyFile> generateDecision(
+      Path bookKeyFilePath,
+      SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator finalLinkCreator,
+      ParentDirectoryForcer parentDirectoryForcer,
+      RetainedStageCreator retainedStageCreator) {
     Objects.requireNonNull(finalLinkCreator, "finalLinkCreator");
     Objects.requireNonNull(parentDirectoryForcer, "parentDirectoryForcer");
+    Objects.requireNonNull(retainedStageCreator, "retainedStageCreator");
     Path normalizedPath = normalize(bookKeyFilePath);
     try {
       SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(normalizedPath);
@@ -83,7 +109,7 @@ public final class SqliteBookKeyFileGenerator {
               Files::createLink,
               SqliteProtectedBookPublicationSupport::moveReplacing)) {
         ArtifactPublicationRetention retention =
-            createRetainedStage(normalizedPath, encodedPassphrase);
+            retainedStageCreator.create(normalizedPath, encodedPassphrase);
         ContractDecision<Path> secureStage =
             SqliteBookKeyFile.requireSecureKeyFile(retention.retainedStagePath());
         switch (secureStage) {
