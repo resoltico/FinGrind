@@ -359,6 +359,116 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
   }
 
   @Test
+  void memberRecoveryAcceptsOnlyTheExpectedWinnerOfARaceForTheGeneratedSecret() throws Exception {
+    SqliteProtectedBookPairPublicationRecord matched = retainedRecord("member-secret-race-match");
+    boolean[] matchedCollisionCreated = {false};
+    SqlitePairPublicationMemberReconciler matchedReconciler =
+        reconciler(
+            (ignoredStep, ignoredParent) -> {
+              if (!matchedCollisionCreated[0]) {
+                Files.createLink(matched.secretTargetPath, matched.secretStagePath);
+                matchedCollisionCreated[0] = true;
+              }
+            });
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses = witnessesFor(matched)) {
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.DURABLE,
+          matchedReconciler.reconcileSecret(
+              matched,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+    }
+    assertTrue(Files.isSameFile(matched.secretTargetPath, matched.secretStagePath));
+
+    SqliteProtectedBookPairPublicationRecord foreign = retainedRecord("member-secret-race-foreign");
+    boolean[] foreignCollisionCreated = {false};
+    SqlitePairPublicationMemberReconciler foreignReconciler =
+        reconciler(
+            (ignoredStep, ignoredParent) -> {
+              if (!foreignCollisionCreated[0]) {
+                Files.writeString(foreign.secretTargetPath, "foreign generated secret");
+                foreignCollisionCreated[0] = true;
+              }
+            });
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses = witnessesFor(foreign)) {
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.OUTCOME_UNCERTAIN,
+          foreignReconciler.reconcileSecret(
+              foreign,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+    }
+    assertFalse(Files.isSameFile(foreign.secretTargetPath, foreign.secretStagePath));
+  }
+
+  @Test
+  void memberRecoveryFailsClosedWhenAStagedBookOrItsFinalTargetChangesAfterPlanning()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord targetChanged =
+        retainedRecord("member-book-target-changed");
+    SqlitePairPublicationMemberReconciler reconciler =
+        reconciler((ignoredStep, ignoredParent) -> {});
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses = witnessesFor(targetChanged)) {
+      Files.writeString(targetChanged.bookTargetPath, "foreign book target");
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.OUTCOME_UNCERTAIN,
+          reconciler.reconcileBook(
+              targetChanged,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+    }
+
+    SqliteProtectedBookPairPublicationRecord stageChanged =
+        retainedRecord("member-book-stage-changed");
+    boolean[] stageMutationApplied = {false};
+    SqlitePairPublicationMemberReconciler stageChangedReconciler =
+        reconciler(
+            (ignoredStep, ignoredParent) -> {
+              if (!stageMutationApplied[0]) {
+                Files.writeString(stageChanged.bookStagePath, "changed staged book");
+                stageMutationApplied[0] = true;
+              }
+            });
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses = witnessesFor(stageChanged)) {
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.OUTCOME_UNCERTAIN,
+          stageChangedReconciler.reconcileBook(
+              stageChanged,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+    }
+    assertFalse(Files.exists(stageChanged.bookTargetPath));
+  }
+
+  @Test
+  void rekeyRecoveryRefusesToPublishItsGeneratedSecretAfterTheLiveBookChanges() throws Exception {
+    SqliteProtectedBookPairPublicationRecord record = rekeyRecord("member-rekey-book-changed");
+    SqlitePairPublicationMemberReconciler reconciler =
+        reconciler((ignoredStep, ignoredParent) -> {});
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses =
+        SqlitePairPublicationRecoveryCapabilities.acquire(
+            record,
+            SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+            SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+            ProtectedBookMaintenanceArtifactRole.NEW_BOOK_KEY_TARGET)) {
+      Files.writeString(record.bookTargetPath, "changed live book");
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.OUTCOME_UNCERTAIN,
+          reconciler.reconcileSecret(
+              record,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+    }
+    assertFalse(Files.exists(record.secretTargetPath));
+  }
+
+  @Test
   void matchedAndBlockedMemberPlansRespectTheirBoundedRecoveryActions() throws Exception {
     SqliteProtectedBookPairPublicationRecord matched = retainedRecord("member-matched");
     Files.createLink(matched.bookTargetPath, matched.bookStagePath);
