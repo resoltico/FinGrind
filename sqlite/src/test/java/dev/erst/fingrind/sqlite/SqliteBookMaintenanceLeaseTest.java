@@ -164,6 +164,95 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void globalObjectLeaseBlocksASecondThreadFromEnteringThroughAHardLinkAlias() throws Exception {
+    Path original = writeArtifact("hard-link-lease/original.sqlite", "book bytes");
+    Path alias = managedTarget("hard-link-lease-alias/alias.sqlite");
+    Files.createLink(alias, original);
+    AtomicReference<SqliteProtectedBookLeaseAcquisition> concurrent = new AtomicReference<>();
+
+    try (SqliteHeldLease ignored =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquire(
+                original, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      Thread contender =
+          new Thread(
+              () ->
+                  concurrent.set(
+                      SqliteBookMaintenanceLease.acquire(
+                          alias, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT)));
+      contender.start();
+      contender.join();
+    }
+
+    assertEquals(alias, assertInstanceOf(SqliteLeaseBusy.class, concurrent.get()).artifactPath());
+    try (SqliteHeldLease afterRelease =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquire(
+                alias, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      assertEquals(alias, afterRelease.artifactPath());
+    }
+  }
+
+  @Test
+  void sameDirectoryAdmissionScopeMustContainItsExactArtifactAndNoOtherDomain() throws Exception {
+    Path artifact = managedTarget("admission-scope/artifact.sqlite");
+    Path sibling = managedTarget("admission-scope/sibling.key");
+    Path otherDomain = managedTarget("admission-scope-other/other.key");
+
+    IllegalArgumentException omittedArtifact =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                    artifact,
+                    SqliteMaintenanceLeaseIntent.MANAGED_TARGET,
+                    java.util.List.of(sibling)));
+    assertTrue(
+        java.util.Objects.requireNonNull(omittedArtifact.getMessage(), "omitted-scope message")
+            .contains("omitted its acquired artifact"));
+
+    IllegalArgumentException crossedDomain =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                    artifact,
+                    SqliteMaintenanceLeaseIntent.MANAGED_TARGET,
+                    java.util.List.of(artifact, otherDomain)));
+    assertTrue(
+        java.util.Objects.requireNonNull(crossedDomain.getMessage(), "cross-domain message")
+            .contains("crossed directory domains"));
+  }
+
+  @Test
+  void activeSameDirectorySiblingCannotBeAdmittedAfterTheFirstLease() throws Exception {
+    Path first = writeArtifact("same-directory-activity/first.sqlite", "first");
+    Path activeSibling = writeArtifact("same-directory-activity/sibling.sqlite", "sibling");
+
+    try (SqliteHeldLease ignored =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquire(
+                first, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      SqliteNativeActivityRegistration activity =
+          SqliteNativeRuntimeActivity.recordOpeningConnection(activeSibling, false);
+      try {
+        assertEquals(
+            activeSibling,
+            assertInstanceOf(
+                    SqliteLeaseBusy.class,
+                    SqliteBookMaintenanceLease.acquire(
+                        activeSibling, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))
+                .artifactPath());
+      } finally {
+        SqliteNativeRuntimeActivity.recordConnectionClosed(activity);
+      }
+    }
+  }
+
+  @Test
   void nestedNativeConnectionRetainsTheCurrentThreadsExactObjectLeaseUntilItCloses()
       throws Exception {
     Path source = writeArtifact("nested-activity/book.sqlite", "book bytes");
