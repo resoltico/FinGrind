@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -36,6 +37,31 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
   private static final String STAGED_KEY_FILE_NAME = "staged.key";
   private static final String FINAL_BACKUP_FILE_NAME = "backup.sqlite";
   private static final String FINAL_KEY_FILE_NAME = "backup.key";
+
+  @Test
+  void stagedBackupArtifact_requiresItsSealBeforePublicationAndRejectsResealing() throws Exception {
+    Path finalBackupPath = tempDirectory.resolve("backup-artifact").resolve("backup.sqlite");
+    Path backupParent = Objects.requireNonNull(finalBackupPath.getParent());
+    Files.createDirectories(backupParent);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(backupParent);
+    SqliteOwnedStagedArtifact stage =
+        SqliteOwnedStagedArtifact.create(finalBackupPath, ".backup-artifact-", ".sqlite");
+    try {
+      Files.writeString(stage.stagedPath(), "encrypted snapshot", StandardCharsets.UTF_8);
+      SqliteStagedBackupArtifact artifact = new SqliteStagedBackupArtifact(stage, finalBackupPath);
+
+      assertThrows(IllegalStateException.class, artifact::requireSealed);
+      byte[] snapshot = artifact.snapshot();
+      byte[] sealed = Arrays.copyOf(snapshot, snapshot.length + 1);
+      sealed[sealed.length - 1] = 1;
+      artifact.seal(sealed);
+
+      assertDoesNotThrow(artifact::requireSealed);
+      assertThrows(IllegalStateException.class, artifact::requireUnsealed);
+    } finally {
+      stage.releaseRetained();
+    }
+  }
 
   @Test
   void stagedBackupPair_sealsAnExactSnapshotAndRefusesFurtherSnapshotAccess() throws Exception {
