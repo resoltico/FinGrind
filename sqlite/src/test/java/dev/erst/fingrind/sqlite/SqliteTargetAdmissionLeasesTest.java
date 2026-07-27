@@ -22,6 +22,7 @@ class SqliteTargetAdmissionLeasesTest {
         new SqlitePairPublicationPreparationResources()) {
       leases.transferTo(resources);
       leases.close();
+      leases.close();
       assertEquals(0, bookCloses.get());
       assertEquals(0, secretCloses.get());
     }
@@ -35,6 +36,7 @@ class SqliteTargetAdmissionLeasesTest {
     AtomicInteger bookCloses = new AtomicInteger();
     AtomicInteger secretCloses = new AtomicInteger();
     SqliteTargetAdmissionLeases leases = leases(bookCloses, secretCloses);
+    leases.close();
     leases.close();
 
     try (SqlitePairPublicationPreparationResources resources =

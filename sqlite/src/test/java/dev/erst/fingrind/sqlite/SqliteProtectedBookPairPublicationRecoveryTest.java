@@ -1366,6 +1366,8 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
         retainedRecord("evidence-state-retained-claim");
     SqliteProtectedBookPairPublicationEvidenceLifecycle.retainPrepublication(
         retainedClaim, (ignoredStep, ignoredParent) -> {});
+    deleteEvidence(retainedClaim, SqliteProtectedBookPairPublicationEvidenceKind.INTENT);
+    deleteEvidence(retainedClaim, SqliteProtectedBookPairPublicationEvidenceKind.RECOVERY);
     assertFalse(SqlitePairPublicationEvidenceState.isCompleteClaimOnly(retainedClaim));
 
     SqliteProtectedBookPairPublicationRecord incompleteRetained =
