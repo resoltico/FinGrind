@@ -105,6 +105,30 @@ class SqliteThreadMaintenanceLeasesTest extends SqliteNativeBridgeTestSupport {
     assertEquals(1, handleCloses.get());
   }
 
+  @Test
+  void leaseHandleTranslatesAnUnderlyingControlCloseFailureAndDoesNotRetryIt() {
+    Path controlPath = tempDirectory.resolve("failing-control.control");
+    AtomicInteger closeAttempts = new AtomicInteger();
+    SqliteLeaseHandle handle =
+        new SqliteLeaseHandle(
+            controlPath,
+            SqliteCoordinationControlFiles.lockedControlFile(
+                controlPath,
+                () -> {
+                  closeAttempts.incrementAndGet();
+                  throw new java.io.IOException("injected control close failure");
+                }));
+
+    IllegalStateException failure = assertThrows(IllegalStateException.class, handle::close);
+
+    assertTrue(
+        java.util.Objects.requireNonNull(failure.getMessage(), "failure message")
+            .contains(controlPath.toString()));
+    assertEquals(1, closeAttempts.get());
+    handle.close();
+    assertEquals(1, closeAttempts.get());
+  }
+
   private SqliteThreadMaintenanceLeases.DirectoryLease directoryLease(
       Path directory,
       Path admitted,
