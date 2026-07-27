@@ -14,6 +14,8 @@ import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -152,6 +154,32 @@ class SqliteGeneratedSecretTargetTest {
   }
 
   @Test
+  void retainedWitnessLeavesUnsupportedPrimitiveSignalsOpaqueUnlessTheirExactPrimitiveSupportsThem()
+      throws Exception {
+    Path targetPath = tempDirectory.resolve("opaque-atomic-move.key");
+    AtomicMoveNotSupportedException atomicMoveFailure =
+        new AtomicMoveNotSupportedException(
+            targetPath.toString(), targetPath.toString(), "injected primitive refusal");
+
+    SqlitePublicationCapabilityWitness.AcquisitionFailure failure =
+        assertThrows(
+            SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+            () ->
+                SqlitePublicationCapabilityWitness.acquire(
+                    java.util.List.of(
+                        SqlitePublicationCapabilityWitness.Requirement.noReplace(targetPath)),
+                    (completion, source) -> {
+                      throw atomicMoveFailure;
+                    },
+                    SqliteProtectedBookPublicationSupport::moveReplacing));
+
+    assertEquals(
+        null,
+        SqlitePublicationCapabilityWitness.callerPathFailure(
+            failure, SqliteCallerPathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED));
+  }
+
+  @Test
   void retainedWitnessReportsAnInvalidRootTargetAsTheExactAcquisitionRequirement() {
     SqlitePublicationCapabilityWitness.Requirement requirement =
         SqlitePublicationCapabilityWitness.Requirement.noReplace(Path.of("/"));
@@ -246,26 +274,78 @@ class SqliteGeneratedSecretTargetTest {
 
   @Test
   void retainedWitnessFailsClosedOnRetiredRandomProbeResidue() throws Exception {
-    Path targetPath = tempDirectory.resolve("legacy-residue.key");
-    Files.writeString(
-        tempDirectory.resolve(".fingrind-book-no-replace-probe-abandoned"), "retired probe");
+    for (String retiredPrefix :
+        java.util.List.of(
+            ".fingrind-book-no-replace-probe-",
+            ".fingrind-no-replace-probe-",
+            ".fingrind-book-replace-probe-")) {
+      Path parent = Files.createDirectory(tempDirectory.resolve("legacy-" + retiredPrefix.hashCode()));
+      SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(parent);
+      Path targetPath = parent.resolve("legacy-residue.key");
+      Files.writeString(parent.resolve(retiredPrefix + "abandoned"), "retired probe");
 
-    SqlitePublicationCapabilityWitness.AcquisitionFailure failure =
-        assertThrows(
-            SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
-            () ->
-                SqlitePublicationCapabilityWitness.acquire(
-                    java.util.List.of(
-                        SqlitePublicationCapabilityWitness.Requirement.noReplace(targetPath)),
-                    Files::createLink,
-                    SqliteProtectedBookPublicationSupport::moveReplacing));
+      SqlitePublicationCapabilityWitness.AcquisitionFailure failure =
+          assertThrows(
+              SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+              () ->
+                  SqlitePublicationCapabilityWitness.acquire(
+                      java.util.List.of(
+                          SqlitePublicationCapabilityWitness.Requirement.noReplace(targetPath)),
+                      Files::createLink,
+                      SqliteProtectedBookPublicationSupport::moveReplacing));
 
-    assertTrue(
-        Objects.requireNonNull(
-                Objects.requireNonNull(failure.getCause(), "capability failure cause").getMessage(),
-                "capability failure message")
-            .contains("Retired random publication-capability probe residue"));
-    assertFalse(Files.exists(targetPath));
+      assertTrue(
+          Objects.requireNonNull(
+                  Objects.requireNonNull(failure.getCause(), "capability failure cause").getMessage(),
+                  "capability failure message")
+              .contains("Retired random publication-capability probe residue"));
+      assertFalse(Files.exists(targetPath));
+    }
+  }
+
+  @Test
+  void retainedWitnessReportsAContendedParentBeforeItWritesProtocolEvidence() throws Exception {
+    Path holderTarget = tempDirectory.resolve("busy-holder.sqlite");
+    Path witnessTarget = tempDirectory.resolve("busy-witness.key");
+    CountDownLatch acquired = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    AtomicReference<Throwable> holderFailure = new AtomicReference<>();
+    Thread holder =
+        new Thread(
+            () -> {
+              try (SqliteHeldLease ignored =
+                  (SqliteHeldLease)
+                      SqliteBookMaintenanceLease.acquire(
+                          holderTarget, SqliteMaintenanceLeaseIntent.MANAGED_TARGET)) {
+                acquired.countDown();
+                release.await();
+              } catch (Throwable failure) {
+                holderFailure.set(failure);
+              }
+            });
+    holder.start();
+    acquired.await();
+    try {
+      SqlitePublicationCapabilityWitness.AcquisitionFailure failure =
+          assertThrows(
+              SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+              () ->
+                  SqlitePublicationCapabilityWitness.acquire(
+                      java.util.List.of(
+                          SqlitePublicationCapabilityWitness.Requirement.noReplace(witnessTarget)),
+                      Files::createLink,
+                      SqliteProtectedBookPublicationSupport::moveReplacing));
+      assertTrue(
+          Objects.requireNonNull(
+                  Objects.requireNonNull(failure.getCause(), "busy capability cause").getMessage(),
+                  "busy capability message")
+              .contains("parent directory is busy"));
+      assertFalse(Files.exists(witnessTarget));
+    } finally {
+      release.countDown();
+      holder.join();
+    }
+    assertEquals(null, holderFailure.get());
   }
 
   @Test

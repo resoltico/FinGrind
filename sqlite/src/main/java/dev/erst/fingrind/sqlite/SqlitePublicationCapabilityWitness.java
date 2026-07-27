@@ -117,8 +117,7 @@ final class SqlitePublicationCapabilityWitness {
           Objects.requireNonNull(targetPath, "targetPath").toAbsolutePath().normalize();
       WitnessKey key = keyFor(checkedTargetPath, primitiveKind);
       List<Path> targets = admittedTargets.get(key);
-      if (!witnesses.containsKey(key)
-          || targets == null
+      if (targets == null
           || !SqliteProtectedBookPathIdentity.containsNormalizedSpelling(
               targets, checkedTargetPath)) {
         throw new IOException(
