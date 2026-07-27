@@ -94,7 +94,88 @@ class SqliteStagedPairPublicationFinalizerTest extends SqliteArtifactPublication
     assertFalse(fixture.bookStage().stagedPath().equals(fixture.secretStage().stagedPath()));
   }
 
+  @Test
+  void finishAfterPreBoundaryFailure_retainsStagesWhenTheRecoveryBoundaryMayExist()
+      throws Exception {
+    Fixture fixture = fixture("recovery-boundary");
+    fixture.finalizer().recordRecoveryBoundary(fixture.record());
+
+    fixture.finalizer().finishAfterPreBoundaryFailure();
+
+    assertEquals(1, fixture.reservationCloses().get());
+    assertEquals(1, fixture.passphraseCloses().get());
+    assertTrue(fixture.finalizer().isFinished());
+    assertTrue(Files.exists(fixture.bookStage().stagedPath()));
+    assertTrue(Files.exists(fixture.secretStage().stagedPath()));
+  }
+
+  @Test
+  void finishCompletionUncertain_reportsReservationReleaseFailureWithoutDiscardingEvidence()
+      throws Exception {
+    Fixture fixture =
+        fixture(
+            "uncertain-reservation-release",
+            () -> {
+              throw new IllegalStateException("reservation close failed");
+            });
+
+    ProtectedBookPairPublicationFailureOutcome.CompletionUncertain outcome =
+        assertInstanceOf(
+            ProtectedBookPairPublicationFailureOutcome.CompletionUncertain.class,
+            fixture
+                .finalizer()
+                .finishCompletionUncertain(
+                    ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED,
+                    ProtectedBookPairPublicationMemberState.OUTCOME_UNCERTAIN));
+
+    assertEquals(
+        ProtectedBookPairPublicationMemberState.OUTCOME_UNCERTAIN, outcome.secretArtifactState());
+    assertEquals(1, fixture.reservationCloses().get());
+    assertEquals(1, fixture.passphraseCloses().get());
+    assertTrue(fixture.finalizer().isFinished());
+    assertTrue(Files.exists(fixture.bookStage().stagedPath()));
+    assertTrue(Files.exists(fixture.secretStage().stagedPath()));
+  }
+
+  @Test
+  void finishAfterSuccessfulPublication_keepsPublishedResultWhenReservationReleaseFails()
+      throws Exception {
+    Fixture fixture =
+        fixture(
+            "published-reservation-release",
+            () -> {
+              throw new IllegalStateException("reservation close failed");
+            });
+    Files.createLink(fixture.record().bookTargetPath, fixture.bookStage().stagedPath());
+    Files.createLink(fixture.record().secretTargetPath, fixture.secretStage().stagedPath());
+    SqliteProtectedBookPairPublicationRecord completeRecord =
+        SqliteProtectedBookPairPublicationRecord.create(
+            fixture.record().bookTargetPath,
+            fixture.record().secretTargetPath,
+            fixture.bookStage().stagedPath(),
+            fixture.secretStage().stagedPath(),
+            RestoredBookTargetPolicy.REQUIRE_ABSENT,
+            backupBinding(fixture.record().bookTargetPath.resolveSibling("source.sqlite")),
+            (ignoredStep, ignoredParent) -> {});
+    fixture.finalizer().recordRecoveryBoundary(completeRecord);
+
+    StagedPairPublicationCommitOutcome outcome =
+        fixture.finalizer().finishAfterSuccessfulPublication();
+
+    assertInstanceOf(StagedPairPublicationCommitOutcome.Published.class, outcome);
+    assertEquals(1, fixture.reservationCloses().get());
+    assertEquals(1, fixture.passphraseCloses().get());
+    assertTrue(fixture.finalizer().isFinished());
+    assertTrue(Files.isSameFile(fixture.record().bookTargetPath, fixture.bookStage().stagedPath()));
+    assertTrue(
+        Files.isSameFile(fixture.record().secretTargetPath, fixture.secretStage().stagedPath()));
+  }
+
   private Fixture fixture(String name) throws IOException {
+    return fixture(name, () -> {});
+  }
+
+  private Fixture fixture(String name, Runnable reservationClose) throws IOException {
     Path parent = Files.createDirectory(tempDirectory.resolve(name));
     SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(parent);
     Path bookTarget = parent.resolve("published.sqlite");
@@ -114,7 +195,10 @@ class SqliteStagedPairPublicationFinalizerTest extends SqliteArtifactPublication
             bookStage,
             secretStage,
             passphraseCloses::incrementAndGet,
-            reservationCloses::incrementAndGet,
+            () -> {
+              reservationCloses.incrementAndGet();
+              reservationClose.run();
+            },
             (ignoredStep, ignoredParent) -> {},
             "fixture pair publication");
     SqliteProtectedBookPairPublicationRecord record =
