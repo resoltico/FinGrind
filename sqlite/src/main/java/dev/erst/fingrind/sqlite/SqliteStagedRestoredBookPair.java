@@ -82,9 +82,9 @@ final class SqliteStagedRestoredBookPair implements StagedRestoredBookPair {
           stagedBookKeyFile,
           publication.secretTargetPath(),
           directoryForcer);
-      // Keep retained-evidence finalization non-destructive even if record promotion or a following
-      // final-member call
-      // terminates with an Error rather than a catchable filesystem exception.
+      // Record the durable boundary before either final member can run. If a later fatal Error
+      // escapes rather than producing a recoverable result, close() still retains this evidence
+      // and never releases the staged members as though the failure preceded publication.
       SqliteProtectedBookPairPublicationRecord recoveryRecord =
           SqliteProtectedBookPairPublicationRecord.create(
               publication.bookTargetPath(),
