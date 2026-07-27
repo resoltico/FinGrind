@@ -18,8 +18,7 @@ import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
 /** Covers rollback and failure translation while opening a SQLite-backed book. */
-class SqliteStoreAdministrationMutationOperationsCoverageTest
-    extends SqlitePostingFactStoreTestSupport {
+class SqliteStoreBookOpeningOperationsTest extends SqlitePostingFactStoreTestSupport {
   @Test
   void openAttestedBook_translatesAndRollsBackANativeSchemaInitializationFailure() {
     Path bookPath = tempDirectory.resolve("native-open-failure.sqlite");
@@ -43,8 +42,8 @@ class SqliteStoreAdministrationMutationOperationsCoverageTest
               return new SqliteBookStateSnapshot(0, 0, SqliteBookState.BLANK_SQLITE);
             }
           };
-      SqliteStoreAdministrationMutationOperations operations =
-          new SqliteStoreAdministrationMutationOperations(context, lifecycle);
+      SqliteStoreBookOpeningOperations operations =
+          new SqliteStoreBookOpeningOperations(context, lifecycle);
 
       SqliteStorageFailureException failure =
           assertThrows(
@@ -90,8 +89,8 @@ class SqliteStoreAdministrationMutationOperationsCoverageTest
               return new SqliteBookStateSnapshot(0, 0, SqliteBookState.BLANK_SQLITE);
             }
           };
-      SqliteStoreAdministrationMutationOperations operations =
-          new SqliteStoreAdministrationMutationOperations(context, lifecycle);
+      SqliteStoreBookOpeningOperations operations =
+          new SqliteStoreBookOpeningOperations(context, lifecycle);
 
       assertEquals(
           schemaFailure,
@@ -119,8 +118,8 @@ class SqliteStoreAdministrationMutationOperationsCoverageTest
         new IllegalStateException("simulated opening-outcome projection failure");
 
     try (SqlitePostingFactStore store = openStore(bookAccess(bookPath))) {
-      SqliteStoreAdministrationMutationOperations operations =
-          new SqliteStoreAdministrationMutationOperations(
+      SqliteStoreBookOpeningOperations operations =
+          new SqliteStoreBookOpeningOperations(
               store.storeContext(),
               store.storeLifecycle(),
               (ignoredInitializedAt,
@@ -155,8 +154,8 @@ class SqliteStoreAdministrationMutationOperationsCoverageTest
             SqliteNativeResultCode.code("IOERR"), "simulated pre-durability commit failure");
 
     try (SqlitePostingFactStore store = openStore(bookAccess(bookPath))) {
-      SqliteStoreAdministrationMutationOperations operations =
-          new SqliteStoreAdministrationMutationOperations(
+      SqliteStoreBookOpeningOperations operations =
+          new SqliteStoreBookOpeningOperations(
               store.storeContext(),
               store.storeLifecycle(),
               (ignoredDatabase, ignoredTransactionOwnership) -> {
@@ -192,8 +191,8 @@ class SqliteStoreAdministrationMutationOperationsCoverageTest
 
     try (SqlitePostingFactStore store =
         openStore(bookAccess(bookPath), SqliteStoreAccessMode.READ_WRITE_CREATE_EXCLUSIVE)) {
-      SqliteStoreAdministrationMutationOperations operations =
-          new SqliteStoreAdministrationMutationOperations(
+      SqliteStoreBookOpeningOperations operations =
+          new SqliteStoreBookOpeningOperations(
               store.storeContext(),
               store.storeLifecycle(),
               (activeDatabase, transactionOwnership) -> {

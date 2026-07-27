@@ -47,13 +47,11 @@ final class AttestationFounderCredentials {
     AttestationFounderInput checkedFounder = Objects.requireNonNull(founder, "founder");
     try {
       if (Files.exists(checkedFounder.encryptedKeyFilePath())) {
-        try (var credential =
-            AttestationKeyFiles.openExistingCredential(
+        AttestationKeyFiles.openExistingCredential(
                 checkedFounder.principalId(),
                 checkedFounder.encryptedKeyFilePath(),
-                checkedFounder.passphraseFilePath())) {
-          // Opening is the validation; the credential must never cross this preflight boundary.
-        }
+                checkedFounder.passphraseFilePath())
+            .close();
       } else {
         AttestationKeyFiles.validatePassphraseFile(checkedFounder.passphraseFilePath());
       }

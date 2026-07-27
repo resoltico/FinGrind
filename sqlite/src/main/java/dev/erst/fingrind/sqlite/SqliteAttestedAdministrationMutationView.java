@@ -22,7 +22,10 @@ interface SqliteAttestedAdministrationMutationView
   /** Returns the thread-ownership guard for the underlying SQLite store. */
   SqliteThreadOwner storeThreadOwner();
 
-  /** Returns the book-opening and tax-registration owner for the underlying SQLite store. */
+  /** Returns the book-opening owner for the underlying SQLite store. */
+  SqliteStoreBookOpeningOperations storeBookOpeningOperations();
+
+  /** Returns the tax-registration owner for the underlying SQLite store. */
   SqliteStoreAdministrationMutationOperations storeAdministrationMutationOperations();
 
   /** Returns the account-registry owner for the underlying SQLite store. */
@@ -36,7 +39,7 @@ interface SqliteAttestedAdministrationMutationView
       List<AccountDeclaration> seededAccounts,
       AttestationEvidence genesisEvidence) {
     storeThreadOwner().requireOwnerThread();
-    return storeAdministrationMutationOperations()
+    return storeBookOpeningOperations()
         .openAttestedBook(initializedAt, bookIdentity, seededAccounts, genesisEvidence);
   }
 

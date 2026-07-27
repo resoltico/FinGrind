@@ -75,41 +75,85 @@ final class SqliteProtectedBookPairPublicationRecovery {
       Path secretTargetPath,
       RestoredBookTargetPolicy expectedBookTargetPolicy,
       ProtectedBookPairPublicationRecoveryRequest request) {
-    boolean bookExists = Files.exists(bookTargetPath, LinkOption.NOFOLLOW_LINKS);
-    boolean secretExists = Files.exists(secretTargetPath, LinkOption.NOFOLLOW_LINKS);
-    if (expectedBookTargetPolicy == RestoredBookTargetPolicy.REPLACE_SELECTED && bookExists) {
-      // A rekey begins with the selected live book in place. Without an intent or recovery
-      // record, no sibling residue has authority to make that ordinary precondition ambiguous.
-      if (!secretExists) {
-        return SqlitePairPublicationReconciliationAbsent.INSTANCE;
-      }
-      if (!hasUnboundStageResidue(bookTargetPath, secretTargetPath)) {
-        throw new ProtectedBookMaintenanceRejectionException(
-            new ProtectedBookMaintenanceRejection.SecretTargetOccupied(secretTargetPath));
-      }
-    }
-    if (expectedBookTargetPolicy == RestoredBookTargetPolicy.REQUIRE_ABSENT
-        && bookExists
-        && !hasUnboundStageResidue(bookTargetPath, secretTargetPath)) {
-      throw new ProtectedBookMaintenanceRejectionException(
-          switch (request) {
-            case ProtectedBookPairPublicationRecoveryRequest.Backup _ ->
-                new ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists(
-                    bookTargetPath);
-            case ProtectedBookPairPublicationRecoveryRequest.Restore _ ->
-                new ProtectedBookMaintenanceRejection.BookDestinationOccupied(bookTargetPath);
-            case ProtectedBookPairPublicationRecoveryRequest.Rekey _ ->
-                throw new IllegalStateException(
-                    "A rekey pair publication must replace its selected live book target.");
-          });
-    }
-    if (!bookExists && !secretExists) {
+    PairTargetPresence targets = PairTargetPresence.observe(bookTargetPath, secretTargetPath);
+    if (isRekeyWithOnlyExpectedLiveBook(expectedBookTargetPolicy, targets)) {
       return SqlitePairPublicationReconciliationAbsent.INSTANCE;
     }
-    if (!bookExists && secretExists && !hasUnboundStageResidue(bookTargetPath, secretTargetPath)) {
-      throw new ProtectedBookMaintenanceRejectionException(
-          new ProtectedBookMaintenanceRejection.SecretTargetOccupied(secretTargetPath));
+    rejectRekeySecretWithoutStage(
+        expectedBookTargetPolicy, targets, bookTargetPath, secretTargetPath);
+    rejectUnexpectedExistingBook(
+        expectedBookTargetPolicy, request, targets, bookTargetPath, secretTargetPath);
+    if (targets.areBothAbsent()) {
+      return SqlitePairPublicationReconciliationAbsent.INSTANCE;
     }
+    rejectUnboundSecretWithoutBook(targets, bookTargetPath, secretTargetPath);
+    return existingCompleteBackupOrEvidenceBlocked(request, bookTargetPath, secretTargetPath);
+  }
+
+  private static boolean isRekeyWithOnlyExpectedLiveBook(
+      RestoredBookTargetPolicy expectedBookTargetPolicy, PairTargetPresence targets) {
+    return expectedBookTargetPolicy == RestoredBookTargetPolicy.REPLACE_SELECTED
+        && targets.bookExists()
+        && !targets.secretExists();
+  }
+
+  private static void rejectRekeySecretWithoutStage(
+      RestoredBookTargetPolicy expectedBookTargetPolicy,
+      PairTargetPresence targets,
+      Path bookTargetPath,
+      Path secretTargetPath) {
+    if (expectedBookTargetPolicy != RestoredBookTargetPolicy.REPLACE_SELECTED
+        || !targets.bookExists()
+        || !targets.secretExists()
+        || hasUnboundStageResidue(bookTargetPath, secretTargetPath)) {
+      return;
+    }
+    throw secretTargetOccupied(secretTargetPath);
+  }
+
+  private static void rejectUnexpectedExistingBook(
+      RestoredBookTargetPolicy expectedBookTargetPolicy,
+      ProtectedBookPairPublicationRecoveryRequest request,
+      PairTargetPresence targets,
+      Path bookTargetPath,
+      Path secretTargetPath) {
+    if (expectedBookTargetPolicy != RestoredBookTargetPolicy.REQUIRE_ABSENT
+        || !targets.bookExists()
+        || hasUnboundStageResidue(bookTargetPath, secretTargetPath)) {
+      return;
+    }
+    throw new ProtectedBookMaintenanceRejectionException(
+        switch (request) {
+          case ProtectedBookPairPublicationRecoveryRequest.Backup _ ->
+              new ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists(bookTargetPath);
+          case ProtectedBookPairPublicationRecoveryRequest.Restore _ ->
+              new ProtectedBookMaintenanceRejection.BookDestinationOccupied(bookTargetPath);
+          case ProtectedBookPairPublicationRecoveryRequest.Rekey _ ->
+              throw new IllegalStateException(
+                  "A rekey pair publication must replace its selected live book target.");
+        });
+  }
+
+  private static void rejectUnboundSecretWithoutBook(
+      PairTargetPresence targets, Path bookTargetPath, Path secretTargetPath) {
+    if (targets.bookExists()
+        || !targets.secretExists()
+        || hasUnboundStageResidue(bookTargetPath, secretTargetPath)) {
+      return;
+    }
+    throw secretTargetOccupied(secretTargetPath);
+  }
+
+  private static ProtectedBookMaintenanceRejectionException secretTargetOccupied(
+      Path secretTargetPath) {
+    return new ProtectedBookMaintenanceRejectionException(
+        new ProtectedBookMaintenanceRejection.SecretTargetOccupied(secretTargetPath));
+  }
+
+  private static SqlitePairPublicationReconciliation existingCompleteBackupOrEvidenceBlocked(
+      ProtectedBookPairPublicationRecoveryRequest request,
+      Path bookTargetPath,
+      Path secretTargetPath) {
     if (request instanceof ProtectedBookPairPublicationRecoveryRequest.Backup
         && Files.isRegularFile(bookTargetPath, LinkOption.NOFOLLOW_LINKS)
         && Files.isRegularFile(secretTargetPath, LinkOption.NOFOLLOW_LINKS)) {
@@ -117,6 +161,19 @@ final class SqliteProtectedBookPairPublicationRecovery {
           bookTargetPath, secretTargetPath);
     }
     return evidenceBlocked(bookTargetPath, secretTargetPath);
+  }
+
+  /** Holds the non-following existence facts observed before absent-record reconciliation. */
+  private record PairTargetPresence(boolean bookExists, boolean secretExists) {
+    private static PairTargetPresence observe(Path bookTargetPath, Path secretTargetPath) {
+      return new PairTargetPresence(
+          Files.exists(bookTargetPath, LinkOption.NOFOLLOW_LINKS),
+          Files.exists(secretTargetPath, LinkOption.NOFOLLOW_LINKS));
+    }
+
+    private boolean areBothAbsent() {
+      return !bookExists && !secretExists;
+    }
   }
 
   /**

@@ -13,6 +13,11 @@ class SqlitePostingCapabilitySession extends SqliteReadCapabilitySession
   }
 
   @Override
+  public SqliteStoreBookOpeningOperations storeBookOpeningOperations() {
+    return store.storeBookOpeningOperations();
+  }
+
+  @Override
   public SqliteStoreAdministrationMutationOperations storeAdministrationMutationOperations() {
     return store.storeAdministrationMutationOperations();
   }

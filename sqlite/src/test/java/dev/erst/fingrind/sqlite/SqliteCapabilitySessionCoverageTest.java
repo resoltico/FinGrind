@@ -262,6 +262,11 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
             }
 
             @Override
+            public SqliteStoreBookOpeningOperations storeBookOpeningOperations() {
+              return postingFactStore.storeBookOpeningOperations();
+            }
+
+            @Override
             public SqliteStoreAdministrationMutationOperations
                 storeAdministrationMutationOperations() {
               return postingFactStore.storeAdministrationMutationOperations();

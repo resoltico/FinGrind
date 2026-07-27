@@ -6,12 +6,26 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 /** Verifies public key-file entry points preserve passphrase ownership and reject unsafe input. */
 class AttestationKeyFilesTest extends AttestationKeyFileTestFixture {
+
+  @Test
+  void validatesAWellFormedPassphraseFileWithoutCreatingAKeyArtifact() throws Exception {
+    Path passphrasePath = temporaryDirectory.resolve("operator.passphrase");
+    Files.writeString(passphrasePath, "correct horse battery staple\n");
+
+    AttestationKeyFiles.validatePassphraseFile(passphrasePath);
+
+    assertArrayEquals(
+        "correct horse battery staple\n".getBytes(StandardCharsets.UTF_8),
+        Files.readAllBytes(passphrasePath));
+    assertFalse(Files.exists(temporaryDirectory.resolve("operator.fgatk")));
+  }
 
   @Test
   void rejectsMalformedPassphraseFileBeforeCreatingAnEncryptedCredential() throws Exception {

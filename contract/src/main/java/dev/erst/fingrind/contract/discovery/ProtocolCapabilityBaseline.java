@@ -50,17 +50,23 @@ final class ProtocolCapabilityBaseline {
     Files.createDirectories(targetDirectory);
     removeStaleFragments(targetDirectory, documents.keySet());
     for (Map.Entry<Path, String> document : documents.entrySet()) {
-      Path target = targetDirectory.resolve(document.getKey()).normalize();
-      if (!target.startsWith(targetDirectory)) {
-        throw new IllegalArgumentException(
-            "Capability baseline document path escapes its directory.");
-      }
+      Path target = targetPath(targetDirectory, document.getKey());
       Path parent = Objects.requireNonNull(target.getParent());
       Files.createDirectories(parent);
       if (!Files.isRegularFile(target) || !document.getValue().equals(Files.readString(target))) {
         Files.writeString(target, document.getValue());
       }
     }
+  }
+
+  /** Resolves one rendered document only when it remains contained by the generated directory. */
+  private static Path targetPath(Path targetDirectory, Path relativeDocumentPath) {
+    Path target = targetDirectory.resolve(relativeDocumentPath).normalize();
+    if (!target.startsWith(targetDirectory)) {
+      throw new IllegalArgumentException(
+          "Capability baseline document path escapes its directory.");
+    }
+    return target;
   }
 
   private static CapabilityBaselineSnapshot projectSnapshot(
@@ -80,7 +86,7 @@ final class ProtocolCapabilityBaseline {
   }
 
   private static Map<Path, String> renderedDocuments(CapabilityBaselineSnapshot snapshot) {
-    Map<Path, String> documents = new LinkedHashMap<>();
+    Map<Path, String> documents = orderedMap();
     Map<String, List<String>> commandFiles = orderedMap();
     for (OperationCategory category : OperationCategory.values()) {
       List<CapabilityBaselineCommand> commands =

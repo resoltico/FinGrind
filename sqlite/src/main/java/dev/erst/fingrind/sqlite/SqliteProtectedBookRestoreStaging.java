@@ -193,8 +193,8 @@ final class SqliteProtectedBookRestoreStaging {
     try (InputStream source = SqliteSecureRegularFileAccess.openRead(sourcePath);
         FileChannel destination = SqliteSecureRegularFileAccess.openTruncatingWrite(stagedPath)) {
       byte[] buffer = new byte[16 * 1024];
-      int read;
-      while ((read = source.read(buffer)) >= 0) {
+      int read = source.read(buffer);
+      while (read >= 0) {
         if (read == 0) {
           throw new IOException("Failed to read the complete protected-book restore source.");
         }
@@ -204,6 +204,7 @@ final class SqliteProtectedBookRestoreStaging {
             throw new IOException("Failed to write the complete protected-book restore stage.");
           }
         }
+        read = source.read(buffer);
       }
       destination.force(true);
     }

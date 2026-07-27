@@ -23,6 +23,7 @@ class SqlitePostingFactStore
   final SqliteStoreLifecycle lifecycle;
   private final SqliteStoreReadOperations readOperations;
   private final SqliteInventoryValuationReadOperations inventoryValuationReadOperations;
+  private final SqliteStoreBookOpeningOperations bookOpeningOperations;
   private final SqliteStoreAdministrationMutationOperations administrationMutationOperations;
   private final SqliteStoreAccountRegistryMutationOperations accountRegistryMutationOperations;
   private final SqliteStorePostingMutationOperations postingMutationOperations;
@@ -90,6 +91,7 @@ class SqlitePostingFactStore
         Objects.requireNonNull(commitFaultHook, "commitFaultHook");
     PostingAcceptancePolicy checkedPostingAcceptancePolicy =
         Objects.requireNonNull(postingAcceptancePolicy, "postingAcceptancePolicy");
+    this.bookOpeningOperations = new SqliteStoreBookOpeningOperations(context, lifecycle);
     this.administrationMutationOperations =
         new SqliteStoreAdministrationMutationOperations(context, lifecycle);
     this.accountRegistryMutationOperations =
@@ -121,6 +123,11 @@ class SqlitePostingFactStore
   @Override
   public SqliteInventoryValuationReadOperations storeInventoryValuationReadOperations() {
     return inventoryValuationReadOperations;
+  }
+
+  @Override
+  public SqliteStoreBookOpeningOperations storeBookOpeningOperations() {
+    return bookOpeningOperations;
   }
 
   @Override

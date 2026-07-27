@@ -18,6 +18,11 @@ final class SqliteAdministrationCapabilitySession extends SqliteDelegatingSessio
   }
 
   @Override
+  public SqliteStoreBookOpeningOperations storeBookOpeningOperations() {
+    return store.storeBookOpeningOperations();
+  }
+
+  @Override
   public SqliteStoreAdministrationMutationOperations storeAdministrationMutationOperations() {
     return store.storeAdministrationMutationOperations();
   }
