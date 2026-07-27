@@ -522,6 +522,33 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
   }
 
   @Test
+  void workflowRejectsIncompleteEvidenceForAMismatchedRequestBeforeAnyRecoveryRepair()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord record =
+        retainedRecord("workflow-incomplete-mismatch");
+    ProtectedBookPairPublicationRecoveryRequest.Backup mismatchedRequest =
+        new ProtectedBookPairPublicationRecoveryRequest.Backup(
+            record.bookTargetPath.resolveSibling("other-source.sqlite"), new UUID(0L, 9L));
+
+    ProtectedBookMaintenanceRejectionException refusal =
+        assertThrows(
+            ProtectedBookMaintenanceRejectionException.class,
+            () ->
+                recoveryWorkflow(true)
+                    .recover(
+                        record,
+                        RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                        mismatchedRequest,
+                        ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                        ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                        true));
+
+    assertInstanceOf(ProtectedBookMaintenanceRejection.RecoveryPending.class, refusal.rejection());
+    assertFalse(Files.exists(record.bookTargetPath));
+    assertFalse(Files.exists(record.secretTargetPath));
+  }
+
+  @Test
   void workflowRepairsMissingMirroredEvidenceOnlyWhileBothExactTargetLeasesAreHeld()
       throws Exception {
     SqliteProtectedBookPairPublicationRecord record = retainedRecord("workflow-evidence-repair");
