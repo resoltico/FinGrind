@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
@@ -135,5 +136,42 @@ class CliSurfaceHelperCoverageTest extends CliFixtureSupport {
     assertTrue(rendered.contains("Empty section"));
     assertTrue(rendered.contains("No projected facts."));
     assertTrue(rendered.contains("Context"));
+  }
+
+  @Test
+  void pagedListTextRenderer_keepsTheSharedPaginationAndContextContract() {
+    String empty =
+        CliReportRenderSupport.renderPagedListText(
+            new CliPagedListText(
+                "Widgets",
+                "widgets",
+                "widgets",
+                0,
+                20,
+                "cursor-empty",
+                "",
+                true,
+                List.of(List.of("Entity", "Acme Studio"))));
+    String listed =
+        CliReportRenderSupport.renderPagedListText(
+            new CliPagedListText(
+                "Widgets",
+                "widgets",
+                "widgets",
+                2,
+                20,
+                "cursor-listed",
+                "Rendered widget rows",
+                false,
+                List.of()));
+
+    assertTrue(empty.contains("No widgets matched the selected scope."), empty);
+    assertTrue(empty.contains("cursor-empty"), empty);
+    assertTrue(empty.contains("Context"), empty);
+    assertTrue(listed.contains("Returned widgets"), listed);
+    assertTrue(listed.contains("2"), listed);
+    assertTrue(listed.contains("cursor-listed"), listed);
+    assertTrue(listed.contains("Rendered widget rows"), listed);
+    assertFalse(listed.contains("Context"), listed);
   }
 }

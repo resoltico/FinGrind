@@ -15,9 +15,10 @@ final class ProtocolDiscoveryOperations {
             List.of("--help", "-h"),
             List.of(
                 "[<command>]",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT)),
-                ProtocolOptions.optionalJsonOnlyDiscoveryDetailSyntax(),
-                ProtocolOptions.optionalJsonOnlyOperationCategorySyntax()),
+                ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.TEXT)),
+                ProtocolOptionSyntax.Discovery.optionalJsonOnlyDiscoveryDetailSyntax(),
+                ProtocolOptionSyntax.Discovery.optionalJsonOnlyOperationCategorySyntax()),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
             "Print command usage, examples, and workflow guidance.",
@@ -38,7 +39,8 @@ final class ProtocolDiscoveryOperations {
             "Version",
             List.of("--version"),
             List.of(
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+                ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
             "Print application identity, version, and description.",
@@ -49,10 +51,11 @@ final class ProtocolDiscoveryOperations {
             "Capabilities",
             List.of(),
             List.of(
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT)),
-                ProtocolOptions.optionalJsonOnlyDiscoveryDetailSyntax(),
-                ProtocolOptions.optionalJsonOnlyDiscoveryFocusSyntax(),
-                ProtocolOptions.optionalJsonOnlyOperationCategorySyntax()),
+                ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.TEXT)),
+                ProtocolOptionSyntax.Discovery.optionalJsonOnlyDiscoveryDetailSyntax(),
+                ProtocolOptionSyntax.Discovery.optionalJsonOnlyDiscoveryFocusSyntax(),
+                ProtocolOptionSyntax.Discovery.optionalJsonOnlyOperationCategorySyntax()),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
             "Print the canonical machine-readable contract for commands, request shapes, and responses.",
@@ -66,7 +69,8 @@ final class ProtocolDiscoveryOperations {
             "Environment",
             List.of(),
             List.of(
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+                ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
             "Print live runtime, distribution, and SQLite provenance facts for this launcher instance.",

@@ -13,7 +13,6 @@ import dev.erst.fingrind.jazzer.tool.PostingLifecycleStatus;
 import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
 import dev.erst.fingrind.sqlite.SqlitePostingSession;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.Optional;
@@ -55,9 +54,9 @@ public final class SqliteRoundTripWorkflowAssertions {
       PostEntryCommand command, byte[] input) throws IOException {
     Objects.requireNonNull(command, "command must not be null");
     Objects.requireNonNull(input, "input must not be null");
-    Path scratchRoot = Files.createTempDirectory("fingrind-jazzer-book-");
+    Path scratchRoot =
+        SqliteFuzzAssertions.createOwnerOnlyTemporaryArtifactDirectory("fingrind-jazzer-book-");
     try {
-      SqliteFuzzAssertions.prepareSecureArtifactDirectory(scratchRoot);
       DirectRoundTripState primaryState =
           drivePrimaryRoundTrip(
               command, input, scratchRoot.resolve("primary").resolve("book.sqlite"));
@@ -70,8 +69,23 @@ public final class SqliteRoundTripWorkflowAssertions {
       SqliteProtectedBookMaintenanceFuzzAssertions.exercise(
           input, scratchRoot.resolve("maintenance"));
       return primaryState.snapshot();
-    } finally {
-      SqliteRoundTripWorkflowResources.deleteRecursively(scratchRoot);
+    } catch (IOException | RuntimeException exception) {
+      recordRetainedWorkspace(scratchRoot, exception);
+      throw exception;
+    } catch (Error failure) {
+      recordRetainedWorkspace(scratchRoot, failure);
+      throw failure;
+    }
+  }
+
+  private static void recordRetainedWorkspace(Path scratchRoot, Throwable primaryFailure) {
+    try {
+      primaryFailure.addSuppressed(
+          new IOException(
+              "SQLite round-trip workflow retained its Jazzer workspace for inspection: "
+                  + scratchRoot));
+    } catch (IllegalArgumentException ignored) {
+      // A hostile Throwable implementation must not conceal the primary failure.
     }
   }
 

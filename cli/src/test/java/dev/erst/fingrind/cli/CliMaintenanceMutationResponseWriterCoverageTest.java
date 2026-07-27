@@ -5,8 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
+import dev.erst.fingrind.contract.bookkeeping.BackupAcknowledgementState;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import java.io.ByteArrayOutputStream;
@@ -24,19 +27,52 @@ class CliMaintenanceMutationResponseWriterCoverageTest extends CliResponseWriter
 
   @Test
   void writesAcknowledgementPendingAcrossJsonTextAndUnsupportedCsv() {
+    ProtectedBookPairPublicationRetention pendingPublicationRetention =
+        CliFixtureSupport.pairPublicationRetention(BACKUP_FILE, BACKUP_KEY_FILE);
     BackupBookResult.AcknowledgementPending pending =
         new BackupBookResult.AcknowledgementPending(
-            BOOK_FILE, BACKUP_FILE, BACKUP_KEY_FILE, BACKUP_ID);
+            BOOK_FILE,
+            BACKUP_FILE,
+            BACKUP_KEY_FILE,
+            BACKUP_ID,
+            ProtectedBookPairPublicationCompletion.PUBLISHED,
+            pendingPublicationRetention);
 
     ByteArrayOutputStream json = new ByteArrayOutputStream();
     writer(json).writeBackupBookResult(pending, OutputMode.JSON);
     assertJsonContains(json, "\"acknowledgementState\":\"pending\"");
+    assertJsonContains(json, "\"pairPublicationCompletion\":\"published\"");
     assertJsonContains(json, "\"backupId\":\"" + BACKUP_ID + "\"");
+    assertJsonContains(
+        json,
+        "\"bookPublication\":{\"path\":\""
+            + CliPublicPaths.absoluteValue(
+                pendingPublicationRetention.bookPublication().publishedArtifactPath())
+            + "\",\"retainedStage\":\""
+            + CliPublicPaths.absoluteValue(
+                pendingPublicationRetention.bookPublication().retention().retainedStagePath())
+            + "\"}");
+    assertJsonContains(
+        json,
+        "\"generatedSecretPublication\":{\"path\":\""
+            + CliPublicPaths.absoluteValue(
+                pendingPublicationRetention.generatedSecretPublication().publishedArtifactPath())
+            + "\",\"retainedStage\":\""
+            + CliPublicPaths.absoluteValue(
+                pendingPublicationRetention
+                    .generatedSecretPublication()
+                    .retention()
+                    .retainedStagePath())
+            + "\"}");
 
     ByteArrayOutputStream text = new ByteArrayOutputStream();
     writer(text).writeBackupBookResult(pending, OutputMode.TEXT);
     String rendered = text.toString(StandardCharsets.UTF_8);
     assertTrue(rendered.contains("Book Backup Published"), rendered);
+    assertTrue(rendered.contains("Pair publication completion"), rendered);
+    assertTrue(rendered.contains("published"), rendered);
+    assertTrue(rendered.contains("Published book file"), rendered);
+    assertTrue(rendered.contains("Published generated-secret file"), rendered);
     assertTrue(rendered.contains("--backup-id"), rendered);
     assertTrue(rendered.contains(BACKUP_ID.toString()), rendered);
 
@@ -50,30 +86,101 @@ class CliMaintenanceMutationResponseWriterCoverageTest extends CliResponseWriter
   void writesResumedBackupRestorationAndAcknowledgementConflictWithoutFlatteningTheirMeaning() {
     BackupBookResult.BackedUp resumed =
         new BackupBookResult.BackedUp(
-            BOOK_FILE, BACKUP_FILE, BACKUP_KEY_FILE, BACKUP_ID, true, attestationCommit());
+            BOOK_FILE,
+            BACKUP_FILE,
+            BACKUP_KEY_FILE,
+            BACKUP_ID,
+            ProtectedBookPairPublicationCompletion.RECOVERED,
+            CliFixtureSupport.pairPublicationRetention(BACKUP_FILE, BACKUP_KEY_FILE),
+            BackupAcknowledgementState.RESUMED,
+            attestationCommit());
     ByteArrayOutputStream resumedText = new ByteArrayOutputStream();
     writer(resumedText).writeBackupBookResult(resumed, OutputMode.TEXT);
     assertTrue(resumedText.toString(StandardCharsets.UTF_8).contains("resumed"));
     ByteArrayOutputStream resumedJson = new ByteArrayOutputStream();
     writer(resumedJson).writeBackupBookResult(resumed, OutputMode.JSON);
     assertJsonContains(resumedJson, "\"acknowledgementState\":\"resumed\"");
+    assertJsonContains(resumedJson, "\"pairPublicationCompletion\":\"recovered\"");
     assertThrows(
         IllegalArgumentException.class,
         () -> writer(new ByteArrayOutputStream()).writeBackupBookResult(resumed, OutputMode.CSV));
 
     BackupBookResult.BackedUp acknowledged =
         new BackupBookResult.BackedUp(
-            BOOK_FILE, BACKUP_FILE, BACKUP_KEY_FILE, BACKUP_ID, false, attestationCommit());
+            BOOK_FILE,
+            BACKUP_FILE,
+            BACKUP_KEY_FILE,
+            BACKUP_ID,
+            ProtectedBookPairPublicationCompletion.PUBLISHED,
+            CliFixtureSupport.pairPublicationRetention(BACKUP_FILE, BACKUP_KEY_FILE),
+            BackupAcknowledgementState.ACKNOWLEDGED,
+            attestationCommit());
     ByteArrayOutputStream acknowledgedJson = new ByteArrayOutputStream();
     writer(acknowledgedJson).writeBackupBookResult(acknowledged, OutputMode.JSON);
     assertJsonContains(acknowledgedJson, "\"acknowledgementState\":\"acknowledged\"");
 
+    ProtectedBookPairPublicationRetention alreadyPresentPublicationRetention =
+        CliFixtureSupport.pairPublicationRetention(BACKUP_FILE, BACKUP_KEY_FILE);
+    BackupBookResult.BackedUp alreadyPresent =
+        new BackupBookResult.BackedUp(
+            BOOK_FILE,
+            BACKUP_FILE,
+            BACKUP_KEY_FILE,
+            BACKUP_ID,
+            ProtectedBookPairPublicationCompletion.PUBLISHED,
+            alreadyPresentPublicationRetention,
+            BackupAcknowledgementState.ALREADY_PRESENT,
+            null);
+    ByteArrayOutputStream alreadyPresentJson = new ByteArrayOutputStream();
+    writer(alreadyPresentJson).writeBackupBookResult(alreadyPresent, OutputMode.JSON);
+    assertJsonContains(alreadyPresentJson, "\"acknowledgementState\":\"already-present\"");
+    assertJsonContains(alreadyPresentJson, "\"pairPublicationCompletion\":\"published\"");
+    assertJsonContains(
+        alreadyPresentJson,
+        "\"retainedStage\":\""
+            + CliPublicPaths.absoluteValue(
+                alreadyPresentPublicationRetention
+                    .bookPublication()
+                    .retention()
+                    .retainedStagePath())
+            + "\"");
+    assertJsonContains(
+        alreadyPresentJson,
+        "\"retainedStage\":\""
+            + CliPublicPaths.absoluteValue(
+                alreadyPresentPublicationRetention
+                    .generatedSecretPublication()
+                    .retention()
+                    .retainedStagePath())
+            + "\"");
+    assertJsonContains(alreadyPresentJson, "\"attestationCommit\":null");
+    ByteArrayOutputStream alreadyPresentText = new ByteArrayOutputStream();
+    writer(alreadyPresentText).writeBackupBookResult(alreadyPresent, OutputMode.TEXT);
+    assertTrue(
+        alreadyPresentText
+            .toString(StandardCharsets.UTF_8)
+            .contains("No operation appended (acknowledgement replay)"));
+    assertTrue(
+        alreadyPresentText
+            .toString(StandardCharsets.UTF_8)
+            .contains("Pair publication completion"));
+    assertTrue(alreadyPresentText.toString(StandardCharsets.UTF_8).contains("Published book file"));
+    assertTrue(
+        alreadyPresentText
+            .toString(StandardCharsets.UTF_8)
+            .contains("Published generated-secret file"));
+
     RestoreBookResult.Restored restored =
         new RestoreBookResult.Restored(
-            BOOK_FILE, Path.of("keys", "restored.key"), attestationCommit());
+            BOOK_FILE,
+            Path.of("keys", "restored.key"),
+            attestationCommit(),
+            ProtectedBookPairPublicationCompletion.RECOVERED,
+            CliFixtureSupport.pairPublicationRetention(BOOK_FILE, Path.of("keys", "restored.key")));
     ByteArrayOutputStream restoredText = new ByteArrayOutputStream();
     writer(restoredText).writeRestoreBookResult(restored, OutputMode.TEXT);
     assertTrue(restoredText.toString(StandardCharsets.UTF_8).contains("Book Restored"));
+    assertTrue(restoredText.toString(StandardCharsets.UTF_8).contains("recovered"));
     assertThrows(
         IllegalArgumentException.class,
         () -> writer(new ByteArrayOutputStream()).writeRestoreBookResult(restored, OutputMode.CSV));
@@ -90,6 +197,30 @@ class CliMaintenanceMutationResponseWriterCoverageTest extends CliResponseWriter
   }
 
   @Test
+  void writesAlreadyPublishedResumeWithoutFinGrindRetainedStageFacts() {
+    BackupBookResult.BackedUp alreadyPublishedResume =
+        new BackupBookResult.BackedUp(
+            BOOK_FILE,
+            BACKUP_FILE,
+            BACKUP_KEY_FILE,
+            BACKUP_ID,
+            ProtectedBookPairPublicationCompletion.ALREADY_PUBLISHED,
+            null,
+            BackupAcknowledgementState.RESUMED,
+            null);
+
+    ByteArrayOutputStream json = new ByteArrayOutputStream();
+    writer(json).writeBackupBookResult(alreadyPublishedResume, OutputMode.JSON);
+    assertJsonContains(json, "\"pairPublicationCompletion\":\"already-published\"");
+    assertJsonContains(json, "\"pairPublicationRetention\":null");
+
+    ByteArrayOutputStream text = new ByteArrayOutputStream();
+    writer(text).writeBackupBookResult(alreadyPublishedResume, OutputMode.TEXT);
+    assertTrue(
+        text.toString(StandardCharsets.UTF_8).contains("No FinGrind retained-stage evidence"));
+  }
+
+  @Test
   void writesPublishedBackupAcknowledgementAuthorizationRefusalAsAnExactRejection() {
     BackupBookResult.AcknowledgementAuthorizationRejected rejected =
         new BackupBookResult.AcknowledgementAuthorizationRejected(
@@ -97,16 +228,20 @@ class CliMaintenanceMutationResponseWriterCoverageTest extends CliResponseWriter
             BACKUP_FILE,
             BACKUP_KEY_FILE,
             BACKUP_ID,
+            ProtectedBookPairPublicationCompletion.PUBLISHED,
+            CliFixtureSupport.pairPublicationRetention(BACKUP_FILE, BACKUP_KEY_FILE),
             AttestationVerificationFailure.QUORUM_BELOW);
 
     ByteArrayOutputStream json = new ByteArrayOutputStream();
     writer(json).writeBackupBookResult(rejected, OutputMode.JSON);
     assertJsonContains(json, "\"status\":\"rejected\"");
     assertJsonContains(json, "\"code\":\"attestation-quorum-below\"");
+    assertJsonContains(json, "\"pairPublicationCompletion\":\"published\"");
 
     ByteArrayOutputStream text = new ByteArrayOutputStream();
     writer(text).writeBackupBookResult(rejected, OutputMode.TEXT);
     assertTrue(text.toString(StandardCharsets.UTF_8).contains("published backup pair"));
+    assertTrue(text.toString(StandardCharsets.UTF_8).contains("Pair publication completion"));
     assertEquals(2, CliAdministrativeExitCodes.exitCodeFor(rejected));
   }
 

@@ -10,6 +10,7 @@ import java.nio.file.attribute.FileAttributeView;
 import java.nio.file.attribute.FileOwnerAttributeView;
 import java.nio.file.attribute.PosixFileAttributeView;
 import java.nio.file.attribute.PosixFileAttributes;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
@@ -56,7 +57,32 @@ final class AclFixtureAttributeOperations {
     if (!fixturePath.exists) {
       throw new NoSuchFileException(path.toString());
     }
-    return Map.of(
-        "isRegularFile", fixturePath.regularFile, "isDirectory", !fixturePath.regularFile);
+    return switch (attributes) {
+      case "unix:mode" -> Map.of("mode", posixMode(fixturePath));
+      case "unix:uid" -> Map.of("uid", 1_000L);
+      default ->
+          Map.of(
+              "isRegularFile", fixturePath.regularFile,
+              "isDirectory", !fixturePath.regularFile);
+    };
+  }
+
+  private static int posixMode(AclFixturePath path) {
+    int mode = 0;
+    for (PosixFilePermission permission : path.posixPermissions) {
+      mode |=
+          switch (permission) {
+            case OWNER_READ -> 0x100;
+            case OWNER_WRITE -> 0x80;
+            case OWNER_EXECUTE -> 0x40;
+            case GROUP_READ -> 0x20;
+            case GROUP_WRITE -> 0x10;
+            case GROUP_EXECUTE -> 0x08;
+            case OTHERS_READ -> 0x04;
+            case OTHERS_WRITE -> 0x02;
+            case OTHERS_EXECUTE -> 0x01;
+          };
+    }
+    return mode;
   }
 }

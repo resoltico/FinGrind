@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: CONTRACT_PROTOCOL
-updated: "2026-07-23"
+updated: "2026-07-26"
 route:
   keywords: [fingrind, contract, protocol, discovery, machine-contract, request-shapes, response-shapes, templates, attestation credential, enroll-key, rollover-key, revoke-key, alter-policy, tax-setup, declare-tax-registration, amend-account, retire-account, tax-obligation]
   questions: ["where is protocol metadata documented in fingrind", "where is the attestation credential and policy request surface documented", "where is the tax setup request surface documented", "where are account lifecycle commands documented"]
@@ -158,23 +158,22 @@ public enum ProtocolEnvelopeStatus implements WireValue
 
 ## `ProtocolOptions`
 
-`ProtocolOptions` owns canonical public CLI option spellings.
+`ProtocolOptions` is the namespace interface for canonical public CLI option spellings.
 
 ```java
-public final class ProtocolOptions
+public interface ProtocolOptions
 ```
 
 - Purpose: keep option text consistent across parser, help, capabilities, templates, and docs
-- Scope: book access, passphrase sources, request files, report output, PDF export, pagination,
-  posting lookup, date filters, and `execute-plan` result detail
+- Boundary: this namespace owns spellings only; rendered grammar belongs to
+  `ProtocolOptionSyntax`, so the option catalog cannot accrete presentation helpers
 - `ProtocolBookAccessOptions` owns the protected-book file, key, passphrase, backup, restore,
-  generated-key, and rollback option spellings; `ProtocolOptions` consumes its passphrase-source
-  vocabulary rather than duplicating it
+  and generated-key option spellings
 - `ProtocolOptions.Attestation` owns credential-source, founder, receipt, and review option
   spellings for protected-book attestation commands; callers must use these canonical names rather
   than assembling private-key or passphrase options ad hoc
 
-## `ProtocolOptions.Request`, `ProtocolOptions.DateRange`, `ProtocolOptions.ReportQuery`, `ProtocolOptions.BookDefinition`, `ProtocolOptions.Presentation`, And `ProtocolOptions.Discovery`
+## `ProtocolOptions.Request`, `ProtocolOptions.DateRange`, `ProtocolOptions.ReportQuery`, `ProtocolOptions.BookDefinition`, `ProtocolOptions.Attestation`, `ProtocolOptions.Presentation`, And `ProtocolOptions.Discovery`
 
 These nested owners partition public CLI option spellings by the contract they shape.
 
@@ -182,8 +181,35 @@ These nested owners partition public CLI option spellings by the contract they s
 - `DateRange`: effective-date, reporting-period, fiscal-year, and as-of selectors
 - `ReportQuery`: comparative, coverage, pagination, and cursor selectors
 - `BookDefinition`: open-book identity, doctrine, accounting-basis, and initialization selectors
+- `Attestation`: founder, custodian, credential-source, receipt, and compromise-review selectors
 - `Presentation`: output-mode and PDF artifact selectors
 - `Discovery`: discovery filtering and result-detail selectors
+
+## `ProtocolOptionSyntax`, `ProtocolOptionSyntax.BookAccess`, `ProtocolOptionSyntax.Attestation`, `ProtocolOptionSyntax.ReportQuery`, `ProtocolOptionSyntax.Presentation`, And `ProtocolOptionSyntax.Discovery`
+
+`ProtocolOptionSyntax` is the namespace interface that renders public CLI grammar from the
+canonical spelling owners and typed wire vocabularies.
+
+```java
+public interface ProtocolOptionSyntax
+```
+
+- `BookAccess` derives accepted current-passphrase source syntax from
+  `ProtocolBookAccessOptions`; it never repeats protected-book access spellings.
+- `Attestation` renders the aligned protected-book credential tuple from
+  `ProtocolOptions.Attestation` and the published quorum limit.
+- `ReportQuery` renders pagination, posting coverage, comparative selectors, and the comparative
+  mode inventory from their option and `WireValue` owners.
+- `Presentation` renders output-mode and PDF-artifact grammar; `Discovery` renders plan-result
+  and JSON-only discovery detail, focus, and operation-category grammar.
+- Invariant: callers use this namespace rather than assembling option fragments privately, and a
+  rendered choice inventory is derived from its public typed vocabulary.
+- `execute-plan` applies the attestation credential tuple conditionally after its request document
+  establishes whether any step mutates the book: one through 64 complete aligned tuples are
+  required for a mutating plan and forbidden for a query-only or assertion-only plan. A partial or
+  malformed tuple remains a parser-level `invalid-request`; a complete tuple on a non-mutating
+  plan is refused as `attestation-credentials-not-allowed` with exit `1`, after request decoding
+  but before any credential is opened or plan execution begins.
 
 ## `ProtocolInteractionLimits`
 
@@ -270,8 +296,8 @@ public record ProtocolArtifactOutput(String format, String option, String descri
 
 - Purpose: advertise supported artifact outputs without ad hoc CLI strings
 - Current scope: report PDF export plus the generated/replacement book-key-file, restored
-  book-file, backup-file, backup-key-file, and rollback-book artifact families published through
-  the uniform `artifacts[]` response home
+  book-file, independently retained attestation-receipt, backup-file, and backup-key-file
+  families published through the uniform `artifacts[]` response home
 
 ## `PublicCliBundleTarget`
 
@@ -432,6 +458,9 @@ public record PlanExecutionFacts(...)
   shipped bookkeeping kernel
 - `ReportCapabilityFacts`: publishes the statement id, comparative support flag, and contract
   description for each built-in report
+- `PlanExecutionFacts` supplies execution semantics, while the projected
+  `PlanExecutionDescriptor.attestationOutcomes` owns the complete closed
+  successful-plan commitment and credential-mode table rendered by discovery
 
 ## `MonetaryAmount`
 
@@ -736,7 +765,7 @@ public final class BookFormatContract
 
 - Purpose: keep the stable `application_id` and supported on-disk format version in one contract
   owner shared by inspections, fixtures, and storage adapters
-- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 52`
+- Current contract: `APPLICATION_ID = 1179079236` and `FORMAT_VERSION = 57`
 
 ## `ProtectedBookFormatContract`
 

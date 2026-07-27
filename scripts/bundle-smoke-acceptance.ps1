@@ -52,6 +52,7 @@ function Invoke-BundleSmoke {
     $extractRoot = Join-Path $smokeRoot "extract"
     $workRoot = Join-Path $smokeRoot "workspace odd/Rīga büro/2026 Q2 close"
     $script:BundleLauncher = $null
+    $script:BundleRoot = $null
 
     try {
         New-Item -ItemType Directory -Path $extractRoot -Force | Out-Null
@@ -64,6 +65,7 @@ function Invoke-BundleSmoke {
         }
 
         $bundleRoot = $extractedRoots[0].FullName
+        $script:BundleRoot = $bundleRoot
         $script:BundleLauncher = Join-Path $bundleRoot $hostBundleTarget.launcherPath
 
         & python3 $bundleContractVerifier --repo-root $script:RepoRoot --bundle-root $bundleRoot

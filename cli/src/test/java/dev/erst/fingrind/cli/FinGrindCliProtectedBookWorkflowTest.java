@@ -20,7 +20,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Field-level protected-book no-clobber and key-isolation workflow coverage. */
-class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
+class FinGrindCliProtectedBookWorkflowTest extends CliWorkflowFixtureSupport {
   @Test
   void run_openBookRefusesAnExistingDestinationBeforeResolvingItsKey() throws IOException {
     Path existingBookFilePath = tempDirectory.resolve("open-book-occupied.sqlite");
@@ -29,7 +29,7 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
     Path missingBookKeyFilePath = tempDirectory.resolve("missing-open-book.key");
 
     JsonCliRun result =
-        runJson(
+        runAttestedJson(
             founderAttestedArguments(
                 existingBookFilePath,
                 "open-book",
@@ -45,17 +45,26 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
                 "01-01",
                 "--book-start-effective-date",
                 "2026-01-01",
-                "--book-start-effective-date",
-                "2026-01-01",
                 "--book-template-id",
                 "OWNER_MANAGED_SERVICE",
                 "--accounting-basis",
                 "CASH"));
 
     assertEquals(7, result.exitCode(), result.output());
+    assertEquals("error", result.envelope().path("status").stringValue(), result.output());
     assertEquals(
         ContractErrors.Descriptor.BOOK_DESTINATION_OCCUPIED.code(),
         result.envelope().path("code").stringValue(),
+        result.output());
+    assertEquals("precondition", result.envelope().path("category").stringValue(), result.output());
+    assertEquals("--book-file", result.envelope().path("argument").stringValue(), result.output());
+    assertEquals(
+        "The selected --book-file destination already exists; open-book will not access or replace it.",
+        result.envelope().path("message").stringValue(),
+        result.output());
+    assertEquals(
+        "Choose a missing --book-file destination before opening a new book.",
+        result.envelope().path("hint").stringValue(),
         result.output());
     assertFalse(
         result
@@ -68,6 +77,9 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
         existingBookFilePath.toAbsolutePath().normalize().toString(),
         result.envelope().path("path").stringValue(),
         result.output());
+    assertTrue(result.envelope().has("relatedPaths"), result.output());
+    assertTrue(result.envelope().path("relatedPaths").isArray(), result.output());
+    assertEquals(0, result.envelope().path("relatedPaths").size(), result.output());
     assertArrayEquals(existingBookBefore, Files.readAllBytes(existingBookFilePath));
     assertFalse(Files.exists(missingBookKeyFilePath));
   }
@@ -95,7 +107,7 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
     Path restoredBookFilePath = root.resolve("restored").resolve("entity.sqlite");
     Path restoredBookKeyFilePath = root.resolve("restored").resolve("entity.key");
     JsonCliRun restored =
-        runJson(
+        runAttestedJson(
             attestedArgumentsForBook(
                 sourceBookFilePath,
                 "restore-book",
@@ -133,12 +145,13 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
             "generate-book-key-file",
             "--new-book-key-file",
             occupiedGeneratedKeyFilePath.toString()),
+        "error",
         "secret-target-occupied");
     assertArrayEquals(occupiedKeyBefore, Files.readAllBytes(occupiedGeneratedKeyFilePath));
 
     Path wrongSourceKeyFilePath = writeNamedBookKey("wrong-safety-source.key", "wrong-source-key");
     assertMaintenanceCollision(
-        runJson(
+        runAttestedJson(
             "rekey-book",
             "--book-file",
             sourceBookFilePath.toString(),
@@ -146,12 +159,13 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
             wrongSourceKeyFilePath.toString(),
             "--new-book-key-file",
             occupiedGeneratedKeyFilePath.toString()),
+        "rejected",
         "secret-target-occupied");
     assertArrayEquals(sourceBookBefore, Files.readAllBytes(sourceBookFilePath));
 
     Path rejectedBackupFilePath = root.resolve("backup").resolve("rejected.sqlite");
     assertMaintenanceCollision(
-        runJson(
+        runAttestedJson(
             "backup-book",
             "--book-file",
             sourceBookFilePath.toString(),
@@ -163,6 +177,7 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
             "018f0000-0000-7000-8000-000000000001",
             "--new-backup-key-file",
             occupiedGeneratedKeyFilePath.toString()),
+        "rejected",
         "secret-target-occupied");
     assertFalse(Files.exists(rejectedBackupFilePath));
     assertArrayEquals(sourceBookBefore, Files.readAllBytes(sourceBookFilePath));
@@ -171,7 +186,7 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
     Path backupFilePath = root.resolve("backup").resolve("entity.sqlite");
     Path backupKeyFilePath = root.resolve("backup").resolve("entity.key");
     JsonCliRun backup =
-        runJson(
+        runAttestedJson(
             "backup-book",
             "--book-file",
             sourceBookFilePath.toString(),
@@ -203,7 +218,7 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
     Path replacementKeyFilePath = root.resolve("destination").resolve("replacement.key");
 
     JsonCliRun restoreWithoutConsent =
-        runJson(
+        runAttestedJson(
             attestedArgumentsForBook(
                 sourceBookFilePath,
                 "restore-book",
@@ -215,7 +230,7 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
                 backupFilePath.toString(),
                 "--backup-key-file",
                 backupKeyFilePath.toString()));
-    assertMaintenanceCollision(restoreWithoutConsent, "book-destination-occupied");
+    assertMaintenanceCollision(restoreWithoutConsent, "rejected", "book-destination-occupied");
     assertEquals(
         destinationBookFilePath.toAbsolutePath().normalize().toString(),
         failureDetails(restoreWithoutConsent).path("bookFile").stringValue(),
@@ -225,7 +240,7 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
     assertFalse(Files.exists(replacementKeyFilePath));
 
     JsonCliRun deprecatedReplacement =
-        runJson(
+        runAttestedJson(
             attestedArgumentsForBook(
                 sourceBookFilePath,
                 "restore-book",
@@ -245,7 +260,7 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
     Path restoredBookFilePath = root.resolve("restored").resolve("entity.sqlite");
     Path restoredBookKeyFilePath = root.resolve("restored").resolve("entity.key");
     JsonCliRun restored =
-        runJson(
+        runAttestedJson(
             attestedArgumentsForBook(
                 sourceBookFilePath,
                 "restore-book",
@@ -289,7 +304,7 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
 
     Path rotatedSourceKeyFilePath = root.resolve("source").resolve("entity.rotated.key");
     JsonCliRun rekeyed =
-        runJson(
+        runAttestedJson(
             "rekey-book",
             "--book-file",
             sourceBookFilePath.toString(),
@@ -307,7 +322,7 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
     Path backupFilePath = root.resolve("backup").resolve("entity.sqlite");
     Path backupKeyFilePath = root.resolve("backup").resolve("entity.key");
     JsonCliRun backedUp =
-        runJson(
+        runAttestedJson(
             "backup-book",
             "--book-file",
             sourceBookFilePath.toString(),
@@ -324,7 +339,7 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
 
     Path restoredBookFilePath = root.resolve("restored").resolve("entity.sqlite");
     JsonCliRun restored =
-        runJson(
+        runAttestedJson(
             attestedArgumentsForBook(
                 sourceBookFilePath,
                 "restore-book",
@@ -356,18 +371,28 @@ class FinGrindCliProtectedBookWorkflowTest extends FinGrindCliTestSupport {
   }
 
   private JsonCliRun runJson(String... arguments) throws IOException {
+    return runJsonWithArguments(jsonArguments(arguments));
+  }
+
+  private JsonCliRun runAttestedJson(String... arguments) throws IOException {
+    return runJsonWithArguments(attestedJsonArguments(arguments));
+  }
+
+  private JsonCliRun runJsonWithArguments(String... arguments) throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     int exitCode =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock())
-            .run(jsonArguments(arguments));
+            .run(arguments);
     return new JsonCliRun(
         exitCode,
         new ObjectMapper().readTree(outputStream.toByteArray()),
         outputStream.toString(StandardCharsets.UTF_8));
   }
 
-  private static void assertMaintenanceCollision(JsonCliRun result, String expectedCode) {
+  private static void assertMaintenanceCollision(
+      JsonCliRun result, String expectedStatus, String expectedCode) {
     assertEquals(7, result.exitCode(), result.output());
+    assertEquals(expectedStatus, result.envelope().path("status").stringValue(), result.output());
     assertEquals(expectedCode, result.envelope().path("code").stringValue(), result.output());
   }
 

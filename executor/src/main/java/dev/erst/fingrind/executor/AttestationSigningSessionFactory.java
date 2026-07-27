@@ -1,7 +1,9 @@
 package dev.erst.fingrind.executor;
 
+import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
 import dev.erst.fingrind.core.attestation.AttestationAuthorizationLimits;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
+import dev.erst.fingrind.core.attestation.AttestationCredentialUseException;
 import dev.erst.fingrind.core.attestation.AttestationSigningSession;
 import java.nio.file.Path;
 import java.util.List;
@@ -19,6 +21,10 @@ public final class AttestationSigningSessionFactory {
         checkedSources.isEmpty() ? null : checkedSources.getFirst().encryptedKeyFilePath();
     try {
       return AttestationSigningSession.open(checkedSources);
+    } catch (AttestationAdmissionRejectedException exception) {
+      throw exception;
+    } catch (AttestationCredentialUseException exception) {
+      throw new AttestationCredentialException(exception.credentialPath(), exception);
     } catch (IllegalArgumentException exception) {
       if (activePath == null) {
         throw new IllegalArgumentException(

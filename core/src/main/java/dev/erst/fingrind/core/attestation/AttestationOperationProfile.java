@@ -1,27 +1,9 @@
 package dev.erst.fingrind.core.attestation;
 
-import java.util.Map;
 import java.util.Objects;
 
 /** Applies universal immutable-preimage checks before chain position or authority is considered. */
 final class AttestationOperationProfile {
-  private static final Map<Integer, Integer> REQUIRED_REQUEST_BY_EFFECT =
-      Map.ofEntries(
-          Map.entry(0x0030, 0x0128),
-          Map.entry(0x0050, 0x0130),
-          Map.entry(0x0051, 0x0130),
-          Map.entry(0x0060, 0x0131),
-          Map.entry(0x0061, 0x0131),
-          Map.entry(0x0062, 0x0131),
-          Map.entry(0x0070, 0x0132),
-          Map.entry(0x0071, 0x0132),
-          Map.entry(0x0072, 0x0132),
-          Map.entry(0x0080, 0x0133),
-          Map.entry(0x0081, 0x0133),
-          Map.entry(0x0082, 0x0133),
-          Map.entry(0x0090, 0x0134),
-          Map.entry(0x0092, 0x0134));
-
   private AttestationOperationProfile() {}
 
   static AttestationVerifiedOperationProvenance requireValid(
@@ -42,18 +24,52 @@ final class AttestationOperationProfile {
     }
     AttestationOperationProfileCatalog.profile(checkedKind)
         .requireTags(checkedRequest, checkedEffect);
-    requireNoOrphanLifecycleEffect(checkedRequest, checkedEffect);
+    if (checkedKind == AttestationOperationKind.EXECUTE_PLAN) {
+      AttestationPlanQualifiedFact.requireValid(checkedRequest, checkedEffect);
+    } else if (checkedKind == AttestationOperationKind.INTERIM_RESULT_SWEEP) {
+      AttestationInterimResultSweepEffectProfile.requireValid(checkedRequest, checkedEffect);
+    } else if (checkedKind == AttestationOperationKind.FISCAL_YEAR_CLOSE) {
+      AttestationFiscalYearCloseEffectProfile.requireValid(checkedRequest, checkedEffect);
+    } else if (isLifecycleOperation(checkedKind)) {
+      AttestationLifecycleEffectProfile.requireValid(checkedKind, checkedRequest, checkedEffect);
+      if (checkedKind == AttestationOperationKind.RESTORE_BOOK) {
+        AttestationLifecycleEffectProfile.requireRestorePredecessor(
+            Objects.requireNonNull(payload, "payload"), checkedRequest);
+      } else if (checkedKind == AttestationOperationKind.REKEY_BOOK) {
+        AttestationLifecycleEffectProfile.requireRekeyRecordedAt(
+            Objects.requireNonNull(payload, "payload"), checkedEffect);
+      }
+    }
     return provenance;
   }
 
-  private static void requireNoOrphanLifecycleEffect(
-      AttestationPreimage requestPreimage, AttestationPreimage effectPreimage) {
-    for (Map.Entry<Integer, Integer> relation : REQUIRED_REQUEST_BY_EFFECT.entrySet()) {
-      if (!AttestationPreimageFields.records(effectPreimage, relation.getKey()).isEmpty()
-          && AttestationPreimageFields.records(requestPreimage, relation.getValue()).isEmpty()) {
-        throw failure();
-      }
+  static void requireDirectProfile(
+      AttestationOperationKind operationKind,
+      AttestationPreimage requestPreimage,
+      AttestationPreimage effectPreimage) {
+    AttestationOperationKind checkedOperationKind =
+        Objects.requireNonNull(operationKind, "operationKind");
+    if (checkedOperationKind == AttestationOperationKind.EXECUTE_PLAN) {
+      throw failure();
     }
+    AttestationPreimage checkedRequest = Objects.requireNonNull(requestPreimage, "requestPreimage");
+    AttestationPreimage checkedEffect = Objects.requireNonNull(effectPreimage, "effectPreimage");
+    AttestationOperationProfileCatalog.profile(checkedOperationKind)
+        .requireTags(checkedRequest, checkedEffect);
+    if (checkedOperationKind == AttestationOperationKind.INTERIM_RESULT_SWEEP) {
+      AttestationInterimResultSweepEffectProfile.requireValid(checkedRequest, checkedEffect);
+    } else if (checkedOperationKind == AttestationOperationKind.FISCAL_YEAR_CLOSE) {
+      AttestationFiscalYearCloseEffectProfile.requireValid(checkedRequest, checkedEffect);
+    } else if (isLifecycleOperation(checkedOperationKind)) {
+      AttestationLifecycleEffectProfile.requireValid(
+          checkedOperationKind, checkedRequest, checkedEffect);
+    }
+  }
+
+  private static boolean isLifecycleOperation(AttestationOperationKind operationKind) {
+    return operationKind == AttestationOperationKind.BACKUP_CREATED
+        || operationKind == AttestationOperationKind.RESTORE_BOOK
+        || operationKind == AttestationOperationKind.REKEY_BOOK;
   }
 
   static AttestationAuthorizationException failure() {

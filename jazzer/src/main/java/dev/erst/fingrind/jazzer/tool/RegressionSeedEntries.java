@@ -16,11 +16,13 @@ final class RegressionSeedEntries {
       throws IOException {
     Objects.requireNonNull(projectDirectory, "projectDirectory must not be null");
     Objects.requireNonNull(harness, "harness must not be null");
+    Path canonicalProjectDirectory =
+        RegressionSeedRepositoryPathAdmission.canonicalProjectDirectory(projectDirectory);
     List<RegressionSeedCatalogEntry> entries = new ArrayList<>();
-    for (Path metadataPath : RegressionSeedPaths.metadataPaths(projectDirectory, harness)) {
+    for (Path metadataPath : RegressionSeedPaths.metadataPaths(canonicalProjectDirectory, harness)) {
       RegressionSeedMetadataInspection inspection =
           RegressionSeedMetadataInspector.inspectMetadataPath(
-              projectDirectory, harness, metadataPath);
+              canonicalProjectDirectory, harness, metadataPath);
       if (inspection.problem() != null) {
         throw new IllegalStateException(inspection.problem().message());
       }
@@ -32,9 +34,11 @@ final class RegressionSeedEntries {
 
   static List<RegressionSeedCatalogEntry> entries(Path projectDirectory) throws IOException {
     Objects.requireNonNull(projectDirectory, "projectDirectory must not be null");
+    Path canonicalProjectDirectory =
+        RegressionSeedRepositoryPathAdmission.canonicalProjectDirectory(projectDirectory);
     List<RegressionSeedCatalogEntry> entries = new ArrayList<>();
     for (JazzerHarness harness : JazzerHarness.values()) {
-      entries.addAll(entries(projectDirectory, harness));
+      entries.addAll(entries(canonicalProjectDirectory, harness));
     }
     entries.sort(
         Comparator.comparing(RegressionSeedCatalogEntry::targetKey)

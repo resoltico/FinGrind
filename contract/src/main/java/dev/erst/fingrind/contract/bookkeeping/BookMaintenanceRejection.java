@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
@@ -17,7 +18,7 @@ public sealed interface BookMaintenanceRejection
   }
 
   /** Returns the canonical machine descriptors for every permitted maintenance rejection. */
-  static List<ContractResponse.RejectionDescriptor> descriptors() {
+  static List<RejectionDescriptor> descriptors() {
     return BookMaintenanceRejectionDescriptors.descriptors();
   }
 
@@ -29,7 +30,8 @@ public sealed interface BookMaintenanceRejection
           BackupAcknowledgementConflict,
           BackupDestinationAlreadyExists,
           SecretTargetOccupied,
-          BookDestinationOccupied {}
+          BookDestinationOccupied,
+          RecoveryPending {}
 
   /** Closed subfamily of refusals caused by an invalid protected-book artifact. */
   sealed interface MaintenanceArtifactInvalid extends BookMaintenanceRejection
@@ -37,7 +39,7 @@ public sealed interface BookMaintenanceRejection
 
   /** Closed subfamily of refusals caused by an invalid maintenance request. */
   sealed interface MaintenanceRequestInvalid extends BookMaintenanceRejection
-      permits BackupSourceMatchesLiveBook {}
+      permits BackupSourceMatchesLiveBook, PairTargetsConflict {}
 
   /** Rejection for maintenance commands that require a clean closed live book path. */
   record BookHasBlockingArtifacts(Path bookFilePath, List<Path> blockingArtifactPaths)
@@ -69,6 +71,20 @@ public sealed interface BookMaintenanceRejection
     public BackupSourceMatchesLiveBook {
       bookFilePath = normalizedPath(bookFilePath, "bookFilePath");
       backupFilePath = normalizedPath(backupFilePath, "backupFilePath");
+    }
+  }
+
+  /**
+   * Rejection for a pair request whose admitted targets resolve to one final filesystem identity.
+   *
+   * <p>Both submitted spellings remain observable because a case-folded alias need not be lexically
+   * equal.
+   */
+  record PairTargetsConflict(Path bookTarget, Path generatedSecretTarget)
+      implements MaintenanceRequestInvalid {
+    public PairTargetsConflict {
+      bookTarget = normalizedPath(bookTarget, "bookTarget");
+      generatedSecretTarget = normalizedPath(generatedSecretTarget, "generatedSecretTarget");
     }
   }
 
@@ -120,6 +136,20 @@ public sealed interface BookMaintenanceRejection
   record BookDestinationOccupied(Path bookFilePath) implements MaintenanceStateConflict {
     public BookDestinationOccupied {
       bookFilePath = normalizedPath(bookFilePath, "bookFilePath");
+    }
+  }
+
+  /**
+   * Rejection for a different request while one verified pair-publication recovery remains pending.
+   */
+  record RecoveryPending(
+      OperationId recoveryOperation, Path bookTargetPath, Path generatedSecretTargetPath)
+      implements MaintenanceStateConflict {
+    public RecoveryPending {
+      Objects.requireNonNull(recoveryOperation, "recoveryOperation");
+      bookTargetPath = normalizedPath(bookTargetPath, "bookTargetPath");
+      generatedSecretTargetPath =
+          normalizedPath(generatedSecretTargetPath, "generatedSecretTargetPath");
     }
   }
 

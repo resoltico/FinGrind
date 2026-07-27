@@ -50,6 +50,8 @@ public final class AttestationSigningSession
       for (AttestationCredentialSource source : checkedSources) {
         opened.add(openCredential(source));
       }
+      AttestationCredentialAdmission.requireDistinctPublicKeyIds(
+          opened.stream().map(AttestationSigningCredential::publicCredential).toList());
       return new AttestationSigningSession(opened);
     } catch (RuntimeException exception) {
       opened.forEach(AttestationSigningCredential::close);
@@ -78,7 +80,7 @@ public final class AttestationSigningSession
    * Signs one independently restorable backup artifact with the session's BACKUP candidates.
    *
    * <p>Authorization remains enforced by artifact verification against the source snapshot's
-   * historical registry and policy; this boundary only performs custody-confined signing.
+   * reconstructed registry and policy; this boundary only performs custody-confined signing.
    */
   public byte[] createBackupArtifact(
       byte[] snapshot,

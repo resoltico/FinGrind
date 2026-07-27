@@ -1,13 +1,9 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.BookIdentity;
-import dev.erst.fingrind.core.CommittedProvenance;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
-import dev.erst.fingrind.executor.bookkeeping.AcceptedPosting;
-import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner;
-import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
@@ -62,7 +58,6 @@ final class SqliteClosingMutationOperations {
 
   InterimResultSweepOutcome interimResultSweep(
       LocalDate throughEffectiveDate,
-      LocalDate bookStartDate,
       BookIdentity bookIdentity,
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
@@ -71,21 +66,12 @@ final class SqliteClosingMutationOperations {
       AttestationOperationAuthorizer attestationAuthorizer) {
     return interimResultSweepOperations.interimResultSweep(
         throughEffectiveDate,
-        bookStartDate,
         bookIdentity,
         planner,
         currentUtcDate,
         sweptAt,
         postingIdGenerator,
         attestationAuthorizer);
-  }
-
-  InterimResultSweepOutcome interimResultSweep(
-      InterimResultSweepDraft interimResultSweepDraft,
-      PostingIdGenerator postingIdGenerator,
-      AttestationOperationAuthorizer attestationAuthorizer) {
-    return interimResultSweepOperations.interimResultSweep(
-        interimResultSweepDraft, postingIdGenerator, attestationAuthorizer);
   }
 
   FiscalYearCloseOutcome fiscalYearClose(
@@ -104,24 +90,5 @@ final class SqliteClosingMutationOperations {
         closedAt,
         postingIdGenerator,
         attestationAuthorizer);
-  }
-
-  CommittedPosting persistAcceptedPosting(
-      SqliteNativeDatabase activeDatabase,
-      AcceptedPosting acceptedPosting,
-      dev.erst.fingrind.core.RequestFingerprint requestFingerprint,
-      CommittedProvenance provenance,
-      PostingIdGenerator postingIdGenerator) {
-    return postingPersistence.persistAcceptedPosting(
-        activeDatabase, acceptedPosting, requestFingerprint, provenance, postingIdGenerator);
-  }
-
-  void persistMaterializedPosting(
-      SqliteNativeDatabase activeDatabase,
-      AcceptedPosting acceptedPosting,
-      dev.erst.fingrind.core.RequestFingerprint requestFingerprint,
-      CommittedPosting postingFact) {
-    postingPersistence.persistMaterializedPosting(
-        activeDatabase, acceptedPosting, postingFact, requestFingerprint);
   }
 }

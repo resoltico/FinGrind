@@ -1,11 +1,5 @@
-import dev.erst.fingrind.buildlogic.DistributionTextRendering
 import dev.erst.fingrind.buildlogic.FinGrindBuildMetadata
-import org.gradle.api.DefaultTask
-import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.provider.Property
-import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.OutputFile
-import org.gradle.api.tasks.TaskAction
+import dev.erst.fingrind.buildlogic.WriteRuntimeEnvironmentContractTask
 import org.gradle.api.tasks.JavaExec
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.testing.Test
@@ -17,29 +11,6 @@ plugins {
 
 description = "Canonical FinGrind public contract model and protocol metadata"
 val fingrindJavaVersion = FinGrindBuildMetadata.load(project).javaVersion
-
-abstract class WriteRuntimeEnvironmentContractTask : DefaultTask() {
-    @get:Input
-    abstract val sourceCheckoutJava: Property<String>
-
-    @get:OutputFile
-    abstract val outputFile: RegularFileProperty
-
-    @TaskAction
-    fun writeContract() {
-        val destination = outputFile.get().asFile
-        destination.parentFile.mkdirs()
-        destination.writeText(
-            """
-            {
-              "sourceCheckoutJava": ${DistributionTextRendering.jsonString(sourceCheckoutJava.get())}
-            }
-            """
-                .trimIndent()
-                + System.lineSeparator(),
-        )
-    }
-}
 
 dependencies {
     api(project(":core"))
@@ -86,6 +57,23 @@ tasks.register<JavaExec>("syncUserInstallDocs") {
     classpath = sourceSets.test.get().runtimeClasspath
     mainClass.set("dev.erst.fingrind.contract.protocol.ProtocolUserInstallDocumentSyncMain")
     args(rootProject.layout.projectDirectory.asFile.absolutePath)
+}
+
+tasks.register<JavaExec>("syncCapabilityBaseline") {
+    group = "verification"
+    description =
+        "Synchronizes the release-smoke capability baseline from the canonical protocol catalog."
+    dependsOn(tasks.named("classes"))
+    classpath = sourceSets.main.get().runtimeClasspath
+    mainClass.set("dev.erst.fingrind.contract.discovery.ProtocolCapabilityBaselineSyncMain")
+    args(
+        rootProject.layout.projectDirectory
+            .file(
+                "contract/src/main/resources/dev/erst/fingrind/contract/protocol/capability-baseline.json",
+            )
+            .asFile
+            .absolutePath,
+    )
 }
 
 tasks.named<Test>("test") {

@@ -33,9 +33,9 @@ class SqliteOwnedDestinationReservationTest extends SqliteArtifactPublicationTes
     }
 
     assertEquals("published", Files.readString(finalPath));
-    publishedStage.discard();
+    publishedStage.releaseRetained();
     assertEquals("published", Files.readString(finalPath));
-    assertTrue(SqliteOwnedStageRecord.findFor(finalPath).isEmpty());
+    assertFalse(SqliteOwnedStageRecord.findFor(finalPath).isEmpty());
   }
 
   @Test
@@ -50,7 +50,7 @@ class SqliteOwnedDestinationReservationTest extends SqliteArtifactPublicationTes
     }
 
     assertFalse(Files.exists(finalPath));
-    assertTrue(SqliteOwnedStageRecord.findFor(finalPath).isEmpty());
+    assertFalse(SqliteOwnedStageRecord.findFor(finalPath).isEmpty());
   }
 
   @Test
@@ -80,7 +80,7 @@ class SqliteOwnedDestinationReservationTest extends SqliteArtifactPublicationTes
       assertThrows(
           FileAlreadyExistsException.class,
           () -> reservation.publishRetainingStage(staged, Files::createLink));
-      staged.discard();
+      staged.releaseRetained();
     }
     assertEquals("external", Files.readString(finalPath));
   }
@@ -100,7 +100,7 @@ class SqliteOwnedDestinationReservationTest extends SqliteArtifactPublicationTes
       assertThrows(
           IllegalStateException.class,
           () -> reservation.publishRetainingStage(staged, Files::createLink));
-      staged.discard();
+      staged.releaseRetained();
     }
   }
 
@@ -109,7 +109,9 @@ class SqliteOwnedDestinationReservationTest extends SqliteArtifactPublicationTes
       throws Exception {
     Path finalPath =
         tempDirectory.resolve("Rīga büro").resolve("-entity backup [windows-smoke].sqlite");
-    Files.createDirectories(finalPath.getParent());
+    Path finalParent = java.util.Objects.requireNonNull(finalPath.getParent(), "finalPath parent");
+    Files.createDirectories(finalParent);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(finalParent);
 
     SqliteOwnedStagedArtifact publishedStage;
     try (SqliteOwnedDestinationReservation reservation =
@@ -124,7 +126,7 @@ class SqliteOwnedDestinationReservationTest extends SqliteArtifactPublicationTes
     }
 
     assertEquals("published", Files.readString(finalPath));
-    publishedStage.discard();
-    assertTrue(SqliteOwnedStageRecord.findFor(finalPath).isEmpty());
+    publishedStage.releaseRetained();
+    assertFalse(SqliteOwnedStageRecord.findFor(finalPath).isEmpty());
   }
 }

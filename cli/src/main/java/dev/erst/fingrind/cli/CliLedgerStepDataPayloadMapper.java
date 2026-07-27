@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.cli.json.CliPlanJsonModels;
+import dev.erst.fingrind.cli.json.CliPlanResultJsonModels;
+import dev.erst.fingrind.cli.json.CliPlanStepDataJsonModels;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.workflow.LedgerFact;
@@ -15,7 +16,7 @@ import org.jspecify.annotations.Nullable;
 final class CliLedgerStepDataPayloadMapper {
   private CliLedgerStepDataPayloadMapper() {}
 
-  static CliPlanJsonModels.@Nullable LedgerStepDataPayload ledgerStepDataPayload(
+  static CliPlanStepDataJsonModels.@Nullable LedgerStepDataPayload ledgerStepDataPayload(
       LedgerJournalEntry entry) {
     try {
       LedgerJournalKind kind = entry.kind();
@@ -29,12 +30,12 @@ final class CliLedgerStepDataPayloadMapper {
         return queryStepDataPayload(entry);
       }
       if (kind == LedgerStepKind.DECLARE_ACCOUNT) {
-        return new CliPlanJsonModels.AccountDeclarationStepDataPayload(
+        return new CliPlanStepDataJsonModels.AccountDeclarationStepDataPayload(
             CliLedgerFactAccess.requiredTextFact(entry.facts(), "outcome"),
             CliLedgerBookQueryPayloadMapper.accountPayload(entry.facts()));
       }
       if (kind == LedgerStepKind.DECLARE_TAX_REGISTRATION) {
-        return new CliPlanJsonModels.TaxRegistrationDeclarationStepDataPayload(
+        return new CliPlanStepDataJsonModels.TaxRegistrationDeclarationStepDataPayload(
             CliLedgerFactAccess.requiredTextFact(entry.facts(), "outcome"),
             CliLedgerTaxRegistrationPayloadMapper.taxRegistrationPayload(entry.facts()));
       }
@@ -42,7 +43,7 @@ final class CliLedgerStepDataPayloadMapper {
         return assertionStepDataPayload(
             Objects.requireNonNull(entry.detailKind(), "detailKind"), entry.facts());
       }
-      return new CliPlanJsonModels.PlanBoundaryStepDataPayload(
+      return new CliPlanStepDataJsonModels.PlanBoundaryStepDataPayload(
           Objects.requireNonNull(entry.boundaryCheckpoint(), "boundaryCheckpoint").wireValue());
     } catch (IllegalArgumentException ignored) {
       return null;
@@ -61,15 +62,15 @@ final class CliLedgerStepDataPayloadMapper {
         || kind == LedgerStepKind.ACCOUNT_BALANCE;
   }
 
-  static CliPlanJsonModels.LedgerStepFailurePayload ledgerStepFailurePayload(
+  static CliPlanResultJsonModels.LedgerStepFailurePayload ledgerStepFailurePayload(
       LedgerStepFailure failure) {
-    return new CliPlanJsonModels.LedgerStepFailurePayload(
+    return new CliPlanResultJsonModels.LedgerStepFailurePayload(
         failure.code(),
         failure.message(),
         CliLedgerFactPayloadMapper.factPayloads(failure.facts()));
   }
 
-  private static CliPlanJsonModels.LedgerStepDataPayload queryStepDataPayload(
+  private static CliPlanStepDataJsonModels.LedgerStepDataPayload queryStepDataPayload(
       LedgerJournalEntry entry) {
     if (entry.kind() == LedgerStepKind.INSPECT_BOOK) {
       return bookInspectionStepDataPayload(entry.facts());
@@ -78,7 +79,7 @@ final class CliLedgerStepDataPayloadMapper {
       return accountPageStepDataPayload(entry.facts());
     }
     if (entry.kind() == LedgerStepKind.GET_POSTING) {
-      return new CliPlanJsonModels.PostingStepDataPayload(
+      return new CliPlanStepDataJsonModels.PostingStepDataPayload(
           CliLedgerBookQueryPayloadMapper.postingPayload(entry.facts()));
     }
     if (entry.kind() == LedgerStepKind.LIST_POSTINGS) {
@@ -87,33 +88,33 @@ final class CliLedgerStepDataPayloadMapper {
     return accountBalanceStepDataPayload(entry.facts());
   }
 
-  private static CliPlanJsonModels.PreflightEntryStepDataPayload preflightEntryStepDataPayload(
-      List<LedgerFact> facts) {
-    return new CliPlanJsonModels.PreflightEntryStepDataPayload(
+  private static CliPlanStepDataJsonModels.PreflightEntryStepDataPayload
+      preflightEntryStepDataPayload(List<LedgerFact> facts) {
+    return new CliPlanStepDataJsonModels.PreflightEntryStepDataPayload(
         CliLedgerFactAccess.requiredTextFact(facts, "idempotencyKey"),
         CliLedgerFactAccess.requiredTextFact(facts, "effectiveDate"));
   }
 
-  private static CliPlanJsonModels.CommittedEntryStepDataPayload committedEntryStepDataPayload(
-      List<LedgerFact> facts) {
-    return new CliPlanJsonModels.CommittedEntryStepDataPayload(
+  private static CliPlanStepDataJsonModels.CommittedEntryStepDataPayload
+      committedEntryStepDataPayload(List<LedgerFact> facts) {
+    return new CliPlanStepDataJsonModels.CommittedEntryStepDataPayload(
         CliLedgerFactAccess.requiredTextFact(facts, "postingId"),
         CliLedgerFactAccess.requiredTextFact(facts, "idempotencyKey"),
         CliLedgerFactAccess.requiredTextFact(facts, "effectiveDate"),
         CliLedgerFactAccess.requiredTextFact(facts, "recordedAt"));
   }
 
-  private static CliPlanJsonModels.BookInspectionStepDataPayload bookInspectionStepDataPayload(
-      List<LedgerFact> facts) {
-    return new CliPlanJsonModels.BookInspectionStepDataPayload(
+  private static CliPlanStepDataJsonModels.BookInspectionStepDataPayload
+      bookInspectionStepDataPayload(List<LedgerFact> facts) {
+    return new CliPlanStepDataJsonModels.BookInspectionStepDataPayload(
         CliLedgerFactAccess.requiredTextFact(facts, "state"),
         CliLedgerFactAccess.requiredFlagFact(facts, "initialized"),
         CliLedgerFactAccess.requiredFlagFact(facts, "compatibleWithCurrentBinary"));
   }
 
-  private static CliPlanJsonModels.AccountPageStepDataPayload accountPageStepDataPayload(
+  private static CliPlanStepDataJsonModels.AccountPageStepDataPayload accountPageStepDataPayload(
       List<LedgerFact> facts) {
-    return new CliPlanJsonModels.AccountPageStepDataPayload(
+    return new CliPlanStepDataJsonModels.AccountPageStepDataPayload(
         CliLedgerFactAccess.requiredCountFact(facts, "count"),
         CliLedgerFactAccess.requiredCountFact(facts, "pageLimit"),
         CliLedgerFactAccess.optionalTextFact(facts, "nextCursor"),
@@ -123,9 +124,9 @@ final class CliLedgerStepDataPayloadMapper {
             .toList());
   }
 
-  private static CliPlanJsonModels.PostingPageStepDataPayload postingPageStepDataPayload(
+  private static CliPlanStepDataJsonModels.PostingPageStepDataPayload postingPageStepDataPayload(
       List<LedgerFact> facts) {
-    return new CliPlanJsonModels.PostingPageStepDataPayload(
+    return new CliPlanStepDataJsonModels.PostingPageStepDataPayload(
         CliLedgerFactAccess.requiredCountFact(facts, "count"),
         CliLedgerFactAccess.requiredCountFact(facts, "pageLimit"),
         CliLedgerFactAccess.optionalTextFact(facts, "nextCursor"),
@@ -135,9 +136,9 @@ final class CliLedgerStepDataPayloadMapper {
             .toList());
   }
 
-  private static CliPlanJsonModels.AccountBalanceStepDataPayload accountBalanceStepDataPayload(
-      List<LedgerFact> facts) {
-    return new CliPlanJsonModels.AccountBalanceStepDataPayload(
+  private static CliPlanStepDataJsonModels.AccountBalanceStepDataPayload
+      accountBalanceStepDataPayload(List<LedgerFact> facts) {
+    return new CliPlanStepDataJsonModels.AccountBalanceStepDataPayload(
         CliLedgerBookQueryPayloadMapper.accountPayload(
             CliLedgerFactAccess.requiredGroupFacts(facts, "account")),
         CliLedgerFactAccess.optionalTextFact(facts, "effectiveDateFrom"),
@@ -148,14 +149,14 @@ final class CliLedgerStepDataPayloadMapper {
             .toList());
   }
 
-  private static CliPlanJsonModels.LedgerStepDataPayload assertionStepDataPayload(
+  private static CliPlanStepDataJsonModels.LedgerStepDataPayload assertionStepDataPayload(
       LedgerAssertionKind detailKind, List<LedgerFact> facts) {
     return switch (detailKind) {
       case ACCOUNT_DECLARED, ACCOUNT_ACTIVE ->
-          new CliPlanJsonModels.AccountCodeAssertionStepDataPayload(
+          new CliPlanStepDataJsonModels.AccountCodeAssertionStepDataPayload(
               CliLedgerFactAccess.requiredTextFact(facts, "accountCode"));
       case POSTING_EXISTS ->
-          new CliPlanJsonModels.PostingIdAssertionStepDataPayload(
+          new CliPlanStepDataJsonModels.PostingIdAssertionStepDataPayload(
               CliLedgerFactAccess.requiredTextFact(facts, "postingId"));
       case ACCOUNT_BALANCE_EQUALS -> accountBalanceStepDataPayload(facts);
     };

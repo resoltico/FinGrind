@@ -101,6 +101,51 @@ grep -Fx "python=${preferred_stub_dir}/python3.12" "${preferred_log}" >/dev/null
     "prepare_python_runtime_env must prefer an on-path exact Python 3.12 interpreter"
 grep -Fx "uv=${preferred_stub_dir}/uv" "${preferred_log}" >/dev/null || die \
     "prepare_python_runtime_env must publish the on-path uv launcher when available"
+
+release_smoke_probe="${scenario_dir}/release-smoke-probe.py"
+printf 'raise SystemExit(0)\n' > "${release_smoke_probe}"
+tools_stub_dir="${scenario_dir}/release-smoke-tools"
+mkdir -p "${tools_stub_dir}"
+ln -s "${preferred_stub_dir}/python3.12" "${tools_stub_dir}/python3.12"
+ln -s "${preferred_stub_dir}/python3" "${tools_stub_dir}/python3"
+cat > "${tools_stub_dir}/uv" <<'EOF'
+#!/bin/bash
+if [[ "${1:-}" == "--version" ]]; then
+    printf 'uv 0.11.25\n'
+    exit 0
+fi
+if [[ "${1:-}" == "run" ]]; then
+    printf '%s\n' "$*" >> "${UV_RUN_LOG}"
+    exit 0
+fi
+printf 'unexpected uv invocation\n' >&2
+exit 1
+EOF
+chmod +x "${tools_stub_dir}/uv"
+release_smoke_uv_log="${scenario_dir}/release-smoke-uv.log"
+REPO_ROOT="${repo_root}" STUB_PATH="${tools_stub_dir}" ORIGINAL_PATH="${PATH}" \
+    UV_RUN_LOG="${release_smoke_uv_log}" RELEASE_SMOKE_PROBE="${release_smoke_probe}" \
+    PYTHON_RUNTIME_SUPPORT="${python_runtime_support}" bash <<'EOF'
+set -euo pipefail
+cd "${REPO_ROOT}"
+export PATH="${STUB_PATH}:${ORIGINAL_PATH}"
+unset ORG_GRADLE_PROJECT_fingrindPythonExecutable
+unset ORG_GRADLE_PROJECT_fingrindUvExecutable
+unset FINGRIND_PYTHON_EXECUTABLE
+# shellcheck source=/dev/null
+source "${PYTHON_RUNTIME_SUPPORT}"
+printf 'support-dir=%s\n' "${python_runtime_support_dir}" >> "${UV_RUN_LOG}"
+printf 'repo-root=%s\n' "${python_runtime_support_repo_root}" >> "${UV_RUN_LOG}"
+prepare_python_runtime_env
+fingrind_run_python_with_tools "${RELEASE_SMOKE_PROBE}"
+EOF
+expected_release_smoke_uv_run="run --no-project --python ${tools_stub_dir}/python3.12 --with-requirements ${repo_root}/requirements-release-smoke-workflow.txt python ${release_smoke_probe}"
+grep -Fx "support-dir=${repo_root}/scripts" "${release_smoke_uv_log}" >/dev/null || die \
+    "sourcing Python runtime support from the repository root did not resolve its own scripts directory"
+grep -Fx "repo-root=${repo_root}" "${release_smoke_uv_log}" >/dev/null || die \
+    "sourcing Python runtime support from the repository root did not resolve its own repository root"
+grep -Fx "${expected_release_smoke_uv_run}" "${release_smoke_uv_log}" >/dev/null || die \
+    "repo-owned release-smoke tools must run through pinned uv with their isolated requirements"
 STUB_PATH="${preferred_stub_dir}" ORIGINAL_PATH="${PATH}" PYTHON_RUNTIME_SUPPORT="${python_runtime_support}" bash <<'EOF'
 set -euo pipefail
 export PATH="${STUB_PATH}:${ORIGINAL_PATH}"
@@ -158,6 +203,25 @@ mismatched_uv_log="${scenario_dir}/mismatched-uv.log"
 run_with_stub_path "${mismatched_uv_stub_dir}" "${mismatched_uv_log}"
 grep -Fx 'uv=missing' "${mismatched_uv_log}" >/dev/null || die \
     "prepare_python_runtime_env must not abort or publish a mismatched uv launcher"
+missing_uv_log="${scenario_dir}/missing-release-smoke-uv.log"
+if STUB_PATH="${mismatched_uv_stub_dir}" ORIGINAL_PATH="${PATH}" \
+    RELEASE_SMOKE_PROBE="${release_smoke_probe}" PYTHON_RUNTIME_SUPPORT="${python_runtime_support}" \
+    bash <<'EOF' >"${missing_uv_log}" 2>&1
+set -euo pipefail
+export PATH="${STUB_PATH}:${ORIGINAL_PATH}"
+unset ORG_GRADLE_PROJECT_fingrindPythonExecutable
+unset ORG_GRADLE_PROJECT_fingrindUvExecutable
+unset FINGRIND_PYTHON_EXECUTABLE
+# shellcheck source=/dev/null
+source "${PYTHON_RUNTIME_SUPPORT}"
+prepare_python_runtime_env
+fingrind_run_python_with_tools "${RELEASE_SMOKE_PROBE}"
+EOF
+then
+    die "repo-owned release-smoke tools must reject a missing or mismatched pinned uv launcher"
+fi
+grep -F 'Install the pinned uv launcher' "${missing_uv_log}" >/dev/null || die \
+    "repo-owned release-smoke tools must provide an actionable pinned-uv bootstrap hint"
 
 user_uv_stub_dir="${scenario_dir}/user-uv"
 user_uv_scripts_dir="${scenario_dir}/user-uv-scripts"

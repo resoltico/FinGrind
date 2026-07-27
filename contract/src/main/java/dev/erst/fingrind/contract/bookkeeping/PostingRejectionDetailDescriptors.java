@@ -1,17 +1,18 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.FieldDescriptor;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import java.util.List;
 
 /** Owns detail payload catalogs published beside canonical posting rejections. */
 final class PostingRejectionDetailDescriptors {
   private PostingRejectionDetailDescriptors() {}
 
-  private static ContractResponse.FieldDescriptor field(String name, String description) {
-    return new ContractResponse.FieldDescriptor(name, description);
+  private static FieldDescriptor field(String name, String description) {
+    return new FieldDescriptor(name, description);
   }
 
-  static List<ContractResponse.FieldDescriptor> fields(FieldOwner owner) {
+  static List<FieldDescriptor> fields(FieldOwner owner) {
     return owner.descriptors();
   }
 
@@ -19,13 +20,13 @@ final class PostingRejectionDetailDescriptors {
   enum FieldOwner {
     NONE {
       @Override
-      List<ContractResponse.FieldDescriptor> descriptors() {
+      List<FieldDescriptor> descriptors() {
         return List.of();
       }
     },
     ENTRY_SEMANTICS_VIOLATIONS {
       @Override
-      List<ContractResponse.FieldDescriptor> descriptors() {
+      List<FieldDescriptor> descriptors() {
         return List.of(
             field(
                 "violations",
@@ -34,7 +35,7 @@ final class PostingRejectionDetailDescriptors {
     },
     ACCOUNT_STATE_VIOLATIONS {
       @Override
-      List<ContractResponse.FieldDescriptor> descriptors() {
+      List<FieldDescriptor> descriptors() {
         return List.of(
             field(
                 "violations",
@@ -43,7 +44,7 @@ final class PostingRejectionDetailDescriptors {
     },
     EFFECTIVE_DATE_HORIZON {
       @Override
-      List<ContractResponse.FieldDescriptor> descriptors() {
+      List<FieldDescriptor> descriptors() {
         return List.of(
             field("attemptedEffectiveDate", "Rejected effective date from the posting request."),
             field("currentUtcDate", "Current UTC date resolved from the application clock."));
@@ -51,7 +52,7 @@ final class PostingRejectionDetailDescriptors {
     },
     BOOK_START_EFFECTIVE_DATE {
       @Override
-      List<ContractResponse.FieldDescriptor> descriptors() {
+      List<FieldDescriptor> descriptors() {
         return List.of(
             field("attemptedEffectiveDate", "Rejected effective date from the posting request."),
             field(
@@ -61,7 +62,7 @@ final class PostingRejectionDetailDescriptors {
     },
     FUNCTIONAL_CURRENCY_MISMATCH {
       @Override
-      List<ContractResponse.FieldDescriptor> descriptors() {
+      List<FieldDescriptor> descriptors() {
         return List.of(
             field("functionalCurrency", "Functional currency declared by the selected book."),
             field(
@@ -70,7 +71,7 @@ final class PostingRejectionDetailDescriptors {
     },
     CLOSED_PERIOD_VIOLATION {
       @Override
-      List<ContractResponse.FieldDescriptor> descriptors() {
+      List<FieldDescriptor> descriptors() {
         return List.of(
             field(
                 "transferredThroughEffectiveDate",
@@ -80,7 +81,7 @@ final class PostingRejectionDetailDescriptors {
     },
     OPENING_POSITION_WINDOW_CLOSED {
       @Override
-      List<ContractResponse.FieldDescriptor> descriptors() {
+      List<FieldDescriptor> descriptors() {
         return List.of(
             field(
                 "firstBlockingPostingKind",
@@ -92,7 +93,7 @@ final class PostingRejectionDetailDescriptors {
     },
     OPENING_POSITION_TOUCHES_NOMINAL_ACCOUNT {
       @Override
-      List<ContractResponse.FieldDescriptor> descriptors() {
+      List<FieldDescriptor> descriptors() {
         return List.of(
             field(
                 "accountCode",
@@ -104,7 +105,7 @@ final class PostingRejectionDetailDescriptors {
     },
     RESERVED_RESULT_CLASSIFICATION {
       @Override
-      List<ContractResponse.FieldDescriptor> descriptors() {
+      List<FieldDescriptor> descriptors() {
         return List.of(
             field(
                 "accountCode", "Declared accountCode that uses the reserved close classification."),
@@ -115,7 +116,7 @@ final class PostingRejectionDetailDescriptors {
     },
     REVERSAL_TARGET_NOT_FOUND {
       @Override
-      List<ContractResponse.FieldDescriptor> descriptors() {
+      List<FieldDescriptor> descriptors() {
         return List.of(
             field(
                 "priorPostingId",
@@ -124,7 +125,7 @@ final class PostingRejectionDetailDescriptors {
     },
     REVERSAL_TARGET_IS_REVERSAL {
       @Override
-      List<ContractResponse.FieldDescriptor> descriptors() {
+      List<FieldDescriptor> descriptors() {
         return List.of(
             field(
                 "priorPostingId",
@@ -133,7 +134,7 @@ final class PostingRejectionDetailDescriptors {
     },
     REVERSAL_ALREADY_EXISTS {
       @Override
-      List<ContractResponse.FieldDescriptor> descriptors() {
+      List<FieldDescriptor> descriptors() {
         return List.of(
             field(
                 "priorPostingId",
@@ -142,7 +143,7 @@ final class PostingRejectionDetailDescriptors {
     },
     REVERSAL_DOES_NOT_NEGATE_TARGET {
       @Override
-      List<ContractResponse.FieldDescriptor> descriptors() {
+      List<FieldDescriptor> descriptors() {
         return List.of(
             field(
                 "priorPostingId",
@@ -150,30 +151,30 @@ final class PostingRejectionDetailDescriptors {
       }
     };
 
-    abstract List<ContractResponse.FieldDescriptor> descriptors();
+    abstract List<FieldDescriptor> descriptors();
   }
 
   /** Canonical owner for nested rejection catalogs published by posting rejections. */
   enum RejectionOwner {
     NONE {
       @Override
-      List<ContractResponse.RejectionDescriptor> descriptors() {
+      List<RejectionDescriptor> descriptors() {
         return List.of();
       }
     },
     ENTRY_SEMANTICS {
       @Override
-      List<ContractResponse.RejectionDescriptor> descriptors() {
+      List<RejectionDescriptor> descriptors() {
         return EntrySemanticsViolationOwner.descriptors();
       }
     },
     ACCOUNT_STATE {
       @Override
-      List<ContractResponse.RejectionDescriptor> descriptors() {
+      List<RejectionDescriptor> descriptors() {
         return AccountStateViolationOwner.descriptors();
       }
     };
 
-    abstract List<ContractResponse.RejectionDescriptor> descriptors();
+    abstract List<RejectionDescriptor> descriptors();
   }
 }

@@ -34,8 +34,8 @@ class CliQueryContextResponseWriterTest extends CliResponseWriterTestSupport {
     TaxRegistrationPage registrations =
         new TaxRegistrationPage(bookIdentity(), List.of(registration), 10, Optional.empty());
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliResponseWriterBookReadSupport writer =
-        new CliResponseWriterBookReadSupport(utf8PrintStream(outputStream));
+    CliBookReadResponseWriterFixture writer =
+        new CliBookReadResponseWriterFixture(utf8PrintStream(outputStream));
 
     writer.writeGetPostingResult(foundPosting(postingFact), true, OutputMode.TEXT);
     String postingText = outputStream.toString(StandardCharsets.UTF_8);

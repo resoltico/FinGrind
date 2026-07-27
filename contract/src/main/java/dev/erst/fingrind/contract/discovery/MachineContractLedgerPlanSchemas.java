@@ -1,7 +1,7 @@
 package dev.erst.fingrind.contract.discovery;
 
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
-import dev.erst.fingrind.contract.runtime.ContractResponse.PlanExecutionDescriptor;
+import dev.erst.fingrind.contract.runtime.PlanExecutionDescriptor;
 import java.util.Arrays;
 import java.util.Map;
 

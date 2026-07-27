@@ -20,8 +20,10 @@ def reviewed_surface_definition_violations(
         and reviewed.budget_variance_reason is None
     ):
         return [
-            f"{relative_path.as_posix()}: reviewed structural surface for {reviewed.owner} widens "
-            f"the {default_budget.role_name} budget without an explicit variance reason."
+            (
+                f"{relative_path.as_posix()}: reviewed structural surface for {reviewed.owner} widens "
+                f"the {default_budget.role_name} budget without an explicit variance reason."
+            )
         ]
     return []
 

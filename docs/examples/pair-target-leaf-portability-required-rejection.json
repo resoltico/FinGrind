@@ -1,0 +1,15 @@
+{
+  "status": "rejected",
+  "code": "artifact-path-invalid",
+  "message": "The selected protected-book artifact path violates the filesystem contract for its declared role.",
+  "hint": "When protected-book and generated-secret targets share one parent directory, choose distinct portable lowercase ASCII leaf names, or choose distinct parent directories, then rerun the maintenance command.",
+  "argument": null,
+  "details": {
+    "artifactRole": "backup-target",
+    "artifactPath": "/workspace/targets/Book.sqlite",
+    "pathFailure": "pair-target-leaf-portability-required"
+  },
+  "path": "/workspace/targets/Book.sqlite",
+  "relatedPaths": [],
+  "category": "precondition"
+}

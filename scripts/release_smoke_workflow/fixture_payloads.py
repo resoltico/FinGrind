@@ -4,6 +4,13 @@ from typing import Any
 
 from .evidence_fixtures import posting_evidence, posting_provenance
 
+PLAN_TAX_PAYABLE_ACCOUNT_CODE = "release-smoke-vat-payable"
+PLAN_TAX_RECOVERABLE_ACCOUNT_CODE = "release-smoke-vat-recoverable"
+PLAN_TAX_REGISTRATION_ID = "release-smoke-vat"
+PLAN_REACTIVATE_RENAME_ACCOUNT_CODE = "release-smoke-plan-reactivate-rename"
+PLAN_REACTIVATE_RENAME_INITIAL_NAME = "Release Smoke Plan Reactivation Target"
+PLAN_REACTIVATE_RENAME_FINAL_NAME = "Release Smoke Plan Renamed Target"
+
 
 def sale_request(
     *,
@@ -59,6 +66,39 @@ def expense_request(
             request_prefix, command_suffix, idempotency_suffix, causation_suffix
         ),
     }
+
+
+def taxed_sale_request(
+    *,
+    request_prefix: str,
+    effective_date: str,
+    cash_account_code: str,
+    revenue_account_code: str,
+    minor_units: str,
+    tax_registration_id: str,
+    tax_code: str,
+    evidence_suffix: str,
+    command_suffix: str,
+    idempotency_suffix: str,
+    causation_suffix: str,
+) -> dict[str, Any]:
+    """Build a sale request whose tax selection resolves against a declared registration."""
+    payload = sale_request(
+        request_prefix=request_prefix,
+        effective_date=effective_date,
+        cash_account_code=cash_account_code,
+        revenue_account_code=revenue_account_code,
+        minor_units=minor_units,
+        evidence_suffix=evidence_suffix,
+        command_suffix=command_suffix,
+        idempotency_suffix=idempotency_suffix,
+        causation_suffix=causation_suffix,
+    )
+    payload["tax"] = {
+        "taxRegistrationId": tax_registration_id,
+        "taxCode": tax_code,
+    }
+    return payload
 
 
 def raw_transfer_request(

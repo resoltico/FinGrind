@@ -61,7 +61,7 @@ final class SqliteBookKeyFileSecuritySupport {
   }
 
   static String generalKeyFileHint() {
-    return "Create a private owner-only parent directory yourself, tighten it if needed, then choose a regular non-symlink key file path beneath it and rerun the command.";
+    return "Create a private owner-only parent directory yourself, then choose a regular non-symlink key file path beneath it and rerun the command.";
   }
 
   static ContractFailure unsupportedSecureFilesystem(Path path, RuntimeException cause) {

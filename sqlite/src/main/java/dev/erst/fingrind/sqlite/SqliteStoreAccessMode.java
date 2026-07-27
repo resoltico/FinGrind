@@ -6,6 +6,8 @@ import java.util.Objects;
 enum SqliteStoreAccessMode {
   /** Opens one existing book in read-only mode. */
   READ_ONLY(SqliteNativeOpenMode.READ_ONLY, true, false, false, true, false),
+  /** Defers a missing read-only book open so a plan can emit its canonical journal rejection. */
+  PLAN_READ_ONLY(SqliteNativeOpenMode.READ_ONLY, true, false, false, true, false),
   /** Opens one existing book for read/write mutations without creating new files. */
   READ_WRITE_EXISTING(SqliteNativeOpenMode.READ_WRITE_EXISTING, false, true, false, true, false),
   /** Opens one book for read/write access and creates the file when needed. */

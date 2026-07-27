@@ -29,7 +29,7 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
     runJsonCommand(openBookKeyFileArguments(bookFile, bookKeyFile));
 
     JsonNode amended =
-        runJsonCommand(
+        runAttestedJsonCommand(
             "amend-account",
             "--book-file",
             bookFile.toString(),
@@ -43,7 +43,7 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
         amended.path("payload").path("account").path("accountName").stringValue());
 
     JsonNode contribution =
-        runJsonCommand(
+        runAttestedJsonCommand(
             "record-owner-contribution",
             "--book-file",
             bookFile.toString(),
@@ -55,7 +55,7 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
     assertFalse(contributionPostingId.isBlank());
 
     JsonNode nonZeroRetirement =
-        runJsonDiagnosticsCommandExpectingExit(
+        runAttestedJsonDiagnosticsCommandExpectingExit(
             2,
             "retire-account",
             "--book-file",
@@ -66,7 +66,7 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
             retireCashRequest.toString());
     assertEquals("account-balance-not-zero", nonZeroRetirement.path("code").stringValue());
 
-    runJsonCommand(
+    runAttestedJsonCommand(
         "record-owner-withdrawal",
         "--book-file",
         bookFile.toString(),
@@ -76,7 +76,7 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
         withdrawalRequest.toString());
 
     JsonNode postedAccountAmendment =
-        runJsonDiagnosticsCommandExpectingExit(
+        runAttestedJsonDiagnosticsCommandExpectingExit(
             2,
             "amend-account",
             "--book-file",
@@ -91,7 +91,7 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
         postedAccountAmendment.toPrettyString());
 
     JsonNode retired =
-        runJsonCommand(
+        runAttestedJsonCommand(
             "retire-account",
             "--book-file",
             bookFile.toString(),
@@ -107,7 +107,7 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
             "owner-contribution-after-retirement.json",
             ownerContributionRequestJson("ordinary-after-retirement", "1000"));
     JsonNode blockedOrdinaryUse =
-        runJsonDiagnosticsCommandExpectingExit(
+        runAttestedJsonDiagnosticsCommandExpectingExit(
             2,
             "record-owner-contribution",
             "--book-file",
@@ -124,7 +124,7 @@ class FinGrindCliAccountRegistryLifecycleTest extends CliPublicDocsContractSuppo
     Path reversalRequest =
         writeNamedRequest("reverse-contribution.json", reversalRequestJson(contributionPostingId));
     JsonNode reversal =
-        runJsonCommand(
+        runAttestedJsonCommand(
             "record-reversal",
             "--book-file",
             bookFile.toString(),

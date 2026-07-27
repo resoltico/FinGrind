@@ -2,19 +2,19 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: BOOK_OPERATION_ATTESTATION_PROFILES
-updated: "2026-07-23"
+updated: "2026-07-26"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
   symbols: ["AttestationSemanticProfile", "SystemWorkflowPolicy"]
 route:
   keywords: [verifiable-operation-attestation, semantic-profile, posting-role, autonomous-workflow, system-channel, journal-balance, request-effect-closure]
   questions: ["which request facts are admitted by an attested operation", "how are attested posting facts tied to journal effects", "what can start a system-channel attested operation", "how does FinGrind derive a system close"]
-stage: "Current public protocol 36 and protected-book format 52 contract"
+stage: "Current public protocol 57 and protected-book format 57 contract"
 ---
 
 # Verifiable Operation Attestation Semantic Profiles
 
-This document is the canonical field-level admission owner for protected-book format 52.
+This document is the canonical field-level admission owner for protected-book format 57.
 [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md)
 owns the wire grammar, record tags, and envelope. The
 [verification protocol](./DOC_02_VerifiableOperationAttestationVerification.md) owns the failure
@@ -42,12 +42,11 @@ the same inventory quantity as its Q fact, names the row's inventory account and
 and has movementKind exactly inventory-capitalization, inventory-write-down, inventory-shrinkage,
 or inventory-count-increase for I0/I1, I2, I3, or I4 respectively.
 
-Every typed step has exactly one request.posting. Its operationKind equals the enclosing command,
-except that execute-plan uses the child kind. It has exactly the listed account, money, quantity,
-and lifecycle records and no other request record apart from request.command, its one E1, and an
-explicit paired T, X, or S group where the row permits it. A typed step has exactly one
-posting.fact, exactly one posting.source-document, and journal.line records numbered contiguously
-from zero.
+Every direct typed posting has exactly one request.posting. Its operationKind equals its direct
+request.command operationKind. It has exactly the listed account, money, quantity, and lifecycle
+records and no other request record apart from request.command, its one E1, and an explicit paired
+T, X, or S group where the row permits it. A direct typed posting has exactly one posting.fact,
+exactly one posting.source-document, and journal.line records numbered contiguously from zero.
 Every posting.fact recordedAt equals its operation payload recordedAt; its sourceChannel equals the
 request.command sourceChannel; and its operationStepOrder equals the request stepOrder.
 
@@ -149,9 +148,30 @@ quantity but the opposite debit/credit side. If and only if the original has 002
 reversal has exactly one same-kind REVERSE record carrying the original's non-posting fields and
 the new postingId. No other lifecycle fact, request role, amount, quantity, or tag is admitted.
 
-`execute-plan` contains one command and one or more child steps. Each child independently satisfies
-one profile after removing the shared request.command record. It may not combine profiles, reuse a
-stepOrder, or let a request fact in one child justify an effect fact in another.
+## Execute-Plan Aggregate Profile
+
+`execute-plan` is an aggregate wrapper profile, not a widened typed-posting profile. Its outer
+request has exactly one execute-plan command and one or more request.plan-child-fact wrappers; its
+outer effect has one or more plan.child-effect-fact wrappers. A wrapper's sourceStepOrder, child
+record type, child canonical sort key, and complete raw record reconstruct one direct child
+preimage. The outer request and effect must name the same source-step set; wrapper nesting,
+cross-step fact substitution, a mismatched declared type or sort key, and an incomplete child are
+all invalid.
+
+Each reconstructed child has one direct cli command and is exactly declare-account,
+declare-tax-registration, or post-entry. It passes the direct profile above as though it were its
+own operation. The aggregate does not alter those direct schemas: every local direct posting
+stepOrder and operationStepOrder is zero, while sourceStepOrder is the plan-only provenance key.
+Consequently a plan may reactivate and then rename the same account, or declare then amend the same
+tax registration, at distinct source steps without losing either valid child; neither identity is
+deduplicated across steps.
+
+The child request/effect relation is closed. For post-entry, command, request.posting, and
+posting.fact operation kinds match; posting.fact and all companion posting effects are CREATE and
+their posting IDs and request projections agree. For account children, the state effect is active
+and CREATE, AMEND, or REACTIVATE; every classification and relationship effect uses that same
+mutation. For tax-registration children, registration and registration-code effects are uniformly
+CREATE or uniformly AMEND. A child may not borrow a request or effect from another source step.
 
 ## Autonomous System Initiation And Workflow Policy
 
@@ -194,8 +214,8 @@ fact, amount, account, period, or effect is attestation-system-derivation-invali
 
 | Workflow kind | Required active-policy bindings | Unique derived request and effect |
 |:--|:--|:--|
-| interim-result-sweep | resultHoldingAccountCode; capitalAccountCode and retainedResultAccountCode absent | effectiveFrom is the day after the latest accepted sweep or fiscal-close effectiveTo, or bookStartDate when none exists. effectiveTo is the calendar day before recordedAt. resultHoldingAccountCode equals policy. fiscalYear, capital, and retained-result fields are absent. The effect has the next sweepOrder, exactly one total per affected currency, and journal lines that transfer every income and expense balance in that interval to result holding. |
-| fiscal-year-close | resultHoldingAccountCode, capitalAccountCode, retainedResultAccountCode | effectiveFrom and effectiveTo are the oldest unclosed fiscal year derived from book identity whose end is no later than calendar date(recordedAt). fiscalYear is that year's ending calendar year. The three account fields equal policy. The effect has the next closeOrder and, for every nonzero currency balance held in result holding immediately before the close, transfers that balance to retained result with the direction required to clear result holding. 0043 records all three policy accounts; capitalAccountCode is that close's immutable classification binding and creates no additional Version-1 journal line. |
+| interim-result-sweep | resultHoldingAccountCode; capitalAccountCode and retainedResultAccountCode absent | effectiveFrom is the day after the latest accepted sweep or fiscal-close effectiveTo, or `BookIdentity.bookStartEffectiveDate` when none exists. effectiveTo is the calendar day before recordedAt. resultHoldingAccountCode equals policy. fiscalYear, capital, and retained-result fields are absent. The effect has the next sweepOrder, exactly one total per affected currency, and journal lines that transfer every income and expense balance in that interval to result holding. |
+| fiscal-year-close | resultHoldingAccountCode, capitalAccountCode, retainedResultAccountCode | effectiveFrom and effectiveTo are the oldest unclosed fiscal year derived from book identity whose end is no later than calendar date(recordedAt). fiscalYear is that year's ending calendar year. The three account fields equal policy. If the close must first sweep an unreconciled result interval ending on that date, the FISCAL operation carries that interim sweep's 0040, 0041, and 0042 facts and its generated postings as a derived effect; it does not append a separate INTERIM operation. The effect then has the next closeOrder and, for every nonzero currency balance held in result holding immediately before the fiscal close, transfers that balance to retained result with the direction required to clear result holding. 0043 records all three policy accounts; capitalAccountCode is that close's immutable classification binding and creates no additional Version-1 journal line. |
 
 Every close operation has exactly one request.period-close and exactly one request.posting. The
 posting has stepOrder zero, its operationKind equals the enclosing close kind, postingKind
@@ -203,11 +223,18 @@ period-close, effectiveDate equal to period-close.effectiveTo, and absent priorP
 reversalReason. An interim close requires effectiveFrom, effectiveTo, and resultHoldingAccountCode,
 and forbids fiscalYear, capitalAccountCode, and retainedResultAccountCode. A fiscal close requires
 every period-close field. A system close additionally has exactly one request.system-workflow-run.
-It has exactly one posting.fact with operationStepOrder zero, operationKind equal to the close kind,
-postingKind period-close, originKind equal to that close kind, and effectiveDate equal to its
-request.posting effectiveDate. Journal.line records are contiguous; an interim close has exactly one
-0040, one 0042 that links its posting, and one 0041 for each affected currency; a fiscal close has
-exactly one 0043 and one 0044 that links its posting. No other close effect is admitted.
+When a close generates postings, each posting.fact has operationStepOrder zero and postingKind
+period-close. Its operationKind and originKind equal the close fact it realizes: a standalone
+interim close and a fiscal close's 0043-linked postings use their enclosing close kind, while a
+0042-linked derived posting inside a fiscal operation uses interim-result-sweep. Its effectiveDate
+equals that associated close fact. Every posting.fact and journal.line is CREATE;
+each posting has at least two journal lines, every journal line names exactly one such posting, and
+lineOrder is contiguous from zero within that posting. An interim close has exactly one 0040, one
+0042 for each of its postings, and one 0041 for each affected currency. A fiscal close has one or
+more fiscal postings, exactly one 0043, and one 0044 for each fiscal posting. It may additionally
+contain exactly one derived interim sweep (0040, its 0041 totals, and one 0042 for each interim
+posting) when that sweep is needed before the fiscal transfer; all of those facts remain in the one
+FISCAL operation. No other close effect is admitted.
 
 An interim sweep is invalid when its derived interval is empty. A fiscal close is invalid when no
 fiscal year is due or when an earlier year remains unclosed. A CLI-originated close remains a

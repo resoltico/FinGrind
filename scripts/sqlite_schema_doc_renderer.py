@@ -116,9 +116,7 @@ def collect_pragma_values(statements: list[str]) -> dict[str, str]:
 
 
 def is_trigger_body_statement(lower_statement: str) -> bool:
-    return lower_statement.startswith("select raise") or lower_statement.startswith(
-        "with recursive ancestors"
-    )
+    return lower_statement.startswith(("select raise", "with recursive ancestors"))
 
 
 def classify_table_statement(statement: str) -> str:

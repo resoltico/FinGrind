@@ -29,6 +29,10 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                 javaToolchainService.launcherFor {
                     languageVersion.set(JavaLanguageVersion.of(fingrindJavaVersion))
                 }
+            val sourceCheckoutJavaCompiler =
+                javaToolchainService.compilerFor {
+                    languageVersion.set(JavaLanguageVersion.of(fingrindJavaVersion))
+                }
             val publicCliBundleTargets =
                 DistributionContractReader.publicCliBundleTargets(repositoryRootDirectory)
             val unsupportedPublicCliBundleTargets =
@@ -93,6 +97,11 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                 }
             val shadowJarTask = tasks.named<Jar>("shadowJar")
             val shadowJarArchiveFile = shadowJarTask.flatMap { it.archiveFile }
+            val nativeSqliteFormatBoundaryProbe =
+                registerNativeSqliteFormatBoundaryProbe(
+                    javaCompilerExecutable = sourceCheckoutJavaCompiler.map { it.executablePath },
+                    javaVersion = fingrindJavaVersion,
+                )
             val dockerBuildContextDirectory = layout.buildDirectory.dir("docker-context")
             val dockerBuildContextManifestOutputFile =
                 layout.buildDirectory.file("generated/docker/docker-build-context-manifest.json")
@@ -283,6 +292,8 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                 registerCliDockerBuildContextTasks(
                     shadowJarTask = shadowJarTask,
                     writeRuntimeModuleList = writeRuntimeModuleList,
+                    nativeSqliteFormatBoundaryProbeTask = nativeSqliteFormatBoundaryProbe.packageTask,
+                    nativeSqliteFormatBoundaryProbeJar = nativeSqliteFormatBoundaryProbe.archiveFile,
                     dockerBuildContextDirectory = dockerBuildContextDirectory,
                     dockerBuildContextManifestOutputFile = dockerBuildContextManifestOutputFile,
                     dockerBuildContextFiles = dockerBuildContextFiles,
@@ -343,6 +354,7 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     description = "Stages the self-contained FinGrind CLI bundle directory."
                     dependsOn(cleanBundleOutputs)
                     dependsOn(shadowJarTask)
+                    dependsOn(nativeSqliteFormatBoundaryProbe.packageTask)
                     dependsOn(hostManagedSqlite.prepareTask)
                     dependsOn(createRuntimeImage)
                     dependsOn(writeBundleManifest)
@@ -367,6 +379,9 @@ class FinGrindCliDistributionPlugin : Plugin<Project> {
                     from(shadowJarArchiveFile) {
                         into("lib/app")
                         rename { "fingrind.jar" }
+                    }
+                    from(nativeSqliteFormatBoundaryProbe.archiveFile) {
+                        into("lib/release-smoke")
                     }
                     from(runtimeImageDirectory) {
                         into("runtime")

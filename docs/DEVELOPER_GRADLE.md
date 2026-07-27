@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: DEVELOPER_GRADLE
-updated: "2026-07-16"
+updated: "2026-07-24"
 route:
   keywords: [fingrind, gradle, build-logic, composite-build, version-catalog, contract-lint, jazzer, buildsrc, managed-sqlite, sqlite3mc, toolchain, verification]
   questions: ["how is the fingrind gradle build structured", "why does fingrind use gradle/build-logic instead of buildSrc", "how does the nested jazzer build consume the root project", "where are shared gradle conventions defined", "how does contract linting protect operation metadata", "what should we review in the gradle setup"]
@@ -178,6 +178,13 @@ Root verification now has one explicit Python-tooling contract:
   `-PfingrindPythonExecutable=/absolute/path/to/python3.12`; the selected interpreter must match
   the pinned major/minor version exactly
 
+Release-smoke semantic PDF verification is deliberately outside that lint/format manifest. The
+same pinned `uv` launcher resolves its sole extractor from
+[../requirements-release-smoke-workflow.txt](../requirements-release-smoke-workflow.txt), so the
+bundle, Windows, and compatibility-floor workflows never depend on an ambient `pdftotext` or other
+host PDF utility. Keeping the extractor isolated prevents lint-only dependencies from becoming
+release-smoke runtime requirements and keeps every release surface on one parser contract.
+
 ### Composite build for Jazzer
 
 `jazzer/settings.gradle.kts` uses `includeBuild("..")` so the nested build can resolve the live
@@ -206,13 +213,13 @@ Maven Central before any Gradle verification stage runs.
 
 ### One managed-SQLite contract
 
-Both the root build and the nested Jazzer build compile the managed SQLite 3.53.3 / SQLite3
-Multiple Ciphers 2.3.6 runtime from the same vendored official amalgamation, through the same
+Both the root build and the nested Jazzer build compile the managed SQLite 3.53.4 / SQLite3
+Multiple Ciphers 2.4.0 runtime from the same vendored official amalgamation, through the same
 typed Gradle tasks. That keeps tests, CLI runs, and fuzzing on one native runtime contract instead
 of letting Gradle surfaces drift onto whatever system `libsqlite3` happened to be present.
 
 That contract now has a few explicit rules:
-- the vendored source of truth is `third_party/sqlite/sqlite3mc-amalgamation-2.3.6-sqlite-3530300/`
+- the vendored source of truth is `third_party/sqlite/sqlite3mc-amalgamation-2.4.0-sqlite-3530400/`
 - `verifyManagedSqliteSource` hashes `sqlite3mc_amalgamation.c`, not the plain `sqlite3.c`
 - managed builds compile with `SQLITE_THREADSAFE=1`, `SQLITE_OMIT_LOAD_EXTENSION=1`,
   `SQLITE_TEMP_STORE=3`, `SQLITE_SECURE_DELETE=1`, and `SQLITE3MC_SECURE_MEMORY=1`
@@ -403,7 +410,7 @@ Use this routing table before changing the build:
 | shared Java subproject conventions | `gradle/build-logic/.../FinGrindJavaConventionsPlugin.kt` as the composition entrypoint, plus the focused `FinGrindJava*Conventions.kt` owners |
 | managed-SQLite root publication and consumer wiring | `gradle/build-logic/.../FinGrindManagedSqliteConsumerPlugin.kt`, `ManagedSqliteProvisioningRegistry.kt`, and `ManagedSqliteProvisioningLogic.kt` |
 | managed-SQLite task types and shared helpers | `gradle/build-logic/.../ManagedSqliteProvisioningLogic.kt` and task classes nearby |
-| shared Jazzer build behavior, Jazzer task registration, cleanup tasks | `gradle/build-logic/.../FinGrindJazzerConventionsPlugin.kt` |
+| shared Jazzer build behavior and Jazzer task registration | `gradle/build-logic/.../FinGrindJazzerConventionsPlugin.kt` |
 | root-owned deterministic Jazzer verification | `gradle/build-logic/.../FinGrindRootJazzerConventions.kt` |
 | shared pulse scheduling | `gradle/build-logic/.../ScheduledPulseTestListener.kt` and concrete listeners |
 | dependency versions shared across product and Jazzer | `gradle/libs.versions.toml` |
@@ -470,8 +477,8 @@ Review this setup periodically, especially after Gradle, Kotlin, SQLite, or Jazz
 - Are root and nested verification scopes still cleanly separated?
 - Are long-running test pulses still emitted from shared infrastructure rather than copy-pasted
   listeners?
-- Are root and nested builds still using the same managed SQLite 3.53.3 / SQLite3 Multiple
-  Ciphers 2.3.6 runtime contract?
+- Are root and nested builds still using the same managed SQLite 3.53.4 / SQLite3 Multiple
+  Ciphers 2.4.0 runtime contract?
 - Is source verification still pinned to the official SQLite3 Multiple Ciphers release input rather
   than an ad-hoc host library or repackaged archive?
 - Do the `jazzer/bin/*` wrappers still work on stock macOS `/bin/bash` 3.2 when no optional
@@ -503,5 +510,5 @@ For structural Gradle changes, the normal bar is:
 ```
 
 If Jazzer topology or `jazzer/bin/*` wrapper shell logic changed, also run at least one live
-`jazzer/bin/fuzz-*` command plus the zero-argument cleanup scripts so the documented operator path
-is exercised in the same shape contributors will actually use.
+`jazzer/bin/fuzz-*` command and inspect its retained evidence through `jazzer/bin/list-findings`
+so the documented operator path is exercised in the same shape contributors will actually use.

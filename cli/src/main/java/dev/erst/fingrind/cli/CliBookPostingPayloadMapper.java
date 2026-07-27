@@ -1,6 +1,5 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.cli.json.CliAttestationJsonModels;
 import dev.erst.fingrind.cli.json.CliAttestationJsonModels.AttestationCommitPayload;
 import dev.erst.fingrind.cli.json.CliBookQueryJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
@@ -103,8 +102,7 @@ final class CliBookPostingPayloadMapper {
           @org.jspecify.annotations.Nullable AttestationCommit attestationCommit) {
     return attestationCommit == null
         ? null
-        : new CliAttestationJsonModels.AttestationCommitPayload(
-            attestationCommit.operationOrder().toString(), attestationCommit.operationHeadHex());
+        : CliAttestationCommitPresentation.requiredPayload(attestationCommit);
   }
 
   static CliBookQueryJsonModels.AccountingEvidencePayload evidencePayload(

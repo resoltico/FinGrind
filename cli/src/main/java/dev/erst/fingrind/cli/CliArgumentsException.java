@@ -69,6 +69,7 @@ final class CliArgumentsException extends IllegalArgumentException implements Cl
         argument,
         null,
         path,
-        java.util.List.of());
+        java.util.List.<Path>of(),
+        null);
   }
 }

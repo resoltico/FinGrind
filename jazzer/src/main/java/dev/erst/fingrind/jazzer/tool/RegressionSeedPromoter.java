@@ -2,8 +2,12 @@ package dev.erst.fingrind.jazzer.tool;
 
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.Objects;
 
@@ -84,7 +88,9 @@ public final class RegressionSeedPromoter {
             request.coverageIntent(),
             expectation);
     persistPromotion(
+        request.projectDirectory(),
         request.sourceInputPath(),
+        inputBytes,
         promotionPaths.committedInputPath(),
         promotionPaths.metadataPath(),
         metadata,
@@ -147,24 +153,27 @@ public final class RegressionSeedPromoter {
       String seedName,
       String coverageIntent,
       ReplayExecutor replayExecutor,
-      MetadataWriter metadataWriter) {
+      MetadataWriter metadataWriter)
+      throws IOException {
     Objects.requireNonNull(projectDirectory, "projectDirectory must not be null");
     Objects.requireNonNull(harness, "harness must not be null");
     Objects.requireNonNull(sourceInputPath, "sourceInputPath must not be null");
     Objects.requireNonNull(replayExecutor, "replayExecutor must not be null");
     Objects.requireNonNull(metadataWriter, "metadataWriter must not be null");
-    Path normalizedProjectDirectory = projectDirectory.toAbsolutePath().normalize();
+    Path normalizedProjectDirectory =
+        RegressionSeedRepositoryPathAdmission.canonicalProjectDirectory(projectDirectory);
     Path normalizedSourceInputPath = sourceInputPath.toAbsolutePath().normalize();
-    if (!Files.exists(normalizedSourceInputPath)
-        || !Files.isRegularFile(normalizedSourceInputPath)) {
+    if (!Files.isRegularFile(normalizedSourceInputPath, LinkOption.NOFOLLOW_LINKS)) {
       throw new IllegalArgumentException(
           "Seed promotion input path must be an existing regular file: "
               + normalizedSourceInputPath);
     }
+    Path canonicalSourceInputPath =
+        normalizedSourceInputPath.toRealPath(LinkOption.NOFOLLOW_LINKS);
     return new PromotionRequest(
         normalizedProjectDirectory,
         harness,
-        normalizedSourceInputPath,
+        canonicalSourceInputPath,
         normalizeSeedName(seedName),
         ReplayModelValidation.requireText(coverageIntent, "coverageIntent"),
         metadataWriter);
@@ -199,12 +208,12 @@ public final class RegressionSeedPromoter {
     Path metadataPath =
         RegressionSeedPaths.metadataDirectory(projectDirectory, harness)
             .resolve(seedName + ".json");
-    if (Files.exists(committedInputPath)) {
+    if (Files.exists(committedInputPath, LinkOption.NOFOLLOW_LINKS)) {
       throw new IllegalArgumentException(
           "Committed seed input path already exists: "
               + committedInputPath.toAbsolutePath().normalize());
     }
-    if (Files.exists(metadataPath)) {
+    if (Files.exists(metadataPath, LinkOption.NOFOLLOW_LINKS)) {
       throw new IllegalArgumentException(
           "Committed seed metadata path already exists: "
               + metadataPath.toAbsolutePath().normalize());
@@ -238,25 +247,89 @@ public final class RegressionSeedPromoter {
   }
 
   private static void persistPromotion(
+      Path projectDirectory,
       Path sourceInputPath,
+      byte[] inputBytes,
       Path committedInputPath,
       Path metadataPath,
       RegressionSeedMetadata metadata,
       MetadataWriter metadataWriter)
       throws IOException {
-    Files.createDirectories(committedInputPath.getParent());
-    Files.createDirectories(metadataPath.getParent());
-    boolean inputCopied = false;
+    Path committedInputParent =
+        RegressionSeedRepositoryPathAdmission.createOrRequireRealDirectoryTree(
+            projectDirectory,
+            Objects.requireNonNull(committedInputPath.getParent(), "committedInputPath parent"));
+    Path metadataParent =
+        RegressionSeedRepositoryPathAdmission.createOrRequireRealDirectoryTree(
+            projectDirectory,
+            Objects.requireNonNull(metadataPath.getParent(), "metadataPath parent"));
+    if (!committedInputParent.equals(committedInputPath.getParent())
+        || !metadataParent.equals(metadataPath.getParent())) {
+      throw new IllegalStateException(
+          "Regression seed directory admission did not preserve the selected canonical parents.");
+    }
     try {
-      Files.copy(sourceInputPath, committedInputPath);
-      inputCopied = true;
+      writeNewInput(
+          committedInputPath,
+          Objects.requireNonNull(inputBytes, "inputBytes"),
+          Objects.requireNonNull(sourceInputPath, "sourceInputPath"));
       metadataWriter.write(metadataPath, metadata);
     } catch (IOException | RuntimeException exception) {
-      if (inputCopied) {
-        Files.deleteIfExists(committedInputPath);
+      List<Path> retainedArtifactPaths = retainedArtifactPaths(committedInputPath, metadataPath);
+      if (!retainedArtifactPaths.isEmpty()) {
+        throw new RegressionSeedPromotionRetainedArtifactsException(
+            new RegressionSeedPromotionRetention(
+                committedInputPath, metadataPath, retainedArtifactPaths),
+            exception);
       }
-      Files.deleteIfExists(metadataPath);
       throw exception;
+    } catch (Error failure) {
+      retainArtifactsOnFatalFailure(committedInputPath, metadataPath, failure);
+      throw failure;
+    }
+  }
+
+  private static void writeNewInput(
+      Path committedInputPath, byte[] inputBytes, Path sourceInputPath)
+      throws IOException {
+    try (FileChannel channel =
+        FileChannel.open(
+            committedInputPath,
+            StandardOpenOption.CREATE_NEW,
+            StandardOpenOption.WRITE,
+            LinkOption.NOFOLLOW_LINKS)) {
+      ByteBuffer content = ByteBuffer.wrap(inputBytes);
+      while (content.hasRemaining()) {
+        if (channel.write(content) <= 0) {
+          throw new IOException(
+              "Jazzer seed promotion could not make progress publishing source input "
+                  + sourceInputPath);
+        }
+      }
+      channel.force(true);
+    }
+  }
+
+  private static List<Path> retainedArtifactPaths(Path committedInputPath, Path metadataPath) {
+    return List.of(committedInputPath, metadataPath).stream()
+        .filter(path -> Files.exists(path, LinkOption.NOFOLLOW_LINKS))
+        .toList();
+  }
+
+  private static void retainArtifactsOnFatalFailure(
+      Path committedInputPath, Path metadataPath, Error primaryFailure) {
+    List<Path> retainedArtifactPaths = retainedArtifactPaths(committedInputPath, metadataPath);
+    if (retainedArtifactPaths.isEmpty()) {
+      return;
+    }
+    try {
+      primaryFailure.addSuppressed(
+          new RegressionSeedPromotionRetainedArtifactsException(
+              new RegressionSeedPromotionRetention(
+                  committedInputPath, metadataPath, retainedArtifactPaths),
+              new IOException("Fatal seed-promotion failure retained materialized artifacts.")));
+    } catch (IllegalArgumentException ignored) {
+      // A hostile Error implementation must not conceal the primary failure.
     }
   }
 

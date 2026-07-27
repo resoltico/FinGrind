@@ -55,7 +55,7 @@ class ProtocolOperationReferenceLintTest extends ProtocolContractOperationSuppor
   void documentationFingrindInvocationsReferenceRegisteredOperations() throws IOException {
     Set<String> registeredIds = registeredOperationIds();
     Set<String> violations = new HashSet<>();
-    for (Path document : documentationFiles()) {
+    for (Path document : currentDocumentationFiles()) {
       Files.readAllLines(document).stream()
           .filter(this::looksLikeCommandInvocation)
           .forEach(
@@ -84,7 +84,7 @@ class ProtocolOperationReferenceLintTest extends ProtocolContractOperationSuppor
       throws IOException {
     Set<String> registeredIds = registeredOperationIds();
     Set<String> violations = new HashSet<>();
-    for (Path document : documentationFiles()) {
+    for (Path document : currentDocumentationFiles()) {
       String text = Files.readString(document);
       BACKTICKED_HYPHEN_ID_PATTERN
           .matcher(text)

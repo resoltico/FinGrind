@@ -180,6 +180,13 @@ final class AttestationRequestRecordCatalog {
             0x0185,
             "request.credential-retirement",
             "keyId:hash!, principalId:uuid!, retirementState:token!, reason:text?",
-            0));
+            0),
+        record(
+            0x0186,
+            "request.plan-child-fact",
+            "sourceStepOrder:u32!, childRecordType:u16!, childRecordSortKey:embedded!, childRecord:embedded!",
+            0,
+            1,
+            2));
   }
 }

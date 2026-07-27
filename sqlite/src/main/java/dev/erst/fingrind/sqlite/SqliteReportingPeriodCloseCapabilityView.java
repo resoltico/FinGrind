@@ -21,8 +21,8 @@ import java.util.Optional;
 /** Shared period-close delegation defaults for SQLite capability wrappers. */
 interface SqliteReportingPeriodCloseCapabilityView
     extends SqliteReportingPeriodCloseSession, SqliteLifecycleInspectionCapabilityView {
-  /** Returns the mutation operations owner for the underlying SQLite store. */
-  SqliteStoreMutationOperations storeMutationOperations();
+  /** Returns the reporting-period close owner for the underlying SQLite store. */
+  SqliteClosingMutationOperations storeClosingMutationOperations();
 
   @Override
   default dev.erst.fingrind.executor.spi.BookLifecycleInspection inspectBook() {
@@ -79,7 +79,7 @@ interface SqliteReportingPeriodCloseCapabilityView
       PostingIdGenerator postingIdGenerator,
       AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations()
+    return storeClosingMutationOperations()
         .interimResultSweep(
             reportingPeriod,
             bookIdentity,
@@ -93,7 +93,6 @@ interface SqliteReportingPeriodCloseCapabilityView
   @Override
   default InterimResultSweepOutcome interimResultSweep(
       LocalDate throughEffectiveDate,
-      LocalDate bookStartDate,
       BookIdentity bookIdentity,
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
@@ -101,10 +100,9 @@ interface SqliteReportingPeriodCloseCapabilityView
       PostingIdGenerator postingIdGenerator,
       AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations()
+    return storeClosingMutationOperations()
         .interimResultSweep(
             throughEffectiveDate,
-            bookStartDate,
             bookIdentity,
             planner,
             currentUtcDate,
@@ -123,7 +121,7 @@ interface SqliteReportingPeriodCloseCapabilityView
       PostingIdGenerator postingIdGenerator,
       AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations()
+    return storeClosingMutationOperations()
         .fiscalYearClose(
             reportingPeriod,
             bookIdentity,

@@ -58,19 +58,56 @@ public interface CliTaxJsonModels {
   }
 
   record TaxRegistrationMutationPayload(
-      String outcome,
+      TaxRegistrationMutationOutcome outcome,
       DeclaredTaxRegistrationPayload registration,
       @JsonInclude(JsonInclude.Include.ALWAYS) @Nullable AttestationCommitPayload attestationCommit)
       implements CliSuccessPayload {
     public TaxRegistrationMutationPayload {
-      outcome = requireText(outcome, "outcome");
+      Objects.requireNonNull(outcome, "outcome");
       Objects.requireNonNull(registration, "registration");
+      if (outcome.appendsAttestation()) {
+        Objects.requireNonNull(attestationCommit, "attestationCommit");
+      } else if (attestationCommit != null) {
+        throw new IllegalArgumentException(
+            "An unchanged tax registration must not report a newly appended attestation operation.");
+      }
+    }
+  }
+
+  /** Exact tax-registration lifecycle outcome published by declare-tax-registration. */
+  enum TaxRegistrationMutationOutcome implements dev.erst.fingrind.core.WireValue {
+    DECLARED("declared", "Tax Registration Declared", true),
+    UPDATED("updated", "Tax Registration Updated", true),
+    UNCHANGED("unchanged", "Tax Registration Unchanged", false);
+
+    private final String wireValue;
+    private final String textTitle;
+    private final boolean appendsAttestation;
+
+    TaxRegistrationMutationOutcome(String wireValue, String textTitle, boolean appendsAttestation) {
+      this.wireValue = wireValue;
+      this.textTitle = textTitle;
+      this.appendsAttestation = appendsAttestation;
+    }
+
+    @Override
+    @com.fasterxml.jackson.annotation.JsonValue
+    public String wireValue() {
+      return wireValue;
+    }
+
+    public String textTitle() {
+      return textTitle;
+    }
+
+    public boolean appendsAttestation() {
+      return appendsAttestation;
     }
   }
 
   record TaxRegistrationListPayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       TaxRegistrationListResolvedQuery resolvedQuery,
       String generatedAt,
       @Nullable String nextCursor,

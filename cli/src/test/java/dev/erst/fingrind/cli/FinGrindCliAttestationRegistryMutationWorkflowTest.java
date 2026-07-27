@@ -13,7 +13,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Exercises a public credential enrollment through the protected SQLite lifecycle workflow. */
-class FinGrindCliAttestationRegistryMutationWorkflowTest extends FinGrindCliTestSupport {
+class FinGrindCliAttestationRegistryMutationWorkflowTest extends CliWorkflowFixtureSupport {
   private static final String CREDENTIAL_SPKI =
       "MCowBQYDK2VwAyEAJYpWgBK4pHaKkIRKs9p8_6B01sG0SuOXLjI69Q5mGlI";
   private static final String REPLACEMENT_CREDENTIAL_SPKI =
@@ -48,7 +48,7 @@ class FinGrindCliAttestationRegistryMutationWorkflowTest extends FinGrindCliTest
     int exitCode =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(output), fixedClock())
             .run(
-                jsonArguments(
+                attestedJsonArguments(
                     "enroll-key",
                     "--book-file",
                     bookFilePath.toString(),
@@ -67,7 +67,7 @@ class FinGrindCliAttestationRegistryMutationWorkflowTest extends FinGrindCliTest
     int duplicateExitCode =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(duplicateOutput), fixedClock())
             .run(
-                jsonArguments(
+                attestedJsonArguments(
                     "enroll-key",
                     "--book-file",
                     bookFilePath.toString(),
@@ -162,7 +162,7 @@ class FinGrindCliAttestationRegistryMutationWorkflowTest extends FinGrindCliTest
     int exitCode =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(output), fixedClock())
             .run(
-                jsonArguments(
+                attestedJsonArguments(
                     "alter-policy",
                     "--book-file",
                     bookFilePath.toString(),
@@ -188,7 +188,7 @@ class FinGrindCliAttestationRegistryMutationWorkflowTest extends FinGrindCliTest
     int exitCode =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(output), fixedClock())
             .run(
-                jsonArguments(
+                attestedJsonArguments(
                     command,
                     "--book-file",
                     bookFilePath.toString(),

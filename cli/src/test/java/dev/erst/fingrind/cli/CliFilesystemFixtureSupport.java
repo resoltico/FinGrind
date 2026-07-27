@@ -39,7 +39,13 @@ class CliFilesystemFixtureSupport {
 
   @BeforeEach
   void hardenTempDirectory() {
-    CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+    try {
+      tempDirectory = tempDirectory.toRealPath();
+      CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+    } catch (IOException exception) {
+      throw new UncheckedIOException(
+          "Could not canonicalize the CLI test temporary directory.", exception);
+    }
   }
 
   protected Path writeRequest(String payload) throws IOException {

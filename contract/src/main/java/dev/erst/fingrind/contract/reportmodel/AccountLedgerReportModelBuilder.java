@@ -2,7 +2,6 @@ package dev.erst.fingrind.contract.reportmodel;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerEntry;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerReport;
-import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -59,29 +58,6 @@ public final class AccountLedgerReportModelBuilder
             entryColumns(),
             report.entries().stream().map(entry -> entryRow(report.account(), entry)).toList(),
             List.of()));
-    List<AttestationCommit> attestationCommits =
-        report.entries().stream()
-            .map(AccountLedgerEntry::attestationCommit)
-            .filter(java.util.Objects::nonNull)
-            .distinct()
-            .toList();
-    if (!attestationCommits.isEmpty()) {
-      sections.add(
-          ReportModelSupport.section(
-              "attestationCommitments",
-              "Attestation Commitments",
-              List.of(),
-              attestationCommitmentColumns(),
-              attestationCommits.stream()
-                  .map(
-                      attestationCommit ->
-                          ReportModelSupport.row(
-                              attestationCommit.operationOrder().toString(),
-                              attestationCommit.operationOrder().toString(),
-                              attestationCommit.operationHeadHex()))
-                  .toList(),
-              List.of()));
-    }
     return new ReportModel(
         dev.erst.fingrind.contract.protocol.OperationId.ACCOUNT_LEDGER.wireName(),
         ReportModelSupport.reportTitle(
@@ -131,12 +107,6 @@ public final class AccountLedgerReportModelBuilder
         ReportModelSupport.leftColumn("counterparts", "Counterpart account codes"),
         ReportModelSupport.leftColumn("postingRef", "Posting ref"),
         ReportModelSupport.leftColumn("attestationOrder", "Attestation order"));
-  }
-
-  private static List<ReportColumn> attestationCommitmentColumns() {
-    return List.of(
-        ReportModelSupport.leftColumn("attestationOrder", "Attestation order"),
-        ReportModelSupport.leftColumn("attestationHead", "Attestation head"));
   }
 
   private static ReportRow entryRow(

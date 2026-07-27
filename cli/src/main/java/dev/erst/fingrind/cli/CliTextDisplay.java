@@ -29,6 +29,14 @@ final class CliTextDisplay {
     return CliPublicPaths.redactedValue(Objects.requireNonNull(pathHint, "pathHint"));
   }
 
+  /**
+   * Renders a canonical machine-path field safely for human-readable output without changing its
+   * absolute JSON representation.
+   */
+  static String serializedAbsolutePath(String absolutePath) {
+    return path(Path.of(Objects.requireNonNull(absolutePath, "absolutePath")));
+  }
+
   static String lowerDateBoundary(@Nullable LocalDate effectiveDateFrom) {
     return effectiveDateFrom == null ? "book start" : effectiveDateFrom.toString();
   }

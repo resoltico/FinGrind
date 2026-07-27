@@ -214,11 +214,14 @@ class ReportModelBuilderCoverageTest {
                 List.of(ReportModelTestSupport.balance("EUR", "0.00", "0.00"))));
 
     assertEquals(2, populated.sections().getFirst().rows().size());
-    assertEquals(2, populated.sections().size());
-    assertEquals("Attestation Commitments", populated.sections().get(1).title());
-    assertEquals(
-        List.of("42", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"),
-        populated.sections().get(1).rows().getFirst().cells());
+    assertEquals(1, populated.sections().size());
+    assertEquals("Attestation order", populated.sections().getFirst().columns().getLast().title());
+    assertEquals("42", populated.sections().getFirst().rows().getFirst().cells().getLast());
+    assertFalse(
+        populated.sections().stream()
+            .flatMap(section -> section.rows().stream())
+            .flatMap(row -> row.cells().stream())
+            .anyMatch("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"::equals));
     assertTrue(
         populated.verdicts().stream()
             .anyMatch(verdict -> "Opening Balances".equals(verdict.label())));

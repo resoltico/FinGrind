@@ -14,6 +14,8 @@ import dev.erst.fingrind.cli.json.CliDiscoveryCommonJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryHelpJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryRequestFileGuidanceJsonModels;
 import dev.erst.fingrind.cli.json.CliDiscoveryRequestInputSliceJsonModels;
+import dev.erst.fingrind.cli.json.CliDiscoveryResponseContractSliceJsonModels;
+import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
 import dev.erst.fingrind.contract.discovery.ApplicationIdentity;
 import dev.erst.fingrind.contract.discovery.CapabilitiesDescriptor;
 import dev.erst.fingrind.contract.discovery.CommandCatalogDescriptor;
@@ -115,6 +117,12 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
     assertNotNull(full.fullContract());
     assertEquals(
         capabilitiesDescriptor.capabilityCatalog(), full.fullContract().capabilityCatalog());
+    assertEquals(
+        AttestationVerificationFailure.admissionDiagnosticContexts(),
+        full.fullContract().responseModel().attestationAdmissionDiagnostics());
+    assertEquals(
+        AttestationVerificationFailure.verificationDiagnosticSurfaces(),
+        full.fullContract().responseModel().attestationVerificationDiagnostics());
   }
 
   @Test
@@ -333,7 +341,8 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
         kernel.data());
     assertTrue(kernel.nextHints().getFirst().contains("--detail full"));
     assertInstanceOf(
-        CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSummaryPayload.class,
+        CliDiscoveryResponseContractSliceJsonModels.CapabilitiesResponseContractSummaryPayload
+            .class,
         response.data());
     assertTrue(response.nextHints().getFirst().contains("--detail full"));
   }
@@ -366,20 +375,31 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
 
     assertEquals(DiscoveryDetail.MINIMAL, minimal.detail());
     assertInstanceOf(
-        CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSummaryPayload.class,
+        CliDiscoveryResponseContractSliceJsonModels.CapabilitiesResponseContractSummaryPayload
+            .class,
         minimal.data());
     assertTrue(minimal.nextHints().getFirst().contains("--detail full"));
 
     assertEquals(DiscoveryDetail.COMPACT, compact.detail());
     assertInstanceOf(
-        CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractCompactPayload.class,
+        CliDiscoveryResponseContractSliceJsonModels.CapabilitiesResponseContractCompactPayload
+            .class,
         compact.data());
     assertTrue(compact.nextHints().getFirst().contains("--detail full"));
 
     assertEquals(DiscoveryDetail.FULL, full.detail());
-    assertInstanceOf(
-        CliDiscoveryCapabilitiesSliceJsonModels.CapabilitiesResponseContractSlicePayload.class,
-        full.data());
+    CliDiscoveryResponseContractSliceJsonModels.CapabilitiesResponseContractSlicePayload
+        fullResponseContract =
+            assertInstanceOf(
+                CliDiscoveryResponseContractSliceJsonModels.CapabilitiesResponseContractSlicePayload
+                    .class,
+                full.data());
+    assertEquals(
+        AttestationVerificationFailure.admissionDiagnosticContexts(),
+        fullResponseContract.responseModel().attestationAdmissionDiagnostics());
+    assertEquals(
+        AttestationVerificationFailure.verificationDiagnosticSurfaces(),
+        fullResponseContract.responseModel().attestationVerificationDiagnostics());
     assertTrue(full.nextHints().getFirst().contains("exhaustive descriptor surface"));
   }
 
@@ -396,6 +416,7 @@ class CliDiscoveryPayloadMapperTest extends CliResponseWriterTestSupport {
                 List.of(
                     new CommandDescriptor(
                         OperationId.PRINT_PLAN_TEMPLATE,
+                        ProtocolCatalog.operation(OperationId.PRINT_PLAN_TEMPLATE).displayLabel(),
                         List.of(),
                         List.of(),
                         ExecutionMode.RAW_JSON,

@@ -1,5 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import java.util.Optional;
@@ -36,22 +38,12 @@ enum SqliteBookState {
   UNSUPPORTED_FINGRIND_VERSION {
     @Override
     void requireInitialized(int loadedUserVersion, int expectedUserVersion, String message) {
-      throw new IllegalStateException(
-          "The selected FinGrind book format version "
-              + loadedUserVersion
-              + " is unsupported. Expected version "
-              + expectedUserVersion
-              + ".");
+      throw unsupportedBookFormatVersionFailure(loadedUserVersion, expectedUserVersion);
     }
 
     @Override
     Optional<BookOpeningOutcome> openBookResult(int loadedUserVersion) {
-      throw new IllegalStateException(
-          "The selected FinGrind book format version "
-              + loadedUserVersion
-              + " is unsupported. Expected version "
-              + expectedUserVersion()
-              + ".");
+      throw unsupportedBookFormatVersionFailure(loadedUserVersion, expectedUserVersion());
     }
   },
   INCOMPLETE_FINGRIND {
@@ -79,5 +71,11 @@ enum SqliteBookState {
 
   private static int expectedUserVersion() {
     return SqliteBookContract.FORMAT_VERSION;
+  }
+
+  private static ContractFailureException unsupportedBookFormatVersionFailure(
+      int loadedUserVersion, int expectedUserVersion) {
+    return new ContractFailureException(
+        ContractErrors.unsupportedBookFormatVersionFailure(loadedUserVersion, expectedUserVersion));
   }
 }

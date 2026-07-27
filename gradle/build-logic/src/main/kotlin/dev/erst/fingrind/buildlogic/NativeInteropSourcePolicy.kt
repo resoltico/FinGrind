@@ -7,6 +7,9 @@ private val attestationNativeInteropSeamSourceSuffixes =
         "/core/src/main/java/dev/erst/fingrind/core/attestation/AttestationDirectoryFfmTransport.java",
         "/core/src/test/java/dev/erst/fingrind/core/attestation/AttestationDirectoryDurabilityTest.java",
     )
+private val throwableInvocationSeamSourceSuffixes =
+    attestationNativeInteropSeamSourceSuffixes +
+        "/sqlite/src/main/java/dev/erst/fingrind/sqlite/SqliteWindowsCoordinationFfmTransport.java"
 private val foreignMemoryImportPattern = Regex("""^import\s+java\.lang\.foreign\.[\w.*]+;$""")
 private val fullyQualifiedForeignMemoryPattern = Regex("""\bjava\.lang\.foreign\.[A-Z]\w*""")
 private val systemLoadPattern = Regex("""\bSystem\.load(?:Library)?\s*\(""")
@@ -14,6 +17,10 @@ private val runtimeLoadPattern = Regex("""\bRuntime\.getRuntime\(\)\.load(?:Libr
 
 internal fun File.isAttestationNativeInteropSeam(): Boolean =
     attestationNativeInteropSeamSourceSuffixes.any(invariantSeparatorsPath()::endsWith)
+
+/** The only invocation boundaries where MethodHandle's checked Throwable contract is translated. */
+internal fun File.isThrowableInvocationSeam(): Boolean =
+    throwableInvocationSeamSourceSuffixes.any(invariantSeparatorsPath()::endsWith)
 
 internal fun nativeInteropPolicyViolations(
     file: File,

@@ -1,204 +1,113 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import java.lang.invoke.VarHandle;
-import java.lang.reflect.Field;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.attribute.PosixFilePermission;
-import java.util.Set;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.jspecify.annotations.Nullable;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
+import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
-/** Focused regression coverage for native connection-activity accounting edge cases. */
-class SqliteNativeConnectionActivityRegistryTest {
-  @BeforeEach
-  @AfterEach
-  void resetRegistryState() {
-    activeConnections().set(0);
-    activeConnectionsByBookPath().clear();
-    markerConnectionsByBookPath().clear();
+/** Focused regression coverage for physical-object native connection activity accounting. */
+class SqliteNativeConnectionActivityRegistryTest extends SqliteNativeBridgeTestSupport {
+  @Test
+  void absentPathHasNoNativeActivityAndDoesNotRequireAPhysicalIdentity() {
+    Path absentBookPath = tempDirectory.resolve("absent/book.sqlite");
+
+    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount(absentBookPath));
+    assertFalse(
+        Files.exists(
+            tempDirectory.resolve("object-coordination-v4"),
+            java.nio.file.LinkOption.NOFOLLOW_LINKS));
   }
 
   @Test
-  void recordOpeningConnection_rollsBackRegistryStateWhenMarkerPublicationFails() {
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
-      AclFixturePath parentPath = fileSystem.path("\\books");
-      parentPath.exists = true;
-      parentPath.regularFile = false;
-      parentPath.posixPermissions =
-          Set.of(
-              PosixFilePermission.OWNER_READ,
-              PosixFilePermission.OWNER_WRITE,
-              PosixFilePermission.OWNER_EXECUTE);
-      AclFixturePath bookPath = fileSystem.path("\\books\\book.sqlite");
-      AclFixturePath markerPath =
-          fileSystem.path(
-              "\\books\\book.sqlite.fingrind-activity-"
-                  + SqliteProcessIdentity.current().activityMarkerFileToken()
-                  + ".marker");
-      markerPath.failCreateDirectoryWith(new IOException("marker-boom"));
+  void hardLinkAliasesShareOneProcessLocalActivityIdentity() throws Exception {
+    Path original = writeBook("original/book.sqlite");
+    Path alias = tempDirectory.resolve("alias/book.sqlite");
+    Path aliasParent = Objects.requireNonNull(alias.getParent(), "alias parent");
+    Files.createDirectories(aliasParent);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(aliasParent);
+    Files.createLink(alias, original);
+    String physicalIdentity = SqliteObjectCoordinationArtifacts.physicalIdentity(original);
 
-      IllegalStateException exception =
-          assertThrows(
-              IllegalStateException.class,
-              () -> SqliteNativeRuntimeActivity.recordOpeningConnection(bookPath));
-      assertEquals(
-          "Failed to publish one FinGrind SQLite book activity marker.", exception.getMessage());
-      assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount());
-      assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount(bookPath));
-      assertTrue(markerConnectionsByBookPath().isEmpty());
-    }
-  }
+    assertEquals(physicalIdentity, SqliteObjectCoordinationArtifacts.physicalIdentity(alias));
+    assertEquals(physicalIdentity, SqliteObjectCoordinationArtifacts.physicalIdentity(original));
 
-  @Test
-  void recordConnectionClosed_rejectsProcessConnectionUnderflow() {
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () -> SqliteNativeRuntimeActivity.recordConnectionClosed(null, false));
-    assertEquals("SQLite active connection count underflow.", exception.getMessage());
-    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount());
-  }
-
-  @Test
-  void recordConnectionClosed_rejectsPerBookConnectionUnderflow() {
-    Path normalizedBookPath = Path.of("/tmp/per-book-underflow.sqlite");
-    activeConnections().set(1);
-    activeConnectionsByBookPath().put(normalizedBookPath, new AtomicInteger());
-
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () -> SqliteNativeRuntimeActivity.recordConnectionClosed(normalizedBookPath, false));
-    assertTrue(
-        NullTestSupport.messageOf(exception).contains("SQLite active connection count underflow"));
-    assertEquals(1, SqliteNativeRuntimeActivity.activeConnectionCount());
-    assertEquals(0, activeConnectionsByBookPath().get(normalizedBookPath).get());
-  }
-
-  @Test
-  void recordConnectionClosed_rejectsMissingMarkerRegistryEntry() {
-    Path normalizedBookPath = Path.of("/tmp/missing-marker-entry.sqlite");
-    activeConnections().set(1);
-    activeConnectionsByBookPath().put(normalizedBookPath, new AtomicInteger(1));
-
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () -> SqliteNativeRuntimeActivity.recordConnectionClosed(normalizedBookPath, true));
-    assertTrue(NullTestSupport.messageOf(exception).contains("activity-marker registry missing"));
-    assertEquals(1, SqliteNativeRuntimeActivity.activeConnectionCount());
-    assertEquals(1, activeConnectionsByBookPath().get(normalizedBookPath).get());
-  }
-
-  @Test
-  void recordConnectionClosed_rejectsMarkerConnectionUnderflow() {
-    Path normalizedBookPath = Path.of("/tmp/marker-underflow.sqlite");
-    activeConnections().set(1);
-    activeConnectionsByBookPath().put(normalizedBookPath, new AtomicInteger(1));
-    markerConnectionsByBookPath().put(normalizedBookPath, new AtomicInteger());
-
-    IllegalStateException exception =
-        assertThrows(
-            IllegalStateException.class,
-            () -> SqliteNativeRuntimeActivity.recordConnectionClosed(normalizedBookPath, true));
-    assertTrue(
-        NullTestSupport.messageOf(exception)
-            .contains("activity-marker connection count underflow"));
-    assertEquals(1, SqliteNativeRuntimeActivity.activeConnectionCount());
-    assertEquals(1, activeConnectionsByBookPath().get(normalizedBookPath).get());
-    assertEquals(0, markerConnectionsByBookPath().get(normalizedBookPath).get());
-  }
-
-  @Test
-  void rollbackOpeningConnection_allowsMissingMarkerCounterWhenConnectionsRemain() {
-    Path normalizedBookPath = Path.of("/tmp/rollback-without-marker.sqlite");
-    AtomicInteger activeBookConnections = new AtomicInteger(2);
-    activeConnections().set(1);
-
-    invokeRollbackOpeningConnection(normalizedBookPath, activeBookConnections, null);
-
-    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount());
-    assertEquals(1, activeBookConnections.get());
-  }
-
-  @Test
-  void rollbackOpeningConnection_preservesRegistryEntriesWhenCountersRemainPositive() {
-    Path normalizedBookPath = Path.of("/tmp/rollback-with-marker.sqlite");
-    AtomicInteger activeBookConnections = new AtomicInteger(2);
-    AtomicInteger markerConnections = new AtomicInteger(2);
-    activeConnections().set(1);
-
-    invokeRollbackOpeningConnection(normalizedBookPath, activeBookConnections, markerConnections);
-
-    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount());
-    assertEquals(1, activeBookConnections.get());
-    assertEquals(1, markerConnections.get());
-  }
-
-  @SuppressWarnings("unchecked")
-  private static ConcurrentMap<Path, AtomicInteger> activeConnectionsByBookPath() {
-    return (ConcurrentMap<Path, AtomicInteger>) staticField("ACTIVE_CONNECTIONS_BY_BOOK_PATH");
-  }
-
-  @SuppressWarnings("unchecked")
-  private static ConcurrentMap<Path, AtomicInteger> markerConnectionsByBookPath() {
-    return (ConcurrentMap<Path, AtomicInteger>) staticField("MARKER_CONNECTIONS_BY_BOOK_PATH");
-  }
-
-  private static AtomicInteger activeConnections() {
-    return (AtomicInteger) staticField("ACTIVE_CONNECTIONS");
-  }
-
-  private static Object staticField(String fieldName) {
+    SqliteNativeActivityRegistration registration =
+        SqliteNativeRuntimeActivity.recordOpeningConnection(original, false);
     try {
-      Field field = SqliteNativeConnectionActivityRegistry.class.getDeclaredField(fieldName);
-      VarHandle handle =
-          MethodHandles.privateLookupIn(
-                  SqliteNativeConnectionActivityRegistry.class, MethodHandles.lookup())
-              .findStaticVarHandle(
-                  SqliteNativeConnectionActivityRegistry.class, fieldName, field.getType());
-      return handle.get();
-    } catch (ReflectiveOperationException exception) {
-      throw new IllegalStateException(
-          "Failed to access SQLite native connection activity test fixture state `"
-              + fieldName
-              + "`.",
-          exception);
+      assertEquals(1, SqliteNativeRuntimeActivity.activeConnectionCount(original));
+      assertEquals(1, SqliteNativeRuntimeActivity.activeConnectionCount(alias));
+    } finally {
+      SqliteNativeRuntimeActivity.recordConnectionClosed(registration);
     }
+    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount());
+    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount(alias));
   }
 
-  private static void invokeRollbackOpeningConnection(
-      Path normalizedBookPath,
-      AtomicInteger activeBookConnections,
-      @Nullable AtomicInteger markerConnections) {
-    try {
-      MethodHandle methodHandle =
-          MethodHandles.privateLookupIn(
-                  SqliteNativeConnectionActivityRegistry.class, MethodHandles.lookup())
-              .findStatic(
-                  SqliteNativeConnectionActivityRegistry.class,
-                  "rollbackOpeningConnection",
-                  MethodType.methodType(
-                      void.class, Path.class, AtomicInteger.class, AtomicInteger.class));
-      methodHandle.invokeExact(normalizedBookPath, activeBookConnections, markerConnections);
-    } catch (ReflectiveOperationException exception) {
-      throw new IllegalStateException(
-          "Failed to invoke SQLite native connection rollback helper for tests.", exception);
-    } catch (Throwable throwable) {
-      throw new IllegalStateException(
-          "Failed to invoke SQLite native connection rollback helper for tests.", throwable);
+  @Test
+  void closingAfterTheOriginalPathIsRenamedReleasesTheOriginalObjectRegistration()
+      throws Exception {
+    Path original = writeBook("renamed/book.sqlite");
+    Path renamed = original.resolveSibling("renamed.sqlite");
+    SqliteNativeActivityRegistration registration =
+        SqliteNativeRuntimeActivity.recordOpeningConnection(original, false);
+
+    Files.move(original, renamed);
+    SqliteNativeRuntimeActivity.recordConnectionClosed(registration);
+
+    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount());
+    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount(renamed));
+  }
+
+  @Test
+  void markerPublicationFailureLeavesNoProcessLocalActivity() throws Exception {
+    Path bookPath = writeBook("retired-marker/book.sqlite");
+    Path retiredControl = bookPath.resolveSibling(".fingrind-activity-v2-retired-identity.control");
+    Files.writeString(retiredControl, "retired v2 activity control");
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () -> SqliteNativeRuntimeActivity.recordOpeningConnection(bookPath, true));
+
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage(), "exception message")
+            .contains("activity control-file slot"));
+    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount());
+  }
+
+  @Test
+  void closeRejectsOneRegistrationThatWasNeverOpened() throws Exception {
+    Path bookPath = writeBook("missing-registration/book.sqlite");
+    SqliteNativeActivityRegistration unregistered =
+        new SqliteNativeActivityRegistration(
+            bookPath, SqliteObjectCoordinationArtifacts.physicalIdentity(bookPath), null);
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () -> SqliteNativeRuntimeActivity.recordConnectionClosed(unregistered));
+
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage(), "exception message")
+            .contains("registry missing the physical book identity"));
+    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount());
+  }
+
+  private Path writeBook(String relativePath) throws java.io.IOException {
+    Path bookPath = tempDirectory.resolve(relativePath).toAbsolutePath().normalize();
+    Path parent = bookPath.getParent();
+    if (parent == null) {
+      throw new AssertionError("Book fixture requires one parent directory.");
     }
+    Files.createDirectories(parent);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(parent);
+    SqliteBookFileSecurity.createNewOwnerOnlyBookFile(bookPath);
+    Files.writeString(bookPath, "book");
+    return bookPath;
   }
 }

@@ -19,6 +19,9 @@ import java.util.regex.Pattern;
 /** Canonical text, bytes, date, instant, currency, and SPKI encodings. */
 final class AttestationTextEncoding {
   private static final int MAX_BYTES_LENGTH = 1_048_576;
+  static final int INSTANT_ENCODED_BYTE_COUNT = 24;
+  private static final int MAX_EMBEDDED_LENGTH =
+      AttestationPlanQualifiedFact.maximumEmbeddedValueByteCount();
   private static final int MAX_TOKEN_LENGTH = 64;
   private static final int MAX_ALGORITHM_ID_LENGTH = 32;
   private static final Pattern TOKEN = Pattern.compile("[a-z0-9]+(?:-[a-z0-9]+)*");
@@ -78,10 +81,20 @@ final class AttestationTextEncoding {
   }
 
   static void appendBytes(ByteArrayOutputStream output, byte[] value, String fieldName) {
+    appendLengthPrefixedBytes(output, value, fieldName, MAX_BYTES_LENGTH);
+  }
+
+  static void appendEmbedded(ByteArrayOutputStream output, byte[] value, String fieldName) {
+    appendLengthPrefixedBytes(output, value, fieldName, MAX_EMBEDDED_LENGTH);
+  }
+
+  private static void appendLengthPrefixedBytes(
+      ByteArrayOutputStream output, byte[] value, String fieldName, int maximumLength) {
     Objects.requireNonNull(output, "output");
     Objects.requireNonNull(value, fieldName);
-    if (value.length > MAX_BYTES_LENGTH) {
-      throw new IllegalArgumentException(fieldName + " must be at most 1048576 bytes.");
+    if (value.length > maximumLength) {
+      throw new IllegalArgumentException(
+          fieldName + " must be at most " + maximumLength + " bytes.");
     }
     AttestationUnsignedEncoding.appendUnsigned(
         output, BigInteger.valueOf(value.length), Integer.BYTES, fieldName + " length");
@@ -126,7 +139,7 @@ final class AttestationTextEncoding {
       throw new IllegalArgumentException(fieldName + " must be precise to milliseconds.");
     }
     String formatted = INSTANT_FORMAT.format(value);
-    if (formatted.length() != 24) {
+    if (formatted.length() != INSTANT_ENCODED_BYTE_COUNT) {
       throw new IllegalArgumentException(
           fieldName + " must fit the four-digit UTC wire timestamp range.");
     }

@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.AclEntry;
 import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.UserPrincipal;
@@ -23,30 +24,28 @@ class SqliteProtectedBookStagingFilesTest extends SqliteNativeBridgeTestSupport 
   void backupExportFailure_preservesTheCheckpointAndExposesOnlyNativeResultNames() {
     SqliteProtectedBookStagingFiles.BackupExportFailure nativeFailure =
         new SqliteProtectedBookStagingFiles.BackupExportFailure(
-            SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_COPY,
+            SqliteProtectedBookStagingCheckpoint.BACKUP_COPY,
             new SqliteNativeException(
                 SqliteNativeResultCode.code("BUSY"), "private native detail"));
 
+    assertEquals(SqliteProtectedBookStagingCheckpoint.BACKUP_COPY, nativeFailure.checkpoint());
     assertEquals(
-        SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_COPY,
-        nativeFailure.checkpoint());
-    assertEquals(
-        SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_COPY.failureMessage()
+        SqliteProtectedBookStagingCheckpoint.BACKUP_COPY.failureMessage()
             + " SQLite reported SQLITE_BUSY.",
         nativeFailure.publicFailureMessage());
 
     SqliteProtectedBookStagingFiles.BackupExportFailure filesystemFailure =
         new SqliteProtectedBookStagingFiles.BackupExportFailure(
-            SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_HARDEN,
+            SqliteProtectedBookStagingCheckpoint.BACKUP_STAGE_OPEN,
             new IllegalStateException("private filesystem detail"));
 
     assertEquals(
-        SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_HARDEN.failureMessage(),
+        SqliteProtectedBookStagingCheckpoint.BACKUP_STAGE_OPEN.failureMessage(),
         filesystemFailure.publicFailureMessage());
   }
 
   @Test
-  void stagingFileHelpers_enforceRegularInputsAndSecureTheirOwnedArtifacts() throws Exception {
+  void stagingFileHelpers_enforceRegularInputsAndPrepareSecureParents() throws Exception {
     Path regularBook = tempDirectory.resolve("regular-book.sqlite");
     Files.writeString(regularBook, "protected-book-fixture");
     assertDoesNotThrow(
@@ -59,12 +58,30 @@ class SqliteProtectedBookStagingFilesTest extends SqliteNativeBridgeTestSupport 
     Path backupKey = tempDirectory.resolve("backup-key-parent").resolve("backup.key");
     SqliteProtectedBookStagingFiles.ensureSecureBackupFileParentDirectory(backupArtifact);
     SqliteProtectedBookStagingFiles.ensureSecureBackupKeyFileParentDirectory(backupKey);
-    assertDoesNotThrow(() -> SqliteProtectedBookStagingFiles.hardenBookArtifacts(regularBook));
+  }
 
-    Path stagedSecret = tempDirectory.resolve("staged.key");
-    Files.writeString(stagedSecret, "transient secret");
-    SqliteProtectedBookStagingFiles.resetStagedSecretFile(stagedSecret);
-    assertFalse(Files.exists(stagedSecret));
+  @Test
+  void maintenanceStagingParentChecks_refuseMissingParentsWithoutCreatingThem() {
+    Path bookArtifact = tempDirectory.resolve("missing-book-parent").resolve("backup.fgba");
+    Path secretArtifact = tempDirectory.resolve("missing-secret-parent").resolve("backup.key");
+
+    SqliteCallerPathContractException bookFailure =
+        assertThrows(
+            SqliteCallerPathContractException.class,
+            () ->
+                SqliteProtectedBookStagingFiles.requireExistingSecureBackupFileParentDirectory(
+                    bookArtifact));
+    SqliteCallerPathContractException secretFailure =
+        assertThrows(
+            SqliteCallerPathContractException.class,
+            () ->
+                SqliteProtectedBookStagingFiles.requireExistingSecureBackupKeyFileParentDirectory(
+                    secretArtifact));
+
+    assertEquals(SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY, bookFailure.pathFailure());
+    assertEquals(SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY, secretFailure.pathFailure());
+    assertFalse(Files.exists(bookArtifact.getParent()));
+    assertFalse(Files.exists(secretArtifact.getParent()));
   }
 
   @Test
@@ -82,8 +99,7 @@ class SqliteProtectedBookStagingFilesTest extends SqliteNativeBridgeTestSupport 
                   SqliteProtectedBookStagingFiles.exportBackupUsingSqlite(
                       missingBook, stagedBackup, sourcePassphrase));
       assertEquals(
-          SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_SOURCE_OPEN,
-          exportFailure.checkpoint());
+          SqliteProtectedBookStagingCheckpoint.BACKUP_SOURCE_OPEN, exportFailure.checkpoint());
     }
 
     Path nonDirectoryParent = tempDirectory.resolve("not-a-directory");
@@ -98,17 +114,42 @@ class SqliteProtectedBookStagingFilesTest extends SqliteNativeBridgeTestSupport 
         () ->
             SqliteProtectedBookStagingFiles.ensureSecureBackupKeyFileParentDirectory(
                 impossibleChild));
-    assertThrows(
-        SqliteCallerPathContractException.class,
-        () -> SqliteProtectedBookStagingFiles.hardenBookArtifacts(impossibleChild));
   }
 
   @Test
-  void stagingFileHelpers_wrapAclMetadataIoFailuresAtTheirPublicBoundaries() throws Exception {
+  void backupExport_preservesTheActiveMaintenanceLeaseContractFailure() throws Exception {
+    Path sourceBook = tempDirectory.resolve("leased-source.sqlite");
+    Path stagedBackup = tempDirectory.resolve("leased-stage.sqlite");
+    Files.writeString(sourceBook, "protected-book-fixture");
+    Path leasePath =
+        sourceBook.resolveSibling(sourceBook.getFileName() + ".fingrind-maintenance.lock");
+    SqliteBookFileSecurity.createNewOwnerOnlyBookFile(leasePath);
+    Files.writeString(
+        leasePath, SqliteProcessIdentity.current().leaseMetadataText(), StandardOpenOption.WRITE);
+
+    try (SqliteBookPassphrase sourcePassphrase =
+        SqliteBookPassphrase.fromCharacters("leased staging source", TEST_BOOK_KEY.toCharArray())) {
+      SqliteProtectedBookStagingFiles.BackupExportFailure failure =
+          assertThrows(
+              SqliteProtectedBookStagingFiles.BackupExportFailure.class,
+              () ->
+                  SqliteProtectedBookStagingFiles.exportBackupUsingSqlite(
+                      sourceBook, stagedBackup, sourcePassphrase));
+
+      assertEquals(SqliteProtectedBookStagingCheckpoint.BACKUP_SOURCE_OPEN, failure.checkpoint());
+      assertFalse(Files.exists(stagedBackup));
+    } finally {
+      Files.deleteIfExists(leasePath);
+    }
+  }
+
+  @Test
+  void stagingParentHelpers_wrapAclMetadataIoFailuresAtTheirPublicBoundaries() throws Exception {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
       AclFixturePath backupArtifact = fileSystem.path("\\backup\\book.fgba");
       AclFixturePath backupParent =
           assertInstanceOf(AclFixturePath.class, backupArtifact.getParent());
+      backupParent.exists = true;
       backupParent.overrideAclView = failingAclView();
       IllegalStateException backupFailure =
           assertThrows(
@@ -124,6 +165,7 @@ class SqliteProtectedBookStagingFilesTest extends SqliteNativeBridgeTestSupport 
       AclFixturePath backupKey = fileSystem.path("\\backup-key\\book.key");
       AclFixturePath backupKeyParent =
           assertInstanceOf(AclFixturePath.class, backupKey.getParent());
+      backupKeyParent.exists = true;
       backupKeyParent.overrideAclView = failingAclView();
       IllegalStateException backupKeyFailure =
           assertThrows(
@@ -135,20 +177,6 @@ class SqliteProtectedBookStagingFilesTest extends SqliteNativeBridgeTestSupport 
           "Failed to secure the parent directory for \\backup-key\\book.key.",
           backupKeyFailure.getMessage());
       assertInstanceOf(IOException.class, backupKeyFailure.getCause());
-
-      AclFixturePath stagedBook = fileSystem.path("\\staged\\book.sqlite");
-      SqliteBookFileSecurity.ensureSecureParentDirectory(stagedBook);
-      stagedBook.exists = true;
-      stagedBook.regularFile = true;
-      stagedBook.overrideAclView = failingAclView();
-      IllegalStateException hardeningFailure =
-          assertThrows(
-              IllegalStateException.class,
-              () -> SqliteProtectedBookStagingFiles.hardenBookArtifacts(stagedBook));
-      assertEquals(
-          "Failed to harden the FinGrind protected-book artifacts for \\staged\\book.sqlite.",
-          hardeningFailure.getMessage());
-      assertInstanceOf(IOException.class, hardeningFailure.getCause());
     }
   }
 

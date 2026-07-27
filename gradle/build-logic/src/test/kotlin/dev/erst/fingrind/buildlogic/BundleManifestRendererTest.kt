@@ -105,8 +105,8 @@ class BundleManifestRendererTest {
                 "managed-sqlite-contract.json",
                 """
                 {
-                  "minimumSqliteVersion": "3.53.3",
-                  "sqlite3mcVersion": "2.3.6",
+                  "minimumSqliteVersion": "3.53.4",
+                  "sqlite3mcVersion": "2.4.0",
                   "sqliteSourceId": "2026-04-09 sqlite-source-id",
                   "sourcePackageId": "sqlite3mc-amalgamation-test",
                   "vendoredReleaseFiles": {
@@ -185,11 +185,11 @@ class BundleManifestRendererTest {
                 manifest.path("managedSqlite").path("storageDriver").requireText(),
             )
             assertEquals(
-                "3.53.3",
+                "3.53.4",
                 manifest.path("managedSqlite").path("requiredMinimumSqliteVersion").requireText(),
             )
             assertEquals(
-                "2.3.6",
+                "2.4.0",
                 manifest.path("managedSqlite").path("requiredSqlite3mcVersion").requireText(),
             )
             assertEquals(

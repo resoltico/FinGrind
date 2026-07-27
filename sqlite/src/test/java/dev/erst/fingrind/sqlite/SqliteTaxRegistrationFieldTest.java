@@ -28,6 +28,7 @@ import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.executor.TaxAdministrationService;
 import dev.erst.fingrind.executor.TaxReadService;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
+import dev.erst.fingrind.executor.bookkeeping.TaxRegistrationMutationOutcome;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
@@ -126,7 +127,7 @@ class SqliteTaxRegistrationFieldTest extends SqlitePostingFactStoreTestSupport {
     try (SqlitePostingFactStore missingStore =
         openStore(bookAccess(tempDirectory.resolve("missing-tax-book.sqlite")))) {
       assertInstanceOf(
-          DeclareTaxRegistrationResult.Rejected.class,
+          TaxRegistrationMutationOutcome.Rejected.class,
           missingStore.declareTaxRegistration(
               registration, CLOCK.instant(), SqliteAttestationTestSupport.authorizer()));
     }
@@ -139,7 +140,7 @@ class SqliteTaxRegistrationFieldTest extends SqlitePostingFactStoreTestSupport {
     }
     try (SqlitePostingFactStore uninitializedStore = openStore(uninitializedBookAccess)) {
       assertInstanceOf(
-          DeclareTaxRegistrationResult.Rejected.class,
+          TaxRegistrationMutationOutcome.Rejected.class,
           uninitializedStore.declareTaxRegistration(
               registration, CLOCK.instant(), SqliteAttestationTestSupport.authorizer()));
       assertTrue(java.nio.file.Files.exists(initializedButUnopenedPath));
@@ -159,7 +160,7 @@ class SqliteTaxRegistrationFieldTest extends SqlitePostingFactStoreTestSupport {
       declareTaxControlAccounts(session);
       TaxRegistrationId taxRegistrationId = new TaxRegistrationId("vat-lv");
       assertInstanceOf(
-          DeclareTaxRegistrationResult.Declared.class,
+          TaxRegistrationMutationOutcome.Declared.class,
           session.declareTaxRegistration(
               registration("vat-lv", "Latvia VAT", "LV", "vat-standard-sale"),
               CLOCK.instant(),

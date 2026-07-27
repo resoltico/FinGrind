@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.cli.json.CliPlanJsonModels;
+import dev.erst.fingrind.cli.json.CliPlanStepDataJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.discovery.ScaffoldPlaceholders;
@@ -121,9 +121,9 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
             declareAccountFacts());
 
     assertEquals(BookkeepingEntryKind.SALE_SETTLED, command.entry().entryKind());
-    CliPlanJsonModels.AccountDeclarationStepDataPayload payload =
+    CliPlanStepDataJsonModels.AccountDeclarationStepDataPayload payload =
         assertInstanceOf(
-            CliPlanJsonModels.AccountDeclarationStepDataPayload.class,
+            CliPlanStepDataJsonModels.AccountDeclarationStepDataPayload.class,
             CliLedgerStepDataPayloadMapper.ledgerStepDataPayload(declareAccountEntry));
     assertEquals("declared", payload.outcome());
     assertEquals("1110", payload.account().accountCode());
@@ -136,9 +136,9 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
             Instant.parse("2026-05-15T10:00:01Z"),
             declareTaxRegistrationFacts());
 
-    CliPlanJsonModels.TaxRegistrationDeclarationStepDataPayload taxPayload =
+    CliPlanStepDataJsonModels.TaxRegistrationDeclarationStepDataPayload taxPayload =
         assertInstanceOf(
-            CliPlanJsonModels.TaxRegistrationDeclarationStepDataPayload.class,
+            CliPlanStepDataJsonModels.TaxRegistrationDeclarationStepDataPayload.class,
             CliLedgerStepDataPayloadMapper.ledgerStepDataPayload(declareTaxRegistrationEntry));
     assertEquals("declared", taxPayload.outcome());
     assertEquals("vat-lv", taxPayload.taxRegistration().taxRegistrationId());
@@ -155,9 +155,9 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
                 LedgerFact.text("idempotencyKey", "idem-1"),
                 LedgerFact.text("effectiveDate", "2026-05-15"),
                 LedgerFact.text("recordedAt", "2026-05-15T10:00:03Z")));
-    CliPlanJsonModels.CommittedEntryStepDataPayload committedPayload =
+    CliPlanStepDataJsonModels.CommittedEntryStepDataPayload committedPayload =
         assertInstanceOf(
-            CliPlanJsonModels.CommittedEntryStepDataPayload.class,
+            CliPlanStepDataJsonModels.CommittedEntryStepDataPayload.class,
             CliLedgerStepDataPayloadMapper.ledgerStepDataPayload(committedEntry));
     assertEquals("018f0000-0000-7000-8000-000000000002", committedPayload.postingId());
     assertEquals("2026-05-15T10:00:03Z", committedPayload.recordedAt());
@@ -167,8 +167,8 @@ class CliLedgerPlanBranchCoverageTest extends CliRequestReaderTestSupport {
     assertTrue(taxRegistrationText.contains("Tax codes"));
     assertTrue(taxRegistrationText.contains("VAT Standard Sale"));
 
-    CliPlanJsonModels.TaxRegistrationDeclarationStepDataPayload unnumberedTaxPayload =
-        new CliPlanJsonModels.TaxRegistrationDeclarationStepDataPayload(
+    CliPlanStepDataJsonModels.TaxRegistrationDeclarationStepDataPayload unnumberedTaxPayload =
+        new CliPlanStepDataJsonModels.TaxRegistrationDeclarationStepDataPayload(
             "declared",
             CliLedgerTaxRegistrationPayloadMapper.taxRegistrationPayload(
                 declareTaxRegistrationFacts().stream()

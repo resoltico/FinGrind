@@ -128,10 +128,6 @@ assert_wrapper_help 'Usage: jazzer/bin/promote-seed <target-key> <input-path> --
     "${repo_root}/jazzer/bin/promote-seed" --help
 assert_wrapper_help 'Usage: jazzer/bin/seed-audit [<target-key>] [--json] [supported Gradle options]' \
     "${repo_root}/jazzer/bin/seed-audit" --help
-assert_wrapper_help 'Usage: jazzer/bin/clean-local-findings [supported Gradle options]' \
-    "${repo_root}/jazzer/bin/clean-local-findings" --help
-assert_wrapper_help 'Usage: jazzer/bin/clean-local-corpus [supported Gradle options]' \
-    "${repo_root}/jazzer/bin/clean-local-corpus" --help
 assert_wrapper_help 'Usage: jazzer/bin/fuzz-all [supported Gradle options]' \
     "${repo_root}/jazzer/bin/fuzz-all" --help
 

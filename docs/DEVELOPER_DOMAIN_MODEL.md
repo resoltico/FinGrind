@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: DEVELOPER_DOMAIN_MODEL
-updated: "2026-07-21"
+updated: "2026-07-26"
 route:
   keywords: [fingrind, domain model, bounded context, context map, ubiquitous language, bookkeeping, workflow, published language]
   questions: ["what are fingrind's bounded contexts", "what is the context map in fingrind", "which term is canonical for the owner of a book", "how does execute-plan relate to bookkeeping in fingrind"]
@@ -231,8 +231,9 @@ Interpretation:
 - `BookWorkflowPublishedLanguageTranslator` and
   `BookWorkflowPublishedJournalTranslator` together form the workflow-side anti-corruption layer
   at the published-language edge
-- the local maintenance service owns backup, restore, rollback selection, replacement, and
-  verification semantics before any public maintenance DTO or rejection family is projected
+- the local maintenance service owns backup, restore, pair-publication recovery, no-replace
+  admission, and verification semantics before any public maintenance DTO or rejection family is
+  projected
 - the local bookkeeping services own inspection, query, reporting, preflight, and commit semantics
   before any public DTO or public rejection family is projected; statement doctrine is now split
   across `FinancialPositionStatementCalculator`, `IncomeStatementCalculator`, and

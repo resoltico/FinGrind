@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 
 /** Locks checked-in discovery template fixtures to the live CLI output surface. */
-class CliDiscoveryExampleFixtureContractTest extends FinGrindCliTestSupport {
+class CliDiscoveryExampleFixtureContractTest extends CliWorkflowFixtureSupport {
   private static final ObjectMapper TEST_JSON_MAPPER = new ObjectMapper();
 
   @Test

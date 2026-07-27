@@ -39,7 +39,8 @@ class SqliteNativeInteropTest {
 
   @BeforeEach
   void hardenTempDirectory() {
-    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+    tempDirectory =
+        SqliteTestPrivateDirectorySupport.canonicalizeAndHardenOwnerOnlyDirectory(tempDirectory);
   }
 
   @Test

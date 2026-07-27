@@ -18,7 +18,9 @@ import org.jspecify.annotations.Nullable;
  * Overview-oriented capability discovery JSON record families emitted by the CLI transport layer.
  */
 public interface CliDiscoveryCapabilitiesJsonModels
-    extends CliDiscoveryCommonJsonModels, CliDiscoveryCapabilitiesSliceJsonModels {
+    extends CliDiscoveryCommonJsonModels,
+        CliDiscoveryCapabilitiesSliceJsonModels,
+        CliDiscoveryResponseContractSliceJsonModels {
 
   record CapabilitiesMinimalPayload(
       String application,

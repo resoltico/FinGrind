@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.protocol;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -89,6 +90,13 @@ class ProtocolDocumentationIndexLintTest extends ProtocolContractDocumentationSu
                 + sorted(expectedSymbols)
                 + "\nactual "
                 + sorted(documentedSymbols));
+  }
+
+  @Test
+  void exportedSymbolScannerPreservesNestedPublicOwnerPaths() throws IOException {
+    Set<String> exportedSymbols = exportedPublicReferenceSymbols();
+    assertTrue(exportedSymbols.contains("PrivateOutputDirectory.Violation.Kind"));
+    assertFalse(exportedSymbols.contains("PrivateOutputDirectory.Kind"));
   }
 
   private List<DocRoute> apiSymbolRoutes() throws IOException {

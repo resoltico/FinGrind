@@ -43,7 +43,8 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
   - `contract.runtime.BookFormatContract`
 - Storage participants:
   - `sqlite.SqliteBookStateReader`
-  - `sqlite.SqliteStoreMutationOperations`
+  - `sqlite.SqliteStoreLifecycle`
+  - `sqlite.SqliteStoreAdministrationMutationOperations`
 - Notes: book lifecycle is not inferred from file existence alone. It is proved from
   `application_id`, `user_version`, schema fingerprint, foreign-key integrity, persisted-money
   integrity, and journal integrity.
@@ -51,8 +52,8 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
 ## Protected-Book Maintenance Boundary
 
 - Invariant: one closed protected book may be exported only as a manifest-attested backup pair,
-  restored only from a verified backup pair, and rekeyed only through its atomic maintenance
-  workflow.
+  restored only from a verified backup pair, and rekeyed only through its verified staged
+  maintenance workflow with completion-uncertain recovery.
 - Maintenance paths: `backup-book`, `restore-book`, and `rekey-book`; read-only attestation
   inspection uses `verify-book`, `attestation-review`, and retained receipts.
 - Immediate or derived: immediate.
@@ -86,7 +87,7 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
   - `executor.bookkeeping.RegisteredAccount`
   - `executor.BookAdministrationService`
 - Storage participants:
-  - `sqlite.SqliteStoreMutationOperations`
+  - `sqlite.SqliteStoreAccountRegistryMutationOperations`
 - Notes: current FinGrind books use explicit parent-child hierarchy and statement taxonomy while
   keeping account-code text opaque and book-local rather than type-carrying numeric ranges.
 
@@ -105,7 +106,7 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
   - `executor.bookkeeping.posting.BookkeepingPostingService`
   - `executor.PostingApplicationService`
 - Storage participants:
-  - `sqlite.SqliteStoreMutationOperations`
+  - `sqlite.SqliteStorePostingMutationOperations`
   - `sqlite.SqlitePostingSql`
 - Notes: read/report projections do not own ledger truth. They derive from the committed posting
   ledger.
@@ -135,7 +136,7 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
   - `executor.bookkeeping.PostingAcceptancePolicy`
   - `executor.bookkeeping.posting.BookkeepingPostingService`
 - Storage participants:
-  - `sqlite.SqliteStoreMutationOperations`
+  - `sqlite.SqliteStorePostingMutationOperations`
   - SQLite unique constraint on `posting_fact.idempotency_key`
 - Notes: idempotency is book-local, not global across books.
 
@@ -150,7 +151,7 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
   - `executor.workflow.BookWorkflowExecutionService`
   - `executor.spi.AtomicBookStore`
 - Storage participants:
-  - `sqlite.SqliteStoreMutationOperations`
+  - `sqlite.SqliteStoreLedgerPlanTransactions`
 - Notes: workflow journals are returned after the authoritative transactional decision, not as a
   second source of bookkeeping truth.
 
@@ -167,7 +168,10 @@ bookkeeping invariant requires it. Everything else is derived at read time from 
   - `executor.bookkeeping.BookAuditEventKind`
 - Storage participants:
   - `sqlite.SqliteAuditEventWriter`
-  - `sqlite.SqliteStoreMutationOperations`
+  - `sqlite.SqliteStoreAdministrationMutationOperations`
+  - `sqlite.SqliteStoreAccountRegistryMutationOperations`
+  - `sqlite.SqliteStorePostingMutationOperations`
+  - `sqlite.SqliteClosePostingPersistence`
   - SQLite `audit_event` append-only triggers
 - Notes: posting provenance inside `posting_fact` is not a substitute for this stream. Signed
   lifecycle evidence is a separate attestation-chain concern, not an audit-event substitute.

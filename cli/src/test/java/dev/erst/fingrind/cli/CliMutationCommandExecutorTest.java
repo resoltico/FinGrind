@@ -2,7 +2,6 @@ package dev.erst.fingrind.cli;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
@@ -13,38 +12,18 @@ import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.core.attestation.AttestationOperationRequest;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.math.BigInteger;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 
 /** Focused coverage for record-entry command validation and commit routing. */
 class CliMutationCommandExecutorTest extends CliResponseWriterTestSupport {
-  @Test
-  void credentialFreePlanAuthorizer_failsClosedOnAnyAttemptedMutation() {
-    assertThrows(
-        IllegalStateException.class,
-        () ->
-            new SqliteCliMutationWorkflow.ReadOnlyPlanAuthorizer()
-                .authorize(
-                    new AttestationOperationRequest(
-                        UUID.fromString("10213243-5465-7687-98a9-babcbddceeff"),
-                        BigInteger.ZERO,
-                        "declare-account",
-                        new byte[32],
-                        Instant.parse("2026-04-07T12:00:00Z"),
-                        new byte[] {1},
-                        new byte[] {2})));
-  }
-
   @Test
   void runRecordEntryCommand_rejectsMismatchedEntryKindWithExactFieldAndValue() throws IOException {
     Path requestFile = writeRequest(CliRequestReaderTestSupport.validRequestJson(false));
@@ -55,8 +34,7 @@ class CliMutationCommandExecutorTest extends CliResponseWriterTestSupport {
             mutationWriter(outputStream),
             planWriter(outputStream),
             failureWriter(outputStream),
-            new CliWorkflowDoubleSupport.ExplodingWorkflow(
-                new IllegalStateException("workflow should not run")));
+            new CliExplodingWorkflow(new IllegalStateException("workflow should not run")));
 
     int exitCode =
         executor.runRecordEntryCommand(
@@ -87,8 +65,7 @@ class CliMutationCommandExecutorTest extends CliResponseWriterTestSupport {
             mutationWriter(outputStream),
             planWriter(outputStream),
             failureWriter(outputStream),
-            new CliWorkflowDoubleSupport.ExplodingWorkflow(
-                new IllegalStateException("workflow should not run")));
+            new CliExplodingWorkflow(new IllegalStateException("workflow should not run")));
 
     int exitCode = executor.runPostEntryCommand(bookAccess(), requestFile, OutputMode.JSON);
 

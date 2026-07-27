@@ -2,6 +2,7 @@ package dev.erst.fingrind.executor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationRegistryMutationResult;
 import dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure;
@@ -10,6 +11,8 @@ import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
+import dev.erst.fingrind.core.attestation.AttestationAuthorizationFailure;
 import dev.erst.fingrind.core.attestation.AttestationCapability;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
@@ -20,6 +23,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -30,6 +34,11 @@ class ProtectedBookMaintenanceServiceTest {
   private static final UUID BACKUP_ID = UUID.fromString("018f0000-0000-7000-8000-000000000001");
 
   @TempDir Path temporaryDirectory;
+
+  @BeforeEach
+  void canonicalizeTemporaryDirectory() throws IOException {
+    temporaryDirectory = temporaryDirectory.toRealPath();
+  }
 
   @Test
   void projectsSuccessfulSignedBackupRestoreAndRekeyCommands() throws IOException {
@@ -92,13 +101,34 @@ class ProtectedBookMaintenanceServiceTest {
   }
 
   @Test
+  void preservesExactCredentialAdmissionRefusalsInsteadOfReducingThemToGenericRejections()
+      throws IOException {
+    AttestationMaintenanceTestSupport.CredentialFixture credential = credential();
+    Path bookPath = temporaryDirectory.resolve("live/book.sqlite");
+
+    AttestationAdmissionRejectedException observed =
+        assertThrows(
+            AttestationAdmissionRejectedException.class,
+            () ->
+                service(bookPath, credential)
+                    .restoreBook(
+                        temporaryDirectory.resolve("restored/book.sqlite"),
+                        temporaryDirectory.resolve("restored/book.key"),
+                        temporaryDirectory.resolve("retained/book.fgba"),
+                        temporaryDirectory.resolve("retained/book.key"),
+                        List.of(credential.source(), credential.source())));
+
+    assertEquals(AttestationAuthorizationFailure.DUPLICATE_PRINCIPAL, observed.failure());
+  }
+
+  @Test
   void projectsLocalStorageFailuresAsPublishedContractRejections() throws IOException {
     AttestationMaintenanceTestSupport.CredentialFixture credential = credential();
     Path bookPath = temporaryDirectory.resolve("live/book.sqlite");
     BookAccess access = AttestationMaintenanceTestSupport.bookAccess(bookPath, credential);
 
     AttestationMaintenanceTestSupport.Store backupStore = store(bookPath, credential);
-    backupStore.setPrepareFailure(new IllegalStateException("backup staging unavailable"));
+    backupStore.setPairAdmissionFailure(new IllegalStateException("backup staging unavailable"));
     assertInstanceOf(
         ContractDecision.Rejected.class,
         new ProtectedBookMaintenanceService(CLOCK, backupStore)
@@ -111,7 +141,7 @@ class ProtectedBookMaintenanceServiceTest {
     AttestationMaintenanceTestSupport.Store restoreStore = store(bookPath, credential);
     restoreStore
         .overrides()
-        .existingLeaseFailure(new IllegalStateException("backup lease unavailable"));
+        .workflowScopeAcquisitionFailure(new IllegalStateException("backup lease unavailable"));
     assertInstanceOf(
         ContractDecision.Rejected.class,
         new ProtectedBookMaintenanceService(CLOCK, restoreStore)
@@ -123,7 +153,7 @@ class ProtectedBookMaintenanceServiceTest {
                 List.of(credential.source())));
 
     AttestationMaintenanceTestSupport.Store rekeyStore = store(bookPath, credential);
-    rekeyStore.setPrepareFailure(new IllegalStateException("rekey staging unavailable"));
+    rekeyStore.setPairAdmissionFailure(new IllegalStateException("rekey staging unavailable"));
     assertInstanceOf(
         ContractDecision.Rejected.class,
         new ProtectedBookMaintenanceService(CLOCK, rekeyStore)

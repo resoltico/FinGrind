@@ -33,7 +33,7 @@ class CliPaginationResponseContractTest extends CliResponseWriterTestSupport {
     AccountPageCursor acceptedAccountCursor = new AccountPageCursor(new AccountCode("0999"));
     AccountPageCursor nextAccountCursor = new AccountPageCursor(new AccountCode("1001"));
     ByteArrayOutputStream accountOutput = new ByteArrayOutputStream();
-    new CliResponseWriter(utf8PrintStream(accountOutput))
+    new CliBookReadResponseWriterFixture(utf8PrintStream(accountOutput))
         .writeListAccountsResult(
             new ListAccountsResult.Listed(
                 new ListAccountsQuery(1, Optional.of(acceptedAccountCursor)),
@@ -53,7 +53,7 @@ class CliPaginationResponseContractTest extends CliResponseWriterTestSupport {
             Instant.parse("2026-04-07T10:15:30Z"),
             new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
     ByteArrayOutputStream postingOutput = new ByteArrayOutputStream();
-    new CliResponseWriter(utf8PrintStream(postingOutput))
+    new CliBookReadResponseWriterFixture(utf8PrintStream(postingOutput))
         .writeListPostingsResult(
             new ListPostingsResult.Listed(
                 new ListPostingsQuery(
@@ -71,7 +71,7 @@ class CliPaginationResponseContractTest extends CliResponseWriterTestSupport {
     TaxRegistrationPageCursor nextRegistrationCursor =
         new TaxRegistrationPageCursor(new TaxRegistrationId("vat-after"));
     ByteArrayOutputStream registrationOutput = new ByteArrayOutputStream();
-    new CliResponseWriter(utf8PrintStream(registrationOutput))
+    new CliBookReadResponseWriterFixture(utf8PrintStream(registrationOutput))
         .writeListTaxRegistrationsResult(
             new ListTaxRegistrationsResult.Listed(
                 new ListTaxRegistrationsQuery(1, Optional.of(acceptedRegistrationCursor)),

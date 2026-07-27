@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountNodeKind;
@@ -192,6 +193,12 @@ class BookkeepingReportingServiceCoverageTest {
                 new BookLifecycleInspection.Existing(
                     BookLifecycleInspection.Status.BLANK_SQLITE, 0, 0, 2),
                 Map.of()));
+    BookkeepingReportingService unsupportedFormatService =
+        new BookkeepingReportingService(
+            new CoverageBookStore(
+                new BookLifecycleInspection.Existing(
+                    BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION, 1001, 3, 2),
+                Map.of()));
 
     IllegalStateException missingFailure =
         assertThrows(
@@ -205,11 +212,18 @@ class BookkeepingReportingServiceCoverageTest {
             () ->
                 existingService.financialPosition(
                     new FinancialPositionCriteria(Optional.empty(), ComparativeSelection.none())));
+    ContractFailureException unsupportedFormatFailure =
+        assertThrows(
+            ContractFailureException.class,
+            () ->
+                unsupportedFormatService.financialPosition(
+                    new FinancialPositionCriteria(Optional.empty(), ComparativeSelection.none())));
 
     assertEquals(
         "Statement computation requires one initialized book.", missingFailure.getMessage());
     assertEquals(
         "Statement computation requires one initialized book.", existingFailure.getMessage());
+    assertEquals("unsupported-book-format-version", unsupportedFormatFailure.failure().code());
   }
 
   @Test

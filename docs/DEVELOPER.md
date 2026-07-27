@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: DEVELOPER
-updated: "2026-07-21"
+updated: "2026-07-26"
 route:
   keywords: [fingrind, build, gradle, architecture, protocol-catalog, quality-gates, java26, modules, sqlite, sqlite3mc, coverage]
   questions: ["how do I build fingrind", "what is the fingrind module architecture", "what quality gates does fingrind enforce", "where does fingrind own operation metadata"]
@@ -16,7 +16,9 @@ route:
 [DEVELOPER_JAVA.md](./DEVELOPER_JAVA.md) plus Docker in the active shell as codified in
 [DEVELOPER_DOCKER.md](./DEVELOPER_DOCKER.md). Root verification also depends on a working
 `python3` plus `python3 -m pip` surface so the pinned repo-owned `uv` launcher can bootstrap the
-Python helper tools declared in [`requirements-python-tools.txt`](../requirements-python-tools.txt).
+lint and format tools in [`requirements-python-tools.txt`](../requirements-python-tools.txt) and
+the release-smoke PDF reader in
+[`requirements-release-smoke-workflow.txt`](../requirements-release-smoke-workflow.txt).
 No global Gradle install is required for repo work; use `./gradlew`.
 
 The preferred contributor path is the committed devcontainer in
@@ -80,7 +82,7 @@ contract/     Public contract module hosting multiple public protocol subcontext
               ProtocolInteractionLimits,
               ProtocolPostEntryFields, ProtocolDeclareAccountFields,
               MachineContract plus ContractDiscovery / ContractTemplates /
-              ContractRequestShapes / ContractResponse descriptor namespaces,
+              ContractRequestShapes / direct response descriptor types,
               deterministic error vocabularies, runtime/distribution/storage descriptors, and
               machine-readable public facts.
 
@@ -97,8 +99,8 @@ executor/     Execution services plus storage seams:
 sqlite/       Durable single-book adapter:
               one protected SQLite file per accounting-entity book, persisted through an
               in-process SQLite
-              adapter backed by Java 26 FFM and a managed SQLite 3.53.3 / SQLite3 Multiple
-              Ciphers 2.3.6 runtime on controlled surfaces, implementing the executor-owned
+              adapter backed by Java 26 FFM and a managed SQLite 3.53.4 / SQLite3 Multiple
+              Ciphers 2.4.0 runtime on controlled surfaces, implementing the executor-owned
               administration, posting, query, and ledger-plan seams over the canonical strict-table
               `book_schema.sql` through focused helpers for connection setup, book-state reading,
               single-row query support, posting reads, and durable writes.
@@ -170,7 +172,7 @@ FinGrind's current public model is:
 - one SQLite file is one book for one accounting entity
 - every book-bound command requires exactly one explicit passphrase source:
   `--book-key-file`, `--book-passphrase-stdin`, or `--book-passphrase-prompt`
-- book files are protected at rest with SQLite3 Multiple Ciphers 2.3.6 using the upstream default
+- book files are protected at rest with SQLite3 Multiple Ciphers 2.4.0 using the upstream default
   `chacha20` cipher
 - protected book files and same-directory SQLite sidecars are hardened to owner-only filesystem
   permissions during mutation-capable opens when the host platform exposes a supported security
@@ -183,15 +185,18 @@ FinGrind's current public model is:
   stored, while `normalBalance` is derived from `accountType` plus classification doctrine
 - every posting line references a declared active account
 - the canonical book schema uses SQLite `STRICT` tables and opened handles disable `trusted_schema`
-- the current supported on-disk format is `52`, owned by `BookFormatContract`
+- the current supported on-disk format is `57`, owned by `BookFormatContract`
 - `inspect-book` publishes one explicit hard-break migration policy for the active format line:
   no in-place upgrade path, no older-format acceptance, and no newer-format acceptance
 - FinGrind is in an alpha hard-break line, so schema evolution advances by replacing the current
   model and rejecting non-matching book formats instead of carrying compatibility shims
 - maintenance workflows are explicit: `backup-book` publishes a manifest-attested pair and can
   resume only its exact missing acknowledgement; `restore-book` verifies that pair before
-  publishing an absent destination under a new key; and `rekey-book` recovers only its own
-  verified interrupted stage without a public rollback-artifact command
+  publishing an absent destination under a new key; and `rekey-book` owns its verified recovery.
+  A completion-uncertain final pair is preserved and
+  retried as the exact same operation tuple, never renamed, overwritten, deleted, recreated, or
+  manually cleaned; a fresh pair is never started, and recovered rekey checks the generated-key
+  pair before any prior-key access
 - preflight is side-effect free against a missing book
 - commit is append-only and reversals are additive links, not in-place mutation
 - bookkeeping audit events are append-only durable facts in the same protected book
@@ -235,11 +240,11 @@ Generated-state stance:
 | Component | Version |
 |:----------|:--------|
 | Java | 26 |
-| Python helper toolchain | Exact Python 3.12 in CI, `uv` 0.11.25 as the repo-owned runner, plus helper-tool pins from `requirements-python-tools.txt` |
+| Python helper toolchain | Exact Python 3.12 in CI; `uv` 0.11.25 as the repo-owned runner; lint/format pins in [`requirements-python-tools.txt`](../requirements-python-tools.txt) and the isolated release-smoke PDF pin in [`requirements-release-smoke-workflow.txt`](../requirements-release-smoke-workflow.txt) |
 | Gradle Wrapper | 9.6.1 |
 | Kotlin build logic | 2.4.10 in `gradle/build-logic`, emitting JVM 26 bytecode |
 | Docker runtime | Docker Desktop daemon plus `docker buildx` reachable through the active shell `docker` command; smoke and release verification use an anonymous `DOCKER_CONFIG` while targeting the active local Docker engine |
-| SQLite runtime | managed SQLite 3.53.3 / SQLite3 Multiple Ciphers 2.3.6 in public bundles, the published container image, the source-checkout wrapper, root Gradle, nested Jazzer, and CI; the developer direct-Java wrappers resolve that managed runtime only from a prepared checkout |
+| SQLite runtime | managed SQLite 3.53.4 / SQLite3 Multiple Ciphers 2.4.0 in public bundles, the published container image, the source-checkout wrapper, root Gradle, nested Jazzer, and CI; the developer direct-Java wrappers resolve that managed runtime only from a prepared checkout |
 | Jackson Databind | 3.2.0 |
 | JUnit Jupiter | 6.1.2 |
 | Apache PDFBox | 3.0.8 |
@@ -320,7 +325,10 @@ jazzer/bin/promote-seed cli-request jazzer/.local/runs/cli-request/crash-<sha1> 
 Committed-seed operators require lower_snake_case seed names, require each committed
 `coverageIntent` to stay unique across the corpus, print supported replayable target keys on
 their `--help` surfaces, and return structured deterministic `--json` failure payloads instead of
-raw Gradle task boilerplate.
+raw Gradle task boilerplate. A failed `promote-seed` retains any materialized candidate input or
+metadata and reports it through `retainedArtifactPaths`; `seed-audit` then proves the orphan and
+integrity finding before any deliberate reviewable version-control reconciliation. It does not
+erase evidence or retry in place.
 
 `jazzer/bin/fuzz-all` now stops on the first actionable harness failure and prints
 replay-classified findings for that target before returning. Ordinary bounded Jazzer completions
@@ -366,8 +374,8 @@ This matters even when a repo currently has only the default Gradle `test` task:
 [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md) for the canonical build-logic protocol.
 
 Root Gradle verification and the explicit CLI/runtime task owners enable Java native access where
-required, compile a managed SQLite 3.53.3 / SQLite3 Multiple Ciphers 2.3.6 shared library from
-`third_party/sqlite/sqlite3mc-amalgamation-2.3.6-sqlite-3530300/`, and keep the packaged CLI
+required, compile a managed SQLite 3.53.4 / SQLite3 Multiple Ciphers 2.4.0 shared library from
+`third_party/sqlite/sqlite3mc-amalgamation-2.4.0-sqlite-3530400/`, and keep the packaged CLI
 surfaces on the same managed-runtime contract. The source-checkout wrapper and developer
 direct-Java wrappers discover that prepared checkout runtime without any operator override path
 and now launch through the Gradle-owned Java 26 toolchain executable rather than ambient shell
@@ -440,7 +448,7 @@ through `[JAZZER-PULSE]` lines, including deterministic-tests heartbeats plus
 regression-target `event=plan`, `regression-input`, and `event=finish` markers.
 
 The nested Jazzer build is intentionally self-sufficient: it verifies the vendored SQLite3MC
-source, compiles its own managed SQLite 3.53.3 / SQLite3 Multiple Ciphers 2.3.6 shared library
+source, compiles its own managed SQLite 3.53.4 / SQLite3 Multiple Ciphers 2.4.0 shared library
 from `../third_party/sqlite/`, writes the local-consistency `.sha256` file for that built
 library, and resolves that managed
 runtime from its prepared nested build layout for deterministic tests, regression replay, and
@@ -539,8 +547,8 @@ rerun the full aggregate `Gate` against a branch when GitHub fails to attach the
 workflow on initial PR open.
 
 Those workflows now verify the managed SQLite CLI runtime explicitly through `capabilities`, and
-the Docker smoke gate asserts the containerized runtime reports SQLite 3.53.3, SQLite3 Multiple
-Ciphers 2.3.6, required protected-book metadata, and wrong-key failure behavior from the managed
+the Docker smoke gate asserts the containerized runtime reports SQLite 3.53.4, SQLite3 Multiple
+Ciphers 2.4.0, required protected-book metadata, and wrong-key failure behavior from the managed
 library path.
 
 GitHub workflows do not run active fuzzing.
@@ -556,28 +564,8 @@ Operational protocols for those surfaces live in:
 
 ## Build Stance
 
-FinGrind deliberately keeps several boundaries sharp:
-- SQLite is the only durable backend currently planned.
-- One SQLite file is one book for one accounting entity.
-- Every book is protected at rest through SQLite3 Multiple Ciphers and exactly one explicit
-  passphrase source.
-- Rekeying preserves one rollback copy until the replacement secret is verified, so verification
-  failures restore the pre-rekey file automatically instead of leaving an unverified rotation on
-  disk; a crash can leave that encrypted rollback artifact behind until an operator reviews the
-  warning emitted on the next open.
-- FinGrind supports key files, stdin, and interactive terminal prompts; it intentionally rejects
-  plaintext CLI passphrase arguments, environment-variable passphrase transport, and SQLite URI
-  `key=` / `hexkey=` secret transport.
-- There is no generic database-independence layer.
-- There is one canonical current SQLite schema, with the supported format version owned by
-  `BookFormatContract`.
-- Alpha schema evolution uses one explicit hard-break migration policy for the active format line:
-  there is no in-place upgrade path and non-matching book formats are rejected rather than routed
-  through legacy-compatibility code.
-- The CLI never bypasses the contract and executor boundary.
-- Caller-supplied request provenance is distinct from committed audit metadata.
-- Deterministic rejections stay separate from malformed requests and runtime failures.
-- Root verification and nested Jazzer verification stay separate builds.
+FinGrind's durable-backend, schema, secret-transport, evidence-recovery, and verification
+boundaries are owned by [DEVELOPER_ARCHITECTURE.md](./DEVELOPER_ARCHITECTURE.md).
 
 ## Reference Spine
 

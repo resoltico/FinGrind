@@ -17,13 +17,11 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 /**
  * Exercises the public artifact boundary without exposing key or verifier implementation detail.
  */
-class AttestationArtifactBoundaryTest {
-  @TempDir Path temporaryDirectory;
+class AttestationArtifactBoundaryTest extends AttestationKeyFileTestFixture {
 
   @Test
   void createsAndVerifiesAnIndependentBackupArtifactAndReceipt() throws Exception {
@@ -33,7 +31,8 @@ class AttestationArtifactBoundaryTest {
     Path passphrasePath = temporaryDirectory.resolve("founder.passphrase");
     char[] passphrase = "test attestation passphrase".toCharArray();
     Files.writeString(passphrasePath, "test attestation passphrase\n");
-    AttestationPublicCredential credential = AttestationKeyFiles.create(keyPath, passphrase);
+    AttestationPublicCredential credential =
+        AttestationKeyFiles.create(keyPath, passphrase).credential();
     AttestationEvidence genesis;
     try (AttestationSigningCredential signer =
         new AttestationSigningCredential(principalId, credential, keyPath, passphrase)) {

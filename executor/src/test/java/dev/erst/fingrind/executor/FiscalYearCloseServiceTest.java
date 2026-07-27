@@ -207,7 +207,6 @@ class FiscalYearCloseServiceTest {
     @Override
     public dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome interimResultSweep(
         LocalDate throughEffectiveDate,
-        LocalDate bookStartDate,
         dev.erst.fingrind.core.BookIdentity bookIdentity,
         dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner planner,
         LocalDate currentUtcDate,

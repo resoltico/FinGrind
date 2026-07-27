@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 /**
  * Field-shaped close commands through the initialized SQLite, credential, and output boundaries.
  */
-class FinGrindCliPeriodCloseWorkflowTest extends FinGrindCliTestSupport {
+class FinGrindCliPeriodCloseWorkflowTest extends CliWorkflowFixtureSupport {
   @Test
   void closeCommands_publishAnEmptySweepAndAValidatedFutureCloseRejection() {
     Path bookFile = tempDirectory.resolve("period-close").resolve("current.sqlite");
@@ -30,7 +30,7 @@ class FinGrindCliPeriodCloseWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(
         0,
         cli.run(
-            jsonArguments(
+            attestedJsonArguments(
                 "interim-result-sweep",
                 "--book-file",
                 bookFile.toString(),
@@ -47,7 +47,7 @@ class FinGrindCliPeriodCloseWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(
         2,
         cli.run(
-            jsonArguments(
+            attestedJsonArguments(
                 "fiscal-year-close",
                 "--book-file",
                 bookFile.toString(),

@@ -5,7 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.contract.bookkeeping.BookMaintenancePathFailure;
+import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure;
 import dev.erst.fingrind.contract.discovery.RequestFieldPresence;
+import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeStatus;
@@ -23,7 +26,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Shared assertions and helper logic for split CLI discovery command tests. */
-abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSupport {
+abstract class FinGrindCliDiscoveryCommandTestSupport extends CliWorkflowFixtureSupport {
   protected static List<String> commandNames(JsonNode commands) {
     List<String> names = new ArrayList<>();
     commands.forEach(command -> names.add(command.path("name").stringValue()));
@@ -186,13 +189,31 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
     assertEquals(
         "--pdf-out <path>",
         trialBalance.path("artifactOutputs").get(0).path("option").stringValue());
+    JsonNode receiptExport =
+        commandDescriptor(payload.path("commands").path("query"), "export-attestation-receipt");
+    assertEquals(1, receiptExport.path("artifactOutputs").size());
+    assertEquals(
+        ProtocolArtifactOutput.attestationReceiptFormat(),
+        receiptExport.path("artifactOutputs").get(0).path("format").stringValue());
+    assertEquals(
+        ProtocolArtifactOutput.attestationReceipt().option(),
+        receiptExport.path("artifactOutputs").get(0).path("option").stringValue());
   }
 
   protected static void assertCapabilitiesRequestShapes(JsonNode payload) {
     JsonNode fullContract = payload.path("fullContract");
     JsonNode requestShapes = fullContract.path("requestShapes");
+    JsonNode planExecution = fullContract.path("planExecution");
+    JsonNode ledgerPlanExecution = requestShapes.path("ledgerPlan").path("execution");
     JsonNode preflight = fullContract.path("preflight");
     JsonNode currencyModel = fullContract.path("currencyModel");
+    assertPlanAttestationOutcomeTable(planExecution);
+    assertPlanAttestationOutcomeTable(ledgerPlanExecution);
+    assertEquals(
+        planExecution.path("attestationOutcomes"),
+        ledgerPlanExecution.path("attestationOutcomes"),
+        "capabilities must project one identical plan attestation-outcome table at both standard"
+            + " paths");
     assertTrue(requestShapes.has("bookkeepingEntry"));
     assertTrue(requestShapes.has("declareAccount"));
     assertTrue(
@@ -270,6 +291,43 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
     assertEquals(
         "sourceDocumentId",
         saleSemantics.path("requiredSourceDocumentFields").get(0).stringValue());
+  }
+
+  /**
+   * Asserts the closed protocol-47 plan-attestation table exactly as published on one JSON path.
+   */
+  protected static void assertPlanAttestationOutcomeTable(JsonNode planExecution) {
+    assertTrue(planExecution.isObject(), planExecution.toPrettyString());
+    assertFalse(
+        planExecution.has("attestationDispositions"),
+        "protocol 47 must not retain the legacy bare attestationDispositions vocabulary: "
+            + planExecution.toPrettyString());
+    JsonNode outcomes = planExecution.path("attestationOutcomes");
+    assertTrue(outcomes.isArray(), planExecution.toPrettyString());
+    assertEquals(3, outcomes.size(), outcomes.toPrettyString());
+    assertPlanAttestationOutcome(outcomes.get(0), "appended", "required", "required");
+    assertPlanAttestationOutcome(outcomes.get(1), "read-only", "must-be-null", "prohibited");
+    assertPlanAttestationOutcome(
+        outcomes.get(2), "no-durable-child-mutation", "must-be-null", "required");
+  }
+
+  private static void assertPlanAttestationOutcome(
+      JsonNode outcome,
+      String expectedDisposition,
+      String expectedAttestationCommit,
+      String expectedAttestationCredentials) {
+    assertTrue(outcome.isObject(), outcome.toPrettyString());
+    assertEquals(3, outcome.size(), outcome.toPrettyString());
+    assertEquals(expectedDisposition, outcome.path("disposition").stringValue());
+    assertEquals(expectedAttestationCommit, outcome.path("attestationCommit").stringValue());
+    assertEquals(
+        expectedAttestationCredentials, outcome.path("attestationCredentials").stringValue());
+    assertFalse(
+        outcome.has("attestationCommitRequired"),
+        "protocol 47 must not retain the legacy commitment boolean: " + outcome.toPrettyString());
+    assertFalse(
+        outcome.has("attestationCredentialsRequired"),
+        "protocol 47 must not retain the legacy credential boolean: " + outcome.toPrettyString());
   }
 
   protected static void assertEnvironmentRuntimeContract(JsonNode payload) {
@@ -374,6 +432,64 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
     JsonNode responseModel = payload.path("fullContract").path("responseModel");
     assertTrue(responseModel.path("rejections").isArray());
     assertFalse(responseModel.has("rejectionCodes"));
+    assertTrue(
+        descriptorField(responseModel.path("rejectionFields"), "details")
+            .path("description")
+            .stringValue()
+            .contains(BookMaintenancePathFailure.wireValues().toString()));
+    JsonNode artifactPathInvalid =
+        descriptorByFieldValue(responseModel.path("rejections"), "code", "artifact-path-invalid");
+    assertTrue(
+        descriptorField(artifactPathInvalid.path("detailFields"), "pathFailure")
+            .path("description")
+            .stringValue()
+            .contains(BookMaintenancePathFailure.wireValues().toString()));
+    JsonNode artifactVerificationFailed =
+        descriptorByFieldValue(
+            responseModel.path("rejections"), "code", "artifact-verification-failed");
+    assertTrue(
+        descriptorField(artifactVerificationFailed.path("detailFields"), "verificationFailure")
+            .path("description")
+            .stringValue()
+            .contains(BookMaintenanceVerificationFailure.wireValues().toString()));
+    JsonNode admissionDiagnostics = responseModel.path("attestationAdmissionDiagnostics");
+    assertTrue(admissionDiagnostics.isArray());
+    assertEquals(3, admissionDiagnostics.size());
+    assertFalse(admissionDiagnostics.toString().contains("receipt-artifact-invalid"));
+    JsonNode registryAdmissionDiagnostics =
+        java.util.stream.StreamSupport.stream(admissionDiagnostics.spliterator(), false)
+            .filter(
+                descriptor -> "registry-mutation".equals(descriptor.path("context").stringValue()))
+            .findFirst()
+            .orElseThrow();
+    assertFalse(
+        registryAdmissionDiagnostics.path("diagnostics").toString().contains("manifest-invalid"));
+    assertFalse(
+        registryAdmissionDiagnostics.path("diagnostics").toString().contains("receipt-invalid"));
+    JsonNode backupAdmissionDiagnostics =
+        java.util.stream.StreamSupport.stream(admissionDiagnostics.spliterator(), false)
+            .filter(
+                descriptor ->
+                    "backup-acknowledgement".equals(descriptor.path("context").stringValue()))
+            .findFirst()
+            .orElseThrow();
+    assertFalse(
+        backupAdmissionDiagnostics.path("diagnostics").toString().contains("manifest-invalid"));
+    assertFalse(
+        backupAdmissionDiagnostics.path("diagnostics").toString().contains("receipt-invalid"));
+    assertTrue(responseModel.path("attestationVerificationDiagnostics").isArray());
+    assertEquals(4, responseModel.path("attestationVerificationDiagnostics").size());
+    JsonNode receiptVerificationDiagnostics =
+        java.util.stream.StreamSupport.stream(
+                responseModel.path("attestationVerificationDiagnostics").spliterator(), false)
+            .filter(descriptor -> "verify-receipt".equals(descriptor.path("surface").stringValue()))
+            .findFirst()
+            .orElseThrow();
+    assertTrue(
+        receiptVerificationDiagnostics
+            .path("diagnostics")
+            .toString()
+            .contains("receipt-artifact-invalid"));
     assertTrue(responseModel.path("errorDescriptors").isArray());
     assertTrue(responseModel.path("errorDescriptors").toString().contains("invalid-page-cursor"));
     assertTrue(
@@ -397,6 +513,34 @@ abstract class FinGrindCliDiscoveryCommandTestSupport extends FinGrindCliTestSup
         responseModel.path("errorDescriptors").toString().contains("managed-runtime-failure"));
     assertTrue(
         responseModel.path("errorDescriptors").toString().contains("storage-runtime-failure"));
+    JsonNode durabilityUncertainDescriptor =
+        java.util.stream.StreamSupport.stream(
+                responseModel.path("errorDescriptors").spliterator(), false)
+            .filter(
+                descriptor ->
+                    "artifact-publication-durability-uncertain"
+                        .equals(descriptor.path("code").stringValue()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(4, durabilityUncertainDescriptor.path("exitCode").intValue());
+    assertEquals(
+        "publishedArtifact",
+        durabilityUncertainDescriptor.path("detailFields").get(0).path("name").stringValue());
+    JsonNode outcomeUncertainDescriptor =
+        java.util.stream.StreamSupport.stream(
+                responseModel.path("errorDescriptors").spliterator(), false)
+            .filter(
+                descriptor ->
+                    "artifact-publication-outcome-uncertain"
+                        .equals(descriptor.path("code").stringValue()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(4, outcomeUncertainDescriptor.path("exitCode").intValue());
+    List<String> outcomeUncertainDetailFields = new ArrayList<>();
+    outcomeUncertainDescriptor
+        .path("detailFields")
+        .forEach(field -> outcomeUncertainDetailFields.add(field.path("name").stringValue()));
+    assertEquals(List.of("candidateArtifact", "retainedStage"), outcomeUncertainDetailFields);
     assertTrue(responseModel.path("errorDescriptors").toString().contains("pdf-export-failure"));
     JsonNode staleHeadDescriptor =
         java.util.stream.StreamSupport.stream(

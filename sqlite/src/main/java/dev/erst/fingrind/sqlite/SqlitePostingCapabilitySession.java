@@ -8,7 +8,17 @@ class SqlitePostingCapabilitySession extends SqliteReadCapabilitySession
   }
 
   @Override
-  public SqliteStoreMutationOperations storeMutationOperations() {
-    return store.storeMutationOperations();
+  public SqliteStorePostingMutationOperations storePostingMutationOperations() {
+    return store.storePostingMutationOperations();
+  }
+
+  @Override
+  public SqliteStoreAdministrationMutationOperations storeAdministrationMutationOperations() {
+    return store.storeAdministrationMutationOperations();
+  }
+
+  @Override
+  public SqliteStoreAccountRegistryMutationOperations storeAccountRegistryMutationOperations() {
+    return store.storeAccountRegistryMutationOperations();
   }
 }

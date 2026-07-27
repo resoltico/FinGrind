@@ -42,7 +42,7 @@ final class SqliteVerifiedBackupArtifact
     try {
       snapshotBook.close();
     } finally {
-      snapshotStage.discard();
+      snapshotStage.releaseRetained();
       closed = true;
     }
   }

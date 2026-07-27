@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
-import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -23,15 +22,18 @@ public final class AttestationKeyFiles {
    * Creates one new no-clobber encrypted Ed25519 private-key file and returns its public
    * credential.
    */
-  public static AttestationPublicCredential create(Path path, char[] passphrase)
-      throws IOException {
+  public static AttestationKeyFileCreation create(Path path, char[] passphrase) throws IOException {
     char[] ownedPassphrase = Objects.requireNonNull(passphrase, "passphrase").clone();
-    return AttestationFilePkcs8Custodian.createCredential(
-        Objects.requireNonNull(path, "path"), ownedPassphrase);
+    try {
+      return AttestationFilePkcs8Custodian.createCredential(
+          Objects.requireNonNull(path, "path"), ownedPassphrase);
+    } finally {
+      Arrays.fill(ownedPassphrase, '\0');
+    }
   }
 
   /** Creates one new encrypted credential using the secret decoded from one passphrase file. */
-  public static AttestationPublicCredential create(Path path, Path passphraseFilePath)
+  public static AttestationKeyFileCreation create(Path path, Path passphraseFilePath)
       throws IOException {
     char[] passphrase =
         readPassphraseFile(Objects.requireNonNull(passphraseFilePath, "passphraseFilePath"));
@@ -40,6 +42,18 @@ public final class AttestationKeyFiles {
     } finally {
       Arrays.fill(passphrase, '\0');
     }
+  }
+
+  /**
+   * Validates one passphrase-file source without creating, opening, or replacing a credential.
+   *
+   * <p>This enables callers to reject malformed founder input before they create another protected
+   * artifact. The decoded secret is cleared before this method returns.
+   */
+  public static void validatePassphraseFile(Path passphraseFilePath) throws IOException {
+    char[] passphrase =
+        readPassphraseFile(Objects.requireNonNull(passphraseFilePath, "passphraseFilePath"));
+    Arrays.fill(passphrase, '\0');
   }
 
   /** Reads the public credential published with an encrypted attestation key file. */
@@ -54,19 +68,27 @@ public final class AttestationKeyFiles {
    * boundary. A missing encrypted-key path is deliberately creation-only; an existing key is never
    * replaced.
    */
-  public static AttestationSigningCredential openOrCreateCredential(
+  public static AttestationSigningCredentialOpening openOrCreateCredential(
       UUID principalId, Path encryptedKeyFilePath, Path passphraseFilePath) throws IOException {
     UUID checkedPrincipalId = Objects.requireNonNull(principalId, "principalId");
     Path checkedKeyPath = Objects.requireNonNull(encryptedKeyFilePath, "encryptedKeyFilePath");
     char[] passphrase =
         readPassphraseFile(Objects.requireNonNull(passphraseFilePath, "passphraseFilePath"));
     try {
-      AttestationPublicCredential publicCredential =
-          Files.exists(checkedKeyPath)
-              ? loadPublicCredential(checkedKeyPath)
-              : create(checkedKeyPath, passphrase);
-      return new AttestationSigningCredential(
-          checkedPrincipalId, publicCredential, checkedKeyPath, passphrase);
+      if (Files.exists(checkedKeyPath)) {
+        return new AttestationSigningCredentialOpening(
+            new AttestationSigningCredential(
+                checkedPrincipalId,
+                loadPublicCredential(checkedKeyPath),
+                checkedKeyPath,
+                passphrase),
+            null);
+      }
+      AttestationKeyFileCreation created = create(checkedKeyPath, passphrase);
+      return new AttestationSigningCredentialOpening(
+          new AttestationSigningCredential(
+              checkedPrincipalId, created.credential(), created.keyFilePath(), passphrase),
+          created.publication());
     } finally {
       Arrays.fill(passphrase, '\0');
     }
@@ -97,29 +119,40 @@ public final class AttestationKeyFiles {
 
   private static char[] readPassphraseFile(Path passphraseFilePath) throws IOException {
     byte[] encoded = readBounded(passphraseFilePath);
+    CharBuffer decoded = CharBuffer.allocate(encoded.length);
     try {
-      CharBuffer decoded;
-      try {
-        decoded =
-            StandardCharsets.UTF_8
-                .newDecoder()
-                .onMalformedInput(CodingErrorAction.REPORT)
-                .onUnmappableCharacter(CodingErrorAction.REPORT)
-                .decode(ByteBuffer.wrap(encoded));
-      } catch (CharacterCodingException exception) {
-        throw new IllegalArgumentException(
-            "Attestation passphrase file is not valid UTF-8.", exception);
-      }
-      char[] characters = new char[decoded.remaining()];
-      decoded.get(characters);
-      int length = normalizedPassphraseLength(characters);
+      decodeUtf8(encoded, decoded);
+      decoded.flip();
+      int length = normalizedPassphraseLength(decoded);
       if (length == 0) {
-        Arrays.fill(characters, '\0');
         throw new IllegalArgumentException("Attestation key passphrase must not be empty.");
       }
-      return Arrays.copyOf(characters, length);
+      char[] passphrase = new char[length];
+      decoded.get(passphrase);
+      return passphrase;
     } finally {
+      clear(decoded);
       Arrays.fill(encoded, (byte) 0);
+    }
+  }
+
+  private static void decodeUtf8(byte[] encoded, CharBuffer decoded) {
+    var decoder =
+        StandardCharsets.UTF_8
+            .newDecoder()
+            .onMalformedInput(CodingErrorAction.REPORT)
+            .onUnmappableCharacter(CodingErrorAction.REPORT);
+    var decodeResult = decoder.decode(ByteBuffer.wrap(encoded), decoded, true);
+    if (decodeResult.isError()) {
+      throw new IllegalArgumentException("Attestation passphrase file is not valid UTF-8.");
+    }
+    decoder.flush(decoded);
+  }
+
+  private static void clear(CharBuffer decoded) {
+    decoded.clear();
+    while (decoded.hasRemaining()) {
+      decoded.put('\0');
     }
   }
 
@@ -134,11 +167,11 @@ public final class AttestationKeyFiles {
     }
   }
 
-  private static int normalizedPassphraseLength(char[] characters) {
-    int length = characters.length;
-    if (length > 0 && characters[length - 1] == '\n') {
+  private static int normalizedPassphraseLength(CharBuffer characters) {
+    int length = characters.remaining();
+    if (length > 0 && characters.get(length - 1) == '\n') {
       length--;
-      if (length > 0 && characters[length - 1] == '\r') {
+      if (length > 0 && characters.get(length - 1) == '\r') {
         length--;
       }
     }

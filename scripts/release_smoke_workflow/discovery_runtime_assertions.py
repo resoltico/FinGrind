@@ -6,6 +6,53 @@ from .models import ReleaseSmokeConfig
 from .support import require, require_bool, require_string, required_list, required_mapping
 
 
+def assert_protected_book_format_parity(
+    label: str,
+    runtime_format: dict[str, Any],
+    canonical_format: dict[str, Any],
+) -> None:
+    """Require the live storage defaults to publish the complete book-format contract.
+
+    A protected book is not merely a cipher and page-size choice.  Every field
+    in the protocol-owned format object participates in its durable format
+    identity, including the hard-break format version.  Exact map parity makes
+    a newly added format fact a release-smoke obligation rather than an
+    accidentally unverified detail.
+    """
+    missing_keys = sorted(set(canonical_format) - set(runtime_format))
+    unexpected_keys = sorted(set(runtime_format) - set(canonical_format))
+    mismatched_keys = sorted(
+        key
+        for key in set(canonical_format) & set(runtime_format)
+        if runtime_format[key] != canonical_format[key]
+    )
+    require(
+        not missing_keys and not unexpected_keys and not mismatched_keys,
+        f"{label} environment output did not publish the exact protected-book format "
+        "contract"
+        + _protected_book_format_difference_suffix(
+            missing_keys,
+            unexpected_keys,
+            mismatched_keys,
+        ),
+    )
+
+
+def _protected_book_format_difference_suffix(
+    missing_keys: list[str],
+    unexpected_keys: list[str],
+    mismatched_keys: list[str],
+) -> str:
+    differences: list[str] = []
+    if missing_keys:
+        differences.append("missing " + ", ".join(missing_keys))
+    if unexpected_keys:
+        differences.append("unexpected " + ", ".join(unexpected_keys))
+    if mismatched_keys:
+        differences.append("mismatched " + ", ".join(mismatched_keys))
+    return ": " + "; ".join(differences) if differences else ""
+
+
 def assert_discovery_surface(
     config: ReleaseSmokeConfig,
     payload: dict[str, Any],
@@ -51,16 +98,11 @@ def assert_discovery_surface(
         f"{config.label} environment output did not report required book protection",
     )
     storage_format = required_mapping(storage, "defaultProtectedBookFormat")
-    for key, message in (
-        ("cipher", "canonical default book cipher"),
-        ("legacyMode", "canonical legacy-mode flag"),
-        ("pageSize", "canonical protected-book page size"),
-        ("reservedBytes", "canonical protected-book reserved bytes"),
-    ):
-        require(
-            storage_format.get(key) == protected_book_format.get(key),
-            f"{config.label} environment output did not report the {message}",
-        )
+    assert_protected_book_format_parity(
+        config.label,
+        storage_format,
+        protected_book_format,
+    )
     require(
         require_string(sqlite, "libraryMode")
         == require_string(runtime_surface, "sqliteLibraryMode"),

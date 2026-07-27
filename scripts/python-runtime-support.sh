@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Keep Python bytecode artifacts out of the repository during shell-driven verification flows and
-# resolve the repo-owned Python tooling runtime for Gradle verification entrypoints.
+# resolve the repo-owned Python tooling runtime and pinned dependency environment.
 
 resolve_python_runtime_support_dir() {
-    local source_path="${BASH_SOURCE[0]}"
+    local source_path=$1
     while [[ -h "${source_path}" ]]; do
         local source_dir
         source_dir="$(cd -P -- "$(dirname -- "${source_path}")" && pwd)"
@@ -16,7 +16,7 @@ resolve_python_runtime_support_dir() {
 }
 
 if [[ -z "${python_runtime_support_dir+x}" ]]; then
-    python_runtime_support_dir="$(resolve_python_runtime_support_dir)"
+    python_runtime_support_dir="$(resolve_python_runtime_support_dir "${BASH_SOURCE[0]}")"
     readonly python_runtime_support_dir
 fi
 if [[ -z "${python_runtime_support_repo_root+x}" ]]; then
@@ -126,6 +126,44 @@ python_runtime_bootstrap_hint() {
     printf 'Install the pinned uv launcher with `%s -m pip install --user uv==%s`.' \
         "${bootstrap_python}" \
         "$(fingrind_required_uv_version)"
+}
+
+fingrind_repo_uv_executable() {
+    local configured_uv_executable="${ORG_GRADLE_PROJECT_fingrindUvExecutable:-}"
+    if uv_version_matches_requirement "${configured_uv_executable}"; then
+        printf '%s\n' "${configured_uv_executable}"
+        return 0
+    fi
+
+    local resolved_uv_executable
+    resolved_uv_executable="$(uv_command_path || true)"
+    if [[ -n "${resolved_uv_executable}" ]]; then
+        printf '%s\n' "${resolved_uv_executable}"
+        return 0
+    fi
+
+    printf 'error: the repo-owned Python tools require the pinned uv launcher. %s\n' \
+        "$(python_runtime_bootstrap_hint)" >&2
+    return 1
+}
+
+fingrind_run_python_with_tools() {
+    local requirements_file="${python_runtime_support_repo_root}/requirements-release-smoke-workflow.txt"
+    [[ -n "${FINGRIND_PYTHON_EXECUTABLE:-}" ]] || {
+        printf 'error: prepare_python_runtime_env must run before repo-owned Python tools.\n' >&2
+        return 1
+    }
+    [[ -f "${requirements_file}" ]] || {
+        printf 'error: missing repo-owned Python tool requirements at %s\n' "${requirements_file}" >&2
+        return 1
+    }
+
+    local uv_executable
+    uv_executable="$(fingrind_repo_uv_executable)" || return 1
+    "${uv_executable}" run --no-project \
+        --python "${FINGRIND_PYTHON_EXECUTABLE}" \
+        --with-requirements "${requirements_file}" \
+        python "$@"
 }
 
 resolve_system_python_runtime() {

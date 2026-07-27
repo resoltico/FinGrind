@@ -41,3 +41,14 @@ Machine JSON is additionally prohibited from depending on `PublicPathHint`. File
 ArchUnit checks bytecode structure. It cannot prove chart data, SQL trigger behavior, message grammar, discovery completeness, or accounting invariants. Those concerns remain owned by domain tests, SQLite integration tests, rendered-contract tests, documentation checks, and the full verification gate. Do not replace a direct business invariant test with an architecture rule.
 
 When introducing a production module or responsibility suffix, update the architecture rule and its focused tests in the same change. A rule that cannot be green is a design defect to resolve; the architecture module does not maintain a baseline of tolerated violations.
+
+## Product Boundaries
+
+FinGrind deliberately keeps its durable and operational boundaries sharp:
+
+- SQLite is the only durable backend currently planned, and one SQLite file is one book for one accounting entity.
+- Every book is protected at rest through SQLite3 Multiple Ciphers and exactly one explicit passphrase source. FinGrind supports key files, stdin, and interactive terminal prompts; it rejects plaintext CLI passphrase arguments, environment-variable passphrase transport, and SQLite URI `key=` or `hexkey=` secret transport.
+- Rekeying may retain private workflow material while a replacement secret and staged result are verified, but retained pair evidence is never user-managed. An interruption requires the complete named original operation; operators never rename, overwrite, delete, recreate, or manually clean the evidence, and legacy or malformed residue remains fail-closed.
+- There is no generic database-independence layer. One canonical current SQLite schema has its supported format owned by `BookFormatContract`; alpha schema evolution has no in-place upgrade path, and non-matching formats are rejected instead of routed through legacy compatibility code.
+- The CLI never bypasses the contract and executor boundary. Caller-supplied request provenance is distinct from committed audit metadata, and deterministic rejections stay separate from malformed requests and runtime failures.
+- Root verification and nested Jazzer verification are separate builds so neither can silently substitute for the other.

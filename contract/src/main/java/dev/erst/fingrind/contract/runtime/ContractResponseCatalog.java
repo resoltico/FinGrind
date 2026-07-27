@@ -16,11 +16,11 @@ import java.util.stream.Stream;
 
 /** Owns the complete published catalog of response failures and their transport categories. */
 public final class ContractResponseCatalog {
-  private static final List<ContractResponse.ErrorDescriptor> ERROR_DESCRIPTORS =
+  private static final List<ErrorDescriptor> ERROR_DESCRIPTORS =
       Stream.concat(
               ContractErrors.descriptors().stream(), LedgerPlanFailure.errorDescriptors().stream())
           .toList();
-  private static final List<ContractResponse.RejectionDescriptor> REJECTION_DESCRIPTORS =
+  private static final List<RejectionDescriptor> REJECTION_DESCRIPTORS =
       Stream.of(
               BookAdministrationRejection.descriptors(),
               BookMaintenanceRejection.descriptors(),
@@ -32,18 +32,17 @@ public final class ContractResponseCatalog {
               LedgerPlanFailure.rejectionDescriptors())
           .flatMap(List::stream)
           .toList();
-  private static final Map<String, ContractResponse.FailureCategory> CATEGORIES_BY_CODE =
-      categoriesByCode();
+  private static final Map<String, FailureCategory> CATEGORIES_BY_CODE = categoriesByCode();
 
   private ContractResponseCatalog() {}
 
   /** Returns descriptors for every public deterministic error. */
-  public static List<ContractResponse.ErrorDescriptor> errorDescriptors() {
+  public static List<ErrorDescriptor> errorDescriptors() {
     return ERROR_DESCRIPTORS;
   }
 
   /** Returns the descriptor for one published deterministic error. */
-  public static ContractResponse.ErrorDescriptor errorDescriptorFor(String code) {
+  public static ErrorDescriptor errorDescriptorFor(String code) {
     String failureCode = Objects.requireNonNull(code, "code");
     return ERROR_DESCRIPTORS.stream()
         .filter(descriptor -> descriptor.code().equals(failureCode))
@@ -55,14 +54,14 @@ public final class ContractResponseCatalog {
   }
 
   /** Returns descriptors for every public deterministic rejection. */
-  public static List<ContractResponse.RejectionDescriptor> rejectionDescriptors() {
+  public static List<RejectionDescriptor> rejectionDescriptors() {
     return REJECTION_DESCRIPTORS;
   }
 
   /** Returns the explicitly declared transport category for one public failure code. */
-  public static ContractResponse.FailureCategory failureCategoryFor(String code) {
+  public static FailureCategory failureCategoryFor(String code) {
     String failureCode = Objects.requireNonNull(code, "code");
-    ContractResponse.FailureCategory category = CATEGORIES_BY_CODE.get(failureCode);
+    FailureCategory category = CATEGORIES_BY_CODE.get(failureCode);
     if (category == null) {
       throw new IllegalArgumentException(
           "No published failure category exists for code: " + failureCode);
@@ -70,8 +69,8 @@ public final class ContractResponseCatalog {
     return category;
   }
 
-  static Map<String, ContractResponse.FailureCategory> categoriesByCode() {
-    Map<String, ContractResponse.FailureCategory> categories = new ConcurrentHashMap<>();
+  static Map<String, FailureCategory> categoriesByCode() {
+    Map<String, FailureCategory> categories = new ConcurrentHashMap<>();
     ERROR_DESCRIPTORS.forEach(
         descriptor -> register(categories, descriptor.code(), descriptor.category()));
     REJECTION_DESCRIPTORS.forEach(descriptor -> registerRecursively(categories, descriptor));
@@ -79,17 +78,14 @@ public final class ContractResponseCatalog {
   }
 
   private static void registerRecursively(
-      Map<String, ContractResponse.FailureCategory> categories,
-      ContractResponse.RejectionDescriptor descriptor) {
+      Map<String, FailureCategory> categories, RejectionDescriptor descriptor) {
     register(categories, descriptor.code(), descriptor.category());
     descriptor.detailRejections().forEach(detail -> registerRecursively(categories, detail));
   }
 
   static void register(
-      Map<String, ContractResponse.FailureCategory> categories,
-      String code,
-      ContractResponse.FailureCategory category) {
-    ContractResponse.FailureCategory prior = categories.putIfAbsent(code, category);
+      Map<String, FailureCategory> categories, String code, FailureCategory category) {
+    FailureCategory prior = categories.putIfAbsent(code, category);
     if (prior != null && prior != category) {
       throw new IllegalStateException("Conflicting published failure categories for code: " + code);
     }

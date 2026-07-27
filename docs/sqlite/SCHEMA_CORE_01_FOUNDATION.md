@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: SQLITE_SCHEMA_CORE_FOUNDATION
-updated: "2026-07-17"
+updated: "2026-07-26"
 ---
 
 # SQLite Schema: Foundation
@@ -13,7 +13,7 @@ updated: "2026-07-17"
 
 ```sql
 pragma application_id = 1179079236;
-pragma user_version = 52;
+pragma user_version = 56;
 
 create table if not exists book_meta (
     meta_key text primary key check (

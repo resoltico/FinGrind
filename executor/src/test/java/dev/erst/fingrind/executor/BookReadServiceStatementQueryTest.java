@@ -8,6 +8,7 @@ import static dev.erst.fingrind.executor.BookReadServiceTestSupport.readService;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountingEvidence;
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.generatedEvidence;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
@@ -76,7 +77,7 @@ class BookReadServiceStatementQueryTest {
   private static final LocalDate OPENING_DATE = LocalDate.parse("2026-04-01");
   private static final LocalDate PERIOD_DATE = LocalDate.parse("2026-04-07");
   private static final ReportingPeriod TRANSFER_PERIOD_RESULT =
-      new ReportingPeriod(OPENING_DATE, PERIOD_DATE);
+      new ReportingPeriod(bookIdentity().bookStartEffectiveDate(), PERIOD_DATE);
 
   private static final AccountCode CASH_ACCOUNT_CODE = new AccountCode("1000");
   private static final AccountCode PETTY_CASH_ACCOUNT_CODE = new AccountCode("1010");
@@ -351,7 +352,7 @@ class BookReadServiceStatementQueryTest {
 
       InterimResultSweepOutcome outcome =
           closeService.interimResultSweep(TRANSFER_PERIOD_RESULT, TEST_AUTHORIZER);
-      dev.erst.fingrind.executor.bookkeeping.SweptInterimResult sweptInterimResult =
+      dev.erst.fingrind.executor.bookkeeping.RecordedInterimResultSweep sweptInterimResult =
           assertInstanceOf(InterimResultSweepOutcome.Transferred.class, outcome)
               .sweptInterimResult();
 
@@ -753,7 +754,7 @@ class BookReadServiceStatementQueryTest {
                 FIXED_INSTANT,
                 SourceChannel.CLI));
     assertInstanceOf(
-        dev.erst.fingrind.executor.spi.PostingCommitResult.Committed.class,
+        dev.erst.fingrind.executor.spi.PostingCommitResult.Appended.class,
         bookSession.commit(posting));
   }
 

@@ -73,6 +73,25 @@ class SqliteBookStateReaderTest extends SqlitePostingFactStoreTestSupport {
   }
 
   @Test
+  void stateReader_rejectsImmediatelyPrecedingFinGrindFormatWithoutRewritingIt() {
+    int retiredFormatVersion = SqliteBookContract.FORMAT_VERSION - 1;
+
+    withStandaloneDatabase(
+        bookAccess(tempDirectory.resolve("book-state-retired-format.sqlite")),
+        database -> {
+          database.executeStatement("pragma application_id = " + SqliteBookContract.APPLICATION_ID);
+          database.executeStatement("pragma user_version = " + retiredFormatVersion);
+
+          assertEquals(
+              SqliteBookState.UNSUPPORTED_FINGRIND_VERSION,
+              SqliteBookContract.BOOK_STATE_READER.bookState(database));
+          assertEquals(
+              retiredFormatVersion,
+              SqliteStatementQueries.querySingleInt(database, "pragma user_version"));
+        });
+  }
+
+  @Test
   void initializedMarker_requiresBothTheCanonicalTableAndTheInitializedTimestamp() {
     Path bookPath = tempDirectory.resolve("book-state-initialized-marker.sqlite");
     withStandaloneDatabase(

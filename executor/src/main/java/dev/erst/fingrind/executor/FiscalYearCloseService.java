@@ -55,7 +55,7 @@ public final class FiscalYearCloseService {
             new FiscalYearCloseOutcome.Rejected(
                 new BookkeepingAdministrationRejection.BookNotInitialized()),
         FiscalYearClosePlanner::forBookIdentity,
-        (bookIdentity, bookStartDate, planner, currentUtcDate, closedAt, postingIdGenerator) ->
+        (bookIdentity, planner, currentUtcDate, closedAt, postingIdGenerator) ->
             closeStore.fiscalYearClose(
                 planner.reportingPeriod(bookIdentity, fiscalYearLabel),
                 bookIdentity,

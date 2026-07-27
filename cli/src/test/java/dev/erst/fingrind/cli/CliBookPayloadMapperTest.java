@@ -25,7 +25,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Focused regression tests for the book-query payload mappers. */
-class CliBookPayloadMapperTest extends FinGrindCliTestSupport {
+class CliBookPayloadMapperTest extends CliWorkflowFixtureSupport {
   @Test
   void bookIdentityPayload_mapsDoctrineFields() {
     BookIdentity doctrinalIdentity =

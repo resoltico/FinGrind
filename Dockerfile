@@ -5,7 +5,7 @@ WORKDIR /build
 RUN apk add --no-cache python3 binutils
 
 COPY source-root/ /build/source-root/
-COPY Dockerfile docker-build-context-manifest.json docker-entrypoint.sh fingrind.jar runtime-modules.txt /build/
+COPY Dockerfile docker-build-context-manifest.json docker-entrypoint.sh fingrind.jar native-sqlite-format-boundary-probe.jar runtime-modules.txt /build/
 COPY libsqlite3.so.0 libsqlite3.so.0.sha256 toolchain-fingerprint.json build-contract.json /build/
 COPY source-root/scripts/verify-docker-build-context.py scripts/verify-docker-build-context.py
 
@@ -78,6 +78,7 @@ COPY --from=builder /build/libsqlite3.so.0.sha256 /opt/fingrind/lib/native/libsq
 COPY --from=builder /build/toolchain-fingerprint.json /opt/fingrind/lib/native/toolchain-fingerprint.json
 COPY --from=builder /build/build-contract.json /opt/fingrind/lib/native/build-contract.json
 COPY --from=builder /build/fingrind.jar /opt/fingrind/lib/app/fingrind.jar
+COPY --from=builder /build/native-sqlite-format-boundary-probe.jar /opt/fingrind/lib/release-smoke/native-sqlite-format-boundary-probe.jar
 COPY --from=builder /build/docker-entrypoint.sh /opt/fingrind/bin/docker-entrypoint.sh
 COPY source-root/LICENSE source-root/LICENSE-APACHE-2.0 source-root/LICENSE-SIL-OFL-1.1 source-root/LICENSE-SQLITE3MULTIPLECIPHERS source-root/NOTICE source-root/PATENTS.md /opt/fingrind/doc/
 

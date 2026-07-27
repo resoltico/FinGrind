@@ -10,39 +10,113 @@ import java.util.Objects;
 
 /** Narrow SPI for protected-book maintenance verification and staged filesystem work. */
 public interface ProtectedBookMaintenanceStore {
-  /** Returns one normalized absolute path for the supplied maintenance argument. */
-  Path normalize(Path path, String argumentName);
+  /**
+   * Resolves one optional live-book inspection artifact beneath an existing private canonical
+   * parent directory.
+   *
+   * <p>This boundary exists only for inspection, where a missing live-book leaf is observable
+   * state. Lifecycle mutations must use {@link #normalizeExistingSource(Path, String,
+   * ProtectedBookMaintenanceArtifactRole)} for sources and {@link #normalizeFinalTarget(Path,
+   * String, ProtectedBookMaintenanceArtifactRole)} for outputs.
+   */
+  Path normalizeOptionalInspectionArtifact(
+      Path path, String argumentName, ProtectedBookMaintenanceArtifactRole artifactRole);
 
   /**
-   * Reserves all absent final targets needed by one pair publication before its source is
-   * inspected.
+   * Resolves one selected final target beneath its private canonical parent directory.
+   *
+   * <p>The returned path is the only spelling that a maintenance workflow may use for leases,
+   * stages, recovery evidence, and final publication. A permitted missing final-target parent may
+   * be admitted here; this boundary never admits a lifecycle source.
    */
-  PreparedPairPublication preparePairPublication(
-      Path normalizedSecretTargetPath,
+  Path normalizeFinalTarget(
+      Path path, String argumentName, ProtectedBookMaintenanceArtifactRole artifactRole);
+
+  /**
+   * Resolves a maintenance source that must already be one regular non-symlink artifact.
+   *
+   * <p>Lifecycle mutations use this boundary before they can prepare caller-selected output
+   * parents. Inspection paths use {@link #normalizeOptionalInspectionArtifact(Path, String,
+   * ProtectedBookMaintenanceArtifactRole)} instead because a missing live book is an observable
+   * inspection state rather than a malformed mutation source.
+   */
+  Path normalizeExistingSource(
+      Path path, String argumentName, ProtectedBookMaintenanceArtifactRole artifactRole);
+
+  /**
+   * Acquires the complete immutable maintenance scope before a workflow reads its source or touches
+   * either final target.
+   *
+   * <p>The scope owns every selected file-backed source artifact lease and predeclares the exact
+   * book and secret target members. Its implementation must reject two source roles that resolve to
+   * one physical object, acquire parent domains in one deterministic total order, check every
+   * member for native activity both before and after acquisition, and reject any later attempt to
+   * widen the scope with a sibling artifact.
+   */
+  WorkflowScopeAcquisition acquireWorkflowScope(
+      WorkflowSourceMembers normalizedSourceMembers,
       Path normalizedBookTargetPath,
-      RestoredBookTargetPolicy bookTargetPolicy,
-      ProtectedBookMaintenanceArtifactRole bookArtifactRole,
-      ProtectedBookMaintenanceArtifactRole secretArtifactRole);
+      ProtectedBookMaintenanceArtifactRole bookTargetArtifactRole,
+      Path normalizedSecretTargetPath,
+      ProtectedBookMaintenanceArtifactRole secretTargetArtifactRole);
+
+  /**
+   * Immutable exact source-member set for one protected-book maintenance workflow.
+   *
+   * <p>Each member has already crossed the existing-source normalization boundary. The set is
+   * deliberately nonempty and rejects duplicate normalized path spellings: acquiring the same
+   * source twice would make a busy projection ambiguous and would obscure the authority that the
+   * workflow actually holds.
+   */
+  public record WorkflowSourceMembers(List<WorkflowSourceMember> members) {
+    public WorkflowSourceMembers {
+      members = List.copyOf(Objects.requireNonNull(members, "members"));
+      if (members.isEmpty()) {
+        throw new IllegalArgumentException(
+            "One FinGrind maintenance workflow scope requires at least one source member.");
+      }
+      java.util.Set<String> normalizedPathSpellings = new java.util.HashSet<>();
+      for (WorkflowSourceMember member : members) {
+        WorkflowSourceMember checkedMember = Objects.requireNonNull(member, "source member");
+        if (!normalizedPathSpellings.add(checkedMember.normalizedPathSpelling())) {
+          throw new IllegalArgumentException(
+              "One FinGrind maintenance workflow source member was declared more than once: "
+                  + checkedMember.artifactPath()
+                  + ".");
+        }
+      }
+    }
+
+    /** The primary workflow source, retained for scope-level diagnostics. */
+    public WorkflowSourceMember primaryMember() {
+      return members.getFirst();
+    }
+  }
+
+  /** Exact role-tagged source artifact selected for one maintenance workflow. */
+  public record WorkflowSourceMember(
+      Path artifactPath, ProtectedBookMaintenanceArtifactRole artifactRole) {
+    public WorkflowSourceMember {
+      artifactPath =
+          Objects.requireNonNull(artifactPath, "artifactPath").toAbsolutePath().normalize();
+      ProtectedBookMaintenanceArtifactRole checkedArtifactRole =
+          Objects.requireNonNull(artifactRole, "artifactRole");
+      if (!isSourceArtifactRole(checkedArtifactRole)) {
+        throw new IllegalArgumentException(
+            "One FinGrind maintenance workflow source member requires a source artifact role.");
+      }
+    }
+
+    private String normalizedPathSpelling() {
+      return artifactPath.toString();
+    }
+  }
 
   /** Lists every artifact that blocks one clean live-book maintenance workflow. */
   List<Path> blockingArtifactsForBook(Path normalizedBookPath);
 
   /** Lists every artifact that blocks one clean backup-source restore workflow. */
   List<Path> blockingArtifactsForBackupSource(Path normalizedBackupFilePath);
-
-  /** Reports whether a requested external backup artifact and its companion key already exist. */
-  BackupArtifactPairState backupArtifactPairState(
-      Path normalizedBackupArtifactPath, Path normalizedBackupKeyFilePath);
-
-  /**
-   * Recovers an incomplete publication that is provably owned by FinGrind before backup admission.
-   *
-   * <p>The implementation must hold both destination leases while it examines ownership. It may
-   * discard only the exact owned key-and-stage publication left by an interrupted attempt; caller
-   * supplied or otherwise unowned files remain occupied destinations.
-   */
-  void recoverInterruptedBackupPublication(
-      Path normalizedBackupArtifactPath, Path normalizedBackupKeyFilePath);
 
   /** Acquires one exclusive maintenance lease for one existing protected-book artifact path. */
   LeaseAcquisition acquireExistingArtifactLease(
@@ -79,18 +153,6 @@ public interface ProtectedBookMaintenanceStore {
     REPLACE_SELECTED
   }
 
-  /** Existing-state classification for one externally published backup artifact pair. */
-  enum BackupArtifactPairState {
-    /** Neither final artifact exists, so a new no-clobber publication may be prepared. */
-    ABSENT,
-    /** Only the public backup artifact exists; a new publication must refuse. */
-    ARTIFACT_ONLY,
-    /** Only the companion backup key exists; a new publication must refuse. */
-    KEY_ONLY,
-    /** Both final artifacts exist and may be considered for exact-tuple acknowledgement resume. */
-    COMPLETE
-  }
-
   /** Holds the reservations that make one staged pair safe to publish after source verification. */
   interface PreparedPairPublication extends AutoCloseable {
     /** Absolute normalized final protected-book artifact path. */
@@ -104,6 +166,41 @@ public interface ProtectedBookMaintenanceStore {
 
     @Override
     void close();
+  }
+
+  /** Outcome of acquiring one complete source-and-pair maintenance scope. */
+  public sealed interface WorkflowScopeAcquisition permits HeldWorkflowScope, WorkflowScopeBusy {
+    /** Absolute normalized artifact path that prevented acquisition. */
+    Path artifactPath();
+  }
+
+  /**
+   * Complete maintenance scope whose source leases remain held for the workflow lifetime.
+   *
+   * <p>On a prepared admission, the scope transfers only the exact target leases into the returned
+   * {@link PreparedPairPublication}; it retains every source lease until closed.
+   */
+  public non-sealed interface HeldWorkflowScope extends WorkflowScopeAcquisition, AutoCloseable {
+    /**
+     * Reconciles durable pair evidence and, only when absent, transfers the exact target leases
+     * into one prepared publication.
+     */
+    ProtectedBookPairPublicationAdmission admitPairPublication(
+        RestoredBookTargetPolicy bookTargetPolicy,
+        ProtectedBookPairPublicationRecoveryRequest request);
+
+    @Override
+    void close();
+  }
+
+  /** Busy outcome when one declared role-tagged workflow member could not be leased exclusively. */
+  public record WorkflowScopeBusy(
+      Path artifactPath, ProtectedBookMaintenanceArtifactRole artifactRole)
+      implements WorkflowScopeAcquisition {
+    public WorkflowScopeBusy {
+      Objects.requireNonNull(artifactPath, "artifactPath");
+      Objects.requireNonNull(artifactRole, "artifactRole");
+    }
   }
 
   /** Outcome of attempting to acquire one exclusive maintenance lease. */
@@ -144,5 +241,12 @@ public interface ProtectedBookMaintenanceStore {
       Objects.requireNonNull(artifactPath, "artifactPath");
       Objects.requireNonNull(failure, "failure");
     }
+  }
+
+  private static boolean isSourceArtifactRole(ProtectedBookMaintenanceArtifactRole artifactRole) {
+    return switch (Objects.requireNonNull(artifactRole, "artifactRole")) {
+      case LIVE_BOOK, LIVE_BOOK_KEY_SOURCE, BACKUP_SOURCE, BACKUP_KEY_SOURCE -> true;
+      case BACKUP_TARGET, BACKUP_KEY_TARGET, RESTORED_TARGET, NEW_BOOK_KEY_TARGET -> false;
+    };
   }
 }

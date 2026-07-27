@@ -1,6 +1,8 @@
 # Gradle caches and build outputs
 .gradle/
 .ruff_cache/
+__pycache__/
+*.py[cod]
 build/
 **/build/
 out/

@@ -11,7 +11,7 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 /** Exercises every owned lifecycle register through the protected SQLite CLI workflow. */
-class FinGrindCliLifecycleRegisterCommandTest extends FinGrindCliTestSupport {
+class FinGrindCliLifecycleRegisterCommandTest extends CliWorkflowFixtureSupport {
   @Test
   void run_projectsEveryOwnedLifecycleRegisterFromOneProtectedBook() throws IOException {
     Path bookFilePath = tempDirectory.resolve("lifecycle-register-books").resolve("entity.sqlite");
@@ -35,7 +35,7 @@ class FinGrindCliLifecycleRegisterCommandTest extends FinGrindCliTestSupport {
     int exitCode =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(output), fixedClock())
             .run(
-                jsonArguments(
+                attestedJsonArguments(
                     command,
                     "--book-file",
                     bookFilePath.toString(),

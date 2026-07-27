@@ -13,6 +13,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.SweptInterimResult;
 import dev.erst.fingrind.core.JournalEntry;
+import dev.erst.fingrind.executor.AttestationCommitProjection;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
@@ -111,7 +112,8 @@ public final class BookkeepingPublishedLanguageTranslator {
               opened.initializedAt(),
               opened.bookIdentity(),
               opened.attestationTrustRoot(),
-              opened.attestationCommit());
+              opened.attestationCommit(),
+              java.util.List.of());
       case BookOpeningOutcome.Rejected rejected ->
           new OpenBookResult.Rejected(toPublished(rejected.rejection()));
     };
@@ -124,15 +126,18 @@ public final class BookkeepingPublishedLanguageTranslator {
       case AccountDeclarationOutcome.Declared declared ->
           new DeclareAccountResult.Declared(
               toPublished(declared.account()),
-              Objects.requireNonNull(declared.attestationCommit(), "attestationCommit"));
+              AttestationCommitProjection.fromVerifiedAppend(
+                  declared.attestationAppend().requireAppended()));
       case AccountDeclarationOutcome.Reactivated reactivated ->
           new DeclareAccountResult.Reactivated(
               toPublished(reactivated.account()),
-              Objects.requireNonNull(reactivated.attestationCommit(), "attestationCommit"));
+              AttestationCommitProjection.fromVerifiedAppend(
+                  reactivated.attestationAppend().requireAppended()));
       case AccountDeclarationOutcome.Renamed renamed ->
           new DeclareAccountResult.Renamed(
               toPublished(renamed.account()),
-              Objects.requireNonNull(renamed.attestationCommit(), "attestationCommit"));
+              AttestationCommitProjection.fromVerifiedAppend(
+                  renamed.attestationAppend().requireAppended()));
       case AccountDeclarationOutcome.Unchanged unchanged ->
           new DeclareAccountResult.Unchanged(toPublished(unchanged.account()), null);
       case AccountDeclarationOutcome.Rejected rejected ->
@@ -191,8 +196,7 @@ public final class BookkeepingPublishedLanguageTranslator {
   }
 
   /** Translates one durably recorded interim-result sweep into the public contract. */
-  public static SweptInterimResult toPublished(
-      dev.erst.fingrind.executor.bookkeeping.SweptInterimResult sweptInterimResult) {
+  public static SweptInterimResult toPublished(RecordedInterimResultSweep sweptInterimResult) {
     Objects.requireNonNull(sweptInterimResult, "sweptInterimResult");
     return new SweptInterimResult(
         sweptInterimResult.sweepOrder(),

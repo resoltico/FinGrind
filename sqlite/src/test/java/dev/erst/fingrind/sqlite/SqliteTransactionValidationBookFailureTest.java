@@ -28,7 +28,7 @@ class SqliteTransactionValidationBookFailureTest extends SqlitePostingFactStoreT
     Path bookPath = tempDirectory.resolve("validation-stale.sqlite");
     try (SqlitePostingFactStore store = openStore(bookAccess(bookPath))) {
       SqliteTransactionValidationBook validationBook =
-          new SqliteTransactionValidationBook(staleDatabaseHandle(bookPath), store.postingReader());
+          new SqliteTransactionValidationBook(staleDatabaseHandle(), store.postingReader());
       SqliteTransactionValidationPostingCapabilityView postingCapability = validationBook;
 
       assertQueryFailure(validationBook::inspectBook);

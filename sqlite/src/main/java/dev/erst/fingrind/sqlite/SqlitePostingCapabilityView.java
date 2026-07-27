@@ -15,6 +15,9 @@ interface SqlitePostingCapabilityView
     extends SqlitePostingSession,
         SqliteReadCapabilityView,
         SqliteAttestedAdministrationMutationView {
+  /** Returns the ordinary-posting owner for the underlying SQLite store. */
+  SqliteStorePostingMutationOperations storePostingMutationOperations();
+
   @Override
   default java.util.Optional<dev.erst.fingrind.executor.bookkeeping.AccrualCutoffRecord>
       findAccrualCutoff(dev.erst.fingrind.contract.bookkeeping.AccrualCutoffId accrualCutoffId) {
@@ -57,7 +60,7 @@ interface SqlitePostingCapabilityView
       PostingIdGenerator postingIdGenerator,
       AttestationOperationAuthorizer attestationAuthorizer) {
     storeThreadOwner().requireOwnerThread();
-    return storeMutationOperations()
+    return storePostingMutationOperations()
         .commit(postingDraft, postingIdGenerator, attestationAuthorizer);
   }
 }

@@ -1,7 +1,7 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import dev.erst.fingrind.core.AccountCode;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -160,7 +160,7 @@ enum AccountStateViolationOwner {
         .toList();
   }
 
-  static List<ContractResponse.RejectionDescriptor> descriptors() {
+  static List<RejectionDescriptor> descriptors() {
     return AccountStateViolationNarrativeSupport.descriptors();
   }
 

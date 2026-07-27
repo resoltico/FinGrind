@@ -69,32 +69,54 @@ def run_cli_with_split_streams(
     *arguments: str,
     stdin_text: str | None = None,
 ) -> tuple[str, str]:
+    stdout, stderr, exit_code = run_cli_allow_failure_with_split_streams(
+        config,
+        *arguments,
+        stdin_text=stdin_text,
+    )
+    require(
+        exit_code == 0,
+        f"{config.label} command {' '.join(arguments)} failed with exit code {exit_code}\n{stdout}{stderr}",
+    )
+    return stdout, stderr
+
+
+def run_cli_allow_failure_with_split_streams(
+    config: ReleaseSmokeConfig,
+    *arguments: str,
+    stdin_text: str | None = None,
+) -> tuple[str, str, int]:
+    """Run one command while preserving its public stdout/stderr boundary.
+
+    Deterministic failures select their renderer from the requested output mode.
+    Callers that exercise an expected failure therefore need both streams, not the
+    combined diagnostic convenience used by generic JSON-failure checks.
+    """
     if config.command_bridge_prefix:
-        return run_cli_with_split_streams_via_bridge(config, *arguments, stdin_text=stdin_text)
+        return run_cli_allow_failure_with_split_streams_via_bridge(
+            config,
+            *arguments,
+            stdin_text=stdin_text,
+        )
     completed = subprocess.run(
         [*config.command_prefix, *arguments],
         cwd=config.command_cwd,
         env=command_env(config),
         input=stdin_text,
         text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=False,
     )
     stdout = normalize_newlines(completed.stdout)
     stderr = normalize_newlines(completed.stderr)
-    require(
-        completed.returncode == 0,
-        f"{config.label} command {' '.join(arguments)} failed with exit code {completed.returncode}\n{stdout}{stderr}",
-    )
-    return stdout, stderr
+    return stdout, stderr, completed.returncode
 
 
-def run_cli_with_split_streams_via_bridge(
+def run_cli_allow_failure_with_split_streams_via_bridge(
     config: ReleaseSmokeConfig,
     *arguments: str,
     stdin_text: str | None = None,
-) -> tuple[str, str]:
+) -> tuple[str, str, int]:
     request_path = write_bridge_request(arguments, stdin_text)
     try:
         completed = subprocess.run(
@@ -102,19 +124,14 @@ def run_cli_with_split_streams_via_bridge(
             cwd=config.command_cwd,
             env=command_env(config),
             text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             check=False,
         )
     finally:
         request_path.unlink(missing_ok=True)
     stdout = normalize_newlines(completed.stdout)
     stderr = normalize_newlines(completed.stderr)
-    require(
-        completed.returncode == 0,
-        f"{config.label} command {' '.join(arguments)} failed with exit code {completed.returncode}\n{stdout}{stderr}",
-    )
-    return stdout, stderr
+    return stdout, stderr, completed.returncode
 
 
 def command_env(config: ReleaseSmokeConfig) -> dict[str, str]:

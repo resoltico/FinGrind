@@ -18,6 +18,8 @@ import dev.erst.fingrind.contract.bookkeeping.FixedAssetRegisterRow;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.ResolvedFixedAssetDepreciation;
 import dev.erst.fingrind.contract.bookkeeping.ResolvedFixedAssetDisposal;
+import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.PostingOriginKind;
@@ -184,6 +186,8 @@ class FixedAssetContextContractTest {
     FixedAssetRegisterResult.Rejected rejected = new FixedAssetRegisterResult.Rejected(rejection);
 
     assertEquals("fixed-asset-register", model.family());
+    assertEquals(
+        ProtocolCatalog.operation(OperationId.FIXED_ASSET_REGISTER).displayLabel(), model.title());
     assertEquals(
         "laptop-2026-001", model.sections().getFirst().rows().getFirst().cells().getFirst());
     assertEquals("1000", csv.rows().getFirst().get(csv.headers().indexOf("costMinorUnits")));

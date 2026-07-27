@@ -12,6 +12,8 @@ final class BookMaintenanceRejectionNarrative {
           "The selected backup source has blocking sibling artifacts and is not safe to restore from.";
       case BookMaintenanceRejection.BackupSourceMatchesLiveBook _ ->
           "The selected backup source matches the selected live book; FinGrind will not restore a book from itself.";
+      case BookMaintenanceRejection.PairTargetsConflict _ ->
+          "The selected protected-book target and generated-secret target resolve to the same filesystem identity; FinGrind requires distinct final targets.";
       case BookMaintenanceRejection.ArtifactPathInvalid _ ->
           "The selected protected-book artifact path violates the filesystem contract for its declared role.";
       case BookMaintenanceRejection.ArtifactBusy _ ->
@@ -24,6 +26,8 @@ final class BookMaintenanceRejectionNarrative {
           "The selected generated-secret target already exists and FinGrind will not overwrite it.";
       case BookMaintenanceRejection.BookDestinationOccupied _ ->
           "The selected destination book already exists and FinGrind will not replace it.";
+      case BookMaintenanceRejection.RecoveryPending _ ->
+          "A verified protected-book pair publication remains incomplete and must be resumed only by its original maintenance operation and complete original inputs.";
       case BookMaintenanceRejection.ArtifactVerificationFailed _ ->
           "The selected protected-book artifact failed verification for its declared role.";
     };

@@ -2,10 +2,10 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: USER_CLI_OPERATIONAL_NOTES
-updated: "2026-07-22"
+updated: "2026-07-26"
 route:
-  keywords: [fingrind, cli, diagnostics, book-key-file, passphrase, backup, restore, pagination, report-output, runtime]
-  questions: ["how does fingrind protect book keys", "what diagnostics does fingrind return", "how do fingrind reports and runtime contracts work"]
+  keywords: [fingrind, cli, diagnostics, unsupported-book-format-version, book-key-file, passphrase, backup, restore, pagination, report-output, runtime, pair-targets-conflict, pair-target-leaf-portability-required, target-owner-only-required, source-artifact-identity-duplicated, source-artifact-identity-changed, protected-book-pair-publication-evidence-blocked]
+  questions: ["how does fingrind protect book keys", "what diagnostics does fingrind return", "how do fingrind reports and runtime contracts work", "how does FinGrind admit protected-book pair targets", "what does source-artifact-identity-changed mean"]
 ---
 
 # CLI Operational Notes
@@ -19,8 +19,8 @@ route:
 - Rejected and error responses for non-plan commands are written to stderr so stdout remains reserved for successful primary results, fixed-output scaffolds, and other success-only contracts.
 - A valid explicit `--output json` selects the JSON diagnostics envelope even when the command is unknown. Absent, missing, duplicate, or invalid output selection uses text diagnostics; explicit `--output text` always stays text. CSV has no failure-row grammar, so its failures use the same text diagnostics renderer.
 - `help`, `version`, `capabilities`, `print-request-template`, and `print-plan-template` reject extra arguments.
-- `open-book` requires an absent `--book-file` destination. It rejects an existing path with `book-destination-occupied` before resolving its selected key or accessing the file, and creates missing parent directories for nested destinations with owner-only protection. When the parent already exists, FinGrind requires it to remain owner-only. If initialization fails after FinGrind creates an exclusive destination, it removes only that uninitialized book file and its SQLite sidecars so the same destination can be retried; it never removes a pre-existing or concurrently created artifact.
-- `generate-book-key-file --new-book-key-file` creates one new owner-only UTF-8 key file, requires a filesystem with atomic no-replace secret publication, and refuses to overwrite an existing path. Its selected parent directory must already exist and remain owner-only: FinGrind never creates or weakens a secret parent on the caller's behalf. Generated files report `0600` on POSIX filesystems and `owner-only-acl` on Windows.
+- `open-book` requires an absent `--book-file` destination. An existing path returns the exit-`7` `status: "error"` envelope `book-destination-occupied` before FinGrind resolves its selected key or accesses the file. An existing caller-selected live-book or key-file parent and its resolved ancestry must already be real, owner-only, and non-mutable; FinGrind validates it only and never repairs its permissions or ACL. A missing live-book parent is created only through the atomic POSIX `0700` path and then validated; ACL-only filesystem creation fails closed. If opening does not complete after FinGrind creates artifacts, it returns `open-book-preparation-artifacts-retained` with every retained `{role,path,retainedStage}` fact; it never removes them for a retry. Preserve those paths and choose fresh ones.
+- `generate-book-key-file --new-book-key-file` creates one new owner-only UTF-8 key file through an atomic fresh `0600` stage on POSIX, writes and forces it, and publishes the absent final name without replacement. Its selected parent directory must already exist and remain owner-only: FinGrind validates it without creating, weakening, or permission-repairing that caller-owned parent. Success reports `artifacts[].{format,path,retainedStage}`; the retained stage is immutable evidence, never a deletion or retry handle. Generated final files report `0600` on POSIX filesystems and `owner-only-acl` on Windows.
 - `generate-attestation-key-file --attestation-custodian file-pkcs8 --new-attestation-key-file`
   publishes one no-clobber encrypted Ed25519 key file and returns only its public SPKI and key ID.
   Its required
@@ -29,13 +29,81 @@ route:
 - Every command that creates or opens private attestation material requires an explicit
   `--attestation-custodian file-pkcs8`; `file-pkcs8` is the only shipped custodian. An explicit
   unsupported selection is refused as `custodian-not-supported`, with no file-custody fallback.
-- `backup-book` creates missing parent directories for nested `--backup-file` and `--new-backup-key-file` paths with owner-only protection. When either parent directory already exists, FinGrind requires it to remain owner-only before the backup pair is published.
-- If an interrupted `backup-book` leaves exactly a FinGrind-owned backup-key stage and final key,
-  retrying the same backup first leases both destinations and discards only that owned incomplete
-  publication before it re-evaluates the pair. An unowned key, an artifact-only destination, or a
-  complete backup pair remains a normal no-clobber refusal; FinGrind never guesses ownership from
-  a filename alone.
-- `restore-book` creates missing parent directories for nested `--book-file` and `--new-book-key-file` targets with owner-only protection. When either selected parent directory already exists, FinGrind requires it to remain owner-only before the restored live pair is published. The destination `--book-file` must remain absent through final publication; restore refuses any existing or racing destination without overwriting it.
+- `backup-book`, `restore-book`, and `rekey-book` share one hard-break maintenance path contract.
+  Every existing caller-selected protected-book or book-key artifact parent is validation-only: it
+  and its resolved ancestry must already be real, private owner-only, and non-mutable, and
+  FinGrind never permission- or ACL-repairs it. Only an absent final-target parent may be created:
+  FinGrind preflights its creation ancestry, atomically creates it with POSIX `0700`, and
+  postvalidates the canonical parent and full ancestry. A lifecycle source parent must already
+  exist. ACL-only final-target creation fails closed as `artifact-path-invalid` with
+  `details.pathFailure: "atomic-owner-only-protocol-file-creation-unsupported"`. A
+  non-directory component is refused. Before canonicalization, FinGrind scans every lexical
+  component from the root through the selected parent without following links and refuses any
+  symbolic-link or non-directory component, including a direct-parent alias. A final target leaf
+  may be absent; a present symlink or non-regular type is refused, while a present regular leaf
+  follows the operation's no-replace or replacement policy. A lifecycle source leaf must already
+  be a regular non-symlink file before final-target preparation. An existing selected maintenance
+  artifact that is not owner-only is the exit-`6` `artifact-path-invalid` rejection with
+  `details.pathFailure: "target-owner-only-required"`; correct that artifact's ownership and
+  permissions outside FinGrind before rerunning.
+- The complete selected source set must name independent physical files. That includes the live
+  book or backup artifact and every selected file-backed key source. If a later source role is a
+  hard link or other physical alias of an earlier source, FinGrind returns exit-`6`
+  `artifact-path-invalid` with
+  `details.pathFailure: "source-artifact-identity-duplicated"`; choose distinct source files.
+- After source exclusions are held, FinGrind revalidates every selected source against its locked
+  physical identity before it admits a target. A replacement or substitution returns exit-`6`
+  `artifact-path-invalid` with `details.pathFailure: "source-artifact-identity-changed"`.
+  Keep every selected source stable, restore the trustworthy intended source if it changed, then
+  rerun the complete maintenance command.
+- Initial pair final-target identity is admitted after maintenance has admitted every selected parent,
+  including any permitted missing-parent creation, and before it creates a final target, stage,
+  reservation, claim, or pair-evidence artifact. When both final targets already exist,
+  FinGrind uses `Files.isSameFile` to establish identity; one physical object is
+  `pair-targets-conflict` (exit `2`). For two absent leaves whose parents resolve to one physical
+  directory, exactly equal raw leaf names are the same rejection. When their raw leaf names
+  differ, each must be portable lowercase ASCII: `[a-z0-9](?:[a-z0-9_-]|\.(?=[a-z0-9]))*`; the
+  first dot-delimited stem cannot be `con`, `prn`, `aux`, `nul`, `com1`–`com9`, or `lpt1`–`lpt9`.
+  Otherwise use distinct physical parents. A nonportable distinct same-parent absent pair is
+  `artifact-path-invalid` (exit `6`) with `details.pathFailure: "pair-target-leaf-portability-required"`.
+  A previously admitted eligible missing parent may remain; the initial refusal creates no final target,
+  retained lease-control file, stage, capability witness, reservation, claim, or pair-recovery
+  evidence.
+  [USER_REJECTIONS.md](./USER_REJECTIONS.md#protected-book-pair-target-admission)
+  carries the exact public fields and repair guidance.
+- Each admitted physical maintenance directory retains a v4 directory-reservation control for
+  final-target admission. Existing source objects additionally use a private per-user v4 control
+  named from their explicit physical identity, so a hard-link alias in another directory cannot
+  bypass a live-book activity or maintenance exclusion. A held lock is the sole liveness fact; an
+  unlocked valid control is inert after a crash. FinGrind never reclaims, deletes, or rewrites
+  either control. v2/v3 controls and other retired namespaces are not adopted; their residue,
+  malformed controls, unavailable locks, and overlapping locks fail closed.
+- v4 is an incompatible cold cutover. During a scheduled outage, stop and prevent every pre-v4
+  process and automation, then independently confirm the outage before archiving the old
+  per-user v2/v3 coordination roots and every v2/v3 directory control in affected live, backup,
+  and target parents to private evidence names that are not controls and do not end in `.lock`.
+  Do not delete, adopt, merge, or co-run the old controls. If that shutdown cannot be proven, do
+  not cut over; a Windows handle that blocks archive is evidence that the old process is still
+  active.
+- Before `backup-book`, `restore-book`, or `rekey-book` begins any stage, probe, reservation, or
+  final mutation, it acquires and scans the full source-and-target workflow scope for an owner
+  record that binds the exact source, target pair, secret identity, and owner-recorded derived
+  stages. A verified unresolved record for another full workflow returns the exit-`7`, `rejected`, `precondition`
+  `maintenance-recovery-pending` response. Its non-null
+  `details.{recoveryOperation,bookTarget,generatedSecretTarget}` names the operation and canonical
+  absolute targets but does not reconstruct source, backup ID, credential, or secret material.
+  Restart that named operation with complete original source, target, and secret inputs; never
+  rename, overwrite, delete, recreate, or manually clean the evidence.
+- `protected-book-pair-publication-uncertain` means verified evidence established an exact pair but
+  not durable completion: preserve the evidence and rerun only that complete original workflow.
+  Its always-present nullable `details.pairPublication.pairPublicationRetention`, when non-null,
+  binds each final member to its exact retained stage; `null` never permits cleanup. The distinct
+  `protected-book-pair-publication-evidence-blocked` result has `unestablished` final-member
+  states, so preserve all paths and independently investigate rather than rerunning or
+  reconstructing any workflow. A recovered rekey verifies the generated-key pair before it attempts
+  prior-key access.
+- `restore-book` publishes only to an absent `--book-file` destination. It refuses any existing or
+  racing destination without overwriting it.
 - `--book-key-file` must point to a non-empty single-line UTF-8 passphrase file no larger than 4096 bytes; one trailing LF or CRLF is tolerated and stripped, but embedded control characters are rejected.
 - Book key files must use POSIX owner-only permissions (`0400` or `0600`) on macOS/Linux or a Windows owner-only ACL on Windows, their containing directory must also remain owner-only, and the public examples keep those files under a separate `./secrets/` tree instead of beside the book.
 - `--book-passphrase-stdin` reads one UTF-8 passphrase payload from standard input and therefore cannot be paired with `--request-file -`. The accepted stdin payload is capped at 4096 bytes. Feed that stdin route from a file or secret-fetching process rather than embedding the passphrase literal in shell history.
@@ -44,7 +112,16 @@ route:
 - `--request-file -` reads one UTF-8 JSON object document from standard input under that same `1048576`-byte limit.
 - `rekey-book` requires one current passphrase source plus one absent `--new-book-key-file` target. It generates the replacement secret itself and does not accept a replacement secret through standard input or an interactive prompt.
 - `rekey-book` rejects using the same key-file path for both current and new secrets.
-- `rekey-book` uses one same-directory encrypted rollback copy while rotation is in progress. If a crash or forced stop interrupts cleanup, that stale `*.rekey-rollback-*.sqlite` file remains in the book directory until you inspect or delete it, and later opens warn when they detect it.
+- While its maintenance lease is held, `rekey-book` revalidates the selected live-book digest
+  immediately before generated-secret publication and again before book replacement. That lease
+  coordinates FinGrind, not arbitrary same-owner filesystem writes; an external write between a
+  validation and the operating-system publication call is completion-uncertain
+  (`protected-book-pair-publication-uncertain`), not an atomic-replacement guarantee.
+- `rekey-book` may retain private workflow material while a rotation is being verified, but it
+  never exposes user-managed recovery evidence. A verified owner record can be resumed only by
+  rerunning the named original operation with complete original source, target, and secret inputs.
+  Legacy, malformed, incomplete, or inconsistent residue is fail-closed as
+  `protected-book-pair-publication-evidence-blocked`, not an operator-cleanable artifact.
 - The supported backup/restore workflow is one encrypted closed-book copy plus restoration to a new absent live-book path. Do not copy a book while FinGrind is actively mutating it, and keep the copied `.sqlite` file under the same protected filesystem stance as the live book while storing key material separately from the copied book tree.
 - `restore-book` uses `--backup-key-file` only to open the backup source and then re-encrypts the restored live book under the generated `--new-book-key-file`, so reopen the restored `--book-file` path with that destination key file after the restore completes.
 - The packaged CLI does not require an external `sqlite3` binary and does not shell out to `sqlite3`.
@@ -52,15 +129,15 @@ route:
 ## Queries And Reports
 
 - `inspect-book` is the safest machine-readable probe before `open-book`, `declare-account`, or `post-entry`, because it reports initialization state, detected book-format version, supported book-format version, and compatibility with the current binary.
-- Read-oriented commands do not repair book-file permissions as a side effect. Permission repair happens on mutation-capable opens such as `open-book` and `rekey-book`.
+- No read or mutation command repairs permissions or ACLs on a caller-selected existing live-book, key file, or parent directory. Those paths are validated and refused when they violate the protected-book contract; only absent FinGrind-created artifacts use owner-only creation primitives, and unavailable primitives fail closed.
 - `list-accounts`, `list-postings`, and `list-tax-registrations` return paginated payloads whose `resolvedQuery.cursor` records the accepted opaque input cursor (`null` on the first page) and whose optional top-level `nextCursor` can be passed back unchanged through `--cursor` when another page exists.
 - `account-ledger` returns a paginated payload with `resolvedQuery.effectiveDateFrom` and `resolvedQuery.effectiveDateTo` always present (`null` for an omitted bound), `resolvedQuery.pagination.limit`, an accepted opaque `resolvedQuery.pagination.cursor`, and an optional opaque `nextCursor` that continues the canonical ascending `(effectiveDate, recordedAt, postingId)` order through `--cursor`.
-- `inspect-book`, `list-accounts`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`, `accrual-cutoff-schedule`, `fixed-asset-register`, `financing-register`, `realized-foreign-exchange-register`, `income-statement`, `cash-flow-statement`, `changes-in-equity`, and `tax-obligation` accept `--output text`; all tabular read/report commands except `inspect-book` and `get-posting` also accept `--output csv`.
-- `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`, `accrual-cutoff-schedule`, `fixed-asset-register`, `financing-register`, `realized-foreign-exchange-register`, `income-statement`, `cash-flow-statement`, `changes-in-equity`, and `tax-obligation` can also write one PDF artifact through `--pdf-out <path>`. PDF export is explicit file output, not another stdout output mode. If the primary report succeeds, JSON success envelopes publish one canonical absolute artifact path under `artifacts[]`, while `--output text` writes one artifact confirmation block to stdout and `--output csv` is rejected when paired with `--pdf-out`. If the PDF artifact fails, the command returns one deterministic `pdf-export-failure` error instead of publishing a successful report result.
+- `inspect-book`, `list-accounts`, `list-postings`, `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`, `accrual-cutoff-schedule`, `fixed-asset-register`, `financing-register`, `realized-foreign-exchange-register`, `latvian-payroll-register`, `income-statement`, `cash-flow-statement`, `changes-in-equity`, and `tax-obligation` accept `--output text`; all tabular read/report commands except `inspect-book` and `get-posting` also accept `--output csv`.
+- `account-balance`, `trial-balance`, `account-ledger`, `period-summary`, `financial-position`, `inventory-valuation`, `accrual-cutoff-schedule`, `fixed-asset-register`, `financing-register`, `realized-foreign-exchange-register`, `latvian-payroll-register`, `income-statement`, `cash-flow-statement`, `changes-in-equity`, and `tax-obligation` can also write one PDF artifact through `--pdf-out <path>`. PDF export is explicit file output, not another stdout output mode. Its parent must already exist as a real owner-only directory and the final PDF target must be absent; FinGrind never creates or permission-repairs that caller-selected parent. Before canonicalization, FinGrind scans every lexical component from the root through the selected parent without following links and refuses any symbolic-link or non-directory component, including a direct-parent alias. Every post-admission success or failure reports the canonical physical final path rather than the input spelling. JSON success envelopes publish `artifacts[].{format:"pdf",path,retainedStage}`, while `--output text` writes one artifact confirmation block to stdout and `--output csv` is rejected when paired with `--pdf-out`. The retained stage is immutable publication evidence and is never deleted, replaced, reused, or treated as a retry input. If final-directory durability cannot be confirmed, no successful report is emitted: `artifact-publication-durability-uncertain` reports top-level `retainedStage` and `details.publishedArtifact.{path,retainedStage}`. If the no-replace link outcome is indeterminate, `artifact-publication-outcome-uncertain` reports `details.{candidateArtifact,retainedStage}` and top-level `retainedStage` when applicable. Preserve all reported evidence; inspect the final or candidate and use a fresh destination for any new attempt. A pre-final failure remains `pdf-export-failure` and includes `retainedStage` whenever applicable.
 - JSON report money fields are typed exact-money objects with `currencyCode` and `minorUnits`. Report CSV pairs every money column as `...CurrencyCode` and `...MinorUnits`, without context or query metadata rows; JSON carries the full semantic report and resolved query. An income statement JSON result carries `grossProfitTotals[]` and, when comparative selection is present, `comparativeGrossProfitTotals[]`; CSV remains the table of statement rows rather than a mixed row-and-total document.
 - In `fixed-asset-register`, `carryingAmount` is the current carrying value, so every disposed row reports zero. Disposed JSON and CSV rows also publish `carryingAmountAtDisposal` as the exact immutable pre-disposal amount; active rows omit that value.
 - `print-plan-template` emits the accepted atomic tax-setup request shape, including the ordered account and tax-registration declarations; custom plans may also use the generic nested `assertion` object for assertion steps.
-- `execute-plan` reuses the same posting and query rules as the single-command surface, but runs the whole plan inside one atomic transaction and returns a bounded `payload.summary` by default. `--result-detail full` additionally includes `payload.journal` on success or `details.plan.journal` on deterministic plan failure. Committed business-entry steps preserve their typed `record-*` journal kinds, raw direct-journal fallback steps stay `post-entry`, and journal steps now carry typed `data` records; successful `list-accounts` and `list-postings` steps keep both pagination fields and structured row arrays instead of collapsing to counts alone.
+- `execute-plan` reuses the same posting and query rules as the single-command surface, but runs the whole plan inside one atomic transaction and returns a bounded `payload.summary` by default. `--result-detail full` additionally includes `payload.journal` on success or `details.plan.journal` on deterministic plan failure. Committed business-entry steps preserve their typed `record-*` journal kinds, raw direct-journal fallback steps stay `post-entry`, and journal steps now carry typed `data` records; successful `list-accounts` and `list-postings` steps keep both pagination fields and structured row arrays instead of collapsing to counts alone. Full text journals retain posting provenance: `list-postings` keeps the canonical per-row `Attestation order`, while `get-posting` prints its `Attestation order` and complete `Attestation head` (or an explicit unavailable-linkage state).
 
 ## Latvian Payroll
 
@@ -70,15 +147,15 @@ route:
 
 ## Runtime And Discovery
 
-- The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.3 / SQLite3 Multiple Ciphers 2.3.6 native library.
+- The public packaged CLI bundles its own Java 26 runtime and managed SQLite 3.53.4 / SQLite3 Multiple Ciphers 2.4.0 native library.
 - `environment.runtime.runtimeDistribution` tells you whether the current process is running from a self-contained bundle, container image, source-checkout Gradle launch, or direct Java wrapper invocation.
 - `environment.publication.supportedPublicCliBundleTargets` and `environment.publication.unsupportedPublicCliBundleTargets` expose the public distribution matrix directly to automation.
 - `capabilities.requestShapes.schemaDialect` declares the JSON Schema dialect, and `capabilities.requestShapes.*.schema` publishes executable request schemas alongside the field descriptor arrays.
 - Request JSON must be one object document; duplicate keys and unknown fields are rejected at every object level.
-- `environment` reports runtime-contract details directly under: `payload.runtime.runtimeDistribution`, `payload.publication.publicCliDistribution`, `payload.publication.sourceCheckoutJava`, `payload.publication.supportedPublicCliBundleTargets`, `payload.publication.unsupportedPublicCliBundleTargets`, `payload.sqlite.bundleHomeSystemProperty`, `payload.sqlite.requiredCompileOptions`, `payload.sqlite.forbiddenCompileOptions`, `payload.sqlite.requiresSecureMemorySupport`, `payload.sqlite.requiredMinimumSqliteVersion`, `payload.sqlite.requiredSqlite3mcVersion`, `payload.sqlite.requiredSqliteSourceId`, `payload.sqlite.runtime.compileOptionsVerification`, `payload.sqlite.runtime.status`, `payload.sqlite.runtime.runtimeProvenance`, `payload.sqlite.runtime.runtimeTrustBasis`, `payload.sqlite.runtime.loadedLibraryPath` as a canonical absolute path, `payload.sqlite.runtime.loadedSqliteVersion`, `payload.sqlite.runtime.loadedSqlite3mcVersion`, `payload.sqlite.runtime.loadedSqliteSourceId`, `payload.storage.bookProtectionMode`, and `payload.storage.defaultProtectedBookFormat.cipher`, `payload.storage.defaultProtectedBookFormat.legacyMode`, `payload.storage.defaultProtectedBookFormat.pageSize`, `payload.storage.defaultProtectedBookFormat.reservedBytes`, `environment.storage.defaultProtectedBookFormat.kdfIter`, and `environment.storage.defaultProtectedBookFormat.plaintextHeaderSize`.
+- `environment` reports runtime-contract details directly under: `payload.runtime.runtimeDistribution`, `payload.publication.publicCliDistribution`, `payload.publication.sourceCheckoutJava`, `payload.publication.supportedPublicCliBundleTargets`, `payload.publication.unsupportedPublicCliBundleTargets`, `payload.sqlite.bundleHomeSystemProperty`, `payload.sqlite.requiredCompileOptions`, `payload.sqlite.forbiddenCompileOptions`, `payload.sqlite.requiresSecureMemorySupport`, `payload.sqlite.requiredMinimumSqliteVersion`, `payload.sqlite.requiredSqlite3mcVersion`, `payload.sqlite.requiredSqliteSourceId`, `payload.sqlite.runtime.compileOptionsVerification`, `payload.sqlite.runtime.status`, `payload.sqlite.runtime.runtimeProvenance`, `payload.sqlite.runtime.runtimeTrustBasis`, `payload.sqlite.runtime.loadedLibraryPath` as a canonical absolute path, `payload.sqlite.runtime.loadedSqliteVersion`, `payload.sqlite.runtime.loadedSqlite3mcVersion`, `payload.sqlite.runtime.loadedSqliteSourceId`, `payload.storage.bookProtectionMode`, and `payload.storage.defaultProtectedBookFormat.cipher`, `payload.storage.defaultProtectedBookFormat.legacyMode`, `payload.storage.defaultProtectedBookFormat.pageSize`, `payload.storage.defaultProtectedBookFormat.reservedBytes`, `payload.storage.defaultProtectedBookFormat.kdfIter`, and `payload.storage.defaultProtectedBookFormat.plaintextHeaderSize`.
 - `environment.sqlite.runtime.compileOptionsVerification` is `verified` only when the managed runtime is ready, `failed` when the loaded library is present but violates the compile-option contract by missing required options or exposing forbidden options, and `not-verified` when the runtime is unavailable, when the probe resolved one runtime target but aborted before verification could finish, or when an earlier compatibility gate prevents a compile-option verdict.
 - `capabilities` also reports `preflight.semantics`, `preflight.commitGuarantee`, and `currencyModel` so agents can discover the advisory preflight contract plus the single-functional-currency and owned-foreign-exchange doctrine without reading source code.
-- Gradle-driven local runs, the source-checkout wrapper, and the container image use a managed SQLite 3.53.3 / SQLite3 Multiple Ciphers 2.3.6 shared library.
+- Gradle-driven local runs, the source-checkout wrapper, and the container image use a managed SQLite 3.53.4 / SQLite3 Multiple Ciphers 2.4.0 shared library.
 - The developer direct-Java wrappers auto-discover that managed SQLite3MC library and scoped native access when they run from a prepared checkout. Direct-Java launches outside that checkout shape are unsupported.
 - `capabilities` is the best machine-readable contract surface.
 - `capabilities.requestInput.outputOption` publishes the canonical stdout-selection flag, while `capabilities --output json` and `capabilities --output json --detail full` publish the authoritative per-command stdout and artifact contract through grouped `CommandDescriptor` objects.
@@ -98,5 +175,5 @@ route:
 - Posting-side account failures are reported as `account-state-violations` with one or more structured issue objects in `details.violations[]`; their machine envelope keeps a stable summary and omits a top-level repair `hint`.
 - Posting-side entry-semantic failures are reported as `entry-semantics-violations` with one or more ordered issue objects in `details.violations[]`, and each issue carries stable `category` plus action-first `repair` guidance; their machine envelope likewise keeps a stable summary and omits a top-level repair `hint`.
 - The operator-facing `--output text` projection for those two nested repairable posting families renders one top-level `Summary` row plus one `Issue N | <code>` section per violation; checked-in examples live at [examples/account-state-violations-text.txt](./examples/account-state-violations-text.txt) and [examples/entry-semantics-violations-text.txt](./examples/entry-semantics-violations-text.txt).
-- Wrong passphrases, damaged or truncated protected books, and unsupported protected SQLite files are reported as the deterministic `protected-book-verification-failed` error instead of leaking raw SQLite symptoms such as `SQLITE_NOTADB`.
+- Wrong passphrases, damaged or truncated protected books, and foreign or otherwise unauthenticatable protected SQLite variants are reported as the deterministic `protected-book-verification-failed` error instead of leaking raw SQLite symptoms such as `SQLITE_NOTADB`. An authenticated FinGrind book whose `user_version` is non-current instead returns `unsupported-book-format-version` with `detectedBookFormatVersion` and `supportedBookFormatVersion`; it is never migrated or opened.
 - In a source checkout, example payloads live under [docs/examples/](./examples/). Public release bundles do not ship those repository fixture paths.

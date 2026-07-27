@@ -40,6 +40,8 @@ import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.core.ReversalReason;
 import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceDocumentType;
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
+import dev.erst.fingrind.testsupport.AttestationVerificationTestFixtures;
 import java.lang.reflect.InvocationTargetException;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -92,13 +94,13 @@ class BookkeepingPublishedLanguageTranslatorTest {
 
     DeclareAccountResult declared =
         BookkeepingPublishedLanguageTranslator.toPublished(
-            new AccountDeclarationOutcome.Declared(account, attestationCommit()));
+            new AccountDeclarationOutcome.Declared(account, attestationAppend()));
     DeclareAccountResult reactivated =
         BookkeepingPublishedLanguageTranslator.toPublished(
-            new AccountDeclarationOutcome.Reactivated(account, attestationCommit()));
+            new AccountDeclarationOutcome.Reactivated(account, attestationAppend()));
     DeclareAccountResult renamed =
         BookkeepingPublishedLanguageTranslator.toPublished(
-            new AccountDeclarationOutcome.Renamed(account, attestationCommit()));
+            new AccountDeclarationOutcome.Renamed(account, attestationAppend()));
     DeclareAccountResult unchanged =
         BookkeepingPublishedLanguageTranslator.toPublished(
             new AccountDeclarationOutcome.Unchanged(account));
@@ -153,7 +155,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
         AccountRegistryPublishedLanguageTranslator.fromPublished(command);
     AmendAccountResult amended =
         AccountRegistryPublishedLanguageTranslator.toPublished(
-            new AccountAmendmentOutcome.Amended(account, attestationCommit()));
+            new AccountAmendmentOutcome.Amended(account, attestationAppend()));
     AmendAccountResult unchanged =
         AccountRegistryPublishedLanguageTranslator.toPublished(
             new AccountAmendmentOutcome.Unchanged(account));
@@ -163,7 +165,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
                 new AccountRegistryLifecycleRejection.AccountNotFound(account.accountCode())));
     RetireAccountResult retired =
         AccountRegistryPublishedLanguageTranslator.toPublished(
-            new AccountRetirementOutcome.Retired(account, attestationCommit()));
+            new AccountRetirementOutcome.Retired(account, attestationAppend()));
     RetireAccountResult retirementUnchanged =
         AccountRegistryPublishedLanguageTranslator.toPublished(
             new AccountRetirementOutcome.Unchanged(account));
@@ -308,7 +310,7 @@ class BookkeepingPublishedLanguageTranslatorTest {
         new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"));
     Instant sweptAt = Instant.parse("2026-05-05T09:15:30Z");
     var sweptInterimResult =
-        new dev.erst.fingrind.executor.bookkeeping.SweptInterimResult(
+        new dev.erst.fingrind.executor.bookkeeping.RecordedInterimResultSweep(
             1,
             reportingPeriod,
             new AccountCode("3200"),
@@ -736,5 +738,10 @@ class BookkeepingPublishedLanguageTranslatorTest {
         BookkeepingPublishedLanguageTranslator.toPublished(
             new BookkeepingPostingRejection.ReservedResultClassification(
                 new AccountCode("3200"), FinancialPositionLineClassification.RESULT_HOLDING)));
+  }
+
+  private static AttestationAppendOutcome.Appended attestationAppend() {
+    return new AttestationAppendOutcome.Appended(
+        AttestationVerificationTestFixtures.verifiedAppend());
   }
 }

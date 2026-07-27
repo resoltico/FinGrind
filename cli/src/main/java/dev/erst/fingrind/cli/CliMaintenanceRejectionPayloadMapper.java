@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliArtifactPathFailureDetails;
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
+import dev.erst.fingrind.cli.json.CliMaintenanceRejectionJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
@@ -31,6 +32,9 @@ final class CliMaintenanceRejectionPayloadMapper {
             null,
             null,
             rejectionDetails(rejection),
+            null,
+            null,
+            null,
             null));
   }
 
@@ -48,8 +52,10 @@ final class CliMaintenanceRejectionPayloadMapper {
           "Choose a backup copy path that differs from the selected --book-file path, then rerun "
               + RESTORE_BOOK_OPERATION
               + ".";
+      case BookMaintenanceRejection.PairTargetsConflict _ ->
+          "Choose a generated-secret target with a distinct filesystem identity from the selected protected-book target, then rerun the maintenance command.";
       case BookMaintenanceRejection.ArtifactPathInvalid invalidArtifactPath ->
-          pathFailureHint(invalidArtifactPath);
+          CliMaintenancePathFailureHint.forFailure(invalidArtifactPath.pathFailure());
       case BookMaintenanceRejection.ArtifactBusy artifactBusy ->
           "Close the process using the "
               + artifactBusy.artifactRole().wireValue()
@@ -66,6 +72,10 @@ final class CliMaintenanceRejectionPayloadMapper {
           "Choose one absent generated-secret target path, then rerun the maintenance command.";
       case BookMaintenanceRejection.BookDestinationOccupied _ ->
           "Choose an absent destination book path, then rerun " + RESTORE_BOOK_OPERATION + ".";
+      case BookMaintenanceRejection.RecoveryPending recoveryPending ->
+          "Resume "
+              + ProtocolCatalog.operationName(recoveryPending.recoveryOperation())
+              + " with its complete original inputs, including exactly the retained book and generated-secret target paths shown below. Preserve its recovery evidence; do not rename, overwrite, delete, recreate, or manually clean it.";
       case BookMaintenanceRejection.ArtifactVerificationFailed verificationFailed ->
           "Use an artifact that opens as an initialized FinGrind protected book for role "
               + verificationFailed.artifactRole().wireValue()
@@ -77,66 +87,56 @@ final class CliMaintenanceRejectionPayloadMapper {
       rejectionDetails(BookMaintenanceRejection rejection) {
     return switch (rejection) {
       case BookMaintenanceRejection.BookHasBlockingArtifacts blockingArtifacts ->
-          new CliRejectionJsonModels.BlockingArtifactsDetails(
+          new CliMaintenanceRejectionJsonModels.BlockingArtifactsDetails(
               CliPublicPaths.absoluteValue(blockingArtifacts.bookFilePath()),
               blockingArtifacts.blockingArtifactPaths().stream()
                   .map(CliPublicPaths::absoluteValue)
                   .toList());
       case BookMaintenanceRejection.BackupSourceHasBlockingArtifacts blockingArtifacts ->
-          new CliRejectionJsonModels.BlockingArtifactsDetails(
+          new CliMaintenanceRejectionJsonModels.BlockingArtifactsDetails(
               CliPublicPaths.absoluteValue(blockingArtifacts.backupFilePath()),
               blockingArtifacts.blockingArtifactPaths().stream()
                   .map(CliPublicPaths::absoluteValue)
                   .toList());
       case BookMaintenanceRejection.BackupSourceMatchesLiveBook sourceMatchesLiveBook ->
-          new CliRejectionJsonModels.BookAndBackupFileDetails(
+          new CliMaintenanceRejectionJsonModels.BookAndBackupFileDetails(
               CliPublicPaths.absoluteValue(sourceMatchesLiveBook.bookFilePath()),
               CliPublicPaths.absoluteValue(sourceMatchesLiveBook.backupFilePath()));
+      case BookMaintenanceRejection.PairTargetsConflict conflict ->
+          new CliMaintenanceRejectionJsonModels.PairTargetsConflictDetails(
+              CliPublicPaths.absoluteValue(conflict.bookTarget()),
+              CliPublicPaths.absoluteValue(conflict.generatedSecretTarget()));
       case BookMaintenanceRejection.ArtifactPathInvalid invalidArtifactPath ->
           new CliArtifactPathFailureDetails(
               invalidArtifactPath.artifactRole().wireValue(),
               CliPublicPaths.absoluteValue(invalidArtifactPath.artifactPath()),
               invalidArtifactPath.pathFailure().wireValue());
       case BookMaintenanceRejection.ArtifactBusy artifactBusy ->
-          new CliRejectionJsonModels.ArtifactBusyDetails(
+          new CliMaintenanceRejectionJsonModels.ArtifactBusyDetails(
               artifactBusy.artifactRole().wireValue(),
               CliPublicPaths.absoluteValue(artifactBusy.artifactPath()));
       case BookMaintenanceRejection.BackupAcknowledgementConflict conflict ->
-          new CliRejectionJsonModels.BackupAcknowledgementConflictDetails(
+          new CliMaintenanceRejectionJsonModels.BackupAcknowledgementConflictDetails(
               conflict.backupId().toString());
       case BookMaintenanceRejection.BackupDestinationAlreadyExists destinationAlreadyExists ->
-          new CliRejectionJsonModels.BackupFileDetails(
+          new CliMaintenanceRejectionJsonModels.BackupFileDetails(
               CliPublicPaths.absoluteValue(destinationAlreadyExists.backupFilePath()));
       case BookMaintenanceRejection.SecretTargetOccupied targetOccupied ->
-          new CliRejectionJsonModels.SecretTargetDetails(
+          new CliMaintenanceRejectionJsonModels.SecretTargetDetails(
               CliPublicPaths.absoluteValue(targetOccupied.secretTargetPath()));
       case BookMaintenanceRejection.BookDestinationOccupied destinationOccupied ->
-          new CliRejectionJsonModels.BookFileDetails(
+          new CliMaintenanceRejectionJsonModels.BookFileDetails(
               CliPublicPaths.absoluteValue(destinationOccupied.bookFilePath()));
+      case BookMaintenanceRejection.RecoveryPending recoveryPending ->
+          new CliMaintenanceRejectionJsonModels.RecoveryPendingDetails(
+              recoveryPending.recoveryOperation().wireValue(),
+              CliPublicPaths.absoluteValue(recoveryPending.bookTargetPath()),
+              CliPublicPaths.absoluteValue(recoveryPending.generatedSecretTargetPath()));
       case BookMaintenanceRejection.ArtifactVerificationFailed verificationFailed ->
-          new CliRejectionJsonModels.ArtifactVerificationFailureDetails(
+          new CliMaintenanceRejectionJsonModels.ArtifactVerificationFailureDetails(
               verificationFailed.artifactRole().wireValue(),
               CliPublicPaths.absoluteValue(verificationFailed.artifactPath()),
               verificationFailed.verificationFailure().wireValue());
-    };
-  }
-
-  private static String pathFailureHint(BookMaintenanceRejection.ArtifactPathInvalid rejection) {
-    return switch (rejection.pathFailure()) {
-      case MISSING_PARENT_DIRECTORY ->
-          "Choose a path whose parent directory already exists or whose missing parent chain FinGrind can create securely, then rerun the maintenance command.";
-      case PARENT_PATH_COLLISION ->
-          "Choose a path whose parent chain is made only of real directories, not existing files or symlinks, then rerun the maintenance command.";
-      case PARENT_OWNER_ACCESS_REQUIRED ->
-          "Choose a path beneath a parent directory that the owner can traverse and write, then rerun the maintenance command.";
-      case PARENT_OWNER_ONLY_REQUIRED ->
-          "Choose a path beneath an owner-only parent directory, or tighten the existing parent directory first, then rerun the maintenance command.";
-      case TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE ->
-          "Choose a regular non-symlink artifact path for this maintenance workflow, then rerun the command.";
-      case UNSUPPORTED_SECURE_FILESYSTEM ->
-          "Choose a path on a filesystem that supports POSIX owner-only permissions or Windows owner-only ACLs, then rerun the maintenance command.";
-      case ATOMIC_SECRET_PUBLICATION_UNSUPPORTED ->
-          "Choose a path on a filesystem that supports atomic no-replace secret publication, then rerun the maintenance command.";
     };
   }
 }

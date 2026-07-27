@@ -33,7 +33,6 @@ final class CliOpenBookCommandFactory {
                     values.bookStartEffectiveDate,
                     ProtocolOptions.BookDefinition.BOOK_START_EFFECTIVE_DATE)),
             resolveFounders(values)),
-        values.tightenParents,
         CliOptionModes.resolvedOutputMode(values.outputMode));
   }
 

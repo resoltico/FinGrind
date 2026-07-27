@@ -293,6 +293,17 @@ class AttestationCodecValidationTest {
                 IllegalArgumentException.class,
                 () -> AttestationBinaryFieldValue.bytes(new byte[1_048_577]))
             .getMessage());
+    int maximumEmbeddedValueByteCount =
+        AttestationPlanQualifiedFact.maximumEmbeddedValueByteCount();
+    assertEquals(16_777_190, maximumEmbeddedValueByteCount);
+    assertEquals(
+        "embedded must be at most 16777190 bytes.",
+        assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    AttestationBinaryFieldValue.embedded(
+                        new byte[maximumEmbeddedValueByteCount + 1]))
+            .getMessage());
     assertEquals(
         "instant must be precise to milliseconds.",
         assertThrows(
@@ -421,7 +432,7 @@ class AttestationCodecValidationTest {
                 IllegalArgumentException.class,
                 () -> new AttestationPreimage.Fact(-1, List.of(present)))
             .getMessage());
-    assertEquals(77, AttestationPreimageCatalog.recordCount());
+    assertEquals(79, AttestationPreimageCatalog.recordCount());
     assertEquals(
         "Attestation preimage may contain at most 1000000 records.",
         assertThrows(

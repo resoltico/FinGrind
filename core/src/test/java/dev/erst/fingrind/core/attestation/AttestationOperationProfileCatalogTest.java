@@ -4,6 +4,10 @@ import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSup
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.credential;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
+import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.AccountName;
+import dev.erst.fingrind.core.AccountTaxonomy;
+import dev.erst.fingrind.core.AccountType;
 import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -45,6 +49,9 @@ class AttestationOperationProfileCatalogTest {
               () -> AttestationBinaryFieldValue.spki(credential().pair().getPublic().getEncoded())),
           Map.entry(
               AttestationFieldType.BYTES, () -> AttestationBinaryFieldValue.bytes(new byte[] {1})),
+          Map.entry(
+              AttestationFieldType.EMBEDDED,
+              () -> AttestationBinaryFieldValue.embedded(new byte[] {1})),
           Map.entry(AttestationFieldType.TOKEN, () -> AttestationTextFieldValue.token("value")),
           Map.entry(AttestationFieldType.TEXT, () -> AttestationTextFieldValue.text("value")),
           Map.entry(AttestationFieldType.CURRENCY, () -> AttestationTextFieldValue.currency("EUR")),
@@ -110,7 +117,7 @@ class AttestationOperationProfileCatalogTest {
   }
 
   @Test
-  void rejectsSystemPostingAndOrphanedLifecycleEffectsAfterItsTagProfilePasses() {
+  void rejectsSystemPostingAndRequiresStepQualifiedPlanChildren() {
     AttestationPreimage systemPost =
         AttestationAuthorizationTestSupport.requestPreimage(
             AttestationOperationKind.POST_ENTRY,
@@ -119,16 +126,12 @@ class AttestationOperationProfileCatalogTest {
     AttestationOperationPayload systemPayload =
         AttestationAuthorizationTestSupport.operationPayload(
             BigInteger.ONE, AttestationOperationKind.POST_ENTRY, systemPost);
+    AttestationOperationPreimages plan = validPlanPreimages();
     AttestationPreimage request =
-        AttestationPreimage.of(
-            List.of(
-                AttestationAuthorizationTestSupport.requestPreimage(
-                        AttestationOperationKind.EXECUTE_PLAN, AttestationSourceChannel.CLI, null)
-                    .records()
-                    .getFirst(),
-                fact(0x0120),
-                fact(0x0124)));
-    AttestationPreimage effect = preimage(0x0020, 0x0021, 0x0025);
+        AttestationPreimage.decode(
+            plan.request(), AttestationAuthorizationFailure.PREIMAGE_INVALID);
+    AttestationPreimage effect =
+        AttestationPreimage.decode(plan.effect(), AttestationAuthorizationFailure.PREIMAGE_INVALID);
     AttestationOperationPayload payload =
         AttestationAuthorizationTestSupport.operationPayload(
             BigInteger.ONE, AttestationOperationKind.EXECUTE_PLAN, request);
@@ -177,22 +180,34 @@ class AttestationOperationProfileCatalogTest {
         () ->
             AttestationOperationProfile.requireValid(
                 payload, AttestationOperationKind.EXECUTE_PLAN, request, effect));
-    AttestationPreimage matchedLifecycleRequest = append(request, 0x0128);
-    AttestationOperationPayload matchedLifecyclePayload =
-        AttestationAuthorizationTestSupport.operationPayload(
-            BigInteger.ONE, AttestationOperationKind.EXECUTE_PLAN, matchedLifecycleRequest);
-    assertDoesNotThrow(
-        () ->
-            AttestationOperationProfile.requireValid(
-                matchedLifecyclePayload,
-                AttestationOperationKind.EXECUTE_PLAN,
-                matchedLifecycleRequest,
-                append(effect, 0x0030)));
     assertFailure(
         AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
         () ->
             AttestationOperationProfile.requireValid(
                 payload, AttestationOperationKind.EXECUTE_PLAN, request, append(effect, 0x0030)));
+  }
+
+  private static AttestationOperationPreimages validPlanPreimages() {
+    AttestationAccountSnapshot account =
+        new AttestationAccountSnapshot(
+            new AccountCode("1000"),
+            new AccountName("Cash"),
+            AccountType.ASSET,
+            AccountTaxonomy.empty(),
+            null,
+            true);
+    AttestationOperationPreimages child =
+        AttestationAccountMutationProjection.project(
+            AttestationAccountMutationIntent.DECLARATION,
+            AttestationOperationKind.DECLARE_ACCOUNT.wireToken(),
+            account,
+            account,
+            AttestationEffectMutation.CREATE);
+    return AttestationPlanMutationProjection.project(
+        "profile-plan",
+        List.of(
+            new AttestationPlanChildMutation(
+                0, AttestationOperationKind.DECLARE_ACCOUNT.wireToken(), child)));
   }
 
   @Test
@@ -205,6 +220,17 @@ class AttestationOperationProfileCatalogTest {
         () ->
             AttestationOperationProfileCatalog.profile(AttestationOperationKind.RECORD_SALE_SETTLED)
                 .requireTags(request, effect));
+  }
+
+  @Test
+  void directProfileRefusesTheAggregatePlanOperation() {
+    assertFailure(
+        AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID,
+        () ->
+            AttestationOperationProfile.requireDirectProfile(
+                AttestationOperationKind.EXECUTE_PLAN,
+                AttestationPreimage.of(List.of()),
+                AttestationPreimage.of(List.of())));
   }
 
   private static AttestationPreimage append(AttestationPreimage preimage, int tag) {

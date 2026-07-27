@@ -23,7 +23,10 @@ class SqlitePostingFactStore
   final SqliteStoreLifecycle lifecycle;
   private final SqliteStoreReadOperations readOperations;
   private final SqliteInventoryValuationReadOperations inventoryValuationReadOperations;
-  private final SqliteStoreMutationOperations mutationOperations;
+  private final SqliteStoreAdministrationMutationOperations administrationMutationOperations;
+  private final SqliteStoreAccountRegistryMutationOperations accountRegistryMutationOperations;
+  private final SqliteStorePostingMutationOperations postingMutationOperations;
+  private final SqliteClosingMutationOperations closingMutationOperations;
 
   /** Opens one SQLite-backed book boundary without mutating storage eagerly. */
   SqlitePostingFactStore(Path bookPath, SqliteBookPassphrase bookPassphrase) {
@@ -83,12 +86,20 @@ class SqlitePostingFactStore
     this.readOperations = new SqliteStoreReadOperations(context, lifecycle);
     this.inventoryValuationReadOperations =
         new SqliteInventoryValuationReadOperations(context, lifecycle);
-    this.mutationOperations =
-        new SqliteStoreMutationOperations(
-            context,
-            lifecycle,
-            Objects.requireNonNull(commitFaultHook, "commitFaultHook"),
-            Objects.requireNonNull(postingAcceptancePolicy, "postingAcceptancePolicy"));
+    SqliteCommitFaultHook checkedCommitFaultHook =
+        Objects.requireNonNull(commitFaultHook, "commitFaultHook");
+    PostingAcceptancePolicy checkedPostingAcceptancePolicy =
+        Objects.requireNonNull(postingAcceptancePolicy, "postingAcceptancePolicy");
+    this.administrationMutationOperations =
+        new SqliteStoreAdministrationMutationOperations(context, lifecycle);
+    this.accountRegistryMutationOperations =
+        new SqliteStoreAccountRegistryMutationOperations(context, lifecycle);
+    this.postingMutationOperations =
+        new SqliteStorePostingMutationOperations(
+            context, lifecycle, checkedCommitFaultHook, checkedPostingAcceptancePolicy);
+    this.closingMutationOperations =
+        new SqliteClosingMutationOperations(
+            context, lifecycle, checkedCommitFaultHook, checkedPostingAcceptancePolicy);
   }
 
   /** Opens and primes one SQLite-backed book session for explicit CLI/workflow result handling. */
@@ -113,8 +124,23 @@ class SqlitePostingFactStore
   }
 
   @Override
-  public SqliteStoreMutationOperations storeMutationOperations() {
-    return mutationOperations;
+  public SqliteStoreAdministrationMutationOperations storeAdministrationMutationOperations() {
+    return administrationMutationOperations;
+  }
+
+  @Override
+  public SqliteStoreAccountRegistryMutationOperations storeAccountRegistryMutationOperations() {
+    return accountRegistryMutationOperations;
+  }
+
+  @Override
+  public SqliteStorePostingMutationOperations storePostingMutationOperations() {
+    return postingMutationOperations;
+  }
+
+  @Override
+  public SqliteClosingMutationOperations storeClosingMutationOperations() {
+    return closingMutationOperations;
   }
 
   @Override

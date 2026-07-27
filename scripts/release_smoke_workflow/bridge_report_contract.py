@@ -6,6 +6,9 @@ import json
 import pathlib
 import tempfile
 
+from .artifact_contracts import canonical_pdf_reported_path
+from .fixtures import prepare_owner_only_directory
+
 
 def assert_bridge_and_report_contracts(
     repo_root: pathlib.Path,
@@ -120,10 +123,13 @@ def assert_pdf_report_contracts(
     pdf_export_stdout,
     structured_account_ledger_csv,
 ) -> None:
-    pdf_local_path = temp_path / "reports odd" / "trial balance [bridge].pdf"
-    pdf_local_path.parent.mkdir(parents=True, exist_ok=True)
+    pdf_local_path = temp_path / "private reports" / "trial balance [bridge].pdf"
+    prepare_owner_only_directory(pdf_local_path.parent)
     pdf_local_path.write_bytes(b"%PDF-1.7\nbridge")
-    bundle_pdf = smoke_path(temp_path, pathlib.Path("reports odd") / "trial balance [bridge].pdf")
+    bundle_pdf = smoke_path(
+        temp_path,
+        pathlib.Path("private reports") / "trial balance [bridge].pdf",
+    )
     bundle_config = base_bridge_config(
         repo_root,
         temp_path,
@@ -142,7 +148,9 @@ def assert_pdf_report_contracts(
         list_postings_text_output=standard_list_postings_text,
         account_balance_text_output=standard_account_balance_text,
         trial_balance_text_output=standard_trial_balance_text,
-        pdf_stdout=pdf_export_stdout(str(pdf_local_path)),
+        pdf_stdout=pdf_export_stdout(
+            canonical_pdf_reported_path(bundle_config, bundle_config.trial_balance_pdf)
+        ),
         pdf_stderr="",
         account_ledger_csv_output=structured_account_ledger_csv(),
         period_summary_text_output=standard_period_summary_text,
@@ -157,7 +165,10 @@ def assert_pdf_report_contracts(
         )
     )
 
-    docker_pdf = smoke_path(temp_path, pathlib.Path("reports odd") / "trial balance [bridge].pdf")
+    docker_pdf = smoke_path(
+        temp_path,
+        pathlib.Path("private reports") / "trial balance [bridge].pdf",
+    )
     docker_config = base_bridge_config(
         repo_root,
         temp_path,
@@ -167,7 +178,7 @@ def assert_pdf_report_contracts(
         reported_work_root=pathlib.Path("/workdir"),
         book_key_output_permissions="0600",
         pdf_path=docker_pdf,
-        pdf_argument_override="reports odd/trial balance [bridge].pdf",
+        pdf_argument_override="private reports/trial balance [bridge].pdf",
         stderr_path=temp_path / "docker-stderr.txt",
         label="Docker regression",
     )
@@ -176,7 +187,9 @@ def assert_pdf_report_contracts(
         list_postings_text_output=standard_list_postings_text,
         account_balance_text_output=standard_account_balance_text,
         trial_balance_text_output=standard_trial_balance_text,
-        pdf_stdout=pdf_export_stdout("/workdir/reports odd/trial balance [bridge].pdf"),
+        pdf_stdout=pdf_export_stdout(
+            canonical_pdf_reported_path(docker_config, docker_config.trial_balance_pdf)
+        ),
         pdf_stderr="",
         account_ledger_csv_output=structured_account_ledger_csv(),
         period_summary_text_output=standard_period_summary_text,

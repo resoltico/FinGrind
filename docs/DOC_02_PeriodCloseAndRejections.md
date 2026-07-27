@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: CONTRACT_PERIOD_CLOSE
-updated: "2026-07-23"
+updated: "2026-07-26"
 scope:
   paths: ["contract/src/main/java/dev/erst/fingrind/contract/bookkeeping", "executor/src/main/java/dev/erst/fingrind/executor/bookkeeping"]
   symbols: ["InterimResultSweepDraft", "InterimResultSweepOutcome", "InterimResultSweepPlanner", "InterimResultSweepService", "FiscalYearCloseDraft", "FiscalYearCloseOutcome", "FiscalYearClosePlanner", "FiscalYearCloseService", "BookAdministrationRejection", "BookQueryRejection"]
@@ -16,7 +16,7 @@ route:
 This file documents executor-owned period-close planning and the deterministic public
 administration and read-side rejection vocabulary.
 
-## `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `SweptInterimResult`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService`
+## `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `RecordedInterimResultSweep`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService`
 
 These executor-owned local bookkeeping types own interim-result-sweep generation and durable
 close semantics before the public administration surface is projected.
@@ -24,7 +24,7 @@ close semantics before the public administration surface is projected.
 ```java
 public record InterimResultSweepDraft(...)
 public sealed interface InterimResultSweepOutcome
-public record SweptInterimResult(...)
+public record RecordedInterimResultSweep(...)
 public sealed interface InterimResultTargetSelection
 public final class AcceptedInterimResultTargetSelection
 public final class RejectedInterimResultTargetSelection
@@ -39,7 +39,7 @@ public final class InterimResultSweepService
   period, the sweep time, and every generated posting draft
 - `InterimResultSweepOutcome`: closed family of accepted-versus-rejected local
   interim-result-sweep outcomes
-- `SweptInterimResult`: durably stored interim-result sweep fact carrying `sweepOrder`,
+- `RecordedInterimResultSweep`: durably stored interim-result sweep fact carrying `sweepOrder`,
   the transferred totals, and every generated sweep posting id
 - `InterimResultTargetSelection`: closed result for the policy-owned result-holding account lookup
 - `AcceptedInterimResultTargetSelection`: accepted result-holding selection carrying the chosen account
@@ -48,9 +48,9 @@ public final class InterimResultSweepService
 - `InterimResultSweepPlan`: generated interim-result-sweep posting drafts plus the transferred
   totals that the published sweep result projects afterward
 - `InterimResultSweepPlanner`: bookkeeping-domain planner that selects the policy-owned result-holding
-  account, derives the inclusive reporting period from the selected through date plus the earliest
-  committed posting date in the selected book or the prior transferred-through horizon, validates
-  close-horizon rules, and generates the
+  account, derives the inclusive reporting period from the selected through date plus the immutable
+  `BookIdentity` book-start date or the prior transferred-through horizon, validates close-horizon rules before
+  durable mutation, and generates the
   `PostingKind.INTERIM_RESULT_SWEEP` drafts plus published transferred totals. Construction is
   bound to the initialized `BookIdentity`; callers cannot supply an internal policy-pack type.
 - `InterimResultSweepService`: application service that coordinates lifecycle inspection, account

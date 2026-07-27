@@ -1,7 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.core.SystemUtcClock;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.Optional;
@@ -104,17 +102,21 @@ final class SqliteProcessIdentity {
     return liveStartInstant.map(instant -> instant.toEpochMilli() == startEpochMillis).orElse(true);
   }
 
-  boolean isLiveWhenUnlocked(Instant markerLastModified, Duration unknownStartGracePeriod) {
-    Objects.requireNonNull(markerLastModified, "markerLastModified");
-    Objects.requireNonNull(unknownStartGracePeriod, "unknownStartGracePeriod");
+  /**
+   * Returns whether a coordination owner is live when no stronger ownership proof is available.
+   *
+   * <p>An extant process with an unavailable start instant remains live. Reclaiming its marker or
+   * lease after an elapsed-time grace period would turn an unverifiable PID-reuse boundary into a
+   * concurrent-write authorization. FinGrind therefore fails closed until the process itself no
+   * longer exists.
+   */
+  boolean isLiveWhenUnlocked() {
     Optional<ProcessHandle> processHandle = ProcessHandle.of(pid);
     if (processHandle.isEmpty()) {
       return false;
     }
     if (startEpochMillis == UNKNOWN_START_EPOCH_MILLIS) {
-      return markerLastModified
-          .plus(unknownStartGracePeriod)
-          .isAfter(Instant.now(SystemUtcClock.instance()));
+      return true;
     }
     Optional<Instant> liveStartInstant = processHandle.get().info().startInstant();
     return liveStartInstant.map(instant -> instant.toEpochMilli() == startEpochMillis).orElse(true);

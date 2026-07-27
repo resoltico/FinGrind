@@ -19,12 +19,13 @@ class CliAttestationRegistryPresentationTest {
   private static final UUID PRINCIPAL_ID = UUID.fromString("10213243-5465-7687-98a9-babcbddceeff");
   private static final UUID WORKFLOW_ID = UUID.fromString("20314253-6475-7689-9a0b-bcddceeff001");
   private static final String OPERATION_HEAD = "a".repeat(64);
+  private static final String PREVIOUS_HEAD = "b".repeat(64);
 
   @Test
   void verifyBook_presentsPrincipalCapabilitiesAndSystemWorkflowPoliciesInTextAndJson() {
     VerifyBookAttestationResult.Valid result =
         new VerifyBookAttestationResult.Valid(
-            BOOK_ID, BigInteger.ONE, OPERATION_HEAD, List.of(), registry());
+            BOOK_ID, BigInteger.ONE, OPERATION_HEAD, PREVIOUS_HEAD, List.of(), registry());
 
     ByteArrayOutputStream textOutput = new ByteArrayOutputStream();
     new CliAttestationReadResponseWriter(outputChannel(textOutput))
@@ -34,6 +35,10 @@ class CliAttestationRegistryPresentationTest {
     assertTrue(text.contains("capability=post\n"));
     assertTrue(text.contains("workflowId=" + WORKFLOW_ID + "\n"));
     assertTrue(text.contains("kind=year-end-close\n"));
+    assertTrue(text.contains("Attestation order"));
+    assertTrue(text.contains("Attestation head"));
+    assertTrue(text.contains("Previous attestation head"));
+    assertTrue(text.contains(PREVIOUS_HEAD));
 
     ByteArrayOutputStream jsonOutput = new ByteArrayOutputStream();
     new CliAttestationReadResponseWriter(outputChannel(jsonOutput))
@@ -42,6 +47,10 @@ class CliAttestationRegistryPresentationTest {
     assertTrue(json.contains("\"workflowId\":\"" + WORKFLOW_ID + "\""));
     assertTrue(json.contains("\"resultHoldingAccountCode\":\"3900\""));
     assertTrue(json.contains("\"acceptedOrder\":\"1\""));
+    assertTrue(json.contains("\"verifiedAttestationHead\""));
+    assertTrue(json.contains("\"operationOrder\":\"1\""));
+    assertTrue(json.contains("\"operationHead\":\"" + OPERATION_HEAD + "\""));
+    assertTrue(json.contains("\"previousHead\":\"" + PREVIOUS_HEAD + "\""));
   }
 
   private static CliOutputChannel outputChannel(ByteArrayOutputStream output) {

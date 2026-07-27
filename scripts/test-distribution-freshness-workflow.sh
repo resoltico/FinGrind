@@ -53,12 +53,16 @@ grep -Fq "java_version=\"\$(grep '^fingrindJavaVersion=' gradle/fingrind-build.p
     "distribution freshness workflow no longer resolves the canonical Java version from build metadata"
 grep -Fq "python_version=\"\$(grep '^fingrindPythonVersion=' gradle/fingrind-build.properties | cut -d= -f2)\"" "${freshness_workflow}" || die \
     "distribution freshness workflow no longer resolves the canonical Python version from build metadata"
-grep -Fq 'cache-dependency-path: requirements-python-tools.txt' "${freshness_workflow}" || die \
+grep -Fq 'requirements-python-tools.txt' "${freshness_workflow}" || die \
     "distribution freshness workflow no longer caches the repo-owned Python tool surface"
+grep -Fq 'requirements-release-smoke-workflow.txt' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer caches the repo-owned release-smoke extractor"
 grep -Fq "uv_version=\"\$(grep '^fingrindUvVersion=' gradle/fingrind-build.properties | cut -d= -f2)\"" "${freshness_workflow}" || die \
     "distribution freshness workflow no longer resolves the pinned uv launcher version from build metadata"
 grep -Fq 'ORG_GRADLE_PROJECT_fingrindUvExecutable' "${freshness_workflow}" || die \
     "distribution freshness workflow no longer exports the uv launcher path for Gradle-owned Python tool tasks"
+grep -Fq '"${uv_executable}" pip install --system' "${freshness_workflow}" || die \
+    "distribution freshness workflow no longer provisions Python dependencies through pinned uv"
 grep -Fq './gradlew :cli:bundleCliArchive --no-daemon --console=plain' "${freshness_workflow}" || die \
     "distribution freshness workflow no longer rebuilds the published bundle surface"
 grep -Fq './scripts/bundle-smoke.sh' "${freshness_workflow}" || die \

@@ -6,7 +6,7 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountin
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -62,19 +62,16 @@ class BookkeepingPostingServiceTest {
           new PostingPreflightOutcome.Accepted(
               new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
           service.preflight(command));
-      PostingCommitResult.Committed firstCommit =
+      PostingCommitResult.Appended firstCommit =
           assertInstanceOf(
-              PostingCommitResult.Committed.class, service.commit(command, TEST_AUTHORIZER));
-      assertEquals(
-          new PostingCommitResult.Committed(firstCommit.postingFact(), false, null), firstCommit);
+              PostingCommitResult.Appended.class, service.commit(command, TEST_AUTHORIZER));
+      assertNotNull(firstCommit.attestationAppend().verification());
       assertEquals(
           new PostingPreflightOutcome.Accepted(
               new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")),
           service.preflight(command));
-      assertTrue(
-          assertInstanceOf(
-                  PostingCommitResult.Committed.class, service.commit(command, TEST_AUTHORIZER))
-              .idempotentReplay());
+      assertInstanceOf(
+          PostingCommitResult.Replayed.class, service.commit(command, TEST_AUTHORIZER));
     }
   }
 
@@ -131,7 +128,8 @@ class BookkeepingPostingServiceTest {
                 new AccountName("Cash"),
                 AccountType.ASSET,
                 accountTaxonomy(AccountType.ASSET)),
-            FIXED_INSTANT));
+            FIXED_INSTANT,
+            TEST_AUTHORIZER));
     assertInstanceOf(
         AccountDeclarationOutcome.Declared.class,
         bookSession.declareAccount(
@@ -140,7 +138,8 @@ class BookkeepingPostingServiceTest {
                 new AccountName("Revenue"),
                 AccountType.REVENUE,
                 accountTaxonomy(AccountType.REVENUE)),
-            FIXED_INSTANT));
+            FIXED_INSTANT,
+            TEST_AUTHORIZER));
     return bookSession;
   }
 

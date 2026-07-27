@@ -57,7 +57,7 @@ public final class BookkeepingPostingService {
     AttestationOperationAuthorizer.require(attestationAuthorizer);
     return switch (acceptancePolicy.decisionFor(command, validationStore)) {
       case PostingAcceptancePolicy.Decision.Replay replay ->
-          new PostingCommitResult.Committed(replay.postingFact(), true, null);
+          new PostingCommitResult.Replayed(replay.postingFact());
       case PostingAcceptancePolicy.Decision.Rejected rejected ->
           new PostingCommitResult.Rejected(rejected.rejection());
       case PostingAcceptancePolicy.Decision.Accepted accepted ->

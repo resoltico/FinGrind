@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: DEVELOPER_RELEASE_PUBLICATION
-updated: "2026-07-16"
+updated: "2026-07-26"
 route:
   keywords: [fingrind, release publication, attestation, github release, workflow_dispatch, windows publication lane, gh attestation]
   questions: ["how does fingrind attest published release assets", "why did the windows publication lane expose the release attestation bug first", "how should a release workflow defect be repaired after tagging", "what publication invariants does fingrind enforce"]
@@ -12,11 +12,13 @@ route:
 
 **Purpose**: Capture the publication topology, attestation invariants, cross-platform failure
 notes, and safe repair path for FinGrind public releases. Use this document for the theory behind
-release publication. Use [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md) for the step-by-step
-operator procedure.
+release publication. Use [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md) for release control and
+closeout, then [RELEASE_PUBLICATION_VERIFICATION.md](./RELEASE_PUBLICATION_VERIFICATION.md) for
+the post-tag public-verification journey.
 **Prerequisites**: Familiarity with [DEVELOPER_DISTRIBUTION.md](./DEVELOPER_DISTRIBUTION.md),
 [DEVELOPER_SECURITY.md](./DEVELOPER_SECURITY.md), and
-[RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md).
+[RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md) plus
+[RELEASE_PUBLICATION_VERIFICATION.md](./RELEASE_PUBLICATION_VERIFICATION.md).
 
 ## Canonical Publication Topology
 
@@ -189,7 +191,8 @@ that verifier must run the container as the caller's numeric `UID:GID`, matching
 `docker-smoke` contract, so Linux bind-mounted book, key, and PDF artifacts are owned by the
 invoking operator instead of by container-root. The release workflow's staged-container and
 promotion jobs now run this same verifier after push, so workflow automation and the operator's
-Step 9 command are held to one public surface contract. When that mounted-book grammar changes,
+run defined by [RELEASE_PUBLICATION_VERIFICATION.md](./RELEASE_PUBLICATION_VERIFICATION.md) are
+held to one public surface contract. When that mounted-book grammar changes,
 that text report layout changes, the mounted-workspace user contract changes, or the
 container-native provenance surface
 moves, repair the verifier and its mock-backed shell regression harness together before trusting

@@ -6,7 +6,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.UUID;
-import org.jspecify.annotations.Nullable;
 
 /** Decodes one catalog-typed immutable-preimage field without consulting mutable book state. */
 final class AttestationPreimageValueReader {
@@ -32,13 +31,6 @@ final class AttestationPreimageValueReader {
     return AttestationHash.of(encoded);
   }
 
-  static @Nullable AttestationHash optionalHash(
-      AttestationPreimage.Fact fact, int fieldIndex, AttestationAuthorizationFailure failure) {
-    return AttestationPreimageFields.requireField(fact, fieldIndex).isPresent()
-        ? hash(fact, fieldIndex, failure)
-        : null;
-  }
-
   static AttestationSpki spki(
       AttestationPreimage.Fact fact, int fieldIndex, AttestationAuthorizationFailure failure) {
     byte[] encoded = value(fact, fieldIndex, failure);
@@ -50,13 +42,6 @@ final class AttestationPreimageValueReader {
     byte[] encoded = value(fact, fieldIndex, failure);
     return new String(
         encoded, Integer.BYTES, encoded.length - Integer.BYTES, StandardCharsets.UTF_8);
-  }
-
-  static @Nullable String optionalText(
-      AttestationPreimage.Fact fact, int fieldIndex, AttestationAuthorizationFailure failure) {
-    return AttestationPreimageFields.requireField(fact, fieldIndex).isPresent()
-        ? text(fact, fieldIndex, failure)
-        : null;
   }
 
   static boolean booleanValue(
@@ -75,6 +60,11 @@ final class AttestationPreimageValueReader {
     return new BigInteger(1, value(fact, fieldIndex, failure));
   }
 
+  static BigInteger unsigned32(
+      AttestationPreimage.Fact fact, int fieldIndex, AttestationAuthorizationFailure failure) {
+    return new BigInteger(1, value(fact, fieldIndex, failure));
+  }
+
   static int mutation(
       AttestationPreimage.Fact fact, int fieldIndex, AttestationAuthorizationFailure failure) {
     return unsigned(fact, fieldIndex, Byte.BYTES, failure);
@@ -83,6 +73,23 @@ final class AttestationPreimageValueReader {
   static int unsigned16(
       AttestationPreimage.Fact fact, int fieldIndex, AttestationAuthorizationFailure failure) {
     return unsigned(fact, fieldIndex, Short.BYTES, failure);
+  }
+
+  static byte[] embedded(
+      AttestationPreimage.Fact fact, int fieldIndex, AttestationAuthorizationFailure failure) {
+    AttestationFieldValue value = AttestationPreimageFields.requireValue(fact, fieldIndex, failure);
+    if (value.type() != AttestationFieldType.EMBEDDED) {
+      throw new AttestationAuthorizationException(failure);
+    }
+    byte[] encoded = value.encoded();
+    if (encoded.length < Integer.BYTES) {
+      throw new AttestationAuthorizationException(failure);
+    }
+    int length = ByteBuffer.wrap(encoded, 0, Integer.BYTES).getInt();
+    if (length < 0 || length != encoded.length - Integer.BYTES) {
+      throw new AttestationAuthorizationException(failure);
+    }
+    return Arrays.copyOfRange(encoded, Integer.BYTES, encoded.length);
   }
 
   private static int unsigned(

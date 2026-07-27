@@ -1,10 +1,12 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerPlanAttestationDisposition;
 import dev.erst.fingrind.contract.workflow.LedgerPlanId;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
-import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
+import dev.erst.fingrind.executor.spi.LedgerPlanExecutionStore;
+import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.executor.workflow.BookWorkflowExecutionResult;
 import dev.erst.fingrind.executor.workflow.BookWorkflowExecutionService;
 import dev.erst.fingrind.executor.workflow.BookWorkflowPublishedLanguageTranslator;
@@ -17,13 +19,11 @@ public final class LedgerPlanService {
 
   /** Creates a ledger-plan executor. */
   public LedgerPlanService(
-      LedgerPlanTransaction transactionStore,
-      BookWorkflowExecutionDependencies dependencies,
-      Clock clock) {
+      LedgerPlanExecutionStore executionStore, PostingIdGenerator postingIdGenerator, Clock clock) {
     this.workflowExecutionService =
         new BookWorkflowExecutionService(
-            Objects.requireNonNull(transactionStore, "transactionStore"),
-            Objects.requireNonNull(dependencies, "dependencies"),
+            Objects.requireNonNull(executionStore, "executionStore"),
+            Objects.requireNonNull(postingIdGenerator, "postingIdGenerator"),
             Objects.requireNonNull(clock, "clock"));
   }
 
@@ -45,7 +45,12 @@ public final class LedgerPlanService {
     return switch (executionResult.status()) {
       case SUCCEEDED ->
           new LedgerPlanResult.Succeeded(
-              publishedPlanId, publishedJournal, executionResult.attestationCommit());
+              publishedPlanId,
+              publishedJournal,
+              executionResult.attestationCommit() == null
+                  ? LedgerPlanAttestationDisposition.NO_DURABLE_CHILD_MUTATION
+                  : LedgerPlanAttestationDisposition.APPENDED,
+              executionResult.attestationCommit());
       case REJECTED -> new LedgerPlanResult.Rejected(publishedPlanId, publishedJournal);
       case ASSERTION_FAILED ->
           new LedgerPlanResult.AssertionFailed(publishedPlanId, publishedJournal);

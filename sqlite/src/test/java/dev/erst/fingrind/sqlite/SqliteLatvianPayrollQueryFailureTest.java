@@ -31,7 +31,7 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
     Path bookPath = tempDirectory.resolve("payroll-validation-stale.sqlite");
     try (SqlitePostingFactStore store = openStore(bookAccess(bookPath))) {
       SqliteTransactionValidationBook validationBook =
-          new SqliteTransactionValidationBook(staleDatabaseHandle(bookPath), store.postingReader());
+          new SqliteTransactionValidationBook(staleDatabaseHandle(), store.postingReader());
 
       assertPayrollQueryFailure(
           "Failed to query SQLite Latvian payroll run.",
@@ -206,7 +206,7 @@ class SqliteLatvianPayrollQueryFailureTest extends SqlitePostingFactStoreTestSup
       openBookWithNoDeclaredAccounts(store);
       LatvianPayrollLookupStore payrollLookup = readPayrollCapability(store);
 
-      try (StoreDatabaseSwap ignored = swapStoreDatabase(store, staleDatabaseHandle(bookPath))) {
+      try (StoreDatabaseSwap ignored = swapStoreDatabase(store, staleDatabaseHandle())) {
         assertPayrollQueryFailure(
             "Failed to query SQLite Latvian payroll run.",
             () -> payrollLookup.findLatvianPayrollRun(RUN_ID));

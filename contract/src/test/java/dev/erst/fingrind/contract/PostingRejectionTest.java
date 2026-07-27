@@ -18,7 +18,8 @@ import dev.erst.fingrind.contract.bookkeeping.PostingInventoryRejectionSemantics
 import dev.erst.fingrind.contract.bookkeeping.PostingLatvianPayrollRejectionSemantics;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.FieldDescriptor;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import dev.erst.fingrind.contract.tax.TaxApplicationKind;
 import dev.erst.fingrind.contract.tax.TaxCode;
 import dev.erst.fingrind.contract.tax.TaxRegistrationId;
@@ -333,9 +334,7 @@ class PostingRejectionTest {
             "reversal-target-is-reversal",
             "reversal-already-exists",
             "reversal-does-not-negate-target"),
-        PostingRejection.descriptors().stream()
-            .map(ContractResponse.RejectionDescriptor::code)
-            .toList());
+        PostingRejection.descriptors().stream().map(RejectionDescriptor::code).toList());
   }
 
   @Test
@@ -371,7 +370,7 @@ class PostingRejectionTest {
             .sorted()
             .toList());
 
-    ContractResponse.RejectionDescriptor descriptor =
+    RejectionDescriptor descriptor =
         PostingRejection.descriptors().stream()
             .filter(rejection -> "entry-semantics-violations".equals(rejection.code()))
             .findFirst()
@@ -379,9 +378,7 @@ class PostingRejectionTest {
 
     assertEquals(
         ENTRY_SEMANTICS_CANONICAL_CODES,
-        descriptor.detailRejections().stream()
-            .map(ContractResponse.RejectionDescriptor::code)
-            .toList());
+        descriptor.detailRejections().stream().map(RejectionDescriptor::code).toList());
     assertTrue(
         descriptor.detailFields().getFirst().description().contains("category"),
         descriptor.detailFields().toString());
@@ -396,7 +393,7 @@ class PostingRejectionTest {
             .allMatch(
                 detail ->
                     detail.detailFields().stream()
-                        .map(ContractResponse.FieldDescriptor::name)
+                        .map(FieldDescriptor::name)
                         .toList()
                         .equals(ENTRY_SEMANTICS_DETAIL_FIELD_NAMES)),
         descriptor.toString());
@@ -404,7 +401,7 @@ class PostingRejectionTest {
 
   @Test
   void accountStateOwner_isPreparedForTheUniformRepairableViolationCore() {
-    ContractResponse.RejectionDescriptor descriptor =
+    RejectionDescriptor descriptor =
         PostingRejection.descriptors().stream()
             .filter(rejection -> "account-state-violations".equals(rejection.code()))
             .findFirst()
@@ -412,14 +409,10 @@ class PostingRejectionTest {
 
     assertEquals(
         ACCOUNT_STATE_CANONICAL_CODES,
-        descriptor.detailRejections().stream()
-            .map(ContractResponse.RejectionDescriptor::code)
-            .toList());
-    for (ContractResponse.RejectionDescriptor detailDescriptor : descriptor.detailRejections()) {
+        descriptor.detailRejections().stream().map(RejectionDescriptor::code).toList());
+    for (RejectionDescriptor detailDescriptor : descriptor.detailRejections()) {
       List<String> fieldNames =
-          detailDescriptor.detailFields().stream()
-              .map(ContractResponse.FieldDescriptor::name)
-              .toList();
+          detailDescriptor.detailFields().stream().map(FieldDescriptor::name).toList();
       assertTrue(fieldNames.containsAll(ENTRY_SEMANTICS_DETAIL_FIELD_NAMES), fieldNames.toString());
       assertTrue(fieldNames.contains("accountCode"), fieldNames.toString());
     }
@@ -427,12 +420,12 @@ class PostingRejectionTest {
 
   @Test
   void singletonPostingRejectionFamiliesRemainSingleIssueEnvelopes() {
-    ContractResponse.RejectionDescriptor duplicateIdempotencyKey =
+    RejectionDescriptor duplicateIdempotencyKey =
         PostingRejection.descriptors().stream()
             .filter(rejection -> "idempotency-key-conflict".equals(rejection.code()))
             .findFirst()
             .orElseThrow();
-    ContractResponse.RejectionDescriptor functionalCurrencyMismatch =
+    RejectionDescriptor functionalCurrencyMismatch =
         PostingRejection.descriptors().stream()
             .filter(rejection -> "book-functional-currency-mismatch".equals(rejection.code()))
             .findFirst()

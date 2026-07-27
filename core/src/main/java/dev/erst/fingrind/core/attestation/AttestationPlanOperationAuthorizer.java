@@ -1,81 +1,39 @@
 package dev.erst.fingrind.core.attestation;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
-/** Collects one plan's child mutation projections for a single final authorization. */
-public final class AttestationPlanOperationAuthorizer implements AttestationOperationAuthorizer {
-  private static final String EXECUTE_PLAN = AttestationOperationKind.EXECUTE_PLAN.wireToken();
-
-  /** Immutable child mutation projection bound to its source-plan position. */
-  record ChildMutation(
-      int stepOrder, String operationKind, AttestationOperationPreimages preimages) {
-    ChildMutation {
-      if (stepOrder < 0) {
-        throw new IllegalArgumentException("stepOrder must not be negative.");
-      }
-      Objects.requireNonNull(operationKind, "operationKind");
-      if (operationKind.isBlank()) {
-        throw new IllegalArgumentException("operationKind must not be blank.");
-      }
-      Objects.requireNonNull(preimages, "preimages");
-    }
-  }
-
+/** Custody-confined authority that signs only one final aggregate ledger-plan operation. */
+public final class AttestationPlanOperationAuthorizer {
+  private static final AttestationOperationKind PLAN_OPERATION =
+      AttestationOperationKind.EXECUTE_PLAN;
   private final AttestationOperationAuthorizer delegate;
-  private final List<ChildMutation> childMutations = new ArrayList<>();
-  private int activeStepOrder = -1;
 
-  /** Creates one collector around the custody-confined signer for a single plan transaction. */
+  /** Creates one aggregate-plan authority around the custody-confined direct-operation signer. */
   public AttestationPlanOperationAuthorizer(AttestationOperationAuthorizer delegate) {
     this.delegate = AttestationOperationAuthorizer.require(delegate);
   }
 
-  /** Marks the source-plan position whose mutation projection may be collected next. */
-  public void enterStep(int stepOrder) {
-    if (stepOrder < 0) {
-      throw new IllegalArgumentException("stepOrder must not be negative.");
-    }
-    if (stepOrder <= activeStepOrder) {
-      throw new IllegalStateException("Ledger-plan steps must be collected in source order.");
-    }
-    activeStepOrder = stepOrder;
-  }
-
-  /** Records one actual child mutation without authorizing an independent chain operation. */
-  public void collectChildMutation(String operationKind, AttestationOperationPreimages preimages) {
-    if (activeStepOrder < 0) {
-      throw new IllegalStateException("A ledger-plan child mutation requires an active step.");
-    }
-    childMutations.add(new ChildMutation(activeStepOrder, operationKind, preimages));
-  }
-
-  /** Returns whether this plan changed protected-book state. */
-  public boolean hasChildMutations() {
-    return !childMutations.isEmpty();
-  }
-
-  /** Returns the immutable aggregate preimages for the final execute-plan operation. */
-  public AttestationOperationPreimages planPreimages(String planId) {
-    return AttestationPlanMutationProjection.project(planId, childMutations);
-  }
-
   /** Signs the one final aggregate plan operation at the SQLite compare-and-swap boundary. */
   public AttestationEvidence authorizePlan(AttestationOperationRequest request) {
-    return delegate.authorize(Objects.requireNonNull(request, "request"));
+    AttestationOperationRequest checkedRequest = Objects.requireNonNull(request, "request");
+    if (!PLAN_OPERATION.wireToken().equals(checkedRequest.operationKind())) {
+      throw new IllegalArgumentException(
+          "Aggregate ledger-plan authority may sign only "
+              + PLAN_OPERATION.wireToken()
+              + " operations.");
+    }
+    return delegate.authorize(checkedRequest);
   }
 
-  /**
-   * Rejects accidental use of the aggregate collector as an independently appended operation.
-   *
-   * <p>The SQLite evidence boundary recognizes this type and calls {@link #collectChildMutation}
-   * for child writes, then {@link #authorizePlan} exactly once after the plan succeeds.
-   */
+  /** Preserves capability non-interchangeability: only the exact bound authority compares equal. */
   @Override
-  public AttestationEvidence authorize(AttestationOperationRequest request) {
-    Objects.requireNonNull(request, "request");
-    throw new IllegalStateException(
-        "Ledger-plan child mutations must be finalized as one " + EXECUTE_PLAN + " operation.");
+  public boolean equals(Object other) {
+    return this == other;
+  }
+
+  /** Keeps hash-based ownership checks aligned with the authorizer's identity-only equality. */
+  @Override
+  public int hashCode() {
+    return System.identityHashCode(this);
   }
 }

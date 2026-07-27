@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: USER_QUICK_START
-updated: "2026-07-21"
+updated: "2026-07-26"
 route:
   keywords: [fingrind, quick start, first run, open book, seed template, post entry, trial balance]
   questions: ["how do I start using fingrind", "what is the fastest way to try fingrind", "how do I open a book and post the first entry in fingrind"]
@@ -224,6 +224,7 @@ fingrind account-balance --book-file ./books/acme.sqlite --book-key-file ./secre
 - [USER_CONTAINER.md](./USER_CONTAINER.md) for the published container image workflow
 - [USER_CLI.md](./USER_CLI.md) for the full command surface and exit behavior
 - [USER_REQUESTS.md](./USER_REQUESTS.md) for request shapes
-- [USER_RESPONSES.md](./USER_RESPONSES.md) for response envelopes, report payloads, and deterministic error output
+- [USER_RESPONSES.md](./USER_RESPONSES.md) for response envelopes and report payloads
+- [USER_REJECTIONS.md](./USER_REJECTIONS.md) for deterministic rejections and repair diagnostics
 - [USER_EXAMPLES.md](./USER_EXAMPLES.md) for longer flows, reversals, plans, and report examples
 - [README.md](../README.md) for the storefront overview

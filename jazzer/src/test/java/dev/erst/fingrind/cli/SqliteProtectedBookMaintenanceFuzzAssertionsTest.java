@@ -9,13 +9,17 @@ import static dev.erst.fingrind.cli.SqliteProtectedBookMaintenanceOutcomeAsserti
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.bookkeeping.BackupAcknowledgementState;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceArtifactRole;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookMaintenanceVerificationFailure;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
-import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
+import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -27,7 +31,6 @@ class SqliteProtectedBookMaintenanceFuzzAssertionsTest {
 
   @Test
   void exercise_coversEveryProtectedBookMaintenanceScenario() throws Exception {
-    SqliteFuzzAssertions.prepareSecureArtifactDirectory(tempDirectory);
     assertDoesNotThrow(
         () ->
             SqliteProtectedBookMaintenanceFuzzAssertions.exercise(
@@ -80,7 +83,9 @@ class SqliteProtectedBookMaintenanceFuzzAssertionsTest {
                     path.resolveSibling("backup"),
                     path.resolveSibling("key"),
                     java.util.UUID.fromString("b89812f3-5389-4b9a-8d67-1d60bd41a8ce"),
-                    false,
+                    ProtectedBookPairPublicationCompletion.PUBLISHED,
+                    retention(path.resolveSibling("backup"), path.resolveSibling("key")),
+                    BackupAcknowledgementState.ACKNOWLEDGED,
                     CliFuzzAttestationFixtures.syntheticTrustRootCommitment())));
     assertThrows(
         IllegalStateException.class,
@@ -93,7 +98,11 @@ class SqliteProtectedBookMaintenanceFuzzAssertionsTest {
         () ->
             requireSecretTargetOccupied(
                 new RekeyBookResult.Rekeyed(
-                    path, CliFuzzAttestationFixtures.syntheticTrustRootCommitment())));
+                    path,
+                    path.resolveSibling("key"),
+                    CliFuzzAttestationFixtures.syntheticTrustRootCommitment(),
+                    ProtectedBookPairPublicationCompletion.PUBLISHED,
+                    retention(path, path.resolveSibling("key")))));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -107,7 +116,9 @@ class SqliteProtectedBookMaintenanceFuzzAssertionsTest {
                 new RestoreBookResult.Restored(
                     path,
                     path.resolveSibling("key"),
-                    CliFuzzAttestationFixtures.syntheticTrustRootCommitment())));
+                    CliFuzzAttestationFixtures.syntheticTrustRootCommitment(),
+                    ProtectedBookPairPublicationCompletion.PUBLISHED,
+                    retention(path, path.resolveSibling("key")))));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -121,7 +132,9 @@ class SqliteProtectedBookMaintenanceFuzzAssertionsTest {
                 new RestoreBookResult.Restored(
                     path,
                     path.resolveSibling("key"),
-                    CliFuzzAttestationFixtures.syntheticTrustRootCommitment())));
+                    CliFuzzAttestationFixtures.syntheticTrustRootCommitment(),
+                    ProtectedBookPairPublicationCompletion.PUBLISHED,
+                    retention(path, path.resolveSibling("key")))));
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -145,5 +158,24 @@ class SqliteProtectedBookMaintenanceFuzzAssertionsTest {
                 "expected drift rejection"));
     assertThrows(
         IllegalStateException.class, () -> requireAbsent(path, "expected occupied rejection"));
+  }
+
+  private static ProtectedBookPairPublicationRetention retention(
+      Path bookFinalArtifactPath, Path generatedSecretFinalArtifactPath) {
+    return new ProtectedBookPairPublicationRetention(
+        new ArtifactPublicationResult(
+            bookFinalArtifactPath,
+            new ArtifactPublicationRetention(
+                bookFinalArtifactPath
+                    .toAbsolutePath()
+                    .normalize()
+                    .resolveSibling(".fingrind-fuzz-retained-book.stage"))),
+        new ArtifactPublicationResult(
+            generatedSecretFinalArtifactPath,
+            new ArtifactPublicationRetention(
+                generatedSecretFinalArtifactPath
+                    .toAbsolutePath()
+                    .normalize()
+                    .resolveSibling(".fingrind-fuzz-retained-secret.stage"))));
   }
 }

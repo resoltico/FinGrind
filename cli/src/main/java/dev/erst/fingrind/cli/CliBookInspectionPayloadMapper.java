@@ -1,6 +1,6 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.cli.json.CliAdministrationJsonModels;
+import dev.erst.fingrind.cli.json.CliBookInspectionJsonModels;
 import dev.erst.fingrind.cli.json.CliCloseTargetReadinessPayload;
 import dev.erst.fingrind.cli.json.CliSuccessPayload;
 import dev.erst.fingrind.contract.runtime.BookInspection;
@@ -17,7 +17,7 @@ final class CliBookInspectionPayloadMapper {
     BookInspection.Status status = inspection.status();
     return switch (inspection) {
       case BookInspection.Missing missing ->
-          new CliAdministrationJsonModels.MissingBookInspectionPayload(
+          new CliBookInspectionJsonModels.MissingBookInspectionPayload(
               absolutePath(bookFilePath),
               status.wireValue(),
               status.compatibleWithCurrentBinary(),
@@ -25,7 +25,7 @@ final class CliBookInspectionPayloadMapper {
               missing.supportedBookFormatVersion(),
               migrationPolicyPayload(missing.migrationPolicy()));
       case BookInspection.Existing existing ->
-          new CliAdministrationJsonModels.ExistingBookInspectionPayload(
+          new CliBookInspectionJsonModels.ExistingBookInspectionPayload(
               absolutePath(bookFilePath),
               status.wireValue(),
               status.compatibleWithCurrentBinary(),
@@ -35,7 +35,7 @@ final class CliBookInspectionPayloadMapper {
               existing.supportedBookFormatVersion(),
               migrationPolicyPayload(existing.migrationPolicy()));
       case BookInspection.Initialized initialized ->
-          new CliAdministrationJsonModels.InitializedBookInspectionPayload(
+          new CliBookInspectionJsonModels.InitializedBookInspectionPayload(
               absolutePath(bookFilePath),
               status.wireValue(),
               status.compatibleWithCurrentBinary(),
@@ -50,9 +50,9 @@ final class CliBookInspectionPayloadMapper {
     };
   }
 
-  static CliAdministrationJsonModels.MigrationPolicyPayload migrationPolicyPayload(
+  static CliBookInspectionJsonModels.MigrationPolicyPayload migrationPolicyPayload(
       BookMigrationPolicy migrationPolicy) {
-    return new CliAdministrationJsonModels.MigrationPolicyPayload(
+    return new CliBookInspectionJsonModels.MigrationPolicyPayload(
         migrationPolicy.mode().wireValue(),
         migrationPolicy.inPlaceUpgradeSupported(),
         migrationPolicy.olderFormatsAccepted(),
@@ -60,9 +60,9 @@ final class CliBookInspectionPayloadMapper {
         migrationPolicy.supportedBookFormatVersion());
   }
 
-  static CliAdministrationJsonModels.BookIdentityPayload bookIdentityPayload(
+  static CliBookInspectionJsonModels.BookIdentityPayload bookIdentityPayload(
       BookIdentity bookIdentity) {
-    return new CliAdministrationJsonModels.BookIdentityPayload(
+    return new CliBookInspectionJsonModels.BookIdentityPayload(
         bookIdentity.entityName().value(),
         bookIdentity.bookDoctrine().accountingKernelProfileId().value(),
         bookIdentity.bookDoctrine().accountingBasis().wireValue(),
@@ -77,9 +77,9 @@ final class CliBookInspectionPayloadMapper {
         bookIdentity.bookStartEffectiveDate().toString());
   }
 
-  static CliAdministrationJsonModels.CloseReadinessPayload closeReadinessPayload(
+  static CliBookInspectionJsonModels.CloseReadinessPayload closeReadinessPayload(
       BookInspection.CloseReadiness closeReadiness) {
-    return new CliAdministrationJsonModels.CloseReadinessPayload(
+    return new CliBookInspectionJsonModels.CloseReadinessPayload(
         closeTargetReadinessPayload(closeReadiness.interimResultTarget()),
         closeTargetReadinessPayload(closeReadiness.retainedAccumulatedTarget()));
   }

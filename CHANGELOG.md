@@ -11,192 +11,33 @@ Historical release notes older than `0.31.0` live in:
 
 ### Added
 
-- Added verifiable operation attestation to protected-book format `52` and CLI protocol `36`.
-  Every mutation now carries immutable canonical request and committed-effect preimages, a
-  historically authorized Ed25519 envelope, and a SHA-256 operation head. `verify-book`,
-  `attestation-review`, `export-attestation-receipt`, and `verify-receipt` expose structural
-  verification, non-persisted review findings, and independently retained receipt anchors.
-- Added manifest-attested no-clobber backup/restore flow with exact backup acknowledgement retry,
-  founder credential genesis, and public documentation of encrypted credential custody.
-- Added attested `enroll-key`, `rollover-key`, `revoke-key`, and `alter-policy` commands with
-  strict public-SPKI request documents and exact historical authorization refusals. Credential and
-  policy changes now have a complete immutable public operation path rather than an internal-only
-  registry surface.
-- Added standalone `generate-attestation-key-file` and `inspect-attestation-key-file` commands.
-  Operators can now provision a no-clobber encrypted Ed25519 credential, obtain its exact public
-  SPKI for enrollment or rollover, and recover the public identity of an existing founder or
-  operator credential without exposing a passphrase or private key.
-- Added a complete `print-request-template attestation-review` scaffold with string-form review
-  order values, and expanded the `alter-policy` scaffold to exercise policy, grant, and workflow
-  mutations together.
-- Added first-class contra-account taxonomy. A declared account can now identify the active postable account it reduces; the relationship is validated as a same-type, compatible-statement relationship, normal balance follows the contra role, account readback publishes `contraOfAccountCode`, and financial statements present the row as a reduction of its named account.
-- Added discoverable `retire-account` request scaffolding and named atomic setup plans for tax, fixed assets, and financing. Each setup plan declares the exact prerequisite account taxonomy before it declares or uses the bounded-context facts, while the default `print-plan-template` remains a general executable workflow.
-- Added an explicit Latvian monthly-payroll withholding profile to every payroll request, retained payroll run, plan fact, and readback. The supported 2026 calculation admits only `taxBookHeldAtEmployer: true` with `dependantCount: 0` and rejects all other profiles rather than assuming their tax treatment.
-- Added an independent `architecture` verification module. It imports the production class graph once per test run and protects the core-to-contract-to-executor-to-adapter-to-CLI dependency direction, CLI naming boundaries, and the exclusion of filesystem path hints from machine JSON payloads.
+- Added verifiable operation attestation for protected books: every durable mutation now has canonical request and committed-effect preimages, historically authorized Ed25519 signatures, and a SHA-256 chain head; `verify-book`, `attestation-review`, `export-attestation-receipt`, and `verify-receipt` make that evidence independently inspectable.
+- Added explicit attestation-key lifecycle operations—`enroll-key`, `rollover-key`, `revoke-key`, and `alter-policy`—plus strict request templates, encrypted PKCS#8 key-file generation and inspection, and founder-key genesis so credential and policy changes are themselves durable, authorized book operations.
+- Added first-class ledger-plan outcomes for mixed bookkeeping, administration, assertion, and query work: mutating plans commit one aggregate attestation with ordered child effects, fully replayed plans append nothing, and read-only or assertion-only plans prohibit signing credentials.
+- Added explicit bookkeeping model facts and workflows: contra-account relationships, account retirement, immutable book-start effective dates, tax/fixed-asset/financing setup plans, and the deliberately narrow Latvian monthly-payroll withholding profile with retained run, settlement, and reversal lineage.
+- Added public operational and reference documentation for attestation custody, verification, receipts, protected-book maintenance, ledger-plan vocabulary, rejection recovery, runtime provenance, and the updated accounting model.
+- Added an independent architecture verification module that protects FinGrind’s accounting-domain, contract, executor, adapter, and CLI dependency boundaries.
 
 ### Changed
 
-- Hard-broke CLI protocol `36` so every successful attested mutation publishes its exact verified
-  `attestationCommit`, including book opening, account and tax administration, period close,
-  maintenance, and registry lifecycle commands. `account-ledger` now exposes the same immutable
-  posting linkage as the other posting reads, including flat CSV columns; registry output uses the
-  canonical `Attestation order` and `Attestation head` vocabulary. Query-time linkage is
-  reconstructed only from the fully verified immutable operation chain; no duplicate mutable
-  backlink is persisted.
-
-- Hard-broke the Java discovery-template facade. Attestation registry and compromise-review
-  scaffolds now belong to `MachineContractAttestationTemplates`, separating that protocol family
-  from the general discovery assembler and leaving no compatibility forwarding methods.
-- Hard-broke private attestation-key custody selection. Every command that creates or opens
-  private attestation material now requires `--attestation-custodian file-pkcs8`; unsupported
-  selected custodians refuse as `custodian-not-supported`, and no implicit file-custody fallback
-  remains.
-- Changed compromise review from an internal-only verifier input to an explicit, strict
-  `--attestation-review-file` contract for `verify-book` and `attestation-review`. Its bounded
-  JSON input rejects duplicate or unknown fields, trailing content, and noncanonical order
-  spellings. Findings now publish typed credential interval and operation-order fields; review
-  declarations remain non-persisted and `--require-clean-attestation` returns the rejected
-  `attestation-review-required` envelope with exit 2 when they match a valid chain.
-- Hard-broke attestation rollover semantics. A rollover now commits the successor binding and the
-  predecessor's terminal `superseded` retirement in one immutable operation; the predecessor can
-  no longer sign afterward. `revoked` remains the distinct terminal state for a separately
-  authorized security withdrawal. The book format and protocol advance to `52` and `36`; format
-  `51` books are rejected rather than migrated or read through a compatibility layer.
-- Classified protected-book authentication and integrity failures consistently even when a later
-  SQLite page read first exposes them. Such failures now always return
-  `protected-book-verification-failed` instead of the generic storage runtime result, without
-  falsely distinguishing a wrong secret from damage or tampering.
-
-- Hard-broke the Java book-administration rejection surfaces so
-  `FiscalYearCloseRequiresGeneratedPostings` is a top-level sealed-family variant rather than a
-  nested member of either administration-rejection family. Its stable machine rejection code and
-  CLI behavior are unchanged.
-- Hard-broke close-planner construction to identity-bound factories. `InterimResultSweepPlanner`
-  and `FiscalYearClosePlanner` now derive their accounting kernel from the initialized book
-  identity, and no longer expose an unusable constructor parameter from an internal Java module
-  package.
-- Hard-broke the protected-book format to `51` and made `bookStartEffectiveDate` an immutable
-  initialization fact. Every posting now refuses dates before that boundary, interim-result sweeps
-  use it as their exact earliest admissible date, and the first fiscal-year close covers the valid
-  partial fiscal segment when a book starts mid-year. Older protected-book formats are rejected;
-  no migration or compatibility layer is provided.
-- Hard-broke the fixed-asset register contract so `carryingAmount` is always the live carrying
-  amount and therefore zero after disposal. Disposed rows now publish the immutable
-  `carryingAmountAtDisposal` reconciliation value separately across JSON, CSV, text, and PDF.
-- Hard-broke the protected-book contract to format `49` and the CLI protocol to `31`. Earlier protected-book formats remain incompatible; account taxonomy now carries explicit contra-account truth, payroll runs retain explicit withholding-profile facts, selected entry-kind semantics publish described `variantFields`, and query responses use one machine envelope shape.
-- Changed every non-report query success payload, including account, posting, and tax-registration collections, to publish `family`, `bookIdentity`, `resolvedQuery`, and `generatedAt` beside its family records. `resolvedQuery.cursor` now records only the accepted cursor, while a top-level optional `nextCursor` announces a further page.
-- Changed fixed-asset and financing onboarding from implicit prerequisite-account repair to executable setup plans with their declared taxonomy. Realized-foreign-exchange request scaffolds now derive receivable and revenue account codes from the selected book template.
-- Changed verification observability and merge safety. The canonical `check.sh` gate now emits one structured report per executed stage and a bounded Java-compiler warning manifest, Gradle wrapper integrity validation is a dependency of the required GitHub `Gate`, and the parallel published-bundle matrix reads rather than races to write Gradle cache entries.
+- Changed the protected-book format to `57` and the machine-contract protocol to `57`; earlier protected-book formats and protocol dialects are rejected, with no migration, reader compatibility mode, legacy alias, or shim.
+- Changed protected-book maintenance into a source-first, no-clobber workflow: every selected source—including a key file—is locked and revalidated as a distinct physical artifact before any target is admitted; hard-link convergence is rejected as `source-artifact-identity-duplicated`, post-lock replacement is rejected as `source-artifact-identity-changed`, and FinGrind-owned v4 coordination controls retain only fail-closed residue from prior control generations.
+- Changed caller-selected book, key, report, receipt, and maintenance paths to validation-only security boundaries: FinGrind requires already-safe owner-only ancestry where applicable, never repairs caller permissions or ACLs, and retains immutable publication evidence instead of deleting or silently rolling back an incomplete artifact.
+- Changed backup, restore, and rekey into manifest-bound pair-publication workflows with exact completion and retained-stage evidence; recovery can resume only the original complete operation and source/target tuple, while malformed or conflicting retained evidence blocks safely rather than being cleaned up or reinterpreted.
+- Changed every successful durable mutation to publish its exact `attestationCommit`; posting, ledger, plan, registry, administrative, and maintenance responses now expose consistent attestation provenance across text, JSON, CSV, and PDF where applicable.
+- Changed response discovery so machine clients obtain canonical request shapes, success and rejection detail vocabularies, capability requirements, command display labels, and plan-attestation outcomes from the full contract rather than reconstructing them from prose or parallel catalogs.
+- Changed fiscal close, interim-result sweeps, and lifecycle reversals so their accounting effects, provenance, authorization, and period boundaries are represented by the owning book model rather than inferred by adapter-side or raw-preplanned mutations.
+- Updated the managed native runtime to SQLite3 Multiple Ciphers `2.4.0` based on SQLite `3.53.4`, with the complete upstream amalgamation, source-ID, and per-file digest contract verified by the build and runtime surfaces.
+- Updated developer tooling to Ruff `0.16.0` and NullAway `0.13.8`.
 
 ### Fixed
 
-- Fixed attestation operation observability and operator discovery. Every ordinary committed
-  posting now publishes its newly appended attestation order and head; `open-book` and
-  `verify-book` publish the chain-derived credential and policy trust root; registry mutations
-  publish their operation head with structured path handling; and all four registry request
-  templates are available through both `print-request-template` and full-detail JSON help.
-  Duplicate signing principal or key input now returns its exact typed attestation rejection,
-  infeasible post-mutation policy capacity has its own public refusal, and receipt-export help
-  accurately advertises repeated credential triplets.
-- Fixed secret-target and protected-book failure handling. Book-key and standalone attestation-key
-  generation now consistently require caller-created safe parent directories, while protected-book
-  ciphertext tampering is classified as a protected-book verification failure rather than a
-  generic storage runtime error. Lifecycle templates now use canonical UUID placeholders and
-  publish the lowercase credential-purpose vocabulary before submission.
-
-- Fixed receipt verification failure transport. Malformed selected receipt bytes remain
-  `receipt-artifact-invalid`, while successfully decoded receipt version, tuple, signature, quorum,
-  and underlying-chain failures now retain their exact published rejection codes.
-
-- Fixed live protected-book authorization-refusal transport. Every mutation and lifecycle admission
-  now returns its exact `attestation-*` rejected envelope with exit code `2` rather than degrading
-  into a runtime error. A backup pair published before an acknowledgement authorization refusal is
-  preserved and reported as that exact refusal, distinct from an operationally pending acknowledgement.
-- Fixed the attestation signing boundary to accept one through 64 distinct principal credentials,
-  the same exact-quorum range policy admits. A reachable policy can no longer strand public
-  mutation, backup, restore, rekey, receipt export, or policy repair behind more signers than a
-  public envelope can carry.
-- Fixed receipt-export authorization and registry-mutation exit handling. An insufficient or
-  otherwise unauthorized signer set now returns its exact `attestation-*` rejection with exit
-  code `2`, never an internal error or a successful process status, and receipt export leaves no
-  artifact behind.
-- Fixed backup retry after an interrupted owned companion-key publication. The next matching
-  backup now claims both destinations, discards only its verifiable owned incomplete publication,
-  and starts a fresh pair without deleting an unowned or complete artifact.
-- Fixed attestation admission and publication durability. Every live protected-book mutation,
-  including aggregate `execute-plan` admission, now compares the head it observed before write
-  admission, emits the documented `stale-head` refusal with exact head details instead of an
-  internal error, and re-signs a raced backup acknowledgement.
-  Backup, restore, and receipt no-clobber publication now make the final directory entry durable
-  before success is returned.
-- Fixed `verify-book` and `verify-receipt` invalid-result transport. Every structural attestation
-  refusal now publishes its exact documented rejection code and `structural-invalid` category with
-  exit code `2`, rather than degrading into an `internal-error` response.
-- Fixed live-clock attested postings, lifecycle operations, and receipt exports. Runtime timestamps
-  are now canonicalized to UTC milliseconds before durable mutation and immutable signed payload
-  construction, and non-credential mutation failures are no longer reported as invalid attestation
-  credentials.
-- Fixed fiscal-year close admission so a period with no generated close postings returns a named
-  deterministic refusal before any close fact, audit event, or attestation operation is persisted.
-- Fixed restore's clean-break contract across rejection messages and operator guides: an existing
-  destination is always refused, and the retired `--replace-existing-book` option is not suggested
-  or documented. Backup examples now require the stable backup ID and signing credential triples
-  that the public command contract requires.
-- Fixed CLI mutation failure precedence so an uninitialized book returns its typed initialization
-  refusal before any attestation credential is read. Widened account-ledger identifier columns so
-  canonical UUIDs remain legible in PDF output.
-- Fixed `execute-plan` attestation so every successful mutating plan appends exactly one signed
-  aggregate operation, with ordered immutable child preimages, rather than one chain operation per
-  child mutation. Query-only and assertion-only plans no longer require a signing credential.
-- Fixed the attested lifecycle boundary so `rekey-book` now requires and carries the same
-  principal-bound encrypted credential triples as every other protected-book mutation. The old
-  credential-less invocation is rejected; no compatibility path is retained.
-- Fixed unreleased next-format Genesis admission so it cannot activate an autonomous workflow
-  before any system-purpose credential exists. Workflow activation now follows system credential
-  enrollment and the registry's reachable-quorum check.
-- Fixed unreleased next-format attestation authorization so genesis is bound to its order-zero
-  signed payload and declared immutable bootstrap facts, while operation provenance is recomputed
-  from the signed request preimage. System close authorization now requires the exact active
-  workflow ID rather than any active workflow of the same kind.
-- Fixed unreleased next-format attestation authorization so every operation, manifest, and receipt
-  derives its historical position and capability from the typed payload it signs. The standalone
-  authorization corpus now applies its exact published byte mutations, including fixed C-key
-  capability failures, rather than substituting generated semantic equivalents.
-- Fixed unreleased next-format attestation verification so deterministic complete-book, artifact,
-  and receipt resources execute against their actual serialized bytes; sale profiles require their
-  tax-inclusive request facts and fiscal close uses its recorded UTC date.
-- Fixed unreleased next-format attestation key custody. Verification now consumes the one
-  canonical Ed25519 SPKI it validated, and an encrypted PKCS#8 credential is successful only after
-  its no-clobber final name has passed the native parent-directory durability barrier.
-- Fixed cryptographic primitive ownership. Generic SHA-256 hashing, constant-time secret
-  comparison, and secure entropy now have one documented core owner, while architecture and shared
-  source policy reject direct primitive use outside that owner and the attestation crypto seam.
-- Closed the unreleased next-format operation-attestation contract around historical policy and
-  credential identity. The latest capability policy rule is now the only effective rule at a
-  position; credential bindings prove their SPKI-derived key identity and one-principal ownership;
-  rollover atomically supersedes its predecessor; and the fixture ledger names the exact rollover
-  signer and binding-rejection cases. Receipt independence now has one result name, and
-  artifact vectors route to their canonical protocol.
-- Corrected the unreleased next-format operation-attestation contract so close operations carry a
-  derived posting request, system provenance requires an all-system viable quorum, tax-inclusive
-  sales and purchases have one exact rounded journal equation, and generic reversal is limited to
-  the non-lifecycle postings it can completely compensate. The fixture corpus now distinguishes
-  standalone envelope vectors from complete book and artifact verification resources, and closes
-  the previously unspecified fixed-asset, payroll, financing, inventory-shrinkage, settlement, and
-  policy-effect mappings.
-- Fixed malformed typed-request recovery so every operation points to its own request scaffold and
-  canonical help command. Fixed payroll discovery notes to name both supported withholding-profile
-  facts, and made the pinned `uv` plus exact Python helper-tool runtime contract fail before Gradle
-  receives an incompatible interpreter.
-- Fixed lifecycle reversals for fixed assets, financing, and realized foreign exchange so an origin with active dependent applications or settlements is rejected by the executor with a named domain refusal before SQLite. Durable triggers remain backstops and no longer surface this accounting precondition as a runtime storage failure.
-- Fixed account presentation so accumulated depreciation and other valid contra accounts no longer publish as ordinary wrong-sided peers of the account they reduce.
-- Fixed built-in book initialization across all template and basis combinations. The sales-discount allowance now derives its contra account from the selected template's canonical revenue account, while durable validation continues to require compatible contra taxonomy for every other relationship. Failed exclusive `open-book` initialization now removes only its uninitialized book artifact and SQLite sidecars, so the destination can be safely retried without deleting a pre-existing or concurrently created file.
-- Fixed request discovery and documentation gaps for `retire-account`, fixed-asset setup, financing setup, template-specific foreign-exchange account codes, Latvian payroll withholding assumptions, and the shared non-report query envelope.
-- Fixed reversal lifecycle rejections to render the actual typed bookkeeping entry kind rather than the literal field name `entryKind`, and fixed Latvian payroll profile rejections to name the rejected field and value with a grammatical repair action.
-- Fixed launcher-path rendering so long absolute invocations remain intact copyable tokens and capability lists do not repeat the launcher path for every PDF-capable report.
-- Fixed advisory verification drift. Scheduled distribution-freshness failures now create one actionable GitHub issue or update the existing open issue with the latest failed run, while manual canary reruns remain issue-free.
-- Fixed recurring Java compilation noise. FinGrind now requests concrete deprecation locations from the compiler and documents the only two unavoidable PDFBox test-double overrides at their source rather than emitting anonymous deprecation notices from a green gate.
-- Fixed contributor-container build noise by removing the redundant ca-certificates installation from the pinned devcontainer base image, which already supplies the certificate bundle.
+- Fixed attestation verification, receipt independence, and artifact publication reporting so each command preserves its exact structural or authorization cause, reports canonical physical locations, and never degrades a recognized protected-book or receipt failure into a generic runtime result.
+- Fixed authorization diagnostics and signing boundaries: quorum, excess, capability, duplicate credential, key-principal, stale-head, and policy-capacity failures now have exact public codes, messages, and recovery guidance; reachable policies accept the complete one-to-64 distinct-credential range.
+- Fixed mutation and maintenance failure precedence so initialization, protected-book integrity, completion uncertainty, pair recovery, destination conflicts, and owner-only admission are reported before unsafe work continues or an unrelated credential/storage error masks the real condition.
+- Fixed attestation provenance presentation: posting and account-ledger queries carry their committing operation, text output presents the order inline, review findings group declarations without repeating immutable context, and CSV/JSON retain complete structured links.
+- Fixed accounting-model enforcement and presentation for contra balances, fixed-asset disposal carrying amounts, payroll-profile refusals, lifecycle reversal dependencies, fiscal-close eligibility, and typed rejection wording before persistence reaches SQLite.
+- Fixed release and verification surfaces so source bundles, managed SQLite runtime identity, public bundle smoke checks, container-mounted bookkeeping/PDF checks, attestation-backed release assets, and dependency-freshness reporting use one executable contract.
 
 ## [0.61.0] - 2026-07-16
 

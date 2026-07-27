@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: DEVELOPER_DEVCONTAINER
-updated: "2026-07-16"
+updated: "2026-07-24"
 route:
   keywords: [fingrind, devcontainer, vscode, docker desktop, devcontainer cli, zulu26, contributor container, local repo mount, tooling agnostic]
   questions: ["what is the preferred contributor setup for fingrind", "how do i use the fingrind devcontainer", "does the repo stay on macos when i use the container", "why does fingrind prefer a devcontainer over host java tooling", "is vscode mandatory for fingrind", "how do i use the fingrind devcontainer without vscode"]
@@ -48,8 +48,10 @@ image stays a separate minimal execution artifact for released bundles and publi
 distribution.
 
 The contributor image also ships `python3` plus `python3 -m pip` so the pinned repo-owned `uv`
-launcher can be installed before Gradle resolves the helper-tool manifest in
-[`requirements-python-tools.txt`](../requirements-python-tools.txt).
+launcher can install both Gradle's lint/format manifest in
+[`requirements-python-tools.txt`](../requirements-python-tools.txt) and the isolated
+release-smoke PDF extractor in
+[`requirements-release-smoke-workflow.txt`](../requirements-release-smoke-workflow.txt).
 
 The committed owner files are:
 

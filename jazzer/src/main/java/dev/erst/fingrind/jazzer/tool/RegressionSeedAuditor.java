@@ -27,6 +27,8 @@ final class RegressionSeedAuditor {
 
   private static RegressionSeedAuditReport audit(
       Path projectDirectory, List<JazzerHarness> harnesses) throws IOException {
+    Path canonicalProjectDirectory =
+        RegressionSeedRepositoryPathAdmission.canonicalProjectDirectory(projectDirectory);
     List<RegressionSeedCatalogEntry> allEntries = new ArrayList<>();
     List<Path> orphanedInputPaths = new ArrayList<>();
     List<RegressionSeedCatalogEntry> unexpectedFailureSeeds = new ArrayList<>();
@@ -36,11 +38,12 @@ final class RegressionSeedAuditor {
     for (JazzerHarness harness : harnesses) {
       HarnessAuditState harnessState = newHarnessAuditState();
       Path normalizedHarnessInputDirectory =
-          harness.inputDirectory(projectDirectory).toAbsolutePath().normalize();
-      for (Path metadataPath : RegressionSeedPaths.metadataPaths(projectDirectory, harness)) {
+          harness.inputDirectory(canonicalProjectDirectory).toAbsolutePath().normalize();
+      for (Path metadataPath :
+          RegressionSeedPaths.metadataPaths(canonicalProjectDirectory, harness)) {
         RegressionSeedMetadataInspection inspection =
             RegressionSeedMetadataInspector.inspectMetadataPath(
-                projectDirectory, harness, metadataPath);
+                canonicalProjectDirectory, harness, metadataPath);
         if (inspection.entry() != null) {
           harnessState.entries().add(inspection.entry());
           harnessState.referencedInputs().add(inspection.entry().inputPath());
@@ -55,7 +58,7 @@ final class RegressionSeedAuditor {
         }
       }
       List<Path> harnessOrphans =
-          RegressionSeedPaths.inputPaths(projectDirectory, harness).stream()
+          RegressionSeedPaths.inputPaths(canonicalProjectDirectory, harness).stream()
               .map(path -> path.toAbsolutePath().normalize())
               .filter(path -> !harnessState.referencedInputs().contains(path))
               .sorted()
@@ -88,7 +91,7 @@ final class RegressionSeedAuditor {
     }
     List<RegressionSeedDuplicateContent> duplicateContentGroups =
         RegressionSeedDigests.duplicateContentGroupsForHarnesses(
-                projectDirectory, List.of(JazzerHarness.values()))
+                canonicalProjectDirectory, List.of(JazzerHarness.values()))
             .stream()
             .filter(
                 duplicateGroup ->

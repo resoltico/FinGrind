@@ -20,7 +20,7 @@ final class CliPublicPaths {
     return Objects.requireNonNull(pathHint, "pathHint").value();
   }
 
-  /** Returns the canonical real path string for machine-readable CLI output. */
+  /** Returns a normalized absolute path string for machine-readable CLI output. */
   static String absoluteValue(Path path) {
     return Objects.requireNonNull(path, "path").toAbsolutePath().normalize().toString();
   }

@@ -14,10 +14,12 @@ final class PdfReportTableLayouts {
               float widthWeight =
                   switch (column.key()) {
                     case "accountName" -> 2.6f;
-                    case "lineName", "counterparts" -> 1.9f;
-                    case "entry" -> 2.2f;
+                    case "lineName" -> 1.9f;
+                    case "counterparts" -> 1.8f;
+                    case "entry" -> 2.0f;
                     case "payrollRunId" -> 1.9f;
                     case "postingId", "postingRef" -> 2.2f;
+                    case "attestationOrder" -> 1.5f;
                     case "classification" -> 1.5f;
                     case "lineKind", "accountType", "normalBalance", "active" -> 0.85f;
                     default -> column.alignment() == ReportColumn.Alignment.RIGHT ? 0.95f : 1.2f;

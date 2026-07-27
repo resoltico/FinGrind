@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliAccountRejectionJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection;
 import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
@@ -13,15 +14,15 @@ final class CliAccountLifecycleRejectionDetails {
       BookAdministrationRejection rejection) {
     return switch (rejection) {
       case AccountRegistryLifecycleRejection.AccountNotFound missing ->
-          new CliRejectionJsonModels.AccountCodeDetails(missing.accountCode().value());
+          new CliAccountRejectionJsonModels.AccountCodeDetails(missing.accountCode().value());
       case AccountRegistryLifecycleRejection.AccountHasDependents dependents ->
-          new CliRejectionJsonModels.AccountDependenciesDetails(
+          new CliAccountRejectionJsonModels.AccountDependenciesDetails(
               dependents.accountCode().value(),
               dependents.dependencies().stream()
                   .map(dependency -> dependency.wireValue())
                   .toList());
       case AccountRegistryLifecycleRejection.AccountBalanceNotZero balance ->
-          new CliRejectionJsonModels.AccountCodeDetails(balance.accountCode().value());
+          new CliAccountRejectionJsonModels.AccountCodeDetails(balance.accountCode().value());
       default -> null;
     };
   }

@@ -10,7 +10,7 @@ import org.jspecify.annotations.Nullable;
  * Authorization facts derived from one decoded signed payload and its verified request provenance.
  *
  * <p>The context is deliberately constructed from the payload that the envelope must carry. This
- * prevents a caller from applying a genuine envelope to a different historical position or
+ * prevents a caller from applying a genuine envelope to a different resolving position or
  * capability.
  */
 final class AttestationAuthorizationContext {

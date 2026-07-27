@@ -13,9 +13,11 @@ ACCOUNTING_KERNEL_PROFILE = "internal-management-bookkeeping-kernel"
 ACCOUNTING_FRAMEWORK_POSITION = "NON_STATUTORY_INTERNAL_MANAGEMENT"
 ENTITY_FORM = "OWNER_MANAGED_SINGLE_ENTITY"
 BOOK_TEMPLATE_ID = "OWNER_MANAGED_SERVICE"
+INVENTORY_COSTING_DOCTRINE: str | None = None
 ACCOUNTING_BASIS = "CASH"
 FUNCTIONAL_CURRENCY = "EUR"
 FISCAL_YEAR_START = "01-01"
+BOOK_START_EFFECTIVE_DATE = "2026-01-01"
 STARTER_CASH_ACCOUNT_CODE = "cash"
 STARTER_CASH_ACCOUNT_NAME = "Cash"
 STARTER_REVENUE_ACCOUNT_CODE = "service-revenue"
@@ -36,6 +38,7 @@ def build_release_smoke_scenario(
     normalized_path_mode = require_argument_path_mode(argument_path_mode)
 
     return ReleaseSmokeScenario(
+        work_root=work_root,
         request_sale=smoke_path(
             work_root,
             normalized_path_mode,
@@ -45,6 +48,11 @@ def build_release_smoke_scenario(
             work_root,
             normalized_path_mode,
             Path("requests odd") / f"expense [{normalized_scenario_id}].json",
+        ),
+        request_taxed_sale=smoke_path(
+            work_root,
+            normalized_path_mode,
+            Path("requests odd") / f"taxed sale [{normalized_scenario_id}].json",
         ),
         request_raw_journal=smoke_path(
             work_root,
@@ -176,9 +184,11 @@ def build_release_smoke_scenario(
         accounting_framework_position=ACCOUNTING_FRAMEWORK_POSITION,
         entity_form=ENTITY_FORM,
         book_template_id=BOOK_TEMPLATE_ID,
+        inventory_costing_doctrine=INVENTORY_COSTING_DOCTRINE,
         accounting_basis=ACCOUNTING_BASIS,
         functional_currency=FUNCTIONAL_CURRENCY,
         fiscal_year_start=FISCAL_YEAR_START,
+        book_start_effective_date=BOOK_START_EFFECTIVE_DATE,
         starter_cash_account_code=STARTER_CASH_ACCOUNT_CODE,
         starter_cash_account_name=STARTER_CASH_ACCOUNT_NAME,
         starter_revenue_account_code=STARTER_REVENUE_ACCOUNT_CODE,

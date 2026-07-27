@@ -7,6 +7,7 @@ import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import dev.erst.fingrind.core.attestation.AttestationSigningSession;
@@ -114,6 +115,8 @@ public final class ProtectedBookMaintenanceService {
       session =
           AttestationSigningSessionFactory.open(
               List.copyOf(Objects.requireNonNull(credentialSources, "credentialSources")));
+    } catch (AttestationAdmissionRejectedException exception) {
+      throw exception;
     } catch (AttestationCredentialException
         | IllegalArgumentException
         | NullPointerException exception) {

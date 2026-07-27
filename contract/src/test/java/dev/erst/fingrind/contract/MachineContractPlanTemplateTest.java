@@ -14,6 +14,11 @@ import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.PlanFailurePolicy;
 import dev.erst.fingrind.contract.protocol.PlanTransactionMode;
+import dev.erst.fingrind.contract.runtime.PlanAttestationOutcomeDescriptor;
+import dev.erst.fingrind.contract.runtime.PlanExecutionDescriptor;
+import dev.erst.fingrind.contract.workflow.LedgerPlanAttestationCommitMode;
+import dev.erst.fingrind.contract.workflow.LedgerPlanAttestationCredentialMode;
+import dev.erst.fingrind.contract.workflow.LedgerPlanAttestationDisposition;
 import dev.erst.fingrind.core.CashFlowAssetClassification;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import java.util.List;
@@ -75,11 +80,78 @@ class MachineContractPlanTemplateTest {
     assertEquals(PlanTransactionMode.ATOMIC, capabilities.planExecution().transactionMode());
     assertEquals(
         PlanFailurePolicy.HALT_ON_FIRST_FAILURE, capabilities.planExecution().failurePolicy());
+    assertEquals(
+        List.of(
+            new PlanAttestationOutcomeDescriptor(
+                LedgerPlanAttestationDisposition.APPENDED,
+                LedgerPlanAttestationCommitMode.REQUIRED,
+                LedgerPlanAttestationCredentialMode.REQUIRED),
+            new PlanAttestationOutcomeDescriptor(
+                LedgerPlanAttestationDisposition.READ_ONLY,
+                LedgerPlanAttestationCommitMode.MUST_BE_NULL,
+                LedgerPlanAttestationCredentialMode.PROHIBITED),
+            new PlanAttestationOutcomeDescriptor(
+                LedgerPlanAttestationDisposition.NO_DURABLE_CHILD_MUTATION,
+                LedgerPlanAttestationCommitMode.MUST_BE_NULL,
+                LedgerPlanAttestationCredentialMode.REQUIRED)),
+        capabilities.planExecution().attestationOutcomes());
     assertNotNull(capabilities.requestShapes());
     var ledgerPlan = Objects.requireNonNull(capabilities.requestShapes()).ledgerPlan();
     assertNotNull(ledgerPlan);
+    assertEquals(
+        capabilities.planExecution().attestationOutcomes(),
+        ledgerPlan.execution().attestationOutcomes());
     assertTrue(ledgerPlan.assertionKinds().contains(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS));
     assertEquals(LedgerStepKind.ASSERT, ledgerPlan.assertStepKind());
+  }
+
+  @Test
+  void planAttestationOutcomeDescriptorsRejectNoncanonicalCommitAndCredentialPairings() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new PlanAttestationOutcomeDescriptor(
+                LedgerPlanAttestationDisposition.APPENDED,
+                LedgerPlanAttestationCommitMode.MUST_BE_NULL,
+                LedgerPlanAttestationCredentialMode.REQUIRED));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new PlanAttestationOutcomeDescriptor(
+                LedgerPlanAttestationDisposition.READ_ONLY,
+                LedgerPlanAttestationCommitMode.MUST_BE_NULL,
+                LedgerPlanAttestationCredentialMode.REQUIRED));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new PlanAttestationOutcomeDescriptor(
+                LedgerPlanAttestationDisposition.NO_DURABLE_CHILD_MUTATION,
+                LedgerPlanAttestationCommitMode.REQUIRED,
+                LedgerPlanAttestationCredentialMode.REQUIRED));
+  }
+
+  @Test
+  void planExecutionDescriptorRequiresTheCompleteCanonicalOutcomeVocabularyInStableOrder() {
+    List<PlanAttestationOutcomeDescriptor> canonicalOutcomes =
+        PlanAttestationOutcomeDescriptor.standardOutcomes();
+
+    assertThrows(
+        UnsupportedOperationException.class,
+        () -> canonicalOutcomes.add(canonicalOutcomes.getFirst()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> planExecutionDescriptor(canonicalOutcomes.reversed()));
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> planExecutionDescriptor(canonicalOutcomes.subList(0, 2)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            planExecutionDescriptor(
+                List.of(
+                    canonicalOutcomes.getFirst(),
+                    canonicalOutcomes.getFirst(),
+                    canonicalOutcomes.getLast())));
   }
 
   @Test
@@ -113,5 +185,15 @@ class MachineContractPlanTemplateTest {
         PlanTemplateTopic.wireNames());
     assertEquals(PlanTemplateTopic.TAX_SETUP, PlanTemplateTopic.requireWireName("tax-setup"));
     assertThrows(IllegalArgumentException.class, () -> PlanTemplateTopic.requireWireName("tax"));
+  }
+
+  private static PlanExecutionDescriptor planExecutionDescriptor(
+      List<PlanAttestationOutcomeDescriptor> attestationOutcomes) {
+    return new PlanExecutionDescriptor(
+        PlanTransactionMode.ATOMIC,
+        PlanFailurePolicy.HALT_ON_FIRST_FAILURE,
+        "One atomic plan operation.",
+        attestationOutcomes,
+        List.of());
   }
 }

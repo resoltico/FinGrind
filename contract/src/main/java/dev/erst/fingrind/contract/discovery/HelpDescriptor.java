@@ -6,8 +6,11 @@ import dev.erst.fingrind.contract.discovery.ContractRequestShapes.RequestShapesD
 import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareAccountTemplateDescriptor;
 import dev.erst.fingrind.contract.discovery.ContractTemplates.DeclareTaxRegistrationTemplateDescriptor;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.BookModelDescriptor;
+import dev.erst.fingrind.contract.runtime.BookkeepingKernelDescriptor;
+import dev.erst.fingrind.contract.runtime.CurrencyDescriptor;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
+import dev.erst.fingrind.contract.runtime.PreflightDescriptor;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
 
@@ -18,8 +21,8 @@ public record HelpDescriptor(
     String protocolVersion,
     String description,
     List<String> usage,
-    ContractResponse.BookModelDescriptor bookModel,
-    ContractResponse.BookkeepingKernelDescriptor bookkeepingKernel,
+    BookModelDescriptor bookModel,
+    BookkeepingKernelDescriptor bookkeepingKernel,
     @Nullable RequestShapesDescriptor requestShapes,
     @Nullable PostingRequestTemplateDescriptor requestTemplate,
     @Nullable DeclareAccountTemplateDescriptor declareAccountTemplate,
@@ -28,8 +31,8 @@ public record HelpDescriptor(
     List<CommandDescriptor> commands,
     List<WorkflowDescriptor> quickStart,
     List<ExitCodeDescriptor> exitCodes,
-    ContractResponse.PreflightDescriptor preflight,
-    ContractResponse.CurrencyDescriptor currencyModel)
+    PreflightDescriptor preflight,
+    CurrencyDescriptor currencyModel)
     implements ContractDiscoveryDescriptor {
   /** Validates one help descriptor payload. */
   public HelpDescriptor {

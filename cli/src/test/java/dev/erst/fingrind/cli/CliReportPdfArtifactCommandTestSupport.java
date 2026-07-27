@@ -24,7 +24,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Shared fixtures for PDF-capable report command coverage. */
-class CliReportPdfArtifactCommandTestSupport extends FinGrindCliTestSupport {
+class CliReportPdfArtifactCommandTestSupport extends CliWorkflowFixtureSupport {
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   protected ExecutedReportCommand executeReportCommand(
@@ -33,7 +33,37 @@ class CliReportPdfArtifactCommandTestSupport extends FinGrindCliTestSupport {
       Path bookKeyFilePath,
       String outputMode,
       Path pdfOutputPath,
-      CliBookWorkflow workflow) {
+      CliBookWorkflow workflow)
+      throws IOException {
+    return executeReportCommand(
+        spec, bookFilePath, bookKeyFilePath, outputMode, pdfOutputPath, workflow, true);
+  }
+
+  /** Executes one report command while preserving a deliberately invalid PDF output parent. */
+  protected ExecutedReportCommand executeReportCommandWithoutPreparingPdfOutputParent(
+      ReportCommandSpec spec,
+      Path bookFilePath,
+      Path bookKeyFilePath,
+      String outputMode,
+      Path pdfOutputPath,
+      CliBookWorkflow workflow)
+      throws IOException {
+    return executeReportCommand(
+        spec, bookFilePath, bookKeyFilePath, outputMode, pdfOutputPath, workflow, false);
+  }
+
+  private ExecutedReportCommand executeReportCommand(
+      ReportCommandSpec spec,
+      Path bookFilePath,
+      Path bookKeyFilePath,
+      String outputMode,
+      Path pdfOutputPath,
+      CliBookWorkflow workflow,
+      boolean prepareOutputParent)
+      throws IOException {
+    if (prepareOutputParent) {
+      preparePdfOutputParent(pdfOutputPath);
+    }
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
     int exitCode =
@@ -57,6 +87,14 @@ class CliReportPdfArtifactCommandTestSupport extends FinGrindCliTestSupport {
   protected static void assertPdfSignature(Path pdfOutputPath) throws IOException {
     assertEquals(
         "%PDF-", new String(Files.readAllBytes(pdfOutputPath), 0, 5, StandardCharsets.ISO_8859_1));
+  }
+
+  static void preparePdfOutputParent(Path pdfOutputPath) throws IOException {
+    Path parentDirectory = CliPdfReportExporter.parentDirectory(pdfOutputPath.toAbsolutePath());
+    if (Files.notExists(parentDirectory)) {
+      Files.createDirectories(parentDirectory);
+    }
+    CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(parentDirectory);
   }
 
   protected static List<ReportCommandSpec> pdfCapableReportCommandSpecs() {

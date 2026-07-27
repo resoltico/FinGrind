@@ -69,6 +69,7 @@ public final class JazzerCli {
               null,
               1,
               "A Jazzer subcommand is required.",
+              List.of(),
               JazzerCliUsageText.usageText()));
       return 1;
     }
@@ -91,6 +92,7 @@ public final class JazzerCli {
               args.getFirst(),
               1,
               JazzerCliFailureWriter.failureMessage(exception),
+              List.of(),
               JazzerCliUsageText.usageText()));
       return 1;
     }
@@ -106,6 +108,21 @@ public final class JazzerCli {
         case ACTIVE_TARGET_KEYS ->
             printActiveTargetKeys(args.subList(1, args.size()), outputWriter);
       };
+    } catch (RegressionSeedPromotionRetainedArtifactsException exception) {
+      JazzerCliFailureWriter.writeFailure(
+          outputWriter,
+          errorWriter,
+          jsonOutputRequested,
+          new JazzerCliCommandFailurePayload(
+              "error",
+              command.token(),
+              1,
+              JazzerCliFailureWriter.failureMessage(exception),
+              exception.retention().retainedArtifactPaths().stream()
+                  .map(Path::toString)
+                  .toList(),
+              command.usage()));
+      return 1;
     } catch (IllegalArgumentException exception) {
       JazzerCliFailureWriter.writeFailure(
           outputWriter,
@@ -116,6 +133,7 @@ public final class JazzerCli {
               command.token(),
               1,
               JazzerCliFailureWriter.failureMessage(exception),
+              List.of(),
               command.usage()));
       return 1;
     }

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
+import dev.erst.fingrind.contract.runtime.AttestationDiagnosticDescriptors.AdmissionContext;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -27,11 +28,13 @@ public sealed interface AttestationRegistryMutationResult
     }
   }
 
-  /** The live historical attestation policy refused the signed mutation. */
+  /** The reconstructed current-head attestation policy refused the signed mutation. */
   record AuthorizationRejected(AttestationVerificationFailure failure)
       implements AttestationRegistryMutationResult {
     public AuthorizationRejected {
-      Objects.requireNonNull(failure, "failure");
+      failure =
+          AttestationVerificationFailure.requireAdmissionFailure(
+              failure, AdmissionContext.REGISTRY_MUTATION);
     }
   }
 }

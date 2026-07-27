@@ -56,29 +56,32 @@ public final class AttestationSigningCredential implements AutoCloseable {
       throw new IllegalStateException("Attestation signing credential is closed.");
     }
     byte[] checkedPayload = Objects.requireNonNull(payload, "payload").clone();
-    char[] signingPassphrase = passphrase.clone();
-    byte[] signature;
     try {
-      signature =
-          AttestationFilePkcs8Custodian.sign(encryptedPkcs8Path, signingPassphrase, checkedPayload);
-    } catch (IOException exception) {
-      throw new AttestationCredentialUseException(
-          encryptedPkcs8Path, "Attestation key file cannot be read for signing.", exception);
+      char[] signingPassphrase = passphrase.clone();
+      byte[] signature;
+      try {
+        signature =
+            AttestationFilePkcs8Custodian.sign(
+                encryptedPkcs8Path, signingPassphrase, checkedPayload);
+      } catch (IOException | IllegalArgumentException exception) {
+        throw new AttestationCredentialUseException(
+            encryptedPkcs8Path, "Attestation key file could not be used for signing.", exception);
+      }
+      byte[] spki = publicCredential.spki();
+      try {
+        if (!AttestationEd25519.verifies(spki, checkedPayload, signature)) {
+          throw new AttestationCredentialUseException(
+              encryptedPkcs8Path,
+              "Attestation key file does not match the declared public credential.");
+        }
+        return new AttestationSignatureEntry(
+            principalId, AttestationHash.of(publicCredential.keyId()), signature);
+      } finally {
+        java.util.Arrays.fill(spki, (byte) 0);
+        java.util.Arrays.fill(signature, (byte) 0);
+      }
     } finally {
       java.util.Arrays.fill(checkedPayload, (byte) 0);
-    }
-    byte[] spki = publicCredential.spki();
-    try {
-      if (!AttestationEd25519.verifies(spki, payload, signature)) {
-        throw new AttestationCredentialUseException(
-            encryptedPkcs8Path,
-            "Attestation key file does not match the declared public credential.");
-      }
-      return new AttestationSignatureEntry(
-          principalId, AttestationHash.of(publicCredential.keyId()), signature);
-    } finally {
-      java.util.Arrays.fill(spki, (byte) 0);
-      java.util.Arrays.fill(signature, (byte) 0);
     }
   }
 }

@@ -4,6 +4,8 @@ package dev.erst.fingrind.sqlite;
 public enum SqliteBookSessionMode {
   /** Opens one existing book in read-only mode. */
   READ_ONLY,
+  /** Defers a missing read-only open so a credential-free plan can reject it canonically. */
+  PLAN_READ_ONLY,
   /** Opens one existing book for read/write mutations without creating new files. */
   READ_WRITE_EXISTING,
   /** Opens one book for read/write access and creates the file when needed. */

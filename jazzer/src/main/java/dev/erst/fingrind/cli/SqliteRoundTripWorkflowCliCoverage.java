@@ -35,6 +35,8 @@ final class SqliteRoundTripWorkflowCliCoverage {
 
   static void exerciseCliWorkflowCoverage(PostEntryCommand command, Path workflowRoot)
       throws IOException {
+    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(workflowRoot);
+    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(workflowRoot.resolve("keys"));
     Path bookPath = workflowRoot.resolve("books").resolve("entity.sqlite");
     Path keyPath = workflowRoot.resolve("keys").resolve("entity.book-key");
     SqliteFuzzAssertions.writeDeterministicBookKeyFile(keyPath);

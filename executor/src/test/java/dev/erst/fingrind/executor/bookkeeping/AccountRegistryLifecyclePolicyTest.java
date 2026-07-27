@@ -23,9 +23,9 @@ class AccountRegistryLifecyclePolicyTest {
 
   @Test
   void amend_replacesAnUnreferencedNeverPostedAccountDefinition() {
-    AccountAmendmentOutcome.Amended amended =
+    AccountAmendmentDecision.Amended amended =
         assertInstanceOf(
-            AccountAmendmentOutcome.Amended.class,
+            AccountAmendmentDecision.Amended.class,
             AccountRegistryLifecyclePolicy.amend(
                 currentAssetAccount(), nonCurrentAssetAmendment(), List.of()));
 
@@ -39,9 +39,9 @@ class AccountRegistryLifecyclePolicyTest {
   @Test
   void amend_refusesEachDurableDependency() {
     for (AccountRegistryDependency dependency : AccountRegistryDependency.values()) {
-      AccountAmendmentOutcome.Rejected rejected =
+      AccountAmendmentDecision.Rejected rejected =
           assertInstanceOf(
-              AccountAmendmentOutcome.Rejected.class,
+              AccountAmendmentDecision.Rejected.class,
               AccountRegistryLifecyclePolicy.amend(
                   currentAssetAccount(), nonCurrentAssetAmendment(), List.of(dependency)));
 
@@ -55,13 +55,13 @@ class AccountRegistryLifecyclePolicyTest {
 
   @Test
   void amend_rejectsMissingAccountsAndMakesNoChangeWhenDefinitionsAlreadyMatch() {
-    AccountAmendmentOutcome.Rejected missing =
+    AccountAmendmentDecision.Rejected missing =
         assertInstanceOf(
-            AccountAmendmentOutcome.Rejected.class,
+            AccountAmendmentDecision.Rejected.class,
             AccountRegistryLifecyclePolicy.amend(null, nonCurrentAssetAmendment(), List.of()));
-    AccountAmendmentOutcome.Unchanged unchanged =
+    AccountAmendmentDecision.Unchanged unchanged =
         assertInstanceOf(
-            AccountAmendmentOutcome.Unchanged.class,
+            AccountAmendmentDecision.Unchanged.class,
             AccountRegistryLifecyclePolicy.amend(
                 currentAssetAccount(), currentAssetAmendment(), List.of()));
 
@@ -72,17 +72,17 @@ class AccountRegistryLifecyclePolicyTest {
 
   @Test
   void retire_requiresZeroBalanceAndNoLiveOperationalReference() {
-    AccountRetirementOutcome.Rejected balanceRejected =
+    AccountRetirementDecision.Rejected balanceRejected =
         assertInstanceOf(
-            AccountRetirementOutcome.Rejected.class,
+            AccountRetirementDecision.Rejected.class,
             AccountRegistryLifecyclePolicy.retire(
                 ACCOUNT_CODE, currentAssetAccount(), List.of(), false));
     assertInstanceOf(
         AccountRegistryLifecycleRejection.AccountBalanceNotZero.class, balanceRejected.rejection());
 
-    AccountRetirementOutcome.Rejected dependencyRejected =
+    AccountRetirementDecision.Rejected dependencyRejected =
         assertInstanceOf(
-            AccountRetirementOutcome.Rejected.class,
+            AccountRetirementDecision.Rejected.class,
             AccountRegistryLifecyclePolicy.retire(
                 ACCOUNT_CODE,
                 currentAssetAccount(),
@@ -102,9 +102,9 @@ class AccountRegistryLifecyclePolicyTest {
 
   @Test
   void retire_rejectsMissingAccounts() {
-    AccountRetirementOutcome.Rejected missing =
+    AccountRetirementDecision.Rejected missing =
         assertInstanceOf(
-            AccountRetirementOutcome.Rejected.class,
+            AccountRetirementDecision.Rejected.class,
             AccountRegistryLifecyclePolicy.retire(ACCOUNT_CODE, null, List.of(), true));
 
     assertEquals(
@@ -113,17 +113,17 @@ class AccountRegistryLifecyclePolicyTest {
 
   @Test
   void retire_preservesTheAccountSnapshotAndIsIdempotent() {
-    AccountRetirementOutcome.Retired retired =
+    AccountRetirementDecision.Retired retired =
         assertInstanceOf(
-            AccountRetirementOutcome.Retired.class,
+            AccountRetirementDecision.Retired.class,
             AccountRegistryLifecyclePolicy.retire(
                 ACCOUNT_CODE, currentAssetAccount(), List.of(), true));
 
     assertFalse(retired.account().active());
     assertEquals(DECLARED_AT, retired.account().declaredAt());
-    AccountRetirementOutcome.Unchanged replay =
+    AccountRetirementDecision.Unchanged replay =
         assertInstanceOf(
-            AccountRetirementOutcome.Unchanged.class,
+            AccountRetirementDecision.Unchanged.class,
             AccountRegistryLifecyclePolicy.retire(
                 ACCOUNT_CODE, retired.account(), List.of(), false));
     assertFalse(replay.account().active());

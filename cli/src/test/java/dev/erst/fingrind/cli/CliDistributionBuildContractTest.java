@@ -44,7 +44,7 @@ class CliDistributionBuildContractTest {
     assertTrue(dockerfile.contains("COPY source-root/ /build/source-root/"));
     assertTrue(
         dockerfile.contains(
-            "COPY Dockerfile docker-build-context-manifest.json docker-entrypoint.sh fingrind.jar runtime-modules.txt /build/"));
+            "COPY Dockerfile docker-build-context-manifest.json docker-entrypoint.sh fingrind.jar native-sqlite-format-boundary-probe.jar runtime-modules.txt /build/"));
     assertTrue(
         dockerfile.contains(
             "COPY libsqlite3.so.0 libsqlite3.so.0.sha256 toolchain-fingerprint.json build-contract.json /build/"));
@@ -62,6 +62,9 @@ class CliDistributionBuildContractTest {
     assertTrue(
         dockerfile.contains(
             "COPY --from=builder /build/fingrind.jar /opt/fingrind/lib/app/fingrind.jar"));
+    assertTrue(
+        dockerfile.contains(
+            "COPY --from=builder /build/native-sqlite-format-boundary-probe.jar /opt/fingrind/lib/release-smoke/native-sqlite-format-boundary-probe.jar"));
     assertTrue(
         dockerfile.contains(
             "COPY source-root/LICENSE source-root/LICENSE-APACHE-2.0 source-root/LICENSE-SIL-OFL-1.1 source-root/LICENSE-SQLITE3MULTIPLECIPHERS source-root/NOTICE source-root/PATENTS.md /opt/fingrind/doc/"));

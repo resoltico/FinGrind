@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliDeclareAccountPayload;
 import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
@@ -14,11 +15,11 @@ final class CliMutationOutputRenderer {
   private CliMutationOutputRenderer() {}
 
   static String renderAccountDeclarationText(
-      String outcome,
+      CliDeclareAccountPayload.Outcome outcome,
       DeclaredAccount account,
       @org.jspecify.annotations.Nullable AttestationCommit attestationCommit) {
     List<List<String>> rows = new java.util.ArrayList<>();
-    rows.add(List.of("Outcome", outcome));
+    rows.add(List.of("Outcome", outcome.wireValue()));
     rows.add(List.of("Account code", account.accountCode().value()));
     rows.add(List.of("Account name", account.accountName().value()));
     rows.add(
@@ -58,7 +59,7 @@ final class CliMutationOutputRenderer {
     CliAttestationCommitPresentation.appendTextRows(
         rows, attestationCommit, "No operation appended (unchanged account definition)");
     return CliTextFormat.renderTitledBlock(
-        accountDeclarationTitle(outcome), CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
+        outcome.textTitle(), CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
   static String renderPreflightAcceptedText(PostEntryResult.PreflightAccepted accepted) {
@@ -129,18 +130,6 @@ final class CliMutationOutputRenderer {
         .sorted(Comparator.comparing(EconomicEventClass::wireValue))
         .map(EconomicEventClass::wireValue)
         .collect(java.util.stream.Collectors.joining(", "));
-  }
-
-  private static String accountDeclarationTitle(String outcome) {
-    return switch (outcome) {
-      case "declared" -> "Account Declared";
-      case "reactivated" -> "Account Reactivated";
-      case "renamed" -> "Account Renamed";
-      case "amended" -> "Account Amended";
-      case "retired" -> "Account Retired";
-      case "unchanged" -> "Account Unchanged";
-      default -> "Account Updated";
-    };
   }
 
   private static String displayUnitOfMeasure(DeclaredAccount account) {

@@ -26,7 +26,7 @@ class SqlitePostingApprovalPersistenceFieldTest extends SqlitePostingFactStoreTe
 
       assertEquals(
           posting,
-          assertInstanceOf(PostingCommitResult.Committed.class, commitPosting(store, posting))
+          assertInstanceOf(PostingCommitResult.Appended.class, commitPosting(store, posting))
               .postingFact());
       assertEquals(
           1,

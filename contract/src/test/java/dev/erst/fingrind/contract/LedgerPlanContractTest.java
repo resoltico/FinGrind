@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceQuery;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.ListAccountsQuery;
 import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
@@ -19,6 +20,7 @@ import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
 import dev.erst.fingrind.contract.workflow.LedgerJournalStep;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerPlanAttestationDisposition;
 import dev.erst.fingrind.contract.workflow.LedgerPlanId;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
@@ -32,6 +34,7 @@ import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.PostingId;
+import java.math.BigInteger;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -57,6 +60,30 @@ class LedgerPlanContractTest {
                     new LedgerStep.InspectBook(stepId("duplicate")),
                     new LedgerStep.ListAccounts(
                         stepId("duplicate"), new ListAccountsQuery(50, Optional.empty())))));
+  }
+
+  @Test
+  void ledgerPlan_exposesWhetherItsDeclaredStepsMutateTheProtectedBook() {
+    LedgerPlan readOnlyPlan =
+        new LedgerPlan(planId("read-only"), List.of(new LedgerStep.InspectBook(stepId("inspect"))));
+    LedgerPlan assertionOnlyPlan =
+        new LedgerPlan(
+            planId("assertion-only"),
+            List.of(
+                new LedgerStep.Assert(
+                    stepId("assert"),
+                    new LedgerAssertion.AccountDeclared(new AccountCode("1000")))));
+    LedgerPlan mutatingPlan =
+        new LedgerPlan(
+            planId("mutating"),
+            List.of(
+                new LedgerStep.DeclareAccount(
+                    stepId("declare"),
+                    ContractFixtures.declareAccountCommand("1000", "Cash", AccountType.ASSET))));
+
+    assertFalse(readOnlyPlan.containsBookMutation());
+    assertFalse(assertionOnlyPlan.containsBookMutation());
+    assertTrue(mutatingPlan.containsBookMutation());
   }
 
   @Test
@@ -228,7 +255,76 @@ class LedgerPlanContractTest {
     assertEquals(LedgerPlanStatus.ASSERTION_FAILED, assertionFailedJournal.status());
     assertEquals(LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS, rejected.detailKind());
     assertEquals(
-        planId("plan-1"), new LedgerPlanResult.Succeeded(planId("plan-1"), journal, null).planId());
+        planId("plan-1"),
+        new LedgerPlanResult.Succeeded(
+                planId("plan-1"), journal, LedgerPlanAttestationDisposition.READ_ONLY, null)
+            .planId());
+    AttestationCommit commit = new AttestationCommit(BigInteger.ONE, "a".repeat(64));
+    assertEquals(
+        commit,
+        new LedgerPlanResult.Succeeded(
+                planId("appended"), journal, LedgerPlanAttestationDisposition.APPENDED, commit)
+            .attestationCommit());
+    assertEquals(
+        LedgerPlanAttestationDisposition.NO_DURABLE_CHILD_MUTATION,
+        new LedgerPlanResult.Succeeded(
+                planId("all-replayed"),
+                journal,
+                LedgerPlanAttestationDisposition.NO_DURABLE_CHILD_MUTATION,
+                null)
+            .attestationDisposition());
+    assertEquals(
+        LedgerPlanStatus.SUCCEEDED,
+        new LedgerPlanResult.Succeeded(
+                planId("appended-status"),
+                journal,
+                LedgerPlanAttestationDisposition.APPENDED,
+                commit)
+            .status());
+    assertEquals(
+        LedgerPlanStatus.SUCCEEDED,
+        new LedgerPlanResult.Succeeded(
+                planId("read-only-status"),
+                journal,
+                LedgerPlanAttestationDisposition.READ_ONLY,
+                null)
+            .status());
+    assertEquals(
+        LedgerPlanStatus.SUCCEEDED,
+        new LedgerPlanResult.Succeeded(
+                planId("all-replayed-status"),
+                journal,
+                LedgerPlanAttestationDisposition.NO_DURABLE_CHILD_MUTATION,
+                null)
+            .status());
+    assertThrows(
+        NullPointerException.class,
+        () ->
+            new LedgerPlanResult.Succeeded(planId("missing-disposition"), journal, nullOf(), null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new LedgerPlanResult.Succeeded(
+                planId("missing-commit"),
+                journal,
+                LedgerPlanAttestationDisposition.APPENDED,
+                null));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new LedgerPlanResult.Succeeded(
+                planId("unexpected-commit"),
+                journal,
+                LedgerPlanAttestationDisposition.READ_ONLY,
+                commit));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new LedgerPlanResult.Succeeded(
+                planId("replay-with-commit"),
+                journal,
+                LedgerPlanAttestationDisposition.NO_DURABLE_CHILD_MUTATION,
+                commit));
     assertThrows(IllegalArgumentException.class, () -> LedgerFact.text("", "value"));
     assertThrows(IllegalArgumentException.class, () -> LedgerFact.text("count", " "));
     assertThrows(NullPointerException.class, () -> LedgerFact.text("count", nullOf()));

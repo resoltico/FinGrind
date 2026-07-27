@@ -31,9 +31,6 @@ public final class ProtocolBookAccessOptions {
   /** Option selecting an absent target where FinGrind publishes one generated backup key file. */
   public static final String NEW_BACKUP_KEY_FILE = "--new-backup-key-file";
 
-  /** Option selecting one explicit stale rollback-book artifact for rekey recovery. */
-  public static final String ROLLBACK_BOOK_FILE = "--rollback-book-file";
-
   private ProtocolBookAccessOptions() {}
 
   /** Returns the accepted current-passphrase source options in public contract order. */

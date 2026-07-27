@@ -1,8 +1,8 @@
 package dev.erst.fingrind.executor.maintenance;
 
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
-import dev.erst.fingrind.core.attestation.AttestationAuthorizationException;
-import dev.erst.fingrind.core.attestation.AttestationAuthorizationFailure;
+import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationRegistryMutation;
 import dev.erst.fingrind.core.attestation.AttestationSigningSession;
 import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
@@ -16,7 +16,6 @@ import java.time.Clock;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 /** Owns live-book admission for one attested credential-registry or policy mutation. */
 final class AttestedProtectedBookRegistryMutationWorkflow {
@@ -36,7 +35,16 @@ final class AttestedProtectedBookRegistryMutationWorkflow {
     Objects.requireNonNull(bookAccess, "bookAccess");
     AttestationRegistryMutation checkedMutation = Objects.requireNonNull(mutation, "mutation");
     Objects.requireNonNull(signingSession, "signingSession");
-    Path bookPath = store.normalize(bookAccess.bookFilePath(), "bookFilePath");
+    Path bookPath;
+    ProtectedBookAccess canonicalBookAccess;
+    try {
+      canonicalBookAccess =
+          ProtectedBookAccess.canonicalizeExistingLiveBookAccess(store, bookAccess);
+      bookPath = canonicalBookAccess.bookFilePath();
+    } catch (ProtectedBookMaintenanceRejectionException exception) {
+      return MaintenanceDecision.accepted(
+          new ProtectedBookRegistryMutationOutcome.Rejected(exception.rejection()));
+    }
     List<Path> blocking = store.blockingArtifactsForBook(bookPath);
     if (!blocking.isEmpty()) {
       return MaintenanceDecision.accepted(
@@ -57,10 +65,14 @@ final class AttestedProtectedBookRegistryMutationWorkflow {
           heldLease::close,
           () -> {
             ProtectedBookMaintenanceStore.VerifiedBook liveBook =
-                AttestedProtectedBookMaintenanceDecisions.requireVerifiedBook(store, bookAccess);
+                AttestedProtectedBookMaintenanceDecisions.requireVerifiedBook(
+                    store, canonicalBookAccess);
             return MaintenanceResourceScope.closeAfter(
                 liveBook::close,
                 () -> {
+                  List<AttestationEvidence> evidence = store.loadAttestationEvidence(liveBook);
+                  AttestedProtectedBookMaintenanceDecisions.requireVerifiedLiveEvidence(
+                      evidence, bookPath);
                   AttestationVerification verification =
                       store.appendAttestedRegistryMutation(
                           liveBook, checkedMutation, clock.instant(), signingSession);
@@ -77,29 +89,14 @@ final class AttestedProtectedBookRegistryMutationWorkflow {
     } catch (ProtectedBookMaintenanceRejectionException exception) {
       return MaintenanceDecision.accepted(
           new ProtectedBookRegistryMutationOutcome.Rejected(exception.rejection()));
+    } catch (AttestationAdmissionRejectedException exception) {
+      return MaintenanceDecision.accepted(
+          new ProtectedBookRegistryMutationOutcome.AuthorizationRejected(exception.failure()));
+    } catch (ContractFailureException exception) {
+      throw exception;
     } catch (RuntimeException exception) {
-      Optional<AttestationAuthorizationFailure> authorizationFailure =
-          historicalAuthorizationFailure(exception);
-      if (authorizationFailure.isPresent()) {
-        return MaintenanceDecision.accepted(
-            new ProtectedBookRegistryMutationOutcome.AuthorizationRejected(
-                authorizationFailure.orElseThrow()));
-      }
       return AttestedProtectedBookMaintenanceDecisions.failure(
           bookPath, "bookFilePath", "Failed to append the attested credential or policy mutation.");
     }
-  }
-
-  private static Optional<AttestationAuthorizationFailure> historicalAuthorizationFailure(
-      RuntimeException exception) {
-    for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
-      if (cause instanceof AttestationAdmissionRejectedException admissionRejected) {
-        return Optional.of(admissionRejected.failure());
-      }
-      if (cause instanceof AttestationAuthorizationException authorizationException) {
-        return Optional.of(authorizationException.failure());
-      }
-    }
-    return Optional.empty();
   }
 }

@@ -116,16 +116,6 @@ final class SqliteStoreOperations {
         "The selected FinGrind book is incomplete or corrupted and cannot be opened safely.");
   }
 
-  static IllegalStateException unsupportedBookVersionFailure(
-      int loadedUserVersion, int expectedBookVersion) {
-    return new IllegalStateException(
-        "The selected FinGrind book format version "
-            + loadedUserVersion
-            + " is unsupported. Expected version "
-            + expectedBookVersion
-            + ".");
-  }
-
   private static boolean isTransientLockFailure(SqliteNativeException exception) {
     return SqliteNativeResultCode.matchesAny(
         Objects.requireNonNull(exception, "exception").resultCode(),

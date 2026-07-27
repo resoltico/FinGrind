@@ -1,6 +1,7 @@
 package dev.erst.fingrind.core.attestation;
 
 import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.assertFailure;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -31,6 +32,14 @@ class AttestationStaticCorpusFixtureTest {
           assertDoesNotThrow(() -> AttestationBookVerifier.verify(book.decode()), id);
       assertEquals(BigInteger.valueOf(book.operations().size() - 1L), verification.headOrder(), id);
     }
+  }
+
+  @Test
+  void lifecycleSourcesMatchTheirDeterministicCurrentProtocolAuthoring() {
+    AttestationLifecycleCorpusAuthoring.sources()
+        .forEach(
+            (id, source) ->
+                assertArrayEquals(source, AttestationStaticCorpusVectors.source(id), id));
   }
 
   @Test

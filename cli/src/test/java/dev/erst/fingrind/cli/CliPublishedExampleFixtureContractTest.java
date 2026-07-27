@@ -3,6 +3,12 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
+import dev.erst.fingrind.contract.runtime.BookFormatContract;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
+import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -59,7 +65,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
   private void recordPostingAndReportFixtures(
       Map<String, String> recordedFixtures, PublishedFixtureScenario scenario) throws IOException {
     JsonNode committed =
-        runJsonCommand(
+        runAttestedJsonCommand(
             "record-sale-settled",
             "--book-file",
             scenario.bookFile().toString(),
@@ -263,6 +269,10 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             scenario.brokenBookFile().toString(),
             "--book-key-file",
             scenario.brokenBookKeyFile().toString()));
+    recordJsonFixture(
+        recordedFixtures,
+        "unsupported-book-format-version-error.json",
+        unsupportedBookFormatFailureFixture(scenario));
     recordTextFixture(
         recordedFixtures,
         "interactive-prompt-unavailable-error.txt",
@@ -274,6 +284,34 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
             "--book-passphrase-prompt",
             "--output",
             "text"));
+  }
+
+  private JsonNode unsupportedBookFormatFailureFixture(PublishedFixtureScenario scenario)
+      throws IOException {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            utf8PrintStream(diagnosticsStream),
+            fixedClock(),
+            new CliExplodingWorkflow(
+                new ContractFailureException(
+                    ContractErrors.unsupportedBookFormatVersionFailure(
+                        BookFormatContract.FORMAT_VERSION - 1,
+                        BookFormatContract.FORMAT_VERSION))));
+    int exitCode =
+        cli.run(
+            jsonArguments(
+                "list-accounts",
+                "--book-file",
+                scenario.bookFile().toString(),
+                "--book-key-file",
+                scenario.bookKeyFile().toString()));
+    assertEquals(6, exitCode);
+    assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
+    return new tools.jackson.databind.ObjectMapper().readTree(diagnosticsStream.toByteArray());
   }
 
   private PublishedFixtureScenario prepareScenario() throws IOException {
@@ -293,6 +331,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
     createExistingOwnerOnlyParentDirectory(bookKeyFile);
     runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFile.toString());
     runJsonCommand("generate-book-key-file", "--new-book-key-file", brokenBookKeyFile.toString());
+    SqliteBookKeyFileGenerator.generate(brokenBookFile);
     Files.writeString(brokenBookFile, "not-a-protected-book", StandardCharsets.UTF_8);
     return new PublishedFixtureScenario(
         bookFile,
@@ -308,7 +347,7 @@ class CliPublishedExampleFixtureContractTest extends CliPublicDocsContractSuppor
 
   private void declareExampleAccount(Path bookFile, Path bookKeyFile, Path requestFile)
       throws IOException {
-    runJsonCommand(
+    runAttestedJsonCommand(
         "declare-account",
         "--book-file",
         bookFile.toString(),

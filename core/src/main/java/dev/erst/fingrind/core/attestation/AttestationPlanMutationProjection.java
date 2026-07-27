@@ -1,26 +1,21 @@
 package dev.erst.fingrind.core.attestation;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 /** Projects ordered child mutations into the one immutable execute-plan operation payload. */
-final class AttestationPlanMutationProjection {
+public final class AttestationPlanMutationProjection {
   private static final String EXECUTE_PLAN = AttestationOperationKind.EXECUTE_PLAN.wireToken();
   private static final String CLI = "cli";
-  private static final Set<Integer> REQUEST_STEP_ORDER_TAGS =
-      Set.of(
-          0x0120, 0x0121, 0x0122, 0x0123, 0x0124, 0x0126, 0x0127, 0x0128, 0x0129, 0x012A, 0x0130,
-          0x0131, 0x0132, 0x0133, 0x0134);
 
   private AttestationPlanMutationProjection() {}
 
-  static AttestationOperationPreimages project(
-      String planId, List<AttestationPlanOperationAuthorizer.ChildMutation> childMutations) {
+  /** Projects transaction-owned completed child mutations into one aggregate plan preimage. */
+  public static AttestationOperationPreimages project(
+      String planId, List<AttestationPlanChildMutation> childMutations) {
     String checkedPlanId = requirePlanId(planId);
-    List<AttestationPlanOperationAuthorizer.ChildMutation> checkedChildren =
+    List<AttestationPlanChildMutation> checkedChildren =
         List.copyOf(Objects.requireNonNull(childMutations, "childMutations"));
     if (checkedChildren.isEmpty()) {
       throw new IllegalArgumentException(EXECUTE_PLAN + " requires at least one child mutation.");
@@ -29,22 +24,26 @@ final class AttestationPlanMutationProjection {
     List<AttestationPreimage.Fact> requestFacts = new ArrayList<>();
     requestFacts.add(command(checkedPlanId));
     List<AttestationPreimage.Fact> effectFacts = new ArrayList<>();
-    for (AttestationPlanOperationAuthorizer.ChildMutation child : checkedChildren) {
-      appendChildRequestFacts(requestFacts, child);
-      appendChildEffectFacts(effectFacts, child.preimages().effect(), child.stepOrder());
+    for (AttestationPlanChildMutation child : checkedChildren) {
+      appendQualifiedChildFacts(requestFacts, effectFacts, child);
     }
-    return new AttestationOperationPreimages(
-        AttestationPreimage.of(requestFacts).encoded(),
-        AttestationPreimage.of(effectFacts).encoded());
+    AttestationPreimage request = AttestationPreimage.of(requestFacts);
+    AttestationPreimage effect = AttestationPreimage.of(effectFacts);
+    AttestationPlanQualifiedFact.requireValid(request, effect);
+    return new AttestationOperationPreimages(request.encoded(), effect.encoded());
   }
 
-  private static void appendChildRequestFacts(
-      List<AttestationPreimage.Fact> target,
-      AttestationPlanOperationAuthorizer.ChildMutation child) {
-    AttestationPreimage decoded =
+  private static void appendQualifiedChildFacts(
+      List<AttestationPreimage.Fact> requestFacts,
+      List<AttestationPreimage.Fact> effectFacts,
+      AttestationPlanChildMutation child) {
+    AttestationPreimage request =
         AttestationPreimage.decode(
             child.preimages().request(), AttestationAuthorizationFailure.PREIMAGE_INVALID);
-    List<AttestationPreimage.Fact> commands = AttestationPreimageFields.records(decoded, 0x0100);
+    AttestationPreimage effect =
+        AttestationPreimage.decode(
+            child.preimages().effect(), AttestationAuthorizationFailure.PREIMAGE_INVALID);
+    List<AttestationPreimage.Fact> commands = AttestationPreimageFields.records(request, 0x0100);
     if (commands.size() != 1
         || !child
             .operationKind()
@@ -54,37 +53,18 @@ final class AttestationPlanMutationProjection {
       throw new IllegalArgumentException(
           "A ledger-plan child mutation must retain its own matching command preimage.");
     }
-    for (AttestationPreimage.Fact fact : decoded.records()) {
-      if (fact.recordTypeTag() != 0x0100) {
-        target.add(rewriteStepOrder(fact, child.stepOrder(), true));
-      }
+    try {
+      AttestationPlanChildMutationProfile.requireValid(request, effect);
+    } catch (AttestationAuthorizationException exception) {
+      throw new IllegalArgumentException(
+          "A ledger-plan child mutation must retain a valid direct operation profile.", exception);
     }
-  }
-
-  private static void appendChildEffectFacts(
-      List<AttestationPreimage.Fact> target, byte[] encoded, int stepOrder) {
-    AttestationPreimage decoded =
-        AttestationPreimage.decode(encoded, AttestationAuthorizationFailure.PREIMAGE_INVALID);
-    for (AttestationPreimage.Fact fact : decoded.records()) {
-      target.add(rewriteStepOrder(fact, stepOrder, false));
-    }
-  }
-
-  private static AttestationPreimage.Fact rewriteStepOrder(
-      AttestationPreimage.Fact fact, int stepOrder, boolean request) {
-    int stepOrderField =
-        request && REQUEST_STEP_ORDER_TAGS.contains(fact.recordTypeTag())
-            ? 0
-            : !request && fact.recordTypeTag() == 0x0020 ? 2 : -1;
-    if (stepOrderField < 0) {
-      return fact;
-    }
-    List<AttestationField> fields = new ArrayList<>(fact.fields());
-    fields.set(
-        stepOrderField,
-        AttestationField.present(
-            AttestationNumericFieldValue.unsigned32(BigInteger.valueOf(stepOrder))));
-    return new AttestationPreimage.Fact(fact.recordTypeTag(), fields);
+    request.records().stream()
+        .map(fact -> AttestationPlanQualifiedFact.requestFact(child.stepOrder(), fact))
+        .forEach(requestFacts::add);
+    effect.records().stream()
+        .map(fact -> AttestationPlanQualifiedFact.effectFact(child.stepOrder(), fact))
+        .forEach(effectFacts::add);
   }
 
   private static AttestationPreimage.Fact command(String planId) {
@@ -99,12 +79,10 @@ final class AttestationPlanMutationProjection {
             AttestationField.present(AttestationTextFieldValue.token(CLI))));
   }
 
-  private static void requireStrictStepOrder(
-      List<AttestationPlanOperationAuthorizer.ChildMutation> childMutations) {
+  private static void requireStrictStepOrder(List<AttestationPlanChildMutation> childMutations) {
     int previousStepOrder = -1;
-    for (AttestationPlanOperationAuthorizer.ChildMutation child : childMutations) {
-      AttestationPlanOperationAuthorizer.ChildMutation checkedChild =
-          Objects.requireNonNull(child, "childMutations");
+    for (AttestationPlanChildMutation child : childMutations) {
+      AttestationPlanChildMutation checkedChild = Objects.requireNonNull(child, "childMutations");
       if (checkedChild.stepOrder() <= previousStepOrder) {
         throw new IllegalArgumentException(
             EXECUTE_PLAN + " child mutations must have strictly increasing stepOrder values.");

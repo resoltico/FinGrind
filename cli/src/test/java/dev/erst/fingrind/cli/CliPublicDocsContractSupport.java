@@ -22,7 +22,7 @@ import tools.jackson.databind.node.ArrayNode;
 import tools.jackson.databind.node.ObjectNode;
 
 /** Shared workflow and fixture helpers for public CLI docs and example-contract tests. */
-class CliPublicDocsContractSupport extends FinGrindCliTestSupport {
+class CliPublicDocsContractSupport extends CliWorkflowFixtureSupport {
   private static final Pattern UUID_PATTERN =
       Pattern.compile(
           "\\b[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\\b");
@@ -37,15 +37,34 @@ class CliPublicDocsContractSupport extends FinGrindCliTestSupport {
     return OBJECT_MAPPER.readTree(runPlainCommand(jsonArguments(arguments)));
   }
 
+  /** Runs an intentionally attested mutation and decodes its JSON response. */
+  protected JsonNode runAttestedJsonCommand(String... arguments) throws IOException {
+    return OBJECT_MAPPER.readTree(runPlainCommand(attestedJsonArguments(arguments)));
+  }
+
   protected JsonNode runJsonCommandExpectingExit(int expectedExitCode, String... arguments)
       throws IOException {
     return OBJECT_MAPPER.readTree(runPlainCommand(expectedExitCode, jsonArguments(arguments)));
+  }
+
+  /** Runs an intentionally attested mutation expecting its documented JSON exit code. */
+  protected JsonNode runAttestedJsonCommandExpectingExit(int expectedExitCode, String... arguments)
+      throws IOException {
+    return OBJECT_MAPPER.readTree(
+        runPlainCommand(expectedExitCode, attestedJsonArguments(arguments)));
   }
 
   protected JsonNode runJsonDiagnosticsCommandExpectingExit(
       int expectedExitCode, String... arguments) throws IOException {
     return OBJECT_MAPPER.readTree(
         runDiagnosticsCommand(expectedExitCode, jsonArguments(arguments)));
+  }
+
+  /** Runs an intentionally attested mutation expecting a JSON diagnostic response. */
+  protected JsonNode runAttestedJsonDiagnosticsCommandExpectingExit(
+      int expectedExitCode, String... arguments) throws IOException {
+    return OBJECT_MAPPER.readTree(
+        runDiagnosticsCommand(expectedExitCode, attestedJsonArguments(arguments)));
   }
 
   protected JsonNode runRawJsonCommand(String... arguments) throws IOException {

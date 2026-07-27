@@ -12,7 +12,6 @@ import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
 import dev.erst.fingrind.core.CurrencyUnit;
 import dev.erst.fingrind.sqlite.SqliteFuzzAssertions;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
@@ -20,35 +19,17 @@ import java.util.Objects;
 /** Shared execution assertions for Jazzer harnesses that parse and run ledger plans. */
 public final class LedgerPlanFuzzAssertions {
   private static final LedgerPlanWorkspace SYSTEM_WORKSPACE =
-      new LedgerPlanWorkspace() {
-        @Override
-        public Path create() throws IOException {
-          return Files.createTempDirectory("fingrind-jazzer-ledger-plan-");
-        }
-
-        @Override
-        public void prepare(Path workspace) throws IOException {
-          SqliteFuzzAssertions.prepareSecureArtifactDirectory(workspace);
-        }
-
-        @Override
-        public void clean(Path workspace) throws IOException {
-          SqliteRoundTripWorkflowResources.deleteRecursively(workspace);
-        }
-      };
+      () ->
+          SqliteFuzzAssertions.createOwnerOnlyTemporaryArtifactDirectory(
+              "fingrind-jazzer-ledger-plan-");
 
   private LedgerPlanFuzzAssertions() {}
 
-  /** Owns the secure temporary workspace used for one real ledger-plan execution. */
+  /** Owns the retained secure workspace used for one real ledger-plan execution. */
+  @FunctionalInterface
   interface LedgerPlanWorkspace {
     /** Creates one isolated workspace. */
     Path create() throws IOException;
-
-    /** Establishes the workspace permissions and prerequisites. */
-    void prepare(Path workspace) throws IOException;
-
-    /** Removes the workspace after execution. */
-    void clean(Path workspace) throws IOException;
   }
 
   private record JournalScanSummary(int listQueryStepCount, int structuredListQueryStepCount) {
@@ -97,13 +78,12 @@ public final class LedgerPlanFuzzAssertions {
     Objects.requireNonNull(workspace, "workspace");
     Path scratchRoot;
     try {
-      scratchRoot = workspace.create();
+      scratchRoot = SqliteFuzzAssertions.requireOwnerOnlyArtifactDirectory(workspace.create());
     } catch (IOException exception) {
       throw new IllegalStateException(
-          "Could not create the ledger-plan fuzz workspace.", exception);
+          "Could not create or admit the ledger-plan fuzz workspace.", exception);
     }
     try {
-      workspace.prepare(scratchRoot);
       Path bookPath = scratchRoot.resolve("book.sqlite");
       Path keyPath = scratchRoot.resolve("book.key");
       SqliteFuzzAssertions.writeDeterministicBookKeyFile(keyPath);
@@ -120,9 +100,25 @@ public final class LedgerPlanFuzzAssertions {
       return assertPlanResult(plan, result);
     } catch (IOException exception) {
       throw new IllegalStateException(
-          "Could not prepare the ledger-plan fuzz workspace.", exception);
-    } finally {
-      cleanWorkspace(scratchRoot, workspace);
+          "Ledger-plan fuzz execution did not complete; inspect the retained workspace: "
+              + scratchRoot,
+          exception);
+    } catch (RuntimeException exception) {
+      recordRetainedWorkspace(scratchRoot, exception);
+      throw exception;
+    } catch (Error failure) {
+      recordRetainedWorkspace(scratchRoot, failure);
+      throw failure;
+    }
+  }
+
+  private static void recordRetainedWorkspace(Path scratchRoot, Throwable primaryFailure) {
+    try {
+      primaryFailure.addSuppressed(
+          new IOException(
+              "Ledger-plan fuzz execution retained its workspace for inspection: " + scratchRoot));
+    } catch (IllegalArgumentException ignored) {
+      // A hostile Throwable implementation must not conceal the primary failure.
     }
   }
 
@@ -141,14 +137,6 @@ public final class LedgerPlanFuzzAssertions {
                 })
         .findFirst()
         .orElseGet(() -> CurrencyUnit.of("EUR"));
-  }
-
-  static void cleanWorkspace(Path scratchRoot, LedgerPlanWorkspace workspace) {
-    try {
-      workspace.clean(scratchRoot);
-    } catch (IOException exception) {
-      scratchRoot.toFile().deleteOnExit();
-    }
   }
 
   static ExecutionSnapshot assertPlanResult(LedgerPlan plan, LedgerPlanResult result) {

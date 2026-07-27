@@ -28,16 +28,27 @@ public sealed interface LedgerPlanResult
   record Succeeded(
       LedgerPlanId planId,
       LedgerExecutionJournal journal,
+      LedgerPlanAttestationDisposition attestationDisposition,
       @Nullable AttestationCommit attestationCommit)
       implements LedgerPlanResult {
     /**
      * Validates one succeeded plan result.
      *
-     * <p>A {@code null} commitment denotes a read-only successful plan, which appends no aggregate
-     * operation.
+     * <p>The disposition owns the closed commitment-field mode, so a nullable field never means
+     * optional: it is either required or must be explicitly null.
      */
     public Succeeded {
       require(planId, journal, LedgerPlanStatus.SUCCEEDED);
+      Objects.requireNonNull(attestationDisposition, "attestationDisposition");
+      if (attestationDisposition.attestationCommitMode().requiresAttestationCommit()) {
+        if (attestationCommit == null) {
+          throw new IllegalArgumentException(
+              "attestationCommit is required for this attestation disposition.");
+        }
+      } else if (attestationCommit != null) {
+        throw new IllegalArgumentException(
+            "attestationCommit must be null for this attestation disposition.");
+      }
     }
   }
 

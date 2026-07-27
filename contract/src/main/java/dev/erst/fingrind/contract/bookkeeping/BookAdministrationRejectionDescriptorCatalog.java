@@ -2,7 +2,9 @@ package dev.erst.fingrind.contract.bookkeeping;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.FailureCategory;
+import dev.erst.fingrind.contract.runtime.FieldDescriptor;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -20,7 +22,7 @@ final class BookAdministrationRejectionDescriptorCatalog {
     return definition(descriptor).code();
   }
 
-  static List<ContractResponse.RejectionDescriptor> descriptors() {
+  static List<RejectionDescriptor> descriptors() {
     return List.of(BookAdministrationRejectionDescriptors.Descriptor.values()).stream()
         .map(BookAdministrationRejectionDescriptorCatalog::descriptor)
         .toList();
@@ -66,10 +68,10 @@ final class BookAdministrationRejectionDescriptorCatalog {
                 List.of())));
   }
 
-  private static ContractResponse.RejectionDescriptor descriptor(
+  private static RejectionDescriptor descriptor(
       BookAdministrationRejectionDescriptors.Descriptor descriptor) {
     BookAdministrationRejectionDescriptorDefinition definition = definition(descriptor);
-    return new ContractResponse.RejectionDescriptor(
+    return new RejectionDescriptor(
         definition.code(),
         definition.category(),
         definition.description(),
@@ -83,11 +85,8 @@ final class BookAdministrationRejectionDescriptorCatalog {
   }
 
   private static BookAdministrationRejectionDescriptorDefinition preconditionDefinition(
-      String code, String description, List<ContractResponse.FieldDescriptor> detailFields) {
+      String code, String description, List<FieldDescriptor> detailFields) {
     return new BookAdministrationRejectionDescriptorDefinition(
-        ContractResponse.FailureCategory.PRECONDITION,
-        code,
-        description,
-        List.copyOf(detailFields));
+        FailureCategory.PRECONDITION, code, description, List.copyOf(detailFields));
   }
 }

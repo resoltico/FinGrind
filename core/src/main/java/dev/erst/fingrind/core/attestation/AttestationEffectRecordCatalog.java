@@ -244,7 +244,14 @@ final class AttestationEffectRecordCatalog {
             0x00A0,
             "restore.provenance",
             "mutation:u8!, backupId:uuid!, backupArtifactDigest:hash!, restoredFromOrder:u64!, historicalSnapshotAuthorization:bool!",
-            1));
+            1),
+        record(
+            0x00A1,
+            "plan.child-effect-fact",
+            "sourceStepOrder:u32!, childRecordType:u16!, childRecordSortKey:embedded!, childRecord:embedded!",
+            0,
+            1,
+            2));
   }
 
   private static String hyphenated(String... components) {

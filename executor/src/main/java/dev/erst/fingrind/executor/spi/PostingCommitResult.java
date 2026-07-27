@@ -1,28 +1,30 @@
 package dev.erst.fingrind.executor.spi;
 
-import dev.erst.fingrind.core.attestation.AttestationVerification;
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 /** Closed family of ordinary commit outcomes returned by the posting seam. */
 public sealed interface PostingCommitResult
-    permits PostingCommitResult.Committed, PostingCommitResult.Rejected {
+    permits PostingCommitResult.Appended,
+        PostingCommitResult.Replayed,
+        PostingCommitResult.Rejected {
 
-  /** Successful durable commit outcome carrying the stored posting fact. */
-  record Committed(
-      CommittedPosting postingFact,
-      boolean idempotentReplay,
-      @Nullable AttestationVerification attestationVerification)
+  /** Successful durable commit that appended one individual attestation operation. */
+  record Appended(CommittedPosting postingFact, AttestationAppendOutcome.Appended attestationAppend)
       implements PostingCommitResult {
-    /** Validates the committed posting result. */
-    public Committed {
+    /** Validates one immediately attested posting result. */
+    public Appended {
       Objects.requireNonNull(postingFact, "postingFact");
-      if (idempotentReplay && attestationVerification != null) {
-        throw new IllegalArgumentException(
-            "An idempotent replay must not claim a newly appended attestation operation.");
-      }
+      Objects.requireNonNull(attestationAppend, "attestationAppend");
+    }
+  }
+
+  /** Successful idempotent replay that appended no attestation operation. */
+  record Replayed(CommittedPosting postingFact) implements PostingCommitResult {
+    public Replayed {
+      Objects.requireNonNull(postingFact, "postingFact");
     }
   }
 

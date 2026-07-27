@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: USER_CONTAINER
-updated: "2026-07-22"
+updated: "2026-07-26"
 route:
   keywords: [fingrind, container, docker, ghcr, mounted workspace, book key file]
   questions: ["how do i run fingrind in docker", "what is the fingrind container image", "how do i mount a book into the fingrind container"]
@@ -86,12 +86,20 @@ fingrind record-sale-settled --book-file ./books/acme.sqlite --book-key-file ./s
 Read a report and export a PDF back into the mounted host directory:
 
 ```bash
-fingrind trial-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --output text --pdf-out ./trial-balance.pdf
+mkdir -p ./private-reports
+chmod 700 ./private-reports
+fingrind trial-balance --book-file ./books/acme.sqlite --book-key-file ./secrets/acme.book-key --output text --pdf-out ./private-reports/trial-balance.pdf
 ```
 
-`./trial-balance.pdf` is written into the mounted host working directory, not into a hidden
-container filesystem. When `--output text` is paired with `--pdf-out`, stdout prints one artifact
-confirmation block instead of the full text report body.
+`./private-reports/trial-balance.pdf` is written into the mounted host working directory, not into
+a hidden container filesystem. The selected PDF parent must already exist as a real owner-only
+directory; the POSIX commands above prepare one, while a Windows host must prepare the equivalent
+owner-only ACL. FinGrind neither creates nor weakens that caller-owned output parent. When
+`--output text` is paired with `--pdf-out`, stdout prints one artifact confirmation block instead
+of the full text report body and reports the canonical physical final path.
+If the mounted work directory itself already satisfies that same owner-only parent requirement,
+`--pdf-out ./trial-balance.pdf` is equivalent; otherwise keep the dedicated private report
+directory shown above.
 
 ## Secret Handling
 

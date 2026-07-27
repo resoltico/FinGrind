@@ -40,10 +40,11 @@ final class ProtocolAttestationRegistryOperations {
             List.of(),
             List.of(
                 ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-                ProtocolOptions.currentPassphraseSourceSyntax(),
+                ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
                 ProtocolOptions.Request.FILE + " <path|->",
-                ProtocolOptions.requiredAttestationCredentialSyntax(),
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+                ProtocolOptionSyntax.Attestation.requiredCredentialSyntax(),
+                ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
             List.of(),

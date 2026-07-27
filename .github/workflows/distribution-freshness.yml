@@ -42,7 +42,9 @@ jobs:
         with:
           python-version: ${{ steps.build-metadata.outputs.python-version }}
           cache: "pip"
-          cache-dependency-path: requirements-python-tools.txt
+          cache-dependency-path: |
+            requirements-python-tools.txt
+            requirements-release-smoke-workflow.txt
 
       - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
 
@@ -61,7 +63,10 @@ jobs:
           printf '%s\n' "${uv_bin_dir}" >> "${GITHUB_PATH}"
           uv_executable="${uv_bin_dir}/uv"
           printf 'ORG_GRADLE_PROJECT_fingrindUvExecutable=%s\n' "${uv_executable}" >> "${GITHUB_ENV}"
-          python -m pip install --user -r requirements-python-tools.txt
+          "${uv_executable}" --version
+          "${uv_executable}" pip install --system \
+            -r requirements-python-tools.txt \
+            -r requirements-release-smoke-workflow.txt
 
       - name: Refresh one published Linux bundle
         shell: bash

@@ -5,6 +5,7 @@ FinGrind is a command-line bookkeeping tool for one accounting entity in one pro
 - One protected SQLite book and generated key file per accounting entity
 - Typed sales, purchases, inventory maintenance, expenses, fixed assets, financing, realized foreign exchange, Latvian monthly payroll, accrual cut-offs, settlements, owner transactions, opening positions, and reversals with provenance and idempotency
 - Atomic tax, fixed-asset, and financing setup plans; explicit account amendment, retirement, and contra-account rules; per-book tax registrations; tax-obligation reporting; and reporting-period close commands
+- Executable ledger plans that combine attested bookkeeping and administration steps with credential-free read and assertion steps, while preserving one explicit result for the whole plan
 - Trial balance, account balance and ledger, period summary, financial position, income statement, cash-flow statement, changes in equity, inventory valuation, accrual-cutoff schedule, fixed-asset, financing, and realized-foreign-exchange register outputs in text, JSON, CSV, or PDF, with keyset pagination for account-ledger and collection queries
 - A retained Latvian payroll register in text, JSON, CSV, and PDF, including payroll runs, settlements, and compensating-reversal lineage
 - Immutable Ed25519-attested book mutations, verification and compromise review, no-clobber backups, signed restores, and independently retained receipts
@@ -118,6 +119,7 @@ As of                     : 2026-04-07
 - [docs/USER_BOOK_ATTESTATION.md](docs/USER_BOOK_ATTESTATION.md) for founder credentials, verification, backups, and retained receipts
 - [docs/USER_REQUESTS.md](docs/USER_REQUESTS.md) for request shapes and inventory rules
 - [docs/USER_RESPONSES.md](docs/USER_RESPONSES.md) for response envelopes and deterministic failures
+- [docs/USER_REJECTIONS.md](docs/USER_REJECTIONS.md) for actionable recovery from protected-book and attestation refusals
 - [docs/USER_EXAMPLES.md](docs/USER_EXAMPLES.md) for longer workflows
 - [docs/DOC_00_PrimarySources.md](docs/DOC_00_PrimarySources.md) for official legal, authority, and data sources used by jurisdiction-specific material
 - [docs/DOC_02_LatvianPayroll.md](docs/DOC_02_LatvianPayroll.md) for the bounded Latvian payroll profile, lifecycle, exclusions, and authority links

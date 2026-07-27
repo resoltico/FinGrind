@@ -32,6 +32,18 @@ final class SqliteStatementRedirectingDatabase extends SqliteNativeDatabase {
     this.closeAction = Objects.requireNonNull(closeAction, "closeAction");
   }
 
+  /**
+   * Creates a non-owning statement wrapper whose override receives only a borrowed preparation view
+   * of the store-owned database.
+   */
+  static SqliteStatementRedirectingDatabase borrowing(
+      SqliteNativeDatabase delegate, BorrowedStatementRedirector prepareOverride) {
+    Objects.requireNonNull(prepareOverride, "prepareOverride");
+    BorrowedNativeDatabase borrowedDelegate = new BorrowedNativeDatabase(delegate);
+    return new SqliteStatementRedirectingDatabase(
+        delegate, sql -> prepareOverride.prepare(borrowedDelegate, sql));
+  }
+
   @Override
   MemorySegment handle() {
     return delegate.handle();
@@ -55,5 +67,24 @@ final class SqliteStatementRedirectingDatabase extends SqliteNativeDatabase {
   @Override
   public void close() {
     closeAction.run();
+  }
+
+  /** Redirects one prepared statement through the explicitly non-owning delegate view. */
+  @FunctionalInterface
+  interface BorrowedStatementRedirector {
+    SqliteNativeStatement prepare(BorrowedNativeDatabase delegate, String sql);
+  }
+
+  /** Non-owning preparation view over the database handle retained by the store lifecycle. */
+  static final class BorrowedNativeDatabase {
+    private final SqliteNativeDatabase delegate;
+
+    private BorrowedNativeDatabase(SqliteNativeDatabase delegate) {
+      this.delegate = Objects.requireNonNull(delegate, "delegate");
+    }
+
+    SqliteNativeStatement prepare(String sql) {
+      return delegate.prepare(sql);
+    }
   }
 }

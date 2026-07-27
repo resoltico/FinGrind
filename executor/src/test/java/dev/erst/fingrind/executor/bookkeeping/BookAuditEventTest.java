@@ -78,19 +78,6 @@ class BookAuditEventTest {
             null),
         BookAuditEvent.postingCommitted(reversalPosting));
     assertEquals(
-        new BookAuditEvent(FIXED_INSTANT, BookAuditEventKind.BOOK_REKEYED, null, null, null),
-        BookAuditEvent.bookRekeyed(FIXED_INSTANT));
-    assertEquals(
-        new BookAuditEvent(FIXED_INSTANT, BookAuditEventKind.BACKUP_CREATED, null, null, null),
-        BookAuditEvent.backupCreated(FIXED_INSTANT));
-    assertEquals(
-        new BookAuditEvent(FIXED_INSTANT, BookAuditEventKind.BACKUP_RESTORED, null, null, null),
-        BookAuditEvent.backupRestored(FIXED_INSTANT));
-    assertEquals(
-        new BookAuditEvent(
-            FIXED_INSTANT, BookAuditEventKind.BACKUP_CREATED_COMPENSATED, null, null, null),
-        BookAuditEvent.backupCreatedCompensated(FIXED_INSTANT));
-    assertEquals(
         new BookAuditEvent(FIXED_INSTANT, BookAuditEventKind.INTERIM_RESULT_SWEPT, null, null, 7),
         BookAuditEvent.interimResultSwept(FIXED_INSTANT, 7));
     assertEquals(
@@ -178,16 +165,6 @@ class BookAuditEventTest {
     assertEquals(
         "FISCAL_YEAR_CLOSED audit events must not carry accountCode or postingId.",
         fiscalYearCloseFailure.getMessage());
-
-    IllegalArgumentException bookRekeyedFailure =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                new BookAuditEvent(
-                    FIXED_INSTANT, BookAuditEventKind.BOOK_REKEYED, null, postingId, null));
-    assertEquals(
-        "BOOK_REKEYED audit events must not carry accountCode, postingId, or closeOperationOrder.",
-        bookRekeyedFailure.getMessage());
 
     IllegalArgumentException accountReactivatedFailure =
         assertThrows(
@@ -312,10 +289,6 @@ class BookAuditEventTest {
             "ACCOUNT_RETIRED",
             "POSTING_COMMITTED",
             "POSTING_REVERSED",
-            "BOOK_REKEYED",
-            "BACKUP_CREATED",
-            "BACKUP_RESTORED",
-            "BACKUP_CREATED_COMPENSATED",
             "INTERIM_RESULT_SWEPT",
             "FISCAL_YEAR_CLOSED"),
         BookAuditEventKind.wireValues());

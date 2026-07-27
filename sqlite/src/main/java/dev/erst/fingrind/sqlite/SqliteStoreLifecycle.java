@@ -7,23 +7,25 @@ import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.BookIdentity;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Optional;
-import org.jspecify.annotations.Nullable;
 
-/** Owns the mutable database/session state for one SQLite-backed book session. */
+/**
+ * Owns the mutable database/session state for one SQLite-backed book session.
+ *
+ * <p>A failed create or initialization never deletes a caller-selected book pathname, SQLite
+ * sidecar, or parent directory. SQLite rollback remains the accounting atomicity boundary; any
+ * provisional filesystem residue is retained for explicit operator inspection and is never an
+ * initialized-book success.
+ */
 class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
   private final SqliteStoreContext context;
   private final SqliteThreadOwner threadOwner = new SqliteThreadOwner("SQLite book session");
-  private final SqliteLedgerPlanTransactionCoordinator ledgerPlanTransactions;
-  private final Transactions transactions = new Transactions();
-  private @Nullable Path exclusiveNewBookPreexistingAncestorDirectory;
-  private boolean ownsUninitializedExclusiveNewBook;
+  private final SqliteStoreLedgerPlanTransactions planTransactions;
 
   SqliteStoreLifecycle(SqliteStoreContext context, SqliteSessionSecret sessionSecret) {
     super(sessionSecret);
     this.context = java.util.Objects.requireNonNull(context, "context");
-    this.ledgerPlanTransactions = new SqliteLedgerPlanTransactionCoordinator(context);
+    this.planTransactions = new SqliteStoreLedgerPlanTransactions(this, context);
   }
 
   void close() {
@@ -31,12 +33,6 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
     if (closed()) {
       return;
     }
-    boolean cleanupPlanCreatedBookArtifacts = ledgerPlanTransactions.createdBookArtifacts();
-    @Nullable Path planPreexistingAncestorDirectory =
-        ledgerPlanTransactions.preexistingAncestorDirectory();
-    boolean cleanupUninitializedExclusiveNewBook = ownsUninitializedExclusiveNewBook;
-    @Nullable Path exclusiveNewBookPreexistingAncestorDirectory =
-        this.exclusiveNewBookPreexistingAncestorDirectory;
     try (SqliteStoreCloseSequence closeSequence =
         new SqliteStoreCloseSequence(sessionSecret()::close, publishedDatabase())) {
       java.util.Objects.requireNonNull(closeSequence, "closeSequence");
@@ -50,34 +46,32 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
               "Failed to close SQLite book connection. " + exception.resultName() + ": " + detail,
               exception);
       markClosed(closeFailure);
-      ledgerPlanTransactions.reset();
+      planTransactions.reset();
       throw closeFailure;
     } catch (IllegalStateException exception) {
       IllegalStateException closeFailure =
           new IllegalStateException("Failed to close SQLite book connection.", exception);
       markClosed(closeFailure);
-      ledgerPlanTransactions.reset();
+      planTransactions.reset();
       throw closeFailure;
     }
-    try {
-      if (cleanupPlanCreatedBookArtifacts) {
-        SqliteLedgerPlanArtifactCleanup.cleanupCreatedMissingBookArtifacts(
-            context.bookPath(), planPreexistingAncestorDirectory, null);
-      }
-      if (cleanupUninitializedExclusiveNewBook) {
-        SqliteLedgerPlanArtifactCleanup.deleteCreatedMissingBookArtifacts(
-            context.bookPath(), exclusiveNewBookPreexistingAncestorDirectory);
-      }
-    } finally {
-      ledgerPlanTransactions.reset();
-      ownsUninitializedExclusiveNewBook = false;
-      this.exclusiveNewBookPreexistingAncestorDirectory = null;
-    }
+    // Closing one unfinished session must never become authority to unlink its caller path.
+    planTransactions.reset();
   }
 
   boolean isInitializedBook(SqliteNativeDatabase activeDatabase) {
     threadOwner.requireOwnerThread();
-    return stateSnapshot(activeDatabase).state() == SqliteBookState.INITIALIZED_FINGRIND;
+    SqliteBookStateSnapshot snapshot = stateSnapshot(activeDatabase);
+    if (snapshot.state() == SqliteBookState.BLANK_SQLITE) {
+      return false;
+    }
+    snapshot
+        .state()
+        .requireInitialized(
+            snapshot.userVersion(),
+            context.bookFormatVersion(),
+            context.notInitializedBookMessage());
+    return true;
   }
 
   void requireInitializedBook(SqliteNativeDatabase activeDatabase) {
@@ -181,14 +175,12 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
     ensureOpen();
   }
 
-  void recordExclusiveNewBookInitialization() {
+  void requireOwnerThread() {
     threadOwner.requireOwnerThread();
-    ownsUninitializedExclusiveNewBook = false;
-    exclusiveNewBookPreexistingAncestorDirectory = null;
   }
 
-  Transactions transactions() {
-    return transactions;
+  SqliteStoreLedgerPlanTransactions transactions() {
+    return planTransactions;
   }
 
   SqliteNativeDatabase initializedQueryDatabase() {
@@ -204,41 +196,32 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
   private ContractDecision<SqliteNativeDatabase> openDatabase() {
     threadOwner.requireOwnerThread();
     try (SqliteOwnedPassphrase workingPassphrase = sessionSecret().borrowWorkingCopy()) {
-      @Nullable Path preexistingAncestorDirectory = null;
       if (context.accessMode().createsFiles() && Files.notExists(context.bookPath())) {
-        if (context.accessMode().requiresAbsentNewBookTarget()) {
-          preexistingAncestorDirectory =
-              SqliteLedgerPlanArtifactCleanup.nearestExistingAncestor(context.bookPath());
-        }
-        ledgerPlanTransactions.noteBookArtifactsMayMutate();
         SqliteBookSchemaBootstrap.ensureParentDirectory(context.bookPath());
       }
       SqliteNativeDatabase openedDatabase =
           SqliteStoreOperations.retryTransientLockFailures(
               () -> context.openConfiguredDatabase(workingPassphrase.nativePassphrase()));
       publishDatabase(openedDatabase);
-      if (context.accessMode().requiresAbsentNewBookTarget()) {
-        ownsUninitializedExclusiveNewBook = true;
-        exclusiveNewBookPreexistingAncestorDirectory = preexistingAncestorDirectory;
-      }
       return ContractDecision.accepted(openedDatabase);
     } catch (SqliteCallerPathContractException exception) {
       ContractFailure callerPathFailure =
           SqliteCallerPathFailureMapper.invalidBookFilePath(exception);
       rememberTerminalFailure(new ContractFailureException(callerPathFailure));
       return ContractDecision.rejected(callerPathFailure);
-    } catch (SqliteNativeException exception) {
-      if (context.accessMode().requiresAbsentNewBookTarget()
-          && Files.exists(context.bookPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS)) {
-        ContractFailure destinationFailure =
-            ContractErrors.Descriptor.BOOK_DESTINATION_OCCUPIED.failureAt(
-                context.bookPath(),
-                "The selected --book-file destination became occupied while FinGrind was creating it; it was not opened or replaced.",
-                "Choose a missing --book-file destination before opening a new book.",
-                ProtocolBookAccessOptions.BOOK_FILE);
-        rememberTerminalFailure(new ContractFailureException(destinationFailure));
-        return ContractDecision.rejected(destinationFailure);
+    } catch (SqliteNewBookDestinationOccupiedException exception) {
+      if (!context.accessMode().requiresAbsentNewBookTarget()) {
+        throw rememberTerminalFailure(exception);
       }
+      ContractFailure destinationFailure =
+          ContractErrors.Descriptor.BOOK_DESTINATION_OCCUPIED.failureAt(
+              exception.targetPath(),
+              "The selected --book-file destination became occupied while FinGrind was creating it; it was not opened or replaced.",
+              "Choose a missing --book-file destination before opening a new book.",
+              ProtocolBookAccessOptions.BOOK_FILE);
+      rememberTerminalFailure(new ContractFailureException(destinationFailure));
+      return ContractDecision.rejected(destinationFailure);
+    } catch (SqliteNativeException exception) {
       Optional<ContractFailure> authenticationFailure =
           SqliteStoreOperations.protectedBookVerificationFailure(exception);
       if (authenticationFailure.isPresent()) {
@@ -248,91 +231,6 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
       throw rememberTerminalFailure(SqliteStoreOperations.openRuntimeFailure(exception));
     } catch (IllegalStateException exception) {
       throw rememberTerminalFailure(exception);
-    }
-  }
-
-  private void cleanupCreatedMissingBookArtifacts(@Nullable Path preexistingAncestorDirectory) {
-    SqliteLedgerPlanArtifactCleanup.cleanupCreatedMissingBookArtifacts(
-        context.bookPath(), preexistingAncestorDirectory, detachPublishedDatabase());
-  }
-
-  /** Coordinates ledger-plan transaction state for one open SQLite store lifecycle. */
-  final class Transactions {
-    private Transactions() {}
-
-    void begin() {
-      threadOwner.requireOwnerThread();
-      ensureOpen();
-      ledgerPlanTransactions.begin(
-          SqliteStoreLifecycle.this::database,
-          SqliteStoreLifecycle.this::cleanupCreatedMissingBookArtifacts);
-    }
-
-    void beginAttestedPlan() {
-      threadOwner.requireOwnerThread();
-      ensureOpen();
-      ledgerPlanTransactions.beginAttestedPlan(
-          SqliteStoreLifecycle.this::database,
-          SqliteStoreLifecycle.this::cleanupCreatedMissingBookArtifacts);
-    }
-
-    void commit() {
-      threadOwner.requireOwnerThread();
-      ensureOpen();
-      ledgerPlanTransactions.commit(SqliteStoreLifecycle.this::database);
-    }
-
-    void rollback() {
-      threadOwner.requireOwnerThread();
-      ledgerPlanTransactions.rollback(
-          publishedDatabase(), SqliteStoreLifecycle.this::cleanupCreatedMissingBookArtifacts);
-    }
-
-    SqliteTransactionOwnership beginImmediateIfNeeded(SqliteNativeDatabase activeDatabase) {
-      threadOwner.requireOwnerThread();
-      if (ledgerPlanTransactions.active()) {
-        ledgerPlanTransactions.beginImmediateIfNeeded(activeDatabase);
-        return SqliteTransactionOwnership.SHARED;
-      }
-      activeDatabase.executeStatement("begin immediate");
-      return SqliteTransactionOwnership.OWNED;
-    }
-
-    SqliteAttestedWriteAdmission admitAttestedWrite(SqliteNativeDatabase activeDatabase) {
-      threadOwner.requireOwnerThread();
-      if (ledgerPlanTransactions.active()) {
-        ledgerPlanTransactions.beginImmediateIfNeeded(activeDatabase);
-        return new SqliteAttestedWriteAdmission(
-            ledgerPlanTransactions.requireObservedAttestationHead(),
-            SqliteTransactionOwnership.SHARED);
-      }
-      SqliteAttestationEvidenceStore.ObservedHead observedHead =
-          SqliteAttestationEvidenceStore.observeRequired(activeDatabase);
-      activeDatabase.executeStatement("begin immediate");
-      return new SqliteAttestedWriteAdmission(observedHead, SqliteTransactionOwnership.OWNED);
-    }
-
-    boolean active() {
-      threadOwner.requireOwnerThread();
-      return ledgerPlanTransactions.active();
-    }
-
-    boolean begunInDatabase() {
-      threadOwner.requireOwnerThread();
-      return ledgerPlanTransactions.begunInDatabase();
-    }
-
-    SqliteAttestationEvidenceStore.ObservedHead requireObservedAttestationHead() {
-      threadOwner.requireOwnerThread();
-      return ledgerPlanTransactions.requireObservedAttestationHead();
-    }
-
-    void cleanupCreatedMissingBookArtifactsIfPresent() {
-      threadOwner.requireOwnerThread();
-      if (!ledgerPlanTransactions.createdBookArtifacts()) {
-        return;
-      }
-      cleanupCreatedMissingBookArtifacts(ledgerPlanTransactions.preexistingAncestorDirectory());
     }
   }
 }

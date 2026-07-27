@@ -11,39 +11,37 @@ public final class AttestationLifecycleState {
   /**
    * Returns the next sequential book-key epoch from verified immutable operation evidence.
    *
-   * <p>A key epoch changes only with a verified {@code rekey-book} operation. The first rekey is
-   * epoch one; any gap, duplicate, or malformed historical rekey evidence is structural invalidity
-   * rather than a value the next command may paper over.
+   * <p>Genesis establishes epoch one. A key epoch changes only with a verified {@code rekey-book}
+   * operation, so the first rekey is epoch two; any gap, duplicate, or malformed historical rekey
+   * evidence is structural invalidity rather than a value the next command may paper over. An empty
+   * list represents no recorded rekeys and returns the first rekey epoch. Every nonempty list is
+   * verified as one complete book chain before its lifecycle state is derived.
    */
   public static BigInteger nextKeyEpoch(List<AttestationEvidence> evidence) {
     List<AttestationEvidence> checkedEvidence =
         List.copyOf(Objects.requireNonNull(evidence, "evidence"));
-    BigInteger expectedEpoch = BigInteger.ONE;
+    if (!checkedEvidence.isEmpty()) {
+      AttestationVerifier.verifyBook(checkedEvidence);
+    }
+    AttestationLifecycleHistory history = AttestationLifecycleHistory.genesis();
     for (AttestationEvidence operation : checkedEvidence) {
       AttestationEvidence checkedOperation =
           Objects.requireNonNull(operation, "evidence must not contain null");
       AttestationDecodedEnvelope<AttestationOperationPayload> envelope =
           AttestationDecodedEnvelope.operation(checkedOperation.operationEnvelope());
-      if (AttestationOperationKind.forWireToken(envelope.payload().operationKind())
-          != AttestationOperationKind.REKEY_BOOK) {
+      AttestationOperationKind operationKind =
+          AttestationOperationKind.forWireToken(envelope.payload().operationKind());
+      if (operationKind != AttestationOperationKind.REKEY_BOOK) {
         continue;
       }
+      AttestationPreimage request =
+          AttestationPreimage.decode(
+              checkedOperation.requestPreimage(), AttestationAuthorizationFailure.PREIMAGE_INVALID);
       AttestationPreimage effect =
           AttestationPreimage.decode(
               checkedOperation.effectPreimage(), AttestationAuthorizationFailure.PREIMAGE_INVALID);
-      List<AttestationPreimage.Fact> records =
-          effect.records().stream().filter(record -> record.recordTypeTag() == 0x0007).toList();
-      if (records.size() != 1) {
-        throw new AttestationVerificationException("attestation-preimage-invalid");
-      }
-      BigInteger epoch =
-          AttestationPreimageValueReader.unsigned64(
-              records.getFirst(), 1, AttestationAuthorizationFailure.PREIMAGE_INVALID);
-      if (!epoch.equals(expectedEpoch)) {
-        throw new AttestationVerificationException("attestation-preimage-invalid");
-      }
-      expectedEpoch = expectedEpoch.add(BigInteger.ONE);
+      history = history.accept(operationKind, request, effect);
     }
-    return expectedEpoch;
+    return history.nextRekeyEpoch();
   }
 }

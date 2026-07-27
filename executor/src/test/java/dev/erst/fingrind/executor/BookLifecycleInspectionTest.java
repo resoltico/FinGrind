@@ -5,10 +5,13 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializ
 import static dev.erst.fingrind.executor.NullTestSupport.nullOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.runtime.BookFormatContract;
+import dev.erst.fingrind.contract.runtime.ContractFailureDetails;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import java.time.Instant;
 import java.util.List;
@@ -201,20 +204,28 @@ class BookLifecycleInspectionTest {
                             BookLifecycleInspection.Status.FOREIGN_SQLITE, 0, 0, 1)
                         .allowsInitializedWorkflow())
             .getMessage());
-    assertEquals(
-        "The selected FinGrind book format version 7 is unsupported. Expected version "
-            + BookFormatContract.FORMAT_VERSION
-            + ".",
+    ContractFailureException unsupportedFormatFailure =
         assertThrows(
-                IllegalStateException.class,
-                () ->
-                    new BookLifecycleInspection.Existing(
-                            BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION,
-                            1,
-                            7,
-                            BookFormatContract.FORMAT_VERSION)
-                        .allowsInitializedWorkflow())
-            .getMessage());
+            ContractFailureException.class,
+            () ->
+                new BookLifecycleInspection.Existing(
+                        BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION,
+                        1,
+                        7,
+                        BookFormatContract.FORMAT_VERSION)
+                    .allowsInitializedWorkflow());
+    assertEquals(
+        "The selected FinGrind book uses format version 7, but this FinGrind binary supports version "
+            + BookFormatContract.FORMAT_VERSION
+            + " only.",
+        unsupportedFormatFailure.getMessage());
+    ContractFailureDetails.UnsupportedBookFormatVersion unsupportedFormatDetails =
+        assertInstanceOf(
+            ContractFailureDetails.UnsupportedBookFormatVersion.class,
+            unsupportedFormatFailure.failure().details());
+    assertEquals(7, unsupportedFormatDetails.detectedBookFormatVersion());
+    assertEquals(
+        BookFormatContract.FORMAT_VERSION, unsupportedFormatDetails.supportedBookFormatVersion());
     assertEquals(
         "The selected FinGrind book is incomplete or corrupted and cannot be opened safely.",
         assertThrows(
@@ -237,5 +248,38 @@ class BookLifecycleInspectionTest {
                             BookLifecycleInspection.Status.INCOMPLETE_FINGRIND, 3, 2, 4)
                         .allowsInitializedWorkflow())
             .getMessage());
+  }
+
+  @Test
+  void requireInitializedBookIdentity_preservesTheCanonicalNonCurrentFormatFailure() {
+    int detectedFormatVersion = BookFormatContract.FORMAT_VERSION + 1;
+    BookLifecycleInspection.Existing inspection =
+        new BookLifecycleInspection.Existing(
+            BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION,
+            1,
+            detectedFormatVersion,
+            BookFormatContract.FORMAT_VERSION);
+
+    ContractFailureException failure =
+        assertThrows(
+            ContractFailureException.class,
+            () -> BookLifecycleInspection.requireInitializedBookIdentity(inspection));
+
+    assertEquals("unsupported-book-format-version", failure.failure().code());
+    ContractFailureDetails.UnsupportedBookFormatVersion details =
+        assertInstanceOf(
+            ContractFailureDetails.UnsupportedBookFormatVersion.class, failure.failure().details());
+    assertEquals(detectedFormatVersion, details.detectedBookFormatVersion());
+    assertEquals(BookFormatContract.FORMAT_VERSION, details.supportedBookFormatVersion());
+  }
+
+  @Test
+  void requireInitializedBookIdentity_returnsTheExactInitializedBookIdentity() {
+    BookLifecycleInspection.Initialized inspection =
+        initializedLifecycleInspection(1, 2, 3, Instant.parse("2026-05-07T09:10:11Z"));
+
+    assertEquals(
+        inspection.bookIdentity(),
+        BookLifecycleInspection.requireInitializedBookIdentity(inspection));
   }
 }

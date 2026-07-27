@@ -14,10 +14,11 @@ final class ProtocolPeriodCloseOperations {
         List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
             ProtocolOptions.DateRange.THROUGH + " <YYYY-MM-DD>",
-            ProtocolOptions.requiredAttestationCredentialSyntax(),
-            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+            ProtocolOptionSyntax.Attestation.requiredCredentialSyntax(),
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),
         "Sweep the derived contiguous reporting window into the policy-selected result-holding account.",
@@ -40,10 +41,11 @@ final class ProtocolPeriodCloseOperations {
         List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
             ProtocolOptions.DateRange.YEAR + " <YYYY>",
-            ProtocolOptions.requiredAttestationCredentialSyntax(),
-            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+            ProtocolOptionSyntax.Attestation.requiredCredentialSyntax(),
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),
         "Close the fiscal year by settling owner withdrawals into capital and accumulating current-year result into retained accumulated equity.",

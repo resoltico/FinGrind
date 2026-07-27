@@ -3,7 +3,9 @@ package dev.erst.fingrind.contract.tax;
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.FailureCategory;
+import dev.erst.fingrind.contract.runtime.FieldDescriptor;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import java.util.List;
 import java.util.Objects;
 
@@ -18,7 +20,7 @@ public sealed interface TaxDeclarationRejection
   }
 
   /** Returns the canonical machine descriptors for every tax-declaration rejection. */
-  static List<ContractResponse.RejectionDescriptor> descriptors() {
+  static List<RejectionDescriptor> descriptors() {
     return Descriptor.descriptors();
   }
 
@@ -38,8 +40,8 @@ public sealed interface TaxDeclarationRejection
     }
   }
 
-  private static ContractResponse.FieldDescriptor detailField(String name, String description) {
-    return new ContractResponse.FieldDescriptor(name, description);
+  private static FieldDescriptor detailField(String name, String description) {
+    return new FieldDescriptor(name, description);
   }
 
   private static Descriptor descriptorFor(TaxDeclarationRejection rejection) {
@@ -72,7 +74,7 @@ public sealed interface TaxDeclarationRejection
       };
     }
 
-    private List<ContractResponse.FieldDescriptor> detailFields() {
+    private List<FieldDescriptor> detailFields() {
       return switch (this) {
         case BOOK_NOT_INITIALIZED -> List.of();
         case DEFINITION_VIOLATIONS ->
@@ -83,19 +85,18 @@ public sealed interface TaxDeclarationRejection
       };
     }
 
-    private ContractResponse.RejectionDescriptor descriptor() {
-      return new ContractResponse.RejectionDescriptor(
-          code(), category(), description(), detailFields(), List.of());
+    private RejectionDescriptor descriptor() {
+      return new RejectionDescriptor(code(), category(), description(), detailFields(), List.of());
     }
 
-    private ContractResponse.FailureCategory category() {
+    private FailureCategory category() {
       return switch (this) {
-        case BOOK_NOT_INITIALIZED -> ContractResponse.FailureCategory.PRECONDITION;
-        case DEFINITION_VIOLATIONS -> ContractResponse.FailureCategory.DOMAIN_SEMANTIC;
+        case BOOK_NOT_INITIALIZED -> FailureCategory.PRECONDITION;
+        case DEFINITION_VIOLATIONS -> FailureCategory.DOMAIN_SEMANTIC;
       };
     }
 
-    private static List<ContractResponse.RejectionDescriptor> descriptors() {
+    private static List<RejectionDescriptor> descriptors() {
       return List.of(values()).stream().map(Descriptor::descriptor).toList();
     }
   }

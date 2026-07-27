@@ -141,7 +141,8 @@ class CliFuzzAccountLifecycleFixturesTest {
                         declaration.accountType(),
                         declaration.accountTaxonomy(),
                         false,
-                        declaredAt));
+                        declaredAt),
+                    CliFuzzAttestationFixtures.syntheticAppend());
               }
             },
             new CliFuzzFixtureStoreSupport.AbstractBookAdministrationStoreStub() {},
@@ -169,7 +170,8 @@ class CliFuzzAccountLifecycleFixturesTest {
                         declaration.accountType(),
                         declaration.accountTaxonomy(),
                         true,
-                        declaredAt.plusSeconds(1)));
+                        declaredAt.plusSeconds(1)),
+                    CliFuzzAttestationFixtures.syntheticAppend());
               }
             },
             new CliFuzzFixtureStoreSupport.AbstractBookAdministrationStoreStub() {},
@@ -214,7 +216,9 @@ class CliFuzzAccountLifecycleFixturesTest {
                         true,
                         declaredAt);
                 return switch (declareCalls.getAndIncrement()) {
-                  case 0 -> new AccountDeclarationOutcome.Renamed(account);
+                  case 0 ->
+                      new AccountDeclarationOutcome.Renamed(
+                          account, CliFuzzAttestationFixtures.syntheticAppend());
                   case 1 -> new AccountDeclarationOutcome.Unchanged(account);
                   default -> throw new AssertionError("Unexpected extra account declaration call.");
                 };

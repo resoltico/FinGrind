@@ -29,47 +29,6 @@ final class SqliteGeneratedSecretTarget {
     return SqliteOwnedStagedArtifact.create(finalPath, infix, suffix);
   }
 
-  /** Requires an atomic no-replace publication primitive on the target's filesystem. */
-  static void requireAtomicNoReplacePublication(Path finalPath) {
-    requireAtomicNoReplacePublication(finalPath, Files::createLink);
-  }
-
-  /** Tests the no-replace primitive with one disposable sibling probe. */
-  static void requireAtomicNoReplacePublication(
-      Path finalPath, SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator linkCreator) {
-    Path checkedPath = Objects.requireNonNull(finalPath, "finalPath");
-    Objects.requireNonNull(linkCreator, "linkCreator");
-    Path probeSource = null;
-    Path probeTarget = null;
-    try {
-      Path parent = Objects.requireNonNull(checkedPath.getParent(), "finalPath parent");
-      probeSource = Files.createTempFile(parent, ".fingrind-no-replace-probe-", ".tmp");
-      probeTarget = probeSource.resolveSibling(probeSource.getFileName() + ".published");
-      linkCreator.create(probeTarget, probeSource);
-    } catch (UnsupportedOperationException exception) {
-      throw atomicPublicationUnsupported(checkedPath, exception);
-    } catch (FileSystemException exception) {
-      if (signalsUnsupportedAtomicPublication(exception)) {
-        throw atomicPublicationUnsupported(checkedPath, exception);
-      }
-      throw new IllegalStateException(
-          "Failed to verify atomic no-replace secret publication for " + checkedPath + ".",
-          exception);
-    } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Failed to verify atomic no-replace secret publication for " + checkedPath + ".",
-          exception);
-    } finally {
-      SqliteProtectedBookStagingFiles.deleteQuietlyIfPresent(probeTarget);
-      SqliteProtectedBookStagingFiles.deleteQuietlyIfPresent(probeSource);
-    }
-  }
-
-  /** Publishes a generated secret while retaining its stage for paired-publication recovery. */
-  void publishRetainingStage(Path stagedPath) throws IOException {
-    publishRetainingStage(stagedPath, Files::createLink);
-  }
-
   /** Publishes a staged secret without deleting the stage until its pair is durably complete. */
   void publishRetainingStage(
       Path stagedPath, SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator linkCreator)

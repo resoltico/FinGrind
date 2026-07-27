@@ -97,7 +97,7 @@ final class ProtocolOperationDefinitions {
   }
 
   private static String usageOption(String option) {
-    return option.equals(ProtocolOptions.currentPassphraseSourceSyntax())
+    return option.equals(ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax())
         ? "[" + option + "]"
         : option;
   }

@@ -10,7 +10,7 @@ import java.util.Objects;
  *
  * <p>Only the four registry-bearing operation families may add their corresponding effect facts.
  * The request/effect projection checks make every authority change self-proving before it can
- * influence a later historical authorization decision.
+ * influence a later position-resolved authorization decision.
  */
 final class AttestationRegistryHistory {
   private final List<AttestationCredentialBinding> bindings = new ArrayList<>();

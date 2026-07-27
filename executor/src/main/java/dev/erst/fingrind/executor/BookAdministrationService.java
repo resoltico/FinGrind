@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import dev.erst.fingrind.core.BookIdentity;
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome;
@@ -52,6 +53,11 @@ public final class BookAdministrationService {
   /** Declares or reactivates one account in the selected book. */
   public AccountDeclarationOutcome declareAccount(
       AccountDeclaration command, AttestationOperationAuthorizer attestationAuthorizer) {
+    return requireImmediateAttestation(declareAccountInternal(command, attestationAuthorizer));
+  }
+
+  private AccountDeclarationOutcome declareAccountInternal(
+      AccountDeclaration command, AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(command, "command");
     AttestationOperationAuthorizer.require(attestationAuthorizer);
     if (!lifecycleReader.allowsInitializedWorkflow()) {
@@ -80,7 +86,8 @@ public final class BookAdministrationService {
     if (rejection.isPresent()) {
       return new AccountAmendmentOutcome.Rejected(rejection.orElseThrow());
     }
-    return bookStore.amendAccount(command, clock.instant(), attestationAuthorizer);
+    return requireImmediateAttestation(
+        bookStore.amendAccount(command, clock.instant(), attestationAuthorizer));
   }
 
   /** Retires one zero-balance account from ordinary authored posting use. */
@@ -93,6 +100,55 @@ public final class BookAdministrationService {
       return new AccountRetirementOutcome.Rejected(
           new BookkeepingAdministrationRejection.BookNotInitialized());
     }
-    return bookStore.retireAccount(accountCode, clock.instant(), attestationAuthorizer);
+    return requireImmediateAttestation(
+        bookStore.retireAccount(accountCode, clock.instant(), attestationAuthorizer));
+  }
+
+  private static AccountDeclarationOutcome requireImmediateAttestation(
+      AccountDeclarationOutcome outcome) {
+    return switch (Objects.requireNonNull(outcome, "outcome")) {
+      case AccountDeclarationOutcome.Declared declared -> {
+        requireImmediate(declared.attestationAppend());
+        yield declared;
+      }
+      case AccountDeclarationOutcome.Reactivated reactivated -> {
+        requireImmediate(reactivated.attestationAppend());
+        yield reactivated;
+      }
+      case AccountDeclarationOutcome.Renamed renamed -> {
+        requireImmediate(renamed.attestationAppend());
+        yield renamed;
+      }
+      case AccountDeclarationOutcome.Unchanged unchanged -> unchanged;
+      case AccountDeclarationOutcome.Rejected rejected -> rejected;
+    };
+  }
+
+  private static AccountAmendmentOutcome requireImmediateAttestation(
+      AccountAmendmentOutcome outcome) {
+    return switch (Objects.requireNonNull(outcome, "outcome")) {
+      case AccountAmendmentOutcome.Amended amended -> {
+        requireImmediate(amended.attestationAppend());
+        yield amended;
+      }
+      case AccountAmendmentOutcome.Unchanged unchanged -> unchanged;
+      case AccountAmendmentOutcome.Rejected rejected -> rejected;
+    };
+  }
+
+  private static AccountRetirementOutcome requireImmediateAttestation(
+      AccountRetirementOutcome outcome) {
+    return switch (Objects.requireNonNull(outcome, "outcome")) {
+      case AccountRetirementOutcome.Retired retired -> {
+        requireImmediate(retired.attestationAppend());
+        yield retired;
+      }
+      case AccountRetirementOutcome.Unchanged unchanged -> unchanged;
+      case AccountRetirementOutcome.Rejected rejected -> rejected;
+    };
+  }
+
+  private static void requireImmediate(AttestationAppendOutcome.Appended attestationAppend) {
+    Objects.requireNonNull(attestationAppend, "attestationAppend").requireAppended();
   }
 }

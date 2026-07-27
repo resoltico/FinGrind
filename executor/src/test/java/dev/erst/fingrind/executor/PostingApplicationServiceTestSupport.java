@@ -459,15 +459,20 @@ final class PostingApplicationServiceTestSupport {
                   new dev.erst.fingrind.executor.bookkeeping.ReversalTargetIsReversal(
                       new PostingId("41a95cd2-4a5f-3ef3-8a33-c2771905f362")));
           case "idem-attested" ->
-              new PostingCommitResult.Committed(
+              new PostingCommitResult.Appended(
                   postingFact,
-                  false,
-                  new AttestationVerification(
-                      java.util.UUID.fromString("018f0000-0000-7000-8000-000000000001"),
-                      java.math.BigInteger.ONE,
-                      new byte[32],
-                      List.of()));
-          default -> throw new AssertionError("Unexpected test idempotency key: " + idempotencyKey);
+                  new dev.erst.fingrind.core.attestation.AttestationAppendOutcome.Appended(
+                      new AttestationVerification(
+                          java.util.UUID.fromString("018f0000-0000-7000-8000-000000000001"),
+                          java.math.BigInteger.ONE,
+                          new byte[32],
+                          new byte[32],
+                          List.of())));
+          case "idem-replayed" ->
+              new PostingCommitResult.Replayed(existingPosting("posting-replayed", idempotencyKey));
+          default ->
+              throw new AssertionError(
+                  "Unexpected test idempotency key: %s".formatted(idempotencyKey));
         };
       }
     };
@@ -486,10 +491,20 @@ final class PostingApplicationServiceTestSupport {
                 posting.provenance())));
   }
 
-  /** Minimal book-session stub whose methods fail unless a test overrides them. */
+  /**
+   * Minimal book-session stub whose methods fail unless a test overrides them.
+   *
+   * @implNote Default methods fail fast so each test explicitly declares every collaborator it
+   *     needs.
+   */
   interface PostingBookSession extends PostingValidationStore, PostingCommitStore {}
 
-  /** Minimal posting-session stub whose methods fail unless a test overrides them. */
+  /**
+   * Minimal posting-session stub whose methods fail unless a test overrides them.
+   *
+   * @implNote Default methods fail fast so each test explicitly declares every collaborator it
+   *     needs.
+   */
   abstract static class DelegatingPostingBookSession implements PostingBookSession {
     @Override
     public BookLifecycleInspection inspectBook() {

@@ -71,7 +71,6 @@ final class SqliteInterimResultSweepOperations {
 
   InterimResultSweepOutcome interimResultSweep(
       LocalDate throughEffectiveDate,
-      LocalDate bookStartDate,
       BookIdentity bookIdentity,
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,
@@ -79,7 +78,6 @@ final class SqliteInterimResultSweepOperations {
       PostingIdGenerator postingIdGenerator,
       AttestationOperationAuthorizer attestationAuthorizer) {
     Objects.requireNonNull(throughEffectiveDate, "throughEffectiveDate");
-    Objects.requireNonNull(bookStartDate, "bookStartDate");
     return plannedInterimResultSweep(
         bookIdentity,
         planner,
@@ -89,56 +87,7 @@ final class SqliteInterimResultSweepOperations {
         attestationAuthorizer,
         activeDatabase ->
             derivedSweepPlanning(
-                activeDatabase,
-                throughEffectiveDate,
-                bookStartDate,
-                bookIdentity,
-                planner,
-                currentUtcDate));
-  }
-
-  InterimResultSweepOutcome interimResultSweep(
-      InterimResultSweepDraft interimResultSweepDraft,
-      PostingIdGenerator postingIdGenerator,
-      AttestationOperationAuthorizer attestationAuthorizer) {
-    executionSupport.requireWritableMutationSession();
-    Objects.requireNonNull(interimResultSweepDraft, "interimResultSweepDraft");
-    Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
-    AttestationOperationAuthorizer.require(attestationAuthorizer);
-    if (executionSupport.missingBookFile()) {
-      return bookNotInitializedOutcome();
-    }
-    return executionSupport.withBorrowedDatabase(
-        activeDatabase -> {
-          SqliteTransactionOwnership transactionOwnership = SqliteTransactionOwnership.SHARED;
-          boolean committed = false;
-          try {
-            if (!executionSupport.isInitializedBook(activeDatabase)) {
-              return bookNotInitializedOutcome();
-            }
-            SqliteAttestationEvidenceStore.ObservedHead observedHead =
-                SqliteAttestationEvidenceStore.observeRequired(activeDatabase);
-            transactionOwnership = executionSupport.beginImmediateIfNeeded(activeDatabase);
-            var sweptInterimResult =
-                postingPersistence.persistInterimResultSweep(
-                    activeDatabase,
-                    observedHead,
-                    interimResultSweepDraft,
-                    postingIdGenerator,
-                    attestationAuthorizer);
-            SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
-            committed = true;
-            return new InterimResultSweepOutcome.Transferred(
-                sweptInterimResult.sweptInterimResult(), sweptInterimResult.attestationCommit());
-          } catch (SqliteNativeException exception) {
-            throw SqliteStoreOperations.sqliteFailure(
-                "Failed to close one SQLite reporting period.", exception);
-          } finally {
-            if (!committed) {
-              SqliteStoreOperations.rollbackIfOwned(activeDatabase, transactionOwnership);
-            }
-          }
-        });
+                activeDatabase, throughEffectiveDate, bookIdentity, planner, currentUtcDate));
   }
 
   private InterimResultSweepOutcome plannedInterimResultSweep(
@@ -221,7 +170,6 @@ final class SqliteInterimResultSweepOperations {
   private SweepPlanningResult derivedSweepPlanning(
       SqliteNativeDatabase activeDatabase,
       LocalDate throughEffectiveDate,
-      LocalDate bookStartDate,
       BookIdentity bookIdentity,
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate) {
@@ -229,17 +177,13 @@ final class SqliteInterimResultSweepOperations {
         readSupport.loadTransferredThroughEffectiveDate(activeDatabase);
     Optional<BookkeepingAdministrationRejection> closeHorizonRejection =
         planner.closeHorizonRejection(
-            throughEffectiveDate,
-            bookStartDate,
-            bookIdentity,
-            currentUtcDate,
-            transferredThroughEffectiveDate);
+            throughEffectiveDate, bookIdentity, currentUtcDate, transferredThroughEffectiveDate);
     if (closeHorizonRejection.isPresent()) {
       return new SweepPlanningResult(null, closeHorizonRejection.orElseThrow());
     }
     return new SweepPlanningResult(
         planner.reportingPeriod(
-            throughEffectiveDate, bookStartDate, bookIdentity, transferredThroughEffectiveDate),
+            throughEffectiveDate, bookIdentity, transferredThroughEffectiveDate),
         null);
   }
 

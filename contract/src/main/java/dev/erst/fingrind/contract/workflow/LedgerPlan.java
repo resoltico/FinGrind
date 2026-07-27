@@ -23,4 +23,9 @@ public record LedgerPlan(LedgerPlanId planId, List<LedgerStep> steps) {
       throw new IllegalArgumentException("Ledger plan stepId values must be unique.");
     }
   }
+
+  /** Returns whether this plan contains any step that durably changes the protected book. */
+  public boolean containsBookMutation() {
+    return steps.stream().anyMatch(step -> step.kind().mutatesBook());
+  }
 }

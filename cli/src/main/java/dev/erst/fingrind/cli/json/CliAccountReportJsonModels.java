@@ -21,7 +21,7 @@ public interface CliAccountReportJsonModels {
 
   record AccountBalancePayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       CliReportJsonModels.AccountBalanceResolvedQuery resolvedQuery,
       String generatedAt,
       CliReportValueJsonModels.AccountPayload account,
@@ -39,7 +39,7 @@ public interface CliAccountReportJsonModels {
 
   record TrialBalancePayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       CliReportJsonModels.TrialBalanceResolvedQuery resolvedQuery,
       String generatedAt,
       String balanceState,
@@ -96,7 +96,7 @@ public interface CliAccountReportJsonModels {
 
   record AccountLedgerPayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       CliReportJsonModels.AccountLedgerResolvedQuery resolvedQuery,
       String generatedAt,
       CliReportValueJsonModels.AccountPayload account,
@@ -137,7 +137,7 @@ public interface CliAccountReportJsonModels {
 
   record PeriodSummaryPayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       CliReportJsonModels.PeriodResolvedQuery resolvedQuery,
       String generatedAt,
       int postingCount,

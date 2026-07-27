@@ -26,62 +26,136 @@ final class AttestationBookVerifier {
     AttestationBook checkedBook = Objects.requireNonNull(book, "book");
     List<AttestationCompromiseReview> checkedReviews =
         AttestationCompromiseReview.canonicalize(compromiseReviews);
-    List<AttestationBookVerification.VerifiedOperation> verifiedOperations = new ArrayList<>();
-    AttestationRegistryHistory registryHistory = null;
-    UUID bookId = null;
-    AttestationHash expectedPreviousHead = ZERO_HEAD;
-    BigInteger expectedOrder = BigInteger.ZERO;
+    VerificationProgress progress = new VerificationProgress();
     for (AttestationBookOperation operation : checkedBook.operations()) {
-      AttestationBookOperation checkedOperation = Objects.requireNonNull(operation, "operations");
+      progress.verify(Objects.requireNonNull(operation, "operations"));
+    }
+    return progress.complete(checkedReviews);
+  }
+
+  /**
+   * Holds the single ordered verification cursor for one immutable protected-book evidence chain.
+   */
+  private static final class VerificationProgress {
+    private final List<AttestationBookVerification.VerifiedOperation> verifiedOperations =
+        new ArrayList<>();
+    private @Nullable VerificationHistories histories;
+    private @Nullable UUID bookId;
+    private AttestationHash expectedPreviousHead = ZERO_HEAD;
+    private BigInteger expectedOrder = BigInteger.ZERO;
+
+    private void verify(AttestationBookOperation checkedOperation) {
       AttestationOperationPayload payload = checkedOperation.envelope().payload();
       requireBoundPreimages(payload, checkedOperation);
       if (payload.operationOrder().signum() == 0) {
-        if (!expectedOrder.equals(BigInteger.ZERO)) {
-          throw previousHeadFailure();
-        }
-        AttestationGenesisAuthorizationContext genesis =
-            AttestationGenesisAuthorizationContext.verify(
-                payload, checkedOperation.requestPreimage(), checkedOperation.effectPreimage());
-        AttestationAuthorization.requireGenesis(
-            genesis, checkedOperation.envelope().authorizationEnvelope());
-        bookId = payload.bookId();
-        registryHistory = AttestationRegistryHistory.genesis(genesis);
-        registryHistory.requireAcceptedState();
+        verifyGenesis(payload, checkedOperation);
       } else {
-        AttestationOperationKind operationKind =
-            AttestationOperationKind.forWireToken(payload.operationKind());
-        AttestationVerifiedOperationProvenance provenance =
-            AttestationOperationProfile.requireValid(
-                payload,
-                operationKind,
-                checkedOperation.requestPreimage(),
-                checkedOperation.effectPreimage());
-        if (registryHistory == null) {
-          throw previousHeadFailure();
-        }
-        AttestationRegistryHistory checkedRegistryHistory = registryHistory;
-        AttestationRegistryHistory nextRegistryHistory =
-            checkedRegistryHistory.preview(
-                operationKind,
-                payload.operationOrder(),
-                checkedOperation.requestPreimage(),
-                checkedOperation.effectPreimage());
-        requireChainPosition(payload, bookId, expectedOrder, expectedPreviousHead);
-        AttestationAuthorization.requireAuthorized(
-            checkedRegistryHistory.registry(),
-            AttestationAuthorizationContext.operation(payload, provenance),
-            checkedOperation.envelope().authorizationEnvelope());
-        AttestationSystemDerivation.requireValid(
-            checkedRegistryHistory.registry(),
+        verifySuccessor(payload, checkedOperation);
+      }
+      requireExpectedChainPosition(payload);
+      acceptVerifiedOperation(payload, checkedOperation);
+    }
+
+    private void verifyGenesis(
+        AttestationOperationPayload payload, AttestationBookOperation checkedOperation) {
+      if (!expectedOrder.equals(BigInteger.ZERO)) {
+        throw previousHeadFailure();
+      }
+      AttestationGenesisAuthorizationContext genesis =
+          AttestationGenesisAuthorizationContext.verify(
+              payload, checkedOperation.requestPreimage(), checkedOperation.effectPreimage());
+      AttestationAuthorization.requireGenesis(
+          genesis, checkedOperation.envelope().authorizationEnvelope());
+      AttestationRegistryHistory registryHistory = AttestationRegistryHistory.genesis(genesis);
+      AttestationPeriodCloseHistory closeHistory =
+          AttestationPeriodCloseHistory.genesis(checkedOperation.effectPreimage());
+      AttestationLifecycleHistory lifecycleHistory = AttestationLifecycleHistory.genesis();
+      registryHistory.requireAcceptedState();
+      bookId = payload.bookId();
+      histories = new VerificationHistories(registryHistory, closeHistory, lifecycleHistory);
+    }
+
+    private void verifySuccessor(
+        AttestationOperationPayload payload, AttestationBookOperation checkedOperation) {
+      AttestationOperationKind operationKind =
+          AttestationOperationKind.forWireToken(payload.operationKind());
+      AttestationVerifiedOperationProvenance provenance =
+          AttestationOperationProfile.requireValid(
+              payload,
+              operationKind,
+              checkedOperation.requestPreimage(),
+              checkedOperation.effectPreimage());
+      VerificationHistories currentHistories = requireHistories();
+      AttestationLifecycleHistory nextLifecycleHistory =
+          currentHistories
+              .lifecycleHistory()
+              .accept(
+                  operationKind,
+                  checkedOperation.requestPreimage(),
+                  checkedOperation.effectPreimage());
+      AttestationRegistryHistory nextRegistryHistory =
+          currentHistories
+              .registryHistory()
+              .preview(
+                  operationKind,
+                  payload.operationOrder(),
+                  checkedOperation.requestPreimage(),
+                  checkedOperation.effectPreimage());
+      requireExpectedChainPosition(payload);
+      requireVerifiedBackupSource(operationKind, checkedOperation.requestPreimage());
+      AttestationAuthorization.requireAuthorized(
+          currentHistories.registryHistory().registry(),
+          AttestationAuthorizationContext.operation(payload, provenance),
+          checkedOperation.envelope().authorizationEnvelope());
+      nextRegistryHistory.requireAcceptedState();
+      AttestationPeriodCloseHistory nextCloseHistory =
+          nextCloseHistory(currentHistories, payload, operationKind, provenance, checkedOperation);
+      histories =
+          new VerificationHistories(nextRegistryHistory, nextCloseHistory, nextLifecycleHistory);
+    }
+
+    private void requireExpectedChainPosition(AttestationOperationPayload payload) {
+      requireChainPosition(payload, bookId, expectedOrder, expectedPreviousHead);
+    }
+
+    private void requireVerifiedBackupSource(
+        AttestationOperationKind operationKind, AttestationPreimage requestPreimage) {
+      if (operationKind == AttestationOperationKind.BACKUP_CREATED) {
+        AttestationLifecycleEffectProfile.requireVerifiedBackupSource(
+            requestPreimage, verifiedOperations);
+      }
+    }
+
+    private static AttestationPeriodCloseHistory nextCloseHistory(
+        VerificationHistories currentHistories,
+        AttestationOperationPayload payload,
+        AttestationOperationKind operationKind,
+        AttestationVerifiedOperationProvenance provenance,
+        AttestationBookOperation checkedOperation) {
+      if (provenance.sourceChannel() == AttestationSourceChannel.SYSTEM) {
+        return AttestationSystemDerivation.requireValid(
+            currentHistories.closeHistory(),
+            currentHistories.registryHistory().registry(),
             payload,
             operationKind,
             provenance,
             checkedOperation.requestPreimage(),
             checkedOperation.effectPreimage());
-        nextRegistryHistory.requireAcceptedState();
-        registryHistory = nextRegistryHistory;
       }
-      requireChainPosition(payload, bookId, expectedOrder, expectedPreviousHead);
+      return currentHistories
+          .closeHistory()
+          .accept(operationKind, checkedOperation.effectPreimage());
+    }
+
+    private VerificationHistories requireHistories() {
+      if (histories == null) {
+        throw previousHeadFailure();
+      }
+      return histories;
+    }
+
+    private void acceptVerifiedOperation(
+        AttestationOperationPayload payload, AttestationBookOperation checkedOperation) {
       AttestationHash head = checkedOperation.envelope().head();
       verifiedOperations.add(
           new AttestationBookVerification.VerifiedOperation(
@@ -89,14 +163,25 @@ final class AttestationBookVerifier {
       expectedPreviousHead = head;
       expectedOrder = expectedOrder.add(BigInteger.ONE);
     }
-    AttestationRegistryHistory finalRegistryHistory =
-        Objects.requireNonNull(registryHistory, "book must contain genesis");
-    return new AttestationBookVerification(
-        Objects.requireNonNull(bookId, "bookId"),
-        verifiedOperations,
-        finalRegistryHistory.registry(),
-        reviewFindings(verifiedOperations, checkedReviews));
+
+    private AttestationBookVerification complete(
+        List<AttestationCompromiseReview> compromiseReviews) {
+      VerificationHistories finalHistories = requireHistories();
+      List<AttestationCompromiseReview> checkedReviews =
+          AttestationCompromiseReview.requireValidForVerifiedHead(
+              verifiedOperations.getLast().operationOrder(), compromiseReviews);
+      return new AttestationBookVerification(
+          Objects.requireNonNull(bookId, "bookId"),
+          verifiedOperations,
+          finalHistories.registryHistory().registry(),
+          reviewFindings(verifiedOperations, checkedReviews));
+    }
   }
+
+  private record VerificationHistories(
+      AttestationRegistryHistory registryHistory,
+      AttestationPeriodCloseHistory closeHistory,
+      AttestationLifecycleHistory lifecycleHistory) {}
 
   private static void requireBoundPreimages(
       AttestationOperationPayload payload, AttestationBookOperation operation) {

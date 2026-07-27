@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 from .models import FileMetrics
 
@@ -159,9 +159,7 @@ def count_kotlin_declarations(text: str) -> tuple[int, int]:
 
 
 def is_kotlin_identifier(token: str | None) -> bool:
-    if token is None or token in {"{", "}", "(", ")", ":", "."}:
-        return False
-    return True
+    return token is not None and token not in {"{", "}", "(", ")", ":", "."}
 
 
 def strip_shell_comments(text: str) -> str:

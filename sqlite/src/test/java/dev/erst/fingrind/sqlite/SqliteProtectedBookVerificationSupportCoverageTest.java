@@ -132,21 +132,24 @@ class SqliteProtectedBookVerificationSupportCoverageTest
   }
 
   @Test
-  void maintenanceStore_reportsAMissingBackupArtifact() {
+  void maintenanceStore_restrictsOptionalInspectionToTheLiveBookRole() {
     SqliteProtectedBookMaintenanceStore store = maintenanceStore();
     Path sourceBookPath = tempDirectory.resolve("replica-source").resolve("book.sqlite");
     BookAccess sourceAccess = bookAccess(sourceBookPath);
     initializeBook(sourceAccess);
     Path missingReplicaPath = tempDirectory.resolve("replica-target").resolve("missing.sqlite");
 
-    assertVerificationFailure(
-        acceptedValue(
-            store.verifyInitializedBook(
-                localAccess(bookAccess(missingReplicaPath)),
-                dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole
-                    .BACKUP_TARGET)),
-        missingReplicaPath,
-        ProtectedBookVerificationFailure.MISSING);
+    IllegalArgumentException failure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                store.verifyInitializedBook(
+                    localAccess(bookAccess(missingReplicaPath)),
+                    dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole
+                        .BACKUP_TARGET));
+    assertEquals(
+        "Only a live-book inspection artifact can use optional maintenance normalization.",
+        failure.getMessage());
   }
 
   @Test
@@ -159,24 +162,32 @@ class SqliteProtectedBookVerificationSupportCoverageTest
         normalizedBookPath,
         ProtectedBookVerificationFailure.MISSING);
     assertEquals(
-        ProtectedBookVerificationFailure.MISSING,
-        VERIFICATION_SUPPORT.mapInspectionFailure(BookLifecycleInspection.Status.MISSING));
-    assertEquals(
         ProtectedBookVerificationFailure.FOREIGN_SQLITE,
-        VERIFICATION_SUPPORT.mapInspectionFailure(BookLifecycleInspection.Status.FOREIGN_SQLITE));
-    assertEquals(
-        ProtectedBookVerificationFailure.UNSUPPORTED_FORMAT_VERSION,
         VERIFICATION_SUPPORT.mapInspectionFailure(
-            BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION));
+            new BookLifecycleInspection.Existing(
+                BookLifecycleInspection.Status.FOREIGN_SQLITE,
+                0,
+                0,
+                SqliteBookContract.FORMAT_VERSION)));
+    ContractFailureException unsupportedFormatFailure =
+        assertThrows(
+            ContractFailureException.class,
+            () ->
+                VERIFICATION_SUPPORT.mapInspectionFailure(
+                    new BookLifecycleInspection.Existing(
+                        BookLifecycleInspection.Status.UNSUPPORTED_FORMAT_VERSION,
+                        SqliteBookContract.APPLICATION_ID,
+                        SqliteBookContract.FORMAT_VERSION + 1,
+                        SqliteBookContract.FORMAT_VERSION)));
+    assertEquals("unsupported-book-format-version", unsupportedFormatFailure.failure().code());
     assertEquals(
         ProtectedBookVerificationFailure.INCOMPLETE_FINGRIND,
         VERIFICATION_SUPPORT.mapInspectionFailure(
-            BookLifecycleInspection.Status.INCOMPLETE_FINGRIND));
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            VERIFICATION_SUPPORT.mapInspectionFailure(BookLifecycleInspection.Status.INITIALIZED));
-
+            new BookLifecycleInspection.Existing(
+                BookLifecycleInspection.Status.INCOMPLETE_FINGRIND,
+                SqliteBookContract.APPLICATION_ID,
+                SqliteBookContract.FORMAT_VERSION,
+                SqliteBookContract.FORMAT_VERSION)));
     assertEquals(
         ProtectedBookVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED,
         SqliteProtectedBookVerificationSupport.protectedBookVerificationFailure(

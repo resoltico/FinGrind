@@ -31,16 +31,22 @@ class SqliteProtectedBookReadOnlyBackupSourceTest extends SqliteArtifactPublicat
       Files.setPosixFilePermissions(sourceBookPath, Set.of(PosixFilePermission.OWNER_READ));
       Path backupFilePath = tempDirectory.resolve("backup").resolve("source.sqlite");
       Path backupKeyFilePath = tempDirectory.resolve("backup").resolve("source.key");
+      Path backupParent =
+          java.util.Objects.requireNonNull(backupFilePath.getParent(), "backupFilePath parent");
+      Files.createDirectories(backupParent);
+      SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(backupParent);
       try (ProtectedBookMaintenanceStore.VerifiedBook verifiedSourceBook =
               verifiedBook(store, sourceAccess);
           ProtectedBookMaintenanceStore.PreparedPairPublication preparedPairPublication =
               prepareBackupPair(store, backupFilePath, backupKeyFilePath);
           StagedBackupPair stagedBackupPair =
-              acceptedValue(store.stageBackupPair(verifiedSourceBook, preparedPairPublication))) {
+              acceptedValue(
+                  stageBackupPairForFixture(verifiedSourceBook, preparedPairPublication))) {
         assertInstanceOf(
             ProtectedBookMaintenanceStore.VerifiedBook.class,
             acceptedValue(stagedBackupPair.verifyInitializedBackup()));
-        stagedBackupPair.commit();
+        sealBackupForPublication(stagedBackupPair);
+        stagedBackupPair.commit(backupBinding(sourceBookPath));
       }
     } finally {
       Files.setPosixFilePermissions(sourceBookPath, originalPermissions);

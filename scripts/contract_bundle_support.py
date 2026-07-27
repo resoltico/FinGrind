@@ -103,7 +103,7 @@ def _load_bundle_layout_target(
     compatibility_smoke_container_image_key: str,
 ) -> dict[str, str]:
     if not isinstance(raw_target, dict):
-        raise ValueError(f"bundle layout target {normalized_classifier} must be one object")
+        raise TypeError(f"bundle layout target {normalized_classifier} must be one object")
     target = {
         "operatingSystemId": required_value(raw_target, operating_system_id_key),
         "architectureId": required_value(raw_target, architecture_id_key),
@@ -162,7 +162,7 @@ def _merge_bundle_publication_target(
             f"bundle publication contract declared unknown target: {normalized_classifier}"
         )
     if not isinstance(raw_publication, dict):
-        raise ValueError(f"bundle publication target {normalized_classifier} must be one object")
+        raise TypeError(f"bundle publication target {normalized_classifier} must be one object")
     publication_status = required_value(raw_publication, publication_status_key)
     if publication_status not in {"published", "not-published"}:
         raise ValueError(

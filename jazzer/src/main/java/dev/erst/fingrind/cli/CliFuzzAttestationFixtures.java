@@ -2,9 +2,12 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
+import dev.erst.fingrind.core.attestation.AttestationVerification;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import java.math.BigInteger;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.UUID;
 
@@ -54,12 +57,12 @@ final class CliFuzzAttestationFixtures {
     return switch (java.util.Objects.requireNonNull(outcome, "outcome")) {
       case AccountDeclarationOutcome.Declared declared ->
           new AccountDeclarationOutcome.Declared(
-              declared.account(), syntheticTrustRootCommitment());
+              declared.account(), syntheticAppend());
       case AccountDeclarationOutcome.Reactivated reactivated ->
           new AccountDeclarationOutcome.Reactivated(
-              reactivated.account(), syntheticTrustRootCommitment());
+              reactivated.account(), syntheticAppend());
       case AccountDeclarationOutcome.Renamed renamed ->
-          new AccountDeclarationOutcome.Renamed(renamed.account(), syntheticTrustRootCommitment());
+          new AccountDeclarationOutcome.Renamed(renamed.account(), syntheticAppend());
       case AccountDeclarationOutcome.Unchanged unchanged -> unchanged;
       case AccountDeclarationOutcome.Rejected rejected -> rejected;
     };
@@ -67,5 +70,16 @@ final class CliFuzzAttestationFixtures {
 
   private static AttestationCommit commitmentFor(AttestationRegistryInspection trustRoot) {
     return new AttestationCommit(trustRoot.headOrder(), trustRoot.operationHeadHex());
+  }
+
+  /** Returns a structurally valid synthetic append outcome for changed account fixtures. */
+  static AttestationAppendOutcome.Appended syntheticAppend() {
+    return new AttestationAppendOutcome.Appended(
+        new AttestationVerification(
+            SYNTHETIC_BOOK_ID,
+            BigInteger.ONE,
+            HexFormat.of().parseHex("a".repeat(64)),
+            new byte[32],
+            List.of()));
   }
 }

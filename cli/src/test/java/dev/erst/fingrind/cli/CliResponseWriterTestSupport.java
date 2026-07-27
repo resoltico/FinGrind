@@ -250,7 +250,8 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
 
   static String rejectedJson(PostingRejection rejection) {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    CliMutationResponseWriterFixture responseWriter =
+        new CliMutationResponseWriterFixture(utf8PrintStream(outputStream));
     responseWriter.writePostEntryResult(
         new PostEntryResult.CommitRejected(new IdempotencyKey("idem-1"), rejection));
     return outputStream.toString(StandardCharsets.UTF_8);
@@ -258,7 +259,8 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
 
   static String openBookRejectedJson(BookAdministrationRejection rejection) {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    CliMutationResponseWriterFixture responseWriter =
+        new CliMutationResponseWriterFixture(utf8PrintStream(outputStream));
     responseWriter.writeOpenBookResult(
         Path.of("book.sqlite"), new OpenBookResult.Rejected(rejection));
     return outputStream.toString(StandardCharsets.UTF_8);
@@ -278,7 +280,8 @@ class CliResponseWriterTestSupport extends CliIoFixtureSupport {
 
   protected final JsonNode writeInspection(BookInspection inspection) throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    CliBookReadResponseWriterFixture responseWriter =
+        new CliBookReadResponseWriterFixture(utf8PrintStream(outputStream));
     responseWriter.writeBookInspection(Path.of("book.sqlite"), inspection);
     return readJson(outputStream).path("payload");
   }

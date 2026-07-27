@@ -1,6 +1,8 @@
 package dev.erst.fingrind.executor.maintenance;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
 import java.nio.file.Path;
 import java.util.Objects;
 
@@ -8,12 +10,31 @@ import java.util.Objects;
 public sealed interface ProtectedBookRekeyOutcome
     permits ProtectedBookRekeyOutcome.Rekeyed, ProtectedBookRekeyOutcome.Rejected {
   /** Successful staged replacement of one selected live book and publication of its new key. */
-  record Rekeyed(Path bookFilePath, Path newBookKeyFilePath, AttestationCommit attestationCommit)
+  record Rekeyed(
+      Path bookFilePath,
+      Path newBookKeyFilePath,
+      AttestationCommit attestationCommit,
+      ProtectedBookPairPublicationCompletion pairPublicationCompletion,
+      ProtectedBookPairPublicationRetention pairPublicationRetention)
       implements ProtectedBookRekeyOutcome {
     public Rekeyed {
       Objects.requireNonNull(bookFilePath, "bookFilePath");
       Objects.requireNonNull(newBookKeyFilePath, "newBookKeyFilePath");
       Objects.requireNonNull(attestationCommit, "attestationCommit");
+      pairPublicationCompletion =
+          ProtectedBookPairPublicationCompletion.requireRestoreOrRekeyCompletion(
+              pairPublicationCompletion);
+      pairPublicationRetention =
+          Objects.requireNonNull(
+              ProtectedBookPairPublicationCompletion.requireRetention(
+                  pairPublicationCompletion, pairPublicationRetention),
+              "pairPublicationRetention");
+      bookFilePath =
+          pairPublicationRetention.requireBookPublication(bookFilePath).publishedArtifactPath();
+      newBookKeyFilePath =
+          pairPublicationRetention
+              .requireGeneratedSecretPublication(newBookKeyFilePath)
+              .publishedArtifactPath();
     }
   }
 

@@ -17,7 +17,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Unit tests for {@link FinGrindCli}. */
-class FinGrindCliPassphraseWorkflowTest extends FinGrindCliTestSupport {
+class FinGrindCliPassphraseWorkflowTest extends CliWorkflowFixtureSupport {
   @Test
   void run_openBookAndListAccountsThroughDefaultSqliteWorkflowSupportsStandardInputPassphrase()
       throws IOException {

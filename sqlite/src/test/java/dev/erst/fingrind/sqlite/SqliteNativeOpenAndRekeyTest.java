@@ -85,22 +85,6 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
-  void enforceBookFilePermissions_wrapsIoFailuresAsStorageFailures() {
-    Path bookPath = tempDirectory.resolve("permission-hardening.sqlite");
-    SqliteStorageFailureException exception =
-        assertThrows(
-            SqliteStorageFailureException.class,
-            () ->
-                SqliteNativeConnections.enforceBookFilePermissions(
-                    bookPath,
-                    ignored -> {
-                      throw new IOException("chmod failed");
-                    }));
-    assertTrue(NullTestSupport.messageOf(exception).contains("book file permissions"));
-    assertEquals("chmod failed", NullTestSupport.messageOf(NullTestSupport.causeOf(exception)));
-  }
-
-  @Test
   void openExecutePrepareAndClose_roundTripThroughSystemLibrary() throws Exception {
     Path bookPath = tempDirectory.resolve("native-round-trip.sqlite");
     assertDoesNotThrow(
@@ -145,7 +129,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
     java.nio.file.Files.createDirectories(directoryPath);
     assertPathFailure(
         directoryPath,
-        SqliteCallerPathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
+        SqliteCallerPathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE,
         "regular non-symlink file",
         () -> openNativeDatabase(bookAccess(directoryPath)));
   }
@@ -162,7 +146,7 @@ class SqliteNativeOpenAndRekeyTest extends SqliteNativeBridgeTestSupport {
             "symlink native passphrase", TEST_BOOK_KEY.toCharArray())) {
       assertPathFailure(
           symlinkBookPath,
-          SqliteCallerPathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
+          SqliteCallerPathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE,
           "regular non-symlink file",
           () -> SqliteNativeConnections.open(symlinkBookPath, passphrase));
     }

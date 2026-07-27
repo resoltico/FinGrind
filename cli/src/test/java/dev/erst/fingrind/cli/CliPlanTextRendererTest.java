@@ -14,6 +14,7 @@ import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
 import dev.erst.fingrind.contract.workflow.LedgerJournalStep;
+import dev.erst.fingrind.contract.workflow.LedgerPlanAttestationDisposition;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import java.math.BigInteger;
@@ -32,6 +33,8 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
     assertTrue(rendered.contains("Plan id"));
     assertTrue(rendered.contains("succeeded"));
     assertTrue(rendered.contains("Attestation order"));
+    assertTrue(rendered.contains("Attestation disposition"));
+    assertTrue(rendered.contains("appended"));
     assertTrue(rendered.contains("42"));
     assertTrue(rendered.contains("a".repeat(64)));
     assertFalse(rendered.contains("Journal"));
@@ -43,10 +46,35 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
 
     String rendered =
         CliPlanTextRenderer.renderLedgerPlanResult(
-            new LedgerPlanResult.Succeeded(attestedResult.planId(), attestedResult.journal(), null),
+            new LedgerPlanResult.Succeeded(
+                attestedResult.planId(),
+                attestedResult.journal(),
+                LedgerPlanAttestationDisposition.READ_ONLY,
+                null),
             PlanResultDetail.SUMMARY);
 
     assertTrue(rendered.contains("No operation appended (read-only plan)"));
+    assertTrue(rendered.contains("Attestation disposition"));
+    assertTrue(rendered.contains("read-only"));
+    assertFalse(rendered.contains("Attestation order"));
+  }
+
+  @Test
+  void renderLedgerPlanResult_summaryModeNamesTheNoDurableChildMutationOutcome() {
+    LedgerPlanResult.Succeeded attestedResult = succeededPlanResult();
+
+    String rendered =
+        CliPlanTextRenderer.renderLedgerPlanResult(
+            new LedgerPlanResult.Succeeded(
+                attestedResult.planId(),
+                attestedResult.journal(),
+                LedgerPlanAttestationDisposition.NO_DURABLE_CHILD_MUTATION,
+                null),
+            PlanResultDetail.SUMMARY);
+
+    assertTrue(rendered.contains("No operation appended (no durable child mutation)"));
+    assertTrue(rendered.contains("Attestation disposition"));
+    assertTrue(rendered.contains("no-durable-child-mutation"));
     assertFalse(rendered.contains("Attestation order"));
   }
 
@@ -122,6 +150,7 @@ class CliPlanTextRendererTest extends CliResponseWriterTestSupport {
     return new LedgerPlanResult.Succeeded(
         planId("plan-success"),
         new LedgerExecutionJournal(startedAt, commitFinishedAt, List.of(inspectStep, commitStep)),
+        LedgerPlanAttestationDisposition.APPENDED,
         new AttestationCommit(BigInteger.valueOf(42), "a".repeat(64)));
   }
 

@@ -41,7 +41,6 @@ import dev.erst.fingrind.core.ReversalReference;
 import dev.erst.fingrind.core.SourceChannel;
 import dev.erst.fingrind.executor.bookkeeping.AcceptedPosting;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import dev.erst.fingrind.executor.spi.LatvianPayrollLookupStore;
 import java.nio.file.Path;
@@ -77,11 +76,8 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
       openBookWithNoDeclaredAccounts(store);
       declarePayrollAccounts(store);
       try (SqliteNativeDatabase database = requireStoreDatabase(store)) {
-        SqliteClosePostingPersistence persistence =
-            new SqliteClosePostingPersistence(
-                store.storeContext(),
-                SqliteCommitFaultHook.NONE,
-                PostingAcceptancePolicy.currentKernel());
+        SqliteAcceptedPostingPersistence persistence =
+            new SqliteAcceptedPostingPersistence(SqliteCommitFaultHook.NONE);
         LatvianMonthlyPayrollCalculation calculation =
             LatvianMonthlyPayroll2026.calculate(
                 PAYROLL_MONTH,
@@ -374,7 +370,7 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
   }
 
   private static CommittedPosting persist(
-      SqliteClosePostingPersistence persistence,
+      SqliteAcceptedPostingPersistence persistence,
       SqliteNativeDatabase database,
       LatvianPayrollBookkeepingEntryVariants entry,
       String postingId) {
@@ -390,7 +386,7 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
   }
 
   private static CommittedPosting persistReversal(
-      SqliteClosePostingPersistence persistence,
+      SqliteAcceptedPostingPersistence persistence,
       SqliteNativeDatabase database,
       CommittedPosting priorPosting,
       String postingId,
@@ -413,7 +409,7 @@ class SqliteLatvianPayrollPersistenceTest extends SqlitePostingFactStoreTestSupp
   }
 
   private static CommittedPosting persist(
-      SqliteClosePostingPersistence persistence,
+      SqliteAcceptedPostingPersistence persistence,
       SqliteNativeDatabase database,
       BookkeepingEntry callerAuthoredEntry,
       BookkeepingEntry resolvedOriginatingEntry,

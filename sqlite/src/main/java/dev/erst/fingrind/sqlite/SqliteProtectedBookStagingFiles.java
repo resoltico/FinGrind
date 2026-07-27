@@ -1,11 +1,11 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.function.Supplier;
-import org.jspecify.annotations.Nullable;
 
 /** Owns filesystem and native-SQLite mutations used while assembling protected-book stages. */
 final class SqliteProtectedBookStagingFiles {
@@ -15,7 +15,7 @@ final class SqliteProtectedBookStagingFiles {
     if (!Files.isRegularFile(normalizedPath, LinkOption.NOFOLLOW_LINKS)) {
       throw new SqliteCallerPathContractException(
           normalizedPath,
-          SqliteCallerPathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE,
+          SqliteCallerPathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE,
           "The FinGrind protected book path must resolve to a regular non-symlink file: "
               + SqliteMachinePaths.absoluteValue(normalizedPath));
     }
@@ -27,38 +27,34 @@ final class SqliteProtectedBookStagingFiles {
         SqliteBookPassphrase stagedBackupPassphrase = sourcePassphrase.copy()) {
       try (SqliteNativeDatabase sourceDatabase =
               runBackupStep(
-                  SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_SOURCE_OPEN,
+                  SqliteProtectedBookStagingCheckpoint.BACKUP_SOURCE_OPEN,
                   () ->
                       SqliteNativeConnections.open(
                           normalizedBookPath, sourcePassphrase, SqliteNativeOpenMode.READ_ONLY));
           SqliteNativeDatabase stagedBackupDatabase =
               runBackupStep(
-                  SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_STAGE_OPEN,
+                  SqliteProtectedBookStagingCheckpoint.BACKUP_STAGE_OPEN,
                   () ->
                       SqliteNativeConnections.open(
                           stagedBackupFilePath,
                           stagedBackupPassphrase,
                           SqliteNativeOpenMode.READ_WRITE_EXISTING_STAGE))) {
         runBackupStep(
-            SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_COPY,
+            SqliteProtectedBookStagingCheckpoint.BACKUP_COPY,
             () -> {
               SqliteNativeBackups.copyMainDatabase(sourceDatabase, stagedBackupDatabase);
               return null;
             });
       }
     }
-    runBackupStep(
-        SqliteProtectedBookStagingSupport.StagingCheckpoint.BACKUP_HARDEN,
-        () -> {
-          hardenBookArtifacts(stagedBackupFilePath);
-          return null;
-        });
   }
 
   private static <T> T runBackupStep(
-      SqliteProtectedBookStagingSupport.StagingCheckpoint checkpoint, Supplier<T> operation) {
+      SqliteProtectedBookStagingCheckpoint checkpoint, Supplier<T> operation) {
     try {
       return operation.get();
+    } catch (ContractFailureException exception) {
+      throw exception;
     } catch (RuntimeException exception) {
       throw new BackupExportFailure(checkpoint, exception);
     }
@@ -68,15 +64,14 @@ final class SqliteProtectedBookStagingFiles {
   static final class BackupExportFailure extends RuntimeException {
     private static final long serialVersionUID = 1L;
 
-    private final SqliteProtectedBookStagingSupport.StagingCheckpoint checkpoint;
+    private final SqliteProtectedBookStagingCheckpoint checkpoint;
 
-    BackupExportFailure(
-        SqliteProtectedBookStagingSupport.StagingCheckpoint checkpoint, RuntimeException cause) {
+    BackupExportFailure(SqliteProtectedBookStagingCheckpoint checkpoint, RuntimeException cause) {
       super(cause);
       this.checkpoint = checkpoint;
     }
 
-    SqliteProtectedBookStagingSupport.StagingCheckpoint checkpoint() {
+    SqliteProtectedBookStagingCheckpoint checkpoint() {
       return checkpoint;
     }
 
@@ -90,7 +85,7 @@ final class SqliteProtectedBookStagingFiles {
     }
   }
 
-  /** Rekeys one private stage and hardens it only after SQLite has released its file handle. */
+  /** Rekeys one private stage created atomically with owner-only permissions. */
   static void rekeyStagedBookCopy(
       Path stagedBookPath,
       SqliteBookPassphrase sourcePassphrase,
@@ -106,7 +101,6 @@ final class SqliteProtectedBookStagingFiles {
                 SqliteNativeOpenMode.READ_WRITE_EXISTING_STAGE)) {
       SqliteNativeKeyConfiguration.rekey(stagedDatabase, resolvedReplacementPassphrase);
     }
-    hardenBookArtifacts(stagedBookPath);
   }
 
   static void ensureSecureBackupFileParentDirectory(Path artifactPath) {
@@ -115,6 +109,18 @@ final class SqliteProtectedBookStagingFiles {
     } catch (IOException exception) {
       throw new IllegalStateException(
           "Failed to secure the parent directory for "
+              + SqliteMachinePaths.absoluteValue(artifactPath)
+              + ".",
+          exception);
+    }
+  }
+
+  static void requireExistingSecureBackupFileParentDirectory(Path artifactPath) {
+    try {
+      SqliteBookFileSecurity.requireExistingSecureParentDirectory(artifactPath);
+    } catch (IOException exception) {
+      throw new IllegalStateException(
+          "Failed to validate the existing parent directory for "
               + SqliteMachinePaths.absoluteValue(artifactPath)
               + ".",
           exception);
@@ -133,35 +139,15 @@ final class SqliteProtectedBookStagingFiles {
     }
   }
 
-  static void hardenBookArtifacts(Path artifactPath) {
+  static void requireExistingSecureBackupKeyFileParentDirectory(Path artifactPath) {
     try {
-      SqliteBookFileSecurity.hardenBookArtifacts(artifactPath);
+      SqliteBookKeyFileSecurity.requireExistingSecureParentDirectory(artifactPath);
     } catch (IOException exception) {
       throw new IllegalStateException(
-          "Failed to harden the FinGrind protected-book artifacts for "
+          "Failed to validate the existing parent directory for "
               + SqliteMachinePaths.absoluteValue(artifactPath)
               + ".",
           exception);
-    }
-  }
-
-  static void resetStagedSecretFile(Path stagedSecretFilePath) {
-    resetStagedSecretFile(stagedSecretFilePath, Files::deleteIfExists);
-  }
-
-  static void resetStagedSecretFile(
-      Path stagedSecretFilePath, SqliteProtectedBookPublicationSupport.PathDeleter deleter) {
-    try {
-      deleter.delete(stagedSecretFilePath);
-    } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Failed to stage the generated FinGrind backup key artifact.", exception);
-    }
-  }
-
-  static void deleteQuietlyIfPresent(@Nullable Path path) {
-    if (path != null) {
-      SqliteFileCleanup.deleteQuietly(path);
     }
   }
 }

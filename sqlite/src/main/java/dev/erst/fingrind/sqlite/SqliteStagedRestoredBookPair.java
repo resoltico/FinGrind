@@ -1,15 +1,15 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.core.attestation.AttestationDirectoryDurability;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
+import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationBinding;
+import dev.erst.fingrind.executor.spi.StagedPairPublicationCommitOutcome;
 import dev.erst.fingrind.executor.spi.StagedRestoredBookPair;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 /** Staged restored live-book pair that publishes one re-encrypted book and key file together. */
 final class SqliteStagedRestoredBookPair implements StagedRestoredBookPair {
@@ -17,25 +17,40 @@ final class SqliteStagedRestoredBookPair implements StagedRestoredBookPair {
   private final SqliteOwnedStagedArtifact stagedBookKeyFile;
   private final SqliteProtectedBookVerificationSupport verificationSupport;
   private final SqliteRestoredBookPairPublication publication;
-  private @Nullable SqliteBookPassphrase restoredPassphrase;
-  private boolean bookKeyFilePublished;
-  private boolean finished;
+  private final SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer;
+  private final SqliteProtectedBookPairPublicationRecord.RecoveryRecordFileForcer
+      recoveryRecordFileForcer;
+  private final SqliteStagedPassphrase restoredPassphrase;
+  private final SqliteStagedPairPublicationFinalizer finalizer;
 
   SqliteStagedRestoredBookPair(
       SqliteStagedProtectedBookPairArtifacts artifacts,
       byte[] restoredPassphraseBytes,
       SqliteProtectedBookVerificationSupport verificationSupport,
-      SqliteRestoredBookPairPublication publication) {
+      SqliteRestoredBookPairPublication publication,
+      SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer,
+      SqliteProtectedBookPairPublicationRecord.RecoveryRecordFileForcer recoveryRecordFileForcer) {
     SqliteStagedProtectedBookPairArtifacts checkedArtifacts =
         Objects.requireNonNull(artifacts, "artifacts");
     this.stagedBookFile = checkedArtifacts.stagedBookFile();
     this.stagedBookKeyFile = checkedArtifacts.stagedSecretFile();
     this.restoredPassphrase =
-        SqliteBookPassphrase.fromUtf8Bytes(
-            "staged restored-book passphrase",
-            Objects.requireNonNull(restoredPassphraseBytes, "restoredPassphraseBytes"));
+        new SqliteStagedPassphrase("staged restored-book passphrase", restoredPassphraseBytes);
     this.verificationSupport = Objects.requireNonNull(verificationSupport, "verificationSupport");
     this.publication = Objects.requireNonNull(publication, "publication");
+    this.directoryForcer = Objects.requireNonNull(directoryForcer, "directoryForcer");
+    this.recoveryRecordFileForcer =
+        Objects.requireNonNull(recoveryRecordFileForcer, "recoveryRecordFileForcer");
+    this.finalizer =
+        new SqliteStagedPairPublicationFinalizer(
+            publication.bookTargetPath(),
+            publication.secretTargetPath(),
+            stagedBookFile,
+            stagedBookKeyFile,
+            restoredPassphrase::closeUnused,
+            publication::closeReservations,
+            directoryForcer,
+            "protected-book pair publication");
   }
 
   @Override
@@ -43,170 +58,223 @@ final class SqliteStagedRestoredBookPair implements StagedRestoredBookPair {
       verifyInitializedRestoredBook() {
     return MaintenanceDecision.accepted(
         verificationSupport.verifyResolvedBook(
-            stagedBookFile.stagedPath(), currentRestoredPassphrase().copy()));
+            stagedBookFile.stagedPath(), restoredPassphrase.copy()));
   }
 
   @Override
-  public void commit() {
-    if (finished) {
-      return;
+  public StagedPairPublicationCommitOutcome commit(ProtectedBookPairPublicationBinding binding) {
+    Objects.requireNonNull(binding, "binding");
+    StagedPairPublicationCommitOutcome cachedOutcome = finalizer.cachedOutcome();
+    if (cachedOutcome != null) {
+      return cachedOutcome;
     }
+    if (finalizer.isFinished()) {
+      throw new IllegalStateException(
+          "The staged restored protected-book pair is already finished.");
+    }
+    SqlitePairPublicationMemberAttempt secretAttempt = new SqlitePairPublicationMemberAttempt();
+    SqlitePairPublicationMemberAttempt bookAttempt = new SqlitePairPublicationMemberAttempt();
+    boolean durableRecoveryBoundaryReached = false;
     try {
       stagedBookFile.requireIntactFor(publication.bookTargetPath());
       stagedBookKeyFile.requireIntactFor(publication.secretTargetPath());
-      publication.publishSecret(stagedBookKeyFile);
-      bookKeyFilePublished = true;
-      forcePublishedDirectory(publication.secretTargetPath());
-      publication.publishBook(stagedBookFile);
-      forcePublishedDirectory(publication.bookTargetPath());
-      closeUnusedPassphrase();
-    } catch (SqliteGeneratedSecretTargetOccupiedException exception) {
-      try {
-        finishAfterFailedPublication();
-      } finally {
-        closeUnusedPassphrase();
+      SqlitePairPublicationDurability.forceStagedRecoveryMembers(
+          stagedBookFile,
+          publication.bookTargetPath(),
+          stagedBookKeyFile,
+          publication.secretTargetPath(),
+          directoryForcer);
+      // Keep retained-evidence finalization non-destructive even if record promotion or a following
+      // final-member call
+      // terminates with an Error rather than a catchable filesystem exception.
+      SqliteProtectedBookPairPublicationRecord recoveryRecord =
+          SqliteProtectedBookPairPublicationRecord.create(
+              publication.bookTargetPath(),
+              publication.secretTargetPath(),
+              stagedBookFile.stagedPath(),
+              stagedBookKeyFile.stagedPath(),
+              publication.targetPolicy(),
+              binding,
+              directoryForcer);
+      finalizer.recordRecoveryBoundary(recoveryRecord);
+      durableRecoveryBoundaryReached = true;
+
+      // Preserve NOT_ATTEMPTED when the deterministic boundary check refuses before any secret
+      // publication can be attempted. publishSecret repeats it inside the primitive beside link.
+      if (!selectedBookTargetIsCurrent(recoveryRecord)) {
+        return finalizer.finishPrepublicationRecoveryRequired();
       }
+      publication.publishSecret(
+          stagedBookKeyFile,
+          () -> {
+            forceAndRequireRestoredRecoveryBoundary(
+                stagedBookKeyFile,
+                publication.secretTargetPath(),
+                Objects.requireNonNull(recoveryRecord, "recoveryRecord"),
+                false);
+            requireSelectedBookTargetForPublication(recoveryRecord);
+            publication.requireCapabilityCurrent(
+                publication.secretTargetPath(),
+                SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK);
+          },
+          secretAttempt::markAttempted);
+      secretAttempt.markPublishedDurabilityUnconfirmed();
+      SqlitePairPublicationDurability.forcePublishedDirectory(
+          directoryForcer,
+          SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep
+              .GENERATED_SECRET_PUBLICATION,
+          publication.secretTargetPath());
+      secretAttempt.markPublishedDurable();
+
+      if (!selectedBookTargetIsCurrent(recoveryRecord)) {
+        return finalizer.finishCompletionUncertain(bookAttempt.state(), secretAttempt.state());
+      }
+      publication.publishBook(
+          stagedBookFile,
+          () -> {
+            forceAndRequireRestoredRecoveryBoundary(
+                stagedBookFile,
+                publication.bookTargetPath(),
+                Objects.requireNonNull(recoveryRecord, "recoveryRecord"),
+                true);
+            requireSelectedBookTargetForPublication(recoveryRecord);
+            publication.requireCapabilityCurrent(
+                publication.bookTargetPath(),
+                publication.targetPolicy()
+                        == ProtectedBookMaintenanceStore.RestoredBookTargetPolicy.REPLACE_SELECTED
+                    ? SqlitePublicationCapabilityWitness.PrimitiveKind.ATOMIC_REPLACE
+                    : SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK);
+          },
+          bookAttempt::markAttempted);
+      bookAttempt.markPublishedDurabilityUnconfirmed();
+      SqlitePairPublicationDurability.forcePublishedDirectory(
+          directoryForcer,
+          SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep.BOOK_PUBLICATION,
+          publication.bookTargetPath());
+      bookAttempt.markPublishedDurable();
+    } catch (Exception failure) {
+      return handleCommitFailure(
+          failure, durableRecoveryBoundaryReached, bookAttempt, secretAttempt);
+    }
+    return finalizer.finishAfterSuccessfulPublication();
+  }
+
+  private StagedPairPublicationCommitOutcome handleCommitFailure(
+      Exception failure,
+      boolean durableRecoveryBoundaryReached,
+      SqlitePairPublicationMemberAttempt bookAttempt,
+      SqlitePairPublicationMemberAttempt secretAttempt) {
+    if (failure
+        instanceof
+        SqliteProtectedBookPairPublicationRecord.RecoveryRecordDurabilityUnconfirmedException) {
+      return finalizer.finishPrepublicationRecoveryRequired();
+    }
+    if (failure
+        instanceof
+        SqliteProtectedBookPublicationSupport.FinalMemberPublicationGuardRejectedException
+            guardFailure) {
+      return guardFailure.member() == SqliteProtectedBookPublicationSupport.FinalMember.SECRET
+          ? finalizer.finishPrepublicationRecoveryRequired()
+          : finalizer.finishCompletionUncertain(bookAttempt.state(), secretAttempt.state());
+    }
+    if (durableRecoveryBoundaryReached) {
+      return finishPostRecoveryFailure(failure, bookAttempt, secretAttempt);
+    }
+    return handlePreRecoveryFailure(failure);
+  }
+
+  private StagedPairPublicationCommitOutcome finishPostRecoveryFailure(
+      Exception failure,
+      SqlitePairPublicationMemberAttempt bookAttempt,
+      SqlitePairPublicationMemberAttempt secretAttempt) {
+    if (failure instanceof SqliteGeneratedSecretTargetOccupiedException
+        || failure instanceof SqliteCallerPathContractException
+        || failure instanceof java.nio.file.FileAlreadyExistsException) {
+      return finalizer.finishPostRecoveryFailure(bookAttempt, secretAttempt, true);
+    }
+    if (failure instanceof IOException) {
+      return finalizer.finishPrepublicationRecoveryRequired();
+    }
+    return finalizer.finishPostRecoveryFailure(bookAttempt, secretAttempt, false);
+  }
+
+  private StagedPairPublicationCommitOutcome handlePreRecoveryFailure(Exception failure) {
+    finalizer.finishAfterPreBoundaryFailure();
+    if (failure instanceof SqliteGeneratedSecretTargetOccupiedException occupied) {
       throw new ProtectedBookMaintenanceRejectionException(
-          new ProtectedBookMaintenanceRejection.SecretTargetOccupied(exception.targetPath()),
-          exception);
-    } catch (SqliteCallerPathContractException exception) {
-      try {
-        finishAfterFailedPublication();
-      } finally {
-        closeUnusedPassphrase();
-      }
+          new ProtectedBookMaintenanceRejection.SecretTargetOccupied(occupied.targetPath()),
+          occupied);
+    }
+    if (failure instanceof SqliteCallerPathContractException pathFailure) {
       throw new ProtectedBookMaintenanceRejectionException(
           SqliteCallerPathFailureMapper.maintenanceRejection(
               dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole
-                  .RESTORED_TARGET,
-              exception),
-          exception);
-    } catch (java.nio.file.FileAlreadyExistsException exception) {
-      try {
-        finishAfterFailedPublication();
-      } finally {
-        closeUnusedPassphrase();
-      }
+                  .NEW_BOOK_KEY_TARGET,
+              pathFailure),
+          pathFailure);
+    }
+    if (failure instanceof java.nio.file.FileAlreadyExistsException collision) {
       throw new ProtectedBookMaintenanceRejectionException(
           new ProtectedBookMaintenanceRejection.BookDestinationOccupied(
               publication.bookTargetPath()),
-          exception);
-    } catch (IOException exception) {
-      try {
-        finishAfterFailedPublication();
-      } finally {
-        closeUnusedPassphrase();
-      }
-      throw new IllegalStateException(
-          "Failed to publish the restored FinGrind live-book pair at "
-              + SqliteMachinePaths.absoluteValue(publication.bookTargetPath())
-              + ".",
-          exception);
-    } catch (RuntimeException exception) {
-      try {
-        finishAfterFailedPublication();
-      } finally {
-        closeUnusedPassphrase();
-      }
-      throw exception;
+          collision);
     }
-    finishAfterSuccessfulPublication();
+    return throwUnexpectedCommitFailure(failure);
+  }
+
+  private StagedPairPublicationCommitOutcome throwUnexpectedCommitFailure(Exception failure) {
+    if (failure instanceof RuntimeException runtimeFailure) {
+      throw runtimeFailure;
+    }
+    throw new IllegalStateException(
+        "Failed to publish the restored FinGrind live-book pair at "
+            + SqliteMachinePaths.absoluteValue(publication.bookTargetPath())
+            + ".",
+        failure);
   }
 
   @Override
-  public void rollback() {
-    if (finished) {
-      return;
+  public void retainUnpublishedArtifacts() {
+    if (!finalizer.isFinished()) {
+      finalizer.finishAfterPreBoundaryFailure();
     }
-    try {
-      rollbackInterruptedPair();
-    } finally {
-      closeUnusedPassphrase();
-      finished = true;
-    }
-  }
-
-  private static void forcePublishedDirectory(Path path) throws IOException {
-    AttestationDirectoryDurability.force(
-        Objects.requireNonNull(
-            Objects.requireNonNull(path, "path").toAbsolutePath().normalize().getParent(),
-            "published artifact parent"));
   }
 
   @Override
   public void close() {
-    if (!finished) {
-      rollback();
+    if (!finalizer.isFinished()) {
+      retainUnpublishedArtifacts();
     }
   }
 
-  private void rollbackInterruptedPair() {
-    if (bookKeyFilePublished) {
-      SqliteProtectedBookPublicationRecovery.removePublishedSecretIfOwned(
-          publication.secretTargetPath(),
-          stagedBookKeyFile,
-          "rolling back one interrupted generated restored-book key publication");
-    }
-    try {
-      stagedBookFile.discard();
-    } finally {
-      try {
-        stagedBookKeyFile.discard();
-      } finally {
-        closeReservations();
-      }
-    }
+  /** Revalidates the common immutable-evidence boundary before one restored member primitive. */
+  private void forceAndRequireRestoredRecoveryBoundary(
+      SqliteOwnedStagedArtifact stagedArtifact,
+      Path finalPath,
+      SqliteProtectedBookPairPublicationRecord record,
+      boolean bookMember)
+      throws IOException {
+    SqlitePairPublicationDurability.forceAndRequireRecoveryBoundary(
+        record, stagedArtifact, finalPath, bookMember, directoryForcer, recoveryRecordFileForcer);
   }
 
-  private void finishAfterSuccessfulPublication() {
-    try {
-      discardCommittedStages();
-    } catch (RuntimeException cleanupFailure) {
-      // A restored or rekeyed pair is committed at publication and cannot safely be rolled back
-      // here.
-      SqliteBestEffort.reportCleanupFailure(
-          "discarding owned stages after protected-book pair publication", cleanupFailure);
-    } finally {
-      finished = true;
+  /** Revalidates the selected rekey target at the final-member publication boundary. */
+  private void requireSelectedBookTargetForPublication(
+      @org.jspecify.annotations.Nullable SqliteProtectedBookPairPublicationRecord record)
+      throws IOException {
+    if (!selectedBookTargetIsCurrent(record)) {
+      throw new IOException(
+          "The selected rekey book target changed after durable recovery evidence was recorded.");
     }
   }
 
-  private void discardCommittedStages() {
-    try {
-      stagedBookFile.discard();
-    } finally {
-      try {
-        stagedBookKeyFile.discard();
-      } finally {
-        closeReservations();
-      }
-    }
-  }
-
-  private void finishAfterFailedPublication() {
-    try {
-      rollbackInterruptedPair();
-    } catch (RuntimeException cleanupFailure) {
-      finished = true;
-      throw new IllegalStateException(
-          "Failed to roll back the staged FinGrind restored-book pair; durable owned stages remain for recovery.",
-          cleanupFailure);
-    }
-    finished = true;
-  }
-
-  private SqliteBookPassphrase currentRestoredPassphrase() {
-    return Objects.requireNonNull(restoredPassphrase, "restoredPassphrase");
-  }
-
-  private void closeUnusedPassphrase() {
-    if (restoredPassphrase != null) {
-      restoredPassphrase.close();
-      restoredPassphrase = null;
-    }
-  }
-
-  private void closeReservations() {
-    publication.closeReservations();
+  private boolean selectedBookTargetIsCurrent(
+      @org.jspecify.annotations.Nullable SqliteProtectedBookPairPublicationRecord record) {
+    SqliteProtectedBookPairPublicationRecord checkedRecord =
+        Objects.requireNonNull(record, "recoveryRecord");
+    return publication.targetPolicy()
+            != ProtectedBookMaintenanceStore.RestoredBookTargetPolicy.REPLACE_SELECTED
+        || checkedRecord.finalBookMatches()
+        || checkedRecord.replaceTargetMatches();
   }
 }

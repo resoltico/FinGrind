@@ -10,8 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.core.AccountCode;
@@ -127,16 +126,18 @@ class InMemoryBookSessionTest {
               accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT),
               FIXED_INSTANT);
 
+      AccountDeclarationOutcome.Declared declared =
+          assertInstanceOf(AccountDeclarationOutcome.Declared.class, result);
       assertEquals(
-          new AccountDeclarationOutcome.Declared(
-              registeredAccount(
-                  new AccountCode("1000"),
-                  new AccountName("Cash"),
-                  AccountType.ASSET,
-                  NormalBalance.DEBIT,
-                  true,
-                  FIXED_INSTANT)),
-          result);
+          registeredAccount(
+              new AccountCode("1000"),
+              new AccountName("Cash"),
+              AccountType.ASSET,
+              NormalBalance.DEBIT,
+              true,
+              FIXED_INSTANT),
+          declared.account());
+      assertNotNull(declared.attestationAppend());
       assertEquals(
           new AccountRegistryPage(
               List.of(
@@ -214,16 +215,18 @@ class InMemoryBookSessionTest {
               accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT),
               Instant.parse("2026-04-08T11:00:00Z"));
 
+      AccountDeclarationOutcome.Reactivated reactivated =
+          assertInstanceOf(AccountDeclarationOutcome.Reactivated.class, result);
       assertEquals(
-          new AccountDeclarationOutcome.Reactivated(
-              registeredAccount(
-                  new AccountCode("1000"),
-                  new AccountName("Cash main"),
-                  AccountType.ASSET,
-                  NormalBalance.DEBIT,
-                  true,
-                  FIXED_INSTANT)),
-          result);
+          registeredAccount(
+              new AccountCode("1000"),
+              new AccountName("Cash main"),
+              AccountType.ASSET,
+              NormalBalance.DEBIT,
+              true,
+              FIXED_INSTANT),
+          reactivated.account());
+      assertNotNull(reactivated.attestationAppend());
     }
   }
 
@@ -299,9 +302,10 @@ class InMemoryBookSessionTest {
       CommittedPosting secondReversal =
           reversalFact("idem-reversal-2", originalPosting.postingId());
 
-      assertEquals(
-          new PostingCommitResult.Committed(originalPosting, false, null),
-          bookSession.commit(originalPosting));
+      PostingCommitResult.Appended firstCommit =
+          assertInstanceOf(PostingCommitResult.Appended.class, bookSession.commit(originalPosting));
+      assertEquals(originalPosting, firstCommit.postingFact());
+      assertNotNull(firstCommit.attestationAppend().verification());
       assertEquals(
           Optional.of(
               new StoredRequestPosting(originalPosting, requestFingerprint(originalPosting))),
@@ -310,12 +314,13 @@ class InMemoryBookSessionTest {
           Optional.of(originalPosting),
           bookSession.findPosting(new PostingId("cedcf800-36e6-3c96-a365-1486d6d1bc3a")));
       assertEquals(
-          new PostingCommitResult.Committed(originalPosting, true, null),
+          new PostingCommitResult.Replayed(originalPosting),
           bookSession.commit(postingFact("idem-original")));
 
-      assertEquals(
-          new PostingCommitResult.Committed(firstReversal, false, null),
-          bookSession.commit(firstReversal));
+      PostingCommitResult.Appended firstReversalCommit =
+          assertInstanceOf(PostingCommitResult.Appended.class, bookSession.commit(firstReversal));
+      assertEquals(firstReversal, firstReversalCommit.postingFact());
+      assertNotNull(firstReversalCommit.attestationAppend().verification());
       assertEquals(
           Optional.of(firstReversal),
           bookSession.findReversalFor(new PostingId("cedcf800-36e6-3c96-a365-1486d6d1bc3a")));
@@ -530,63 +535,6 @@ class InMemoryBookSessionTest {
           bookSession.periodSummary(
               new PeriodSummaryCriteria(
                   LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07"))));
-    }
-  }
-
-  @Test
-  void ledgerPlanTransactions_guardLifecycleAndRestoreSnapshotState() {
-    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
-      bookSession.openBook(FIXED_INSTANT, bookIdentity(), List.of());
-      declareDefaultAccounts(bookSession);
-      CommittedPosting baselinePosting = postingFact("idem-baseline");
-      bookSession.commit(baselinePosting);
-
-      bookSession.rollbackLedgerPlanTransaction();
-      IllegalStateException noActiveCommit =
-          assertThrows(IllegalStateException.class, bookSession::commitLedgerPlanTransaction);
-      assertTrue(
-          Objects.requireNonNull(noActiveCommit.getMessage())
-              .contains("No ledger plan transaction"));
-
-      bookSession.beginLedgerPlanTransaction();
-      IllegalStateException nestedBegin =
-          assertThrows(IllegalStateException.class, bookSession::beginLedgerPlanTransaction);
-      assertTrue(Objects.requireNonNull(nestedBegin.getMessage()).contains("already active"));
-
-      RegisteredAccount temporaryAccount =
-          declareAccount(
-              bookSession,
-              new AccountCode("3000"),
-              new AccountName("Temporary"),
-              AccountType.ASSET,
-              NormalBalance.DEBIT);
-      CommittedPosting temporaryPosting = postingFact("idem-temporary");
-      bookSession.commit(temporaryPosting);
-
-      assertEquals(Optional.of(temporaryAccount), bookSession.findAccount(new AccountCode("3000")));
-      assertEquals(
-          Optional.of(temporaryPosting), bookSession.findPosting(temporaryPosting.postingId()));
-      bookSession.rollbackLedgerPlanTransaction();
-
-      assertEquals(Optional.empty(), bookSession.findAccount(new AccountCode("3000")));
-      assertEquals(Optional.empty(), bookSession.findPosting(temporaryPosting.postingId()));
-      assertEquals(
-          Optional.of(baselinePosting), bookSession.findPosting(baselinePosting.postingId()));
-      assertNotEquals(
-          Optional.of(temporaryPosting),
-          bookSession.findExistingPosting(new IdempotencyKey("idem-temporary")));
-
-      bookSession.beginLedgerPlanTransaction();
-      RegisteredAccount committedAccount =
-          declareAccount(
-              bookSession,
-              new AccountCode("4000"),
-              new AccountName("Committed"),
-              AccountType.ASSET,
-              NormalBalance.DEBIT);
-      bookSession.commitLedgerPlanTransaction();
-
-      assertEquals(Optional.of(committedAccount), bookSession.findAccount(new AccountCode("4000")));
     }
   }
 

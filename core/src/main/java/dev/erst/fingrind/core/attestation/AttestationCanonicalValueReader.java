@@ -55,7 +55,11 @@ final class AttestationCanonicalValueReader {
 
   static Instant instant(AttestationByteReader input) {
     int start = input.offset();
-    Instant value = Instant.parse(new String(input.readBytes(24), StandardCharsets.US_ASCII));
+    Instant value =
+        Instant.parse(
+            new String(
+                input.readBytes(AttestationTextEncoding.INSTANT_ENCODED_BYTE_COUNT),
+                StandardCharsets.US_ASCII));
     requireCanonical(input, AttestationTextFieldValue.instant(value).encoded(), start);
     return value;
   }

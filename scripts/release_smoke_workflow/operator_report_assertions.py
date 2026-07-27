@@ -3,10 +3,15 @@ from __future__ import annotations
 import re
 
 from .account_ledger_assertions import assert_account_ledger_csv
-from .artifact_contracts import reported_artifact_path_matches
+from .artifact_contracts import reported_pdf_artifact_path_matches
 from .models import ReleaseSmokeConfig
 from .path_support import extract_pdf_artifact_path
 from .support import require, require_match, require_no_match
+
+_POSTING_RECORD_HEADING = re.compile(r"20\d{2}-\d{2}-\d{2} \| .+")
+_POSTING_RECORD_SEPARATOR = re.compile(r"-+")
+_POSTING_REFERENCE = re.compile(r"^Posting ref[ \t]*:[ \t]*\S+[ \t]*$", re.MULTILINE)
+_POSTING_ATTESTATION_ORDER = re.compile(r"^Attestation order[ \t]*:[ \t]*\d+[ \t]*$", re.MULTILINE)
 
 
 def assert_operator_queries_and_reports(
@@ -40,6 +45,45 @@ def _assert_postings_text(config: ReleaseSmokeConfig, text_output: str) -> None:
             pattern,
             f"{config.label} text posting register did not render the {message}",
         )
+    _assert_inline_posting_attestation_orders(config, text_output)
+    require_no_match(
+        text_output,
+        r"^Attestation commitments$",
+        f"{config.label} text posting register still rendered the detached attestation appendix",
+    )
+    require_no_match(
+        text_output,
+        r"\b[0-9a-f]{64}\b",
+        f"{config.label} text posting register leaked a full attestation head",
+    )
+
+
+def _assert_inline_posting_attestation_orders(config: ReleaseSmokeConfig, text_output: str) -> None:
+    record_blocks = [
+        block for block in text_output.split("\n\n") if _is_posting_record_block(block)
+    ]
+    require(
+        len(record_blocks) == 2,
+        f"{config.label} text posting register did not render one adaptive record block per posting",
+    )
+    for record_block in record_blocks:
+        require(
+            len(_POSTING_REFERENCE.findall(record_block)) == 1,
+            f"{config.label} text posting record did not render exactly one inline posting reference",
+        )
+        require(
+            len(_POSTING_ATTESTATION_ORDER.findall(record_block)) == 1,
+            f"{config.label} text posting record did not render exactly one inline attestation order",
+        )
+
+
+def _is_posting_record_block(block: str) -> bool:
+    lines = block.splitlines()
+    return (
+        len(lines) >= 2
+        and _POSTING_RECORD_HEADING.fullmatch(lines[0]) is not None
+        and _POSTING_RECORD_SEPARATOR.fullmatch(lines[1]) is not None
+    )
 
 
 def _assert_account_balance_text(config: ReleaseSmokeConfig, text_output: str) -> None:
@@ -146,8 +190,8 @@ def _assert_pdf_export(
     )
     reported_pdf_path = extract_pdf_artifact_path(pdf_stdout)
     require(
-        reported_artifact_path_matches(config, config.trial_balance_pdf, reported_pdf_path),
-        f"{config.label} PDF export stdout did not report the redacted public path hint",
+        reported_pdf_artifact_path_matches(config, config.trial_balance_pdf, reported_pdf_path),
+        f"{config.label} PDF export stdout did not report the canonical physical artifact path",
     )
 
 

@@ -268,7 +268,7 @@ class SqlitePostingAccountFixtureSupport extends SqliteStoreFixtureSupport {
     AccountDeclarationOutcome.Declared declared =
         assertInstanceOf(AccountDeclarationOutcome.Declared.class, outcome);
     assertEquals(expectedAccount, declared.account());
-    assertNotNull(declared.attestationCommit());
+    assertNotNull(declared.attestationAppend());
   }
 
   static void assertReactivatedWithAttestation(
@@ -276,7 +276,7 @@ class SqlitePostingAccountFixtureSupport extends SqliteStoreFixtureSupport {
     AccountDeclarationOutcome.Reactivated reactivated =
         assertInstanceOf(AccountDeclarationOutcome.Reactivated.class, outcome);
     assertEquals(expectedAccount, reactivated.account());
-    assertNotNull(reactivated.attestationCommit());
+    assertNotNull(reactivated.attestationAppend());
   }
 
   private static AttestationRegistryInspection attestationTrustRoot() {

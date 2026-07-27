@@ -1,5 +1,7 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliAccountRejectionJsonModels;
+import dev.erst.fingrind.cli.json.CliCloseRejectionJsonModels;
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AccountRegistryLifecycleRejection;
@@ -38,6 +40,9 @@ final class CliAdministrationRejectionPayloadMapper {
         null,
         null,
         rejectionDetails(rejection),
+        null,
+        null,
+        null,
         null);
   }
 
@@ -237,36 +242,36 @@ final class CliAdministrationRejectionPayloadMapper {
       periodTransferDetails(BookAdministrationRejection rejection) {
     return switch (rejection) {
       case CloseTargetAccountCandidateMissing conflict ->
-          new CliRejectionJsonModels.CloseTargetAccountCandidateMissingDetails(
+          new CliAccountRejectionJsonModels.CloseTargetAccountCandidateMissingDetails(
               conflict.requiredFinancialPositionLineClassification().wireValue(),
               conflict.inactiveCandidateAccountCodes().stream().map(code -> code.value()).toList());
       case CloseTargetAccountCandidateAmbiguous conflict ->
-          new CliRejectionJsonModels.CloseTargetAccountCandidateAmbiguousDetails(
+          new CliAccountRejectionJsonModels.CloseTargetAccountCandidateAmbiguousDetails(
               conflict.requiredFinancialPositionLineClassification().wireValue(),
               conflict.candidateAccountCodes().stream().map(code -> code.value()).toList());
       case BookAdministrationRejection.InterimResultSweepMustStartAt conflict ->
-          new CliRejectionJsonModels.InterimResultSweepStartDetails(
+          new CliCloseRejectionJsonModels.InterimResultSweepStartDetails(
               conflict.requiredEffectiveDateFrom().toString());
       case BookAdministrationRejection.InterimResultSweepFutureDate conflict ->
-          new CliRejectionJsonModels.InterimResultSweepFutureDateDetails(
+          new CliCloseRejectionJsonModels.InterimResultSweepFutureDateDetails(
               conflict.attemptedEffectiveDateTo().toString());
       case BookAdministrationRejection.InterimResultSweepCrossesFiscalYearBoundary conflict ->
-          new CliRejectionJsonModels.InterimResultSweepFiscalYearDetails(
+          new CliCloseRejectionJsonModels.InterimResultSweepFiscalYearDetails(
               conflict.attemptedEffectiveDateFrom().toString(),
               conflict.attemptedEffectiveDateTo().toString(),
               conflict.fiscalYearStart().wireValue());
       case BookAdministrationRejection.FiscalYearCloseMustStartAt conflict ->
-          new CliRejectionJsonModels.FiscalYearCloseStartDetails(
+          new CliCloseRejectionJsonModels.FiscalYearCloseStartDetails(
               conflict.requiredEffectiveDateFrom().toString());
       case BookAdministrationRejection.FiscalYearCloseMustEndAt conflict ->
-          new CliRejectionJsonModels.FiscalYearCloseEndDetails(
+          new CliCloseRejectionJsonModels.FiscalYearCloseEndDetails(
               conflict.requiredEffectiveDateTo().toString());
       case BookAdministrationRejection.FiscalYearClosePrecedesTransferredThroughHorizon conflict ->
-          new CliRejectionJsonModels.FiscalYearCloseTransferredThroughDetails(
+          new CliCloseRejectionJsonModels.FiscalYearCloseTransferredThroughDetails(
               conflict.attemptedEffectiveDateTo().toString(),
               conflict.transferredThroughEffectiveDate().toString());
       case BookAdministrationRejection.FiscalYearCloseFutureDate conflict ->
-          new CliRejectionJsonModels.FiscalYearCloseFutureDateDetails(
+          new CliCloseRejectionJsonModels.FiscalYearCloseFutureDateDetails(
               conflict.attemptedEffectiveDateTo().toString());
       default -> null;
     };

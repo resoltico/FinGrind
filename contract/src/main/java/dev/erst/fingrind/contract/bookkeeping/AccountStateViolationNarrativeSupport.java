@@ -1,6 +1,8 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.FailureCategory;
+import dev.erst.fingrind.contract.runtime.FieldDescriptor;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import dev.erst.fingrind.core.Money;
 import dev.erst.fingrind.core.Quantity;
 import java.util.Arrays;
@@ -8,7 +10,7 @@ import java.util.List;
 
 /** Canonical narrative and descriptor publisher for account-state violations. */
 final class AccountStateViolationNarrativeSupport {
-  private static final List<ContractResponse.FieldDescriptor> DETAIL_FIELDS =
+  private static final List<FieldDescriptor> DETAIL_FIELDS =
       List.of(
           detailField("code", "Stable account-state violation code."),
           detailField(
@@ -46,7 +48,7 @@ final class AccountStateViolationNarrativeSupport {
     };
   }
 
-  static List<ContractResponse.RejectionDescriptor> descriptors() {
+  static List<RejectionDescriptor> descriptors() {
     return Arrays.stream(AccountStateViolationOwner.values())
         .map(AccountStateViolationNarrativeSupport::descriptor)
         .toList();
@@ -59,10 +61,10 @@ final class AccountStateViolationNarrativeSupport {
         : "Posting rejected with %d account-state issues.".formatted(issueCount);
   }
 
-  private static ContractResponse.RejectionDescriptor descriptor(AccountStateViolationOwner owner) {
-    return new ContractResponse.RejectionDescriptor(
+  private static RejectionDescriptor descriptor(AccountStateViolationOwner owner) {
+    return new RejectionDescriptor(
         owner.code(),
-        ContractResponse.FailureCategory.DOMAIN_SEMANTIC,
+        FailureCategory.DOMAIN_SEMANTIC,
         owner.description(),
         DETAIL_FIELDS,
         List.of());
@@ -109,7 +111,7 @@ final class AccountStateViolationNarrativeSupport {
     return quantity.canonicalDecimal();
   }
 
-  private static ContractResponse.FieldDescriptor detailField(String name, String description) {
-    return new ContractResponse.FieldDescriptor(name, description);
+  private static FieldDescriptor detailField(String name, String description) {
+    return new FieldDescriptor(name, description);
   }
 }

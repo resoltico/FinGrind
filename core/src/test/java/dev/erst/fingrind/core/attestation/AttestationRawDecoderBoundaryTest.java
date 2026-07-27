@@ -73,6 +73,7 @@ class AttestationRawDecoderBoundaryTest {
     assertType(AttestationHash.sha256(new byte[] {1}).bytes(), AttestationFieldType.HASH);
     assertType(spkiBytes(credential), AttestationFieldType.SPKI);
     assertType(bytes(new byte[] {1, 2, 3}), AttestationFieldType.BYTES);
+    assertType(embedded(new byte[] {1, 2, 3}), AttestationFieldType.EMBEDDED);
     assertType(token("post"), AttestationFieldType.TOKEN);
     assertType(text("book"), AttestationFieldType.TEXT);
     assertType(currency("EUR"), AttestationFieldType.CURRENCY);
@@ -317,6 +318,10 @@ class AttestationRawDecoderBoundaryTest {
 
   private static byte[] bytes(byte[] value) {
     return AttestationBinaryFieldValue.bytes(value).encoded();
+  }
+
+  private static byte[] embedded(byte[] value) {
+    return AttestationBinaryFieldValue.embedded(value).encoded();
   }
 
   private static byte[] money(String currency, boolean negative, BigInteger minorUnits) {

@@ -10,19 +10,6 @@ final class CliAccountPageOutputRenderer {
   private CliAccountPageOutputRenderer() {}
 
   static String renderText(AccountPage page, boolean withContext) {
-    String nextCursor =
-        page.nextCursor().isPresent() ? page.nextCursor().orElseThrow().wireValue() : "(none)";
-    String summary =
-        CliTextFormat.renderKeyValueBlock(
-            page.accounts().isEmpty()
-                ? List.of(
-                    List.of("Outcome", CliQueryScopeText.noMatchesLabel("accounts")),
-                    List.of("Limit", Integer.toString(page.limit())),
-                    List.of("Next cursor", nextCursor))
-                : List.of(
-                    List.of("Returned accounts", Integer.toString(page.accounts().size())),
-                    List.of("Limit", Integer.toString(page.limit())),
-                    List.of("Next cursor", nextCursor)));
     String accounts =
         page.accounts().isEmpty()
             ? ""
@@ -83,15 +70,17 @@ final class CliAccountPageOutputRenderer {
                                     account.normalBalance()),
                                 CliQueryScopeText.displayBooleanLabel(account.active())))
                     .toList());
-    return CliTextFormat.renderTitledBlock(
-        "Accounts",
-        CliReportRenderSupport.joinSections(
-            summary,
+    return CliReportRenderSupport.renderPagedListText(
+        new CliPagedListText(
+            "Accounts",
+            "accounts",
+            "accounts",
+            page.accounts().size(),
+            page.limit(),
+            page.nextCursor().map(cursor -> cursor.wireValue()).orElse("(none)"),
             accounts,
-            withContext
-                ? CliReportRenderSupport.keyValueSection(
-                    "Context", CliBookIdentityDisplay.contextRows(page.bookIdentity()))
-                : ""));
+            withContext,
+            CliBookIdentityDisplay.contextRows(page.bookIdentity())));
   }
 
   static String renderCsv(AccountPage page) {

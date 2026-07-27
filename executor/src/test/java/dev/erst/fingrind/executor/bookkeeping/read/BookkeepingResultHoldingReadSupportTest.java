@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.bookkeeping.read;
 
+import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.TEST_AUTHORIZER;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -32,7 +33,8 @@ class BookkeepingResultHoldingReadSupportTest {
                   new AccountName("Result Holding"),
                   AccountType.EQUITY,
                   financialPositionTaxonomy(FinancialPositionLineClassification.RESULT_HOLDING)),
-              Instant.parse("2026-04-07T10:15:30Z")));
+              Instant.parse("2026-04-07T10:15:30Z"),
+              TEST_AUTHORIZER));
 
       InterimResultTargetSelection selection =
           BookkeepingResultHoldingReadSupport.resultHoldingSelection(bookIdentity(), bookSession);

@@ -2,6 +2,7 @@ package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliAccountStateViolationPayload;
 import dev.erst.fingrind.cli.json.CliEntrySemanticsViolationPayload;
+import dev.erst.fingrind.cli.json.CliPostingRejectionJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import java.util.ArrayList;
 import java.util.List;
@@ -16,17 +17,18 @@ final class CliPostingRejectionTextRenderer {
       String summary,
       @Nullable String idempotencyKey,
       CliRejectionJsonModels.@Nullable RejectionDetails details) {
-    if (!(details instanceof CliRejectionJsonModels.PostingRejectionDetails postingDetails)) {
+    if (!(details
+        instanceof CliPostingRejectionJsonModels.PostingRejectionDetails postingDetails)) {
       return null;
     }
     return switch (postingDetails) {
-      case CliRejectionJsonModels.AccountStateViolationsDetails violations ->
+      case CliPostingRejectionJsonModels.AccountStateViolationsDetails violations ->
           renderNestedRepairablePostingRejectionText(
               code,
               summary,
               idempotencyKey,
               renderAccountStateIssueSections(violations.violations()));
-      case CliRejectionJsonModels.EntrySemanticsViolationsDetails violations ->
+      case CliPostingRejectionJsonModels.EntrySemanticsViolationsDetails violations ->
           renderNestedRepairablePostingRejectionText(
               code,
               summary,
@@ -37,37 +39,38 @@ final class CliPostingRejectionTextRenderer {
   }
 
   static void appendRows(
-      List<List<String>> rows, CliRejectionJsonModels.PostingRejectionDetails rejectionDetails) {
+      List<List<String>> rows,
+      CliPostingRejectionJsonModels.PostingRejectionDetails rejectionDetails) {
     switch (rejectionDetails) {
-      case CliRejectionJsonModels.AccountStateViolationsDetails _ ->
+      case CliPostingRejectionJsonModels.AccountStateViolationsDetails _ ->
           throw new IllegalStateException(
               "Nested repairable posting rejections must use the dedicated text renderer.");
-      case CliRejectionJsonModels.EntrySemanticsViolationsDetails _ ->
+      case CliPostingRejectionJsonModels.EntrySemanticsViolationsDetails _ ->
           throw new IllegalStateException(
               "Nested repairable posting rejections must use the dedicated text renderer.");
-      case CliRejectionJsonModels.PriorPostingDetails details ->
+      case CliPostingRejectionJsonModels.PriorPostingDetails details ->
           rows.add(List.of("Prior posting id", details.priorPostingId()));
-      case CliRejectionJsonModels.FunctionalCurrencyMismatchDetails details -> {
+      case CliPostingRejectionJsonModels.FunctionalCurrencyMismatchDetails details -> {
         rows.add(List.of("Functional currency", details.functionalCurrency()));
         rows.add(List.of("Attempted currency", details.attemptedCurrency()));
       }
-      case CliRejectionJsonModels.PostingEffectiveDateInFutureDetails details -> {
+      case CliPostingRejectionJsonModels.PostingEffectiveDateInFutureDetails details -> {
         rows.add(List.of("Attempted effective date", details.attemptedEffectiveDate()));
         rows.add(List.of("Current UTC date", details.currentUtcDate()));
       }
-      case CliRejectionJsonModels.PostingEffectiveDateBeforeBookStartDetails details -> {
+      case CliPostingRejectionJsonModels.PostingEffectiveDateBeforeBookStartDetails details -> {
         rows.add(List.of("Attempted effective date", details.attemptedEffectiveDate()));
         rows.add(List.of("Book start effective date", details.bookStartEffectiveDate()));
       }
-      case CliRejectionJsonModels.OpeningPositionWindowClosedDetails details -> {
+      case CliPostingRejectionJsonModels.OpeningPositionWindowClosedDetails details -> {
         rows.add(List.of("First blocking posting kind", details.firstBlockingPostingKind()));
         rows.add(List.of("First blocking effective date", details.firstBlockingEffectiveDate()));
       }
-      case CliRejectionJsonModels.OpeningPositionNominalAccountDetails details -> {
+      case CliPostingRejectionJsonModels.OpeningPositionNominalAccountDetails details -> {
         rows.add(List.of("Account code", details.accountCode()));
         rows.add(List.of("Account type", details.accountType()));
       }
-      case CliRejectionJsonModels.SweptInterimResultViolationDetails details -> {
+      case CliPostingRejectionJsonModels.SweptInterimResultViolationDetails details -> {
         rows.add(List.of("Transferred through", details.transferredThroughEffectiveDate()));
         rows.add(List.of("Attempted effective date", details.attemptedEffectiveDate()));
       }

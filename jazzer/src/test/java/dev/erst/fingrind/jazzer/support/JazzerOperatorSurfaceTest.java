@@ -31,8 +31,6 @@ class JazzerOperatorSurfaceTest {
     expectedScripts.add("list-findings");
     expectedScripts.add("promote-seed");
     expectedScripts.add("seed-audit");
-    expectedScripts.add("clean-local-findings");
-    expectedScripts.add("clean-local-corpus");
     for (JazzerRunTarget target : JazzerRunTarget.values()) {
       if (target.activeFuzzing()) {
         expectedScripts.add("fuzz-" + target.key());

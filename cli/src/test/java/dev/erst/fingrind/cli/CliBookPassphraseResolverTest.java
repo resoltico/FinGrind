@@ -34,7 +34,13 @@ class CliBookPassphraseResolverTest {
 
   @BeforeEach
   void hardenTempDirectory() {
-    CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+    try {
+      tempDirectory = tempDirectory.toRealPath();
+      CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+    } catch (IOException exception) {
+      throw new java.io.UncheckedIOException(
+          "Failed to prepare the private test directory.", exception);
+    }
   }
 
   @Test

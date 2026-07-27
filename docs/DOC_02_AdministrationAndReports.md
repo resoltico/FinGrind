@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: CONTRACT_EXECUTOR_READ
-updated: "2026-07-23"
+updated: "2026-07-26"
 route:
   keywords: [fingrind, contract, executor, administration, reports, read-service, inspection, pagination, trial-balance, account-ledger, period-summary, inventory-valuation, financial-position, income-statement, cash-flow-statement, changes-in-equity, declare-tax-registration, list-tax-registrations, tax-obligation]
   questions: ["where are the read and report models documented in fingrind", "which doc covers BookReadService and report DTOs", "where are the primary statement models documented", "where is the tax registration and filing surface documented"]
@@ -266,7 +266,9 @@ public sealed interface RekeyBookResult
 ```
 
 - Variants: `Rekeyed`, `Rejected`; `Rekeyed` carries the exact `AttestationCommit` for the
-  completed key-rotation operation
+  completed key-rotation operation and `pairPublicationCompletion`: `published` when this
+  invocation durably published the final pair or `recovered` when it reconciled the exact earlier
+  completion-uncertain pair without a new rotation mutation
 
 ## `BackupBookResult`
 
@@ -276,11 +278,24 @@ public sealed interface RekeyBookResult
 public sealed interface BackupBookResult
 ```
 
-- Variants: `BackedUp`, `Rejected`
+- Variants: `BackedUp`, `AcknowledgementPending`, `AcknowledgementAuthorizationRejected`, and
+  `Rejected`
 - Purpose: export one verified encrypted SQLite backup pair consisting of the copied protected
   book file plus one newly materialized key file
-- Attestation: `BackedUp` carries the exact append commit, or no commit only for an exact replay
-  that appended nothing
+- `BackedUp`: returns the published pair and its acknowledgement state. `acknowledged` always
+  carries the exact append commit, `already-present` never carries one, and `resumed` may either
+  append the acknowledgement or observe the exact acknowledgement already present
+- `AcknowledgementPending`: the pair is published but an operational interruption left the
+  source-book acknowledgement undetermined; retain the pair and rerun the exact tuple
+- `AcknowledgementAuthorizationRejected`: the pair remains published, but current-head
+  authorization refused its source-book acknowledgement; it carries the precise attestation
+  refusal so the caller can correct authorization and rerun the exact tuple
+- `Rejected`: deterministic backup-maintenance refusal
+- Every published backup outcome carries `pairPublicationCompletion`, independently of its
+  acknowledgement state and commit: `published` means this invocation durably published the
+  backup/key pair, `recovered` means it reconciled the exact completion-uncertain pair, and
+  `already-published` means an acknowledgement retry verified the complete existing pair without
+  publishing it again.
 
 ## `RestoreBookResult`
 
@@ -291,9 +306,11 @@ public sealed interface RestoreBookResult
 ```
 
 - Variants: `Restored`, `Rejected`; `Restored` carries the exact `AttestationCommit` for the
-  completed restore operation
-- Purpose: verify one supplied encrypted backup pair before replacing the target live book path,
-  while re-encrypting the restored live book under the selected destination key file
+  completed restore operation and `pairPublicationCompletion`: `published` when this invocation
+  durably published the absent destination pair or `recovered` when it reconciled the exact earlier
+  completion-uncertain pair without a new restore mutation
+- Purpose: verify one supplied encrypted backup pair before publishing an absent target live-book
+  path, while re-encrypting the restored live book under the selected destination key file
 
 ## `BookInspection`
 
@@ -321,7 +338,7 @@ public record BookMigrationPolicy(...)
 public enum BookMigrationPolicyMode
 ```
 
-- Current mode: `hard-break-reject-older-formats`
+- Current mode: `hard-break-reject-noncurrent-formats`
 - Purpose: make the current format-line policy explicit in the public contract instead of leaving
   “no migration executor” as prose-only theory
 

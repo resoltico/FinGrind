@@ -24,6 +24,15 @@ public sealed interface BookWorkflowStep
   /** Stable caller-supplied step identifier. */
   BookWorkflowStepId stepId();
 
+  /**
+   * Returns whether this step can durably change the protected book.
+   *
+   * <p>New step kinds are mutating until their read-only semantics are explicitly established.
+   */
+  default boolean mutatesBook() {
+    return true;
+  }
+
   /** Declares or reactivates one account. */
   record DeclareAccount(BookWorkflowStepId stepId, AccountDeclaration command)
       implements BookWorkflowStep {
@@ -52,6 +61,11 @@ public sealed interface BookWorkflowStep
       requireStepId(stepId);
       Objects.requireNonNull(command, "command");
     }
+
+    @Override
+    public boolean mutatesBook() {
+      return false;
+    }
   }
 
   /** Commits one posting request. */
@@ -70,6 +84,11 @@ public sealed interface BookWorkflowStep
     public InspectBook {
       requireStepId(stepId);
     }
+
+    @Override
+    public boolean mutatesBook() {
+      return false;
+    }
   }
 
   /** Lists declared accounts. */
@@ -80,6 +99,11 @@ public sealed interface BookWorkflowStep
       requireStepId(stepId);
       Objects.requireNonNull(query, "query");
     }
+
+    @Override
+    public boolean mutatesBook() {
+      return false;
+    }
   }
 
   /** Gets one committed posting. */
@@ -88,6 +112,11 @@ public sealed interface BookWorkflowStep
     public GetPosting {
       requireStepId(stepId);
       Objects.requireNonNull(postingId, "postingId");
+    }
+
+    @Override
+    public boolean mutatesBook() {
+      return false;
     }
   }
 
@@ -99,6 +128,11 @@ public sealed interface BookWorkflowStep
       requireStepId(stepId);
       Objects.requireNonNull(query, "query");
     }
+
+    @Override
+    public boolean mutatesBook() {
+      return false;
+    }
   }
 
   /** Computes one account balance. */
@@ -108,6 +142,11 @@ public sealed interface BookWorkflowStep
     public AccountBalance {
       requireStepId(stepId);
       Objects.requireNonNull(query, "query");
+    }
+
+    @Override
+    public boolean mutatesBook() {
+      return false;
     }
   }
 

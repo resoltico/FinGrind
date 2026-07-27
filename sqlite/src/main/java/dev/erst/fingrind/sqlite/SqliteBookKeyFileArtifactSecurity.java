@@ -9,26 +9,13 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.AclEntryPermission;
 import java.nio.file.attribute.PosixFilePermission;
-import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Objects;
 import java.util.Set;
 
-/** Key-file artifact validation and owner-only file hardening. */
+/** Key-file artifact validation. */
 final class SqliteBookKeyFileArtifactSecurity {
   private static final Set<PosixFilePermission> POSIX_KEY_FILE_PERMISSIONS =
       Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
-  private static final Set<AclEntryPermission> WINDOWS_OWNER_KEY_FILE_PERMISSIONS =
-      Set.of(
-          AclEntryPermission.READ_DATA,
-          AclEntryPermission.WRITE_DATA,
-          AclEntryPermission.APPEND_DATA,
-          AclEntryPermission.READ_NAMED_ATTRS,
-          AclEntryPermission.WRITE_NAMED_ATTRS,
-          AclEntryPermission.READ_ATTRIBUTES,
-          AclEntryPermission.WRITE_ATTRIBUTES,
-          AclEntryPermission.DELETE,
-          AclEntryPermission.READ_ACL,
-          AclEntryPermission.SYNCHRONIZE);
   private static final Set<AclEntryPermission> ACL_READ_PERMISSIONS =
       Set.of(AclEntryPermission.READ_DATA);
   private static final Set<AclEntryPermission> ACL_SECRET_ACCESS_PERMISSIONS =
@@ -49,22 +36,6 @@ final class SqliteBookKeyFileArtifactSecurity {
           AclEntryPermission.SYNCHRONIZE);
 
   private SqliteBookKeyFileArtifactSecurity() {}
-
-  static void createSecureEmptyFile(Path normalizedPath) throws IOException {
-    if (SqliteBookKeyFileSecuritySupport.supportsPosix(normalizedPath)) {
-      Files.createFile(
-          normalizedPath, PosixFilePermissions.asFileAttribute(POSIX_KEY_FILE_PERMISSIONS));
-      return;
-    }
-    if (SqliteBookKeyFileSecuritySupport.supportsAcl(normalizedPath)) {
-      Files.createFile(normalizedPath);
-      SqliteBookKeyFileSecurityPolicy.applyOwnerOnlyAcl(
-          normalizedPath, WINDOWS_OWNER_KEY_FILE_PERMISSIONS);
-      return;
-    }
-    throw new IllegalStateException(
-        SqliteBookKeyFileSecuritySupport.unsupportedSecureFilesystemMessage());
-  }
 
   static ContractDecision<Path> requireSecureKeyFile(Path bookKeyFilePath) {
     return requireSecureKeyFile(
@@ -91,8 +62,11 @@ final class SqliteBookKeyFileArtifactSecurity {
           SqliteBookKeyFileDirectorySecurity.requireSecureParentDirectorySecurity(
               parentDirectory, securityInspector.inspect(parentDirectory));
       return switch (parentDirectoryDecision) {
-        case ContractDecision.Accepted<Path> _ ->
-            requireSecureSecurity(bookKeyFilePath, securityInspector.inspect(bookKeyFilePath));
+        case ContractDecision.Accepted<Path> _ -> {
+          SqlitePrivateOutputDirectoryAdmission.requireOwnerOnlyNonMutableAncestry(
+              bookKeyFilePath, parentDirectory);
+          yield requireSecureSecurity(bookKeyFilePath, securityInspector.inspect(bookKeyFilePath));
+        }
         case ContractDecision.Rejected<Path>(ContractFailure failure) ->
             ContractDecision.rejected(failure);
       };

@@ -24,7 +24,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
@@ -369,6 +371,25 @@ class PostingApplicationServiceCommitTest {
         java.util.Objects.requireNonNull(attested.attestationCommit());
     assertEquals(java.math.BigInteger.ONE, attestationCommit.operationOrder());
     assertEquals("00".repeat(32), attestationCommit.operationHeadHex());
+
+    PostEntryResult.Committed replayed =
+        assertInstanceOf(
+            PostEntryResult.Committed.class,
+            applicationService.commit(command("idem-replayed"), TEST_AUTHORIZER));
+    assertEquals(
+        new PostingId(
+            java.util
+                .UUID
+                .nameUUIDFromBytes(
+                    "fingrind-test-postingid:posting-replayed"
+                        .getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                .toString()),
+        replayed.postingId());
+    assertEquals(new IdempotencyKey("idem-replayed"), replayed.idempotencyKey());
+    assertEquals(LocalDate.parse("2026-04-07"), replayed.effectiveDate());
+    assertEquals(FIXED_CLOCK.instant(), replayed.recordedAt());
+    assertTrue(replayed.idempotentReplay());
+    assertNull(replayed.attestationCommit());
   }
 
   @Test

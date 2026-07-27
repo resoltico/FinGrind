@@ -47,7 +47,7 @@ public sealed interface AttestationRegistryMutation
 
     @Override
     public AttestationOperationPreimages preimages() {
-      return AttestationLifecycleMutationProjection.enrollKey(this);
+      return AttestationRegistryMutationProjection.enrollKey(this);
     }
   }
 
@@ -76,7 +76,7 @@ public sealed interface AttestationRegistryMutation
 
     @Override
     public AttestationOperationPreimages preimages() {
-      return AttestationLifecycleMutationProjection.rolloverKey(this);
+      return AttestationRegistryMutationProjection.rolloverKey(this);
     }
   }
 
@@ -97,7 +97,7 @@ public sealed interface AttestationRegistryMutation
 
     @Override
     public AttestationOperationPreimages preimages() {
-      return AttestationLifecycleMutationProjection.revokeKey(this);
+      return AttestationRegistryMutationProjection.revokeKey(this);
     }
 
     private static String requireNonBlankReason(String value) {
@@ -136,7 +136,7 @@ public sealed interface AttestationRegistryMutation
 
     @Override
     public AttestationOperationPreimages preimages() {
-      return AttestationLifecycleMutationProjection.alterPolicy(this);
+      return AttestationRegistryMutationProjection.alterPolicy(this);
     }
 
     private static void requireDistinctPolicyRules(List<PolicyRule> policyRules) {

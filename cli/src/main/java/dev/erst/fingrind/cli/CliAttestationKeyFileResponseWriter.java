@@ -1,12 +1,17 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.cli.json.CliAdministrationJsonModels;
+import dev.erst.fingrind.cli.json.CliBookLifecycleJsonModels;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
 import dev.erst.fingrind.contract.runtime.AttestationKeyFileMetadata;
+import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.attestation.AttestationKeyFileCreation;
+import java.util.Base64;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Renders public identity metadata for standalone encrypted attestation credentials. */
 final class CliAttestationKeyFileResponseWriter {
@@ -16,11 +21,15 @@ final class CliAttestationKeyFileResponseWriter {
     this.outputChannel = Objects.requireNonNull(outputChannel, "outputChannel");
   }
 
-  void writeGeneratedResult(AttestationKeyFileMetadata metadata, OutputMode outputMode) {
+  void writeGeneratedResult(AttestationKeyFileCreation createdKeyFile, OutputMode outputMode) {
+    AttestationKeyFileCreation created = Objects.requireNonNull(createdKeyFile, "createdKeyFile");
     writeMetadata(
-        metadata,
+        new AttestationKeyFileMetadata(
+            created.keyFilePath(),
+            Base64.getUrlEncoder().withoutPadding().encodeToString(created.credential().spki()),
+            HexFormat.of().formatHex(created.credential().keyId())),
         "Attestation Key File Generated",
-        true,
+        created.publication(),
         OperationId.GENERATE_ATTESTATION_KEY_FILE,
         outputMode);
   }
@@ -29,7 +38,7 @@ final class CliAttestationKeyFileResponseWriter {
     writeMetadata(
         metadata,
         "Attestation Key File",
-        false,
+        null,
         OperationId.INSPECT_ATTESTATION_KEY_FILE,
         outputMode);
   }
@@ -37,24 +46,24 @@ final class CliAttestationKeyFileResponseWriter {
   private void writeMetadata(
       AttestationKeyFileMetadata metadata,
       String title,
-      boolean includesArtifact,
+      @Nullable ArtifactPublicationResult publication,
       OperationId operationId,
       OutputMode outputMode) {
     outputMode.run(
         () ->
             outputChannel.writeEnvelope(
                 CliEnvelopeMapper.successEnvelope(
-                    new CliAdministrationJsonModels.AttestationKeyFilePayload(
+                    new CliBookLifecycleJsonModels.AttestationKeyFilePayload(
                         metadata.credentialSpki(), metadata.keyId()),
-                    includesArtifact
-                        ? CliEnvelopeMapper.successArtifacts(
+                    publication == null
+                        ? List.of()
+                        : CliEnvelopeMapper.successArtifacts(
                             CliEnvelopeMapper.successArtifact(
-                                ProtocolArtifactOutput.attestationKeyFileFormat(),
-                                metadata.attestationKeyFilePath()))
-                        : List.of())),
+                                ProtocolArtifactOutput.attestationKeyFileFormat(), publication)))),
         () ->
             outputChannel.writeText(
-                CliBookAccessOutputRenderer.renderAttestationKeyFileMetadata(title, metadata)),
+                CliBookAccessOutputRenderer.renderAttestationKeyFileMetadata(
+                    title, metadata, publication)),
         () -> {
           throw new IllegalArgumentException(CliOperationText.unsupportedCsvOutput(operationId));
         });

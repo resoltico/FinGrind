@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import dev.erst.fingrind.contract.tax.TaxApplicationKind;
 import dev.erst.fingrind.contract.tax.TaxCode;
 import dev.erst.fingrind.contract.tax.TaxRegistrationId;
@@ -275,7 +276,7 @@ class BookkeepingPublishedLanguageTranslatorSemanticsOwnerTest {
             .orElseThrow()
             .detailRejections()
             .stream()
-            .map(dev.erst.fingrind.contract.runtime.ContractResponse.RejectionDescriptor::code)
+            .map(RejectionDescriptor::code)
             .toList());
     assertEquals(
         ENTRY_SEMANTICS_CANONICAL_CODES.stream()

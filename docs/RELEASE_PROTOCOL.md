@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: RELEASE_PROTOCOL
-updated: "2026-07-16"
+updated: "2026-07-26"
 route:
   keywords: [fingrind, release, gh, github release, ghcr, tag, branch protection, protocol]
   questions: ["how do I release fingrind", "what is the fingrind release process", "how are github release and container publication handled in fingrind"]
@@ -176,7 +176,7 @@ If any open PR is authored by Dependabot, decide up front whether it changes rel
 release-critical dependencies. GitHub currently reports these PRs through `gh pr list` with
 `author.login` set to `app/dependabot`; older surfaces may still render `dependabot[bot]`. If the
 PR is release-critical, land or reject it before cutting the release branch. If it is not, carry
-that decision forward and complete Step 10 before ending the release session.
+that decision forward and complete Step 9 before ending the release session.
 
 If you merge or close one release-critical PR, re-enumerate the remaining open PRs before acting
 on the next one. A changed `main` branch can invalidate sibling merge state or required-check
@@ -185,7 +185,7 @@ evaluations.
 If the primary checkout is currently on an open PR branch and that branch's payload is being
 absorbed into `release/X.Y.Z`, do not keep driving the release from the PR branch name. Branch to
 `release/X.Y.Z` immediately and treat the original PR as provisional theory only. If the release
-PR later ships the same payload, Step 10 must close the superseded PR and delete its branch unless
+PR later ships the same payload, Step 9 must close the superseded PR and delete its branch unless
 it still contains material that is not in `main`.
 
 If Step 1 merges a release-critical PR and the primary checkout already contains the intended
@@ -372,7 +372,7 @@ fatal: 'main' is already checked out at '/path/to/primary-checkout'
 In worktree mode, prefer `gh pr merge --repo "$REPO"` so the GitHub-side merge is independent
 of the local branch-checkout topology, then verify the merge handoff from any checkout whose
 `HEAD` exactly matches `origin/main`. A detached `origin/main` checkout in the release worktree
-is acceptable for Step 4. Step 11 remains the place where the primary checkout itself must be
+is acceptable for Step 4. Step 10 remains the place where the primary checkout itself must be
 returned to a truthful `main`.
 
 Also, do not treat a non-zero `gh pr merge` exit as proof that the merge failed. The server-side
@@ -504,7 +504,7 @@ git branch -d release/A.B.C
 Do not leave release-branch leftovers behind locally or remotely. Branch hygiene is part of the
 release procedure, not optional cleanup.
 
-Open maintenance branches such as Dependabot are handled separately in Step 10. Do not treat a
+Open maintenance branches such as Dependabot are handled separately in Step 9. Do not treat a
 non-`release/` branch as automatically acceptable just because Step 6 only hard-fails
 `release/*` leftovers.
 
@@ -556,150 +556,11 @@ of the duplicate dispatch separately from the **safety** of the publication syst
 
 ### Step 8
 
-Verify the GitHub Release handoff.
-
-Do not infer release publication from workflow success alone. Verify the release object directly:
-
-```bash
-gh release view vX.Y.Z --json tagName,isDraft,isPrerelease,publishedAt,url,assets
-./scripts/verify-github-release.sh vX.Y.Z
-```
-
-Requirements:
-
-- The release exists for tag `vX.Y.Z`.
-- `isDraft` is `false`.
-- `isPrerelease` is `false` unless the target release is intentionally a prerelease.
-- The complete bundle asset set is present:
-  - `fingrind-X.Y.Z-macos-aarch64.tar.gz`
-  - `fingrind-X.Y.Z-macos-aarch64.tar.gz.sha256`
-  - `fingrind-X.Y.Z-macos-x86_64.tar.gz`
-  - `fingrind-X.Y.Z-macos-x86_64.tar.gz.sha256`
-  - `fingrind-X.Y.Z-linux-x86_64.tar.gz`
-  - `fingrind-X.Y.Z-linux-x86_64.tar.gz.sha256`
-  - `fingrind-X.Y.Z-linux-aarch64.tar.gz`
-  - `fingrind-X.Y.Z-linux-aarch64.tar.gz.sha256`
-  - `fingrind-X.Y.Z-windows-x86_64.zip`
-  - `fingrind-X.Y.Z-windows-x86_64.zip.sha256`
-- Targets disclosed through
-  `environment.publication.unsupportedPublicCliBundleTargets` such as the current
-  `windows-aarch64` entry must not appear as release assets unless the bundle-layout publication
-  status changes first.
-- Every published archive and published checksum file verifies through `gh attestation verify`
-  against the repository's `.github/workflows/release.yml` signer workflow. The helper script
-  downloads the draft-or-published assets through the repo-owned draft-aware downloader and
-  performs that verification for you.
-- The release workflow must create those attestations from the published release assets
-  themselves. Upload the bundle and checksum files first, download the published bytes back from
-  GitHub on a neutral attestation job, and attest those downloaded files. Do not attest
-  runner-local build outputs directly.
-- The release workflow must also attest the runner-built archive and checksum bytes on each
-  target runner before publication so build-output provenance and public-byte provenance both
-  exist and can be compared by digest.
-- Publication convergence is by asset name and digest while the release is a draft. Once the
-  release is public, asset bytes are immutable: if a repaired rerun would need different bytes
-  under the same public asset name, fail the rerun and cut a new version instead of replacing
-  public assets in place.
-- Every published checksum file must target the matching archive name and its declared digest must
-  match the downloadable archive bytes.
-- The generated GitHub source archives do not include repo-owned agent metadata such as
-  `AGENTS.md` or `.codex/**`.
-
-If these conditions are satisfied, the GitHub Release handoff is complete even if an additional
-duplicate release workflow run failed after the release was already created.
-
-The release workflow is expected to perform this same verification internally after publication.
-The operator-side `gh release view` plus `./scripts/verify-github-release.sh` checks remain
-mandatory because workflow success is still not the authoritative state. They now prove both the
-release object and the published attestation-backed provenance of the shipped bundle assets.
-`./scripts/verify-github-release.sh` also runs `./scripts/verify-security-policy-surface.sh`, so
-public release verification fails if the repository's private vulnerability reporting surface no
-longer matches the checked-in security policy.
-The release workflow carries an explicit retry budget for release-asset and attestation
-propagation because GitHub can publish those surfaces asynchronously after the bundle jobs
-complete. The release workflow's verifier job timeout must exceed that retry budget with headroom;
-treat a shorter timeout as a release-system defect.
-
-The release workflow's staged Linux container builds are also expected to wait for this complete
-GitHub release draft asset set before they promote the public image tags. If public container
-promotion succeeds while the release asset set is incomplete, treat that as a release-system
-defect and fix the repository before the next release.
+Complete [RELEASE_PUBLICATION_VERIFICATION.md](./RELEASE_PUBLICATION_VERIFICATION.md). It owns
+the two mandatory post-tag handoffs: GitHub Release assets and attestations, then anonymous public
+container, mounted-book, and PDF availability. Do not begin Step 9 until both handoffs succeed.
 
 ### Step 9
-
-Verify public availability.
-
-Do not declare the release done until the GitHub Release exists and the operator-side public
-container surface verifier succeeds. The verifier uses a temporary Docker config directory so you
-are testing the public surface, not cached owner credentials, and so you do not mutate the
-operator's normal Docker login state. It also uses machine-readable `version --output json`
-checks plus exact text trial-balance row assertions so the operator is not left guessing about
-free-form CLI text:
-
-```bash
-gh release view vX.Y.Z
-./scripts/verify-public-container-surface.sh ghcr.io/resoltico/fingrind X.Y.Z
-```
-
-The verifier always retries anonymous exact-tag pulls until the container reports the target
-release version through `version --output json`. When the release owns the canonical `latest`
-pointer, it also verifies `latest` through that same check. A successful `docker pull` alone is
-not sufficient verification. In particular: a multi-arch `docker pull` can succeed even when the
-platform manifests have been deleted — the index manifest is present but the image is not
-actually runnable. The `docker run ... version --output json` check is the definitive test.
-
-If you are replaying a historical stable release that no longer owns `latest`, disable the
-`latest` check explicitly:
-
-```bash
-FINGRIND_VERIFY_PUBLIC_CONTAINER_LATEST=false \
-  ./scripts/verify-public-container-surface.sh ghcr.io/resoltico/fingrind X.Y.Z
-```
-
-The temporary mounted-book workflow is also mandatory. It proves that the published public image
-can still perform one end-to-end bookkeeping/reporting loop, not just print discovery metadata.
-`trial-balance --output text` must render the posted Cash and Revenue rows for the seeded EUR
-10.00 entry rather than failing in book initialization, key handling, or reporting. The same
-anonymous verification must also prove that `--pdf-out` writes one valid PDF artifact to the
-mounted workspace and that `--output text --pdf-out ...` replaces the full report body with one
-artifact confirmation block on stdout. The mounted-workspace commands in that verifier must run the
-container as the caller's numeric `UID:GID`, matching the repo-owned `docker-smoke` contract, so
-bind-mounted key, book, and PDF artifacts remain owned and readable by the invoking operator on
-Linux hosts.
-
-Because this verifier asserts text statement output and drives a real mounted-book initialization
-and posting path, it is part of the published bookkeeping contract, not just the
-container-publication machinery. When the text `trial-balance` layout changes — for example new
-bookkeeping columns appear — or when the mounted workflow grammar changes — for example
-`open-book` starts requiring additional identity flags or `post-entry` starts requiring new
-request fields — or when the mounted-workspace user contract changes — update
-`scripts/verify-public-container-surface.sh` and
-`scripts/test-verify-public-container-surface.sh` in the same change. Do not accept a release
-process where the operator-side verifier lags behind the published statement surface.
-
-The release workflow's staged-container and promotion jobs run this same verifier after image
-publication, so a green publication workflow and a green Step 9 operator run now speak to the
-same public contract rather than two different verification depths.
-
-If the public verifier fails, inspect the reported step, fix the published state or the verifier
-owner if the probe itself is wrong, and rerun the same anonymous verification command. Do not
-switch to the operator's normal Docker config as a fallback.
-
-These checks are a second handoff checkpoint. Workflow success is not enough; public pull and run
-behavior is the authoritative state.
-
-The container registry retains the last 5 releases. Only `X.Y.Z` and `latest` tags are
-published per release; there is no `X.Y` floating tag.
-
-Only after the full anonymous pull, run, mounted-book, and PDF verification sequence succeeds
-report to the user: the release is publicly available.
-
-The release workflow is expected to perform the exact-tag pull-and-run verification internally
-after publication, and to perform the `latest` proof only when the release owns the canonical
-`latest` pointer. The operator-side verification remains mandatory because public availability,
-not workflow success, is the authoritative state.
-
-### Step 10
 
 Triage leftover PRs and clear dependency-automation leftovers.
 
@@ -716,7 +577,7 @@ gh pr list --state open \
 
 Treat any PR whose `author.login` identifies Dependabot as in scope for this step, even if it was
 already reviewed during Step 1. Today that means `app/dependabot`; older GitHub surfaces may show
-`dependabot[bot]`. Step 1 creates the release-time decision; Step 10 closes the loop before the
+`dependabot[bot]`. Step 1 creates the release-time decision; Step 9 closes the loop before the
 release session is allowed to end.
 
 For each open Dependabot PR, inspect the exact payload and its current gate status:
@@ -789,7 +650,7 @@ Requirements before declaring the release session complete:
 - Any remaining non-`main` branch on GitHub must correspond to an intentional still-open PR that
   was reviewed during this step and deliberately kept alive.
 
-### Step 11
+### Step 10
 
 Reconcile the primary checkout.
 
@@ -860,7 +721,7 @@ decision before landing on `main`.
 | Tier | Trigger | Deadline | Action |
 |:-----|:--------|:---------|:-------|
 | **Security** | Dependabot security advisory on any direct or transitive dependency | Within 7 calendar days of PR open | Review, verify CI passes, merge or reject with documented reason |
-| **Regular** | Non-security weekly update | Before the next release | Review during Step 10 Dependabot hygiene; merge or close |
+| **Regular** | Non-security weekly update | Before the next release | Review during Step 9 Dependabot hygiene; merge or close |
 | **Major version bump** | `semver-major` update on any ecosystem | Before the next release | Treat as a considered upgrade, not a routine bump; verify API compatibility explicitly |
 
 ### Required gates before any Dependabot merge

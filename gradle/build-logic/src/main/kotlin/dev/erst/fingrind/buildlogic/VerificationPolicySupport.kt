@@ -93,7 +93,7 @@ abstract class VerifyJavaSourcePoliciesTask : DefaultTask() {
             .sortedBy { it.invariantSeparatorsPath() }
             .forEach { file ->
                 val productionSource = file.invariantSeparatorsPath().contains("/src/main/java/")
-                val attestationNativeInteropSeam = file.isAttestationNativeInteropSeam()
+                val throwableInvocationSeam = file.isThrowableInvocationSeam()
                 file.useLines { lines ->
                     lines.forEachIndexed { index, line ->
                         if (wildcardImportPattern.matches(line.trim())) {
@@ -103,7 +103,7 @@ abstract class VerifyJavaSourcePoliciesTask : DefaultTask() {
                         if (productionSource) {
                             if (
                                 catchThrowablePattern.containsMatchIn(line) &&
-                                    !attestationNativeInteropSeam
+                                    !throwableInvocationSeam
                             ) {
                                 violations +=
                                     "${file.displayPath(projectDirectory)}:${index + 1}: catch (Throwable) is forbidden in production sources."

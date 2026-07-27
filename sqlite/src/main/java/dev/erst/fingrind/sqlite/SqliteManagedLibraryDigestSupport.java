@@ -4,6 +4,7 @@ import dev.erst.fingrind.core.CryptographicPrimitives;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
@@ -23,7 +24,7 @@ final class SqliteManagedLibraryDigestSupport {
   }
 
   static void requireManagedLibrary(Path libraryPath) {
-    if (!Files.isRegularFile(libraryPath)) {
+    if (!Files.isRegularFile(libraryPath, LinkOption.NOFOLLOW_LINKS)) {
       throw missingManagedLibrary(libraryPath);
     }
   }

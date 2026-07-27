@@ -2,21 +2,21 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: BOOK_OPERATION_ATTESTATION
-updated: "2026-07-23"
+updated: "2026-07-26"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["AttestedOperation", "AttestationAuthorizationLimits", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationCapability", "AttestationCredentialPurpose", "AttestationCustodian", "AttestationCustodianNotSupportedException", "AttestationEvidence", "AttestationGenesis", "AttestationGrantState", "AttestationKeyFiles", "AttestationOperationCommitment", "AttestationOperationKind", "AttestationOperationSigner", "AttestationPostingCommitmentInspection", "AttestationPublicCredential", "AttestationRegistryMutation", "AttestationSigningCredential", "AttestationSystemWorkflowKind"]
+  symbols: ["AttestedOperation", "AttestationAppendOutcome", "AttestationAuthorizationLimits", "AttestationEnvelope", "AttestationAccountMutationIntent", "AttestationCapability", "AttestationCredentialPurpose", "AttestationEvidence", "AttestationFounderKeyRetentionException", "AttestationGenesis", "AttestationGenesisPreparation", "AttestationGrantState", "AttestationOperationCommitment", "AttestationOperationKind", "AttestationPlanMutationProjection", "AttestationPlanQualifiedFact", "AttestationPostingCommitmentInspection", "AttestationRegistryMutation", "AttestationSystemWorkflowKind"]
 route:
   keywords: [verifiable-operation-attestation, operation-head, attestation-envelope, principal-quorum, credential-purpose, autonomous-workflow, semantic-profile, ed25519, immutable-preimage, operation-kind]
   questions: ["what does FinGrind book-operation attestation prove", "how is an attested operation encoded", "which credential may authorize a system operation", "which semantic profile governs a typed operation"]
-stage: "Current public protocol 36 and protected-book format 52 contract"
+stage: "Current public protocol 57 and protected-book format 57 contract"
 ---
 
 # Verifiable Operation Attestation Protocol
 
-This is the normative contract for FinGrind protocol 36 and protected-book format 52. It is the
-current public behavior. Earlier protected-book formats are rejected: there is no mode, migration,
-alias, or compatibility path.
+This is the normative contract for FinGrind protocol 57 and protected-book format 57. It is the
+current public behavior. Non-current protected-book formats, whether older or newer, are rejected:
+there is no mode, migration, alias, or compatibility path.
 
 ## Ownership And Scope
 
@@ -62,6 +62,15 @@ cannot alter evidence after handing it to the verifier. The canonical verifier c
 result surfaces are owned by
 [DOC_02_VerifiableOperationAttestationVerification.md](./DOC_02_VerifiableOperationAttestationVerification.md).
 
+## `AttestationAppendOutcome`
+
+`AttestationAppendOutcome` is the exact durable result of admitting one direct attestation
+operation. `Appended` carries the verification for the newly appended operation; the sole
+`AlreadyPresent.INSTANCE` value records an exact idempotent replay and carries no new operation.
+`requireAppended()` and `requireVerifiedAppend()` intentionally reject the replay case. Aggregate
+plan children use the separate plan-only capability outcomes, so a child cannot be misrepresented
+as an independently appended direct operation.
+
 ## `AttestationOperationCommitment` And `AttestationPostingCommitmentInspection`
 
 `AttestationOperationCommitment` is the public identity of one verified operation: its unsigned
@@ -90,7 +99,21 @@ evidence.
 
 `AttestationFounderInput` is the public open-book input that binds one founder principal to one
 credential and purpose. `AttestationGenesisFactory` translates those inputs into the canonical
-core genesis; it never accepts an implicit founder or a caller-provided genesis envelope.
+core genesis; it never accepts an implicit founder or a caller-provided genesis envelope. Its
+preparation validates every existing founder credential before it publishes any missing founder
+key, then creates missing keys in declared founder order and records every successful publication
+with its immutable retained stage. `AttestationGenesisPreparation` carries the completed genesis
+evidence and those exact founder-key publication facts.
+
+If preparation cannot complete after it has created any artifact, it raises
+`AttestationFounderKeyRetentionException` with the ordered retained artifact facts. The CLI
+projects that state as `open-book-preparation-artifacts-retained`: each item carries its role,
+path, and optional retained stage. A no-link stage fact uses role
+`attestation-founder-key-stage`; an indeterminate no-replace link uses
+`attestation-founder-key` for its candidate final path without claiming that the final path exists.
+Neither the preparer nor SQLite deletes, replaces, recreates, or reuses those artifacts. A later
+`open-book` attempt must choose fresh paths, so initialization never continues from ambiguous
+founder-key evidence.
 
 ## `AttestationAuthorizationLimits`
 
@@ -114,64 +137,38 @@ public final class AttestationAuthorizationLimits {
   admitted by `AttestationPolicyRule` and `AttestationRegistryMutation.PolicyRule`.
 - Reachability: an accepted policy always remains usable through public operation, manifest,
   receipt, restore, rekey, and policy-mutation signing boundaries.
-- Compatibility: public protected-book format-52 / protocol-36 contract.
+- Current public boundary: protected-book format-57 / protocol-57.
 
----
-
-## `AttestationKeyFiles`
-
-`AttestationKeyFiles.create` is the sole format-52 creation path for a new encrypted file-backed
-Ed25519 credential. It publishes a no-clobber key file and returns `AttestationPublicCredential`.
-`AttestationKeyFiles.loadPublicCredential` reads the public credential published with an existing
-encrypted key without decrypting its private material. A credential contains only canonical public
-DER-SPKI bytes and its SHA-256 key identifier.
-
-The public CLI makes those two safe custody operations available as
-`generate-attestation-key-file` and `inspect-attestation-key-file`. Both require the caller to
-select `--attestation-custodian file-pkcs8`; an unshipped selected custodian is refused rather than
-silently falling back. The generator emits the canonical base64url SPKI required by `enroll-key`
-or `rollover-key`, while inspection makes an existing credential's SPKI recoverable for revocation
-or predecessor selection without exposing private material.
-
-## `AttestationCustodian` And `AttestationCustodianNotSupportedException`
-
-`AttestationCustodian` is the closed explicit source of private attestation-key custody. Its only
-shipped wire value is `file-pkcs8`. The selection is exact: aliases, case normalization, and
-implicit file custody are absent. `AttestationCustodianNotSupportedException` retains an explicit
-unshipped value so the CLI can publish `custodian-not-supported` rather than misclassifying a
-selection failure as an invalid credential or storage error.
-
-## `AttestationKeyFileMetadata`
-
-`AttestationKeyFileMetadata` is the public non-secret response value for standalone credential
-custody. It carries the selected credential-file path, canonical base64url `credentialSpki`, and
-the derived lowercase-hex SHA-256 `keyId`; the CLI publishes the key file itself only as the
-generator's artifact and never publishes private-key or passphrase material.
-
-## `AttestationOperationSigner`
-
-`AttestationOperationSigner` builds an ordered operation envelope only from canonical request and
-effect preimages; persistence performs historical authorization and compare-and-swap admission.
-
-## `Attestation Signing Sessions And Authorization`
-
-`AttestationSigningSession` owns one short-lived private signing capability. Its executor factory,
-`AttestationSigningSessionFactory`, resolves a selected credential source without exposing private
-key bytes to the caller. `AttestationCredentialSource` names the accepted credential source,
-`AttestationCredentialException` reports an executor-facing credential-resolution failure, while
-`AttestationCredentialUseException` reports that one explicitly selected encrypted credential
-could not be read or verified and retains only its path plus a non-secret cause.
-`AttestationMutationAuthorization` couples an authorized mutation to the operation evidence it
-must append. These types are adapter seams: application code supplies a credential source and
-canonical mutation facts, while the session owns signing and zeroization.
+Credential custody, signing-session lifecycle, and canonical byte encoding are owned by
+[DOC_02_VerifiableOperationAttestationEncoding.md](./DOC_02_VerifiableOperationAttestationEncoding.md).
 
 ## `Attestation Mutation Projections`
 
 `AttestationOperationKind` is the closed canonical token vocabulary for signed operation
 preimages. `AttestationOperationRequest`, `AttestationOperationPreimages`, and
-`AttestationOperationAuthorizer` carry one normalized request/effect pair into the signer;
-`AttestationPlanOperationAuthorizer` collects child mutations and permits exactly one final
-aggregate plan authorization.
+`AttestationOperationAuthorizer` carry one normalized request/effect pair into the signer for a
+direct mutation. That direct authority is not a ledger-plan authority and must not be reused to
+authorize a plan child or a plan aggregate.
+
+`AttestationPlanOperationAuthorizer` is a distinct, final-only authority for one atomic
+`execute-plan` run. The plan coordinator binds it when the plan transaction begins, keeps it out
+of child mutation services, and invokes it exactly once for the aggregate operation after all
+accepted child mutations have persisted. It has identity-only equality, so separately constructed
+wrappers are not interchangeable even when they enclose the same signing delegate. A query-only
+or assertion-only plan never invokes it.
+
+`AttestationPlanChildMutation` is the immutable child record retained by that coordinator after a
+plan-specific mutation has durably completed. It carries the completed step order, child operation
+kind, and exact canonical preimages that the final aggregate commits. It is not caller input, a
+pre-persistence promise, or a mutable storage backlink; a failed or rolled-back child produces no
+child mutation for the aggregate.
+
+`AttestationPlanMutationProjection` wraps every complete direct child record in a
+step-qualified aggregate fact. `AttestationPlanQualifiedFact` is the closed verifier-side rule for
+those wrappers: it reconstructs each child request and effect from the retained raw records,
+validates the child as its own direct operation, and binds it to exactly one immutable plan source
+step. It does not rewrite a direct account, tax-registration, or posting schema; it preserves every
+durable child fact byte-for-byte inside the aggregate evidence.
 
 `AttestationAccountMutationProjection`, `AttestationLifecycleMutationProjection`,
 `AttestationPostingMutationProjection`, `AttestationPeriodCloseMutationProjection`, and
@@ -184,59 +181,19 @@ committed state transition. Their immutable input records — `AttestationAccoun
 boundary from reading mutable storage rows after a mutation has been selected. Projection callers
 must retain the exact request and committed effect; they must not synthesize a semantic proxy.
 
-## `AttestationPublicCredential`
+## `AttestationInterimResultSweepEffect`
 
-`AttestationPublicCredential` identifies a public key by the SHA-256 digest of its DER
-SubjectPublicKeyInfo encoding.
+`AttestationInterimResultSweepEffect` is the executor-derived interim-result sweep retained only
+when a fiscal-year close must materialize that sweep inside the close's one atomic attestation
+operation. It owns the swept reporting period, result-holding account, sweep order, currency
+totals, and generated posting snapshots. It is a committed effect, never caller input: the
+period-close projection verifies that it is contained by the fiscal-year close and binds it into
+the close's immutable evidence rather than appending a separate operation.
 
-## `AttestationSigningCredential`
+## Credential Encoding And Canonical Primitives
 
-`AttestationSigningCredential` binds a public credential to its book principal, encrypted key
-file, and short-lived caller-owned signing secret without disclosing private-key bytes.
-
-## Profile Constants And Canonical Primitives
-
-The current value of every version byte is exactly 01. An implementation must reject any other
-value with attestation-unsupported-version; it must not guess a newer grammar.
-
-| Structure | Domain tag | Version field | Current value |
-|:--|:--|:--|:--:|
-| operation payload | FGATTOP1 | payloadVersion | 01 |
-| backup manifest | FGATTBM1 | manifestVersion | 01 |
-| receipt | FGATTRC1 | receiptVersion | 01 |
-| backup artifact trailer | FGATBMF1 | containerVersion | 01 |
-
-All integer values are big-endian. All timestamps are exactly 24 ASCII bytes in the form
-YYYY-MM-DDThh:mm:ss.sssZ and must denote a valid UTC instant. All dates are exactly 10 ASCII bytes
-in the form YYYY-MM-DD and must denote a valid Gregorian calendar date.
-
-| Type | Canonical bytes | Validation |
-|:--|:--|:--|
-| u8, u16, u32, u64 | unsigned fixed-width integer | big-endian |
-| i64, i128 | signed two's-complement fixed-width integer | big-endian |
-| uuid | 16 RFC-4122 network-order bytes | textual UUIDs are never signed |
-| hash | 32 raw SHA-256 bytes | hexadecimal text is never signed |
-| spki | u16 byte length then DER SubjectPublicKeyInfo | length 1 through 4096; Ed25519 only |
-| bytes | u32 byte length then raw bytes | length at most 1,048,576; never secret material |
-| token | u8 byte length then lowercase ASCII kebab token | length 1 through 64 |
-| algorithm-id | u8 byte length then lowercase ASCII kebab token | length 1 through 32; version 1 value is ed25519 |
-| text | u32 byte length then NFC UTF-8 | length at most 1,048,576; no NUL |
-| currency | three uppercase ASCII letters | ISO-4217 code when a currency is used |
-| date | ten ASCII bytes | valid Gregorian date |
-| instant | 24 ASCII bytes | valid millisecond UTC instant |
-| money | currency, sign u8, minorUnits u128 | sign 00 is plus and 01 is minus; zero must use 00 |
-| scaled | scale u8, sign u8, units u128 | scale 0 through 18; sign rules equal money |
-| bool | one byte 00 or 01 | no other value |
-
-No signed payload contains passphrases, private keys, custodian handles, environment values, local
-paths, encrypted-key bytes, or presentation-only path hints. A preimage has at most 1,000,000
-records and 16 MiB of encoded bytes. An authorization quorum is in the inclusive range 1 through
-64. The post-operation fold of every policy, binding, credential retirement, grant, or system-workflow-policy
-mutation must leave each configured quorum no greater than its eligible-principal count. It must
-also leave each capability's quorum no greater than its operator-purpose eligible-principal count
-whenever that capability admits a cli operation. If an active system-workflow policy exists, the
-CLOSE_PERIOD quorum must additionally be no greater than its system-purpose eligible-principal
-count. A system workflow is therefore never activated into an impossible all-system quorum.
+The public credential values, version bytes, and canonical primitive grammar are owned by
+[DOC_02_VerifiableOperationAttestationEncoding.md](./DOC_02_VerifiableOperationAttestationEncoding.md).
 
 ## Principal Registry, Policy, And Operation Kinds
 
@@ -400,9 +357,9 @@ not published.
 
 | Class | Applies to | Required boundary |
 |:--|:--|:--|
-| one atomic operation | business entries, execute-plan, account/tax/registry/policy mutation, close, and rekey | one SQLite transaction contains domain rows, immutable preimages, envelope, and head |
+| one atomic operation | business entries, execute-plan, account/tax/registry/policy mutation, close, and rekey's in-book attestation mutation | one SQLite transaction contains domain rows, immutable preimages, envelope, and head |
 | sequence of signed operations | a command genuinely unable to be one transaction | each step is independently signed, has exact preimages, and has its own chain position |
-| staged external artifact | backup-book and restore-book | the filesystem boundary uses the ordered manifest protocol in [the artifact reference](./DOC_02_VerifiableOperationAttestationArtifacts.md); it is never claimed to be one SQLite transaction |
+| staged external artifact | backup-book and restore-book, plus rekey's book-and-generated-secret pair | the filesystem boundary uses the ordered manifest protocol in [the artifact reference](./DOC_02_VerifiableOperationAttestationArtifacts.md); it is never claimed to be one SQLite transaction or a globally atomic filesystem replacement |
 
 ## Version 1 Exclusions And Future Format Breaks
 
@@ -490,6 +447,13 @@ field type, absent required field, unknown tag, duplicate complete sort key, or 
 attestation-preimage-invalid. The sort key is encoded using the field encodings in the listed order,
 including required presence bytes.
 
+`embedded` is a length-prefixed opaque canonical byte sequence used only by the execute-plan
+wrappers below. It carries either one complete child record without the enclosing record-count
+prefix or that record's complete encoded per-type sort key. One embedded field is bounded at
+16,777,190 bytes, and a wrapper rejects a child record plus sort key that would exceed the
+16,777,216-byte aggregate-preimage limit. Decoders apply the same total bound before copying an
+untrusted preimage or embedded record.
+
 In the tables below, an exclamation mark means required and a question mark means optional. The
 schema column is the complete wire-field order, not a prose summary. Every effect record begins
 with mutation:u8!. Mutation values are 00 CREATE, 01 AMEND, 02 RETIRE, 03 REACTIVATE, 04 REVERSE,
@@ -538,6 +502,7 @@ allowed, or forbidden; a record not allowed by that profile is attestation-reque
 | 0183 | request.principal-capability-grant | principalId:uuid!, capability:token!, grantState:token! | principalId, capability |
 | 0184 | request.system-workflow-policy | workflowId:uuid!, workflowKind:token!, resultHoldingAccountCode:text!, capitalAccountCode:text?, retainedResultAccountCode:text?, active:bool! | workflowId |
 | 0185 | request.credential-retirement | keyId:hash!, principalId:uuid!, retirementState:token!, reason:text? | keyId |
+| 0186 | request.plan-child-fact | sourceStepOrder:u32!, childRecordType:u16!, childRecordSortKey:embedded!, childRecord:embedded! | sourceStepOrder, childRecordType, childRecordSortKey |
 
 ### Effect Record Catalog
 
@@ -585,6 +550,7 @@ allowed, or forbidden; a record not allowed by that profile is attestation-reque
 | 0092 | latvian-payroll-settlement | mutation:u8!, payrollRunId:uuid!, settlementKind:token!, postingId:uuid!, settledAmount:money! | payrollRunId, settlementKind |
 | 0093 | latvian-payroll-settlement-reversal | mutation:u8!, reversalPostingId:uuid!, payrollRunId:uuid!, settlementKind:token! | reversalPostingId |
 | 00A0 | restore.provenance | mutation:u8!, backupId:uuid!, backupArtifactDigest:hash!, restoredFromOrder:u64!, historicalSnapshotAuthorization:bool! | backupId |
+| 00A1 | plan.child-effect-fact | sourceStepOrder:u32!, childRecordType:u16!, childRecordSortKey:embedded!, childRecord:embedded! | sourceStepOrder, childRecordType, childRecordSortKey |
 
 The catalog is semantic rather than a mirror of SQLite tables. Physical indexes, caches, triggers,
 audit events, report projections, and paths are not records. Adding a tag, changing a field type,
@@ -609,8 +575,9 @@ or semantic mutation outside the effect catalog and operation profile.
 | book-genesis | canonical initial active lifecycle state implied by the declared identity, founder bindings, grants, and policy rules; no autonomous workflow may be active at Genesis |
 | account lifecycle and tax registration | resulting active state and normalized relationship rows implied by the requested lifecycle mutation |
 | typed posting | generated postingId and commandId; recordedAt; resolved posting origin; journal lines; and only the tax, foreign-exchange, inventory, accrual, fixed-asset, financing, foreign-currency, or payroll facts admitted by its exact operation-kind row below |
+| execute-plan | no new child fact: each 0186/00A1 pair preserves and validates one complete direct child request/effect record under its sourceStepOrder |
 | attach-posting-approval | the approved posting relationship named by the request |
-| interim-result-sweep and fiscal-year-close | generated posting IDs, journal lines, currency totals, and close relationships calculated from the admitted period request and prior accepted balances |
+| interim-result-sweep and fiscal-year-close | generated posting IDs, journal lines, currency totals, and close relationships calculated from the admitted period request and prior accepted balances; a fiscal close may carry the necessary interim-sweep facts as one derived effect of that same fiscal operation, never as a second authorization decision |
 | backup-created | no derivation beyond the acknowledged verified artifact tuple |
 | restore-book | restoration provenance derived from the verified manifest and the new restoration-derived chain position |
 | rekey-book | the resulting key epoch and recorded rekey instant |
@@ -620,6 +587,17 @@ An operation with an effect fact that is neither request-supported nor in this t
 attestation-request-profile-invalid. A profile may be narrowed by its operation kind, but it may
 never be widened by an adapter, a database trigger, or a future implementation convention.
 
+The lifecycle profiles close their request-to-effect relation as follows. `backup-created` has
+exactly one 0150/0006 pair; the 0006 mutation is ACKNOWLEDGE, its four acknowledgement tuple
+fields are byte-for-value equal to 0150, its source order and source head name a prior verified
+operation, and a backupId occurs at most once in a verified chain. An exact retry therefore adds
+no second operation. `restore-book` has exactly one 0160/00A0 pair; 00A0 is DERIVE, preserves its
+backupId, artifact digest, and source order, and requires historicalSnapshotAuthorization true.
+Its source order plus one is the restore operation order and its source head is that operation's
+previousHead. `rekey-book` has exactly one 0170/0007 pair; 0007 is DERIVE, its key epoch equals
+0170's key epoch, and its rekeyedAt equals the operation's recordedAt. Genesis establishes key
+epoch one, so the first rekey is epoch two and every later rekey advances by exactly one.
+
 ### Request And Effect Profiles
 
 | Operation profile | Required request tags | Allowed effect tags |
@@ -628,9 +606,10 @@ never be widened by an adapter, a database trigger, or a future implementation c
 | account lifecycle | 0100, 0110; 0111 and 0112 as applicable | 0010, 0011, 0012 |
 | tax registration | 0100, 0113; 0114 as applicable | 0013, 0014 |
 | typed posting | 0100 plus the exact request groups in the closed per-kind matrix | the exact effect groups in the closed per-kind matrix |
+| execute-plan | 0100, one or more 0186 | one or more 00A1 |
 | attach-posting-approval | 0100, 0125 | 0022 |
 | interim-result-sweep | 0100, 0120, 0140; 0141 when sourceChannel is system | 0020, 0025, 0040, 0041, 0042 |
-| fiscal-year-close | 0100, 0120, 0140; 0141 when sourceChannel is system | 0020, 0025, 0043, 0044 |
+| fiscal-year-close | 0100, 0120, 0140; 0141 when sourceChannel is system | 0020, 0025, 0043, 0044; and only when it atomically derives the required interim sweep, 0040, 0041, 0042 |
 | backup-created | 0100, 0150 | 0006 |
 | restore-book | 0100, 0160 | 00A0 |
 | rekey-book | 0100, 0170 | 0007 |
@@ -691,7 +670,7 @@ profiles in
 | Operation kinds | Required groups | Optional groups |
 |:--|:--|:--|
 | post-entry | D | X |
-| execute-plan | one or more canonical child mutation bundles | none beyond the selected child bundles |
+| execute-plan | one outer command plus one or more step-qualified child-record wrappers | no direct effect groups; one or more step-qualified child-effect wrappers |
 | record-sale-settled, record-sale-on-credit, record-purchase-settled, record-purchase-on-credit, record-expense-settled, record-expense-on-credit | B | T |
 | record-receipt, record-payment | B | S |
 | record-owner-contribution, record-owner-withdrawal | B | none |
@@ -710,22 +689,50 @@ profiles in
 | record-realized-foreign-exchange-settlement | B, O2 | none |
 | record-reversal | B, R | none |
 
-`execute-plan` is one attested operation with exactly one 0100 request.command. It retains each
-successful child mutation's canonical immutable request and effect bundle, rather than emitting a
-separate chain operation for each child. Every request.posting stepOrder names one posting child
-operation kind and must independently satisfy that child's exact row after removing 0100 from its
-B group. Its effect records carry the same stepOrder or the generated postingId linked to that
-step; account and tax-registration children retain their own canonical identity records. The
-aggregate cannot use the union of unrelated rows as a discretionary extension point.
+`execute-plan` is one attested operation with exactly one outer 0100 request.command and one or
+more 0186 request.plan-child-fact wrappers paired with 00A1 plan.child-effect-fact wrappers. It
+retains every successful child mutation's complete canonical request and effect records rather
+than emitting a separate chain operation for each child. The wrapper sourceStepOrder is the only
+aggregate step identity: it precedes the child record type and child sort key in the wrapper sort
+key, so two valid children may retain identical account or tax-registration identities without
+being coalesced or rejected as duplicate outer facts.
+
+Each wrapper repeats the embedded child record type and its exact canonical per-type sort key, then
+carries the complete raw canonical child record without a record-count prefix. The verifier checks
+both redundantly declared values against the raw record before it reconstructs the child preimages.
+The request and effect wrappers must name exactly the same source-step set. Each reconstructed
+child has exactly one direct 0100 request.command, sourceChannel cli, and one of the closed child
+kinds declare-account, declare-tax-registration, or post-entry. It then passes that direct
+operation's complete profile and request/effect linkage; wrappers cannot nest, merge unrelated
+children, or use a record from one source step to justify an effect in another.
+
+The direct child schemas remain unchanged. Their local posting `stepOrder` and
+`operationStepOrder` fields are always zero inside a plan child; the outer sourceStepOrder carries
+the plan position. For a post-entry child, the command operation kind, request.posting operation
+kind, and posting.fact operation kind are identical, and every posting effect uses CREATE. For an
+account child, account.state is CREATE, AMEND, or REACTIVATE with active true and every retained
+classification or relationship effect repeats that same mutation. For a tax-registration child,
+the registration and every registration-code effect are uniformly CREATE or uniformly AMEND.
+These checks preserve one precise durable child meaning instead of treating a wrapper as an
+unstructured byte container.
 The aggregate and every mutating child share the one authenticated head observed before the
 plan's first write admission. After the children succeed, FinGrind compares that same head before
 the aggregate signer runs. A concurrent advance is a `stale-head` refusal, not a plan journal
 entry: the full plan transaction rolls back and the caller re-signs against the reported current
 head.
 
-After the transaction commits, a mutating `execute-plan` result publishes that aggregate
-operation's order and head. A successful read-only plan publishes no operation reference. Posting
-read surfaces derive a posting's reference only by verifying the complete operation chain and
+The plan coordinator, not an individual child service, owns the post-persistence
+`AttestationPlanChildMutation` collection and the one final authorization. That ownership prevents
+a direct-operation authority from appending a child operation, prevents a pre-write child projection
+from being attested as though it committed, and prevents a generic transaction helper from
+combining unrelated stores into an aggregate operation.
+
+After a mutating transaction commits with durable children, its `execute-plan` result publishes
+`attestationDisposition: appended` and that aggregate operation's order and head. A successful
+credential-free read-only plan publishes `attestationDisposition: read-only` with no operation
+reference. A successful mutation-capable plan whose children all replay or otherwise leave no
+durable child publishes `attestationDisposition: no-durable-child-mutation`, also with no operation
+reference. Posting read surfaces derive a posting's reference only by verifying the complete operation chain and
 projecting the signed `posting.fact` effect record to its containing operation. They do not copy a
 backlink into mutable posting storage; invalid chain evidence refuses the query rather than
 publishing unauthenticated provenance.
@@ -760,7 +767,7 @@ selected row is attestation-request-profile-invalid.
 [DOC_02_VerifiableOperationAttestationArtifacts.md](./DOC_02_VerifiableOperationAttestationArtifacts.md)
 is the canonical owner of backup-manifest, artifact-publication, restore, and receipt/anchor
 contracts, including the artifact golden vectors. This protocol retains the shared envelope grammar,
-historical authorization rules, and record facts consumed by the verifier.
+immutable authorization evidence and rules, and record facts consumed by the verifier.
 
 ## Verification, Compromise Review, And Failure Taxonomy
 

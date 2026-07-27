@@ -116,7 +116,9 @@ final class AttestationRegistry {
     return eligiblePrincipalCount(capability, resolvingOrder, null);
   }
 
-  /** Counts historically eligible principals, optionally constrained to one credential purpose. */
+  /**
+   * Counts principals eligible at the resolving position, optionally for one credential purpose.
+   */
   int eligiblePrincipalCount(
       AttestationCapability capability,
       BigInteger resolvingOrder,

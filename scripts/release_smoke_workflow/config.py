@@ -15,13 +15,14 @@ def load_config() -> ReleaseSmokeConfig:
         len(command_prefix) > 0,
         "environment variable FINGRIND_RELEASE_SMOKE_COMMAND_PREFIX_JSON must not be empty",
     )
-    work_root = Path(require_env("FINGRIND_RELEASE_SMOKE_WORK_ROOT"))
+    work_root = require_existing_absolute_work_root(require_env("FINGRIND_RELEASE_SMOKE_WORK_ROOT"))
     argument_path_mode = require_env("FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE")
     scenario_id = require_env("FINGRIND_RELEASE_SMOKE_SCENARIO_ID")
     scenario = build_release_smoke_scenario(work_root, argument_path_mode, scenario_id)
     return ReleaseSmokeConfig(
         label=require_env("FINGRIND_RELEASE_SMOKE_LABEL"),
         repo_root=Path(require_env("FINGRIND_RELEASE_SMOKE_REPO_ROOT")),
+        work_root=work_root,
         command_prefix=command_prefix,
         command_bridge_prefix=require_json_array(
             "FINGRIND_RELEASE_SMOKE_COMMAND_BRIDGE_PREFIX_JSON", default=[]
@@ -46,6 +47,7 @@ def load_config() -> ReleaseSmokeConfig:
         ),
         request_sale=scenario.request_sale,
         request_expense=scenario.request_expense,
+        request_taxed_sale=scenario.request_taxed_sale,
         request_raw_journal=scenario.request_raw_journal,
         invalid_request=scenario.invalid_request,
         declare_bank_account=scenario.declare_bank_account,
@@ -72,9 +74,11 @@ def load_config() -> ReleaseSmokeConfig:
         accounting_framework_position=scenario.accounting_framework_position,
         entity_form=scenario.entity_form,
         book_template_id=scenario.book_template_id,
+        inventory_costing_doctrine=scenario.inventory_costing_doctrine,
         accounting_basis=scenario.accounting_basis,
         functional_currency=scenario.functional_currency,
         fiscal_year_start=scenario.fiscal_year_start,
+        book_start_effective_date=scenario.book_start_effective_date,
         starter_cash_account_code=scenario.starter_cash_account_code,
         starter_cash_account_name=scenario.starter_cash_account_name,
         starter_revenue_account_code=scenario.starter_revenue_account_code,
@@ -83,7 +87,34 @@ def load_config() -> ReleaseSmokeConfig:
         bank_account_name=scenario.bank_account_name,
         expense_supplement_account_code=scenario.expense_supplement_account_code,
         expense_supplement_account_name=scenario.expense_supplement_account_name,
+        native_sqlite_probe_classpath=require_env(
+            "FINGRIND_RELEASE_SMOKE_NATIVE_SQLITE_PROBE_CLASSPATH"
+        ),
+        native_sqlite_java_prefix=require_json_array(
+            "FINGRIND_RELEASE_SMOKE_NATIVE_SQLITE_JAVA_PREFIX_JSON", default=[]
+        ),
     )
+
+
+def require_existing_absolute_work_root(value: str) -> Path:
+    """Resolve the caller-owned scratch root to one physical directory before mutation."""
+    work_root = Path(value)
+    require(
+        work_root.is_absolute(),
+        "environment variable FINGRIND_RELEASE_SMOKE_WORK_ROOT must be an absolute directory",
+    )
+    require(
+        work_root.exists() and work_root.is_dir(),
+        "environment variable FINGRIND_RELEASE_SMOKE_WORK_ROOT must name an existing directory",
+    )
+    try:
+        physical_work_root = work_root.resolve(strict=True)
+    except OSError as exc:
+        raise ReleaseSmokeFailure(
+            "environment variable FINGRIND_RELEASE_SMOKE_WORK_ROOT could not be resolved "
+            "as one physical directory"
+        ) from exc
+    return physical_work_root
 
 
 def optional_path(name: str) -> Path | None:

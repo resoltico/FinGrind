@@ -32,7 +32,7 @@ final class ProtocolAdministrationOperations {
         List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
             ProtocolOptions.BookDefinition.ENTITY_NAME + " <text>",
             ProtocolOptions.BookDefinition.TEMPLATE_ID
                 + " <"
@@ -57,8 +57,8 @@ final class ProtocolAdministrationOperations {
                 + " <path> (repeat one through five aligned founder credential triplets under the selected custody)",
             ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE
                 + " <path> (repeat one through five aligned founder credential triplets under the selected custody)",
-            "[" + ProtocolOptions.BookDefinition.TIGHTEN_PARENTS + "]",
-            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),
         "Initialize a new book file with the canonical schema, selected seed template, explicit accounting basis, and the inventory costing doctrine required by trading templates.",
@@ -120,10 +120,11 @@ final class ProtocolAdministrationOperations {
         "Declare Account",
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
             ProtocolOptions.Request.FILE + " <path|->",
-            ProtocolOptions.requiredAttestationCredentialSyntax(),
-            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+            ProtocolOptionSyntax.Attestation.requiredCredentialSyntax(),
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                List.of(OutputMode.JSON, OutputMode.TEXT))),
         "Declare or reactivate an account in the selected book.",
         List.of(
             ProtocolExampleStep.command(
@@ -149,10 +150,11 @@ final class ProtocolAdministrationOperations {
         "Declare Tax Registration",
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
             ProtocolOptions.Request.FILE + " <path|->",
-            ProtocolOptions.requiredAttestationCredentialSyntax(),
-            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+            ProtocolOptionSyntax.Attestation.requiredCredentialSyntax(),
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                List.of(OutputMode.JSON, OutputMode.TEXT))),
         "Declare or update an owned tax registration using already-declared payable and recoverable accounts; this command never creates accounts implicitly.",
         List.of(
             ProtocolExampleStep.command(
@@ -171,10 +173,11 @@ final class ProtocolAdministrationOperations {
         "Amend Account",
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
             ProtocolOptions.Request.FILE + " <path|->",
-            ProtocolOptions.requiredAttestationCredentialSyntax(),
-            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+            ProtocolOptionSyntax.Attestation.requiredCredentialSyntax(),
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                List.of(OutputMode.JSON, OutputMode.TEXT))),
         "Replace the definition of a never-posted, unreferenced account without erasing its identity or lifecycle history.",
         List.of(
             ProtocolExampleStep.command(
@@ -193,10 +196,11 @@ final class ProtocolAdministrationOperations {
         "Retire Account",
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
             ProtocolOptions.Request.FILE + " <path|->",
-            ProtocolOptions.requiredAttestationCredentialSyntax(),
-            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+            ProtocolOptionSyntax.Attestation.requiredCredentialSyntax(),
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                List.of(OutputMode.JSON, OutputMode.TEXT))),
         "Retire a zero-balance account from new ordinary authored postings while preserving its ledger history and admitting historical reversals.",
         List.of(
             ProtocolExampleStep.command(

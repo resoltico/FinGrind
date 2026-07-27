@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: DEVELOPER_SECURITY
-updated: "2026-07-22"
+updated: "2026-07-26"
 route:
   keywords: [fingrind, security, threat-boundary, protected-book, sqlite3mc, key-lifecycle, runtime-provenance, ciphertext, passphrase, compile-options]
   questions: ["what is the fingrind security model", "what does protected-book-verification-failed mean", "what security boundary does fingrind promise", "how does fingrind handle passphrases sqlite runtime identity and attestation keys"]
@@ -19,7 +19,7 @@ runtime-identity rules, and protected-book failure semantics in one canonical de
 
 FinGrind's current security model is built from four contract owners:
 - one explicit `BookAccess` tuple: durable book path plus one selected passphrase source
-- one managed SQLite runtime contract: SQLite 3.53.3 / SQLite3 Multiple Ciphers 2.3.6 plus the
+- one managed SQLite runtime contract: SQLite 3.53.4 / SQLite3 Multiple Ciphers 2.4.0 plus the
   required compile options `THREADSAFE=1`, `OMIT_LOAD_EXTENSION`, `TEMP_STORE=3`,
   `SECURE_DELETE`, the forbidden compile option `USE_URI`, and secure-memory support enabled with
   `SQLITE3MC_SECURE_MEMORY=1`
@@ -28,8 +28,10 @@ FinGrind's current security model is built from four contract owners:
 - one persisted protected-book format contract: `cipher=chacha20`, `legacyMode=false`,
   `pageSize=4096`, `reservedBytes=32`, `legacyPageSize=4096`, `kdfIter=64007`, and
   `plaintextHeaderSize=0`
-- one deterministic failure contract for verification-time book mismatch:
-  `protected-book-verification-failed`
+- two deterministic failure contracts for verification-time book mismatch:
+  `protected-book-verification-failed` for opaque authentication or integrity loss, and
+  `unsupported-book-format-version` for a successfully opened FinGrind book whose declared
+  format is not this binary's exact supported version
 
 Those facts are not independent knobs today. FinGrind's deliberate stance is one managed runtime,
 one protected-book profile, and one explicit passphrase-source model rather than a menu of
@@ -51,8 +53,8 @@ What FinGrind does not protect automatically:
 - any heap-resident secret copies the JVM GC, heap dump tooling, or crash handling may preserve
   beyond the specific arrays FinGrind overwrites
 - crash dumps, live debuggers, or host-level memory inspection
-- stale `*.rekey-rollback-*.sqlite` artifacts left behind by an interrupted rekey before the next
-  operator review
+- external pair evidence left by an interrupted protected-book maintenance operation; it remains
+  recovery-only evidence and is never operator-managed
 - copied backups, exported JSON, CSV, or PDF artifacts
 - host-level copies created outside FinGrind's verified backup and restore workflow
 - key files stored beside the book file
@@ -63,8 +65,10 @@ header. If that value changes in the future, the header bytes become a newly exp
 surface and the change must be treated as a real threat-boundary expansion, not a cosmetic format
 change.
 
-There is no public rollback-artifact command. Any interrupted-rekey artifact is recovered only by
-the verified maintenance workflow; it must not be copied, edited, or adopted as an ordinary book.
+No public command adopts or manipulates interrupted-maintenance external pair evidence. It is
+recovered only by rerunning its named original operation with its complete original inputs,
+including its reported canonical target paths; it must never be renamed, overwritten, deleted,
+recreated, manually cleaned, copied, edited, or adopted as an ordinary book. Legacy or malformed residue remains fail-closed rather than operator-cleanable.
 
 ## Attestation Credential Cryptography
 
@@ -74,6 +78,11 @@ AES-256-GCM with a fresh 12-byte IV and a 128-bit authentication tag. The creden
 format-versioned, bounded to 1 KiB, and published no-clobber. Its passphrase file is valid UTF-8,
 nonempty after one optional trailing line ending, and bounded to 4,096 bytes.
 
+The durable public `file-pkcs8` container grammar (including its version, plaintext public-SPKI
+metadata, KDF field, and AES-GCM framing) is owned by
+[DOC_02_VerifiableOperationAttestationEncoding.md](./DOC_02_VerifiableOperationAttestationEncoding.md#file-pkcs8-credential-container),
+not this operational security guide.
+
 The private key is decrypted only inside the signing seam and is not serialized into an operation,
 manifest, receipt, response, log, or diagnostic. Founder key creation may create one missing key
 path at genesis; later mutation signing refuses a missing credential path so an unenrolled key can
@@ -81,12 +90,20 @@ never appear implicitly. See [USER_BOOK_ATTESTATION.md](./USER_BOOK_ATTESTATION.
 operator contract and [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md)
 for the canonical verification contract.
 
+`execute-plan` treats the custody-and-credential tuple as a mutation-only secret boundary. It
+decodes the plan before opening any selected credential: a query-only or assertion-only plan with
+a complete tuple returns `attestation-credentials-not-allowed` (exit `1`) without decrypting a
+credential or executing a step. A partial tuple is the separate parser-level `invalid-request`
+case. This prevents a non-mutating plan from silently consuming, probing, or discarding signing
+material.
+
 Credential enrollment, rollover, revocation, and policy changes are ordinary signed operations.
 Their public request document carries only canonical base64url Ed25519 SPKI data, principal IDs,
 and policy facts; the parser derives the key ID from SPKI. Local credential paths, passphrase
 sources, and encrypted key bytes stay outside the signed request and effect preimages. Admission
-resolves the live historical registry at the preceding operation order and projects an expected
-authorization refusal as its exact `attestation-*` rejected result, never as a storage failure.
+reconstructs live authority from immutable registry evidence through the preceding operation order
+and projects an expected authorization refusal as its exact `attestation-*` rejected result, never
+as a storage failure.
 That rule includes a backup acknowledgement attempted after its external pair is durably
 published: an authorization refusal preserves the pair, returns exit code `2`, and remains
 distinct from an operationally interrupted acknowledgement.
@@ -153,13 +170,18 @@ two runtime-provenance values:
   generated checkout layout
 
 Runtime identity rules:
-- `bundle-managed` is bundle-sidecar-consistency: the public bundle ships one sibling
-  digest sidecar (`<library>.sha256`), FinGrind copies that pair into one private
-  verification snapshot, and verifies the extracted library against that sidecar before the
-  verified snapshot is loaded
-- `source-checkout-managed` is source-checkout-sidecar-consistency: FinGrind verifies the locally prepared
-  library against the checkout-local `.sha256` sidecar, but that proof is
-  one source-checkout build identity check rather than one public-release publisher attestation
+- `bundle-managed` is bundle-sidecar-consistency: the public bundle ships one sibling digest
+  sidecar (`<library>.sha256`), and FinGrind copies the library and sidecar into one fresh retained
+  owner-only snapshot, retains its verified SHA-256, then reopens that snapshot with no-follow
+  access and re-hashes it immediately before asking Java FFM to load its pathname
+- `source-checkout-managed` is source-checkout-sidecar-consistency: it follows the same retained
+  snapshot verification and immediate no-follow re-open/re-hash against the checkout-local
+  `.sha256` sidecar, but that proof is one source-checkout build identity check rather than one
+  public-release publisher attestation
+- Java FFM resolves the library by pathname after that revalidation. The retained snapshot is
+  therefore defense in depth under FinGrind's documented cooperative/normal filesystem boundary,
+  not a claim that the exact verified bytes are provably loaded across arbitrary same-owner
+  replacement
 - machine consumers read `environment.sqlite.runtime.runtimeProvenance` together with
   `environment.sqlite.runtime.runtimeTrustBasis`: the machine-readable `runtimeTrustBasis` field
   reports `bundle-sidecar-consistency` for `bundle-managed`,
@@ -220,7 +242,7 @@ protected book.
 Publicly reported causes include:
 - wrong secret
 - damaged, truncated, or tampered ciphertext
-- a protected SQLite file outside the supported FinGrind protected-book format
+- a protected SQLite file whose identity or format cannot be authenticated and read
 
 FinGrind intentionally does not invent false precision at this boundary. The encrypted-header
 validation path can converge on storage verification families such as `SQLITE_NOTADB`,
@@ -229,6 +251,13 @@ unsupported protected-file variants. The public contract therefore reports one t
 verification failure instead of pretending every such failure is a passphrase mistake. This typed
 failure is preserved even when a later SQLite page read, rather than initial connection setup,
 first exposes the protected-book integrity problem.
+
+`unsupported-book-format-version` is intentionally separate. It means the selected protected
+book opened successfully, declared FinGrind's application identity, and exposed a non-current
+format version. The error publishes both `detectedBookFormatVersion` and
+`supportedBookFormatVersion`, and FinGrind neither migrates nor opens that book for an operational
+read, report, verification, receipt, or maintenance command. `inspect-book` is the sole
+state-reporting exception: it succeeds specifically so an operator can learn those version facts.
 
 ## Evidence
 
@@ -247,8 +276,8 @@ Current evidence that this model is implemented:
 - `SqliteManagedLibraryIdentityTest` proves bundle-managed runtimes require the sibling
   `.sha256` sidecar and source-checkout-managed runtimes verify one checkout-local build identity
   through that same sidecar contract
-- `SqliteRekeyRollbackFileTest` proves stale rollback-artifact discovery only matches the
-  same-book rollback naming contract before one warning is reported
+- protected-book maintenance admission tests prove retained pair evidence is tied to its exact
+  original tuple and that malformed or legacy residue remains fail-closed
 - `scripts/test-verify-github-release.sh` proves release verification now requires attested
   published bundle assets instead of metadata-only checks
 - `scripts/test-verify-security-policy-surface.sh` proves the live GitHub security-policy verifier

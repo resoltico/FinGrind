@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 
 /** Public CLI contract coverage for caller-controlled path failures and maintenance refusals. */
-class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
+class FinGrindCliCallerPathContractTest extends CliWorkflowFixtureSupport {
   private static final Set<PosixFilePermission> LOOSE_POSIX_DIRECTORY_PERMISSIONS =
       Set.of(
           PosixFilePermission.OWNER_READ,
@@ -33,6 +33,41 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
           PosixFilePermission.GROUP_EXECUTE,
           PosixFilePermission.OTHERS_READ,
           PosixFilePermission.OTHERS_EXECUTE);
+
+  @Test
+  void run_verifyBookWithDirectoryKeyFile_returnsTheCanonicalKeyFileFailureEnvelope()
+      throws IOException {
+    Path bookFilePath = tempDirectory.resolve("inspection-book").resolve("entity.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    ObservedInvocation opened = runRawCli(openBookKeyFileArguments(bookFilePath, bookKeyFilePath));
+    assertEquals(0, opened.exitCode(), opened.stderr());
+
+    Path selectedKeyDirectory = tempDirectory.resolve("selected-key-directory");
+    Files.createDirectory(selectedKeyDirectory);
+    ObservedInvocation observed =
+        runRawCli(
+            new String[] {
+              "verify-book",
+              "--book-file",
+              bookFilePath.toString(),
+              "--book-key-file",
+              selectedKeyDirectory.toString(),
+              "--output",
+              "json"
+            });
+
+    assertJsonFailure(observed, 6, "error", ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.code());
+    JsonNode envelope = failureEnvelope(observed);
+    assertEquals("--book-key-file", envelope.path("argument").stringValue(), observed.stderr());
+    assertEquals(
+        CliPublicPaths.absoluteValue(selectedKeyDirectory),
+        envelope.path("path").stringValue(),
+        observed.stderr());
+    assertTrue(
+        envelope.path("message").stringValue().contains("regular non-symlink file"),
+        observed.stderr());
+    assertFalse(observed.stderr().contains("internal-error"), observed.stderr());
+  }
 
   @Test
   void run_openBookWithParentPathCollision_honorsResolvedTextAndJsonFailureModes()
@@ -128,7 +163,7 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
         observed
             .stderr()
             .contains(
-                "Create a private owner-only parent directory yourself, tighten it if needed, then choose a regular non-symlink key file path beneath it and rerun the command."),
+                "Create a private owner-only parent directory yourself, then choose a regular non-symlink key file path beneath it and rerun the command."),
         observed.stderr());
     assertFalse(observed.stderr().contains("Choose one regular non-symlink"), observed.stderr());
     assertFalse(Files.exists(keyFilePath));
@@ -183,10 +218,12 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void run_generateBookKeyFileWithTightenParents_hardensLooseParentAndReportsTheChange()
+  void run_retiredTightenParentsOption_isRejectedWithoutMutatingTheSelectedParent()
       throws IOException {
-    Path looseSecretsDirectory = createLoosePosixDirectory("loose-secrets-with-tighten");
+    Path looseSecretsDirectory = createLoosePosixDirectory("loose-secrets-retired-option");
     Path keyFilePath = looseSecretsDirectory.resolve("entity.book-key");
+    Set<PosixFilePermission> permissionsBefore =
+        Files.getPosixFilePermissions(looseSecretsDirectory);
 
     ObservedInvocation observed =
         runStandardCli(
@@ -199,98 +236,11 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
               "json"
             });
 
-    assertEquals(0, observed.exitCode(), observed.stderr());
-    assertEquals("", observed.stderr(), observed.stderr());
-    JsonNode envelope = CliJsonObjectMappers.configuredObjectMapper().readTree(observed.stdout());
-    assertEquals("ok", envelope.path("status").stringValue(), observed.stdout());
-    assertEquals(
-        CliPublicPaths.absoluteValue(looseSecretsDirectory),
-        envelope.path("payload").path("tightenedParentDirectories").get(0).stringValue(),
-        observed.stdout());
-    assertTrue(Files.exists(keyFilePath));
-    assertEquals(
-        Set.of(
-            PosixFilePermission.OWNER_READ,
-            PosixFilePermission.OWNER_WRITE,
-            PosixFilePermission.OWNER_EXECUTE),
-        Files.getPosixFilePermissions(looseSecretsDirectory));
-  }
-
-  @Test
-  void run_openBookWithTightenParents_hardensLooseParentAndPublishesItInSuccessPayload()
-      throws IOException {
-    Path looseBooksDirectory = createLoosePosixDirectory("loose-books-with-tighten");
-    Path bookFilePath = looseBooksDirectory.resolve("entity.sqlite");
-    Path bookKeyFilePath = writeNamedBookKey("tighten-open-book.key", TEST_BOOK_KEY);
-
-    ObservedInvocation observed =
-        runStandardCli(
-            new String[] {
-              "open-book",
-              "--book-file",
-              bookFilePath.toString(),
-              "--book-key-file",
-              bookKeyFilePath.toString(),
-              "--entity-name",
-              "Acme Studio",
-              "--book-template-id",
-              "OWNER_MANAGED_SERVICE",
-              "--accounting-basis",
-              "CASH",
-              "--functional-currency",
-              "EUR",
-              "--fiscal-year-start",
-              "01-01",
-              "--book-start-effective-date",
-              "2026-01-01",
-              "--book-start-effective-date",
-              "2026-01-01",
-              "--tighten-parents",
-              "--output",
-              "json"
-            });
-
-    assertEquals(0, observed.exitCode(), observed.stderr());
-    assertEquals("", observed.stderr(), observed.stderr());
-    JsonNode envelope = CliJsonObjectMappers.configuredObjectMapper().readTree(observed.stdout());
-    assertEquals("ok", envelope.path("status").stringValue(), observed.stdout());
-    assertEquals(
-        CliPublicPaths.absoluteValue(looseBooksDirectory),
-        envelope.path("payload").path("tightenedParentDirectories").get(0).stringValue(),
-        observed.stdout());
-    assertTrue(Files.exists(bookFilePath));
-    assertEquals(
-        Set.of(
-            PosixFilePermission.OWNER_READ,
-            PosixFilePermission.OWNER_WRITE,
-            PosixFilePermission.OWNER_EXECUTE),
-        Files.getPosixFilePermissions(looseBooksDirectory));
-  }
-
-  @Test
-  void run_generateBookKeyFileWithTightenParents_doesNotReportAlreadyPrivateParents()
-      throws IOException {
-    Assumptions.assumeTrue(supportsPosix(tempDirectory));
-    Path privateSecretsDirectory = tempDirectory.resolve("private-secrets");
-    Files.createDirectories(privateSecretsDirectory);
-    CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(privateSecretsDirectory);
-    Path keyFilePath = privateSecretsDirectory.resolve("entity.book-key");
-
-    ObservedInvocation observed =
-        runStandardCli(
-            new String[] {
-              "generate-book-key-file",
-              "--new-book-key-file",
-              keyFilePath.toString(),
-              "--tighten-parents",
-              "--output",
-              "json"
-            });
-
-    assertEquals(0, observed.exitCode(), observed.stderr());
-    JsonNode envelope = CliJsonObjectMappers.configuredObjectMapper().readTree(observed.stdout());
-    assertEquals(
-        0, envelope.path("payload").path("tightenedParentDirectories").size(), observed.stdout());
+    assertEquals(1, observed.exitCode(), observed.stderr());
+    assertEquals("", observed.stdout(), observed.stdout());
+    assertTrue(observed.stderr().contains("--tighten-parents"), observed.stderr());
+    assertEquals(permissionsBefore, Files.getPosixFilePermissions(looseSecretsDirectory));
+    assertFalse(Files.exists(keyFilePath));
   }
 
   @Test
@@ -401,7 +351,7 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
                     new BookMaintenanceRejection.ArtifactPathInvalid(
                         BookMaintenanceArtifactRole.RESTORED_TARGET,
                         bookFilePath,
-                        BookMaintenancePathFailure.TARGET_MUST_BE_REGULAR_NON_SYMLINK_FILE)));
+                        BookMaintenancePathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE)));
           }
         };
 
@@ -424,7 +374,7 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
 
     assertJsonFailure(observed, 6, "rejected", "artifact-path-invalid");
     assertEquals(
-        "target-must-be-regular-non-symlink-file",
+        "artifact-must-be-regular-non-symlink-file",
         failureEnvelope(observed).path("details").path("pathFailure").stringValue(),
         observed.stderr());
   }
@@ -439,6 +389,22 @@ class FinGrindCliCallerPathContractTest extends FinGrindCliTestSupport {
             utf8PrintStream(diagnosticsStream),
             fixedClock());
     int exitCode = cli.run(authenticatedArguments(arguments));
+    return new ObservedInvocation(
+        exitCode,
+        outputStream.toString(StandardCharsets.UTF_8),
+        diagnosticsStream.toString(StandardCharsets.UTF_8));
+  }
+
+  private ObservedInvocation runRawCli(String[] arguments) {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(
+            new ByteArrayInputStream(new byte[0]),
+            utf8PrintStream(outputStream),
+            utf8PrintStream(diagnosticsStream),
+            fixedClock());
+    int exitCode = cli.run(arguments);
     return new ObservedInvocation(
         exitCode,
         outputStream.toString(StandardCharsets.UTF_8),

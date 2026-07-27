@@ -3,6 +3,7 @@ package dev.erst.fingrind.jazzer.tool;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import tools.jackson.databind.json.JsonMapper;
 
@@ -14,7 +15,19 @@ final class RegressionSeedMetadataInspector {
 
   static RegressionSeedMetadataInspection inspectMetadataPath(
       Path projectDirectory, JazzerHarness harness, Path metadataPath) throws IOException {
+    Path canonicalProjectDirectory =
+        RegressionSeedRepositoryPathAdmission.canonicalProjectDirectory(projectDirectory);
     Path normalizedMetadataPath = metadataPath.toAbsolutePath().normalize();
+    if (!Files.isRegularFile(normalizedMetadataPath, LinkOption.NOFOLLOW_LINKS)) {
+      return RegressionSeedMetadataInspection.problem(
+          new RegressionSeedIntegrityProblem(
+              harness.key(),
+              normalizedMetadataPath,
+              null,
+              "metadata-read-failure",
+              "Committed regression metadata must be a regular non-symlink file: "
+                  + normalizedMetadataPath));
+    }
     RegressionSeedMetadata metadata;
     try {
       metadata = JazzerJson.read(normalizedMetadataPath, RegressionSeedMetadata.class);
@@ -30,7 +43,8 @@ final class RegressionSeedMetadataInspector {
                   + " -> "
                   + exception.getMessage()));
     }
-    Path normalizedInputPath = metadata.inputPath(projectDirectory).toAbsolutePath().normalize();
+    Path normalizedInputPath =
+        metadata.inputPath(canonicalProjectDirectory).toAbsolutePath().normalize();
     if (!metadata.targetKey().equals(harness.key())) {
       return RegressionSeedMetadataInspection.problem(
           new RegressionSeedIntegrityProblem(
@@ -48,7 +62,7 @@ final class RegressionSeedMetadataInspector {
     }
 
     Path normalizedHarnessInputDirectory =
-        harness.inputDirectory(projectDirectory).toAbsolutePath().normalize();
+        harness.inputDirectory(canonicalProjectDirectory).toAbsolutePath().normalize();
     if (!normalizedInputPath.startsWith(normalizedHarnessInputDirectory)) {
       return RegressionSeedMetadataInspection.problem(
           new RegressionSeedIntegrityProblem(
@@ -61,7 +75,26 @@ final class RegressionSeedMetadataInspector {
                   + " -> "
                   + normalizedInputPath));
     }
-    if (!Files.exists(normalizedInputPath)) {
+    Path inputParent = normalizedInputPath.getParent();
+    boolean realInputParent;
+    try {
+      realInputParent =
+          inputParent != null
+              && RegressionSeedRepositoryPathAdmission.hasExistingRealDirectoryTree(
+                  canonicalProjectDirectory, inputParent);
+    } catch (IOException exception) {
+      return RegressionSeedMetadataInspection.problem(
+          new RegressionSeedIntegrityProblem(
+              harness.key(),
+              normalizedMetadataPath,
+              normalizedInputPath,
+              "input-not-regular-file",
+              "Committed regression metadata points through a non-real input directory: "
+                  + normalizedMetadataPath
+                  + " -> "
+                  + normalizedInputPath));
+    }
+    if (!realInputParent || Files.notExists(normalizedInputPath, LinkOption.NOFOLLOW_LINKS)) {
       return RegressionSeedMetadataInspection.problem(
           new RegressionSeedIntegrityProblem(
               harness.key(),
@@ -73,7 +106,7 @@ final class RegressionSeedMetadataInspector {
                   + " -> "
                   + normalizedInputPath));
     }
-    if (!Files.isRegularFile(normalizedInputPath)) {
+    if (!Files.isRegularFile(normalizedInputPath, LinkOption.NOFOLLOW_LINKS)) {
       return RegressionSeedMetadataInspection.problem(
           new RegressionSeedIntegrityProblem(
               harness.key(),

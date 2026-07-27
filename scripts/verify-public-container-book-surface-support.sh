@@ -90,15 +90,10 @@ extract_artifact_confirmation_path() {
 artifact_path_matches() {
     local reported_path=$1
     local expected_path=$2
-    local expected_suffix="${expected_path#/}"
-    local expected_basename="${expected_path##*/}"
 
     [[ -n "${reported_path}" ]] || return 1
     case "${reported_path}" in
-        "${expected_path}"|"<redacted>${expected_path}"|"<redacted>/${expected_basename}")
-            return 0
-            ;;
-        */"${expected_suffix}"|*/"${expected_basename}")
+        "${expected_path}"|"<redacted>${expected_path}")
             return 0
             ;;
     esac
@@ -129,10 +124,13 @@ verify_text_pdf_artifact_output() {
 verify_mounted_book_surface() {
     local image_ref="${image_name}:${primary_tag_ref}"
     local text_output pdf_stdout pdf_stderr pdf_stdout_path pdf_stderr_path
-    local pdf_path="${report_root}/trial-balance.pdf" pdf_signature=''
+    local pdf_parent="${report_root}/private-reports"
+    local pdf_path="${pdf_parent}/trial-balance.pdf" pdf_signature=''
     local raw_post_output raw_posting_id raw_get_output
 
     seed_public_fixture
+    mkdir -p "${pdf_parent}"
+    chmod 700 "${pdf_parent}"
 
     mounted_container_run "${image_ref}" \
         generate-book-key-file --new-book-key-file /work/book.key >/dev/null
@@ -166,22 +164,23 @@ verify_mounted_book_surface() {
         "${pdf_stdout_path}" \
         "${pdf_stderr_path}" \
         trial-balance --book-file /work/book.sqlite --book-key-file /work/book.key \
-        --effective-date-as-of 2026-04-08 --output text --pdf-out /work/trial-balance.pdf
+        --effective-date-as-of 2026-04-08 --output text \
+        --pdf-out /work/private-reports/trial-balance.pdf
     pdf_stdout="$(tr -d '\r' < "${pdf_stdout_path}")"
     pdf_stderr="$(tr -d '\r' < "${pdf_stderr_path}")"
     rm -f "${pdf_stdout_path}" "${pdf_stderr_path}"
     [[ -z "${pdf_stderr}" ]] || die \
         "published successful PDF export wrote diagnostics on stderr: ${pdf_stderr}"
-    verify_text_pdf_artifact_output "${pdf_stdout}" '/work/trial-balance.pdf'
+    verify_text_pdf_artifact_output "${pdf_stdout}" '/work/private-reports/trial-balance.pdf'
 
-    [[ -f "${pdf_path}" ]] || die "published container did not write trial-balance.pdf"
+    [[ -f "${pdf_path}" ]] || die "published container did not write the private report artifact"
     [[ -r "${pdf_path}" ]] || die \
-        "published container wrote trial-balance.pdf without owner-readable mounted permissions"
+        "published container wrote the private report artifact without owner-readable mounted permissions"
     if ! pdf_signature="$(head -c 5 "${pdf_path}")"; then
-        die "published container wrote trial-balance.pdf without owner-readable mounted permissions"
+        die "published container wrote the private report artifact without owner-readable mounted permissions"
     fi
     [[ "${pdf_signature}" == '%PDF-' ]] || die \
-        "published container wrote a non-PDF trial-balance artifact"
+        "published container wrote a non-PDF private report artifact"
 
     raw_post_output="$(
         mounted_container_run "${image_ref}" \

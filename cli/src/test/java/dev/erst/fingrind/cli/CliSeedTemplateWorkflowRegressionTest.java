@@ -40,7 +40,7 @@ class CliSeedTemplateWorkflowRegressionTest extends CliBookWorkflowFixtureSuppor
     outputStream.reset();
     int exitCode =
         cli.run(
-            FinGrindCliTestSupport.attestedArguments(
+            CliWorkflowFixtureSupport.attestedArguments(
                 "declare-account",
                 "--book-file",
                 bookFilePath.toString(),

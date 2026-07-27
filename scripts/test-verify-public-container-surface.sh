@@ -68,6 +68,13 @@ translate_path() {
     esac
 }
 
+private_directory_mode() {
+    case "$(uname -s)" in
+        Darwin|FreeBSD|NetBSD|OpenBSD) stat -f '%Lp' "$1" ;;
+        *) stat -c '%a' "$1" ;;
+    esac
+}
+
 if [[ "${1:-}" == "--config" ]]; then
     shift 2
 fi
@@ -356,6 +363,17 @@ JSON
                 done
 
                 if [[ -n "${pdf_out}" ]]; then
+                    pdf_parent="$(dirname "${pdf_out}")"
+                    [[ -d "${pdf_parent}" ]] || {
+                        printf 'missing pre-created PDF report parent: %s\n' "${pdf_parent}" >&2
+                        exit 1
+                    }
+                    pdf_parent_mode="$(private_directory_mode "${pdf_parent}")"
+                    [[ "${pdf_parent_mode}" == '700' ]] || {
+                        printf 'PDF report parent is not owner-only: %s (%s)\n' \
+                            "${pdf_parent}" "${pdf_parent_mode}" >&2
+                        exit 1
+                    }
                     printf '%%PDF-' > "${pdf_out}"
                     if [[ "${mode}" == 'unreadable-pdf' ]]; then
                         chmod 000 "${pdf_out}"
@@ -385,7 +403,7 @@ Artifact
 ========
 
 Format : pdf
-Path   : <redacted>/work/trial-balance.pdf
+Path   : <redacted>/work/private-reports/trial-balance.pdf
 TEXT
                     fi
                 elif [[ "${mode}" == 'bad-report' ]]; then
@@ -573,7 +591,7 @@ if [[ ${permission_failure_exit} -eq 0 ]]; then
     die "public container surface verifier accepted an unreadable mounted PDF artifact"
 fi
 printf '%s\n' "${permission_failure_output}" | grep -Fq \
-    'published container wrote trial-balance.pdf without owner-readable mounted permissions' || die \
+    'published container wrote the private report artifact without owner-readable mounted permissions' || die \
     "public container surface verifier did not report unreadable mounted PDF permissions"
 
 set +e
@@ -591,7 +609,7 @@ if [[ ${head_failure_exit} -eq 0 ]]; then
     die "public container surface verifier accepted a mounted PDF whose bytes could not be read"
 fi
 printf '%s\n' "${head_failure_output}" | grep -Fq \
-    'published container wrote trial-balance.pdf without owner-readable mounted permissions' || die \
+    'published container wrote the private report artifact without owner-readable mounted permissions' || die \
     "public container surface verifier misclassified one mounted PDF read failure"
 
 set +e

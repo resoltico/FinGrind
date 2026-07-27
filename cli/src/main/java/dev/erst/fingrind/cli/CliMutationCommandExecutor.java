@@ -5,6 +5,7 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.PlanResultDetail;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -51,6 +52,12 @@ final class CliMutationCommandExecutor {
       plan = requestReader.readLedgerPlan(requestFile);
     } catch (CliRequestException exception) {
       return writeCliFailure(exception, outputMode);
+    }
+    ContractFailure attestationPolicyRefusal =
+        CliExecutePlanAttestationPolicy.refusalFor(bookAccess, plan);
+    if (attestationPolicyRefusal != null) {
+      return CliCommandOutcomeWriter.writeDeterministicFailure(
+          attestationPolicyRefusal, failureWriter, outputMode);
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
         mutationWorkflow.executePlan(bookAccess, plan),

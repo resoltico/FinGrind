@@ -175,9 +175,54 @@ jobs:
         with:
           python-version: ${{ steps.build-metadata.outputs.python-version }}
           cache: 'pip'
-          cache-dependency-path: requirements-python-tools.txt
+          cache-dependency-path: |
+            requirements-python-tools.txt
+            requirements-release-smoke-workflow.txt
 
       - uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+
+      - name: Install repo-owned release-smoke Python tools on Unix
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          helper_root="${FINGRIND_WORKFLOW_HELPER_ROOT}"
+          uv_version="$(grep '^fingrindUvVersion=' "${helper_root}/gradle/fingrind-build.properties" | cut -d= -f2)"
+          [ -n "${uv_version}" ]
+          python -m pip install --user "uv==${uv_version}"
+          uv_bin_dir="$(python - <<'PY'
+          import sysconfig
+          print(sysconfig.get_path("scripts", scheme=sysconfig.get_preferred_scheme("user")))
+          PY
+          )"
+          printf '%s\n' "${uv_bin_dir}" >> "${GITHUB_PATH}"
+          uv_executable="${uv_bin_dir}/uv"
+          printf 'ORG_GRADLE_PROJECT_fingrindUvExecutable=%s\n' "${uv_executable}" >> "${GITHUB_ENV}"
+          "${uv_executable}" --version
+          "${uv_executable}" pip install --system \
+            -r "${helper_root}/requirements-release-smoke-workflow.txt"
+
+      - name: Install repo-owned release-smoke Python tools on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $helperRoot = $env:FINGRIND_WORKFLOW_HELPER_ROOT
+          $uvVersionLine = Select-String -Path (Join-Path $helperRoot 'gradle/fingrind-build.properties') -Pattern '^fingrindUvVersion='
+          if (-not $uvVersionLine) {
+            throw "missing fingrindUvVersion in $helperRoot/gradle/fingrind-build.properties"
+          }
+          $uvVersion = $uvVersionLine.Line.Split('=')[1]
+          python -m pip install --user "uv==$uvVersion"
+          $uvBinDir = python -c "import sysconfig; print(sysconfig.get_path('scripts', scheme=sysconfig.get_preferred_scheme('user')))"
+          $uvExecutable = Join-Path $uvBinDir 'uv.exe'
+          if (-not (Test-Path $uvExecutable)) {
+            throw "uv executable was not installed at $uvExecutable"
+          }
+          Add-Content -Path $env:GITHUB_PATH -Value $uvBinDir
+          Add-Content -Path $env:GITHUB_ENV -Value "ORG_GRADLE_PROJECT_fingrindUvExecutable=$uvExecutable"
+          & $uvExecutable --version
+          & $uvExecutable pip install --system `
+            -r (Join-Path $helperRoot 'requirements-release-smoke-workflow.txt')
 
       - name: Configure MSVC developer command environment
         if: runner.os == 'Windows'

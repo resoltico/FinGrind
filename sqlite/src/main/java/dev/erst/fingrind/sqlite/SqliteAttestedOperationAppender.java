@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
 import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationOperationKind;
@@ -15,7 +16,7 @@ import org.jspecify.annotations.Nullable;
 final class SqliteAttestedOperationAppender {
   private SqliteAttestedOperationAppender() {}
 
-  static AttestationVerification append(
+  static AttestationAppendOutcome append(
       SqliteVerifiedBook verifiedBook,
       AttestationOperationKind operationKind,
       Instant recordedAt,
@@ -39,16 +40,17 @@ final class SqliteAttestedOperationAppender {
       AttestationOperationAuthorizer authorizer) {
     AttestationRegistryMutation checkedMutation = Objects.requireNonNull(mutation, "mutation");
     return append(
-        verifiedBook,
-        checkedMutation.operationKind(),
-        recordedAt,
-        checkedMutation.preimages(),
-        authorizer,
-        null,
-        checkedMutation);
+            verifiedBook,
+            checkedMutation.operationKind(),
+            recordedAt,
+            checkedMutation.preimages(),
+            authorizer,
+            null,
+            checkedMutation)
+        .requireVerifiedAppend();
   }
 
-  private static AttestationVerification append(
+  private static AttestationAppendOutcome append(
       SqliteVerifiedBook verifiedBook,
       AttestationOperationKind operationKind,
       Instant recordedAt,
@@ -96,7 +98,7 @@ final class SqliteAttestedOperationAppender {
     T run();
   }
 
-  private static AttestationVerification appendAttempt(
+  private static AttestationAppendOutcome appendAttempt(
       SqliteVerifiedBook verifiedBook,
       AttestationOperationKind operationKind,
       Instant recordedAt,
@@ -114,7 +116,7 @@ final class SqliteAttestedOperationAppender {
           SqliteAttestationEvidenceStore.observeRequired(database);
       database.executeStatement("begin immediate");
       try {
-        AttestationVerification verification =
+        AttestationAppendOutcome outcome =
             registryMutation == null
                 ? SqliteAttestationEvidenceStore.appendAuthorized(
                     database,
@@ -124,10 +126,11 @@ final class SqliteAttestedOperationAppender {
                     preimages,
                     authorizer,
                     backupAcknowledgement)
-                : SqliteAttestationEvidenceStore.appendAuthorizedRegistryMutation(
-                    database, observedHead, registryMutation, recordedAt, authorizer);
+                : new AttestationAppendOutcome.Appended(
+                    SqliteAttestationEvidenceStore.appendAuthorizedRegistryMutation(
+                        database, observedHead, registryMutation, recordedAt, authorizer));
         database.executeStatement("commit");
-        return verification;
+        return outcome;
       } catch (RuntimeException exception) {
         SqliteStoreOperations.rollbackQuietly(database);
         throw exception;

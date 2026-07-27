@@ -4,7 +4,7 @@ import java.nio.file.Path;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
-/** Owns one recorded maintenance stage and its recursive cleanup boundary. */
+/** Owns one recorded maintenance stage and releases local authority without unlinking it. */
 final class SqliteOwnedStagedArtifact {
   private final SqliteOwnedStageRecord record;
   private boolean released;
@@ -17,16 +17,10 @@ final class SqliteOwnedStagedArtifact {
     return new SqliteOwnedStagedArtifact(SqliteOwnedStageRecord.create(finalPath, infix, suffix));
   }
 
-  /** Records an already-created stage so fixture seams exercise the production cleanup contract. */
+  /** Records an already-created stage so fixture seams exercise retained-stage ownership. */
   static SqliteOwnedStagedArtifact recordExisting(Path finalPath, Path stagedPath) {
     return new SqliteOwnedStagedArtifact(
         SqliteOwnedStageRecord.recordExisting(finalPath, stagedPath));
-  }
-
-  /** Recovers exact durable stages for one target without treating a name pattern as ownership. */
-  static void recoverFor(Path finalPath) {
-    SqliteOwnedStageRecord.findFor(finalPath)
-        .forEach(record -> new SqliteOwnedStagedArtifact(record).discard());
   }
 
   Path stagedPath() {
@@ -41,31 +35,40 @@ final class SqliteOwnedStagedArtifact {
     record.requireIntactFor(finalPath);
   }
 
-  void discard() {
+  /** Force-confirms the staged member and ownership evidence before pair-record promotion. */
+  void forceForPairPublicationRecoveryBoundary(
+      Path finalPath, SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer)
+      throws java.io.IOException {
+    if (released) {
+      throw new IllegalStateException("The FinGrind maintenance stage was already released.");
+    }
+    record.forceForPairPublicationRecoveryBoundary(finalPath, directoryForcer);
+  }
+
+  void releaseRetained() {
     if (released) {
       return;
     }
-    recoverFor(stagedPath());
-    record.discard();
+    record.releaseRetained();
     released = true;
   }
 
-  static void discardAll(
+  static void releaseAllRetained(
       @Nullable SqliteOwnedStagedArtifact first, @Nullable SqliteOwnedStagedArtifact second) {
     if (first == null) {
-      discard(second);
+      releaseRetained(second);
       return;
     }
     try {
-      first.discard();
+      first.releaseRetained();
     } finally {
-      discard(second);
+      releaseRetained(second);
     }
   }
 
-  private static void discard(@Nullable SqliteOwnedStagedArtifact artifact) {
+  private static void releaseRetained(@Nullable SqliteOwnedStagedArtifact artifact) {
     if (artifact != null) {
-      artifact.discard();
+      artifact.releaseRetained();
     }
   }
 }

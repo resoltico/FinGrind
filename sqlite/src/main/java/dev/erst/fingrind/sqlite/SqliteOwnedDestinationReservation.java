@@ -27,7 +27,7 @@ final class SqliteOwnedDestinationReservation implements AutoCloseable {
     SqliteOwnedStagedArtifact reservationStage =
         SqliteOwnedStagedArtifact.create(checkedFinalPath, ".reservation-", ".claim");
     if (Files.exists(checkedFinalPath, LinkOption.NOFOLLOW_LINKS)) {
-      reservationStage.discard();
+      reservationStage.releaseRetained();
       throw new FileAlreadyExistsException(checkedFinalPath.toString());
     }
     return new SqliteOwnedDestinationReservation(checkedFinalPath, reservationStage);
@@ -63,7 +63,7 @@ final class SqliteOwnedDestinationReservation implements AutoCloseable {
       return;
     }
     try {
-      reservationStage.discard();
+      reservationStage.releaseRetained();
       closed = true;
     } catch (RuntimeException exception) {
       throw new IllegalStateException(

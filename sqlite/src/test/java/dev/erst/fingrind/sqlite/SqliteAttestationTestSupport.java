@@ -82,7 +82,9 @@ final class SqliteAttestationTestSupport {
     private static KeyMaterial create() {
       char[] passphrase = "sqlite-attestation-test-credential".toCharArray();
       try {
-        Path directory = Files.createTempDirectory("fingrind-sqlite-attestation-");
+        Path directory =
+            SqliteTestPrivateDirectorySupport.canonicalizeAndHardenOwnerOnlyDirectory(
+                Files.createTempDirectory("fingrind-sqlite-attestation-"));
         Path encryptedKeyPath = directory.resolve("founder.fgatk");
         Path passphrasePath = directory.resolve("founder.passphrase");
         directory.toFile().deleteOnExit();
@@ -90,7 +92,7 @@ final class SqliteAttestationTestSupport {
         passphrasePath.toFile().deleteOnExit();
         Files.writeString(passphrasePath, String.valueOf(passphrase) + System.lineSeparator());
         return new KeyMaterial(
-            AttestationKeyFiles.create(encryptedKeyPath, passphrase),
+            AttestationKeyFiles.create(encryptedKeyPath, passphrase).credential(),
             encryptedKeyPath,
             passphrasePath,
             passphrase);

@@ -43,7 +43,7 @@ final class AttestationRegistryEffectFactDecoder {
         AttestationPreimageValueReader.spki(
             fact, 4, AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID),
         purpose,
-        AttestationPreimageValueReader.optionalHash(
+        AttestationPreimageOptionalValueReader.hash(
             fact, 6, AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID));
   }
 
@@ -100,9 +100,9 @@ final class AttestationRegistryEffectFactDecoder {
         workflowKind(fact, 2),
         AttestationPreimageValueReader.text(
             fact, 3, AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID),
-        AttestationPreimageValueReader.optionalText(
+        AttestationPreimageOptionalValueReader.text(
             fact, 4, AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID),
-        AttestationPreimageValueReader.optionalText(
+        AttestationPreimageOptionalValueReader.text(
             fact, 5, AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID),
         AttestationPreimageValueReader.booleanValue(
             fact, 6, AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID));

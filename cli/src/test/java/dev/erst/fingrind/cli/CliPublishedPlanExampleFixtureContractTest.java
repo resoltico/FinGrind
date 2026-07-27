@@ -34,7 +34,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
 
     assertJsonFixture(
         "execute-plan-committed-response.json",
-        runJsonCommand(
+        runAttestedJsonCommand(
             "execute-plan",
             "--book-file",
             planBookFile.toString(),
@@ -44,7 +44,19 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
             "full",
             "--request-file",
             planRequestFile.toString()));
-    runJsonCommand(
+    assertJsonFixture(
+        "execute-plan-no-durable-child-mutation-response.json",
+        runAttestedJsonCommand(
+            "execute-plan",
+            "--book-file",
+            planBookFile.toString(),
+            "--book-key-file",
+            bookKeyFile.toString(),
+            "--result-detail",
+            "full",
+            "--request-file",
+            planRequestFile.toString()));
+    runAttestedJsonCommand(
         "execute-plan",
         "--book-file",
         queryPlanBookFile.toString(),
@@ -87,7 +99,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
         StandardCharsets.UTF_8);
     assertJsonFixture(
         "execute-plan-assertion-failed-response.json",
-        runJsonCommandExpectingExit(
+        runAttestedJsonCommandExpectingExit(
             3,
             "execute-plan",
             "--book-file",
@@ -169,7 +181,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
     runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFile.toString());
     runJsonCommand(openBookKeyFileArguments(bookFile, bookKeyFile));
     JsonNode plan =
-        runJsonCommand(
+        runAttestedJsonCommand(
             "execute-plan",
             "--book-file",
             bookFile.toString(),
@@ -200,7 +212,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
             .path("taxRegistrationId")
             .stringValue());
 
-    runJsonCommand(
+    runAttestedJsonCommand(
         "declare-account",
         "--book-file",
         bookFile.toString(),
@@ -208,7 +220,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
         bookKeyFile.toString(),
         "--request-file",
         cashRequestFile.toString());
-    runJsonCommand(
+    runAttestedJsonCommand(
         "declare-account",
         "--book-file",
         bookFile.toString(),
@@ -216,7 +228,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
         bookKeyFile.toString(),
         "--request-file",
         revenueRequestFile.toString());
-    runJsonCommand(
+    runAttestedJsonCommand(
         "record-sale-settled",
         "--book-file",
         bookFile.toString(),
@@ -263,7 +275,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
     createExistingOwnerOnlyParentDirectory(bookKeyFile);
     runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFile.toString());
     runJsonCommand(openBookKeyFileArguments(bookFile, bookKeyFile));
-    runJsonCommand(
+    runAttestedJsonCommand(
         "declare-account",
         "--book-file",
         bookFile.toString(),
@@ -271,7 +283,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
         bookKeyFile.toString(),
         "--request-file",
         declareCashFile.toString());
-    runJsonCommand(
+    runAttestedJsonCommand(
         "declare-account",
         "--book-file",
         bookFile.toString(),
@@ -281,7 +293,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
         declareRevenueFile.toString());
 
     JsonNode committed =
-        runJsonCommand(
+        runAttestedJsonCommand(
             "record-sale-settled",
             "--book-file",
             bookFile.toString(),
@@ -294,7 +306,7 @@ class CliPublishedPlanExampleFixtureContractTest extends CliPublicDocsContractSu
 
     replaceReversalPriorPostingId(reversalRequestFile, postingId);
     JsonNode reversal =
-        runJsonCommand(
+        runAttestedJsonCommand(
             "record-reversal",
             "--book-file",
             bookFile.toString(),

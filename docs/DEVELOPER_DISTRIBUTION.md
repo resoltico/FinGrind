@@ -2,10 +2,10 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: DEVELOPER_DISTRIBUTION
-updated: "2026-07-16"
+updated: "2026-07-24"
 route:
-  keywords: [fingrind, distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum]
-  questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage"]
+  keywords: [distribution, bundle, release asset, zulu, jlink, jpackage, runtime, checksum, release smoke, scratch work root]
+  questions: ["what does fingrind publish as its public cli artifact", "why does fingrind ship bundles instead of a jar", "why is zulu used in release automation", "does fingrind use jpackage", "what release-smoke work root is safe to use"]
 ---
 
 # Distribution Policy
@@ -259,8 +259,13 @@ command/fixture/assertion lifecycle into the single Python owner
 `scripts/release-smoke-workflow.py`, while the Windows PowerShell entrypoint stays thin through
 `scripts/bundle-smoke-support.ps1` plus a matching office-worker wrapper that delegates to that
 same Python owner. Release-surface assertions therefore keep one executable workflow owner instead
-of diverging across multiple near-copied entry scripts or collapsing back into a new god-file. The
-shared workflow now derives its full fixture layout from the compact environment tuple
+of diverging across multiple near-copied entry scripts or collapsing back into a new god-file. Its
+semantic PDF evidence is parsed only by the pinned `pypdf` dependency in
+[`requirements-release-smoke-workflow.txt`](../requirements-release-smoke-workflow.txt), resolved
+through the repository's pinned `uv` launcher on Unix, PowerShell, and the Linux compatibility
+floor. No release path credits an ambient `pdftotext` or another host PDF utility; every platform
+therefore evaluates the same report-text evidence with the same owned parser. The shared workflow
+now derives its full fixture layout from the compact environment tuple
 `FINGRIND_RELEASE_SMOKE_WORK_ROOT`,
 `FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE`, and
 `FINGRIND_RELEASE_SMOKE_SCENARIO_ID`, so the Bash bundle verifier, Docker verifier, and Windows
@@ -268,6 +273,10 @@ PowerShell verifier no longer re-author dozens of per-path environment variables
 seam. The Windows entrypoint also keeps its Unicode workspace-path coverage alive through
 `workspace odd/Rīga büro/...`, while the shared Python scenario builder preserves the matching
 Unicode nested book/key paths across bundle and container acceptance.
+`FINGRIND_RELEASE_SMOKE_WORK_ROOT` is caller-owned scratch space: it must name an existing,
+absolute, empty directory. The shared workflow rejects a relative, missing, non-directory, or
+reused/nonempty root before it writes any fixture or artifact, so a manual rerun cannot overwrite
+prior request material or fail later on an output collision.
 The Bash `release-smoke-*.sh` support files are source-only libraries, not runnable entrypoints:
 direct execution now fails fast with an explicit sourced-only error instead of returning a false
 green no-op.

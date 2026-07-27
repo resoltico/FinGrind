@@ -2,7 +2,9 @@ package dev.erst.fingrind.core.attestation;
 
 import java.util.Objects;
 
-/** Signals an exact authorization refusal while admitting a newly signed live-book operation. */
+/**
+ * Signals an exact authorization refusal while admitting attestation credentials or an operation.
+ */
 public final class AttestationAdmissionRejectedException extends IllegalArgumentException {
   private static final long serialVersionUID = 1L;
 
@@ -15,16 +17,13 @@ public final class AttestationAdmissionRejectedException extends IllegalArgument
     this.failure = failure;
   }
 
-  /** Reclassifies one authorization failure at the live mutation-admission boundary. */
+  /** Reclassifies one authorization failure at an attestation admission boundary. */
   public static AttestationAdmissionRejectedException from(
       AttestationAuthorizationException exception) {
     return from(exception, exception);
   }
 
-  /**
-   * Reclassifies one authorization failure while retaining the candidate-verification evidence that
-   * exposed it.
-   */
+  /** Reclassifies one authorization failure while retaining the evidence that exposed it. */
   public static AttestationAdmissionRejectedException from(
       AttestationAuthorizationException exception, Throwable cause) {
     AttestationAuthorizationException checked = Objects.requireNonNull(exception, "exception");
@@ -32,7 +31,7 @@ public final class AttestationAdmissionRejectedException extends IllegalArgument
         checked.failure(), Objects.requireNonNull(cause, "cause"));
   }
 
-  /** Reifies one already-classified authorization refusal at an application boundary. */
+  /** Reifies one already-classified authorization refusal when no lower-level cause exists. */
   public static AttestationAdmissionRejectedException from(
       AttestationAuthorizationFailure failure) {
     AttestationAuthorizationFailure checked = Objects.requireNonNull(failure, "failure");
@@ -40,7 +39,7 @@ public final class AttestationAdmissionRejectedException extends IllegalArgument
         checked, new IllegalArgumentException(checked.code()));
   }
 
-  /** Returns the exact historical authorization invariant that refused admission. */
+  /** Returns the exact attestation authorization invariant that refused admission. */
   public AttestationAuthorizationFailure failure() {
     return failure;
   }

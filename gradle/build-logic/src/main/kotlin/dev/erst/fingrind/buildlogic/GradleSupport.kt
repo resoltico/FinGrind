@@ -28,6 +28,7 @@ internal fun JavaForkOptions.enableCoreNamedNativeAccess() {
 internal fun JavaForkOptions.enableJazzerNativeAccess() {
     enableUnnamedNativeAccess()
     enableCoreNamedNativeAccess()
+    enableSqliteNamedNativeAccess()
 }
 
 internal fun JavaForkOptions.addSqliteNamedModule() {

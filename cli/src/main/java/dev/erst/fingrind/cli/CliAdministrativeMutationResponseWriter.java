@@ -1,8 +1,6 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.cli.json.CliAdministrationJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AmendAccountResult;
-import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.AttestationRegistryMutationResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
@@ -12,169 +10,57 @@ import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RetireAccountResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
+import dev.erst.fingrind.contract.runtime.AttestationKeyFileMetadata;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
-import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
+import dev.erst.fingrind.core.attestation.AttestationKeyFileCreation;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Objects;
 
-/** Renders administrative CLI mutation results through the shared output channel. */
+/** Routes administrative CLI mutation results to their response-specific writers. */
 final class CliAdministrativeMutationResponseWriter {
-  private final CliOutputChannel outputChannel;
-  private final CliAccountRegistryMutationResponseWriter accountRegistryWriter;
+  private final CliBookLifecycleMutationResponseWriter bookLifecycleWriter;
   private final CliAttestationKeyFileResponseWriter attestationKeyFileWriter;
+  private final CliAttestationRegistryMutationResponseWriter attestationRegistryWriter;
+  private final CliAccountRegistryMutationResponseWriter accountRegistryWriter;
+  private final CliTaxRegistrationMutationResponseWriter taxRegistrationWriter;
+  private final CliPeriodCloseMutationResponseWriter periodCloseWriter;
 
   CliAdministrativeMutationResponseWriter(CliOutputChannel outputChannel) {
-    this.outputChannel = Objects.requireNonNull(outputChannel, "outputChannel");
-    this.accountRegistryWriter = new CliAccountRegistryMutationResponseWriter(outputChannel);
-    this.attestationKeyFileWriter = new CliAttestationKeyFileResponseWriter(outputChannel);
+    CliOutputChannel channel = Objects.requireNonNull(outputChannel, "outputChannel");
+    this.bookLifecycleWriter = new CliBookLifecycleMutationResponseWriter(channel);
+    this.attestationKeyFileWriter = new CliAttestationKeyFileResponseWriter(channel);
+    this.attestationRegistryWriter = new CliAttestationRegistryMutationResponseWriter(channel);
+    this.accountRegistryWriter = new CliAccountRegistryMutationResponseWriter(channel);
+    this.taxRegistrationWriter = new CliTaxRegistrationMutationResponseWriter(channel);
+    this.periodCloseWriter = new CliPeriodCloseMutationResponseWriter(channel);
   }
 
-  void writeOpenBookResult(
-      Path bookFilePath,
-      List<Path> tightenedParentDirectories,
-      OpenBookResult result,
-      OutputMode outputMode) {
-    switch (result) {
-      case OpenBookResult.Opened opened ->
-          outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliEnvelopeMapper.successEnvelope(
-                          new CliAdministrationJsonModels.OpenBookPayload(
-                              CliPublicPaths.absoluteValue(bookFilePath),
-                              opened.initializedAt().toString(),
-                              CliAdministrativeMutationPayloadSupport
-                                  .tightenedParentDirectoryPayloads(tightenedParentDirectories),
-                              CliBookInspectionPayloadMapper.bookIdentityPayload(
-                                  opened.bookIdentity()),
-                              opened.attestationTrustRoot().bookId().toString(),
-                              CliAttestationCommitPresentation.requiredPayload(
-                                  opened.attestationCommit()),
-                              CliAttestationPayloadMapper.registryPayload(
-                                  opened.attestationTrustRoot())))),
-              () ->
-                  outputChannel.writeText(
-                      CliBookAccessOutputRenderer.renderOpenBookText(
-                          bookFilePath, tightenedParentDirectories, opened)),
-              () -> {
-                throw new IllegalArgumentException(
-                    CliOperationText.unsupportedCsvOutput(OperationId.OPEN_BOOK));
-              });
-      case OpenBookResult.Rejected rejected ->
-          outputChannel.writeRejectedEnvelope(
-              CliRejectionPayloadMapper.administrationRejectedEnvelope(
-                  OperationId.OPEN_BOOK, rejected.rejection()),
-              outputMode);
-    }
+  void writeOpenBookResult(Path bookFilePath, OpenBookResult result, OutputMode outputMode) {
+    bookLifecycleWriter.writeOpenBookResult(bookFilePath, result, outputMode);
   }
 
   void writeGenerateBookKeyFileResult(
-      GeneratedBookKeyFile generatedKeyFile,
-      List<Path> tightenedParentDirectories,
-      OutputMode outputMode) {
-    outputMode.run(
-        () ->
-            outputChannel.writeEnvelope(
-                CliEnvelopeMapper.successEnvelope(
-                    new CliAdministrationJsonModels.GeneratedBookKeyFilePayload(
-                        generatedKeyFile.encoding(),
-                        generatedKeyFile.entropyBits(),
-                        generatedKeyFile.permissions(),
-                        CliAdministrativeMutationPayloadSupport.tightenedParentDirectoryPayloads(
-                            tightenedParentDirectories)),
-                    CliEnvelopeMapper.successArtifacts(
-                        CliEnvelopeMapper.successArtifact(
-                            dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput
-                                .bookKeyFileFormat(),
-                            generatedKeyFile.bookKeyFilePath())))),
-        () ->
-            outputChannel.writeText(
-                CliBookAccessOutputRenderer.renderGeneratedBookKeyFileText(
-                    generatedKeyFile, tightenedParentDirectories)),
-        () -> {
-          throw new IllegalArgumentException(
-              CliOperationText.unsupportedCsvOutput(OperationId.GENERATE_BOOK_KEY_FILE));
-        });
+      GeneratedBookKeyFile generatedKeyFile, OutputMode outputMode) {
+    bookLifecycleWriter.writeGenerateBookKeyFileResult(generatedKeyFile, outputMode);
   }
 
   void writeGeneratedAttestationKeyFileResult(
-      dev.erst.fingrind.contract.runtime.AttestationKeyFileMetadata metadata,
-      OutputMode outputMode) {
-    attestationKeyFileWriter.writeGeneratedResult(metadata, outputMode);
+      AttestationKeyFileCreation createdKeyFile, OutputMode outputMode) {
+    attestationKeyFileWriter.writeGeneratedResult(createdKeyFile, outputMode);
   }
 
-  void writeAttestationKeyFileMetadata(
-      dev.erst.fingrind.contract.runtime.AttestationKeyFileMetadata metadata,
-      OutputMode outputMode) {
+  void writeAttestationKeyFileMetadata(AttestationKeyFileMetadata metadata, OutputMode outputMode) {
     attestationKeyFileWriter.writeMetadata(metadata, outputMode);
   }
 
-  void writeRekeyBookResult(
-      RekeyBookResult result, java.nio.file.Path newBookKeyFilePath, OutputMode outputMode) {
-    switch (result) {
-      case RekeyBookResult.Rekeyed rekeyed ->
-          outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliEnvelopeMapper.successEnvelope(
-                          new CliAdministrationJsonModels.RekeyBookPayload(
-                              CliPublicPaths.absoluteValue(rekeyed.bookFilePath()),
-                              CliPublicPaths.absoluteValue(newBookKeyFilePath),
-                              CliAttestationCommitPresentation.payload(
-                                  rekeyed.attestationCommit())),
-                          CliEnvelopeMapper.successArtifacts(
-                              CliEnvelopeMapper.successArtifact(
-                                  ProtocolArtifactOutput.bookKeyFileFormat(),
-                                  newBookKeyFilePath)))),
-              () ->
-                  outputChannel.writeText(
-                      CliBookAccessOutputRenderer.renderRekeyBookText(rekeyed, newBookKeyFilePath)),
-              () -> {
-                throw new IllegalArgumentException(
-                    CliOperationText.unsupportedCsvOutput(OperationId.REKEY_BOOK));
-              });
-      case RekeyBookResult.Rejected rejected ->
-          outputChannel.writeRejectedEnvelope(
-              CliMaintenanceRejectionPayloadMapper.rejectedEnvelope(rejected.rejection()),
-              outputMode);
-    }
+  void writeRekeyBookResult(RekeyBookResult result, OutputMode outputMode) {
+    bookLifecycleWriter.writeRekeyBookResult(result, outputMode);
   }
 
   void writeAttestationRegistryMutationResult(
       OperationId operationId, AttestationRegistryMutationResult result, OutputMode outputMode) {
-    switch (result) {
-      case AttestationRegistryMutationResult.Mutated mutated ->
-          outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliEnvelopeMapper.successEnvelope(
-                          new CliAdministrationJsonModels.AttestationRegistryMutationPayload(
-                              CliPublicPaths.absoluteValue(mutated.bookFilePath()),
-                              mutated.operationKind(),
-                              CliAttestationCommitPresentation.requiredPayload(
-                                  mutated.attestationCommit())))),
-              () ->
-                  outputChannel.writeText(
-                      CliTextFormat.renderTitledBlock(
-                          "Attestation Registry Updated",
-                          CliTextFormat.renderKeyValueBlock(registryMutationRows(mutated)))),
-              () -> {
-                throw new IllegalArgumentException(
-                    CliOperationText.unsupportedCsvOutput(operationId));
-              });
-      case AttestationRegistryMutationResult.Rejected rejected ->
-          outputChannel.writeRejectedEnvelope(
-              CliMaintenanceRejectionPayloadMapper.rejectedEnvelope(rejected.rejection()),
-              outputMode);
-      case AttestationRegistryMutationResult.AuthorizationRejected rejected ->
-          outputChannel.writeRejectedEnvelope(
-              CliRejectionPayloadMapper.attestationRegistryMutationRejectedEnvelope(
-                  rejected.failure()),
-              outputMode);
-    }
+    attestationRegistryWriter.writeResult(operationId, result, outputMode);
   }
 
   void writeDeclareAccountResult(DeclareAccountResult result, OutputMode outputMode) {
@@ -183,33 +69,7 @@ final class CliAdministrativeMutationResponseWriter {
 
   void writeDeclareTaxRegistrationResult(
       DeclareTaxRegistrationResult result, OutputMode outputMode) {
-    switch (result) {
-      case DeclareTaxRegistrationResult.Declared declared ->
-          writeMutationSuccess(
-              OperationId.DECLARE_TAX_REGISTRATION,
-              "declared",
-              declared.registration(),
-              declared.attestationCommit(),
-              outputMode);
-      case DeclareTaxRegistrationResult.Updated updated ->
-          writeMutationSuccess(
-              OperationId.DECLARE_TAX_REGISTRATION,
-              "updated",
-              updated.registration(),
-              updated.attestationCommit(),
-              outputMode);
-      case DeclareTaxRegistrationResult.Unchanged unchanged ->
-          writeMutationSuccess(
-              OperationId.DECLARE_TAX_REGISTRATION,
-              "unchanged",
-              unchanged.registration(),
-              unchanged.attestationCommit(),
-              outputMode);
-      case DeclareTaxRegistrationResult.Rejected rejected ->
-          outputChannel.writeRejectedEnvelope(
-              CliRejectionPayloadMapper.taxDeclarationRejectedEnvelope(rejected.rejection()),
-              outputMode);
-    }
+    taxRegistrationWriter.writeDeclareTaxRegistrationResult(result, outputMode);
   }
 
   void writeAmendAccountResult(AmendAccountResult result, OutputMode outputMode) {
@@ -220,126 +80,11 @@ final class CliAdministrativeMutationResponseWriter {
     accountRegistryWriter.writeRetireAccountResult(result, outputMode);
   }
 
-  private void writeMutationSuccess(
-      OperationId operationId,
-      String outcome,
-      DeclaredTaxRegistration registration,
-      @org.jspecify.annotations.Nullable AttestationCommit attestationCommit,
-      OutputMode outputMode) {
-    outputMode.run(
-        () ->
-            outputChannel.writeEnvelope(
-                CliEnvelopeMapper.successEnvelope(
-                    CliTaxPayloadMapper.taxRegistrationMutationPayload(
-                        outcome, registration, attestationCommit))),
-        () ->
-            outputChannel.writeText(
-                CliTaxOutputRenderer.renderTaxRegistrationMutationText(
-                    outcome, registration, attestationCommit)),
-        () -> {
-          throw new IllegalArgumentException(CliOperationText.unsupportedCsvOutput(operationId));
-        });
-  }
-
   void writeInterimResultSweepResult(InterimResultSweepResult result, OutputMode outputMode) {
-    switch (result) {
-      case InterimResultSweepResult.Swept swept ->
-          outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliEnvelopeMapper.successEnvelope(
-                          new CliAdministrationJsonModels.SweptInterimResultPayload(
-                              swept.sweptInterimResult().sweepOrder(),
-                              swept
-                                  .sweptInterimResult()
-                                  .reportingPeriod()
-                                  .effectiveDateFrom()
-                                  .toString(),
-                              swept
-                                  .sweptInterimResult()
-                                  .reportingPeriod()
-                                  .effectiveDateTo()
-                                  .toString(),
-                              swept.sweptInterimResult().resultHoldingAccountCode().value(),
-                              swept.sweptInterimResult().sweptTotals().stream()
-                                  .map(CliPayloadAssembler::balancePayload)
-                                  .toList(),
-                              swept.sweptInterimResult().sweptAt().toString(),
-                              swept.sweptInterimResult().sweepPostingIds().stream()
-                                  .map(dev.erst.fingrind.core.PostingId::value)
-                                  .toList(),
-                              CliAttestationCommitPresentation.requiredPayload(
-                                  swept.attestationCommit())))),
-              () ->
-                  outputChannel.writeText(
-                      CliPeriodCloseOutputRenderer.renderSweptInterimResultText(
-                          swept.sweptInterimResult(), swept.attestationCommit())),
-              () -> {
-                throw new IllegalArgumentException(
-                    CliOperationText.unsupportedCsvOutput(OperationId.INTERIM_RESULT_SWEEP));
-              });
-      case InterimResultSweepResult.Rejected rejected ->
-          outputChannel.writeRejectedEnvelope(
-              CliRejectionPayloadMapper.administrationRejectedEnvelope(
-                  OperationId.INTERIM_RESULT_SWEEP, rejected.rejection()),
-              outputMode);
-    }
+    periodCloseWriter.writeInterimResultSweepResult(result, outputMode);
   }
 
   void writeFiscalYearCloseResult(FiscalYearCloseResult result, OutputMode outputMode) {
-    switch (result) {
-      case FiscalYearCloseResult.Closed closed ->
-          outputMode.run(
-              () ->
-                  outputChannel.writeEnvelope(
-                      CliEnvelopeMapper.successEnvelope(
-                          new CliAdministrationJsonModels.ClosedFiscalYearPayload(
-                              closed.closedFiscalYear().closeOrder(),
-                              closed
-                                  .closedFiscalYear()
-                                  .reportingPeriod()
-                                  .effectiveDateFrom()
-                                  .toString(),
-                              closed
-                                  .closedFiscalYear()
-                                  .reportingPeriod()
-                                  .effectiveDateTo()
-                                  .toString(),
-                              closed.closedFiscalYear().capitalAccountCode().value(),
-                              closed.closedFiscalYear().resultHoldingAccountCode().value(),
-                              closed.closedFiscalYear().retainedAccumulatedAccountCode().value(),
-                              closed.closedFiscalYear().closedAt().toString(),
-                              closed.idempotentReplay(),
-                              closed.closedFiscalYear().closePostingIds().stream()
-                                  .map(dev.erst.fingrind.core.PostingId::value)
-                                  .toList(),
-                              CliAttestationCommitPresentation.payload(
-                                  closed.attestationCommit())))),
-              () ->
-                  outputChannel.writeText(
-                      CliPeriodCloseOutputRenderer.renderClosedFiscalYearText(
-                          closed.closedFiscalYear(),
-                          closed.idempotentReplay(),
-                          closed.attestationCommit())),
-              () -> {
-                throw new IllegalArgumentException(
-                    CliOperationText.unsupportedCsvOutput(OperationId.FISCAL_YEAR_CLOSE));
-              });
-      case FiscalYearCloseResult.Rejected rejected ->
-          outputChannel.writeRejectedEnvelope(
-              CliRejectionPayloadMapper.administrationRejectedEnvelope(
-                  OperationId.FISCAL_YEAR_CLOSE, rejected.rejection()),
-              outputMode);
-    }
-  }
-
-  private static List<List<String>> registryMutationRows(
-      AttestationRegistryMutationResult.Mutated mutated) {
-    List<List<String>> rows = new java.util.ArrayList<>();
-    rows.add(List.of("Book file", CliTextDisplay.path(mutated.bookFilePath())));
-    rows.add(List.of("Operation kind", mutated.operationKind()));
-    CliAttestationCommitPresentation.appendTextRows(
-        rows, mutated.attestationCommit(), "No attestation operation was returned");
-    return List.copyOf(rows);
+    periodCloseWriter.writeFiscalYearCloseResult(result, outputMode);
   }
 }

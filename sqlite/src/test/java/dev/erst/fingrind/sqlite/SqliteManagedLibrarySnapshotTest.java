@@ -1,13 +1,15 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,15 +17,15 @@ import java.nio.file.attribute.AclEntry;
 import java.nio.file.attribute.AclEntryPermission;
 import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.PosixFilePermission;
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 
 /** Focused tests for managed-library verification snapshots. */
 class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestSupport {
   @Test
-  void verifiedSnapshot_copiesManagedLibraryIntoPrivateVerifiedPath() throws Exception {
+  void verifiedSnapshot_copiesManagedLibraryIntoRetainedPrivateVerifiedPath() throws Exception {
     Path libraryPath = copyHostManagedLibrary();
     writeSiblingChecksum(libraryPath);
 
@@ -46,8 +48,7 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
         Files.readString(snapshot.snapshotChecksumPath(), StandardCharsets.UTF_8));
     assertEquals(
         snapshot.snapshotLibraryPath().toString(), snapshot.runtimeTarget().lookupTarget());
-
-    snapshot.deleteQuietly();
+    assertTrue(Files.isDirectory(snapshot.snapshotDirectory()));
   }
 
   @Test
@@ -58,9 +59,9 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
     String missingTempRoot = tempDirectory.resolve("missing-temp-root").toString();
     System.setProperty("java.io.tmpdir", missingTempRoot);
     try {
-      IllegalStateException exception =
+      ManagedSqliteRuntimeUnavailableException exception =
           assertThrows(
-              IllegalStateException.class,
+              ManagedSqliteRuntimeUnavailableException.class,
               () ->
                   SqliteVerifiedLibrarySnapshot.copyOf(
                       new SqliteLibraryTarget(
@@ -73,20 +74,23 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
       assertTrue(
           Objects.requireNonNull(exception.getMessage())
               .contains(
-                  "Failed to create a private managed SQLite verification snapshot directory."));
+                  "could not resolve the managed SQLite verification snapshot temporary directory"));
     } finally {
       System.setProperty("java.io.tmpdir", originalTempRoot);
     }
   }
 
   @Test
-  void createPrivateSnapshotDirectory_supportsNonPosixFallbackCreation() throws Exception {
-    Path snapshotDirectory =
-        SqliteManagedLibraryIdentity.createPrivateSnapshotDirectory(tempDirectory, false);
+  void createPrivateSnapshotDirectory_rejectsNonPosixFilesystemsBeforeCreatingAnyPath() {
+    ManagedSqliteRuntimeUnavailableException exception =
+        assertThrows(
+            ManagedSqliteRuntimeUnavailableException.class,
+            () ->
+                SqliteManagedLibraryIdentity.createPrivateSnapshotDirectory(tempDirectory, false));
 
-    assertTrue(snapshotDirectory.startsWith(tempDirectory));
-    assertTrue(Files.isDirectory(snapshotDirectory));
-    Files.delete(snapshotDirectory);
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .contains("does not support atomic POSIX owner-only file creation"));
   }
 
   @Test
@@ -110,23 +114,21 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
   }
 
   @Test
-  void createPrivateSnapshotDirectory_supportsAclOwnerOnlyCreation() throws Exception {
+  void createPrivateSnapshotDirectory_rejectsAclOnlyFilesystemsBeforeCreatingAnyPath() {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
       AclFixturePath tempRoot = fileSystem.path("\\tmp");
       tempRoot.exists = true;
       tempRoot.regularFile = false;
 
-      Path snapshotDirectory =
-          SqliteManagedLibraryIdentity.createPrivateSnapshotDirectory(tempRoot, false);
+      ManagedSqliteRuntimeUnavailableException exception =
+          assertThrows(
+              ManagedSqliteRuntimeUnavailableException.class,
+              () -> SqliteManagedLibraryIdentity.createPrivateSnapshotDirectory(tempRoot, false));
 
-      assertTrue(Files.isDirectory(snapshotDirectory));
-      List<AclEntry> acl =
-          Objects.requireNonNull(((AclFixturePath) snapshotDirectory).aclViewValue()).getAcl();
-      assertEquals(1, acl.size());
-      assertEquals(AclEntryType.ALLOW, acl.getFirst().type());
-      assertEquals(fileSystem.owner(), acl.getFirst().principal());
-      assertTrue(acl.getFirst().permissions().contains(AclEntryPermission.LIST_DIRECTORY));
-      assertTrue(acl.getFirst().permissions().contains(AclEntryPermission.ADD_FILE));
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage())
+              .contains("does not support atomic POSIX owner-only file creation"));
+      assertEquals(2, fileSystem.registeredPaths().size());
     }
   }
 
@@ -152,13 +154,21 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
             IllegalArgumentException.class,
             () ->
                 new SqliteVerifiedLibrarySnapshot(
-                    sourceTarget, snapshotDirectory, outsideLibraryPath, validChecksumPath));
+                    sourceTarget,
+                    snapshotDirectory,
+                    outsideLibraryPath,
+                    validChecksumPath,
+                    "0".repeat(64)));
     IllegalArgumentException outsideChecksum =
         assertThrows(
             IllegalArgumentException.class,
             () ->
                 new SqliteVerifiedLibrarySnapshot(
-                    sourceTarget, snapshotDirectory, validLibraryPath, outsideChecksumPath));
+                    sourceTarget,
+                    snapshotDirectory,
+                    validLibraryPath,
+                    outsideChecksumPath,
+                    "0".repeat(64)));
 
     assertEquals(
         "snapshotLibraryPath must live inside snapshotDirectory.", outsideLibrary.getMessage());
@@ -167,13 +177,16 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
   }
 
   @Test
-  void verifiedSnapshot_copyOfCleansUpAfterCopyFailures() throws Exception {
+  void verifiedSnapshot_copyOfRetainsAnIncompleteOwnerOnlyAttemptAfterCopyFailure()
+      throws Exception {
     Path libraryPath = writeLibrary("libsqlite3.so.0", "sqlite3mc");
     Path missingChecksumPath = tempDirectory.resolve("missing.sha256");
+    Path snapshotDirectory =
+        SqliteManagedLibraryIdentity.createPrivateSnapshotDirectory(tempDirectory, true);
 
-    IllegalStateException exception =
+    ManagedSqliteRuntimeUnavailableException exception =
         assertThrows(
-            IllegalStateException.class,
+            ManagedSqliteRuntimeUnavailableException.class,
             () ->
                 SqliteVerifiedLibrarySnapshot.copyOf(
                     new SqliteLibraryTarget(
@@ -181,15 +194,58 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
                         SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                         libraryPath.toString()),
                     libraryPath,
-                    missingChecksumPath));
+                    missingChecksumPath,
+                    () -> snapshotDirectory));
 
     assertTrue(
         Objects.requireNonNull(exception.getMessage())
-            .contains("Failed to create the private managed SQLite verification snapshot"));
+            .contains("could not create a retained private managed SQLite verification snapshot"));
+    assertTrue(Files.isDirectory(snapshotDirectory));
+    assertEquals(0L, Files.size(snapshotDirectory.resolve(libraryPath.getFileName())));
+    assertFalse(Files.exists(snapshotDirectory.resolve(missingChecksumPath.getFileName())));
   }
 
   @Test
-  void verifiedSnapshot_copyOf_copiesOnlyLibraryAndChecksumArtifacts() throws Exception {
+  void verifiedSnapshot_copyOfRejectsAnInjectedNonPrivateSnapshotDirectoryBeforeCopying()
+      throws Exception {
+    Assumptions.assumeTrue(
+        tempDirectory.getFileSystem().supportedFileAttributeViews().contains("posix"),
+        "host filesystem lacks POSIX permissions");
+    Path libraryPath = writeLibrary("insecure-snapshot.dylib", "sqlite3mc");
+    writeSiblingChecksum(libraryPath);
+    Path insecureSnapshotDirectory =
+        Files.createDirectory(tempDirectory.resolve("insecure-snapshot"));
+    Files.setPosixFilePermissions(
+        insecureSnapshotDirectory,
+        Set.of(
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE,
+            PosixFilePermission.OWNER_EXECUTE,
+            PosixFilePermission.GROUP_READ,
+            PosixFilePermission.GROUP_EXECUTE));
+
+    ManagedSqliteRuntimeUnavailableException exception =
+        assertThrows(
+            ManagedSqliteRuntimeUnavailableException.class,
+            () ->
+                SqliteVerifiedLibrarySnapshot.copyOf(
+                    new SqliteLibraryTarget(
+                        "managed-only",
+                        SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                        libraryPath.toString()),
+                    libraryPath,
+                    SqliteManagedLibraryIdentity.checksumPath(libraryPath),
+                    () -> insecureSnapshotDirectory));
+
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .contains(
+                "could not establish an exact private managed SQLite verification snapshot directory"));
+    assertFalse(Files.exists(insecureSnapshotDirectory.resolve(libraryPath.getFileName())));
+  }
+
+  @Test
+  void verifiedSnapshot_copyOfRetainsOnlyLibraryAndChecksumArtifacts() throws Exception {
     Path libraryPath = writeLibrary("snapshot.dylib", "sqlite3mc");
     writeSiblingChecksum(libraryPath);
 
@@ -206,14 +262,38 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
         snapshot.snapshotLibraryPath().toString(), snapshot.runtimeTarget().lookupTarget());
     assertTrue(Files.isRegularFile(snapshot.snapshotLibraryPath()));
     assertTrue(Files.isRegularFile(snapshot.snapshotChecksumPath()));
-    snapshot.deleteQuietly();
-    assertFalse(Files.exists(snapshot.snapshotLibraryPath()));
-    assertFalse(Files.exists(snapshot.snapshotChecksumPath()));
+    assertTrue(Files.isDirectory(snapshot.snapshotDirectory()));
   }
 
   @Test
-  void verifiedSnapshot_copyOfWithInjectedSnapshotDirectory_cleansUpAfterChecksumCopyFailures() {
-    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
+  void verifiedSnapshot_rejectsAReplacementAtTheImmediatePreLoadDigestCheck() throws Exception {
+    Path libraryPath = writeLibrary("preload.dylib", "trusted managed sqlite");
+    writeSiblingChecksum(libraryPath);
+    SqliteVerifiedLibrarySnapshot snapshot =
+        SqliteVerifiedLibrarySnapshot.copyOf(
+            new SqliteLibraryTarget(
+                "managed-only",
+                SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                libraryPath.toString()),
+            libraryPath,
+            SqliteManagedLibraryIdentity.checksumPath(libraryPath));
+
+    snapshot.requireCurrentBytesMatchVerifiedDigestBeforePathLoad();
+    Files.writeString(snapshot.snapshotLibraryPath(), "replacement", StandardCharsets.UTF_8);
+
+    ManagedSqliteRuntimeUnavailableException exception =
+        assertThrows(
+            ManagedSqliteRuntimeUnavailableException.class,
+            snapshot::requireCurrentBytesMatchVerifiedDigestBeforePathLoad);
+
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .contains("changed after verification and before native loading"));
+  }
+
+  @Test
+  void verifiedSnapshot_copyOfWithInjectedSnapshotDirectory_retainsIncompleteAttempt() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
       AclFixturePath sourceLibraryPath = fileSystem.path("\\source\\sqlite3.dll");
       sourceLibraryPath.exists = true;
       sourceLibraryPath.regularFile = true;
@@ -221,10 +301,15 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
       AclFixturePath snapshotDirectory = fileSystem.path("\\snapshots");
       snapshotDirectory.exists = true;
       snapshotDirectory.regularFile = false;
+      snapshotDirectory.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE);
 
-      IllegalStateException exception =
+      ManagedSqliteRuntimeUnavailableException exception =
           assertThrows(
-              IllegalStateException.class,
+              ManagedSqliteRuntimeUnavailableException.class,
               () ->
                   SqliteVerifiedLibrarySnapshot.copyOf(
                       new SqliteLibraryTarget(
@@ -237,36 +322,228 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
 
       assertTrue(
           Objects.requireNonNull(exception.getMessage())
-              .contains("Failed to create the private managed SQLite verification snapshot"));
-      assertFalse(snapshotDirectory.exists);
-      assertFalse(fileSystem.path("\\snapshots\\sqlite3.dll").exists);
+              .contains(
+                  "could not create a retained private managed SQLite verification snapshot"));
+      assertTrue(snapshotDirectory.exists);
+      assertTrue(fileSystem.path("\\snapshots\\sqlite3.dll").exists);
       assertFalse(fileSystem.path("\\snapshots\\sqlite3.dll.sha256").exists);
+      assertEquals(
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE),
+          snapshotDirectory.posixPermissions);
+      assertEquals(
+          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
+          fileSystem.path("\\snapshots\\sqlite3.dll").posixPermissions);
     }
   }
 
   @Test
-  void verifiedSnapshot_deleteQuietly_ignoresDirectoryDeleteFailures() throws Exception {
-    Path snapshotDirectory = Files.createDirectory(tempDirectory.resolve("snapshot-cleanup"));
-    Path snapshotLibraryPath = snapshotDirectory.resolve("library.dylib");
-    Path snapshotChecksumPath = snapshotDirectory.resolve("library.dylib.sha256");
-    Path sentinel = snapshotDirectory.resolve("sentinel.txt");
-    Files.writeString(snapshotLibraryPath, "library", StandardCharsets.UTF_8);
-    Files.writeString(snapshotChecksumPath, "checksum", StandardCharsets.UTF_8);
-    Files.writeString(sentinel, "keep", StandardCharsets.UTF_8);
-    SqliteVerifiedLibrarySnapshot snapshot =
-        new SqliteVerifiedLibrarySnapshot(
-            new SqliteLibraryTarget(
-                "managed-only",
-                SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
-                snapshotLibraryPath.toString()),
-            snapshotDirectory,
-            snapshotLibraryPath,
-            snapshotChecksumPath);
+  void verifiedSnapshot_copyOfRefusesOccupiedSnapshotNamesWithoutReplacingOrRemovingThem()
+      throws Exception {
+    Path libraryPath = writeLibrary("source.dylib", "trusted source library");
+    writeSiblingChecksum(libraryPath);
+    Path checksumPath = SqliteManagedLibraryIdentity.checksumPath(libraryPath);
+    Path snapshotDirectory =
+        SqliteManagedLibraryIdentity.createPrivateSnapshotDirectory(tempDirectory, true);
+    Path snapshotLibraryPath = snapshotDirectory.resolve(libraryPath.getFileName());
+    Path snapshotChecksumPath = snapshotDirectory.resolve(checksumPath.getFileName());
+    Files.writeString(snapshotLibraryPath, "external replacement library", StandardCharsets.UTF_8);
+    Files.writeString(
+        snapshotChecksumPath, "external replacement checksum", StandardCharsets.UTF_8);
 
-    assertDoesNotThrow(snapshot::deleteQuietly);
+    ManagedSqliteRuntimeUnavailableException exception =
+        assertThrows(
+            ManagedSqliteRuntimeUnavailableException.class,
+            () ->
+                SqliteVerifiedLibrarySnapshot.copyOf(
+                    new SqliteLibraryTarget(
+                        "managed-only",
+                        SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                        libraryPath.toString()),
+                    libraryPath,
+                    checksumPath,
+                    () -> snapshotDirectory));
+
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .contains("could not create a retained private managed SQLite verification snapshot"));
     assertTrue(Files.exists(snapshotDirectory));
-    assertTrue(Files.exists(sentinel));
-    assertTrue(Files.notExists(snapshotLibraryPath));
-    assertTrue(Files.notExists(snapshotChecksumPath));
+    assertEquals("external replacement library", Files.readString(snapshotLibraryPath));
+    assertEquals("external replacement checksum", Files.readString(snapshotChecksumPath));
+  }
+
+  @Test
+  void verifiedSnapshot_copyOfRefusesAclOnlyDestinationsBeforeCreatingSnapshotFiles() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath sourceLibraryPath = fileSystem.path("\\source\\sqlite3.dll");
+      sourceLibraryPath.exists = true;
+      sourceLibraryPath.regularFile = true;
+      sourceLibraryPath.replaceContent("sqlite3mc".getBytes(StandardCharsets.UTF_8));
+      AclFixturePath sourceChecksumPath = fileSystem.path("\\source\\sqlite3.dll.sha256");
+      sourceChecksumPath.exists = true;
+      sourceChecksumPath.regularFile = true;
+      sourceChecksumPath.replaceContent(
+          "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  sqlite3.dll\\n"
+              .getBytes(StandardCharsets.UTF_8));
+      AclFixturePath snapshotDirectory = fileSystem.path("\\snapshots");
+      snapshotDirectory.exists = true;
+      snapshotDirectory.regularFile = false;
+      Objects.requireNonNull(snapshotDirectory.aclView)
+          .setAcl(
+              java.util.List.of(
+                  AclEntry.newBuilder()
+                      .setType(AclEntryType.ALLOW)
+                      .setPrincipal(fileSystem.owner)
+                      .setPermissions(
+                          AclEntryPermission.LIST_DIRECTORY,
+                          AclEntryPermission.ADD_FILE,
+                          AclEntryPermission.EXECUTE)
+                      .build()));
+      AclFixturePath snapshotLibraryPath = fileSystem.path("\\snapshots\\sqlite3.dll");
+      AclFixturePath snapshotChecksumPath = fileSystem.path("\\snapshots\\sqlite3.dll.sha256");
+
+      ManagedSqliteRuntimeUnavailableException exception =
+          assertThrows(
+              ManagedSqliteRuntimeUnavailableException.class,
+              () ->
+                  SqliteVerifiedLibrarySnapshot.copyOf(
+                      new SqliteLibraryTarget(
+                          "managed-only",
+                          SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                          sourceLibraryPath.toString()),
+                      sourceLibraryPath,
+                      sourceChecksumPath,
+                      () -> snapshotDirectory));
+
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage())
+              .contains("does not support atomic POSIX owner-only file creation"));
+      assertFalse(snapshotLibraryPath.exists);
+      assertFalse(snapshotChecksumPath.exists);
+    }
+  }
+
+  @Test
+  void copyForceAndVerifyExactRejectsSourceReadZeroProgress() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath sourcePath = fixtureRegularFile(fileSystem, "\\source\\sqlite3.dll", "sqlite");
+      AclFixturePath destinationPath =
+          fixtureRegularFile(fileSystem, "\\snapshot\\sqlite3.dll", "");
+
+      try (FileChannel source = new ZeroReadFixtureFileChannel(sourcePath);
+          FileChannel destination =
+              new AclFixtureFileChannel(
+                  destinationPath, new AclFixtureSeekableByteChannel(destinationPath))) {
+        IOException exception =
+            assertThrows(
+                IOException.class,
+                () ->
+                    SqliteManagedLibrarySnapshotSecurity.copyForceAndVerifyExact(
+                        source, destination));
+
+        assertEquals(
+            "Managed SQLite snapshot source did not make read progress.", exception.getMessage());
+      }
+    }
+  }
+
+  @Test
+  void copyForceAndVerifyExactRejectsDestinationWriteZeroProgress() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath sourcePath = fixtureRegularFile(fileSystem, "\\source\\sqlite3.dll", "sqlite");
+      AclFixturePath destinationPath =
+          fixtureRegularFile(fileSystem, "\\snapshot\\sqlite3.dll", "");
+
+      try (FileChannel source =
+              new AclFixtureFileChannel(sourcePath, new AclFixtureSeekableByteChannel(sourcePath));
+          FileChannel destination = new ZeroWriteFixtureFileChannel(destinationPath)) {
+        IOException exception =
+            assertThrows(
+                IOException.class,
+                () ->
+                    SqliteManagedLibrarySnapshotSecurity.copyForceAndVerifyExact(
+                        source, destination));
+
+        assertEquals(
+            "Managed SQLite snapshot destination did not make write progress.",
+            exception.getMessage());
+      }
+    }
+  }
+
+  @Test
+  void copyForceAndVerifyExactRejectsDestinationDigestReadZeroProgress() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath sourcePath = fixtureRegularFile(fileSystem, "\\source\\sqlite3.dll", "sqlite");
+      AclFixturePath destinationPath =
+          fixtureRegularFile(fileSystem, "\\snapshot\\sqlite3.dll", "");
+
+      try (FileChannel source =
+              new AclFixtureFileChannel(sourcePath, new AclFixtureSeekableByteChannel(sourcePath));
+          FileChannel destination = new ZeroReadFixtureFileChannel(destinationPath)) {
+        IOException exception =
+            assertThrows(
+                IOException.class,
+                () ->
+                    SqliteManagedLibrarySnapshotSecurity.copyForceAndVerifyExact(
+                        source, destination));
+
+        assertEquals(
+            "Cryptographic digest input did not make read progress.", exception.getMessage());
+      }
+    }
+  }
+
+  @Test
+  void readUtf8LinesFromExactChannelRejectsZeroProgress() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath checksumPath =
+          fixtureRegularFile(fileSystem, "\\snapshot\\sqlite3.dll.sha256", "checksum");
+
+      try (FileChannel checksum = new ZeroReadFixtureFileChannel(checksumPath)) {
+        IOException exception =
+            assertThrows(
+                IOException.class,
+                () -> SqliteManagedLibrarySnapshotSecurity.readUtf8LinesFromExactChannel(checksum));
+
+        assertEquals(
+            "Managed SQLite snapshot checksum did not make read progress.", exception.getMessage());
+      }
+    }
+  }
+
+  private static AclFixturePath fixtureRegularFile(
+      AclFixtureFileSystem fileSystem, String path, String contents) {
+    AclFixturePath fixture = fileSystem.path(path);
+    fixture.exists = true;
+    fixture.regularFile = true;
+    fixture.replaceContent(contents.getBytes(StandardCharsets.UTF_8));
+    return fixture;
+  }
+
+  /** File channel that refuses every read request without making checksum progress. */
+  private static final class ZeroReadFixtureFileChannel extends AclFixtureFileChannel {
+    private ZeroReadFixtureFileChannel(AclFixturePath path) {
+      super(path, new AclFixtureSeekableByteChannel(path));
+    }
+
+    @Override
+    public int read(ByteBuffer destination) {
+      return 0;
+    }
+  }
+
+  /** File channel that refuses every write request without making snapshot-copy progress. */
+  private static final class ZeroWriteFixtureFileChannel extends AclFixtureFileChannel {
+    private ZeroWriteFixtureFileChannel(AclFixturePath path) {
+      super(path, new AclFixtureSeekableByteChannel(path));
+    }
+
+    @Override
+    public int write(ByteBuffer source) {
+      return 0;
+    }
   }
 }

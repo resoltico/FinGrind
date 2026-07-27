@@ -5,6 +5,7 @@ from .attestation_arguments import signing_credential_arguments
 from .cli import run_cli, run_cli_with_split_streams
 from .models import ReleaseSmokeConfig
 from .pagination_checks import verify_list_postings_pagination
+from .posting_replay_checks import verify_direct_posting_replay
 from .support import require_match
 
 
@@ -35,6 +36,7 @@ def verify_preflight_and_commit(config: ReleaseSmokeConfig, operation_ids: dict[
         "--output",
         "json",
     )
+    verify_direct_posting_replay(config, operation_ids, commit_sale_output)
     commit_expense_output = run_cli(
         config,
         operation_ids["recordExpenseSettled"],

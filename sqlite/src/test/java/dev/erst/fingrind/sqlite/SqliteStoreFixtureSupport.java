@@ -278,13 +278,13 @@ class SqliteStoreFixtureSupport {
             .formatted(recordedAt, eventKind, accountCodeSqlLiteral, postingIdSqlLiteral));
   }
 
-  static SqliteNativeDatabase staleDatabaseHandle(Path bookPath) throws IOException {
-    if (bookPath.getParent() != null) {
-      Files.createDirectories(bookPath.getParent());
-    }
-    if (Files.notExists(bookPath)) {
-      Files.write(bookPath, new byte[0]);
-    }
+  /**
+   * Returns an in-memory failure double without creating a caller-selected book artifact.
+   *
+   * <p>A stale-handle test must model only the native handle's failure behavior. Materializing the
+   * selected path would create an untrusted book before the system's owner-only admission runs.
+   */
+  static SqliteNativeDatabase staleDatabaseHandle() throws IOException {
     return new ThrowingSqliteNativeDatabase();
   }
 
@@ -440,6 +440,12 @@ class SqliteStoreFixtureSupport {
 
   static void createEmptySqliteFile(Path bookPath) {
     withStandaloneDatabase(staticBookAccess(bookPath), database -> {});
+  }
+
+  /** Creates one deliberately invalid, yet owner-only, protected-book fixture. */
+  static void writeOwnerOnlyBookFixture(Path bookPath, byte[] content) throws IOException {
+    SqliteBookFileSecurity.createNewOwnerOnlyBookFile(bookPath);
+    Files.write(bookPath, Objects.requireNonNull(content, "content"));
   }
 
   static void createSchemaOnlyBook(Path bookPath) {

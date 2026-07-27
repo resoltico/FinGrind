@@ -7,7 +7,7 @@ import dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateAmbiguous;
 import dev.erst.fingrind.contract.bookkeeping.CloseTargetAccountCandidateMissing;
 import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseRequiresGeneratedPostings;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import dev.erst.fingrind.core.AccountTaxonomy;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
 import dev.erst.fingrind.core.FiscalYearStart;
@@ -199,9 +199,7 @@ class BookAdministrationRejectionTest {
             "fiscal-year-close-precedes-transferred-through-horizon",
             "fiscal-year-close-future-date",
             "fiscal-year-close-requires-generated-postings"),
-        BookAdministrationRejection.descriptors().stream()
-            .map(ContractResponse.RejectionDescriptor::code)
-            .toList());
+        BookAdministrationRejection.descriptors().stream().map(RejectionDescriptor::code).toList());
   }
 
   @Test

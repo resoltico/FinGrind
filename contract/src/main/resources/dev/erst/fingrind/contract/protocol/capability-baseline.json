@@ -1,0 +1,1185 @@
+{
+  "schemaVersion" : 2,
+  "commands" : {
+    "discovery" : [ {
+      "name" : "help",
+      "displayLabel" : "Help",
+      "aliases" : [ "--help", "-h" ],
+      "options" : [ "[<command>]", "[--output <json|text>]", "[--detail <minimal|compact|full> (json only)]", "[--category <discovery|administration|query|write> (json only)]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Print command usage, examples, and workflow guidance."
+    }, {
+      "name" : "version",
+      "displayLabel" : "Version",
+      "aliases" : [ "--version" ],
+      "options" : [ "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Print application identity, version, and description."
+    }, {
+      "name" : "capabilities",
+      "displayLabel" : "Capabilities",
+      "aliases" : [ ],
+      "options" : [ "[--output <json|text>]", "[--detail <minimal|compact|full> (json only)]", "[--focus <overview|commands|storage|request-input|currency-model|bookkeeping-kernel|capability-catalog|response-contract> (json only)]", "[--category <discovery|administration|query|write> (json only)]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Print the canonical machine-readable contract for commands, request shapes, and responses."
+    }, {
+      "name" : "environment",
+      "displayLabel" : "Environment",
+      "aliases" : [ ],
+      "options" : [ "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Print live runtime, distribution, and SQLite provenance facts for this launcher instance."
+    }, {
+      "name" : "print-request-template",
+      "displayLabel" : "Print Request Template",
+      "aliases" : [ "--print-request-template" ],
+      "options" : [ "[post-entry|preflight-entry|record-sale-settled|record-sale-on-credit|record-purchase-settled|record-purchase-on-credit|record-inventory-capitalization-settled|record-inventory-capitalization-on-credit|record-inventory-write-down|record-inventory-shrinkage|record-inventory-count-increase|record-prepayment|record-deferred-revenue|record-accrued-expense|record-accrual-cutoff-recognition|record-accrued-expense-settlement|record-latvian-monthly-payroll|record-latvian-payroll-net-wage-settlement|record-latvian-payroll-state-remittance|record-fixed-asset-capitalization|record-fixed-asset-depreciation|record-fixed-asset-disposal|record-financing-borrowing|record-financing-principal-repayment|record-financing-interest-accrual|record-financing-interest-payment|record-foreign-currency-obligation|record-realized-foreign-exchange-settlement|record-expense-settled|record-expense-on-credit|record-receipt|record-payment|record-owner-contribution|record-owner-withdrawal|record-opening-position|record-reversal|declare-account|amend-account|retire-account|declare-tax-registration|enroll-key|rollover-key|revoke-key|alter-policy|attestation-review]", "[--book-template-id <OWNER_MANAGED_SERVICE|OWNER_MANAGED_TRADING>]" ],
+      "executionMode" : "raw-json",
+      "outputModes" : [ ],
+      "artifactOutputs" : [ ],
+      "summary" : "Print the canonical minimal JSON scaffold for a selected structured-input topic."
+    }, {
+      "name" : "print-plan-template",
+      "displayLabel" : "Print Plan Template",
+      "aliases" : [ "--print-plan-template" ],
+      "options" : [ "[general|tax-setup|fixed-asset-setup|financing-setup]" ],
+      "executionMode" : "raw-json",
+      "outputModes" : [ ],
+      "artifactOutputs" : [ ],
+      "summary" : "Print a topic-specific executable ledger-plan scaffold JSON document."
+    } ],
+    "administration" : [ {
+      "name" : "generate-book-key-file",
+      "displayLabel" : "Generate Book Key File",
+      "aliases" : [ ],
+      "options" : [ "--new-book-key-file <path>", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "book-key-file",
+        "option" : "--new-book-key-file <path>",
+        "description" : "Publishes a newly generated owner-only UTF-8 book key file at an absent target path."
+      } ],
+      "summary" : "Create a new owner-only UTF-8 book key file with a generated high-entropy passphrase."
+    }, {
+      "name" : "generate-attestation-key-file",
+      "displayLabel" : "Generate Attestation Key File",
+      "aliases" : [ ],
+      "options" : [ "--attestation-custodian <file-pkcs8>", "--new-attestation-key-file <path>", "--attestation-passphrase-file <path>", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "attestation-key-file",
+        "option" : "--new-attestation-key-file <path>",
+        "description" : "Publishes a newly generated owner-only encrypted Ed25519 attestation key file at an absent target beneath a private existing parent whose resolved ancestry resists non-owner substitution."
+      } ],
+      "summary" : "Create a new encrypted Ed25519 attestation credential and return the exact public SPKI needed for credential enrollment or rollover."
+    }, {
+      "name" : "open-book",
+      "displayLabel" : "Open Book",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--entity-name <text>", "--book-template-id <OWNER_MANAGED_SERVICE|OWNER_MANAGED_TRADING>", "--accounting-basis <CASH|ACCRUAL>", "[--inventory-costing <WEIGHTED_AVERAGE>] (required for OWNER_MANAGED_TRADING)", "--functional-currency <currency-code>", "--fiscal-year-start <MM-DD>", "--book-start-effective-date <YYYY-MM-DD>", "--attestation-custodian <file-pkcs8>", "--attestation-founder-principal-id <uuid> (repeat one through five aligned founder credential triplets under the selected custody)", "--attestation-founder-key-file <path> (repeat one through five aligned founder credential triplets under the selected custody)", "--attestation-founder-passphrase-file <path> (repeat one through five aligned founder credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Initialize a new book file with the canonical schema, selected seed template, explicit accounting basis, and the inventory costing doctrine required by trading templates."
+    }, {
+      "name" : "rekey-book",
+      "displayLabel" : "Rekey Book",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--new-book-key-file <path>", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "book-key-file",
+        "option" : "--new-book-key-file <path>",
+        "description" : "Publishes the newly generated book key file for a staged rekey or restore workflow."
+      } ],
+      "summary" : "Re-encrypt an existing book under a newly generated, absent-target key file."
+    }, {
+      "name" : "backup-book",
+      "displayLabel" : "Backup Book",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--backup-file <path>", "--new-backup-key-file <path>", "--backup-id <uuid>", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "backup-file",
+        "option" : "--backup-file <path>",
+        "description" : "Writes an encrypted backup-book copy to the selected destination without overwriting an existing file."
+      }, {
+        "format" : "backup-key-file",
+        "option" : "--new-backup-key-file <path>",
+        "description" : "Publishes the newly generated backup key file that reopens the exported backup copy."
+      } ],
+      "summary" : "Export a manifest-attested encrypted-book backup artifact without overwriting any existing destination."
+    }, {
+      "name" : "restore-book",
+      "displayLabel" : "Restore Book",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--new-book-key-file <path>", "--backup-file <path>", "--backup-key-file <path>", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "book-file",
+        "option" : "--book-file <path>",
+        "description" : "Publishes the restored live book file path selected for the restore workflow."
+      }, {
+        "format" : "book-key-file",
+        "option" : "--new-book-key-file <path>",
+        "description" : "Publishes the newly generated book key file for a staged rekey or restore workflow."
+      } ],
+      "summary" : "Restore a manifest-attested backup artifact to a missing destination as a signed derived continuation."
+    }, {
+      "name" : "enroll-key",
+      "displayLabel" : "Enroll Attestation Key",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Append a public Ed25519 credential binding for a principal."
+    }, {
+      "name" : "rollover-key",
+      "displayLabel" : "Rollover Attestation Key",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Append a replacement public Ed25519 credential binding for an active principal credential."
+    }, {
+      "name" : "revoke-key",
+      "displayLabel" : "Revoke Attestation Key",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Permanently revoke an enrolled public Ed25519 credential binding."
+    }, {
+      "name" : "alter-policy",
+      "displayLabel" : "Alter Attestation Policy",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Append future quorum, principal-capability grant, and autonomous workflow policy facts."
+    }, {
+      "name" : "declare-account",
+      "displayLabel" : "Declare Account",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Declare or reactivate an account in the selected book."
+    }, {
+      "name" : "amend-account",
+      "displayLabel" : "Amend Account",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Replace the definition of a never-posted, unreferenced account without erasing its identity or lifecycle history."
+    }, {
+      "name" : "retire-account",
+      "displayLabel" : "Retire Account",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Retire a zero-balance account from new ordinary authored postings while preserving its ledger history and admitting historical reversals."
+    }, {
+      "name" : "declare-tax-registration",
+      "displayLabel" : "Declare Tax Registration",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Declare or update an owned tax registration using already-declared payable and recoverable accounts; this command never creates accounts implicitly."
+    }, {
+      "name" : "interim-result-sweep",
+      "displayLabel" : "Interim Result Sweep",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--through <YYYY-MM-DD>", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Sweep the derived contiguous reporting window into the policy-selected result-holding account."
+    }, {
+      "name" : "fiscal-year-close",
+      "displayLabel" : "Fiscal-Year Close",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--year <YYYY>", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Close the fiscal year by settling owner withdrawals into capital and accumulating current-year result into retained accumulated equity."
+    } ],
+    "query" : [ {
+      "name" : "inspect-attestation-key-file",
+      "displayLabel" : "Inspect Attestation Key File",
+      "aliases" : [ ],
+      "options" : [ "--attestation-custodian <file-pkcs8>", "--attestation-key-file <path>", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Read the non-secret Ed25519 public identity embedded in the selected encrypted attestation credential without loading private key material or a passphrase."
+    }, {
+      "name" : "inspect-book",
+      "displayLabel" : "Inspect Book",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Inspect the selected book for lifecycle state, format version, and compatibility."
+    }, {
+      "name" : "verify-book",
+      "displayLabel" : "Verify Book",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "[--attestation-review-file <path>]", "[--require-clean-attestation]", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Verify every immutable attestation structure from genesis and report the first exact structural break, if any."
+    }, {
+      "name" : "attestation-review",
+      "displayLabel" : "Attestation Review",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "[--attestation-review-file <path>]", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Report non-persisted compromise-review findings from a structurally valid attestation chain."
+    }, {
+      "name" : "export-attestation-receipt",
+      "displayLabel" : "Export Attestation Receipt",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--receipt-file <path>", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "attestation-receipt-v1",
+        "option" : "--receipt-file <path>",
+        "description" : "Publishes an independently retained, quorum-signed attestation receipt at an absent target beneath a private existing parent whose resolved ancestry resists non-owner substitution."
+      } ],
+      "summary" : "Publish an independently retained quorum-signed receipt without changing the selected book."
+    }, {
+      "name" : "verify-receipt",
+      "displayLabel" : "Verify Receipt",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--receipt-file <path>", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Verify an independently retained receipt against the selected book's complete immutable chain."
+    }, {
+      "name" : "list-accounts",
+      "displayLabel" : "List Accounts",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "[--limit <1-200>]", "[--cursor <cursor>]", "[--with-context]", "[--output <json|text|csv>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text", "csv" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "List a stable page of declared accounts in the selected book using keyset pagination."
+    }, {
+      "name" : "list-tax-registrations",
+      "displayLabel" : "List Tax Registrations",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "[--limit <1-200>]", "[--cursor <cursor>]", "[--with-context]", "[--output <json|text|csv>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text", "csv" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "List a stable page of declared tax registrations in the selected book using keyset pagination."
+    }, {
+      "name" : "tax-obligation",
+      "displayLabel" : "Tax Obligation",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--tax-registration-id <tax-registration-id>", "--period-start <YYYY-MM-DD>", "--period-end <YYYY-MM-DD>", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text", "csv" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "pdf",
+        "option" : "--pdf-out <path>",
+        "description" : "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode."
+      } ],
+      "summary" : "Compute a bounded tax-obligation report for the selected declared tax registration."
+    }, {
+      "name" : "get-posting",
+      "displayLabel" : "Get Posting",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--posting-id <posting-id>", "[--with-context]", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Return a committed posting by durable posting identifier."
+    }, {
+      "name" : "list-postings",
+      "displayLabel" : "List Postings",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "[--account-code <account-code>]", "[--effective-date-from <YYYY-MM-DD>]", "[--effective-date-to <YYYY-MM-DD>]", "[--limit <1-200>]", "[--cursor <cursor>]", "[--with-context]", "[--output <json|text|csv>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text", "csv" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "List a filtered page of committed postings in stable reverse-chronological order using keyset pagination."
+    }, {
+      "name" : "account-balance",
+      "displayLabel" : "Account Balance",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--account-code <account-code>", "[--effective-date-from <YYYY-MM-DD>]", "[--effective-date-to <YYYY-MM-DD>]", "[--posting-coverage <all-posting-kinds|non-closing-postings>]", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text", "csv" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "pdf",
+        "option" : "--pdf-out <path>",
+        "description" : "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode."
+      } ],
+      "summary" : "Compute grouped per-currency balances for a declared account."
+    }, {
+      "name" : "trial-balance",
+      "displayLabel" : "Trial Balance",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "[--effective-date-as-of <YYYY-MM-DD>]", "[--comparative <none|prior-period|..YYYY-MM-DD>]", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text", "csv" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "pdf",
+        "option" : "--pdf-out <path>",
+        "description" : "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode."
+      } ],
+      "summary" : "Compute a book-wide trial balance as of the selected effective date or the latest effective date in the selected book when no date filter is supplied."
+    }, {
+      "name" : "account-ledger",
+      "displayLabel" : "Account Ledger",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--account-code <account-code>", "[--effective-date-from <YYYY-MM-DD>]", "[--effective-date-to <YYYY-MM-DD>]", "[--posting-coverage <all-posting-kinds|non-closing-postings>]", "[--limit <1-200>]", "[--cursor <cursor>]", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text", "csv" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "pdf",
+        "option" : "--pdf-out <path>",
+        "description" : "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode."
+      } ],
+      "summary" : "Compute a stable ascending keyset page of an account's running ledger, including opening balances, per-posting movement, and whole-range closing balances."
+    }, {
+      "name" : "period-summary",
+      "displayLabel" : "Period Summary",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--period-start <YYYY-MM-DD>", "--period-end <YYYY-MM-DD>", "[--posting-coverage <all-posting-kinds|non-closing-postings>]", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text", "csv" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "pdf",
+        "option" : "--pdf-out <path>",
+        "description" : "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode."
+      } ],
+      "summary" : "Compute a bounded accounting-period summary with posting totals, currency totals, and per-account activity."
+    }, {
+      "name" : "financial-position",
+      "displayLabel" : "Financial Position",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "[--effective-date-as-of <YYYY-MM-DD>]", "[--comparative <none|prior-period|..YYYY-MM-DD>]", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text", "csv" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "pdf",
+        "option" : "--pdf-out <path>",
+        "description" : "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode."
+      } ],
+      "summary" : "Compute a statement of financial position as of the selected effective date or the latest effective date in the selected book when no date filter is supplied."
+    }, {
+      "name" : "inventory-valuation",
+      "displayLabel" : "Inventory Valuation",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "[--as-of <YYYY-MM-DD>]", "[--movements]", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text", "csv" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "pdf",
+        "option" : "--pdf-out <path>",
+        "description" : "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode."
+      } ],
+      "summary" : "Compute exact per-account inventory quantity and carrying value from the canonical inventory movement replay order. The rounded moving-average unit-cost projection is informational only."
+    }, {
+      "name" : "accrual-cutoff-schedule",
+      "displayLabel" : "Accrual Cut-Off Schedule",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "[--as-of <YYYY-MM-DD>]", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text", "csv" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "pdf",
+        "option" : "--pdf-out <path>",
+        "description" : "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode."
+      } ],
+      "summary" : "Compute durable prepayment, deferred-revenue, and accrued-expense lifecycle balances from the append-only cut-off aggregate facts."
+    }, {
+      "name" : "fixed-asset-register",
+      "displayLabel" : "Fixed Asset Register",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "[--as-of <YYYY-MM-DD>]", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text", "csv" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "pdf",
+        "option" : "--pdf-out <path>",
+        "description" : "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode."
+      } ],
+      "summary" : "Compute durable fixed-asset cost, depreciation, carrying value, and disposal state from immutable lifecycle facts."
+    }, {
+      "name" : "financing-register",
+      "displayLabel" : "Financing Register",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text", "csv" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "pdf",
+        "option" : "--pdf-out <path>",
+        "description" : "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode."
+      } ],
+      "summary" : "Compute durable financing principal, accrued interest, paid interest, and outstanding balances from immutable lifecycle facts."
+    }, {
+      "name" : "realized-foreign-exchange-register",
+      "displayLabel" : "Realized Foreign Exchange Register",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text", "csv" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "pdf",
+        "option" : "--pdf-out <path>",
+        "description" : "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode."
+      } ],
+      "summary" : "Compute durable foreign-currency receivable carrying amounts, settlements, and realized gain or loss from immutable lifecycle facts."
+    }, {
+      "name" : "latvian-payroll-register",
+      "displayLabel" : "Latvian Payroll Register",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text", "csv" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "pdf",
+        "option" : "--pdf-out <path>",
+        "description" : "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode."
+      } ],
+      "summary" : "Compute immutable Latvian payroll calculations and complete settlement posting lineage from the protected book's durable payroll facts."
+    }, {
+      "name" : "income-statement",
+      "displayLabel" : "Income Statement",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--period-start <YYYY-MM-DD>", "--period-end <YYYY-MM-DD>", "[--comparative <none|prior-period|YYYY-MM-DD..YYYY-MM-DD>]", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text", "csv" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "pdf",
+        "option" : "--pdf-out <path>",
+        "description" : "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode."
+      } ],
+      "summary" : "Compute a bounded income statement for the selected reporting period."
+    }, {
+      "name" : "cash-flow-statement",
+      "displayLabel" : "Cash Receipts And Payments",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--period-start <YYYY-MM-DD>", "--period-end <YYYY-MM-DD>", "[--comparative <none|prior-period|YYYY-MM-DD..YYYY-MM-DD>]", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text", "csv" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "pdf",
+        "option" : "--pdf-out <path>",
+        "description" : "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode."
+      } ],
+      "summary" : "Compute a bounded statement of cash receipts and payments for the selected reporting period."
+    }, {
+      "name" : "changes-in-equity",
+      "displayLabel" : "Changes In Equity",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--period-start <YYYY-MM-DD>", "--period-end <YYYY-MM-DD>", "[--comparative <none|prior-period|YYYY-MM-DD..YYYY-MM-DD>]", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text", "csv" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ {
+        "format" : "pdf",
+        "option" : "--pdf-out <path>",
+        "description" : "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode."
+      } ],
+      "summary" : "Compute a bounded statement of changes in equity for the selected reporting period."
+    } ],
+    "write" : [ {
+      "name" : "execute-plan",
+      "displayLabel" : "Execute Plan",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "[--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)]", "[--output <json|text>]", "[--result-detail <summary|full>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Execute an ordered AI-agent ledger plan inside a single atomic book transaction. Attestation credentials are required exactly when the request contains a mutating step and forbidden for a query-only or assertion-only plan. Summary output is the default; request the full execution journal explicitly when needed."
+    }, {
+      "name" : "preflight-entry",
+      "displayLabel" : "Preflight Entry",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Validate a posting request from the typed business-entry family or the raw direct-journal path without committing it."
+    }, {
+      "name" : "record-sale-settled",
+      "displayLabel" : "Record Settled Sale",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit a settled sale entry into the selected SQLite book."
+    }, {
+      "name" : "record-sale-on-credit",
+      "displayLabel" : "Record Sale On Credit",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit a sale-on-credit entry into the selected SQLite book."
+    }, {
+      "name" : "record-purchase-settled",
+      "displayLabel" : "Record Settled Purchase",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit a settled inventory purchase entry into the selected trading-template SQLite book."
+    }, {
+      "name" : "record-purchase-on-credit",
+      "displayLabel" : "Record Purchase On Credit",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit a purchase-on-credit inventory entry into the selected trading-template SQLite book."
+    }, {
+      "name" : "record-inventory-capitalization-settled",
+      "displayLabel" : "Record Settled Inventory Capitalization",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit a settled landed-cost capitalization into an existing inventory pool."
+    }, {
+      "name" : "record-inventory-capitalization-on-credit",
+      "displayLabel" : "Record Inventory Capitalization On Credit",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit a payable landed-cost capitalization into an existing inventory pool."
+    }, {
+      "name" : "record-inventory-write-down",
+      "displayLabel" : "Record Inventory Write-Down",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit a carrying-cost write-down against an existing inventory pool."
+    }, {
+      "name" : "record-inventory-shrinkage",
+      "displayLabel" : "Record Inventory Shrinkage",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit a quantity shrinkage adjustment with executor-derived carrying cost."
+    }, {
+      "name" : "record-inventory-count-increase",
+      "displayLabel" : "Record Inventory Count Increase",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit a count-discovered inventory increase at an exact per-unit carrying cost."
+    }, {
+      "name" : "record-prepayment",
+      "displayLabel" : "Record Prepayment",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit a cash-funded prepayment with an inclusive recognition interval."
+    }, {
+      "name" : "record-deferred-revenue",
+      "displayLabel" : "Record Deferred Revenue",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit a cash-funded deferred-revenue liability with an inclusive recognition interval."
+    }, {
+      "name" : "record-accrued-expense",
+      "displayLabel" : "Record Accrued Expense",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit an unpaid accrued expense."
+    }, {
+      "name" : "record-accrual-cutoff-recognition",
+      "displayLabel" : "Record Accrual Cut-Off Recognition",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Recognize a permitted amount from an existing prepayment or deferred-revenue balance."
+    }, {
+      "name" : "record-accrued-expense-settlement",
+      "displayLabel" : "Record Accrued Expense Settlement",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Settle a permitted amount of an existing accrued-expense liability."
+    }, {
+      "name" : "record-latvian-monthly-payroll",
+      "displayLabel" : "Record Latvian Monthly Payroll",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit an executor-resolved Latvian 2026 ordinary monthly-payroll accrual."
+    }, {
+      "name" : "record-latvian-payroll-net-wage-settlement",
+      "displayLabel" : "Record Latvian Payroll Net-Wage Settlement",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Settle the exact net-wage obligation of the active retained Latvian payroll run."
+    }, {
+      "name" : "record-latvian-payroll-state-remittance",
+      "displayLabel" : "Record Latvian Payroll State Remittance",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Remit the exact state obligation of the active retained Latvian payroll run."
+    }, {
+      "name" : "record-fixed-asset-capitalization",
+      "displayLabel" : "Record Fixed-Asset Capitalization",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Capitalizes a fixed asset with its owned useful-life and depreciation facts."
+    }, {
+      "name" : "record-fixed-asset-depreciation",
+      "displayLabel" : "Record Fixed-Asset Depreciation",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Records the admissible periodic depreciation amount for a retained fixed asset."
+    }, {
+      "name" : "record-fixed-asset-disposal",
+      "displayLabel" : "Record Fixed-Asset Disposal",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Disposes a retained fixed asset and preserves its lifecycle lineage."
+    }, {
+      "name" : "record-financing-borrowing",
+      "displayLabel" : "Record Financing Borrowing",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Records a borrowing and opens its retained financing arrangement."
+    }, {
+      "name" : "record-financing-principal-repayment",
+      "displayLabel" : "Record Financing Principal Repayment",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Repays principal against a retained financing arrangement."
+    }, {
+      "name" : "record-financing-interest-accrual",
+      "displayLabel" : "Record Financing Interest Accrual",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Accrues interest against a retained financing arrangement."
+    }, {
+      "name" : "record-financing-interest-payment",
+      "displayLabel" : "Record Financing Interest Payment",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Pays accrued interest against a retained financing arrangement."
+    }, {
+      "name" : "record-foreign-currency-obligation",
+      "displayLabel" : "Record Foreign-Currency Obligation",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Records a foreign-currency receivable with its functional-currency carrying amount."
+    }, {
+      "name" : "record-realized-foreign-exchange-settlement",
+      "displayLabel" : "Record Realized Foreign-Exchange Settlement",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Settles a retained foreign-currency obligation and derives the realized gain or loss."
+    }, {
+      "name" : "record-expense-settled",
+      "displayLabel" : "Record Settled Expense",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit a settled expense entry into the selected SQLite book."
+    }, {
+      "name" : "record-expense-on-credit",
+      "displayLabel" : "Record Expense On Credit",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit an expense-on-credit entry into the selected SQLite book."
+    }, {
+      "name" : "record-receipt",
+      "displayLabel" : "Record Receipt",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit a trade-receivable settlement entry into the selected SQLite book."
+    }, {
+      "name" : "record-payment",
+      "displayLabel" : "Record Payment",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit a trade-payable settlement entry into the selected SQLite book."
+    }, {
+      "name" : "record-owner-contribution",
+      "displayLabel" : "Record Owner Contribution",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit an owner-contribution entry into the selected SQLite book."
+    }, {
+      "name" : "record-owner-withdrawal",
+      "displayLabel" : "Record Owner Withdrawal",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit an owner-withdrawal entry into the selected SQLite book."
+    }, {
+      "name" : "record-opening-position",
+      "displayLabel" : "Record Opening Position",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit an opening-position entry into the selected SQLite book."
+    }, {
+      "name" : "record-reversal",
+      "displayLabel" : "Record Reversal",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit a reversal entry into the selected SQLite book."
+    }, {
+      "name" : "post-entry",
+      "displayLabel" : "Post Entry",
+      "aliases" : [ ],
+      "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+      "executionMode" : "json-envelope",
+      "outputModes" : [ "json", "text" ],
+      "selectableOutputDefaults" : {
+        "interactiveTerminal" : "text",
+        "redirectedStdout" : "text"
+      },
+      "artifactOutputs" : [ ],
+      "summary" : "Commit a raw direct-journal posting request into the selected SQLite book. Prefer the record-* commands when a typed business-entry command matches the operator's intent; raw direct-journal requests do not admit inventory accounts."
+    } ]
+  }
+}

@@ -147,6 +147,7 @@ final class AttestationArtifactVerifier {
 
   private static AttestationDecodedEnvelope<AttestationReceiptPayload> decodeReceipt(
       byte[] receiptBytes) {
+    AttestationReceipt.requireMaximumEncodedByteCount(receiptBytes);
     try {
       return AttestationDecodedEnvelope.receipt(receiptBytes);
     } catch (AttestationAuthorizationException exception) {
@@ -160,7 +161,11 @@ final class AttestationArtifactVerifier {
   private static AttestationVerification publicVerification(
       AttestationBookVerification verification) {
     return new AttestationVerification(
-        verification.bookId(), verification.headOrder(), verification.head().bytes(), List.of());
+        verification.bookId(),
+        verification.headOrder(),
+        verification.head().bytes(),
+        verification.previousHead().bytes(),
+        List.of());
   }
 
   private static AttestationAuthorizationException manifestFailure() {

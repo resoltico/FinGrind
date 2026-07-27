@@ -14,6 +14,7 @@ import dev.erst.fingrind.contract.workflow.LedgerAssertion;
 import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
 import dev.erst.fingrind.contract.workflow.LedgerJournalStep;
+import dev.erst.fingrind.contract.workflow.LedgerPlanAttestationDisposition;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
@@ -101,6 +102,7 @@ class ContractDerivedAccessorsTest extends ContractTestSupport {
                         startedAt,
                         finishedAt,
                         List.of()))),
+            LedgerPlanAttestationDisposition.READ_ONLY,
             null);
     LedgerPlanResult rejectedResult =
         new LedgerPlanResult.Rejected(

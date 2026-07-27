@@ -22,7 +22,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /** Field-shaped attestation coverage through the live CLI and SQLite posting boundary. */
-class FinGrindCliFieldAttestationWorkflowTest extends FinGrindCliTestSupport {
+class FinGrindCliFieldAttestationWorkflowTest extends CliWorkflowFixtureSupport {
   @Test
   void commit_acceptsFieldStyleEvidenceAndUuidFiveCommandIdWithAnExistingFounderCredential()
       throws IOException {

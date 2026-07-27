@@ -46,7 +46,7 @@ final class SqliteVerifiedBackupSnapshot implements AutoCloseable {
           book.close();
         }
       } finally {
-        stage.discard();
+        stage.releaseRetained();
       }
     }
   }

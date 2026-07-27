@@ -1,5 +1,8 @@
 package dev.erst.fingrind.sqlite;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -7,57 +10,83 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jspecify.annotations.Nullable;
 
-/** Tracks process-local and per-book SQLite native connection activity. */
+/** Tracks process-local native connection activity by stable physical book identity. */
 final class SqliteNativeConnectionActivityRegistry {
   private static final AtomicInteger ACTIVE_CONNECTIONS = new AtomicInteger();
-  private static final ConcurrentMap<Path, AtomicInteger> ACTIVE_CONNECTIONS_BY_BOOK_PATH =
-      new ConcurrentHashMap<>();
-  private static final ConcurrentMap<Path, AtomicInteger> MARKER_CONNECTIONS_BY_BOOK_PATH =
+  private static final ConcurrentMap<String, AtomicInteger> ACTIVE_CONNECTIONS_BY_OBJECT_IDENTITY =
       new ConcurrentHashMap<>();
 
   private SqliteNativeConnectionActivityRegistry() {}
 
-  static void recordOpeningConnection(Path normalizedBookPath, boolean publishesActivityMarker) {
-    Objects.requireNonNull(normalizedBookPath, "normalizedBookPath");
-    ACTIVE_CONNECTIONS.incrementAndGet();
-    AtomicInteger activeBookConnections =
-        ACTIVE_CONNECTIONS_BY_BOOK_PATH.computeIfAbsent(
-            normalizedBookPath, ignored -> new AtomicInteger());
-    activeBookConnections.incrementAndGet();
-    if (!publishesActivityMarker) {
-      return;
-    }
-    AtomicInteger markerConnections =
-        MARKER_CONNECTIONS_BY_BOOK_PATH.computeIfAbsent(
-            normalizedBookPath, ignored -> new AtomicInteger());
-    int openedMarkerConnections = markerConnections.incrementAndGet();
-    if (openedMarkerConnections == 1) {
-      try {
-        SqliteBookActivityMarkers.createCurrentProcessMarker(normalizedBookPath);
-      } catch (RuntimeException exception) {
-        rollbackOpeningConnection(normalizedBookPath, activeBookConnections, markerConnections);
-        throw exception;
+  /** Registers one opening connection and returns the exact token required to close it. */
+  static SqliteNativeActivityRegistration recordOpeningConnection(
+      Path normalizedBookPath, boolean publishesActivityMarker) {
+    Path checkedBookPath =
+        Objects.requireNonNull(normalizedBookPath, "normalizedBookPath")
+            .toAbsolutePath()
+            .normalize();
+    SqliteBookActivityMarkers.@Nullable ActivityRegistration activityRegistration = null;
+    @Nullable String objectIdentity = null;
+    @Nullable AtomicInteger activeObjectConnections = null;
+    boolean processCountIncremented = false;
+    boolean objectCountIncremented = false;
+    try {
+      if (publishesActivityMarker) {
+        activityRegistration =
+            SqliteBookActivityMarkers.acquireCurrentProcessActivity(checkedBookPath);
+        objectIdentity = activityRegistration.objectIdentity();
+      } else {
+        objectIdentity = SqliteObjectCoordinationArtifacts.physicalIdentity(checkedBookPath);
       }
+      String resolvedObjectIdentity = Objects.requireNonNull(objectIdentity, "objectIdentity");
+      ACTIVE_CONNECTIONS.incrementAndGet();
+      processCountIncremented = true;
+      activeObjectConnections =
+          ACTIVE_CONNECTIONS_BY_OBJECT_IDENTITY.computeIfAbsent(
+              resolvedObjectIdentity, ignored -> new AtomicInteger());
+      activeObjectConnections.incrementAndGet();
+      objectCountIncremented = true;
+      return new SqliteNativeActivityRegistration(
+          checkedBookPath, resolvedObjectIdentity, activityRegistration);
+    } catch (IOException exception) {
+      IllegalStateException failure =
+          new IllegalStateException(
+              "Failed to establish the physical identity for one SQLite native connection.",
+              exception);
+      rollbackOpeningConnection(
+          objectIdentity,
+          activeObjectConnections,
+          processCountIncremented,
+          objectCountIncremented,
+          activityRegistration,
+          failure);
+      throw failure;
+    } catch (RuntimeException | Error failure) {
+      rollbackOpeningConnection(
+          objectIdentity,
+          activeObjectConnections,
+          processCountIncremented,
+          objectCountIncremented,
+          activityRegistration,
+          failure);
+      throw failure;
     }
   }
 
-  static void recordConnectionClosed(
-      @Nullable Path normalizedBookPath, boolean publishesActivityMarker) {
+  /** Releases exactly the registration returned for one successfully opened native connection. */
+  static void recordConnectionClosed(@Nullable SqliteNativeActivityRegistration registration) {
+    if (registration == null) {
+      return;
+    }
+    String objectIdentity = registration.objectIdentity();
+    AtomicInteger activeObjectConnections = requireActiveObjectConnections(registration);
     decrementActiveConnections();
-    if (normalizedBookPath == null) {
-      return;
+    int remainingObjectConnections =
+        decrementActiveObjectConnections(registration, activeObjectConnections);
+    if (remainingObjectConnections == 0) {
+      ACTIVE_CONNECTIONS_BY_OBJECT_IDENTITY.remove(objectIdentity, activeObjectConnections);
     }
-    AtomicInteger activeBookConnections = requireActiveBookConnections(normalizedBookPath);
-    int remainingBookConnections =
-        decrementActiveBookConnections(normalizedBookPath, activeBookConnections);
-    if (!publishesActivityMarker) {
-      removeActiveBookConnectionsWhenClosed(
-          normalizedBookPath, activeBookConnections, remainingBookConnections);
-      return;
-    }
-    decrementMarkerConnections(normalizedBookPath, activeBookConnections);
-    removeActiveBookConnectionsWhenClosed(
-        normalizedBookPath, activeBookConnections, remainingBookConnections);
+    registration.releaseActivityMarker();
   }
 
   static int activeConnectionCount() {
@@ -65,30 +94,55 @@ final class SqliteNativeConnectionActivityRegistry {
   }
 
   static int activeConnectionCount(Path normalizedBookPath) {
-    Objects.requireNonNull(normalizedBookPath, "normalizedBookPath");
-    AtomicInteger activeBookConnections = ACTIVE_CONNECTIONS_BY_BOOK_PATH.get(normalizedBookPath);
-    return activeBookConnections == null ? 0 : activeBookConnections.get();
+    Path checkedBookPath =
+        Objects.requireNonNull(normalizedBookPath, "normalizedBookPath")
+            .toAbsolutePath()
+            .normalize();
+    if (!Files.isRegularFile(checkedBookPath, LinkOption.NOFOLLOW_LINKS)) {
+      return 0;
+    }
+    try {
+      AtomicInteger activeObjectConnections =
+          ACTIVE_CONNECTIONS_BY_OBJECT_IDENTITY.get(
+              SqliteObjectCoordinationArtifacts.physicalIdentity(checkedBookPath));
+      return activeObjectConnections == null ? 0 : activeObjectConnections.get();
+    } catch (IOException exception) {
+      throw new IllegalStateException(
+          "Failed to establish the physical identity for one SQLite activity query.", exception);
+    }
   }
 
   static boolean hasExternalActiveConnections(Path normalizedBookPath) {
-    return SqliteBookActivityMarkers.hasExternalLiveMarker(normalizedBookPath);
+    return SqliteBookActivityMarkers.hasExternalLiveMarker(
+        Objects.requireNonNull(normalizedBookPath, "normalizedBookPath"));
   }
 
   private static void rollbackOpeningConnection(
-      Path normalizedBookPath,
-      AtomicInteger activeBookConnections,
-      @Nullable AtomicInteger markerConnections) {
-    if (markerConnections != null) {
-      int remainingMarkerConnections = markerConnections.decrementAndGet();
-      if (remainingMarkerConnections == 0) {
-        MARKER_CONNECTIONS_BY_BOOK_PATH.remove(normalizedBookPath, markerConnections);
+      @Nullable String objectIdentity,
+      @Nullable AtomicInteger activeObjectConnections,
+      boolean processCountIncremented,
+      boolean objectCountIncremented,
+      SqliteBookActivityMarkers.@Nullable ActivityRegistration activityRegistration,
+      Throwable primaryFailure) {
+    if (objectCountIncremented) {
+      AtomicInteger checkedObjectConnections =
+          Objects.requireNonNull(activeObjectConnections, "activeObjectConnections");
+      int remainingObjectConnections = checkedObjectConnections.decrementAndGet();
+      if (remainingObjectConnections == 0) {
+        ACTIVE_CONNECTIONS_BY_OBJECT_IDENTITY.remove(
+            Objects.requireNonNull(objectIdentity, "objectIdentity"), checkedObjectConnections);
       }
     }
-    int remainingBookConnections = activeBookConnections.decrementAndGet();
-    if (remainingBookConnections == 0) {
-      ACTIVE_CONNECTIONS_BY_BOOK_PATH.remove(normalizedBookPath, activeBookConnections);
+    if (processCountIncremented) {
+      decrementActiveConnectionsForRollback(primaryFailure);
     }
-    ACTIVE_CONNECTIONS.decrementAndGet();
+    if (activityRegistration != null) {
+      try {
+        activityRegistration.close();
+      } catch (RuntimeException | Error closeFailure) {
+        primaryFailure.addSuppressed(closeFailure);
+      }
+    }
   }
 
   private static void decrementActiveConnections() {
@@ -99,63 +153,41 @@ final class SqliteNativeConnectionActivityRegistry {
     }
   }
 
-  private static AtomicInteger requireActiveBookConnections(Path normalizedBookPath) {
-    AtomicInteger activeBookConnections = ACTIVE_CONNECTIONS_BY_BOOK_PATH.get(normalizedBookPath);
-    if (activeBookConnections != null) {
-      return activeBookConnections;
+  private static void decrementActiveConnectionsForRollback(Throwable primaryFailure) {
+    int remainingConnections = ACTIVE_CONNECTIONS.decrementAndGet();
+    if (remainingConnections < 0) {
+      ACTIVE_CONNECTIONS.incrementAndGet();
+      primaryFailure.addSuppressed(
+          new IllegalStateException("SQLite active connection count underflow during rollback."));
     }
-    ACTIVE_CONNECTIONS.incrementAndGet();
+  }
+
+  private static AtomicInteger requireActiveObjectConnections(
+      SqliteNativeActivityRegistration registration) {
+    AtomicInteger activeObjectConnections =
+        ACTIVE_CONNECTIONS_BY_OBJECT_IDENTITY.get(registration.objectIdentity());
+    if (activeObjectConnections != null) {
+      return activeObjectConnections;
+    }
     throw new IllegalStateException(
-        "SQLite active connection registry missing the normalized book path entry for "
-            + normalizedBookPath
+        "SQLite active connection registry missing the physical book identity entry for "
+            + registration.diagnosticBookPath()
             + ".");
   }
 
-  private static int decrementActiveBookConnections(
-      Path normalizedBookPath, AtomicInteger activeBookConnections) {
-    int remainingBookConnections = activeBookConnections.decrementAndGet();
-    if (remainingBookConnections >= 0) {
-      return remainingBookConnections;
+  private static int decrementActiveObjectConnections(
+      SqliteNativeActivityRegistration registration, AtomicInteger activeObjectConnections) {
+    int remainingObjectConnections = activeObjectConnections.decrementAndGet();
+    if (remainingObjectConnections >= 0) {
+      return remainingObjectConnections;
     }
-    activeBookConnections.incrementAndGet();
+    activeObjectConnections.incrementAndGet();
     ACTIVE_CONNECTIONS.incrementAndGet();
     throw new IllegalStateException(
-        "SQLite active connection count underflow for normalized book path "
-            + normalizedBookPath
-            + ".");
-  }
-
-  private static void removeActiveBookConnectionsWhenClosed(
-      Path normalizedBookPath, AtomicInteger activeBookConnections, int remainingBookConnections) {
-    if (remainingBookConnections == 0) {
-      ACTIVE_CONNECTIONS_BY_BOOK_PATH.remove(normalizedBookPath, activeBookConnections);
-    }
-  }
-
-  private static void decrementMarkerConnections(
-      Path normalizedBookPath, AtomicInteger activeBookConnections) {
-    AtomicInteger markerConnections = MARKER_CONNECTIONS_BY_BOOK_PATH.get(normalizedBookPath);
-    if (markerConnections == null) {
-      activeBookConnections.incrementAndGet();
-      ACTIVE_CONNECTIONS.incrementAndGet();
-      throw new IllegalStateException(
-          "SQLite activity-marker registry missing the normalized book path entry for "
-              + normalizedBookPath
-              + ".");
-    }
-    int remainingMarkerConnections = markerConnections.decrementAndGet();
-    if (remainingMarkerConnections < 0) {
-      markerConnections.incrementAndGet();
-      activeBookConnections.incrementAndGet();
-      ACTIVE_CONNECTIONS.incrementAndGet();
-      throw new IllegalStateException(
-          "SQLite activity-marker connection count underflow for normalized book path "
-              + normalizedBookPath
-              + ".");
-    }
-    if (remainingMarkerConnections == 0) {
-      MARKER_CONNECTIONS_BY_BOOK_PATH.remove(normalizedBookPath, markerConnections);
-      SqliteBookActivityMarkers.deleteCurrentProcessMarker(normalizedBookPath);
-    }
+        "SQLite active connection count underflow for physical book identity "
+            + registration.objectIdentity()
+            + " ("
+            + registration.diagnosticBookPath()
+            + ").");
   }
 }

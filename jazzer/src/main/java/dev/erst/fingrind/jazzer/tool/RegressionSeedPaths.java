@@ -3,6 +3,7 @@ package dev.erst.fingrind.jazzer.tool;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -22,27 +23,55 @@ final class RegressionSeedPaths {
   }
 
   static List<Path> metadataPaths(Path projectDirectory, JazzerHarness harness) throws IOException {
-    Path metadataDirectory = metadataDirectory(projectDirectory, harness);
-    if (!Files.isDirectory(metadataDirectory)) {
+    Path canonicalProjectDirectory =
+        RegressionSeedRepositoryPathAdmission.canonicalProjectDirectory(projectDirectory);
+    Path metadataDirectory = harness.regressionMetadataDirectory(canonicalProjectDirectory);
+    if (!RegressionSeedRepositoryPathAdmission.hasExistingRealDirectoryTree(
+        canonicalProjectDirectory, metadataDirectory)) {
       return List.of();
     }
+    requireExistingRealDirectory(metadataDirectory, "metadata");
     try (Stream<Path> stream = Files.walk(metadataDirectory)) {
-      return stream
-          .filter(path -> path.getFileName().toString().endsWith(".json"))
-          .sorted()
-          .toList();
+      List<Path> discoveredPaths = stream.sorted().toList();
+      for (Path path : discoveredPaths) {
+        if (Files.isSymbolicLink(path)) {
+          throw new IOException(
+              "Committed regression metadata must not contain symbolic links: " + path);
+        }
+      }
+      List<Path> metadataPaths =
+          discoveredPaths.stream()
+              .filter(path -> path.getFileName().toString().endsWith(".json"))
+              .toList();
+      for (Path path : metadataPaths) {
+        requireExistingRegularFile(path, "metadata");
+      }
+      return metadataPaths;
     }
   }
 
   static List<Path> inputPaths(Path projectDirectory, JazzerHarness harness) throws IOException {
     Objects.requireNonNull(projectDirectory, "projectDirectory must not be null");
     Objects.requireNonNull(harness, "harness must not be null");
-    Path inputDirectory = harness.inputDirectory(projectDirectory.toAbsolutePath().normalize());
-    if (!Files.isDirectory(inputDirectory)) {
+    Path canonicalProjectDirectory =
+        RegressionSeedRepositoryPathAdmission.canonicalProjectDirectory(projectDirectory);
+    Path inputDirectory = harness.inputDirectory(canonicalProjectDirectory);
+    if (!RegressionSeedRepositoryPathAdmission.hasExistingRealDirectoryTree(
+        canonicalProjectDirectory, inputDirectory)) {
       return List.of();
     }
+    requireExistingRealDirectory(inputDirectory, "input");
     try (Stream<Path> stream = Files.list(inputDirectory)) {
-      return stream.filter(Files::isRegularFile).sorted().toList();
+      List<Path> discoveredPaths = stream.sorted().toList();
+      for (Path path : discoveredPaths) {
+        if (Files.isSymbolicLink(path)) {
+          throw new IOException(
+              "Committed regression inputs must not contain symbolic links: " + path);
+        }
+      }
+      return discoveredPaths.stream()
+          .filter(path -> Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS))
+          .toList();
     }
   }
 
@@ -57,16 +86,19 @@ final class RegressionSeedPaths {
 
   static List<Path> orphanedInputs(Path projectDirectory, JazzerHarness harness)
       throws IOException {
-    List<Path> inputs = inputPaths(projectDirectory, harness);
+    Path canonicalProjectDirectory =
+        RegressionSeedRepositoryPathAdmission.canonicalProjectDirectory(projectDirectory);
+    List<Path> inputs = inputPaths(canonicalProjectDirectory, harness);
     if (inputs.isEmpty()) {
       return List.of();
     }
     Set<Path> recordedInputs = new HashSet<>();
-    for (Path metadataPath : metadataPaths(projectDirectory, harness)) {
+    for (Path metadataPath : metadataPaths(canonicalProjectDirectory, harness)) {
       try {
         RegressionSeedMetadata metadata =
             JazzerJson.read(metadataPath, RegressionSeedMetadata.class);
-        recordedInputs.add(metadata.inputPath(projectDirectory).toAbsolutePath().normalize());
+        recordedInputs.add(
+            metadata.inputPath(canonicalProjectDirectory).toAbsolutePath().normalize());
       } catch (IOException | RuntimeException exception) {
         throw new IllegalStateException(
             "Committed regression metadata is invalid: "
@@ -81,5 +113,27 @@ final class RegressionSeedPaths {
         .filter(path -> !recordedInputs.contains(path))
         .sorted()
         .toList();
+  }
+
+  private static void requireExistingRealDirectory(Path directory, String artifactKind)
+      throws IOException {
+    if (!Files.isDirectory(directory, LinkOption.NOFOLLOW_LINKS)) {
+      throw new IOException(
+          "Committed regression "
+              + artifactKind
+              + " directory must be an existing real non-symlink directory: "
+              + directory);
+    }
+  }
+
+  private static void requireExistingRegularFile(Path file, String artifactKind)
+      throws IOException {
+    if (!Files.isRegularFile(file, LinkOption.NOFOLLOW_LINKS)) {
+      throw new IOException(
+          "Committed regression "
+              + artifactKind
+              + " must be an existing regular non-symlink file: "
+              + file);
+    }
   }
 }

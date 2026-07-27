@@ -10,6 +10,7 @@ import dev.erst.fingrind.contract.bookkeeping.InventoryWriteDownExceedsCarryingC
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.IdempotencyKey;
@@ -28,7 +29,7 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 
 /** End-to-end coverage for account-state rejection envelopes at the public CLI boundary. */
-class FinGrindCliAccountStateContractTest extends FinGrindCliTestSupport {
+class FinGrindCliAccountStateContractTest extends CliWorkflowFixtureSupport {
   @Test
   void run_rejectsUnknownAccountWithUniformViolationCoreAcrossPreflightCommitAndOutputModes()
       throws IOException {
@@ -283,7 +284,7 @@ class FinGrindCliAccountStateContractTest extends FinGrindCliTestSupport {
                     money("EUR", "5.00"),
                     money("EUR", "9.00"),
                     money("EUR", "4.00"))));
-    RecordingWorkflow workflow =
+    CliRecordingWorkflow workflow =
         contractWorkflow(
             new PostEntryResult.PreflightRejected(new IdempotencyKey("idem-1"), rejection),
             new PostEntryResult.CommitRejected(new IdempotencyKey("idem-1"), rejection));
@@ -361,18 +362,23 @@ class FinGrindCliAccountStateContractTest extends FinGrindCliTestSupport {
             utf8PrintStream(outputStream),
             utf8PrintStream(diagnosticsStream),
             fixedClock());
+    String[] commandArguments =
+        new String[] {
+          commandName,
+          "--book-file",
+          bookFilePath.toString(),
+          "--book-key-file",
+          bookKeyFilePath.toString(),
+          "--request-file",
+          requestFile.toString(),
+          "--output",
+          outputMode
+        };
     int exitCode =
         cli.run(
-            jsonArguments(
-                commandName,
-                "--book-file",
-                bookFilePath.toString(),
-                "--book-key-file",
-                bookKeyFilePath.toString(),
-                "--request-file",
-                requestFile.toString(),
-                "--output",
-                outputMode));
+            "preflight-entry".equals(commandName)
+                ? jsonArguments(commandArguments)
+                : attestedJsonArguments(commandArguments));
     return new ObservedInvocation(
         exitCode,
         outputStream.toString(StandardCharsets.UTF_8),
@@ -442,7 +448,7 @@ class FinGrindCliAccountStateContractTest extends FinGrindCliTestSupport {
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
             .run(
-                jsonArguments(
+                attestedJsonArguments(
                     "declare-account",
                     "--book-file",
                     bookFilePath.toString(),
@@ -618,11 +624,17 @@ class FinGrindCliAccountStateContractTest extends FinGrindCliTestSupport {
     return withInventoryCosting;
   }
 
-  private static RecordingWorkflow contractWorkflow(
+  private static CliRecordingWorkflow contractWorkflow(
       PreflightEntryResult preflightResult, CommitEntryResult commitResult) {
-    return new RecordingWorkflow(
+    return new CliRecordingWorkflow(
         openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
-        new RekeyBookResult.Rekeyed(Path.of("unused.sqlite"), attestationCommit()),
+        new RekeyBookResult.Rekeyed(
+            Path.of("unused.sqlite"),
+            Path.of("unused.key"),
+            attestationCommit(),
+            ProtectedBookPairPublicationCompletion.PUBLISHED,
+            CliFixtureSupport.pairPublicationRetention(
+                Path.of("unused.sqlite"), Path.of("unused.key"))),
         new DeclareAccountResult.Declared(
             declaredAccount("1000", "Cash", NormalBalance.DEBIT), attestationCommit()),
         listedAccounts(accountPage(List.of(), 50, Optional.empty())),

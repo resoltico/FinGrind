@@ -2,10 +2,10 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: USER_EXAMPLES
-updated: "2026-07-22"
+updated: "2026-07-26"
 route:
-  keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, financial-position, inventory-valuation, income-statement, cash-flow-statement, changes-in-equity, preflight, commit, stdin, reversal, print-plan-template, execute-plan]
-  questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind"]
+  keywords: [fingrind, examples, open-book, rekey-book, inspect-book, declare-account, list-accounts, get-posting, list-postings, account-balance, trial-balance, account-ledger, period-summary, financial-position, inventory-valuation, income-statement, cash-flow-statement, changes-in-equity, preflight, commit, stdin, reversal, print-plan-template, execute-plan, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-target-leaf-portability-required]
+  questions: ["show me a working fingrind example", "how do I inspect a book and query postings in fingrind", "how do I initialize a book and post in fingrind", "how do I export a trial balance in fingrind", "how do I send a fingrind request on stdin", "how do I run an atomic ledger plan in fingrind", "how do I choose backup and restore pair target names", "what does source-artifact-identity-changed mean"]
 ---
 
 # Example Workflows
@@ -180,17 +180,42 @@ fingrind \
 `--new-book-key-file` must name an absent target on a filesystem that supports atomic no-replace
 publication. FinGrind generates and publishes the fresh owner-only secret only after it has staged
 and verified the re-encrypted book. `rekey-book` does not accept a replacement secret through
-standard input or an interactive prompt. FinGrind creates one same-directory rollback copy before
-rotating the book and restores the pre-rekey file automatically if staged verification fails. If a
-crash or forced stop interrupts cleanup, the rollback artifact remains in the book directory under
-the old ciphertext until you inspect or delete it; later opens warn when they detect that stale
-copy.
+standard input or an interactive prompt. FinGrind may use private workflow-owned pre-final
+material while it verifies a staged rotation, but that material remains immutable owner-record
+evidence and is not user-managed. If an interruption leaves recovery evidence or final-pair
+completion uncertain, never rename, overwrite, delete, recreate, reuse, or treat it as an
+ordinary book; rerun the exact original `rekey-book` operation with its complete original inputs
+so FinGrind can classify or recover it safely.
 
 One successful response:
 
 ```json
-{"status":"ok","payload":{"bookFile":"/workspace/books/acme.sqlite","newBookKeyFile":"/workspace/secrets/acme.rotated.book-key"},"artifacts":[{"format":"book-key-file","path":"/workspace/secrets/acme.rotated.book-key"}]}
+{"status":"ok","payload":{"bookFile":"/workspace/books/acme.sqlite","newBookKeyFile":"/workspace/secrets/acme.rotated.book-key","pairPublicationCompletion":"published","pairPublicationRetention":{"bookPublication":{"path":"/workspace/books/acme.sqlite","retainedStage":"/workspace/books/.acme-rekey-stage"},"generatedSecretPublication":{"path":"/workspace/secrets/acme.rotated.book-key","retainedStage":"/workspace/secrets/.acme-key-stage"}},"attestationCommit":{"operationOrder":"1","operationHead":"<attestation-operation-head>"}},"artifacts":[{"format":"book-key-file","path":"/workspace/secrets/acme.rotated.book-key","retainedStage":"/workspace/secrets/.acme-key-stage"}]}
 ```
+
+`pairPublicationCompletion` is `published` for this new durable pair and `recovered` only when
+the same rekey tuple reconciles an earlier completion-uncertain pair without another rotation
+mutation. `pairPublicationRetention` is mandatory for both outcomes: its four paths are immutable
+facts, not cleanup targets. Pair errors also always publish nullable
+`details.pairPublication.pairPublicationRetention`; when non-null, its two member paths bind
+exactly to the reported final paths, and `null` never permits cleanup. If FinGrind returns
+`protected-book-pair-publication-uncertain`, retain FinGrind pair evidence and both reported final paths. When FinGrind has verified the
+operation-bound pair, rerun the exact same operation with complete original source, target, and
+secret inputs. FinGrind resumes only stages registered by that owner record. Never rename,
+overwrite, delete, recreate, reuse, or manually alter pair evidence or either final member; do not
+start a fresh pair. When `recoveryRecordState` is non-null, retain FinGrind's recovery material
+too. Rekey recovery verifies the generated-key pair before it tries the prior key.
+If FinGrind instead returns `maintenance-recovery-pending`, no new stage or pair mutation began.
+Use its non-null `details.{recoveryOperation,bookTarget,generatedSecretTarget}` only to identify
+the required recovery operation and exact canonical targets. Rerun that operation with complete
+original source, target, and secret inputs; the details do not recreate a source, backup ID,
+credential, or secret. Never rename, overwrite, delete, recreate, or manually clean the evidence.
+
+If retained evidence cannot establish a safe final-member state, FinGrind instead returns
+`protected-book-pair-publication-evidence-blocked`. Both member states are `unestablished`; its
+always-present nullable pair retention is `null` when no authoritative stage fact is safe to
+report. Do not rerun or reconstruct a workflow from that diagnostic. Preserve it for independent
+investigation.
 
 ## Back Up And Restore One Closed Protected Book
 
@@ -209,11 +234,39 @@ fingrind \
   --attestation-passphrase-file ./secrets/founder.passphrase
 ```
 
-That command refuses to run when the live book has blocking SQLite sidecars or stale rollback
-artifacts beside it.
-If `./backup/books/` or `./backup/secrets/` does not exist yet, FinGrind creates those parent
-directories with owner-only protection. If either directory already exists, keep it owner-only
-before you reuse that backup path.
+That command refuses to run when the live book has blocking SQLite sidecars or unreconciled
+external pair evidence beside it. For `backup-book`, `restore-book`, and `rekey-book`, each
+existing selected protected-book or book-key artifact parent is validation-only: it and its
+resolved ancestry must already be real, private owner-only, and non-mutable. FinGrind never
+permission- or ACL-repairs it. Only an absent final-target parent may be created: it preflights
+the creation ancestry, atomically creates the parent with POSIX `0700`, and postvalidates the
+canonical parent and full ancestry. A lifecycle source parent must already exist. ACL-only
+final-target creation fails closed as
+`artifact-path-invalid` with
+`details.pathFailure: "atomic-owner-only-protocol-file-creation-unsupported"`. An intermediate
+alias is never admitted. Before canonicalization, FinGrind scans every lexical component from the
+root through the selected parent without following links and refuses any symbolic-link or
+non-directory component, including a direct-parent alias; a leaf symlink is also refused.
+A lifecycle source leaf must already be a regular non-symlink file before final-target preparation.
+The complete selected source set, including a selected key-file source, must name distinct physical
+files. A later source role that aliases an earlier source is refused as exit-`6`
+`artifact-path-invalid` with `details.pathFailure: "source-artifact-identity-duplicated"`.
+After FinGrind holds all source exclusions, it revalidates each locked physical identity before
+target admission. A replacement or substitution is exit-`6` `artifact-path-invalid` with
+`details.pathFailure: "source-artifact-identity-changed"`; restore the trustworthy intended
+source, keep every source stable, and rerun the complete maintenance command.
+
+Existing final targets are compared with `Files.isSameFile`; one physical object is
+`pair-targets-conflict`. For two absent leaves in the same physical parent, exactly equal raw leaf
+names are the same rejection. When their raw leaf names differ, choose portable lowercase-ASCII
+leaves matching `[a-z0-9](?:[a-z0-9_-]|\.(?=[a-z0-9]))*`; a first dot-delimited stem of `con`,
+`prn`, `aux`, `nul`, `com1`–`com9`, or `lpt1`–`lpt9` is not admitted. Use distinct physical
+parents for any other required name. A nonportable distinct same-parent absent pair is the exit-`6`
+`artifact-path-invalid` rejection with `details.pathFailure: "pair-target-leaf-portability-required"`.
+This initial admission occurs after maintenance has admitted every selected parent, including any
+permitted missing-parent creation, and before any final target, retained lease-control file, stage,
+capability witness, reservation, claim, or pair-recovery-evidence artifact is created. An eligible
+missing parent created during admission remains rather than being removed after a refusal.
 
 To restore, verify the backup pair into a new absent live-book path:
 
@@ -231,12 +284,22 @@ fingrind \
 
 After restore completes, reopen `./books/acme-restored.sqlite` with `./secrets/acme-restored.book-key`
 because the restored encrypted book is re-encrypted under that destination secret.
-If the selected live-book or live-key parent directory does not exist yet, FinGrind creates it
-with owner-only protection before publishing the restored pair. If either directory already
-exists, keep it owner-only before you reuse that restore target.
 The selected `--book-file` must remain absent through final publication. If another process
-creates it while restore is staging, FinGrind leaves that book unchanged, removes its own staged
-artifacts, and rejects the restore.
+creates it while restore is staging, FinGrind leaves that book unchanged, retains every
+materialized stage as immutable evidence, and rejects the restore; it does not remove stages from
+either path.
+If either backup, restore, or rekey instead returns
+`protected-book-pair-publication-uncertain`, this is not a normal collision or a retry task:
+preserve FinGrind pair evidence and both reported final paths. When FinGrind has verified the
+retained operation-bound pair, rerun the exact same operation with its complete original inputs,
+including exactly those paths. Malformed, legacy, or internally inconsistent current evidence
+instead fails closed as `protected-book-pair-publication-evidence-blocked` without establishing a
+verified original operation. When `recoveryRecordState` is non-null, preserve FinGrind's recovery
+material too.
+The checked-in [pair-publication uncertainty example](./examples/protected-book-pair-publication-uncertain-error.json)
+shows the two-member diagnostic shape. Never rename, overwrite, delete, recreate, or manually
+clean pair evidence or either final member; do not start a fresh
+pair.
 
 ## Verify One Attested Book
 
@@ -252,7 +315,7 @@ fingrind \
 ```
 
 See [USER_BOOK_ATTESTATION.md](./USER_BOOK_ATTESTATION.md) for receipt export, receipt
-verification, and the exact backup acknowledgement retry rule.
+verification, exact backup acknowledgement retry, and protected-book pair-recovery rules.
 
 ## Declare Supplemental Accounts And Page The Registry
 
@@ -409,7 +472,7 @@ That response is advisory, not a durable commit guarantee. The matching commit c
 One successful commit response:
 
 ```json
-{"status":"ok","payload":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f72","idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-07","recordedAt":"2026-04-07T12:00:00Z","idempotentReplay":false,"resolvedJournal":{"expandedLines":{"effectiveDate":"2026-04-07","lines":[{"accountCode":"cash","side":"DEBIT","amount":{"currencyCode":"EUR","minorUnits":"1000"}},{"accountCode":"service-revenue","side":"CREDIT","amount":{"currencyCode":"EUR","minorUnits":"1000"}}]},"classification":{"eventClass":"SETTLED_SALE","anchorSignature":[{"accountRole":"CASH","side":"DEBIT"},{"accountRole":"REVENUE","side":"CREDIT"}],"containedTypedEvents":["SETTLED_SALE"],"hasCashLine":true,"evidenceClass":"CASH_SETTLEMENT","structural":{"adoptionOpeningEntry":false}}}}}
+{"status":"ok","payload":{"postingId":"01963c70-8d65-7b56-8a64-3c92745d8f72","idempotencyKey":"idem-basic-1","effectiveDate":"2026-04-07","recordedAt":"2026-04-07T12:00:00Z","idempotentReplay":false,"resolvedJournal":{"expandedLines":{"effectiveDate":"2026-04-07","lines":[{"accountCode":"cash","side":"DEBIT","amount":{"currencyCode":"EUR","minorUnits":"1000"}},{"accountCode":"service-revenue","side":"CREDIT","amount":{"currencyCode":"EUR","minorUnits":"1000"}}]},"classification":{"eventClass":"SETTLED_SALE","anchorSignature":[{"accountRole":"CASH","side":"DEBIT"},{"accountRole":"REVENUE","side":"CREDIT"}],"containedTypedEvents":["SETTLED_SALE"],"hasCashLine":true,"evidenceClass":"CASH_SETTLEMENT","structural":{"adoptionOpeningEntry":false}}},"attestationCommit":{"operationOrder":"3","operationHead":"<attestation-operation-head>"}}}
 ```
 
 `payload.postingId` is generated by FinGrind as a UUID v7 value.
@@ -432,8 +495,8 @@ fingrind \
 
 Like `print-request-template`, this scaffold uses the same canonical content as the checked-in
 [examples/ledger-plan-template.json](./examples/ledger-plan-template.json) companion example.
-It initializes the book and contains one placeholder-first sale. Replace every placeholder before
-real-world use.
+It targets an already initialized book and contains one placeholder-first sale. Replace every
+placeholder before real-world use.
 
 Generate a context-specific atomic setup only when its prerequisites are needed:
 
@@ -485,6 +548,7 @@ Checked-in plan examples:
 - [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json)
 - [examples/execute-plan-assertion-failed-response.json](./examples/execute-plan-assertion-failed-response.json)
 - [examples/execute-plan-query-response.json](./examples/execute-plan-query-response.json)
+- [examples/execute-plan-no-durable-child-mutation-response.json](./examples/execute-plan-no-durable-child-mutation-response.json)
 
 After the tax-setup plan succeeds, use the checked-in query plan to inspect paginated registry state:
 
@@ -497,15 +561,22 @@ fingrind \
   --book-key-file ./secrets/acme.book-key \
   --output json \
   --result-detail full \
-  --request-file ./ledger-plan-query-request.json \
-  --attestation-custodian file-pkcs8 --attestation-principal-id 123e4567-e89b-12d3-a456-426614174000 \
-  --attestation-key-file ./secrets/founder.fgatk \
-  --attestation-passphrase-file ./secrets/founder.passphrase
+  --request-file ./ledger-plan-query-request.json
 ```
 
-That committed journal keeps `count`, `pageLimit`, optional `nextCursor`, `hasMore`, and grouped
-`account` / `posting` facts for the successful query steps. One checked-in response is at
+This query-only plan deliberately supplies no attestation credential: it runs through the dedicated
+read-only boundary, reports `attestationDisposition: "read-only"`, and has
+`attestationCommit: null`. Supplying a complete credential tuple would be refused as
+`attestation-credentials-not-allowed` with exit `1`, before any credential is opened. Its successful
+journal keeps `count`, `pageLimit`, optional `nextCursor`, `hasMore`, and grouped `account` /
+`posting` facts. One checked-in response is at
 [examples/execute-plan-query-response.json](./examples/execute-plan-query-response.json).
+
+Running the same signed tax-setup plan again demonstrates the distinct successful
+`attestationDisposition: "no-durable-child-mutation"`: its mutation-capable transaction completes,
+but every declaration is already durable, so it publishes `attestationCommit: null` and leaves the
+verified head unchanged. The checked-in response is at
+[examples/execute-plan-no-durable-child-mutation-response.json](./examples/execute-plan-no-durable-child-mutation-response.json).
 
 ## Query The Committed History
 
@@ -593,6 +664,10 @@ fingrind \
   --comparative prior-period \
   --output text
 
+# Prepare this caller-owned parent before selecting --pdf-out on POSIX hosts.
+mkdir -p ./private-reports
+chmod 700 ./private-reports
+
 fingrind \
   trial-balance \
   --book-file ./books/acme.sqlite \
@@ -600,7 +675,7 @@ fingrind \
   --effective-date-as-of 2026-04-07 \
   --comparative prior-period \
   --output text \
-  --pdf-out ./acme-trial-balance.pdf
+  --pdf-out ./private-reports/acme-trial-balance.pdf
 ```
 
 For JSON pagination, pass the opaque `payload.nextCursor` from a previous account-ledger response back unchanged. A cursor continues the ledger's ascending keyset order; it is not a read snapshot.
@@ -631,13 +706,27 @@ movement into operating, investing, and financing sections from the declared cou
 `inventory-valuation` reports exact on-hand quantity and carrying value per inventory account; its
 rounded moving-average unit-cost projection is informational and is never multiplied back into the
 carrying value.
-`--pdf-out` writes a parallel PDF artifact to the requested path. If the report succeeds and JSON
-is selected on stdout, the success envelope also publishes one canonical absolute PDF path under
-`artifacts[]`. `--output text --pdf-out <path>` writes one artifact confirmation block to stdout
-instead of the full report body, and `--output csv` cannot be paired with `--pdf-out`. If the
-artifact write fails, the command returns one deterministic `pdf-export-failure` error instead of
-publishing a successful report. FinGrind does not check PDF binaries into `docs/examples`;
-the checked-in text and CSV examples remain the canonical review fixtures.
+`--pdf-out` writes a parallel PDF artifact to an absent path beneath an existing real owner-only
+parent. The POSIX preparation above creates a fresh private parent; on Windows prepare the
+equivalent owner-only ACL before running the command. FinGrind neither creates nor weakens the
+caller-selected output parent. If the report succeeds and JSON is selected on stdout, the success
+envelope publishes the canonical physical PDF path under `artifacts[]`. Before canonicalization,
+FinGrind refuses every symbolic-link or non-directory lexical component from the root through the
+selected parent. `--output text --pdf-out <path>` writes one artifact
+confirmation block to stdout instead of the full report body, and `--output csv` cannot be paired
+with `--pdf-out`. A successful PDF artifact is
+`artifacts[].{format:"pdf",path,retainedStage}`; its stage is immutable evidence and is never
+deleted, replaced, reused, or treated as a retry input. If the final-link parent-directory force
+cannot confirm publication, no report success is emitted:
+`artifact-publication-durability-uncertain` publishes top-level `retainedStage` and
+`details.publishedArtifact.{path,retainedStage}`. Preserve and inspect both paths and do not retry
+that no-clobber target. If a no-replace final-link attempt does not establish whether it created
+the canonical candidate, `artifact-publication-outcome-uncertain` carries
+`details.{candidateArtifact,retainedStage}` and the top-level stage when applicable. Preserve the
+candidate and evidence, then use a fresh destination for a new attempt. A pre-final PDF export
+failure remains `pdf-export-failure` and reports top-level `retainedStage` whenever applicable.
+FinGrind does not check PDF binaries into `docs/examples`; the checked-in text and CSV examples
+remain the canonical review fixtures.
 
 For safe retries, request input, reversal, and deterministic failure-recovery flows, continue with
 [USER_ENTRY_WORKFLOWS.md](./USER_ENTRY_WORKFLOWS.md).

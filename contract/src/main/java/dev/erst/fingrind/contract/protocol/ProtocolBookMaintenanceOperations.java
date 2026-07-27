@@ -4,6 +4,33 @@ import java.util.List;
 
 /** Canonical protected-book maintenance operations for the public FinGrind protocol catalog. */
 final class ProtocolBookMaintenanceOperations {
+  private static final String PAIR_PUBLICATION_COMPLETION_NOTE =
+      "Successful backup-book, restore-book, and rekey-book responses include "
+          + "pairPublicationCompletion: published when this invocation durably publishes the "
+          + "pair, recovered when it completes a retained recovery record, or already-published "
+          + "when an exact backup acknowledgement retry verifies an existing complete pair "
+          + "without publishing again.";
+  private static final String PAIR_PUBLICATION_UNCERTAINTY_RECOVERY_NOTE =
+      "If FinGrind reports protected-book-pair-publication-uncertain, preserve FinGrind pair "
+          + "evidence and preserve both reported final paths. Rerun the exact same operation with its "
+          + "complete original inputs, including exactly the reported final paths, so FinGrind can "
+          + "verify and recover the pair. Do not rename, overwrite, delete, recreate, or manually "
+          + "clean the pair evidence or either final member; do not start a fresh pair. When "
+          + "recoveryRecordState is present, preserve FinGrind's recovery material too.";
+  private static final String CANONICAL_MAINTENANCE_PATH_NOTE =
+      "FinGrind scans every selected maintenance path from its lexical root through its final "
+          + "name without following links before canonicalization. Any symbolic-link or non-directory "
+          + "component, including a direct-parent alias, is refused. A lifecycle source must already "
+          + "be a regular non-symlink file beneath an existing real private owner-only parent before "
+          + "FinGrind prepares any output. Existing parents are validation-only; only an eligible missing "
+          + "final-target parent is preflighted and atomically created with POSIX 0700 or fails closed. "
+          + "FinGrind never repairs a selected parent directory. The complete selected file-backed "
+          + "source set, including every selected key file, must resolve to distinct physical artifacts; "
+          + "a later duplicate source is rejected as source-artifact-identity-duplicated before "
+          + "destination admission. Each selected source must remain the admitted physical artifact "
+          + "through source locking; a changed source is rejected as source-artifact-identity-changed "
+          + "before destination admission.";
+
   private ProtocolBookMaintenanceOperations() {}
 
   static ProtocolOperation generateBookKeyFileOperation() {
@@ -15,15 +42,15 @@ final class ProtocolBookMaintenanceOperations {
             List.of(),
             List.of(
                 ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE + " <path>",
-                "[" + ProtocolOptions.BookDefinition.TIGHTEN_PARENTS + "]",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+                ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
             List.of(ProtocolArtifactOutput.generatedBookKeyFile()),
             "Create a new owner-only UTF-8 book key file with a generated high-entropy passphrase.",
             List.of(
                 ProtocolExampleStep.note(
-                    "Create and restrict the parent directory yourself; --tighten-parents can tighten the selected existing parent directory before FinGrind publishes the new key file."),
+                    "Create the parent directory with owner-only access before FinGrind publishes the new key file."),
                 ProtocolExampleStep.command(
                     "fingrind %s %s ./secrets/acme.book-key"
                         .formatted(
@@ -40,15 +67,19 @@ final class ProtocolBookMaintenanceOperations {
             List.of(),
             List.of(
                 ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-                ProtocolOptions.currentPassphraseSourceSyntax(),
+                ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
                 ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE + " <path>",
-                ProtocolOptions.requiredAttestationCredentialSyntax(),
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+                ProtocolOptionSyntax.Attestation.requiredCredentialSyntax(),
+                ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
             List.of(ProtocolArtifactOutput.newBookKeyFile()),
             "Re-encrypt an existing book under a newly generated, absent-target key file.",
             List.of(
+                ProtocolExampleStep.note(CANONICAL_MAINTENANCE_PATH_NOTE),
+                ProtocolExampleStep.note(PAIR_PUBLICATION_COMPLETION_NOTE),
+                ProtocolExampleStep.note(PAIR_PUBLICATION_UNCERTAINTY_RECOVERY_NOTE),
                 ProtocolExampleStep.command(
                     "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./secrets/acme-replacement.book-key %s file-pkcs8 %s 123e4567-e89b-12d3-a456-426614174000 %s ./secrets/operator.fgatk %s ./secrets/operator.passphrase"
                         .formatted(
@@ -73,17 +104,21 @@ final class ProtocolBookMaintenanceOperations {
             List.of(),
             List.of(
                 ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-                ProtocolOptions.currentPassphraseSourceSyntax(),
+                ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
                 ProtocolBookAccessOptions.BACKUP_FILE + " <path>",
                 ProtocolBookAccessOptions.NEW_BACKUP_KEY_FILE + " <path>",
                 ProtocolBookAccessOptions.BACKUP_ID + " <uuid>",
-                ProtocolOptions.requiredAttestationCredentialSyntax(),
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+                ProtocolOptionSyntax.Attestation.requiredCredentialSyntax(),
+                ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
             List.of(ProtocolArtifactOutput.backupFile(), ProtocolArtifactOutput.newBackupKeyFile()),
             "Export a manifest-attested encrypted-book backup artifact without overwriting any existing destination.",
             List.of(
+                ProtocolExampleStep.note(CANONICAL_MAINTENANCE_PATH_NOTE),
+                ProtocolExampleStep.note(PAIR_PUBLICATION_COMPLETION_NOTE),
+                ProtocolExampleStep.note(PAIR_PUBLICATION_UNCERTAINTY_RECOVERY_NOTE),
                 ProtocolExampleStep.note(
                     "backup-book refuses to run when the live book has SQLite sidecars beside it."),
                 ProtocolExampleStep.command(
@@ -113,13 +148,17 @@ final class ProtocolBookMaintenanceOperations {
                 ProtocolBookAccessOptions.NEW_BOOK_KEY_FILE + " <path>",
                 ProtocolBookAccessOptions.BACKUP_FILE + " <path>",
                 ProtocolBookAccessOptions.BACKUP_KEY_FILE + " <path>",
-                ProtocolOptions.requiredAttestationCredentialSyntax(),
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+                ProtocolOptionSyntax.Attestation.requiredCredentialSyntax(),
+                ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
             List.of(ProtocolArtifactOutput.bookFile(), ProtocolArtifactOutput.newBookKeyFile()),
             "Restore a manifest-attested backup artifact to a missing destination as a signed derived continuation.",
             List.of(
+                ProtocolExampleStep.note(CANONICAL_MAINTENANCE_PATH_NOTE),
+                ProtocolExampleStep.note(PAIR_PUBLICATION_COMPLETION_NOTE),
+                ProtocolExampleStep.note(PAIR_PUBLICATION_UNCERTAINTY_RECOVERY_NOTE),
                 ProtocolExampleStep.note(
                     "restore-book verifies the internal chain and BACKUP manifest with the supplied backup key file; an existing destination always refuses publication."),
                 ProtocolExampleStep.note(

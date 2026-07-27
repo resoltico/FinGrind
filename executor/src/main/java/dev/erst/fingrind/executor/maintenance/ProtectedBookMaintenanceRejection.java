@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.maintenance;
 
+import dev.erst.fingrind.contract.protocol.OperationId;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
@@ -9,12 +10,14 @@ public sealed interface ProtectedBookMaintenanceRejection
     permits ProtectedBookMaintenanceRejection.BookHasBlockingArtifacts,
         ProtectedBookMaintenanceRejection.BackupSourceHasBlockingArtifacts,
         ProtectedBookMaintenanceRejection.BackupSourceMatchesLiveBook,
+        ProtectedBookMaintenanceRejection.PairTargetsConflict,
         ProtectedBookMaintenanceRejection.ArtifactPathInvalid,
         ProtectedBookMaintenanceRejection.ArtifactBusy,
         ProtectedBookMaintenanceRejection.BackupAcknowledgementConflict,
         ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists,
         ProtectedBookMaintenanceRejection.SecretTargetOccupied,
         ProtectedBookMaintenanceRejection.BookDestinationOccupied,
+        ProtectedBookMaintenanceRejection.RecoveryPending,
         ProtectedBookMaintenanceRejection.ArtifactVerificationFailed {
 
   /** Rejection for maintenance commands that require one clean closed live book path. */
@@ -49,6 +52,20 @@ public sealed interface ProtectedBookMaintenanceRejection
     public BackupSourceMatchesLiveBook {
       Objects.requireNonNull(bookFilePath, "bookFilePath");
       Objects.requireNonNull(backupFilePath, "backupFilePath");
+    }
+  }
+
+  /**
+   * Rejection for a pair request whose admitted targets resolve to one final filesystem identity.
+   *
+   * <p>The spellings intentionally remain distinct when an adapter established a case-folded or
+   * otherwise filesystem-level alias.
+   */
+  record PairTargetsConflict(Path bookTargetPath, Path generatedSecretTargetPath)
+      implements ProtectedBookMaintenanceRejection {
+    public PairTargetsConflict {
+      Objects.requireNonNull(bookTargetPath, "bookTargetPath");
+      Objects.requireNonNull(generatedSecretTargetPath, "generatedSecretTargetPath");
     }
   }
 
@@ -101,6 +118,19 @@ public sealed interface ProtectedBookMaintenanceRejection
   record BookDestinationOccupied(Path bookFilePath) implements ProtectedBookMaintenanceRejection {
     public BookDestinationOccupied {
       Objects.requireNonNull(bookFilePath, "bookFilePath");
+    }
+  }
+
+  /**
+   * Rejection for a different request while a verified pair-publication recovery remains pending.
+   */
+  record RecoveryPending(
+      OperationId recoveryOperation, Path bookTargetPath, Path generatedSecretTargetPath)
+      implements ProtectedBookMaintenanceRejection {
+    public RecoveryPending {
+      Objects.requireNonNull(recoveryOperation, "recoveryOperation");
+      Objects.requireNonNull(bookTargetPath, "bookTargetPath");
+      Objects.requireNonNull(generatedSecretTargetPath, "generatedSecretTargetPath");
     }
   }
 

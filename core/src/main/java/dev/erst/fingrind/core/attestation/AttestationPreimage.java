@@ -51,7 +51,32 @@ final class AttestationPreimage {
 
   /** Decodes and rechecks one complete canonical preimage without consulting mutable book state. */
   static AttestationPreimage decode(byte[] encoded, AttestationAuthorizationFailure failure) {
-    return AttestationFormatFailure.decoding(failure, () -> decodeUnchecked(encoded, failure));
+    return AttestationFormatFailure.decoding(
+        failure,
+        () -> {
+          requireDecodableByteCount(encoded, failure);
+          return decodeUnchecked(encoded, failure);
+        });
+  }
+
+  /** Decodes one complete canonical record without the enclosing preimage record-count prefix. */
+  static Fact decodeFact(byte[] encoded, AttestationAuthorizationFailure failure) {
+    return AttestationFormatFailure.decoding(
+        failure,
+        () -> {
+          requireDecodableByteCount(encoded, failure);
+          AttestationByteReader input = new AttestationByteReader(encoded, failure);
+          Fact decoded = decodeRecord(input);
+          input.requireAtEnd();
+          return decoded;
+        });
+  }
+
+  private static void requireDecodableByteCount(
+      byte[] encoded, AttestationAuthorizationFailure failure) {
+    if (encoded == null || encoded.length > MAX_ENCODED_BYTE_COUNT) {
+      throw new AttestationAuthorizationException(failure);
+    }
   }
 
   private static AttestationPreimage decodeUnchecked(
@@ -101,6 +126,10 @@ final class AttestationPreimage {
 
   List<Fact> records() {
     return records;
+  }
+
+  static int maximumEncodedByteCount() {
+    return MAX_ENCODED_BYTE_COUNT;
   }
 
   byte[] encoded() {
@@ -169,6 +198,13 @@ final class AttestationPreimage {
 
     byte[] encodedSortKey() {
       return encodedSortKey.clone();
+    }
+
+    /** Returns the standalone canonical record bytes without a preimage record-count prefix. */
+    byte[] encoded() {
+      ByteArrayOutputStream output = new ByteArrayOutputStream(encodedByteCount);
+      appendTo(output);
+      return output.toByteArray();
     }
 
     private int encodedByteCount() {

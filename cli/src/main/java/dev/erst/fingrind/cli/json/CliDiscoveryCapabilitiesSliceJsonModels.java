@@ -9,7 +9,8 @@ import dev.erst.fingrind.contract.protocol.CapabilityCatalogEntry;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.DiscoveryFocus;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.BookkeepingKernelDescriptor;
+import dev.erst.fingrind.contract.runtime.CurrencyDescriptor;
 import dev.erst.fingrind.contract.runtime.StorageSurfaceDescriptor;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -49,15 +50,14 @@ public interface CliDiscoveryCapabilitiesSliceJsonModels extends CliDiscoveryCom
     }
   }
 
-  record CapabilitiesCurrencySlicePayload(ContractResponse.CurrencyDescriptor currencyModel)
+  record CapabilitiesCurrencySlicePayload(CurrencyDescriptor currencyModel)
       implements ProtocolSuccessPayload {
     public CapabilitiesCurrencySlicePayload {
       currencyModel = requireValue(currencyModel, "currencyModel");
     }
   }
 
-  record CapabilitiesKernelSlicePayload(
-      ContractResponse.BookkeepingKernelDescriptor bookkeepingKernel)
+  record CapabilitiesKernelSlicePayload(BookkeepingKernelDescriptor bookkeepingKernel)
       implements ProtocolSuccessPayload {
     public CapabilitiesKernelSlicePayload {
       bookkeepingKernel = requireValue(bookkeepingKernel, "bookkeepingKernel");
@@ -68,72 +68,6 @@ public interface CliDiscoveryCapabilitiesSliceJsonModels extends CliDiscoveryCom
       implements ProtocolSuccessPayload {
     public CapabilitiesCatalogSlicePayload {
       capabilityCatalog = copyList(capabilityCatalog, "capabilityCatalog");
-    }
-  }
-
-  record CapabilitiesResponseContractSlicePayload(
-      ContractResponse.ResponseModelDescriptor responseModel,
-      ContractResponse.PlanExecutionDescriptor planExecution,
-      ContractResponse.AuditDescriptor audit,
-      ContractResponse.AccountRegistryDescriptor accountRegistry,
-      ContractResponse.ReversalDescriptor reversals,
-      ContractResponse.PreflightDescriptor preflight)
-      implements ProtocolSuccessPayload {
-    public CapabilitiesResponseContractSlicePayload {
-      responseModel = requireValue(responseModel, "responseModel");
-      planExecution = requireValue(planExecution, "planExecution");
-      audit = requireValue(audit, "audit");
-      accountRegistry = requireValue(accountRegistry, "accountRegistry");
-      reversals = requireValue(reversals, "reversals");
-      preflight = requireValue(preflight, "preflight");
-    }
-  }
-
-  record CapabilitiesResponseContractCompactPayload(
-      ContractResponse.ResponseModelDescriptor responseModel,
-      String preflightSemantics,
-      String planJournal,
-      String reversalModel,
-      int requestProvenanceFieldCount,
-      int committedFieldCount)
-      implements ProtocolSuccessPayload {
-    public CapabilitiesResponseContractCompactPayload {
-      responseModel = requireValue(responseModel, "responseModel");
-      preflightSemantics = requireText(preflightSemantics, "preflightSemantics");
-      planJournal = requireText(planJournal, "planJournal");
-      reversalModel = requireText(reversalModel, "reversalModel");
-      if (requestProvenanceFieldCount < 0) {
-        throw new IllegalArgumentException(
-            "requestProvenanceFieldCount must be greater than or equal to zero.");
-      }
-      if (committedFieldCount < 0) {
-        throw new IllegalArgumentException(
-            "committedFieldCount must be greater than or equal to zero.");
-      }
-    }
-  }
-
-  record CapabilitiesResponseContractSummaryPayload(
-      List<String> envelopeStatusCodes,
-      String preflightSemantics,
-      String planJournal,
-      String reversalModel,
-      int requestProvenanceFieldCount,
-      int committedFieldCount)
-      implements ProtocolSuccessPayload {
-    public CapabilitiesResponseContractSummaryPayload {
-      envelopeStatusCodes = copyList(envelopeStatusCodes, "envelopeStatusCodes");
-      preflightSemantics = requireText(preflightSemantics, "preflightSemantics");
-      planJournal = requireText(planJournal, "planJournal");
-      reversalModel = requireText(reversalModel, "reversalModel");
-      if (requestProvenanceFieldCount < 0) {
-        throw new IllegalArgumentException(
-            "requestProvenanceFieldCount must be greater than or equal to zero.");
-      }
-      if (committedFieldCount < 0) {
-        throw new IllegalArgumentException(
-            "committedFieldCount must be greater than or equal to zero.");
-      }
     }
   }
 }

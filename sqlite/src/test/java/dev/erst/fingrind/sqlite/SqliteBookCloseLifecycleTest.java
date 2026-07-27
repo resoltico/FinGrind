@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.runtime.BookFormatContract;
 import dev.erst.fingrind.core.IdempotencyKey;
 import java.lang.foreign.MemorySegment;
 import java.nio.file.Path;
@@ -61,15 +60,6 @@ class SqliteBookCloseLifecycleTest extends SqlitePostingFactStoreTestSupport {
     assertEquals(
         "The selected FinGrind book is incomplete or corrupted and cannot be opened safely.",
         SqliteStoreOperations.incompleteBookFailure().getMessage());
-    assertEquals(
-        "The selected FinGrind book format version "
-            + (BookFormatContract.FORMAT_VERSION + 1)
-            + " is unsupported. Expected version "
-            + BookFormatContract.FORMAT_VERSION
-            + ".",
-        SqliteStoreOperations.unsupportedBookVersionFailure(
-                BookFormatContract.FORMAT_VERSION + 1, BookFormatContract.FORMAT_VERSION)
-            .getMessage());
   }
 
   @Test
@@ -79,8 +69,7 @@ class SqliteBookCloseLifecycleTest extends SqlitePostingFactStoreTestSupport {
             SqliteNativeException.class,
             () ->
                 SqliteConnectionConfigurer.configureOpenedDatabase(
-                    staleDatabaseHandle(tempDirectory.resolve("stale.sqlite")),
-                    SqliteStoreAccessMode.READ_WRITE_CREATE));
+                    staleDatabaseHandle(), SqliteStoreAccessMode.READ_WRITE_CREATE));
     assertFalse(NullTestSupport.messageOf(exception).isBlank());
   }
 
@@ -106,7 +95,7 @@ class SqliteBookCloseLifecycleTest extends SqlitePostingFactStoreTestSupport {
     assertDoesNotThrow(
         () ->
             SqliteConnectionConfigurer.closeAfterConfigurationFailure(
-                staleDatabaseHandle(tempDirectory.resolve("stale-close.sqlite")),
+                staleDatabaseHandle(),
                 (action, exception) ->
                     cleanupReports.add(action + "|" + exception.getClass().getSimpleName())));
     assertEquals(
@@ -131,7 +120,7 @@ class SqliteBookCloseLifecycleTest extends SqlitePostingFactStoreTestSupport {
   void close_wrapsNativeDatabaseCloseFailure() throws Exception {
     Path bookPath = tempDirectory.resolve("close-native-failure.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
-      setStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath));
+      setStoreDatabase(postingFactStore, staleDatabaseHandle());
       IllegalStateException exception =
           assertThrows(IllegalStateException.class, postingFactStore::close);
       assertTrue(

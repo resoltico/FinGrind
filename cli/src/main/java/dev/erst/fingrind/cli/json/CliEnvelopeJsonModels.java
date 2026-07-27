@@ -1,6 +1,5 @@
 package dev.erst.fingrind.cli.json;
 
-import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireOptionalText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireText;
 import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireValue;
 
@@ -9,8 +8,8 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
 import dev.erst.fingrind.contract.runtime.ContractResponseCatalog;
+import dev.erst.fingrind.contract.runtime.FailureCategory;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import java.util.HashSet;
 import java.util.List;
@@ -24,10 +23,16 @@ public interface CliEnvelopeJsonModels {
   sealed interface EnvelopeDetails
       permits CliErrorJsonModels.ErrorDetails, CliRejectionJsonModels.RejectionDetails {}
 
-  record SuccessArtifact(String format, String path) {
+  /** Publishes one successful artifact and its mandatory retained private stage. */
+  record SuccessArtifact(String format, String path, String retainedStage) {
     public SuccessArtifact {
       format = requireText(format, "format");
       path = requireText(path, "path");
+      retainedStage = requireText(retainedStage, "retainedStage");
+      if (path.equals(retainedStage)) {
+        throw new IllegalArgumentException(
+            "path and retainedStage must identify distinct artifacts.");
+      }
     }
   }
 
@@ -42,48 +47,28 @@ public interface CliEnvelopeJsonModels {
       @Nullable EnvelopeDetails details,
       @Nullable List<SuccessArtifact> artifacts,
       @Nullable String path,
-      @Nullable List<String> relatedPaths) {
-    /** Retains the ordinary envelope construction form when no failure carries filesystem paths. */
-    public Envelope(
-        ProtocolEnvelopeStatus status,
-        @Nullable T payload,
-        @Nullable String code,
-        @Nullable String message,
-        @Nullable String hint,
-        @Nullable String argument,
-        @Nullable String idempotencyKey,
-        @Nullable EnvelopeDetails details,
-        @Nullable List<SuccessArtifact> artifacts) {
-      this(
-          status,
-          payload,
-          code,
-          message,
-          hint,
-          argument,
-          idempotencyKey,
-          details,
-          artifacts,
-          null,
-          null);
-    }
-
+      @Nullable List<String> relatedPaths,
+      @Nullable String retainedStage) {
     public Envelope {
       status = requireValue(status, "status");
-      code = requireOptionalText(code, "code");
-      message = requireOptionalText(message, "message");
-      hint = requireOptionalText(hint, "hint");
-      argument = requireOptionalText(argument, "argument");
-      idempotencyKey = requireOptionalText(idempotencyKey, "idempotencyKey");
+      code = CliJsonModelValidation.requireOptionalText(code, "code");
+      message = CliJsonModelValidation.requireOptionalText(message, "message");
+      hint = CliJsonModelValidation.requireOptionalText(hint, "hint");
+      argument = CliJsonModelValidation.requireOptionalText(argument, "argument");
+      idempotencyKey = CliJsonModelValidation.requireOptionalText(idempotencyKey, "idempotencyKey");
       artifacts = artifacts == null ? null : java.util.List.copyOf(artifacts);
-      path = requireOptionalText(path, "path");
+      path = CliJsonModelValidation.requireOptionalText(path, "path");
       relatedPaths = relatedPaths == null ? null : java.util.List.copyOf(relatedPaths);
+      retainedStage = CliJsonModelValidation.requireOptionalText(retainedStage, "retainedStage");
       if (artifacts != null) {
         if (artifacts.isEmpty()) {
           throw new IllegalArgumentException("artifacts must not be empty when present.");
         }
-        if (new HashSet<>(artifacts).size() != artifacts.size()) {
-          throw new IllegalArgumentException("artifacts must not contain duplicate entries.");
+        var artifactLocations = new HashSet<List<String>>();
+        for (SuccessArtifact artifact : artifacts) {
+          if (!artifactLocations.add(List.of(artifact.format(), artifact.path()))) {
+            throw new IllegalArgumentException("artifacts must not contain duplicate entries.");
+          }
         }
       }
       if (status == ProtocolEnvelopeStatus.OK) {
@@ -96,6 +81,7 @@ public interface CliEnvelopeJsonModels {
         requireAbsent(details, "details");
         requireAbsent(path, "path");
         requireAbsent(relatedPaths, "relatedPaths");
+        requireAbsent(retainedStage, "retainedStage");
       } else if (status == ProtocolEnvelopeStatus.REJECTED) {
         validateNonSuccessPayload(status, payload);
         code = requireText(java.util.Objects.requireNonNull(code, "code"), "code");
@@ -121,7 +107,7 @@ public interface CliEnvelopeJsonModels {
 
     /** Returns the single taxonomy category for every non-success envelope. */
     @JsonProperty("category")
-    public ContractResponse.@Nullable FailureCategory category() {
+    public @Nullable FailureCategory category() {
       return status == ProtocolEnvelopeStatus.OK
           ? null
           : ContractResponseCatalog.failureCategoryFor(
@@ -148,7 +134,7 @@ public interface CliEnvelopeJsonModels {
     if (payload == null) {
       return;
     }
-    if (!(payload instanceof CliPlanJsonModels.LedgerPlanPayload planPayload)) {
+    if (!(payload instanceof CliPlanResultJsonModels.LedgerPlanPayload planPayload)) {
       throw new IllegalArgumentException(
           "payload must be absent unless this non-success envelope carries a "
               + PLAN_OPERATION

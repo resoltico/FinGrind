@@ -45,6 +45,10 @@ public sealed interface PostEntryResult permits PreflightEntryResult, CommitEntr
         throw new IllegalArgumentException(
             "An idempotent replay must not report a newly appended attestation operation.");
       }
+      if (!idempotentReplay && attestationCommit == null) {
+        throw new IllegalArgumentException(
+            "A newly committed posting must report its attestation operation.");
+      }
     }
   }
 

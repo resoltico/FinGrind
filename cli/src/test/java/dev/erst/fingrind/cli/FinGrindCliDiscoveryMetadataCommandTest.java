@@ -67,6 +67,26 @@ class FinGrindCliDiscoveryMetadataCommandTest extends FinGrindCliDiscoveryComman
   }
 
   @Test
+  void run_returnsFocusedResponseContractWithClosedPlanAttestationOutcomeTable() throws Exception {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    FinGrindCli cli =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
+
+    int exitCode =
+        cli.run(
+            new String[] {
+              "capabilities", "--focus", "response-contract", "--detail", "full", "--output", "json"
+            });
+
+    assertEquals(0, exitCode);
+    JsonNode payload =
+        new ObjectMapper().readTree(outputStream.toString(StandardCharsets.UTF_8)).path("payload");
+    assertEquals("response-contract", payload.path("focus").stringValue());
+    assertEquals("full", payload.path("detail").stringValue());
+    assertPlanAttestationOutcomeTable(payload.path("data").path("planExecution"));
+  }
+
+  @Test
   void run_returnsEnvironment() throws Exception {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     FinGrindCli cli =

@@ -4,7 +4,7 @@ import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
 import dev.erst.fingrind.contract.protocol.SourceDocumentTypePolicyMode;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.PlanExecutionDescriptor;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.BookkeepingEntryKind;
 import java.util.List;
@@ -206,7 +206,7 @@ public final class ContractRequestShapes {
       List<LedgerStepKind> writeStepKinds,
       LedgerStepKind assertStepKind,
       List<LedgerAssertionKind> assertionKinds,
-      ContractResponse.PlanExecutionDescriptor execution,
+      PlanExecutionDescriptor execution,
       Map<String, Object> schema)
       implements RequestShapeDescriptorType {
     /** Validates one ledger-plan request-shape descriptor payload. */

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
@@ -24,17 +25,16 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 /** Exercises the exported file-custody genesis path without exposing a private key. */
-class AttestationGenesisBoundaryTest {
-  @TempDir Path temporaryDirectory;
+class AttestationGenesisBoundaryTest extends AttestationKeyFileTestFixture {
 
   @Test
   void createsAndVerifiesASelfAuthorizingGenesisOperation() throws Exception {
     char[] passphrase = "test attestation passphrase".toCharArray();
     AttestationPublicCredential publicCredential =
-        AttestationKeyFiles.create(temporaryDirectory.resolve("founder.fgatk"), passphrase);
+        AttestationKeyFiles.create(temporaryDirectory.resolve("founder.fgatk"), passphrase)
+            .credential();
     UUID principalId = UUID.fromString("10213243-5465-7687-98a9-babcbddceeff");
     try (AttestationSigningCredential signer =
         new AttestationSigningCredential(
@@ -69,7 +69,8 @@ class AttestationGenesisBoundaryTest {
     Path passphrasePath = temporaryDirectory.resolve("operator.passphrase");
     Files.writeString(passphrasePath, "test attestation passphrase\n");
     AttestationPublicCredential credential =
-        AttestationKeyFiles.create(keyPath, "test attestation passphrase".toCharArray());
+        AttestationKeyFiles.create(keyPath, "test attestation passphrase".toCharArray())
+            .credential();
     UUID principalId = UUID.fromString("10213243-5465-7687-98a9-babcbddceeff");
     UUID bookId = UUID.fromString("00112233-4455-6677-8899-aabbccddeeff");
     AttestationEvidence genesis;
@@ -155,12 +156,50 @@ class AttestationGenesisBoundaryTest {
   }
 
   @Test
+  void rejectsHardLinkedDuplicateCredentialKeyMaterialAtSessionAdmission() throws Exception {
+    Path keyPath = temporaryDirectory.resolve("operator.fgatk");
+    Path duplicateKeyPath = temporaryDirectory.resolve("operator-hard-link.fgatk");
+    Path passphrasePath = temporaryDirectory.resolve("operator.passphrase");
+    AttestationKeyFiles.create(keyPath, "test attestation passphrase".toCharArray());
+    Files.writeString(passphrasePath, "test attestation passphrase\n");
+    try {
+      Files.createLink(duplicateKeyPath, keyPath);
+    } catch (UnsupportedOperationException | SecurityException exception) {
+      assumeTrue(false, "The filesystem does not permit hard-link test fixtures.");
+      return;
+    } catch (java.nio.file.FileSystemException exception) {
+      assumeTrue(false, "The filesystem does not permit hard-link test fixtures.");
+      return;
+    }
+
+    AttestationAdmissionRejectedException failure =
+        assertThrows(
+            AttestationAdmissionRejectedException.class,
+            () ->
+                AttestationSigningSession.open(
+                    List.of(
+                        new AttestationCredentialSource(
+                            AttestationCustodian.FILE_PKCS8,
+                            UUID.randomUUID(),
+                            keyPath,
+                            passphrasePath),
+                        new AttestationCredentialSource(
+                            AttestationCustodian.FILE_PKCS8,
+                            UUID.randomUUID(),
+                            duplicateKeyPath,
+                            passphrasePath))));
+
+    assertEquals(AttestationAuthorizationFailure.DUPLICATE_KEY, failure.failure());
+  }
+
+  @Test
   void projectsAndSignsTheCompleteAccountRegistryEffectAtTheObservedHead() throws Exception {
     Path keyPath = temporaryDirectory.resolve("account-operator.fgatk");
     Path passphrasePath = temporaryDirectory.resolve("account-operator.passphrase");
     Files.writeString(passphrasePath, "test attestation passphrase\n");
     AttestationPublicCredential credential =
-        AttestationKeyFiles.create(keyPath, "test attestation passphrase".toCharArray());
+        AttestationKeyFiles.create(keyPath, "test attestation passphrase".toCharArray())
+            .credential();
     UUID principalId = UUID.fromString("10213243-5465-7687-98a9-babcbddceeff");
     UUID bookId = UUID.fromString("00112233-4455-6677-8899-aabbccddeeff");
     AttestationEvidence genesis;

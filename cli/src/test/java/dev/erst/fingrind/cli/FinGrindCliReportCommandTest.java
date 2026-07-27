@@ -23,13 +23,14 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 
 /** Report-command tests for stdout rendering and optional PDF artifact behavior. */
-class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
+class FinGrindCliReportCommandTest extends CliWorkflowFixtureSupport {
   @Test
   void run_writesPdfArtifactForSuccessfulTrialBalanceReport() throws IOException {
     Path bookFilePath = tempDirectory.resolve("books").resolve("entity.sqlite");
     Path bookKeyFilePath = tempDirectory.resolve("keys").resolve("entity.key");
     Path pdfOutputPath =
         tempDirectory.resolve("reports odd").resolve("trial balance [office copy].pdf");
+    CliReportPdfArtifactCommandTestSupport.preparePdfOutputParent(pdfOutputPath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
     FinGrindCli cli =
@@ -59,7 +60,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
     assertTrue(rendered.contains("Artifact"));
     assertTrue(rendered.contains("Format"));
     assertTrue(rendered.contains("pdf"));
-    assertTrue(rendered.contains(CliPublicPaths.redactedValue(pdfOutputPath)));
+    assertTrue(rendered.contains(CliPublicPaths.redactedValue(pdfOutputPath.toRealPath())));
     assertFalse(rendered.contains("Trial Balance"));
     assertTrue(Files.exists(pdfOutputPath));
     assertEquals(
@@ -68,10 +69,12 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void run_jsonReportWithPdfOut_publishesNormalizedArtifactPathOnStdout() throws IOException {
+  void run_jsonReportWithPdfOut_publishesCanonicalPhysicalArtifactPathOnStdout()
+      throws IOException {
     Path bookFilePath = tempDirectory.resolve("books").resolve("entity.sqlite");
     Path bookKeyFilePath = tempDirectory.resolve("keys").resolve("entity.key");
     Path pdfOutputPath = tempDirectory.resolve("reports").resolve("trial-balance.json.pdf");
+    CliReportPdfArtifactCommandTestSupport.preparePdfOutputParent(pdfOutputPath);
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
     FinGrindCli cli =
@@ -100,7 +103,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
     var envelope = new ObjectMapper().readTree(outputStream.toByteArray());
     assertEquals("pdf", envelope.path("artifacts").get(0).path("format").stringValue());
     assertEquals(
-        CliPublicPaths.absoluteValue(pdfOutputPath),
+        CliPublicPaths.absoluteValue(pdfOutputPath.toRealPath()),
         envelope.path("artifacts").get(0).path("path").stringValue());
     assertEquals("", diagnosticsStream.toString(StandardCharsets.UTF_8));
   }
@@ -233,6 +236,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
     Path balancePdf = tempDirectory.resolve("reports").resolve("balance.pdf");
     Path ledgerPdf = tempDirectory.resolve("reports").resolve("ledger.pdf");
     Path summaryPdf = tempDirectory.resolve("reports").resolve("summary.pdf");
+    CliReportPdfArtifactCommandTestSupport.preparePdfOutputParent(balancePdf);
     ByteArrayOutputStream balanceOutput = new ByteArrayOutputStream();
     ByteArrayOutputStream ledgerOutput = new ByteArrayOutputStream();
     ByteArrayOutputStream summaryOutput = new ByteArrayOutputStream();
@@ -325,6 +329,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
     Path incomePdf = tempDirectory.resolve("reports").resolve("income-statement.pdf");
     Path cashFlowPdf = tempDirectory.resolve("reports").resolve("cash-flow-statement.pdf");
     Path equityPdf = tempDirectory.resolve("reports").resolve("changes-in-equity.pdf");
+    CliReportPdfArtifactCommandTestSupport.preparePdfOutputParent(positionPdf);
     CliBookWorkflow workflow =
         reportingWorkflow(
             new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized()),
@@ -534,7 +539,7 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
   }
 
   @Test
-  void run_failsCommandWhenPdfExportFails() throws IOException {
+  void run_refusesPdfOutputParentThatIsNotAnExistingPrivateDirectory() throws IOException {
     Path bookFilePath = tempDirectory.resolve("books").resolve("entity.sqlite");
     Path bookKeyFilePath = tempDirectory.resolve("keys").resolve("entity.key");
     Path blockedParent = tempDirectory.resolve("blocked output parent");
@@ -561,9 +566,9 @@ class FinGrindCliReportCommandTest extends FinGrindCliTestSupport {
                 "--pdf-out",
                 pdfOutputPath.toString()));
 
-    assertEquals(4, exitCode);
+    assertEquals(6, exitCode);
     assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
-    assertJsonContains(diagnosticsStream, "\"code\":\"pdf-export-failure\"");
+    assertJsonContains(diagnosticsStream, "\"code\":\"invalid-artifact-output-directory\"");
     assertJsonContains(diagnosticsStream, "\"status\":\"error\"");
     assertTrue(diagnosticsStream.toString(StandardCharsets.UTF_8).contains("--pdf-out"));
   }

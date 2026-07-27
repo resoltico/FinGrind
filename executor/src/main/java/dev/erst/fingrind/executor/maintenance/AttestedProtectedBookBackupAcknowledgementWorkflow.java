@@ -1,6 +1,12 @@
 package dev.erst.fingrind.executor.maintenance;
 
+import dev.erst.fingrind.contract.bookkeeping.BackupAcknowledgementState;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
+import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
 import dev.erst.fingrind.core.attestation.AttestationAuthorizationException;
 import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
 import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgementAdmission;
@@ -16,7 +22,9 @@ import dev.erst.fingrind.executor.AttestationCommitProjection;
 import dev.erst.fingrind.executor.spi.AttestedProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.PreparedPairPublication;
+import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationBinding;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
+import dev.erst.fingrind.executor.spi.StagedPairPublicationCommitOutcome;
 import java.math.BigInteger;
 import java.nio.file.Path;
 import java.time.Clock;
@@ -24,6 +32,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 
 /** Owns durable backup publication and its exactly-once attestation acknowledgement. */
 final class AttestedProtectedBookBackupAcknowledgementWorkflow {
@@ -68,7 +77,8 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
                             List<AttestationEvidence> evidence =
                                 store.loadAttestationEvidence(snapshotBook);
                             AttestationVerification source =
-                                AttestationVerifier.verifyBook(evidence);
+                                AttestedProtectedBookMaintenanceDecisions
+                                    .requireVerifiedLiveEvidence(evidence, bookPath);
                             byte[] artifact =
                                 signingSession.createBackupArtifact(
                                     stagedBackup.snapshot(),
@@ -85,7 +95,12 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
                                     verifiedArtifact.sourceOrder(),
                                     verifiedArtifact.sourceOperationHead());
                             stagedBackup.sealArtifact(artifact);
-                            stagedBackup.commit();
+                            StagedPairPublicationCommitOutcome.Published published =
+                                AttestedProtectedBookPairPublicationCommit.requirePublished(
+                                    OperationId.BACKUP_BOOK,
+                                    stagedBackup.commit(
+                                        new ProtectedBookPairPublicationBinding.Backup(
+                                            bookPath, acknowledgement)));
                             return acknowledgeBackup(
                                 liveBook,
                                 bookPath,
@@ -93,7 +108,9 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
                                 backupKeyPath,
                                 acknowledgement,
                                 signingSession,
-                                false);
+                                BackupAcknowledgementRequest.ACKNOWLEDGED,
+                                ProtectedBookPairPublicationCompletion.PUBLISHED,
+                                published.retention());
                           }
                         },
                         ignored ->
@@ -128,10 +145,17 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
       Path backupKeyPath,
       AttestationBackupAcknowledgement acknowledgement,
       AttestationSigningSession signingSession,
-      boolean acknowledgementResumed) {
+      BackupAcknowledgementRequest requestedState,
+      ProtectedBookPairPublicationCompletion pairPublicationCompletion,
+      @Nullable ProtectedBookPairPublicationRetention pairPublicationRetention) {
+    BackupAcknowledgementRequest checkedRequestedState =
+        Objects.requireNonNull(requestedState, "requestedState");
+    ProtectedBookPairPublicationCompletion checkedPairPublicationCompletion =
+        Objects.requireNonNull(pairPublicationCompletion, "pairPublicationCompletion");
+    List<AttestationEvidence> liveEvidence = store.loadAttestationEvidence(liveBook);
+    AttestedProtectedBookMaintenanceDecisions.requireVerifiedLiveEvidence(liveEvidence, bookPath);
     AttestationBackupAcknowledgementAdmission admission =
-        AttestationBackupAcknowledgementAdmission.evaluate(
-            store.loadAttestationEvidence(liveBook), acknowledgement);
+        AttestationBackupAcknowledgementAdmission.evaluate(liveEvidence, acknowledgement);
     return switch (admission) {
       case CONFLICT ->
           AttestedProtectedBookMaintenanceDecisions.rejectedBackup(
@@ -144,11 +168,14 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
                   backupPath,
                   backupKeyPath,
                   acknowledgement.backupId(),
-                  acknowledgementResumed,
+                  checkedPairPublicationCompletion,
+                  pairPublicationRetention,
+                  checkedRequestedState.alreadyPresentState(),
                   null));
       case APPEND -> {
+        AttestationAppendOutcome appendOutcome;
         try {
-          AttestationVerification verification =
+          appendOutcome =
               store.appendAttestedOperation(
                   liveBook,
                   BACKUP_CREATED_OPERATION,
@@ -157,14 +184,6 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
                       BACKUP_CREATED_OPERATION.wireToken(), acknowledgement),
                   signingSession,
                   acknowledgement);
-          yield MaintenanceDecision.accepted(
-              new ProtectedBookBackupOutcome.BackedUp(
-                  bookPath,
-                  backupPath,
-                  backupKeyPath,
-                  acknowledgement.backupId(),
-                  acknowledgementResumed,
-                  AttestationCommitProjection.fromVerifiedAppend(verification)));
         } catch (BackupAcknowledgementConflictException exception) {
           yield AttestedProtectedBookMaintenanceDecisions.rejectedBackup(
               new ProtectedBookMaintenanceRejection.BackupAcknowledgementConflict(
@@ -176,14 +195,72 @@ final class AttestedProtectedBookBackupAcknowledgementWorkflow {
                   backupPath,
                   backupKeyPath,
                   acknowledgement.backupId(),
+                  checkedPairPublicationCompletion,
+                  pairPublicationRetention,
                   exception.failure()));
+        } catch (ContractFailureException exception) {
+          throw exception;
         } catch (RuntimeException exception) {
           yield MaintenanceDecision.accepted(
               new ProtectedBookBackupOutcome.AcknowledgementPending(
-                  bookPath, backupPath, backupKeyPath, acknowledgement.backupId()));
+                  bookPath,
+                  backupPath,
+                  backupKeyPath,
+                  acknowledgement.backupId(),
+                  checkedPairPublicationCompletion,
+                  pairPublicationRetention));
         }
+        yield switch (appendOutcome) {
+          case AttestationAppendOutcome.Appended appended ->
+              MaintenanceDecision.accepted(
+                  new ProtectedBookBackupOutcome.BackedUp(
+                      bookPath,
+                      backupPath,
+                      backupKeyPath,
+                      acknowledgement.backupId(),
+                      checkedPairPublicationCompletion,
+                      pairPublicationRetention,
+                      checkedRequestedState.acknowledgedState(),
+                      AttestationCommitProjection.fromVerifiedAppend(appended)));
+          case AttestationAppendOutcome.AlreadyPresent _ ->
+              MaintenanceDecision.accepted(
+                  new ProtectedBookBackupOutcome.BackedUp(
+                      bookPath,
+                      backupPath,
+                      backupKeyPath,
+                      acknowledgement.backupId(),
+                      checkedPairPublicationCompletion,
+                      pairPublicationRetention,
+                      checkedRequestedState.alreadyPresentState(),
+                      null));
+        };
       }
     };
+  }
+
+  /** Internal request state that cannot be confused with the published already-present result. */
+  enum BackupAcknowledgementRequest {
+    ACKNOWLEDGED(
+        BackupAcknowledgementState.ACKNOWLEDGED, BackupAcknowledgementState.ALREADY_PRESENT),
+    RESUMED(BackupAcknowledgementState.RESUMED, BackupAcknowledgementState.RESUMED);
+
+    private final BackupAcknowledgementState acknowledgedState;
+    private final BackupAcknowledgementState alreadyPresentState;
+
+    BackupAcknowledgementRequest(
+        BackupAcknowledgementState acknowledgedState,
+        BackupAcknowledgementState alreadyPresentState) {
+      this.acknowledgedState = acknowledgedState;
+      this.alreadyPresentState = alreadyPresentState;
+    }
+
+    BackupAcknowledgementState acknowledgedState() {
+      return acknowledgedState;
+    }
+
+    BackupAcknowledgementState alreadyPresentState() {
+      return alreadyPresentState;
+    }
   }
 
   static boolean artifactSourceIsLive(

@@ -18,6 +18,17 @@ def extract_pdf_artifact_path(pdf_stdout: str) -> str:
     return match.group(1).strip()
 
 
+def extract_pdf_retained_stage(pdf_stdout: str) -> str:
+    match = re.search(
+        r"^Retained stage\s+:\s+(.+)$",
+        pdf_stdout,
+        re.MULTILINE,
+    )
+    if match is None:
+        raise ReleaseSmokeFailure("missing retained-stage confirmation for the written PDF report")
+    return match.group(1).strip()
+
+
 def normalize_reported_path(path_text: str) -> str:
     normalized = path_text.strip()
     if not normalized:

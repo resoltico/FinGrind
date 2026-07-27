@@ -3,7 +3,6 @@ package dev.erst.fingrind.cli;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -16,52 +15,54 @@ import org.junit.jupiter.api.Test;
 class CliAdministrativeArgumentParsingTest extends CliArgumentParsingTestSupport {
 
   @Test
-  void parse_supportsTightenParentsForKeyGenerationAndBookOpening() {
-    GenerateBookKeyFile generateBookKeyFile =
-        assertInstanceOf(
-            GenerateBookKeyFile.class,
-            CliArguments.parse(
-                new String[] {
-                  "generate-book-key-file",
-                  "--new-book-key-file",
-                  "books/entity.book-key",
-                  "--tighten-parents"
-                }));
-    OpenBook openBook =
-        assertInstanceOf(
-            OpenBook.class,
-            CliArguments.parse(
-                new String[] {
-                  "open-book",
-                  "--book-file",
-                  "book.sqlite",
-                  "--book-key-file",
-                  "book.key",
-                  "--entity-name",
-                  "Acme Studio",
-                  "--book-template-id",
-                  "OWNER_MANAGED_SERVICE",
-                  "--accounting-basis",
-                  "CASH",
-                  "--functional-currency",
-                  "EUR",
-                  "--fiscal-year-start",
-                  "01-01",
-                  "--book-start-effective-date",
-                  "2026-01-01",
-                  "--attestation-custodian",
-                  "file-pkcs8",
-                  "--attestation-founder-principal-id",
-                  "123e4567-e89b-12d3-a456-426614174000",
-                  "--attestation-founder-key-file",
-                  "founder.fgatk",
-                  "--attestation-founder-passphrase-file",
-                  "founder.passphrase",
-                  "--tighten-parents"
-                }));
+  void parse_rejectsRetiredTightenParentsOptionForKeyGenerationAndBookOpening() {
+    CliArgumentsException generateBookKeyFile =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "generate-book-key-file",
+                      "--new-book-key-file",
+                      "books/entity.book-key",
+                      "--tighten-parents"
+                    }));
+    CliArgumentsException openBook =
+        assertThrows(
+            CliArgumentsException.class,
+            () ->
+                CliArguments.parse(
+                    new String[] {
+                      "open-book",
+                      "--book-file",
+                      "book.sqlite",
+                      "--book-key-file",
+                      "book.key",
+                      "--entity-name",
+                      "Acme Studio",
+                      "--book-template-id",
+                      "OWNER_MANAGED_SERVICE",
+                      "--accounting-basis",
+                      "CASH",
+                      "--functional-currency",
+                      "EUR",
+                      "--fiscal-year-start",
+                      "01-01",
+                      "--book-start-effective-date",
+                      "2026-01-01",
+                      "--attestation-custodian",
+                      "file-pkcs8",
+                      "--attestation-founder-principal-id",
+                      "123e4567-e89b-12d3-a456-426614174000",
+                      "--attestation-founder-key-file",
+                      "founder.fgatk",
+                      "--attestation-founder-passphrase-file",
+                      "founder.passphrase",
+                      "--tighten-parents"
+                    }));
 
-    assertTrue(generateBookKeyFile.tightenParents());
-    assertTrue(openBook.tightenParents());
+    assertEquals("--tighten-parents", generateBookKeyFile.argument());
+    assertEquals("--tighten-parents", openBook.argument());
   }
 
   @Test

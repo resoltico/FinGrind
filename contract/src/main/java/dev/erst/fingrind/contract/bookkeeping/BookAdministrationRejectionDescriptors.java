@@ -1,6 +1,6 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -97,7 +97,7 @@ final class BookAdministrationRejectionDescriptors {
     return Descriptor.BOOK_NOT_INITIALIZED.code();
   }
 
-  static List<ContractResponse.RejectionDescriptor> descriptors() {
+  static List<RejectionDescriptor> descriptors() {
     return BookAdministrationRejectionDescriptorCatalog.descriptors();
   }
 

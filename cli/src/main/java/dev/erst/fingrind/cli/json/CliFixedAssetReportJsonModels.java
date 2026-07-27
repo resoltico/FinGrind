@@ -12,7 +12,7 @@ import org.jspecify.annotations.Nullable;
 public interface CliFixedAssetReportJsonModels {
   record FixedAssetRegisterPayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       CliReportJsonModels.FixedAssetRegisterResolvedQuery resolvedQuery,
       String generatedAt,
       List<FixedAssetRegisterRowPayload> rows)

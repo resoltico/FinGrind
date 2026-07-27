@@ -1,13 +1,12 @@
 package dev.erst.fingrind.executor;
 
-import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
-import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
 import dev.erst.fingrind.contract.tax.TaxRegistrationId;
 import dev.erst.fingrind.core.EffectiveDateRange;
 import dev.erst.fingrind.core.IdempotencyKey;
 import dev.erst.fingrind.core.PostingId;
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
@@ -16,12 +15,14 @@ import dev.erst.fingrind.executor.bookkeeping.InventoryMovementRecord;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
 import dev.erst.fingrind.executor.bookkeeping.RequestFingerprintTestSupport;
+import dev.erst.fingrind.executor.bookkeeping.TaxRegistrationMutationOutcome;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingCommitStore;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import dev.erst.fingrind.executor.spi.StoredRequestPosting;
 import dev.erst.fingrind.executor.spi.TaxAdministrationStore;
+import dev.erst.fingrind.testsupport.AttestationVerificationTestFixtures;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -33,8 +34,6 @@ import java.util.Optional;
 /** Shared in-memory posting-validation and commit fixture state for executor tests. */
 abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifecycleSession
     implements PostingValidationStore, PostingCommitStore, TaxAdministrationStore {
-  private static final AttestationCommit TEST_ATTESTATION_COMMIT =
-      new AttestationCommit(java.math.BigInteger.ONE, "a".repeat(64));
   protected final Map<TaxRegistrationId, DeclaredTaxRegistration> taxRegistrationsById =
       InMemoryBookSessionSupport.mutableMap();
   protected final Map<IdempotencyKey, StoredRequestPosting> postingsByIdempotencyKey =
@@ -102,7 +101,7 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifec
   }
 
   @Override
-  public DeclareTaxRegistrationResult declareTaxRegistration(
+  public TaxRegistrationMutationOutcome declareTaxRegistration(
       DeclareTaxRegistrationCommand command,
       Instant declaredAt,
       AttestationOperationAuthorizer attestationAuthorizer) {
@@ -112,8 +111,9 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifec
     return InMemoryBookSessionSupport.withLock(
         lock,
         () -> {
+          requireDirectMutationPermitted();
           if (!initialized) {
-            return new DeclareTaxRegistrationResult.Rejected(
+            return new TaxRegistrationMutationOutcome.Rejected(
                 new dev.erst.fingrind.contract.tax.TaxDeclarationRejection.BookNotInitialized());
           }
           DeclaredTaxRegistration existing = taxRegistrationsById.get(command.taxRegistrationId());
@@ -130,12 +130,15 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifec
                   command.taxCodes(),
                   existing == null ? declaredAt : existing.declaredAt());
           if (existing != null && existing.equals(candidate)) {
-            return new DeclareTaxRegistrationResult.Unchanged(existing, null);
+            return new TaxRegistrationMutationOutcome.Unchanged(existing);
           }
           taxRegistrationsById.put(candidate.taxRegistrationId(), candidate);
+          AttestationAppendOutcome.Appended attestationAppend =
+              new AttestationAppendOutcome.Appended(
+                  AttestationVerificationTestFixtures.verifiedAppend());
           return existing == null
-              ? new DeclareTaxRegistrationResult.Declared(candidate, TEST_ATTESTATION_COMMIT)
-              : new DeclareTaxRegistrationResult.Updated(candidate, TEST_ATTESTATION_COMMIT);
+              ? new TaxRegistrationMutationOutcome.Declared(candidate, attestationAppend)
+              : new TaxRegistrationMutationOutcome.Updated(candidate, attestationAppend);
         });
   }
 
@@ -175,9 +178,10 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifec
     return InMemoryBookSessionSupport.withLock(
         lock,
         () -> {
+          requireDirectMutationPermitted();
           return switch (postingAcceptancePolicy.decisionFor(postingDraft, this)) {
             case PostingAcceptancePolicy.Decision.Replay replay ->
-                new PostingCommitResult.Committed(replay.postingFact(), true, null);
+                new PostingCommitResult.Replayed(replay.postingFact());
             case PostingAcceptancePolicy.Decision.Rejected rejected ->
                 new PostingCommitResult.Rejected(rejected.rejection());
             case PostingAcceptancePolicy.Decision.Accepted accepted -> {
@@ -208,7 +212,10 @@ abstract class AbstractInMemoryPostingSession extends AbstractInMemoryOwnedLifec
               inventoryMovementsByPostingId.put(
                   postingFact.postingId(), accepted.acceptedPosting().inventoryMovements());
               inventoryStateByAccount.putAll(accepted.acceptedPosting().resultingInventoryStates());
-              yield new PostingCommitResult.Committed(postingFact, false, null);
+              yield new PostingCommitResult.Appended(
+                  postingFact,
+                  new AttestationAppendOutcome.Appended(
+                      AttestationVerificationTestFixtures.verifiedAppend()));
             }
           };
         });

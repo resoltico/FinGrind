@@ -7,7 +7,7 @@ import java.nio.file.Path;
 import java.util.Objects;
 
 /** Administrative CLI commands that create or reconfigure book state. */
-record GenerateBookKeyFile(Path bookKeyFilePath, boolean tightenParents, OutputMode outputMode)
+record GenerateBookKeyFile(Path bookKeyFilePath, OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
   GenerateBookKeyFile {
     Objects.requireNonNull(bookKeyFilePath, "bookKeyFilePath");
@@ -18,13 +18,12 @@ record GenerateBookKeyFile(Path bookKeyFilePath, boolean tightenParents, OutputM
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
-        .runGenerateBookKeyFileCommand(bookKeyFilePath, tightenParents, outputMode);
+        .runGenerateBookKeyFileCommand(bookKeyFilePath, outputMode);
   }
 }
 
 /** Administrative CLI commands that create or reconfigure book state. */
-record OpenBook(
-    BookAccess bookAccess, OpenBookCommand command, boolean tightenParents, OutputMode outputMode)
+record OpenBook(BookAccess bookAccess, OpenBookCommand command, OutputMode outputMode)
     implements CliCommand.OutputModeCommand {
   OpenBook {
     Objects.requireNonNull(bookAccess, "bookAccess");
@@ -36,7 +35,7 @@ record OpenBook(
   public int execute(CliExecutionContext executionContext) {
     return Objects.requireNonNull(executionContext, "executionContext")
         .administrative()
-        .runOpenBookCommand(bookAccess, command, tightenParents, outputMode);
+        .runOpenBookCommand(bookAccess, command, outputMode);
   }
 }
 

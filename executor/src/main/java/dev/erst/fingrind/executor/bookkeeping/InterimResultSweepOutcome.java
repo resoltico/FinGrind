@@ -10,14 +10,14 @@ public sealed interface InterimResultSweepOutcome
 
   /** Successful durable interim-result-sweep outcome carrying the stored sweep fact. */
   record Transferred(
-      SweptInterimResult sweptInterimResult, @Nullable AttestationCommit attestationCommit)
+      RecordedInterimResultSweep sweptInterimResult, @Nullable AttestationCommit attestationCommit)
       implements InterimResultSweepOutcome {
     public Transferred {
       Objects.requireNonNull(sweptInterimResult, "sweptInterimResult");
     }
 
     /** Creates a pre-persistence sweep decision with no attestation append yet. */
-    public Transferred(SweptInterimResult sweptInterimResult) {
+    public Transferred(RecordedInterimResultSweep sweptInterimResult) {
       this(sweptInterimResult, null);
     }
   }

@@ -30,7 +30,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests for CLI statement and report renderers. */
-class CliStatementOutputRendererTest extends FinGrindCliTestSupport {
+class CliStatementOutputRendererTest extends CliWorkflowFixtureSupport {
   @Test
   void renderStatementAndFormatterHelpers_coverAllAccountTypeAndEmptySectionBranches() {
     assertEquals(

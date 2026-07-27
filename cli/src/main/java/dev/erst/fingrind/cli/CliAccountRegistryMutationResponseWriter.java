@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliDeclareAccountPayload;
 import dev.erst.fingrind.contract.bookkeeping.AmendAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
@@ -22,28 +23,28 @@ final class CliAccountRegistryMutationResponseWriter {
       case DeclareAccountResult.Declared declared ->
           writeAccountSuccess(
               OperationId.DECLARE_ACCOUNT,
-              "declared",
+              CliDeclareAccountPayload.Outcome.DECLARED,
               declared.account(),
               declared.attestationCommit(),
               outputMode);
       case DeclareAccountResult.Reactivated reactivated ->
           writeAccountSuccess(
               OperationId.DECLARE_ACCOUNT,
-              "reactivated",
+              CliDeclareAccountPayload.Outcome.REACTIVATED,
               reactivated.account(),
               reactivated.attestationCommit(),
               outputMode);
       case DeclareAccountResult.Renamed renamed ->
           writeAccountSuccess(
               OperationId.DECLARE_ACCOUNT,
-              "renamed",
+              CliDeclareAccountPayload.Outcome.RENAMED,
               renamed.account(),
               renamed.attestationCommit(),
               outputMode);
       case DeclareAccountResult.Unchanged unchanged ->
           writeAccountSuccess(
               OperationId.DECLARE_ACCOUNT,
-              "unchanged",
+              CliDeclareAccountPayload.Outcome.UNCHANGED,
               unchanged.account(),
               unchanged.attestationCommit(),
               outputMode);
@@ -57,14 +58,14 @@ final class CliAccountRegistryMutationResponseWriter {
       case AmendAccountResult.Amended amended ->
           writeAccountSuccess(
               OperationId.AMEND_ACCOUNT,
-              "amended",
+              CliDeclareAccountPayload.Outcome.AMENDED,
               amended.account(),
               amended.attestationCommit(),
               outputMode);
       case AmendAccountResult.Unchanged unchanged ->
           writeAccountSuccess(
               OperationId.AMEND_ACCOUNT,
-              "unchanged",
+              CliDeclareAccountPayload.Outcome.UNCHANGED,
               unchanged.account(),
               unchanged.attestationCommit(),
               outputMode);
@@ -78,14 +79,14 @@ final class CliAccountRegistryMutationResponseWriter {
       case RetireAccountResult.Retired retired ->
           writeAccountSuccess(
               OperationId.RETIRE_ACCOUNT,
-              "retired",
+              CliDeclareAccountPayload.Outcome.RETIRED,
               retired.account(),
               retired.attestationCommit(),
               outputMode);
       case RetireAccountResult.Unchanged unchanged ->
           writeAccountSuccess(
               OperationId.RETIRE_ACCOUNT,
-              "unchanged",
+              CliDeclareAccountPayload.Outcome.UNCHANGED,
               unchanged.account(),
               unchanged.attestationCommit(),
               outputMode);
@@ -96,7 +97,7 @@ final class CliAccountRegistryMutationResponseWriter {
 
   private void writeAccountSuccess(
       OperationId operationId,
-      String outcome,
+      CliDeclareAccountPayload.Outcome outcome,
       DeclaredAccount account,
       @org.jspecify.annotations.Nullable AttestationCommit attestationCommit,
       OutputMode outputMode) {

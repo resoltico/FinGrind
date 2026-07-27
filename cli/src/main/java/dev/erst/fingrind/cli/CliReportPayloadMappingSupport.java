@@ -1,6 +1,6 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.cli.json.CliAdministrationJsonModels;
+import dev.erst.fingrind.cli.json.CliBookInspectionJsonModels;
 import dev.erst.fingrind.cli.json.CliReportJsonModels;
 import dev.erst.fingrind.cli.json.CliReportValueJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
@@ -40,7 +40,7 @@ final class CliReportPayloadMappingSupport {
         date(range.effectiveDateFrom().orElse(null)), date(range.effectiveDateTo().orElse(null)));
   }
 
-  static CliAdministrationJsonModels.BookIdentityPayload bookIdentity(BookIdentity bookIdentity) {
+  static CliBookInspectionJsonModels.BookIdentityPayload bookIdentity(BookIdentity bookIdentity) {
     return CliBookInspectionPayloadMapper.bookIdentityPayload(bookIdentity);
   }
 

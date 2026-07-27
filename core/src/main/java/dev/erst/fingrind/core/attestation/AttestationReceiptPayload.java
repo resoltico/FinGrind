@@ -9,6 +9,16 @@ import java.util.UUID;
 
 /** Canonical non-mutating receipt payload that anchors one operation head. */
 final class AttestationReceiptPayload implements AttestationPayload {
+  private static final String DOMAIN_TAG = "FGATTRC1";
+  static final int ENCODED_BYTE_COUNT =
+      DOMAIN_TAG.length()
+          + Byte.BYTES
+          + (Long.BYTES * 2)
+          + Long.BYTES
+          + AttestationHash.BYTE_LENGTH
+          + AttestationTextEncoding.INSTANT_ENCODED_BYTE_COUNT
+          + Byte.BYTES
+          + AttestationAlgorithm.ED25519.id().length();
   private final UUID bookId;
   private final BigInteger operationOrder;
   private final AttestationHash operationHead;
@@ -53,7 +63,7 @@ final class AttestationReceiptPayload implements AttestationPayload {
   }
 
   static AttestationReceiptPayload decode(AttestationByteReader input) {
-    input.requireAscii("FGATTRC1");
+    input.requireAscii(DOMAIN_TAG);
     if (input.readUnsigned(Byte.BYTES).intValueExact() != 1) {
       throw new AttestationAuthorizationException(
           AttestationAuthorizationFailure.UNSUPPORTED_VERSION);
@@ -69,8 +79,8 @@ final class AttestationReceiptPayload implements AttestationPayload {
 
   @Override
   public byte[] encoded() {
-    ByteArrayOutputStream output = new ByteArrayOutputStream(97);
-    AttestationTextEncoding.appendAscii(output, "FGATTRC1");
+    ByteArrayOutputStream output = new ByteArrayOutputStream(ENCODED_BYTE_COUNT);
+    AttestationTextEncoding.appendAscii(output, DOMAIN_TAG);
     AttestationUnsignedEncoding.appendByte(output, 1, "receiptVersion");
     AttestationEncoding.appendUuid(output, bookId);
     AttestationUnsignedEncoding.appendUnsigned(

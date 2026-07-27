@@ -20,6 +20,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStar
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejectionSemantics;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRegistryDependency;
 import dev.erst.fingrind.core.AccountTaxonomy;
@@ -241,6 +242,12 @@ class RejectionNarrativeTest {
             .contains("will not restore a book from itself"));
     assertTrue(
         RejectionNarrative.message(
+                new BookMaintenanceRejection.PairTargetsConflict(
+                    hint(java.nio.file.Path.of("books/acme.sqlite")),
+                    hint(java.nio.file.Path.of("books/acme.book-key"))))
+            .contains("distinct final targets"));
+    assertTrue(
+        RejectionNarrative.message(
                 new BookMaintenanceRejection.ArtifactPathInvalid(
                     BookMaintenanceArtifactRole.BACKUP_TARGET,
                     hint(java.nio.file.Path.of("backup/acme.sqlite")),
@@ -272,6 +279,13 @@ class RejectionNarrativeTest {
                 new BookMaintenanceRejection.BookDestinationOccupied(
                     hint(java.nio.file.Path.of("books/acme.sqlite"))))
             .contains("will not replace it"));
+    assertTrue(
+        RejectionNarrative.message(
+                new BookMaintenanceRejection.RecoveryPending(
+                    OperationId.RESTORE_BOOK,
+                    hint(java.nio.file.Path.of("books/acme.sqlite")),
+                    hint(java.nio.file.Path.of("books/acme.book-key"))))
+            .contains("complete original inputs"));
     assertTrue(
         RejectionNarrative.message(
                 new BookMaintenanceRejection.ArtifactVerificationFailed(

@@ -1,6 +1,6 @@
 package dev.erst.fingrind.core.attestation;
 
-/** Closed typed outcomes for historical attestation authorization. */
+/** Closed typed outcomes for attestation authorization at a resolving position. */
 public enum AttestationAuthorizationFailure {
   UNSUPPORTED_VERSION("attestation-unsupported-version"),
   PREIMAGE_INVALID("attestation-preimage-invalid"),

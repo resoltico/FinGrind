@@ -7,6 +7,7 @@ import java.util.UUID;
 /** One principal/key/signature entry in a canonical attestation envelope. */
 final class AttestationSignatureEntry {
   static final int SIGNATURE_BYTE_LENGTH = 64;
+  static final int ENCODED_BYTE_COUNT = 16 + AttestationHash.BYTE_LENGTH + SIGNATURE_BYTE_LENGTH;
   private final UUID principalId;
   private final AttestationHash keyId;
   private final byte[] signature;

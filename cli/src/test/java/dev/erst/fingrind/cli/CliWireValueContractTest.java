@@ -15,7 +15,8 @@ import dev.erst.fingrind.contract.protocol.PlanTransactionMode;
 import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
 import dev.erst.fingrind.contract.protocol.PublicCliBundleTarget;
 import dev.erst.fingrind.contract.runtime.BookInspection;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.CommitGuarantee;
+import dev.erst.fingrind.contract.runtime.InitializationRequirement;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStepStatus;
@@ -80,8 +81,8 @@ class CliWireValueContractTest {
         NormalBalance.values(),
         JournalLine.EntrySide.values(),
         BookInspection.Status.values(),
-        ContractResponse.InitializationRequirement.values(),
-        ContractResponse.CommitGuarantee.values(),
+        InitializationRequirement.values(),
+        CommitGuarantee.values(),
         LedgerPlanStatus.values(),
         LedgerStepStatus.values(),
         SqliteCompileOptionsVerificationStatus.values(),

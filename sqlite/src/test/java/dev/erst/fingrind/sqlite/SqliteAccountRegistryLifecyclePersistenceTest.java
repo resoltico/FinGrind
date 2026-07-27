@@ -7,7 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
-import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.contract.tax.TaxApplicationKind;
 import dev.erst.fingrind.contract.tax.TaxCode;
 import dev.erst.fingrind.contract.tax.TaxCodeDefinition;
@@ -33,10 +32,10 @@ import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryLifecycleRejection;
 import dev.erst.fingrind.executor.bookkeeping.AccountRetirementOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
+import dev.erst.fingrind.executor.bookkeeping.TaxRegistrationMutationOutcome;
 import dev.erst.fingrind.executor.spi.PostingCommitResult;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
@@ -152,7 +151,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
       assertInstanceOf(
-          PostingCommitResult.Committed.class,
+          PostingCommitResult.Appended.class,
           commitPosting(
               postingFactStore,
               postingFact("posting-1", "posting-lifecycle-1", Optional.empty(), Optional.empty())));
@@ -161,7 +160,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
           assertInstanceOf(
               AccountAmendmentOutcome.Rejected.class,
               postingFactStore
-                  .storeMutationOperations()
+                  .storeAccountRegistryMutationOperations()
                   .amendAccount(
                       nonCurrentAssetAmendment(cashAccountCode),
                       AMENDED_AT,
@@ -175,7 +174,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
           assertInstanceOf(
               AccountRetirementOutcome.Rejected.class,
               postingFactStore
-                  .storeMutationOperations()
+                  .storeAccountRegistryMutationOperations()
                   .retireAccount(
                       cashAccountCode, RETIRED_AT, SqliteAttestationTestSupport.authorizer()));
       assertEquals(
@@ -193,9 +192,9 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
       openBookWithNoDeclaredAccounts(postingFactStore);
       declareTaxAccounts(postingFactStore);
       assertInstanceOf(
-          DeclareTaxRegistrationResult.Declared.class,
+          TaxRegistrationMutationOutcome.Declared.class,
           postingFactStore
-              .storeMutationOperations()
+              .storeAdministrationMutationOperations()
               .declareTaxRegistration(
                   taxRegistration(), DECLARED_AT, SqliteAttestationTestSupport.authorizer()));
 
@@ -203,7 +202,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
           assertInstanceOf(
               AccountAmendmentOutcome.Rejected.class,
               postingFactStore
-                  .storeMutationOperations()
+                  .storeAccountRegistryMutationOperations()
                   .amendAccount(
                       currentLiabilityAmendment(payableAccountCode),
                       AMENDED_AT,
@@ -214,7 +213,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
           assertInstanceOf(
               AccountRetirementOutcome.Rejected.class,
               postingFactStore
-                  .storeMutationOperations()
+                  .storeAccountRegistryMutationOperations()
                   .retireAccount(
                       payableAccountCode, RETIRED_AT, SqliteAttestationTestSupport.authorizer())),
           payableAccountCode,
@@ -239,7 +238,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
           assertInstanceOf(
               AccountAmendmentOutcome.Rejected.class,
               postingFactStore
-                  .storeMutationOperations()
+                  .storeAccountRegistryMutationOperations()
                   .amendAccount(
                       currentAssetHeaderAmendment(parentAccountCode),
                       AMENDED_AT,
@@ -267,7 +266,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
           assertInstanceOf(
               AccountAmendmentOutcome.Rejected.class,
               postingFactStore
-                  .storeMutationOperations()
+                  .storeAccountRegistryMutationOperations()
                   .amendAccount(
                       nonCurrentAssetAmendment(contraTargetAccountCode),
                       AMENDED_AT,
@@ -278,7 +277,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
           assertInstanceOf(
               AccountRetirementOutcome.Rejected.class,
               postingFactStore
-                  .storeMutationOperations()
+                  .storeAccountRegistryMutationOperations()
                   .retireAccount(
                       contraTargetAccountCode,
                       RETIRED_AT,
@@ -289,7 +288,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
           assertInstanceOf(
               AccountRetirementOutcome.Rejected.class,
               postingFactStore
-                  .storeMutationOperations()
+                  .storeAccountRegistryMutationOperations()
                   .retireAccount(
                       parentAccountCode, RETIRED_AT, SqliteAttestationTestSupport.authorizer())),
           parentAccountCode,
@@ -306,7 +305,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
           new AccountAmendmentOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
           postingFactStore
-              .storeMutationOperations()
+              .storeAccountRegistryMutationOperations()
               .amendAccount(
                   nonCurrentAssetAmendment(accountCode),
                   AMENDED_AT,
@@ -315,13 +314,13 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
           new AccountRetirementOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
           postingFactStore
-              .storeMutationOperations()
+              .storeAccountRegistryMutationOperations()
               .retireAccount(accountCode, RETIRED_AT, SqliteAttestationTestSupport.authorizer()));
     }
 
     Path blankBookPath = tempDirectory.resolve("account-lifecycle-blank.sqlite");
     try {
-      Files.createFile(blankBookPath);
+      SqliteBookFileSecurity.createNewOwnerOnlyBookFile(blankBookPath);
     } catch (IOException exception) {
       throw new UncheckedIOException(exception);
     }
@@ -340,7 +339,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
           new AccountAmendmentOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
           postingFactStore
-              .storeMutationOperations()
+              .storeAccountRegistryMutationOperations()
               .amendAccount(
                   nonCurrentAssetAmendment(accountCode),
                   AMENDED_AT,
@@ -349,7 +348,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
           new AccountRetirementOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
           postingFactStore
-              .storeMutationOperations()
+              .storeAccountRegistryMutationOperations()
               .retireAccount(accountCode, RETIRED_AT, SqliteAttestationTestSupport.authorizer()));
     }
 
@@ -360,7 +359,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
           new AccountAmendmentOutcome.Rejected(
               new AccountRegistryLifecycleRejection.AccountNotFound(accountCode)),
           postingFactStore
-              .storeMutationOperations()
+              .storeAccountRegistryMutationOperations()
               .amendAccount(
                   nonCurrentAssetAmendment(accountCode),
                   AMENDED_AT,
@@ -369,7 +368,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
           new AccountRetirementOutcome.Rejected(
               new AccountRegistryLifecycleRejection.AccountNotFound(accountCode)),
           postingFactStore
-              .storeMutationOperations()
+              .storeAccountRegistryMutationOperations()
               .retireAccount(accountCode, RETIRED_AT, SqliteAttestationTestSupport.authorizer()));
       assertEquals(
           0,
@@ -397,12 +396,11 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
       AtomicReference<SqliteNativeDatabase> realDatabase =
           new AtomicReference<>(requireStoreDatabase(postingFactStore));
 
-      try (StoreDatabaseSwap ignored =
-          swapStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath))) {
+      try (StoreDatabaseSwap ignored = swapStoreDatabase(postingFactStore, staleDatabaseHandle())) {
         assertNativeFailure(
             () ->
                 postingFactStore
-                    .storeMutationOperations()
+                    .storeAccountRegistryMutationOperations()
                     .amendAccount(
                         nonCurrentAssetAmendment(accountCode),
                         AMENDED_AT,
@@ -411,12 +409,11 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
       } catch (IOException exception) {
         throw new UncheckedIOException(exception);
       }
-      try (StoreDatabaseSwap ignored =
-          swapStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath))) {
+      try (StoreDatabaseSwap ignored = swapStoreDatabase(postingFactStore, staleDatabaseHandle())) {
         assertNativeFailure(
             () ->
                 postingFactStore
-                    .storeMutationOperations()
+                    .storeAccountRegistryMutationOperations()
                     .retireAccount(
                         accountCode, RETIRED_AT, SqliteAttestationTestSupport.authorizer()),
             "Failed to retire SQLite book account.");
@@ -437,7 +434,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
         assertRuntimeFailure(
             () ->
                 postingFactStore
-                    .storeMutationOperations()
+                    .storeAccountRegistryMutationOperations()
                     .amendAccount(
                         nonCurrentAssetAmendment(accountCode),
                         AMENDED_AT,
@@ -445,7 +442,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
         assertRuntimeFailure(
             () ->
                 postingFactStore
-                    .storeMutationOperations()
+                    .storeAccountRegistryMutationOperations()
                     .retireAccount(
                         accountCode, RETIRED_AT, SqliteAttestationTestSupport.authorizer()));
       }
@@ -466,8 +463,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
   void openingAndAccountDeclaration_rollBackAndPropagateStorageFailures() {
     Path bookPath = tempDirectory.resolve("opening-and-declaration-storage-failures.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
-      try (StoreDatabaseSwap ignored =
-          swapStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath))) {
+      try (StoreDatabaseSwap ignored = swapStoreDatabase(postingFactStore, staleDatabaseHandle())) {
         assertNativeFailure(
             () ->
                 postingFactStore.openAttestedBook(
@@ -489,12 +485,11 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
               new AccountName("Cash reserve"),
               AccountType.ASSET,
               financialPositionTaxonomy(FinancialPositionLineClassification.CURRENT_ASSET));
-      try (StoreDatabaseSwap ignored =
-          swapStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath))) {
+      try (StoreDatabaseSwap ignored = swapStoreDatabase(postingFactStore, staleDatabaseHandle())) {
         assertNativeFailure(
             () ->
                 postingFactStore
-                    .storeMutationOperations()
+                    .storeAccountRegistryMutationOperations()
                     .declareAccount(
                         declaration, DECLARED_AT, SqliteAttestationTestSupport.authorizer()),
             "Failed to declare SQLite book account.");
@@ -517,7 +512,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
                 IllegalStateException.class,
                 () ->
                     postingFactStore
-                        .storeMutationOperations()
+                        .storeAccountRegistryMutationOperations()
                         .declareAccount(
                             declaration, DECLARED_AT, SqliteAttestationTestSupport.authorizer()));
         assertEquals("forced declaration lookup failure", failure.getMessage());
@@ -540,12 +535,11 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
       AtomicReference<SqliteNativeDatabase> realDatabase =
           new AtomicReference<>(requireStoreDatabase(postingFactStore));
 
-      try (StoreDatabaseSwap ignored =
-          swapStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath))) {
+      try (StoreDatabaseSwap ignored = swapStoreDatabase(postingFactStore, staleDatabaseHandle())) {
         assertNativeFailure(
             () ->
                 postingFactStore
-                    .storeMutationOperations()
+                    .storeAdministrationMutationOperations()
                     .declareTaxRegistration(
                         taxRegistration(), DECLARED_AT, SqliteAttestationTestSupport.authorizer()),
             "Failed to declare SQLite tax registration.");
@@ -568,7 +562,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
                 IllegalStateException.class,
                 () ->
                     postingFactStore
-                        .storeMutationOperations()
+                        .storeAdministrationMutationOperations()
                         .declareTaxRegistration(
                             taxRegistration(),
                             DECLARED_AT,
@@ -595,7 +589,7 @@ class SqliteAccountRegistryLifecyclePersistenceTest extends SqlitePostingFactSto
                     IllegalStateException.class,
                     () ->
                         postingFactStore
-                            .storeMutationOperations()
+                            .storeAdministrationMutationOperations()
                             .declareTaxRegistration(
                                 taxRegistration(),
                                 DECLARED_AT,

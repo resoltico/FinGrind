@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.discovery.ContractRequestShapes;
 import dev.erst.fingrind.contract.discovery.HelpDescriptor;
@@ -286,6 +287,7 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
         requestShapes.path("declareAccount").isMissingNode(), requestShapes.toPrettyString());
     JsonNode ledgerPlan = requestShapes.path("ledgerPlan");
     assertTrue(ledgerPlan.isObject(), requestShapes.toPrettyString());
+    assertPlanAttestationOutcomeTable(ledgerPlan.path("execution"));
     JsonNode postingModel = ledgerPlan.path("postingModel");
     assertTrue(postingModel.isObject(), ledgerPlan.toPrettyString());
     assertTrue(
@@ -477,6 +479,10 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
     assertTrue(fullContract.path("currencyModel").isObject());
     assertTrue(fullContract.path("extensionSurface").isMissingNode());
     assertTrue(fullContract.path("quickStart").isArray());
+    assertTrue(
+        fullContract.path("requestShapes").isMissingNode(),
+        "The exhaustive machine request contract belongs to capabilities, not help overview.");
+    assertTrue(payload.path("capabilitiesHint").stringValue().contains("capabilities"));
   }
 
   @Test
@@ -663,11 +669,16 @@ class FinGrindCliDiscoveryHelpCommandTest extends FinGrindCliDiscoveryHelpComman
 
   @Test
   void run_doesNotTouchWorkflowForDiscoveryCommands() {
-    RecordingWorkflow workflow =
-        new RecordingWorkflow(
+    CliRecordingWorkflow workflow =
+        new CliRecordingWorkflow(
             openedBookResult(Instant.parse("2026-04-07T12:00:00Z")),
             new RekeyBookResult.Rekeyed(
-                java.nio.file.Path.of("unused.sqlite"), attestationCommit()),
+                java.nio.file.Path.of("unused.sqlite"),
+                java.nio.file.Path.of("unused.key"),
+                attestationCommit(),
+                ProtectedBookPairPublicationCompletion.PUBLISHED,
+                CliFixtureSupport.pairPublicationRetention(
+                    java.nio.file.Path.of("unused.sqlite"), java.nio.file.Path.of("unused.key"))),
             new DeclareAccountResult.Declared(
                 declaredAccount(
                     "1000",

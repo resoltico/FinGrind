@@ -19,7 +19,9 @@ public final class AttestationPeriodCloseMutationProjection {
       int sweepOrder,
       List<CurrencyBalance> sweptTotals,
       List<AttestationClosePostingSnapshot> postings) {
-    String checkedOperationKind = Objects.requireNonNull(operationKind, "operationKind");
+    String checkedOperationKind =
+        requireOperationKind(
+            operationKind, AttestationOperationKind.INTERIM_RESULT_SWEEP.wireToken());
     ReportingPeriod checkedPeriod = Objects.requireNonNull(reportingPeriod, "reportingPeriod");
     String checkedResultHoldingAccountCode =
         requireText(resultHoldingAccountCode, "resultHoldingAccountCode");
@@ -45,17 +47,30 @@ public final class AttestationPeriodCloseMutationProjection {
       String resultHoldingAccountCode,
       String retainedResultAccountCode,
       int closeOrder,
-      List<AttestationClosePostingSnapshot> postings) {
-    String checkedOperationKind = Objects.requireNonNull(operationKind, "operationKind");
+      @org.jspecify.annotations.Nullable AttestationInterimResultSweepEffect derivedInterimSweep,
+      List<AttestationClosePostingSnapshot> closePostings) {
+    String checkedOperationKind =
+        requireOperationKind(operationKind, AttestationOperationKind.FISCAL_YEAR_CLOSE.wireToken());
     ReportingPeriod checkedPeriod = Objects.requireNonNull(reportingPeriod, "reportingPeriod");
     String checkedCapitalAccountCode = requireText(capitalAccountCode, "capitalAccountCode");
     String checkedResultHoldingAccountCode =
         requireText(resultHoldingAccountCode, "resultHoldingAccountCode");
     String checkedRetainedResultAccountCode =
         requireText(retainedResultAccountCode, "retainedResultAccountCode");
-    List<AttestationClosePostingSnapshot> checkedPostings = requiredPostings(postings);
+    AttestationInterimResultSweepEffect checkedDerivedInterimSweep =
+        derivedInterimSweep == null
+            ? null
+            : Objects.requireNonNull(derivedInterimSweep, "derivedInterimSweep");
+    List<AttestationClosePostingSnapshot> checkedClosePostings = requiredPostings(closePostings);
     requirePositiveOrder(closeOrder, "closeOrder");
-    requirePostingKind(checkedPostings, checkedOperationKind);
+    requirePostingKind(checkedClosePostings, checkedOperationKind);
+    if (checkedDerivedInterimSweep != null) {
+      requireDerivedInterimSweepBelongsToFiscalYearClose(
+          checkedDerivedInterimSweep, checkedPeriod, checkedResultHoldingAccountCode);
+      requirePostingKind(
+          checkedDerivedInterimSweep.postings(),
+          AttestationOperationKind.INTERIM_RESULT_SWEEP.wireToken());
+    }
     return AttestationPeriodClosePreimageProjection.projectFiscalYearClose(
         checkedOperationKind,
         checkedPeriod,
@@ -63,7 +78,8 @@ public final class AttestationPeriodCloseMutationProjection {
         checkedResultHoldingAccountCode,
         checkedRetainedResultAccountCode,
         closeOrder,
-        checkedPostings);
+        checkedDerivedInterimSweep,
+        checkedClosePostings);
   }
 
   private static List<AttestationClosePostingSnapshot> optionalPostings(
@@ -93,9 +109,33 @@ public final class AttestationPeriodCloseMutationProjection {
     }
   }
 
+  private static String requireOperationKind(String operationKind, String expectedOperationKind) {
+    String normalizedOperationKind = tokenValue(operationKind);
+    if (!expectedOperationKind.equals(normalizedOperationKind)) {
+      throw new IllegalArgumentException(
+          "The reporting-period-close projection must use its declared attestation operation kind.");
+    }
+    return normalizedOperationKind;
+  }
+
   private static void requirePositiveOrder(int value, String name) {
     if (value < 1) {
       throw new IllegalArgumentException(name + " must be at least one.");
+    }
+  }
+
+  private static void requireDerivedInterimSweepBelongsToFiscalYearClose(
+      AttestationInterimResultSweepEffect derivedInterimSweep,
+      ReportingPeriod fiscalYearPeriod,
+      String fiscalYearResultHoldingAccountCode) {
+    ReportingPeriod sweepPeriod = derivedInterimSweep.reportingPeriod();
+    if (sweepPeriod.effectiveDateFrom().isBefore(fiscalYearPeriod.effectiveDateFrom())
+        || !sweepPeriod.effectiveDateTo().equals(fiscalYearPeriod.effectiveDateTo())
+        || !derivedInterimSweep
+            .resultHoldingAccountCode()
+            .equals(fiscalYearResultHoldingAccountCode)) {
+      throw new IllegalArgumentException(
+          "A fiscal-year close may contain only its own result-holding interim sweep.");
     }
   }
 

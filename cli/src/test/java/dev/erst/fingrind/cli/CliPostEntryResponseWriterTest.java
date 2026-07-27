@@ -22,7 +22,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 
-/** Unit tests for {@link CliResponseWriter}. */
+/** Unit tests for {@link CliMutationResponseWriterFixture}. */
 class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
   @Test
   void mutationWriter_rendersPreflightAndCommittedTextAndRejectsCsv() {
@@ -63,7 +63,8 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
   @Test
   void writePostEntryResult_writesPreflightEnvelope() throws java.io.IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    CliMutationResponseWriterFixture responseWriter =
+        new CliMutationResponseWriterFixture(utf8PrintStream(outputStream));
     responseWriter.writePostEntryResult(
         CliPostEntryResultFixtures.preflightAccepted(
             new IdempotencyKey("idem-1"), LocalDate.parse("2026-04-07")));
@@ -77,7 +78,8 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
   @Test
   void writePostEntryResult_writesCommittedEnvelope() throws java.io.IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    CliMutationResponseWriterFixture responseWriter =
+        new CliMutationResponseWriterFixture(utf8PrintStream(outputStream));
     responseWriter.writePostEntryResult(
         CliPostEntryResultFixtures.committed(
             new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"),
@@ -106,7 +108,8 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
             attestationCommit);
 
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    new CliResponseWriter(utf8PrintStream(outputStream)).writePostEntryResult(committed);
+    new CliMutationResponseWriterFixture(utf8PrintStream(outputStream))
+        .writePostEntryResult(committed);
     assertJsonContains(outputStream, "\"attestationCommit\"");
     assertJsonContains(outputStream, "\"operationOrder\":\"1\"");
     assertTrue(
@@ -138,12 +141,25 @@ class CliPostEntryResponseWriterTest extends CliResponseWriterTestSupport {
                 CliResolvedJournalPayloadMapper.resolvedJournalPayload(
                     CliPostEntryResultFixtures.resolvedJournal()),
                 new CliAttestationJsonModels.AttestationCommitPayload("1", "a".repeat(64))));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliMutationJsonModels.CommittedPostingPayload(
+                "posting-1",
+                "idem-fresh",
+                "2026-04-07",
+                "2026-04-07T10:15:30Z",
+                false,
+                CliResolvedJournalPayloadMapper.resolvedJournalPayload(
+                    CliPostEntryResultFixtures.resolvedJournal()),
+                null));
   }
 
   @Test
   void writePostEntryResult_writesRejectedEnvelopeWithStructuredDetails() {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    CliMutationResponseWriterFixture responseWriter =
+        new CliMutationResponseWriterFixture(utf8PrintStream(outputStream));
     PostEntryResult.CommitRejected rejected =
         new PostEntryResult.CommitRejected(
             new IdempotencyKey("idem-1"),

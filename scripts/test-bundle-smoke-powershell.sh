@@ -79,6 +79,18 @@ grep -Fq 'verify-bundle-archive-contract.py' "${bundle_smoke_acceptance_ps1}" ||
     "bundle-smoke-acceptance.ps1 no longer delegates bundle archive verification to the Python owner"
 grep -Fq 'release-smoke-workflow.py' "${bundle_smoke_office_worker_ps1}" || die \
     "bundle-smoke-office-worker.ps1 no longer delegates to the shared release smoke workflow owner"
+grep -Fq 'Get-RepoUvExecutable' "${bundle_smoke_office_worker_ps1}" || die \
+    "bundle-smoke-office-worker.ps1 no longer resolves the pinned uv launcher"
+grep -Fq -- '--with-requirements' "${bundle_smoke_office_worker_ps1}" || die \
+    "bundle-smoke-office-worker.ps1 no longer provisions release-smoke dependencies through uv"
+grep -Fq 'requirements-release-smoke-workflow.txt' "${bundle_smoke_office_worker_ps1}" || die \
+    "bundle-smoke-office-worker.ps1 no longer uses the isolated release-smoke requirements"
+grep -Fq 'fingrindUvVersion=' "${bundle_smoke_office_worker_ps1}" || die \
+    "bundle-smoke-office-worker.ps1 no longer derives the uv version from repository metadata"
+grep -Fq '$versionOutput -eq "uv $requiredVersion"' "${bundle_smoke_office_worker_ps1}" || die \
+    "bundle-smoke-office-worker.ps1 no longer rejects a mismatched uv launcher"
+grep -Fq '$versionOutput.StartsWith("uv $requiredVersion ")' "${bundle_smoke_office_worker_ps1}" || die \
+    "bundle-smoke-office-worker.ps1 no longer accepts the exact uv version with a supported suffix"
 grep -Fq 'Rīga büro' "${bundle_smoke_acceptance_ps1}" || die \
     "bundle-smoke-acceptance.ps1 no longer keeps the Unicode workspace-path coverage seam alive"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_WORK_ROOT' "${bundle_smoke_office_worker_ps1}" || die \

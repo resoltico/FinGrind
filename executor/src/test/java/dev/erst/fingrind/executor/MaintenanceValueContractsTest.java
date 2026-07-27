@@ -7,8 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.ContractFailure;
-import dev.erst.fingrind.core.attestation.AttestationOperationPreimages;
-import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingRequestPublishedLanguageTranslator;
 import dev.erst.fingrind.executor.maintenance.BackupAcknowledgementConflictException;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
@@ -21,7 +19,6 @@ import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import dev.erst.fingrind.executor.spi.StagedRestoredBookPair;
 import java.nio.file.Path;
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -95,56 +92,43 @@ class MaintenanceValueContractsTest {
         () -> AttestedProtectedBookMaintenanceStore.require(new UnattestedStore()));
   }
 
-  @Test
-  void rejectsAggregateAttestationWhenTheTransactionCannotPersistIt() {
-    AttestationPlanOperationAuthorizer authorizer =
-        new AttestationPlanOperationAuthorizer(
-            ignored -> {
-              throw new AssertionError("The aggregate signer must not be invoked.");
-            });
-    authorizer.enterStep(0);
-    authorizer.collectChildMutation(
-        "declare-account", new AttestationOperationPreimages(new byte[] {1}, new byte[] {2}));
-
-    assertThrows(
-        UnsupportedOperationException.class,
-        () ->
-            new UnattestedLedgerPlanTransaction()
-                .appendPlanAttestation(
-                    "plan-id", Instant.parse("2026-07-21T00:00:00Z"), authorizer));
-  }
-
-  /** Exercises the default transaction policy without introducing a persistence implementation. */
-  private static final class UnattestedLedgerPlanTransaction
-      implements dev.erst.fingrind.executor.spi.LedgerPlanTransaction {
-    @Override
-    public void beginLedgerPlanTransaction() {}
-
-    @Override
-    public void commitLedgerPlanTransaction() {}
-
-    @Override
-    public void rollbackLedgerPlanTransaction() {}
-  }
-
   /**
    * A deliberately incomplete store that proves attestation is mandatory at the adapter boundary.
    */
   private static final class UnattestedStore implements ProtectedBookMaintenanceStore {
     @Override
-    public Path normalize(Path path, String argumentName) {
+    public Path normalizeOptionalInspectionArtifact(
+        Path path,
+        String argumentName,
+        dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole artifactRole) {
       throw unsupported();
     }
 
     @Override
-    public PreparedPairPublication preparePairPublication(
-        Path normalizedSecretTargetPath,
+    public Path normalizeFinalTarget(
+        Path path,
+        String argumentName,
+        dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole artifactRole) {
+      throw unsupported();
+    }
+
+    @Override
+    public Path normalizeExistingSource(
+        Path path,
+        String argumentName,
+        dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole artifactRole) {
+      throw unsupported();
+    }
+
+    @Override
+    public WorkflowScopeAcquisition acquireWorkflowScope(
+        WorkflowSourceMembers normalizedSourceMembers,
         Path normalizedBookTargetPath,
-        RestoredBookTargetPolicy bookTargetPolicy,
         dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole
-            bookArtifactRole,
+            bookTargetArtifactRole,
+        Path normalizedSecretTargetPath,
         dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole
-            secretArtifactRole) {
+            secretTargetArtifactRole) {
       throw unsupported();
     }
 
@@ -155,18 +139,6 @@ class MaintenanceValueContractsTest {
 
     @Override
     public List<Path> blockingArtifactsForBackupSource(Path normalizedBackupFilePath) {
-      throw unsupported();
-    }
-
-    @Override
-    public BackupArtifactPairState backupArtifactPairState(
-        Path normalizedBackupArtifactPath, Path normalizedBackupKeyFilePath) {
-      throw unsupported();
-    }
-
-    @Override
-    public void recoverInterruptedBackupPublication(
-        Path normalizedBackupArtifactPath, Path normalizedBackupKeyFilePath) {
       throw unsupported();
     }
 

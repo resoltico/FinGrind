@@ -15,6 +15,7 @@ import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
 import dev.erst.fingrind.contract.workflow.LedgerJournalStep;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerPlanAttestationDisposition;
 import dev.erst.fingrind.contract.workflow.LedgerPlanId;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
@@ -37,7 +38,8 @@ class LedgerPlanFuzzAssertionsTest {
   @TempDir Path tempDirectory;
 
   @Test
-  void workspaceFailures_areReportedAndPreflightDeterminesTheFunctionalCurrency() throws Exception {
+  void workspaceCreationAndAdmissionFailures_areReportedAndPreflightDeterminesTheFunctionalCurrency()
+      throws Exception {
     LedgerPlan preflightPlan =
         CliFuzzFixtures.readLedgerPlan(fullSpectrumLedgerPlan().getBytes(UTF_8));
     assertEquals(
@@ -53,16 +55,10 @@ class LedgerPlanFuzzAssertionsTest {
                   public Path create() throws IOException {
                     throw new IOException("simulated workspace creation failure");
                   }
-
-                  @Override
-                  public void prepare(Path workspace) {}
-
-                  @Override
-                  public void clean(Path workspace) {}
                 }));
 
-    Path preparationRoot = tempDirectory.resolve("preparation-failure");
-    Files.createDirectory(preparationRoot);
+    Path inadmissibleWorkspace = tempDirectory.resolve("inadmissible-workspace");
+    Files.writeString(inadmissibleWorkspace, "not a directory");
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -71,39 +67,10 @@ class LedgerPlanFuzzAssertionsTest {
                 new LedgerPlanFuzzAssertions.LedgerPlanWorkspace() {
                   @Override
                   public Path create() {
-                    return preparationRoot;
-                  }
-
-                  @Override
-                  public void prepare(Path workspace) throws IOException {
-                    throw new IOException("simulated workspace preparation failure");
-                  }
-
-                  @Override
-                  public void clean(Path workspace) throws IOException {
-                    SqliteRoundTripWorkflowResources.deleteRecursively(workspace);
+                    return inadmissibleWorkspace;
                   }
                 }));
-
-    Path cleanupRoot = tempDirectory.resolve("cleanup-failure");
-    Files.createDirectory(cleanupRoot);
-    LedgerPlanFuzzAssertions.cleanWorkspace(
-        cleanupRoot,
-        new LedgerPlanFuzzAssertions.LedgerPlanWorkspace() {
-          @Override
-          public Path create() {
-            return cleanupRoot;
-          }
-
-          @Override
-          public void prepare(Path workspace) {}
-
-          @Override
-          public void clean(Path workspace) throws IOException {
-            throw new IOException("simulated workspace cleanup failure");
-          }
-        });
-    assertTrue(Files.exists(cleanupRoot));
+    assertTrue(Files.isRegularFile(inadmissibleWorkspace));
   }
 
   @Test
@@ -274,6 +241,7 @@ class LedgerPlanFuzzAssertionsTest {
                 Instant.parse("2026-04-07T12:00:00Z"),
                 Instant.parse("2026-04-07T12:00:01Z"),
                 List.of(declareCashStep)),
+            LedgerPlanAttestationDisposition.NO_DURABLE_CHILD_MUTATION,
             null);
 
     IllegalStateException mismatchedPlanId =
@@ -313,6 +281,7 @@ class LedgerPlanFuzzAssertionsTest {
                                     succeededEntry(step.stepId().value(), step.kind(), List.of())),
                         java.util.stream.Stream.of(declareCashStep))
                     .toList()),
+            LedgerPlanAttestationDisposition.NO_DURABLE_CHILD_MUTATION,
             null);
     IllegalStateException overflow =
         assertThrows(
@@ -327,6 +296,7 @@ class LedgerPlanFuzzAssertionsTest {
                 Instant.parse("2026-04-07T12:00:00Z"),
                 Instant.parse("2026-04-07T12:00:01Z"),
                 List.of(succeededEntry("drifted-step", plan.steps().getFirst().kind(), List.of()))),
+            LedgerPlanAttestationDisposition.NO_DURABLE_CHILD_MUTATION,
             null);
     IllegalStateException stepIdDrift =
         assertThrows(
@@ -345,6 +315,7 @@ class LedgerPlanFuzzAssertionsTest {
                         plan.steps().getFirst().stepId().value(),
                         LedgerStepKind.INSPECT_BOOK,
                         List.of()))),
+            LedgerPlanAttestationDisposition.NO_DURABLE_CHILD_MUTATION,
             null);
     IllegalStateException stepKindDrift =
         assertThrows(
@@ -433,6 +404,7 @@ class LedgerPlanFuzzAssertionsTest {
                                 List.of(
                                     LedgerFact.text(
                                         "postingId", "018f0000-0000-7000-8000-000000000002"))))))),
+            LedgerPlanAttestationDisposition.NO_DURABLE_CHILD_MUTATION,
             null);
 
     LedgerPlanFuzzAssertions.ExecutionSnapshot snapshot =
@@ -484,6 +456,7 @@ class LedgerPlanFuzzAssertionsTest {
                     succeededEntry("account-balance", LedgerStepKind.ACCOUNT_BALANCE, List.of()),
                     succeededAssertionEntry(
                         "assert-balance", LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS))),
+            LedgerPlanAttestationDisposition.NO_DURABLE_CHILD_MUTATION,
             null);
 
     LedgerPlanFuzzAssertions.ExecutionSnapshot snapshot =

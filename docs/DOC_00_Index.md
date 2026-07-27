@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: INDEX
-updated: "2026-07-23"
+updated: "2026-07-26"
 route:
   keywords: [fingrind, index, routing, api, symbols, core, contract, executor, sqlite, cli, report-pdf, machine-contract, book-session, tax, account-registry, account-lifecycle, journal, money, quantity, inventory costing, weighted average, posting]
   questions: ["where is the fingrind api documented", "which doc file covers SqliteBookSessions", "which doc file covers RequestProvenance", "which doc file covers ProtocolCatalog", "which doc file covers PdfReportService", "which doc file covers the tax surface", "which doc file covers account lifecycle", "which doc file covers quantity and weighted-average inventory costing primitives"]
@@ -54,6 +54,8 @@ route:
   use [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md) for
   the current hard-break protected-book contract, including
   credential-purpose authorization and closed per-kind effects. Use
+  [DOC_02_VerifiableOperationAttestationEncoding.md](./DOC_02_VerifiableOperationAttestationEncoding.md)
+  for credential custody, signing sessions, and canonical primitive encoding. Use
   [DOC_02_VerifiableOperationAttestationVerification.md](./DOC_02_VerifiableOperationAttestationVerification.md)
   for verifier procedure, compromise review, and deterministic structural failures.
   Use [DOC_02_VerifiableOperationAttestationProfiles.md](./DOC_02_VerifiableOperationAttestationProfiles.md)
@@ -78,7 +80,12 @@ route:
 - Local workflow context:
   use [DOC_02_PostingAndLedgerPlans.md](./DOC_02_PostingAndLedgerPlans.md) for local workflow
   plans, steps, assertions, internal workflow journals, and the published-language translator that
-  projects them outward.
+  projects them outward. Use [DOC_03_BookSessionsAndAdapters.md](./DOC_03_BookSessionsAndAdapters.md)
+  for the deliberately disjoint signed `LedgerPlanTransaction`, `LedgerPlanMutationStore`, and
+  `LedgerPlanExecutionStore` boundary plus the credential-free `LedgerPlanReadStore`,
+  `LedgerPlanReadOnlyTransaction`, and `LedgerPlanReadOnlyExecutionStore` boundary. Each keeps
+  plan execution inside its own protected-book capability without a compatibility bridge between
+  mutation and read-only authority.
 - Adapter/runtime seams:
   use [DOC_03_BookSessionsAndAdapters.md](./DOC_03_BookSessionsAndAdapters.md) for SQLite-backed
   session/runtime types and [DOC_04_CliAndPdfAdapters.md](./DOC_04_CliAndPdfAdapters.md) for CLI
@@ -104,12 +111,13 @@ route:
 | `DOC_01_DecimalBoundaries.md` | exact-money boundary, exact-quantity boundary, and future non-money decimal-domain rules |
 | `DOC_02_Application.md` | routing overview for the split `contract` and `executor` reference spine |
 | `DOC_02_ProtocolAndDiscovery.md` | exported `contract` protocol metadata, runtime/distribution facts, request-field vocabularies, and protected-book format owners |
-| `DOC_02_VerifiableOperationAttestation.md` | current operation, authorization, preimage, and envelope contract for protected-book format 52 |
-| `DOC_02_VerifiableOperationAttestationVerification.md` | current verifier procedure, compromise review, and structural-failure contract for protected-book format 52 |
-| `DOC_02_VerifiableOperationAttestationProfiles.md` | current field-level posting profiles and autonomous system-close derivations for protected-book format 52 |
+| `DOC_02_VerifiableOperationAttestation.md` | current operation, authorization, preimage, and envelope contract for protected-book format 57 |
+| `DOC_02_VerifiableOperationAttestationEncoding.md` | current credential-custody, signing, credential-value, and canonical-byte-primitive contract for protected-book format 57 |
+| `DOC_02_VerifiableOperationAttestationVerification.md` | current verifier procedure, compromise review, and structural-failure contract for protected-book format 57 |
+| `DOC_02_VerifiableOperationAttestationProfiles.md` | current field-level posting profiles and autonomous system-close derivations for protected-book format 57 |
 | `DOC_02_VerifiableOperationAttestationArtifacts.md` | current backup-manifest, artifact-publication, restore, receipt, anchor, and artifact-vector contract |
 | `DOC_02_VerifiableOperationAttestationCorpus.md` | current positive and negative source fixtures, including backup, restore, rekey, system-initiation, and live-CAS coverage |
-| `DOC_02_VerifiableOperationAttestationVectors.md` | byte-for-byte operation-envelope conformance vectors for protected-book format 52 |
+| `DOC_02_VerifiableOperationAttestationVectors.md` | byte-for-byte operation-envelope conformance vectors for protected-book format 57 |
 | `DOC_02_MachineContractAndDescriptors.md` | exported machine-contract assembly, discovery descriptors, templates, workflow scaffolds, and deterministic contract-error owners |
 | `DOC_02_AdministrationAndReports.md` | exported administration/query/report models and exported `executor` administration and read services |
 | `DOC_02_PeriodCloseAndRejections.md` | executor-owned interim-result sweep and fiscal-year close planning plus deterministic administration and read-side rejections |
@@ -122,7 +130,9 @@ route:
 | `DOC_02_IncomeStatementPresentation.md` | exported trading income-statement presentation helpers that keep gross-profit and multi-step section semantics truthful across projections |
 | `DOC_02_SharedReportModel.md` | exported shared report content types plus the family-specific builders that feed every public report projection |
 | `DOC_02_PostingAndLedgerPlans.md` | exported posting, rejection, lineage, ledger-plan, and plan-journal models plus exported `executor` write services |
+| `DOC_02_LedgerPlanVocabulary.md` | stable `execute-plan` wire vocabulary and aggregate-attestation outcomes |
 | `DOC_03_BookSessionsAndAdapters.md` | explicit book-access tuples, committed facts, executor-owned seams, and exported SQLite adapter/runtime types |
+| `DOC_03_SqliteRuntimeAndSessions.md` | packaged SQLite runtime, failure taxonomy, and workflow-shaped session APIs |
 | `DOC_04_CliAndPdfAdapters.md` | public CLI process entrypoint and exported PDF-report adapter |
 
 ## Symbol Routing
@@ -220,6 +230,8 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `AttestationRegistryInspection.Credential` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationBookInspection` And `AttestationRegistryInspection` |
 | `AttestationRegistryInspection.PrincipalCapability` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationBookInspection` And `AttestationRegistryInspection` |
 | `AttestationRegistryInspection.SystemWorkflowPolicy` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationBookInspection` And `AttestationRegistryInspection` |
+| `AttestationInterimResultSweepEffect` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationInterimResultSweepEffect` |
+| `AttestationReviewWindowException` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationReviewWindowException` |
 | `BalanceMath` | `DOC_01_Core.md` | `BalanceMath` |
 | `BalanceSide` | `DOC_01_Core.md` | `BalanceSide` |
 | `BookDoctrine` | `DOC_01_Core_BookDoctrine.md` | `BookDoctrine` |
@@ -284,9 +296,9 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `StatementLineKind` | `DOC_01_Core.md` | `StatementLineKind` |
 | `WireValue` | `DOC_01_Core_EvidenceAndWire.md` | `WireValue` |
 | `BookkeepingKernelFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `BookkeepingKernelFacts`, `ReportCapabilityFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `ApplicationIdentity` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ApplicationIdentity` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
 | `AppliedTax` | `DOC_02_PostingAndLedgerPlans.md` | `TaxSelection` And `AppliedTax` |
-| `ArtifactOutputDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ArtifactOutputDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
 | `BookAccountRegistryFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `BookkeepingKernelFacts`, `ReportCapabilityFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
 | `BookBoundaryFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `BookkeepingKernelFacts`, `ReportCapabilityFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
 | `BookCipher` | `DOC_02_ProtocolAndDiscovery.md` | `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, `SqliteRuntimeTrustBasis`, `SqliteRuntimeStatus`, And `SqliteRuntimeStateValidator` |
@@ -298,7 +310,7 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `BookInitializationFact` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `BookkeepingKernelFacts`, `ReportCapabilityFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
 | `BookModelFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `BookkeepingKernelFacts`, `ReportCapabilityFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
 | `BookProtectionMode` | `DOC_02_ProtocolAndDiscovery.md` | `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, `SqliteRuntimeTrustBasis`, `SqliteRuntimeStatus`, And `SqliteRuntimeStateValidator` |
-| `CapabilitiesDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `CapabilitiesDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
 | `CapabilityCatalog` | `DOC_02_ProtocolAndDiscovery.md` | `CapabilityCatalog`, `CapabilityCatalogEntry`, And `CapabilityStatus` |
 | `CapabilityCatalogEntry` | `DOC_02_ProtocolAndDiscovery.md` | `CapabilityCatalog`, `CapabilityCatalogEntry`, And `CapabilityStatus` |
 | `CapabilityStatus` | `DOC_02_ProtocolAndDiscovery.md` | `CapabilityCatalog`, `CapabilityCatalogEntry`, And `CapabilityStatus` |
@@ -313,9 +325,9 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `CashFlowStatementReport` | `DOC_02_AdministrationAndReports.md` | `CashFlowStatementQuery`, `CashFlowRow`, `CashFlowSection`, `CashFlowStatementReport`, And `CashFlowStatementResult` |
 | `CashFlowStatementResult` | `DOC_02_AdministrationAndReports.md` | `CashFlowStatementQuery`, `CashFlowRow`, `CashFlowSection`, `CashFlowStatementReport`, And `CashFlowStatementResult` |
 | `CashFlowStatementView` | `DOC_02_AdministrationAndReports.md` | `CashFlowStatementCriteria`, `CashFlowRowView`, `CashFlowSectionView`, And `CashFlowStatementView` |
-| `CommandCatalogDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `CommandDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractDecision` | `DOC_02_MachineContractAndDescriptors.md` | `ContractErrors`, `ContractFailure`, `ContractFailurePaths`, `ContractDecision`, And `ContractFailureException` |
+| `CommandCatalogDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `CommandDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractDecision` | `DOC_02_MachineContractAndDescriptors.md` | `ContractErrors`, `ContractFailure`, `ContractFailureDetails`, `ContractFailurePaths`, `ContractDecision`, And `ContractFailureException` |
 | `ContractAttestationRegistryTemplates` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates` |
 | `ContractAttestationRegistryTemplates.AlterPolicyTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates` |
 | `ContractAttestationRegistryTemplates.CapabilityGrantTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates` |
@@ -327,55 +339,56 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `ContractAttestationReviewTemplates` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates` |
 | `ContractAttestationReviewTemplates.AttestationReviewFileTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates` |
 | `ContractAttestationReviewTemplates.CompromiseReviewTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates` |
-| `ContractDiscovery` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractDiscoveryDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractErrors` | `DOC_02_MachineContractAndDescriptors.md` | `ContractErrors`, `ContractFailure`, `ContractFailurePaths`, `ContractDecision`, And `ContractFailureException` |
-| `ContractErrors.Descriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractErrors`, `ContractFailure`, `ContractFailurePaths`, `ContractDecision`, And `ContractFailureException` |
-| `ContractFailure` | `DOC_02_MachineContractAndDescriptors.md` | `ContractErrors`, `ContractFailure`, `ContractFailurePaths`, `ContractDecision`, And `ContractFailureException` |
-| `ContractFailurePaths` | `DOC_02_MachineContractAndDescriptors.md` | `ContractErrors`, `ContractFailure`, `ContractFailurePaths`, `ContractDecision`, And `ContractFailureException` |
-| `ContractFailureException` | `DOC_02_MachineContractAndDescriptors.md` | `ContractErrors`, `ContractFailure`, `ContractFailurePaths`, `ContractDecision`, And `ContractFailureException` |
+| `ContractDiscovery` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractDiscoveryDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractErrors` | `DOC_02_MachineContractAndDescriptors.md` | `ContractErrors`, `ContractFailure`, `ContractFailureDetails`, `ContractFailurePaths`, `ContractDecision`, And `ContractFailureException` |
+| `ContractErrors.Descriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractErrors`, `ContractFailure`, `ContractFailureDetails`, `ContractFailurePaths`, `ContractDecision`, And `ContractFailureException` |
+| `ContractFailure` | `DOC_02_MachineContractAndDescriptors.md` | `ContractErrors`, `ContractFailure`, `ContractFailureDetails`, `ContractFailurePaths`, `ContractDecision`, And `ContractFailureException` |
+| `ContractFailureDetails` | `DOC_02_MachineContractAndDescriptors.md` | `ContractErrors`, `ContractFailure`, `ContractFailureDetails`, `ContractFailurePaths`, `ContractDecision`, And `ContractFailureException` |
+| `ContractFailurePaths` | `DOC_02_MachineContractAndDescriptors.md` | `ContractErrors`, `ContractFailure`, `ContractFailureDetails`, `ContractFailurePaths`, `ContractDecision`, And `ContractFailureException` |
+| `ContractFailureException` | `DOC_02_MachineContractAndDescriptors.md` | `ContractErrors`, `ContractFailure`, `ContractFailureDetails`, `ContractFailurePaths`, `ContractDecision`, And `ContractFailureException` |
 | `ContraAccountInvalid` | `DOC_02_AccountRegistryLifecycle.md` | `ContraAccountInvalid` |
 | `ContraAccountRelationshipViolation` | `DOC_01_Core.md` | `ContraAccountRelationshipViolation` |
 | `DiscoveryFocus` | `DOC_02_ProtocolAndDiscovery.md` | `DiscoveryFocus` |
 | `EvidenceClass` | `DOC_01_Core_LedgerAndPosting.md` | `EvidenceClass` |
-| `ContractRequestShapes` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractRequestShapes.DeclareAccountRequestShapeDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractRequestShapes.DeclareTaxRegistrationRequestShapeDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractRequestShapes` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractRequestShapes.DeclareAccountRequestShapeDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractRequestShapes.DeclareTaxRegistrationRequestShapeDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
 | `ContractRequestShapes.RetireAccountRequestShapeDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractPostingRequestTemplates`, `ContractRequestShapes.RetireAccountRequestShapeDescriptor`, And `ContractTemplates.RetireAccountTemplateDescriptor` |
-| `ContractRequestShapes.EntryKindSemanticsDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractRequestShapes.EvidenceRequirementDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractRequestShapes.EnumVocabularyDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractRequestShapes.LedgerPlanRequestShapeDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractRequestShapes.ReachabilityCellDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractRequestShapes.RequestFieldDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractRequestShapes.RequestInputDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractRequestShapes.RequestShapeDescriptorType` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractRequestShapes.RequestShapesDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractReversalTemplates` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractRequestShapes.EntryKindSemanticsDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractRequestShapes.EvidenceRequirementDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractRequestShapes.EnumVocabularyDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractRequestShapes.LedgerPlanRequestShapeDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractRequestShapes.BookkeepingEntryRequestShapeDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractRequestShapes.ReachabilityCellDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractRequestShapes.RequestFieldDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractRequestShapes.RequestInputDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractRequestShapes.RequestShapeDescriptorType` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractRequestShapes.RequestShapesDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractReversalTemplates` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
 | `ContractPostingRequestTemplates` | `DOC_02_MachineContractAndDescriptors.md` | `ContractPostingRequestTemplates`, `ContractRequestShapes.RetireAccountRequestShapeDescriptor`, And `ContractTemplates.RetireAccountTemplateDescriptor` |
-| `ContractTemplates` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractTemplates.AccountingEvidenceTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractTemplates.ApprovalTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractTemplates.DeclareAccountTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractTemplates.DeclareTaxCodeTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractTemplates.DeclareTaxRegistrationTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `InventoryReliefTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ForeignExchangeTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractTemplates.JournalLineTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractTemplates` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractTemplates.AccountingEvidenceTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractTemplates.ApprovalTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractTemplates.DeclareAccountTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractTemplates.DeclareTaxCodeTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractTemplates.DeclareTaxRegistrationTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `InventoryReliefTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ForeignExchangeTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractTemplates.JournalLineTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
 | `ContractSettlementTemplates` | `DOC_02_MachineContractAndDescriptors.md` | `ContractSettlementTemplates` |
-| `ContractPlanTemplates` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractPlanTemplates.LedgerAssertionTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractPlanTemplates.LedgerPlanStepTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractPlanTemplates.LedgerPlanTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractTemplates.OpeningBalanceTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractTemplates.ProvenanceTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ContractPlanTemplates` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractPlanTemplates.LedgerAssertionTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractPlanTemplates.LedgerPlanQueryTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractPlanTemplates.LedgerPlanStepTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractPlanTemplates.LedgerPlanTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractTemplates.OpeningBalanceTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractTemplates.ProvenanceTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
 | `ContractTemplates.RecognitionIntervalTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractTemplates.RecognitionIntervalTemplateDescriptor` |
 | `ContractTemplates.RetireAccountTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractPostingRequestTemplates`, `ContractRequestShapes.RetireAccountRequestShapeDescriptor`, And `ContractTemplates.RetireAccountTemplateDescriptor` |
-| `QuotedExchangeRateTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `ContractTemplates.SourceDocumentTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `TemplateDescriptorType` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `QuotedExchangeRateTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `ContractTemplates.SourceDocumentTemplateDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `TemplateDescriptorType` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
 | `TemporalScopeArchetype` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
 | `UnitOfMeasure` | `DOC_01_Core.md` | `UnitOfMeasure` |
 | `UnitOfMeasure.QuantityIncompatibleWithUnitOfMeasureException` | `DOC_01_Core.md` | `UnitOfMeasure.QuantityIncompatibleWithUnitOfMeasureException` |
@@ -389,19 +402,19 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `CurrencyFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `BookkeepingKernelFacts`, `ReportCapabilityFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
 | `DescriptorNamespaceSupport` | `DOC_02_MachineContractAndDescriptors.md` | `DescriptorNamespaceSupport` |
 | `DiscoveryDetail` | `DOC_02_ProtocolAndDiscovery.md` | `DiscoveryDetail` |
-| `EnvironmentDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `EnvironmentPublicationDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `EnvironmentRuntimeDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `EnvironmentSqliteDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `EnvironmentSqliteDescriptor.FailedRuntime` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `EnvironmentSqliteDescriptor.IncompatibleRuntime` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `EnvironmentSqliteDescriptor.ReadyRuntime` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `EnvironmentSqliteDescriptor.RuntimeState` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `EnvironmentSqliteDescriptor.UnavailableRuntime` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `EnvironmentStorageDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `EnvironmentDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `EnvironmentPublicationDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `EnvironmentRuntimeDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `EnvironmentSqliteDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `EnvironmentSqliteDescriptor.FailedRuntime` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `EnvironmentSqliteDescriptor.IncompatibleRuntime` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `EnvironmentSqliteDescriptor.ReadyRuntime` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `EnvironmentSqliteDescriptor.RuntimeState` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `EnvironmentSqliteDescriptor.UnavailableRuntime` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `EnvironmentStorageDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
 | `ExecutionMode` | `DOC_02_ProtocolAndDiscovery.md` | `ExecutionMode` |
-| `ExitCodeDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
-| `HelpDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `ExitCodeDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
+| `HelpDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
 | `MachineContract` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContract` |
 | `MachineContractAttestationTemplates` | `DOC_02_MachineContractAndDescriptors.md` | `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates` |
 | `MonetaryAmount` | `DOC_02_ProtocolAndDiscovery.md` | `MonetaryAmount` |
@@ -438,13 +451,20 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `ProtocolOperation` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOperation` |
 | `ProtocolOperationDocumentation` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOperation` |
 | `ProtocolOperationOutputs` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOperation` |
+| `ProtocolOptionSyntax` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptionSyntax`, `ProtocolOptionSyntax.BookAccess`, `ProtocolOptionSyntax.Attestation`, `ProtocolOptionSyntax.ReportQuery`, `ProtocolOptionSyntax.Presentation`, And `ProtocolOptionSyntax.Discovery` |
+| `ProtocolOptionSyntax.Attestation` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptionSyntax`, `ProtocolOptionSyntax.BookAccess`, `ProtocolOptionSyntax.Attestation`, `ProtocolOptionSyntax.ReportQuery`, `ProtocolOptionSyntax.Presentation`, And `ProtocolOptionSyntax.Discovery` |
+| `ProtocolOptionSyntax.BookAccess` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptionSyntax`, `ProtocolOptionSyntax.BookAccess`, `ProtocolOptionSyntax.Attestation`, `ProtocolOptionSyntax.ReportQuery`, `ProtocolOptionSyntax.Presentation`, And `ProtocolOptionSyntax.Discovery` |
+| `ProtocolOptionSyntax.Discovery` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptionSyntax`, `ProtocolOptionSyntax.BookAccess`, `ProtocolOptionSyntax.Attestation`, `ProtocolOptionSyntax.ReportQuery`, `ProtocolOptionSyntax.Presentation`, And `ProtocolOptionSyntax.Discovery` |
+| `ProtocolOptionSyntax.Presentation` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptionSyntax`, `ProtocolOptionSyntax.BookAccess`, `ProtocolOptionSyntax.Attestation`, `ProtocolOptionSyntax.ReportQuery`, `ProtocolOptionSyntax.Presentation`, And `ProtocolOptionSyntax.Discovery` |
+| `ProtocolOptionSyntax.ReportQuery` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptionSyntax`, `ProtocolOptionSyntax.BookAccess`, `ProtocolOptionSyntax.Attestation`, `ProtocolOptionSyntax.ReportQuery`, `ProtocolOptionSyntax.Presentation`, And `ProtocolOptionSyntax.Discovery` |
 | `ProtocolOptions` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptions` |
-| `ProtocolOptions.BookDefinition` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptions.Request`, `ProtocolOptions.DateRange`, `ProtocolOptions.ReportQuery`, `ProtocolOptions.BookDefinition`, `ProtocolOptions.Presentation`, And `ProtocolOptions.Discovery` |
-| `ProtocolOptions.DateRange` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptions.Request`, `ProtocolOptions.DateRange`, `ProtocolOptions.ReportQuery`, `ProtocolOptions.BookDefinition`, `ProtocolOptions.Presentation`, And `ProtocolOptions.Discovery` |
-| `ProtocolOptions.Discovery` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptions.Request`, `ProtocolOptions.DateRange`, `ProtocolOptions.ReportQuery`, `ProtocolOptions.BookDefinition`, `ProtocolOptions.Presentation`, And `ProtocolOptions.Discovery` |
-| `ProtocolOptions.Presentation` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptions.Request`, `ProtocolOptions.DateRange`, `ProtocolOptions.ReportQuery`, `ProtocolOptions.BookDefinition`, `ProtocolOptions.Presentation`, And `ProtocolOptions.Discovery` |
-| `ProtocolOptions.ReportQuery` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptions.Request`, `ProtocolOptions.DateRange`, `ProtocolOptions.ReportQuery`, `ProtocolOptions.BookDefinition`, `ProtocolOptions.Presentation`, And `ProtocolOptions.Discovery` |
-| `ProtocolOptions.Request` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptions.Request`, `ProtocolOptions.DateRange`, `ProtocolOptions.ReportQuery`, `ProtocolOptions.BookDefinition`, `ProtocolOptions.Presentation`, And `ProtocolOptions.Discovery` |
+| `ProtocolOptions.Attestation` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptions.Request`, `ProtocolOptions.DateRange`, `ProtocolOptions.ReportQuery`, `ProtocolOptions.BookDefinition`, `ProtocolOptions.Attestation`, `ProtocolOptions.Presentation`, And `ProtocolOptions.Discovery` |
+| `ProtocolOptions.BookDefinition` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptions.Request`, `ProtocolOptions.DateRange`, `ProtocolOptions.ReportQuery`, `ProtocolOptions.BookDefinition`, `ProtocolOptions.Attestation`, `ProtocolOptions.Presentation`, And `ProtocolOptions.Discovery` |
+| `ProtocolOptions.DateRange` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptions.Request`, `ProtocolOptions.DateRange`, `ProtocolOptions.ReportQuery`, `ProtocolOptions.BookDefinition`, `ProtocolOptions.Attestation`, `ProtocolOptions.Presentation`, And `ProtocolOptions.Discovery` |
+| `ProtocolOptions.Discovery` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptions.Request`, `ProtocolOptions.DateRange`, `ProtocolOptions.ReportQuery`, `ProtocolOptions.BookDefinition`, `ProtocolOptions.Attestation`, `ProtocolOptions.Presentation`, And `ProtocolOptions.Discovery` |
+| `ProtocolOptions.Presentation` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptions.Request`, `ProtocolOptions.DateRange`, `ProtocolOptions.ReportQuery`, `ProtocolOptions.BookDefinition`, `ProtocolOptions.Attestation`, `ProtocolOptions.Presentation`, And `ProtocolOptions.Discovery` |
+| `ProtocolOptions.ReportQuery` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptions.Request`, `ProtocolOptions.DateRange`, `ProtocolOptions.ReportQuery`, `ProtocolOptions.BookDefinition`, `ProtocolOptions.Attestation`, `ProtocolOptions.Presentation`, And `ProtocolOptions.Discovery` |
+| `ProtocolOptions.Request` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOptions.Request`, `ProtocolOptions.DateRange`, `ProtocolOptions.ReportQuery`, `ProtocolOptions.BookDefinition`, `ProtocolOptions.Attestation`, `ProtocolOptions.Presentation`, And `ProtocolOptions.Discovery` |
 | `ProtocolPostEntryFields` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.Approval` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
 | `ProtocolPostEntryFields.Evidence` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolOpenBookFields`, `ProtocolDeclareAccountFields`, `ProtocolTaxRegistrationFields`, `ProtocolPostEntryFields`, And `ProtocolLedgerPlanFields` |
@@ -465,6 +485,7 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `ProtocolPostingRequestTopics` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolPostingRequestTopics` |
 | `ProtocolRequestTemplateTopics` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolRequestTemplateTopics` |
 | `ProtocolLedgerPlanRequestFieldSets` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolBookRequestFieldSets`, `ProtocolPostingRequestFieldSets`, `ProtocolPostingNestedFieldSets`, And `ProtocolLedgerPlanRequestFieldSets` |
+| `ProtocolCapabilityBaselineSyncMain` | `DOC_02_MachineContractAndDescriptors.md` | `ProtocolCapabilityBaselineSyncMain` |
 | `ProtocolEnvelopeCatalog` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
 | `ProtocolDomainCatalog` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
 | `ProtocolRuntimeCatalog` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
@@ -479,7 +500,7 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `PublicBundlePublicationStatus` | `DOC_02_ProtocolAndDiscovery.md` | `PublicBundlePublicationStatus` |
 | `QuotedExchangeRate` | `DOC_02_ProtocolAndDiscovery.md` | `ForeignExchangeDetails`, `ForeignExchangeTreatmentKind`, And `QuotedExchangeRate` |
 | `ReportCapabilityFacts` | `DOC_02_ProtocolAndDiscovery.md` | `BookModelFacts`, `CurrencyFacts`, `BookkeepingKernelFacts`, `ReportCapabilityFacts`, `PreflightFacts`, And `PlanExecutionFacts` |
-| `RequestFieldPresence` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `RequestFieldPresence` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
 | `RequestSurfaceFacts` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
 | `RequestSurfaceFacts.CommandTemporalScopeFacts` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
 | `RequestSurfaceFacts.EvidenceRequirementFacts` | `DOC_02_ProtocolAndDiscovery.md` | `ProtocolEnvelopeCatalog`, `ProtocolDomainCatalog`, `ProtocolRuntimeCatalog`, `ProtocolDistributionCatalog`, And `ProtocolManagedSqliteCatalog` |
@@ -497,10 +518,10 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `ResolvedInventoryDisposal` | `DOC_02_PostingAndLedgerPlans.md` | `QuantityText`, `ResolvedInventoryAcquisition`, `ResolvedInventoryCosting`, And `ResolvedInventoryDisposal` |
 | `RuntimeDistribution` | `DOC_02_ProtocolAndDiscovery.md` | `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, `SqliteRuntimeTrustBasis`, `SqliteRuntimeStatus`, And `SqliteRuntimeStateValidator` |
 | `ScaffoldPlaceholders` | `DOC_02_MachineContractAndDescriptors.md` | `ScaffoldPlaceholders`, `WorkflowSurface`, `WorkflowDescriptor`, `WorkflowStepKind`, And `WorkflowStepDescriptor` |
-| `SelectableOutputDefaultsDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `SelectableOutputDefaultsDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
 | `InventoryRelief` | `DOC_02_PostingAndLedgerPlans.md` | `InventoryRelief` |
 | `SettlementAdjunct` | `DOC_02_PostingAndLedgerPlans.md` | `SettlementAdjunct` |
-| `SqliteCompileOptionsVerificationStatus` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `SqliteCompileOptionsVerificationStatus` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
 | `SqliteLibraryMode` | `DOC_02_ProtocolAndDiscovery.md` | `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, `SqliteRuntimeTrustBasis`, `SqliteRuntimeStatus`, And `SqliteRuntimeStateValidator` |
 | `SqliteRuntimeArtifactEvidence` | `DOC_02_ProtocolAndDiscovery.md` | `SqliteRuntimeArtifactEvidence` |
 | `SqliteRuntimeProvenance` | `DOC_02_ProtocolAndDiscovery.md` | `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, `SqliteRuntimeTrustBasis`, `SqliteRuntimeStatus`, And `SqliteRuntimeStateValidator` |
@@ -510,9 +531,9 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `StandardBookkeepingEntryVariants` | `DOC_02_PostingAndLedgerPlans.md` | `StandardBookkeepingEntryVariants` |
 | `StorageDriver` | `DOC_02_ProtocolAndDiscovery.md` | `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, `SqliteRuntimeTrustBasis`, `SqliteRuntimeStatus`, And `SqliteRuntimeStateValidator` |
 | `StorageEngine` | `DOC_02_ProtocolAndDiscovery.md` | `RuntimeDistribution`, `PublicCliDistribution`, `StorageDriver`, `StorageEngine`, `BookProtectionMode`, `BookCipher`, `SqliteLibraryMode`, `SqliteRuntimeProvenance`, `SqliteRuntimeTrustBasis`, `SqliteRuntimeStatus`, And `SqliteRuntimeStateValidator` |
-| `StorageSurfaceDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `StorageSurfaceDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
 | `StructuralContext` | `DOC_01_Core_LedgerAndPosting.md` | `StructuralContext` |
-| `VersionDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ContractResponse`, And `ContractTemplates` |
+| `VersionDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ContractDiscovery`, `ContractRequestShapes`, `ResponseDescriptorType`, And `ContractTemplates` |
 | `WorkflowDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ScaffoldPlaceholders`, `WorkflowSurface`, `WorkflowDescriptor`, `WorkflowStepKind`, And `WorkflowStepDescriptor` |
 | `WorkflowStepDescriptor` | `DOC_02_MachineContractAndDescriptors.md` | `ScaffoldPlaceholders`, `WorkflowSurface`, `WorkflowDescriptor`, `WorkflowStepKind`, And `WorkflowStepDescriptor` |
 | `WorkflowStepKind` | `DOC_02_MachineContractAndDescriptors.md` | `ScaffoldPlaceholders`, `WorkflowSurface`, `WorkflowDescriptor`, `WorkflowStepKind`, And `WorkflowStepDescriptor` |
@@ -623,14 +644,14 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `OpenBookResult` | `DOC_02_AdministrationAndReports.md` | `OpenBookResult` |
 | `PeriodAccountActivityRow` | `DOC_02_AdministrationAndReports.md` | `PeriodSummaryQuery`, `PeriodCurrencySummary`, `PeriodAccountActivityRow`, `PeriodSummaryReport`, And `PeriodSummaryResult` |
 | `ClosedFiscalYearRecord` | `DOC_02_PeriodCloseAndRejections.md` | `CloseTargetSelection`, `AcceptedCloseTargetSelection`, `RejectedCloseTargetSelection`, `CloseTargetAccountSelector`, `FiscalYearCloseDraft`, `ClosedFiscalYearRecord`, `FiscalYearCloseOutcome`, `FiscalYearClosePlanner`, And `FiscalYearCloseService` |
-| `InterimResultSweepDraft` | `DOC_02_PeriodCloseAndRejections.md` | `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `SweptInterimResult`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService` |
-| `InterimResultSweepOutcome` | `DOC_02_PeriodCloseAndRejections.md` | `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `SweptInterimResult`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService` |
-| `InterimResultTargetSelection` | `DOC_02_PeriodCloseAndRejections.md` | `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `SweptInterimResult`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService` |
-| `AcceptedInterimResultTargetSelection` | `DOC_02_PeriodCloseAndRejections.md` | `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `SweptInterimResult`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService` |
-| `RejectedInterimResultTargetSelection` | `DOC_02_PeriodCloseAndRejections.md` | `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `SweptInterimResult`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService` |
-| `InterimResultSweepPlan` | `DOC_02_PeriodCloseAndRejections.md` | `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `SweptInterimResult`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService` |
-| `InterimResultSweepPlanner` | `DOC_02_PeriodCloseAndRejections.md` | `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `SweptInterimResult`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService` |
-| `InterimResultSweepService` | `DOC_02_PeriodCloseAndRejections.md` | `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `SweptInterimResult`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService` |
+| `InterimResultSweepDraft` | `DOC_02_PeriodCloseAndRejections.md` | `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `RecordedInterimResultSweep`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService` |
+| `InterimResultSweepOutcome` | `DOC_02_PeriodCloseAndRejections.md` | `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `RecordedInterimResultSweep`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService` |
+| `InterimResultTargetSelection` | `DOC_02_PeriodCloseAndRejections.md` | `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `RecordedInterimResultSweep`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService` |
+| `AcceptedInterimResultTargetSelection` | `DOC_02_PeriodCloseAndRejections.md` | `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `RecordedInterimResultSweep`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService` |
+| `RejectedInterimResultTargetSelection` | `DOC_02_PeriodCloseAndRejections.md` | `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `RecordedInterimResultSweep`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService` |
+| `InterimResultSweepPlan` | `DOC_02_PeriodCloseAndRejections.md` | `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `RecordedInterimResultSweep`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService` |
+| `InterimResultSweepPlanner` | `DOC_02_PeriodCloseAndRejections.md` | `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `RecordedInterimResultSweep`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService` |
+| `InterimResultSweepService` | `DOC_02_PeriodCloseAndRejections.md` | `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `RecordedInterimResultSweep`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService` |
 | `PeriodCurrencySummary` | `DOC_02_AdministrationAndReports.md` | `PeriodSummaryQuery`, `PeriodCurrencySummary`, `PeriodAccountActivityRow`, `PeriodSummaryReport`, And `PeriodSummaryResult` |
 | `PeriodSummaryQuery` | `DOC_02_AdministrationAndReports.md` | `PeriodSummaryQuery`, `PeriodCurrencySummary`, `PeriodAccountActivityRow`, `PeriodSummaryReport`, And `PeriodSummaryResult` |
 | `PeriodSummaryReport` | `DOC_02_AdministrationAndReports.md` | `PeriodSummaryQuery`, `PeriodCurrencySummary`, `PeriodAccountActivityRow`, `PeriodSummaryReport`, And `PeriodSummaryResult` |
@@ -672,19 +693,20 @@ Local book-session, store, query-view, and SQLite-adapter symbols continue in
 | `TrialBalanceReport` | `DOC_02_AdministrationAndReports.md` | `TrialBalanceQuery`, `TrialBalanceRow`, `TrialBalanceReport`, And `TrialBalanceResult` |
 | `TrialBalanceResult` | `DOC_02_AdministrationAndReports.md` | `TrialBalanceQuery`, `TrialBalanceRow`, `TrialBalanceReport`, And `TrialBalanceResult` |
 | `TrialBalanceRow` | `DOC_02_AdministrationAndReports.md` | `TrialBalanceQuery`, `TrialBalanceRow`, `TrialBalanceReport`, And `TrialBalanceResult` |
-| `PostingRangeStore` | `DOC_03_BookSessionsAndAdapters.md` | `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `ReportingPeriodCloseStore`, And `LedgerPlanTransaction` |
+| `PostingRangeStore` | `DOC_03_BookSessionsAndAdapters.md` | `BookLifecycleReader`, `BookAdministrationStore`, `AccountLookupStore`, `AccountCatalogStore`, `PostingLookupStore`, `PostingHistoryStore`, `PostingRangeStore`, `BookkeepingReportStore`, `BookkeepingReadStore`, `PostingCommitStore`, `ReportingPeriodCloseStore`, And `LedgerPlanExecutionStore` |
 | `PostingValidationStore` | `DOC_03_BookSessionsAndAdapters.md` | `PostingValidationStore` |
 | `RegisteredAccount` | `DOC_03_BookSessionsAndAdapters.md` | `AccountDeclaration`, `AccountDeclarationOutcome`, `BookOpeningOutcome`, And `RegisteredAccount` |
 | `StoredRequestPosting` | `DOC_03_BookSessionsAndAdapters.md` | `PostingDraft`, `PostingCommitResult`, `PostingIdGenerator`, And `StoredRequestPosting` |
 | `SweptInterimResult` | `DOC_02_AdministrationAndReports.md` | `InterimResultSweepCommand`, `InterimResultSweepResult`, `FiscalYearCloseCommand`, `FiscalYearCloseResult`, `SweptInterimResult`, And `ClosedFiscalYear` |
+| `RecordedInterimResultSweep` | `DOC_02_PeriodCloseAndRejections.md` | `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `RecordedInterimResultSweep`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService` |
 | `AcceptedCloseTargetSelection` | `DOC_02_PeriodCloseAndRejections.md` | `CloseTargetSelection`, `AcceptedCloseTargetSelection`, `RejectedCloseTargetSelection`, `CloseTargetAccountSelector`, `FiscalYearCloseDraft`, `ClosedFiscalYearRecord`, `FiscalYearCloseOutcome`, `FiscalYearClosePlanner`, And `FiscalYearCloseService` |
 | `RejectedCloseTargetSelection` | `DOC_02_PeriodCloseAndRejections.md` | `CloseTargetSelection`, `AcceptedCloseTargetSelection`, `RejectedCloseTargetSelection`, `CloseTargetAccountSelector`, `FiscalYearCloseDraft`, `ClosedFiscalYearRecord`, `FiscalYearCloseOutcome`, `FiscalYearClosePlanner`, And `FiscalYearCloseService` |
-| `SweptInterimResult` | `DOC_02_PeriodCloseAndRejections.md` | `InterimResultSweepDraft`, `InterimResultSweepOutcome`, `SweptInterimResult`, `InterimResultTargetSelection`, `AcceptedInterimResultTargetSelection`, `RejectedInterimResultTargetSelection`, `InterimResultSweepPlan`, `InterimResultSweepPlanner`, And `InterimResultSweepService` |
 | `TrialBalanceCriteria` | `DOC_03_BookSessionsAndAdapters.md` | `AccountRegistryCursor`, `AccountRegistryQuery`, `AccountRegistryPage`, `PostingHistoryCursor`, `PostingHistoryQuery`, `PostingHistoryPage`, `AccountBalanceCriteria`, `AccountBalanceView`, `TrialBalanceCriteria`, `TrialBalanceRowView`, `TrialBalanceView`, `AccountLedgerCriteria`, `AccountLedgerEntryView`, `AccountLedgerView`, `PeriodSummaryCriteria`, `PeriodCurrencySummaryView`, `PeriodAccountActivityView`, And `PeriodSummaryView` |
 | `TrialBalanceRowView` | `DOC_03_BookSessionsAndAdapters.md` | `AccountRegistryCursor`, `AccountRegistryQuery`, `AccountRegistryPage`, `PostingHistoryCursor`, `PostingHistoryQuery`, `PostingHistoryPage`, `AccountBalanceCriteria`, `AccountBalanceView`, `TrialBalanceCriteria`, `TrialBalanceRowView`, `TrialBalanceView`, `AccountLedgerCriteria`, `AccountLedgerEntryView`, `AccountLedgerView`, `PeriodSummaryCriteria`, `PeriodCurrencySummaryView`, `PeriodAccountActivityView`, And `PeriodSummaryView` |
 | `TrialBalanceView` | `DOC_03_BookSessionsAndAdapters.md` | `AccountRegistryCursor`, `AccountRegistryQuery`, `AccountRegistryPage`, `PostingHistoryCursor`, `PostingHistoryQuery`, `PostingHistoryPage`, `AccountBalanceCriteria`, `AccountBalanceView`, `TrialBalanceCriteria`, `TrialBalanceRowView`, `TrialBalanceView`, `AccountLedgerCriteria`, `AccountLedgerEntryView`, `AccountLedgerView`, `PeriodSummaryCriteria`, `PeriodCurrencySummaryView`, `PeriodAccountActivityView`, And `PeriodSummaryView` |
-| `UnsupportedManagedSqliteLibraryIdentityException` | `DOC_03_BookSessionsAndAdapters.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, `SqlitePersistenceInvariantException`, `SqliteProtectedBookVerificationException`, And `SqliteStorageFailureException` |
-| `UnsupportedSqliteCompileOptionsException` | `DOC_03_BookSessionsAndAdapters.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, `SqlitePersistenceInvariantException`, `SqliteProtectedBookVerificationException`, And `SqliteStorageFailureException` |
-| `SqliteProtectedBookVerificationException` | `DOC_03_BookSessionsAndAdapters.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, `SqlitePersistenceInvariantException`, `SqliteProtectedBookVerificationException`, And `SqliteStorageFailureException` |
+| `UnsupportedManagedSqliteLibraryIdentityException` | `DOC_03_SqliteRuntimeAndSessions.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, `SqlitePersistenceInvariantException`, `SqliteProtectedBookVerificationException`, `SqliteStorageFailureException`, And `SqliteOpenBookCompletionUncertainException` |
+| `UnsupportedSqliteCompileOptionsException` | `DOC_03_SqliteRuntimeAndSessions.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, `SqlitePersistenceInvariantException`, `SqliteProtectedBookVerificationException`, `SqliteStorageFailureException`, And `SqliteOpenBookCompletionUncertainException` |
+| `SqliteProtectedBookVerificationException` | `DOC_03_SqliteRuntimeAndSessions.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, `SqlitePersistenceInvariantException`, `SqliteProtectedBookVerificationException`, `SqliteStorageFailureException`, And `SqliteOpenBookCompletionUncertainException` |
+| `SqliteOpenBookCompletionUncertainException` | `DOC_03_SqliteRuntimeAndSessions.md` | `ManagedSqliteRuntimeUnavailableException`, `UnsupportedManagedSqliteLibraryIdentityException`, `UnsupportedSqliteCompileOptionsException`, `SqlitePersistenceInvariantException`, `SqliteProtectedBookVerificationException`, `SqliteStorageFailureException`, And `SqliteOpenBookCompletionUncertainException` |
 | `App` | `DOC_04_CliAndPdfAdapters.md` | `App` |
 | `PdfReportService` | `DOC_04_CliAndPdfAdapters.md` | `PdfReportService` |

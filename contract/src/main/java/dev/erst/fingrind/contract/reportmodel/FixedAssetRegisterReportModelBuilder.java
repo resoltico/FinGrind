@@ -45,7 +45,7 @@ public final class FixedAssetRegisterReportModelBuilder
       PROJECTION =
           new LifecycleRegisterReportModelSupport.SingleSectionRegisterProjection<>(
               REPORT_FAMILY,
-              "Fixed-asset register",
+              ReportModelSupport.reportTitle(OperationId.FIXED_ASSET_REGISTER),
               "Lifecycle truth",
               "Immutable capitalization and compensating lifecycle facts",
               "Fixed assets",

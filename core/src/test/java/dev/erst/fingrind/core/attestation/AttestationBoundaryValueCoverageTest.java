@@ -24,15 +24,12 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 /** Covers file-custody, genesis, and small immutable boundary refusals. */
-class AttestationBoundaryValueCoverageTest {
+class AttestationBoundaryValueCoverageTest extends AttestationKeyFileTestFixture {
   private static final UUID BOOK_ID = UUID.fromString("00112233-4455-6677-8899-aabbccddeeff");
   private static final Instant RECORDED_AT = Instant.parse("2026-07-21T12:00:00Z");
   private static final LocalDate EFFECTIVE_DATE = LocalDate.parse("2026-07-21");
-
-  @TempDir Path temporaryDirectory;
 
   @Test
   void snapshotAndProjectionValues_rejectInvalidBoundaryShapes() {
@@ -215,7 +212,7 @@ class AttestationBoundaryValueCoverageTest {
             AttestationPlanMutationProjection.project(
                 "plan",
                 List.of(
-                    new AttestationPlanOperationAuthorizer.ChildMutation(
+                    new AttestationPlanChildMutation(
                         0,
                         "post-entry",
                         new AttestationOperationPreimages(
@@ -296,7 +293,8 @@ class AttestationBoundaryValueCoverageTest {
   void genesisBindsTheExactPersistedBookIdentity() throws Exception {
     Path keyPath = temporaryDirectory.resolve("founder.fgatk");
     char[] passphrase = "test attestation passphrase".toCharArray();
-    AttestationPublicCredential credential = AttestationKeyFiles.create(keyPath, passphrase);
+    AttestationPublicCredential credential =
+        AttestationKeyFiles.create(keyPath, passphrase).credential();
     AttestationEvidence genesis;
     try (AttestationSigningCredential signer =
         new AttestationSigningCredential(UUID.randomUUID(), credential, keyPath, passphrase)) {
@@ -377,12 +375,14 @@ class AttestationBoundaryValueCoverageTest {
     Files.writeString(passphrasePath, "correct horse battery staple\r\n");
     UUID principalId = UUID.randomUUID();
     try (AttestationSigningCredential created =
-        AttestationKeyFiles.openOrCreateCredential(principalId, keyPath, passphrasePath)) {
+        AttestationKeyFiles.openOrCreateCredential(principalId, keyPath, passphrasePath)
+            .credential()) {
       assertEquals(principalId, created.principalId());
       assertTrue(created.sign(new byte[] {1, 2, 3}).signature().length > 0);
     }
     try (AttestationSigningCredential reopened =
-        AttestationKeyFiles.openOrCreateCredential(principalId, keyPath, passphrasePath)) {
+        AttestationKeyFiles.openOrCreateCredential(principalId, keyPath, passphrasePath)
+            .credential()) {
       assertEquals(
           AttestationKeyFiles.loadPublicCredential(keyPath).keyId().length,
           reopened.publicCredential().keyId().length);
@@ -391,14 +391,18 @@ class AttestationBoundaryValueCoverageTest {
     Files.writeString(loneNewlinePath, "correct horse battery staple\n");
     try (AttestationSigningCredential ignored =
         AttestationKeyFiles.openOrCreateCredential(
-            UUID.randomUUID(), temporaryDirectory.resolve("lone-newline.fgatk"), loneNewlinePath)) {
+                UUID.randomUUID(),
+                temporaryDirectory.resolve("lone-newline.fgatk"),
+                loneNewlinePath)
+            .credential()) {
       assertTrue(ignored.publicCredential().keyId().length > 0);
     }
     Path noNewlinePath = temporaryDirectory.resolve("no-newline.passphrase");
     Files.writeString(noNewlinePath, "correct horse battery staple");
     try (AttestationSigningCredential ignored =
         AttestationKeyFiles.openOrCreateCredential(
-            UUID.randomUUID(), temporaryDirectory.resolve("no-newline.fgatk"), noNewlinePath)) {
+                UUID.randomUUID(), temporaryDirectory.resolve("no-newline.fgatk"), noNewlinePath)
+            .credential()) {
       assertTrue(ignored.publicCredential().keyId().length > 0);
     }
     Files.write(passphrasePath, new byte[0]);
@@ -453,7 +457,8 @@ class AttestationBoundaryValueCoverageTest {
     Path passphrasePath = temporaryDirectory.resolve("generated-from-file.passphrase");
     Files.writeString(passphrasePath, "correct horse battery staple\n");
 
-    AttestationPublicCredential created = AttestationKeyFiles.create(keyPath, passphrasePath);
+    AttestationPublicCredential created =
+        AttestationKeyFiles.create(keyPath, passphrasePath).credential();
 
     assertTrue(
         java.util.Arrays.equals(
@@ -466,7 +471,7 @@ class AttestationBoundaryValueCoverageTest {
     Path passphrasePath = temporaryDirectory.resolve("credential.passphrase");
     Files.writeString(passphrasePath, "passphrase\n");
     AttestationPublicCredential credential =
-        AttestationKeyFiles.create(keyPath, "passphrase".toCharArray());
+        AttestationKeyFiles.create(keyPath, "passphrase".toCharArray()).credential();
     UUID principalId = UUID.randomUUID();
     try (AttestationSigningCredential signingCredential =
         new AttestationSigningCredential(
@@ -487,7 +492,7 @@ class AttestationBoundaryValueCoverageTest {
     }
     Path differentKeyPath = temporaryDirectory.resolve("different.fgatk");
     AttestationPublicCredential differentCredential =
-        AttestationKeyFiles.create(differentKeyPath, "passphrase".toCharArray());
+        AttestationKeyFiles.create(differentKeyPath, "passphrase".toCharArray()).credential();
     try (AttestationSigningCredential mismatched =
         new AttestationSigningCredential(
             principalId, differentCredential, keyPath, "passphrase".toCharArray())) {

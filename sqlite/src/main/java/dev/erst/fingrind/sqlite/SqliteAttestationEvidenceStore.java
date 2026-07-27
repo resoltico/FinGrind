@@ -1,5 +1,8 @@
 package dev.erst.fingrind.sqlite;
 
+import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
+import dev.erst.fingrind.core.attestation.AttestationAuthorizationException;
 import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
 import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgementAdmission;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
@@ -67,7 +70,7 @@ final class SqliteAttestationEvidenceStore {
   /**
    * Admits a signature made against one authenticated head observed before the write transaction.
    */
-  static AttestationVerification appendAuthorized(
+  static AttestationAppendOutcome.Appended appendAuthorized(
       SqliteNativeDatabase activeDatabase,
       ObservedHead observedHead,
       AttestationOperationKind operationKind,
@@ -75,13 +78,14 @@ final class SqliteAttestationEvidenceStore {
       AttestationOperationPreimages preimages,
       AttestationOperationAuthorizer authorizer) {
     return appendAuthorized(
-        activeDatabase, observedHead, operationKind, recordedAt, preimages, authorizer, null);
+            activeDatabase, observedHead, operationKind, recordedAt, preimages, authorizer, null)
+        .requireAppended();
   }
 
   /**
    * Admits a signature made against one authenticated head observed before the write transaction.
    */
-  static AttestationVerification appendAuthorized(
+  static AttestationAppendOutcome appendAuthorized(
       SqliteNativeDatabase activeDatabase,
       ObservedHead observedHead,
       AttestationOperationKind operationKind,
@@ -112,17 +116,18 @@ final class SqliteAttestationEvidenceStore {
       AttestationOperationAuthorizer authorizer) {
     AttestationRegistryMutation checkedMutation = Objects.requireNonNull(mutation, "mutation");
     return appendAuthorized(
-        activeDatabase,
-        observedHead,
-        checkedMutation.operationKind(),
-        recordedAt,
-        checkedMutation.preimages(),
-        authorizer,
-        null,
-        checkedMutation);
+            activeDatabase,
+            observedHead,
+            checkedMutation.operationKind(),
+            recordedAt,
+            checkedMutation.preimages(),
+            authorizer,
+            null,
+            checkedMutation)
+        .requireVerifiedAppend();
   }
 
-  private static AttestationVerification appendAuthorized(
+  private static AttestationAppendOutcome appendAuthorized(
       SqliteNativeDatabase activeDatabase,
       ObservedHead observedHead,
       AttestationOperationKind operationKind,
@@ -153,19 +158,19 @@ final class SqliteAttestationEvidenceStore {
           persistedVerification.operationHead(),
           persistedVerification.headOrder());
     }
-    if (checkedAuthorizer instanceof AttestationPlanOperationAuthorizer planAuthorizer) {
-      planAuthorizer.collectChildMutation(checkedOperationKind.wireToken(), checkedPreimages);
-      return persistedVerification;
-    }
     if (registryMutation != null) {
-      AttestationVerifier.requireRegistryMutationAdmissible(persistedEvidence, registryMutation);
+      try {
+        AttestationVerifier.requireRegistryMutationAdmissible(persistedEvidence, registryMutation);
+      } catch (AttestationAuthorizationException exception) {
+        throw AttestationAdmissionRejectedException.from(exception);
+      }
     }
     if (backupAcknowledgement != null) {
       AttestationBackupAcknowledgementAdmission admission =
           AttestationBackupAcknowledgementAdmission.evaluate(
               persistedEvidence, backupAcknowledgement);
       if (admission == AttestationBackupAcknowledgementAdmission.IDENTICAL_REPLAY) {
-        return persistedVerification;
+        return AttestationAppendOutcome.AlreadyPresent.INSTANCE;
       }
       if (admission == AttestationBackupAcknowledgementAdmission.CONFLICT) {
         throw new SqliteAttestationBackupAcknowledgementConflictException(
@@ -182,7 +187,8 @@ final class SqliteAttestationEvidenceStore {
                 checkedRecordedAt,
                 checkedPreimages.request(),
                 checkedPreimages.effect()));
-    return append(activeDatabase, checkedObservedHead.operationHead(), candidateEvidence);
+    return new AttestationAppendOutcome.Appended(
+        append(activeDatabase, checkedObservedHead.operationHead(), candidateEvidence));
   }
 
   static ObservedHead observeRequired(SqliteNativeDatabase activeDatabase) {
@@ -225,22 +231,18 @@ final class SqliteAttestationEvidenceStore {
   static AttestationVerification appendPlanAuthorized(
       SqliteNativeDatabase activeDatabase,
       ObservedHead observedHead,
-      String planId,
       Instant recordedAt,
+      AttestationOperationPreimages planPreimages,
       AttestationPlanOperationAuthorizer authorizer) {
     Objects.requireNonNull(activeDatabase, "activeDatabase");
     ObservedHead checkedObservedHead = Objects.requireNonNull(observedHead, "observedHead");
-    String checkedPlanId = Objects.requireNonNull(planId, "planId");
     Instant checkedRecordedAt = Objects.requireNonNull(recordedAt, "recordedAt");
+    AttestationOperationPreimages checkedPlanPreimages =
+        Objects.requireNonNull(planPreimages, "planPreimages");
     AttestationPlanOperationAuthorizer checkedAuthorizer =
         Objects.requireNonNull(authorizer, "authorizer");
-    if (!checkedAuthorizer.hasChildMutations()) {
-      throw new IllegalArgumentException(
-          EXECUTE_PLAN.wireToken() + " did not produce a mutating child step.");
-    }
     AttestationVerification persistedVerification =
         requireCurrentObservedHead(activeDatabase, checkedObservedHead);
-    AttestationOperationPreimages planPreimages = checkedAuthorizer.planPreimages(checkedPlanId);
     AttestationEvidence candidateEvidence =
         checkedAuthorizer.authorizePlan(
             new AttestationOperationRequest(
@@ -249,8 +251,8 @@ final class SqliteAttestationEvidenceStore {
                 EXECUTE_PLAN.wireToken(),
                 persistedVerification.operationHead(),
                 checkedRecordedAt,
-                planPreimages.request(),
-                planPreimages.effect()));
+                checkedPlanPreimages.request(),
+                checkedPlanPreimages.effect()));
     return append(activeDatabase, checkedObservedHead.operationHead(), candidateEvidence);
   }
 

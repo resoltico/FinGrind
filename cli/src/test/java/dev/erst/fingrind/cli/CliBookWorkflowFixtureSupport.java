@@ -204,7 +204,8 @@ class CliBookWorkflowFixtureSupport extends CliFilesystemFixtureSupport {
         bookIdentity(),
         trustRoot,
         new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
-            trustRoot.headOrder(), trustRoot.operationHeadHex()));
+            trustRoot.headOrder(), trustRoot.operationHeadHex()),
+        List.of());
   }
 
   protected static AttestationRegistryInspection attestationTrustRoot() {

@@ -9,20 +9,28 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.Base64;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /** Contract tests for the durable ownership record that guards stage recovery. */
 class SqliteOwnedStageRecordTest {
-  private static final String RECORD_MAGIC = "fingrind-maintenance-stage-v1";
+  private static final String RECORD_MAGIC = "fingrind-maintenance-stage-v2";
 
   @TempDir Path tempDirectory;
+
+  @BeforeEach
+  void hardenTempDirectory() {
+    tempDirectory =
+        SqliteTestPrivateDirectorySupport.canonicalizeAndHardenOwnerOnlyDirectory(tempDirectory);
+  }
 
   @Test
   void codec_readsOneValidCanonicalRecord() throws Exception {
@@ -37,12 +45,16 @@ class SqliteOwnedStageRecordTest {
         SqliteOwnedStageRecordCodec.read(marker(finalPath, 1), finalPath)
             .orElseThrow()
             .stagedPath());
+    assertFalse(marker(finalPath, 1).getFileName().toString().contains("book.sqlite"));
+    assertEquals(
+        stagedPath.toAbsolutePath().normalize(),
+        SqliteOwnedStageRecord.findFor(finalPath).getFirst().stagedPath());
     Path generatedStage = SqliteOwnedStageRecordCodec.stagedPath(finalPath, ".probe-", ".tmp");
     assertEquals(finalPath.getParent(), generatedStage.getParent());
     assertTrue(generatedStage.getFileName().toString().startsWith(".fingrind-stage.probe-"));
     assertTrue(generatedStage.getFileName().toString().endsWith(".tmp"));
 
-    record.discard();
+    record.releaseRetained();
   }
 
   @Test
@@ -60,6 +72,26 @@ class SqliteOwnedStageRecordTest {
   }
 
   @Test
+  void codec_refusesOversizedOwnerMetadataBeforeCreatingAnyOwnerRecord() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
+      String oversizedLeaf =
+          "x".repeat(SqliteSecureRegularFileAccess.MAXIMUM_RECOVERY_METADATA_BYTES);
+      AclFixturePath finalPath = fileSystem.path("\\records\\" + oversizedLeaf);
+      AclFixturePath stagedPath = fileSystem.path("\\records\\stage.tmp");
+      AclFixturePath ownerPath =
+          (AclFixturePath) SqliteOwnedStageRecordCodec.recordPath(finalPath, token(8));
+
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteOwnedStageRecordCodec.write(finalPath, stagedPath, () -> token(8)));
+
+      assertTrue(NullTestSupport.messageOf(failure).contains("Failed to record"));
+      assertFalse(ownerPath.existsValue());
+    }
+  }
+
+  @Test
   void codec_rejectsMalformedOrUnreadableRecords() throws Exception {
     Path finalPath = finalPath();
     Path stagedPath = tempDirectory.resolve("book.stage");
@@ -69,11 +101,10 @@ class SqliteOwnedStageRecordTest {
 
     assertTrue(SqliteOwnedStageRecordCodec.read(finalPath, finalPath).isEmpty());
     Path wrongSuffix =
-        tempDirectory.resolve(".book.sqlite.fingrind-maintenance-stage-" + token(2) + ".not-owner");
+        tempDirectory.resolve(".fingrind-maintenance-stage-" + token(2) + ".not-owner");
     Files.writeString(wrongSuffix, recordContent(validTarget, validStage));
     assertTrue(SqliteOwnedStageRecordCodec.read(wrongSuffix, finalPath).isEmpty());
-    Path wrongToken =
-        tempDirectory.resolve(".book.sqlite.fingrind-maintenance-stage-invalid.owner");
+    Path wrongToken = tempDirectory.resolve(".fingrind-maintenance-stage-invalid.owner");
     Files.writeString(wrongToken, recordContent(validTarget, validStage));
     assertTrue(SqliteOwnedStageRecordCodec.read(wrongToken, finalPath).isEmpty());
     Files.createDirectory(recordPath);
@@ -111,8 +142,7 @@ class SqliteOwnedStageRecordTest {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
       AclFixturePath unreadableFinalPath = fileSystem.path("\\records\\book.sqlite");
       AclFixturePath unreadableRecordPath =
-          fileSystem.path(
-              "\\records\\.book.sqlite.fingrind-maintenance-stage-" + token(2) + ".owner");
+          fileSystem.path("\\records\\.fingrind-maintenance-stage-" + token(2) + ".owner");
       unreadableRecordPath.exists = true;
       unreadableRecordPath.regularFile = true;
       unreadableRecordPath.failNewByteChannelWith(new IOException("record read failure"));
@@ -120,6 +150,26 @@ class SqliteOwnedStageRecordTest {
       assertTrue(
           SqliteOwnedStageRecordCodec.read(unreadableRecordPath, unreadableFinalPath).isEmpty());
     }
+  }
+
+  @Test
+  void ownerResidueScanner_leavesValidOpaqueRecordsInertButFailsClosedForRetiredTargetRecords()
+      throws Exception {
+    Path finalPath = finalPath();
+    Path secondFinalPath = tempDirectory.resolve("second.book-key").toAbsolutePath().normalize();
+    Path stagePath = tempDirectory.resolve("valid.stage");
+    Files.writeString(stagePath, "stage bytes");
+    SqliteOwnedStageRecord valid = SqliteOwnedStageRecord.recordExisting(finalPath, stagePath);
+
+    assertFalse(SqliteOwnedStageRecord.hasUnsafeOwnerRecordResidue(finalPath, secondFinalPath));
+
+    Path retired =
+        tempDirectory.resolve(".book.sqlite.fingrind-maintenance-stage-" + token(9) + ".owner");
+    Files.writeString(retired, "retired record bytes");
+
+    assertTrue(SqliteOwnedStageRecord.hasUnsafeOwnerRecordResidue(finalPath, secondFinalPath));
+    assertTrue(Files.exists(retired));
+    valid.releaseRetained();
   }
 
   @Test
@@ -132,7 +182,7 @@ class SqliteOwnedStageRecordTest {
     SqliteOwnedStageRecord record =
         SqliteOwnedStageRecordCodec.write(finalPath, stagedPath, retryTokens::next);
     assertEquals(stagedPath.toAbsolutePath().normalize(), record.stagedPath());
-    record.discard();
+    record.releaseRetained();
 
     IllegalStateException exhausted =
         assertThrows(
@@ -141,13 +191,13 @@ class SqliteOwnedStageRecordTest {
     assertTrue(NullTestSupport.messageOf(exhausted).contains("Unable to record"));
 
     Path parentFile = Files.createFile(tempDirectory.resolve("record-parent-file"));
-    IllegalStateException writeFailure =
+    SqliteCallerPathContractException writeFailure =
         assertThrows(
-            IllegalStateException.class,
+            SqliteCallerPathContractException.class,
             () ->
                 SqliteOwnedStageRecordCodec.write(
                     parentFile.resolve("book.sqlite"), stagedPath, () -> token(5)));
-    assertTrue(NullTestSupport.messageOf(writeFailure).contains("Failed to record"));
+    assertEquals(SqliteCallerPathFailure.PARENT_PATH_COLLISION, writeFailure.pathFailure());
   }
 
   @Test
@@ -155,14 +205,14 @@ class SqliteOwnedStageRecordTest {
     Path finalPath = finalPath();
     SqliteOwnedStageRecord normal = SqliteOwnedStageRecord.create(finalPath, ".stage-", ".tmp");
     assertTrue(Files.isRegularFile(normal.stagedPath()));
-    normal.discard();
+    normal.releaseRetained();
 
     Path occupiedStage = Files.createFile(tempDirectory.resolve("occupied.stage"));
     Path freshStage = tempDirectory.resolve("fresh.stage");
     Iterator<Path> stagedPaths = List.of(occupiedStage, freshStage).iterator();
     SqliteOwnedStageRecord retried = SqliteOwnedStageRecord.create(finalPath, stagedPaths::next);
     assertEquals(freshStage, retried.stagedPath());
-    retried.discard();
+    retried.releaseRetained();
 
     IllegalStateException exhausted =
         assertThrows(
@@ -180,11 +230,11 @@ class SqliteOwnedStageRecordTest {
       AclFixturePath failingStage = fileSystem.path("\\stages\\stage.tmp");
       failingStage.failNewByteChannelWith(new IOException("stage create failure"));
 
-      IllegalStateException stageFailure =
+      SqliteCallerPathContractException stageFailure =
           assertThrows(
-              IllegalStateException.class,
+              SqliteCallerPathContractException.class,
               () -> SqliteOwnedStageRecord.create(aclFinalPath, () -> failingStage));
-      assertTrue(NullTestSupport.messageOf(stageFailure).contains("Failed to create"));
+      assertEquals(SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY, stageFailure.pathFailure());
     }
 
     try (AclFixtureFileSystem fileSystem =
@@ -198,44 +248,74 @@ class SqliteOwnedStageRecordTest {
       AclFixturePath aclFinalPath = fileSystem.path("\\stages\\book.sqlite");
       AclFixturePath stagedPath = fileSystem.path("\\stages\\stage.tmp");
 
-      IllegalStateException recordFailure =
+      SqliteCallerPathContractException recordFailure =
           assertThrows(
-              IllegalStateException.class,
+              SqliteCallerPathContractException.class,
               () -> SqliteOwnedStageRecord.create(aclFinalPath, () -> stagedPath));
 
-      assertTrue(NullTestSupport.messageOf(recordFailure).contains("Failed to create"));
+      assertEquals(SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY, recordFailure.pathFailure());
     }
   }
 
   @Test
-  void record_findsAndDiscardsOnlySafeOwnedStages() throws Exception {
+  void record_createsItsStageAndOwnerEvidenceOwnerOnlyAndPreservesTheStageModeWhenWritten()
+      throws Exception {
+    org.junit.jupiter.api.Assumptions.assumeTrue(
+        tempDirectory.getFileSystem().supportedFileAttributeViews().contains("posix"),
+        "This filesystem cannot expose POSIX creation permissions.");
+    Path finalPath = finalPath();
+
+    SqliteOwnedStageRecord record = SqliteOwnedStageRecord.create(finalPath, ".stage-", ".tmp");
+    Path ownerRecordPath;
+    try (var children = Files.list(tempDirectory)) {
+      ownerRecordPath =
+          children
+              .filter(path -> path.getFileName().toString().endsWith(".owner"))
+              .findFirst()
+              .orElseThrow(() -> new AssertionError("Expected one durable owner record."));
+    }
+
+    assertEquals(
+        Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
+        Files.getPosixFilePermissions(record.stagedPath()));
+    assertEquals(
+        Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
+        Files.getPosixFilePermissions(ownerRecordPath));
+    Files.writeString(record.stagedPath(), "encrypted stage bytes");
+    assertEquals(
+        Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE),
+        Files.getPosixFilePermissions(record.stagedPath()));
+    record.releaseRetained();
+  }
+
+  @Test
+  void record_findsAndRetainsOwnedStagesWithoutUnlinkingThem() throws Exception {
     Path finalPath = finalPath();
     Path stagedPath = tempDirectory.resolve("recorded.stage");
     Files.createFile(stagedPath);
     SqliteOwnedStageRecord recorded = SqliteOwnedStageRecord.recordExisting(finalPath, stagedPath);
     assertEquals(1, SqliteOwnedStageRecord.findFor(finalPath).size());
-    recorded.discard();
-    assertFalse(Files.exists(stagedPath));
+    recorded.releaseRetained();
+    assertTrue(Files.exists(stagedPath));
 
     Path alteredStage = Files.createDirectory(tempDirectory.resolve("altered.stage"));
     Path alteredRecordPath = Files.createFile(tempDirectory.resolve("altered.owner"));
-    new SqliteOwnedStageRecord(alteredStage, alteredRecordPath).discard();
+    new SqliteOwnedStageRecord(alteredStage, alteredRecordPath).releaseRetained();
     assertTrue(Files.isDirectory(alteredStage));
-    assertFalse(Files.exists(alteredRecordPath));
+    assertTrue(Files.exists(alteredRecordPath));
 
     SqliteOwnedStagedArtifact artifact =
         SqliteOwnedStagedArtifact.create(finalPath, ".released-", ".tmp");
-    artifact.discard();
+    artifact.releaseRetained();
     assertThrows(IllegalStateException.class, () -> artifact.requireIntactFor(finalPath));
-    artifact.discard();
-    SqliteProtectedBookStagingFiles.deleteQuietlyIfPresent(null);
+    artifact.releaseRetained();
     assertTrue(
         SqliteOwnedStageRecord.findFor(tempDirectory.resolve("missing").resolve("book.sqlite"))
             .isEmpty());
   }
 
   @Test
-  void record_reportsFilesystemCleanupAndDirectoryEnumerationFailures() {
+  void record_retentionNeverAttemptsUnlinkAndStillReportsDirectoryEnumerationFailures() {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
       AclFixturePath failingStage = fileSystem.path("\\cleanup\\stage.tmp");
       failingStage.exists = true;
@@ -246,9 +326,11 @@ class SqliteOwnedStageRecordTest {
       recordPath.regularFile = true;
       SqliteOwnedStageRecord record = new SqliteOwnedStageRecord(failingStage, recordPath);
 
-      assertThrows(IllegalStateException.class, record::discard);
+      record.releaseRetained();
+      assertTrue(failingStage.existsValue());
+      assertTrue(recordPath.existsValue());
       recordPath.failDeleteIfExistsWith(new IOException("record delete failure"));
-      assertThrows(IllegalStateException.class, record::discardRecord);
+      record.releaseRetained();
 
       AclFixturePath finalPath = fileSystem.path("\\enumeration\\book.sqlite");
       AclFixturePath parent =

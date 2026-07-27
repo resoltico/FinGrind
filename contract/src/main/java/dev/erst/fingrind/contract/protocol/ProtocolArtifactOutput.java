@@ -8,14 +8,14 @@ public record ProtocolArtifactOutput(String format, String option, String descri
   private static final String BOOK_FILE_FORMAT = "book-file";
   private static final String BOOK_KEY_FILE_FORMAT = "book-key-file";
   private static final String ATTESTATION_KEY_FILE_FORMAT = "attestation-key-file";
+  private static final String ATTESTATION_RECEIPT_FORMAT = "attestation-receipt-v1";
   private static final String BACKUP_FILE_FORMAT = "backup-file";
   private static final String BACKUP_KEY_FILE_FORMAT = "backup-key-file";
-  private static final String ROLLBACK_BOOK_FILE_FORMAT = "rollback-book-file";
   private static final ProtocolArtifactOutput PDF =
       new ProtocolArtifactOutput(
           PDF_FORMAT,
           ProtocolOptions.Presentation.PDF_OUT + " <path>",
-          "Writes a PDF report artifact to the selected destination while preserving the command's selected stdout output mode.");
+          "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode.");
   private static final ProtocolArtifactOutput BOOK_FILE =
       new ProtocolArtifactOutput(
           BOOK_FILE_FORMAT,
@@ -35,7 +35,12 @@ public record ProtocolArtifactOutput(String format, String option, String descri
       new ProtocolArtifactOutput(
           ATTESTATION_KEY_FILE_FORMAT,
           ProtocolOptions.Attestation.NEW_KEY_FILE + " <path>",
-          "Publishes a newly generated owner-only encrypted Ed25519 attestation key file at an absent target path.");
+          "Publishes a newly generated owner-only encrypted Ed25519 attestation key file at an absent target beneath a private existing parent whose resolved ancestry resists non-owner substitution.");
+  private static final ProtocolArtifactOutput ATTESTATION_RECEIPT =
+      new ProtocolArtifactOutput(
+          ATTESTATION_RECEIPT_FORMAT,
+          ProtocolOptions.Attestation.RECEIPT_FILE + " <path>",
+          "Publishes an independently retained, quorum-signed attestation receipt at an absent target beneath a private existing parent whose resolved ancestry resists non-owner substitution.");
   private static final ProtocolArtifactOutput NEW_BACKUP_KEY_FILE =
       new ProtocolArtifactOutput(
           BACKUP_KEY_FILE_FORMAT,
@@ -46,16 +51,6 @@ public record ProtocolArtifactOutput(String format, String option, String descri
           BACKUP_FILE_FORMAT,
           ProtocolBookAccessOptions.BACKUP_FILE + " <path>",
           "Writes an encrypted backup-book copy to the selected destination without overwriting an existing file.");
-  private static final ProtocolArtifactOutput ROLLBACK_BOOK_FILE =
-      new ProtocolArtifactOutput(
-          ROLLBACK_BOOK_FILE_FORMAT,
-          ProtocolBookAccessOptions.ROLLBACK_BOOK_FILE + " <path>",
-          "Publishes the rollback-book file path selected or discovered during rekey recovery workflows.");
-  private static final ProtocolArtifactOutput DISCOVERED_ROLLBACK_BOOK_FILE =
-      new ProtocolArtifactOutput(
-          ROLLBACK_BOOK_FILE_FORMAT,
-          ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-          "Publishes rollback-book file paths discovered beside the selected live book path.");
 
   /** Validates an artifact-export descriptor. */
   public ProtocolArtifactOutput {
@@ -109,6 +104,16 @@ public record ProtocolArtifactOutput(String format, String option, String descri
     return ATTESTATION_KEY_FILE_FORMAT;
   }
 
+  /** Returns the canonical independently retained attestation-receipt descriptor. */
+  public static ProtocolArtifactOutput attestationReceipt() {
+    return ATTESTATION_RECEIPT;
+  }
+
+  /** Returns the stable wire format published for attestation-receipt artifacts. */
+  public static String attestationReceiptFormat() {
+    return ATTESTATION_RECEIPT_FORMAT;
+  }
+
   /** Returns the canonical backup-file descriptor. */
   public static ProtocolArtifactOutput backupFile() {
     return BACKUP_FILE;
@@ -127,21 +132,6 @@ public record ProtocolArtifactOutput(String format, String option, String descri
   /** Returns the stable wire format published for backup key file artifacts. */
   public static String backupKeyFileFormat() {
     return BACKUP_KEY_FILE_FORMAT;
-  }
-
-  /** Returns the canonical rollback-book-file descriptor for selected recovery artifacts. */
-  public static ProtocolArtifactOutput rollbackBookFile() {
-    return ROLLBACK_BOOK_FILE;
-  }
-
-  /** Returns the canonical rollback-book-file descriptor for sibling discovery. */
-  public static ProtocolArtifactOutput discoveredRollbackBookFile() {
-    return DISCOVERED_ROLLBACK_BOOK_FILE;
-  }
-
-  /** Returns the stable wire format published for rollback-book-file artifacts. */
-  public static String rollbackBookFileFormat() {
-    return ROLLBACK_BOOK_FILE_FORMAT;
   }
 
   private static String requireText(String value, String fieldName) {

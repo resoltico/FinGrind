@@ -19,7 +19,6 @@ final class CliOpenBookArgumentGrammar {
           ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
           ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE,
           ProtocolOptions.Attestation.CUSTODIAN,
-          ProtocolOptions.BookDefinition.TIGHTEN_PARENTS,
           ProtocolOptions.Presentation.OUTPUT);
 
   private CliOpenBookArgumentGrammar() {}
@@ -35,10 +34,6 @@ final class CliOpenBookArgumentGrammar {
 
   static void apply(
       CliOpenBookArgumentValues values, String argument, ListIterator<String> argumentIterator) {
-    if (ProtocolOptions.BookDefinition.TIGHTEN_PARENTS.equals(argument)) {
-      values.tightenParents = true;
-      return;
-    }
     if (CliOpenBookIdentityArguments.apply(values, argument, argumentIterator)
         || CliOpenBookConfigurationArguments.apply(values, argument, argumentIterator)
         || CliOpenBookFounderArguments.apply(values, argument, argumentIterator)) {

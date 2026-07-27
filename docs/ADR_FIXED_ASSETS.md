@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: ADR_FIXED_ASSETS
-updated: "2026-07-17"
+updated: "2026-07-24"
 route:
   keywords: [fingrind, fixed assets, capitalization, depreciation, disposal, fixed-asset register]
   questions: ["how does fingrind account for fixed assets", "what owns fixed-asset depreciation", "how does a fixed-asset disposal work"]
@@ -37,4 +37,4 @@ The typed commands are `record-fixed-asset-capitalization`, `record-fixed-asset-
 
 ## Publication Condition
 
-Publication requires the typed commands, SQLite reversal state and durable constraints that bind lifecycle values to immutable posting facts, executor admission and resolution, request contracts and templates, read projection, fixed-asset register in every supported report format, end-to-end tests, and protected-book format `52`. Earlier book formats are rejected rather than upgraded in place. The release-boundary contract test verifies this condition against the public operation registry and this ADR.
+Publication requires the typed commands, SQLite reversal state and durable constraints that bind lifecycle values to immutable posting facts, executor admission and resolution, request contracts and templates, read projection, fixed-asset register in every supported report format, end-to-end tests, and protected-book format `57`. Non-current book formats, whether older or newer, are rejected rather than upgraded in place. The release-boundary contract test verifies this condition against the public operation registry and this ADR.

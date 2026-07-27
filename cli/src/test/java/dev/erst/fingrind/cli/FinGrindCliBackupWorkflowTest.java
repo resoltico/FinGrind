@@ -13,7 +13,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** End-to-end backup publication coverage through the default SQLite workflow. */
-class FinGrindCliBackupWorkflowTest extends FinGrindCliTestSupport {
+class FinGrindCliBackupWorkflowTest extends CliWorkflowFixtureSupport {
   @Test
   void run_backupBookWithMismatchedSigningPrincipal_returnsExactAuthorizationRejection()
       throws IOException {
@@ -35,7 +35,7 @@ class FinGrindCliBackupWorkflowTest extends FinGrindCliTestSupport {
         2,
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(rejectedOutput), fixedClock())
             .run(
-                jsonArguments(
+                attestedJsonArguments(
                     "backup-book",
                     "--book-file",
                     bookFilePath.toString(),
@@ -105,7 +105,7 @@ class FinGrindCliBackupWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(
         7,
         secondBackupCli.run(
-            jsonArguments(
+            attestedJsonArguments(
                 "backup-book",
                 "--book-file",
                 bookFilePath.toString(),

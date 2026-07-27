@@ -38,7 +38,7 @@ class SqliteClosingMutationReadSupportCoverageTest extends SqlitePostingFactStor
       initializeBookWithMinimalNumericAccounts(postingFactStore);
       declareAllCloseTargets(postingFactStore);
       assertInstanceOf(
-          PostingCommitResult.Committed.class,
+          PostingCommitResult.Appended.class,
           commitPosting(
               postingFactStore,
               postingFact(
@@ -61,7 +61,7 @@ class SqliteClosingMutationReadSupportCoverageTest extends SqlitePostingFactStor
           assertInstanceOf(
               FiscalYearCloseOutcome.Closed.class,
               postingFactStore
-                  .storeMutationOperations()
+                  .storeClosingMutationOperations()
                   .fiscalYearClose(
                       FISCAL_YEAR_2026,
                       bookIdentity(),

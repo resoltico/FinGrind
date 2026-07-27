@@ -1,10 +1,15 @@
 package dev.erst.fingrind.core.attestation;
 
+import static dev.erst.fingrind.core.NullTestSupport.nullOf;
+import static dev.erst.fingrind.core.attestation.AttestationAuthorizationTestSupport.assertFailure;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -61,6 +66,50 @@ class AttestationPreimageTest {
     assertEncoded(
         "02010000000000000000000000000000002a",
         AttestationNumericFieldValue.scaled(2, true, BigInteger.valueOf(42)));
+  }
+
+  @Test
+  void decodingRechecksStandaloneFactsAndWholePreimagesForCanonicalBoundaries() {
+    AttestationPreimage.Fact expectedFact = command("post-entry");
+    AttestationPreimage expectedPreimage = AttestationPreimage.of(List.of(expectedFact));
+
+    AttestationPreimage.Fact decodedFact =
+        AttestationPreimage.decodeFact(
+            expectedFact.encoded(), AttestationAuthorizationFailure.PREIMAGE_INVALID);
+    AttestationPreimage decodedPreimage =
+        AttestationPreimage.decode(
+            expectedPreimage.encoded(), AttestationAuthorizationFailure.PREIMAGE_INVALID);
+
+    assertArrayEquals(expectedFact.encoded(), decodedFact.encoded());
+    assertArrayEquals(expectedPreimage.encoded(), decodedPreimage.encoded());
+    assertFailure(
+        AttestationAuthorizationFailure.PREIMAGE_INVALID,
+        () ->
+            AttestationPreimage.decodeFact(
+                Arrays.copyOf(expectedFact.encoded(), expectedFact.encoded().length + 1),
+                AttestationAuthorizationFailure.PREIMAGE_INVALID));
+    assertFailure(
+        AttestationAuthorizationFailure.PREIMAGE_INVALID,
+        () ->
+            AttestationPreimage.decode(
+                Arrays.copyOf(expectedPreimage.encoded(), expectedPreimage.encoded().length + 1),
+                AttestationAuthorizationFailure.PREIMAGE_INVALID));
+    assertFailure(
+        AttestationAuthorizationFailure.PREIMAGE_INVALID,
+        () ->
+            AttestationPreimage.decode(nullOf(), AttestationAuthorizationFailure.PREIMAGE_INVALID));
+    assertFailure(
+        AttestationAuthorizationFailure.PREIMAGE_INVALID,
+        () ->
+            AttestationPreimage.decode(
+                ByteBuffer.allocate(Integer.BYTES).putInt(1_000_001).array(),
+                AttestationAuthorizationFailure.PREIMAGE_INVALID));
+    assertFailure(
+        AttestationAuthorizationFailure.PREIMAGE_INVALID,
+        () ->
+            AttestationPreimage.decode(
+                new byte[AttestationPreimage.maximumEncodedByteCount() + 1],
+                AttestationAuthorizationFailure.PREIMAGE_INVALID));
   }
 
   private static AttestationPreimage.Fact command(String operationKind) {

@@ -13,8 +13,8 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.AttestationKeyFileMetadata;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
+import dev.erst.fingrind.core.attestation.AttestationKeyFileCreation;
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Objects;
 
 /** Renders write-side CLI results through the shared output channel. */
@@ -61,35 +61,26 @@ final class CliMutationResponseWriter {
     }
   }
 
-  void writeOpenBookResult(
-      Path bookFilePath,
-      List<Path> tightenedParentDirectories,
-      OpenBookResult result,
-      OutputMode outputMode) {
-    administrativeWriter.writeOpenBookResult(
-        bookFilePath, tightenedParentDirectories, result, outputMode);
+  void writeOpenBookResult(Path bookFilePath, OpenBookResult result, OutputMode outputMode) {
+    administrativeWriter.writeOpenBookResult(bookFilePath, result, outputMode);
   }
 
   void writeGenerateBookKeyFileResult(
-      GeneratedBookKeyFile generatedKeyFile,
-      List<Path> tightenedParentDirectories,
-      OutputMode outputMode) {
-    administrativeWriter.writeGenerateBookKeyFileResult(
-        generatedKeyFile, tightenedParentDirectories, outputMode);
+      GeneratedBookKeyFile generatedKeyFile, OutputMode outputMode) {
+    administrativeWriter.writeGenerateBookKeyFileResult(generatedKeyFile, outputMode);
   }
 
   void writeGeneratedAttestationKeyFileResult(
-      AttestationKeyFileMetadata metadata, OutputMode outputMode) {
-    administrativeWriter.writeGeneratedAttestationKeyFileResult(metadata, outputMode);
+      AttestationKeyFileCreation createdKeyFile, OutputMode outputMode) {
+    administrativeWriter.writeGeneratedAttestationKeyFileResult(createdKeyFile, outputMode);
   }
 
   void writeAttestationKeyFileMetadata(AttestationKeyFileMetadata metadata, OutputMode outputMode) {
     administrativeWriter.writeAttestationKeyFileMetadata(metadata, outputMode);
   }
 
-  void writeRekeyBookResult(
-      RekeyBookResult result, java.nio.file.Path newBookKeyFilePath, OutputMode outputMode) {
-    administrativeWriter.writeRekeyBookResult(result, newBookKeyFilePath, outputMode);
+  void writeRekeyBookResult(RekeyBookResult result, OutputMode outputMode) {
+    administrativeWriter.writeRekeyBookResult(result, outputMode);
   }
 
   void writeAttestationRegistryMutationResult(

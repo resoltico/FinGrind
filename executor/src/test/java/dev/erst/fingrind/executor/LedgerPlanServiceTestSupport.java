@@ -6,6 +6,7 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountin
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.BookkeepingEntry;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
@@ -39,34 +40,24 @@ import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationStaleHeadException;
 import dev.erst.fingrind.executor.bookkeeping.AccountCurrencyTotals;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
-import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseOutcome;
-import dev.erst.fingrind.executor.bookkeeping.FiscalYearClosePlanner;
-import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft;
-import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
-import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner;
-import dev.erst.fingrind.executor.bookkeeping.PostingValidationStore;
-import dev.erst.fingrind.executor.spi.AccountCatalogStore;
-import dev.erst.fingrind.executor.spi.BookAdministrationStore;
+import dev.erst.fingrind.executor.bookkeeping.PlanAccountDeclarationOutcome;
+import dev.erst.fingrind.executor.bookkeeping.PlanTaxRegistrationMutationOutcome;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
-import dev.erst.fingrind.executor.spi.BookkeepingReadStore;
-import dev.erst.fingrind.executor.spi.LedgerPlanTransaction;
-import dev.erst.fingrind.executor.spi.PostingCommitResult;
-import dev.erst.fingrind.executor.spi.PostingCommitStore;
+import dev.erst.fingrind.executor.spi.LedgerPlanExecutionStore;
+import dev.erst.fingrind.executor.spi.PlanPostingCommitResult;
 import dev.erst.fingrind.executor.spi.PostingDraft;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
-import dev.erst.fingrind.executor.spi.ReportingPeriodCloseStore;
 import dev.erst.fingrind.executor.spi.StoredRequestPosting;
-import dev.erst.fingrind.executor.spi.TaxAdministrationStore;
 import java.math.BigInteger;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /** Shared fixtures and seam doubles for split {@link LedgerPlanService} tests. */
 final class LedgerPlanServiceTestSupport {
@@ -119,48 +110,14 @@ final class LedgerPlanServiceTestSupport {
     return bookSession;
   }
 
-  static <
-          T extends
-              LedgerPlanTransaction & dev.erst.fingrind.executor.spi.AccountCatalogStore
-                  & BookAdministrationStore & BookkeepingReadStore & PostingValidationStore
-                  & PostingCommitStore & TaxAdministrationStore
-                  & dev.erst.fingrind.executor.spi.AttestationPostingCommitmentStore>
-      LedgerPlanService service(T bookSession) {
+  static <T extends LedgerPlanExecutionStore> LedgerPlanService service(T bookSession) {
     return new LedgerPlanService(
-        bookSession, workflowDependencies(bookSession, bookSession), FIXED_CLOCK);
+        bookSession, () -> new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"), FIXED_CLOCK);
   }
 
-  static <
-          T extends
-              LedgerPlanTransaction & dev.erst.fingrind.executor.spi.AccountCatalogStore
-                  & BookAdministrationStore & BookkeepingReadStore & PostingValidationStore
-                  & PostingCommitStore & TaxAdministrationStore>
-      LedgerPlanService service(
-          T bookSession,
-          dev.erst.fingrind.executor.spi.AttestationPostingCommitmentStore
-              attestationCommitmentStore) {
-    return new LedgerPlanService(
-        bookSession, workflowDependencies(bookSession, attestationCommitmentStore), FIXED_CLOCK);
-  }
-
-  private static <
-          T extends
-              dev.erst.fingrind.executor.spi.AccountCatalogStore & BookAdministrationStore
-                  & BookkeepingReadStore & PostingValidationStore & PostingCommitStore
-                  & TaxAdministrationStore>
-      BookWorkflowExecutionDependencies workflowDependencies(
-          T bookSession,
-          dev.erst.fingrind.executor.spi.AttestationPostingCommitmentStore
-              attestationCommitmentStore) {
-    return new BookWorkflowExecutionDependencies(
-        bookSession,
-        bookSession,
-        bookSession,
-        attestationCommitmentStore,
-        bookSession,
-        bookSession,
-        bookSession,
-        () -> new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69"));
+  static <T extends dev.erst.fingrind.executor.spi.LedgerPlanReadOnlyExecutionStore>
+      LedgerPlanReadOnlyService readOnlyService(T bookSession) {
+    return new LedgerPlanReadOnlyService(bookSession, FIXED_CLOCK);
   }
 
   static LedgerPlanId planId(String value) {
@@ -264,15 +221,8 @@ final class LedgerPlanServiceTestSupport {
 
   /** Composite workflow session shape used only by ledger-plan executor tests. */
   interface LedgerPlanSession
-      extends LedgerPlanTransaction,
-          BookAdministrationStore,
-          BookkeepingReadStore,
-          PostingValidationStore,
-          PostingCommitStore,
-          ReportingPeriodCloseStore,
-          AccountCatalogStore,
-          TaxAdministrationStore,
-          dev.erst.fingrind.executor.spi.AttestationPostingCommitmentStore,
+      extends LedgerPlanExecutionStore,
+          dev.erst.fingrind.executor.spi.LedgerPlanReadOnlyExecutionStore,
           AutoCloseable {}
 
   /**
@@ -288,55 +238,6 @@ final class LedgerPlanServiceTestSupport {
     @Override
     public BookLifecycleInspection inspectBook() {
       return delegate.inspectBook();
-    }
-
-    BookOpeningOutcome openBook(
-        Instant initializedAt,
-        dev.erst.fingrind.core.BookIdentity bookIdentity,
-        List<AccountDeclaration> seededAccounts) {
-      return delegate.openBook(initializedAt, bookIdentity, seededAccounts);
-    }
-
-    @Override
-    public BookOpeningOutcome openAttestedBook(
-        Instant initializedAt,
-        dev.erst.fingrind.core.BookIdentity bookIdentity,
-        List<AccountDeclaration> seededAccounts,
-        dev.erst.fingrind.core.attestation.AttestationEvidence genesisEvidence) {
-      return delegate.openAttestedBook(
-          initializedAt, bookIdentity, seededAccounts, genesisEvidence);
-    }
-
-    @Override
-    public AccountDeclarationOutcome declareAccount(
-        AccountDeclaration declaration,
-        Instant declaredAt,
-        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
-      return delegate.declareAccount(declaration, declaredAt, attestationAuthorizer);
-    }
-
-    @Override
-    public dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome amendAccount(
-        AccountDeclaration amendment,
-        Instant amendedAt,
-        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
-      return delegate.amendAccount(amendment, amendedAt, attestationAuthorizer);
-    }
-
-    @Override
-    public dev.erst.fingrind.executor.bookkeeping.AccountRetirementOutcome retireAccount(
-        AccountCode accountCode,
-        Instant retiredAt,
-        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
-      return delegate.retireAccount(accountCode, retiredAt, attestationAuthorizer);
-    }
-
-    @Override
-    public dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult declareTaxRegistration(
-        dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand command,
-        Instant declaredAt,
-        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
-      return delegate.declareTaxRegistration(command, declaredAt, attestationAuthorizer);
     }
 
     @Override
@@ -450,81 +351,48 @@ final class LedgerPlanServiceTestSupport {
     }
 
     @Override
-    public PostingCommitResult commit(
+    public void beginLedgerPlanTransaction(
+        String planId, AttestationPlanOperationAuthorizer attestationAuthorizer) {
+      delegate.beginLedgerPlanTransaction(planId, attestationAuthorizer);
+    }
+
+    @Override
+    public void beginReadOnlyLedgerPlanTransaction(String planId) {
+      delegate.beginReadOnlyLedgerPlanTransaction(planId);
+    }
+
+    @Override
+    public void enterLedgerPlanStep(int stepOrder) {
+      delegate.enterLedgerPlanStep(stepOrder);
+    }
+
+    @Override
+    public boolean hasCompletedLedgerPlanChildren() {
+      return delegate.hasCompletedLedgerPlanChildren();
+    }
+
+    @Override
+    public PlanAccountDeclarationOutcome declareAccountForPlan(
+        AccountDeclaration declaration,
+        Instant declaredAt,
+        AttestationPlanOperationAuthorizer attestationAuthorizer) {
+      return delegate.declareAccountForPlan(declaration, declaredAt, attestationAuthorizer);
+    }
+
+    @Override
+    public PlanTaxRegistrationMutationOutcome declareTaxRegistrationForPlan(
+        dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand command,
+        Instant declaredAt,
+        AttestationPlanOperationAuthorizer attestationAuthorizer) {
+      return delegate.declareTaxRegistrationForPlan(command, declaredAt, attestationAuthorizer);
+    }
+
+    @Override
+    public PlanPostingCommitResult commitForPlan(
         PostingDraft postingDraft,
         PostingIdGenerator postingIdGenerator,
-        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
-      return delegate.commit(postingDraft, postingIdGenerator, attestationAuthorizer);
-    }
-
-    @Override
-    public InterimResultSweepOutcome interimResultSweep(
-        dev.erst.fingrind.core.ReportingPeriod reportingPeriod,
-        dev.erst.fingrind.core.BookIdentity bookIdentity,
-        InterimResultSweepPlanner planner,
-        LocalDate currentUtcDate,
-        Instant sweptAt,
-        PostingIdGenerator postingIdGenerator,
-        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
-      return delegate.interimResultSweep(
-          reportingPeriod,
-          bookIdentity,
-          planner,
-          currentUtcDate,
-          sweptAt,
-          postingIdGenerator,
-          attestationAuthorizer);
-    }
-
-    @Override
-    public InterimResultSweepOutcome interimResultSweep(
-        LocalDate throughEffectiveDate,
-        LocalDate bookStartDate,
-        dev.erst.fingrind.core.BookIdentity bookIdentity,
-        InterimResultSweepPlanner planner,
-        LocalDate currentUtcDate,
-        Instant sweptAt,
-        PostingIdGenerator postingIdGenerator,
-        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
-      return delegate.interimResultSweep(
-          throughEffectiveDate,
-          bookStartDate,
-          bookIdentity,
-          planner,
-          currentUtcDate,
-          sweptAt,
-          postingIdGenerator,
-          attestationAuthorizer);
-    }
-
-    @Override
-    public FiscalYearCloseOutcome fiscalYearClose(
-        dev.erst.fingrind.core.ReportingPeriod reportingPeriod,
-        dev.erst.fingrind.core.BookIdentity bookIdentity,
-        FiscalYearClosePlanner planner,
-        LocalDate currentUtcDate,
-        Instant closedAt,
-        PostingIdGenerator postingIdGenerator,
-        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
-      return delegate.fiscalYearClose(
-          reportingPeriod,
-          bookIdentity,
-          planner,
-          currentUtcDate,
-          closedAt,
-          postingIdGenerator,
-          attestationAuthorizer);
-    }
-
-    InterimResultSweepOutcome interimResultSweep(
-        InterimResultSweepDraft interimResultSweepDraft, PostingIdGenerator postingIdGenerator) {
-      return delegate.interimResultSweep(
-          interimResultSweepDraft, postingIdGenerator, TEST_AUTHORIZER);
-    }
-
-    @Override
-    public void beginLedgerPlanTransaction() {
-      delegate.beginLedgerPlanTransaction();
+        AttestationPlanOperationAuthorizer attestationAuthorizer) {
+      return delegate.commitForPlan(postingDraft, postingIdGenerator, attestationAuthorizer);
     }
 
     @Override
@@ -535,6 +403,12 @@ final class LedgerPlanServiceTestSupport {
     @Override
     public void rollbackLedgerPlanTransaction() {
       delegate.rollbackLedgerPlanTransaction();
+    }
+
+    @Override
+    public dev.erst.fingrind.contract.bookkeeping.AttestationCommit appendPlanAttestation(
+        Instant recordedAt, AttestationPlanOperationAuthorizer attestationAuthorizer) {
+      return delegate.appendPlanAttestation(recordedAt, attestationAuthorizer);
     }
 
     @Override
@@ -571,10 +445,10 @@ final class LedgerPlanServiceTestSupport {
     private boolean rollbackCalled;
 
     @Override
-    public AccountDeclarationOutcome declareAccount(
+    public PlanAccountDeclarationOutcome declareAccountForPlan(
         AccountDeclaration declaration,
         Instant declaredAt,
-        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
+        AttestationPlanOperationAuthorizer attestationAuthorizer) {
       throw new IllegalStateException("declare boom");
     }
 
@@ -605,10 +479,10 @@ final class LedgerPlanServiceTestSupport {
     }
 
     @Override
-    public AccountDeclarationOutcome declareAccount(
+    public PlanAccountDeclarationOutcome declareAccountForPlan(
         AccountDeclaration declaration,
         Instant declaredAt,
-        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
+        AttestationPlanOperationAuthorizer attestationAuthorizer) {
       throw staleHead;
     }
 
@@ -630,7 +504,7 @@ final class LedgerPlanServiceTestSupport {
     }
   }
 
-  /** Test seam that rejects a child mutation with its exact historical authorization failure. */
+  /** Test seam that rejects a child mutation with its exact live-head authorization failure. */
   static final class DeclareAdmissionRejectedLedgerPlanSession extends DelegatingAtomicBookStore {
     private final AttestationAdmissionRejectedException admissionRejected =
         AttestationAdmissionRejectedException.from(AttestationAuthorizationFailure.QUORUM_BELOW);
@@ -646,10 +520,10 @@ final class LedgerPlanServiceTestSupport {
     }
 
     @Override
-    public AccountDeclarationOutcome declareAccount(
+    public PlanAccountDeclarationOutcome declareAccountForPlan(
         AccountDeclaration declaration,
         Instant declaredAt,
-        dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer attestationAuthorizer) {
+        AttestationPlanOperationAuthorizer attestationAuthorizer) {
       throw admissionRejected;
     }
 
@@ -679,9 +553,7 @@ final class LedgerPlanServiceTestSupport {
 
     @Override
     public dev.erst.fingrind.contract.bookkeeping.AttestationCommit appendPlanAttestation(
-        String planId,
-        Instant recordedAt,
-        AttestationPlanOperationAuthorizer attestationAuthorizer) {
+        Instant recordedAt, AttestationPlanOperationAuthorizer attestationAuthorizer) {
       throw staleHead;
     }
 
@@ -709,9 +581,7 @@ final class LedgerPlanServiceTestSupport {
 
     @Override
     public dev.erst.fingrind.contract.bookkeeping.AttestationCommit appendPlanAttestation(
-        String planId,
-        Instant recordedAt,
-        AttestationPlanOperationAuthorizer attestationAuthorizer) {
+        Instant recordedAt, AttestationPlanOperationAuthorizer attestationAuthorizer) {
       throw admissionRejected;
     }
 
@@ -730,31 +600,145 @@ final class LedgerPlanServiceTestSupport {
     }
   }
 
+  /**
+   * Test session whose aggregate plan append makes the plan's new posting visible to the
+   * authenticated posting-commitment projection.
+   */
+  static final class AggregateAttestationPublishingLedgerPlanSession
+      extends DelegatingAtomicBookStore {
+    private static final PostingId PLAN_POSTING_ID =
+        new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69");
+    private static final dev.erst.fingrind.contract.bookkeeping.AttestationCommit PLAN_COMMIT =
+        new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
+            BigInteger.valueOf(42), "b".repeat(64));
+    private boolean aggregateAttestationAppended;
+    private boolean queriedBeforeAggregateAttestation;
+
+    AggregateAttestationPublishingLedgerPlanSession() {
+      delegate.declareAccount(
+          new AccountCode("1000"),
+          new AccountName("Cash"),
+          AccountType.ASSET,
+          accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT),
+          FIXED_CLOCK.instant());
+      delegate.declareAccount(
+          new AccountCode("2000"),
+          new AccountName("Revenue"),
+          AccountType.REVENUE,
+          accountTaxonomy(AccountType.REVENUE, NormalBalance.CREDIT),
+          FIXED_CLOCK.instant());
+    }
+
+    @Override
+    public dev.erst.fingrind.contract.bookkeeping.AttestationCommit appendPlanAttestation(
+        Instant recordedAt, AttestationPlanOperationAuthorizer attestationAuthorizer) {
+      delegate.appendPlanAttestation(recordedAt, attestationAuthorizer);
+      aggregateAttestationAppended = true;
+      return PLAN_COMMIT;
+    }
+
+    @Override
+    public Map<PostingId, dev.erst.fingrind.contract.bookkeeping.AttestationCommit>
+        attestationCommitsFor(Set<PostingId> postingIds) {
+      if (!aggregateAttestationAppended) {
+        queriedBeforeAggregateAttestation = true;
+        return Map.of();
+      }
+      return postingIds.contains(PLAN_POSTING_ID) ? Map.of(PLAN_POSTING_ID, PLAN_COMMIT) : Map.of();
+    }
+
+    @Override
+    public void rollbackLedgerPlanTransaction() {
+      aggregateAttestationAppended = false;
+      delegate.rollbackLedgerPlanTransaction();
+    }
+
+    dev.erst.fingrind.contract.bookkeeping.AttestationCommit planCommit() {
+      return PLAN_COMMIT;
+    }
+
+    boolean queriedBeforeAggregateAttestation() {
+      return queriedBeforeAggregateAttestation;
+    }
+  }
+
+  /**
+   * Bound execution-store fixture with one pre-existing posting whose authenticated commitment is
+   * available to plan query projection.
+   */
+  static final class StoredPostingCommitmentLedgerPlanSession extends DelegatingAtomicBookStore {
+    private final PostingId postingId;
+    private final AttestationCommit attestationCommit;
+
+    StoredPostingCommitmentLedgerPlanSession(
+        PostingId postingId, AttestationCommit attestationCommit) {
+      this.postingId = postingId;
+      this.attestationCommit = attestationCommit;
+      delegate.declareAccount(
+          new AccountCode("1000"),
+          new AccountName("Cash"),
+          AccountType.ASSET,
+          accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT),
+          FIXED_CLOCK.instant());
+      delegate.declareAccount(
+          new AccountCode("2000"),
+          new AccountName("Revenue"),
+          AccountType.REVENUE,
+          accountTaxonomy(AccountType.REVENUE, NormalBalance.CREDIT),
+          FIXED_CLOCK.instant());
+      PostEntryResult committed =
+          new PostingApplicationService(delegate, delegate, () -> this.postingId, FIXED_CLOCK)
+              .commit(postEntryCommand("idem-setup"), TEST_AUTHORIZER);
+      assertEquals(PostEntryResult.Committed.class, committed.getClass());
+    }
+
+    @Override
+    public Map<PostingId, AttestationCommit> attestationCommitsFor(Set<PostingId> postingIds) {
+      return postingIds.contains(postingId) ? Map.of(postingId, attestationCommit) : Map.of();
+    }
+  }
+
   /** Test seam that throws before any ledger-plan transaction begins. */
   static final class BeginFailingLedgerPlanSession extends DelegatingAtomicBookStore {
     @Override
-    public void beginLedgerPlanTransaction() {
+    public void beginLedgerPlanTransaction(
+        String planId, AttestationPlanOperationAuthorizer attestationAuthorizer) {
       throw new IllegalStateException("begin boom");
     }
   }
 
   /** Test seam that throws while checking initialization before the first step runs. */
   static final class InitializationCheckFailingLedgerPlanSession extends DelegatingAtomicBookStore {
+    private final RuntimeException initializationFailure;
     private boolean rollbackCalled;
+    private int rollbackCalls;
+
+    InitializationCheckFailingLedgerPlanSession() {
+      this(new IllegalStateException("initialization boom"));
+    }
+
+    InitializationCheckFailingLedgerPlanSession(RuntimeException initializationFailure) {
+      this.initializationFailure = java.util.Objects.requireNonNull(initializationFailure);
+    }
 
     @Override
     public BookLifecycleInspection inspectBook() {
-      throw new IllegalStateException("initialization boom");
+      throw initializationFailure;
     }
 
     @Override
     public void rollbackLedgerPlanTransaction() {
       rollbackCalled = true;
+      rollbackCalls++;
       delegate.rollbackLedgerPlanTransaction();
     }
 
     boolean rollbackCalled() {
       return rollbackCalled;
+    }
+
+    int rollbackCalls() {
+      return rollbackCalls;
     }
   }
 

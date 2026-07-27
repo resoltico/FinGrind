@@ -15,7 +15,7 @@ import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** Unit tests for {@link FinGrindCli}. */
-class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
+class FinGrindCliPlanWorkflowTest extends CliWorkflowFixtureSupport {
   @Test
   void run_executesNonOpeningPlanAgainstExistingBookThroughDefaultSqliteWorkflow()
       throws IOException {
@@ -33,7 +33,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock());
     int exitCode =
         executeCli.run(
-            jsonArguments(
+            attestedJsonArguments(
                 "execute-plan",
                 "--book-file",
                 bookFilePath.toString(),
@@ -45,6 +45,10 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
                 planFile.toString()));
     assertEquals(0, exitCode, () -> outputStream.toString(StandardCharsets.UTF_8));
     assertJsonContains(outputStream, "\"status\":\"succeeded\"");
+    JsonNode initialPayload =
+        new ObjectMapper().readTree(outputStream.toByteArray()).path("payload");
+    assertEquals("appended", initialPayload.path("attestationDisposition").stringValue());
+    assertTrue(initialPayload.path("attestationCommit").isObject());
     ByteArrayOutputStream verificationOutput = new ByteArrayOutputStream();
     FinGrindCli verifyCli =
         cli(
@@ -68,7 +72,56 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
         new ObjectMapper()
             .readTree(verificationOutput.toByteArray())
             .path("payload")
-            .path("headOrder")
+            .path("verifiedAttestationHead")
+            .path("operationOrder")
+            .stringValue());
+
+    ByteArrayOutputStream replayOutput = new ByteArrayOutputStream();
+    int replayExitCode =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(replayOutput), fixedClock())
+            .run(
+                attestedJsonArguments(
+                    "execute-plan",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString(),
+                    "--result-detail",
+                    "full",
+                    "--request-file",
+                    planFile.toString()));
+    assertEquals(0, replayExitCode, () -> replayOutput.toString(StandardCharsets.UTF_8));
+    JsonNode replayPayload =
+        new ObjectMapper().readTree(replayOutput.toByteArray()).path("payload");
+    assertEquals("succeeded", replayPayload.path("status").stringValue());
+    assertEquals(
+        "no-durable-child-mutation", replayPayload.path("attestationDisposition").stringValue());
+    assertTrue(replayPayload.path("attestationCommit").isNull());
+
+    ByteArrayOutputStream verificationAfterReplayOutput = new ByteArrayOutputStream();
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(verificationAfterReplayOutput),
+                fixedClock())
+            .run(
+                new String[] {
+                  "verify-book",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--output",
+                  "json"
+                }));
+    assertEquals(
+        "1",
+        new ObjectMapper()
+            .readTree(verificationAfterReplayOutput.toByteArray())
+            .path("payload")
+            .path("verifiedAttestationHead")
+            .path("operationOrder")
             .stringValue());
   }
 
@@ -92,7 +145,7 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
         2,
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(rejectedOutput), fixedClock())
             .run(
-                jsonArguments(
+                attestedJsonArguments(
                     "execute-plan",
                     "--book-file",
                     bookFilePath.toString(),
@@ -134,7 +187,8 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
         new ObjectMapper()
             .readTree(verificationOutput.toByteArray())
             .path("payload")
-            .path("headOrder")
+            .path("verifiedAttestationHead")
+            .path("operationOrder")
             .stringValue());
   }
 
@@ -164,6 +218,75 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(6, exitCode, () -> outputStream.toString(StandardCharsets.UTF_8));
     assertJsonContains(outputStream, "\"status\":\"error\"");
     assertJsonContains(outputStream, "\"code\":\"invalid-attestation-credential\"");
+    assertFalse(Files.exists(bookFilePath));
+  }
+
+  @Test
+  void run_rejectsACompleteCredentialTupleForAReadOnlyPlanBeforeOpeningAnyResource()
+      throws IOException {
+    Path planFile = writeNamedRequest("read-only-plan.json", listAccountsPlanJson(50));
+    Path bookFilePath = tempDirectory.resolve("plans").resolve("missing-book.sqlite");
+    Path bookKeyFilePath = tempDirectory.resolve("plans").resolve("missing-book.key");
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+
+    int exitCode =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock())
+            .run(
+                new String[] {
+                  "execute-plan",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--request-file",
+                  planFile.toString(),
+                  "--attestation-custodian",
+                  "file-pkcs8",
+                  "--attestation-principal-id",
+                  "10213243-5465-7687-98a9-babcbddceeff",
+                  "--attestation-key-file",
+                  tempDirectory.resolve("plans").resolve("missing.fgatk").toString(),
+                  "--attestation-passphrase-file",
+                  tempDirectory.resolve("plans").resolve("missing.passphrase").toString(),
+                  "--output",
+                  "json"
+                });
+
+    assertEquals(1, exitCode, () -> outputStream.toString(StandardCharsets.UTF_8));
+    JsonNode envelope = new ObjectMapper().readTree(outputStream.toByteArray());
+    assertEquals("error", envelope.path("status").stringValue());
+    assertEquals("attestation-credentials-not-allowed", envelope.path("code").stringValue());
+    assertEquals("structural-invalid", envelope.path("category").stringValue());
+    assertFalse(envelope.has("payload"));
+    assertFalse(Files.exists(bookFilePath));
+  }
+
+  @Test
+  void run_routesReadOnlyPlansThroughTheNoncreatingReadOnlyPlanSession() throws IOException {
+    Path planFile = writeNamedRequest("read-only-plan.json", listAccountsPlanJson(50));
+    Path bookFilePath = tempDirectory.resolve("plans").resolve("missing-read-only-book.sqlite");
+    Path bookKeyFilePath = writeBookKey(bookFilePath);
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+
+    int exitCode =
+        cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(outputStream), fixedClock())
+            .run(
+                new String[] {
+                  "execute-plan",
+                  "--book-file",
+                  bookFilePath.toString(),
+                  "--book-key-file",
+                  bookKeyFilePath.toString(),
+                  "--request-file",
+                  planFile.toString(),
+                  "--output",
+                  "json"
+                });
+
+    assertEquals(2, exitCode, () -> outputStream.toString(StandardCharsets.UTF_8));
+    assertJsonContains(outputStream, "\"status\":\"rejected\"");
+    assertJsonContains(outputStream, "\"code\":\"query-book-not-initialized\"");
+    assertFalse(Files.exists(bookFilePath));
   }
 
   @Test
@@ -279,14 +402,9 @@ class FinGrindCliPlanWorkflowTest extends FinGrindCliTestSupport {
               "json"
             });
     assertEquals(0, exitCode);
-    JsonNode data =
-        new ObjectMapper()
-            .readTree(outputStream.toByteArray())
-            .path("payload")
-            .path("journal")
-            .path("steps")
-            .get(0)
-            .path("data");
+    JsonNode payload = new ObjectMapper().readTree(outputStream.toByteArray()).path("payload");
+    assertEquals("read-only", payload.path("attestationDisposition").stringValue());
+    JsonNode data = payload.path("journal").path("steps").get(0).path("data");
     assertEquals(1, data.path("count").asInt());
     assertEquals(1, data.path("pageLimit").asInt());
     assertTrue(data.path("nextCursor").stringValue().length() > 4);

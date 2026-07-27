@@ -30,6 +30,28 @@ final class CliReportRenderSupport {
     return section(title, CliTextFormat.renderKeyValueBlock(rows));
   }
 
+  static String renderPagedListText(CliPagedListText page) {
+    String summary =
+        CliTextFormat.renderKeyValueBlock(
+            page.returnedCount() == 0
+                ? List.of(
+                    List.of("Outcome", CliQueryScopeText.noMatchesLabel(page.emptySubjectPlural())),
+                    List.of("Limit", Integer.toString(page.limit())),
+                    List.of("Next cursor", page.nextCursor()))
+                : List.of(
+                    List.of(
+                        "Returned " + page.returnedSubjectPlural(),
+                        Integer.toString(page.returnedCount())),
+                    List.of("Limit", Integer.toString(page.limit())),
+                    List.of("Next cursor", page.nextCursor())));
+    return CliTextFormat.renderTitledBlock(
+        page.title(),
+        joinSections(
+            summary,
+            page.renderedRows(),
+            page.withContext() ? keyValueSection("Context", page.contextRows()) : ""));
+  }
+
   static String comparativeReferenceLine(EffectiveDateRange comparativeEffectiveDateRange) {
     if (comparativeEffectiveDateRange.effectiveDateFrom().isEmpty()
         && comparativeEffectiveDateRange.effectiveDateTo().isEmpty()) {

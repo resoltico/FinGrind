@@ -25,14 +25,15 @@ final class ProtocolWriteOperations {
             List.of(),
             List.of(
                 ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-                ProtocolOptions.currentPassphraseSourceSyntax(),
+                ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
                 ProtocolOptions.Request.FILE + " <path|->",
-                ProtocolOptions.requiredAttestationCredentialSyntax(),
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT)),
-                ProtocolOptions.optionalResultDetailSyntax()),
+                ProtocolOptionSyntax.Attestation.conditionalExecutePlanCredentialSyntax(),
+                ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.TEXT)),
+                ProtocolOptionSyntax.Discovery.optionalResultDetailSyntax()),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
-            "Execute an ordered AI-agent ledger plan inside a single atomic book transaction. Summary output is the default; request the full execution journal explicitly when needed.",
+            "Execute an ordered AI-agent ledger plan inside a single atomic book transaction. Attestation credentials are required exactly when the request contains a mutating step and forbidden for a query-only or assertion-only plan. Summary output is the default; request the full execution journal explicitly when needed.",
             List.of(
                 ProtocolExampleStep.command(
                     "fingrind %s > plan.json"
@@ -54,9 +55,10 @@ final class ProtocolWriteOperations {
             List.of(),
             List.of(
                 ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-                ProtocolOptions.currentPassphraseSourceSyntax(),
+                ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
                 ProtocolOptions.Request.FILE + " <path|->",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+                ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
             "Validate a posting request from the typed business-entry family or the raw direct-journal path without committing it.",
@@ -85,10 +87,11 @@ final class ProtocolWriteOperations {
         List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
             ProtocolOptions.Request.FILE + " <path|->",
-            ProtocolOptions.requiredAttestationCredentialSyntax(),
-            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+            ProtocolOptionSyntax.Attestation.requiredCredentialSyntax(),
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                List.of(OutputMode.JSON, OutputMode.TEXT))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT),
         "Commit a raw direct-journal posting request into the selected SQLite book. Prefer the record-* commands when a typed business-entry command matches the operator's intent; raw direct-journal requests do not admit inventory accounts.",

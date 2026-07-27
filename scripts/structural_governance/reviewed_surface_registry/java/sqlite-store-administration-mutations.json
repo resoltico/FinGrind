@@ -1,0 +1,22 @@
+{
+  "projectPath": "sqlite",
+  "relativePath": "src/main/java/dev/erst/fingrind/sqlite/SqliteStoreAdministrationMutationOperations.java",
+  "owner": "sqlite-store-administration-mutations",
+  "reason": "Administrative mutations share one transaction and attestation admission boundary while preserving deterministic rejection precedence across the registry operations.",
+  "splitTrigger": "Split a new independently authorized administration family before adding it to this common mutation transaction owner.",
+  "reviewedRoleName": "sqlite-store-administration-mutations",
+  "budgetVarianceReason": "Transaction ownership, attestation commitment, and rollback semantics remain safer as one reviewed administration boundary.",
+  "approval": {
+    "physicalLines": 452,
+    "logicalLines": 386,
+    "importLikeLines": 23,
+    "nestedTypes": 4,
+    "functions": 13,
+    "fieldsPerTopLevelType": 4,
+    "switchArmsPerMethod": 0,
+    "methodLineSpan": 83,
+    "methodParameters": 4,
+    "methodDecisionPoints": 6,
+    "expiresOn": "2026-08-18"
+  }
+}

@@ -35,7 +35,7 @@ final class CliAdministrativeExitCodes {
       case BackupBookResult.BackedUp _ -> 0;
       case BackupBookResult.AcknowledgementPending _ -> 4;
       case BackupBookResult.AcknowledgementAuthorizationRejected _ ->
-          CliAttestationExitCodes.authorizationRejectedExitCode();
+          CliAttestationExitCodes.attestationRejectedExitCode();
       case BackupBookResult.Rejected rejected -> exitCodeFor(rejected.rejection());
     };
   }

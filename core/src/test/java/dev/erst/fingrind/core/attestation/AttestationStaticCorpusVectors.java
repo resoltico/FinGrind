@@ -24,10 +24,10 @@ final class AttestationStaticCorpusVectors {
           Map.entry(
               "B-05-artifact", "b92bba455ca0b086deb84c8e443e837e22ade75176a8153f1a09321a124323fe"),
           Map.entry(
-              "B-05-book", "0bf16602e98bed75f7531ecbb99eee26452c7a130ad0dd6b57454750ed5d63b2"),
-          Map.entry("B-06", "fe803e5313a9a3522fc03b683cfe5cbe5435026b4e609af6c7dac9132e28ab2b"),
-          Map.entry("B-07", "f7f83b2815c876d763500fa52514eb0f1b5e7897b29f451802dfdd8e4f2ab541"),
-          Map.entry("B-10", "35bd0a4635780f4e8626e055eb23f80ae252ab9704f813e4e0459ba1e9204f01"),
+              "B-05-book", "7abe7701c85cab52346165dbac6e056cd89cdf7ba50f0a24dedde0193e4f827d"),
+          Map.entry("B-06", "b9b67cacfa87be40577b7ce0f7510ed514648f74ff633736e6795c6279fa3302"),
+          Map.entry("B-07", "14681fc248385b6b96001e13e418c408f62cfd21940cda73fb538047058e0db0"),
+          Map.entry("B-10", "f94e7c6c5c5f3dd32f3613d2a441d064e3ef2028381a336da3dd2a7cc90ec592"),
           Map.entry(
               "B-11-receipt", "6bdfc070fabc1415b634066bcddeee8cf1fd4a58f9bd39fde8c6a132402b010f"));
   private static final Map<String, String> NEGATIVE_SOURCE_SHA256 =
@@ -295,7 +295,7 @@ final class AttestationStaticCorpusVectors {
             "N-19",
             "B-04",
             new PolicyFacts("B-04", 8, AttestationCapability.CLOSE_PERIOD, 1, 3, 2, 1, true),
-            AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID),
+            AttestationAuthorizationFailure.REQUEST_PROFILE_INVALID),
         negative(
             "N-20",
             "B-04",

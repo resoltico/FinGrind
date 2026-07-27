@@ -29,12 +29,15 @@ readonly release_test_support="${script_dir}/github_release_test_support.py"
 readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly stage_contract_script="${repo_root}/scripts/check-stage-contract.sh"
 readonly release_workflow="${repo_root}/.github/workflows/release.yml"
+readonly release_publication_verification="${repo_root}/docs/RELEASE_PUBLICATION_VERIFICATION.md"
 
 [[ -x "${verifier}" ]] || die "missing executable release verifier"
 [[ -f "${archive_verifier}" ]] || die "missing source archive verifier helper"
 [[ -f "${release_test_support}" ]] || die "missing GitHub release test support helper"
 [[ -f "${stage_contract_script}" ]] || die "missing check stage contract helper at ${stage_contract_script}"
 [[ -f "${release_workflow}" ]] || die "missing release workflow at ${release_workflow}"
+[[ -f "${release_publication_verification}" ]] || die \
+    "missing release publication verification guide at ${release_publication_verification}"
 grep -Fq 'scripts/test-verify-github-release.sh' "${stage_contract_script}" || die \
     "check stage contract no longer exercises the GitHub release verifier regression"
 grep -Fq 'prepare-publication:' "${release_workflow}" || die \
@@ -82,10 +85,10 @@ grep -Fq -- '--execution-surface compatibility-floor' "${release_workflow}" || d
 if grep -Fq 'matrix.expectedOs' "${release_workflow}" || grep -Fq 'matrix.expectedArch' "${release_workflow}"; then
     die "release workflow still depends on retired runner-spelling matrix fields"
 fi
-grep -Fq './scripts/verify-github-release.sh' "${repo_root}/docs/RELEASE_PROTOCOL.md" || die \
-    "release protocol no longer requires the GitHub release verifier"
-grep -Fq './scripts/verify-public-container-surface.sh' "${repo_root}/docs/RELEASE_PROTOCOL.md" || die \
-    "release protocol no longer requires public-container surface verification"
+grep -Fq './scripts/verify-github-release.sh' "${release_publication_verification}" || die \
+    "release publication verification guide no longer requires the GitHub release verifier"
+grep -Fq './scripts/verify-public-container-surface.sh' "${release_publication_verification}" || die \
+    "release publication verification guide no longer requires public-container surface verification"
 
 attest_job_surface="$(
     python3 "${release_test_support}" \

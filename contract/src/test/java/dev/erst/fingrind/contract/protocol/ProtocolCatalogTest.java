@@ -190,6 +190,33 @@ class ProtocolCatalogTest {
   }
 
   @Test
+  void maintenanceOperationsPublishOneCanonicalPairUncertaintyRecoveryProcedure() {
+    for (OperationId operationId :
+        List.of(OperationId.REKEY_BOOK, OperationId.BACKUP_BOOK, OperationId.RESTORE_BOOK)) {
+      String guidance =
+          String.join(
+              "\n",
+              ProtocolCatalog.operation(operationId).exampleSteps().stream()
+                  .map(ProtocolExampleStep::text)
+                  .toList());
+
+      assertTrue(guidance.contains("protected-book-pair-publication-uncertain"), guidance);
+      assertTrue(guidance.contains("preserve FinGrind pair evidence"), guidance);
+      assertTrue(guidance.contains("preserve both reported final paths"), guidance);
+      assertTrue(guidance.contains("exact same operation"), guidance);
+      assertTrue(guidance.contains("complete original inputs"), guidance);
+      assertTrue(guidance.contains("including exactly the reported final paths"), guidance);
+      assertTrue(
+          guidance.contains("Do not rename, overwrite, delete, recreate, or manually clean"),
+          guidance);
+      assertTrue(guidance.contains("pair evidence or either final member"), guidance);
+      assertTrue(guidance.contains("do not start a fresh pair"), guidance);
+      assertTrue(guidance.contains("recoveryRecordState is present"), guidance);
+      assertTrue(guidance.contains("preserve FinGrind's recovery material too"), guidance);
+    }
+  }
+
+  @Test
   void protocolDescriptorRecords_rejectBlankTextAndNullCollectionsWithContext() {
     ProtocolOperation operation =
         new ProtocolOperation(
@@ -292,19 +319,17 @@ class ProtocolCatalogTest {
     assertEquals("book-file", ProtocolArtifactOutput.bookFileFormat());
     assertEquals("book-key-file", ProtocolArtifactOutput.bookKeyFileFormat());
     assertEquals("attestation-key-file", ProtocolArtifactOutput.attestationKeyFileFormat());
+    assertEquals("attestation-receipt-v1", ProtocolArtifactOutput.attestationReceiptFormat());
     assertEquals("backup-file", ProtocolArtifactOutput.backupFileFormat());
     assertEquals("backup-key-file", ProtocolArtifactOutput.backupKeyFileFormat());
-    assertEquals("rollback-book-file", ProtocolArtifactOutput.rollbackBookFileFormat());
     assertEquals("--new-book-key-file <path>", ProtocolArtifactOutput.newBookKeyFile().option());
     assertEquals(
         "--new-attestation-key-file <path>",
         ProtocolArtifactOutput.generatedAttestationKeyFile().option());
+    assertEquals("--receipt-file <path>", ProtocolArtifactOutput.attestationReceipt().option());
     assertEquals("--book-file <path>", ProtocolArtifactOutput.bookFile().option());
     assertEquals(
         "--new-backup-key-file <path>", ProtocolArtifactOutput.newBackupKeyFile().option());
-    assertEquals("--rollback-book-file <path>", ProtocolArtifactOutput.rollbackBookFile().option());
-    assertEquals(
-        "--book-file <path>", ProtocolArtifactOutput.discoveredRollbackBookFile().option());
   }
 
   @Test
@@ -456,21 +481,22 @@ class ProtocolCatalogTest {
     ProtocolOperation printRequestTemplate =
         ProtocolCatalog.operation(OperationId.PRINT_REQUEST_TEMPLATE);
     ProtocolOperation executePlan = ProtocolCatalog.operation(OperationId.EXECUTE_PLAN);
-    assertEquals("[--limit <1-200>]", ProtocolOptions.optionalLimitSyntax());
-    assertEquals("[--cursor <cursor>]", ProtocolOptions.optionalCursorSyntax());
+    assertEquals("[--limit <1-200>]", ProtocolOptionSyntax.ReportQuery.optionalLimitSyntax());
+    assertEquals("[--cursor <cursor>]", ProtocolOptionSyntax.ReportQuery.optionalCursorSyntax());
     assertEquals(
         "[--output <json|text|csv>]",
-        ProtocolOptions.optionalOutputSyntax(
+        ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
             List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV)));
-    assertEquals("[--pdf-out <path>]", ProtocolOptions.optionalPdfOutSyntax());
+    assertEquals("[--pdf-out <path>]", ProtocolOptionSyntax.Presentation.optionalPdfOutSyntax());
     assertEquals(
-        "[--detail <minimal|compact|full>]", ProtocolOptions.optionalDiscoveryDetailSyntax());
+        "[--detail <minimal|compact|full>]",
+        ProtocolOptionSyntax.Discovery.optionalDiscoveryDetailSyntax());
     assertEquals(
         "[--detail <minimal|compact|full> (json only)]",
-        ProtocolOptions.optionalJsonOnlyDiscoveryDetailSyntax());
+        ProtocolOptionSyntax.Discovery.optionalJsonOnlyDiscoveryDetailSyntax());
     assertEquals(
         List.of("--book-key-file", "--book-passphrase-stdin", "--book-passphrase-prompt"),
-        ProtocolOptions.bookPassphraseOptions());
+        ProtocolOptionSyntax.BookAccess.bookPassphraseOptions());
     assertEquals(50, ProtocolInteractionLimits.DEFAULT_PAGE_LIMIT);
     assertEquals(200, ProtocolInteractionLimits.PAGE_LIMIT_MAX);
     assertEquals(100, ProtocolInteractionLimits.LEDGER_PLAN_STEP_MAX);
@@ -532,7 +558,9 @@ class ProtocolCatalogTest {
         assertTrue(
             operation
                 .options()
-                .contains(ProtocolOptions.optionalOutputSyntax(operation.outputModes())),
+                .contains(
+                    ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                        operation.outputModes())),
             () ->
                 "Missing canonical --output syntax for "
                     + operation.id().wireName()

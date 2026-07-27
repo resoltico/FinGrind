@@ -10,8 +10,6 @@ import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.sqlite.SqliteBookKeyFileGenerator;
-import dev.erst.fingrind.sqlite.SqliteCallerPathSecurity;
-import java.io.IOException;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
@@ -62,15 +60,11 @@ final class CliAdministrativeCommandExecutor {
     return attestationKeyFileWorkflow.inspect(custodian, attestationKeyFilePath, outputMode);
   }
 
-  int runGenerateBookKeyFileCommand(
-      Path bookKeyFilePath, boolean tightenParents, OutputMode outputMode) {
-    List<Path> tightenedParentDirectories =
-        tightenedBookKeyParentDirectories(bookKeyFilePath, tightenParents);
+  int runGenerateBookKeyFileCommand(Path bookKeyFilePath, OutputMode outputMode) {
     return SqliteBookKeyFileGenerator.generateDecision(bookKeyFilePath)
         .fold(
             (GeneratedBookKeyFile generatedKeyFile) -> {
-              responseWriter.writeGenerateBookKeyFileResult(
-                  generatedKeyFile, tightenedParentDirectories, outputMode);
+              responseWriter.writeGenerateBookKeyFileResult(generatedKeyFile, outputMode);
               return 0;
             },
             failure ->
@@ -78,13 +72,7 @@ final class CliAdministrativeCommandExecutor {
                     failure, failureWriter, outputMode));
   }
 
-  int runOpenBookCommand(
-      BookAccess bookAccess,
-      OpenBookCommand command,
-      boolean tightenParents,
-      OutputMode outputMode) {
-    List<Path> tightenedParentDirectories =
-        tightenedBookParentDirectories(bookAccess.bookFilePath(), tightenParents);
+  int runOpenBookCommand(BookAccess bookAccess, OpenBookCommand command, OutputMode outputMode) {
     Optional<Integer> promptFailure =
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
             .map(
@@ -98,8 +86,7 @@ final class CliAdministrativeCommandExecutor {
         .openBook(bookAccess, command)
         .fold(
             result -> {
-              responseWriter.writeOpenBookResult(
-                  bookAccess.bookFilePath(), tightenedParentDirectories, result, outputMode);
+              responseWriter.writeOpenBookResult(bookAccess.bookFilePath(), result, outputMode);
               return CliAdministrativeExitCodes.exitCodeFor(result);
             },
             failure -> {
@@ -118,35 +105,6 @@ final class CliAdministrativeCommandExecutor {
             });
   }
 
-  private static List<Path> tightenedBookKeyParentDirectories(
-      Path bookKeyFilePath, boolean tightenParents) {
-    if (!tightenParents) {
-      return List.of();
-    }
-    try {
-      return SqliteCallerPathSecurity.tightenExistingBookKeyParentDirectory(bookKeyFilePath)
-          .stream()
-          .toList();
-    } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Failed to tighten the existing book-key parent directory.", exception);
-    }
-  }
-
-  private static List<Path> tightenedBookParentDirectories(
-      Path bookFilePath, boolean tightenParents) {
-    if (!tightenParents) {
-      return List.of();
-    }
-    try {
-      return SqliteCallerPathSecurity.tightenExistingBookParentDirectory(bookFilePath).stream()
-          .toList();
-    } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Failed to tighten the existing book parent directory.", exception);
-    }
-  }
-
   int runRekeyBookCommand(BookAccess bookAccess, Path newBookKeyFilePath, OutputMode outputMode) {
     Optional<Integer> promptFailure =
         CliExecutionPolicy.interactivePromptOutputFailure(outputMode, bookAccess.passphraseSource())
@@ -159,7 +117,7 @@ final class CliAdministrativeCommandExecutor {
     }
     return CliCommandOutcomeWriter.writeResolvedResult(
         lifecycleWorkflow.rekeyBook(bookAccess, newBookKeyFilePath),
-        result -> responseWriter.writeRekeyBookResult(result, newBookKeyFilePath, outputMode),
+        result -> responseWriter.writeRekeyBookResult(result, outputMode),
         CliAdministrativeExitCodes::exitCodeFor,
         failureWriter,
         outputMode);

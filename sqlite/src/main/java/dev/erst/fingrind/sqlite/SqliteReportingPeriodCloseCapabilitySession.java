@@ -1,10 +1,5 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
-import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft;
-import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
-import dev.erst.fingrind.executor.spi.PostingIdGenerator;
-
 /** Period-close wrapper over the shared SQLite store core. */
 final class SqliteReportingPeriodCloseCapabilitySession extends SqliteDelegatingSession
     implements SqliteReportingPeriodCloseCapabilityView {
@@ -23,8 +18,8 @@ final class SqliteReportingPeriodCloseCapabilitySession extends SqliteDelegating
   }
 
   @Override
-  public SqliteStoreMutationOperations storeMutationOperations() {
-    return store.storeMutationOperations();
+  public SqliteClosingMutationOperations storeClosingMutationOperations() {
+    return store.storeClosingMutationOperations();
   }
 
   @Override
@@ -35,14 +30,6 @@ final class SqliteReportingPeriodCloseCapabilitySession extends SqliteDelegating
   @Override
   public SqliteStoreContext storeContext() {
     return store.storeContext();
-  }
-
-  InterimResultSweepOutcome interimResultSweep(
-      InterimResultSweepDraft interimResultSweepDraft,
-      PostingIdGenerator postingIdGenerator,
-      AttestationOperationAuthorizer attestationAuthorizer) {
-    return store.interimResultSweep(
-        interimResultSweepDraft, postingIdGenerator, attestationAuthorizer);
   }
 
   @Override

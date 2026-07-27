@@ -29,7 +29,7 @@ class ProtocolUserCliMarkdownRendererTest {
     String block = ProtocolUserCliMarkdownRenderer.commandTableBlock();
     String credentialSyntax =
         "<code>"
-            + ProtocolOptions.requiredAttestationCredentialSyntax()
+            + ProtocolOptionSyntax.Attestation.requiredCredentialSyntax()
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
             + "</code>";
@@ -37,6 +37,19 @@ class ProtocolUserCliMarkdownRendererTest {
     assertMaintenanceCommandUsesCredentialSyntax(block, "rekey-book", credentialSyntax);
     assertMaintenanceCommandUsesCredentialSyntax(block, "backup-book", credentialSyntax);
     assertMaintenanceCommandUsesCredentialSyntax(block, "restore-book", credentialSyntax);
+  }
+
+  @Test
+  void commandTableBlock_marksExecutePlanCredentialsConditionalOnTheDecodedPlan() {
+    String block = ProtocolUserCliMarkdownRenderer.commandTableBlock();
+    String credentialSyntax =
+        "<code>"
+            + ProtocolOptionSyntax.Attestation.conditionalExecutePlanCredentialSyntax()
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+            + "</code>";
+
+    assertMaintenanceCommandUsesCredentialSyntax(block, "execute-plan", credentialSyntax);
   }
 
   @Test

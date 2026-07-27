@@ -42,6 +42,31 @@ def read_json(path: pathlib.Path) -> object:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def assert_declared_fixture_formats_are_current(
+    fixtures_root: pathlib.Path, expected_format_version: int
+) -> None:
+    for metadata_path in sorted(fixtures_root.glob("*.metadata.json")):
+        document = read_json(metadata_path)
+        if not isinstance(document, dict):
+            raise AssertionError(
+                f"protected-book fixture metadata must be a JSON object: {metadata_path}"
+            )
+        declared_format_version = document.get("bookFormatVersion")
+        if declared_format_version is None:
+            continue
+        if type(declared_format_version) is not int:
+            raise AssertionError(
+                f"protected-book fixture {metadata_path.name} must declare one integer "
+                "bookFormatVersion"
+            )
+        if declared_format_version != expected_format_version:
+            raise AssertionError(
+                f"protected-book fixture {metadata_path.name} declares retired format "
+                f"{declared_format_version}; current hard-break format is "
+                f"{expected_format_version}"
+            )
+
+
 def publication_entry(
     status: str,
     *,
@@ -80,6 +105,8 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
                 "sqliteBundleHomeSystemProperty": "sqliteBundleHomeSystemProperty",
             },
             "protectedBookFormat": {
+                "applicationId": "bookApplicationId",
+                "formatVersion": "bookFormatVersion",
                 "cipher": "cipher",
                 "legacyMode": "legacyMode",
                 "pageSize": "pageSize",
@@ -155,6 +182,8 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
     write_json(
         protocol_root / "protected-book-format-contract.json",
         {
+            "bookApplicationId": 1_179_079_236,
+            "bookFormatVersion": 17,
             "cipher": "chacha20",
             "legacyMode": False,
             "pageSize": 4096,
@@ -167,8 +196,8 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
     write_json(
         protocol_root / "managed-sqlite-contract.json",
         {
-            "requiredMinimumSqliteVersion": "3.53.3",
-            "requiredSqlite3mcVersion": "2.3.6",
+            "requiredMinimumSqliteVersion": "3.53.4",
+            "requiredSqlite3mcVersion": "2.4.0",
             "requiredSqliteSourceId": "2026-04-09 sqlite-source-id",
             "requiredCompileOptions": [
                 "THREADSAFE=1",
@@ -256,9 +285,6 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
             "REKEY_BOOK": "rekey-book",
             "BACKUP_BOOK": "backup-book",
             "RESTORE_BOOK": "restore-book",
-            "INSPECT_REKEY_ROLLBACK": "inspect-rekey-rollback",
-            "DELETE_REKEY_ROLLBACK": "delete-rekey-rollback",
-            "RESTORE_REKEY_ROLLBACK": "restore-rekey-rollback",
             "DECLARE_ACCOUNT": "declare-account",
             "DECLARE_TAX_REGISTRATION": "declare-tax-registration",
             "INTERIM_RESULT_SWEEP": "interim-result-sweep",
@@ -296,12 +322,19 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
     loaded = contract_values.load_contract_values(
         fixture_root, os_name="Windows 11", architecture="ARM64"
     )
-    assert loaded["managedSqlite"]["requiredMinimumSqliteVersion"] == "3.53.3"
-    assert loaded["protectedBookFormat"]["cipher"] == "chacha20"
-    assert loaded["protectedBookFormat"]["legacyMode"] is False
-    assert loaded["protectedBookFormat"]["pageSize"] == 4096
-    assert loaded["protectedBookFormat"]["reservedBytes"] == 32
-    assert loaded["managedSqlite"]["requiredSqlite3mcVersion"] == "2.3.6"
+    assert loaded["managedSqlite"]["requiredMinimumSqliteVersion"] == "3.53.4"
+    assert loaded["protectedBookFormat"] == {
+        "applicationId": 1_179_079_236,
+        "formatVersion": 17,
+        "cipher": "chacha20",
+        "legacyMode": False,
+        "pageSize": 4096,
+        "reservedBytes": 32,
+        "legacyPageSize": 4096,
+        "kdfIter": 64007,
+        "plaintextHeaderSize": 0,
+    }
+    assert loaded["managedSqlite"]["requiredSqlite3mcVersion"] == "2.4.0"
     assert (
         loaded["managedSqlite"]["requiredSqliteSourceId"]
         == "2026-04-09 sqlite-source-id"
@@ -342,6 +375,25 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
     assert loaded["operationIds"]["listTaxRegistrations"] == "list-tax-registrations"
     assert loaded["operationIds"]["taxObligation"] == "tax-obligation"
     assert loaded["operationIds"]["cashFlowStatement"] == "cash-flow-statement"
+
+    fixture_metadata_root = (
+        fixture_root / "sqlite/src/test/resources/dev/erst/fingrind/sqlite/fixtures"
+    )
+    write_json(
+        fixture_metadata_root / "current.metadata.json",
+        {"bookFormatVersion": 17},
+    )
+    assert_declared_fixture_formats_are_current(fixture_metadata_root, 17)
+    write_json(
+        fixture_metadata_root / "retired.metadata.json",
+        {"bookFormatVersion": 16},
+    )
+    try:
+        assert_declared_fixture_formats_are_current(fixture_metadata_root, 17)
+    except AssertionError as exc:
+        assert "retired format 16" in str(exc)
+    else:
+        raise AssertionError("expected retired protected-book fixture format rejection")
 
     write_json(
         protocol_root / "bundle-layout-contract.json",
@@ -502,9 +554,6 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
             "REKEY_BOOK": "rekey-book",
             "BACKUP_BOOK": "backup-book",
             "RESTORE_BOOK": "restore-book",
-            "INSPECT_REKEY_ROLLBACK": "inspect-rekey-rollback",
-            "DELETE_REKEY_ROLLBACK": "delete-rekey-rollback",
-            "RESTORE_REKEY_ROLLBACK": "restore-rekey-rollback",
             "DECLARE_ACCOUNT": "declare-account",
             "DECLARE_TAX_REGISTRATION": "declare-tax-registration",
             "INTERIM_RESULT_SWEEP": "interim-result-sweep",
@@ -546,6 +595,13 @@ with tempfile.TemporaryDirectory(prefix="fingrind-contract-values-") as fixture_
         fixture_root, os_name="Linux", architecture="x86_64"
     )
     assert loaded_from_build_metadata["runtimeEnvironment"]["sourceCheckoutJava"] == "26+"
+
+repo_root = pathlib.Path(sys.argv[1]).parent
+current_contract = contract_values.load_contract_values(repo_root)
+assert_declared_fixture_formats_are_current(
+    repo_root / "sqlite/src/test/resources/dev/erst/fingrind/sqlite/fixtures",
+    current_contract["protectedBookFormat"]["formatVersion"],
+)
 PY
 
 printf 'contract values reader regression: success\n'

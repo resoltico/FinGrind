@@ -20,7 +20,7 @@ final class CliOpenBookArguments {
               ProtocolOptions.Attestation.FOUNDER_KEY_FILE,
               ProtocolOptions.Attestation.FOUNDER_PASSPHRASE_FILE,
               ProtocolOptions.Presentation.OUTPUT),
-          List.of(ProtocolOptions.BookDefinition.TIGHTEN_PARENTS));
+          List.of());
 
   private CliOpenBookArguments() {}
 

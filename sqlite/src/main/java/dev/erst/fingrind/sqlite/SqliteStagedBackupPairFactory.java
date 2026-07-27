@@ -24,7 +24,8 @@ final class SqliteStagedBackupPairFactory {
         backupPassphrase,
         verificationSupport,
         Files::createLink,
-        Files::createLink);
+        Files::createLink,
+        SqliteProtectedBookPublicationSupport.productionPairDirectoryForcer());
   }
 
   static SqliteStagedBackupPair create(
@@ -35,7 +36,8 @@ final class SqliteStagedBackupPairFactory {
       SqliteBookPassphrase backupPassphrase,
       SqliteProtectedBookVerificationSupport verificationSupport,
       SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator backupKeyLinkCreator,
-      SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator backupFileLinkCreator) {
+      SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator backupFileLinkCreator,
+      SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer) {
     return create(
         new SqliteStagedProtectedBookPairArtifacts(
             stagedBackupFile,
@@ -47,7 +49,8 @@ final class SqliteStagedBackupPairFactory {
         backupKeyLinkCreator,
         backupFileLinkCreator,
         null,
-        null);
+        null,
+        directoryForcer);
   }
 
   static SqliteStagedBackupPair create(
@@ -70,7 +73,8 @@ final class SqliteStagedBackupPairFactory {
         backupKeyLinkCreator,
         backupFileLinkCreator,
         null,
-        null);
+        null,
+        SqliteProtectedBookPublicationSupport.productionPairDirectoryForcer());
   }
 
   static SqliteStagedBackupPair create(
@@ -80,15 +84,69 @@ final class SqliteStagedBackupPairFactory {
       SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator backupKeyLinkCreator,
       SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator backupFileLinkCreator,
       @Nullable SqliteOwnedDestinationReservation backupFileReservation,
-      @Nullable SqliteOwnedDestinationReservation backupKeyReservation) {
-    return new SqliteStagedBackupPair(
+      @Nullable SqliteOwnedDestinationReservation backupKeyReservation,
+      SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer) {
+    return create(
         artifacts,
         backupPassphraseBytes,
         verificationSupport,
         backupKeyLinkCreator,
         backupFileLinkCreator,
         backupFileReservation,
-        backupKeyReservation);
+        backupKeyReservation,
+        directoryForcer,
+        SqliteSecureRegularFileAccess::forceFile);
+  }
+
+  static SqliteStagedBackupPair create(
+      SqliteStagedProtectedBookPairArtifacts artifacts,
+      byte[] backupPassphraseBytes,
+      SqliteProtectedBookVerificationSupport verificationSupport,
+      SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator backupKeyLinkCreator,
+      SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator backupFileLinkCreator,
+      @Nullable SqliteOwnedDestinationReservation backupFileReservation,
+      @Nullable SqliteOwnedDestinationReservation backupKeyReservation,
+      SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer,
+      SqliteProtectedBookPairPublicationRecord.RecoveryRecordFileForcer recoveryRecordFileForcer) {
+    return create(
+        artifacts,
+        backupPassphraseBytes,
+        verificationSupport,
+        new SqliteStagedBackupPair.PublicationDependencies(
+            backupKeyLinkCreator,
+            backupFileLinkCreator,
+            backupFileReservation,
+            backupKeyReservation,
+            directoryForcer,
+            recoveryRecordFileForcer,
+            acquireCapabilityWitnesses(artifacts)));
+  }
+
+  static SqliteStagedBackupPair create(
+      SqliteStagedProtectedBookPairArtifacts artifacts,
+      byte[] backupPassphraseBytes,
+      SqliteProtectedBookVerificationSupport verificationSupport,
+      SqliteStagedBackupPair.PublicationDependencies dependencies) {
+    return new SqliteStagedBackupPair(
+        artifacts, backupPassphraseBytes, verificationSupport, dependencies);
+  }
+
+  private static SqlitePublicationCapabilityWitness.Set acquireCapabilityWitnesses(
+      SqliteStagedProtectedBookPairArtifacts artifacts) {
+    SqliteStagedProtectedBookPairArtifacts checkedArtifacts =
+        Objects.requireNonNull(artifacts, "artifacts");
+    try {
+      return SqlitePublicationCapabilityWitness.acquirePair(
+          checkedArtifacts.bookTargetPath(),
+          SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK,
+          checkedArtifacts.secretTargetPath(),
+          Files::createLink,
+          SqliteProtectedBookPublicationSupport::moveReplacing);
+    } catch (java.io.IOException exception) {
+      throw new IllegalStateException(
+          "Failed to acquire retained FinGrind backup publication capability witnesses.",
+          exception);
+    }
   }
 
   private static byte[] ownedPassphraseBytes(SqliteBookPassphrase passphrase) {

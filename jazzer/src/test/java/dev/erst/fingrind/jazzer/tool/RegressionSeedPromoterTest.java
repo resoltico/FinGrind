@@ -3,14 +3,19 @@ package dev.erst.fingrind.jazzer.tool;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -101,7 +106,8 @@ class RegressionSeedPromoterTest {
     assertFalse(
         Files.exists(
             projectDirectory.resolve(
-                "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/exercisePostingWorkflow/duplicate_seed.json")));
+                "src/fuzz/resources/dev/erst/fingrind/cli/PostingWorkflowFuzzTestInputs/"
+                    + "exercisePostingWorkflow/duplicate_seed.json")));
 
     Path uniqueSource = projectDirectory.resolve("unique.json");
     Files.writeString(uniqueSource, "{\"unique\":true}", UTF_8);
@@ -257,42 +263,103 @@ class RegressionSeedPromoterTest {
   }
 
   @Test
-  void promote_cleans_up_copied_input_when_metadata_write_fails() throws Exception {
+  void promote_retains_partial_committed_artifacts_when_metadata_write_fails() throws Exception {
     Path sourceInput = projectDirectory.resolve("raw-input.json");
     Files.writeString(sourceInput, JazzerReplayRequestFixtures.basicValidRequest(), UTF_8);
 
-    IOException metadataWriteFailure =
-        assertInstanceOf(
-            IOException.class,
-            assertThrows(
-                IOException.class,
-                () ->
-                    RegressionSeedPromoter.promote(
-                        projectDirectory,
-                        JazzerHarness.cliRequest(),
-                        sourceInput,
-                        "metadata_write_failure",
-                        "metadata write failure",
-                        JazzerReplayRunner::replay,
-                        (_metadataPath, _metadata) -> {
-                          throw new IOException("metadata boom");
-                        })));
+    RegressionSeedPromotionRetainedArtifactsException metadataWriteFailure =
+        assertThrows(
+            RegressionSeedPromotionRetainedArtifactsException.class,
+            () ->
+                RegressionSeedPromoter.promote(
+                    projectDirectory,
+                    JazzerHarness.cliRequest(),
+                    sourceInput,
+                    "metadata_write_failure",
+                    "metadata write failure",
+                    JazzerReplayRunner::replay,
+                    (metadataPath, _metadata) -> {
+                      Files.writeString(metadataPath, "{\"partial\":", UTF_8);
+                      throw new IOException("metadata boom");
+                    }));
 
-    assertEquals("metadata boom", metadataWriteFailure.getMessage());
-    assertFalse(
-        Files.exists(
-            JazzerHarness.cliRequest()
-                .inputDirectory(projectDirectory)
-                .resolve("metadata_write_failure.json")));
-    assertFalse(
-        Files.exists(
-            RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
-                .resolve("metadata_write_failure.json")));
+    Path committedInputPath =
+        JazzerHarness.cliRequest()
+            .inputDirectory(projectDirectory)
+            .resolve("metadata_write_failure.json");
+    Path metadataPath =
+        RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
+            .resolve("metadata_write_failure.json");
+    Path normalizedCommittedInputPath = committedInputPath.toAbsolutePath().normalize();
+    Path normalizedMetadataPath = metadataPath.toAbsolutePath().normalize();
+    assertEquals("metadata boom", metadataWriteFailure.getCause().getMessage());
+    assertTrue(metadataWriteFailure.getMessage().contains("metadata boom"));
+    assertTrue(metadataWriteFailure.getMessage().contains("jazzer/bin/seed-audit"));
+    assertTrue(metadataWriteFailure.getMessage().contains("Do not retry or clean them in place"));
+    assertEquals(
+        normalizedCommittedInputPath, metadataWriteFailure.retention().committedInputPath());
+    assertEquals(normalizedMetadataPath, metadataWriteFailure.retention().metadataPath());
+    assertEquals(
+        List.of(normalizedCommittedInputPath, normalizedMetadataPath),
+        metadataWriteFailure.retention().retainedArtifactPaths());
+    assertTrue(Files.exists(committedInputPath));
+    assertEquals("{\"partial\":", Files.readString(metadataPath, UTF_8));
+
+    RegressionSeedAuditReport audit =
+        RegressionSeedAuditor.audit(projectDirectory, JazzerHarness.cliRequest());
+    assertEquals(List.of(normalizedCommittedInputPath), audit.orphanedInputPaths());
+    assertEquals(1, audit.integrityProblemCount());
+    assertEquals("metadata-read-failure", audit.integrityProblems().getFirst().problemKind());
+    assertEquals(normalizedMetadataPath, audit.integrityProblems().getFirst().metadataPath());
   }
 
   @Test
-  void promote_rejects_missing_source_inputs_and_cleans_up_when_copy_fails_before_write()
-      throws Exception {
+  void retained_artifact_contract_normalizes_and_rejects_ambiguous_candidates() {
+    Path committedInputPath = projectDirectory.resolve("corpus").resolve("input.json");
+    Path metadataPath = projectDirectory.resolve("metadata").resolve("input.json");
+    RegressionSeedPromotionRetention retention =
+        new RegressionSeedPromotionRetention(
+            committedInputPath,
+            metadataPath,
+            List.of(committedInputPath.getParent().resolve(".").resolve("input.json")));
+
+    assertEquals(
+        List.of(committedInputPath.toAbsolutePath().normalize()),
+        retention.retainedArtifactPaths());
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new RegressionSeedPromotionRetention(
+                committedInputPath,
+                metadataPath,
+                List.of(committedInputPath, committedInputPath)));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new RegressionSeedPromotionRetention(
+                committedInputPath, metadataPath, List.of(projectDirectory.resolve("unrelated"))));
+  }
+
+  @Test
+  void retained_artifact_exception_preserves_paths_across_java_serialization() throws Exception {
+    RegressionSeedPromotionRetention retention =
+        new RegressionSeedPromotionRetention(
+            projectDirectory.resolve("corpus/input.json"),
+            projectDirectory.resolve("metadata/input.json"),
+            List.of(projectDirectory.resolve("corpus/input.json")));
+
+    RegressionSeedPromotionRetainedArtifactsException restored =
+        roundTrip(
+            new RegressionSeedPromotionRetainedArtifactsException(
+                retention, new IOException("metadata write failed")),
+            RegressionSeedPromotionRetainedArtifactsException.class);
+
+    assertEquals(retention, restored.retention());
+    assertEquals("metadata write failed", restored.getCause().getMessage());
+  }
+
+  @Test
+  void promote_rejects_missing_source_inputs() {
     Path missingSource = projectDirectory.resolve("missing.json");
     IllegalArgumentException missingInput =
         assertThrows(
@@ -305,40 +372,52 @@ class RegressionSeedPromoterTest {
                     "missing_seed",
                     "missing source input"));
     assertTrue(String.valueOf(missingInput.getMessage()).contains("existing regular file"));
+  }
 
-    Path transientSource = projectDirectory.resolve("transient.json");
-    Files.writeString(transientSource, JazzerReplayRequestFixtures.basicValidRequest(), UTF_8);
-    IOException copyFailure =
-        assertInstanceOf(
+  @Test
+  void promote_refuses_symbolic_link_source_inputs() throws Exception {
+    Path actualSource = projectDirectory.resolve("actual-source.json");
+    Files.writeString(actualSource, JazzerReplayRequestFixtures.basicValidRequest(), UTF_8);
+    Path linkedSource = projectDirectory.resolve("linked-source.json");
+    createSymbolicLinkOrSkip(linkedSource, actualSource);
+
+    IllegalArgumentException rejection =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                RegressionSeedPromoter.promote(
+                    projectDirectory,
+                    JazzerHarness.cliRequest(),
+                    linkedSource,
+                    "linked_source",
+                    "symbolic link source"));
+
+    assertTrue(String.valueOf(rejection.getMessage()).contains("existing regular file"));
+    assertFalse(Files.exists(JazzerHarness.cliRequest().inputDirectory(projectDirectory)));
+  }
+
+  @Test
+  void promote_refuses_symlinked_corpus_ancestors_without_writing_outside_the_project()
+      throws Exception {
+    Path sourceInput = projectDirectory.resolve("raw-input.json");
+    Files.writeString(sourceInput, JazzerReplayRequestFixtures.basicValidRequest(), UTF_8);
+    Path outsideProject = projectDirectory.resolve("outside-project");
+    Files.createDirectory(outsideProject);
+    createSymbolicLinkOrSkip(projectDirectory.resolve("src"), outsideProject);
+
+    IOException rejection =
+        assertThrows(
             IOException.class,
-            assertThrows(
-                IOException.class,
-                () ->
-                    RegressionSeedPromoter.promote(
-                        projectDirectory,
-                        JazzerHarness.cliRequest(),
-                        transientSource,
-                        "copy_failure",
-                        "copy failure before metadata write",
-                        (_harness, _input) -> {
-                          assertTrue(transientSource.toFile().delete());
-                          return new ReplayOutcome.Success(
-                              "cli-request", new UnparsedCliRequestReplayDetails());
-                        },
-                        JazzerJson::write)));
+            () ->
+                RegressionSeedPromoter.promote(
+                    projectDirectory,
+                    JazzerHarness.cliRequest(),
+                    sourceInput,
+                    "symlinked_corpus",
+                    "symlinked corpus ancestor"));
 
-    assertTrue(
-        String.valueOf(copyFailure.getMessage()).contains("transient.json")
-            || String.valueOf(copyFailure.getMessage()).contains("No such file"));
-    assertFalse(
-        Files.exists(
-            JazzerHarness.cliRequest()
-                .inputDirectory(projectDirectory)
-                .resolve("copy_failure.json")));
-    assertFalse(
-        Files.exists(
-            RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
-                .resolve("copy_failure.json")));
+    assertTrue(String.valueOf(rejection.getMessage()).contains("real non-symlink directory"));
+    assertFalse(Files.exists(outsideProject.resolve("fuzz")));
   }
 
   @Test
@@ -363,5 +442,26 @@ class RegressionSeedPromoterTest {
     assertEquals("cli-request", result.targetKey());
     assertEquals(ReplayOutcomeKind.EXPECTED_INVALID, result.expectation().outcomeKind());
     assertTrue(Files.exists(result.metadataPath()));
+  }
+
+  private static <T extends Throwable> T roundTrip(T exception, Class<T> expectedType)
+      throws IOException, ClassNotFoundException {
+    ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+    try (ObjectOutputStream output = new ObjectOutputStream(bytes)) {
+      output.writeObject(exception);
+    }
+    try (ObjectInputStream input =
+        new ObjectInputStream(new ByteArrayInputStream(bytes.toByteArray()))) {
+      return expectedType.cast(input.readObject());
+    }
+  }
+
+  private static void createSymbolicLinkOrSkip(Path link, Path target) throws IOException {
+    try {
+      Files.createSymbolicLink(link, target);
+    } catch (UnsupportedOperationException | IOException unsupported) {
+      Assumptions.assumeTrue(
+          false, "Symbolic-link refusal coverage requires local symbolic-link support.");
+    }
   }
 }

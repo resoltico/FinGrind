@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.runtime.ContractFailureDetails;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import java.nio.file.Path;
@@ -34,11 +36,14 @@ class SqliteBookStateAndLifecycleMapperTest extends SqlitePostingFactStoreTestSu
         () ->
             SqliteBookState.FOREIGN_SQLITE.requireInitialized(
                 0, SqliteBookContract.FORMAT_VERSION, notInitialized));
-    assertThrows(
-        IllegalStateException.class,
-        () ->
-            SqliteBookState.UNSUPPORTED_FINGRIND_VERSION.requireInitialized(
-                99, SqliteBookContract.FORMAT_VERSION, notInitialized));
+    assertUnsupportedBookFormatFailure(
+        assertThrows(
+            ContractFailureException.class,
+            () ->
+                SqliteBookState.UNSUPPORTED_FINGRIND_VERSION.requireInitialized(
+                    99, SqliteBookContract.FORMAT_VERSION, notInitialized)),
+        99,
+        SqliteBookContract.FORMAT_VERSION);
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -56,9 +61,12 @@ class SqliteBookStateAndLifecycleMapperTest extends SqlitePostingFactStoreTestSu
     assertInstanceOf(
         BookOpeningOutcome.Rejected.class,
         SqliteBookState.FOREIGN_SQLITE.openBookResult(0).orElseThrow());
-    assertThrows(
-        IllegalStateException.class,
-        () -> SqliteBookState.UNSUPPORTED_FINGRIND_VERSION.openBookResult(99));
+    assertUnsupportedBookFormatFailure(
+        assertThrows(
+            ContractFailureException.class,
+            () -> SqliteBookState.UNSUPPORTED_FINGRIND_VERSION.openBookResult(99)),
+        99,
+        SqliteBookContract.FORMAT_VERSION);
     assertThrows(
         IllegalStateException.class,
         () ->
@@ -140,5 +148,18 @@ class SqliteBookStateAndLifecycleMapperTest extends SqlitePostingFactStoreTestSu
     assertEquals(
         expectedStatus,
         assertInstanceOf(BookLifecycleInspection.Existing.class, inspection).status());
+  }
+
+  private static void assertUnsupportedBookFormatFailure(
+      ContractFailureException exception,
+      int detectedBookFormatVersion,
+      int supportedBookFormatVersion) {
+    assertEquals("unsupported-book-format-version", exception.failure().code());
+    ContractFailureDetails.UnsupportedBookFormatVersion details =
+        assertInstanceOf(
+            ContractFailureDetails.UnsupportedBookFormatVersion.class,
+            exception.failure().details());
+    assertEquals(detectedBookFormatVersion, details.detectedBookFormatVersion());
+    assertEquals(supportedBookFormatVersion, details.supportedBookFormatVersion());
   }
 }

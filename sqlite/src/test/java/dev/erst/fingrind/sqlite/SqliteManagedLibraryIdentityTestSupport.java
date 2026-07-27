@@ -18,7 +18,8 @@ class SqliteManagedLibraryIdentityTestSupport {
 
   @BeforeEach
   void hardenTempDirectory() {
-    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+    tempDirectory =
+        SqliteTestPrivateDirectorySupport.canonicalizeAndHardenOwnerOnlyDirectory(tempDirectory);
   }
 
   protected Path writeLibrary(String fileName, String contents) throws IOException {

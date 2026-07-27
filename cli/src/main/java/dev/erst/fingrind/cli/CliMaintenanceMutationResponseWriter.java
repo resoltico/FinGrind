@@ -1,13 +1,17 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.cli.json.CliAdministrationJsonModels;
+import dev.erst.fingrind.cli.json.CliBookPairPublicationJsonModels;
+import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /** Renders maintenance CLI mutation results through the shared output channel. */
 final class CliMaintenanceMutationResponseWriter {
@@ -24,19 +28,21 @@ final class CliMaintenanceMutationResponseWriter {
               () ->
                   outputChannel.writeEnvelope(
                       CliEnvelopeMapper.successEnvelope(
-                          new CliAdministrationJsonModels.BackupBookPayload(
+                          new CliBookPairPublicationJsonModels.BackupBookPayload(
                               absolutePath(backedUp.bookFilePath()),
                               backedUp.backupId().toString(),
-                              backedUp.acknowledgementResumed() ? "resumed" : "acknowledged",
+                              CliBookPairPublicationJsonModels.PairPublicationCompletionPayload
+                                  .from(backedUp.pairPublicationCompletion()),
+                              CliProtectedBookPairPublicationRetentionPresentation.payload(
+                                  backedUp.pairPublicationRetention()),
+                              CliBookPairPublicationJsonModels.BackupAcknowledgementStatePayload
+                                  .from(backedUp.acknowledgementState()),
                               CliAttestationCommitPresentation.payload(
                                   backedUp.attestationCommit())),
-                          CliEnvelopeMapper.successArtifacts(
-                              CliEnvelopeMapper.successArtifact(
-                                  ProtocolArtifactOutput.backupFileFormat(),
-                                  backedUp.backupFilePath()),
-                              CliEnvelopeMapper.successArtifact(
-                                  ProtocolArtifactOutput.backupKeyFileFormat(),
-                                  backedUp.backupBookKeyFilePath())))),
+                          pairSuccessArtifacts(
+                              backedUp.pairPublicationRetention(),
+                              ProtocolArtifactOutput.backupFileFormat(),
+                              ProtocolArtifactOutput.backupKeyFileFormat()))),
               () ->
                   outputChannel.writeText(
                       CliBookMaintenanceOutputRenderer.renderBackupBookText(backedUp)),
@@ -49,18 +55,20 @@ final class CliMaintenanceMutationResponseWriter {
               () ->
                   outputChannel.writeEnvelope(
                       CliEnvelopeMapper.successEnvelope(
-                          new CliAdministrationJsonModels.BackupBookPayload(
+                          new CliBookPairPublicationJsonModels.BackupBookPayload(
                               absolutePath(pending.bookFilePath()),
                               pending.backupId().toString(),
-                              "pending",
+                              CliBookPairPublicationJsonModels.PairPublicationCompletionPayload
+                                  .from(pending.pairPublicationCompletion()),
+                              CliProtectedBookPairPublicationRetentionPresentation.payload(
+                                  pending.pairPublicationRetention()),
+                              CliBookPairPublicationJsonModels.BackupAcknowledgementStatePayload
+                                  .PENDING,
                               null),
-                          CliEnvelopeMapper.successArtifacts(
-                              CliEnvelopeMapper.successArtifact(
-                                  ProtocolArtifactOutput.backupFileFormat(),
-                                  pending.backupFilePath()),
-                              CliEnvelopeMapper.successArtifact(
-                                  ProtocolArtifactOutput.backupKeyFileFormat(),
-                                  pending.backupBookKeyFilePath())))),
+                          pairSuccessArtifacts(
+                              pending.pairPublicationRetention(),
+                              ProtocolArtifactOutput.backupFileFormat(),
+                              ProtocolArtifactOutput.backupKeyFileFormat()))),
               () ->
                   outputChannel.writeText(
                       CliBookMaintenanceOutputRenderer.renderBackupAcknowledgementPendingText(
@@ -72,7 +80,7 @@ final class CliMaintenanceMutationResponseWriter {
       case BackupBookResult.AcknowledgementAuthorizationRejected rejected ->
           outputChannel.writeRejectedEnvelope(
               CliRejectionPayloadMapper.backupAcknowledgementAuthorizationRejectedEnvelope(
-                  rejected.failure()),
+                  rejected),
               outputMode);
       case BackupBookResult.Rejected rejected ->
           outputChannel.writeRejectedEnvelope(
@@ -88,17 +96,19 @@ final class CliMaintenanceMutationResponseWriter {
               () ->
                   outputChannel.writeEnvelope(
                       CliEnvelopeMapper.successEnvelope(
-                          new CliAdministrationJsonModels.RestoreBookPayload(
+                          new CliBookPairPublicationJsonModels.RestoreBookPayload(
                               absolutePath(restored.bookFilePath()),
                               absolutePath(restored.bookKeyFilePath()),
-                              CliAttestationCommitPresentation.payload(
+                              CliBookPairPublicationJsonModels.PairPublicationCompletionPayload
+                                  .from(restored.pairPublicationCompletion()),
+                              CliProtectedBookPairPublicationRetentionPresentation.payload(
+                                  restored.pairPublicationRetention()),
+                              CliAttestationCommitPresentation.requiredPayload(
                                   restored.attestationCommit())),
-                          CliEnvelopeMapper.successArtifacts(
-                              CliEnvelopeMapper.successArtifact(
-                                  ProtocolArtifactOutput.bookFileFormat(), restored.bookFilePath()),
-                              CliEnvelopeMapper.successArtifact(
-                                  ProtocolArtifactOutput.bookKeyFileFormat(),
-                                  restored.bookKeyFilePath())))),
+                          pairSuccessArtifacts(
+                              restored.pairPublicationRetention(),
+                              ProtocolArtifactOutput.bookFileFormat(),
+                              ProtocolArtifactOutput.bookKeyFileFormat()))),
               () ->
                   outputChannel.writeText(
                       CliBookMaintenanceOutputRenderer.renderRestoreBookText(restored)),
@@ -115,5 +125,18 @@ final class CliMaintenanceMutationResponseWriter {
 
   private static String absolutePath(Path path) {
     return CliPublicPaths.absoluteValue(path);
+  }
+
+  private static List<CliEnvelopeJsonModels.SuccessArtifact> pairSuccessArtifacts(
+      @Nullable ProtectedBookPairPublicationRetention pairPublicationRetention,
+      String bookFormat,
+      String generatedSecretFormat) {
+    if (pairPublicationRetention == null) {
+      return List.of();
+    }
+    return CliEnvelopeMapper.successArtifacts(
+        CliEnvelopeMapper.successArtifact(bookFormat, pairPublicationRetention.bookPublication()),
+        CliEnvelopeMapper.successArtifact(
+            generatedSecretFormat, pairPublicationRetention.generatedSecretPublication()));
   }
 }

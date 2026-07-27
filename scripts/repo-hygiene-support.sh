@@ -34,6 +34,7 @@ readonly repo_hygiene_structural_root_entries=(
     gradlew.bat
     jazzer
     report-pdf
+    requirements-release-smoke-workflow.txt
     requirements-python-tools.txt
     ruff.toml
     scripts

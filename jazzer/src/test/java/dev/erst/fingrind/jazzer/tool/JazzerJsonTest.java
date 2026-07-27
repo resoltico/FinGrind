@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.time.Month;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.BeanProperty;
@@ -47,6 +48,29 @@ class JazzerJsonTest {
     assertTrue(json.contains("\"sourceChannel\" : \"CLI\""));
     assertEquals(expectation, reloaded);
     assertInstanceOf(CliRequestReplayDetails.class, reloaded.details());
+  }
+
+  @Test
+  void write_never_replaces_an_existing_json_artifact() throws IOException {
+    Path jsonPath = tempDirectory.resolve("existing.json");
+    Files.writeString(jsonPath, "{\"preserved\":true}");
+
+    assertThrows(IOException.class, () -> JazzerJson.write(jsonPath, SourceChannel.CLI));
+
+    assertEquals("{\"preserved\":true}", Files.readString(jsonPath));
+  }
+
+  @Test
+  void write_refuses_a_symbolic_link_destination_without_touching_its_referent()
+      throws IOException {
+    Path referent = tempDirectory.resolve("referent.json");
+    Files.writeString(referent, "{\"preserved\":true}");
+    Path linkedDestination = tempDirectory.resolve("linked.json");
+    createSymbolicLinkOrSkip(linkedDestination, referent);
+
+    assertThrows(IOException.class, () -> JazzerJson.write(linkedDestination, SourceChannel.CLI));
+
+    assertEquals("{\"preserved\":true}", Files.readString(referent));
   }
 
   @Test
@@ -743,5 +767,14 @@ class JazzerJsonTest {
   @SuppressWarnings({"NullAway", "TypeParameterUnusedInFormals"})
   private static <T> T nullValue() {
     return null;
+  }
+
+  private static void createSymbolicLinkOrSkip(Path link, Path target) throws IOException {
+    try {
+      Files.createSymbolicLink(link, target);
+    } catch (UnsupportedOperationException | IOException unsupported) {
+      Assumptions.assumeTrue(
+          false, "Symbolic-link refusal coverage requires local symbolic-link support.");
+    }
   }
 }

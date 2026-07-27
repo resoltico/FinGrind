@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import pathlib
 import tempfile
+from dataclasses import replace
 
 from .attestation_arguments import signing_credential_arguments
 from .bridge_contract_support import base_bridge_config, smoke_path, write_bridge_script
@@ -29,6 +30,14 @@ def assert_attested_open_book_arguments(repo_root: pathlib.Path) -> None:
         )
         payload = json.loads(open_book(config, {"openBook": "open-book"}))
         arguments = payload["arguments"]
+        assert "--inventory-costing" not in arguments
+        book_start_index = arguments.index("--book-start-effective-date")
+        assert arguments[book_start_index - 2 : book_start_index + 2] == [
+            "--fiscal-year-start",
+            "01-01",
+            "--book-start-effective-date",
+            "2026-01-01",
+        ]
         assert arguments[-10:] == [
             "--attestation-custodian",
             "file-pkcs8",
@@ -41,6 +50,28 @@ def assert_attested_open_book_arguments(repo_root: pathlib.Path) -> None:
             "--output",
             "json",
         ]
+        trading_config = replace(
+            config,
+            book_template_id="OWNER_MANAGED_TRADING",
+            inventory_costing_doctrine="WEIGHTED_AVERAGE",
+            accounting_basis="ACCRUAL",
+        )
+        trading_payload = json.loads(open_book(trading_config, {"openBook": "open-book"}))
+        trading_arguments = trading_payload["arguments"]
+        inventory_costing_index = trading_arguments.index("--inventory-costing")
+        assert trading_arguments[inventory_costing_index - 4 : inventory_costing_index + 2] == [
+            "--book-template-id",
+            "OWNER_MANAGED_TRADING",
+            "--accounting-basis",
+            "ACCRUAL",
+            "--inventory-costing",
+            "WEIGHTED_AVERAGE",
+        ]
+        historical_config = replace(config, book_start_effective_date="2025-01-01")
+        historical_payload = json.loads(open_book(historical_config, {"openBook": "open-book"}))
+        historical_arguments = historical_payload["arguments"]
+        historical_book_start_index = historical_arguments.index("--book-start-effective-date")
+        assert historical_arguments[historical_book_start_index + 1] == "2025-01-01"
         assert signing_credential_arguments(config) == [
             "--attestation-custodian",
             "file-pkcs8",

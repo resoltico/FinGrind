@@ -108,7 +108,7 @@ final class CliLedgerBookQueryPayloadMapper {
       @Nullable List<LedgerFact> attestationCommitFacts) {
     return attestationCommitFacts == null
         ? null
-        : new AttestationCommitPayload(
+        : CliAttestationCommitPresentation.requiredPayload(
             CliLedgerFactAccess.requiredTextFact(attestationCommitFacts, "operationOrder"),
             CliLedgerFactAccess.requiredTextFact(attestationCommitFacts, "operationHead"));
   }

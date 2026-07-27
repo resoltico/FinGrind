@@ -65,7 +65,8 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
                 Instant.parse("2026-04-07T10:15:30Z"),
                 bookIdentity(),
                 trustRoot,
-                new AttestationCommit(trustRoot.headOrder(), trustRoot.operationHeadHex()))
+                new AttestationCommit(trustRoot.headOrder(), trustRoot.operationHeadHex()),
+                List.of())
             .initializedAt());
     assertThrows(
         IllegalArgumentException.class,
@@ -74,7 +75,8 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
                 Instant.parse("2026-04-07T10:15:30Z"),
                 bookIdentity(),
                 trustRoot,
-                new AttestationCommit(java.math.BigInteger.ONE, trustRoot.operationHeadHex())));
+                new AttestationCommit(java.math.BigInteger.ONE, trustRoot.operationHeadHex()),
+                List.of()));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -82,7 +84,8 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
                 Instant.parse("2026-04-07T10:15:30Z"),
                 bookIdentity(),
                 trustRoot,
-                new AttestationCommit(trustRoot.headOrder(), "1".repeat(64))));
+                new AttestationCommit(trustRoot.headOrder(), "1".repeat(64)),
+                List.of()));
     assertEquals(
         new BookAdministrationRejection.BookAlreadyInitialized(),
         new OpenBookResult.Rejected(new BookAdministrationRejection.BookAlreadyInitialized())
@@ -252,7 +255,7 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
       assertEquals(
           BookFormatContract.FORMAT_VERSION, inspections.get(index).supportedBookFormatVersion());
       assertEquals(
-          BookMigrationPolicyMode.HARD_BREAK_REJECT_OLDER_FORMATS,
+          BookMigrationPolicyMode.HARD_BREAK_REJECT_NONCURRENT_FORMATS,
           inspections.get(index).migrationPolicy().mode());
       assertEquals(
           BookFormatContract.FORMAT_VERSION,
@@ -264,8 +267,8 @@ class ContractResultAndInspectionTest extends ContractTestSupport {
     assertEquals(
         BookInspection.Status.BLANK_SQLITE, BookInspection.Status.fromWireValue("blank-sqlite"));
     assertEquals(
-        BookMigrationPolicyMode.HARD_BREAK_REJECT_OLDER_FORMATS,
-        BookMigrationPolicyMode.fromWireValue("hard-break-reject-older-formats"));
+        BookMigrationPolicyMode.HARD_BREAK_REJECT_NONCURRENT_FORMATS,
+        BookMigrationPolicyMode.fromWireValue("hard-break-reject-noncurrent-formats"));
     assertThrows(IllegalArgumentException.class, () -> new BookInspection.Missing(0));
     assertThrows(
         IllegalArgumentException.class,

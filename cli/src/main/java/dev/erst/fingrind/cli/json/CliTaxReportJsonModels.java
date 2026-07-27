@@ -12,7 +12,7 @@ import org.jspecify.annotations.Nullable;
 public interface CliTaxReportJsonModels {
   record TaxObligationPayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       CliReportJsonModels.TaxObligationResolvedQuery resolvedQuery,
       String generatedAt,
       TaxRegistrationPayload taxRegistration,

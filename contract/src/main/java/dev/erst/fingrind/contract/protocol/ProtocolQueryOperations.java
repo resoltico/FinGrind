@@ -33,8 +33,9 @@ final class ProtocolQueryOperations {
         "Inspect Book",
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
-            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                List.of(OutputMode.JSON, OutputMode.TEXT))),
         "Inspect the selected book for lifecycle state, format version, and compatibility.",
         List.of(
             ProtocolExampleStep.command(
@@ -52,10 +53,11 @@ final class ProtocolQueryOperations {
         "Verify Book",
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
             "[" + ProtocolOptions.Attestation.REVIEW_FILE + " <path>]",
             "[" + ProtocolOptions.Attestation.REQUIRE_CLEAN + "]",
-            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                List.of(OutputMode.JSON, OutputMode.TEXT))),
         "Verify every immutable attestation structure from genesis and report the first exact structural break, if any.",
         List.of(
             ProtocolExampleStep.command(
@@ -75,9 +77,10 @@ final class ProtocolQueryOperations {
         "Attestation Review",
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
             "[" + ProtocolOptions.Attestation.REVIEW_FILE + " <path>]",
-            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                List.of(OutputMode.JSON, OutputMode.TEXT))),
         "Report non-persisted compromise-review findings from a structurally valid attestation chain.",
         List.of(
             ProtocolExampleStep.command(
@@ -90,29 +93,35 @@ final class ProtocolQueryOperations {
   }
 
   private static ProtocolOperation exportAttestationReceiptOperation() {
-    return ProtocolOperationDefinitions.jsonEnvelopeOperation(
-        OperationId.EXPORT_ATTESTATION_RECEIPT,
-        OperationCategory.QUERY,
-        "Export Attestation Receipt",
-        List.of(
-            ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
-            ProtocolOptions.Attestation.RECEIPT_FILE + " <path>",
-            ProtocolOptions.requiredAttestationCredentialSyntax(),
-            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
-        "Publish an independently retained quorum-signed receipt without changing the selected book.",
-        List.of(
-            ProtocolExampleStep.command(
-                "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./receipts/acme.fgar %s file-pkcs8 %s 123e4567-e89b-12d3-a456-426614174000 %s ./secrets/operator.fgatk %s ./secrets/operator.passphrase"
-                    .formatted(
-                        OperationId.EXPORT_ATTESTATION_RECEIPT.wireName(),
-                        ProtocolBookAccessOptions.BOOK_FILE,
-                        ProtocolBookAccessOptions.BOOK_KEY_FILE,
-                        ProtocolOptions.Attestation.RECEIPT_FILE,
-                        ProtocolOptions.Attestation.CUSTODIAN,
-                        ProtocolOptions.Attestation.PRINCIPAL_ID,
-                        ProtocolOptions.Attestation.KEY_FILE,
-                        ProtocolOptions.Attestation.PASSPHRASE_FILE))));
+    return ProtocolOperationDefinitions.operation(
+        new ProtocolOperationDefinitions.OperationDefinition(
+            OperationId.EXPORT_ATTESTATION_RECEIPT,
+            OperationCategory.QUERY,
+            "Export Attestation Receipt",
+            List.of(),
+            List.of(
+                ProtocolBookAccessOptions.BOOK_FILE + " <path>",
+                ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
+                ProtocolOptions.Attestation.RECEIPT_FILE + " <path>",
+                ProtocolOptionSyntax.Attestation.requiredCredentialSyntax(),
+                ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.TEXT))),
+            ExecutionMode.JSON_ENVELOPE,
+            List.of(OutputMode.JSON, OutputMode.TEXT),
+            List.of(ProtocolArtifactOutput.attestationReceipt()),
+            "Publish an independently retained quorum-signed receipt without changing the selected book.",
+            List.of(
+                ProtocolExampleStep.command(
+                    "fingrind %s %s ./books/acme.sqlite %s ./secrets/acme.book-key %s ./receipts/acme.fgar %s file-pkcs8 %s 123e4567-e89b-12d3-a456-426614174000 %s ./secrets/operator.fgatk %s ./secrets/operator.passphrase"
+                        .formatted(
+                            OperationId.EXPORT_ATTESTATION_RECEIPT.wireName(),
+                            ProtocolBookAccessOptions.BOOK_FILE,
+                            ProtocolBookAccessOptions.BOOK_KEY_FILE,
+                            ProtocolOptions.Attestation.RECEIPT_FILE,
+                            ProtocolOptions.Attestation.CUSTODIAN,
+                            ProtocolOptions.Attestation.PRINCIPAL_ID,
+                            ProtocolOptions.Attestation.KEY_FILE,
+                            ProtocolOptions.Attestation.PASSPHRASE_FILE)))));
   }
 
   private static ProtocolOperation verifyReceiptOperation() {
@@ -122,9 +131,10 @@ final class ProtocolQueryOperations {
         "Verify Receipt",
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
             ProtocolOptions.Attestation.RECEIPT_FILE + " <path>",
-            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                List.of(OutputMode.JSON, OutputMode.TEXT))),
         "Verify an independently retained receipt against the selected book's complete immutable chain.",
         List.of(
             ProtocolExampleStep.command(
@@ -144,11 +154,11 @@ final class ProtocolQueryOperations {
         List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
-            ProtocolOptions.optionalLimitSyntax(),
-            ProtocolOptions.optionalCursorSyntax(),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.ReportQuery.optionalLimitSyntax(),
+            ProtocolOptionSyntax.ReportQuery.optionalCursorSyntax(),
             "[" + ProtocolOptions.Presentation.WITH_CONTEXT + "]",
-            ProtocolOptions.optionalOutputSyntax(
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
                 List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
@@ -172,11 +182,11 @@ final class ProtocolQueryOperations {
         List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
-            ProtocolOptions.optionalLimitSyntax(),
-            ProtocolOptions.optionalCursorSyntax(),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.ReportQuery.optionalLimitSyntax(),
+            ProtocolOptionSyntax.ReportQuery.optionalCursorSyntax(),
             "[" + ProtocolOptions.Presentation.WITH_CONTEXT + "]",
-            ProtocolOptions.optionalOutputSyntax(
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
                 List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),
@@ -199,10 +209,11 @@ final class ProtocolQueryOperations {
         "Get Posting",
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
             ProtocolOptions.Request.POSTING_ID + " <posting-id>",
             "[" + ProtocolOptions.Presentation.WITH_CONTEXT + "]",
-            ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                List.of(OutputMode.JSON, OutputMode.TEXT))),
         "Return a committed posting by durable posting identifier.",
         List.of(
             ProtocolExampleStep.command(
@@ -222,14 +233,14 @@ final class ProtocolQueryOperations {
         List.of(),
         List.of(
             ProtocolBookAccessOptions.BOOK_FILE + " <path>",
-            ProtocolOptions.currentPassphraseSourceSyntax(),
+            ProtocolOptionSyntax.BookAccess.currentPassphraseSourceSyntax(),
             "[" + ProtocolOptions.Request.ACCOUNT_CODE + " <account-code>]",
             "[" + ProtocolOptions.DateRange.EFFECTIVE_DATE_FROM + " <YYYY-MM-DD>]",
             "[" + ProtocolOptions.DateRange.EFFECTIVE_DATE_TO + " <YYYY-MM-DD>]",
-            ProtocolOptions.optionalLimitSyntax(),
-            ProtocolOptions.optionalCursorSyntax(),
+            ProtocolOptionSyntax.ReportQuery.optionalLimitSyntax(),
+            ProtocolOptionSyntax.ReportQuery.optionalCursorSyntax(),
             "[" + ProtocolOptions.Presentation.WITH_CONTEXT + "]",
-            ProtocolOptions.optionalOutputSyntax(
+            ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
                 List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV))),
         ExecutionMode.JSON_ENVELOPE,
         List.of(OutputMode.JSON, OutputMode.TEXT, OutputMode.CSV),

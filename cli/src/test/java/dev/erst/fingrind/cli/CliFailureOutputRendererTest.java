@@ -1,13 +1,22 @@
 package dev.erst.fingrind.cli;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.cli.json.CliAccountRejectionJsonModels;
 import dev.erst.fingrind.cli.json.CliAccountStateViolationPayload;
+import dev.erst.fingrind.cli.json.CliAttestationJsonModels;
+import dev.erst.fingrind.cli.json.CliAttestationRejectionJsonModels;
+import dev.erst.fingrind.cli.json.CliCloseRejectionJsonModels;
 import dev.erst.fingrind.cli.json.CliEntrySemanticsViolationPayload;
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
-import dev.erst.fingrind.cli.json.CliPlanJsonModels;
+import dev.erst.fingrind.cli.json.CliMaintenanceErrorJsonModels;
+import dev.erst.fingrind.cli.json.CliPlanResultJsonModels;
+import dev.erst.fingrind.cli.json.CliPlanStepDataJsonModels;
+import dev.erst.fingrind.cli.json.CliPostingRejectionJsonModels;
+import dev.erst.fingrind.cli.json.CliQueryPlanRejectionJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.protocol.LedgerAssertionKind;
 import dev.erst.fingrind.contract.protocol.LedgerStepKind;
@@ -62,6 +71,97 @@ class CliFailureOutputRendererTest {
     assertTrue(staleHead.contains("Observed head"));
     assertTrue(staleHead.contains("Current head"));
     assertTrue(staleHead.contains("Current order"));
+
+    String publicationUncertain =
+        CliFailureOutputRenderer.renderFailureText(
+            new CliFailure(
+                "artifact-publication-durability-uncertain",
+                "Artifact durability is unconfirmed.",
+                "Inspect the artifact.",
+                "--pdf-out",
+                new CliMaintenanceErrorJsonModels.ArtifactPublicationDurabilityUncertainDetails(
+                    new CliMaintenanceErrorJsonModels.PublishedArtifact(
+                        "/Users/private-fixture/FinGrind/reports/report.pdf",
+                        "/Users/private-fixture/FinGrind/reports/.fingrind-report-stage.tmp"))));
+    assertTrue(publicationUncertain.contains("Published artifact"));
+    assertTrue(publicationUncertain.contains("<redacted>/FinGrind/reports/report.pdf"));
+    assertTrue(publicationUncertain.contains("Retained stage path"));
+    assertTrue(
+        publicationUncertain.contains("<redacted>/FinGrind/reports/.fingrind-report-stage.tmp"));
+    assertFalse(publicationUncertain.contains("cleanup"), publicationUncertain);
+    assertFalse(publicationUncertain.contains("/Users/private-fixture"), publicationUncertain);
+
+    String pairPublicationUncertain =
+        CliFailureOutputRenderer.renderFailureText(
+            new CliFailure(
+                "protected-book-pair-publication-uncertain",
+                "Protected-book pair completion is uncertain.",
+                "Preserve both pair members and rerun the exact operation.",
+                "--book-file",
+                new CliMaintenanceErrorJsonModels.ProtectedBookPairPublicationUncertainDetails(
+                    "restore-book",
+                    new CliMaintenanceErrorJsonModels.PairPublication(
+                        new CliMaintenanceErrorJsonModels.PairPublicationMember(
+                            "/Users/private-fixture/FinGrind/books/restored.sqlite",
+                            CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload
+                                .NOT_ATTEMPTED),
+                        new CliMaintenanceErrorJsonModels.PairPublicationMember(
+                            "/Users/private-fixture/FinGrind/keys/restored.book-key",
+                            CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload
+                                .NOT_ATTEMPTED),
+                        CliMaintenanceErrorJsonModels.PairPublicationRecoveryRecordStatePayload
+                            .DURABILITY_UNCONFIRMED,
+                        new CliMaintenanceErrorJsonModels.PairPublicationRetention(
+                            new CliMaintenanceErrorJsonModels.PublishedArtifact(
+                                "/Users/private-fixture/FinGrind/books/restored.sqlite",
+                                "/Users/private-fixture/FinGrind/books/.restored-book-stage"),
+                            new CliMaintenanceErrorJsonModels.PublishedArtifact(
+                                "/Users/private-fixture/FinGrind/keys/restored.book-key",
+                                "/Users/private-fixture/FinGrind/keys/.restored-secret-stage"))))));
+    assertTrue(pairPublicationUncertain.contains("Operation"));
+    assertTrue(pairPublicationUncertain.contains("restore-book"));
+    assertTrue(pairPublicationUncertain.contains("Book target"));
+    assertTrue(pairPublicationUncertain.contains("Generated secret target"));
+    assertTrue(pairPublicationUncertain.contains("Recovery record state"));
+    assertTrue(pairPublicationUncertain.contains("Book retained stage"));
+    assertTrue(pairPublicationUncertain.contains("Generated secret retained stage"));
+    assertTrue(pairPublicationUncertain.contains("durability-unconfirmed"));
+    assertTrue(pairPublicationUncertain.contains("<redacted>/FinGrind/books/restored.sqlite"));
+    assertTrue(pairPublicationUncertain.contains("<redacted>/FinGrind/keys/restored.book-key"));
+    assertFalse(
+        pairPublicationUncertain.contains("/Users/private-fixture"), pairPublicationUncertain);
+
+    String outcomeUncertain =
+        CliFailureOutputRenderer.renderFailureText(
+            new CliFailure(
+                "artifact-publication-outcome-uncertain",
+                "Artifact publication outcome is unconfirmed.",
+                "Inspect the candidate.",
+                "--pdf-out",
+                new CliMaintenanceErrorJsonModels.ArtifactPublicationOutcomeUncertainDetails(
+                    "/Users/private-fixture/FinGrind/reports/candidate.pdf",
+                    "/Users/private-fixture/FinGrind/reports/.fingrind-candidate-stage.tmp")));
+    assertTrue(outcomeUncertain.contains("Candidate artifact path"));
+    assertTrue(outcomeUncertain.contains("<redacted>/FinGrind/reports/candidate.pdf"));
+    assertTrue(outcomeUncertain.contains("Retained stage path"));
+    assertTrue(
+        outcomeUncertain.contains("<redacted>/FinGrind/reports/.fingrind-candidate-stage.tmp"));
+    assertFalse(outcomeUncertain.contains("cleanup"), outcomeUncertain);
+    assertFalse(outcomeUncertain.contains("/Users/private-fixture"), outcomeUncertain);
+
+    String unsupportedFormat =
+        CliFailureOutputRenderer.renderFailureText(
+            new CliFailure(
+                "unsupported-book-format-version",
+                "The selected FinGrind book uses format version 7, but this FinGrind binary"
+                    + " supports version 8 only.",
+                "Use a matching binary.",
+                "--book-file",
+                new CliErrorJsonModels.UnsupportedBookFormatVersionDetails(7, 8)));
+    assertTrue(unsupportedFormat.contains("Detected book format version"));
+    assertTrue(unsupportedFormat.contains("7"));
+    assertTrue(unsupportedFormat.contains("Supported book format version"));
+    assertTrue(unsupportedFormat.contains("8"));
   }
 
   @Test
@@ -76,11 +176,11 @@ class CliFailureOutputRendererTest {
   }
 
   @Test
-  void renderRejectedText_rendersEveryStructuredRejectionShape() {
+  void renderRejectedText_rendersPostingAndAccountStateRejectionDetails() {
     assertRenderedNestedRepairableRejection(
         "account-state-violations",
         "Posting rejected with 3 account-state issues.",
-        new CliRejectionJsonModels.AccountStateViolationsDetails(
+        new CliPostingRejectionJsonModels.AccountStateViolationsDetails(
             List.of(
                 new CliAccountStateViolationPayload(
                     "unknown-account",
@@ -95,13 +195,15 @@ class CliFailureOutputRendererTest {
                     "lines[].accountCode",
                     "Journal line references inactive account '2000'.",
                     "account-activation",
-                    "Reactivate the account or replace it with an active posting account before retrying.",
+                    "Reactivate the account or replace it with an active posting account before"
+                        + " retrying.",
                     "2000",
                     null),
                 new CliAccountStateViolationPayload(
                     "non-postable-account",
                     "lines[].accountCode",
-                    "Journal line references header account '3000', declared as 'HEADER', which cannot accept direct postings.",
+                    "Journal line references header account '3000', declared as 'HEADER', which"
+                        + " cannot accept direct postings.",
                     "account-node-kind",
                     "Replace the header account with a postable account before retrying.",
                     "3000",
@@ -114,32 +216,36 @@ class CliFailureOutputRendererTest {
         "HEADER",
         "Why");
     assertRenderedRejection(
-        new CliRejectionJsonModels.PriorPostingDetails("posting-9"),
+        new CliPostingRejectionJsonModels.PriorPostingDetails("posting-9"),
         "Prior posting id",
         "posting-9");
     assertRenderedRejection(
-        new CliRejectionJsonModels.AccountDependenciesDetails(
+        new CliAccountRejectionJsonModels.AccountDependenciesDetails(
             "1100", List.of("postings", "tax-registrations")),
         "Account code",
         "1100",
         "Durable dependencies",
         "postings, tax-registrations");
     assertRenderedRejection(
-        new CliRejectionJsonModels.AccountCodeDetails("1100"), "Account code", "1100");
+        new CliAccountRejectionJsonModels.AccountCodeDetails("1100"), "Account code", "1100");
     assertThrows(
         IllegalArgumentException.class,
-        () -> new CliRejectionJsonModels.AccountDependenciesDetails("1100", List.of()));
+        () -> new CliAccountRejectionJsonModels.AccountDependenciesDetails("1100", List.of()));
     assertRenderedRejection(
-        new CliRejectionJsonModels.AccountTypeConflictDetails("3200", "EQUITY", "LIABILITY"),
+        new CliAccountRejectionJsonModels.AccountTypeConflictDetails("3200", "EQUITY", "LIABILITY"),
         "Existing account type",
         "Requested account type",
         "LIABILITY");
+  }
+
+  @Test
+  void renderRejectedText_rendersAccountTaxonomyAndHierarchyRejectionDetails() {
     assertRenderedRejection(
-        new CliRejectionJsonModels.AccountTaxonomyConflictDetails(
+        new CliAccountRejectionJsonModels.AccountTaxonomyConflictDetails(
             "3200",
-            new CliRejectionJsonModels.AccountTaxonomyDetails(
+            new CliAccountRejectionJsonModels.AccountTaxonomyDetails(
                 "POSTABLE", "3000", "OTHER_EQUITY", null),
-            new CliRejectionJsonModels.AccountTaxonomyDetails(
+            new CliAccountRejectionJsonModels.AccountTaxonomyDetails(
                 "POSTABLE", "3010", "RESULT_HOLDING", null)),
         "Existing parent account",
         "3000",
@@ -150,11 +256,11 @@ class CliFailureOutputRendererTest {
         "Requested financial position classification",
         "RESULT_HOLDING");
     assertRenderedRejection(
-        new CliRejectionJsonModels.AccountTaxonomyConflictDetails(
+        new CliAccountRejectionJsonModels.AccountTaxonomyConflictDetails(
             "4100",
-            new CliRejectionJsonModels.AccountTaxonomyDetails(
+            new CliAccountRejectionJsonModels.AccountTaxonomyDetails(
                 "POSTABLE", null, null, "COST_OF_SALES"),
-            new CliRejectionJsonModels.AccountTaxonomyDetails(
+            new CliAccountRejectionJsonModels.AccountTaxonomyDetails(
                 "POSTABLE", "4000", null, "OPERATING_EXPENSE")),
         "Existing parent account",
         "(none)",
@@ -169,7 +275,7 @@ class CliFailureOutputRendererTest {
         "Requested profit-and-loss classification",
         "OPERATING_EXPENSE");
     assertRenderedRejection(
-        new CliRejectionJsonModels.ContraAccountDetails(
+        new CliAccountRejectionJsonModels.ContraAccountDetails(
             "4090", "4000", "statement-taxonomy-mismatch"),
         "Account code",
         "4090",
@@ -178,31 +284,31 @@ class CliFailureOutputRendererTest {
         "Contra relationship",
         "statement-taxonomy-mismatch");
     assertRenderedRejection(
-        new CliRejectionJsonModels.ParentAccountDetails("4100", "4000"),
+        new CliAccountRejectionJsonModels.ParentAccountDetails("4100", "4000"),
         "Account code",
         "4100",
         "Parent account code",
         "4000");
     assertRenderedRejection(
-        new CliRejectionJsonModels.ParentAccountTypeConflictDetails(
+        new CliAccountRejectionJsonModels.ParentAccountTypeConflictDetails(
             "4100", "EXPENSE", "4000", "REVENUE"),
         "Requested account type",
         "EXPENSE",
         "Parent account type",
         "REVENUE");
     assertRenderedRejection(
-        new CliRejectionJsonModels.ParentAccountNodeKindDetails("4100", "4000", "POSTABLE"),
+        new CliAccountRejectionJsonModels.ParentAccountNodeKindDetails("4100", "4000", "POSTABLE"),
         "Parent account code",
         "4000",
         "Parent account node kind",
         "POSTABLE");
     assertRenderedRejection(
-        new CliRejectionJsonModels.ParentAccountTaxonomyConflictDetails(
+        new CliAccountRejectionJsonModels.ParentAccountTaxonomyConflictDetails(
             "4100",
-            new CliRejectionJsonModels.AccountTaxonomyDetails(
+            new CliAccountRejectionJsonModels.AccountTaxonomyDetails(
                 "POSTABLE", "4050", null, "OPERATING_EXPENSE"),
             "4000",
-            new CliRejectionJsonModels.AccountTaxonomyDetails(
+            new CliAccountRejectionJsonModels.AccountTaxonomyDetails(
                 "POSTABLE", null, null, "COST_OF_SALES")),
         "Requested parent account",
         "4050",
@@ -214,102 +320,116 @@ class CliFailureOutputRendererTest {
         "(none)",
         "Parent profit-and-loss classification",
         "COST_OF_SALES");
+  }
+
+  @Test
+  void renderRejectedText_rendersPostingPolicyAndCloseTargetRejectionDetails() {
     assertRenderedRejection(
-        new CliRejectionJsonModels.FunctionalCurrencyMismatchDetails("EUR", "USD"),
+        new CliPostingRejectionJsonModels.FunctionalCurrencyMismatchDetails("EUR", "USD"),
         "Functional currency",
         "Attempted currency",
         "USD");
     assertRenderedRejection(
-        new CliRejectionJsonModels.PostingEffectiveDateBeforeBookStartDetails(
+        new CliPostingRejectionJsonModels.PostingEffectiveDateBeforeBookStartDetails(
             "2026-06-29", "2026-06-30"),
         "Attempted effective date",
         "2026-06-29",
         "Book start effective date",
         "2026-06-30");
     assertRenderedRejection(
-        new CliRejectionJsonModels.PostingEffectiveDateInFutureDetails("2026-07-01", "2026-06-30"),
+        new CliPostingRejectionJsonModels.PostingEffectiveDateInFutureDetails(
+            "2026-07-01", "2026-06-30"),
         "Attempted effective date",
         "2026-07-01",
         "Current UTC date",
         "2026-06-30");
     assertRenderedRejection(
-        new CliRejectionJsonModels.OpeningPositionWindowClosedDetails("STANDARD", "2026-04-07"),
+        new CliPostingRejectionJsonModels.OpeningPositionWindowClosedDetails(
+            "STANDARD", "2026-04-07"),
         "First blocking posting kind",
         "STANDARD",
         "First blocking effective date",
         "2026-04-07");
     assertRenderedRejection(
-        new CliRejectionJsonModels.OpeningPositionNominalAccountDetails("4000", "REVENUE"),
+        new CliPostingRejectionJsonModels.OpeningPositionNominalAccountDetails("4000", "REVENUE"),
         "Account code",
         "4000",
         "Account type",
         "REVENUE");
     assertRenderedRejection(
-        new CliRejectionJsonModels.ReservedResultClassificationDetails("3200", "result-holding"),
+        new CliAccountRejectionJsonModels.ReservedResultClassificationDetails(
+            "3200", "result-holding"),
         "Account code",
         "3200",
         "Financial position classification",
         "result-holding");
     assertRenderedRejection(
-        new CliRejectionJsonModels.CloseTargetAccountCandidateMissingDetails(
+        new CliAccountRejectionJsonModels.CloseTargetAccountCandidateMissingDetails(
             "retained-earnings", List.of("3200")),
         "Required financial position classification",
         "retained-earnings",
         "Inactive candidate account codes",
         "3200");
     assertRenderedRejection(
-        new CliRejectionJsonModels.CloseTargetAccountCandidateAmbiguousDetails(
+        new CliAccountRejectionJsonModels.CloseTargetAccountCandidateAmbiguousDetails(
             "other-equity", List.of("3200", "3210")),
         "Required financial position classification",
         "other-equity",
         "Candidate account codes",
         "3200, 3210");
+  }
+
+  @Test
+  void renderRejectedText_rendersCloseWindowAndQueryPlanRejectionDetails() {
     assertRenderedRejection(
-        new CliRejectionJsonModels.InterimResultSweepStartDetails("2026-04-01"),
+        new CliCloseRejectionJsonModels.InterimResultSweepStartDetails("2026-04-01"),
         "Required start date",
         "2026-04-01");
     assertRenderedRejection(
-        new CliRejectionJsonModels.InterimResultSweepFutureDateDetails("2026-05-01"),
+        new CliCloseRejectionJsonModels.InterimResultSweepFutureDateDetails("2026-05-01"),
         "Attempted end date",
         "2026-05-01");
     assertRenderedRejection(
-        new CliRejectionJsonModels.InterimResultSweepFiscalYearDetails(
+        new CliCloseRejectionJsonModels.InterimResultSweepFiscalYearDetails(
             "2026-12-15", "2027-01-15", "01-01"),
         "Attempted start date",
         "Attempted end date",
         "Fiscal year start");
     assertRenderedRejection(
-        new CliRejectionJsonModels.FiscalYearCloseStartDetails("2026-01-01"),
+        new CliCloseRejectionJsonModels.FiscalYearCloseStartDetails("2026-01-01"),
         "Required start date",
         "2026-01-01");
     assertRenderedRejection(
-        new CliRejectionJsonModels.FiscalYearCloseEndDetails("2026-12-31"),
+        new CliCloseRejectionJsonModels.FiscalYearCloseEndDetails("2026-12-31"),
         "Required end date",
         "2026-12-31");
     assertRenderedRejection(
-        new CliRejectionJsonModels.FiscalYearCloseTransferredThroughDetails(
+        new CliCloseRejectionJsonModels.FiscalYearCloseTransferredThroughDetails(
             "2025-12-31", "2026-03-31"),
         "Attempted end date",
         "2025-12-31",
         "Transferred-through date",
         "2026-03-31");
     assertRenderedRejection(
-        new CliRejectionJsonModels.FiscalYearCloseFutureDateDetails("2027-01-01"),
+        new CliCloseRejectionJsonModels.FiscalYearCloseFutureDateDetails("2027-01-01"),
         "Attempted end date",
         "2027-01-01");
     assertRenderedRejection(
-        new CliRejectionJsonModels.SweptInterimResultViolationDetails("2026-04-30", "2026-05-01"),
+        new CliPostingRejectionJsonModels.SweptInterimResultViolationDetails(
+            "2026-04-30", "2026-05-01"),
         "Transferred through",
         "Attempted effective date",
         "2026-05-01");
     assertRenderedRejection(
-        new CliRejectionJsonModels.UnknownAccountDetails("9999"), "Account code", "9999");
+        new CliQueryPlanRejectionJsonModels.UnknownAccountDetails("9999"), "Account code", "9999");
     assertRenderedRejection(
-        new CliRejectionJsonModels.PostingNotFoundDetails("posting-404"),
+        new CliQueryPlanRejectionJsonModels.PostingNotFoundDetails("posting-404"),
         "Posting id",
         "posting-404");
     assertRenderedRejection(
-        new CliRejectionJsonModels.PlanRejectionDetails(samplePlan()), "Plan id", "plan-1");
+        new CliQueryPlanRejectionJsonModels.PlanRejectionDetails(samplePlan()),
+        "Plan id",
+        "plan-1");
   }
 
   @Test
@@ -351,20 +471,22 @@ class CliFailureOutputRendererTest {
             "Posting rejected with 2 entry-semantics issues.",
             null,
             null,
-            new CliRejectionJsonModels.EntrySemanticsViolationsDetails(
+            new CliPostingRejectionJsonModels.EntrySemanticsViolationsDetails(
                 List.of(
                     new CliEntrySemanticsViolationPayload(
                         "account-type-mismatch",
                         "cashAccountCode",
                         "cash account must be declared as ASSET",
                         "account-type",
-                        "Use accounts whose declared account type matches the violated field requirement."),
+                        "Use accounts whose declared account type matches the violated field"
+                            + " requirement."),
                     new CliEntrySemanticsViolationPayload(
                         "source-document-type-not-accepted",
                         null,
                         "invoice does not prove cash receipt",
                         "source-document-type",
-                        "Use an accepted source document type for the selected entry kind's source-document policy."))));
+                        "Use an accepted source document type for the selected entry kind's"
+                            + " source-document policy."))));
 
     assertTrue(rendered.contains("entry-semantics-violations"));
     assertTrue(rendered.contains("Summary"));
@@ -387,18 +509,75 @@ class CliFailureOutputRendererTest {
             "Posting rejected with 1 entry-semantics issue.",
             null,
             null,
-            new CliRejectionJsonModels.EntrySemanticsViolationsDetails(
+            new CliPostingRejectionJsonModels.EntrySemanticsViolationsDetails(
                 List.of(
                     new CliEntrySemanticsViolationPayload(
                         "latvian-payroll-profile-not-admitted",
                         "taxBookHeldAtEmployer",
-                        "entryKind 'LATVIAN_MONTHLY_PAYROLL' does not admit taxBookHeldAtEmployer 'false'.",
+                        "entryKind 'LATVIAN_MONTHLY_PAYROLL' does not admit taxBookHeldAtEmployer"
+                            + " 'false'.",
                         "latvian-payroll-profile",
-                        "Use EUR gross wages up to EUR 8,775.00, a 2026 payroll month, taxBookHeldAtEmployer true, and dependantCount 0; record any other case in an owned context that admits it."))));
+                        "Use EUR gross wages up to EUR 8,775.00, a 2026 payroll month,"
+                            + " taxBookHeldAtEmployer true, and dependantCount 0; record any other"
+                            + " case in an owned context that admits it."))));
 
     assertTrue(rendered.contains("does not admit taxBookHeldAtEmployer 'false'."), rendered);
     assertTrue(rendered.contains("taxBookHeldAtEmployer true"), rendered);
     assertFalse(rendered.contains("false.."), rendered);
+  }
+
+  @Test
+  void renderRejectedText_rendersAttestationReviewRequiredDetailsAsGroupedEvidence() {
+    String credentialKeyId = "c".repeat(64);
+    String rendered =
+        CliFailureOutputRenderer.renderRejectedText(
+            "attestation-review-required",
+            "The verified chain requires incident review.",
+            "Resolve the incident before accepting further work.",
+            null,
+            new CliAttestationRejectionJsonModels.AttestationReviewRequiredDetails(
+                "book-1",
+                new CliAttestationJsonModels.AttestationHeadPayload("8", "a".repeat(64)),
+                "b".repeat(64),
+                List.of(
+                    new CliAttestationJsonModels.AttestationReviewFindingPayload(
+                        credentialKeyId, "4", "8", "5"),
+                    new CliAttestationJsonModels.AttestationReviewFindingPayload(
+                        credentialKeyId, "4", "8", "6"),
+                    new CliAttestationJsonModels.AttestationReviewFindingPayload(
+                        credentialKeyId, "4", "8", "8"))));
+
+    assertTrue(rendered.contains("Book ID"), rendered);
+    assertTrue(rendered.contains("book-1"), rendered);
+    assertTrue(rendered.contains("Attestation order"), rendered);
+    assertTrue(rendered.contains("Attestation head"), rendered);
+    assertTrue(rendered.contains("Previous attestation head"), rendered);
+    assertTrue(rendered.contains("Review findings"), rendered);
+    assertEquals(1, occurrences(rendered, "Review declaration"), rendered);
+    assertTrue(rendered.contains("Credential key ID: " + credentialKeyId), rendered);
+    assertTrue(rendered.contains("Review window: 4 through 8"), rendered);
+    assertTrue(rendered.contains("Affected operation orders: 5-6, 8"), rendered);
+  }
+
+  @Test
+  void renderRejectedText_rendersOpenEndedAttestationReviewDeclarationsThroughTheHead() {
+    String credentialKeyId = "c".repeat(64);
+    String rendered =
+        CliFailureOutputRenderer.renderRejectedText(
+            "attestation-review-required",
+            "The verified chain requires incident review.",
+            "Resolve the incident before accepting further work.",
+            null,
+            new CliAttestationRejectionJsonModels.AttestationReviewRequiredDetails(
+                "book-1",
+                new CliAttestationJsonModels.AttestationHeadPayload("8", "a".repeat(64)),
+                "b".repeat(64),
+                List.of(
+                    new CliAttestationJsonModels.AttestationReviewFindingPayload(
+                        credentialKeyId, "4", null, "8"))));
+
+    assertTrue(rendered.contains("Review window: 4 through head"), rendered);
+    assertTrue(rendered.contains("Affected operation orders: 8"), rendered);
   }
 
   @Test
@@ -408,7 +587,7 @@ class CliFailureOutputRendererTest {
         () ->
             CliPostingRejectionTextRenderer.appendRows(
                 new ArrayList<>(),
-                new CliRejectionJsonModels.AccountStateViolationsDetails(
+                new CliPostingRejectionJsonModels.AccountStateViolationsDetails(
                     List.of(
                         new CliAccountStateViolationPayload(
                             "unknown-account",
@@ -423,14 +602,15 @@ class CliFailureOutputRendererTest {
         () ->
             CliPostingRejectionTextRenderer.appendRows(
                 new ArrayList<>(),
-                new CliRejectionJsonModels.EntrySemanticsViolationsDetails(
+                new CliPostingRejectionJsonModels.EntrySemanticsViolationsDetails(
                     List.of(
                         new CliEntrySemanticsViolationPayload(
                             "account-type-mismatch",
                             "cashAccountCode",
                             "cash account must be declared as ASSET",
                             "account-type",
-                            "Use accounts whose declared account type matches the violated field requirement.")))));
+                            "Use accounts whose declared account type matches the violated field"
+                                + " requirement.")))));
   }
 
   private static void assertRenderedRejection(
@@ -465,19 +645,20 @@ class CliFailureOutputRendererTest {
     }
   }
 
-  private static CliPlanJsonModels.LedgerPlanPayload samplePlan() {
-    return new CliPlanJsonModels.LedgerPlanPayload(
+  private static CliPlanResultJsonModels.LedgerPlanPayload samplePlan() {
+    return new CliPlanResultJsonModels.LedgerPlanPayload(
         "plan-1",
         LedgerPlanStatus.REJECTED,
         PlanResultDetail.FULL,
-        new CliPlanJsonModels.LedgerPlanSummaryPayload(
+        new CliPlanResultJsonModels.LedgerPlanSummaryPayload(
             "2026-05-13T10:15:30Z", "2026-05-13T10:15:31Z", 1, 0, 1, "step-1"),
         null,
-        new CliPlanJsonModels.LedgerExecutionJournalPayload(
+        null,
+        new CliPlanResultJsonModels.LedgerExecutionJournalPayload(
             "2026-05-13T10:15:30Z",
             "2026-05-13T10:15:31Z",
             List.of(
-                new CliPlanJsonModels.LedgerJournalEntryPayload(
+                new CliPlanResultJsonModels.LedgerJournalEntryPayload(
                     "step-1",
                     LedgerStepKind.ASSERT,
                     LedgerAssertionKind.ACCOUNT_BALANCE_EQUALS,
@@ -485,8 +666,12 @@ class CliFailureOutputRendererTest {
                     LedgerStepStatus.ASSERTION_FAILED,
                     "2026-05-13T10:15:30Z",
                     "2026-05-13T10:15:31Z",
-                    new CliPlanJsonModels.AccountCodeAssertionStepDataPayload("1000"),
-                    new CliPlanJsonModels.LedgerStepFailurePayload(
+                    new CliPlanStepDataJsonModels.AccountCodeAssertionStepDataPayload("1000"),
+                    new CliPlanResultJsonModels.LedgerStepFailurePayload(
                         "assertion-failed", "Rejected message.", List.of())))));
+  }
+
+  private static int occurrences(String text, String fragment) {
+    return text.split(java.util.regex.Pattern.quote(fragment), -1).length - 1;
   }
 }

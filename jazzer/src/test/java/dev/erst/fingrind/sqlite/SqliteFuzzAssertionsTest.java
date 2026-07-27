@@ -1,7 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -12,10 +11,18 @@ import dev.erst.fingrind.cli.CliFuzzFixtures;
 import dev.erst.fingrind.cli.CliFuzzHarnessTestSupport;
 import dev.erst.fingrind.cli.CliFuzzWorkflowFixtures;
 import dev.erst.fingrind.contract.bookkeeping.DeclaredAccount;
+import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
+import dev.erst.fingrind.core.PrivateOutputDirectory;
 import dev.erst.fingrind.executor.BookAdministrationService;
 import java.lang.reflect.Proxy;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFileAttributeView;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.Set;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -185,7 +192,8 @@ class SqliteFuzzAssertionsTest {
   @Test
   void sqliteAssertions_rewrite_deterministic_key_file_when_secure_file_already_exists()
       throws Exception {
-    Path keyFile = tempDirectory.resolve("entity.book-key");
+    Path parentDirectory = createOwnerOnlyArtifactDirectory("existing-key-parent");
+    Path keyFile = parentDirectory.resolve("entity.book-key");
 
     SqliteFuzzAssertions.writeDeterministicBookKeyFile(keyFile);
     String firstWrite = Files.readString(keyFile, UTF_8);
@@ -198,40 +206,106 @@ class SqliteFuzzAssertionsTest {
   }
 
   @Test
-  void sqliteAssertions_create_and_harden_missing_key_file_parent() throws Exception {
-    Path keyFile = tempDirectory.resolve("new-artifacts").resolve("entity.book-key");
+  void sqliteAssertions_reject_key_file_writes_beneath_missing_parents() {
+    Path keyFile = tempDirectory.resolve("missing-artifacts").resolve("entity.book-key");
 
-    SqliteFuzzAssertions.writeDeterministicBookKeyFile(keyFile);
-
-    assertEquals("fingrind-jazzer-book-key", Files.readString(keyFile, UTF_8));
+    assertThrows(
+        PrivateOutputDirectory.Violation.class,
+        () -> SqliteFuzzAssertions.writeDeterministicBookKeyFile(keyFile));
   }
 
   @Test
-  void sqliteAssertions_prepareSecureArtifactDirectory_hardens_existing_directory_roots()
+  void sqliteAssertions_writeNewOwnerOnlyFixturePassphraseFile_forcesBoundedNewSecret()
       throws Exception {
-    Path artifactDirectory = tempDirectory.resolve("existing-artifacts");
-    Files.createDirectories(artifactDirectory);
+    Path parentDirectory = createOwnerOnlyArtifactDirectory("passphrase-parent");
+    Path passphraseFile = parentDirectory.resolve("founder.passphrase");
 
-    assertDoesNotThrow(
-        () -> SqliteFuzzAssertions.prepareSecureArtifactDirectory(artifactDirectory));
-    assertDoesNotThrow(
+    SqliteFuzzAssertions.writeNewOwnerOnlyFixturePassphraseFile(passphraseFile, "fixture-secret");
+
+    assertEquals("fixture-secret", Files.readString(passphraseFile, UTF_8));
+    assertThrows(
+        FileAlreadyExistsException.class,
         () ->
-            SqliteFuzzAssertions.writeDeterministicBookKeyFile(
-                artifactDirectory.resolve("book.key")));
+            SqliteFuzzAssertions.writeNewOwnerOnlyFixturePassphraseFile(
+                passphraseFile, "second-secret"));
   }
 
   @Test
-  void sqliteAssertions_prepareSecureArtifactDirectory_rejects_non_directory_paths()
+  void sqliteAssertions_writeNewOwnerOnlyFixturePassphraseFile_rejectsOversizedContent()
+      throws Exception {
+    Path parentDirectory = createOwnerOnlyArtifactDirectory("oversized-passphrase-parent");
+    Path passphraseFile = parentDirectory.resolve("founder.passphrase");
+    String oversizedPassphrase =
+        "x".repeat(ProtocolInteractionLimits.BOOK_PASSPHRASE_MAX_UTF8_BYTES + 1);
+
+    assertThrows(
+        java.io.IOException.class,
+        () ->
+            SqliteFuzzAssertions.writeNewOwnerOnlyFixturePassphraseFile(
+                passphraseFile, oversizedPassphrase));
+    assertFalse(Files.exists(passphraseFile));
+  }
+
+  @Test
+  void sqliteAssertions_createOwnerOnlyArtifactDirectory_createsOnceAndValidatesTheResult()
+      throws Exception {
+    Path artifactDirectory = createOwnerOnlyArtifactDirectory("new-artifacts");
+
+    assertEquals(
+        artifactDirectory.toAbsolutePath().normalize(),
+        SqliteFuzzAssertions.requireOwnerOnlyArtifactDirectory(artifactDirectory));
+    assertThrows(
+        FileAlreadyExistsException.class,
+        () -> SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(artifactDirectory));
+  }
+
+  @Test
+  void
+      sqliteAssertions_requireOwnerOnlyArtifactDirectory_rejectsExistingInsecureDirectoriesWithoutRepair()
+      throws Exception {
+    assumePosixDirectoryCreationSupported();
+    Set<PosixFilePermission> insecurePermissions =
+        PosixFilePermissions.fromString("rwxr-xr-x");
+    Path artifactDirectory = tempDirectory.resolve("existing-insecure-artifacts");
+    Files.createDirectory(
+        artifactDirectory, PosixFilePermissions.asFileAttribute(insecurePermissions));
+
+    assertThrows(
+        PrivateOutputDirectory.Violation.class,
+        () -> SqliteFuzzAssertions.requireOwnerOnlyArtifactDirectory(artifactDirectory));
+    assertEquals(
+        insecurePermissions, Files.getPosixFilePermissions(artifactDirectory));
+  }
+
+  @Test
+  void sqliteAssertions_requireOwnerOnlyArtifactDirectory_rejects_missing_and_non_directory_paths()
       throws Exception {
     Path plainFile = tempDirectory.resolve("not-a-directory");
     Files.writeString(plainFile, "plain file", UTF_8);
 
-    IllegalArgumentException exception =
+    PrivateOutputDirectory.Violation exception =
         assertThrows(
-            IllegalArgumentException.class,
-            () -> SqliteFuzzAssertions.prepareSecureArtifactDirectory(plainFile));
+            PrivateOutputDirectory.Violation.class,
+            () -> SqliteFuzzAssertions.requireOwnerOnlyArtifactDirectory(plainFile));
 
-    assertTrue(String.valueOf(exception.getMessage()).contains("directory path"));
+    assertTrue(String.valueOf(exception.getMessage()).contains("existing real directory"));
+    assertThrows(
+        PrivateOutputDirectory.Violation.class,
+        () ->
+            SqliteFuzzAssertions.requireOwnerOnlyArtifactDirectory(
+                tempDirectory.resolve("missing-artifact-directory")));
+  }
+
+  private Path createOwnerOnlyArtifactDirectory(String directoryName) throws Exception {
+    assumePosixDirectoryCreationSupported();
+    return SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(
+        tempDirectory.resolve(directoryName));
+  }
+
+  private void assumePosixDirectoryCreationSupported() {
+    Assumptions.assumeTrue(
+        Files.getFileAttributeView(tempDirectory, PosixFileAttributeView.class) != null,
+        "This assertion requires POSIX owner-only directory creation.");
   }
 
   private static String basicValidRequest() {

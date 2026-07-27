@@ -41,21 +41,19 @@ public enum AttestationBackupAcknowledgementAdmission {
 
   static @Nullable AttestationBackupAcknowledgement from(AttestationEvidence evidence) {
     AttestationEvidence checkedEvidence = Objects.requireNonNull(evidence, "evidence");
-    AttestationDecodedEnvelope<AttestationOperationPayload> envelope =
-        AttestationDecodedEnvelope.operation(checkedEvidence.operationEnvelope());
-    if (AttestationOperationKind.forWireToken(envelope.payload().operationKind())
+    AttestationBookOperation operation =
+        AttestationBookOperation.decode(
+            checkedEvidence.operationEnvelope(),
+            checkedEvidence.requestPreimage(),
+            checkedEvidence.effectPreimage());
+    if (AttestationOperationKind.forWireToken(operation.envelope().payload().operationKind())
         != AttestationOperationKind.BACKUP_CREATED) {
       return null;
     }
-    AttestationPreimage effect =
-        AttestationPreimage.decode(
-            checkedEvidence.effectPreimage(), AttestationAuthorizationFailure.PREIMAGE_INVALID);
-    List<AttestationPreimage.Fact> records =
-        effect.records().stream().filter(record -> record.recordTypeTag() == 0x0006).toList();
-    if (records.size() != 1) {
-      throw new AttestationAuthorizationException(AttestationAuthorizationFailure.PREIMAGE_INVALID);
-    }
-    AttestationPreimage.Fact acknowledgement = records.getFirst();
+    AttestationPreimage effect = operation.effectPreimage();
+    AttestationLifecycleEffectProfile.requireValid(
+        AttestationOperationKind.BACKUP_CREATED, operation.requestPreimage(), effect);
+    AttestationPreimage.Fact acknowledgement = effect.records().getFirst();
     return new AttestationBackupAcknowledgement(
         AttestationPreimageValueReader.uuid(
             acknowledgement, 1, AttestationAuthorizationFailure.PREIMAGE_INVALID),

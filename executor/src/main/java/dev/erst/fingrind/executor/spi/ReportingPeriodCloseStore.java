@@ -25,7 +25,6 @@ public interface ReportingPeriodCloseStore extends PostingRangeStore {
   /** Attempts one atomic interim-result-sweep commit for the selected through date. */
   InterimResultSweepOutcome interimResultSweep(
       LocalDate throughEffectiveDate,
-      LocalDate bookStartDate,
       BookIdentity bookIdentity,
       InterimResultSweepPlanner planner,
       LocalDate currentUtcDate,

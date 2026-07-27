@@ -6,10 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
 import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
 import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationLifecycleMutationProjection;
@@ -19,18 +21,23 @@ import dev.erst.fingrind.core.attestation.AttestationVerification;
 import dev.erst.fingrind.core.attestation.AttestationVerifier;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.WorkflowSourceMember;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.WorkflowSourceMembers;
 import java.io.IOException;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -39,30 +46,6 @@ import org.junit.jupiter.api.Test;
 
 /** Exercises real maintenance-store error handling at the durable attestation boundary. */
 class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestSupport {
-  @Test
-  void backupArtifactPairState_distinguishesEveryRecoverableFilesystemState() throws Exception {
-    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
-    Path artifactPath = tempDirectory.resolve("backup.fgba");
-    Path keyPath = tempDirectory.resolve("backup.key");
-
-    assertEquals(
-        ProtectedBookMaintenanceStore.BackupArtifactPairState.ABSENT,
-        store.backupArtifactPairState(artifactPath, keyPath));
-    Files.writeString(artifactPath, "artifact");
-    assertEquals(
-        ProtectedBookMaintenanceStore.BackupArtifactPairState.ARTIFACT_ONLY,
-        store.backupArtifactPairState(artifactPath, keyPath));
-    Files.delete(artifactPath);
-    Files.writeString(keyPath, "key");
-    assertEquals(
-        ProtectedBookMaintenanceStore.BackupArtifactPairState.KEY_ONLY,
-        store.backupArtifactPairState(artifactPath, keyPath));
-    Files.writeString(artifactPath, "artifact");
-    assertEquals(
-        ProtectedBookMaintenanceStore.BackupArtifactPairState.COMPLETE,
-        store.backupArtifactPairState(artifactPath, keyPath));
-  }
-
   @Test
   void resolverFailureAndRejectedAttestedAppend_preserveTheDurableBookState() throws Exception {
     Path unresolvedBookPath = writeArtifact("resolver-failure.sqlite", "not a SQLite book");
@@ -98,7 +81,7 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
                       Instant.parse("2026-07-21T12:00:00Z"),
                       AttestationLifecycleMutationProjection.rekeyBook(
                           AttestationOperationKind.REKEY_BOOK.wireToken(),
-                          java.math.BigInteger.ONE,
+                          java.math.BigInteger.TWO,
                           Instant.parse("2026-07-21T12:00:00Z"),
                           Optional.empty()),
                       ignored -> {
@@ -136,14 +119,17 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
               AttestationOperationKind.REKEY_BOOK, acknowledgement));
 
       AttestationVerification backupVerification =
-          store.appendAttestedOperation(
-              verifiedBook,
-              AttestationOperationKind.BACKUP_CREATED,
-              Instant.parse("2026-07-21T12:00:00Z"),
-              AttestationLifecycleMutationProjection.backupBook(
-                  AttestationOperationKind.BACKUP_CREATED.wireToken(), acknowledgement),
-              SqliteAttestationTestSupport.authorizer(),
-              acknowledgement);
+          assertInstanceOf(
+                  AttestationAppendOutcome.Appended.class,
+                  store.appendAttestedOperation(
+                      verifiedBook,
+                      AttestationOperationKind.BACKUP_CREATED,
+                      Instant.parse("2026-07-21T12:00:00Z"),
+                      AttestationLifecycleMutationProjection.backupBook(
+                          AttestationOperationKind.BACKUP_CREATED.wireToken(), acknowledgement),
+                      SqliteAttestationTestSupport.authorizer(),
+                      acknowledgement))
+              .verification();
 
       assertEquals(
           sourceVerification.headOrder().add(java.math.BigInteger.ONE),
@@ -257,15 +243,16 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
       AclFixturePath unreadableArtifact = fileSystem.path("\\backup.fgba");
       unreadableArtifact.exists = true;
       unreadableArtifact.regularFile = true;
+      AclFixturePath backupKey = fileSystem.path("\\backup.key");
+      backupKey.exists = true;
+      backupKey.regularFile = true;
       IOException artifactReadCause = new IOException("simulated artifact read failure");
       unreadableArtifact.failNewByteChannelWith(artifactReadCause);
 
       IllegalStateException artifactReadFailure =
           assertThrows(
               IllegalStateException.class,
-              () ->
-                  maintenanceStore()
-                      .verifyBackupArtifact(unreadableArtifact, fileSystem.path("\\backup.key")));
+              () -> maintenanceStore().verifyBackupArtifact(unreadableArtifact, backupKey));
       assertEquals(
           "Failed to read the selected backup artifact.", artifactReadFailure.getMessage());
       assertSame(artifactReadCause, artifactReadFailure.getCause());
@@ -401,5 +388,305 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
                 .rejection());
     assertEquals(ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, rejection.artifactRole());
     assertEquals(bookDirectory.toAbsolutePath().normalize(), rejection.artifactPath());
+  }
+
+  @Test
+  void maintenanceNormalization_resolvesAnExistingLeafToItsCanonicalFilesystemSpelling()
+      throws Exception {
+    Path canonicalLeaf = writeArtifact("Canonical-book.sqlite", "canonical spelling");
+    Path alternateSpelling = canonicalLeaf.resolveSibling("canonical-book.sqlite");
+    assumeTrue(
+        Files.exists(alternateSpelling, java.nio.file.LinkOption.NOFOLLOW_LINKS)
+            && Files.isSameFile(canonicalLeaf, alternateSpelling),
+        "The fixture filesystem is case-sensitive.");
+
+    assertEquals(
+        canonicalLeaf.toRealPath(java.nio.file.LinkOption.NOFOLLOW_LINKS),
+        SqliteBookMaintenanceFiles.normalizeExistingSource(alternateSpelling, "bookFilePath"));
+  }
+
+  @Test
+  void maintenanceNormalization_rejectsAnIntermediateSymbolicLinkBeforeCanonicalization()
+      throws Exception {
+    Path physicalRoot = Files.createDirectory(tempDirectory.resolve("maintenance-physical-root"));
+    Path realParent = Files.createDirectory(physicalRoot.resolve("real-parent"));
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(physicalRoot);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(realParent);
+    Path intermediateAlias = tempDirectory.resolve("maintenance-intermediate-alias");
+    createDirectorySymlinkOrSkip(intermediateAlias, physicalRoot);
+    Path selectedPath = intermediateAlias.resolve(realParent.getFileName()).resolve("book.sqlite");
+
+    SqliteCallerPathContractException exception =
+        assertThrows(
+            SqliteCallerPathContractException.class,
+            () ->
+                SqliteBookMaintenanceFiles.normalizeOptionalArtifact(selectedPath, "bookFilePath"));
+
+    assertEquals(SqliteCallerPathFailure.PARENT_PATH_COLLISION, exception.pathFailure());
+    assertFalse(Files.exists(realParent.resolve("book.sqlite")));
+  }
+
+  @Test
+  void maintenanceNormalization_doesNotLetDotDotHideAnIntermediateSymbolicLink() throws Exception {
+    Path physicalRoot = Files.createDirectory(tempDirectory.resolve("dotdot-physical-root"));
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(physicalRoot);
+    Path intermediateAlias = tempDirectory.resolve("dotdot-intermediate-alias");
+    createDirectorySymlinkOrSkip(intermediateAlias, physicalRoot);
+    Path selectedPath = intermediateAlias.resolve("..").resolve("book.sqlite");
+
+    SqliteCallerPathContractException exception =
+        assertThrows(
+            SqliteCallerPathContractException.class,
+            () ->
+                SqliteBookMaintenanceFiles.normalizeOptionalArtifact(selectedPath, "bookFilePath"));
+
+    assertEquals(SqliteCallerPathFailure.PARENT_PATH_COLLISION, exception.pathFailure());
+  }
+
+  @Test
+  void maintenanceTargetNormalization_createsOnlyMissingOwnerOnlyOutputParents() throws Exception {
+    Path backupTarget =
+        tempDirectory.resolve("fresh-backup-parent").resolve("nested").resolve("backup.sqlite");
+    Path backupKeyTarget =
+        tempDirectory.resolve("fresh-key-parent").resolve("nested").resolve("backup.key");
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+
+    Path normalizedBackup =
+        store.normalizeFinalTarget(
+            backupTarget, "backupFilePath", ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET);
+    Path normalizedBackupKey =
+        store.normalizeFinalTarget(
+            backupKeyTarget,
+            "backupKeyFilePath",
+            ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET);
+
+    assertEquals(
+        Objects.requireNonNull(backupTarget.getParent(), "backupTarget parent")
+            .toRealPath()
+            .resolve(backupTarget.getFileName()),
+        normalizedBackup);
+    assertEquals(
+        Objects.requireNonNull(backupKeyTarget.getParent(), "backupKeyTarget parent")
+            .toRealPath()
+            .resolve(backupKeyTarget.getFileName()),
+        normalizedBackupKey);
+    assertCreatedOwnerOnlyDirectory(backupTarget.getParent());
+    assertCreatedOwnerOnlyDirectory(backupKeyTarget.getParent());
+    assertFalse(Files.exists(backupTarget, java.nio.file.LinkOption.NOFOLLOW_LINKS));
+    assertFalse(Files.exists(backupKeyTarget, java.nio.file.LinkOption.NOFOLLOW_LINKS));
+  }
+
+  @Test
+  void maintenanceSourceNormalization_rejectsAnAbsentLeafWithAnExistingPrivateParent()
+      throws Exception {
+    Path sourceParent = Files.createDirectory(tempDirectory.resolve("missing-source"));
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(sourceParent);
+    Path missingSource = sourceParent.resolve("backup.sqlite");
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid rejection =
+        assertInstanceOf(
+            ProtectedBookMaintenanceRejection.ArtifactPathInvalid.class,
+            assertThrows(
+                    ProtectedBookMaintenanceRejectionException.class,
+                    () ->
+                        store.normalizeExistingSource(
+                            missingSource,
+                            "backupFilePath",
+                            ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE))
+                .rejection());
+
+    assertEquals(ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE, rejection.artifactRole());
+    assertEquals(missingSource.toAbsolutePath(), rejection.artifactPath());
+    assertEquals(
+        ProtectedBookMaintenancePathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE,
+        rejection.pathFailure());
+    assertFalse(Files.exists(missingSource, java.nio.file.LinkOption.NOFOLLOW_LINKS));
+  }
+
+  @Test
+  void optionalLiveBookInspectionAndRequiredLifecycleSourceUseDistinctLeafPolicies()
+      throws Exception {
+    Path liveParent = Files.createDirectory(tempDirectory.resolve("optional-live-book"));
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(liveParent);
+    Path missingBook = liveParent.resolve("missing.sqlite");
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+
+    assertEquals(
+        liveParent.toRealPath().resolve(missingBook.getFileName()),
+        store.normalizeOptionalInspectionArtifact(
+            missingBook, "bookFilePath", ProtectedBookMaintenanceArtifactRole.LIVE_BOOK));
+
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid rejection =
+        assertInstanceOf(
+            ProtectedBookMaintenanceRejection.ArtifactPathInvalid.class,
+            assertThrows(
+                    ProtectedBookMaintenanceRejectionException.class,
+                    () ->
+                        store.normalizeExistingSource(
+                            missingBook,
+                            "bookFilePath",
+                            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK))
+                .rejection());
+
+    assertEquals(ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, rejection.artifactRole());
+    assertEquals(
+        ProtectedBookMaintenancePathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE,
+        rejection.pathFailure());
+  }
+
+  @Test
+  void maintenanceNormalizationBoundariesRejectRoleCrossing() throws Exception {
+    Path source = writeArtifact("boundary-source.sqlite", "maintenance source");
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            store.normalizeOptionalInspectionArtifact(
+                source, "backupFilePath", ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            store.normalizeFinalTarget(
+                source, "backupFilePath", ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            store.normalizeExistingSource(
+                source, "backupFilePath", ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET));
+  }
+
+  @Test
+  void workflowScopeRejectsPairIdentityBeforeCreatingItsRetainedLeaseControlFile()
+      throws Exception {
+    Path source = writeArtifact("identity-source.sqlite", "maintenance source");
+    Path sharedTarget = tempDirectory.resolve("identity-targets").resolve("same.sqlite");
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+    Path normalizedSource =
+        store.normalizeExistingSource(
+            source, "backupFilePath", ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE);
+    Path normalizedTarget =
+        store.normalizeFinalTarget(
+            sharedTarget, "bookTargetPath", ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET);
+    Path canonicalParent =
+        Objects.requireNonNull(normalizedTarget.getParent(), "normalizedTarget parent")
+            .toRealPath();
+    Path controlFile = SqliteMaintenanceLeaseArtifacts.controlFilePath(canonicalParent);
+
+    ProtectedBookMaintenanceRejection.PairTargetsConflict rejection =
+        assertInstanceOf(
+            ProtectedBookMaintenanceRejection.PairTargetsConflict.class,
+            assertThrows(
+                    ProtectedBookMaintenanceRejectionException.class,
+                    () ->
+                        store.acquireWorkflowScope(
+                            new WorkflowSourceMembers(
+                                List.of(
+                                    new WorkflowSourceMember(
+                                        normalizedSource,
+                                        ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE))),
+                            normalizedTarget,
+                            ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                            normalizedTarget,
+                            ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET))
+                .rejection());
+
+    assertEquals(normalizedTarget, rejection.bookTargetPath());
+    assertEquals(normalizedTarget, rejection.generatedSecretTargetPath());
+    assertFalse(Files.exists(controlFile, java.nio.file.LinkOption.NOFOLLOW_LINKS));
+  }
+
+  @Test
+  void workflowScopeRejectsTheLaterSourceRoleBeforePairTargetAdmissionWhenSourcesAlias()
+      throws Exception {
+    Path firstSource = writeArtifact("source-identity/live.sqlite", "maintenance source");
+    Path aliasParent = tempDirectory.resolve("source-identity-alias");
+    Files.createDirectories(aliasParent);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(aliasParent);
+    Path laterSource = aliasParent.resolve("live-key-alias.key");
+    Files.createLink(laterSource, firstSource);
+    Path bookTarget = tempDirectory.resolve("source-identity-targets/backup.fgba");
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+    Path normalizedFirst =
+        store.normalizeExistingSource(
+            firstSource, "bookFilePath", ProtectedBookMaintenanceArtifactRole.LIVE_BOOK);
+    Path normalizedLater =
+        store.normalizeExistingSource(
+            laterSource,
+            "bookKeyFilePath",
+            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK_KEY_SOURCE);
+    Path normalizedBookTarget =
+        store.normalizeFinalTarget(
+            bookTarget, "backupFilePath", ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET);
+    Path canonicalTargetParent =
+        Objects.requireNonNull(normalizedBookTarget.getParent(), "normalizedBookTarget parent")
+            .toRealPath();
+    Path directoryControl = SqliteMaintenanceLeaseArtifacts.controlFilePath(canonicalTargetParent);
+
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid rejection =
+        assertInstanceOf(
+            ProtectedBookMaintenanceRejection.ArtifactPathInvalid.class,
+            assertThrows(
+                    ProtectedBookMaintenanceRejectionException.class,
+                    () ->
+                        store.acquireWorkflowScope(
+                            new WorkflowSourceMembers(
+                                List.of(
+                                    new WorkflowSourceMember(
+                                        normalizedFirst,
+                                        ProtectedBookMaintenanceArtifactRole.LIVE_BOOK),
+                                    new WorkflowSourceMember(
+                                        normalizedLater,
+                                        ProtectedBookMaintenanceArtifactRole
+                                            .LIVE_BOOK_KEY_SOURCE))),
+                            normalizedBookTarget,
+                            ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                            normalizedBookTarget,
+                            ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET))
+                .rejection());
+
+    assertEquals(
+        ProtectedBookMaintenanceArtifactRole.LIVE_BOOK_KEY_SOURCE, rejection.artifactRole());
+    assertEquals(normalizedLater, rejection.artifactPath());
+    assertEquals(
+        ProtectedBookMaintenancePathFailure.SOURCE_ARTIFACT_IDENTITY_DUPLICATED,
+        rejection.pathFailure());
+    assertFalse(Files.exists(directoryControl, java.nio.file.LinkOption.NOFOLLOW_LINKS));
+  }
+
+  @Test
+  void maintenanceNormalization_rejectsAnExistingNonRegularLeafBeforeItCanBecomeAnIdentity()
+      throws Exception {
+    Path directoryLeaf = Files.createDirectory(tempDirectory.resolve("nonregular-book.sqlite"));
+
+    SqliteCallerPathContractException exception =
+        assertThrows(
+            SqliteCallerPathContractException.class,
+            () ->
+                SqliteBookMaintenanceFiles.normalizeExistingSource(directoryLeaf, "bookFilePath"));
+
+    assertEquals(
+        SqliteCallerPathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE, exception.pathFailure());
+  }
+
+  private static void createDirectorySymlinkOrSkip(Path link, Path target) throws IOException {
+    try {
+      Files.createSymbolicLink(link, target);
+    } catch (UnsupportedOperationException | java.nio.file.FileSystemException unavailable) {
+      assumeTrue(false, "host filesystem cannot create symbolic links: " + unavailable);
+    }
+  }
+
+  private static void assertCreatedOwnerOnlyDirectory(Path directory) throws IOException {
+    assertTrue(Files.isDirectory(directory, java.nio.file.LinkOption.NOFOLLOW_LINKS));
+    if (directory.getFileSystem().supportedFileAttributeViews().contains("posix")) {
+      assertEquals(
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE),
+          Files.getPosixFilePermissions(directory, java.nio.file.LinkOption.NOFOLLOW_LINKS));
+    }
   }
 }

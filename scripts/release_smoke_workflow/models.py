@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
@@ -15,6 +15,7 @@ class SmokePath:
 class ReleaseSmokeConfig:
     label: str
     repo_root: Path
+    work_root: Path
     command_prefix: list[str]
     command_bridge_prefix: list[str]
     command_cwd: Path | None
@@ -27,6 +28,7 @@ class ReleaseSmokeConfig:
     book_key_output_permissions: str
     request_sale: SmokePath
     request_expense: SmokePath
+    request_taxed_sale: SmokePath
     request_raw_journal: SmokePath
     invalid_request: SmokePath
     declare_bank_account: SmokePath
@@ -53,9 +55,11 @@ class ReleaseSmokeConfig:
     accounting_framework_position: str
     entity_form: str
     book_template_id: str
+    inventory_costing_doctrine: str | None
     accounting_basis: str
     functional_currency: str
     fiscal_year_start: str
+    book_start_effective_date: str
     starter_cash_account_code: str
     starter_cash_account_name: str
     starter_revenue_account_code: str
@@ -64,12 +68,16 @@ class ReleaseSmokeConfig:
     bank_account_name: str
     expense_supplement_account_code: str
     expense_supplement_account_name: str
+    native_sqlite_probe_classpath: str
+    native_sqlite_java_prefix: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
 class ReleaseSmokeScenario:
+    work_root: Path
     request_sale: SmokePath
     request_expense: SmokePath
+    request_taxed_sale: SmokePath
     request_raw_journal: SmokePath
     invalid_request: SmokePath
     declare_bank_account: SmokePath
@@ -95,9 +103,11 @@ class ReleaseSmokeScenario:
     accounting_framework_position: str
     entity_form: str
     book_template_id: str
+    inventory_costing_doctrine: str | None
     accounting_basis: str
     functional_currency: str
     fiscal_year_start: str
+    book_start_effective_date: str
     starter_cash_account_code: str
     starter_cash_account_name: str
     starter_revenue_account_code: str

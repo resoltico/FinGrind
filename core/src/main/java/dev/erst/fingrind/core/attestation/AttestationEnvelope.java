@@ -49,7 +49,12 @@ final class AttestationEnvelope<P extends AttestationPayload> {
     byte[] payloadBytes = payload.encoded();
     ByteArrayOutputStream output =
         new ByteArrayOutputStream(
-            Math.addExact(payloadBytes.length, Math.addExact(Short.BYTES, entries.size() * 112)));
+            Math.addExact(
+                payloadBytes.length,
+                Math.addExact(
+                    Short.BYTES,
+                    Math.multiplyExact(
+                        entries.size(), AttestationSignatureEntry.ENCODED_BYTE_COUNT))));
     output.writeBytes(payloadBytes);
     AttestationUnsignedEncoding.appendUnsigned(
         output, BigInteger.valueOf(entries.size()), Short.BYTES, "sigCount");

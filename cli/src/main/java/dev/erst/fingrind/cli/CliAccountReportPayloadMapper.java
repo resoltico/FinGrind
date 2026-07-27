@@ -1,7 +1,6 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliAccountReportJsonModels;
-import dev.erst.fingrind.cli.json.CliAttestationJsonModels;
 import dev.erst.fingrind.cli.json.CliReportJsonModels;
 import dev.erst.fingrind.cli.json.CliReportValueJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AccountBalanceSnapshot;
@@ -138,10 +137,6 @@ final class CliAccountReportPayloadMapper {
         CliReportPayloadMappingSupport.balance(row.movement()),
         CliReportPayloadMappingSupport.money(row.runningNetAmount()),
         row.runningBalanceSide().name(),
-        row.attestationCommit() == null
-            ? null
-            : new CliAttestationJsonModels.AttestationCommitPayload(
-                row.attestationCommit().operationOrder().toString(),
-                row.attestationCommit().operationHeadHex()));
+        CliAttestationCommitPresentation.payload(row.attestationCommit()));
   }
 }

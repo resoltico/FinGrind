@@ -102,6 +102,27 @@ class VerificationPolicySupportTest {
     }
 
     @Test
+    fun throwableInvocationSeam_acceptsTheExactWindowsCoordinationFfmBoundary() {
+        val projectDirectory = temporaryDirectory.resolve("sqlite")
+        writeSource(
+            projectDirectory,
+            "dev/erst/fingrind/sqlite/SqliteWindowsCoordinationFfmTransport.java",
+            """
+            package dev.erst.fingrind.sqlite;
+            final class SqliteWindowsCoordinationFfmTransport {
+              void invoke() {
+                try {
+                } catch (Throwable ignored) {
+                }
+              }
+            }
+            """.trimIndent(),
+        )
+
+        sourcePolicyTask(projectDirectory, ":sqlite").verify()
+    }
+
+    @Test
     fun foreignMemorySeam_rejectsOtherProductionOwners() {
         val projectDirectory = temporaryDirectory.resolve("core")
         writeSource(

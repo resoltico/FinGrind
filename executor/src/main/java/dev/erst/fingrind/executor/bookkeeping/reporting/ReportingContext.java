@@ -26,13 +26,11 @@ final class ReportingContext {
   }
 
   BookIdentity bookIdentity() {
-    return switch (bookStore.inspectBook()) {
-      case BookLifecycleInspection.Initialized initialized -> initialized.bookIdentity();
-      case BookLifecycleInspection.Missing _ ->
-          throw new IllegalStateException("Statement computation requires one initialized book.");
-      case BookLifecycleInspection.Existing _ ->
-          throw new IllegalStateException("Statement computation requires one initialized book.");
-    };
+    BookLifecycleInspection inspection = bookStore.inspectBook();
+    if (!inspection.allowsInitializedWorkflow()) {
+      throw new IllegalStateException("Statement computation requires one initialized book.");
+    }
+    return BookLifecycleInspection.requireInitializedBookIdentity(inspection);
   }
 
   Optional<LocalDate> resolvedEffectiveDateAsOf(Optional<LocalDate> selectedEffectiveDateAsOf) {

@@ -41,7 +41,7 @@ public sealed interface ProtectedBookRegistryMutationOutcome
     }
   }
 
-  /** Historical authorization refused the signed mutation before any durable write. */
+  /** Live-head authorization refused the signed mutation before any durable write. */
   record AuthorizationRejected(AttestationAuthorizationFailure failure)
       implements ProtectedBookRegistryMutationOutcome {
     public AuthorizationRejected {

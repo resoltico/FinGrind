@@ -4,39 +4,51 @@ import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.runtime.AttestationKeyFileMetadata;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
+import dev.erst.fingrind.core.ArtifactPublicationResult;
 import java.nio.file.Path;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /** Renders operator-facing text for book access and key-management mutations. */
 final class CliBookAccessOutputRenderer {
   private CliBookAccessOutputRenderer() {}
 
-  static String renderGeneratedBookKeyFileText(
-      GeneratedBookKeyFile generatedKeyFile, List<Path> tightenedParentDirectories) {
+  static String renderGeneratedBookKeyFileText(GeneratedBookKeyFile generatedKeyFile) {
     List<List<String>> rows = new java.util.ArrayList<>();
-    rows.add(List.of("Book key file", CliTextDisplay.path(generatedKeyFile.bookKeyFilePath())));
+    rows.add(
+        List.of(
+            "Book key file",
+            CliTextDisplay.path(generatedKeyFile.publication().publishedArtifactPath())));
     rows.add(List.of("Encoding", generatedKeyFile.encoding()));
     rows.add(List.of("Entropy bits", Integer.toString(generatedKeyFile.entropyBits())));
     rows.add(List.of("Permissions", generatedKeyFile.permissions()));
-    appendTightenedParentRows(rows, tightenedParentDirectories);
+    rows.add(
+        List.of(
+            "Retained stage",
+            CliTextDisplay.path(generatedKeyFile.publication().retention().retainedStagePath())));
     return CliTextFormat.renderTitledBlock(
         "Book Key File Generated", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
   static String renderAttestationKeyFileMetadata(
-      String title, AttestationKeyFileMetadata metadata) {
+      String title,
+      AttestationKeyFileMetadata metadata,
+      @Nullable ArtifactPublicationResult publication) {
+    List<List<String>> rows = new java.util.ArrayList<>();
+    rows.add(
+        List.of("Attestation key file", CliTextDisplay.path(metadata.attestationKeyFilePath())));
+    rows.add(List.of("Credential SPKI", metadata.credentialSpki()));
+    rows.add(List.of("Key ID", metadata.keyId()));
+    if (publication != null) {
+      rows.add(
+          List.of(
+              "Retained stage", CliTextDisplay.path(publication.retention().retainedStagePath())));
+    }
     return CliTextFormat.renderTitledBlock(
-        title,
-        CliTextFormat.renderKeyValueBlock(
-            List.of(
-                List.of(
-                    "Attestation key file", CliTextDisplay.path(metadata.attestationKeyFilePath())),
-                List.of("Credential SPKI", metadata.credentialSpki()),
-                List.of("Key ID", metadata.keyId()))));
+        title, CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
-  static String renderOpenBookText(
-      Path bookFilePath, List<Path> tightenedParentDirectories, OpenBookResult.Opened opened) {
+  static String renderOpenBookText(Path bookFilePath, OpenBookResult.Opened opened) {
     List<List<String>> rows = new java.util.ArrayList<>();
     rows.add(List.of("Book file", CliTextDisplay.path(bookFilePath)));
     rows.addAll(CliBookIdentityDisplay.rows(opened.bookIdentity()));
@@ -54,27 +66,35 @@ final class CliBookAccessOutputRenderer {
             "Initial quorum policy",
             CliAttestationPayloadMapper.renderedCapabilityPolicies(
                 opened.attestationTrustRoot().capabilityPolicies())));
-    appendTightenedParentRows(rows, tightenedParentDirectories);
+    appendRetainedFounderKeyRows(rows, opened.retainedFounderKeyArtifacts());
     return CliTextFormat.renderTitledBlock(
         "Book Initialized", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
-  static String renderRekeyBookText(RekeyBookResult.Rekeyed rekeyed, Path newBookKeyFilePath) {
+  static String renderRekeyBookText(RekeyBookResult.Rekeyed rekeyed) {
     List<List<String>> rows = new java.util.ArrayList<>();
     rows.add(List.of("Book file", CliTextDisplay.path(rekeyed.bookFilePath())));
-    rows.add(List.of("New book key file", CliTextDisplay.path(newBookKeyFilePath)));
+    rows.add(List.of("New book key file", CliTextDisplay.path(rekeyed.newBookKeyFilePath())));
+    rows.add(
+        List.of("Pair publication completion", rekeyed.pairPublicationCompletion().wireValue()));
+    CliProtectedBookPairPublicationRetentionPresentation.appendTextRows(
+        rows, rekeyed.pairPublicationRetention());
     CliAttestationCommitPresentation.appendTextRows(
         rows, rekeyed.attestationCommit(), "No attestation operation was returned");
     return CliTextFormat.renderTitledBlock(
         "Book Rekeyed", CliTextFormat.renderKeyValueBlock(List.copyOf(rows)));
   }
 
-  private static void appendTightenedParentRows(
-      List<List<String>> rows, List<Path> tightenedParentDirectories) {
-    tightenedParentDirectories.forEach(
-        tightenedParentDirectory ->
-            rows.add(
-                List.of(
-                    "Tightened parent directory", CliTextDisplay.path(tightenedParentDirectory))));
+  private static void appendRetainedFounderKeyRows(
+      List<List<String>> rows, List<ArtifactPublicationResult> retainedFounderKeyArtifacts) {
+    for (ArtifactPublicationResult publication : retainedFounderKeyArtifacts) {
+      rows.add(
+          List.of(
+              "New founder key file", CliTextDisplay.path(publication.publishedArtifactPath())));
+      rows.add(
+          List.of(
+              "Founder-key retained stage",
+              CliTextDisplay.path(publication.retention().retainedStagePath())));
+    }
   }
 }

@@ -15,8 +15,9 @@ class SqliteReadViewCoverageTest extends SqliteStoreFixtureSupport {
   @TempDir Path tempDirectory;
 
   @Test
-  void splitReadViews_delegatePostingReadsThroughTheirNarrowOwners() {
-    Path bookPath = tempDirectory.resolve("book.sqlite");
+  void splitReadViews_delegatePostingReadsThroughTheirNarrowOwners() throws Exception {
+    Path privateRoot = SqliteTestPrivateDirectorySupport.createOwnerOnlyTempDirectory("read-view-");
+    Path bookPath = privateRoot.resolve("book.sqlite");
     initializeBookOnDisk(bookPath);
     BookAccess bookAccess = staticBookAccess(bookPath);
     EffectiveDateRange effectiveDateRange = EffectiveDateRange.unbounded();
@@ -78,8 +79,9 @@ class SqliteReadViewCoverageTest extends SqliteStoreFixtureSupport {
   }
 
   @Test
-  void reportingView_projectsTheCanonicalLatestPostingEffectiveDate() {
-    Path bookPath = tempDirectory.resolve("latest-posting-effective-date.sqlite");
+  void reportingView_projectsTheCanonicalLatestPostingEffectiveDate() throws Exception {
+    Path privateRoot = SqliteTestPrivateDirectorySupport.createOwnerOnlyTempDirectory("read-view-");
+    Path bookPath = privateRoot.resolve("latest-posting-effective-date.sqlite");
     try (SqlitePostingFactStore store = openStore(staticBookAccess(bookPath))) {
       SqlitePostingFactFixtureSupport.initializeBookWithMinimalNumericAccounts(store);
       var posting =

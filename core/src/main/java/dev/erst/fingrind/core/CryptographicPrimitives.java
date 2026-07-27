@@ -42,12 +42,21 @@ public final class CryptographicPrimitives {
     return sha256Hex(value.getBytes(StandardCharsets.UTF_8));
   }
 
+  /** Returns the SHA-256 digest of all bytes read from the supplied stream. */
+  public static byte[] sha256(InputStream inputStream) throws IOException {
+    return sha256(inputStream, CryptographicPrimitives::sha256Digest);
+  }
+
   /** Returns the lowercase SHA-256 hex digest of all bytes read from the supplied stream. */
   public static String sha256Hex(InputStream inputStream) throws IOException {
     return sha256Hex(inputStream, CryptographicPrimitives::sha256Digest);
   }
 
   static String sha256Hex(InputStream inputStream, DigestFactory factory) throws IOException {
+    return HexFormat.of().formatHex(sha256(inputStream, factory));
+  }
+
+  static byte[] sha256(InputStream inputStream, DigestFactory factory) throws IOException {
     Objects.requireNonNull(inputStream, "inputStream");
     Objects.requireNonNull(factory, "factory");
     MessageDigest digest;
@@ -60,7 +69,10 @@ public final class CryptographicPrimitives {
     while (true) {
       int read = inputStream.read(buffer);
       if (read < 0) {
-        return HexFormat.of().formatHex(digest.digest());
+        return digest.digest();
+      }
+      if (read == 0) {
+        throw new IOException("Cryptographic digest input did not make read progress.");
       }
       digest.update(buffer, 0, read);
     }

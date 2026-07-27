@@ -1,7 +1,6 @@
 package dev.erst.fingrind.executor;
 
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTaxonomy;
-import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.attestationCommit;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.initializedLifecycleInspection;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
@@ -31,8 +30,10 @@ import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountName;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.FinancialPositionLineClassification;
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.executor.bookkeeping.TaxRegistrationMutationOutcome;
 import dev.erst.fingrind.executor.spi.AccountLookupStore;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
 import dev.erst.fingrind.executor.spi.TaxAdministrationStore;
@@ -59,7 +60,7 @@ class TaxAdministrationServiceTest {
   void declareTaxRegistration_rejectsWhenBookIsNotInitialized() {
     RecordingTaxAdministrationStore store =
         new RecordingTaxAdministrationStore(
-            new DeclareTaxRegistrationResult.Rejected(
+            new TaxRegistrationMutationOutcome.Rejected(
                 new TaxDeclarationRejection.BookNotInitialized()));
     TaxAdministrationService service =
         new TaxAdministrationService(
@@ -83,7 +84,7 @@ class TaxAdministrationServiceTest {
   void declareTaxRegistration_rejectsInvalidOwnedDefinitionBeforeMutatingStore() {
     RecordingTaxAdministrationStore store =
         new RecordingTaxAdministrationStore(
-            new DeclareTaxRegistrationResult.Rejected(
+            new TaxRegistrationMutationOutcome.Rejected(
                 new TaxDeclarationRejection.BookNotInitialized()));
     TaxAdministrationService service =
         new TaxAdministrationService(
@@ -123,7 +124,11 @@ class TaxAdministrationServiceTest {
     DeclaredTaxRegistration registration = declaredRegistration(command, DECLARED_AT);
     RecordingTaxAdministrationStore store =
         new RecordingTaxAdministrationStore(
-            new DeclareTaxRegistrationResult.Declared(registration, attestationCommit()));
+            new TaxRegistrationMutationOutcome.Declared(
+                registration,
+                new AttestationAppendOutcome.Appended(
+                    dev.erst.fingrind.testsupport.AttestationVerificationTestFixtures
+                        .verifiedAppend())));
     TaxAdministrationService service =
         new TaxAdministrationService(
             () -> initializedLifecycleInspection(1001, 25, 25, FIXED_CLOCK.instant()),
@@ -144,6 +149,48 @@ class TaxAdministrationServiceTest {
     assertEquals(FIXED_CLOCK.instant(), store.lastDeclaredAt);
     assertNotNull(store.lastDeclaredAt);
     assertEquals(TEST_AUTHORIZER, store.lastAttestationAuthorizer);
+  }
+
+  @Test
+  void declareTaxRegistration_projectsUpdatedAndUnchangedDurableOutcomes() {
+    DeclareTaxRegistrationCommand command = validCommand();
+    DeclaredTaxRegistration registration = declaredRegistration(command, DECLARED_AT);
+    TaxAdministrationService updatedService =
+        serviceFor(
+            command,
+            new TaxRegistrationMutationOutcome.Updated(
+                registration,
+                new AttestationAppendOutcome.Appended(
+                    dev.erst.fingrind.testsupport.AttestationVerificationTestFixtures
+                        .verifiedAppend())));
+    TaxAdministrationService unchangedService =
+        serviceFor(command, new TaxRegistrationMutationOutcome.Unchanged(registration));
+
+    DeclareTaxRegistrationResult.Updated updated =
+        assertInstanceOf(
+            DeclareTaxRegistrationResult.Updated.class,
+            updatedService.declareTaxRegistration(command, TEST_AUTHORIZER));
+    DeclareTaxRegistrationResult.Unchanged unchanged =
+        assertInstanceOf(
+            DeclareTaxRegistrationResult.Unchanged.class,
+            unchangedService.declareTaxRegistration(command, TEST_AUTHORIZER));
+
+    assertEquals(registration, updated.registration());
+    assertNotNull(updated.attestationCommit());
+    assertEquals(registration, unchanged.registration());
+    assertNull(unchanged.attestationCommit());
+  }
+
+  private static TaxAdministrationService serviceFor(
+      DeclareTaxRegistrationCommand command, TaxRegistrationMutationOutcome outcome) {
+    return new TaxAdministrationService(
+        () -> initializedLifecycleInspection(1001, 25, 25, FIXED_CLOCK.instant()),
+        lookupStore(
+            Map.of(
+                command.payableAccountCode(), validPayableAccount(),
+                command.recoverableAccountCode(), validRecoverableAccount())),
+        new RecordingTaxAdministrationStore(outcome),
+        FIXED_CLOCK);
   }
 
   private static AccountLookupStore lookupStore(Map<AccountCode, RegisteredAccount> accounts) {
@@ -252,17 +299,17 @@ class TaxAdministrationServiceTest {
 
   /** Recording store double that captures the validated command forwarded by the service. */
   private static final class RecordingTaxAdministrationStore implements TaxAdministrationStore {
-    private final DeclareTaxRegistrationResult result;
+    private final TaxRegistrationMutationOutcome result;
     private @Nullable DeclareTaxRegistrationCommand lastCommand;
     private @Nullable Instant lastDeclaredAt;
     private @Nullable AttestationOperationAuthorizer lastAttestationAuthorizer;
 
-    private RecordingTaxAdministrationStore(DeclareTaxRegistrationResult result) {
+    private RecordingTaxAdministrationStore(TaxRegistrationMutationOutcome result) {
       this.result = result;
     }
 
     @Override
-    public DeclareTaxRegistrationResult declareTaxRegistration(
+    public TaxRegistrationMutationOutcome declareTaxRegistration(
         DeclareTaxRegistrationCommand command,
         Instant declaredAt,
         AttestationOperationAuthorizer attestationAuthorizer) {

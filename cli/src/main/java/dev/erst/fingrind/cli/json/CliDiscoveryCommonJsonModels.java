@@ -8,6 +8,7 @@ import static dev.erst.fingrind.cli.json.CliJsonModelValidation.requireValue;
 import dev.erst.fingrind.contract.discovery.CommandDescriptor;
 import dev.erst.fingrind.contract.discovery.SelectableOutputDefaultsDescriptor;
 import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolSuccessPayload;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
@@ -33,6 +34,7 @@ public interface CliDiscoveryCommonJsonModels {
 
   record CommandSurfacePayload(
       OperationId name,
+      String displayLabel,
       String category,
       String summary,
       List<String> aliases,
@@ -45,6 +47,11 @@ public interface CliDiscoveryCommonJsonModels {
       implements ProtocolSuccessPayload {
     public CommandSurfacePayload {
       name = requireValue(name, "name");
+      displayLabel = requireText(displayLabel, "displayLabel");
+      if (!displayLabel.equals(ProtocolCatalog.operation(name).displayLabel())) {
+        throw new IllegalArgumentException(
+            "displayLabel must equal the canonical protocol label for " + name.wireName() + ".");
+      }
       category = requireText(category, "category");
       summary = requireText(summary, "summary");
       aliases = copyList(aliases, "aliases");

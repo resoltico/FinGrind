@@ -132,6 +132,12 @@ class SqliteStoreSessionStateTrackerTest extends SqliteStoreFixtureSupport {
                 IllegalStateException.class,
                 SqliteStoreAccessMode.READ_ONLY::requireWritableMutation)
             .getMessage());
+    assertEquals(
+        "This FinGrind SQLite session is read-only and cannot mutate the book.",
+        assertThrows(
+                IllegalStateException.class,
+                SqliteStoreAccessMode.PLAN_READ_ONLY::requireWritableMutation)
+            .getMessage());
     assertDoesNotThrow(SqliteStoreAccessMode.READ_WRITE_EXISTING::requireWritableMutation);
     assertEquals(
         "This FinGrind SQLite session cannot initialize or create a book file.",

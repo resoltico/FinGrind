@@ -2,10 +2,10 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: OPERATOR_REQUESTS
-updated: "2026-07-22"
+updated: "2026-07-26"
 route:
-  keywords: [fingrind, request-json, provenance, reversal, idempotency, accrual-cutoff, fixed-assets, financing, realized-foreign-exchange, latvian-payroll, prepayment, deferred-revenue, accrued-expense, ledger-plan, execute-plan, tax-setup, account-declaration, account-lifecycle]
-  questions: ["what request json does fingrind accept", "how do i record a fixed asset or depreciation", "how do i record financing interest", "how do i settle a foreign-currency receivable", "how do i record Latvian monthly payroll", "how do i record a prepayment or deferred revenue", "how do i settle an accrued expense", "what ledger plan shape does execute-plan accept", "how do i amend or retire an account in fingrind", "what posting request fields does fingrind accept"]
+  keywords: [fingrind, request-json, provenance, reversal, idempotency, accrual-cutoff, fixed-assets, financing, realized-foreign-exchange, latvian-payroll, prepayment, deferred-revenue, accrued-expense, ledger-plan, execute-plan, tax-setup, account-declaration, account-lifecycle, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, pair-target-leaf-portability-required, target-owner-only-required, protected-book-pair-publication-evidence-blocked]
+  questions: ["what request json does fingrind accept", "how do i record a fixed asset or depreciation", "how do i record financing interest", "how do i settle a foreign-currency receivable", "how do i record Latvian monthly payroll", "how do i record a prepayment or deferred revenue", "how do i settle an accrued expense", "what ledger plan shape does execute-plan accept", "how do i amend or retire an account in fingrind", "what posting request fields does fingrind accept", "what protected-book pair target names can I use"]
 ---
 
 # Request Shape Guide
@@ -45,14 +45,78 @@ creates its destination secret through `--new-book-key-file`; it requires
 an absent `--book-file` destination and refuses one that exists or appears before final
 publication; `--replace-existing-book` is not a supported option.
 
+For all three maintenance commands, every existing caller-selected protected-book or book-key
+artifact parent is validation-only: it must resolve to a real, private owner-only, non-mutable
+directory with protected ancestry, and FinGrind never permission- or ACL-repairs it. Only an
+absent final-target parent may be created: FinGrind preflights its creation ancestry, atomically
+creates it with POSIX `0700`, and postvalidates the canonical parent and full ancestry. A
+lifecycle source parent must already exist. An ACL-only final-target creation fails closed as
+`artifact-path-invalid` with
+`details.pathFailure: "atomic-owner-only-protocol-file-creation-unsupported"`; it never creates
+a readable parent and repairs its ACL. Before canonicalization, FinGrind scans every lexical
+component from the root through the selected parent without following links and refuses any
+symbolic-link or non-directory component, including a direct-parent alias. A final target leaf may
+be absent; a present symlink or non-regular type is refused, while a present regular leaf follows
+that command's no-replace or replacement policy. A lifecycle source leaf must already be a regular
+non-symlink file before final-target preparation. Any existing selected maintenance artifact must
+also be owner-only; otherwise the command returns `artifact-path-invalid` with
+`details.pathFailure: "target-owner-only-required"`.
+
+The complete selected source set must also resolve to distinct physical artifacts. This includes a
+selected live-book or backup source and every selected file-backed key source. A later role that
+resolves to the same file as an earlier role is refused before target admission with exit-`6`
+`artifact-path-invalid`, `details.pathFailure: "source-artifact-identity-duplicated"`, and the
+later role/path in the details. Select independent source files instead of a hard-link or other
+alias.
+
+After FinGrind holds every source exclusion, it revalidates each source against the exact physical
+identity it locked before target admission. A replacement or substitution is exit-`6`
+`artifact-path-invalid` with `details.pathFailure: "source-artifact-identity-changed"`. Keep
+every selected source stable, restore the trustworthy intended source if it changed, then rerun
+the complete maintenance command.
+
 Every generated-secret target also requires a filesystem that can publish an absent staged secret
 without replacement. FinGrind rejects a target that lacks that atomic no-replace primitive rather
 than risking a partial or clobbering write.
 
-Once a maintenance pair reaches its publication boundary, its declared final book and key artifacts
-are successful. If filesystem I/O later prevents removal of FinGrind-owned internal staging evidence,
-FinGrind records that cleanup failure without recasting the completed maintenance operation as a
-failure.
+Initial pair final-target identity is admitted after maintenance has admitted every selected parent,
+including any permitted missing-parent creation, and before it creates a final target, stage,
+reservation, claim, or pair-evidence artifact. When both final targets already exist, FinGrind
+establishes physical identity with `Files.isSameFile`; one physical object is the exit-`2`
+`pair-targets-conflict` rejection. For two absent leaves whose parents resolve to one physical
+directory, exactly equal raw leaf names are the same rejection. When their raw leaf names differ,
+each must be portable lowercase ASCII: `[a-z0-9](?:[a-z0-9_-]|\.(?=[a-z0-9]))*`; the first
+dot-delimited stem cannot be `con`, `prn`, `aux`, `nul`, `com1`–`com9`, or `lpt1`–`lpt9`. Use
+distinct physical parents when a required name cannot meet that grammar. A nonportable distinct
+same-parent absent pair is instead the exit-`6` `artifact-path-invalid` rejection with
+`details.pathFailure: "pair-target-leaf-portability-required"`. See
+[USER_REJECTIONS.md](./USER_REJECTIONS.md#protected-book-pair-target-admission) for the exact
+machine fields and repair paths.
+
+Every completed maintenance pair has immutable publication evidence. `published` and `recovered`
+results require `pairPublicationRetention` with exactly
+`bookPublication.{path,retainedStage}` and
+`generatedSecretPublication.{path,retainedStage}`; `already-published` is the only null case and
+is reserved for a backup acknowledgement of an external or older completed pair.
+
+Before a new `backup-book`, `restore-book`, or `rekey-book` operation stages, probes, reserves,
+or mutates a pair, it acquires and scans the full source-and-target workflow scope for an owner
+record that binds the exact source, final targets, secret identity, and its own derived stages. A
+record owned by another full workflow returns the `rejected`, `precondition`, exit-`7`
+`maintenance-recovery-pending` response. Its non-null
+`details.{recoveryOperation,bookTarget,generatedSecretTarget}` names the command and canonical
+absolute targets, not a reconstruction of source, backup ID, credentials, or secret material.
+Restart that command with its complete original source, target, and secret inputs; never rename,
+overwrite, delete, recreate, or manually clean the evidence.
+
+`protected-book-pair-publication-uncertain` is the distinct exit-4 result when verified evidence
+establishes an exact pair but durable completion is unconfirmed. Its always-present nullable
+`details.pairPublication.pairPublicationRetention`, when non-null, binds each named final member
+to its exact retained stage; `null` means no authoritative pair-stage fact was established and
+never permits cleanup. Preserve both final paths and rerun only the identical complete workflow.
+`protected-book-pair-publication-evidence-blocked` is different: evidence cannot establish safe
+final-member state, both detail states are `unestablished`, and no recovery record is claimed.
+Preserve it and investigate independently; do not infer, repair, or rerun a partial workflow.
 
 ## Posting Request Shape
 
@@ -470,6 +534,12 @@ Current ledger-plan rules:
   assertion entries optionally add `detailKind`, and unexpected begin, initialization-check,
   commit, or rollback failures end the journal with `kind: "plan-boundary"` plus
   `boundaryCheckpoint`
+- attestation credential flags are CLI transport, not JSON plan fields. After the plan document is
+  parsed, a plan with one or more mutating steps requires one through 64 complete aligned
+  credential triplets; a query-only or assertion-only plan forbids them. Partial tuples remain
+  parser-level `invalid-request`, and a complete tuple on a non-mutating plan is refused as
+  `attestation-credentials-not-allowed` with exit `1` after request decoding, before credential
+  opening or plan execution
 - unexpected transaction-boundary failures such as begin, commit, or rollback problems are mapped
   into the terminal rejected journal step instead of escaping as an untyped plan exception
 - plan-journal steps now carry typed `data` records instead of generic fact bags
@@ -510,16 +580,16 @@ with the observed and current head details, because no plan outcome was admitted
 ## Response And Output Guide
 
 Request shapes stay in this guide. Response envelopes, read and report payloads, capabilities
-output, execute-plan results, and deterministic rejection or error payloads now live in
-[USER_RESPONSES.md](./USER_RESPONSES.md).
+output, and execute-plan results live in [USER_RESPONSES.md](./USER_RESPONSES.md). Deterministic
+rejections and repair diagnostics live in [USER_REJECTIONS.md](./USER_REJECTIONS.md).
 
-That companion guide owns the full response contract, including:
+Those companion guides own the full response contract, including:
 - the shared `status`, `payload`, and optional `artifacts[]` envelope families
 - the `capabilities` discovery payload and its typed descriptor inventories
 - read and report payloads such as `inspect-book`, `list-postings`, `trial-balance`,
   `account-ledger`, and `cash-flow-statement`
 - `execute-plan` summaries and optional journals
-- deterministic rejection and error payloads, including
+- deterministic rejection and repair-diagnostic payloads, including
   [examples/account-state-violations-text.txt](./examples/account-state-violations-text.txt) and
   [examples/entry-semantics-violations-text.txt](./examples/entry-semantics-violations-text.txt)
 

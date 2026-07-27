@@ -8,6 +8,8 @@ import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -35,10 +37,42 @@ class SqliteNativeBridgeTestSupport {
   protected SqliteNativeBridgeTestSupport() {}
 
   @TempDir Path tempDirectory;
+  private @Nullable AutoCloseable objectCoordinationTestRoot;
 
   @BeforeEach
   void hardenTempDirectory() {
+    try {
+      tempDirectory = tempDirectory.toRealPath();
+    } catch (IOException exception) {
+      throw new UncheckedIOException(
+          "Could not canonicalize the SQLite test temporary directory.", exception);
+    }
     SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+    objectCoordinationTestRoot =
+        SqliteObjectCoordinationArtifacts.installTestRoot(
+            tempDirectory.resolve("object-coordination-v4"));
+  }
+
+  @AfterEach
+  void restoreObjectCoordinationTestRoot() {
+    if (objectCoordinationTestRoot == null) {
+      return;
+    }
+    try (AutoCloseable testRoot = takeObjectCoordinationTestRoot()) {
+      java.util.Objects.requireNonNull(testRoot, "object coordination test root");
+      // Closing the fixture restores the process-wide coordination root for the next test.
+    } catch (Exception exception) {
+      throw new IllegalStateException(
+          "Could not restore the isolated SQLite object-coordination test root.", exception);
+    }
+  }
+
+  private AutoCloseable takeObjectCoordinationTestRoot() {
+    AutoCloseable testRoot =
+        java.util.Objects.requireNonNull(
+            objectCoordinationTestRoot, "object coordination test root");
+    objectCoordinationTestRoot = null;
+    return testRoot;
   }
 
   static SqliteNativeApi sqliteApi(

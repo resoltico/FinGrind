@@ -17,7 +17,8 @@ final class ProtocolAttestationKeyFileOperations {
                 ProtocolOptions.Attestation.CUSTODIAN + " <file-pkcs8>",
                 ProtocolOptions.Attestation.NEW_KEY_FILE + " <path>",
                 ProtocolOptions.Attestation.PASSPHRASE_FILE + " <path>",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+                ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
             List.of(ProtocolArtifactOutput.generatedAttestationKeyFile()),
@@ -44,7 +45,8 @@ final class ProtocolAttestationKeyFileOperations {
             List.of(
                 ProtocolOptions.Attestation.CUSTODIAN + " <file-pkcs8>",
                 ProtocolOptions.Attestation.KEY_FILE + " <path>",
-                ProtocolOptions.optionalOutputSyntax(List.of(OutputMode.JSON, OutputMode.TEXT))),
+                ProtocolOptionSyntax.Presentation.optionalOutputSyntax(
+                    List.of(OutputMode.JSON, OutputMode.TEXT))),
             ExecutionMode.JSON_ENVELOPE,
             List.of(OutputMode.JSON, OutputMode.TEXT),
             List.of(),

@@ -62,7 +62,15 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractReposito
         "the JVM heap caveat for passphrase handling");
     requireContains(document, violations, ".sha256", "the sibling digest sidecar rule");
     requireContains(
-        document, violations, ".rekey-rollback-", "the stale rekey rollback artifact disclosure");
+        document,
+        violations,
+        "external pair evidence",
+        "the interrupted-maintenance recovery-evidence disclosure");
+    requireContains(
+        document,
+        violations,
+        "complete original inputs",
+        "the complete-input recovery requirement");
     requireContains(
         document, violations, "GitHub artifact attestation", "the release-attestation contract");
     requireContains(
@@ -167,8 +175,11 @@ class ProtocolSecurityDocumentationContractTest extends ProtocolContractReposito
         document.contains("public quick-start and example docs keep key files under a separate"),
         "docs/DEVELOPER_SECURITY.md must explain the separate book-versus-secret example layout.");
     assertTrue(
-        document.contains("stale `*.rekey-rollback-*.sqlite` artifacts"),
-        "docs/DEVELOPER_SECURITY.md must disclose crash-persisted rekey rollback artifacts.");
+        document.contains("No public command adopts or manipulates"),
+        "docs/DEVELOPER_SECURITY.md must reject an operator-managed recovery-evidence surface.");
+    assertTrue(
+        document.contains("Legacy or malformed residue remains fail-closed"),
+        "docs/DEVELOPER_SECURITY.md must keep malformed recovery evidence fail-closed.");
   }
 
   @Test

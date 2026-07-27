@@ -14,6 +14,8 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolArtifactOutput;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import dev.erst.fingrind.contract.runtime.VersionDescriptor;
+import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.NormalBalance;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -22,7 +24,7 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 
-/** Unit tests for {@link CliResponseWriter}. */
+/** Unit tests for discovery and output-channel response projections. */
 class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
   @Test
   void outputChannel_serializesProjectEnumsUsingWireValue() throws IOException {
@@ -127,7 +129,8 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
   @Test
   void writeVersion_writesOkEnvelope() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    CliDiscoveryResponseWriterFixture responseWriter =
+        new CliDiscoveryResponseWriterFixture(utf8PrintStream(outputStream));
     responseWriter.writeVersion(
         new VersionDescriptor(
             "FinGrind",
@@ -155,19 +158,22 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
                 FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION,
                 SqliteCompileOptionsVerificationStatus.VERIFIED,
                 "ready",
-                "3.53.3",
-                "2.3.6",
+                "3.53.4",
+                "2.4.0",
                 nullOf()));
     ByteArrayOutputStream jsonOutput = new ByteArrayOutputStream();
-    CliResponseWriter jsonWriter = new CliResponseWriter(utf8PrintStream(jsonOutput));
+    CliDiscoveryResponseWriterFixture jsonWriter =
+        new CliDiscoveryResponseWriterFixture(utf8PrintStream(jsonOutput));
     jsonWriter.writeHelp(helpDescriptor);
     assertEquals("ok", readJson(jsonOutput).path("status").stringValue());
     ByteArrayOutputStream textOutput = new ByteArrayOutputStream();
-    CliResponseWriter textWriter = new CliResponseWriter(utf8PrintStream(textOutput));
+    CliDiscoveryResponseWriterFixture textWriter =
+        new CliDiscoveryResponseWriterFixture(utf8PrintStream(textOutput));
     textWriter.writeHelp(helpDescriptor, OutputMode.TEXT);
     assertTrue(textOutput.toString(StandardCharsets.UTF_8).contains("FinGrind Help"));
     ByteArrayOutputStream csvOutput = new ByteArrayOutputStream();
-    CliResponseWriter csvWriter = new CliResponseWriter(utf8PrintStream(csvOutput));
+    CliDiscoveryResponseWriterFixture csvWriter =
+        new CliDiscoveryResponseWriterFixture(utf8PrintStream(csvOutput));
     assertThrows(
         IllegalArgumentException.class, () -> csvWriter.writeHelp(helpDescriptor, OutputMode.CSV));
   }
@@ -175,7 +181,8 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
   @Test
   void writeCapabilities_usesMinimalDefaultPayload() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    CliDiscoveryResponseWriterFixture responseWriter =
+        new CliDiscoveryResponseWriterFixture(utf8PrintStream(outputStream));
     responseWriter.writeCapabilities(
         MachineContract.capabilities(
             new ApplicationIdentity(
@@ -208,11 +215,13 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
                 "Command-line double-entry bookkeeping with one protected book per accounting"
                     + " entity"));
     ByteArrayOutputStream textOutput = new ByteArrayOutputStream();
-    CliResponseWriter textWriter = new CliResponseWriter(utf8PrintStream(textOutput));
+    CliDiscoveryResponseWriterFixture textWriter =
+        new CliDiscoveryResponseWriterFixture(utf8PrintStream(textOutput));
     textWriter.writeCapabilities(capabilities, OutputMode.TEXT);
     assertTrue(textOutput.toString(StandardCharsets.UTF_8).contains("FinGrind Capabilities"));
     ByteArrayOutputStream csvOutput = new ByteArrayOutputStream();
-    CliResponseWriter csvWriter = new CliResponseWriter(utf8PrintStream(csvOutput));
+    CliDiscoveryResponseWriterFixture csvWriter =
+        new CliDiscoveryResponseWriterFixture(utf8PrintStream(csvOutput));
     assertThrows(
         IllegalArgumentException.class,
         () -> csvWriter.writeCapabilities(capabilities, OutputMode.CSV));
@@ -225,16 +234,18 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
             FinGrindCli.BUNDLE_RUNTIME_DISTRIBUTION,
             SqliteCompileOptionsVerificationStatus.VERIFIED,
             "ready",
-            "3.53.3",
-            "2.3.6",
+            "3.53.4",
+            "2.4.0",
             nullOf());
     ByteArrayOutputStream textOutput = new ByteArrayOutputStream();
-    CliResponseWriter textWriter = new CliResponseWriter(utf8PrintStream(textOutput));
+    CliDiscoveryResponseWriterFixture textWriter =
+        new CliDiscoveryResponseWriterFixture(utf8PrintStream(textOutput));
     textWriter.writeEnvironment(environment, OutputMode.TEXT);
     assertTrue(textOutput.toString(StandardCharsets.UTF_8).contains("FinGrind Environment"));
 
     ByteArrayOutputStream csvOutput = new ByteArrayOutputStream();
-    CliResponseWriter csvWriter = new CliResponseWriter(utf8PrintStream(csvOutput));
+    CliDiscoveryResponseWriterFixture csvWriter =
+        new CliDiscoveryResponseWriterFixture(utf8PrintStream(csvOutput));
     assertThrows(
         IllegalArgumentException.class,
         () -> csvWriter.writeEnvironment(environment, OutputMode.CSV));
@@ -249,11 +260,13 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
             MachineContract.protocolVersion(),
             "Command-line double-entry bookkeeping with one protected book per accounting entity");
     ByteArrayOutputStream textOutput = new ByteArrayOutputStream();
-    CliResponseWriter textWriter = new CliResponseWriter(utf8PrintStream(textOutput));
+    CliDiscoveryResponseWriterFixture textWriter =
+        new CliDiscoveryResponseWriterFixture(utf8PrintStream(textOutput));
     textWriter.writeVersion(versionDescriptor, OutputMode.TEXT);
     assertTrue(textOutput.toString(StandardCharsets.UTF_8).contains("Version"));
     ByteArrayOutputStream csvOutput = new ByteArrayOutputStream();
-    CliResponseWriter csvWriter = new CliResponseWriter(utf8PrintStream(csvOutput));
+    CliDiscoveryResponseWriterFixture csvWriter =
+        new CliDiscoveryResponseWriterFixture(utf8PrintStream(csvOutput));
     assertThrows(
         IllegalArgumentException.class,
         () -> csvWriter.writeVersion(versionDescriptor, OutputMode.CSV));
@@ -262,10 +275,17 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
   @Test
   void writeGenerateBookKeyFileResult_writesNonSecretMetadataEnvelope() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliResponseWriter responseWriter = new CliResponseWriter(utf8PrintStream(outputStream));
+    CliMutationResponseWriterFixture responseWriter =
+        new CliMutationResponseWriterFixture(utf8PrintStream(outputStream));
     responseWriter.writeGenerateBookKeyFileResult(
         new dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile(
-            Path.of("secrets").resolve("entity.book-key"), "base64url-no-padding", 256, "0600"));
+            new ArtifactPublicationResult(
+                Path.of("secrets").resolve("entity.book-key"),
+                new ArtifactPublicationRetention(
+                    Path.of("secrets").resolve(".entity.book-key.stage"))),
+            "base64url-no-padding",
+            256,
+            "0600"));
     JsonNode json = readJson(outputStream);
     assertEquals("ok", json.path("status").stringValue());
     assertTrue(json.path("payload").path("bookKeyFile").isMissingNode());
@@ -275,6 +295,9 @@ class CliDiscoveryResponseWriterTest extends CliResponseWriterTestSupport {
     assertEquals(
         CliPublicPaths.absoluteValue(Path.of("secrets").resolve("entity.book-key")),
         json.path("artifacts").get(0).path("path").stringValue());
+    assertEquals(
+        CliPublicPaths.absoluteValue(Path.of("secrets").resolve(".entity.book-key.stage")),
+        json.path("artifacts").get(0).path("retainedStage").stringValue());
     assertEquals("base64url-no-padding", json.path("payload").path("encoding").stringValue());
     assertEquals(256, json.path("payload").path("entropyBits").asInt());
     assertEquals("0600", json.path("payload").path("permissions").stringValue());

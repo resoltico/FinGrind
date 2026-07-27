@@ -4,14 +4,8 @@ import dev.erst.fingrind.contract.bookkeeping.AccountBalanceResult;
 import dev.erst.fingrind.contract.bookkeeping.AccountLedgerResult;
 import dev.erst.fingrind.contract.bookkeeping.CashFlowStatementResult;
 import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
-import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
-import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
-import dev.erst.fingrind.contract.bookkeeping.ListAccountsResult;
-import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryResult;
-import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
-import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
@@ -26,35 +20,6 @@ class CliWorkflowDoubleSupport extends CliFixtureSupport {
         new BookAccess.PassphraseSource.KeyFile(bookKeyFilePath),
         java.util.List.of());
   }
-
-  /** Backward-compatible test alias that preserves concise fixture call sites. */
-  static final class RecordingWorkflow extends CliRecordingWorkflow {
-    RecordingWorkflow(
-        OpenBookResult openBookResult,
-        RekeyBookResult rekeyBookResult,
-        DeclareAccountResult declareAccountResult,
-        ListAccountsResult listAccountsResult,
-        PreflightEntryResult preflightResult,
-        CommitEntryResult commitResult) {
-      super(
-          openBookResult,
-          rekeyBookResult,
-          declareAccountResult,
-          listAccountsResult,
-          preflightResult,
-          commitResult);
-    }
-  }
-
-  /** Backward-compatible test alias for the focused exploding workflow double. */
-  static final class ExplodingWorkflow extends CliExplodingWorkflow {
-    ExplodingWorkflow(RuntimeException failure) {
-      super(failure);
-    }
-  }
-
-  /** Backward-compatible test alias for invalid-request workflow failures. */
-  protected static final class IllegalArgumentWorkflow extends CliIllegalArgumentWorkflow {}
 
   protected static CliBookWorkflow reportingWorkflow(TrialBalanceResult trialBalanceResult) {
     return reportingWorkflow(

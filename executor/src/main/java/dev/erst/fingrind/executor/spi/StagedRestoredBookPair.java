@@ -8,11 +8,16 @@ public interface StagedRestoredBookPair extends AutoCloseable {
   MaintenanceDecision<ProtectedBookMaintenanceStore.BookVerification>
       verifyInitializedRestoredBook();
 
-  /** Publishes the staged restored book and staged destination key file. */
-  void commit();
+  /**
+   * Publishes the staged restored book and staged destination key file.
+   *
+   * <p>A completion-uncertain result means the final book member was attempted. Callers must
+   * preserve both final paths and use protected-book recovery before any retry.
+   */
+  StagedPairPublicationCommitOutcome commit(ProtectedBookPairPublicationBinding binding);
 
-  /** Discards the staged restored book and staged destination key file. */
-  void rollback();
+  /** Relinquishes this workflow's authority while retaining unpublished pair artifacts. */
+  void retainUnpublishedArtifacts();
 
   @Override
   void close();

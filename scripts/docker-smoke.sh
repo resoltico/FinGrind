@@ -31,7 +31,7 @@ readonly repo_lock_support="${repo_root}/scripts/repo-verification-lock-support.
 readonly python_runtime_support="${repo_root}/scripts/python-runtime-support.sh"
 readonly docker_context_verifier="${repo_root}/scripts/verify-docker-build-context.py"
 readonly image_tag="fingrind-docker-acceptance:$$"
-readonly smoke_root="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-docker-acceptance.XXXXXX")"
+readonly smoke_root="$(resolve_existing_physical_directory "$(mktemp -d "${TMPDIR:-/tmp}/fingrind-docker-acceptance.XXXXXX")")"
 readonly docker_run_user="$(id -u):$(id -g)"
 anonymous_docker_config=''
 docker_endpoint=''
@@ -196,6 +196,17 @@ export FINGRIND_RELEASE_SMOKE_COMMAND_PREFIX_JSON="$(
         -v "${smoke_root}:/workdir" \
         "${image_tag}"
 )"
+export FINGRIND_RELEASE_SMOKE_NATIVE_SQLITE_JAVA_PREFIX_JSON="$(
+    json_array_of_strings \
+        docker \
+        run \
+        --rm \
+        --user "${docker_run_user}" \
+        -w /workdir \
+        -v "${smoke_root}:/workdir" \
+        --entrypoint /opt/fingrind/runtime/bin/java \
+        "${image_tag}"
+)"
 export FINGRIND_RELEASE_SMOKE_RUNTIME_DISTRIBUTION_KEY="containerRuntimeDistribution"
 export FINGRIND_RELEASE_SMOKE_EXPECT_LOADED_SQLITE_DETAILS="true"
 export FINGRIND_RELEASE_SMOKE_EXPECT_BUNDLE_HOME_PROPERTY="true"
@@ -205,5 +216,6 @@ export FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE="relative-to-work-root"
 export FINGRIND_RELEASE_SMOKE_SCENARIO_ID="docker-acceptance"
 export FINGRIND_RELEASE_SMOKE_BOOK_KEY_OUTPUT_PERMISSIONS="0600"
 export FINGRIND_RELEASE_SMOKE_OPEN_BOOK_MODE='book-key-file'
+export FINGRIND_RELEASE_SMOKE_NATIVE_SQLITE_PROBE_CLASSPATH='/opt/fingrind/lib/release-smoke/native-sqlite-format-boundary-probe.jar'
 
 release_smoke_run_office_worker_acceptance

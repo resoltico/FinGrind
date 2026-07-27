@@ -1,14 +1,17 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.executor.PostingApplicationService;
 import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
 import dev.erst.fingrind.sqlite.SqliteAdministrationSession;
 import dev.erst.fingrind.sqlite.SqlitePlanExecutionSession;
+import dev.erst.fingrind.sqlite.SqlitePlanReadOnlySession;
 import dev.erst.fingrind.sqlite.SqlitePostingSession;
 import dev.erst.fingrind.sqlite.SqliteReadSession;
 import dev.erst.fingrind.sqlite.SqliteReportingPeriodCloseSession;
 import java.time.Clock;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -16,16 +19,49 @@ import java.util.function.Function;
 final class SqliteCliWorkflowSessions {
   private SqliteCliWorkflowSessions() {}
 
-  static <T> ContractDecision<T> withAdministrationSession(
-      ContractDecision<SqliteAdministrationSession> decision,
-      Function<SqliteAdministrationSession, T> work) {
-    return withSession(decision, work, SqliteAdministrationSession::close);
-  }
-
   static <T> ContractDecision<T> withAdministrationSessionDecision(
       ContractDecision<SqliteAdministrationSession> decision,
       Function<SqliteAdministrationSession, ContractDecision<T>> work) {
     return withSessionDecision(decision, work, SqliteAdministrationSession::close);
+  }
+
+  /**
+   * Closes an exclusive new-book session without allowing a close failure to erase a rejection that
+   * already disclosed uncertain opening artifacts. Session close never authorizes removal of a
+   * provisional caller-selected book path.
+   */
+  static <T> ContractDecision<T> withNewBookAdministrationSessionDecision(
+      ContractDecision<SqliteAdministrationSession> decision,
+      Function<SqliteAdministrationSession, ContractDecision<T>> work,
+      BiFunction<ContractFailure, RuntimeException, ContractDecision<T>> rejectedCloseFailure,
+      BiFunction<RuntimeException, RuntimeException, ContractDecision<T>> workAndCloseFailure,
+      BiFunction<T, RuntimeException, ContractDecision<T>> acceptedCloseFailure) {
+    return decision.fold(
+        bookSession -> {
+          ContractDecision<T> result;
+          try {
+            result = work.apply(bookSession);
+          } catch (RuntimeException primaryFailure) {
+            try {
+              bookSession.close();
+            } catch (RuntimeException closeFailure) {
+              return workAndCloseFailure.apply(primaryFailure, closeFailure);
+            }
+            throw primaryFailure;
+          } catch (Error primaryFailure) {
+            suppressCloseFailure(SqliteAdministrationSession::close, bookSession, primaryFailure);
+            throw primaryFailure;
+          }
+          try {
+            bookSession.close();
+            return result;
+          } catch (RuntimeException closeFailure) {
+            return result.fold(
+                accepted -> acceptedCloseFailure.apply(accepted, closeFailure),
+                rejection -> rejectedCloseFailure.apply(rejection, closeFailure));
+          }
+        },
+        ContractDecision::rejected);
   }
 
   static <T> ContractDecision<T> withReadSession(
@@ -50,16 +86,16 @@ final class SqliteCliWorkflowSessions {
     return withSessionDecision(decision, work, SqliteReportingPeriodCloseSession::close);
   }
 
-  static <T> ContractDecision<T> withPlanExecutionSession(
-      ContractDecision<SqlitePlanExecutionSession> decision,
-      Function<SqlitePlanExecutionSession, T> work) {
-    return withSession(decision, work, SqlitePlanExecutionSession::close);
-  }
-
   static <T> ContractDecision<T> withPlanExecutionSessionDecision(
       ContractDecision<SqlitePlanExecutionSession> decision,
       Function<SqlitePlanExecutionSession, ContractDecision<T>> work) {
     return withSessionDecision(decision, work, SqlitePlanExecutionSession::close);
+  }
+
+  static <T> ContractDecision<T> withPlanReadOnlySession(
+      ContractDecision<SqlitePlanReadOnlySession> decision,
+      Function<SqlitePlanReadOnlySession, T> work) {
+    return withSession(decision, work, SqlitePlanReadOnlySession::close);
   }
 
   static PostingApplicationService postingApplicationService(
@@ -80,12 +116,26 @@ final class SqliteCliWorkflowSessions {
       Consumer<S> closeSession) {
     return decision.fold(
         bookSession -> {
+          ContractDecision<T> result;
           try {
-            return work.apply(bookSession);
-          } finally {
-            closeSession.accept(bookSession);
+            result = work.apply(bookSession);
+          } catch (RuntimeException | Error primaryFailure) {
+            suppressCloseFailure(closeSession, bookSession, primaryFailure);
+            throw primaryFailure;
           }
+          closeSession.accept(bookSession);
+          return result;
         },
         ContractDecision::rejected);
+  }
+
+  /** Releases one session without allowing a close failure to replace a work failure. */
+  private static <S> void suppressCloseFailure(
+      Consumer<S> closeSession, S bookSession, Throwable primaryFailure) {
+    try {
+      closeSession.accept(bookSession);
+    } catch (RuntimeException | Error closeFailure) {
+      primaryFailure.addSuppressed(closeFailure);
+    }
   }
 }

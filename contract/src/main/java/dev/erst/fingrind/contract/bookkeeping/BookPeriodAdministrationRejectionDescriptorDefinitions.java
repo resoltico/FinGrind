@@ -1,6 +1,7 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.FailureCategory;
+import dev.erst.fingrind.contract.runtime.FieldDescriptor;
 import java.util.List;
 import java.util.Map;
 
@@ -145,15 +146,12 @@ final class BookPeriodAdministrationRejectionDescriptorDefinitions {
   }
 
   private static BookAdministrationRejectionDescriptorDefinition definition(
-      String code, String description, List<ContractResponse.FieldDescriptor> detailFields) {
+      String code, String description, List<FieldDescriptor> detailFields) {
     return new BookAdministrationRejectionDescriptorDefinition(
-        ContractResponse.FailureCategory.DOMAIN_SEMANTIC,
-        code,
-        description,
-        List.copyOf(detailFields));
+        FailureCategory.DOMAIN_SEMANTIC, code, description, List.copyOf(detailFields));
   }
 
-  private static ContractResponse.FieldDescriptor detailField(String name, String description) {
-    return new ContractResponse.FieldDescriptor(name, description);
+  private static FieldDescriptor detailField(String name, String description) {
+    return new FieldDescriptor(name, description);
   }
 }

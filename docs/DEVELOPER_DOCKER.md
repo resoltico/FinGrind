@@ -140,7 +140,7 @@ Then the supported local gates are:
 - runs mounted-path container commands under the caller's UID:GID so generated key files and book
   files stay owned by the invoking operator on both macOS Docker Desktop and Linux CI runners
 - verifies `version`
-- verifies the managed SQLite 3.53.3 / SQLite3 Multiple Ciphers 2.3.6 runtime contract through
+- verifies the managed SQLite 3.53.4 / SQLite3 Multiple Ciphers 2.4.0 runtime contract through
   `capabilities`
 - verifies `open-book` against a mounted path with spaces and punctuation
 - creates the mounted book-key fixtures with owner-only permissions (`0600`) so containerized

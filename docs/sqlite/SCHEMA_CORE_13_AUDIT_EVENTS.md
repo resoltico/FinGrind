@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: SQLITE_SCHEMA_CORE_AUDIT_EVENTS
-updated: "2026-07-17"
+updated: "2026-07-26"
 ---
 
 # SQLite Schema: Audit Events
@@ -69,13 +69,6 @@ create table if not exists audit_event (
             'ACCOUNT_RETIRED',
             'POSTING_COMMITTED',
             'POSTING_REVERSED',
-            'BOOK_REKEYED',
-            'BACKUP_CREATED',
-            'BACKUP_RESTORED',
-            'REKEY_ROLLBACK_RESTORED',
-            'REKEY_ROLLBACK_DELETED',
-            'BACKUP_CREATED_COMPENSATED',
-            'REKEY_ROLLBACK_DELETED_COMPENSATED',
             'INTERIM_RESULT_SWEPT',
             'FISCAL_YEAR_CLOSED'
         )
@@ -88,14 +81,7 @@ create table if not exists audit_event (
     check (
         (
             event_kind in (
-                'BOOK_OPENED',
-                'BOOK_REKEYED',
-                'BACKUP_CREATED',
-                'BACKUP_RESTORED',
-                'REKEY_ROLLBACK_RESTORED',
-                'REKEY_ROLLBACK_DELETED',
-                'BACKUP_CREATED_COMPENSATED',
-                'REKEY_ROLLBACK_DELETED_COMPENSATED'
+                'BOOK_OPENED'
             )
             and account_code is null
             and posting_id is null

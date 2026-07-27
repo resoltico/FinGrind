@@ -45,9 +45,8 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
   @Test
   void administrativeExecutors_rejectInteractivePromptForJsonOutput() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliWorkflowDoubleSupport.ExplodingWorkflow workflow =
-        new CliWorkflowDoubleSupport.ExplodingWorkflow(
-            new IllegalStateException("workflow should not run"));
+    CliExplodingWorkflow workflow =
+        new CliExplodingWorkflow(new IllegalStateException("workflow should not run"));
     CliAdministrativeCommandExecutor executor =
         new CliAdministrativeCommandExecutor(
             new CliRequestReader(new ByteArrayInputStream(new byte[0])),
@@ -58,9 +57,7 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
 
     assertPromptFailure(
         outputStream,
-        () ->
-            executor.runOpenBookCommand(
-                PROMPT_BOOK_ACCESS, openBookCommand(), false, OutputMode.JSON));
+        () -> executor.runOpenBookCommand(PROMPT_BOOK_ACCESS, openBookCommand(), OutputMode.JSON));
     assertPromptFailure(
         outputStream,
         () ->
@@ -101,9 +98,8 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
   @Test
   void queryExecutors_rejectInteractivePromptForJsonOutput() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliWorkflowDoubleSupport.ExplodingWorkflow workflow =
-        new CliWorkflowDoubleSupport.ExplodingWorkflow(
-            new IllegalStateException("workflow should not run"));
+    CliExplodingWorkflow workflow =
+        new CliExplodingWorkflow(new IllegalStateException("workflow should not run"));
     CliQueryCommandExecutor executor =
         new CliQueryCommandExecutor(
             bookReadWriter(outputStream), failureWriter(outputStream), workflow);
@@ -147,9 +143,8 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
   @Test
   void mutationExecutors_rejectInteractivePromptForMachineOutput() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    CliWorkflowDoubleSupport.ExplodingWorkflow workflow =
-        new CliWorkflowDoubleSupport.ExplodingWorkflow(
-            new IllegalStateException("workflow should not run"));
+    CliExplodingWorkflow workflow =
+        new CliExplodingWorkflow(new IllegalStateException("workflow should not run"));
     CliMutationCommandExecutor executor =
         new CliMutationCommandExecutor(
             new CliRequestReader(new ByteArrayInputStream(new byte[0])),
@@ -183,9 +178,8 @@ class CliCommandExecutorPromptPolicyTest extends CliResponseWriterTestSupport {
   void reportExecutors_rejectInteractivePromptForMachineOutput() throws IOException {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
     ByteArrayOutputStream diagnosticsStream = new ByteArrayOutputStream();
-    CliWorkflowDoubleSupport.ExplodingWorkflow workflow =
-        new CliWorkflowDoubleSupport.ExplodingWorkflow(
-            new IllegalStateException("workflow should not run"));
+    CliExplodingWorkflow workflow =
+        new CliExplodingWorkflow(new IllegalStateException("workflow should not run"));
     CliReportCommandExecutor executor =
         new CliReportCommandExecutor(
             reportWriter(outputStream),

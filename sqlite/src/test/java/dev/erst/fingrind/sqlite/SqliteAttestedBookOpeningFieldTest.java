@@ -39,6 +39,11 @@ class SqliteAttestedBookOpeningFieldTest extends SqlitePostingFactStoreTestSuppo
       assertEquals(initializedAt, opened.initializedAt());
       assertEquals(identity, opened.bookIdentity());
       assertEquals(
+          opened.attestationTrustRoot().headOrder(), opened.attestationCommit().operationOrder());
+      assertEquals(
+          opened.attestationTrustRoot().operationHeadHex(),
+          opened.attestationCommit().operationHeadHex());
+      assertEquals(
           seededAccounts.getFirst().accountCode(),
           store.findAccount(seededAccounts.getFirst().accountCode()).orElseThrow().accountCode());
 

@@ -5,6 +5,9 @@ import java.nio.file.FileSystem;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.WatchService;
+import java.nio.file.attribute.AclEntry;
+import java.nio.file.attribute.AclEntryPermission;
+import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.GroupPrincipal;
 import java.nio.file.attribute.UserPrincipal;
 import java.nio.file.attribute.UserPrincipalLookupService;
@@ -30,6 +33,40 @@ public final class AclFixtureFileSystem extends FileSystem {
   private AclFixtureFileSystem(Set<String> views) {
     this.views = Set.copyOf(views);
     this.provider = new AclFixtureFileSystemProvider(this);
+    AclFixturePath root = path("\\");
+    root.exists = true;
+    root.regularFile = false;
+    if (views.contains("posix")) {
+      root.posixPermissions =
+          Set.of(
+              java.nio.file.attribute.PosixFilePermission.OWNER_READ,
+              java.nio.file.attribute.PosixFilePermission.OWNER_WRITE,
+              java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE);
+    }
+    if (views.contains("acl")) {
+      Objects.requireNonNull(root.aclView)
+          .setAcl(
+              List.of(
+                  AclEntry.newBuilder()
+                      .setType(AclEntryType.ALLOW)
+                      .setPrincipal(owner)
+                      .setPermissions(
+                          AclEntryPermission.LIST_DIRECTORY,
+                          AclEntryPermission.ADD_FILE,
+                          AclEntryPermission.ADD_SUBDIRECTORY,
+                          AclEntryPermission.EXECUTE,
+                          AclEntryPermission.DELETE_CHILD,
+                          AclEntryPermission.READ_NAMED_ATTRS,
+                          AclEntryPermission.WRITE_NAMED_ATTRS,
+                          AclEntryPermission.READ_ATTRIBUTES,
+                          AclEntryPermission.WRITE_ATTRIBUTES,
+                          AclEntryPermission.DELETE,
+                          AclEntryPermission.READ_ACL,
+                          AclEntryPermission.WRITE_ACL,
+                          AclEntryPermission.WRITE_OWNER,
+                          AclEntryPermission.SYNCHRONIZE)
+                      .build()));
+    }
   }
 
   public static AclFixtureFileSystem withViews(Set<String> views) {

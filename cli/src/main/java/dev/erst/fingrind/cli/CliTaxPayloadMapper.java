@@ -41,7 +41,7 @@ final class CliTaxPayloadMapper {
   }
 
   static CliTaxJsonModels.TaxRegistrationMutationPayload taxRegistrationMutationPayload(
-      String outcome,
+      CliTaxJsonModels.TaxRegistrationMutationOutcome outcome,
       DeclaredTaxRegistration registration,
       @org.jspecify.annotations.Nullable AttestationCommit attestationCommit) {
     return new CliTaxJsonModels.TaxRegistrationMutationPayload(

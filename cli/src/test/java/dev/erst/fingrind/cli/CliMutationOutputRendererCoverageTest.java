@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.cli.json.CliDeclareAccountPayload;
+import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.ResolvedJournal;
 import dev.erst.fingrind.core.ClassificationResult;
@@ -206,7 +208,7 @@ class CliMutationOutputRendererCoverageTest {
                 Instant.parse("2026-04-07T10:15:30Z"),
                 false,
                 resolvedJournal,
-                null));
+                new AttestationCommit(java.math.BigInteger.ONE, "a".repeat(64))));
 
     assertTrue(preflight.contains("Contained typed events"));
     assertTrue(preflight.contains("AP_SETTLEMENT, CREDIT_SALE"), preflight);
@@ -254,7 +256,7 @@ class CliMutationOutputRendererCoverageTest {
   void renderAccountDeclarationText_rendersInventoryUnitOfMeasureWhenPresent() {
     String rendered =
         CliMutationOutputRenderer.renderAccountDeclarationText(
-            "declared",
+            CliDeclareAccountPayload.Outcome.DECLARED,
             CliIoFixtureSupport.inventoryDeclaredAccount("1400", "Inventory", "kg", 3),
             null);
 

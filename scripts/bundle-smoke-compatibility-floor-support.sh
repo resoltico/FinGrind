@@ -37,17 +37,27 @@ run_compatibility_floor_acceptance() {
     compatibility_entrypoint="${compatibility_smoke_root}/compatibility-floor-entrypoint.sh"
     mkdir -p "${compatibility_work_root}"
     cat >"${compatibility_entrypoint}" <<'SH'
-#!/bin/sh
+#!/usr/bin/env bash
 set -eu
 if ! command -v python3 >/dev/null 2>&1; then
   command -v dnf >/dev/null 2>&1 || {
     echo "error: compatibility-floor image does not provide python3 or dnf" >&2
     exit 1
   }
-  dnf install -y python3 >/dev/null
+  dnf install -y python3 python3-pip >/dev/null
+elif ! python3 -m pip --version >/dev/null 2>&1; then
+  command -v dnf >/dev/null 2>&1 || {
+    echo "error: compatibility-floor image does not provide Python pip or dnf" >&2
+    exit 1
+  }
+  dnf install -y python3-pip >/dev/null
 fi
+uv_version="$(awk -F= '$1 == "fingrindUvVersion" { print $2; exit }' /repo/gradle/fingrind-build.properties)"
+test -n "${uv_version}"
+python3 -m pip install --user --disable-pip-version-check "uv==${uv_version}"
+source /repo/scripts/release-smoke-support.sh
 python3 /repo/scripts/verify-bundle-archive-contract.py --repo-root /repo --bundle-root /bundle
-python3 /repo/scripts/release-smoke-workflow.py
+release_smoke_run_office_worker_acceptance
 SH
     chmod +x "${compatibility_entrypoint}"
 
@@ -69,10 +79,11 @@ SH
         -e FINGRIND_RELEASE_SMOKE_SCENARIO_ID=bundle-compatibility-floor \
         -e FINGRIND_RELEASE_SMOKE_BOOK_KEY_OUTPUT_PERMISSIONS=0600 \
         -e FINGRIND_RELEASE_SMOKE_OPEN_BOOK_MODE=generated-key-stdin \
+        -e FINGRIND_RELEASE_SMOKE_NATIVE_SQLITE_PROBE_CLASSPATH=/bundle/lib/release-smoke/native-sqlite-format-boundary-probe.jar \
         -v "${compatibility_repo_root}:/repo:ro" \
         -v "${compatibility_bundle_root}:/bundle:ro" \
         -v "${compatibility_work_root}:/work" \
         -v "${compatibility_entrypoint}:/compatibility-floor-entrypoint.sh:ro" \
         "${compatibility_container_image}" \
-        /bin/sh /compatibility-floor-entrypoint.sh
+        /bin/bash /compatibility-floor-entrypoint.sh
 }

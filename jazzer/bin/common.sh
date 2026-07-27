@@ -352,7 +352,7 @@ fg_run_machine_json_command() {
     return "${command_status}"
 }
 
-fg_run_maintenance_command() {
+fg_run_write_command() {
     local task_name=$1
     shift
     fg_run_tool_command false "${task_name}" "$@"
@@ -441,7 +441,6 @@ fg_run_active_command_unlocked() {
     mkdir -p "${run_directory}"
     : > "${latest_log}"
     : > "${history_log}"
-    rm -f "${timed_out_marker}"
 
     (
         set -o pipefail

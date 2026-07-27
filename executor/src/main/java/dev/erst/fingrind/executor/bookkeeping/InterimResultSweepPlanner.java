@@ -47,11 +47,10 @@ public final class InterimResultSweepPlanner {
   /** Derives the only admissible contiguous sweep window ending at the selected through date. */
   public ReportingPeriod reportingPeriod(
       LocalDate throughEffectiveDate,
-      LocalDate bookStartDate,
       BookIdentity bookIdentity,
       Optional<LocalDate> transferredThroughEffectiveDate) {
     return InterimResultSweepHorizonValidator.reportingPeriodFor(
-        throughEffectiveDate, bookStartDate, bookIdentity, transferredThroughEffectiveDate);
+        throughEffectiveDate, bookIdentity, transferredThroughEffectiveDate);
   }
 
   /** Returns the first deterministic close-horizon rejection for the selected period, if any. */
@@ -67,16 +66,11 @@ public final class InterimResultSweepPlanner {
   /** Returns the first deterministic close-horizon rejection for one derived sweep window. */
   public Optional<BookkeepingAdministrationRejection> closeHorizonRejection(
       LocalDate throughEffectiveDate,
-      LocalDate bookStartDate,
       BookIdentity bookIdentity,
       LocalDate currentUtcDate,
       Optional<LocalDate> transferredThroughEffectiveDate) {
     return InterimResultSweepHorizonValidator.closeHorizonRejection(
-        throughEffectiveDate,
-        bookStartDate,
-        bookIdentity,
-        currentUtcDate,
-        transferredThroughEffectiveDate);
+        throughEffectiveDate, bookIdentity, currentUtcDate, transferredThroughEffectiveDate);
   }
 
   /** Plans durable interim-result-sweep postings and the published close totals they produce. */

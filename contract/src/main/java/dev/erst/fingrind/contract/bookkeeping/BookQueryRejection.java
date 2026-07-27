@@ -3,7 +3,9 @@ package dev.erst.fingrind.contract.bookkeeping;
 import dev.erst.fingrind.contract.internal.ContractRejectionDescriptors;
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.FailureCategory;
+import dev.erst.fingrind.contract.runtime.FieldDescriptor;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.PostingId;
 import java.util.List;
@@ -26,7 +28,7 @@ public sealed interface BookQueryRejection
   }
 
   /** Returns the canonical machine descriptors for every permitted query rejection. */
-  static List<ContractResponse.RejectionDescriptor> descriptors() {
+  static List<RejectionDescriptor> descriptors() {
     return Descriptor.descriptors();
   }
 
@@ -65,7 +67,7 @@ public sealed interface BookQueryRejection
             + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
             + ".") {
       @Override
-      List<ContractResponse.FieldDescriptor> detailFields() {
+      List<FieldDescriptor> detailFields() {
         return List.of();
       }
     },
@@ -73,7 +75,7 @@ public sealed interface BookQueryRejection
         "unknown-account",
         "Query refused because the selected accountCode is not declared in this book.") {
       @Override
-      List<ContractResponse.FieldDescriptor> detailFields() {
+      List<FieldDescriptor> detailFields() {
         return List.of(
             ContractRejectionDescriptors.detailField(
                 "accountCode",
@@ -84,7 +86,7 @@ public sealed interface BookQueryRejection
         "posting-not-found",
         "Query refused because the selected postingId does not identify a committed posting in this book.") {
       @Override
-      List<ContractResponse.FieldDescriptor> detailFields() {
+      List<FieldDescriptor> detailFields() {
         return List.of(
             ContractRejectionDescriptors.detailField(
                 "postingId",
@@ -104,21 +106,21 @@ public sealed interface BookQueryRejection
       return code;
     }
 
-    private static List<ContractResponse.RejectionDescriptor> descriptors() {
+    private static List<RejectionDescriptor> descriptors() {
       return ContractRejectionDescriptors.descriptors(values(), Descriptor::descriptor);
     }
 
-    private ContractResponse.RejectionDescriptor descriptor() {
+    private RejectionDescriptor descriptor() {
       return ContractRejectionDescriptors.descriptor(code, category(), description, detailFields());
     }
 
-    private ContractResponse.FailureCategory category() {
+    private FailureCategory category() {
       return switch (this) {
-        case BOOK_NOT_INITIALIZED -> ContractResponse.FailureCategory.PRECONDITION;
-        case UNKNOWN_ACCOUNT, POSTING_NOT_FOUND -> ContractResponse.FailureCategory.DOMAIN_SEMANTIC;
+        case BOOK_NOT_INITIALIZED -> FailureCategory.PRECONDITION;
+        case UNKNOWN_ACCOUNT, POSTING_NOT_FOUND -> FailureCategory.DOMAIN_SEMANTIC;
       };
     }
 
-    abstract List<ContractResponse.FieldDescriptor> detailFields();
+    abstract List<FieldDescriptor> detailFields();
   }
 }

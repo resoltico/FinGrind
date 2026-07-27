@@ -2,15 +2,13 @@ package dev.erst.fingrind.sqlite;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.nio.file.Path;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 /** Thread-confined SQLite database handle backed by the configured SQLite C library. */
 class SqliteNativeDatabase implements AutoCloseable {
   private final MemorySegment databaseHandle;
-  private final @Nullable Path normalizedBookPath;
-  private final boolean publishesActivityMarker;
+  private final @Nullable SqliteNativeActivityRegistration activityRegistration;
   private final SqliteNativeApi sqliteApi;
   private final SqliteNativeDatabaseConfiguration configuration;
   private final SqliteNativeDatabaseDiagnostics diagnostics;
@@ -20,21 +18,19 @@ class SqliteNativeDatabase implements AutoCloseable {
   private boolean closed;
 
   SqliteNativeDatabase(MemorySegment databaseHandle) {
-    this(databaseHandle, null, false, SqliteNativeBootstrap.api());
+    this(databaseHandle, null, SqliteNativeBootstrap.api());
   }
 
   SqliteNativeDatabase(MemorySegment databaseHandle, SqliteNativeApi sqliteApi) {
-    this(databaseHandle, null, false, sqliteApi);
+    this(databaseHandle, null, sqliteApi);
   }
 
   SqliteNativeDatabase(
       MemorySegment databaseHandle,
-      @Nullable Path normalizedBookPath,
-      boolean publishesActivityMarker,
+      @Nullable SqliteNativeActivityRegistration activityRegistration,
       SqliteNativeApi sqliteApi) {
     this.databaseHandle = Objects.requireNonNull(databaseHandle, "databaseHandle");
-    this.normalizedBookPath = normalizedBookPath;
-    this.publishesActivityMarker = publishesActivityMarker;
+    this.activityRegistration = activityRegistration;
     this.sqliteApi = Objects.requireNonNull(sqliteApi, "sqliteApi");
     this.configuration = new SqliteNativeDatabaseConfiguration(this);
     this.diagnostics = new SqliteNativeDatabaseDiagnostics(this);
@@ -107,8 +103,7 @@ class SqliteNativeDatabase implements AutoCloseable {
     if (closed) {
       return;
     }
-    SqliteNativeConnections.close(
-        databaseHandle, normalizedBookPath, publishesActivityMarker, sqliteApi);
+    SqliteNativeConnections.close(databaseHandle, activityRegistration, sqliteApi);
     closed = true;
   }
 

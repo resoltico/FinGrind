@@ -39,7 +39,6 @@ import dev.erst.fingrind.executor.bookkeeping.AcceptedPosting;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccrualCutoffRecord;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
 import dev.erst.fingrind.executor.bookkeeping.PostingLineageModel;
 import java.nio.file.Path;
 import java.time.Instant;
@@ -84,11 +83,8 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
           accountTaxonomy(AccountType.EXPENSE));
 
       StoreOwnedDatabase database = new StoreOwnedDatabase(requireStoreDatabase(store));
-      SqliteClosePostingPersistence persistence =
-          new SqliteClosePostingPersistence(
-              store.storeContext(),
-              SqliteCommitFaultHook.NONE,
-              PostingAcceptancePolicy.currentKernel());
+      SqliteAcceptedPostingPersistence persistence =
+          new SqliteAcceptedPostingPersistence(SqliteCommitFaultHook.NONE);
 
       AccrualCutoffBookkeepingEntryVariants.Prepayment originEntry = prepayment();
       CommittedPosting origin =
@@ -196,11 +192,8 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
       declareAccrualAccounts(store);
 
       StoreOwnedDatabase database = new StoreOwnedDatabase(requireStoreDatabase(store));
-      SqliteClosePostingPersistence persistence =
-          new SqliteClosePostingPersistence(
-              store.storeContext(),
-              SqliteCommitFaultHook.NONE,
-              PostingAcceptancePolicy.currentKernel());
+      SqliteAcceptedPostingPersistence persistence =
+          new SqliteAcceptedPostingPersistence(SqliteCommitFaultHook.NONE);
       AccrualCutoffBookkeepingEntryVariants.DeferredRevenue deferredRevenue = deferredRevenue();
       AccrualCutoffBookkeepingEntryVariants.AccruedExpense accruedExpense = accruedExpense();
       CommittedPosting deferredOrigin =
@@ -690,7 +683,7 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
   private record StoreOwnedDatabase(SqliteNativeDatabase value) {}
 
   private static CommittedPosting persist(
-      SqliteClosePostingPersistence persistence,
+      SqliteAcceptedPostingPersistence persistence,
       SqliteNativeDatabase database,
       AcceptedPosting acceptedPosting,
       String postingId) {
@@ -710,7 +703,7 @@ class SqliteAccrualCutoffPersistenceTest extends SqlitePostingFactStoreTestSuppo
   }
 
   private static CommittedPosting persistReversal(
-      SqliteClosePostingPersistence persistence,
+      SqliteAcceptedPostingPersistence persistence,
       SqliteNativeDatabase database,
       CommittedPosting priorPosting,
       String postingId,

@@ -14,15 +14,13 @@ final class InterimResultSweepHorizonValidator {
 
   static ReportingPeriod reportingPeriodFor(
       LocalDate throughEffectiveDate,
-      LocalDate bookStartDate,
       BookIdentity bookIdentity,
       Optional<LocalDate> transferredThroughEffectiveDate) {
     Objects.requireNonNull(throughEffectiveDate, "throughEffectiveDate");
-    Objects.requireNonNull(bookStartDate, "bookStartDate");
     Objects.requireNonNull(bookIdentity, "bookIdentity");
     Objects.requireNonNull(transferredThroughEffectiveDate, "transferredThroughEffectiveDate");
     LocalDate effectiveDateFrom =
-        requiredEffectiveDateFrom(bookStartDate, transferredThroughEffectiveDate);
+        requiredEffectiveDateFrom(bookIdentity, transferredThroughEffectiveDate);
     return new ReportingPeriod(effectiveDateFrom, throughEffectiveDate);
   }
 
@@ -66,22 +64,22 @@ final class InterimResultSweepHorizonValidator {
               reportingPeriod.effectiveDateTo(),
               bookIdentity.fiscalYearStart()));
     }
-    return transferredThroughEffectiveDate
-        .map(closedThrough -> closedThrough.plusDays(1))
-        .filter(requiredStart -> !requiredStart.equals(reportingPeriod.effectiveDateFrom()))
-        .<BookkeepingAdministrationRejection>map(
-            BookkeepingAdministrationRejection.InterimResultSweepMustStartAt::new);
+    LocalDate requiredEffectiveDateFrom =
+        requiredEffectiveDateFrom(bookIdentity, transferredThroughEffectiveDate);
+    return requiredEffectiveDateFrom.equals(reportingPeriod.effectiveDateFrom())
+        ? Optional.empty()
+        : Optional.of(
+            new BookkeepingAdministrationRejection.InterimResultSweepMustStartAt(
+                requiredEffectiveDateFrom));
   }
 
   static Optional<BookkeepingAdministrationRejection> closeHorizonRejection(
       LocalDate throughEffectiveDate,
-      LocalDate bookStartDate,
       BookIdentity bookIdentity,
       LocalDate currentUtcDate,
       Optional<LocalDate> transferredThroughEffectiveDate) {
     return closeHorizonRejection(
         throughEffectiveDate,
-        bookStartDate,
         bookIdentity,
         java.time.Clock.fixed(
             currentUtcDate.atStartOfDay(java.time.ZoneOffset.UTC).toInstant(),
@@ -91,32 +89,31 @@ final class InterimResultSweepHorizonValidator {
 
   static Optional<BookkeepingAdministrationRejection> closeHorizonRejection(
       LocalDate throughEffectiveDate,
-      LocalDate bookStartDate,
       BookIdentity bookIdentity,
       Clock clock,
       Optional<LocalDate> transferredThroughEffectiveDate) {
     Objects.requireNonNull(throughEffectiveDate, "throughEffectiveDate");
-    Objects.requireNonNull(bookStartDate, "bookStartDate");
+    Objects.requireNonNull(bookIdentity, "bookIdentity");
     Objects.requireNonNull(transferredThroughEffectiveDate, "transferredThroughEffectiveDate");
     LocalDate requiredEffectiveDateFrom =
-        requiredEffectiveDateFrom(bookStartDate, transferredThroughEffectiveDate);
+        requiredEffectiveDateFrom(bookIdentity, transferredThroughEffectiveDate);
     if (requiredEffectiveDateFrom.isAfter(throughEffectiveDate)) {
       return Optional.of(
           new BookkeepingAdministrationRejection.InterimResultSweepMustStartAt(
               requiredEffectiveDateFrom));
     }
     return closeHorizonRejection(
-        reportingPeriodFor(
-            throughEffectiveDate, bookStartDate, bookIdentity, transferredThroughEffectiveDate),
+        reportingPeriodFor(throughEffectiveDate, bookIdentity, transferredThroughEffectiveDate),
         bookIdentity,
         clock,
         transferredThroughEffectiveDate);
   }
 
   private static LocalDate requiredEffectiveDateFrom(
-      LocalDate bookStartDate, Optional<LocalDate> transferredThroughEffectiveDate) {
+      BookIdentity bookIdentity, Optional<LocalDate> transferredThroughEffectiveDate) {
+    Objects.requireNonNull(bookIdentity, "bookIdentity");
     return transferredThroughEffectiveDate
         .map(closedThrough -> closedThrough.plusDays(1))
-        .orElse(bookStartDate);
+        .orElse(bookIdentity.bookStartEffectiveDate());
   }
 }

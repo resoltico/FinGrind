@@ -13,6 +13,8 @@ import dev.erst.fingrind.contract.bookkeeping.DeclareAccountResult;
 import dev.erst.fingrind.contract.bookkeeping.FiscalYearCloseResult;
 import dev.erst.fingrind.contract.bookkeeping.InterimResultSweepResult;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.SweptInterimResult;
 import dev.erst.fingrind.contract.protocol.OperationId;
@@ -20,13 +22,19 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.runtime.AttestationKeyFileMetadata;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.core.AccountCode;
+import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.CurrencyBalance;
 import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.core.attestation.AttestationKeyFileCreation;
+import dev.erst.fingrind.core.attestation.AttestationPublicCredential;
 import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -43,12 +51,12 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
     writer(openedJson)
         .writeOpenBookResult(
             BOOK_PATH,
-            List.of(Path.of("books")),
             new OpenBookResult.Opened(
                 Instant.parse("2026-07-21T10:20:30Z"),
                 bookIdentity(),
                 attestationTrustRoot(),
-                genesisCommit()),
+                genesisCommit(),
+                List.of()),
             OutputMode.JSON);
     assertJsonContains(openedJson, "\"entityName\":\"Acme Studio\"");
     assertJsonContains(openedJson, "\"attestationCommit\":");
@@ -57,16 +65,15 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
     writer(openedText)
         .writeOpenBookResult(
             BOOK_PATH,
-            List.of(Path.of("books")),
             new OpenBookResult.Opened(
                 Instant.parse("2026-07-21T10:20:30Z"),
                 bookIdentity(),
                 attestationTrustRoot(),
-                genesisCommit()),
+                genesisCommit(),
+                List.of()),
             OutputMode.TEXT);
     String opened = openedText.toString(StandardCharsets.UTF_8);
     assertTrue(opened.contains("Book Initialized"));
-    assertTrue(opened.contains("Tightened parent directory"));
     assertTrue(opened.contains("Attestation order"));
     assertTrue(opened.contains("Attestation head"));
 
@@ -74,38 +81,77 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
     writer(rejectedOpen)
         .writeOpenBookResult(
             BOOK_PATH,
-            List.of(),
             new OpenBookResult.Rejected(new BookAdministrationRejection.BookAlreadyInitialized()),
             OutputMode.JSON);
     assertJsonContains(rejectedOpen, "\"code\":\"book-already-initialized\"");
 
     GeneratedBookKeyFile generatedKeyFile =
-        new GeneratedBookKeyFile(KEY_PATH, "base64", 256, "rw-------");
+        new GeneratedBookKeyFile(publication(KEY_PATH), "base64", 256, "rw-------");
     ByteArrayOutputStream generatedKeyJson = new ByteArrayOutputStream();
-    writer(generatedKeyJson)
-        .writeGenerateBookKeyFileResult(
-            generatedKeyFile, List.of(Path.of("keys")), OutputMode.JSON);
+    writer(generatedKeyJson).writeGenerateBookKeyFileResult(generatedKeyFile, OutputMode.JSON);
     assertJsonContains(generatedKeyJson, "\"entropyBits\":256");
+    assertJsonContains(generatedKeyJson, "\"retainedStage\"");
 
     ByteArrayOutputStream generatedKeyText = new ByteArrayOutputStream();
-    writer(generatedKeyText)
-        .writeGenerateBookKeyFileResult(
-            generatedKeyFile, List.of(Path.of("keys")), OutputMode.TEXT);
+    writer(generatedKeyText).writeGenerateBookKeyFileResult(generatedKeyFile, OutputMode.TEXT);
     String generatedKey = generatedKeyText.toString(StandardCharsets.UTF_8);
     assertTrue(generatedKey.contains("Book Key File Generated"));
-    assertTrue(generatedKey.contains("Tightened parent directory"));
+    assertTrue(generatedKey.contains("Retained stage"));
 
+    Path authoritativeGeneratedSecretPath = Path.of("keys", "authoritative-rekey.key");
+    ProtectedBookPairPublicationRetention authoritativeRekeyPublicationRetention =
+        CliFixtureSupport.pairPublicationRetention(BOOK_PATH, authoritativeGeneratedSecretPath);
+    ArtifactPublicationResult authoritativeGeneratedSecretPublication =
+        authoritativeRekeyPublicationRetention.generatedSecretPublication();
     ByteArrayOutputStream rekeyedJson = new ByteArrayOutputStream();
     writer(rekeyedJson)
         .writeRekeyBookResult(
-            new RekeyBookResult.Rekeyed(BOOK_PATH, attestationCommit()), KEY_PATH, OutputMode.JSON);
+            new RekeyBookResult.Rekeyed(
+                BOOK_PATH,
+                authoritativeGeneratedSecretPath,
+                attestationCommit(),
+                ProtectedBookPairPublicationCompletion.PUBLISHED,
+                authoritativeRekeyPublicationRetention),
+            OutputMode.JSON);
     assertJsonContains(rekeyedJson, "\"status\":\"ok\"");
+    assertJsonContains(
+        rekeyedJson,
+        "\"newBookKeyFile\":\""
+            + CliPublicPaths.absoluteValue(
+                authoritativeGeneratedSecretPublication.publishedArtifactPath())
+            + "\"");
+    assertJsonContains(
+        rekeyedJson,
+        "\"path\":\""
+            + CliPublicPaths.absoluteValue(
+                authoritativeGeneratedSecretPublication.publishedArtifactPath())
+            + "\"");
+    assertJsonContains(
+        rekeyedJson,
+        "\"retainedStage\":\""
+            + CliPublicPaths.absoluteValue(
+                authoritativeGeneratedSecretPublication.retention().retainedStagePath())
+            + "\"");
 
     ByteArrayOutputStream rekeyedText = new ByteArrayOutputStream();
     writer(rekeyedText)
         .writeRekeyBookResult(
-            new RekeyBookResult.Rekeyed(BOOK_PATH, attestationCommit()), KEY_PATH, OutputMode.TEXT);
-    assertTrue(rekeyedText.toString(StandardCharsets.UTF_8).contains("Book Rekeyed"));
+            new RekeyBookResult.Rekeyed(
+                BOOK_PATH,
+                authoritativeGeneratedSecretPath,
+                attestationCommit(),
+                ProtectedBookPairPublicationCompletion.RECOVERED,
+                authoritativeRekeyPublicationRetention),
+            OutputMode.TEXT);
+    String rekeyedTextOutput = rekeyedText.toString(StandardCharsets.UTF_8);
+    assertTrue(rekeyedTextOutput.contains("Book Rekeyed"));
+    assertTrue(
+        rekeyedTextOutput.contains(
+            CliTextDisplay.path(authoritativeGeneratedSecretPublication.publishedArtifactPath())));
+    assertTrue(
+        rekeyedTextOutput.contains(
+            CliTextDisplay.path(
+                authoritativeGeneratedSecretPublication.retention().retainedStagePath())));
 
     ByteArrayOutputStream rejectedRekey = new ByteArrayOutputStream();
     writer(rejectedRekey)
@@ -113,7 +159,6 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
             new RekeyBookResult.Rejected(
                 new BookMaintenanceRejection.BackupDestinationAlreadyExists(
                     Path.of("backup.sqlite"))),
-            KEY_PATH,
             OutputMode.JSON);
     assertJsonContains(rejectedRekey, "\"code\":\"backup-destination-already-exists\"");
 
@@ -123,25 +168,29 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
             writer(new ByteArrayOutputStream())
                 .writeOpenBookResult(
                     BOOK_PATH,
-                    List.of(),
                     new OpenBookResult.Opened(
                         Instant.parse("2026-07-21T10:20:30Z"),
                         bookIdentity(),
                         attestationTrustRoot(),
-                        genesisCommit()),
+                        genesisCommit(),
+                        List.of()),
                     OutputMode.CSV));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             writer(new ByteArrayOutputStream())
-                .writeGenerateBookKeyFileResult(generatedKeyFile, List.of(), OutputMode.CSV));
+                .writeGenerateBookKeyFileResult(generatedKeyFile, OutputMode.CSV));
     assertThrows(
         IllegalArgumentException.class,
         () ->
             writer(new ByteArrayOutputStream())
                 .writeRekeyBookResult(
-                    new RekeyBookResult.Rekeyed(BOOK_PATH, attestationCommit()),
-                    KEY_PATH,
+                    new RekeyBookResult.Rekeyed(
+                        BOOK_PATH,
+                        KEY_PATH,
+                        attestationCommit(),
+                        ProtectedBookPairPublicationCompletion.PUBLISHED,
+                        CliFixtureSupport.pairPublicationRetention(BOOK_PATH, KEY_PATH)),
                     OutputMode.CSV));
 
     assertEquals(
@@ -151,7 +200,8 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
                 Instant.parse("2026-07-21T10:20:30Z"),
                 bookIdentity(),
                 attestationTrustRoot(),
-                genesisCommit())));
+                genesisCommit(),
+                List.of())));
     assertEquals(
         2,
         CliAdministrativeExitCodes.exitCodeFor(
@@ -159,7 +209,12 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
     assertEquals(
         0,
         CliAdministrativeExitCodes.exitCodeFor(
-            new RekeyBookResult.Rekeyed(BOOK_PATH, attestationCommit())));
+            new RekeyBookResult.Rekeyed(
+                BOOK_PATH,
+                KEY_PATH,
+                attestationCommit(),
+                ProtectedBookPairPublicationCompletion.PUBLISHED,
+                CliFixtureSupport.pairPublicationRetention(BOOK_PATH, KEY_PATH))));
     assertEquals(
         7,
         CliAdministrativeExitCodes.exitCodeFor(
@@ -326,9 +381,12 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
     AttestationKeyFileMetadata metadata =
         new AttestationKeyFileMetadata(
             Path.of("keys", "operator.fgatk"), "MCowBQYDK2VwAyEApublic", "a1b2c3d4");
+    AttestationKeyFileCreation created =
+        new AttestationKeyFileCreation(
+            publication(metadata.attestationKeyFilePath()), generatedPublicCredential());
 
     ByteArrayOutputStream generatedText = new ByteArrayOutputStream();
-    writer(generatedText).writeGeneratedAttestationKeyFileResult(metadata, OutputMode.TEXT);
+    writer(generatedText).writeGeneratedAttestationKeyFileResult(created, OutputMode.TEXT);
     assertTrue(
         generatedText.toString(StandardCharsets.UTF_8).contains("Attestation Key File Generated"));
 
@@ -346,6 +404,23 @@ class CliAdministrativeMutationResponseWriterCoverageTest extends CliResponseWri
   private static CliAdministrativeMutationResponseWriter writer(
       ByteArrayOutputStream outputStream) {
     return new CliAdministrativeMutationResponseWriter(outputChannel(outputStream));
+  }
+
+  private static AttestationPublicCredential generatedPublicCredential() {
+    try {
+      return new AttestationPublicCredential(
+          KeyPairGenerator.getInstance("Ed25519").generateKeyPair().getPublic().getEncoded());
+    } catch (NoSuchAlgorithmException exception) {
+      throw new AssertionError("The Java runtime must provide Ed25519.", exception);
+    }
+  }
+
+  private static ArtifactPublicationResult publication(Path artifactPath) {
+    Path normalizedPath = artifactPath.toAbsolutePath().normalize();
+    return new ArtifactPublicationResult(
+        normalizedPath,
+        new ArtifactPublicationRetention(
+            normalizedPath.resolveSibling("." + normalizedPath.getFileName() + ".stage")));
   }
 
   private static dev.erst.fingrind.contract.bookkeeping.AttestationCommit genesisCommit() {

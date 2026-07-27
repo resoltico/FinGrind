@@ -1,24 +1,19 @@
 package dev.erst.fingrind.sqlite;
 
-import dev.erst.fingrind.core.CommittedProvenance;
-import dev.erst.fingrind.core.PostingId;
-import dev.erst.fingrind.core.RequestFingerprint;
 import dev.erst.fingrind.core.attestation.AttestationClosePostingSnapshot;
+import dev.erst.fingrind.core.attestation.AttestationInterimResultSweepEffect;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationPeriodCloseMutationProjection;
 import dev.erst.fingrind.core.attestation.AttestationPostingLine;
 import dev.erst.fingrind.executor.AttestationCommitProjection;
-import dev.erst.fingrind.executor.bookkeeping.AcceptedPosting;
 import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
 import dev.erst.fingrind.executor.bookkeeping.ClosedFiscalYearRecord;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
 import dev.erst.fingrind.executor.bookkeeping.FiscalYearCloseDraft;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft;
 import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy;
-import dev.erst.fingrind.executor.bookkeeping.PostingAcceptancePolicy.Decision;
-import dev.erst.fingrind.executor.bookkeeping.SweptInterimResult;
-import dev.erst.fingrind.executor.spi.PostingDraft;
+import dev.erst.fingrind.executor.bookkeeping.RecordedInterimResultSweep;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.util.List;
 import java.util.Objects;
@@ -30,51 +25,17 @@ final class SqliteClosePostingPersistence {
       AttestationOperationKind.INTERIM_RESULT_SWEEP;
   private static final AttestationOperationKind FISCAL_YEAR_CLOSE_OPERATION =
       AttestationOperationKind.FISCAL_YEAR_CLOSE;
-  private final SqliteStoreContext context;
-  private final SqliteCommitFaultHook commitFaultHook;
-  private final PostingAcceptancePolicy postingAcceptancePolicy;
+  private final SqliteGeneratedClosePostingPersistence generatedClosePostings;
 
   SqliteClosePostingPersistence(
       SqliteStoreContext context,
       SqliteCommitFaultHook commitFaultHook,
       PostingAcceptancePolicy postingAcceptancePolicy) {
-    this.context = Objects.requireNonNull(context, "context");
-    this.commitFaultHook = Objects.requireNonNull(commitFaultHook, "commitFaultHook");
-    this.postingAcceptancePolicy =
-        Objects.requireNonNull(postingAcceptancePolicy, "postingAcceptancePolicy");
-  }
-
-  CommittedPosting persistAcceptedPosting(
-      SqliteNativeDatabase activeDatabase,
-      AcceptedPosting acceptedPosting,
-      RequestFingerprint requestFingerprint,
-      CommittedProvenance provenance,
-      PostingIdGenerator postingIdGenerator) {
-    CommittedPosting postingFact =
-        acceptedPosting.materialize(
-            Objects.requireNonNull(postingIdGenerator, "postingIdGenerator").nextPostingId(),
-            Objects.requireNonNull(provenance, "provenance"));
-    persistMaterializedPosting(activeDatabase, acceptedPosting, postingFact, requestFingerprint);
-    return postingFact;
-  }
-
-  void persistMaterializedPosting(
-      SqliteNativeDatabase activeDatabase,
-      AcceptedPosting acceptedPosting,
-      CommittedPosting postingFact,
-      RequestFingerprint requestFingerprint) {
-    SqliteMutationWriter.insertPostingFact(
-        activeDatabase,
-        Objects.requireNonNull(postingFact, "postingFact"),
-        Objects.requireNonNull(requestFingerprint, "requestFingerprint"));
-    commitFaultHook.afterPostingFactInserted(postingFact);
-    SqliteMutationWriter.insertJournalLines(activeDatabase, postingFact, commitFaultHook);
-    SqliteAccrualCutoffWriter.persist(activeDatabase, postingFact);
-    SqliteLatvianPayrollWriter.persist(activeDatabase, postingFact);
-    SqliteOwnedContextWriter.persist(activeDatabase, postingFact);
-    persistInventoryCosting(activeDatabase, postingFact.postingId(), acceptedPosting);
-    SqliteAuditEventWriter.insertAuditEvent(
-        activeDatabase, BookAuditEvent.postingCommitted(postingFact));
+    SqliteAcceptedPostingPersistence acceptedPostings =
+        new SqliteAcceptedPostingPersistence(commitFaultHook);
+    generatedClosePostings =
+        new SqliteGeneratedClosePostingPersistence(
+            context, postingAcceptancePolicy, acceptedPostings);
   }
 
   AttestedInterimResultSweep persistInterimResultSweep(
@@ -86,12 +47,12 @@ final class SqliteClosePostingPersistence {
     AttestationOperationAuthorizer requiredAttestationAuthorizer =
         AttestationOperationAuthorizer.require(attestationAuthorizer);
     List<CommittedPosting> closingPostings =
-        persistGeneratedClosePostings(
+        generatedClosePostings.persistGeneratedPostings(
             activeDatabase,
             interimResultSweepDraft.closingPostings(),
             postingIdGenerator,
             "interim result sweep");
-    SweptInterimResult sweptInterimResult =
+    RecordedInterimResultSweep sweptInterimResult =
         SqliteMutationWriter.insertInterimResultSweep(
             activeDatabase,
             interimResultSweepDraft.reportingPeriod(),
@@ -99,7 +60,7 @@ final class SqliteClosePostingPersistence {
             interimResultSweepDraft.sweptTotals(),
             interimResultSweepDraft.sweptAt(),
             closingPostings);
-    var verification =
+    var attestationAppend =
         SqliteAttestationEvidenceStore.appendAuthorized(
             activeDatabase,
             observedHead,
@@ -118,19 +79,20 @@ final class SqliteClosePostingPersistence {
         BookAuditEvent.interimResultSwept(
             interimResultSweepDraft.sweptAt(), sweptInterimResult.sweepOrder()));
     return new AttestedInterimResultSweep(
-        sweptInterimResult, AttestationCommitProjection.fromVerifiedAppend(verification));
+        sweptInterimResult, AttestationCommitProjection.fromVerifiedAppend(attestationAppend));
   }
 
   AttestedFiscalYearClose persistFiscalYearClose(
       SqliteNativeDatabase activeDatabase,
       SqliteAttestationEvidenceStore.ObservedHead observedHead,
       FiscalYearCloseDraft closeDraft,
+      @org.jspecify.annotations.Nullable AttestationInterimResultSweepEffect derivedInterimSweep,
       PostingIdGenerator postingIdGenerator,
       AttestationOperationAuthorizer attestationAuthorizer) {
     AttestationOperationAuthorizer requiredAttestationAuthorizer =
         AttestationOperationAuthorizer.require(attestationAuthorizer);
     List<CommittedPosting> closePostings =
-        persistGeneratedClosePostings(
+        generatedClosePostings.persistGeneratedPostings(
             activeDatabase,
             closeDraft.closePostingDrafts(),
             postingIdGenerator,
@@ -144,7 +106,7 @@ final class SqliteClosePostingPersistence {
             closeDraft.retainedAccumulatedAccountCode(),
             closeDraft.closedAt(),
             closePostings);
-    var verification =
+    var attestationAppend =
         SqliteAttestationEvidenceStore.appendAuthorized(
             activeDatabase,
             observedHead,
@@ -157,6 +119,7 @@ final class SqliteClosePostingPersistence {
                 closeDraft.resultHoldingAccountCode().value(),
                 closeDraft.retainedAccumulatedAccountCode().value(),
                 closedFiscalYear.closeOrder(),
+                derivedInterimSweep,
                 closePostingSnapshots(closePostings)),
             requiredAttestationAuthorizer);
     SqliteAuditEventWriter.insertAuditEvent(
@@ -164,11 +127,47 @@ final class SqliteClosePostingPersistence {
         BookAuditEvent.fiscalYearClosed(
             closedFiscalYear.closedAt(), closedFiscalYear.closeOrder()));
     return new AttestedFiscalYearClose(
-        closedFiscalYear, AttestationCommitProjection.fromVerifiedAppend(verification));
+        closedFiscalYear, AttestationCommitProjection.fromVerifiedAppend(attestationAppend));
+  }
+
+  /**
+   * Persists the unswept interim-result segment as an executor-derived fiscal-close effect.
+   *
+   * <p>The caller owns the one enclosing fiscal-year-close attestation append after this method
+   * returns. This keeps an automatic sweep and its close inside one signed, atomic operation.
+   */
+  AttestationInterimResultSweepEffect persistInterimResultSweepAsFiscalCloseEffect(
+      SqliteNativeDatabase activeDatabase,
+      InterimResultSweepDraft interimResultSweepDraft,
+      PostingIdGenerator postingIdGenerator) {
+    List<CommittedPosting> closingPostings =
+        generatedClosePostings.persistGeneratedPostings(
+            activeDatabase,
+            interimResultSweepDraft.closingPostings(),
+            postingIdGenerator,
+            FISCAL_YEAR_CLOSE_OPERATION.wireToken() + " interim-result sweep");
+    RecordedInterimResultSweep sweptInterimResult =
+        SqliteMutationWriter.insertInterimResultSweep(
+            activeDatabase,
+            interimResultSweepDraft.reportingPeriod(),
+            interimResultSweepDraft.resultHoldingAccountCode(),
+            interimResultSweepDraft.sweptTotals(),
+            interimResultSweepDraft.sweptAt(),
+            closingPostings);
+    SqliteAuditEventWriter.insertAuditEvent(
+        activeDatabase,
+        BookAuditEvent.interimResultSwept(
+            interimResultSweepDraft.sweptAt(), sweptInterimResult.sweepOrder()));
+    return new AttestationInterimResultSweepEffect(
+        interimResultSweepDraft.reportingPeriod(),
+        interimResultSweepDraft.resultHoldingAccountCode().value(),
+        sweptInterimResult.sweepOrder(),
+        sweptInterimResult.sweptTotals(),
+        closePostingSnapshots(closingPostings));
   }
 
   record AttestedInterimResultSweep(
-      SweptInterimResult sweptInterimResult,
+      RecordedInterimResultSweep sweptInterimResult,
       dev.erst.fingrind.contract.bookkeeping.AttestationCommit attestationCommit) {
     AttestedInterimResultSweep {
       Objects.requireNonNull(sweptInterimResult, "sweptInterimResult");
@@ -183,72 +182,6 @@ final class SqliteClosePostingPersistence {
       Objects.requireNonNull(closedFiscalYear, "closedFiscalYear");
       Objects.requireNonNull(attestationCommit, "attestationCommit");
     }
-  }
-
-  private List<CommittedPosting> persistGeneratedClosePostings(
-      SqliteNativeDatabase activeDatabase,
-      List<PostingDraft> postingDrafts,
-      PostingIdGenerator postingIdGenerator,
-      String closeOperation) {
-    SqliteTransactionValidationBook validationBook =
-        new SqliteTransactionValidationBook(activeDatabase, context.postingReader(), true);
-    PostingIdGenerator requiredPostingIdGenerator =
-        Objects.requireNonNull(postingIdGenerator, "postingIdGenerator");
-    List<CommittedPosting> postings = new java.util.ArrayList<>();
-    for (PostingDraft postingDraft : postingDrafts) {
-      switch (postingAcceptancePolicy.decisionFor(postingDraft, validationBook)) {
-        case Decision.Replay replay -> postings.add(replay.postingFact());
-        case Decision.Rejected rejected ->
-            throw new IllegalStateException(
-                "Generated "
-                    + closeOperation
-                    + " posting failed bookkeeping acceptance: "
-                    + rejected.rejection());
-        case Decision.Accepted accepted ->
-            postings.add(
-                persistAcceptedPosting(
-                    activeDatabase,
-                    accepted.acceptedPosting(),
-                    accepted.requestFingerprint(),
-                    postingDraft.provenance(),
-                    requiredPostingIdGenerator));
-      }
-    }
-    return postings;
-  }
-
-  private static void persistInventoryCosting(
-      SqliteNativeDatabase activeDatabase, PostingId postingId, AcceptedPosting acceptedPosting) {
-    Objects.requireNonNull(activeDatabase, "activeDatabase");
-    Objects.requireNonNull(postingId, "postingId");
-    Objects.requireNonNull(acceptedPosting, "acceptedPosting");
-    for (int index = 0; index < acceptedPosting.inventoryMovements().size(); index++) {
-      var movement = acceptedPosting.inventoryMovements().get(index);
-      SqliteInventoryCostingWriter.insertInventoryMovement(
-          activeDatabase,
-          inventoryMovementId(postingId, index),
-          movement.inventoryAccount(),
-          movement.effectiveDate(),
-          movement.kind(),
-          movement.quantityDelta(),
-          movement.costDeltaMinor(),
-          postingId);
-    }
-    acceptedPosting
-        .resultingInventoryStates()
-        .forEach(
-            (inventoryAccount, state) ->
-                SqliteInventoryCostingWriter.upsertInventoryOnHand(
-                    activeDatabase,
-                    inventoryAccount,
-                    state.pool().quantityOnHand().scaledUnits(),
-                    state.pool().costPool().minorUnits(),
-                    state
-                        .lastMovementDate()
-                        .orElseThrow(
-                            () ->
-                                new IllegalStateException(
-                                    "Inventory state persisted after movement must own one last movement date."))));
   }
 
   private static List<AttestationClosePostingSnapshot> closePostingSnapshots(
@@ -276,9 +209,5 @@ final class SqliteClosePostingPersistence {
                         line.amount().currencyUnit().code(),
                         line.amount().minorUnits()))
             .toList());
-  }
-
-  private static String inventoryMovementId(PostingId postingId, int movementIndex) {
-    return postingId.value() + "/inventory/" + (movementIndex + 1);
   }
 }

@@ -9,7 +9,7 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.channels.WritableByteChannel;
 
 /** Minimal file channel wrapper for fixture-backed file I/O tests. */
-final class AclFixtureFileChannel extends FileChannel {
+class AclFixtureFileChannel extends FileChannel {
   private final AclFixtureSeekableByteChannel delegate;
 
   AclFixtureFileChannel(AclFixturePath path, AclFixtureSeekableByteChannel delegate) {

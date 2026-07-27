@@ -46,6 +46,8 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
       initializeBookWithMinimalNumericAccounts(postingFactStore);
       declareFiscalYearCloseAccounts(postingFactStore);
       commitFiscalYearActivity(postingFactStore);
+      SqliteNativeDatabase database = requireStoreDatabase(postingFactStore);
+      int attestationOperationCountBeforeClose = countRows(database, "attestation_operation");
 
       FiscalYearCloseService fiscalYearCloseService =
           new FiscalYearCloseService(
@@ -89,7 +91,6 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
                 @Override
                 public InterimResultSweepOutcome interimResultSweep(
                     LocalDate throughEffectiveDate,
-                    LocalDate bookStartDate,
                     dev.erst.fingrind.core.BookIdentity bookIdentity,
                     dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner planner,
                     LocalDate currentUtcDate,
@@ -153,7 +154,10 @@ class SqliteFiscalYearCloseCoverageTest extends SqlitePostingFactStoreTestSuppor
       assertEquals(closed.closedFiscalYear(), replayed.closedFiscalYear());
       assertTrue(replayed.idempotentReplay());
 
-      SqliteNativeDatabase database = requireStoreDatabase(postingFactStore);
+      assertEquals(
+          attestationOperationCountBeforeClose + 1,
+          countRows(database, "attestation_operation"),
+          "one fiscal-year-close must append one attested operation even when it derives a sweep");
       assertEquals(1, countRows(database, "interim_result_sweep"));
       assertEquals(
           1,

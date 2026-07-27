@@ -1,0 +1,22 @@
+{
+  "projectPath": "sqlite",
+  "relativePath": "src/main/java/dev/erst/fingrind/sqlite/SqliteWindowsCoordinationFfmTransport.java",
+  "owner": "sqlite-windows-coordination-ffm-transport",
+  "reason": "The Windows native boundary keeps ABI layouts, captured error handling, owner-only security descriptors, exact-handle validation, identity, and byte-range locking together so their ownership cannot drift.",
+  "splitTrigger": "Split a separately testable Windows API family behind a focused ABI value object before adding another native operation group to this transport.",
+  "reviewedRoleName": "sqlite-windows-coordination-ffm-transport",
+  "budgetVarianceReason": "A complete native ABI boundary must retain its layouts, ownership rules, and direct call translations in one auditable reviewed source.",
+  "approval": {
+    "physicalLines": 1490,
+    "logicalLines": 1373,
+    "importLikeLines": 21,
+    "nestedTypes": 14,
+    "functions": 7,
+    "fieldsPerTopLevelType": 0,
+    "switchArmsPerMethod": 0,
+    "methodLineSpan": 187,
+    "methodParameters": 24,
+    "methodDecisionPoints": 5,
+    "expiresOn": "2026-08-18"
+  }
+}

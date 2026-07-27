@@ -30,7 +30,8 @@ class SqliteBookKeyFileTest {
 
   @BeforeEach
   void hardenTempDirectory() {
-    SqliteSecretTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+    tempDirectory =
+        SqliteTestPrivateDirectorySupport.canonicalizeAndHardenOwnerOnlyDirectory(tempDirectory);
   }
 
   @Test

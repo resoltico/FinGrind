@@ -2,9 +2,9 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: INDEX_POSTING_AND_REJECTIONS
-updated: "2026-07-18"
+updated: "2026-07-26"
 route:
-  keywords: [fingrind, posting, preflight, commit, rejection, idempotency, book start, reversal, translator]
+  keywords: [fingrind, posting, preflight, commit, rejection, idempotency, book start, reversal, translator, ledger-plan]
   questions: ["where are FinGrind posting rejection types documented", "which index routes PostingApplicationService", "where is the immutable book-start posting refusal documented"]
 ---
 
@@ -21,7 +21,7 @@ bounded reference sections.
 | `BookkeepingEntry` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry`, `TypedBookkeepingEntry`, `BookkeepingEntrySurface`, And `BookkeepingEntryKind` |
 | `BookkeepingEntrySurface` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry`, `TypedBookkeepingEntry`, `BookkeepingEntrySurface`, And `BookkeepingEntryKind` |
 | `BookkeepingEntryKind` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry`, `TypedBookkeepingEntry`, `BookkeepingEntrySurface`, And `BookkeepingEntryKind` |
-| `BookkeepingEntry.OpeningAccountBalance` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry`, `TypedBookkeepingEntry`, `BookkeepingEntrySurface`, And `BookkeepingEntryKind` |
+| `BookkeepingEntry.OpeningPosition.OpeningAccountBalance` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry`, `TypedBookkeepingEntry`, `BookkeepingEntrySurface`, And `BookkeepingEntryKind` |
 | `TypedBookkeepingEntry` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingEntry`, `TypedBookkeepingEntry`, `BookkeepingEntrySurface`, And `BookkeepingEntryKind` |
 | `BookkeepingAccountSemanticsViolations` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingAccountSemanticsViolations`, `BookkeepingEvidenceSemanticsViolations`, `BookkeepingEntryModeSemanticsViolations`, And `BookkeepingTaxSemanticsViolations` |
 | `BookkeepingEvidenceSemanticsViolations` | `DOC_02_PostingAndLedgerPlans.md` | `BookkeepingAccountSemanticsViolations`, `BookkeepingEvidenceSemanticsViolations`, `BookkeepingEntryModeSemanticsViolations`, And `BookkeepingTaxSemanticsViolations` |
@@ -39,6 +39,9 @@ bounded reference sections.
 | `PostingAcceptancePolicy` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy`, `PostingAcceptancePolicy.Decision`, `BookkeepingAdministrationRejection`, `BookkeepingAdministrationRejectionPublishedMapper`, `BookkeepingPostingRejection`, `BookkeepingRequestPublishedLanguageTranslator`, And `BookkeepingPublishedLanguageTranslator` |
 | `PostingAcceptancePolicy.Decision` | `DOC_02_PostingAndLedgerPlans.md` | `PostingAcceptancePolicy`, `PostingAcceptancePolicy.Decision`, `BookkeepingAdministrationRejection`, `BookkeepingAdministrationRejectionPublishedMapper`, `BookkeepingPostingRejection`, `BookkeepingRequestPublishedLanguageTranslator`, And `BookkeepingPublishedLanguageTranslator` |
 | `PostingApplicationService` | `DOC_02_PostingAndLedgerPlans.md` | `PostingApplicationService` |
+| `PostingPreflightService` | `DOC_02_PostingAndLedgerPlans.md` | `PostingPreflightService` |
+| `PlanPostingApplicationService` | `DOC_02_PostingAndLedgerPlans.md` | `PlanAccountDeclarationService`, `PlanTaxRegistrationService`, `PlanPostingApplicationService`, And `PlanPostEntryOutcome` |
+| `PlanPostEntryOutcome` | `DOC_02_PostingAndLedgerPlans.md` | `PlanAccountDeclarationService`, `PlanTaxRegistrationService`, `PlanPostingApplicationService`, And `PlanPostEntryOutcome` |
 | `PostingCommand` | `DOC_02_PostingAndLedgerPlans.md` | `PostingCommand`, `PostingLineageModel`, `PostingOriginatingEntryValidator`, And `PostingRequestModel` |
 | `PostingDraft` | `DOC_02_PostingAndLedgerPlans.md` | `PostingDraft` |
 | `PostingIdGenerator` | `DOC_02_PostingAndLedgerPlans.md` | `PostingIdGenerator` |

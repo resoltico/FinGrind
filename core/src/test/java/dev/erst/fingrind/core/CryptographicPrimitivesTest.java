@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
@@ -29,6 +31,8 @@ class CryptographicPrimitivesTest {
         HexFormat.of().formatHex(SHA_256_OF_ABC), CryptographicPrimitives.sha256Hex(value));
     assertEquals(
         HexFormat.of().formatHex(SHA_256_OF_ABC), CryptographicPrimitives.sha256HexUtf8("abc"));
+    assertArrayEquals(
+        SHA_256_OF_ABC, CryptographicPrimitives.sha256(new ByteArrayInputStream(value)));
     assertEquals(
         HexFormat.of().formatHex(SHA_256_OF_ABC),
         CryptographicPrimitives.sha256Hex(new ByteArrayInputStream(value)));
@@ -74,5 +78,27 @@ class CryptographicPrimitivesTest {
 
     assertEquals("SHA-256 is unavailable in this Java runtime.", bytesException.getMessage());
     assertEquals("SHA-256 is unavailable in this Java runtime.", streamException.getMessage());
+  }
+
+  @Test
+  void sha256HexRejectsAnInputStreamThatCannotMakeReadProgress() {
+    IOException exception =
+        assertThrows(
+            IOException.class,
+            () ->
+                CryptographicPrimitives.sha256Hex(
+                    new InputStream() {
+                      @Override
+                      public int read() {
+                        return 0;
+                      }
+
+                      @Override
+                      public int read(byte[] bytes) {
+                        return 0;
+                      }
+                    }));
+
+    assertEquals("Cryptographic digest input did not make read progress.", exception.getMessage());
   }
 }

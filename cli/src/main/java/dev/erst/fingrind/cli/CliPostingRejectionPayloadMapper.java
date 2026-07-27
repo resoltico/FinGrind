@@ -1,8 +1,10 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliAccountRejectionJsonModels;
 import dev.erst.fingrind.cli.json.CliAccountStateViolationPayload;
 import dev.erst.fingrind.cli.json.CliEntrySemanticsViolationPayload;
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
+import dev.erst.fingrind.cli.json.CliPostingRejectionJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AccountStateViolationDetail;
 import dev.erst.fingrind.contract.bookkeeping.PostingEffectiveDateBeforeBookStart;
@@ -26,6 +28,9 @@ final class CliPostingRejectionPayloadMapper {
         null,
         requestIdempotencyKey,
         rejectionDetails(rejection),
+        null,
+        null,
+        null,
         null);
   }
 
@@ -44,41 +49,41 @@ final class CliPostingRejectionPayloadMapper {
     }
     return switch (rejection) {
       case PostingRejection.AccountStateViolations violations ->
-          new CliRejectionJsonModels.AccountStateViolationsDetails(
+          new CliPostingRejectionJsonModels.AccountStateViolationsDetails(
               violations.violations().stream()
                   .map(CliPostingRejectionPayloadMapper::accountStateViolationPayload)
                   .toList());
       case PostingRejection.EntrySemanticsViolations violations ->
-          new CliRejectionJsonModels.EntrySemanticsViolationsDetails(
+          new CliPostingRejectionJsonModels.EntrySemanticsViolationsDetails(
               violations.violations().stream()
                   .map(CliPostingRejectionPayloadMapper::entrySemanticsViolationPayload)
                   .toList());
       case PostingEffectiveDateBeforeBookStart beforeBookStart ->
-          new CliRejectionJsonModels.PostingEffectiveDateBeforeBookStartDetails(
+          new CliPostingRejectionJsonModels.PostingEffectiveDateBeforeBookStartDetails(
               beforeBookStart.attemptedEffectiveDate().toString(),
               beforeBookStart.bookStartEffectiveDate().toString());
       case PostingRejection.PostingEffectiveDateInFuture futureDate ->
-          new CliRejectionJsonModels.PostingEffectiveDateInFutureDetails(
+          new CliPostingRejectionJsonModels.PostingEffectiveDateInFutureDetails(
               futureDate.attemptedEffectiveDate().toString(),
               futureDate.currentUtcDate().toString());
       case PostingRejection.BookFunctionalCurrencyMismatch rejectionCurrencyMismatch ->
-          new CliRejectionJsonModels.FunctionalCurrencyMismatchDetails(
+          new CliPostingRejectionJsonModels.FunctionalCurrencyMismatchDetails(
               rejectionCurrencyMismatch.functionalCurrency().code(),
               rejectionCurrencyMismatch.attemptedCurrency().code());
       case PostingRejection.SweptInterimResultViolation violation ->
-          new CliRejectionJsonModels.SweptInterimResultViolationDetails(
+          new CliPostingRejectionJsonModels.SweptInterimResultViolationDetails(
               violation.transferredThroughEffectiveDate().toString(),
               violation.attemptedEffectiveDate().toString());
       case PostingRejection.OpeningPositionWindowClosed rejectionWindowClosed ->
-          new CliRejectionJsonModels.OpeningPositionWindowClosedDetails(
+          new CliPostingRejectionJsonModels.OpeningPositionWindowClosedDetails(
               rejectionWindowClosed.firstBlockingPostingKind().wireValue(),
               rejectionWindowClosed.firstBlockingEffectiveDate().toString());
       case PostingRejection.OpeningPositionTouchesNominalAccount rejectionOpeningPosition ->
-          new CliRejectionJsonModels.OpeningPositionNominalAccountDetails(
+          new CliPostingRejectionJsonModels.OpeningPositionNominalAccountDetails(
               rejectionOpeningPosition.accountCode().value(),
               rejectionOpeningPosition.accountType().wireValue());
       case PostingRejection.ReservedResultClassification rejectionReserved ->
-          new CliRejectionJsonModels.ReservedResultClassificationDetails(
+          new CliAccountRejectionJsonModels.ReservedResultClassificationDetails(
               rejectionReserved.accountCode().value(),
               rejectionReserved.financialPositionLineClassification().wireValue());
       default -> null;
@@ -100,9 +105,9 @@ final class CliPostingRejectionPayloadMapper {
     };
   }
 
-  private static CliRejectionJsonModels.PriorPostingDetails priorPostingDetails(
+  private static CliPostingRejectionJsonModels.PriorPostingDetails priorPostingDetails(
       String priorPostingId) {
-    return new CliRejectionJsonModels.PriorPostingDetails(priorPostingId);
+    return new CliPostingRejectionJsonModels.PriorPostingDetails(priorPostingId);
   }
 
   private static CliAccountStateViolationPayload accountStateViolationPayload(

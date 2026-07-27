@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: CONTRACT_EXECUTOR_WRITE
-updated: "2026-07-21"
+updated: "2026-07-24"
 route:
   keywords: [fingrind, contract, executor, posting, preflight, commit, posting-rejection, ledger-plan, assertion, journal, uuid-v7, tax-selection, applied-tax, fixed-assets, financing, realized-foreign-exchange]
   questions: ["where are posting and ledger plan types documented in fingrind", "which doc covers PostingApplicationService and LedgerPlanService", "where are posting rejections and plan journals documented", "where is tax selection versus applied tax documented", "where are fixed asset financing and realized foreign exchange posting models documented"]
@@ -497,12 +497,14 @@ public sealed interface LedgerStep
 - Tax setup: `DeclareTaxRegistration` keeps account declaration and tax registration as separate
   ordered plan effects, so a plan can set up both prerequisite accounts and the registration in
   one atomic transaction without making tax registration own account creation
-- Attestation: a plan with one or more mutating steps commits those child changes and exactly one
-  signed `execute-plan` operation in the same SQLite transaction. The aggregate operation carries
-  the ordered immutable child preimages; it never emits a separate chain operation per child. Its
-  successful public result publishes the committed aggregate operation order and head only after
-  the surrounding transaction commits; a successful read-only plan publishes no operation
-  reference.
+- Attestation: a plan that durably completes one or more child mutations commits those changes and
+  exactly one signed `execute-plan` operation in the same SQLite transaction. The aggregate
+  operation carries the ordered immutable child preimages; it never emits a separate chain
+  operation per child. Every successful response publishes `attestationDisposition`: `appended`
+  carries its aggregate operation order and head only after the surrounding transaction commits;
+  `no-durable-child-mutation` is a signed mutation-capable execution whose children were all
+  idempotent and therefore carries no aggregate operation; `read-only` uses the separate
+  credential-free read-only capability and also carries no operation reference.
 - Surface: committed posting steps publish the typed `record-*` workflow kinds when the nested
   `PostEntryCommand` carries one business entry, while raw direct-journal fallback stays on the
   `post-entry` kind
@@ -623,24 +625,10 @@ public enum LedgerFactKind implements WireValue
 - Purpose: keep fact-kind wire tokens canonical across contract DTOs, CLI JSON payloads, and any
   future machine readers instead of retyping raw discriminator strings
 
-## `LedgerStepKind`, `LedgerJournalKind`, `LedgerAssertionKind`, `LedgerBoundaryCheckpoint`, `LedgerStepStatus`, And `LedgerPlanStatus`
+## Ledger Plan Vocabulary And Attestation Outcomes
 
-These types own the stable ledger-plan wire vocabulary.
-
-```java
-public enum LedgerStepKind
-public sealed interface LedgerJournalKind
-public enum LedgerAssertionKind
-public enum LedgerBoundaryCheckpoint
-public enum LedgerStepStatus
-public enum LedgerPlanStatus
-```
-
-- Purpose: keep plan/journal tokens compiler-owned and renderer-independent
-- Ownership: every standard `LedgerJournalKind` is its canonical `LedgerStepKind`; only the
-  journal-only `plan-boundary` marker is represented by `LedgerJournalKind.BoundaryKind`
-- Surface: `wireValue()`, `wireValues()`, and `fromWireValue(...)` own the stable public
-  vocabulary
+The stable plan and journal tokens, plus the successful aggregate-attestation outcome contract,
+are owned by [DOC_02_LedgerPlanVocabulary.md](./DOC_02_LedgerPlanVocabulary.md).
 
 ## `LedgerJournalStep`, `LedgerJournalEntry`, `LedgerExecutionJournal`, `LedgerStepFailure`, `LedgerPlanFailure`, And `LedgerPlanResult`
 
@@ -665,8 +653,10 @@ public sealed interface LedgerPlanResult
   rollback failures use the dedicated `plan-boundary` kind plus a
   `boundaryCheckpoint`
 - Bound: `LedgerPlan` accepts at most 100 steps, which bounds full journal responses
-- Attestation: a successful mutating result carries the exact aggregate operation order and head;
-  a successful read-only result carries no attestation commit
+- Attestation: a successful result owns a non-null `LedgerPlanAttestationDisposition` paired with
+  its nullable `AttestationCommit`; the disposition's canonical
+  `LedgerPlanAttestationCommitMode` validates whether that commitment is required or must be null.
+  A rejected or assertion-failed result has neither field.
 - Boundary: these are published workflow protocol outputs; executor keeps a separate local
   workflow journal model while the plan is actually executing
 
@@ -684,6 +674,21 @@ public final class PostingApplicationService
   published `PostEntryCommand` into one local `PostingCommand` before delegating commit semantics
   to `executor.bookkeeping.posting.BookkeepingPostingService`
 
+## `PostingPreflightService`
+
+`PostingPreflightService` validates an authored posting without receiving a posting-mutation
+capability or reserving a posting identity.
+
+```java
+public final class PostingPreflightService
+```
+
+- Constructor: requires `PostingValidationStore` and `Clock` only.
+- Surface: `preflight(PostEntryCommand)` returns a published preflight acceptance or deterministic
+  rejection.
+- Boundary: it shares command admission and local accounting validation with posting commit, but
+  cannot append a posting or an attestation operation.
+
 ## `BookkeepingPostingService`
 
 `BookkeepingPostingService` owns local bookkeeping preflight and commit behavior before any public
@@ -699,56 +704,90 @@ public final class BookkeepingPostingService
 - Boundary: this service stays inside the bookkeeping context, applies the built-in bookkeeping
   kernel rules, and returns only local admission and commit outcomes
 
-## `BookWorkflowExecutionService`
+## `BookWorkflowExecutionService` And `BookWorkflowReadOnlyExecutionService`
 
-`BookWorkflowExecutionService` owns atomic execution of the local workflow model.
+`BookWorkflowExecutionService` and `BookWorkflowReadOnlyExecutionService` own the two disjoint
+atomic execution modes of the local workflow model.
 
 ```java
 public final class BookWorkflowExecutionService
+public final class BookWorkflowReadOnlyExecutionService
 ```
 
-- Constructor: requires `LedgerPlanTransaction`, `BookWorkflowExecutionDependencies`, and `Clock`
-- Surface: `execute(BookWorkflowPlan)`
+- Constructor: requires one bound `LedgerPlanExecutionStore` plus pure posting-identity and time
+  collaborators. Its complete store composition is documented in
+  [Book Session And Adapter API Reference](./DOC_03_BookSessionsAndAdapters.md).
+- Surface: `execute(BookWorkflowPlan, AttestationOperationAuthorizer)`
 - Policy: runs the whole local plan inside one durable transaction and rolls back on the first
-  rejected step or failed assertion
+  rejected step or failed assertion; after every successful plan-specific child persistence, its
+  coordinator records one `AttestationPlanChildMutation`, appends at most one final aggregate
+  attestation, then commits
 - Boundary: this service stays inside the workflow context and returns one local
-  `BookWorkflowExecutionResult`
+  `BookWorkflowExecutionResult`. It does not accept a generic bundle of independently supplied
+  direct-mutation stores or a separately injected transaction seam.
+- `BookWorkflowReadOnlyExecutionService`: requires only `LedgerPlanReadOnlyExecutionStore` and a
+  clock; its `execute(BookWorkflowPlan)` surface admits inspection, preflight, query, and assertion
+  steps only. It rejects a declared mutation before step execution, never receives signing
+  authority, and cannot append an aggregate operation.
 
-## `BookWorkflowExecutionDependencies`
+## `PlanAccountDeclarationService`, `PlanTaxRegistrationService`, `PlanPostingApplicationService`, And `PlanPostEntryOutcome`
 
-`BookWorkflowExecutionDependencies` groups the complete collaborator set required to execute one
-atomic local plan. It makes the attestation posting-commitment projection an explicit workflow
-dependency rather than smuggling it through the ordinary bookkeeping-read seam.
+These are capability-confined local services used by the workflow step executor for a plan child.
+They are not alternate application entry points for direct bookkeeping mutations.
 
 ```java
-public record BookWorkflowExecutionDependencies(
-    BookAdministrationStore administrationStore,
-    AccountCatalogStore accountCatalogStore,
-    BookkeepingReadStore readStore,
-    AttestationPostingCommitmentStore attestationCommitmentStore,
-    PostingValidationStore validationStore,
-    PostingCommitStore commitStore,
-    TaxAdministrationStore taxAdministrationStore,
-    PostingIdGenerator postingIdGenerator)
+public final class PlanAccountDeclarationService
+public final class PlanTaxRegistrationService
+public final class PlanPostingApplicationService
+public sealed interface PlanPostEntryOutcome
 ```
 
-- Boundary: `AttestationPostingCommitmentStore` remains separate from `BookkeepingReadStore`, so
-  a plan query must explicitly receive the capability that verifies immutable operation evidence
-- Policy: `get-posting` and `list-postings` workflow steps use the same verified commitment
-  projection as their direct-query counterparts
+- `PlanAccountDeclarationService`: validates and persists the sole account declaration family
+  admitted as a plan child through `PlanAccountDeclarationStore`.
+- `PlanTaxRegistrationService`: validates and persists the sole tax-registration family admitted
+  as a plan child through `PlanTaxRegistrationStore`.
+- `PlanPostingApplicationService`: shares published posting admission and preflight semantics, but
+  commits only through `PlanPostingCommitStore` with deferred aggregate attestation.
+- `PlanPostEntryOutcome`: a `Committed` result distinguishes an idempotent replay from a newly
+  persisted plan child; `Rejected` carries the published posting rejection before persistence.
+- Boundary: `LedgerPlanStepExecutor` creates these services only from the one bound
+  `LedgerPlanExecutionStore`. They never append direct child operations or receive a standalone
+  transaction; their completed child evidence is collected by the plan coordinator for the one
+  final aggregate attestation.
 
 ## `LedgerPlanService`
 
-`LedgerPlanService` is the published-language adapter for `execute-plan`.
+`LedgerPlanService` is the published-language adapter for signed mutation-capable `execute-plan`
+execution.
 
 ```java
 public final class LedgerPlanService
 ```
 
-- Constructor: requires `LedgerPlanTransaction`, `BookWorkflowExecutionDependencies`, and `Clock`
+- Constructor: accepts the same bound `LedgerPlanExecutionStore` used by workflow execution plus
+  pure posting-identity and time collaborators; its constructor is
+  `LedgerPlanService(LedgerPlanExecutionStore, PostingIdGenerator, Clock)`
+- Surface: `execute(LedgerPlan, AttestationOperationAuthorizer)`
 - Boundary: the service translates the public `LedgerPlan` into the local workflow model, delegates
   execution to `BookWorkflowExecutionService`, then projects the local execution result back into
-  the public `LedgerPlanResult` surface
+  the public `LedgerPlanResult` surface. It never splits plan reads, child mutation stores, final
+  attestation, or transaction control across independently injected dependencies.
+
+## `LedgerPlanReadOnlyService`
+
+`LedgerPlanReadOnlyService` is the published-language adapter for credential-free read-only
+`execute-plan` execution.
+
+```java
+public final class LedgerPlanReadOnlyService
+```
+
+- Constructor: accepts `LedgerPlanReadOnlyExecutionStore` and a `Clock`.
+- Surface: its
+  `execute(LedgerPlan)` surface has no authorizer argument. It delegates only to
+  `BookWorkflowReadOnlyExecutionService` and projects a successful result as
+  `LedgerPlanAttestationDisposition.READ_ONLY`. It cannot be used to execute a plan containing a
+  book mutation.
 
 ## `PostingIdGenerator`
 

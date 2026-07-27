@@ -1,7 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -21,7 +20,8 @@ class SqlitePostingFactStoreTestSupport extends SqliteStoreTestIntrospectionSupp
 
   @BeforeEach
   void hardenTempDirectory() {
-    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(tempDirectory);
+    tempDirectory =
+        SqliteTestPrivateDirectorySupport.canonicalizeAndHardenOwnerOnlyDirectory(tempDirectory);
   }
 
   void assertOpenConfigurationFailure(String driftSql, String expectedMessage) {
@@ -66,10 +66,9 @@ class SqlitePostingFactStoreTestSupport extends SqliteStoreTestIntrospectionSupp
 
   static void assertFreshCommittedPosting(
       CommittedPosting expectedPosting, PostingCommitResult actualResult) {
-    PostingCommitResult.Committed committed =
-        assertInstanceOf(PostingCommitResult.Committed.class, actualResult);
+    PostingCommitResult.Appended committed =
+        assertInstanceOf(PostingCommitResult.Appended.class, actualResult);
     assertEquals(expectedPosting, committed.postingFact());
-    assertFalse(committed.idempotentReplay());
-    assertNotNull(committed.attestationVerification());
+    assertNotNull(committed.attestationAppend().verification());
   }
 }

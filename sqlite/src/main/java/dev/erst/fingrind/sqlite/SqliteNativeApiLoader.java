@@ -25,6 +25,7 @@ final class SqliteNativeApiLoader {
     try {
       SqliteVerifiedLibrarySnapshot verifiedLibrarySnapshot =
           SqliteManagedLibraryIdentity.verifiedSnapshot(libraryTarget);
+      verifiedLibrarySnapshot.requireCurrentBytesMatchVerifiedDigestBeforePathLoad();
       SqliteLibraryTarget runtimeTarget = verifiedLibrarySnapshot.runtimeTarget();
       SymbolLookup lookup = libraryLookup(runtimeTarget, libraryArena);
       LoadedRuntime runtime = validateRuntime(lookup, runtimeTarget);

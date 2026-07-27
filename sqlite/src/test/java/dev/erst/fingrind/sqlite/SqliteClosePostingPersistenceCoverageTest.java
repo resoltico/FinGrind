@@ -51,6 +51,8 @@ import org.junit.jupiter.api.Test;
 class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTestSupport {
   private static final ReportingPeriod APRIL_2026 =
       new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-30"));
+  private static final ReportingPeriod FIRST_SWEEP_THROUGH_APRIL_2026 =
+      new ReportingPeriod(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-04-30"));
   private static final ReportingPeriod FISCAL_YEAR_2026 =
       new ReportingPeriod(LocalDate.parse("2026-01-01"), LocalDate.parse("2026-12-31"));
   private static final Instant FIXED_INSTANT = Instant.parse("2026-12-31T23:59:59Z");
@@ -85,7 +87,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                   requireStoreDatabase(postingFactStore),
                   observedHead(postingFactStore),
                   new dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft(
-                      APRIL_2026,
+                      FIRST_SWEEP_THROUGH_APRIL_2026,
                       new AccountCode("3200"),
                       List.of(),
                       FIXED_INSTANT,
@@ -142,6 +144,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                       FIXED_INSTANT,
                       null,
                       List.of(replayDraft)),
+                  null,
                   () -> new PostingId("c2312115-6b61-3107-97d1-09290f6cda25"),
                   SqliteAttestationTestSupport.authorizer());
 
@@ -207,6 +210,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                               FIXED_INSTANT,
                               null,
                               List.of(conflictingDraft)),
+                          null,
                           () -> new PostingId("960e24c2-ef40-3d2d-846b-f1d4963a42ee"),
                           SqliteAttestationTestSupport.authorizer()));
 
@@ -285,7 +289,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
   }
 
   @Test
-  void persistAcceptedPosting_persistsInventoryMovementsAndOnHandStates() {
+  void acceptedPostingPersistence_persistsInventoryMovementsAndOnHandStates() {
     Path bookPath = tempDirectory.resolve("close-persistence-inventory-effects.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
@@ -307,26 +311,26 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
               6L,
               600L);
 
+      SqliteAcceptedPostingPersistence acceptedPostings =
+          new SqliteAcceptedPostingPersistence(SqliteCommitFaultHook.NONE);
       CommittedPosting reservePosting =
-          closingMutationOperations(postingFactStore)
-              .persistAcceptedPosting(
-                  requireStoreDatabase(postingFactStore),
-                  acceptedInventoryPosting(
-                      reserveAcquisition,
-                      Map.of(new AccountCode("1410"), inventoryState(2L, 300L, "2026-04-07"))),
-                  new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
-                  generatedProvenance("inventory-posting", "persist"),
-                  () -> new PostingId("7383e00e-486e-310b-a663-7672ae9d4159"));
+          acceptedPostings.persistAcceptedPosting(
+              requireStoreDatabase(postingFactStore),
+              acceptedInventoryPosting(
+                  reserveAcquisition,
+                  Map.of(new AccountCode("1410"), inventoryState(2L, 300L, "2026-04-07"))),
+              new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
+              generatedProvenance("inventory-posting", "persist"),
+              () -> new PostingId("7383e00e-486e-310b-a663-7672ae9d4159"));
       CommittedPosting inventoryPosting =
-          closePostingPersistence(postingFactStore)
-              .persistAcceptedPosting(
-                  requireStoreDatabase(postingFactStore),
-                  acceptedInventoryPosting(
-                      inventoryAcquisition,
-                      Map.of(new AccountCode("1400"), inventoryState(6L, 600L, "2026-04-07"))),
-                  new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
-                  generatedProvenance("inventory-posting", "persist-second"),
-                  () -> new PostingId("0ade5f8e-9609-3b94-bb31-5593699bbcb7"));
+          acceptedPostings.persistAcceptedPosting(
+              requireStoreDatabase(postingFactStore),
+              acceptedInventoryPosting(
+                  inventoryAcquisition,
+                  Map.of(new AccountCode("1400"), inventoryState(6L, 600L, "2026-04-07"))),
+              new RequestFingerprint(RequestFingerprint.CURRENT_VERSION, "0".repeat(64)),
+              generatedProvenance("inventory-posting", "persist-second"),
+              () -> new PostingId("0ade5f8e-9609-3b94-bb31-5593699bbcb7"));
 
       assertEquals(
           new PostingId("7383e00e-486e-310b-a663-7672ae9d4159"), reservePosting.postingId());
@@ -364,7 +368,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
   }
 
   @Test
-  void persistAcceptedPosting_rejectsInventoryStatesWithoutLastMovementDate() {
+  void acceptedPostingPersistence_rejectsInventoryStatesWithoutLastMovementDate() {
     Path bookPath = tempDirectory.resolve("close-persistence-inventory-state-date.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
@@ -374,7 +378,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
           assertThrows(
               IllegalStateException.class,
               () ->
-                  closePostingPersistence(postingFactStore)
+                  new SqliteAcceptedPostingPersistence(SqliteCommitFaultHook.NONE)
                       .persistAcceptedPosting(
                           requireStoreDatabase(postingFactStore),
                           acceptedInventoryPosting(
@@ -416,15 +420,6 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
     return SqliteAttestationEvidenceStore.observeRequired(requireStoreDatabase(postingFactStore));
   }
 
-  private static SqliteClosingMutationOperations closingMutationOperations(
-      SqlitePostingFactStore postingFactStore) {
-    return new SqliteClosingMutationOperations(
-        postingFactStore.storeContext(),
-        postingFactStore.storeLifecycle(),
-        SqliteCommitFaultHook.NONE,
-        PostingAcceptancePolicy.currentKernel());
-  }
-
   private static CommittedPosting persistAcceptedGeneratedClosePosting(
       SqlitePostingFactStore postingFactStore, PostingDraft postingDraft, PostingId postingId) {
     SqliteNativeDatabase database = requireStoreDatabase(postingFactStore);
@@ -436,7 +431,7 @@ class SqliteClosePostingPersistenceCoverageTest extends SqlitePostingFactStoreTe
                     database, postingFactStore.storeContext().postingReader(), true));
     return switch (decision) {
       case PostingAcceptancePolicy.Decision.Accepted accepted ->
-          closePostingPersistence(postingFactStore)
+          new SqliteAcceptedPostingPersistence(SqliteCommitFaultHook.NONE)
               .persistAcceptedPosting(
                   database,
                   accepted.acceptedPosting(),

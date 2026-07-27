@@ -10,11 +10,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.jazzer.support.JazzerHarness;
 import dev.erst.fingrind.jazzer.support.JazzerTestProjectRoot;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -144,7 +147,7 @@ class JazzerRegressionRunnerTest {
           RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
               .resolve("invalid_missing_provenance.json");
       RegressionSeedMetadata metadata = JazzerJson.read(metadataPath, RegressionSeedMetadata.class);
-      JazzerJson.write(
+      overwriteMetadata(
           metadataPath,
           new RegressionSeedMetadata(
               metadata.targetKey(),
@@ -195,7 +198,7 @@ class JazzerRegressionRunnerTest {
           RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
               .resolve("basic_valid.json");
       RegressionSeedMetadata metadata = JazzerJson.read(metadataPath, RegressionSeedMetadata.class);
-      JazzerJson.write(
+      overwriteMetadata(
           metadataPath,
           new RegressionSeedMetadata(
               "posting-workflow",
@@ -218,13 +221,22 @@ class JazzerRegressionRunnerTest {
     void run_returnsFailureWhenCommittedInputIsMissing() throws Exception {
       StringWriter output = new StringWriter();
       StringWriter errors = new StringWriter();
-      writeSeedMetadata(
-          JazzerHarness.cliRequest(),
-          "basic_valid.json",
-          JazzerReplayRequestFixtures.basicValidRequest());
-      Path inputPath =
+      Path missingInputPath =
           JazzerHarness.cliRequest().inputDirectory(projectDirectory).resolve("basic_valid.json");
-      Files.delete(inputPath);
+      RegressionSeedMetadata metadata =
+          new RegressionSeedMetadata(
+              JazzerHarness.cliRequest().key(),
+              projectDirectory.relativize(missingInputPath).toString(),
+              "missing committed input",
+              JazzerReplayRunner.expectationFor(
+                  JazzerReplayRunner.replay(
+                      JazzerHarness.cliRequest(),
+                      JazzerReplayRequestFixtures.basicValidRequest().getBytes(UTF_8))));
+      Path metadataPath =
+          RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
+              .resolve("basic_valid.json");
+      Files.createDirectories(metadataPath.getParent());
+      JazzerJson.write(metadataPath, metadata);
 
       int exitCode =
           JazzerRegressionRunner.run(
@@ -235,6 +247,38 @@ class JazzerRegressionRunnerTest {
 
       assertEquals(1, exitCode);
       assertTrue(errors.toString().contains("Committed regression input does not exist"));
+    }
+
+    @Test
+    void run_refusesSymbolicLinkInputs_beforeInvokingTheReplayExecutor() throws Exception {
+      StringWriter output = new StringWriter();
+      StringWriter errors = new StringWriter();
+      writeSeedMetadata(
+          JazzerHarness.cliRequest(),
+          "basic_valid.json",
+          JazzerReplayRequestFixtures.basicValidRequest());
+      Path inputPath =
+          JazzerHarness.cliRequest().inputDirectory(projectDirectory).resolve("basic_valid.json");
+      Path outsideInputPath = projectDirectory.resolve("outside.json");
+      Files.writeString(outsideInputPath, JazzerReplayRequestFixtures.basicValidRequest());
+      Files.delete(inputPath);
+      createSymbolicLinkOrSkip(inputPath, outsideInputPath);
+      AtomicBoolean replayed = new AtomicBoolean();
+
+      int exitCode =
+          JazzerRegressionRunner.run(
+              projectDirectory,
+              JazzerHarness.cliRequest(),
+              new PrintWriter(output, true),
+              new PrintWriter(errors, true),
+              (harness, input) -> {
+                replayed.set(true);
+                return JazzerReplayRunner.replay(harness, input);
+              });
+
+      assertEquals(1, exitCode);
+      assertFalse(replayed.get());
+      assertTrue(errors.toString().contains("non-file raw input"));
     }
 
     @Test
@@ -276,7 +320,7 @@ class JazzerRegressionRunnerTest {
           RegressionSeedPaths.metadataDirectory(projectDirectory, JazzerHarness.cliRequest())
               .resolve("basic_valid.json");
       RegressionSeedMetadata metadata = JazzerJson.read(metadataPath, RegressionSeedMetadata.class);
-      JazzerJson.write(
+      overwriteMetadata(
           metadataPath,
           new RegressionSeedMetadata(
               metadata.targetKey(),
@@ -342,6 +386,20 @@ class JazzerRegressionRunnerTest {
           RegressionSeedPaths.metadataDirectory(projectDirectory, harness).resolve(fileName);
       Files.createDirectories(metadataPath.getParent());
       JazzerJson.write(metadataPath, metadata);
+    }
+
+    private static void overwriteMetadata(Path metadataPath, RegressionSeedMetadata metadata)
+        throws IOException {
+      Files.writeString(metadataPath, JazzerJson.toJson(metadata), UTF_8);
+    }
+
+    private static void createSymbolicLinkOrSkip(Path link, Path target) throws IOException {
+      try {
+        Files.createSymbolicLink(link, target);
+      } catch (UnsupportedOperationException | IOException unsupported) {
+        Assumptions.assumeTrue(
+            false, "Symbolic-link refusal coverage requires local symbolic-link support.");
+      }
     }
   }
 

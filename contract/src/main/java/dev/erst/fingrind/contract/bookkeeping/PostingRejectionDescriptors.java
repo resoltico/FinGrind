@@ -2,7 +2,9 @@ package dev.erst.fingrind.contract.bookkeeping;
 
 import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.FailureCategory;
+import dev.erst.fingrind.contract.runtime.FieldDescriptor;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import java.util.List;
 import java.util.Objects;
 
@@ -22,7 +24,7 @@ final class PostingRejectionDescriptors {
     return AccountStateViolationOwner.code(Objects.requireNonNull(violation, "violation"));
   }
 
-  static List<ContractResponse.RejectionDescriptor> descriptors() {
+  static List<RejectionDescriptor> descriptors() {
     return Descriptor.descriptors();
   }
 
@@ -73,7 +75,7 @@ final class PostingRejectionDescriptors {
         "Posting refused because the selected book does not exist or has not been initialized with "
             + ProtocolCatalog.operationName(OperationId.OPEN_BOOK)
             + ".",
-        ContractResponse.FailureCategory.PRECONDITION,
+        FailureCategory.PRECONDITION,
         PostingRejectionDetailDescriptors.FieldOwner.NONE,
         PostingRejectionDetailDescriptors.RejectionOwner.NONE),
     ENTRY_SEMANTICS_VIOLATIONS(
@@ -149,7 +151,7 @@ final class PostingRejectionDescriptors {
 
     private final String code;
     private final String description;
-    private final ContractResponse.FailureCategory category;
+    private final FailureCategory category;
     private final PostingRejectionDetailDescriptors.FieldOwner detailFields;
     private final PostingRejectionDetailDescriptors.RejectionOwner detailRejections;
 
@@ -158,18 +160,13 @@ final class PostingRejectionDescriptors {
         String description,
         PostingRejectionDetailDescriptors.FieldOwner detailFields,
         PostingRejectionDetailDescriptors.RejectionOwner detailRejections) {
-      this(
-          code,
-          description,
-          ContractResponse.FailureCategory.DOMAIN_SEMANTIC,
-          detailFields,
-          detailRejections);
+      this(code, description, FailureCategory.DOMAIN_SEMANTIC, detailFields, detailRejections);
     }
 
     Descriptor(
         String code,
         String description,
-        ContractResponse.FailureCategory category,
+        FailureCategory category,
         PostingRejectionDetailDescriptors.FieldOwner detailFields,
         PostingRejectionDetailDescriptors.RejectionOwner detailRejections) {
       this.code = Objects.requireNonNull(code, "code");
@@ -187,24 +184,24 @@ final class PostingRejectionDescriptors {
       return description;
     }
 
-    private List<ContractResponse.FieldDescriptor> detailFields() {
+    private List<FieldDescriptor> detailFields() {
       return PostingRejectionDetailDescriptors.fields(detailFields);
     }
 
-    private List<ContractResponse.RejectionDescriptor> detailRejections() {
+    private List<RejectionDescriptor> detailRejections() {
       return detailRejections.descriptors();
     }
 
-    private ContractResponse.RejectionDescriptor descriptor() {
-      return new ContractResponse.RejectionDescriptor(
+    private RejectionDescriptor descriptor() {
+      return new RejectionDescriptor(
           code(), category(), description(), detailFields(), detailRejections());
     }
 
-    private ContractResponse.FailureCategory category() {
+    private FailureCategory category() {
       return category;
     }
 
-    private static List<ContractResponse.RejectionDescriptor> descriptors() {
+    private static List<RejectionDescriptor> descriptors() {
       return List.of(values()).stream().map(Descriptor::descriptor).toList();
     }
   }

@@ -1,7 +1,8 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
 import dev.erst.fingrind.contract.internal.ContractDescriptorValidation;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.FieldDescriptor;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +35,7 @@ final class EntrySemanticsViolationOwner {
   private static final Comparator<PostingRejection.EntrySemanticsViolation> CANONICAL_ORDER =
       Comparator.comparingInt(violation -> ORDER_BY_CODE.get(require(violation.code()).code()));
 
-  private static final List<ContractResponse.FieldDescriptor> DETAIL_FIELDS =
+  private static final List<FieldDescriptor> DETAIL_FIELDS =
       List.of(
           detailField("code", "Stable entry-semantics violation code."),
           detailField("field", "Optional request-field path associated with this violation."),
@@ -78,7 +79,7 @@ final class EntrySemanticsViolationOwner {
         .toList();
   }
 
-  static List<ContractResponse.RejectionDescriptor> descriptors() {
+  static List<RejectionDescriptor> descriptors() {
     return DEFINITIONS.stream().map(definition -> definition.descriptor(DETAIL_FIELDS)).toList();
   }
 
@@ -97,8 +98,8 @@ final class EntrySemanticsViolationOwner {
                 index -> DEFINITIONS.get(index).code(), Function.identity()));
   }
 
-  private static ContractResponse.FieldDescriptor detailField(String name, String description) {
-    return new ContractResponse.FieldDescriptor(
+  private static FieldDescriptor detailField(String name, String description) {
+    return new FieldDescriptor(
         ContractDescriptorValidation.requireText(name, "name"),
         ContractDescriptorValidation.requireText(description, "description"));
   }

@@ -3,9 +3,11 @@ package dev.erst.fingrind.executor;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountRegistryDependency;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
+import dev.erst.fingrind.executor.bookkeeping.AccountAmendmentDecision;
 import dev.erst.fingrind.executor.bookkeeping.AccountAmendmentOutcome;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.AccountRegistryLifecyclePolicy;
+import dev.erst.fingrind.executor.bookkeeping.AccountRetirementDecision;
 import dev.erst.fingrind.executor.bookkeeping.AccountRetirementOutcome;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
@@ -25,19 +27,27 @@ abstract class AbstractInMemoryAccountRegistryLifecycleSession
     return InMemoryBookSessionSupport.withLock(
         lock,
         () -> {
+          requireDirectMutationPermitted();
           if (!initialized) {
             return new AccountAmendmentOutcome.Rejected(
                 new BookkeepingAdministrationRejection.BookNotInitialized());
           }
-          AccountAmendmentOutcome outcome =
+          AccountAmendmentDecision decision =
               AccountRegistryLifecyclePolicy.amend(
                   accountsByCode.get(amendment.accountCode()),
                   amendment,
                   amendmentDependencies(amendment.accountCode()));
-          if (outcome instanceof AccountAmendmentOutcome.Amended amended) {
+          if (decision instanceof AccountAmendmentDecision.Amended amended) {
             accountsByCode.put(amendment.accountCode(), amended.account());
           }
-          return outcome;
+          return switch (decision) {
+            case AccountAmendmentDecision.Amended amended ->
+                new AccountAmendmentOutcome.Amended(amended.account(), IN_MEMORY_DIRECT_APPEND);
+            case AccountAmendmentDecision.Unchanged unchanged ->
+                new AccountAmendmentOutcome.Unchanged(unchanged.account());
+            case AccountAmendmentDecision.Rejected rejected ->
+                new AccountAmendmentOutcome.Rejected(rejected.rejection());
+          };
         });
   }
 
@@ -63,20 +73,28 @@ abstract class AbstractInMemoryAccountRegistryLifecycleSession
     return InMemoryBookSessionSupport.withLock(
         lock,
         () -> {
+          requireDirectMutationPermitted();
           if (!initialized) {
             return new AccountRetirementOutcome.Rejected(
                 new BookkeepingAdministrationRejection.BookNotInitialized());
           }
-          AccountRetirementOutcome outcome =
+          AccountRetirementDecision decision =
               AccountRegistryLifecyclePolicy.retire(
                   accountCode,
                   accountsByCode.get(accountCode),
                   retirementDependencies(accountCode),
                   currentBalanceZero(accountCode));
-          if (outcome instanceof AccountRetirementOutcome.Retired retired) {
+          if (decision instanceof AccountRetirementDecision.Retired retired) {
             accountsByCode.put(accountCode, retired.account());
           }
-          return outcome;
+          return switch (decision) {
+            case AccountRetirementDecision.Retired retired ->
+                new AccountRetirementOutcome.Retired(retired.account(), IN_MEMORY_DIRECT_APPEND);
+            case AccountRetirementDecision.Unchanged unchanged ->
+                new AccountRetirementOutcome.Unchanged(unchanged.account());
+            case AccountRetirementDecision.Rejected rejected ->
+                new AccountRetirementOutcome.Rejected(rejected.rejection());
+          };
         });
   }
 

@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -131,6 +132,73 @@ class RegressionSeedMetadataTest {
   }
 
   @Test
+  void catalog_helpers_canonicalize_project_root_aliases_before_comparing_inputs()
+      throws Exception {
+    Path realProjectDirectory = tempDirectory.resolve("real-project");
+    Files.createDirectory(realProjectDirectory);
+    Path projectAlias = tempDirectory.resolve("project-alias");
+    createSymbolicLinkOrSkip(projectAlias, realProjectDirectory);
+
+    Path inputPath =
+        JazzerHarness.cliRequest().inputDirectory(realProjectDirectory).resolve("basic.json");
+    Files.createDirectories(inputPath.getParent());
+    Files.writeString(inputPath, JazzerReplayRequestFixtures.basicValidRequest());
+    Path metadataPath =
+        RegressionSeedPaths.metadataDirectory(realProjectDirectory, JazzerHarness.cliRequest())
+            .resolve("basic.json");
+    Files.createDirectories(metadataPath.getParent());
+    JazzerJson.write(
+        metadataPath,
+        new RegressionSeedMetadata(
+            JazzerHarness.cliRequest().key(),
+            realProjectDirectory.relativize(inputPath).toString(),
+            "project alias canonicalization",
+            JazzerReplayRunner.expectationFor(
+                JazzerReplayRunner.replay(
+                    JazzerHarness.cliRequest(), Files.readAllBytes(inputPath)))));
+
+    assertEquals(
+        List.of(), RegressionSeedPaths.orphanedInputs(projectAlias, JazzerHarness.cliRequest()));
+  }
+
+  @Test
+  void catalog_helpers_refuse_symbolic_link_corpus_directories() throws Exception {
+    Path outsideDirectory = tempDirectory.resolve("outside");
+    Files.createDirectory(outsideDirectory);
+    Path inputDirectory = JazzerHarness.cliRequest().inputDirectory(tempDirectory);
+    Files.createDirectories(inputDirectory.getParent());
+    createSymbolicLinkOrSkip(inputDirectory, outsideDirectory);
+
+    IOException rejection =
+        assertThrows(
+            IOException.class,
+            () -> RegressionSeedPaths.inputPaths(tempDirectory, JazzerHarness.cliRequest()));
+
+    assertTrue(String.valueOf(rejection.getMessage()).contains("real non-symlink directory"));
+  }
+
+  @Test
+  void catalog_helpers_refuse_symbolic_link_corpus_ancestors() throws Exception {
+    Path outsideDirectory = tempDirectory.resolve("outside");
+    Files.createDirectory(outsideDirectory);
+    createSymbolicLinkOrSkip(tempDirectory.resolve("src"), outsideDirectory);
+
+    IOException inputRejection =
+        assertThrows(
+            IOException.class,
+            () -> RegressionSeedPaths.inputPaths(tempDirectory, JazzerHarness.cliRequest()));
+    IOException metadataRejection =
+        assertThrows(
+            IOException.class,
+            () -> RegressionSeedPaths.metadataPaths(tempDirectory, JazzerHarness.cliRequest()));
+
+    assertTrue(String.valueOf(inputRejection.getMessage()).contains("real non-symlink directory"));
+    assertTrue(
+        String.valueOf(metadataRejection.getMessage()).contains("real non-symlink directory"));
+    assertFalse(Files.exists(outsideDirectory.resolve("fuzz")));
+  }
+
+  @Test
   void strict_catalog_helpers_fail_fast_on_invalid_metadata() throws IOException {
     Path metadataDirectory =
         RegressionSeedPaths.metadataDirectory(tempDirectory, JazzerHarness.cliRequest());
@@ -203,6 +271,15 @@ class RegressionSeedMetadataTest {
       assertTrue(
           seenDigests.add(entry.sha256()),
           "committed seed bytes must be unique across the corpus: " + entry.inputPath());
+    }
+  }
+
+  private static void createSymbolicLinkOrSkip(Path link, Path target) throws IOException {
+    try {
+      Files.createSymbolicLink(link, target);
+    } catch (UnsupportedOperationException | IOException unsupported) {
+      Assumptions.assumeTrue(
+          false, "Symbolic-link refusal coverage requires local symbolic-link support.");
     }
   }
 }

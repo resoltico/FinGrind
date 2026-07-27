@@ -93,6 +93,8 @@ final class SqliteRoundTripWorkflowConcurrencyCoverage {
 
   static void exerciseConcurrentWriterCoverage(PostEntryCommand command, Path concurrentRoot)
       throws IOException {
+    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(concurrentRoot);
+    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(concurrentRoot.resolve("keys"));
     Path bookPath = concurrentRoot.resolve("books").resolve("entity.sqlite");
     Path keyPath = concurrentRoot.resolve("keys").resolve("entity.book-key");
     SqliteFuzzAssertions.writeDeterministicBookKeyFile(keyPath);

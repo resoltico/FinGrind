@@ -115,9 +115,8 @@ class CliReadWorkflowCoverageTest extends CliBookWorkflowFixtureSupport {
                     UUID.fromString("10213243-5465-7687-98a9-babcbddceeff"),
                     bookFile.resolveSibling(bookFile.getFileName() + ".founder.fgatk"),
                     bookFile.resolveSibling(bookFile.getFileName() + ".founder-passphrase"))));
-    Path receiptDirectory = tempDirectory.resolve("receipts");
-    java.nio.file.Files.createDirectories(receiptDirectory);
-    Path receiptFile = receiptDirectory.resolve("current.fgr");
+    Path receiptFile = tempDirectory.resolve("receipts/current.fgr");
+    createExistingOwnerOnlyParentDirectory(receiptFile);
     assertNotNull(
         workflow.reviewAttestation(attestedBookAccess, java.util.List.of()).requireAccepted());
     assertNotNull(

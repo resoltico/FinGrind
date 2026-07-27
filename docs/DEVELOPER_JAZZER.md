@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: DEVELOPER_JAZZER
-updated: "2026-07-16"
+updated: "2026-07-26"
 route:
   keywords: [fingrind, jazzer, fuzzing, local-only, wrappers, regression, replay, sqlite, cli, reversal]
   questions: ["how is jazzer used in fingrind", "which fuzz targets does fingrind ship", "how do I run active fuzzing in fingrind", "what is the supported jazzer operator surface in fingrind"]
@@ -14,7 +14,8 @@ route:
 **Companion references**:
 - [DEVELOPER.md](./DEVELOPER.md) for the root build, quality gates, and GitHub workflow stance.
 - [DEVELOPER_GRADLE.md](./DEVELOPER_GRADLE.md) for the root-versus-nested build split and shared build logic.
-- [DEVELOPER_JAZZER_OPERATIONS.md](./DEVELOPER_JAZZER_OPERATIONS.md) for command usage, local state, and cleanup.
+- [DEVELOPER_JAZZER_OPERATIONS.md](./DEVELOPER_JAZZER_OPERATIONS.md) for command usage, local
+  state, and retained-artifact handling.
 - [DEVELOPER_JAZZER_COVERAGE.md](./DEVELOPER_JAZZER_COVERAGE.md) for the harness matrix and committed seed floor.
 
 ## Build Boundary
@@ -26,8 +27,8 @@ That separation is deliberate:
 - committed regression replay remains explicit
 - the nested build imports the root version catalog and shared build logic instead of carrying its
   own parallel dependency authority
-- the nested build compiles and injects its own managed SQLite 3.53.3 / SQLite3 Multiple Ciphers
-  2.3.6 runtime from the same vendored source used by the root build
+- the nested build compiles and injects its own managed SQLite 3.53.4 / SQLite3 Multiple Ciphers
+  2.4.0 runtime from the same vendored source used by the root build
 - GitHub workflows do not run active fuzzing; Jazzer remains local-only by design
 
 FinGrind now has two distinct Jazzer operator surfaces of its own:
@@ -48,13 +49,12 @@ Use these surfaces intentionally:
 - `jazzer/bin/regression`
 - `jazzer/bin/check`
 - `./gradlew jazzerCheck`
-- `jazzer/bin/clean-local-findings`
-- `jazzer/bin/clean-local-corpus`
 
-Those commands are the supported deterministic and local-hygiene Jazzer surface. The root-owned
+Those commands are the supported deterministic Jazzer surface. The root-owned
 `jazzerCheck` task is the authoritative deterministic verification owner; `jazzer/bin/check`
 delegates to it, while the remaining wrappers keep their direct nested-build ownership for replay,
-regression, and cleanup. Only the deterministic verification commands belong in GitHub workflows.
+regression, and retained-artifact inspection. Only the deterministic verification commands belong
+in GitHub workflows.
 
 For active fuzzing, use only:
 
@@ -132,8 +132,6 @@ jazzer/bin/replay cli-request jazzer/.local/runs/cli-request/crash-<sha1> --cons
 jazzer/bin/list-findings cli-request --console=plain
 jazzer/bin/seed-audit --console=plain
 jazzer/bin/promote-seed cli-request jazzer/.local/runs/cli-request/crash-<sha1> --name seed_name --intent "coverage intent" --console=plain
-jazzer/bin/clean-local-findings
-jazzer/bin/clean-local-corpus
 ```
 
 For committed seeds:
@@ -141,13 +139,18 @@ For committed seeds:
 - `--intent` must describe one committed behavior or invariant uniquely across the corpus
 - `--json` returns structured success output on success and a structured error payload on
   deterministic operator failures, including wrapper-side target and input validation, without
-  leaking Gradle task boilerplate
+  leaking Gradle task boilerplate. Its `retainedArtifactPaths` list is empty for ordinary failures
+  and names every materialized candidate retained after a failed seed promotion
 - `jazzer/bin/promote-seed --help` and `jazzer/bin/seed-audit --help` now print the supported
   replayable `<target-key>` values directly from the committed topology contract
+- committed inputs and metadata are public repository source rather than private-secret artifacts;
+  `promote-seed` refuses symbolic-link source or corpus paths, creates missing corpus directories
+  one real component at a time, and never replaces an existing candidate
 
-The cleanup wrappers are intentionally best-effort around preserved corpus directories: they skip
-corpus subtrees when clearing findings, and they emit warnings instead of aborting if the host
-filesystem leaves one corpus root temporarily undeletable.
+Local Jazzer corpora, findings, run logs, and promotion candidates are retained evidence. FinGrind
+ships no cleanup or purge command for them. Inspect findings with `jazzer/bin/list-findings` and
+promotion integrity with `jazzer/bin/seed-audit`; do not delete, overwrite, or reuse an evidence
+path in place.
 
 ## Harness Inventory
 
@@ -197,6 +200,11 @@ It makes the currently expected replay result explicit and reviewable:
 - that coverage-intent string is unique across the committed corpus so one intent maps to one
   pinned behavior
 - `jazzer/bin/promote-seed` is the project-owned path for adding that seed plus metadata together
+- a seed promotion that cannot finish never deletes its copied input or partial metadata; it reports
+  the retained absolute candidate paths, and `jazzer/bin/seed-audit <target-key> --json` proves
+  the retained input as an orphan alongside the partial metadata's integrity failure. Reconcile
+  that evidence only through a deliberate reviewable version-control change; `promote-seed` never
+  retries, repairs, or cleans it in place
 - `jazzer/bin/seed-audit` is the project-owned proof that the committed floor has no duplicate raw
   inputs, no orphaned committed inputs, no metadata entries that encode `unexpected-failure`, no
   escaped or missing metadata input references, and no malformed committed `.json` seed bodies

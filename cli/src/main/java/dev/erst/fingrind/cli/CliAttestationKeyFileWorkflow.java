@@ -3,12 +3,12 @@ package dev.erst.fingrind.cli;
 import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.protocol.ProtocolOptions;
 import dev.erst.fingrind.contract.runtime.AttestationKeyFileMetadata;
-import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.core.PrivateOutputDirectory;
 import dev.erst.fingrind.core.attestation.AttestationCustodian;
+import dev.erst.fingrind.core.attestation.AttestationKeyFileCreation;
 import dev.erst.fingrind.core.attestation.AttestationKeyFiles;
 import dev.erst.fingrind.core.attestation.AttestationPublicCredential;
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -18,9 +18,6 @@ import java.util.Objects;
 
 /** Executes standalone attestation-credential generation and public identity inspection. */
 final class CliAttestationKeyFileWorkflow {
-  private static final String CREDENTIAL_FAILURE_HINT =
-      "Confirm the encrypted credential and passphrase files are regular readable files and the passphrase is valid UTF-8 and nonempty.";
-
   private final CliMutationResponseWriter responseWriter;
   private final CliFailureResponseWriter failureWriter;
 
@@ -36,23 +33,30 @@ final class CliAttestationKeyFileWorkflow {
       Path passphraseFilePath,
       OutputMode outputMode) {
     Path normalizedKeyPath = normalized(keyFilePath);
-    if (!hasExistingCredentialParent(normalizedKeyPath)) {
-      return invalidCredentialTarget(
-          normalizedKeyPath, ProtocolOptions.Attestation.NEW_KEY_FILE, outputMode);
+    Path canonicalKeyPath;
+    try {
+      canonicalKeyPath = canonicalPrivateCredentialPath(normalizedKeyPath);
+    } catch (IOException
+        | IllegalArgumentException
+        | UnsupportedOperationException
+        | SecurityException exception) {
+      return writeFailure(
+          CliAttestationKeyFileFailureMapper.invalidArtifactOutputDirectory(
+              normalizedKeyPath, ProtocolOptions.Attestation.NEW_KEY_FILE),
+          outputMode);
     }
     try {
-      AttestationPublicCredential credential =
+      AttestationKeyFileCreation created =
           switch (Objects.requireNonNull(custodian, "custodian")) {
-            case FILE_PKCS8 -> AttestationKeyFiles.create(normalizedKeyPath, passphraseFilePath);
+            case FILE_PKCS8 -> AttestationKeyFiles.create(canonicalKeyPath, passphraseFilePath);
           };
-      responseWriter.writeGeneratedAttestationKeyFileResult(
-          metadata(normalizedKeyPath, credential), outputMode);
+      responseWriter.writeGeneratedAttestationKeyFileResult(created, outputMode);
       return 0;
-    } catch (FileAlreadyExistsException exception) {
-      return occupied(normalizedKeyPath, ProtocolOptions.Attestation.NEW_KEY_FILE, outputMode);
-    } catch (IOException | IllegalArgumentException exception) {
-      return invalidCredential(
-          normalizedKeyPath, ProtocolOptions.Attestation.NEW_KEY_FILE, outputMode);
+    } catch (IOException | RuntimeException exception) {
+      return writeFailure(
+          CliAttestationKeyFileFailureMapper.creationFailure(
+              exception, canonicalKeyPath, ProtocolOptions.Attestation.NEW_KEY_FILE),
+          outputMode);
     }
   }
 
@@ -68,40 +72,11 @@ final class CliAttestationKeyFileWorkflow {
           outputMode);
       return 0;
     } catch (IOException | IllegalArgumentException exception) {
-      return invalidCredential(normalizedKeyPath, ProtocolOptions.Attestation.KEY_FILE, outputMode);
+      return writeFailure(
+          CliAttestationKeyFileFailureMapper.invalidCredential(
+              normalizedKeyPath, ProtocolOptions.Attestation.KEY_FILE),
+          outputMode);
     }
-  }
-
-  private int occupied(Path path, String option, OutputMode outputMode) {
-    return writeFailure(
-        ContractErrors.Descriptor.SECRET_TARGET_OCCUPIED.failureAt(
-            path,
-            "Generated attestation key target already exists and will not be overwritten.",
-            "Choose an absent " + option + " path before rerunning the command.",
-            option),
-        outputMode);
-  }
-
-  private int invalidCredential(Path path, String option, OutputMode outputMode) {
-    return writeFailure(
-        ContractErrors.Descriptor.INVALID_ATTESTATION_CREDENTIAL.failureAt(
-            path,
-            "FinGrind could not read or create the selected attestation credential.",
-            CREDENTIAL_FAILURE_HINT,
-            option),
-        outputMode);
-  }
-
-  private int invalidCredentialTarget(Path path, String option, OutputMode outputMode) {
-    return writeFailure(
-        ContractErrors.Descriptor.INVALID_ATTESTATION_KEY_FILE.failureAt(
-            path,
-            "The new attestation key file requires an existing non-symlink parent directory.",
-            "Create and secure the target parent directory yourself, then choose an absent "
-                + option
-                + " path beneath it.",
-            option),
-        outputMode);
   }
 
   private int writeFailure(
@@ -121,10 +96,17 @@ final class CliAttestationKeyFileWorkflow {
     return Objects.requireNonNull(path, "path").toAbsolutePath().normalize();
   }
 
-  private static boolean hasExistingCredentialParent(Path keyFilePath) {
+  private static Path canonicalPrivateCredentialPath(Path keyFilePath) throws IOException {
     Path parent = keyFilePath.getParent();
-    return parent != null
-        && !Files.isSymbolicLink(parent)
-        && Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS);
+    if (parent == null) {
+      throw new IllegalArgumentException("Attestation key file must have a parent directory.");
+    }
+    Path fileName = keyFilePath.getFileName();
+    if (!Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)) {
+      PrivateOutputDirectory.requireExistingOwnerOnly(parent);
+    }
+    Path canonicalParent = parent.toRealPath();
+    PrivateOutputDirectory.requireExistingOwnerOnly(canonicalParent);
+    return canonicalParent.resolve(fileName);
   }
 }

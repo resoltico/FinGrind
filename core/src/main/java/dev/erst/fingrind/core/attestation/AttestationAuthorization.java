@@ -7,7 +7,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
-/** Applies the shared envelope authorization order at one historical resolving position. */
+/** Applies the shared envelope authorization order at one resolving attestation position. */
 final class AttestationAuthorization {
   private AttestationAuthorization() {}
 

@@ -1,6 +1,10 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.protocol.OperationId;
+import dev.erst.fingrind.contract.runtime.FailureCategory;
+import dev.erst.fingrind.contract.runtime.FieldDescriptor;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
+import dev.erst.fingrind.core.WireValue;
 import java.util.List;
 import java.util.Objects;
 
@@ -12,7 +16,7 @@ final class BookMaintenanceRejectionDescriptors {
     return descriptorFor(rejection).code();
   }
 
-  static List<ContractResponse.RejectionDescriptor> descriptors() {
+  static List<RejectionDescriptor> descriptors() {
     return Descriptor.descriptors();
   }
 
@@ -24,6 +28,7 @@ final class BookMaintenanceRejectionDescriptors {
           Descriptor.BACKUP_SOURCE_HAS_BLOCKING_ARTIFACTS;
       case BookMaintenanceRejection.BackupSourceMatchesLiveBook _ ->
           Descriptor.BACKUP_SOURCE_MATCHES_LIVE_BOOK;
+      case BookMaintenanceRejection.PairTargetsConflict _ -> Descriptor.PAIR_TARGETS_CONFLICT;
       case BookMaintenanceRejection.ArtifactPathInvalid _ -> Descriptor.ARTIFACT_PATH_INVALID;
       case BookMaintenanceRejection.ArtifactBusy _ -> Descriptor.ARTIFACT_BUSY;
       case BookMaintenanceRejection.BackupAcknowledgementConflict _ ->
@@ -33,6 +38,7 @@ final class BookMaintenanceRejectionDescriptors {
       case BookMaintenanceRejection.SecretTargetOccupied _ -> Descriptor.SECRET_TARGET_OCCUPIED;
       case BookMaintenanceRejection.BookDestinationOccupied _ ->
           Descriptor.BOOK_DESTINATION_OCCUPIED;
+      case BookMaintenanceRejection.RecoveryPending _ -> Descriptor.MAINTENANCE_RECOVERY_PENDING;
       case BookMaintenanceRejection.ArtifactVerificationFailed _ ->
           Descriptor.ARTIFACT_VERIFICATION_FAILED;
     };
@@ -52,6 +58,10 @@ final class BookMaintenanceRejectionDescriptors {
         "backup-source-matches-live-book",
         "Restore command refused because the selected backup source path equals the live book path and FinGrind will not replace a book from itself.",
         FieldShape.BACKUP_SOURCE_CONFLICT),
+    PAIR_TARGETS_CONFLICT(
+        "pair-targets-conflict",
+        "Maintenance command refused because the selected protected-book and generated-secret targets resolve to one filesystem identity and cannot form two independent final members.",
+        FieldShape.PAIR_TARGETS_CONFLICT),
     ARTIFACT_PATH_INVALID(
         "artifact-path-invalid",
         "Maintenance command refused because one selected artifact path or its parent-directory permissions do not satisfy the protected-book filesystem contract.",
@@ -76,6 +86,10 @@ final class BookMaintenanceRejectionDescriptors {
         "book-destination-occupied",
         "Restore command refused because the selected destination book already exists and FinGrind will not replace it.",
         FieldShape.BOOK_DESTINATION),
+    MAINTENANCE_RECOVERY_PENDING(
+        "maintenance-recovery-pending",
+        "Maintenance command refused because a verified incomplete protected-book pair publication must be resumed only by its original operation and target pair before another request can proceed.",
+        FieldShape.RECOVERY_PENDING),
     ARTIFACT_VERIFICATION_FAILED(
         "artifact-verification-failed",
         "Maintenance command refused because the selected protected-book artifact did not verify as one initialized FinGrind book for the requested workflow.",
@@ -95,16 +109,12 @@ final class BookMaintenanceRejectionDescriptors {
       return code;
     }
 
-    private ContractResponse.RejectionDescriptor descriptor() {
-      return new ContractResponse.RejectionDescriptor(
-          code,
-          ContractResponse.FailureCategory.PRECONDITION,
-          description,
-          fieldShape.fields(),
-          List.of());
+    private RejectionDescriptor descriptor() {
+      return new RejectionDescriptor(
+          code, FailureCategory.PRECONDITION, description, fieldShape.fields(), List.of());
     }
 
-    private static List<ContractResponse.RejectionDescriptor> descriptors() {
+    private static List<RejectionDescriptor> descriptors() {
       return List.of(values()).stream().map(Descriptor::descriptor).toList();
     }
   }
@@ -113,7 +123,7 @@ final class BookMaintenanceRejectionDescriptors {
   private enum FieldShape {
     BLOCKING_ARTIFACTS {
       @Override
-      List<ContractResponse.FieldDescriptor> fields() {
+      List<FieldDescriptor> fields() {
         return List.of(
             field(
                 "bookFile",
@@ -125,37 +135,54 @@ final class BookMaintenanceRejectionDescriptors {
     },
     BACKUP_SOURCE_CONFLICT {
       @Override
-      List<ContractResponse.FieldDescriptor> fields() {
+      List<FieldDescriptor> fields() {
         return List.of(
             field("bookFile", "Canonical absolute path for the selected live book file."),
             field("backupFile", "Canonical absolute path for the conflicting backup source file."));
       }
     },
+    PAIR_TARGETS_CONFLICT {
+      @Override
+      List<FieldDescriptor> fields() {
+        return List.of(
+            field(
+                "bookTarget",
+                "Normalized absolute submitted spelling for the selected protected-book final target."),
+            field(
+                "generatedSecretTarget",
+                "Normalized absolute submitted spelling for the conflicting generated-secret final target; it can differ from bookTarget when the filesystem established a physical alias."));
+      }
+    },
     PATH_INVALID {
       @Override
-      List<ContractResponse.FieldDescriptor> fields() {
+      List<FieldDescriptor> fields() {
         return List.of(
             field(
                 "artifactRole",
-                "Canonical maintenance artifact role whose selected path was invalid."),
+                artifactRoleDescription(
+                    "Canonical maintenance artifact role whose selected path was invalid.")),
             field(
                 "artifactPath", "Canonical absolute path for the invalid protected-book artifact."),
             field(
                 "pathFailure",
-                "Stable protected-book path-failure code naming the specific filesystem-contract violation."));
+                pathFailureDescription(
+                    "Stable protected-book path-failure code naming the specific filesystem-contract violation.")));
       }
     },
     ARTIFACT_BUSY {
       @Override
-      List<ContractResponse.FieldDescriptor> fields() {
+      List<FieldDescriptor> fields() {
         return List.of(
-            field("artifactRole", "Canonical maintenance artifact role that was actively in use."),
+            field(
+                "artifactRole",
+                artifactRoleDescription(
+                    "Canonical maintenance artifact role that was actively in use.")),
             field("artifactPath", "Canonical absolute path for the busy protected-book artifact."));
       }
     },
     BACKUP_ACKNOWLEDGEMENT_CONFLICT {
       @Override
-      List<ContractResponse.FieldDescriptor> fields() {
+      List<FieldDescriptor> fields() {
         return List.of(
             field(
                 "backupId", "Canonical UUID whose conflicting acknowledgement reuse was refused."));
@@ -163,14 +190,14 @@ final class BookMaintenanceRejectionDescriptors {
     },
     BACKUP_DESTINATION {
       @Override
-      List<ContractResponse.FieldDescriptor> fields() {
+      List<FieldDescriptor> fields() {
         return List.of(
             field("backupFile", "Canonical absolute path for the conflicting backup file."));
       }
     },
     SECRET_TARGET {
       @Override
-      List<ContractResponse.FieldDescriptor> fields() {
+      List<FieldDescriptor> fields() {
         return List.of(
             field(
                 "secretTarget",
@@ -179,32 +206,66 @@ final class BookMaintenanceRejectionDescriptors {
     },
     BOOK_DESTINATION {
       @Override
-      List<ContractResponse.FieldDescriptor> fields() {
+      List<FieldDescriptor> fields() {
         return List.of(
             field(
                 "bookFile", "Canonical absolute path for the selected existing destination book."));
       }
     },
+    RECOVERY_PENDING {
+      @Override
+      List<FieldDescriptor> fields() {
+        return List.of(
+            field(
+                "recoveryOperation",
+                "Canonical operation identifier that must resume the retained protected-book pair publication. Closed wire vocabulary: "
+                    + WireValue.wireValues(OperationId.class)
+                    + "."),
+            field(
+                "bookTarget",
+                "Canonical absolute target path for the retained protected-book pair book member."),
+            field(
+                "generatedSecretTarget",
+                "Canonical absolute target path for the retained protected-book pair generated-secret member."));
+      }
+    },
     VERIFICATION {
       @Override
-      List<ContractResponse.FieldDescriptor> fields() {
+      List<FieldDescriptor> fields() {
         return List.of(
             field(
                 "artifactRole",
-                "Stable public role for the protected-book artifact that failed verification."),
+                artifactRoleDescription(
+                    "Stable public role for the protected-book artifact that failed verification.")),
             field(
                 "artifactPath",
                 "Canonical absolute path for the artifact that failed verification."),
             field(
                 "verificationFailure",
-                "Stable public verification failure code for the rejected artifact."));
+                verificationFailureDescription(
+                    "Stable public verification failure code for the rejected artifact.")));
       }
     };
 
-    abstract List<ContractResponse.FieldDescriptor> fields();
+    abstract List<FieldDescriptor> fields();
 
-    private static ContractResponse.FieldDescriptor field(String name, String description) {
-      return new ContractResponse.FieldDescriptor(name, description);
+    private static FieldDescriptor field(String name, String description) {
+      return new FieldDescriptor(name, description);
+    }
+
+    private static String artifactRoleDescription(String prefix) {
+      return prefix + " Closed wire vocabulary: " + BookMaintenanceArtifactRole.wireValues() + ".";
+    }
+
+    private static String pathFailureDescription(String prefix) {
+      return prefix + " Closed wire vocabulary: " + BookMaintenancePathFailure.wireValues() + ".";
+    }
+
+    private static String verificationFailureDescription(String prefix) {
+      return prefix
+          + " Closed wire vocabulary: "
+          + BookMaintenanceVerificationFailure.wireValues()
+          + ".";
     }
   }
 }

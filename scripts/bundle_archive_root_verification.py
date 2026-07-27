@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import zipfile
 from pathlib import Path
 
 from bundle_archive_contract_support import (
@@ -20,6 +21,9 @@ def verify_bundle_root_files(bundle_root: Path, contract: dict[str, object]) -> 
     _, bundle_target = resolve_bundle_target(contract, manifest)
     launcher_path = joined_path(bundle_root, str(bundle_target["launcherPath"]))
     application_jar = bundle_root / "lib" / "app" / "fingrind.jar"
+    native_format_boundary_probe = (
+        bundle_root / "lib" / "release-smoke" / "native-sqlite-format-boundary-probe.jar"
+    )
     native_library = bundle_root / "lib" / "native" / str(bundle_target["sqliteLibraryFileName"])
     native_library_checksum = (
         bundle_root / "lib" / "native" / (str(bundle_target["sqliteLibraryFileName"]) + ".sha256")
@@ -29,6 +33,7 @@ def verify_bundle_root_files(bundle_root: Path, contract: dict[str, object]) -> 
     required_files = [
         launcher_path,
         application_jar,
+        native_format_boundary_probe,
         native_library,
         native_library_checksum,
         bundle_root / "quick-start-request.json",
@@ -43,6 +48,7 @@ def verify_bundle_root_files(bundle_root: Path, contract: dict[str, object]) -> 
     ]
     for required_file in required_files:
         require(required_file.is_file(), f"missing bundle file at {required_file}")
+    _verify_native_format_boundary_probe(native_format_boundary_probe)
 
     # Cross-platform extractors do not consistently preserve directory mtimes, so the public
     # reproducibility contract is defined on extracted files only.
@@ -60,3 +66,26 @@ def verify_bundle_root_files(bundle_root: Path, contract: dict[str, object]) -> 
         require_executable(
             java_command, f"missing executable bundled Java runtime at {java_command}"
         )
+
+
+def _verify_native_format_boundary_probe(probe_jar: Path) -> None:
+    expected_class_entries = {
+        "NativeSqliteFormatBoundaryProbe.class",
+        "NativeSqliteFormatBoundaryProbe$Arguments.class",
+        "NativeSqliteFormatBoundaryProbe$ProbeFailure.class",
+        "NativeSqliteFormatBoundaryProbe$Sqlite.class",
+    }
+    try:
+        with zipfile.ZipFile(probe_jar) as archive:
+            class_entries = {entry.filename for entry in archive.infolist() if not entry.is_dir()}
+    except (OSError, zipfile.BadZipFile):
+        require(
+            False,
+            f"packaged native SQLite format-boundary probe was not one readable classpath JAR: {probe_jar}",
+        )
+        return
+    require(
+        class_entries == expected_class_entries,
+        "packaged native SQLite format-boundary probe did not contain exactly its required classes: "
+        f"{probe_jar}",
+    )

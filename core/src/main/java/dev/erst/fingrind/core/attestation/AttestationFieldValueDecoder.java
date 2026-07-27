@@ -46,6 +46,11 @@ final class AttestationFieldValueDecoder {
                   AttestationBinaryFieldValue.bytes(
                       input.readBytes(input.readUnsigned(Integer.BYTES).intValueExact()))),
           Map.entry(
+              AttestationFieldType.EMBEDDED,
+              input ->
+                  AttestationBinaryFieldValue.embedded(
+                      input.readBytes(input.readUnsigned(Integer.BYTES).intValueExact()))),
+          Map.entry(
               AttestationFieldType.TOKEN,
               input ->
                   AttestationTextFieldValue.token(AttestationCanonicalValueReader.token(input))),

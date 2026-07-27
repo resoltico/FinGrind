@@ -1,5 +1,6 @@
 package dev.erst.fingrind.executor.spi;
 
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
 import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
@@ -27,7 +28,7 @@ public interface AttestedProtectedBookMaintenanceStore extends ProtectedBookMain
    * <p>When {@code backupAcknowledgement} is supplied, the store must apply exact-tuple replay and
    * conflicting-backup-ID admission before invoking the authorizer.
    */
-  AttestationVerification appendAttestedOperation(
+  AttestationAppendOutcome appendAttestedOperation(
       VerifiedBook verifiedBook,
       AttestationOperationKind operationKind,
       Instant recordedAt,

@@ -1,6 +1,7 @@
 package dev.erst.fingrind.cli;
 
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
+import dev.erst.fingrind.cli.json.CliQueryPlanRejectionJsonModels;
 import dev.erst.fingrind.cli.json.CliRejectionJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.BookQueryRejection;
 import dev.erst.fingrind.contract.bookkeeping.RejectionNarrative;
@@ -31,6 +32,9 @@ final class CliQueryRejectionPayloadMapper {
         null,
         null,
         rejectionDetails(rejection),
+        null,
+        null,
+        null,
         null);
   }
 
@@ -58,9 +62,11 @@ final class CliQueryRejectionPayloadMapper {
     return switch (rejection) {
       case BookQueryRejection.BookNotInitialized _ -> null;
       case BookQueryRejection.UnknownAccount unknownAccount ->
-          new CliRejectionJsonModels.UnknownAccountDetails(unknownAccount.accountCode().value());
+          new CliQueryPlanRejectionJsonModels.UnknownAccountDetails(
+              unknownAccount.accountCode().value());
       case BookQueryRejection.PostingNotFound postingNotFound ->
-          new CliRejectionJsonModels.PostingNotFoundDetails(postingNotFound.postingId().value());
+          new CliQueryPlanRejectionJsonModels.PostingNotFoundDetails(
+              postingNotFound.postingId().value());
     };
   }
 }

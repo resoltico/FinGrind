@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: DOCUMENTATION_INDEX
-updated: "2026-07-21"
+updated: "2026-07-26"
 route:
   keywords: [fingrind, docs, index, user-guides, developer-guides, api-reference, schema, examples, sqlite]
   questions: ["where should I start in the fingrind docs", "which docs are user-facing in fingrind", "where are the developer and api docs in fingrind"]
@@ -28,7 +28,10 @@ Then choose one of the user, developer, or reference tracks below.
 - [USER_CLI_OPERATIONAL_NOTES.md](./USER_CLI_OPERATIONAL_NOTES.md): cross-command diagnostics, protected-book handling, query and report output, runtime facts, and failure boundaries
 - [USER_CONTAINER.md](./USER_CONTAINER.md): published container image workflow, mounted workspace model, and smoke-tested command examples
 - [USER_REQUESTS.md](./USER_REQUESTS.md): posting, account-declaration, and ledger-plan JSON request shapes plus executable request schemas
-- [USER_RESPONSES.md](./USER_RESPONSES.md): success, rejection, and error envelopes plus read, report, discovery, and plan-result payloads
+- [USER_RESPONSES.md](./USER_RESPONSES.md): shared success and error envelopes plus read and discovery payloads
+- [USER_MUTATION_RESPONSES.md](./USER_MUTATION_RESPONSES.md): bookkeeping mutation, ledger-plan, attestation, receipt, and typed payroll response facts
+- [USER_REJECTIONS.md](./USER_REJECTIONS.md): deterministic rejection and repair-diagnostic catalog
+- [USER_REPORT_RESPONSES.md](./USER_REPORT_RESPONSES.md): report payload spine, resolved-query semantics, and CSV/PDF output contract
 - [USER_EXAMPLES.md](./USER_EXAMPLES.md): copy-paste command flows for opening books, inspecting compatibility, paging accounts, running office-worker reports, querying committed history, preflight, commit, and atomic ledger plans
 - [USER_ENTRY_WORKFLOWS.md](./USER_ENTRY_WORKFLOWS.md): copy-paste workflows for safe retries, standard-input requests, reversals, and deterministic posting or runtime failure recovery
 
@@ -61,13 +64,21 @@ Report PDF artifacts are intentionally not checked in under `docs/examples`; the
 workflows verify `--pdf-out` directly against real CLI, bundle, and container surfaces.
 - [examples/invalid-page-cursor-error.json](./examples/invalid-page-cursor-error.json): deterministic invalid cursor error example
 - [examples/protected-book-verification-failed-error.json](./examples/protected-book-verification-failed-error.json): deterministic protected-book verification failure example
+- [examples/unsupported-book-format-version-error.json](./examples/unsupported-book-format-version-error.json): deterministic non-current authenticated FinGrind book-format failure example
+- [examples/pair-targets-conflict-rejection.json](./examples/pair-targets-conflict-rejection.json): deterministic protected-book pair target-conflict rejection example
+- [examples/pair-target-leaf-portability-required-rejection.json](./examples/pair-target-leaf-portability-required-rejection.json): deterministic same-parent absent pair leaf-portability rejection example
+- [examples/maintenance-recovery-pending-error.json](./examples/maintenance-recovery-pending-error.json): verified retained pair workflow that must resume with its complete original inputs
+- [examples/protected-book-pair-publication-uncertain-error.json](./examples/protected-book-pair-publication-uncertain-error.json): recoverable protected-book pair completion-uncertainty example
+- [examples/protected-book-pair-publication-evidence-blocked-error.json](./examples/protected-book-pair-publication-evidence-blocked-error.json): retained pair evidence that must be independently investigated rather than rerun
+- [examples/open-book-preparation-artifacts-retained-error.json](./examples/open-book-preparation-artifacts-retained-error.json): incomplete book-opening attempt that retained every created artifact as evidence
 - [examples/interactive-prompt-unavailable-error.txt](./examples/interactive-prompt-unavailable-error.txt): deterministic non-interactive prompt failure example
 - [examples/ledger-plan-template.json](./examples/ledger-plan-template.json): checked-in source-copy companion for the default `print-plan-template` general ledger-plan scaffold
 - [examples/ledger-plan-request.json](./examples/ledger-plan-request.json): primary runnable `execute-plan` request that establishes tax accounts and a tax registration atomically
 - [examples/ledger-plan-query-request.json](./examples/ledger-plan-query-request.json): follow-on `execute-plan` request that pages the initialized account registry
 - [examples/execute-plan-committed-response.json](./examples/execute-plan-committed-response.json): example committed ledger-plan response with `resultDetail: "full"` and a per-step journal
 - [examples/execute-plan-assertion-failed-response.json](./examples/execute-plan-assertion-failed-response.json): example failed assertion ledger-plan response with `resultDetail: "full"` and a bounded per-step journal
-- [examples/execute-plan-query-response.json](./examples/execute-plan-query-response.json): example committed ledger-plan response with `resultDetail: "full"` whose query steps retain pagination facts and structured row groups
+- [examples/execute-plan-query-response.json](./examples/execute-plan-query-response.json): example credential-free read-only ledger-plan response with `resultDetail: "full"` whose query steps retain pagination facts and structured row groups
+- [examples/execute-plan-no-durable-child-mutation-response.json](./examples/execute-plan-no-durable-child-mutation-response.json): example signed all-replay ledger-plan response whose explicit disposition proves mutation-capable execution without a new aggregate operation
 - [examples/reversal-request.json](./examples/reversal-request.json): reversal request template that needs a real prior posting id
 - [examples/invalid-empty-lines-request.json](./examples/invalid-empty-lines-request.json): deterministic invalid-request example
 
@@ -102,7 +113,8 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DEVELOPER_SQLITE.md](./DEVELOPER_SQLITE.md): managed SQLite3MC runtime, protected-book format, and storage threat boundary
 - [ADR_SQLITE_JOURNAL_MODE.md](./ADR_SQLITE_JOURNAL_MODE.md): why FinGrind pins `journal_mode=DELETE` instead of WAL on the current storage line
 - [GITHUB_BOOTSTRAP_PROTOCOL.md](./GITHUB_BOOTSTRAP_PROTOCOL.md): first-time GitHub repository bootstrap and workflow bring-up
-- [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md): release preparation, tag verification, and public artifact publication flow
+- [RELEASE_PROTOCOL.md](./RELEASE_PROTOCOL.md): release preparation, tag control, hygiene, and primary-checkout reconciliation
+- [RELEASE_PUBLICATION_VERIFICATION.md](./RELEASE_PUBLICATION_VERIFICATION.md): post-tag GitHub Release attestation and public container verification journey
 
 ## Historical Release Notes
 
@@ -129,12 +141,13 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DOC_01_DecimalBoundaries.md](./DOC_01_DecimalBoundaries.md)
 - [DOC_02_Application.md](./DOC_02_Application.md)
 - [DOC_02_ProtocolAndDiscovery.md](./DOC_02_ProtocolAndDiscovery.md)
-- [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md): current operation, authorization, preimage, and envelope contract for protected-book format 52
-- [DOC_02_VerifiableOperationAttestationVerification.md](./DOC_02_VerifiableOperationAttestationVerification.md): current verifier procedure, compromise review, and structural-failure contract for protected-book format 52
-- [DOC_02_VerifiableOperationAttestationProfiles.md](./DOC_02_VerifiableOperationAttestationProfiles.md): current field-level posting profiles and autonomous system-close derivations for protected-book format 52
+- [DOC_02_VerifiableOperationAttestation.md](./DOC_02_VerifiableOperationAttestation.md): current operation, authorization, preimage, and envelope contract for protected-book format 57
+- [DOC_02_VerifiableOperationAttestationEncoding.md](./DOC_02_VerifiableOperationAttestationEncoding.md): current credential-custody, signing, credential-value, and canonical-byte-primitive contract for protected-book format 57
+- [DOC_02_VerifiableOperationAttestationVerification.md](./DOC_02_VerifiableOperationAttestationVerification.md): current verifier procedure, compromise review, and structural-failure contract for protected-book format 57
+- [DOC_02_VerifiableOperationAttestationProfiles.md](./DOC_02_VerifiableOperationAttestationProfiles.md): current field-level posting profiles and autonomous system-close derivations for protected-book format 57
 - [DOC_02_VerifiableOperationAttestationArtifacts.md](./DOC_02_VerifiableOperationAttestationArtifacts.md): current backup-manifest, artifact-publication, restore, receipt, anchor, and artifact-vector contract
-- [DOC_02_VerifiableOperationAttestationCorpus.md](./DOC_02_VerifiableOperationAttestationCorpus.md): current positive and negative static fixture source for protected-book format 52
-- [DOC_02_VerifiableOperationAttestationVectors.md](./DOC_02_VerifiableOperationAttestationVectors.md): byte-for-byte operation-envelope conformance vectors for protected-book format 52
+- [DOC_02_VerifiableOperationAttestationCorpus.md](./DOC_02_VerifiableOperationAttestationCorpus.md): current positive and negative static fixture source for protected-book format 57
+- [DOC_02_VerifiableOperationAttestationVectors.md](./DOC_02_VerifiableOperationAttestationVectors.md): byte-for-byte operation-envelope conformance vectors for protected-book format 57
 - [DOC_02_MachineContractAndDescriptors.md](./DOC_02_MachineContractAndDescriptors.md)
 - [DOC_02_AdministrationAndReports.md](./DOC_02_AdministrationAndReports.md)
 - [DOC_02_PeriodCloseAndRejections.md](./DOC_02_PeriodCloseAndRejections.md)
@@ -147,7 +160,13 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [DOC_02_IncomeStatementPresentation.md](./DOC_02_IncomeStatementPresentation.md)
 - [DOC_02_SharedReportModel.md](./DOC_02_SharedReportModel.md)
 - [DOC_02_PostingAndLedgerPlans.md](./DOC_02_PostingAndLedgerPlans.md)
+- [DOC_02_LedgerPlanVocabulary.md](./DOC_02_LedgerPlanVocabulary.md): stable `execute-plan`
+  wire vocabulary and aggregate-attestation outcomes
 - [DOC_03_BookSessionsAndAdapters.md](./DOC_03_BookSessionsAndAdapters.md)
+- [DOC_03_SqliteRuntimeAndSessions.md](./DOC_03_SqliteRuntimeAndSessions.md): packaged SQLite
+  runtime, failure taxonomy, and workflow-shaped session APIs
+- [DEVELOPER_SQLITE_RUNTIME.md](./DEVELOPER_SQLITE_RUNTIME.md): managed SQLite build, distribution,
+  FFM rationale, and native-bridge invariants
 - [DOC_04_CliAndPdfAdapters.md](./DOC_04_CliAndPdfAdapters.md)
 - [sqlite/SCHEMA_CORE.md](./sqlite/SCHEMA_CORE.md)
 - [sqlite/SCHEMA_CORE_01_FOUNDATION.md](./sqlite/SCHEMA_CORE_01_FOUNDATION.md)

@@ -45,8 +45,11 @@ abstract class AclFixtureAbstractPath implements Path {
   @Override
   public @Nullable Path getParent() {
     int index = value.lastIndexOf('\\');
-    if (index <= 0) {
+    if (index < 0 || "\\".equals(value)) {
       return null;
+    }
+    if (index == 0) {
+      return fileSystem.path("\\");
     }
     return fileSystem.path(value.substring(0, index));
   }
@@ -93,12 +96,16 @@ abstract class AclFixtureAbstractPath implements Path {
 
   @Override
   public Path resolve(Path other) {
-    return fileSystem.path(value + "\\" + other);
+    Objects.requireNonNull(other, "other");
+    if (other.isAbsolute()) {
+      return other;
+    }
+    return fileSystem.path(value.endsWith("\\") ? value + other : value + "\\" + other);
   }
 
   @Override
   public Path resolve(String other) {
-    return fileSystem.path(value + "\\" + other);
+    return resolve(fileSystem.path(Objects.requireNonNull(other, "other")));
   }
 
   @Override
@@ -172,6 +179,7 @@ abstract class AclFixtureAbstractPath implements Path {
   }
 
   private List<String> names() {
-    return List.of(value.replaceFirst("^\\\\", "").split("\\\\"));
+    String names = value.replaceFirst("^\\\\", "");
+    return names.isEmpty() ? List.of() : List.of(names.split("\\\\"));
   }
 }

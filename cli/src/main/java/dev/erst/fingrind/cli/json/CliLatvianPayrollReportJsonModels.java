@@ -12,7 +12,7 @@ import org.jspecify.annotations.Nullable;
 public interface CliLatvianPayrollReportJsonModels {
   record LatvianPayrollRegisterPayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       CliReportJsonModels.LatvianPayrollRegisterResolvedQuery resolvedQuery,
       String generatedAt,
       List<LatvianPayrollRegisterRowPayload> rows)

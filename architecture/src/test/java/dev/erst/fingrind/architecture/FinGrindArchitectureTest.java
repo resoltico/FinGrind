@@ -53,6 +53,8 @@ final class FinGrindArchitectureTest {
       "dev.erst.fingrind.sqlite.SqliteAttestationEvidenceStore";
   private static final String ATTESTATION_DIRECTORY_DURABILITY =
       "dev.erst.fingrind.core.attestation.AttestationDirectoryDurability";
+  private static final String PAIR_PUBLICATION_DURABILITY =
+      "dev.erst.fingrind.sqlite.SqlitePairPublicationDurability";
   private static final String RUNTIME_CLOCK_SEAM = "dev.erst.fingrind.core.SystemUtcClock";
   private static final Set<String> RUNTIME_IO_SEAM =
       Set.of(
@@ -62,17 +64,17 @@ final class FinGrindArchitectureTest {
           "dev.erst.fingrind.cli.LauncherInvocationArguments");
   private static final Set<String> MUTATION_ATTESTATION_BOUNDARIES =
       Set.of(
-          "dev.erst.fingrind.sqlite.SqliteStoreMutationOperations",
           "dev.erst.fingrind.sqlite.SqliteStoreAdministrationMutationOperations",
           "dev.erst.fingrind.sqlite.SqliteStoreAccountRegistryMutationOperations",
+          "dev.erst.fingrind.sqlite.SqliteStorePostingMutationOperations",
           "dev.erst.fingrind.sqlite.SqliteClosePostingPersistence",
           "dev.erst.fingrind.sqlite.SqlitePlanExecutionCapabilityView",
           "dev.erst.fingrind.sqlite.SqliteProtectedBookMaintenanceStore");
   private static final Set<String> TYPED_OPERATION_CATALOG_BOUNDARIES =
       Set.of(
-          "dev.erst.fingrind.sqlite.SqliteStoreMutationOperations",
           "dev.erst.fingrind.sqlite.SqliteStoreAdministrationMutationOperations",
           "dev.erst.fingrind.sqlite.SqliteStoreAccountRegistryMutationOperations",
+          "dev.erst.fingrind.sqlite.SqliteStorePostingMutationOperations",
           "dev.erst.fingrind.sqlite.SqliteClosePostingPersistence",
           "dev.erst.fingrind.sqlite.SqliteProtectedBookMaintenanceStore");
   private static final Set<String> DURABLE_MUTATION_WRITERS =
@@ -81,13 +83,15 @@ final class FinGrindArchitectureTest {
           "dev.erst.fingrind.sqlite.SqliteAccountRegistryMutationWriter",
           "dev.erst.fingrind.sqlite.SqliteAuditEventWriter",
           "dev.erst.fingrind.sqlite.SqliteAccrualCutoffWriter");
-  private static final Set<String> STRUCTURAL_MUTATION_WRITER_OWNERS =
-      Set.of("dev.erst.fingrind.sqlite.SqliteBookIntegrityVerifier");
+  private static final Set<String> DURABLE_MUTATION_WRITER_HELPERS =
+      Set.of(
+          "dev.erst.fingrind.sqlite.SqliteBookIntegrityVerifier",
+          "dev.erst.fingrind.sqlite.SqliteAcceptedPostingPersistence");
   private static final Set<String> NO_CLOBBER_PUBLICATION_BOUNDARIES =
       Set.of(
           "dev.erst.fingrind.sqlite.SqliteStagedBackupPair",
           "dev.erst.fingrind.sqlite.SqliteStagedRestoredBookPair",
-          "dev.erst.fingrind.executor.AttestationReceiptOperations");
+          "dev.erst.fingrind.executor.AttestationReceiptPublicationOperations");
   private static final Set<String> RAW_GENERIC_FAILURE_TYPES =
       Set.of(
           "java.lang.Throwable",
@@ -407,7 +411,7 @@ final class FinGrindArchitectureTest {
       public void check(JavaClass source, ConditionEvents events) {
         if (!callsDurableMutationWriter(source)
             || DURABLE_MUTATION_WRITERS.contains(source.getName())
-            || STRUCTURAL_MUTATION_WRITER_OWNERS.contains(source.getName())) {
+            || DURABLE_MUTATION_WRITER_HELPERS.contains(source.getName())) {
           return;
         }
         if (!MUTATION_ATTESTATION_BOUNDARIES.contains(source.getName())) {
@@ -455,7 +459,9 @@ final class FinGrindArchitectureTest {
             source.getMethodCallsFromSelf().stream()
                 .anyMatch(
                     call ->
-                        ATTESTATION_DIRECTORY_DURABILITY.equals(call.getTargetOwner().getName()));
+                        ATTESTATION_DIRECTORY_DURABILITY.equals(call.getTargetOwner().getName())
+                            || PAIR_PUBLICATION_DURABILITY.equals(
+                                call.getTargetOwner().getName()));
         if (!callsDirectoryDurability) {
           events.add(
               SimpleConditionEvent.violated(
@@ -463,6 +469,8 @@ final class FinGrindArchitectureTest {
                   source.getName()
                       + " must directly call "
                       + ATTESTATION_DIRECTORY_DURABILITY
+                      + " or "
+                      + PAIR_PUBLICATION_DURABILITY
                       + " before reporting a no-clobber publication as successful."));
         }
       }

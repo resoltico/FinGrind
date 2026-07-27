@@ -22,6 +22,7 @@ class AttestationSystemDerivationTest {
     assertDoesNotThrow(
         () ->
             AttestationSystemDerivation.requireValid(
+                closeHistory(),
                 registry(),
                 evidence.payload(),
                 AttestationOperationKind.INTERIM_RESULT_SWEEP,
@@ -38,12 +39,35 @@ class AttestationSystemDerivationTest {
         AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID,
         () ->
             AttestationSystemDerivation.requireValid(
+                closeHistory(),
                 registry(),
                 evidence.payload(),
                 AttestationOperationKind.INTERIM_RESULT_SWEEP,
                 evidence.provenance(),
                 evidence.request(),
                 evidence.effect()));
+  }
+
+  @Test
+  void rejectsASystemCloseWithoutAnEffectPostingForItsWorkflowKind() {
+    CloseEvidence evidence = evidence(LocalDate.of(2026, 12, 30));
+    AttestationPreimage withoutPosting =
+        AttestationPreimage.of(
+            evidence.effect().records().stream()
+                .filter(fact -> fact.recordTypeTag() != 0x0020)
+                .toList());
+
+    assertFailure(
+        AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID,
+        () ->
+            AttestationSystemDerivation.requireValid(
+                closeHistory(),
+                registry(),
+                evidence.payload(),
+                AttestationOperationKind.INTERIM_RESULT_SWEEP,
+                evidence.provenance(),
+                evidence.request(),
+                withoutPosting));
   }
 
   @Test
@@ -54,6 +78,7 @@ class AttestationSystemDerivationTest {
         AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID,
         () ->
             AttestationSystemDerivation.requireValid(
+                closeHistory(),
                 registry(),
                 evidence.payload(),
                 AttestationOperationKind.INTERIM_RESULT_SWEEP,
@@ -89,6 +114,7 @@ class AttestationSystemDerivationTest {
     assertDoesNotThrow(
         () ->
             AttestationSystemDerivation.requireValid(
+                closeHistory(),
                 registry(AttestationSystemWorkflowKind.FISCAL_YEAR_CLOSE),
                 valid.payload(),
                 AttestationOperationKind.FISCAL_YEAR_CLOSE,
@@ -99,6 +125,7 @@ class AttestationSystemDerivationTest {
         AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID,
         () ->
             AttestationSystemDerivation.requireValid(
+                closeHistory(),
                 registry(AttestationSystemWorkflowKind.FISCAL_YEAR_CLOSE),
                 altered.payload(),
                 AttestationOperationKind.FISCAL_YEAR_CLOSE,
@@ -109,12 +136,50 @@ class AttestationSystemDerivationTest {
         AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID,
         () ->
             AttestationSystemDerivation.requireValid(
+                closeHistory(),
                 registry(AttestationSystemWorkflowKind.FISCAL_YEAR_CLOSE),
                 alteredCapital.payload(),
                 AttestationOperationKind.FISCAL_YEAR_CLOSE,
                 alteredCapital.provenance(),
                 alteredCapital.request(),
                 alteredCapital.effect()));
+  }
+
+  @Test
+  void validatesEveryDirectFiscalClosePostingInsteadOfAssumingOneEffectPosting() {
+    CloseEvidence evidence =
+        evidence(
+            AttestationOperationKind.FISCAL_YEAR_CLOSE,
+            LocalDate.of(2026, 12, 31),
+            "3000",
+            "3100",
+            "3200");
+    AttestationPreimage multiPostingEffect =
+        appendAdditionalEffectPosting(evidence.effect(), LocalDate.of(2026, 12, 31));
+    AttestationPreimage malformedMultiPostingEffect =
+        appendAdditionalEffectPosting(evidence.effect(), LocalDate.of(2026, 12, 30));
+
+    assertDoesNotThrow(
+        () ->
+            AttestationSystemDerivation.requireValid(
+                closeHistory(),
+                registry(AttestationSystemWorkflowKind.FISCAL_YEAR_CLOSE),
+                evidence.payload(),
+                AttestationOperationKind.FISCAL_YEAR_CLOSE,
+                evidence.provenance(),
+                evidence.request(),
+                multiPostingEffect));
+    assertFailure(
+        AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID,
+        () ->
+            AttestationSystemDerivation.requireValid(
+                closeHistory(),
+                registry(AttestationSystemWorkflowKind.FISCAL_YEAR_CLOSE),
+                evidence.payload(),
+                AttestationOperationKind.FISCAL_YEAR_CLOSE,
+                evidence.provenance(),
+                evidence.request(),
+                malformedMultiPostingEffect));
   }
 
   @Test
@@ -140,6 +205,7 @@ class AttestationSystemDerivationTest {
     assertDoesNotThrow(
         () ->
             AttestationSystemDerivation.requireValid(
+                closeHistory(),
                 registry(),
                 cliPayload,
                 AttestationOperationKind.POST_ENTRY,
@@ -150,6 +216,7 @@ class AttestationSystemDerivationTest {
         AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID,
         () ->
             AttestationSystemDerivation.requireValid(
+                closeHistory(),
                 AttestationRegistry.fromVerifierFacts(
                     List.of(), List.of(), List.of(), List.of(), List.of()),
                 evidence.payload(),
@@ -161,6 +228,7 @@ class AttestationSystemDerivationTest {
         AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID,
         () ->
             AttestationSystemDerivation.requireValid(
+                closeHistory(),
                 registry(),
                 systemPostPayload,
                 AttestationOperationKind.POST_ENTRY,
@@ -171,6 +239,7 @@ class AttestationSystemDerivationTest {
         AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID,
         () ->
             AttestationSystemDerivation.requireValid(
+                closeHistory(),
                 registry(),
                 evidence.payload(),
                 AttestationOperationKind.INTERIM_RESULT_SWEEP,
@@ -203,6 +272,7 @@ class AttestationSystemDerivationTest {
         AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID,
         () ->
             AttestationSystemDerivation.requireValid(
+                closeHistory(),
                 registry(),
                 evidence.payload(),
                 AttestationOperationKind.INTERIM_RESULT_SWEEP,
@@ -213,6 +283,7 @@ class AttestationSystemDerivationTest {
         AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID,
         () ->
             AttestationSystemDerivation.requireValid(
+                closeHistory(),
                 registry(),
                 evidence.payload(),
                 AttestationOperationKind.INTERIM_RESULT_SWEEP,
@@ -223,6 +294,7 @@ class AttestationSystemDerivationTest {
         AttestationAuthorizationFailure.SYSTEM_DERIVATION_INVALID,
         () ->
             AttestationSystemDerivation.requireValid(
+                closeHistory(),
                 registry(),
                 evidence.payload(),
                 AttestationOperationKind.INTERIM_RESULT_SWEEP,
@@ -272,31 +344,64 @@ class AttestationSystemDerivationTest {
                         present(token(operationKind.wireToken())),
                         present(AttestationTextFieldValue.date(LocalDate.of(2026, 1, 1))),
                         present(AttestationTextFieldValue.date(effectiveTo)),
-                        AttestationField.absent(),
+                        operationKind == AttestationOperationKind.FISCAL_YEAR_CLOSE
+                            ? present(
+                                AttestationNumericFieldValue.unsigned32(
+                                    BigInteger.valueOf(effectiveTo.getYear())))
+                            : AttestationField.absent(),
                         present(AttestationTextFieldValue.text(resultHoldingAccountCode)),
                         optionalText(capitalAccountCode),
                         optionalText(retainedResultAccountCode))),
                 new AttestationPreimage.Fact(
                     0x0141, List.of(present(AttestationBinaryFieldValue.uuid(workflowId))))));
-    AttestationPreimage effect =
-        AttestationPreimage.of(
+    List<AttestationPreimage.Fact> effectFacts = new java.util.ArrayList<>();
+    effectFacts.add(
+        new AttestationPreimage.Fact(
+            0x0020,
             List.of(
-                new AttestationPreimage.Fact(
-                    0x0020,
-                    List.of(
-                        present(AttestationNumericFieldValue.mutation(0)),
-                        present(AttestationBinaryFieldValue.uuid(postingId)),
-                        present(AttestationNumericFieldValue.unsigned32(BigInteger.ZERO)),
-                        present(token(operationKind.wireToken())),
-                        present(token("period-close")),
-                        present(token(operationKind.wireToken())),
-                        present(AttestationTextFieldValue.date(effectiveTo)),
-                        present(AttestationTextFieldValue.instant(RECORDED_AT)),
-                        AttestationField.absent(),
-                        present(AttestationBinaryFieldValue.uuid(commandId)),
-                        AttestationField.absent(),
-                        AttestationField.absent(),
-                        present(token("system"))))));
+                present(AttestationNumericFieldValue.mutation(0)),
+                present(AttestationBinaryFieldValue.uuid(postingId)),
+                present(AttestationNumericFieldValue.unsigned32(BigInteger.ZERO)),
+                present(token(operationKind.wireToken())),
+                present(token("period-close")),
+                present(token(operationKind.wireToken())),
+                present(AttestationTextFieldValue.date(effectiveTo)),
+                present(AttestationTextFieldValue.instant(RECORDED_AT)),
+                AttestationField.absent(),
+                present(AttestationBinaryFieldValue.uuid(commandId)),
+                AttestationField.absent(),
+                AttestationField.absent(),
+                present(token("system")))));
+    if (operationKind == AttestationOperationKind.INTERIM_RESULT_SWEEP) {
+      effectFacts.add(
+          new AttestationPreimage.Fact(
+              0x0040,
+              List.of(
+                  present(AttestationNumericFieldValue.mutation(0)),
+                  present(AttestationNumericFieldValue.unsigned64(BigInteger.ONE)),
+                  present(AttestationTextFieldValue.date(LocalDate.of(2026, 1, 1))),
+                  present(AttestationTextFieldValue.date(effectiveTo)),
+                  present(AttestationTextFieldValue.text(resultHoldingAccountCode)))));
+    } else {
+      effectFacts.add(
+          new AttestationPreimage.Fact(
+              0x0043,
+              List.of(
+                  present(AttestationNumericFieldValue.mutation(0)),
+                  present(AttestationNumericFieldValue.unsigned64(BigInteger.ONE)),
+                  present(AttestationTextFieldValue.date(LocalDate.of(2026, 1, 1))),
+                  present(AttestationTextFieldValue.date(effectiveTo)),
+                  present(
+                      AttestationTextFieldValue.text(
+                          java.util.Objects.requireNonNull(
+                              capitalAccountCode, "capitalAccountCode"))),
+                  present(AttestationTextFieldValue.text(resultHoldingAccountCode)),
+                  present(
+                      AttestationTextFieldValue.text(
+                          java.util.Objects.requireNonNull(
+                              retainedResultAccountCode, "retainedResultAccountCode"))))));
+    }
+    AttestationPreimage effect = AttestationPreimage.of(effectFacts);
     AttestationOperationPayload payload =
         new AttestationOperationPayload(
             AttestationAuthorizationTestSupport.BOOK_ID,
@@ -312,6 +417,12 @@ class AttestationSystemDerivationTest {
 
   private static AttestationRegistry registry() {
     return registry(AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP);
+  }
+
+  private static AttestationPeriodCloseHistory closeHistory() {
+    return AttestationPeriodCloseHistory.genesis(
+        AttestationGenesisTestSupport.genesisEffectPreimage(
+            AttestationAuthorizationTestSupport.credential()));
   }
 
   private static AttestationRegistry registry(AttestationSystemWorkflowKind workflowKind) {
@@ -355,6 +466,21 @@ class AttestationSystemDerivationTest {
                   return new AttestationPreimage.Fact(fact.recordTypeTag(), fields);
                 })
             .toList());
+  }
+
+  private static AttestationPreimage appendAdditionalEffectPosting(
+      AttestationPreimage effect, LocalDate effectiveDate) {
+    AttestationPreimage.Fact original = effect.records().getFirst();
+    List<AttestationField> fields = new java.util.ArrayList<>(original.fields());
+    fields.set(
+        1,
+        present(
+            AttestationBinaryFieldValue.uuid(
+                UUID.fromString("00112233-4455-6677-8899-aabbccddee05"))));
+    fields.set(6, present(AttestationTextFieldValue.date(effectiveDate)));
+    List<AttestationPreimage.Fact> records = new java.util.ArrayList<>(effect.records());
+    records.add(new AttestationPreimage.Fact(original.recordTypeTag(), fields));
+    return AttestationPreimage.of(records);
   }
 
   private static AttestationField present(AttestationFieldValue value) {

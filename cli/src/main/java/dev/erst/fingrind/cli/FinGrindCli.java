@@ -163,7 +163,7 @@ final class FinGrindCli {
           dev.erst.fingrind.contract.bookkeeping.AttestationVerificationFailure.fromWireCode(
               exception.failure().code()),
           failureOutputMode);
-      return CliAttestationExitCodes.authorizationRejectedExitCode();
+      return CliAttestationExitCodes.attestationRejectedExitCode();
     } catch (RuntimeException exception) {
       String errorId = nextInternalErrorId();
       CliFailure failure = CliFailureMapper.runtimeFailure(exception, errorId);

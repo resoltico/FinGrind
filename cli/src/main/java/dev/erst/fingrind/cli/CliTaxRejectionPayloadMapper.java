@@ -35,6 +35,9 @@ final class CliTaxRejectionPayloadMapper {
         null,
         null,
         declarationDetails(rejection),
+        null,
+        null,
+        null,
         null);
   }
 
@@ -49,6 +52,9 @@ final class CliTaxRejectionPayloadMapper {
         null,
         null,
         queryDetails(rejection),
+        null,
+        null,
+        null,
         null);
   }
 

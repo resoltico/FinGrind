@@ -6,13 +6,14 @@ import dev.erst.fingrind.contract.runtime.ContractErrors;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 /** End-to-end CLI coverage for backup and restore workflow continuity. */
-class FinGrindCliBackupRestoreWorkflowTest extends FinGrindCliTestSupport {
+class FinGrindCliBackupRestoreWorkflowTest extends CliWorkflowFixtureSupport {
   @Test
   void run_backupRestoreAndTrialBalanceThroughDefaultSqliteWorkflowPreservesReadableFacts()
       throws IOException {
@@ -75,7 +76,7 @@ class FinGrindCliBackupRestoreWorkflowTest extends FinGrindCliTestSupport {
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
             .run(
-                jsonArguments(
+                attestedJsonArguments(
                     "record-sale-settled",
                     "--book-file",
                     bookFilePath.toString(),
@@ -83,6 +84,36 @@ class FinGrindCliBackupRestoreWorkflowTest extends FinGrindCliTestSupport {
                     bookKeyFilePath.toString(),
                     "--request-file",
                     requestFile.toString())));
+    ByteArrayOutputStream snapshotVerificationOutput = new ByteArrayOutputStream();
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(snapshotVerificationOutput),
+                fixedClock())
+            .run(
+                jsonArguments(
+                    "verify-book",
+                    "--book-file",
+                    bookFilePath.toString(),
+                    "--book-key-file",
+                    bookKeyFilePath.toString())));
+    JsonNode snapshotVerification =
+        new ObjectMapper().readTree(snapshotVerificationOutput.toByteArray());
+    assertEquals("ok", snapshotVerification.path("status").stringValue());
+    String snapshotBookId = snapshotVerification.path("payload").path("bookId").stringValue();
+    String snapshotHeadOrder =
+        snapshotVerification
+            .path("payload")
+            .path("verifiedAttestationHead")
+            .path("operationOrder")
+            .stringValue();
+    String snapshotOperationHead =
+        snapshotVerification
+            .path("payload")
+            .path("verifiedAttestationHead")
+            .path("operationHead")
+            .stringValue();
     assertEquals(
         0,
         cli(
@@ -90,7 +121,7 @@ class FinGrindCliBackupRestoreWorkflowTest extends FinGrindCliTestSupport {
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
             .run(
-                jsonArguments(
+                attestedJsonArguments(
                     "backup-book",
                     "--book-file",
                     bookFilePath.toString(),
@@ -128,6 +159,45 @@ class FinGrindCliBackupRestoreWorkflowTest extends FinGrindCliTestSupport {
     assertEquals(
         CliPublicPaths.absoluteValue(restoredBookKeyFilePath),
         restoreEnvelope.path("payload").path("bookKeyFilePath").stringValue());
+    ByteArrayOutputStream restoredVerificationOutput = new ByteArrayOutputStream();
+    assertEquals(
+        0,
+        cli(
+                new ByteArrayInputStream(new byte[0]),
+                utf8PrintStream(restoredVerificationOutput),
+                fixedClock())
+            .run(
+                jsonArguments(
+                    "verify-book",
+                    "--book-file",
+                    restoredBookFilePath.toString(),
+                    "--book-key-file",
+                    restoredBookKeyFilePath.toString())));
+    JsonNode restoredVerification =
+        new ObjectMapper().readTree(restoredVerificationOutput.toByteArray());
+    assertEquals("ok", restoredVerification.path("status").stringValue());
+    assertEquals(snapshotBookId, restoredVerification.path("payload").path("bookId").stringValue());
+    assertEquals(
+        new BigInteger(snapshotHeadOrder).add(BigInteger.ONE).toString(),
+        restoredVerification
+            .path("payload")
+            .path("verifiedAttestationHead")
+            .path("operationOrder")
+            .stringValue());
+    assertEquals(
+        snapshotOperationHead,
+        restoredVerification.path("payload").path("previousHead").stringValue());
+    assertEquals(
+        restoreEnvelope
+            .path("payload")
+            .path("attestationCommit")
+            .path("operationHead")
+            .stringValue(),
+        restoredVerification
+            .path("payload")
+            .path("verifiedAttestationHead")
+            .path("operationHead")
+            .stringValue());
 
     ByteArrayOutputStream trialBalanceOutput = new ByteArrayOutputStream();
     assertEquals(

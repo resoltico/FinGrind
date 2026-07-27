@@ -38,6 +38,11 @@ final class AttestationBookVerification {
     return operations.getLast().head();
   }
 
+  /** Returns the signed predecessor declared by the verified current-head operation. */
+  AttestationHash previousHead() {
+    return operations.getLast().operation().envelope().payload().previousHead();
+  }
+
   AttestationHash headAt(BigInteger operationOrder) {
     return operationAt(operationOrder).head();
   }

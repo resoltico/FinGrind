@@ -25,7 +25,7 @@ class ReviewedSurface:
     split_trigger: str
     reviewed_role_name: str
     budget_variance_reason: str | None
-    approval: "ReviewedSurfaceApproval"
+    approval: ReviewedSurfaceApproval
 
 
 @dataclass(frozen=True)

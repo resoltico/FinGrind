@@ -4,10 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 
@@ -33,7 +36,7 @@ class FinGrindCliReportPdfArtifactMatrixTest extends CliReportPdfArtifactCommand
 
       assertEquals(0, result.exitCode(), spec.commandName());
       assertEquals(
-          CliArtifactOutputRenderer.renderPdfArtifact(pdfOutputPath) + System.lineSeparator(),
+          expectedPdfArtifactOutput(pdfOutputPath.toRealPath()),
           result.outputText(),
           spec.commandName());
       assertEquals("", result.diagnosticsText(), spec.commandName());
@@ -69,15 +72,82 @@ class FinGrindCliReportPdfArtifactMatrixTest extends CliReportPdfArtifactCommand
           envelope.path("artifacts").get(0).path("format").stringValue(),
           spec.commandName());
       assertEquals(
-          CliPublicPaths.absoluteValue(pdfOutputPath),
+          CliPublicPaths.absoluteValue(pdfOutputPath.toRealPath()),
           envelope.path("artifacts").get(0).path("path").stringValue(),
           spec.commandName());
+      Path retainedStage = retainedPdfStageFor(pdfOutputPath);
+      assertEquals(
+          CliPublicPaths.absoluteValue(retainedStage),
+          envelope.path("artifacts").get(0).path("retainedStage").stringValue(),
+          spec.commandName());
+      assertTrue(Files.isSameFile(pdfOutputPath, retainedStage), spec.commandName());
       assertTrue(envelope.path("code").isMissingNode(), spec.commandName());
       assertTrue(envelope.path("message").isMissingNode(), spec.commandName());
       assertEquals("", result.diagnosticsText(), spec.commandName());
       assertTrue(Files.exists(pdfOutputPath), spec.commandName());
       assertPdfSignature(pdfOutputPath);
     }
+  }
+
+  @Test
+  void run_pdfOutThroughIntermediateDirectoryAlias_reportsTheCanonicalPhysicalArtifactPath()
+      throws IOException {
+    Path physicalReportsDirectory = tempDirectory.resolve("physical-reports");
+    Files.createDirectories(physicalReportsDirectory);
+    CliTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(physicalReportsDirectory);
+    Path reportsAlias = tempDirectory.resolve("reports-alias");
+    Files.createSymbolicLink(reportsAlias, tempDirectory);
+    Path bookFilePath = tempDirectory.resolve("books").resolve("trial-balance.sqlite");
+    Path bookKeyFilePath = tempDirectory.resolve("keys").resolve("trial-balance.key");
+    ReportCommandSpec trialBalance =
+        pdfCapableReportCommandSpecs().stream()
+            .filter(spec -> "trial-balance".equals(spec.commandName()))
+            .findFirst()
+            .orElseThrow();
+    Path requestedJsonPath =
+        reportsAlias.resolve("physical-reports").resolve("trial-balance-json.pdf");
+    Path physicalJsonPath = physicalReportsDirectory.resolve("trial-balance-json.pdf");
+    Path canonicalPhysicalJsonPath =
+        physicalReportsDirectory.toRealPath().resolve("trial-balance-json.pdf");
+
+    ExecutedReportCommand jsonResult =
+        executeReportCommand(
+            trialBalance,
+            bookFilePath,
+            bookKeyFilePath,
+            "json",
+            requestedJsonPath,
+            trialBalance.successfulWorkflow());
+
+    assertEquals(0, jsonResult.exitCode());
+    JsonNode jsonEnvelope = readJson(jsonResult.outputText());
+    assertEquals(
+        CliPublicPaths.absoluteValue(canonicalPhysicalJsonPath),
+        jsonEnvelope.path("artifacts").get(0).path("path").stringValue());
+    Path retainedJsonStage = retainedPdfStageFor(physicalJsonPath);
+    assertEquals(
+        CliPublicPaths.absoluteValue(retainedJsonStage),
+        jsonEnvelope.path("artifacts").get(0).path("retainedStage").stringValue());
+    assertTrue(Files.isSameFile(requestedJsonPath, physicalJsonPath));
+    assertTrue(Files.isSameFile(physicalJsonPath, retainedJsonStage));
+
+    Path requestedTextPath =
+        reportsAlias.resolve("physical-reports").resolve("trial-balance-text.pdf");
+    Path physicalTextPath = physicalReportsDirectory.resolve("trial-balance-text.pdf");
+    Path canonicalPhysicalTextPath =
+        physicalReportsDirectory.toRealPath().resolve("trial-balance-text.pdf");
+    ExecutedReportCommand textResult =
+        executeReportCommand(
+            trialBalance,
+            bookFilePath,
+            bookKeyFilePath,
+            "text",
+            requestedTextPath,
+            trialBalance.successfulWorkflow());
+
+    assertEquals(0, textResult.exitCode());
+    assertEquals(expectedPdfArtifactOutput(canonicalPhysicalTextPath), textResult.outputText());
+    assertTrue(Files.isSameFile(requestedTextPath, physicalTextPath));
   }
 
   @Test
@@ -104,7 +174,8 @@ class FinGrindCliReportPdfArtifactMatrixTest extends CliReportPdfArtifactCommand
   }
 
   @Test
-  void run_pdfExportFailureFailsEveryPdfCapableReportWithoutPublishingSuccess() throws IOException {
+  void run_invalidPdfOutputParentFailsEveryPdfCapableReportWithoutPublishingSuccess()
+      throws IOException {
     Path blockedParent = tempDirectory.resolve("blocked output parent");
     Files.writeString(blockedParent, "not a directory", StandardCharsets.UTF_8);
 
@@ -113,7 +184,7 @@ class FinGrindCliReportPdfArtifactMatrixTest extends CliReportPdfArtifactCommand
       Path bookKeyFilePath = tempDirectory.resolve("keys").resolve(spec.commandName() + ".key");
       Path pdfOutputPath = blockedParent.resolve(spec.commandName() + "-failed-report.pdf");
       ExecutedReportCommand result =
-          executeReportCommand(
+          executeReportCommandWithoutPreparingPdfOutputParent(
               spec,
               bookFilePath,
               bookKeyFilePath,
@@ -121,14 +192,43 @@ class FinGrindCliReportPdfArtifactMatrixTest extends CliReportPdfArtifactCommand
               pdfOutputPath,
               spec.successfulWorkflow());
 
-      assertEquals(4, result.exitCode(), spec.commandName());
+      assertEquals(6, result.exitCode(), spec.commandName());
       assertEquals("", result.outputText(), spec.commandName());
       JsonNode envelope = readJson(result.diagnosticsText());
       assertEquals("error", envelope.path("status").stringValue(), spec.commandName());
-      assertEquals("pdf-export-failure", envelope.path("code").stringValue(), spec.commandName());
+      assertEquals(
+          "invalid-artifact-output-directory",
+          envelope.path("code").stringValue(),
+          spec.commandName());
       assertEquals("--pdf-out", envelope.path("argument").stringValue(), spec.commandName());
       assertTrue(envelope.path("artifacts").isMissingNode(), spec.commandName());
       assertFalse(Files.exists(pdfOutputPath), spec.commandName());
     }
+  }
+
+  private static String expectedPdfArtifactOutput(Path canonicalArtifactPath) throws IOException {
+    return CliArtifactOutputRenderer.renderPdfArtifact(
+            new ArtifactPublicationResult(
+                canonicalArtifactPath,
+                new ArtifactPublicationRetention(retainedPdfStageFor(canonicalArtifactPath))))
+        + System.lineSeparator();
+  }
+
+  private static Path retainedPdfStageFor(Path finalArtifact) throws IOException {
+    Path canonicalFinalArtifact = finalArtifact.toRealPath();
+    try (Stream<Path> siblings = Files.list(canonicalFinalArtifact.getParent())) {
+      for (Path candidate : siblings.toList()) {
+        String fileName = candidate.getFileName().toString();
+        if (candidate.equals(canonicalFinalArtifact)
+            || !fileName.startsWith(".fingrind-pdf-")
+            || !fileName.endsWith(".tmp")) {
+          continue;
+        }
+        if (Files.isSameFile(canonicalFinalArtifact, candidate)) {
+          return candidate.toRealPath();
+        }
+      }
+    }
+    throw new AssertionError("Expected a retained PDF stage linked to " + canonicalFinalArtifact);
   }
 }

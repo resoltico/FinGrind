@@ -26,7 +26,6 @@ import java.time.LocalDate;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -48,11 +47,10 @@ class SqlitePostingQueryTest extends SqlitePostingFactStoreTestSupport {
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(databasePath));
         SqliteReadSession readSession = SqliteCapabilitySessions.read(postingFactStore)) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
-      PostingCommitResult.Committed committed =
+      PostingCommitResult.Appended committed =
           assertInstanceOf(
-              PostingCommitResult.Committed.class, commitPosting(postingFactStore, posting));
-      AttestationVerification verification =
-          Objects.requireNonNull(committed.attestationVerification());
+              PostingCommitResult.Appended.class, commitPosting(postingFactStore, posting));
+      AttestationVerification verification = committed.attestationAppend().verification();
 
       assertEquals(
           Map.of(

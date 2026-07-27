@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.contract.bookkeeping.BackupAcknowledgementState;
 import dev.erst.fingrind.contract.bookkeeping.BackupBookResult;
 import dev.erst.fingrind.contract.bookkeeping.CommitEntryResult;
 import dev.erst.fingrind.contract.bookkeeping.DeclareAccountCommand;
@@ -10,6 +11,7 @@ import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
 import dev.erst.fingrind.contract.bookkeeping.PostEntryCommand;
 import dev.erst.fingrind.contract.bookkeeping.PreflightEntryResult;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion;
 import dev.erst.fingrind.contract.bookkeeping.RekeyBookResult;
 import dev.erst.fingrind.contract.bookkeeping.RestoreBookResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
@@ -57,13 +59,21 @@ class CliRecordingWorkflow extends CliBookWorkflowAdapter {
           CliWorkflowDoubleSupport.hint(Path.of("books/unused.backup.sqlite")),
           CliWorkflowDoubleSupport.hint(Path.of("keys/unused.backup.key")),
           UUID.fromString("00000000-0000-0000-0000-000000000001"),
-          false,
-          null);
+          ProtectedBookPairPublicationCompletion.PUBLISHED,
+          CliFixtureSupport.pairPublicationRetention(
+              CliWorkflowDoubleSupport.hint(Path.of("books/unused.backup.sqlite")),
+              CliWorkflowDoubleSupport.hint(Path.of("keys/unused.backup.key"))),
+          BackupAcknowledgementState.ACKNOWLEDGED,
+          CliFixtureSupport.attestationCommit());
   private RestoreBookResult restoreBookResult =
       new RestoreBookResult.Restored(
           CliWorkflowDoubleSupport.hint(Path.of("books/unused.sqlite")),
           CliWorkflowDoubleSupport.hint(Path.of("keys/unused-restored.key")),
-          CliFixtureSupport.attestationCommit());
+          CliFixtureSupport.attestationCommit(),
+          ProtectedBookPairPublicationCompletion.PUBLISHED,
+          CliFixtureSupport.pairPublicationRetention(
+              CliWorkflowDoubleSupport.hint(Path.of("books/unused.sqlite")),
+              CliWorkflowDoubleSupport.hint(Path.of("keys/unused-restored.key"))));
   private @Nullable LedgerPlanResult executePlanResult;
 
   CliRecordingWorkflow(

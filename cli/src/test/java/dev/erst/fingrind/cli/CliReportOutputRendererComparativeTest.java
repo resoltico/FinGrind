@@ -22,7 +22,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 /** Focused tests for comparative statement rendering and report-surface policy. */
-class CliReportOutputRendererComparativeTest extends FinGrindCliTestSupport {
+class CliReportOutputRendererComparativeTest extends CliWorkflowFixtureSupport {
   @Test
   void reportRenderers_andBalanceFormatter_renderComparativeBranches() {
     var cashAccount = declaredAccount("1000", "Cash", NormalBalance.DEBIT);

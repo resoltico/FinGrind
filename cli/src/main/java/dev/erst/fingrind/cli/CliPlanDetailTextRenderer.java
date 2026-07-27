@@ -1,7 +1,8 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.cli.json.CliPlanJsonModels;
 import dev.erst.fingrind.cli.json.CliPlanLedgerFactJsonModels;
+import dev.erst.fingrind.cli.json.CliPlanResultJsonModels;
+import dev.erst.fingrind.cli.json.CliPlanStepDataJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.MonetaryAmount;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
 import java.util.ArrayList;
@@ -14,19 +15,19 @@ import java.util.Objects;
 final class CliPlanDetailTextRenderer {
   private CliPlanDetailTextRenderer() {}
 
-  static String renderStepData(CliPlanJsonModels.LedgerStepDataPayload dataPayload) {
+  static String renderStepData(CliPlanStepDataJsonModels.LedgerStepDataPayload dataPayload) {
     return switch (Objects.requireNonNull(dataPayload, "dataPayload")) {
-      case CliPlanJsonModels.LedgerAdministrativeStepDataPayload administrative ->
+      case CliPlanStepDataJsonModels.LedgerAdministrativeStepDataPayload administrative ->
           CliPlanAdministrativeTextRenderer.renderStepData(administrative);
-      case CliPlanJsonModels.LedgerBookkeepingStepDataPayload bookkeeping ->
+      case CliPlanStepDataJsonModels.LedgerBookkeepingStepDataPayload bookkeeping ->
           CliPlanBookkeepingTextRenderer.renderStepData(bookkeeping);
-      case CliPlanJsonModels.LedgerControlStepDataPayload control ->
+      case CliPlanStepDataJsonModels.LedgerControlStepDataPayload control ->
           CliPlanControlTextRenderer.renderStepData(control);
     };
   }
 
   static String renderFailure(LedgerStepFailure failure) {
-    CliPlanJsonModels.LedgerStepFailurePayload failurePayload =
+    CliPlanResultJsonModels.LedgerStepFailurePayload failurePayload =
         CliLedgerStepDataPayloadMapper.ledgerStepFailurePayload(failure);
     List<String> sections = new ArrayList<>();
     sections.add(

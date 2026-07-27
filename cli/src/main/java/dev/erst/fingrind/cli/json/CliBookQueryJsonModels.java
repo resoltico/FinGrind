@@ -182,7 +182,7 @@ public interface CliBookQueryJsonModels {
 
   record PostingDetailsPayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       GetPostingResolvedQuery resolvedQuery,
       String generatedAt,
       PostingPayload posting)
@@ -205,7 +205,7 @@ public interface CliBookQueryJsonModels {
 
   record PostingListPayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       PostingListResolvedQuery resolvedQuery,
       String generatedAt,
       @Nullable String nextCursor,
@@ -223,7 +223,7 @@ public interface CliBookQueryJsonModels {
 
   record AccountListPayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       AccountListResolvedQuery resolvedQuery,
       String generatedAt,
       @Nullable String nextCursor,

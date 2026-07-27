@@ -17,37 +17,27 @@ import dev.erst.fingrind.contract.bookkeeping.RetireAccountCommand;
 import dev.erst.fingrind.contract.bookkeeping.RetireAccountResult;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractFailure;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationCommand;
 import dev.erst.fingrind.contract.tax.DeclareTaxRegistrationResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
-import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
-import dev.erst.fingrind.core.attestation.AttestationOperationRequest;
-import dev.erst.fingrind.executor.BookWorkflowExecutionDependencies;
+import dev.erst.fingrind.executor.LedgerPlanReadOnlyService;
 import dev.erst.fingrind.executor.LedgerPlanService;
 import dev.erst.fingrind.executor.UuidV7PostingIdGenerator;
 import dev.erst.fingrind.sqlite.SqliteBookSessionMode;
 import dev.erst.fingrind.sqlite.SqlitePassphraseIntent;
 import dev.erst.fingrind.sqlite.SqlitePlanExecutionSession;
 import dev.erst.fingrind.sqlite.SqlitePlanExecutionSessions;
+import dev.erst.fingrind.sqlite.SqlitePlanReadOnlySession;
+import dev.erst.fingrind.sqlite.SqlitePlanReadOnlySessions;
 import dev.erst.fingrind.sqlite.SqlitePostingSessions;
 import java.time.Clock;
 import java.util.Objects;
 
 /** SQLite-backed mutation workflow that delegates each bounded mutation family to its owner. */
 final class SqliteCliMutationWorkflow implements CliBookMutationWorkflow {
-  private static final AttestationOperationAuthorizer READ_ONLY_PLAN_AUTHORIZER =
-      new ReadOnlyPlanAuthorizer();
-
-  /** Fails closed if a plan classified as read-only ever attempts a protected-book mutation. */
-  static final class ReadOnlyPlanAuthorizer implements AttestationOperationAuthorizer {
-    @Override
-    public AttestationEvidence authorize(AttestationOperationRequest request) {
-      throw new IllegalStateException(
-          "A credential-free ledger plan must not authorize a protected-book mutation.");
-    }
-  }
 
   private final Clock clock;
   private final CliBookPassphraseResolver passphraseResolver;
@@ -100,7 +90,12 @@ final class SqliteCliMutationWorkflow implements CliBookMutationWorkflow {
 
   @Override
   public ContractDecision<LedgerPlanResult> executePlan(BookAccess bookAccess, LedgerPlan plan) {
-    if (plan.steps().stream().anyMatch(step -> step.kind().mutatesBook())) {
+    ContractFailure attestationPolicyRefusal =
+        CliExecutePlanAttestationPolicy.refusalFor(bookAccess, plan);
+    if (attestationPolicyRefusal != null) {
+      return ContractDecision.rejected(attestationPolicyRefusal);
+    }
+    if (plan.containsBookMutation()) {
       return SqliteCliWorkflowSessions.withPlanExecutionSessionDecision(
           openPlanExecutionSession(bookAccess),
           bookSession ->
@@ -109,9 +104,8 @@ final class SqliteCliMutationWorkflow implements CliBookMutationWorkflow {
                   authorizer ->
                       ContractDecision.accepted(executePlan(bookSession, plan, authorizer))));
     }
-    return SqliteCliWorkflowSessions.withPlanExecutionSession(
-        openPlanExecutionSession(bookAccess),
-        bookSession -> executePlan(bookSession, plan, READ_ONLY_PLAN_AUTHORIZER));
+    return SqliteCliWorkflowSessions.withPlanReadOnlySession(
+        openPlanReadOnlySession(bookAccess), bookSession -> executeReadOnlyPlan(bookSession, plan));
   }
 
   @Override
@@ -160,22 +154,22 @@ final class SqliteCliMutationWorkflow implements CliBookMutationWorkflow {
         bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET);
   }
 
+  private ContractDecision<SqlitePlanReadOnlySession> openPlanReadOnlySession(
+      BookAccess bookAccess) {
+    return SqlitePlanReadOnlySessions.openResolved(
+        bookAccess, passphraseResolver, SqlitePassphraseIntent.EXISTING_SECRET);
+  }
+
   private LedgerPlanResult executePlan(
       SqlitePlanExecutionSession bookSession,
       LedgerPlan plan,
       AttestationOperationAuthorizer authorizer) {
-    return new LedgerPlanService(
-            bookSession,
-            new BookWorkflowExecutionDependencies(
-                bookSession,
-                bookSession,
-                bookSession,
-                bookSession,
-                bookSession,
-                bookSession,
-                bookSession,
-                new UuidV7PostingIdGenerator()),
-            clock)
+    return new LedgerPlanService(bookSession, new UuidV7PostingIdGenerator(), clock)
         .execute(plan, authorizer);
+  }
+
+  private LedgerPlanResult executeReadOnlyPlan(
+      SqlitePlanReadOnlySession bookSession, LedgerPlan plan) {
+    return new LedgerPlanReadOnlyService(bookSession, clock).execute(plan);
   }
 }

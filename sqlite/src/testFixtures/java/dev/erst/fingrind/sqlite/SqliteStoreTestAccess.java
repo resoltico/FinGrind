@@ -43,12 +43,12 @@ public final class SqliteStoreTestAccess {
 
   /** Returns whether a ledger-plan transaction is currently marked active in lifecycle state. */
   public static boolean ledgerPlanTransactionActive(SqlitePostingFactStore store) {
-    return store.lifecycle.transactions().active();
+    return store.lifecycle.transactions().transaction().active();
   }
 
   /** Returns whether the active database has begun the current ledger-plan transaction. */
   public static boolean ledgerPlanTransactionBegunInDatabase(SqlitePostingFactStore store) {
-    return store.lifecycle.transactions().begunInDatabase();
+    return store.lifecycle.transactions().transaction().begunInDatabase();
   }
 
   /** Returns the current published native database handle for lifecycle assertions in tests. */
@@ -59,13 +59,5 @@ public final class SqliteStoreTestAccess {
   /** Returns the store access mode selected for this SQLite-backed session. */
   public static SqliteStoreAccessMode accessMode(SqlitePostingFactStore store) {
     return store.accessMode();
-  }
-
-  /**
-   * Invokes missing-book artifact cleanup from the lifecycle seam for explicit state-machine tests.
-   */
-  public static void invokeCleanupCreatedMissingBookArtifactsIfPresent(
-      SqlitePostingFactStore store) {
-    store.lifecycle.transactions().cleanupCreatedMissingBookArtifactsIfPresent();
   }
 }

@@ -102,6 +102,14 @@ def _load_protected_book_format(
     schema: dict[str, object],
 ) -> dict[str, object]:
     return {
+        "applicationId": required_int(
+            document,
+            required_string(schema, "applicationId"),
+        ),
+        "formatVersion": required_int(
+            document,
+            required_string(schema, "formatVersion"),
+        ),
         "cipher": required_value(document, required_string(schema, "cipher")),
         "legacyMode": required_bool(document, required_string(schema, "legacyMode")),
         "pageSize": required_int(document, required_string(schema, "pageSize")),

@@ -37,67 +37,67 @@ import java.util.Optional;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 
-/** Unit tests for read and report rendering through {@link CliResponseWriter}. */
-class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
+/** Unit tests for read and report rendering through their focused writer fixtures. */
+class CliReadReportResponseWriterTest extends CliWorkflowFixtureSupport {
   @Test
   void writeReadResults_supportsJsonTextAndCsvVariants() {
     DeclaredAccount cashAccount = declaredAccount("1000", "Cash", NormalBalance.DEBIT);
     PostingFact postingFact = reversalPostingFact();
-    assertWriterOutput(
+    assertBookReadOutput(
         writer ->
             writer.writeBookInspection(
                 Path.of("office/report.sqlite"),
                 initializedBookInspection(123, 1, 1, Instant.parse("2026-04-07T10:15:30Z")),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"status\":\"ok\"");
-    assertWriterOutput(
+    assertBookReadOutput(
         writer ->
             writer.writeBookInspection(
                 Path.of("office/report.sqlite"),
                 initializedBookInspection(123, 1, 1, Instant.parse("2026-04-07T10:15:30Z")),
                 dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
         "Initialized at");
-    assertWriterOutput(
+    assertBookReadOutput(
         writer ->
             writer.writeListAccountsResult(
                 listedAccounts(accountPage(List.of(cashAccount), 50, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"accountCode\":\"1000\"");
-    assertWriterOutput(
+    assertBookReadOutput(
         writer ->
             writer.writeListAccountsResult(
                 listedAccounts(accountPage(List.of(cashAccount), 50, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
         "Cash");
-    assertWriterOutput(
+    assertBookReadOutput(
         writer ->
             writer.writeListAccountsResult(
                 listedAccounts(accountPage(List.of(cashAccount), 50, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
         "accountCode,accountName,parentAccountCode,contraOfAccountCode,accountType,unitOfMeasureToken,quantityScale,financialPositionLineClassification,cashFlowAssetClassification,profitAndLossLineClassification,normalBalance,active,declaredAt");
-    assertWriterOutput(
+    assertBookReadOutput(
         writer ->
             writer.writeGetPostingResult(
                 foundPosting(postingFact), dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"sourceDocumentId\":\"document-idem-1\"");
-    assertWriterOutput(
+    assertBookReadOutput(
         writer ->
             writer.writeGetPostingResult(
                 foundPosting(postingFact), dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
         "Source documents");
-    assertWriterOutput(
+    assertBookReadOutput(
         writer ->
             writer.writeListPostingsResult(
                 listedPostings(postingPage(List.of(postingFact), 10, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"sourceDocumentIds\":[\"document-idem-1\"]");
-    assertWriterOutput(
+    assertBookReadOutput(
         writer ->
             writer.writeListPostingsResult(
                 listedPostings(postingPage(List.of(postingFact), 10, Optional.empty())),
                 dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
         "Accounts");
-    assertWriterOutput(
+    assertBookReadOutput(
         writer ->
             writer.writeListPostingsResult(
                 listedPostings(postingPage(List.of(postingFact), 10, Optional.empty())),
@@ -150,73 +150,73 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
             1,
             List.of(new PeriodCurrencySummary(eurDebitBalance)),
             List.of(new PeriodAccountActivityRow(cashAccount, eurDebitBalance)));
-    assertWriterOutput(
+    assertReportOutput(
         writer ->
             writer.writeAccountBalanceResult(
                 new AccountBalanceResult.Reported(balanceSnapshot),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"family\":\"account-balance\"");
-    assertWriterOutput(
+    assertReportOutput(
         writer ->
             writer.writeAccountBalanceResult(
                 new AccountBalanceResult.Reported(balanceSnapshot),
                 dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
         "Account");
-    assertWriterOutput(
+    assertReportOutput(
         writer ->
             writer.writeAccountBalanceResult(
                 new AccountBalanceResult.Reported(balanceSnapshot),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
         "family,accountCode,accountName,accountType,normalBalance,active,currencyCode,debitTotalCurrencyCode");
-    assertWriterOutput(
+    assertReportOutput(
         writer ->
             writer.writeTrialBalanceResult(
                 new TrialBalanceResult.Reported(trialBalanceReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"family\":\"trial-balance\"");
-    assertWriterOutput(
+    assertReportOutput(
         writer ->
             writer.writeTrialBalanceResult(
                 new TrialBalanceResult.Reported(trialBalanceReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
         "As of");
-    assertWriterOutput(
+    assertReportOutput(
         writer ->
             writer.writeTrialBalanceResult(
                 new TrialBalanceResult.Reported(trialBalanceReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
         "family,reportPeriod,accountCode,accountName,accountType,normalBalance,active,currencyCode");
-    assertWriterOutput(
+    assertReportOutput(
         writer ->
             writer.writeAccountLedgerResult(
                 new AccountLedgerResult.Reported(accountLedgerReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"family\":\"account-ledger\"");
-    assertWriterOutput(
+    assertReportOutput(
         writer ->
             writer.writeAccountLedgerResult(
                 new AccountLedgerResult.Reported(accountLedgerReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
         "Counterpart account codes");
-    assertWriterOutput(
+    assertReportOutput(
         writer ->
             writer.writeAccountLedgerResult(
                 new AccountLedgerResult.Reported(accountLedgerReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.CSV),
         "family,accountCode,postingId,effectiveDate,movementCurrencyCode,debitTotalCurrencyCode");
-    assertWriterOutput(
+    assertReportOutput(
         writer ->
             writer.writePeriodSummaryResult(
                 new PeriodSummaryResult.Reported(periodSummaryReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"family\":\"period-summary\"");
-    assertWriterOutput(
+    assertReportOutput(
         writer ->
             writer.writePeriodSummaryResult(
                 new PeriodSummaryResult.Reported(periodSummaryReport),
                 dev.erst.fingrind.contract.protocol.OutputMode.TEXT),
         "Posting count");
-    assertWriterOutput(
+    assertReportOutput(
         writer ->
             writer.writePeriodSummaryResult(
                 new PeriodSummaryResult.Reported(periodSummaryReport),
@@ -227,43 +227,43 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
   @Test
   void writeReadAndReportResults_rejectUnsupportedModesAndNullInputs() {
     PostingFact postingFact = reversalPostingFact();
-    assertWriterOutput(
+    assertBookReadOutput(
         writer ->
             writer.writeListAccountsResult(
                 new ListAccountsResult.Rejected(new BookQueryRejection.BookNotInitialized()),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"status\":\"rejected\"");
-    assertWriterOutput(
+    assertBookReadOutput(
         writer ->
             writer.writeGetPostingResult(
                 new GetPostingResult.Rejected(new BookQueryRejection.BookNotInitialized()),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"status\":\"rejected\"");
-    assertWriterOutput(
+    assertBookReadOutput(
         writer ->
             writer.writeListPostingsResult(
                 new ListPostingsResult.Rejected(new BookQueryRejection.BookNotInitialized()),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"status\":\"rejected\"");
-    assertWriterOutput(
+    assertReportOutput(
         writer ->
             writer.writeAccountBalanceResult(
                 new AccountBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized()),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"status\":\"rejected\"");
-    assertWriterOutput(
+    assertReportOutput(
         writer ->
             writer.writeTrialBalanceResult(
                 new TrialBalanceResult.Rejected(new BookQueryRejection.BookNotInitialized()),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"status\":\"rejected\"");
-    assertWriterOutput(
+    assertReportOutput(
         writer ->
             writer.writeAccountLedgerResult(
                 new AccountLedgerResult.Rejected(new BookQueryRejection.BookNotInitialized()),
                 dev.erst.fingrind.contract.protocol.OutputMode.JSON),
         "\"status\":\"rejected\"");
-    assertWriterOutput(
+    assertReportOutput(
         writer ->
             writer.writePeriodSummaryResult(
                 new PeriodSummaryResult.Rejected(new BookQueryRejection.BookNotInitialized()),
@@ -272,7 +272,7 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
+            new CliBookReadResponseWriterFixture(utf8PrintStream(new ByteArrayOutputStream()))
                 .writeBookInspection(
                     Path.of("office/report.sqlite"),
                     initializedBookInspection(123, 1, 1, Instant.parse("2026-04-07T10:15:30Z")),
@@ -280,13 +280,13 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
+            new CliBookReadResponseWriterFixture(utf8PrintStream(new ByteArrayOutputStream()))
                 .writeGetPostingResult(
                     foundPosting(postingFact), dev.erst.fingrind.contract.protocol.OutputMode.CSV));
     assertThrows(
         NullPointerException.class,
         () ->
-            new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
+            new CliBookReadResponseWriterFixture(utf8PrintStream(new ByteArrayOutputStream()))
                 .writeBookInspection(
                     Path.of("office/report.sqlite"),
                     initializedBookInspection(123, 1, 1, Instant.parse("2026-04-07T10:15:30Z")),
@@ -294,51 +294,63 @@ class CliReadReportResponseWriterTest extends FinGrindCliTestSupport {
     assertThrows(
         NullPointerException.class,
         () ->
-            new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
+            new CliBookReadResponseWriterFixture(utf8PrintStream(new ByteArrayOutputStream()))
                 .writeListAccountsResult(
                     nullOf(), dev.erst.fingrind.contract.protocol.OutputMode.JSON));
     assertThrows(
         NullPointerException.class,
         () ->
-            new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
+            new CliBookReadResponseWriterFixture(utf8PrintStream(new ByteArrayOutputStream()))
                 .writeGetPostingResult(
                     nullOf(), dev.erst.fingrind.contract.protocol.OutputMode.JSON));
     assertThrows(
         NullPointerException.class,
         () ->
-            new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
+            new CliBookReadResponseWriterFixture(utf8PrintStream(new ByteArrayOutputStream()))
                 .writeListPostingsResult(
                     nullOf(), dev.erst.fingrind.contract.protocol.OutputMode.JSON));
     assertThrows(
         NullPointerException.class,
         () ->
-            new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
+            new CliReportResponseWriterFixture(utf8PrintStream(new ByteArrayOutputStream()))
                 .writeAccountBalanceResult(
                     nullOf(), dev.erst.fingrind.contract.protocol.OutputMode.JSON));
     assertThrows(
         NullPointerException.class,
         () ->
-            new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
+            new CliReportResponseWriterFixture(utf8PrintStream(new ByteArrayOutputStream()))
                 .writeTrialBalanceResult(
                     nullOf(), dev.erst.fingrind.contract.protocol.OutputMode.JSON));
     assertThrows(
         NullPointerException.class,
         () ->
-            new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
+            new CliReportResponseWriterFixture(utf8PrintStream(new ByteArrayOutputStream()))
                 .writeAccountLedgerResult(
                     nullOf(), dev.erst.fingrind.contract.protocol.OutputMode.JSON));
     assertThrows(
         NullPointerException.class,
         () ->
-            new CliResponseWriter(utf8PrintStream(new ByteArrayOutputStream()))
+            new CliReportResponseWriterFixture(utf8PrintStream(new ByteArrayOutputStream()))
                 .writePeriodSummaryResult(
                     nullOf(), dev.erst.fingrind.contract.protocol.OutputMode.JSON));
   }
 
-  private static void assertWriterOutput(
-      Consumer<CliResponseWriter> writeAction, String expectedFragment) {
+  private static void assertBookReadOutput(
+      Consumer<CliBookReadResponseWriterFixture> writeAction, String expectedFragment) {
     ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    writeAction.accept(new CliResponseWriter(utf8PrintStream(outputStream)));
+    writeAction.accept(new CliBookReadResponseWriterFixture(utf8PrintStream(outputStream)));
+    assertOutputContains(outputStream, expectedFragment);
+  }
+
+  private static void assertReportOutput(
+      Consumer<CliReportResponseWriterFixture> writeAction, String expectedFragment) {
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    writeAction.accept(new CliReportResponseWriterFixture(utf8PrintStream(outputStream)));
+    assertOutputContains(outputStream, expectedFragment);
+  }
+
+  private static void assertOutputContains(
+      ByteArrayOutputStream outputStream, String expectedFragment) {
     String document = outputStream.toString(StandardCharsets.UTF_8);
     String comparable =
         document.stripLeading().startsWith("{") ? canonicalJsonText(document) : document;

@@ -1,5 +1,6 @@
 package dev.erst.fingrind.contract.bookkeeping;
 
+import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.core.attestation.AttestationRegistryInspection;
 import dev.erst.fingrind.core.attestation.AttestationReviewFinding;
 import java.math.BigInteger;
@@ -16,6 +17,7 @@ public sealed interface VerifyBookAttestationResult
       UUID bookId,
       BigInteger headOrder,
       String operationHeadHex,
+      String previousHeadHex,
       List<AttestationReviewFinding> reviewFindings,
       AttestationRegistryInspection registry)
       implements VerifyBookAttestationResult {
@@ -25,10 +27,17 @@ public sealed interface VerifyBookAttestationResult
       if (headOrder.signum() < 0 || headOrder.bitLength() > Long.SIZE) {
         throw new IllegalArgumentException("headOrder must be an unsigned 64-bit value.");
       }
-      operationHeadHex = requireOperationHeadHex(operationHeadHex);
-      reviewFindings = List.copyOf(Objects.requireNonNull(reviewFindings, "reviewFindings"));
+      operationHeadHex = requireHeadHex(operationHeadHex, "operationHeadHex");
+      previousHeadHex = requireHeadHex(previousHeadHex, "previousHeadHex");
+      if (headOrder.signum() == 0 && !previousHeadHex.equals("0".repeat(64))) {
+        throw new IllegalArgumentException("previousHeadHex must be all-zero at genesis.");
+      }
+      reviewFindings =
+          AttestationReviewFinding.requireValidForVerifiedHead(headOrder, reviewFindings);
       Objects.requireNonNull(registry, "registry");
-      if (!bookId.equals(registry.bookId()) || !headOrder.equals(registry.headOrder())) {
+      if (!bookId.equals(registry.bookId())
+          || !headOrder.equals(registry.headOrder())
+          || !operationHeadHex.equals(registry.operationHeadHex())) {
         throw new IllegalArgumentException("registry must describe the verified attestation head.");
       }
     }
@@ -42,15 +51,17 @@ public sealed interface VerifyBookAttestationResult
   /** First exact structural attestation failure. */
   record Invalid(String failureCode) implements VerifyBookAttestationResult {
     public Invalid {
-      failureCode = AttestationVerificationFailure.requireWireCode(failureCode);
+      failureCode =
+          AttestationVerificationFailure.requireVerificationWireCode(
+              failureCode, OperationId.VERIFY_BOOK);
     }
   }
 
-  private static String requireOperationHeadHex(String operationHeadHex) {
-    String value = Objects.requireNonNull(operationHeadHex, "operationHeadHex");
+  private static String requireHeadHex(String headHex, String name) {
+    String value = Objects.requireNonNull(headHex, name);
     if (!value.matches("[0-9a-f]{64}")) {
       throw new IllegalArgumentException(
-          "operationHeadHex must contain 64 lowercase hexadecimal characters.");
+          name + " must contain 64 lowercase hexadecimal characters.");
     }
     return value;
   }

@@ -61,10 +61,9 @@ public final class InterimResultSweepService {
             new InterimResultSweepOutcome.Rejected(
                 new BookkeepingAdministrationRejection.BookNotInitialized()),
         InterimResultSweepPlanner::forBookIdentity,
-        (bookIdentity, bookStartDate, planner, currentUtcDate, sweptAt, postingIdGenerator) ->
+        (bookIdentity, planner, currentUtcDate, sweptAt, postingIdGenerator) ->
             reportingPeriodCloseStore.interimResultSweep(
                 throughEffectiveDate,
-                bookStartDate,
                 bookIdentity,
                 planner,
                 currentUtcDate,

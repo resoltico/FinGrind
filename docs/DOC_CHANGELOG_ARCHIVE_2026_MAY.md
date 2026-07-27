@@ -489,11 +489,10 @@ Use [CHANGELOG.md](../CHANGELOG.md) for the active release surface.
 - The deterministic Jazzer ledger-plan harness now executes parsed plans against the in-memory
   ledger-plan service, and the committed seed set includes a successful list-query plan that pins
   structured journal facts.
-- `jazzer/bin/clean-local-findings` and `jazzer/bin/clean-local-corpus` now traverse local run
-  state without descending into preserved corpus subtrees, and they downgrade undeletable corpus
-  remnants to explicit warnings instead of aborting the cleanup command. The root `spotless`
-  project-file sweep now also excludes ignored `.local/` runtime state so one unreadable local
-  corpus cannot poison `./check.sh`.
+- The then-existing local Jazzer cleanup wrappers traversed local run state without descending into
+  preserved corpus subtrees, and downgraded undeletable corpus remnants to explicit warnings
+  instead of aborting the cleanup command. The root `spotless` project-file sweep now also excludes
+  ignored `.local/` runtime state so one unreadable local corpus cannot poison `./check.sh`.
 - Added `scripts/verify-public-container-surface.sh` plus mock-backed shell regression coverage,
   and updated the release protocol to use that deterministic operator-side verifier so public
   container checks now assert machine-readable `version --output json`, exact text

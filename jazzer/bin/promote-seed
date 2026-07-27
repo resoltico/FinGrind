@@ -127,4 +127,4 @@ if [[ "${json_output}" == "true" ]]; then
     fg_run_machine_json_command "jazzerPromoteSeed" "${gradle_args[@]}" "$@"
     exit 0
 fi
-fg_run_maintenance_command "jazzerPromoteSeed" "${gradle_args[@]}" "$@"
+fg_run_write_command "jazzerPromoteSeed" "${gradle_args[@]}" "$@"

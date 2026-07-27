@@ -95,6 +95,7 @@ class JazzerCliSeedCommandsTest {
     assertEquals(1, invalidNameResult.exitCode());
     assertTrue(invalidNameResult.output().contains("\"status\" : \"error\""));
     assertTrue(invalidNameResult.output().contains("\"command\" : \"promote-seed\""));
+    assertTrue(invalidNameResult.output().contains("\"retainedArtifactPaths\""));
     assertTrue(
         invalidNameResult.output().contains("seedName must use lower_snake_case ASCII letters"));
     assertTrue(invalidNameResult.output().contains("Try: bad_seed"));

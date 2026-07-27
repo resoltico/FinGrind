@@ -1,24 +1,25 @@
 package dev.erst.fingrind.cli;
 
-import dev.erst.fingrind.cli.json.CliPlanJsonModels;
+import dev.erst.fingrind.cli.json.CliPlanStepDataJsonModels;
 import java.util.List;
 
 /** Renders administration facts embedded in full execute-plan journal output. */
 final class CliPlanAdministrativeTextRenderer {
   private CliPlanAdministrativeTextRenderer() {}
 
-  static String renderStepData(CliPlanJsonModels.LedgerAdministrativeStepDataPayload dataPayload) {
+  static String renderStepData(
+      CliPlanStepDataJsonModels.LedgerAdministrativeStepDataPayload dataPayload) {
     return switch (dataPayload) {
-      case CliPlanJsonModels.AccountDeclarationStepDataPayload accountDeclaration ->
+      case CliPlanStepDataJsonModels.AccountDeclarationStepDataPayload accountDeclaration ->
           CliPlanBookkeepingTextRenderer.renderDeclaredAccount(
               accountDeclaration.outcome(), accountDeclaration.account());
-      case CliPlanJsonModels.TaxRegistrationDeclarationStepDataPayload taxRegistration ->
+      case CliPlanStepDataJsonModels.TaxRegistrationDeclarationStepDataPayload taxRegistration ->
           renderTaxRegistration(taxRegistration);
     };
   }
 
   private static String renderTaxRegistration(
-      CliPlanJsonModels.TaxRegistrationDeclarationStepDataPayload taxRegistration) {
+      CliPlanStepDataJsonModels.TaxRegistrationDeclarationStepDataPayload taxRegistration) {
     var registration = taxRegistration.taxRegistration();
     return CliReportRenderSupport.joinSections(
         CliTextFormat.renderKeyValueBlock(

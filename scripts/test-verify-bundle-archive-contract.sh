@@ -62,8 +62,26 @@ mkdir -p \
     "${fixture_root}/bin" \
     "${fixture_root}/lib/app" \
     "${fixture_root}/lib/native" \
+    "${fixture_root}/lib/release-smoke" \
     "${fixture_root}/runtime/bin"
 touch "${fixture_root}/lib/app/fingrind.jar"
+python3 - <<'PY' "${fixture_root}/lib/release-smoke/native-sqlite-format-boundary-probe.jar"
+from __future__ import annotations
+
+from pathlib import Path
+import sys
+import zipfile
+
+probe = Path(sys.argv[1])
+with zipfile.ZipFile(probe, "w") as archive:
+    for entry in (
+        "NativeSqliteFormatBoundaryProbe.class",
+        "NativeSqliteFormatBoundaryProbe$Arguments.class",
+        "NativeSqliteFormatBoundaryProbe$ProbeFailure.class",
+        "NativeSqliteFormatBoundaryProbe$Sqlite.class",
+    ):
+        archive.writestr(entry, b"fixture")
+PY
 touch "${fixture_root}/lib/native/libsqlite3.so.0"
 touch "${fixture_root}/lib/native/libsqlite3.so.0.sha256"
 touch "${fixture_root}/quick-start-request.json"

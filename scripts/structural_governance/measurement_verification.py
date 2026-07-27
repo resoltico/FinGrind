@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import date
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .models import FileBudget, FileMetrics, MeasuredSurface, ReviewedSurface
@@ -55,7 +55,7 @@ def duplicate_window_violations(
         window_size = max(minimum_window_lines, budget.max_duplicate_window_lines)
         if len(lines) < window_size:
             continue
-        for start in range(0, len(lines) - window_size + 1):
+        for start in range(len(lines) - window_size + 1):
             window = lines[start : start + window_size]
             signature = hashlib.sha256("\n".join(window).encode("utf-8")).hexdigest()
             prior = signatures.get(signature)
@@ -96,7 +96,7 @@ def measurement_violations(
     reviewed_surfaces: dict[str, ReviewedSurface] | None = None,
 ) -> list[str]:
     violations: list[str] = []
-    current_date = date.today()
+    current_date = datetime.now(UTC).date()
     reviewed_surfaces = reviewed_surfaces or {}
     for relative_path, budget, metrics in measurements:
         reviewed = reviewed_surfaces.get(relative_path.as_posix())

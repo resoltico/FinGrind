@@ -16,7 +16,7 @@ public interface CliLifecycleContextReportJsonModels {
 
   record FinancingRegisterPayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       CliReportJsonModels.FinancingRegisterResolvedQuery resolvedQuery,
       String generatedAt,
       List<FinancingRegisterRowPayload> rows)
@@ -61,7 +61,7 @@ public interface CliLifecycleContextReportJsonModels {
 
   record RealizedForeignExchangeRegisterPayload(
       String family,
-      CliAdministrationJsonModels.BookIdentityPayload bookIdentity,
+      CliBookInspectionJsonModels.BookIdentityPayload bookIdentity,
       CliReportJsonModels.RealizedForeignExchangeRegisterResolvedQuery resolvedQuery,
       String generatedAt,
       List<RealizedForeignExchangeRegisterRowPayload> rows)

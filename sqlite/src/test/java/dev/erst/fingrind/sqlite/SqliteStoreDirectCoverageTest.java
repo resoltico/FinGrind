@@ -32,7 +32,6 @@ import dev.erst.fingrind.executor.bookkeeping.AccountLedgerCriteria;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
 import dev.erst.fingrind.executor.bookkeeping.CloseTargetAccountCandidateMissing;
 import dev.erst.fingrind.executor.bookkeeping.CommittedPosting;
-import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner;
 import dev.erst.fingrind.executor.bookkeeping.PeriodSummaryCriteria;
@@ -139,7 +138,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
               new dev.erst.fingrind.executor.bookkeeping.BookkeepingPostingRejection
                   .BookNotInitialized()),
           missingStore
-              .storeMutationOperations()
+              .storePostingMutationOperations()
               .commit(
                   postingDraft(posting),
                   () -> {
@@ -153,13 +152,13 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
       assertInstanceOf(
-          PostingCommitResult.Committed.class, commitPosting(postingFactStore, posting));
+          PostingCommitResult.Appended.class, commitPosting(postingFactStore, posting));
 
-      PostingCommitResult.Committed replay =
+      PostingCommitResult.Replayed replay =
           assertInstanceOf(
-              PostingCommitResult.Committed.class,
+              PostingCommitResult.Replayed.class,
               postingFactStore
-                  .storeMutationOperations()
+                  .storePostingMutationOperations()
                   .commit(
                       postingDraft(posting),
                       () -> {
@@ -168,53 +167,20 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                       },
                       SqliteAttestationTestSupport.authorizer()));
       assertEquals(posting, replay.postingFact());
-      assertTrue(replay.idempotentReplay());
-    }
-  }
-
-  @Test
-  void preplannedInterimResultSweep_rollsBackNativeStorageFailures() {
-    ReportingPeriod reportingPeriod = new ReportingPeriod(EFFECTIVE_DATE, EFFECTIVE_DATE);
-    Path bookPath = tempDirectory.resolve("interim-result-sweep-storage-failures.sqlite");
-    try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
-      initializeBookWithMinimalNumericAccounts(postingFactStore);
-      try (StoreDatabaseSwap ignored =
-          swapStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath))) {
-        assertCloseStorageFailure(
-            () ->
-                postingFactStore
-                    .storeMutationOperations()
-                    .interimResultSweep(
-                        emptyInterimResultSweepDraft(reportingPeriod),
-                        unusedPostingIdGenerator(),
-                        SqliteAttestationTestSupport.authorizer()));
-      } catch (IOException exception) {
-        throw new UncheckedIOException(exception);
-      }
-
-      assertEquals(0, countRows(requireStoreDatabase(postingFactStore), "interim_result_sweep"));
-      assertEquals(
-          0,
-          countRowsWhereTextEquals(
-              requireStoreDatabase(postingFactStore),
-              "audit_event",
-              "event_kind",
-              "INTERIM_RESULT_SWEPT"));
     }
   }
 
   @Test
   void plannedInterimResultSweep_rollsBackNativeStorageFailures() {
-    ReportingPeriod reportingPeriod = new ReportingPeriod(EFFECTIVE_DATE, EFFECTIVE_DATE);
+    ReportingPeriod reportingPeriod = initialSweepPeriod();
     Path bookPath = tempDirectory.resolve("planned-interim-result-sweep-storage-failures.sqlite");
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(bookPath))) {
       initializeBookWithMinimalNumericAccounts(postingFactStore);
-      try (StoreDatabaseSwap ignored =
-          swapStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath))) {
+      try (StoreDatabaseSwap ignored = swapStoreDatabase(postingFactStore, staleDatabaseHandle())) {
         assertCloseStorageFailure(
             () ->
                 postingFactStore
-                    .storeMutationOperations()
+                    .storeClosingMutationOperations()
                     .interimResultSweep(
                         reportingPeriod,
                         bookIdentity(),
@@ -254,9 +220,9 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
               IllegalStateException.class,
               () ->
                   postingFactStore
-                      .storeMutationOperations()
+                      .storeClosingMutationOperations()
                       .interimResultSweep(
-                          new ReportingPeriod(EFFECTIVE_DATE, EFFECTIVE_DATE),
+                          initialSweepPeriod(),
                           bookIdentity(),
                           InterimResultSweepPlanner.forBookIdentity(bookIdentity()),
                           EFFECTIVE_DATE,
@@ -303,27 +269,16 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
       InterimResultSweepOutcome.Transferred closed =
           assertInstanceOf(
               InterimResultSweepOutcome.Transferred.class,
-              postingFactStore.interimResultSweep(
-                  new InterimResultSweepDraft(
-                      new ReportingPeriod(EFFECTIVE_DATE, EFFECTIVE_DATE),
-                      new AccountCode("3200"),
-                      List.of(),
+              postingFactStore
+                  .storeClosingMutationOperations()
+                  .interimResultSweep(
+                      initialSweepPeriod(),
+                      bookIdentity(),
+                      InterimResultSweepPlanner.forBookIdentity(bookIdentity()),
+                      EFFECTIVE_DATE,
                       FIXED_INSTANT,
-                      List.of(
-                          postingDraft(
-                              new JournalEntry(
-                                  EFFECTIVE_DATE,
-                                  List.of(
-                                      line("2000", JournalLine.EntrySide.DEBIT, "10.00"),
-                                      line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
-                              dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
-                              PostingKind.INTERIM_RESULT_SWEEP,
-                              dev.erst.fingrind.core.PostingOriginKind.INTERIM_RESULT_SWEEP,
-                              generatedEvidence(
-                                  "interim-result-sweep-1", "interim-result-sweep-plan"),
-                              interimResultSweepProvenance("EUR")))),
-                  () -> new PostingId("0485e481-7f56-30fd-92e2-92a099a486af"),
-                  SqliteAttestationTestSupport.authorizer()));
+                      () -> new PostingId("0485e481-7f56-30fd-92e2-92a099a486af"),
+                      SqliteAttestationTestSupport.authorizer()));
 
       assertEquals(1, closed.sweptInterimResult().sweepOrder());
       assertEquals(
@@ -377,8 +332,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                       () -> new PostingId("1153abd3-5eb5-3203-9e2f-4900e0e136c3"),
                       java.time.Clock.fixed(FIXED_INSTANT, java.time.ZoneOffset.UTC))
                   .interimResultSweep(
-                      new ReportingPeriod(EFFECTIVE_DATE, EFFECTIVE_DATE),
-                      SqliteAttestationTestSupport.authorizer()));
+                      initialSweepPeriod(), SqliteAttestationTestSupport.authorizer()));
 
       assertInstanceOf(CloseTargetAccountCandidateMissing.class, rejected.rejection());
       assertEquals(
@@ -436,8 +390,7 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                       () -> new PostingId("0485e481-7f56-30fd-92e2-92a099a486af"),
                       java.time.Clock.fixed(FIXED_INSTANT, java.time.ZoneOffset.UTC))
                   .interimResultSweep(
-                      new ReportingPeriod(EFFECTIVE_DATE, EFFECTIVE_DATE),
-                      SqliteAttestationTestSupport.authorizer()));
+                      initialSweepPeriod(), SqliteAttestationTestSupport.authorizer()));
 
       assertEquals(1, transferred.sweptInterimResult().sweepOrder());
       assertEquals(Optional.of(EFFECTIVE_DATE), postingFactStore.transferredThroughEffectiveDate());
@@ -496,26 +449,16 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
                   line("2000", JournalLine.EntrySide.CREDIT, "10.00"))));
       assertInstanceOf(
           InterimResultSweepOutcome.Transferred.class,
-          postingFactStore.interimResultSweep(
-              new InterimResultSweepDraft(
-                  new ReportingPeriod(LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07")),
-                  new AccountCode("3200"),
-                  List.of(),
+          postingFactStore
+              .storeClosingMutationOperations()
+              .interimResultSweep(
+                  initialSweepPeriod(),
+                  bookIdentity(),
+                  InterimResultSweepPlanner.forBookIdentity(bookIdentity()),
+                  EFFECTIVE_DATE,
                   FIXED_INSTANT,
-                  List.of(
-                      postingDraft(
-                          new JournalEntry(
-                              LocalDate.parse("2026-04-07"),
-                              List.of(
-                                  line("2000", JournalLine.EntrySide.DEBIT, "10.00"),
-                                  line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
-                          dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
-                          PostingKind.INTERIM_RESULT_SWEEP,
-                          dev.erst.fingrind.core.PostingOriginKind.INTERIM_RESULT_SWEEP,
-                          generatedEvidence("interim-result-sweep-1", "interim-result-sweep-plan"),
-                          interimResultSweepProvenance("EUR")))),
-              () -> new PostingId("0485e481-7f56-30fd-92e2-92a099a486af"),
-              SqliteAttestationTestSupport.authorizer()));
+                  () -> new PostingId("0485e481-7f56-30fd-92e2-92a099a486af"),
+                  SqliteAttestationTestSupport.authorizer()));
       commitPosting(
           postingFactStore,
           postingFact(
@@ -597,30 +540,19 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
               List.of(
                   line("1000", JournalLine.EntrySide.DEBIT, "10.00"),
                   line("2000", JournalLine.EntrySide.CREDIT, "10.00")));
-      PostingDraft interimResultSweepDraft =
-          postingDraft(
-              new JournalEntry(
-                  LocalDate.parse("2026-04-07"),
-                  List.of(
-                      line("2000", JournalLine.EntrySide.DEBIT, "10.00"),
-                      line("3200", JournalLine.EntrySide.CREDIT, "10.00"))),
-              dev.erst.fingrind.executor.bookkeeping.PostingLineageModel.direct(),
-              PostingKind.INTERIM_RESULT_SWEEP,
-              dev.erst.fingrind.core.PostingOriginKind.INTERIM_RESULT_SWEEP,
-              generatedEvidence("interim-result-sweep-1", "interim-result-sweep-plan"),
-              interimResultSweepProvenance("EUR"));
       commitPosting(postingFactStore, operatingPosting);
       assertInstanceOf(
           InterimResultSweepOutcome.Transferred.class,
-          postingFactStore.interimResultSweep(
-              new InterimResultSweepDraft(
-                  new ReportingPeriod(LocalDate.parse("2026-04-07"), LocalDate.parse("2026-04-07")),
-                  new AccountCode("3200"),
-                  List.of(),
+          postingFactStore
+              .storeClosingMutationOperations()
+              .interimResultSweep(
+                  initialSweepPeriod(),
+                  bookIdentity(),
+                  InterimResultSweepPlanner.forBookIdentity(bookIdentity()),
+                  EFFECTIVE_DATE,
                   FIXED_INSTANT,
-                  List.of(interimResultSweepDraft)),
-              () -> new PostingId("0485e481-7f56-30fd-92e2-92a099a486af"),
-              SqliteAttestationTestSupport.authorizer()));
+                  () -> new PostingId("0485e481-7f56-30fd-92e2-92a099a486af"),
+                  SqliteAttestationTestSupport.authorizer()));
 
       RegisteredAccount revenueAccount =
           postingFactStore.findAccount(new AccountCode("2000")).orElseThrow();
@@ -731,10 +663,8 @@ class SqliteStoreDirectCoverageTest extends SqlitePostingFactStoreTestSupport {
         });
   }
 
-  private static InterimResultSweepDraft emptyInterimResultSweepDraft(
-      ReportingPeriod reportingPeriod) {
-    return new InterimResultSweepDraft(
-        reportingPeriod, new AccountCode("3200"), List.of(), FIXED_INSTANT, List.of());
+  private static ReportingPeriod initialSweepPeriod() {
+    return new ReportingPeriod(bookIdentity().bookStartEffectiveDate(), EFFECTIVE_DATE);
   }
 
   private static dev.erst.fingrind.executor.spi.PostingIdGenerator unusedPostingIdGenerator() {

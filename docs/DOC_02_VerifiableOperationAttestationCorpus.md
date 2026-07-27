@@ -2,19 +2,19 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: BOOK_OPERATION_ATTESTATION_CORPUS
-updated: "2026-07-23"
+updated: "2026-07-26"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["AttestationStaticCorpus", "AttestationStaticCorpusVectors", "AttestationStaticArtifactCorpusVectors"]
+  symbols: ["AttestationStaticCorpus", "AttestationStaticCorpusVectors", "AttestationStaticArtifactCorpusVectors", "AttestationLifecycleCorpusAuthoring"]
 route:
   keywords: [verifiable-operation-attestation, static-corpus, golden-vectors, fixture-ledger, verifier-negative-cases, backup-artifact, live-cas]
   questions: ["which static fixtures verify FinGrind operation attestation", "how is the attestation corpus constructed", "which negative attestation vectors are required", "which artifact fixtures cover backup and restore"]
-stage: "Current public protocol 36 and protected-book format 52 contract"
+stage: "Current public protocol 57 and protected-book format 57 contract"
 ---
 
 # Verifiable Operation Attestation Corpus
 
-This is the normative fixture source for protected-book format 52. It extends the
+This is the normative fixture source for protected-book format 57. It extends the
 [core protocol](./DOC_02_VerifiableOperationAttestation.md), which owns the shared operation and
 envelope grammar and authorization rules; the
 [verification protocol](./DOC_02_VerifiableOperationAttestationVerification.md), which owns
@@ -43,6 +43,12 @@ offset, replaced-byte count, and target SHA-256, plus `negative/<id>.delta.b64` 
 replacement bytes. Both source and negative target hashes are independently repeated in the test
 code. The verifier tests decode those bytes directly; no encoder, signer, semantic fixture builder,
 or mutation derivation constructs a Slice-4 verifier input at test time.
+
+`AttestationLifecycleCorpusAuthoring` is a test-only source-authoring and reproduction guard for
+the four lifecycle sources B-05-book, B-06, B-07, and B-10. It derives candidate bytes from the
+unchanged B-02/B-05-artifact inputs, fixed non-production fixture keys, and the current lifecycle
+projection, then a direct equality test compares those candidates with the committed raw resources.
+It never supplies verifier input: verification continues to decode only the committed source bytes.
 
 ## Static Corpus Common Facts
 
@@ -89,13 +95,34 @@ not supply an unstated record, identifier, time, signer, policy fact, or first f
 | B-02 | book A genesis at 0 with operator-purpose founders A and B; set post M=2; declare accounts 1000 and 4000 at 1 and 2, then append the common posting at 3 signed by A and B | valid |
 | B-03 | B-02 through 3; at 4 A1 and B enroll C with credentialPurpose operator, at 5 A1 and B retain POST M=2 and grant C POST, at 6 A1 and B add A2 by rollover from A1 with operator purpose and predecessorKeyId A1 while the same request/effect pair retires A1 as superseded, at 7 B and C append record-sale-settled using IDs ending 07/08, idempotencyKey fixture-sale-2, sourceChannel cli, source document fixture-receipt-2, effectiveDate 2026-12-31, and the same postingKind, originKind, account roles, money role, and EUR 100.00 journal lines as the common posting, and at 8 A2 and B revoke C | valid |
 | B-04 | B-02 through 3; at 4 A and B enroll C with credentialPurpose system. At 5 A and B retain CLOSE_PERIOD M=1, grant C CLOSE_PERIOD, and create active system workflow policy sweep workflow with kind interim-result-sweep and result holding 3000, plus active close workflow with kind fiscal-year-close and result holding 3000, capital 3100, and retained result 3200. At 6, 7, and 8 A and B declare accounts 3000, 3100, and 3200. At 9 C alone appends sourceChannel system interim-result-sweep naming sweep workflow for 2026-01-01 through 2026-12-30 into result holding 3000. Its derived request.posting has stepOrder 0, operationKind interim-result-sweep, postingKind period-close, and effectiveDate 2026-12-30; its posting/command IDs end 03/04; journal lines debit 4000 and credit 3000 EUR 100.00; sweepOrder 1; EUR total 100.00; and its posting link. At 10 C alone appends sourceChannel system fiscal-year-close naming close workflow for 2026-01-01 through 2026-12-31 with capital 3100, result holding 3000, and retained result 3200. Its derived request.posting has stepOrder 0, operationKind fiscal-year-close, postingKind period-close, and effectiveDate 2026-12-31; its posting/command IDs end 05/06; journal lines debit 3000 and credit 3200 EUR 100.00; closeOrder 1; and its posting link. | valid |
-| B-05 | B-02 through the common posting at sourceOrder 3. `B-05.snapshot` is the fixed raw snapshot source carrying exactly that committed evidence; no rekey, VACUUM, page-size change, or intervening operation is represented. The core corpus framing is test-only and is not a persisted snapshot format: the SQLite adapter remains responsible for producing and decoding the required consistent SQLite online-backup copy under the artifact protocol. Its manifest is signed by A under BACKUP M=1. The artifact's source head is the order-3 head and its whole-container digest is the SHA-256 of that named derived resource. A appends backup-created at order 4 with the fixture backup ID and that exact tuple. | valid |
-| B-06 | B-05 snapshot source, not its order-4 acknowledgement. The staged destination is exactly B-02 through order 3 and preserves book A. A and B append restore-book at order 4 with the B-05 backup ID, its derived artifact digest, sourceOrder 3, source head 3, and historicalSnapshotAuthorization true; publication uses the no-replacement protocol. | valid |
-| B-07 | B-02 through order 3 with the B-05 snapshot and an A-signed BACKUP M=1 manifest, but without any backup-created operation. A and B perform the same order-4 restore as B-06. | valid |
+| B-05 | B-02 through the common posting at sourceOrder 3. `B-05.snapshot` is the fixed raw snapshot source carrying exactly that committed evidence; no rekey, VACUUM, page-size change, or intervening operation is represented. The core corpus framing is test-only and is not a persisted snapshot format: the SQLite adapter remains responsible for producing and decoding the required consistent SQLite online-backup copy under the artifact protocol. Its manifest is signed by A under BACKUP M=1. The artifact's source head is the order-3 head and its whole-container digest is the SHA-256 of that named derived resource. A appends backup-created at order 4 with the fixture backup ID and that exact tuple in one backup.acknowledgement ACKNOWLEDGE effect. | valid |
+| B-06 | B-05 snapshot source, not its order-4 acknowledgement. The staged destination is exactly B-02 through order 3 and preserves book A. A and B append restore-book at order 4 with the B-05 backup ID, its derived artifact digest, sourceOrder 3, source head 3, and historicalSnapshotAuthorization true in one restore.provenance DERIVE effect; publication uses the no-replacement protocol. | valid |
+| B-07 | B-02 through order 3 with the B-05 snapshot and an A-signed BACKUP M=1 manifest, but without any backup-created operation. A and B perform the same order-4 restore.provenance DERIVE as B-06. | valid |
 | B-08 | the standalone BACKUP envelope resolver at sourceOrder 42 with active A, B, and C; BACKUP M=2; A and B, but not C, granted BACKUP; plus V-MANIFEST-02 signed by A and B | valid standalone envelope; not a manifest artifact |
 | B-09 | the standalone ANCHOR envelope resolver at operationOrder 42 with active A, B, and C; ANCHOR M=2; A and B, but not C, granted ANCHOR; plus V-RECEIPT-02 signed by A and B | valid standalone envelope; not a receipt/book |
 | B-10 | B-02 through order 3; A and B as the REKEY quorum append rekey-book at order 4 with keyEpoch 2, absent reason, and book.key-epoch DERIVE with rekeyedAt 2026-12-31T03:00:00.004Z | valid |
 | B-11 | B-02 through order 3. A produces an off-chain receipt with book A, operationOrder 3, the derived order-3 operation head, receiptTimestamp 2027-01-01T00:00:00.000Z, and algorithmId ed25519; A is the exact ANCHOR M=1 signer at order 3. The resource contains the complete B-02 book and its derived receipt envelope. | valid receipt/book pair |
+
+## Protocol-57 Aggregate Projection And Chain Conformance
+
+P-PLAN-01 is a projection-and-verifier conformance case rather than a new static byte resource.
+It signs one complete aggregate chain after genesis. Its `execute-plan` operation retains, under
+the protocol-57 wrapper records, source step 2 reactivating account `1000`, source step 3
+renaming that same account, source step 4 creating tax registration `LV-VAT`, source step 5
+amending that same registration, and source step 7 appending one post-entry. Complete-chain
+verification must accept all five children and recover the posting's commitment as the aggregate
+operation's order and head.
+
+The case proves the protocol-57 property that repeated account and registration identities remain
+separate durable child facts when their source steps differ. Negative conformance cases reject a
+nonzero local direct step field, a wrapper whose declared type, canonical sort key, or raw child
+record does not agree, a request/effect fact borrowed across source steps, and inconsistent account,
+tax-registration, or posting mutations with `attestation-request-profile-invalid`.
+
+P-PLAN-01 supplements rather than replaces the literal static corpus: the static sources above
+remain byte-exact grammar and historical-evidence fixtures. It does not create a reader, upgrade,
+or translation for non-current books; every format other than 57, whether older or newer, is
+rejected at the protected-book boundary.
 
 ## Negative Fixture Sources
 
@@ -131,7 +158,7 @@ from a fixture name.
 | N-16 | B-04 at order 9: change C's order-4 credentialPurpose from system to operator while retaining its key, grant, request, envelope, and every other registry fact. The altered order-5 registry state first leaves CLOSE_PERIOD M=1 without any system-purpose eligible principal, so the verifier rejects that state before order 9. | attestation-policy-capacity-invalid |
 | N-17 | B-02 common posting: add a fixed-asset 0060 effect record, recompute the effect digest, operation payload, and A/B signatures, but add no 0131 request record | attestation-request-profile-invalid |
 | N-18 | B-02 through 3; at 4 A and B enroll active operator-purpose C without POST GRANT. At 5 B and C sign an otherwise valid record-sale-settled envelope under the still-valid POST M=2 policy. | attestation-capability-invalid |
-| N-19 | B-04 at order 9: retain C's valid system-purpose key and signature but change request.period-close.effectiveTo, the linked request.posting effectiveDate, and posting.fact effectiveDate from 2026-12-30 to 2026-12-29, then recompute every affected digest and signature while leaving the workflow-derived interval and effects unchanged. | attestation-system-derivation-invalid |
+| N-19 | B-04 at order 9: retain C's valid system-purpose key and signature but change request.period-close.effectiveTo, the linked request.posting effectiveDate, and posting.fact effectiveDate from 2026-12-30 to 2026-12-29, then recompute every affected digest and signature while leaving the sweep/link effects unchanged. The altered request and effect no longer describe the same close. | attestation-request-profile-invalid |
 | N-20 | B-04's order-5 policy mutation with CLOSE_PERIOD changed from M=1 to M=2 while C remains its only system-purpose CLOSE_PERIOD principal and A/B remain operator-purpose principals. | attestation-policy-capacity-invalid |
 | N-21 | B-03 order 6: replace A2's keyId in both matching binding records with a different 32-byte hash while retaining A2's SPKI, then recompute the preimage digests, payload, and A1/B signatures. | attestation-request-profile-invalid |
 | N-22 | B-03 order 6: omit the rollover predecessorKeyId from both matching binding records, then recompute the preimage digests, payload, and A1/B signatures. | attestation-request-profile-invalid |

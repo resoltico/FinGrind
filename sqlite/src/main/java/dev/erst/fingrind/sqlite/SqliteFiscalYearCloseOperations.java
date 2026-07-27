@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.ReportingPeriod;
+import dev.erst.fingrind.core.attestation.AttestationInterimResultSweepEffect;
 import dev.erst.fingrind.core.attestation.AttestationOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.AcceptedCloseTargetSelection;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
@@ -109,17 +110,15 @@ final class SqliteFiscalYearCloseOperations {
               return new FiscalYearCloseOutcome.Rejected(
                   new FiscalYearCloseRequiresGeneratedPostings());
             }
-            persistGeneratedUnsweptInterimResultSweep(
-                activeDatabase,
-                observedHead,
-                closeDraft,
-                postingIdGenerator,
-                attestationAuthorizer);
+            AttestationInterimResultSweepEffect derivedInterimSweep =
+                persistGeneratedUnsweptInterimResultSweep(
+                    activeDatabase, closeDraft, postingIdGenerator);
             var closedFiscalYear =
                 postingPersistence.persistFiscalYearClose(
                     activeDatabase,
-                    SqliteAttestationEvidenceStore.observeRequired(activeDatabase),
+                    observedHead,
                     closeDraft,
+                    derivedInterimSweep,
                     postingIdGenerator,
                     attestationAuthorizer);
             SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
@@ -181,21 +180,16 @@ final class SqliteFiscalYearCloseOperations {
         activeDatabase, SqlitePostingSql.LOAD_ALL_ACCOUNTS);
   }
 
-  private void persistGeneratedUnsweptInterimResultSweep(
-      SqliteNativeDatabase activeDatabase,
-      SqliteAttestationEvidenceStore.ObservedHead observedHead,
-      FiscalYearCloseDraft closeDraft,
-      PostingIdGenerator postingIdGenerator,
-      AttestationOperationAuthorizer attestationAuthorizer) {
+  private @org.jspecify.annotations.Nullable AttestationInterimResultSweepEffect
+      persistGeneratedUnsweptInterimResultSweep(
+          SqliteNativeDatabase activeDatabase,
+          FiscalYearCloseDraft closeDraft,
+          PostingIdGenerator postingIdGenerator) {
     if (closeDraft.unsweptInterimResultSweepDraft() == null) {
-      return;
+      return null;
     }
-    postingPersistence.persistInterimResultSweep(
-        activeDatabase,
-        observedHead,
-        closeDraft.unsweptInterimResultSweepDraft(),
-        postingIdGenerator,
-        attestationAuthorizer);
+    return postingPersistence.persistInterimResultSweepAsFiscalCloseEffect(
+        activeDatabase, closeDraft.unsweptInterimResultSweepDraft(), postingIdGenerator);
   }
 
   private record CloseTargetSelectionResult(

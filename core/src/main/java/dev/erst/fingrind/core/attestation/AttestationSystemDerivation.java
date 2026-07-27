@@ -5,32 +5,38 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Objects;
 
-/** Recomputes the non-discretionary system-close date fields after historical authorization. */
+/** Recomputes non-discretionary system-close date fields after position-resolved authorization. */
 final class AttestationSystemDerivation {
   private static final int REQUEST_POSTING = 0x0120;
   private static final int REQUEST_PERIOD_CLOSE = 0x0140;
   private static final int EFFECT_POSTING = 0x0020;
+  private static final String PERIOD_CLOSE = "period-close";
+  private static final String SYSTEM = "system";
 
   private AttestationSystemDerivation() {}
 
-  static void requireValid(
+  static AttestationPeriodCloseHistory requireValid(
+      AttestationPeriodCloseHistory closeHistory,
       AttestationRegistry registry,
       AttestationOperationPayload payload,
       AttestationOperationKind operationKind,
       AttestationVerifiedOperationProvenance provenance,
       AttestationPreimage requestPreimage,
       AttestationPreimage effectPreimage) {
+    AttestationPeriodCloseHistory checkedCloseHistory =
+        Objects.requireNonNull(closeHistory, "closeHistory");
     AttestationRegistry checkedRegistry = Objects.requireNonNull(registry, "registry");
     Objects.requireNonNull(payload, "payload");
     Objects.requireNonNull(operationKind, "operationKind");
     AttestationVerifiedOperationProvenance checkedProvenance =
         Objects.requireNonNull(provenance, "provenance");
     if (checkedProvenance.sourceChannel() != AttestationSourceChannel.SYSTEM) {
-      return;
+      return checkedCloseHistory;
     }
     AttestationSystemWorkflowPolicy workflowPolicy =
         requireWorkflow(checkedRegistry, payload, operationKind, checkedProvenance);
     requireDerivedShape(payload, operationKind, workflowPolicy, requestPreimage, effectPreimage);
+    return checkedCloseHistory.acceptSystem(operationKind, payload, effectPreimage);
   }
 
   private static AttestationSystemWorkflowPolicy requireWorkflow(
@@ -54,27 +60,49 @@ final class AttestationSystemDerivation {
       AttestationPreimage effectPreimage) {
     String expectedCloseKind = workflowKind(operationKind).wireToken();
     LocalDate recordedOn = payload.recordedAt().atZone(ZoneOffset.UTC).toLocalDate();
-    LocalDate expectedEffectiveTo =
-        switch (workflowPolicy.workflowKind()) {
-          case INTERIM_RESULT_SWEEP -> recordedOn.minusDays(1);
-          case FISCAL_YEAR_CLOSE -> recordedOn;
-        };
     AttestationPreimage.Fact periodClose = exactlyOne(requestPreimage, REQUEST_PERIOD_CLOSE);
     AttestationPreimage.Fact posting = exactlyOne(requestPreimage, REQUEST_POSTING);
-    AttestationPreimage.Fact effectPosting = exactlyOne(effectPreimage, EFFECT_POSTING);
+    LocalDate effectiveTo = date(periodClose, 2);
+    boolean recordedAtMatchesEffectiveTo =
+        workflowPolicy.workflowKind() != AttestationSystemWorkflowKind.INTERIM_RESULT_SWEEP
+            || recordedOn.minusDays(1).equals(effectiveTo);
+    List<AttestationPreimage.Fact> effectPostings =
+        effectPostings(effectPreimage, expectedCloseKind);
     List<Boolean> derivedFields =
         List.of(
             expectedCloseKind.equals(token(periodClose, 0)),
-            expectedEffectiveTo.equals(date(periodClose, 2)),
+            recordedAtMatchesEffectiveTo,
             matchesWorkflowAccounts(periodClose, workflowPolicy),
             expectedCloseKind.equals(token(posting, 1)),
-            expectedEffectiveTo.equals(date(posting, 2)),
-            expectedCloseKind.equals(token(effectPosting, 3)),
-            expectedCloseKind.equals(token(effectPosting, 5)),
-            expectedEffectiveTo.equals(date(effectPosting, 6)));
+            effectiveTo.equals(date(posting, 2)),
+            PERIOD_CLOSE.equals(token(posting, 3)));
     if (derivedFields.contains(false)) {
       throw failure();
     }
+    for (AttestationPreimage.Fact effectPosting : effectPostings) {
+      List<Boolean> postingFields =
+          List.of(
+              expectedCloseKind.equals(token(effectPosting, 3)),
+              PERIOD_CLOSE.equals(token(effectPosting, 4)),
+              expectedCloseKind.equals(token(effectPosting, 5)),
+              effectiveTo.equals(date(effectPosting, 6)),
+              SYSTEM.equals(token(effectPosting, 12)));
+      if (postingFields.contains(false)) {
+        throw failure();
+      }
+    }
+  }
+
+  private static List<AttestationPreimage.Fact> effectPostings(
+      AttestationPreimage effectPreimage, String expectedCloseKind) {
+    List<AttestationPreimage.Fact> postings =
+        AttestationPreimageFields.records(effectPreimage, EFFECT_POSTING).stream()
+            .filter(posting -> expectedCloseKind.equals(token(posting, 3)))
+            .toList();
+    if (postings.isEmpty()) {
+      throw failure();
+    }
+    return postings;
   }
 
   private static AttestationSystemWorkflowKind workflowKind(

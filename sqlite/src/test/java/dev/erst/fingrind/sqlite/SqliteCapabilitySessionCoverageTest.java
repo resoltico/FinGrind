@@ -3,7 +3,6 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -28,14 +27,12 @@ import dev.erst.fingrind.core.WeightedAverageCostingMath;
 import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
 import dev.erst.fingrind.executor.bookkeeping.AccountDeclaration;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
-import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepDraft;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepOutcome;
 import dev.erst.fingrind.executor.bookkeeping.InterimResultSweepPlanner;
 import dev.erst.fingrind.executor.bookkeeping.InventoryAccountState;
 import dev.erst.fingrind.executor.bookkeeping.InventoryMovementRecord;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.math.BigInteger;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -69,6 +66,10 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
           postingFactStore.storeLifecycle(),
           assertInstanceOf(SqliteAdministrationCapabilitySession.class, administrationSession)
               .storeLifecycle());
+      assertSame(
+          postingFactStore.storeAdministrationMutationOperations(),
+          assertInstanceOf(SqliteAdministrationCapabilitySession.class, administrationSession)
+              .storeAdministrationMutationOperations());
       assertSame(
           postingFactStore.storeContext(),
           assertInstanceOf(SqliteAdministrationCapabilitySession.class, administrationSession)
@@ -130,7 +131,7 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
   }
 
   @Test
-  void postingFactStoreLifecycleView_primesInspectsAndCoordinatesBothPlanTransactionOutcomes() {
+  void postingFactStoreLifecycleView_primesAndExposesItsReadOnlySessionMetadata() {
     Path bookPath = tempDirectory.resolve("posting-store-lifecycle-view.sqlite");
     try (SqlitePostingFactStore store = openStore(bookAccess(bookPath))) {
       initializeBookWithMinimalNumericAccounts(store);
@@ -144,25 +145,6 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
       assertEquals(SqliteStoreAccessMode.READ_WRITE_CREATE, store.accessMode());
       assertSame(store.storeContext().postingReader(), store.postingReader());
       store.requireInitializedBook(store.activeNativeDatabase());
-
-      store.beginLedgerPlanTransaction();
-      store.commitLedgerPlanTransaction();
-      store.beginLedgerPlanTransaction();
-      store.rollbackLedgerPlanTransaction();
-    }
-  }
-
-  @Test
-  void ledgerPlanArtifactCleanup_removesAnUninitializedBookCreatedByTheActivePlanOnly() {
-    Path bookPath = tempDirectory.resolve("plan-created-book-cleanup.sqlite");
-    try (SqlitePostingFactStore store = openStore(bookAccess(bookPath))) {
-      store.storeLifecycle().transactions().cleanupCreatedMissingBookArtifactsIfPresent();
-
-      store.beginLedgerPlanTransaction();
-      assertTrue(Files.isRegularFile(bookPath));
-      store.storeLifecycle().transactions().cleanupCreatedMissingBookArtifactsIfPresent();
-
-      assertFalse(Files.exists(bookPath));
     }
   }
 
@@ -189,6 +171,10 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
 
   @Test
   void planExecutionSession_commitsOnlyItsFinalAggregateAttestation() {
+    assertFalse(
+        SqliteAdministrationSession.class.isAssignableFrom(SqlitePlanExecutionSession.class));
+    assertFalse(SqlitePostingSession.class.isAssignableFrom(SqlitePlanExecutionSession.class));
+
     Path bookPath = tempDirectory.resolve("plan-session-attestation.sqlite");
     try (SqlitePostingFactStore store = openStore(bookAccess(bookPath));
         SqlitePlanExecutionSession session = SqliteCapabilitySessions.planExecution(store)) {
@@ -196,16 +182,19 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
       AttestationPlanOperationAuthorizer authorizer =
           new AttestationPlanOperationAuthorizer(SqliteAttestationTestSupport.authorizer());
 
-      session.beginLedgerPlanTransaction();
-      assertNull(
-          session.appendPlanAttestation(
-              "no-op-plan", Instant.parse("2026-07-21T12:00:00Z"), authorizer));
+      session.beginLedgerPlanTransaction("no-op-plan", authorizer);
+      assertFalse(session.hasCompletedLedgerPlanChildren());
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> session.appendPlanAttestation(Instant.parse("2026-07-21T12:00:00Z"), authorizer));
+      session.commitLedgerPlanTransaction();
       assertEquals(
           3, queryInt(requireStoreDatabase(store), "select count(*) from attestation_operation"));
-      authorizer.enterStep(0);
+      session.beginLedgerPlanTransaction("account-plan", authorizer);
+      session.enterLedgerPlanStep(0);
       assertInstanceOf(
-          dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome.Declared.class,
-          session.declareAccount(
+          dev.erst.fingrind.executor.bookkeeping.PlanAccountDeclarationOutcome.Declared.class,
+          session.declareAccountForPlan(
               new AccountDeclaration(
                   new AccountCode("3000"),
                   new AccountName("Plan equity"),
@@ -214,10 +203,10 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
                       FinancialPositionLineClassification.EQUITY_CONTRIBUTION)),
               Instant.parse("2026-07-21T12:00:00Z"),
               authorizer));
+      assertTrue(session.hasCompletedLedgerPlanChildren());
       AttestationCommit commitment =
           Objects.requireNonNull(
-              session.appendPlanAttestation(
-                  "account-plan", Instant.parse("2026-07-21T12:00:01Z"), authorizer));
+              session.appendPlanAttestation(Instant.parse("2026-07-21T12:00:01Z"), authorizer));
       session.commitLedgerPlanTransaction();
 
       assertEquals(BigInteger.valueOf(3), commitment.operationOrder());
@@ -228,7 +217,7 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
   }
 
   @Test
-  void reportingPeriodCloseCapabilitySessionCoversDraftHelperAndStoreContext() {
+  void reportingPeriodCloseCapabilitySessionCoversStoreContextAndUnavailableBooks() {
     Path missingBookPath = tempDirectory.resolve("period-transfer-session-coverage.sqlite");
     Path blankBookPath = tempDirectory.resolve("period-transfer-session-blank.sqlite");
     LocalDate effectiveDate = LocalDate.parse("2026-04-07");
@@ -246,15 +235,6 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
       assertEquals(
           new InterimResultSweepOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
-          assertInstanceOf(
-                  SqliteReportingPeriodCloseCapabilitySession.class, reportingPeriodCloseSession)
-              .interimResultSweep(
-                  emptyInterimResultSweepDraft(effectiveDate, sweptAt),
-                  unusedPostingIdGenerator(),
-                  SqliteAttestationTestSupport.authorizer()));
-      assertEquals(
-          new InterimResultSweepOutcome.Rejected(
-              new BookkeepingAdministrationRejection.BookNotInitialized()),
           reportingPeriodCloseSession.interimResultSweep(
               reportingPeriod,
               bookIdentity(),
@@ -267,7 +247,6 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
           new InterimResultSweepOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
           reportingPeriodCloseSession.interimResultSweep(
-              effectiveDate,
               effectiveDate,
               bookIdentity(),
               planner,
@@ -283,8 +262,25 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
             }
 
             @Override
-            public SqliteStoreMutationOperations storeMutationOperations() {
-              return postingFactStore.storeMutationOperations();
+            public SqliteStoreAdministrationMutationOperations
+                storeAdministrationMutationOperations() {
+              return postingFactStore.storeAdministrationMutationOperations();
+            }
+
+            @Override
+            public SqliteStoreAccountRegistryMutationOperations
+                storeAccountRegistryMutationOperations() {
+              return postingFactStore.storeAccountRegistryMutationOperations();
+            }
+
+            @Override
+            public SqliteStorePostingMutationOperations storePostingMutationOperations() {
+              return postingFactStore.storePostingMutationOperations();
+            }
+
+            @Override
+            public SqliteClosingMutationOperations storeClosingMutationOperations() {
+              return postingFactStore.storeClosingMutationOperations();
             }
           };
       assertEquals(
@@ -303,15 +299,6 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(blankBookPath));
         SqliteReportingPeriodCloseSession reportingPeriodCloseSession =
             SqliteCapabilitySessions.reportingPeriodClose(postingFactStore)) {
-      assertEquals(
-          new InterimResultSweepOutcome.Rejected(
-              new BookkeepingAdministrationRejection.BookNotInitialized()),
-          assertInstanceOf(
-                  SqliteReportingPeriodCloseCapabilitySession.class, reportingPeriodCloseSession)
-              .interimResultSweep(
-                  emptyInterimResultSweepDraft(effectiveDate, sweptAt),
-                  unusedPostingIdGenerator(),
-                  SqliteAttestationTestSupport.authorizer()));
       assertEquals(
           new InterimResultSweepOutcome.Rejected(
               new BookkeepingAdministrationRejection.BookNotInitialized()),
@@ -356,7 +343,7 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
     Path staleBookPath = tempDirectory.resolve("operational-lifecycle-stale.sqlite");
     initializeBookOnDisk(staleBookPath);
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(staleBookPath))) {
-      setStoreDatabase(postingFactStore, staleDatabaseHandle(staleBookPath));
+      setStoreDatabase(postingFactStore, staleDatabaseHandle());
       IllegalStateException workflowFailure =
           assertThrows(IllegalStateException.class, postingFactStore::allowsInitializedWorkflow);
       assertTrue(
@@ -394,7 +381,7 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
     try (SqlitePostingFactStore postingFactStore = openStore(bookAccess(staleBookPath))) {
       SqliteTransactionValidationBook validationBook =
           new SqliteTransactionValidationBook(
-              staleDatabaseHandle(staleBookPath), postingFactStore.postingReader());
+              staleDatabaseHandle(), postingFactStore.postingReader());
       IllegalStateException workflowFailure =
           assertThrows(IllegalStateException.class, validationBook::allowsInitializedWorkflow);
       assertTrue(
@@ -654,8 +641,7 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
             duplicateStateInValidationBook.getMessage());
       }
 
-      try (StoreDatabaseSwap ignored =
-          swapStoreDatabase(postingFactStore, staleDatabaseHandle(bookPath))) {
+      try (StoreDatabaseSwap ignored = swapStoreDatabase(postingFactStore, staleDatabaseHandle())) {
         IllegalStateException inventoryStateFailure =
             assertThrows(
                 IllegalStateException.class,
@@ -825,14 +811,4 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
   }
 
   private record DatabaseHandleRef(SqliteNativeDatabase value) {}
-
-  private static InterimResultSweepDraft emptyInterimResultSweepDraft(
-      LocalDate effectiveDate, Instant sweptAt) {
-    return new InterimResultSweepDraft(
-        new ReportingPeriod(effectiveDate, effectiveDate),
-        new AccountCode("3200"),
-        List.of(),
-        sweptAt,
-        List.of());
-  }
 }

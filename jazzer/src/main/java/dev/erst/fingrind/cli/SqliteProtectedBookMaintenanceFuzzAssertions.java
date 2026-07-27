@@ -31,7 +31,8 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
   static void exercise(byte[] input, Path root) throws IOException {
     Objects.requireNonNull(input, "input");
     Objects.requireNonNull(root, "root");
-    SqliteFuzzAssertions.prepareSecureArtifactDirectory(root);
+    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(root);
+    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(root.resolve("source"));
 
     Path sourceBookPath = root.resolve("source").resolve("entity.sqlite");
     Path sourceKeyPath = root.resolve("source").resolve("entity.key");
@@ -60,7 +61,10 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
       CliBookLifecycleWorkflow lifecycleWorkflow,
       CliBookReadWorkflow readWorkflow,
       BookAccess sourceAccess,
-      Path root) {
+      Path root)
+      throws IOException {
+    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(root.resolve("backup"));
+    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(root.resolve("restored"));
     Path backupBookPath = root.resolve("backup").resolve("entity.sqlite");
     Path backupKeyPath = root.resolve("backup").resolve("entity.key");
     requireAcceptedResult(
@@ -109,7 +113,8 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
     Path unattestedBackupKeyPath = root.resolve("unattested-backup").resolve("entity.key");
     Path unattestedBackupDirectory =
         Objects.requireNonNull(unattestedBackupKeyPath.getParent(), "unattested backup directory");
-    SqliteFuzzAssertions.prepareSecureArtifactDirectory(unattestedBackupDirectory);
+    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(unattestedBackupDirectory);
+    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(root.resolve("unattested-restored"));
     Files.copy(sourceBookPath, unattestedBackupBookPath);
     Files.copy(sourceKeyPath, unattestedBackupKeyPath, StandardCopyOption.COPY_ATTRIBUTES);
     requireUnchanged(
@@ -147,6 +152,7 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
       throws IOException {
     Path backupBookPath = root.resolve("collision-backup").resolve("entity.sqlite");
     Path occupiedBackupKeyPath = root.resolve("collision-backup").resolve("entity.key");
+    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(root.resolve("collision-backup"));
     SqliteFuzzAssertions.writeDeterministicBookKeyFile(occupiedBackupKeyPath);
     byte[] sourceBefore = Files.readAllBytes(sourceBookPath);
     byte[] occupiedKeyBefore = Files.readAllBytes(occupiedBackupKeyPath);
@@ -176,6 +182,7 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
       throws IOException {
     Path backupBookPath = root.resolve("destination-backup").resolve("entity.sqlite");
     Path backupKeyPath = root.resolve("destination-backup").resolve("entity.key");
+    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(root.resolve("destination-backup"));
     requireAcceptedResult(
         lifecycleWorkflow
             .backupBook(sourceAccess, backupBookPath, backupKeyPath, BACKUP_ID)
@@ -184,7 +191,7 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
         "backup");
 
     Path destinationBookPath = root.resolve("occupied-destination").resolve("entity.sqlite");
-    SqliteFuzzAssertions.prepareSecureArtifactDirectory(
+    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(
         Objects.requireNonNull(destinationBookPath.getParent(), "occupied destination parent"));
     Files.copy(sourceBookPath, destinationBookPath);
     byte[] destinationBefore = Files.readAllBytes(destinationBookPath);
@@ -208,6 +215,7 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
         "An unacknowledged restore destination must not create a destination key.");
 
     Path occupiedRekeyPath = root.resolve("rekey-collision").resolve("entity.key");
+    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(root.resolve("rekey-collision"));
     SqliteFuzzAssertions.writeDeterministicBookKeyFile(occupiedRekeyPath);
     byte[] sourceBefore = Files.readAllBytes(sourceBookPath);
     RekeyBookResult rekeyResult =
@@ -217,7 +225,7 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
         sourceBookPath, sourceBefore, "A rekey target collision must not mutate the source book.");
   }
 
-  static void exerciseRekeyBackupRestoreWithReleasedFormerKeyPath(
+  static void exerciseRekeyBackupRestoreWithoutRemovingFormerKey(
       CliBookLifecycleWorkflow lifecycleWorkflow,
       CliBookReadWorkflow readWorkflow,
       BookAccess sourceAccess,
@@ -235,9 +243,10 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
     requireReadable(readWorkflow, rotatedSourceAccess);
     requireUnreadable(readWorkflow, sourceAccess);
 
-    Files.delete(sourceKeyPath);
     Path backupBookPath = root.resolve("backup").resolve("entity.sqlite");
     Path backupKeyPath = root.resolve("backup").resolve("entity.key");
+    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(root.resolve("backup"));
+    SqliteFuzzAssertions.createOwnerOnlyArtifactDirectory(root.resolve("restored"));
     requireAcceptedResult(
         lifecycleWorkflow
             .backupBook(rotatedSourceAccess, backupBookPath, backupKeyPath, BACKUP_ID)
@@ -246,11 +255,12 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
         "backup after rekey");
 
     Path restoredBookPath = root.resolve("restored").resolve("entity.sqlite");
+    Path restoredKeyPath = root.resolve("restored").resolve("entity.restored.key");
     requireAcceptedResult(
         lifecycleWorkflow
             .restoreBook(
                 restoredBookPath,
-                sourceKeyPath,
+                restoredKeyPath,
                 backupBookPath,
                 backupKeyPath,
                 rotatedSourceAccess.attestationCredentialSources())
@@ -258,10 +268,13 @@ final class SqliteProtectedBookMaintenanceFuzzAssertions {
         RestoreBookResult.Restored.class,
         "restore after rekey");
     BookAccess restoredAccess =
-        SqliteRoundTripWorkflowResources.keyFileBookAccess(restoredBookPath, sourceKeyPath);
+        SqliteRoundTripWorkflowResources.keyFileBookAccess(restoredBookPath, restoredKeyPath);
     requireReadable(readWorkflow, rotatedSourceAccess);
     requireReadable(readWorkflow, restoredAccess);
     requireUnreadable(readWorkflow, sourceAccess);
+    requireUnreadable(
+        readWorkflow,
+        SqliteRoundTripWorkflowResources.keyFileBookAccess(restoredBookPath, sourceKeyPath));
     requireUnreadable(
         readWorkflow,
         SqliteRoundTripWorkflowResources.keyFileBookAccess(restoredBookPath, rotatedSourceKeyPath));

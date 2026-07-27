@@ -156,7 +156,7 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
   }
 
   @Test
-  void renderAccountLedgerPublishesFullAttestationHeadsInTheDedicatedCommitmentSection()
+  void renderAccountLedgerPublishesInlineAttestationOrderWithoutDetachedFullHead()
       throws IOException {
     AccountLedgerReport accountLedgerReport =
         new AccountLedgerReport(
@@ -173,14 +173,18 @@ class PdfAccountLedgerAndPeriodSummaryReportTest {
                     money("EUR", "100.00"),
                     BalanceSide.DEBIT,
                     new dev.erst.fingrind.contract.bookkeeping.AttestationCommit(
-                        java.math.BigInteger.valueOf(7),
+                        new java.math.BigInteger("18446744073709551615"),
                         "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"))),
             List.of(balance("EUR", "100.00", "0.00", "100.00", BalanceSide.DEBIT)));
 
     String accountLedgerText = extractedText(render(PDF_REPORT_SERVICE, accountLedgerReport));
+    String normalizedAccountLedgerText = accountLedgerText.replace('\n', ' ');
 
-    assertTrue(accountLedgerText.contains("Attestation Commitments"));
-    assertTrue(
+    assertTrue(normalizedAccountLedgerText.contains("Attestation order"));
+    assertTrue(accountLedgerText.contains("019e26ff-0000-7000-8000-000000000007"));
+    assertTrue(accountLedgerText.contains("18446744073709551615"));
+    assertFalse(accountLedgerText.contains("Attestation Commitments"));
+    assertFalse(
         accountLedgerText.contains(
             "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"));
   }

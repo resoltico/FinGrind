@@ -96,6 +96,39 @@ def require_no_match(text: str, pattern: str, message: str) -> None:
         raise ReleaseSmokeFailure(message)
 
 
+def require_labeled_text_value(text: str, label: str, expected: str, message: str) -> None:
+    lines = text.splitlines()
+    values: list[str] = []
+    for index, line in enumerate(lines):
+        prefix, separator, value = line.partition(":")
+        if separator and prefix.rstrip() == label and value.startswith(" "):
+            continuation_prefix = " " * (len(prefix) + 3)
+            value_lines = [value[1:]]
+            for continuation in lines[index + 1 :]:
+                if not continuation.startswith(continuation_prefix):
+                    break
+                value_lines.append(continuation.removeprefix(continuation_prefix))
+            values.append(" ".join(value_lines))
+    require(values == [expected], message)
+
+
+def require_rejected_json_diagnostic(
+    output: str,
+    code: str,
+    diagnostic_message: str,
+    hint: str,
+    label: str,
+) -> None:
+    envelope = parse_json_output(output, f"{label} output was not valid JSON")
+    require(envelope.get("status") == "rejected", f"{label} did not report rejected status")
+    require(envelope.get("code") == code, f"{label} did not report {code}")
+    require(
+        envelope.get("message") == diagnostic_message,
+        f"{label} did not report its exact message",
+    )
+    require(envelope.get("hint") == hint, f"{label} did not report its exact remediation")
+
+
 def posix_pattern_to_python(pattern: str) -> str:
     return pattern.replace("[[:space:]]", r"\s")
 

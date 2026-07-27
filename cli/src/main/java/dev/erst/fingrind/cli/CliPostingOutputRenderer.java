@@ -49,12 +49,8 @@ final class CliPostingOutputRenderer {
         List.of(
             "Source channel",
             displayWireLabel(postingFact.provenance().sourceChannel().wireValue())));
-    if (attestationCommit == null) {
-      header.add(List.of("Attestation", "No authenticated operation reference"));
-    } else {
-      header.add(List.of("Attestation order", attestationCommit.operationOrder().toString()));
-      header.add(List.of("Attestation head", attestationCommit.operationHeadHex()));
-    }
+    CliAttestationCommitPresentation.appendTextRows(
+        header, attestationCommit, CliAttestationCommitPresentation.UNAVAILABLE_REFERENCE_DETAIL);
     header.add(
         List.of(
             "Source documents", CliPostingFactFormatter.postingSourceDocumentsText(postingFact)));
@@ -87,25 +83,11 @@ final class CliPostingOutputRenderer {
   }
 
   static String renderPostingRegisterText(PostingPage page, boolean withContext) {
-    String summary =
-        CliTextFormat.renderKeyValueBlock(
-            page.postings().isEmpty()
-                ? List.of(
-                    List.of("Outcome", CliQueryScopeText.noMatchesLabel("postings")),
-                    List.of("Limit", Integer.toString(page.limit())),
-                    List.of(
-                        "Next cursor",
-                        page.nextCursor().map(cursor -> cursor.wireValue()).orElse("(none)")))
-                : List.of(
-                    List.of("Returned postings", Integer.toString(page.postings().size())),
-                    List.of("Limit", Integer.toString(page.limit())),
-                    List.of(
-                        "Next cursor",
-                        page.nextCursor().map(cursor -> cursor.wireValue()).orElse("(none)"))));
     String postings =
         page.postings().isEmpty()
             ? ""
-            : CliTextFormat.renderTable(
+            : CliTextFormat.renderAdaptiveTable(
+                CliReportRenderSupport.TEXT_TABLE_WIDTH,
                 List.of(
                     "Effective date",
                     "Origin",
@@ -113,38 +95,37 @@ final class CliPostingOutputRenderer {
                     "Debit",
                     "Credit",
                     "Accounts",
-                    "Posting ref"),
+                    "Posting ref",
+                    CliAttestationHeadPresentation.ORDER_LABEL),
                 page.postings().stream()
-                    .map(CliPostingFactFormatter::postingRegisterTextRow)
+                    .map(posting -> postingRegisterTextRow(page, posting))
                     .toList(),
                 3,
                 4);
-    String context =
-        CliTextFormat.renderKeyValueBlock(
-            mergeContextRows(
-                CliBookIdentityDisplay.contextRows(page.bookIdentity()),
+    List<List<String>> contextRows =
+        mergeContextRows(
+            CliBookIdentityDisplay.contextRows(page.bookIdentity()),
+            List.of(
                 List.of(
-                    List.of(
-                        "Account filter",
-                        page.accountCodeFilter().map(AccountCode::value).orElse("(all accounts)")),
-                    List.of(
-                        CliTemporalScopeText.summaryLabel(
-                            dev.erst.fingrind.contract.protocol.OperationId.LIST_POSTINGS),
-                        CliQueryScopeText.dateRange(
-                            page.effectiveDateRange().effectiveDateFrom().orElse(null),
-                            page.effectiveDateRange().effectiveDateTo().orElse(null))))));
-    String attestationCommitments =
-        page.attestationCommitsByPostingId().isEmpty()
-            ? ""
-            : CliReportRenderSupport.section(
-                "Attestation commitments", renderAttestationCommitments(page));
-    return CliTextFormat.renderTitledBlock(
-        "Postings",
-        CliReportRenderSupport.joinSections(
-            summary,
+                    "Account filter",
+                    page.accountCodeFilter().map(AccountCode::value).orElse("(all accounts)")),
+                List.of(
+                    CliTemporalScopeText.summaryLabel(
+                        dev.erst.fingrind.contract.protocol.OperationId.LIST_POSTINGS),
+                    CliQueryScopeText.dateRange(
+                        page.effectiveDateRange().effectiveDateFrom().orElse(null),
+                        page.effectiveDateRange().effectiveDateTo().orElse(null)))));
+    return CliReportRenderSupport.renderPagedListText(
+        new CliPagedListText(
+            "Postings",
+            "postings",
+            "postings",
+            page.postings().size(),
+            page.limit(),
+            page.nextCursor().map(cursor -> cursor.wireValue()).orElse("(none)"),
             postings,
-            attestationCommitments,
-            withContext ? CliReportRenderSupport.section("Context", context) : ""));
+            withContext,
+            contextRows));
   }
 
   static String renderPostingRegisterCsv(PostingPage page) {
@@ -265,24 +246,12 @@ final class CliPostingOutputRenderer {
     };
   }
 
-  private static String renderAttestationCommitments(PostingPage page) {
-    return CliTextFormat.renderKeyValueBlock(
-        page.postings().stream()
-            .map(
-                posting -> {
-                  AttestationCommit commitment =
-                      page.attestationCommitsByPostingId().get(posting.postingId());
-                  return commitment == null
-                      ? null
-                      : List.of(
-                          "Posting " + posting.postingId().value(),
-                          "order "
-                              + commitment.operationOrder()
-                              + "; head "
-                              + commitment.operationHeadHex());
-                })
-            .filter(java.util.Objects::nonNull)
-            .toList());
+  private static List<String> postingRegisterTextRow(PostingPage page, PostingFact postingFact) {
+    List<String> row = new ArrayList<>(CliPostingFactFormatter.postingRegisterTextRow(postingFact));
+    AttestationCommit commitment =
+        page.attestationCommitsByPostingId().get(postingFact.postingId());
+    row.add(commitment == null ? "(none)" : commitment.operationOrder().toString());
+    return List.copyOf(row);
   }
 
   private static List<List<String>> mergeContextRows(

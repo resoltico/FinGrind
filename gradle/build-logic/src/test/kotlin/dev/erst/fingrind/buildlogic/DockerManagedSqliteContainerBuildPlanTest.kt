@@ -21,7 +21,7 @@ class DockerManagedSqliteContainerBuildPlanTest {
                 pythonPackage = "python3",
                 sourceFileName = "sqlite3mc_amalgamation.c",
                 architectureId = "aarch64",
-                sqliteVersion = "3.53.3",
+                sqliteVersion = "3.53.4",
                 requiredCompileOptions =
                     listOf(
                         "SQLITE_THREADSAFE=1",

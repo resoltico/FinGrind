@@ -26,6 +26,43 @@ readonly repo_root="$(cd -P -- "${script_dir}/.." && pwd)"
 readonly workflow_py="${repo_root}/scripts/release-smoke-workflow.py"
 readonly workflow_contract_py="${repo_root}/scripts/test-release-smoke-workflow-contract.py"
 readonly workflow_package_dir="${repo_root}/scripts/release_smoke_workflow"
+readonly field_matrix_package_dir="${workflow_package_dir}/field_matrix"
+readonly field_execution_py="${workflow_package_dir}/release_smoke_field_execution.py"
+readonly fixture_writers_py="${workflow_package_dir}/fixture_writers.py"
+readonly fixture_plan_contract_py="${workflow_package_dir}/fixture_plan_contract.py"
+readonly plan_reactivation_checks_py="${workflow_package_dir}/plan_reactivation_checks.py"
+readonly plan_posting_checks_py="${workflow_package_dir}/plan_posting_checks.py"
+readonly plan_posting_provenance_checks_py="${workflow_package_dir}/plan_posting_provenance_checks.py"
+readonly posting_replay_checks_py="${workflow_package_dir}/posting_replay_checks.py"
+readonly protected_book_tamper_checks_py="${workflow_package_dir}/protected_book_tamper_checks.py"
+readonly maintenance_checks_py="${workflow_package_dir}/maintenance_checks.py"
+readonly maintenance_collision_checks_py="${workflow_package_dir}/maintenance_collision_checks.py"
+readonly receipt_security_checks_py="${workflow_package_dir}/attestation_receipt_security_checks.py"
+readonly receipt_security_positive_py="${workflow_package_dir}/attestation_receipt_security_positive.py"
+readonly receipt_security_aliases_py="${workflow_package_dir}/attestation_receipt_security_aliases.py"
+readonly receipt_security_output_refusals_py="${workflow_package_dir}/attestation_receipt_security_output_refusals.py"
+readonly receipt_security_assertions_py="${workflow_package_dir}/attestation_receipt_security_assertions.py"
+readonly receipt_security_commands_py="${workflow_package_dir}/attestation_receipt_security_commands.py"
+readonly receipt_security_symlinks_py="${workflow_package_dir}/attestation_receipt_security_symlinks.py"
+readonly artifact_assertions_py="${field_matrix_package_dir}/artifact_assertions.py"
+readonly attestation_scale_scenario_py="${field_matrix_package_dir}/attestation_scale_scenario.py"
+readonly attestation_scale_contract_py="${field_matrix_package_dir}/attestation_scale_contract.py"
+readonly attestation_scale_posting_queries_py="${field_matrix_package_dir}/attestation_scale_posting_queries.py"
+readonly attestation_scale_account_ledger_py="${field_matrix_package_dir}/attestation_scale_account_ledger.py"
+readonly receipt_artifact_assertions_py="${field_matrix_package_dir}/receipt_artifact_assertions.py"
+readonly format_boundary_scenarios_py="${field_matrix_package_dir}/format_boundary_scenarios.py"
+readonly format_boundary_inspection_py="${field_matrix_package_dir}/format_boundary_inspection.py"
+readonly format_boundary_operational_matrix_py="${field_matrix_package_dir}/format_boundary_operational_matrix.py"
+readonly format_boundary_probe_execution_py="${field_matrix_package_dir}/format_boundary_probe_execution.py"
+readonly format_boundary_refusals_py="${field_matrix_package_dir}/format_boundary_refusals.py"
+readonly native_format_boundary_probe_java="${field_matrix_package_dir}/NativeSqliteFormatBoundaryProbe.java"
+readonly distribution_plugin="${repo_root}/gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/FinGrindCliDistributionPlugin.kt"
+readonly native_format_boundary_probe_registration="${repo_root}/gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/NativeSqliteFormatBoundaryProbeRegistration.kt"
+readonly docker_context_registration="${repo_root}/gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/CliDistributionDockerContextRegistration.kt"
+readonly docker_source_inventory="${repo_root}/gradle/build-logic/src/main/kotlin/dev/erst/fingrind/buildlogic/CliDistributionSourceInventory.kt"
+readonly dockerfile="${repo_root}/Dockerfile"
+readonly bundle_root_verifier="${repo_root}/scripts/bundle_archive_root_verification.py"
+readonly release_smoke_requirements="${repo_root}/requirements-release-smoke-workflow.txt"
 readonly python_runtime_support="${repo_root}/scripts/python-runtime-support.sh"
 readonly common_support_sh="${repo_root}/scripts/release-smoke-common.sh"
 readonly workflow_support_sh="${repo_root}/scripts/release-smoke-workflow-support.sh"
@@ -40,6 +77,56 @@ readonly docker_smoke_sh="${repo_root}/scripts/docker-smoke.sh"
 [[ -f "${workflow_contract_py}" ]] || die \
     "missing release smoke workflow contract regression owner at ${workflow_contract_py}"
 [[ -d "${workflow_package_dir}" ]] || die "missing release smoke workflow package at ${workflow_package_dir}"
+[[ -d "${field_matrix_package_dir}" ]] || die "missing release-smoke field-matrix package at ${field_matrix_package_dir}"
+[[ -f "${posting_replay_checks_py}" ]] || die "missing direct posting replay release-smoke owner"
+[[ -f "${protected_book_tamper_checks_py}" ]] || die \
+    "missing protected-book byte tamper release-smoke owner"
+[[ -f "${maintenance_checks_py}" ]] || die \
+    "missing backup and restore release-smoke owner"
+[[ -f "${maintenance_collision_checks_py}" ]] || die \
+    "missing maintenance collision release-smoke owner"
+[[ -f "${receipt_security_checks_py}" ]] || die "missing receipt security release-smoke owner"
+[[ -f "${receipt_security_positive_py}" ]] || die "missing positive receipt security scenario owner"
+[[ -f "${receipt_security_aliases_py}" ]] || die "missing receipt alias security scenario owner"
+[[ -f "${receipt_security_output_refusals_py}" ]] || die \
+    "missing hostile receipt output-path scenario owner"
+[[ -f "${receipt_security_assertions_py}" ]] || die "missing receipt security assertion owner"
+[[ -f "${receipt_security_commands_py}" ]] || die "missing receipt security CLI transport owner"
+[[ -f "${receipt_security_symlinks_py}" ]] || die "missing receipt security symlink owner"
+[[ -f "${attestation_scale_scenario_py}" ]] || die \
+    "missing attestation provenance scale release-smoke owner"
+[[ -f "${attestation_scale_contract_py}" ]] || die \
+    "missing attestation provenance scale contract owner"
+[[ -f "${attestation_scale_posting_queries_py}" ]] || die \
+    "missing attestation provenance scale posting-query owner"
+[[ -f "${attestation_scale_account_ledger_py}" ]] || die \
+    "missing attestation provenance scale account-ledger owner"
+[[ -f "${receipt_artifact_assertions_py}" ]] || die \
+    "missing canonical receipt artifact assertion owner"
+[[ -f "${format_boundary_scenarios_py}" ]] || die \
+    "missing release-smoke protected-book format-boundary scenario"
+[[ -f "${format_boundary_inspection_py}" ]] || die \
+    "missing release-smoke protected-book format-boundary inspection owner"
+[[ -f "${format_boundary_operational_matrix_py}" ]] || die \
+    "missing release-smoke protected-book format-boundary operational matrix"
+[[ -f "${format_boundary_probe_execution_py}" ]] || die \
+    "missing release-smoke protected-book format-boundary native-probe owner"
+[[ -f "${format_boundary_refusals_py}" ]] || die \
+    "missing release-smoke protected-book format-boundary refusal owner"
+[[ -f "${native_format_boundary_probe_java}" ]] || die \
+    "missing archive-native SQLite format-boundary probe source"
+[[ -f "${distribution_plugin}" ]] || die "missing CLI distribution owner at ${distribution_plugin}"
+[[ -f "${native_format_boundary_probe_registration}" ]] || die \
+    "missing native SQLite format-boundary probe registration owner"
+[[ -f "${docker_context_registration}" ]] || die \
+    "missing Docker distribution staging owner at ${docker_context_registration}"
+[[ -f "${docker_source_inventory}" ]] || die \
+    "missing Docker source-inventory owner at ${docker_source_inventory}"
+[[ -f "${dockerfile}" ]] || die "missing Dockerfile at ${dockerfile}"
+[[ -f "${bundle_root_verifier}" ]] || die \
+    "missing bundle-root verifier at ${bundle_root_verifier}"
+[[ -f "${release_smoke_requirements}" ]] || die \
+    "missing pinned release-smoke Python requirements at ${release_smoke_requirements}"
 [[ -f "${python_runtime_support}" ]] || die "missing Python runtime support helper at ${python_runtime_support}"
 [[ -f "${common_support_sh}" ]] || die "missing Bash release smoke common helper at ${common_support_sh}"
 [[ -f "${workflow_support_sh}" ]] || die "missing Bash release smoke workflow support helper at ${workflow_support_sh}"
@@ -54,8 +141,155 @@ grep -Fq 'release-smoke-workflow-support.sh' "${bundle_support_sh}" || die \
     "release-smoke-support.sh no longer sources the shared workflow support helper"
 grep -Fq 'release-smoke-workflow.py' "${workflow_support_sh}" || die \
     "release-smoke-workflow-support.sh no longer delegates to the shared Python workflow owner"
+grep -Fq 'fingrind_run_python_with_tools' "${workflow_support_sh}" || die \
+    "release-smoke-workflow-support.sh no longer provisions its Python dependencies through pinned uv"
+grep -Fq -- '--with-requirements' "${python_runtime_support}" || die \
+    "Python runtime support no longer resolves release-smoke dependencies through uv"
+grep -Fxq 'pypdf==6.14.2' "${release_smoke_requirements}" || die \
+    "release-smoke PDF extraction is no longer pinned to the repo-owned pypdf version"
+grep -Fq 'from pypdf import PdfReader' "${artifact_assertions_py}" || die \
+    "release-smoke PDF extraction no longer uses the repo-owned pypdf reader"
+if grep -Fq 'pdftotext' "${artifact_assertions_py}"; then
+    die "release-smoke PDF extraction must not fall back to an ambient Poppler utility"
+fi
+grep -Fq 'fingrind_repo_uv_executable' "${python_runtime_support}" || die \
+    "Python runtime support no longer resolves an exact pinned uv executable for release smoke"
 grep -Fq 'release_smoke_workflow.runner import main' "${workflow_py}" || die \
     "release-smoke-workflow.py no longer delegates into the release_smoke_workflow package"
+grep -Fq 'verify_discovery_matrix' "${field_execution_py}" || die \
+    "release smoke runner no longer executes live discovery matrix coverage"
+grep -Fq 'verify_query_matrix' "${field_execution_py}" || die \
+    "release smoke runner no longer executes live generic query matrix coverage"
+grep -Fq 'verify_direct_posting_replay(config, operation_ids, commit_sale_output)' \
+    "${workflow_package_dir}/query_checks.py" || die \
+    "release smoke runner no longer proves direct idempotent replay before later writes"
+grep -Fq 'verify_attestation_scale_scenario(config, operation_ids)' "${field_execution_py}" || die \
+    "release smoke runner no longer executes isolated attestation provenance scale coverage"
+grep -Fq 'verify_protected_book_byte_tamper_rejection(' "${field_execution_py}" || die \
+    "release smoke runner no longer proves protected-book raw-byte tamper rejection"
+grep -Fq 'verify_maintenance_collision_refusals(' "${field_execution_py}" || die \
+    "release smoke runner no longer proves maintenance no-clobber target collisions"
+grep -Fq 'maintenance_checks.verify_backup_restore_surfaces(' "${field_execution_py}" || die \
+    "release smoke runner no longer executes backup and restore acceptance coverage"
+grep -Fq '_verify_source_artifact_identity_duplicate_refusal(' "${maintenance_checks_py}" || die \
+    "release smoke backup coverage no longer proves duplicate source-identity rejection"
+grep -Fq 'os.link(' "${maintenance_checks_py}" || die \
+    "release smoke duplicate-source coverage no longer uses a real filesystem hard link"
+grep -Fq 'source-artifact-identity-duplicated' "${maintenance_checks_py}" || die \
+    "release smoke duplicate-source coverage no longer requires the typed physical-identity refusal"
+grep -Fq 'root_entry_names == {aliased_book_source.local_path.name}' "${maintenance_checks_py}" || die \
+    "release smoke duplicate-source coverage no longer proves refusal side-effect freedom"
+grep -Fq 'after source-artifact identity duplicate refusal' "${maintenance_checks_py}" || die \
+    "release smoke duplicate-source coverage no longer proves attestation-head immutability"
+grep -Fq 'verify_receipt_trust_and_path_security(' "${workflow_package_dir}/attestation_checks.py" || die \
+    "release smoke attestation workflow no longer proves receipt trust and hostile-path handling"
+grep -Fq 'canonical_receipt_reported_path' "${receipt_artifact_assertions_py}" || die \
+    "release smoke receipt artifact assertions no longer require canonical physical paths"
+grep -Fq 'receipt intermediate-alias output refusal' "${receipt_security_aliases_py}" || die \
+    "release smoke receipt security no longer rejects an intermediate output-path symlink"
+grep -Fq 'receipt output-parent symlink refusal' "${receipt_security_output_refusals_py}" || die \
+    "release smoke receipt security no longer rejects a final output-parent symlink"
+grep -Fq 'invalid-artifact-output-directory' "${receipt_security_assertions_py}" || die \
+    "release smoke receipt security no longer requires the public private-output-directory refusal"
+grep -Fq 'unsafe_parent.chmod(0o755)' "${receipt_security_output_refusals_py}" || die \
+    "release smoke receipt security no longer exercises a nonprivate receipt output parent"
+grep -Fq 'created a staged or final artifact' "${receipt_security_output_refusals_py}" || die \
+    "release smoke receipt security no longer proves unsafe output-parent refusal leaves no artifact"
+grep -Fq 'receipt-artifact-invalid' "${receipt_security_aliases_py}" || die \
+    "release smoke receipt security no longer rejects a final input symlink"
+grep -Fq 'receipt-not-independent' "${receipt_security_positive_py}" || die \
+    "release smoke receipt security no longer proves in-boundary trust warnings"
+grep -Fq 'SCALE_POSTING_COUNT = 40' "${attestation_scale_contract_py}" || die \
+    "release smoke provenance scale no longer exercises forty fresh posting writes"
+grep -Fq 'verify_paginated_list_postings' "${attestation_scale_posting_queries_py}" || die \
+    "release smoke provenance scale no longer verifies paginated list-postings commitments"
+grep -Fq 'verify_list_postings_csv' "${attestation_scale_posting_queries_py}" || die \
+    "release smoke provenance scale no longer verifies list-postings CSV commitments"
+grep -Fq 'get-posting deliberately advertises JSON and text only' \
+    "${attestation_scale_posting_queries_py}" || die \
+    "release smoke provenance scale no longer records get-posting's intentionally non-CSV contract"
+grep -Fq 'account-ledger CSV' "${attestation_scale_account_ledger_py}" || die \
+    "release smoke provenance scale no longer verifies account-ledger CSV commitments"
+grep -Fq 'verify_protected_book_format_boundary_rejections' "${field_execution_py}" || die \
+    "release smoke runner no longer proves protected-book format boundary rejection"
+grep -Fq 'assert_inspection_rejection(' "${format_boundary_scenarios_py}" || die \
+    "release smoke format-boundary scenario no longer invokes its public inspection proof"
+grep -Fq 'unsupported-format-version' "${format_boundary_inspection_py}" || die \
+    "release smoke format-boundary inspection no longer requires the public unsupported-format state"
+grep -Fq '("future", future_format)' "${format_boundary_scenarios_py}" || die \
+    "release smoke format-boundary scenario no longer proves future-format rejection"
+grep -Fq 'require_persisted_user_version(' "${format_boundary_scenarios_py}" || die \
+    "release smoke format-boundary scenario no longer proves public refusals do not rewrite the marker"
+grep -Fq 'run_native_sqlite_probe(' "${format_boundary_probe_execution_py}" || die \
+    "release smoke format-boundary probe owner no longer executes its marker probe through the archive runtime"
+grep -Fq '_require_open_book_does_not_replace_boundary(' "${format_boundary_scenarios_py}" || die \
+    "release smoke format-boundary scenario no longer proves open-book cannot replace an existing boundary book"
+grep -Fq 'require_operational_format_refusals(' "${format_boundary_scenarios_py}" || die \
+    "release smoke format-boundary scenario no longer proves operational format refusals"
+grep -Fq '"preflight-entry"' "${format_boundary_operational_matrix_py}" || die \
+    "release smoke format-boundary scenario no longer proves direct posting preflight refusal"
+grep -Fq '"record-sale-settled"' "${format_boundary_operational_matrix_py}" || die \
+    "release smoke format-boundary scenario no longer proves signed direct posting refusal"
+grep -Fq '"execute-plan read-only"' "${format_boundary_operational_matrix_py}" || die \
+    "release smoke format-boundary scenario no longer proves read-only plan refusal"
+grep -Fq '"execute-plan mutating"' "${format_boundary_operational_matrix_py}" || die \
+    "release smoke format-boundary scenario no longer proves mutating plan refusal"
+grep -Fq '"unsupported-book-format-version"' "${format_boundary_refusals_py}" || die \
+    "release smoke format-boundary refusal owner no longer requires the exact public format-boundary error"
+grep -Fq '_require_file_digest(' "${format_boundary_scenarios_py}" || die \
+    "release smoke format-boundary scenario no longer proves public boundary checks preserve both artifacts"
+grep -Fq 'native_sqlite_java_prefix' "${format_boundary_probe_execution_py}" || die \
+    "release smoke format-boundary probe owner no longer supports an archive-native execution prefix"
+grep -Fq 'native_sqlite_probe_classpath' "${format_boundary_probe_execution_py}" || die \
+    "release smoke format-boundary probe owner no longer consumes the packaged probe artifact"
+if rg -n 'ctypes|_ensure_native_probe_compiled|_native_probe_javac|javac' \
+    "${format_boundary_scenarios_py}" \
+    "${format_boundary_probe_execution_py}" >/dev/null; then
+    die "release smoke format-boundary scenario still depends on a workflow-host native compiler or library loader"
+fi
+grep -Fq 'field_matrix.assert_complete()' "${field_execution_py}" || die \
+    "release smoke runner no longer fails closed on uncovered live capabilities"
+grep -Fq 'record_new_attestation_append' "${field_matrix_package_dir}/coverage.py" || die \
+    "release smoke field matrix no longer requires new mutable-operation append evidence"
+grep -Fq 'record_verified_artifact' "${field_matrix_package_dir}/coverage.py" || die \
+    "release smoke field matrix no longer distinguishes artifact verification from invocation"
+if grep -Fq 'StrEnum' "${field_matrix_package_dir}"/*.py; then
+    die "release smoke field matrix uses StrEnum, which is unavailable to the compatibility-floor runtime"
+fi
+grep -Fq 'verify_attested_administrative_plan_and_read_only_plan(' \
+    "${field_execution_py}" || die \
+    "release smoke runner no longer executes the aggregate-plan attestation check"
+grep -Fq 'config, operation_ids, runtime_contract.error_exit_codes' \
+    "${field_execution_py}" || die \
+    "release smoke runner no longer supplies the published error exits to aggregate-plan verification"
+grep -Fq 'require_no_attestation_commit(read_only_payload' \
+    "${workflow_package_dir}/plan_checks.py" || die \
+    "release smoke aggregate-plan verification no longer requires explicit null attestationCommit for read-only plans"
+grep -Fq 'run_cli_allow_failure' "${workflow_package_dir}/plan_checks.py" || die \
+    "release smoke aggregate-plan verification no longer exercises a signed read-only refusal"
+grep -Fq 'error_exit_codes["attestation-credentials-not-allowed"]' \
+    "${workflow_package_dir}/plan_checks.py" || die \
+    "release smoke signed read-only refusal no longer uses the published credential-policy exit code"
+grep -Fq 'verify_reactivate_rename_plan(' "${workflow_package_dir}/plan_checks.py" || die \
+    "release smoke no longer exercises same-account aggregate-plan reactivation and rename"
+grep -Fq 'reactivate_rename_ledger_plan_request' "${fixture_writers_py}" || die \
+    "release smoke no longer generates the same-account aggregate-plan fixture"
+grep -Fq 'head_after_plan.operation_order == str(int(head_before_plan.operation_order) + 1)' \
+    "${plan_reactivation_checks_py}" || die \
+    "release smoke same-account aggregate-plan verification no longer requires one aggregate append"
+grep -Fq 'verify_posting_plan(' "${workflow_package_dir}/plan_checks.py" || die \
+    "release smoke no longer executes the aggregate plan containing a post-entry child"
+grep -Fq 'assert_posting_plan_provenance(' "${plan_posting_checks_py}" || die \
+    "release smoke aggregate posting-plan verification no longer checks query provenance"
+grep -Fq '_assert_posting_plan_account_ledger_provenance(' \
+    "${plan_posting_provenance_checks_py}" || die \
+    "release smoke aggregate posting-plan verification no longer checks account-ledger provenance"
+grep -Fq 'plans.posting.argument' "${plan_posting_checks_py}" || die \
+    "release smoke aggregate posting-plan verification no longer executes its dedicated fixture"
+grep -Fq 'posting_ledger_plan_request' "${fixture_writers_py}" || die \
+    "release smoke no longer generates the aggregate post-entry plan fixture"
+grep -Fq 'post-plan-bank-transfer' "${fixture_plan_contract_py}" || die \
+    "release smoke fixture contract no longer protects the aggregate post-entry step"
 grep -Fq 'operation_ids["capabilities"], "--output", "json", "--detail", "full"' \
     "${workflow_package_dir}/discovery_checks.py" || die \
     "release smoke runtime verification no longer requests the full capabilities contract"
@@ -131,6 +365,10 @@ grep -Fq 'bundle-smoke-command-bridge.ps1' "${bundle_office_worker_ps1}" || die 
     "bundle-smoke-office-worker.ps1 no longer delegates Windows command execution through the bridge owner"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_COMMAND_BRIDGE_PREFIX_JSON' "${bundle_office_worker_ps1}" || die \
     "bundle-smoke-office-worker.ps1 no longer publishes the Windows bridge command contract"
+grep -Fq 'Get-RepoUvExecutable' "${bundle_office_worker_ps1}" || die \
+    "bundle-smoke-office-worker.ps1 no longer resolves the pinned uv launcher"
+grep -Fq -- '--with-requirements' "${bundle_office_worker_ps1}" || die \
+    "bundle-smoke-office-worker.ps1 no longer provisions release-smoke dependencies through uv"
 grep -Fq 'release-smoke-common.sh' "${bundle_support_sh}" || die \
     "release-smoke-support.sh no longer sources the shared common helper owner"
 if grep -Fq 'release-smoke-fixtures.sh' "${bundle_support_sh}"; then
@@ -188,10 +426,36 @@ grep -Fq 'verify-bundle-archive-contract.py' "${bundle_compatibility_floor_suppo
     "compatibility-floor support no longer verifies extracted target bundles inside the compatibility container"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_COMMAND_CWD=/work' "${bundle_compatibility_floor_support_sh}" || die \
     "compatibility-floor support no longer binds relative-path CLI execution to the mounted work root"
+grep -Fq 'python3 -m pip install --user --disable-pip-version-check' \
+    "${bundle_compatibility_floor_support_sh}" || die \
+    "compatibility-floor support no longer bootstraps the pinned uv launcher"
+grep -Fq 'fingrindUvVersion' "${bundle_compatibility_floor_support_sh}" || die \
+    "compatibility-floor support no longer derives the pinned uv version from repository metadata"
+grep -Fq 'release_smoke_run_office_worker_acceptance' "${bundle_compatibility_floor_support_sh}" || die \
+    "compatibility-floor support no longer routes release smoke through the uv-backed workflow owner"
+if rg -n 'compile_format_boundary_probe|javac|NativeSqliteFormatBoundaryProbe\.java' \
+    "${bundle_compatibility_floor_support_sh}" >/dev/null; then
+    die "compatibility-floor support still compiles the archive-native SQLite probe from an ambient JDK"
+fi
+if rg -n '_contains_only_precompiled_native_format_boundary_probe|\.fingrind-format-boundary-probe' \
+    "${workflow_package_dir}/fixtures.py" >/dev/null; then
+    die "release smoke fresh-root guard still carries a private compiler-output exception"
+fi
+grep -Fq 'FINGRIND_RELEASE_SMOKE_NATIVE_SQLITE_PROBE_CLASSPATH' "${bundle_smoke_sh}" || die \
+    "bundle smoke no longer publishes the packaged native SQLite probe classpath"
+grep -Fq 'FINGRIND_RELEASE_SMOKE_NATIVE_SQLITE_PROBE_CLASSPATH' \
+    "${bundle_compatibility_floor_support_sh}" || die \
+    "compatibility-floor smoke no longer publishes the packaged native SQLite probe classpath"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_WORK_ROOT' "${docker_smoke_sh}" || die \
     "docker-smoke.sh no longer publishes the compact shared work-root contract"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_REPORTED_WORK_ROOT' "${docker_smoke_sh}" || die \
     "docker-smoke.sh no longer publishes the shared reported-work-root contract"
+grep -Fq 'FINGRIND_RELEASE_SMOKE_NATIVE_SQLITE_JAVA_PREFIX_JSON' "${docker_smoke_sh}" || die \
+    "docker-smoke.sh no longer publishes the archive-native SQLite probe execution prefix"
+grep -Fq 'FINGRIND_RELEASE_SMOKE_NATIVE_SQLITE_PROBE_CLASSPATH' "${docker_smoke_sh}" || die \
+    "docker-smoke.sh no longer publishes the packaged native SQLite probe classpath"
+grep -Fq -- '--entrypoint /opt/fingrind/runtime/bin/java' "${docker_smoke_sh}" || die \
+    "docker-smoke.sh no longer runs the SQLite format probe through the container runtime"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_ARGUMENT_PATH_MODE' "${docker_smoke_sh}" || die \
     "docker-smoke.sh no longer publishes the shared argument-path-mode contract"
 grep -Fq 'FINGRIND_RELEASE_SMOKE_SCENARIO_ID' "${docker_smoke_sh}" || die \
@@ -202,18 +466,44 @@ fi
 if grep -Fq 'FINGRIND_RELEASE_SMOKE_REQUEST_SALE_ARG' "${docker_smoke_sh}"; then
     die "docker-smoke.sh still exports legacy per-path release-smoke arguments"
 fi
+grep -Fq 'registerNativeSqliteFormatBoundaryProbe' "${distribution_plugin}" || die \
+    "CLI distribution no longer registers the native SQLite format-boundary probe through Gradle"
+grep -Fq 'compileNativeSqliteFormatBoundaryProbe' "${native_format_boundary_probe_registration}" || die \
+    "native SQLite format-boundary probe registration no longer compiles the probe through Gradle"
+grep -Fq 'packageNativeSqliteFormatBoundaryProbe' "${native_format_boundary_probe_registration}" || die \
+    "native SQLite format-boundary probe registration no longer packages the probe"
+grep -Fq 'sourceCheckoutJavaCompiler' "${distribution_plugin}" || die \
+    "CLI distribution no longer selects the Gradle-owned Java toolchain compiler for the probe"
+grep -Fq 'javaCompiler.set(javaCompilerExecutable)' "${native_format_boundary_probe_registration}" || die \
+    "native SQLite format-boundary probe registration no longer receives the Gradle-owned compiler"
+grep -Fq 'lib/release-smoke' "${distribution_plugin}" || die \
+    "CLI bundle no longer stages the packaged native SQLite format-boundary probe"
+grep -Fq 'nativeSqliteFormatBoundaryProbeJar' "${docker_context_registration}" || die \
+    "Docker context no longer stages the packaged native SQLite format-boundary probe"
+grep -Fq 'native-sqlite-format-boundary-probe.jar' "${docker_source_inventory}" || die \
+    "Docker source inventory no longer declares the packaged native SQLite format-boundary probe"
+grep -Fq 'NativeSqliteFormatBoundaryProbe.java' "${docker_source_inventory}" || die \
+    "Docker source inventory no longer fingerprints native SQLite probe source changes"
+grep -Fq 'native-sqlite-format-boundary-probe.jar' "${dockerfile}" || die \
+    "Docker image no longer installs the packaged native SQLite format-boundary probe"
+grep -Fq '_verify_native_format_boundary_probe' "${bundle_root_verifier}" || die \
+    "bundle verifier no longer validates the packaged native SQLite format-boundary probe"
+if grep -Fq 'scratch directory' "${native_format_boundary_probe_java}"; then
+    die "native SQLite format-boundary probe documentation still describes field-time scratch compilation"
+fi
 
 # shellcheck source=/dev/null
 source "${python_runtime_support}"
 
 prepare_python_runtime_env
 
-python3 -m py_compile "${workflow_py}" "${workflow_package_dir}"/*.py >/dev/null
+python3 -m py_compile "${workflow_py}" >/dev/null
+find "${workflow_package_dir}" -name '*.py' -exec python3 -m py_compile {} + >/dev/null
 python3 -m py_compile "${workflow_contract_py}" >/dev/null
-python3 "${workflow_contract_py}" "${repo_root}"
+fingrind_run_python_with_tools "${workflow_contract_py}" "${repo_root}"
 
 set +e
-missing_env_output="$(python3 "${workflow_py}" 2>&1)"
+missing_env_output="$(fingrind_run_python_with_tools "${workflow_py}" 2>&1)"
 missing_env_status=$?
 set -e
 [[ "${missing_env_status}" -ne 0 ]] || die \

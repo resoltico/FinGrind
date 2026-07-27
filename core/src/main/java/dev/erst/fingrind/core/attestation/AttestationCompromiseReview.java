@@ -58,6 +58,23 @@ public record AttestationCompromiseReview(
     return List.copyOf(canonical);
   }
 
+  /** Returns canonical declarations only when every review interval fits the verified chain. */
+  public static List<AttestationCompromiseReview> requireValidForVerifiedHead(
+      BigInteger verifiedHeadOrder, List<AttestationCompromiseReview> reviews) {
+    BigInteger checkedHeadOrder =
+        AttestationUnsignedEncoding.requireUnsigned(
+            verifiedHeadOrder, Long.BYTES, "verifiedHeadOrder");
+    List<AttestationCompromiseReview> checkedReviews = canonicalize(reviews);
+    for (AttestationCompromiseReview review : checkedReviews) {
+      if (review.firstAffectedOrder().compareTo(checkedHeadOrder) > 0
+          || (review.lastAffectedOrder() != null
+              && review.lastAffectedOrder().compareTo(checkedHeadOrder) > 0)) {
+        throw new AttestationReviewWindowException(review, checkedHeadOrder);
+      }
+    }
+    return checkedReviews;
+  }
+
   boolean includes(BigInteger order) {
     BigInteger checkedOrder = Objects.requireNonNull(order, "order");
     return checkedOrder.compareTo(firstAffectedOrder) >= 0

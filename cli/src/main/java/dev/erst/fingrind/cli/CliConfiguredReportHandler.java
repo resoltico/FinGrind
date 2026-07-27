@@ -4,7 +4,7 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.reportmodel.ReportModel;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
-import java.nio.file.Path;
+import dev.erst.fingrind.core.ArtifactPublicationResult;
 import java.time.Instant;
 import java.util.Objects;
 import java.util.function.Function;
@@ -29,11 +29,11 @@ record CliConfiguredReportHandler<QUERY, RESULT, REPORTED>(
   /** Writes one report-family result through the chosen output mode and artifact context. */
   @FunctionalInterface
   interface ResultWriter<RESULT> {
-    /** Publishes one resolved report result and any exported artifact path. */
+    /** Publishes one resolved report result and any exported artifact publication. */
     void write(
         RESULT result,
         OutputMode outputMode,
-        @Nullable Path exportedArtifactPath,
+        @Nullable ArtifactPublicationResult exportedArtifact,
         Instant generatedAt);
   }
 

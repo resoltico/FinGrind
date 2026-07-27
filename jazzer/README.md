@@ -41,6 +41,13 @@ committed inputs, or malformed committed `.json` seed bodies. `promote-seed` req
 lower_snake_case seed names, `coverageIntent` values are unique across the committed corpus, the
 seed-management `--help` surfaces print the supported replayable target keys directly, and
 `--json` now returns structured deterministic failures without leaking Gradle task boilerplate.
+If a seed promotion materially starts but cannot complete, it retains the exact candidate artifacts
+and reports their absolute paths instead of deleting evidence or retrying in place. Run
+`jazzer/bin/seed-audit` to record the retained input as an orphan and partial metadata as an
+integrity failure, then make any reconciliation as a deliberate reviewable version-control change.
+Committed seed inputs and metadata are public repository source, not private-secret artifacts:
+`promote-seed` refuses symbolic-link source or corpus paths, creates missing corpus directories
+one real component at a time, and creates each candidate with no replacement.
 Those read-only or maintenance wrappers no longer erase nested build outputs before they inspect or
 clean local Jazzer state. The nested build also gives `src/fuzz/java` its own PMD profile so
 `@FuzzTest` harnesses keep the shared structural and correctness checks without being judged as

@@ -1,5 +1,5 @@
 pragma application_id = 1179079236;
-pragma user_version = 52;
+pragma user_version = 57;
 
 create table if not exists book_meta (
     meta_key text primary key check (
@@ -2300,13 +2300,6 @@ create table if not exists audit_event (
             'ACCOUNT_RETIRED',
             'POSTING_COMMITTED',
             'POSTING_REVERSED',
-            'BOOK_REKEYED',
-            'BACKUP_CREATED',
-            'BACKUP_RESTORED',
-            'REKEY_ROLLBACK_RESTORED',
-            'REKEY_ROLLBACK_DELETED',
-            'BACKUP_CREATED_COMPENSATED',
-            'REKEY_ROLLBACK_DELETED_COMPENSATED',
             'INTERIM_RESULT_SWEPT',
             'FISCAL_YEAR_CLOSED'
         )
@@ -2319,14 +2312,7 @@ create table if not exists audit_event (
     check (
         (
             event_kind in (
-                'BOOK_OPENED',
-                'BOOK_REKEYED',
-                'BACKUP_CREATED',
-                'BACKUP_RESTORED',
-                'REKEY_ROLLBACK_RESTORED',
-                'REKEY_ROLLBACK_DELETED',
-                'BACKUP_CREATED_COMPENSATED',
-                'REKEY_ROLLBACK_DELETED_COMPENSATED'
+                'BOOK_OPENED'
             )
             and account_code is null
             and posting_id is null

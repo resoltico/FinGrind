@@ -24,6 +24,7 @@ import dev.erst.fingrind.contract.bookkeeping.PeriodCurrencySummary;
 import dev.erst.fingrind.contract.bookkeeping.PeriodSummaryReport;
 import dev.erst.fingrind.contract.bookkeeping.PostingFact;
 import dev.erst.fingrind.contract.bookkeeping.PostingLineage;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention;
 import dev.erst.fingrind.contract.bookkeeping.SweptInterimResult;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceReport;
 import dev.erst.fingrind.contract.bookkeeping.TrialBalanceRow;
@@ -33,6 +34,7 @@ import dev.erst.fingrind.contract.workflow.LedgerExecutionJournal;
 import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerJournalEntry;
 import dev.erst.fingrind.contract.workflow.LedgerJournalStep;
+import dev.erst.fingrind.contract.workflow.LedgerPlanAttestationDisposition;
 import dev.erst.fingrind.contract.workflow.LedgerPlanId;
 import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerStepFailure;
@@ -44,6 +46,8 @@ import dev.erst.fingrind.core.ApprovalDecision;
 import dev.erst.fingrind.core.ApprovalId;
 import dev.erst.fingrind.core.ApprovalReference;
 import dev.erst.fingrind.core.ApprovalType;
+import dev.erst.fingrind.core.ArtifactPublicationResult;
+import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.BalanceSide;
 import dev.erst.fingrind.core.CashFlowSectionKind;
 import dev.erst.fingrind.core.CausationId;
@@ -77,6 +81,27 @@ import java.util.Optional;
 
 /** Shared CLI fixture helpers and sample payloads for split command tests. */
 class CliFixtureSupport extends CliIoFixtureSupport {
+  protected static ProtectedBookPairPublicationRetention pairPublicationRetention() {
+    return pairPublicationRetention(
+        java.nio.file.Path.of("book.sqlite"), java.nio.file.Path.of("book.key"));
+  }
+
+  protected static ProtectedBookPairPublicationRetention pairPublicationRetention(
+      java.nio.file.Path bookFinalArtifactPath,
+      java.nio.file.Path generatedSecretFinalArtifactPath) {
+    return new ProtectedBookPairPublicationRetention(
+        publication(bookFinalArtifactPath), publication(generatedSecretFinalArtifactPath));
+  }
+
+  private static ArtifactPublicationResult publication(java.nio.file.Path finalArtifactPath) {
+    java.nio.file.Path normalizedFinalArtifactPath = finalArtifactPath.toAbsolutePath().normalize();
+    return new ArtifactPublicationResult(
+        normalizedFinalArtifactPath,
+        new ArtifactPublicationRetention(
+            normalizedFinalArtifactPath.resolveSibling(
+                "." + normalizedFinalArtifactPath.getFileName() + ".stage")));
+  }
+
   protected static DeclaredAccount declaredAccount(
       String accountCode, String accountName, NormalBalance normalBalance) {
     return declaredAccount(
@@ -608,6 +633,7 @@ class CliFixtureSupport extends CliIoFixtureSupport {
                     timestamp,
                     timestamp,
                     List.of(LedgerFact.flag("ok", true), LedgerFact.count("count", 1))))),
+        LedgerPlanAttestationDisposition.READ_ONLY,
         null);
   }
 

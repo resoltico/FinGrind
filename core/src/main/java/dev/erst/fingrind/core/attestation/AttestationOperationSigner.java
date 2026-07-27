@@ -18,8 +18,8 @@ public final class AttestationOperationSigner {
    *
    * <p>The recorded time is canonicalized to milliseconds here, at the single signing boundary,
    * before it enters the immutable payload. Authorization is deliberately checked at the
-   * transactional CAS boundary against the persisted historical registry and policy. This method
-   * only constructs the canonical evidence that is later verified there.
+   * transactional CAS boundary against the current registry and policy reconstructed from immutable
+   * evidence. This method only constructs the canonical evidence that is later verified there.
    */
   public static AttestationEvidence sign(
       UUID bookId,

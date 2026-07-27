@@ -16,10 +16,13 @@ import dev.erst.fingrind.core.attestation.AttestationSystemWorkflowKind;
 import dev.erst.fingrind.executor.maintenance.AttestedProtectedBookLifecycleWorkflow;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookAccess;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRegistryMutationOutcome;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.LeaseBusy;
+import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -28,6 +31,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -37,6 +41,11 @@ class AttestedProtectedBookRegistryMutationWorkflowTest {
       Clock.fixed(Instant.parse("2026-07-22T00:00:00Z"), ZoneOffset.UTC);
 
   @TempDir Path temporaryDirectory;
+
+  @BeforeEach
+  void canonicalizeTemporaryDirectory() throws IOException {
+    temporaryDirectory = temporaryDirectory.toRealPath();
+  }
 
   @Test
   void appendsEveryCredentialAndPolicyMutationAsOneVerifiableOperation() throws Exception {
@@ -253,6 +262,34 @@ class AttestedProtectedBookRegistryMutationWorkflowTest {
               ProtectedBookRegistryMutationOutcome.Rejected.class,
               accepted(workflow(busy).mutateRegistry(access, policyMutation(), session)));
       assertInstanceOf(ProtectedBookMaintenanceRejection.ArtifactBusy.class, rejected.rejection());
+    }
+  }
+
+  @Test
+  void rejectsMalformedHistoricalEvidenceBeforeRegistryCandidateAdmission() throws Exception {
+    AttestationMaintenanceTestSupport.CredentialFixture founder =
+        AttestationMaintenanceTestSupport.createCredential(temporaryDirectory);
+    Path bookPath = temporaryDirectory.resolve("book.sqlite");
+    ProtectedBookAccess access =
+        ProtectedBookAccess.fromPublished(
+            AttestationMaintenanceTestSupport.bookAccess(bookPath, founder));
+    AttestationMaintenanceTestSupport.Store store = store(bookPath, founder);
+    store.setLiveEvidence(List.of());
+
+    try (var session = founder.openSession()) {
+      ProtectedBookRegistryMutationOutcome.Rejected rejected =
+          assertInstanceOf(
+              ProtectedBookRegistryMutationOutcome.Rejected.class,
+              accepted(workflow(store).mutateRegistry(access, policyMutation(), session)));
+      ProtectedBookMaintenanceRejection.ArtifactVerificationFailed failure =
+          assertInstanceOf(
+              ProtectedBookMaintenanceRejection.ArtifactVerificationFailed.class,
+              rejected.rejection());
+      assertEquals(ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, failure.artifactRole());
+      assertEquals(bookPath, failure.artifactPath());
+      assertEquals(
+          ProtectedBookVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED,
+          failure.verificationFailure());
     }
   }
 

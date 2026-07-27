@@ -27,6 +27,7 @@ internal fun Project.configureJazzerVerificationLifecycle(
         dependsOn(executorWhiteBoxTestPatch)
         enableUnnamedNativeAccess()
         enableCoreNamedNativeAccess()
+        enableSqliteNamedNativeAccess()
         allowSunMiscUnsafeMemoryAccess()
         disableClassDataSharing()
         patchModule(
@@ -72,15 +73,4 @@ internal fun Project.configureJazzerVerificationLifecycle(
         mustRunAfter(jazzerDeterministicTests)
     }
 
-    tasks.register<CleanLocalCorpusTask>("cleanLocalCorpus") {
-        description = "Deletes generated Jazzer corpora under .local."
-        group = "build"
-        localDirectory.set(layout.projectDirectory.dir(".local"))
-    }
-
-    tasks.register<CleanLocalFindingsTask>("cleanLocalFindings") {
-        description = "Deletes local crash files and non-corpus run state under .local."
-        group = "build"
-        runsDirectory.set(layout.projectDirectory.dir(".local/runs"))
-    }
 }

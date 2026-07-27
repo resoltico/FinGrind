@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
@@ -10,10 +11,16 @@ final class SqliteManagedLibraryIdentity {
   private SqliteManagedLibraryIdentity() {}
 
   static void requireVerified(SqliteLibraryTarget libraryTarget) {
-    SqliteVerifiedLibrarySnapshot verifiedLibrarySnapshot = verifiedSnapshot(libraryTarget);
-    verifiedLibrarySnapshot.deleteQuietly();
+    verifiedSnapshot(libraryTarget);
   }
 
+  /**
+   * Returns a fresh, retained owner-only snapshot whose copied sibling checksum verifies the copied
+   * library bytes.
+   *
+   * <p>A verification failure retains the incomplete snapshot attempt. The process must not delete
+   * a pathname after another actor could have replaced it.
+   */
   static SqliteVerifiedLibrarySnapshot verifiedSnapshot(SqliteLibraryTarget libraryTarget) {
     Objects.requireNonNull(libraryTarget, "libraryTarget");
     Path sourceLibraryPath =
@@ -21,19 +28,12 @@ final class SqliteManagedLibraryIdentity {
             Path.of(libraryTarget.lookupTarget()));
     SqliteManagedLibraryDigestSupport.requireManagedLibrary(sourceLibraryPath);
     Path sourceChecksumPath = checksumPath(sourceLibraryPath);
-    if (!Files.isRegularFile(sourceChecksumPath)) {
+    if (!Files.isRegularFile(sourceChecksumPath, LinkOption.NOFOLLOW_LINKS)) {
       throw SqliteManagedLibraryDigestSupport.missingChecksumFile(
           sourceLibraryPath, sourceChecksumPath);
     }
-    SqliteVerifiedLibrarySnapshot verifiedLibrarySnapshot =
-        SqliteVerifiedLibrarySnapshot.copyOf(libraryTarget, sourceLibraryPath, sourceChecksumPath);
-    try {
-      requireSiblingVerified(verifiedLibrarySnapshot.snapshotLibraryPath());
-      return verifiedLibrarySnapshot;
-    } catch (RuntimeException | Error exception) {
-      verifiedLibrarySnapshot.deleteQuietly();
-      throw exception;
-    }
+    return SqliteVerifiedLibrarySnapshot.copyOf(
+        libraryTarget, sourceLibraryPath, sourceChecksumPath);
   }
 
   static void requireSiblingVerified(Path libraryPath) {
@@ -41,7 +41,7 @@ final class SqliteManagedLibraryIdentity {
         SqliteManagedLibraryDigestSupport.normalizedLibraryPath(libraryPath);
     SqliteManagedLibraryDigestSupport.requireManagedLibrary(normalizedLibraryPath);
     Path checksumPath = checksumPath(normalizedLibraryPath);
-    if (!Files.isRegularFile(checksumPath)) {
+    if (!Files.isRegularFile(checksumPath, LinkOption.NOFOLLOW_LINKS)) {
       throw SqliteManagedLibraryDigestSupport.missingChecksumFile(
           normalizedLibraryPath, checksumPath);
     }
@@ -89,13 +89,5 @@ final class SqliteManagedLibraryIdentity {
   static Path createPrivateSnapshotDirectory(Path tempRoot, boolean supportsPosix) {
     return SqliteManagedLibrarySnapshotSecurity.createPrivateSnapshotDirectory(
         tempRoot, supportsPosix);
-  }
-
-  static void hardenPrivateDirectory(Path directory) {
-    SqliteManagedLibrarySnapshotSecurity.hardenPrivateDirectory(directory);
-  }
-
-  static void hardenPrivateFile(Path file) {
-    SqliteManagedLibrarySnapshotSecurity.hardenPrivateFile(file);
   }
 }

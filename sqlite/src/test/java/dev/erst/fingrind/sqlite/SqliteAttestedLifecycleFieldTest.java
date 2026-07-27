@@ -73,15 +73,45 @@ class SqliteAttestedLifecycleFieldTest extends SqliteArtifactPublicationTestSupp
       verifiedBackupArtifact.close();
       assertThrows(IllegalStateException.class, verifiedBackupArtifact::verification);
       assertThrows(IllegalStateException.class, verifiedBackupArtifact::snapshotBook);
-      Path malformedKeyPath = tempDirectory.resolve("backup").resolve("malformed-backup.key");
-      Files.writeString(malformedKeyPath, "not a FinGrind backup key");
-      assertInstanceOf(
-          dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection
-              .ArtifactVerificationFailed.class,
+      Path unrecognizedKeyPath = tempDirectory.resolve("backup").resolve("unrecognized-backup.key");
+      Files.writeString(unrecognizedKeyPath, "not a FinGrind backup key");
+      ProtectedBookMaintenanceRejectionException unrecognizedKeyFailure =
           assertThrows(
-                  ProtectedBookMaintenanceRejectionException.class,
-                  () -> store.verifyBackupArtifact(backupPath, malformedKeyPath))
-              .rejection());
+              ProtectedBookMaintenanceRejectionException.class,
+              () -> store.verifyBackupArtifact(backupPath, unrecognizedKeyPath));
+      dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection
+              .ArtifactVerificationFailed
+          unrecognizedKeyRejection =
+              assertInstanceOf(
+                  dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection
+                      .ArtifactVerificationFailed.class,
+                  unrecognizedKeyFailure.rejection());
+      assertEquals(
+          dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE,
+          unrecognizedKeyRejection.artifactRole());
+      assertEquals(backupPath.toRealPath(), unrecognizedKeyRejection.artifactPath());
+
+      BookAccess wrongKeyAccess =
+          bookAccess(
+              tempDirectory.resolve("wrong-backup-key.sqlite"),
+              "a syntactically valid but incorrect backup passphrase");
+      Path wrongKeyPath =
+          ((BookAccess.PassphraseSource.KeyFile) wrongKeyAccess.passphraseSource())
+              .bookKeyFilePath();
+      dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection
+              .ArtifactVerificationFailed
+          wrongKeyRejection =
+              assertInstanceOf(
+                  dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection
+                      .ArtifactVerificationFailed.class,
+                  assertThrows(
+                          ProtectedBookMaintenanceRejectionException.class,
+                          () -> store.verifyBackupArtifact(backupPath, wrongKeyPath))
+                      .rejection());
+      assertEquals(
+          dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE,
+          wrongKeyRejection.artifactRole());
+      assertEquals(backupPath.toRealPath(), wrongKeyRejection.artifactPath());
 
       assertInstanceOf(
           ProtectedBookRekeyOutcome.Rekeyed.class,
@@ -136,15 +166,16 @@ class SqliteAttestedLifecycleFieldTest extends SqliteArtifactPublicationTestSupp
   private void initializeAttestedBook(
       BookAccess bookAccess, AttestationCredentialSource credentialSource) {
     AttestationEvidence genesis =
-        AttestationGenesisFactory.create(
-            SqlitePostingFactFixtureSupport.bookIdentity(),
-            RECORDED_AT,
-            List.of(
-                new AttestationFounderInput(
-                    dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
-                    credentialSource.principalId(),
-                    credentialSource.encryptedKeyFilePath(),
-                    credentialSource.passphraseFilePath())));
+        AttestationGenesisFactory.prepare(
+                SqlitePostingFactFixtureSupport.bookIdentity(),
+                RECORDED_AT,
+                List.of(
+                    new AttestationFounderInput(
+                        dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+                        credentialSource.principalId(),
+                        credentialSource.encryptedKeyFilePath(),
+                        credentialSource.passphraseFilePath())))
+            .evidence();
     try (SqlitePostingFactStore store = SqliteStoreFixtureSupport.openStore(bookAccess)) {
       assertInstanceOf(
           dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome.Opened.class,

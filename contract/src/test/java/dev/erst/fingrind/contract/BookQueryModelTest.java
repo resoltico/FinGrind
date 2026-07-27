@@ -30,7 +30,7 @@ import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.bookkeeping.PostingRejection;
 import dev.erst.fingrind.contract.protocol.ProtocolInteractionLimits;
 import dev.erst.fingrind.contract.runtime.BookInspection;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.RejectionDescriptor;
 import dev.erst.fingrind.core.AccountCode;
 import dev.erst.fingrind.core.AccountType;
 import dev.erst.fingrind.core.CausationId;
@@ -544,9 +544,7 @@ class BookQueryModelTest {
                     new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")))));
     assertEquals(
         List.of("query-book-not-initialized", "unknown-account", "posting-not-found"),
-        BookQueryRejection.descriptors().stream()
-            .map(ContractResponse.RejectionDescriptor::code)
-            .toList());
+        BookQueryRejection.descriptors().stream().map(RejectionDescriptor::code).toList());
     assertEquals(
         BookQueryRejection.wireCode(new BookQueryRejection.BookNotInitialized()),
         BookQueryRejection.bookNotInitializedCode());

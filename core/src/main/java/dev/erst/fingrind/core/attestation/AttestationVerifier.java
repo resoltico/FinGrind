@@ -23,6 +23,8 @@ public final class AttestationVerifier {
    * Verifies one complete operation chain and derives non-persisted compromise-review findings.
    *
    * @throws AttestationVerificationException when the first canonical attestation rule fails
+   * @throws AttestationReviewWindowException when a review interval extends beyond the verified
+   *     head
    */
   public static AttestationVerification verifyBook(
       List<AttestationEvidence> operations, List<AttestationCompromiseReview> compromiseReviews) {
@@ -35,7 +37,13 @@ public final class AttestationVerifier {
     return verifyAndInspectBook(operations, List.of());
   }
 
-  /** Verifies one complete operation chain and reconstructs its current authority state. */
+  /**
+   * Verifies one complete operation chain, reconstructs its current authority state, and derives
+   * only review findings whose declared intervals fit the authenticated head.
+   *
+   * @throws AttestationReviewWindowException when a review interval extends beyond the verified
+   *     head
+   */
   public static AttestationBookInspection verifyAndInspectBook(
       List<AttestationEvidence> operations, List<AttestationCompromiseReview> compromiseReviews) {
     Objects.requireNonNull(operations, "operations");
@@ -72,8 +80,14 @@ public final class AttestationVerifier {
     for (AttestationBookVerification.VerifiedOperation verifiedOperation :
         verification.operations()) {
       AttestationOperationCommitment commitment = operationCommitment(verifiedOperation);
-      for (AttestationPreimage.Fact fact :
-          verifiedOperation.operation().effectPreimage().records()) {
+      AttestationBookOperation operation = verifiedOperation.operation();
+      AttestationOperationKind operationKind =
+          AttestationOperationKind.forWireToken(operation.envelope().payload().operationKind());
+      List<AttestationPreimage.Fact> effectFacts =
+          operationKind == AttestationOperationKind.EXECUTE_PLAN
+              ? AttestationPlanQualifiedFact.effectFacts(operation.effectPreimage())
+              : operation.effectPreimage().records();
+      for (AttestationPreimage.Fact fact : effectFacts) {
         if (fact.recordTypeTag() != 0x0020) {
           continue;
         }
@@ -113,7 +127,7 @@ public final class AttestationVerifier {
     verification.registry().requireMutationAdmissible(checkedMutation, verification.headOrder());
   }
 
-  private static AttestationBookVerification verifyEvidence(
+  static AttestationBookVerification verifyEvidence(
       List<AttestationEvidence> operations, List<AttestationCompromiseReview> compromiseReviews) {
     if (operations.isEmpty()) {
       throw new AttestationAuthorizationException(AttestationAuthorizationFailure.PREIMAGE_INVALID);
@@ -140,6 +154,7 @@ public final class AttestationVerifier {
         verification.bookId(),
         verification.headOrder(),
         verification.head().bytes(),
+        verification.previousHead().bytes(),
         verification.reviewFindings());
   }
 

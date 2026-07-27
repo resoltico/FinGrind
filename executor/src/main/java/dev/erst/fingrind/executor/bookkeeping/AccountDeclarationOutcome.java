@@ -1,8 +1,7 @@
 package dev.erst.fingrind.executor.bookkeeping;
 
-import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
 import java.util.Objects;
-import org.jspecify.annotations.Nullable;
 
 /** Closed family of bookkeeping outcomes for one account declaration attempt. */
 public sealed interface AccountDeclarationOutcome
@@ -12,44 +11,32 @@ public sealed interface AccountDeclarationOutcome
         AccountDeclarationOutcome.Unchanged,
         AccountDeclarationOutcome.Rejected {
   /** Successful first declaration outcome. */
-  record Declared(RegisteredAccount account, @Nullable AttestationCommit attestationCommit)
+  record Declared(RegisteredAccount account, AttestationAppendOutcome.Appended attestationAppend)
       implements AccountDeclarationOutcome {
     /** Validates one declared-account outcome. */
     public Declared {
       Objects.requireNonNull(account, "account");
-    }
-
-    /** Creates a pre-persistence declaration decision with no attestation append yet. */
-    public Declared(RegisteredAccount account) {
-      this(account, null);
+      Objects.requireNonNull(attestationAppend, "attestationAppend");
     }
   }
 
   /** Successful reactivation outcome for one previously inactive account. */
-  record Reactivated(RegisteredAccount account, @Nullable AttestationCommit attestationCommit)
+  record Reactivated(RegisteredAccount account, AttestationAppendOutcome.Appended attestationAppend)
       implements AccountDeclarationOutcome {
     /** Validates one reactivated-account outcome. */
     public Reactivated {
       Objects.requireNonNull(account, "account");
-    }
-
-    /** Creates a pre-persistence reactivation decision with no attestation append yet. */
-    public Reactivated(RegisteredAccount account) {
-      this(account, null);
+      Objects.requireNonNull(attestationAppend, "attestationAppend");
     }
   }
 
   /** Successful rename outcome for one already active account. */
-  record Renamed(RegisteredAccount account, @Nullable AttestationCommit attestationCommit)
+  record Renamed(RegisteredAccount account, AttestationAppendOutcome.Appended attestationAppend)
       implements AccountDeclarationOutcome {
     /** Validates one renamed-account outcome. */
     public Renamed {
       Objects.requireNonNull(account, "account");
-    }
-
-    /** Creates a pre-persistence rename decision with no attestation append yet. */
-    public Renamed(RegisteredAccount account) {
-      this(account, null);
+      Objects.requireNonNull(attestationAppend, "attestationAppend");
     }
   }
 

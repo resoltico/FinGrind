@@ -1,5 +1,6 @@
 package dev.erst.fingrind.cli;
 
+import dev.erst.fingrind.cli.json.CliTaxJsonModels;
 import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.tax.DeclaredTaxRegistration;
 import dev.erst.fingrind.contract.tax.TaxRegistrationPage;
@@ -9,7 +10,7 @@ final class CliTaxOutputRenderer {
   private CliTaxOutputRenderer() {}
 
   static String renderTaxRegistrationMutationText(
-      String outcome,
+      CliTaxJsonModels.TaxRegistrationMutationOutcome outcome,
       DeclaredTaxRegistration registration,
       @org.jspecify.annotations.Nullable AttestationCommit attestationCommit) {
     return CliTaxRegistrationOutputRenderer.renderTaxRegistrationMutationText(

@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
 
 /** End-to-end coverage for typed-entry semantic rejections at the public CLI boundary. */
-class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
+class FinGrindCliEntrySemanticsContractTest extends CliWorkflowFixtureSupport {
   @Test
   void run_rejectsEconomicNullJournalWithLineOwnedNarrativeAcrossPreflightAndCommit()
       throws IOException {
@@ -72,7 +72,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
             .run(
-                jsonArguments(
+                attestedJsonArguments(
                     "declare-account",
                     "--book-file",
                     bookFilePath.toString(),
@@ -455,16 +455,21 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
             utf8PrintStream(diagnosticsStream),
             fixedClock());
 
+    String[] commandArguments =
+        new String[] {
+          commandName,
+          "--book-file",
+          bookFilePath.toString(),
+          "--book-key-file",
+          bookKeyFilePath.toString(),
+          "--request-file",
+          requestFile.toString()
+        };
     int exitCode =
         cli.run(
-            jsonArguments(
-                commandName,
-                "--book-file",
-                bookFilePath.toString(),
-                "--book-key-file",
-                bookKeyFilePath.toString(),
-                "--request-file",
-                requestFile.toString()));
+            "preflight-entry".equals(commandName)
+                ? jsonArguments(commandArguments)
+                : attestedJsonArguments(commandArguments));
 
     assertEquals(2, exitCode, commandName);
     assertEquals("", outputStream.toString(StandardCharsets.UTF_8));
@@ -539,7 +544,7 @@ class FinGrindCliEntrySemanticsContractTest extends FinGrindCliTestSupport {
                 utf8PrintStream(new ByteArrayOutputStream()),
                 fixedClock())
             .run(
-                jsonArguments(
+                attestedJsonArguments(
                     "declare-account",
                     "--book-file",
                     bookFilePath.toString(),

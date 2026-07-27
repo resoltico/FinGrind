@@ -5,7 +5,7 @@ import dev.erst.fingrind.contract.bookkeeping.ChangesInEquityResult;
 import dev.erst.fingrind.contract.bookkeeping.FinancialPositionResult;
 import dev.erst.fingrind.contract.bookkeeping.IncomeStatementResult;
 import dev.erst.fingrind.contract.protocol.OutputMode;
-import java.nio.file.Path;
+import dev.erst.fingrind.core.ArtifactPublicationResult;
 import java.time.Instant;
 import org.jspecify.annotations.Nullable;
 
@@ -16,13 +16,13 @@ interface CliStatementReportResultWriter extends CliReportOutputChannelOwner {
   default void writeFinancialPositionResult(
       FinancialPositionResult result,
       OutputMode outputMode,
-      @Nullable Path exportedArtifactPath,
+      @Nullable ArtifactPublicationResult exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
         result,
         outputMode,
-        exportedArtifactPath,
+        exportedArtifact,
         generatedAt,
         CliReportProjections.FINANCIAL_POSITION);
   }
@@ -31,13 +31,13 @@ interface CliStatementReportResultWriter extends CliReportOutputChannelOwner {
   default void writeIncomeStatementResult(
       IncomeStatementResult result,
       OutputMode outputMode,
-      @Nullable Path exportedArtifactPath,
+      @Nullable ArtifactPublicationResult exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
         result,
         outputMode,
-        exportedArtifactPath,
+        exportedArtifact,
         generatedAt,
         CliReportProjections.INCOME_STATEMENT);
   }
@@ -46,13 +46,13 @@ interface CliStatementReportResultWriter extends CliReportOutputChannelOwner {
   default void writeCashFlowStatementResult(
       CashFlowStatementResult result,
       OutputMode outputMode,
-      @Nullable Path exportedArtifactPath,
+      @Nullable ArtifactPublicationResult exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
         result,
         outputMode,
-        exportedArtifactPath,
+        exportedArtifact,
         generatedAt,
         CliReportProjections.CASH_FLOW_STATEMENT);
   }
@@ -61,13 +61,13 @@ interface CliStatementReportResultWriter extends CliReportOutputChannelOwner {
   default void writeChangesInEquityResult(
       ChangesInEquityResult result,
       OutputMode outputMode,
-      @Nullable Path exportedArtifactPath,
+      @Nullable ArtifactPublicationResult exportedArtifact,
       Instant generatedAt) {
     CliReportResultPublishingSupport.write(
         reportOutputChannel(),
         result,
         outputMode,
-        exportedArtifactPath,
+        exportedArtifact,
         generatedAt,
         CliReportProjections.CHANGES_IN_EQUITY);
   }

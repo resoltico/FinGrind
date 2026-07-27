@@ -7,7 +7,7 @@ import dev.erst.fingrind.contract.protocol.OutputMode;
 import dev.erst.fingrind.contract.reportmodel.ReportModel;
 import dev.erst.fingrind.contract.reportmodel.TaxObligationReportModelBuilder;
 import dev.erst.fingrind.contract.tax.TaxObligationResult;
-import java.nio.file.Path;
+import dev.erst.fingrind.core.ArtifactPublicationResult;
 import java.time.Instant;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
@@ -20,7 +20,7 @@ final class CliReportResultPublishingSupport {
       CliOutputChannel outputChannel,
       BookQueryReportResult<REPORTED> result,
       OutputMode outputMode,
-      @Nullable Path exportedArtifactPath,
+      @Nullable ArtifactPublicationResult exportedArtifact,
       Instant generatedAt,
       CliReportProjection<REPORTED> projection) {
     REPORTED reported = result.reported();
@@ -35,14 +35,14 @@ final class CliReportResultPublishingSupport {
         reportModel,
         projection.reportPayloadBuilder().apply(reported, generatedAt),
         outputMode,
-        exportedArtifactPath);
+        exportedArtifact);
   }
 
   static void writeTaxObligation(
       CliOutputChannel outputChannel,
       TaxObligationResult result,
       OutputMode outputMode,
-      @Nullable Path exportedArtifactPath,
+      @Nullable ArtifactPublicationResult exportedArtifact,
       Instant generatedAt) {
     switch (result) {
       case TaxObligationResult.Reported reported ->
@@ -51,7 +51,7 @@ final class CliReportResultPublishingSupport {
               TaxObligationReportModelBuilder.buildModel(reported.report()),
               CliReportPayloadMapper.taxObligation(reported.report(), generatedAt),
               outputMode,
-              exportedArtifactPath);
+              exportedArtifact);
       case TaxObligationResult.Rejected rejected ->
           outputChannel.writeRejectedEnvelope(
               CliRejectionPayloadMapper.taxQueryRejectedEnvelope(

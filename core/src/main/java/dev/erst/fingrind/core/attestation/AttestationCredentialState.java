@@ -2,7 +2,7 @@ package dev.erst.fingrind.core.attestation;
 
 import org.jspecify.annotations.Nullable;
 
-/** Resolves a key's enrollment state at one historical operation position. */
+/** Resolves a key's enrollment state at one attestation operation position. */
 record AttestationCredentialState(
     @Nullable AttestationCredentialBinding binding,
     @Nullable AttestationCredentialRetirementState retirementState) {

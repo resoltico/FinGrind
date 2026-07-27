@@ -20,9 +20,13 @@ final class AttestationGenesisFounders {
   static void requireDistinctCredentials(List<AttestationFounder> founders) {
     long principalCount = founders.stream().map(AttestationFounder::principalId).distinct().count();
     long keyCount = founders.stream().map(AttestationFounder::keyId).distinct().count();
-    if (principalCount != founders.size() || keyCount != founders.size()) {
-      throw new IllegalArgumentException(
-          "Genesis founders must have distinct principals and keys.");
+    if (principalCount != founders.size()) {
+      throw AttestationAdmissionRejectedException.from(
+          AttestationAuthorizationFailure.DUPLICATE_PRINCIPAL);
+    }
+    if (keyCount != founders.size()) {
+      throw AttestationAdmissionRejectedException.from(
+          AttestationAuthorizationFailure.DUPLICATE_KEY);
     }
   }
 }

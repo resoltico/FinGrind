@@ -20,10 +20,14 @@ import dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance;
 import dev.erst.fingrind.contract.protocol.SqliteRuntimeTrustBasis;
 import dev.erst.fingrind.contract.protocol.StorageDriver;
 import dev.erst.fingrind.contract.protocol.StorageEngine;
-import dev.erst.fingrind.contract.runtime.ContractResponse;
+import dev.erst.fingrind.contract.runtime.BookModelDescriptor;
+import dev.erst.fingrind.contract.runtime.BookkeepingKernelDescriptor;
+import dev.erst.fingrind.contract.runtime.CommitGuarantee;
+import dev.erst.fingrind.contract.runtime.CurrencyDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentSqliteDescriptor;
 import dev.erst.fingrind.contract.runtime.EnvironmentStorageDescriptor;
 import dev.erst.fingrind.contract.runtime.ExitCodeDescriptor;
+import dev.erst.fingrind.contract.runtime.PreflightDescriptor;
 import dev.erst.fingrind.contract.runtime.SqliteCompileOptionsVerificationStatus;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -84,6 +88,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
                 List.of(
                     new CommandDescriptor(
                         OperationId.HELP,
+                        ProtocolCatalog.operation(OperationId.HELP).displayLabel(),
                         List.of(),
                         List.of(),
                         ExecutionMode.JSON_ENVELOPE,
@@ -121,7 +126,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
             CliDiscoveryTestSupport.helpDescriptor(
                 CliDiscoveryTestSupport.identity(),
                 List.of("fingrind trial-balance --output json --pdf-out report.pdf"),
-                new ContractResponse.BookModelDescriptor(
+                new BookModelDescriptor(
                     "single-sqlite-file",
                     "entity-book",
                     "local-path",
@@ -132,6 +137,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
                 List.of(
                     new CommandDescriptor(
                         OperationId.TRIAL_BALANCE,
+                        ProtocolCatalog.operation(OperationId.TRIAL_BALANCE).displayLabel(),
                         List.of(),
                         List.of("--output <json|text>", "--pdf-out <path>"),
                         ExecutionMode.JSON_ENVELOPE,
@@ -143,9 +149,8 @@ class CliDiscoveryRuntimeOutputRendererTest {
                         "Read one trial balance")),
                 List.of(),
                 List.of(new ExitCodeDescriptor(0, "ok")),
-                new ContractResponse.PreflightDescriptor(
-                    "advisory", ContractResponse.CommitGuarantee.NOT_GUARANTEED, "desc"),
-                new ContractResponse.CurrencyDescriptor("per-entry", "single-entry", "desc")));
+                new PreflightDescriptor("advisory", CommitGuarantee.NOT_GUARANTEED, "desc"),
+                new CurrencyDescriptor("per-entry", "single-entry", "desc")));
 
     assertTrue(rendered.contains("Examples"));
     assertTrue(rendered.contains("Preparation"));
@@ -198,7 +203,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
             canonical.reversals(),
             canonical.preflight(),
             canonical.currencyModel(),
-            new ContractResponse.BookkeepingKernelDescriptor(
+            new BookkeepingKernelDescriptor(
                 "cash__single--entity_internal__management---kernel",
                 canonical.bookkeepingKernel().builtInStatements(),
                 canonical.bookkeepingKernel().reportCapabilities(),
@@ -233,8 +238,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
             canonical.accountRegistry(),
             canonical.reversals(),
             canonical.preflight(),
-            new ContractResponse.CurrencyDescriptor(
-                "book-functional-currency", "planned-later", "desc"),
+            new CurrencyDescriptor("book-functional-currency", "planned-later", "desc"),
             canonical.bookkeepingKernel(),
             canonical.capabilityCatalog());
 
@@ -264,8 +268,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
             canonical.accountRegistry(),
             canonical.reversals(),
             canonical.preflight(),
-            new ContractResponse.CurrencyDescriptor(
-                "book-functional-currency", "supported", "desc"),
+            new CurrencyDescriptor("book-functional-currency", "supported", "desc"),
             canonical.bookkeepingKernel(),
             canonical.capabilityCatalog());
 
@@ -295,8 +298,7 @@ class CliDiscoveryRuntimeOutputRendererTest {
             canonical.accountRegistry(),
             canonical.reversals(),
             canonical.preflight(),
-            new ContractResponse.CurrencyDescriptor(
-                "book-functional-currency", "not-supported", "desc"),
+            new CurrencyDescriptor("book-functional-currency", "not-supported", "desc"),
             canonical.bookkeepingKernel(),
             canonical.capabilityCatalog());
 
@@ -381,8 +383,8 @@ class CliDiscoveryRuntimeOutputRendererTest {
                     SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
                     SqliteRuntimeTrustBasis.SOURCE_CHECKOUT_SIDECAR_CONSISTENCY,
                     "<redacted>/libsqlite3.dylib",
-                    "3.53.3",
-                    "2.3.6",
+                    "3.53.4",
+                    "2.4.0",
                     "source-id",
                     "compile options mismatch")));
     String unavailableRendered =
@@ -406,8 +408,8 @@ class CliDiscoveryRuntimeOutputRendererTest {
     assertTrue(incompatibleRendered.contains("Runtime status"));
     assertTrue(incompatibleRendered.contains("incompatible"));
     assertTrue(incompatibleRendered.contains("compile options mismatch"));
-    assertTrue(incompatibleRendered.contains("3.53.3"));
-    assertTrue(incompatibleRendered.contains("2.3.6"));
+    assertTrue(incompatibleRendered.contains("3.53.4"));
+    assertTrue(incompatibleRendered.contains("2.4.0"));
     assertFalse(incompatibleRendered.contains("source-id"));
 
     assertTrue(unavailableRendered.contains("Runtime status"));

@@ -1,24 +1,15 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
-import dev.erst.fingrind.core.AccountCode;
-import dev.erst.fingrind.core.AccountName;
-import dev.erst.fingrind.core.AccountType;
-import dev.erst.fingrind.core.NormalBalance;
-import dev.erst.fingrind.core.attestation.AttestationEffectMutation;
-import dev.erst.fingrind.executor.bookkeeping.AccountDeclarationOutcome;
-import dev.erst.fingrind.executor.bookkeeping.BookAuditEvent;
-import dev.erst.fingrind.executor.bookkeeping.BookkeepingAdministrationRejection;
-import dev.erst.fingrind.executor.bookkeeping.RegisteredAccount;
+import dev.erst.fingrind.core.attestation.AttestationEvidence;
+import dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome;
 import java.lang.foreign.MemorySegment;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
-import java.math.BigInteger;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -26,179 +17,9 @@ import java.util.List;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
-/** Covers durable-account extraction and audit-event mapping for account declarations. */
+/** Covers rollback and failure translation while opening a SQLite-backed book. */
 class SqliteStoreAdministrationMutationOperationsCoverageTest
     extends SqlitePostingFactStoreTestSupport {
-  @Test
-  void declaredAccount_returnsDurableSnapshotsAndRejectsRejectedOutcomes() {
-    RegisteredAccount account =
-        SqlitePostingFactFixtureSupport.registeredAccount(
-            new AccountCode("1000"),
-            new AccountName("Cash"),
-            AccountType.ASSET,
-            NormalBalance.DEBIT,
-            true,
-            Instant.parse("2026-04-07T10:15:30Z"));
-
-    assertEquals(
-        account,
-        SqliteStoreAccountRegistryMutationOperations.declaredAccount(
-            new AccountDeclarationOutcome.Declared(account)));
-    assertEquals(
-        account,
-        SqliteStoreAccountRegistryMutationOperations.declaredAccount(
-            new AccountDeclarationOutcome.Reactivated(account)));
-    assertEquals(
-        account,
-        SqliteStoreAccountRegistryMutationOperations.declaredAccount(
-            new AccountDeclarationOutcome.Renamed(account)));
-    assertEquals(
-        account,
-        SqliteStoreAccountRegistryMutationOperations.declaredAccount(
-            new AccountDeclarationOutcome.Unchanged(account)));
-
-    IllegalArgumentException rejected =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                SqliteStoreAccountRegistryMutationOperations.declaredAccount(
-                    new AccountDeclarationOutcome.Rejected(
-                        new BookkeepingAdministrationRejection.BookNotInitialized())));
-    assertTrue(
-        Objects.requireNonNullElse(rejected.getMessage(), "")
-            .contains("Rejected account declarations do not carry a durable account snapshot"));
-  }
-
-  @Test
-  void accountAuditEvent_mapsDurableOutcomesAndRejectsNonAuditedOutcomes() {
-    Instant recordedAt = Instant.parse("2026-04-08T11:15:30Z");
-    RegisteredAccount account =
-        SqlitePostingFactFixtureSupport.registeredAccount(
-            new AccountCode("2000"),
-            new AccountName("Revenue"),
-            AccountType.REVENUE,
-            NormalBalance.CREDIT,
-            true,
-            Instant.parse("2026-04-07T10:15:30Z"));
-
-    assertEquals(
-        BookAuditEvent.accountDeclared(recordedAt, account.accountCode()),
-        SqliteStoreAccountRegistryMutationOperations.accountAuditEvent(
-            recordedAt, new AccountDeclarationOutcome.Declared(account)));
-    assertEquals(
-        BookAuditEvent.accountReactivated(recordedAt, account.accountCode()),
-        SqliteStoreAccountRegistryMutationOperations.accountAuditEvent(
-            recordedAt, new AccountDeclarationOutcome.Reactivated(account)));
-    assertEquals(
-        BookAuditEvent.accountRenamed(recordedAt, account.accountCode()),
-        SqliteStoreAccountRegistryMutationOperations.accountAuditEvent(
-            recordedAt, new AccountDeclarationOutcome.Renamed(account)));
-
-    IllegalArgumentException unchanged =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                SqliteStoreAccountRegistryMutationOperations.accountAuditEvent(
-                    recordedAt, new AccountDeclarationOutcome.Unchanged(account)));
-    assertEquals("Unchanged account declarations do not append audit.", unchanged.getMessage());
-
-    IllegalArgumentException rejected =
-        assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                SqliteStoreAccountRegistryMutationOperations.accountAuditEvent(
-                    recordedAt,
-                    new AccountDeclarationOutcome.Rejected(
-                        new BookkeepingAdministrationRejection.BookNotInitialized())));
-    assertTrue(
-        Objects.requireNonNullElse(rejected.getMessage(), "")
-            .contains("Rejected account declarations do not append audit"));
-  }
-
-  @Test
-  void withAttestationCommit_projectsOnlyDurableAccountDeclarationMutations() {
-    RegisteredAccount account =
-        SqlitePostingFactFixtureSupport.registeredAccount(
-            new AccountCode("2100"),
-            new AccountName("Trade creditors"),
-            AccountType.LIABILITY,
-            NormalBalance.CREDIT,
-            true,
-            Instant.parse("2026-04-07T10:15:30Z"));
-    AttestationCommit attestationCommit = new AttestationCommit(BigInteger.ONE, "a".repeat(64));
-
-    assertEquals(
-        new AccountDeclarationOutcome.Declared(account, attestationCommit),
-        SqliteStoreAccountRegistryMutationOperations.withAttestationCommit(
-            new AccountDeclarationOutcome.Declared(account), attestationCommit));
-    assertEquals(
-        new AccountDeclarationOutcome.Reactivated(account, attestationCommit),
-        SqliteStoreAccountRegistryMutationOperations.withAttestationCommit(
-            new AccountDeclarationOutcome.Reactivated(account), attestationCommit));
-    assertEquals(
-        new AccountDeclarationOutcome.Renamed(account, attestationCommit),
-        SqliteStoreAccountRegistryMutationOperations.withAttestationCommit(
-            new AccountDeclarationOutcome.Renamed(account), attestationCommit));
-    assertEquals(
-        "An unchanged account declaration must not receive an attestation commitment.",
-        assertThrows(
-                IllegalArgumentException.class,
-                () ->
-                    SqliteStoreAccountRegistryMutationOperations.withAttestationCommit(
-                        new AccountDeclarationOutcome.Unchanged(account), attestationCommit))
-            .getMessage());
-    assertEquals(
-        "A rejected account declaration must not receive an attestation commitment.",
-        assertThrows(
-                IllegalArgumentException.class,
-                () ->
-                    SqliteStoreAccountRegistryMutationOperations.withAttestationCommit(
-                        new AccountDeclarationOutcome.Rejected(
-                            new BookkeepingAdministrationRejection.BookNotInitialized()),
-                        attestationCommit))
-            .getMessage());
-  }
-
-  @Test
-  void declarationMutation_mapsPersistedAccountChangesAndRejectsNonMutatingOutcomes() {
-    RegisteredAccount account =
-        SqlitePostingFactFixtureSupport.registeredAccount(
-            new AccountCode("3000"),
-            new AccountName("Retained earnings"),
-            AccountType.EQUITY,
-            NormalBalance.CREDIT,
-            true,
-            Instant.parse("2026-04-07T10:15:30Z"));
-
-    assertEquals(
-        AttestationEffectMutation.CREATE,
-        invokeDeclarationMutation(new AccountDeclarationOutcome.Declared(account)));
-    assertEquals(
-        AttestationEffectMutation.REACTIVATE,
-        invokeDeclarationMutation(new AccountDeclarationOutcome.Reactivated(account)));
-    assertEquals(
-        AttestationEffectMutation.AMEND,
-        invokeDeclarationMutation(new AccountDeclarationOutcome.Renamed(account)));
-
-    assertEquals(
-        "Unchanged account declarations do not append attestation.",
-        assertThrows(
-                IllegalArgumentException.class,
-                () -> invokeDeclarationMutation(new AccountDeclarationOutcome.Unchanged(account)))
-            .getMessage());
-    assertTrue(
-        Objects.requireNonNullElse(
-                assertThrows(
-                        IllegalArgumentException.class,
-                        () ->
-                            invokeDeclarationMutation(
-                                new AccountDeclarationOutcome.Rejected(
-                                    new BookkeepingAdministrationRejection.BookNotInitialized())))
-                    .getMessage(),
-                "")
-            .contains("Rejected account declarations do not append attestation"));
-  }
-
   @Test
   void openAttestedBook_translatesAndRollsBackANativeSchemaInitializationFailure() {
     Path bookPath = tempDirectory.resolve("native-open-failure.sqlite");
@@ -288,24 +109,114 @@ class SqliteStoreAdministrationMutationOperationsCoverageTest
     }
   }
 
-  private static AttestationEffectMutation invokeDeclarationMutation(
-      AccountDeclarationOutcome outcome) {
-    try {
-      MethodHandle declarationMutation =
-          MethodHandles.privateLookupIn(
-                  SqliteStoreAccountRegistryMutationOperations.class, MethodHandles.lookup())
-              .findStatic(
-                  SqliteStoreAccountRegistryMutationOperations.class,
-                  "declarationMutation",
-                  MethodType.methodType(
-                      AttestationEffectMutation.class, AccountDeclarationOutcome.class));
-      return (AttestationEffectMutation) declarationMutation.invoke(outcome);
-    } catch (RuntimeException exception) {
-      throw exception;
-    } catch (Error error) {
-      throw error;
-    } catch (Throwable throwable) {
-      throw new AssertionError("Failed to invoke account declaration-mutation mapping.", throwable);
+  @Test
+  void openAttestedBook_rollsBackAnOutcomeProjectionFailureBeforeCommitAndAllowsRetry() {
+    Path bookPath = tempDirectory.resolve("outcome-projection-failure.sqlite");
+    Instant initializedAt = Instant.parse("2026-07-26T12:00:00Z");
+    var bookIdentity = SqlitePostingFactFixtureSupport.bookIdentity();
+    AttestationEvidence genesis = SqliteAttestationTestSupport.genesis(bookIdentity, initializedAt);
+    IllegalStateException outcomeFailure =
+        new IllegalStateException("simulated opening-outcome projection failure");
+
+    try (SqlitePostingFactStore store = openStore(bookAccess(bookPath))) {
+      SqliteStoreAdministrationMutationOperations operations =
+          new SqliteStoreAdministrationMutationOperations(
+              store.storeContext(),
+              store.storeLifecycle(),
+              (ignoredInitializedAt,
+                  ignoredBookIdentity,
+                  ignoredGenesisEvidence,
+                  ignoredVerification) -> {
+                throw outcomeFailure;
+              });
+
+      assertSame(
+          outcomeFailure,
+          assertThrows(
+              IllegalStateException.class,
+              () -> operations.openAttestedBook(initializedAt, bookIdentity, List.of(), genesis)));
+
+      BookOpeningOutcome.Opened opened =
+          assertInstanceOf(
+              BookOpeningOutcome.Opened.class,
+              store.openAttestedBook(initializedAt, bookIdentity, List.of(), genesis));
+      assertEquals(initializedAt, opened.initializedAt());
+    }
+  }
+
+  @Test
+  void openAttestedBook_commitFailureWithAProvenBlankRollbackAllowsFounderRollbackAndRetry() {
+    Path bookPath = tempDirectory.resolve("commit-rollback-proved-blank.sqlite");
+    Instant initializedAt = Instant.parse("2026-07-26T12:05:00Z");
+    var bookIdentity = SqlitePostingFactFixtureSupport.bookIdentity();
+    AttestationEvidence genesis = SqliteAttestationTestSupport.genesis(bookIdentity, initializedAt);
+    SqliteNativeException commitFailure =
+        new SqliteNativeException(
+            SqliteNativeResultCode.code("IOERR"), "simulated pre-durability commit failure");
+
+    try (SqlitePostingFactStore store = openStore(bookAccess(bookPath))) {
+      SqliteStoreAdministrationMutationOperations operations =
+          new SqliteStoreAdministrationMutationOperations(
+              store.storeContext(),
+              store.storeLifecycle(),
+              (ignoredDatabase, ignoredTransactionOwnership) -> {
+                throw commitFailure;
+              });
+
+      SqliteStorageFailureException failure =
+          assertThrows(
+              SqliteStorageFailureException.class,
+              () -> operations.openAttestedBook(initializedAt, bookIdentity, List.of(), genesis));
+
+      assertEquals(
+          "Failed to initialize SQLite book. SQLITE_IOERR: simulated pre-durability commit failure",
+          failure.getMessage());
+      BookOpeningOutcome.Opened retried =
+          assertInstanceOf(
+              BookOpeningOutcome.Opened.class,
+              store.openAttestedBook(initializedAt, bookIdentity, List.of(), genesis));
+      assertEquals(initializedAt, retried.initializedAt());
+    }
+  }
+
+  @Test
+  void openAttestedBook_postCommitAcknowledgementFailureRetainsTheInitializedExclusiveBook()
+      throws Exception {
+    Path bookPath = tempDirectory.resolve("commit-acknowledgement-loss.sqlite");
+    Instant initializedAt = Instant.parse("2026-07-26T12:10:00Z");
+    var bookIdentity = SqlitePostingFactFixtureSupport.bookIdentity();
+    AttestationEvidence genesis = SqliteAttestationTestSupport.genesis(bookIdentity, initializedAt);
+    SqliteNativeException acknowledgementFailure =
+        new SqliteNativeException(
+            SqliteNativeResultCode.code("IOERR"), "simulated post-commit acknowledgement loss");
+
+    try (SqlitePostingFactStore store =
+        openStore(bookAccess(bookPath), SqliteStoreAccessMode.READ_WRITE_CREATE_EXCLUSIVE)) {
+      SqliteStoreAdministrationMutationOperations operations =
+          new SqliteStoreAdministrationMutationOperations(
+              store.storeContext(),
+              store.storeLifecycle(),
+              (activeDatabase, transactionOwnership) -> {
+                SqliteStoreOperations.commitIfOwned(activeDatabase, transactionOwnership);
+                throw acknowledgementFailure;
+              });
+
+      SqliteOpenBookCompletionUncertainException failure =
+          assertThrows(
+              SqliteOpenBookCompletionUncertainException.class,
+              () -> operations.openAttestedBook(initializedAt, bookIdentity, List.of(), genesis));
+
+      assertSame(acknowledgementFailure, failure.getCause());
+      assertEquals(initializedAt, failure.openedBook().initializedAt());
+      assertEquals(bookIdentity, failure.openedBook().bookIdentity());
+      assertTrue(Files.exists(bookPath));
+    }
+
+    assertTrue(Files.exists(bookPath));
+    try (SqlitePostingFactStore reopened = openStore(bookAccess(bookPath))) {
+      assertInstanceOf(
+          BookOpeningOutcome.Rejected.class,
+          reopened.openAttestedBook(initializedAt, bookIdentity, List.of(), genesis));
     }
   }
 

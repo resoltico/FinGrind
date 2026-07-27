@@ -26,7 +26,6 @@ final class CliOpenBookArgumentValues {
   @Nullable LocalDate bookStartEffectiveDate;
   @Nullable OutputMode outputMode;
   final FounderArguments founders = new FounderArguments();
-  boolean tightenParents;
 
   /** Keeps the three repeated founder inputs aligned during one command-tail parse. */
   static final class FounderArguments {

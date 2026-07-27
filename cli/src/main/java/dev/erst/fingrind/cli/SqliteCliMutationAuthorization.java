@@ -24,17 +24,7 @@ final class SqliteCliMutationAuthorization {
     Objects.requireNonNull(action, "action");
     if (bookAccess.attestationCredentialSources().isEmpty()) {
       return ContractDecision.rejected(
-          ContractErrors.Descriptor.INVALID_ATTESTATION_CREDENTIAL.failureAt(
-              bookAccess.bookFilePath(),
-              "Protected-book mutation requires at least one explicit attestation credential.",
-              "Provide aligned "
-                  + ProtocolOptions.Attestation.PRINCIPAL_ID
-                  + ", "
-                  + ProtocolOptions.Attestation.KEY_FILE
-                  + ", and "
-                  + ProtocolOptions.Attestation.PASSPHRASE_FILE
-                  + " arguments.",
-              ProtocolOptions.Attestation.PRINCIPAL_ID));
+          CliAttestationCredentialFailures.missingMutationCredentials(bookAccess));
     }
     try {
       return AttestationMutationAuthorization.withAuthorizer(

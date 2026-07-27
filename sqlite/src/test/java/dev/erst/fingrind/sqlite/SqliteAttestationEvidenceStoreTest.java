@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -19,6 +20,7 @@ import dev.erst.fingrind.core.attestation.AttestationAccountMutationIntent;
 import dev.erst.fingrind.core.attestation.AttestationAccountMutationProjection;
 import dev.erst.fingrind.core.attestation.AttestationAccountSnapshot;
 import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
+import dev.erst.fingrind.core.attestation.AttestationAppendOutcome;
 import dev.erst.fingrind.core.attestation.AttestationAuthorizationFailure;
 import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
 import dev.erst.fingrind.core.attestation.AttestationEffectMutation;
@@ -28,6 +30,8 @@ import dev.erst.fingrind.core.attestation.AttestationKeyFiles;
 import dev.erst.fingrind.core.attestation.AttestationLifecycleMutationProjection;
 import dev.erst.fingrind.core.attestation.AttestationOperationKind;
 import dev.erst.fingrind.core.attestation.AttestationOperationSigner;
+import dev.erst.fingrind.core.attestation.AttestationPlanChildMutation;
+import dev.erst.fingrind.core.attestation.AttestationPlanMutationProjection;
 import dev.erst.fingrind.core.attestation.AttestationPlanOperationAuthorizer;
 import dev.erst.fingrind.core.attestation.AttestationPublicCredential;
 import dev.erst.fingrind.core.attestation.AttestationSigningCredential;
@@ -54,7 +58,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
     Path signerPath = tempDirectory.resolve("candidate-admission.fgatk");
     char[] passphrase = "sqlite candidate admission passphrase".toCharArray();
     AttestationPublicCredential publicCredential =
-        AttestationKeyFiles.create(signerPath, passphrase);
+        AttestationKeyFiles.create(signerPath, passphrase).credential();
     try (AttestationSigningCredential authorizedSigner =
             new AttestationSigningCredential(
                 PRINCIPAL_ID, publicCredential, signerPath, passphrase);
@@ -139,7 +143,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
     Path signerPath = tempDirectory.resolve("founder.fgatk");
     char[] passphrase = "sqlite attestation test passphrase".toCharArray();
     AttestationPublicCredential publicCredential =
-        AttestationKeyFiles.create(signerPath, passphrase);
+        AttestationKeyFiles.create(signerPath, passphrase).credential();
     try (AttestationSigningCredential signer =
         new AttestationSigningCredential(PRINCIPAL_ID, publicCredential, signerPath, passphrase)) {
       AttestationEvidence genesis =
@@ -192,7 +196,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
     Path signerPath = tempDirectory.resolve("observed-head-founder.fgatk");
     char[] passphrase = "sqlite observed-head test passphrase".toCharArray();
     AttestationPublicCredential publicCredential =
-        AttestationKeyFiles.create(signerPath, passphrase);
+        AttestationKeyFiles.create(signerPath, passphrase).credential();
     try (AttestationSigningCredential signer =
             new AttestationSigningCredential(
                 PRINCIPAL_ID, publicCredential, signerPath, passphrase);
@@ -233,12 +237,13 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
         firstWriter.executeStatement("begin immediate");
         AttestationVerification firstVerification =
             SqliteAttestationEvidenceStore.appendAuthorized(
-                firstWriter,
-                firstObservedHead,
-                AttestationOperationKind.DECLARE_ACCOUNT,
-                Instant.parse("2026-07-21T00:00:01Z"),
-                preimages,
-                request -> sign(request, signer));
+                    firstWriter,
+                    firstObservedHead,
+                    AttestationOperationKind.DECLARE_ACCOUNT,
+                    Instant.parse("2026-07-21T00:00:01Z"),
+                    preimages,
+                    request -> sign(request, signer))
+                .requireVerifiedAppend();
         firstWriter.executeStatement("commit");
 
         secondWriter.executeStatement("begin immediate");
@@ -274,7 +279,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
     Path signerPath = tempDirectory.resolve("observed-plan-head-founder.fgatk");
     char[] passphrase = "sqlite observed plan-head test passphrase".toCharArray();
     AttestationPublicCredential publicCredential =
-        AttestationKeyFiles.create(signerPath, passphrase);
+        AttestationKeyFiles.create(signerPath, passphrase).credential();
     try (AttestationSigningCredential signer =
             new AttestationSigningCredential(
                 PRINCIPAL_ID, publicCredential, signerPath, passphrase);
@@ -314,12 +319,13 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
         firstWriter.executeStatement("begin immediate");
         AttestationVerification currentVerification =
             SqliteAttestationEvidenceStore.appendAuthorized(
-                firstWriter,
-                firstObservedHead,
-                AttestationOperationKind.DECLARE_ACCOUNT,
-                Instant.parse("2026-07-21T00:00:01Z"),
-                preimages,
-                request -> sign(request, signer));
+                    firstWriter,
+                    firstObservedHead,
+                    AttestationOperationKind.DECLARE_ACCOUNT,
+                    Instant.parse("2026-07-21T00:00:01Z"),
+                    preimages,
+                    request -> sign(request, signer))
+                .requireVerifiedAppend();
         firstWriter.executeStatement("commit");
 
         AttestationPlanOperationAuthorizer planAuthorizer =
@@ -327,9 +333,12 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
                 ignored -> {
                   throw new AssertionError("A stale plan must not reach the signer.");
                 });
-        planAuthorizer.enterStep(0);
-        planAuthorizer.collectChildMutation(
-            AttestationOperationKind.DECLARE_ACCOUNT.wireToken(), preimages);
+        var planPreimages =
+            AttestationPlanMutationProjection.project(
+                "monthly-close",
+                List.of(
+                    new AttestationPlanChildMutation(
+                        0, AttestationOperationKind.DECLARE_ACCOUNT.wireToken(), preimages)));
         secondWriter.executeStatement("begin immediate");
         AttestationStaleHeadException staleHead =
             assertThrows(
@@ -338,8 +347,8 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
                     SqliteAttestationEvidenceStore.appendPlanAuthorized(
                         secondWriter,
                         staleObservedHead,
-                        "monthly-close",
                         Instant.parse("2026-07-21T00:00:02Z"),
+                        planPreimages,
                         planAuthorizer));
         secondWriter.executeStatement("rollback");
 
@@ -359,7 +368,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
     Path signerPath = tempDirectory.resolve("history-disappeared-founder.fgatk");
     char[] passphrase = "sqlite attestation test passphrase".toCharArray();
     AttestationPublicCredential publicCredential =
-        AttestationKeyFiles.create(signerPath, passphrase);
+        AttestationKeyFiles.create(signerPath, passphrase).credential();
     try (AttestationSigningCredential signer =
         new AttestationSigningCredential(PRINCIPAL_ID, publicCredential, signerPath, passphrase)) {
       AttestationEvidence genesis =
@@ -420,7 +429,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
     Path signerPath = tempDirectory.resolve("account-founder.fgatk");
     char[] passphrase = "sqlite attestation test passphrase".toCharArray();
     AttestationPublicCredential publicCredential =
-        AttestationKeyFiles.create(signerPath, passphrase);
+        AttestationKeyFiles.create(signerPath, passphrase).credential();
     try (AttestationSigningCredential signer =
         new AttestationSigningCredential(PRINCIPAL_ID, publicCredential, signerPath, passphrase)) {
       AttestationEvidence genesis =
@@ -454,26 +463,27 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
                 SqliteAttestationEvidenceStore.append(database, ZERO_HEAD, genesis);
             AttestationVerification verification =
                 SqliteAttestationEvidenceStore.appendAuthorized(
-                    database,
-                    SqliteAttestationEvidenceStore.observeRequired(database),
-                    AttestationOperationKind.DECLARE_ACCOUNT,
-                    Instant.parse("2026-07-21T00:00:01Z"),
-                    preimages,
-                    request -> {
-                      assertEquals(BOOK_ID, request.bookId());
-                      assertEquals(BigInteger.ONE, request.operationOrder());
-                      assertArrayEquals(
-                          genesisVerification.operationHead(), request.previousHead());
-                      return AttestationOperationSigner.sign(
-                          request.bookId(),
-                          request.operationOrder(),
-                          request.operationKind(),
-                          request.previousHead(),
-                          request.recordedAt(),
-                          request.requestPreimage(),
-                          request.effectPreimage(),
-                          List.of(signer));
-                    });
+                        database,
+                        SqliteAttestationEvidenceStore.observeRequired(database),
+                        AttestationOperationKind.DECLARE_ACCOUNT,
+                        Instant.parse("2026-07-21T00:00:01Z"),
+                        preimages,
+                        request -> {
+                          assertEquals(BOOK_ID, request.bookId());
+                          assertEquals(BigInteger.ONE, request.operationOrder());
+                          assertArrayEquals(
+                              genesisVerification.operationHead(), request.previousHead());
+                          return AttestationOperationSigner.sign(
+                              request.bookId(),
+                              request.operationOrder(),
+                              request.operationKind(),
+                              request.previousHead(),
+                              request.recordedAt(),
+                              request.requestPreimage(),
+                              request.effectPreimage(),
+                              List.of(signer));
+                        })
+                    .requireVerifiedAppend();
             database.executeStatement("commit");
 
             assertEquals(1, verification.headOrder().intValueExact());
@@ -490,7 +500,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
     Path signerPath = tempDirectory.resolve("backup-founder.fgatk");
     char[] passphrase = "sqlite attestation test passphrase".toCharArray();
     AttestationPublicCredential publicCredential =
-        AttestationKeyFiles.create(signerPath, passphrase);
+        AttestationKeyFiles.create(signerPath, passphrase).credential();
     try (AttestationSigningCredential signer =
         new AttestationSigningCredential(PRINCIPAL_ID, publicCredential, signerPath, passphrase)) {
       AttestationEvidence genesis =
@@ -516,17 +526,21 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
                     genesisVerification.headOrder(),
                     genesisVerification.operationHead());
             AttestationVerification backupVerification =
-                SqliteAttestationEvidenceStore.appendAuthorized(
-                    database,
-                    SqliteAttestationEvidenceStore.observeRequired(database),
-                    AttestationOperationKind.BACKUP_CREATED,
-                    Instant.parse("2026-07-21T00:00:01Z"),
-                    AttestationLifecycleMutationProjection.backupBook(
-                        "backup-created", acknowledgement),
-                    request -> sign(request, signer),
-                    acknowledgement);
+                assertInstanceOf(
+                        AttestationAppendOutcome.Appended.class,
+                        SqliteAttestationEvidenceStore.appendAuthorized(
+                            database,
+                            SqliteAttestationEvidenceStore.observeRequired(database),
+                            AttestationOperationKind.BACKUP_CREATED,
+                            Instant.parse("2026-07-21T00:00:01Z"),
+                            AttestationLifecycleMutationProjection.backupBook(
+                                "backup-created", acknowledgement),
+                            request -> sign(request, signer),
+                            acknowledgement))
+                    .verification();
             assertEquals(1, backupVerification.headOrder().intValueExact());
-            AttestationVerification replayVerification =
+            assertEquals(
+                AttestationAppendOutcome.AlreadyPresent.INSTANCE,
                 SqliteAttestationEvidenceStore.appendAuthorized(
                     database,
                     SqliteAttestationEvidenceStore.observeRequired(database),
@@ -535,10 +549,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
                     AttestationLifecycleMutationProjection.backupBook(
                         "backup-created", acknowledgement),
                     request -> sign(request, signer),
-                    acknowledgement);
-            assertEquals(backupVerification.headOrder(), replayVerification.headOrder());
-            assertArrayEquals(
-                backupVerification.operationHead(), replayVerification.operationHead());
+                    acknowledgement));
             assertEquals(2, countRows(database, "attestation_operation"));
 
             AttestationBackupAcknowledgement conflictingAcknowledgement =
@@ -572,12 +583,13 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
   }
 
   @Test
-  void planAggregation_requiresAChildMutationAndSignsOnlyTheFinalOperation() throws Exception {
+  void planAggregation_signsOnlyOneFinalOperationForTransactionOwnedChildPreimages()
+      throws Exception {
     Path bookPath = tempDirectory.resolve("attested-plan.sqlite");
     Path signerPath = tempDirectory.resolve("plan-founder.fgatk");
     char[] passphrase = "sqlite attestation test passphrase".toCharArray();
     AttestationPublicCredential publicCredential =
-        AttestationKeyFiles.create(signerPath, passphrase);
+        AttestationKeyFiles.create(signerPath, passphrase).credential();
     try (AttestationSigningCredential signer =
         new AttestationSigningCredential(PRINCIPAL_ID, publicCredential, signerPath, passphrase)) {
       AttestationEvidence genesis =
@@ -616,32 +628,20 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
             IllegalArgumentException emptyPlan =
                 assertThrows(
                     IllegalArgumentException.class,
-                    () ->
-                        SqliteAttestationEvidenceStore.appendPlanAuthorized(
-                            database,
-                            observedHead,
-                            "monthly-close",
-                            Instant.parse("2026-07-21T00:00:01Z"),
-                            authorizer));
+                    () -> AttestationPlanMutationProjection.project("monthly-close", List.of()));
             assertEquals(
-                "execute-plan did not produce a mutating child step.", emptyPlan.getMessage());
+                "execute-plan requires at least one child mutation.", emptyPlan.getMessage());
 
-            authorizer.enterStep(0);
-            AttestationVerification persisted =
-                SqliteAttestationEvidenceStore.appendAuthorized(
-                    database,
-                    observedHead,
-                    AttestationOperationKind.DECLARE_ACCOUNT,
-                    Instant.parse("2026-07-21T00:00:01Z"),
-                    preimages,
-                    authorizer);
-            assertEquals(0, persisted.headOrder().intValueExact());
+            var planPreimages =
+                AttestationPlanMutationProjection.project(
+                    "monthly-close",
+                    List.of(new AttestationPlanChildMutation(0, "declare-account", preimages)));
             AttestationVerification finalVerification =
                 SqliteAttestationEvidenceStore.appendPlanAuthorized(
                     database,
                     observedHead,
-                    "monthly-close",
                     Instant.parse("2026-07-21T00:00:02Z"),
+                    planPreimages,
                     authorizer);
             assertEquals(1, finalVerification.headOrder().intValueExact());
             assertEquals(2, countRows(database, "attestation_operation"));
@@ -812,7 +812,7 @@ class SqliteAttestationEvidenceStoreTest extends SqlitePostingFactStoreTestSuppo
   private static AttestationEvidence genesis(Path signerPath) throws IOException {
     char[] passphrase = "sqlite attestation test passphrase".toCharArray();
     AttestationPublicCredential publicCredential =
-        AttestationKeyFiles.create(signerPath, passphrase);
+        AttestationKeyFiles.create(signerPath, passphrase).credential();
     try (AttestationSigningCredential signer =
         new AttestationSigningCredential(PRINCIPAL_ID, publicCredential, signerPath, passphrase)) {
       return AttestationGenesis.create(

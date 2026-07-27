@@ -27,6 +27,7 @@ import dev.erst.fingrind.contract.bookkeeping.ListPostingsQuery;
 import dev.erst.fingrind.contract.bookkeeping.PostingPageCursor;
 import dev.erst.fingrind.contract.workflow.LedgerFact;
 import dev.erst.fingrind.contract.workflow.LedgerPlan;
+import dev.erst.fingrind.contract.workflow.LedgerPlanResult;
 import dev.erst.fingrind.contract.workflow.LedgerPlanStatus;
 import dev.erst.fingrind.contract.workflow.LedgerStep;
 import dev.erst.fingrind.core.AccountCode;
@@ -37,9 +38,7 @@ import dev.erst.fingrind.core.PostingId;
 import dev.erst.fingrind.executor.bookkeeping.BookkeepingPublishedLanguageTranslator;
 import java.math.BigInteger;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** Unit tests covering query-specific behavior in {@link LedgerPlanService}. */
@@ -221,14 +220,11 @@ class LedgerPlanServiceQueryTest {
   void execute_projectsAuthenticatedAttestationCommitmentsInPostingQueryFacts() {
     PostingId postingId = new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69");
     AttestationCommit commitment = new AttestationCommit(BigInteger.valueOf(7), "a".repeat(64));
-    try (InMemoryBookSession bookSession = bookWithCommittedPosting()) {
+    try (var bookSession =
+        new LedgerPlanServiceTestSupport.StoredPostingCommitmentLedgerPlanSession(
+            postingId, commitment)) {
       var result =
-          LedgerPlanServiceTestSupport.service(
-                  bookSession,
-                  postingIds -> {
-                    assertEquals(Set.of(postingId), postingIds);
-                    return Map.of(postingId, commitment);
-                  })
+          service(bookSession)
               .execute(
                   new LedgerPlan(
                       planId("plan-query-attestation"),
@@ -277,6 +273,64 @@ class LedgerPlanServiceQueryTest {
                           "7",
                           "operationHead",
                           "a".repeat(64))));
+    }
+  }
+
+  @Test
+  void execute_rehydratesNewPlanPostingCommitmentsAfterTheAggregateAppend() {
+    try (var bookSession =
+        new LedgerPlanServiceTestSupport.AggregateAttestationPublishingLedgerPlanSession()) {
+      var result =
+          service(bookSession)
+              .execute(
+                  new LedgerPlan(
+                      planId("plan-query-after-aggregate-attestation"),
+                      List.of(
+                          new LedgerStep.PostEntry(
+                              stepId("post"), postEntryCommand("idem-plan-posting")),
+                          new LedgerStep.GetPosting(
+                              stepId("get"), new PostingId("bdc03c47-a16c-3688-a18f-2445894bbc69")),
+                          new LedgerStep.ListPostings(
+                              stepId("list"),
+                              new ListPostingsQuery(
+                                  Optional.empty(), null, null, 50, Optional.empty())))),
+                  ExecutorAccountingTestSupport.TEST_AUTHORIZER);
+
+      assertEquals(LedgerPlanStatus.SUCCEEDED, result.status());
+      LedgerPlanResult.Succeeded succeeded = (LedgerPlanResult.Succeeded) result;
+      assertEquals(bookSession.planCommit(), succeeded.attestationCommit());
+      assertTrue(bookSession.queriedBeforeAggregateAttestation());
+
+      assertTrue(
+          result.journal().steps().get(1).facts().stream()
+              .anyMatch(
+                  fact ->
+                      groupFact(
+                          fact,
+                          "attestationCommit",
+                          "operationOrder",
+                          "42",
+                          "operationHead",
+                          "b".repeat(64))));
+
+      LedgerFact.Group posting =
+          result.journal().steps().get(2).facts().stream()
+              .filter(
+                  fact -> fact instanceof LedgerFact.Group group && "posting".equals(group.name()))
+              .map(LedgerFact.Group.class::cast)
+              .findFirst()
+              .orElseThrow();
+      assertTrue(
+          posting.facts().stream()
+              .anyMatch(
+                  fact ->
+                      groupFact(
+                          fact,
+                          "attestationCommit",
+                          "operationOrder",
+                          "42",
+                          "operationHead",
+                          "b".repeat(64))));
     }
   }
 

@@ -29,4 +29,11 @@ final class AttestationBinaryFieldValue {
         AttestationFieldType.BYTES,
         output -> AttestationTextEncoding.appendBytes(output, copiedValue, "bytes"));
   }
+
+  static AttestationFieldValue embedded(byte[] value) {
+    byte[] copiedValue = AttestationEncoding.copy(value, "value");
+    return AttestationFieldValue.encode(
+        AttestationFieldType.EMBEDDED,
+        output -> AttestationTextEncoding.appendEmbedded(output, copiedValue, "embedded"));
+  }
 }

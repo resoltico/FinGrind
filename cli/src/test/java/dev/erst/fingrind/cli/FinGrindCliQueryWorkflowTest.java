@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
 
 /** Unit tests for {@link FinGrindCli}. */
-class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
+class FinGrindCliQueryWorkflowTest extends CliWorkflowFixtureSupport {
   @Test
   void run_queryCommandsThroughDefaultSqliteWorkflow() throws IOException {
     Path requestFile = writeRequest(validRequestJson());
@@ -66,7 +66,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
         0,
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(commitOutput), fixedClock())
             .run(
-                jsonArguments(
+                attestedJsonArguments(
                     "record-sale-settled",
                     "--book-file",
                     bookFilePath.toString(),
@@ -300,7 +300,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
         0,
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(commitOutput), fixedClock())
             .run(
-                jsonArguments(
+                attestedJsonArguments(
                     "record-sale-settled",
                     "--book-file",
                     bookFilePath.toString(),
@@ -458,7 +458,7 @@ class FinGrindCliQueryWorkflowTest extends FinGrindCliTestSupport {
     int exitCode =
         cli(new ByteArrayInputStream(new byte[0]), utf8PrintStream(commitOutput), fixedClock())
             .run(
-                jsonArguments(
+                attestedJsonArguments(
                     "post-entry",
                     "--book-file",
                     workflow.bookFilePath().toString(),

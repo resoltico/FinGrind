@@ -108,7 +108,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             .path("eventClass")
             .stringValue());
     JsonNode committed =
-        runJsonCommand(
+        runAttestedJsonCommand(
             "record-sale-settled",
             "--book-file",
             bookFile.toString(),
@@ -211,7 +211,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
     runJsonCommand("generate-book-key-file", "--new-book-key-file", bookKeyFile.toString());
     runJsonCommand(openBookKeyFileArguments(bookFile, bookKeyFile));
     runJsonCommand(openBookKeyFileArguments(planBookFile, bookKeyFile));
-    runJsonCommand(
+    runAttestedJsonCommand(
         "declare-account",
         "--book-file",
         bookFile.toString(),
@@ -219,7 +219,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
         bookKeyFile.toString(),
         "--request-file",
         declareCashFile.toString());
-    runJsonCommand(
+    runAttestedJsonCommand(
         "declare-account",
         "--book-file",
         bookFile.toString(),
@@ -228,7 +228,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
         "--request-file",
         declareRevenueFile.toString());
     JsonNode committed =
-        runJsonCommand(
+        runAttestedJsonCommand(
             "record-sale-settled",
             "--book-file",
             bookFile.toString(),
@@ -276,7 +276,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
         entrySemanticsPreflight.toString().contains("\"source-document-type-not-accepted\""));
     replaceReversalPriorPostingId(reversalRequestFile, postingId);
     JsonNode reversal =
-        runJsonCommand(
+        runAttestedJsonCommand(
             "record-reversal",
             "--book-file",
             bookFile.toString(),
@@ -312,7 +312,7 @@ class CliPublicDocsWorkflowContractTest extends CliPublicDocsContractSupport {
             .stringValue());
     assertFalse(rawPlanTemplate.toString().contains("\"posting\""));
     JsonNode planResult =
-        runJsonCommand(
+        runAttestedJsonCommand(
             "execute-plan",
             "--book-file",
             planBookFile.toString(),

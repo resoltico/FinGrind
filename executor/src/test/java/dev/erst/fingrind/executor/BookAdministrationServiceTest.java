@@ -4,7 +4,10 @@ import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.accountTa
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.bookIdentity;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.financialPositionTaxonomy;
 import static dev.erst.fingrind.executor.ExecutorAccountingTestSupport.registeredAccount;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.core.AccountCode;
@@ -28,6 +31,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -42,6 +46,11 @@ class BookAdministrationServiceTest {
 
   @TempDir Path temporaryDirectory;
 
+  @BeforeEach
+  void canonicalizeTemporaryDirectory() throws IOException {
+    temporaryDirectory = temporaryDirectory.toRealPath();
+  }
+
   @Test
   void openAttestedBook_delegatesTheMatchingSignedGenesisToTheBookStore() throws IOException {
     AttestationMaintenanceTestSupport.CredentialFixture credential =
@@ -54,15 +63,16 @@ class BookAdministrationServiceTest {
           dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome.Opened.class,
           service.openAttestedBook(
               bookIdentity(),
-              AttestationGenesisFactory.create(
-                  bookIdentity(),
-                  FIXED_CLOCK.instant(),
-                  List.of(
-                      new dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput(
-                          dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
-                          credential.source().principalId(),
-                          credential.source().encryptedKeyFilePath(),
-                          credential.source().passphraseFilePath())))));
+              AttestationGenesisFactory.prepare(
+                      bookIdentity(),
+                      FIXED_CLOCK.instant(),
+                      List.of(
+                          new dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput(
+                              dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+                              credential.source().principalId(),
+                              credential.source().encryptedKeyFilePath(),
+                              credential.source().passphraseFilePath())))
+                  .evidence()));
     }
   }
 
@@ -90,16 +100,19 @@ class BookAdministrationServiceTest {
                   AccountType.ASSET,
                   accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT)),
               TEST_AUTHORIZER);
+      AccountDeclarationOutcome.Declared declared =
+          org.junit.jupiter.api.Assertions.assertInstanceOf(
+              AccountDeclarationOutcome.Declared.class, result);
       org.junit.jupiter.api.Assertions.assertEquals(
-          new AccountDeclarationOutcome.Declared(
-              registeredAccount(
-                  new AccountCode("1000"),
-                  new AccountName("Cash"),
-                  AccountType.ASSET,
-                  NormalBalance.DEBIT,
-                  true,
-                  FIXED_CLOCK.instant())),
-          result);
+          registeredAccount(
+              new AccountCode("1000"),
+              new AccountName("Cash"),
+              AccountType.ASSET,
+              NormalBalance.DEBIT,
+              true,
+              FIXED_CLOCK.instant()),
+          declared.account());
+      org.junit.jupiter.api.Assertions.assertNotNull(declared.attestationAppend());
     }
   }
 
@@ -233,6 +246,132 @@ class BookAdministrationServiceTest {
   }
 
   @Test
+  void accountLifecycleCommands_preserveEveryNoOpAndReactivationOutcome() {
+    AccountCode accountCode = new AccountCode("1010");
+    AccountDeclaration initial =
+        new AccountDeclaration(
+            accountCode,
+            new AccountName("Cash Reserve"),
+            AccountType.ASSET,
+            accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT));
+    AccountDeclaration renamed =
+        new AccountDeclaration(
+            accountCode,
+            new AccountName("Operating Reserve"),
+            AccountType.ASSET,
+            accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT));
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      BookAdministrationService service =
+          new BookAdministrationService(bookSession, bookSession, bookSession, FIXED_CLOCK);
+      bookSession.openBook(FIXED_CLOCK.instant(), bookIdentity(), List.of());
+
+      AccountDeclarationOutcome.Declared declared =
+          assertInstanceOf(
+              AccountDeclarationOutcome.Declared.class,
+              service.declareAccount(initial, TEST_AUTHORIZER));
+      assertInstanceOf(
+          AccountDeclarationOutcome.Unchanged.class,
+          service.declareAccount(initial, TEST_AUTHORIZER));
+      AccountDeclarationOutcome.Renamed renamedOutcome =
+          assertInstanceOf(
+              AccountDeclarationOutcome.Renamed.class,
+              service.declareAccount(renamed, TEST_AUTHORIZER));
+      assertInstanceOf(
+          AccountAmendmentOutcome.Unchanged.class, service.amendAccount(renamed, TEST_AUTHORIZER));
+
+      bookSession.deactivateAccount(accountCode);
+      AccountDeclarationOutcome.Reactivated reactivated =
+          assertInstanceOf(
+              AccountDeclarationOutcome.Reactivated.class,
+              service.declareAccount(renamed, TEST_AUTHORIZER));
+      assertEquals(accountCode, reactivated.account().accountCode());
+
+      AccountRetirementOutcome.Retired retired =
+          assertInstanceOf(
+              AccountRetirementOutcome.Retired.class,
+              service.retireAccount(accountCode, TEST_AUTHORIZER));
+      assertInstanceOf(
+          AccountRetirementOutcome.Unchanged.class,
+          service.retireAccount(accountCode, TEST_AUTHORIZER));
+
+      assertNotNull(declared.attestationAppend());
+      assertNotNull(renamedOutcome.attestationAppend());
+      assertNotNull(reactivated.attestationAppend());
+      assertNotNull(retired.attestationAppend());
+    }
+  }
+
+  @Test
+  void lifecycleCommands_preserveStoreRejectionsWithoutInventingAnAttestation() {
+    AccountCode accountCode = new AccountCode("1010");
+    AccountDeclaration amendment =
+        new AccountDeclaration(
+            accountCode,
+            new AccountName("Cash Reserve"),
+            AccountType.ASSET,
+            accountTaxonomy(AccountType.ASSET, NormalBalance.DEBIT));
+    dev.erst.fingrind.executor.bookkeeping.AccountRegistryLifecycleRejection.AccountNotFound
+        rejection =
+            new dev.erst.fingrind.executor.bookkeeping.AccountRegistryLifecycleRejection
+                .AccountNotFound(accountCode);
+    try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
+      bookSession.openBook(FIXED_CLOCK.instant(), bookIdentity(), List.of());
+      BookAdministrationService service =
+          new BookAdministrationService(
+              bookSession,
+              new dev.erst.fingrind.executor.spi.BookAdministrationStore() {
+                @Override
+                public dev.erst.fingrind.executor.bookkeeping.BookOpeningOutcome openAttestedBook(
+                    Instant initializedAt,
+                    dev.erst.fingrind.core.BookIdentity initializedBookIdentity,
+                    List<AccountDeclaration> seededAccounts,
+                    dev.erst.fingrind.core.attestation.AttestationEvidence genesisEvidence) {
+                  throw new AssertionError("The lifecycle test must not initialize a second book.");
+                }
+
+                @Override
+                public AccountDeclarationOutcome declareAccount(
+                    AccountDeclaration declaration,
+                    Instant declaredAt,
+                    AttestationOperationAuthorizer attestationAuthorizer) {
+                  throw new AssertionError("The lifecycle test must not declare accounts.");
+                }
+
+                @Override
+                public AccountAmendmentOutcome amendAccount(
+                    AccountDeclaration amendment,
+                    Instant amendedAt,
+                    AttestationOperationAuthorizer attestationAuthorizer) {
+                  return new AccountAmendmentOutcome.Rejected(rejection);
+                }
+
+                @Override
+                public AccountRetirementOutcome retireAccount(
+                    AccountCode requestedAccountCode,
+                    Instant retiredAt,
+                    AttestationOperationAuthorizer attestationAuthorizer) {
+                  assertEquals(accountCode, requestedAccountCode);
+                  return new AccountRetirementOutcome.Rejected(rejection);
+                }
+              },
+              bookSession,
+              FIXED_CLOCK);
+
+      AccountRetirementOutcome.Rejected result =
+          assertInstanceOf(
+              AccountRetirementOutcome.Rejected.class,
+              service.retireAccount(accountCode, TEST_AUTHORIZER));
+      AccountAmendmentOutcome.Rejected amendmentResult =
+          assertInstanceOf(
+              AccountAmendmentOutcome.Rejected.class,
+              service.amendAccount(amendment, TEST_AUTHORIZER));
+
+      assertSame(rejection, result.rejection());
+      assertSame(rejection, amendmentResult.rejection());
+    }
+  }
+
+  @Test
   void interimResultSweep_delegatesToBookSession() {
     try (InMemoryBookSession bookSession = new InMemoryBookSession()) {
       BookAdministrationService service =
@@ -328,7 +467,8 @@ class BookAdministrationServiceTest {
                       new dev.erst.fingrind.core.PostingId("0485e481-7f56-30fd-92e2-92a099a486af"),
                   FIXED_CLOCK)
               .interimResultSweep(
-                  new ReportingPeriod(LocalDate.parse("2026-04-01"), LocalDate.parse("2026-04-07")),
+                  new ReportingPeriod(
+                      bookIdentity().bookStartEffectiveDate(), LocalDate.parse("2026-04-07")),
                   TEST_AUTHORIZER);
 
       org.junit.jupiter.api.Assertions.assertEquals(

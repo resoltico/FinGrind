@@ -3,7 +3,6 @@ package dev.erst.fingrind.executor;
 import dev.erst.fingrind.core.BookIdentity;
 import dev.erst.fingrind.core.ReportingPeriod;
 import dev.erst.fingrind.executor.spi.BookLifecycleInspection;
-import dev.erst.fingrind.executor.spi.BookLifecycleInspection.Initialized;
 import dev.erst.fingrind.executor.spi.BookLifecycleReader;
 import dev.erst.fingrind.executor.spi.PostingIdGenerator;
 import java.time.Clock;
@@ -65,27 +64,12 @@ final class ReportingPeriodCloseExecutionSupport {
     BookIdentity bookIdentity = BookLifecycleInspection.requireInitializedBookIdentity(inspection);
     P planner = plannerFactory.apply(bookIdentity);
     Instant executedAt = clock.instant();
-    LocalDate bookStartDate = requireInitializedInspection(inspection).bookStartDate();
     return closeOperation.execute(
         bookIdentity,
-        bookStartDate,
         planner,
         executedAt.atZone(ZoneOffset.UTC).toLocalDate(),
         executedAt,
         postingIdGenerator);
-  }
-
-  static Initialized requireInitializedInspection(BookLifecycleInspection inspection) {
-    Objects.requireNonNull(inspection, "inspection");
-    return switch (inspection) {
-      case Initialized initialized -> initialized;
-      case BookLifecycleInspection.Missing _ ->
-          throw new IllegalStateException(
-              "Prepared close operations require one initialized book inspection.");
-      case BookLifecycleInspection.Existing _ ->
-          throw new IllegalStateException(
-              "Prepared close operations require one initialized book inspection.");
-    };
   }
 
   /**
@@ -110,7 +94,6 @@ final class ReportingPeriodCloseExecutionSupport {
     /** Executes one close operation after shared book identity and time context are resolved. */
     O execute(
         BookIdentity bookIdentity,
-        LocalDate bookStartDate,
         P planner,
         LocalDate currentUtcDate,
         Instant executedAt,

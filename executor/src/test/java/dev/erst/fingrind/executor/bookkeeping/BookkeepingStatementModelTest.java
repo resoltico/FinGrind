@@ -93,12 +93,12 @@ class BookkeepingStatementModelTest {
             accountTaxonomy(AccountType.ASSET));
 
     assertEquals(
-        new AccountDeclarationOutcome.Rejected(
+        new AccountDeclarationDecision.Rejected(
             new BookkeepingAdministrationRejection.AccountTypeConflict(
                 existing.accountCode(), AccountType.ASSET, AccountType.LIABILITY)),
         RegisteredAccount.declare(existing, conflictDeclaration, FIXED_INSTANT));
     assertEquals(
-        new AccountDeclarationOutcome.Renamed(
+        new AccountDeclarationDecision.Renamed(
             new RegisteredAccount(
                 existing.accountCode(),
                 new AccountName("Cash Reserve"),
@@ -108,17 +108,17 @@ class BookkeepingStatementModelTest {
                 FIXED_INSTANT)),
         RegisteredAccount.declare(existing, redeclaration, FIXED_INSTANT));
     assertEquals(
-        new AccountDeclarationOutcome.Unchanged(existing),
+        new AccountDeclarationDecision.Unchanged(existing),
         RegisteredAccount.declare(existing, unchangedDeclaration, FIXED_INSTANT));
     assertEquals(
-        new AccountDeclarationOutcome.Rejected(
+        new AccountDeclarationDecision.Rejected(
             new BookkeepingAdministrationRejection.AccountTaxonomyConflict(
                 existing.accountCode(),
                 existing.accountTaxonomy(),
                 taxonomyConflictDeclaration.accountTaxonomy())),
         RegisteredAccount.declare(existing, taxonomyConflictDeclaration, FIXED_INSTANT));
     assertEquals(
-        new AccountDeclarationOutcome.Declared(
+        new AccountDeclarationDecision.Declared(
             new RegisteredAccount(
                 new AccountCode("1200"),
                 new AccountName("Receivable"),
@@ -460,8 +460,8 @@ class BookkeepingStatementModelTest {
             List.of(currencyBalance("0.00", "10.00", "10.00", BalanceSide.CREDIT)),
             FIXED_INSTANT,
             closingPostings);
-    SweptInterimResult sweptInterimResult =
-        new SweptInterimResult(
+    RecordedInterimResultSweep sweptInterimResult =
+        new RecordedInterimResultSweep(
             1,
             new ReportingPeriod(LocalDate.parse("2026-05-01"), LocalDate.parse("2026-05-12")),
             new AccountCode("3200"),
@@ -528,7 +528,7 @@ class BookkeepingStatementModelTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            new SweptInterimResult(
+            new RecordedInterimResultSweep(
                 0,
                 new ReportingPeriod(LocalDate.parse("2026-05-01"), LocalDate.parse("2026-05-12")),
                 new AccountCode("3200"),

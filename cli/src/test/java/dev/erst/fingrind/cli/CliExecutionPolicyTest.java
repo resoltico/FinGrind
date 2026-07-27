@@ -48,6 +48,14 @@ class CliExecutionPolicyTest {
         70,
         CliExecutionPolicy.failureExitCode(
             new CliFailure("internal-error", "Internal error.", null, null)));
+    assertEquals(
+        4,
+        CliExecutionPolicy.failureExitCode(
+            new CliFailure(
+                ContractErrors.Descriptor.PROTECTED_BOOK_PAIR_PUBLICATION_UNCERTAIN.code(),
+                "Protected-book pair publication remains uncertain.",
+                null,
+                null)));
     assertEquals(1, CliExecutionPolicy.invalidInvocationExitCode());
     assertFalse(
         CliExecutionPolicy.interactivePromptOutputFailure(

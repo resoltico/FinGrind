@@ -33,7 +33,7 @@ public final class SqliteBookPassphraseSourceBytes {
         break;
       }
       if (bytesRead == 0) {
-        continue;
+        throw new IOException("FinGrind passphrase source did not make read progress.");
       }
       totalRead += bytesRead;
     }

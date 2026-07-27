@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 /** Covers the typed boundary that distinguishes a live admission refusal from a storage failure. */
 class AttestationAdmissionRejectedExceptionTest {
   @Test
-  void wrapsTheHistoricalAuthorizationFailureThatRefusedLiveAdmission() {
+  void wrapsTheLiveHeadAuthorizationFailureThatRefusedLiveAdmission() {
     AttestationAuthorizationException authorizationFailure =
         new AttestationAuthorizationException(AttestationAuthorizationFailure.KEY_NOT_ENROLLED);
 
