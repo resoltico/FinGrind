@@ -86,6 +86,37 @@ class SqliteNativeConnectionActivityRegistryTest extends SqliteNativeBridgeTestS
   }
 
   @Test
+  void nestedMarkerRegistrationsShareOnePhysicalSlotUntilTheLastClose() throws Exception {
+    Path bookPath = writeBook("nested-marker/book.sqlite");
+    int activeConnectionsBeforeOpen = SqliteNativeRuntimeActivity.activeConnectionCount();
+    SqliteNativeActivityRegistration first =
+        SqliteNativeRuntimeActivity.recordOpeningConnection(bookPath, true);
+    SqliteNativeActivityRegistration second =
+        SqliteNativeRuntimeActivity.recordOpeningConnection(bookPath, true);
+    try {
+      assertTrue(first.publishesActivityMarker());
+      assertTrue(second.publishesActivityMarker());
+      assertEquals(
+          activeConnectionsBeforeOpen + 2, SqliteNativeRuntimeActivity.activeConnectionCount());
+      assertEquals(2, SqliteNativeRuntimeActivity.activeConnectionCount(bookPath));
+      assertTrue(SqliteNativeRuntimeActivity.hasExternalActiveConnections(bookPath));
+
+      SqliteNativeRuntimeActivity.recordConnectionClosed(first);
+      assertEquals(
+          activeConnectionsBeforeOpen + 1, SqliteNativeRuntimeActivity.activeConnectionCount());
+      assertEquals(1, SqliteNativeRuntimeActivity.activeConnectionCount(bookPath));
+      assertTrue(SqliteNativeRuntimeActivity.hasExternalActiveConnections(bookPath));
+    } finally {
+      SqliteNativeRuntimeActivity.recordConnectionClosed(second);
+    }
+
+    assertEquals(activeConnectionsBeforeOpen, SqliteNativeRuntimeActivity.activeConnectionCount());
+    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount(bookPath));
+    assertFalse(SqliteNativeRuntimeActivity.hasExternalActiveConnections(bookPath));
+    SqliteNativeRuntimeActivity.recordConnectionClosed(null);
+  }
+
+  @Test
   void closeRejectsOneRegistrationThatWasNeverOpened() throws Exception {
     Path bookPath = writeBook("missing-registration/book.sqlite");
     int activeConnectionsBeforeClose = SqliteNativeRuntimeActivity.activeConnectionCount();
