@@ -64,6 +64,14 @@ final class SqliteWorkflowScopeRequests {
     return requests.stream().filter(request -> request.member() != member).toList();
   }
 
+  /** Narrows declared workflow members to the two final-target positions. */
+  static List<TargetRequest> targetRequests(List<Request> requests) {
+    return requests.stream()
+        .filter(request -> request.member() != Member.SOURCE)
+        .map(TargetRequest::from)
+        .toList();
+  }
+
   static List<Path> artifactsForDirectory(List<Request> requests, Path directoryDomain) {
     return requests.stream()
         .filter(
@@ -159,6 +167,26 @@ final class SqliteWorkflowScopeRequests {
       SqliteMaintenanceLeaseIntent leaseIntent,
       Member member,
       ProtectedBookMaintenanceArtifactRole artifactRole) {}
+
+  /** A request whose role is statically narrowed to one of the two final pair members. */
+  record TargetRequest(Request request, Target target) {
+    static TargetRequest from(Request request) {
+      Request checkedRequest = Objects.requireNonNull(request, "request");
+      return switch (checkedRequest.member()) {
+        case BOOK_TARGET -> new TargetRequest(checkedRequest, Target.BOOK);
+        case SECRET_TARGET -> new TargetRequest(checkedRequest, Target.SECRET);
+        case SOURCE ->
+            throw new IllegalArgumentException(
+                "Source workflow requests cannot enter final-target acquisition.");
+      };
+    }
+  }
+
+  /** The two final pair roles after source-first acquisition has completed. */
+  enum Target {
+    BOOK,
+    SECRET
+  }
 
   private record CurrentSourceIdentity(
       WorkflowSourceMember sourceMember, String physicalIdentity) {}

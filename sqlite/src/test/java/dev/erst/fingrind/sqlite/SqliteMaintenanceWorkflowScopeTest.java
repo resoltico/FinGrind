@@ -315,6 +315,59 @@ class SqliteMaintenanceWorkflowScopeTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void finalTargetRequestsRejectASourceBeforeFinalTargetAcquisitionCanBegin() {
+    Path source = tempDirectory.resolve("typed-target-request/source.sqlite").toAbsolutePath();
+    SqliteWorkflowScopeRequests.Request sourceRequest =
+        new SqliteWorkflowScopeRequests.Request(
+            source,
+            java.util.Objects.requireNonNull(source.getParent(), "source parent"),
+            SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT,
+            SqliteWorkflowScopeRequests.Member.SOURCE,
+            ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE);
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> SqliteWorkflowScopeRequests.TargetRequest.from(sourceRequest));
+
+    assertTrue(
+        java.util.Objects.requireNonNull(exception.getMessage(), "exception message")
+            .contains("Source workflow requests"));
+  }
+
+  @Test
+  void scopeRejectsAnAcquirerThatReportsABusyArtifactOutsideItsExactRequest() throws Exception {
+    Path source = writeArtifact("unadmitted-busy/source.sqlite", "source");
+    Path bookTarget = managedTarget("unadmitted-busy/book.sqlite");
+    Path secretTarget = managedTarget("unadmitted-busy/book.key");
+    Path unrelatedArtifact = managedTarget("unadmitted-busy/unrelated.sqlite");
+    AtomicBoolean releasedSource = new AtomicBoolean();
+    String sourceIdentity = SqliteObjectCoordinationArtifacts.physicalIdentity(source);
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteMaintenanceWorkflowScopeAcquirer.acquire(
+                    sourceMembers(source),
+                    bookTarget,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    secretTarget,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                    (requests, request) -> {
+                      if (request.artifactPath().equals(source)) {
+                        return heldSource(source, sourceIdentity, releasedSource);
+                      }
+                      return new SqliteLeaseBusy(unrelatedArtifact);
+                    }));
+
+    assertTrue(
+        java.util.Objects.requireNonNull(exception.getMessage(), "exception message")
+            .contains("unadmitted artifact"));
+    assertTrue(releasedSource.get());
+  }
+
+  @Test
   void scopeRejectsNativeActivityOnEachDeclaredMemberBeforeAcquiringAnything() throws Exception {
     Path source = writeArtifact("activity-members/source.sqlite", "source");
     Path bookTarget = managedTarget("activity-members/book.sqlite");

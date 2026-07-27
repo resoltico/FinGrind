@@ -60,9 +60,8 @@ final class SqliteMaintenanceWorkflowScopeAcquirer {
             sourceMembers, bookTarget, bookTargetRole, secretTarget, secretTargetRole);
     List<SqliteWorkflowScopeRequests.Request> sourceRequests =
         SqliteWorkflowScopeRequests.forMember(requests, SqliteWorkflowScopeRequests.Member.SOURCE);
-    List<SqliteWorkflowScopeRequests.Request> targetRequests =
-        SqliteWorkflowScopeRequests.exceptMember(
-            requests, SqliteWorkflowScopeRequests.Member.SOURCE);
+    List<SqliteWorkflowScopeRequests.TargetRequest> targetRequests =
+        SqliteWorkflowScopeRequests.targetRequests(requests);
     SqliteWorkflowScopeRequests.requireDistinctPhysicalSources(sourceMembers);
     SqliteWorkflowScopeRequests.@org.jspecify.annotations.Nullable Request preflightBusy =
         firstBusy(requests);
@@ -127,21 +126,21 @@ final class SqliteMaintenanceWorkflowScopeAcquirer {
 
   private static TargetLeasePair acquireTargets(
       List<SqliteWorkflowScopeRequests.Request> requests,
-      List<SqliteWorkflowScopeRequests.Request> targetRequests,
+      List<SqliteWorkflowScopeRequests.TargetRequest> targetRequests,
       LeaseAcquirer leaseAcquirer) {
     @org.jspecify.annotations.Nullable SqliteOwnedHeldLease bookTargetLease = null;
     @org.jspecify.annotations.Nullable SqliteOwnedHeldLease secretTargetLease = null;
     try {
-      for (SqliteWorkflowScopeRequests.Request request : targetRequests) {
+      for (SqliteWorkflowScopeRequests.TargetRequest targetRequest : targetRequests) {
+        SqliteWorkflowScopeRequests.Request request = targetRequest.request();
         SqliteProtectedBookLeaseAcquisition acquisition = leaseAcquirer.acquire(requests, request);
         if (acquisition instanceof SqliteLeaseBusy busy) {
           closePairLeases(secretTargetLease, bookTargetLease);
           return new TargetLeasePair(null, null, requestForBusy(busy, request));
         }
-        switch (request.member()) {
-          case SOURCE -> throw unexpectedSourceTargetRequest();
-          case BOOK_TARGET -> bookTargetLease = SqliteOwnedHeldLease.acquire(acquisition);
-          case SECRET_TARGET -> secretTargetLease = SqliteOwnedHeldLease.acquire(acquisition);
+        switch (targetRequest.target()) {
+          case BOOK -> bookTargetLease = SqliteOwnedHeldLease.acquire(acquisition);
+          case SECRET -> secretTargetLease = SqliteOwnedHeldLease.acquire(acquisition);
         }
       }
       TargetLeasePair acquired =
@@ -186,11 +185,6 @@ final class SqliteMaintenanceWorkflowScopeAcquirer {
     }
     throw new IllegalStateException(
         "A workflow lease acquisition reported an unadmitted artifact.");
-  }
-
-  private static IllegalStateException unexpectedSourceTargetRequest() {
-    return new IllegalStateException(
-        "Source workflow requests must be acquired before target workflow requests.");
   }
 
   private static SqliteWorkflowScopeRequests.@org.jspecify.annotations.Nullable Request firstBusy(
