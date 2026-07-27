@@ -1029,6 +1029,73 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
   }
 
   @Test
+  void stagedRestoredBookPair_keepsItsPublicationRecoverableWhenTheTargetChangesAfterSecret()
+      throws Exception {
+    Path stagedBookPath = writeArtifact("restore-post-secret-change/staged.sqlite", "book");
+    Path stagedKeyPath = writeArtifact("restore-post-secret-change/staged.key", "key");
+    Path finalBookPath =
+        writeArtifact("restore-post-secret-change/book.sqlite", "selected original book");
+    Path finalKeyPath = tempDirectory.resolve("restore-post-secret-change").resolve("book.key");
+    AtomicBoolean changedAfterSecretPublication = new AtomicBoolean();
+
+    try (SqliteStagedRestoredBookPair pair =
+        SqliteStagedRestoredBookPairFactory.create(
+            new SqliteStagedProtectedBookPairArtifacts(
+                SqliteOwnedStagedArtifact.recordExisting(finalBookPath, stagedBookPath),
+                finalBookPath,
+                SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath),
+                finalKeyPath),
+            RestoredBookTargetPolicy.REPLACE_SELECTED,
+            TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8),
+            VERIFICATION_SUPPORT,
+            SqliteRestoredBookPairPublication.defaultOperators(),
+            null,
+            null,
+            (step, parentDirectory) -> {
+              if (step
+                      == SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep
+                          .GENERATED_SECRET_PUBLICATION
+                  && changedAfterSecretPublication.compareAndSet(false, true)) {
+                Files.writeString(
+                    finalBookPath, "selected target changed after secret publication");
+              }
+            })) {
+      assertInstanceOf(
+          ProtectedBookPairPublicationFailureOutcome.CompletionUncertain.class,
+          pair.commit(rekeyBinding(finalBookPath, finalBookPath.resolveSibling("source.key"))));
+    }
+
+    assertTrue(changedAfterSecretPublication.get());
+    assertEquals(
+        "selected target changed after secret publication", Files.readString(finalBookPath));
+    assertTrue(Files.exists(finalKeyPath));
+    assertTrue(Files.exists(stagedBookPath));
+    assertTrue(Files.exists(stagedKeyPath));
+  }
+
+  @Test
+  void retainedRestoredPairCannotBeCommittedAfterItIsFinishedWithoutAPublicationOutcome()
+      throws Exception {
+    Path stagedBookPath = writeArtifact("restore-finished/staged.sqlite", "book");
+    Path stagedKeyPath = writeArtifact("restore-finished/staged.key", "key");
+    Path finalBookPath = tempDirectory.resolve("restore-finished").resolve("book.sqlite");
+    Path finalKeyPath = tempDirectory.resolve("restore-finished").resolve("book.key");
+
+    try (SqliteBookPassphrase passphrase = testPassphrase();
+        SqliteStagedRestoredBookPair pair =
+            newStagedRestoredBookPair(
+                stagedBookPath, finalBookPath, stagedKeyPath, finalKeyPath, passphrase)) {
+      pair.retainUnpublishedArtifacts();
+      assertThrows(
+          IllegalStateException.class,
+          () -> pair.commit(restoreBinding(stagedBookPath, stagedKeyPath)));
+    }
+
+    assertTrue(Files.exists(stagedBookPath));
+    assertTrue(Files.exists(stagedKeyPath));
+  }
+
+  @Test
   void stagedRestoredBookPair_closesThePassphraseWhenFactoryValidationFails() throws Exception {
     Path stagedBookPath = writeArtifact("restore-factory/staged.sqlite", "book");
     Path stagedKeyPath = writeArtifact("restore-factory/staged.key", "key");
