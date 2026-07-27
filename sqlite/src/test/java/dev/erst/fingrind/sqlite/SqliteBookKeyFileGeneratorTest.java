@@ -243,6 +243,36 @@ class SqliteBookKeyFileGeneratorTest {
   }
 
   @Test
+  void generateIntoExistingOwnedStage_refusesZeroProgressWhileWritingSecretMaterial() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parent = fileSystem.path("\\keys");
+      parent.exists = true;
+      parent.regularFile = false;
+      parent.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE);
+      AclFixturePath stage = fileSystem.path("\\keys\\maintenance-stage.tmp");
+      stage.exists = true;
+      stage.regularFile = true;
+      stage.posixPermissions =
+          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+      stage.returnZeroProgressFromNextWrite();
+
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteBookKeyFileGenerator.generateIntoExistingOwnedStage(stage));
+
+      assertTrue(
+          NullTestSupport.messageOf(failure)
+              .contains("Failed to generate the FinGrind maintenance key stage"));
+      assertInstanceOf(IOException.class, failure.getCause());
+    }
+  }
+
+  @Test
   void generate_rejectsAnAbsentParentDirectoryWithoutCreatingIt() {
     Path keyFile = tempDirectory.resolve("absent-parent").resolve("acme.book-key");
 
