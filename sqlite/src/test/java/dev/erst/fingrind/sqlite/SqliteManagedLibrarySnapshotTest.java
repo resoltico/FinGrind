@@ -426,6 +426,134 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
   }
 
   @Test
+  void openSourceReadChannel_explainsWhenTheFilesystemCannotHonorNoFollow() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath sourcePath = fixtureRegularFile(fileSystem, "\\source\\sqlite3.dll", "sqlite");
+      sourcePath.failNewFileChannelWithUnsupportedOperation(
+          new UnsupportedOperationException("NOFOLLOW_LINKS is unavailable"));
+
+      ManagedSqliteRuntimeUnavailableException exception =
+          assertThrows(
+              ManagedSqliteRuntimeUnavailableException.class,
+              () -> SqliteManagedLibrarySnapshotSecurity.openSourceReadChannel(sourcePath));
+
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage())
+              .contains(
+                  "cannot open a managed SQLite snapshot source without nofollow protection"));
+    }
+  }
+
+  @Test
+  void openNewPrivateSnapshotChannel_refusesAFileSystemWithoutAtomicPosixCreation() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parent = fileSystem.path("\\snapshots");
+      parent.exists = true;
+      parent.regularFile = false;
+      AclFixturePath snapshotPath = fileSystem.path("\\snapshots\\sqlite3.dll");
+      snapshotPath.failNewFileChannelWithUnsupportedOperation(
+          new UnsupportedOperationException("POSIX create attributes are unavailable"));
+
+      ManagedSqliteRuntimeUnavailableException exception =
+          assertThrows(
+              ManagedSqliteRuntimeUnavailableException.class,
+              () ->
+                  SqliteManagedLibrarySnapshotSecurity.openNewPrivateSnapshotChannel(snapshotPath));
+
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage())
+              .contains("does not support atomic POSIX owner-only file creation"));
+      assertFalse(snapshotPath.exists);
+    }
+  }
+
+  @Test
+  void copyForceAndVerifyExact_refusesAClaimedNewDestinationThatAlreadyContainsBytes()
+      throws Exception {
+    Path sourcePath = writeLibrary("source.dylib", "trusted source");
+    Path destinationPath = writeLibrary("destination.dylib", "unexpected existing content");
+
+    try (FileChannel source = FileChannel.open(sourcePath);
+        FileChannel destination = FileChannel.open(destinationPath)) {
+      IOException exception =
+          assertThrows(
+              IOException.class,
+              () ->
+                  SqliteManagedLibrarySnapshotSecurity.copyForceAndVerifyExact(
+                      source, destination));
+
+      assertEquals(
+          "A newly created managed SQLite snapshot file was not empty.", exception.getMessage());
+    }
+  }
+
+  @Test
+  void copyForceAndVerifyExact_refusesAChangedSourceBeforeExactChannelValidation()
+      throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath sourcePath = fixtureRegularFile(fileSystem, "\\source\\sqlite3.dll", "sqlite");
+      AclFixturePath destinationPath =
+          fixtureRegularFile(fileSystem, "\\snapshot\\sqlite3.dll", "");
+
+      try (FileChannel source = new ChangingSourceFixtureFileChannel(sourcePath);
+          FileChannel destination =
+              new AclFixtureFileChannel(
+                  destinationPath, new AclFixtureSeekableByteChannel(destinationPath))) {
+        IOException exception =
+            assertThrows(
+                IOException.class,
+                () ->
+                    SqliteManagedLibrarySnapshotSecurity.copyForceAndVerifyExact(
+                        source, destination));
+
+        assertEquals(
+            "Managed SQLite snapshot bytes changed before exact-channel validation.",
+            exception.getMessage());
+      }
+    }
+  }
+
+  @Test
+  void readUtf8LinesFromExactChannel_refusesOversizedChecksumsBeforeAllocatingMemory()
+      throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath checksumPath =
+          fixtureRegularFile(fileSystem, "\\snapshot\\sqlite3.dll.sha256", "x".repeat(65_537));
+
+      try (FileChannel checksum =
+          new AclFixtureFileChannel(
+              checksumPath, new AclFixtureSeekableByteChannel(checksumPath))) {
+        IOException exception =
+            assertThrows(
+                IOException.class,
+                () -> SqliteManagedLibrarySnapshotSecurity.readUtf8LinesFromExactChannel(checksum));
+
+        assertEquals(
+            "Managed SQLite snapshot checksum exceeds its maximum size.", exception.getMessage());
+      }
+    }
+  }
+
+  @Test
+  void readUtf8LinesFromExactChannel_refusesAChecksumThatEndsBeforeItsAdvertisedSize()
+      throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath checksumPath =
+          fixtureRegularFile(fileSystem, "\\snapshot\\sqlite3.dll.sha256", "checksum");
+
+      try (FileChannel checksum = new UnexpectedEndFixtureFileChannel(checksumPath)) {
+        IOException exception =
+            assertThrows(
+                IOException.class,
+                () -> SqliteManagedLibrarySnapshotSecurity.readUtf8LinesFromExactChannel(checksum));
+
+        assertEquals(
+            "Managed SQLite snapshot checksum ended unexpectedly.", exception.getMessage());
+      }
+    }
+  }
+
+  @Test
   void copyForceAndVerifyExactRejectsSourceReadZeroProgress() throws Exception {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
       AclFixturePath sourcePath = fixtureRegularFile(fileSystem, "\\source\\sqlite3.dll", "sqlite");
@@ -532,6 +660,38 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
     @Override
     public int read(ByteBuffer destination) {
       return 0;
+    }
+  }
+
+  /** Source channel whose bytes change after copy but before its descriptor-bound digest. */
+  private static final class ChangingSourceFixtureFileChannel extends AclFixtureFileChannel {
+    private final AclFixturePath path;
+    private int resetCount;
+
+    private ChangingSourceFixtureFileChannel(AclFixturePath path) {
+      super(path, new AclFixtureSeekableByteChannel(path));
+      this.path = path;
+    }
+
+    @Override
+    public FileChannel position(long newPosition) throws IOException {
+      FileChannel positioned = super.position(newPosition);
+      if (newPosition == 0L && resetCount++ == 1) {
+        path.replaceContent("tamper".getBytes(StandardCharsets.UTF_8));
+      }
+      return positioned;
+    }
+  }
+
+  /** Checksum channel that advertises bytes but reaches EOF before yielding any. */
+  private static final class UnexpectedEndFixtureFileChannel extends AclFixtureFileChannel {
+    private UnexpectedEndFixtureFileChannel(AclFixturePath path) {
+      super(path, new AclFixtureSeekableByteChannel(path));
+    }
+
+    @Override
+    public int read(ByteBuffer destination) {
+      return -1;
     }
   }
 
