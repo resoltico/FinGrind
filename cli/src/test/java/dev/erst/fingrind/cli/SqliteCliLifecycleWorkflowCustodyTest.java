@@ -217,7 +217,7 @@ class SqliteCliLifecycleWorkflowCustodyTest extends CliBookWorkflowFixtureSuppor
   private static SqliteAdministrationSession returnedOpeningSession(BookOpeningOutcome outcome) {
     return (SqliteAdministrationSession)
         Proxy.newProxyInstance(
-            SqliteAdministrationSession.class.getClassLoader(),
+            Thread.currentThread().getContextClassLoader(),
             new Class<?>[] {SqliteAdministrationSession.class},
             (proxy, method, ignoredArguments) ->
                 switch (method.getName()) {
@@ -232,7 +232,7 @@ class SqliteCliLifecycleWorkflowCustodyTest extends CliBookWorkflowFixtureSuppor
   private static SqliteAdministrationSession failingOpenSession(RuntimeException failure) {
     return (SqliteAdministrationSession)
         Proxy.newProxyInstance(
-            SqliteAdministrationSession.class.getClassLoader(),
+            Thread.currentThread().getContextClassLoader(),
             new Class<?>[] {SqliteAdministrationSession.class},
             (proxy, method, ignoredArguments) ->
                 switch (method.getName()) {

@@ -106,20 +106,7 @@ class CliAttestationJsonModelValidationTest {
                 CliBookPairPublicationJsonModels.PairPublicationCompletionPayload.ALREADY_PUBLISHED,
                 CliBookPairPublicationJsonModels.BackupAcknowledgementStatePayload
                     .ALREADY_PRESENT))) {
-      assertThrows(
-          IllegalArgumentException.class,
-          () ->
-              new CliBookPairPublicationJsonModels.BackupBookPayload(
-                  "book.sqlite",
-                  "backup-1",
-                  invalid.completion(),
-                  invalid.completion()
-                          == CliBookPairPublicationJsonModels.PairPublicationCompletionPayload
-                              .ALREADY_PUBLISHED
-                      ? null
-                      : pairPublicationRetention(),
-                  invalid.state(),
-                  null));
+      assertInvalidBackupBookPayload(invalid);
     }
   }
 
@@ -279,11 +266,7 @@ class CliAttestationJsonModelValidationTest {
             "attestation-founder-key-stage",
             "book-file",
             "book-sidecar")) {
-      assertEquals(
-          role,
-          new CliOpenBookErrorJsonModels.RetainedOpenBookPreparationArtifact(
-                  role, "/books/opening-artifact", null)
-              .role());
+      assertAcceptedRetainedOpenBookPreparationArtifactRole(role);
     }
 
     assertThrows(
@@ -291,6 +274,31 @@ class CliAttestationJsonModelValidationTest {
         () ->
             new CliOpenBookErrorJsonModels.RetainedOpenBookPreparationArtifact(
                 "founder-key", "/books/opening-artifact", null));
+  }
+
+  private static void assertInvalidBackupBookPayload(CompletionAndAcknowledgement invalid) {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CliBookPairPublicationJsonModels.BackupBookPayload(
+                "book.sqlite",
+                "backup-1",
+                invalid.completion(),
+                invalid.completion()
+                        == CliBookPairPublicationJsonModels.PairPublicationCompletionPayload
+                            .ALREADY_PUBLISHED
+                    ? null
+                    : pairPublicationRetention(),
+                invalid.state(),
+                null));
+  }
+
+  private static void assertAcceptedRetainedOpenBookPreparationArtifactRole(String role) {
+    assertEquals(
+        role,
+        new CliOpenBookErrorJsonModels.RetainedOpenBookPreparationArtifact(
+                role, "/books/opening-artifact", null)
+            .role());
   }
 
   @Test
