@@ -726,6 +726,78 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
   }
 
   @Test
+  void recordForceFailureAfterSecretPublicationLeavesBothPairKindsRecoveryBound() throws Exception {
+    Path backupStagedPath = writeArtifact("post-secret-force-failure/backup.stage", "backup");
+    Path backupKeyStagedPath =
+        writeArtifact("post-secret-force-failure/backup.key.stage", "backup key");
+    Path backupFinalPath =
+        tempDirectory.resolve("post-secret-force-failure").resolve("backup.sqlite");
+    Path backupKeyFinalPath =
+        tempDirectory.resolve("post-secret-force-failure").resolve("backup.key");
+    AtomicInteger backupForceCalls = new AtomicInteger();
+
+    try (SqliteStagedBackupPair backupPair =
+        SqliteStagedBackupPairFactory.create(
+            new SqliteStagedProtectedBookPairArtifacts(
+                SqliteOwnedStagedArtifact.recordExisting(backupFinalPath, backupStagedPath),
+                backupFinalPath,
+                SqliteOwnedStagedArtifact.recordExisting(backupKeyFinalPath, backupKeyStagedPath),
+                backupKeyFinalPath),
+            TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8),
+            VERIFICATION_SUPPORT,
+            Files::createLink,
+            Files::createLink,
+            null,
+            null,
+            (ignoredStep, ignoredParent) -> {},
+            recordForcerFailingAtBookBoundary(backupForceCalls))) {
+      sealBackupForPublication(backupPair);
+      assertInstanceOf(
+          ProtectedBookPairPublicationFailureOutcome.CompletionUncertain.class,
+          backupPair.commit(backupBinding(backupFinalPath)));
+    }
+
+    assertEquals(4, backupForceCalls.get());
+    assertFalse(Files.exists(backupFinalPath));
+    assertTrue(Files.exists(backupKeyFinalPath));
+
+    Path restoredStagedPath =
+        writeArtifact("post-secret-force-failure/restore.stage", "restored book");
+    Path restoredKeyStagedPath =
+        writeArtifact("post-secret-force-failure/restore.key.stage", "restored key");
+    Path restoredFinalPath =
+        tempDirectory.resolve("post-secret-force-failure").resolve("restored.sqlite");
+    Path restoredKeyFinalPath =
+        tempDirectory.resolve("post-secret-force-failure").resolve("restored.key");
+    AtomicInteger restoredForceCalls = new AtomicInteger();
+
+    try (SqliteStagedRestoredBookPair restoredPair =
+        SqliteStagedRestoredBookPairFactory.create(
+            new SqliteStagedProtectedBookPairArtifacts(
+                SqliteOwnedStagedArtifact.recordExisting(restoredFinalPath, restoredStagedPath),
+                restoredFinalPath,
+                SqliteOwnedStagedArtifact.recordExisting(
+                    restoredKeyFinalPath, restoredKeyStagedPath),
+                restoredKeyFinalPath),
+            RestoredBookTargetPolicy.REQUIRE_ABSENT,
+            TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8),
+            VERIFICATION_SUPPORT,
+            SqliteRestoredBookPairPublication.defaultOperators(),
+            null,
+            null,
+            (ignoredStep, ignoredParent) -> {},
+            recordForcerFailingAtBookBoundary(restoredForceCalls))) {
+      assertInstanceOf(
+          ProtectedBookPairPublicationFailureOutcome.CompletionUncertain.class,
+          restoredPair.commit(restoreBinding(restoredStagedPath, restoredKeyStagedPath)));
+    }
+
+    assertEquals(4, restoredForceCalls.get());
+    assertFalse(Files.exists(restoredFinalPath));
+    assertTrue(Files.exists(restoredKeyFinalPath));
+  }
+
+  @Test
   void recoveryRecordForceMutation_blocksEveryRestoredFinalPrimitive() throws Exception {
     Path stagedBookPath = writeArtifact("record-forcer-mutates/staged.sqlite", "restored book");
     Path stagedKeyPath = writeArtifact("record-forcer-mutates/staged.key", "restored key");
@@ -1024,6 +1096,16 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
           == SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep.RECOVERY_RECORD) {
         throw new IOException("simulated recovery-record promotion failure");
       }
+    };
+  }
+
+  private static SqliteProtectedBookPairPublicationRecord.RecoveryRecordFileForcer
+      recordForcerFailingAtBookBoundary(AtomicInteger forceCalls) {
+    return evidencePath -> {
+      if (forceCalls.incrementAndGet() > 3) {
+        throw new IOException("simulated record force failure before book publication");
+      }
+      SqliteSecureRegularFileAccess.forceFile(evidencePath);
     };
   }
 
