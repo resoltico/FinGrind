@@ -483,6 +483,53 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
     assertEquals(unadmittedFailure, unadmittedTargetFailure.getCause());
   }
 
+  @Test
+  void pairWitnessAcquisitionMapsCapabilityAndUnexpectedIoFailuresAtTheOwningTarget()
+      throws Exception {
+    Path bookTarget = tempDirectory.resolve("witness-pair.sqlite");
+    Path secretTarget = tempDirectory.resolve("witness-pair.key");
+    SqlitePublicationCapabilityWitness.AcquisitionFailure capabilityFailure =
+        unsupportedWitnessFailure(
+            SqlitePublicationCapabilityWitness.Requirement.atomicReplace(bookTarget));
+
+    assertArtifactPathFailure(
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                SqliteProtectedBookPairPublicationTargets.acquirePairPublicationWitnesses(
+                    bookTarget,
+                    secretTarget,
+                    dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore
+                        .RestoredBookTargetPolicy.REPLACE_SELECTED,
+                    ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                    requirements -> {
+                      assertEquals(3, requirements.size());
+                      throw capabilityFailure;
+                    })),
+        ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET,
+        SqliteCallerPathFailure.ATOMIC_BOOK_REPLACEMENT_UNSUPPORTED);
+
+    IOException unexpected = new IOException("injected witness acquisition I/O failure");
+    IllegalStateException genericFailure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteProtectedBookPairPublicationTargets.acquirePairPublicationWitnesses(
+                    bookTarget,
+                    secretTarget,
+                    dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore
+                        .RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                    requirements -> {
+                      assertEquals(2, requirements.size());
+                      throw unexpected;
+                    }));
+
+    assertEquals(unexpected, genericFailure.getCause());
+  }
+
   private static void assertArtifactPathFailure(
       RuntimeException failure,
       ProtectedBookMaintenanceArtifactRole expectedRole,

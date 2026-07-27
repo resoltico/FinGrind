@@ -15,6 +15,14 @@ import java.util.Objects;
 final class SqliteProtectedBookPairPublicationTargets {
   private SqliteProtectedBookPairPublicationTargets() {}
 
+  /** Acquires all retained final-name capability witnesses for one prepared pair. */
+  @FunctionalInterface
+  interface PairPublicationWitnessAcquirer {
+    /** Acquires the complete immutable requirement set for one pair publication. */
+    SqlitePublicationCapabilityWitness.Set acquire(
+        List<SqlitePublicationCapabilityWitness.Requirement> requirements) throws IOException;
+  }
+
   static PreparedPairPublication prepareWithHeldLeases(
       SqlitePairPublicationPreparationResources resources,
       Path secretTargetPath,
@@ -60,6 +68,32 @@ final class SqliteProtectedBookPairPublicationTargets {
       RestoredBookTargetPolicy bookTargetPolicy,
       ProtectedBookMaintenanceArtifactRole bookArtifactRole,
       ProtectedBookMaintenanceArtifactRole secretArtifactRole) {
+    return acquirePairPublicationWitnesses(
+        bookTargetPath,
+        secretTargetPath,
+        bookTargetPolicy,
+        bookArtifactRole,
+        secretArtifactRole,
+        requirements ->
+            SqlitePublicationCapabilityWitness.acquire(
+                requirements,
+                java.nio.file.Files::createLink,
+                SqliteProtectedBookPublicationSupport::moveReplacing));
+  }
+
+  /**
+   * Acquires retained pair-publication witnesses through an explicit failure boundary.
+   *
+   * <p>The package-visible acquirer keeps role-specific capability failures directly executable:
+   * the selected final target, not an implementation detail, owns every reported rejection.
+   */
+  static SqlitePublicationCapabilityWitness.Set acquirePairPublicationWitnesses(
+      Path bookTargetPath,
+      Path secretTargetPath,
+      RestoredBookTargetPolicy bookTargetPolicy,
+      ProtectedBookMaintenanceArtifactRole bookArtifactRole,
+      ProtectedBookMaintenanceArtifactRole secretArtifactRole,
+      PairPublicationWitnessAcquirer witnessAcquirer) {
     try {
       List<SqlitePublicationCapabilityWitness.Requirement> requirements = new ArrayList<>();
       switch (Objects.requireNonNull(bookTargetPolicy, "bookTargetPolicy")) {
@@ -74,10 +108,7 @@ final class SqliteProtectedBookPairPublicationTargets {
         }
       }
       requirements.add(SqlitePublicationCapabilityWitness.Requirement.noReplace(secretTargetPath));
-      return SqlitePublicationCapabilityWitness.acquire(
-          requirements,
-          java.nio.file.Files::createLink,
-          SqliteProtectedBookPublicationSupport::moveReplacing);
+      return Objects.requireNonNull(witnessAcquirer, "witnessAcquirer").acquire(requirements);
     } catch (SqlitePublicationCapabilityWitness.AcquisitionFailure failure) {
       throw capabilityAcquisitionFailure(
           failure,
