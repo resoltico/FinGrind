@@ -286,6 +286,56 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
   }
 
   @Test
+  void pairPreparationFacadesRetainTheExactTargetAndReservationContracts() throws Exception {
+    Path generatedSecret = absentTarget("preparation-facade/generated.key");
+    AtomicInteger preparationCalls = new AtomicInteger();
+    SqliteProtectedBookPairPublicationPreparation.prepareGeneratedSecretTarget(
+        generatedSecret,
+        targetPath -> {
+          assertEquals(generatedSecret, targetPath);
+          preparationCalls.incrementAndGet();
+        });
+    SqliteProtectedBookPairPublicationPreparation.prepareGeneratedSecretTarget(
+        generatedSecret,
+        ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+        targetPath -> {
+          assertEquals(generatedSecret, targetPath);
+          preparationCalls.incrementAndGet();
+        });
+    assertEquals(2, preparationCalls.get());
+
+    Path directBookTarget = absentTarget("preparation-facade/direct-book.sqlite");
+    try (SqliteOwnedDestinationReservation reservation =
+        SqliteProtectedBookPairPublicationPreparation.reserveAbsentBookTarget(
+            directBookTarget, ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET)) {
+      assertEquals(directBookTarget, reservation.finalPath());
+    }
+
+    Path delegatedBookTarget = absentTarget("preparation-facade/delegated-book.sqlite");
+    try (SqliteOwnedDestinationReservation reservation =
+        SqliteProtectedBookPairPublicationPreparation.reserveAbsentBookTarget(
+            delegatedBookTarget,
+            ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+            SqliteOwnedDestinationReservation::reserve)) {
+      assertEquals(delegatedBookTarget, reservation.finalPath());
+    }
+
+    Path directSecretTarget = absentTarget("preparation-facade/direct-secret.key");
+    try (SqliteOwnedDestinationReservation reservation =
+        SqliteProtectedBookPairPublicationPreparation.reserveAbsentSecretTarget(
+            directSecretTarget)) {
+      assertEquals(directSecretTarget, reservation.finalPath());
+    }
+
+    Path delegatedSecretTarget = absentTarget("preparation-facade/delegated-secret.key");
+    try (SqliteOwnedDestinationReservation reservation =
+        SqliteProtectedBookPairPublicationPreparation.reserveAbsentSecretTarget(
+            delegatedSecretTarget, SqliteOwnedDestinationReservation::reserve)) {
+      assertEquals(delegatedSecretTarget, reservation.finalPath());
+    }
+  }
+
+  @Test
   void maintenanceStoreRejectsForeignPreparedHandlesAndRecognizesOnlyRegularBookPairs()
       throws Exception {
     Path regularBook = absentTarget("pair-shape/book.sqlite");
