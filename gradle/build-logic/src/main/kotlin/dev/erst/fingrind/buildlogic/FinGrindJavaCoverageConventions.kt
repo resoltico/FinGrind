@@ -10,6 +10,27 @@ import org.gradle.kotlin.dsl.withType
 import org.gradle.testing.jacoco.plugins.JacocoTaskExtension
 import org.gradle.testing.jacoco.tasks.JacocoCoverageVerification
 import org.gradle.testing.jacoco.tasks.JacocoReport
+import java.util.Locale
+
+private const val sqliteProjectPath = ":sqlite"
+private const val sqliteWindowsCoordinationTransport =
+    "dev/erst/fingrind/sqlite/SqliteWindowsCoordinationFfmTransport*.class"
+private const val sqlitePosixCoordinationTransport =
+    "dev/erst/fingrind/sqlite/SqlitePosixCoordinationControlFileTransport*.class"
+private const val sqlitePosixCoordinationSecurity =
+    "dev/erst/fingrind/sqlite/SqlitePosixCoordinationFileSecurity*.class"
+
+/** Returns the native transport classes that the current host cannot execute truthfully. */
+internal fun inactiveHostCoverageClassExclusions(projectPath: String, operatingSystemName: String): Set<String> {
+    if (projectPath != sqliteProjectPath) {
+        return emptySet()
+    }
+    return if (operatingSystemName.lowercase(Locale.ROOT).contains("windows")) {
+        setOf(sqlitePosixCoordinationTransport, sqlitePosixCoordinationSecurity)
+    } else {
+        setOf(sqliteWindowsCoordinationTransport)
+    }
+}
 
 internal fun Project.configureJavaCoverageConventions() {
     tasks.withType<Test>().configureEach {
@@ -73,11 +94,21 @@ internal fun Project.configureJavaCoverageConventions() {
     if (mainSourceSet.allJava.files.isEmpty()) {
         return
     }
+    val inactiveHostClassExclusions =
+        inactiveHostCoverageClassExclusions(path, System.getProperty("os.name", ""))
+    val coverageClassDirectories =
+        files(
+            mainSourceSet.output.classesDirs.map { classDirectory ->
+                fileTree(classDirectory) {
+                    exclude(inactiveHostClassExclusions)
+                }
+            },
+        )
     val jacocoXmlReport = layout.buildDirectory.file("reports/jacoco/test/jacocoTestReport.xml")
     tasks.named<JacocoReport>("jacocoTestReport") {
         dependsOn(testTasks)
         executionData.from(jacocoExecutionData)
-        classDirectories.setFrom(mainSourceSet.output.classesDirs)
+        classDirectories.setFrom(coverageClassDirectories)
         sourceDirectories.setFrom(mainSourceSet.allJava.srcDirs)
         reports {
             xml.required.set(true)
@@ -89,7 +120,7 @@ internal fun Project.configureJavaCoverageConventions() {
     tasks.named<JacocoCoverageVerification>("jacocoTestCoverageVerification") {
         dependsOn("jacocoTestReport")
         executionData.from(jacocoExecutionData)
-        classDirectories.setFrom(mainSourceSet.output.classesDirs)
+        classDirectories.setFrom(coverageClassDirectories)
         sourceDirectories.setFrom(mainSourceSet.allJava.srcDirs)
         doLast {
             JacocoXmlCoverageVerifier.verifyReport(jacocoXmlReport.get().asFile)

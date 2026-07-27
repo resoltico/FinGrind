@@ -180,6 +180,21 @@ class CliMaintenancePathFailureCoverageTest extends CliResponseWriterTestSupport
   }
 
   @Test
+  void maintenancePathHints_requireACompleteFailureVocabulary() {
+    assertEquals(
+        EXPECTED_MAINTENANCE_HINTS,
+        CliMaintenancePathFailureHint.requireCompleteHints(EXPECTED_MAINTENANCE_HINTS));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            CliMaintenancePathFailureHint.requireCompleteHints(
+                Map.of(
+                    BookMaintenancePathFailure.MISSING_PARENT_DIRECTORY,
+                    expectedMaintenanceHint(BookMaintenancePathFailure.MISSING_PARENT_DIRECTORY))));
+  }
+
+  @Test
   void maintenanceExitCodes_mapArtifactPathInvalidToExitCodeSix() {
     assertEquals(
         6,

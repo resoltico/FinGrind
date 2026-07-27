@@ -67,6 +67,8 @@ workflows verify `--pdf-out` directly against real CLI, bundle, and container su
 - [examples/unsupported-book-format-version-error.json](./examples/unsupported-book-format-version-error.json): deterministic non-current authenticated FinGrind book-format failure example
 - [examples/pair-targets-conflict-rejection.json](./examples/pair-targets-conflict-rejection.json): deterministic protected-book pair target-conflict rejection example
 - [examples/pair-target-leaf-portability-required-rejection.json](./examples/pair-target-leaf-portability-required-rejection.json): deterministic same-parent absent pair leaf-portability rejection example
+- [examples/source-artifact-identity-duplicated-rejection.json](./examples/source-artifact-identity-duplicated-rejection.json): deterministic hard-link source-identity rejection before target admission
+- [examples/source-artifact-identity-changed-rejection.json](./examples/source-artifact-identity-changed-rejection.json): deterministic post-lock source-substitution rejection before target admission
 - [examples/maintenance-recovery-pending-error.json](./examples/maintenance-recovery-pending-error.json): verified retained pair workflow that must resume with its complete original inputs
 - [examples/protected-book-pair-publication-uncertain-error.json](./examples/protected-book-pair-publication-uncertain-error.json): recoverable protected-book pair completion-uncertainty example
 - [examples/protected-book-pair-publication-evidence-blocked-error.json](./examples/protected-book-pair-publication-evidence-blocked-error.json): retained pair evidence that must be independently investigated rather than rerun

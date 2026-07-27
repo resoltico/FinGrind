@@ -81,14 +81,10 @@ final class CliPdfArtifactPublication {
 
   private static void retainStageAfterError(
       ArtifactPublicationRetention retention, Error primaryFailure) {
-    try {
-      primaryFailure.addSuppressed(
-          new ArtifactPublicationRetainedStageException(
-              retention,
-              new IOException(
-                  "Fatal PDF publication failure retained the exact private artifact stage.")));
-    } catch (IllegalArgumentException ignored) {
-      // A self-suppression anomaly cannot replace the fatal primary failure.
-    }
+    primaryFailure.addSuppressed(
+        new ArtifactPublicationRetainedStageException(
+            retention,
+            new IOException(
+                "Fatal PDF publication failure retained the exact private artifact stage.")));
   }
 }

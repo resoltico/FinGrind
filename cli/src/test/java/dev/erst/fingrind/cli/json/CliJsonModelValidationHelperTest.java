@@ -35,5 +35,8 @@ class CliJsonModelValidationHelperTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> CliJsonModelValidation.requireNonNegative(-1, "offset"));
+    assertEquals(0, CliJsonModelValidation.compareCanonicalUnsigned64Decimals("42", "42"));
+    assertEquals(-1, CliJsonModelValidation.compareCanonicalUnsigned64Decimals("9", "10"));
+    assertEquals(1, CliJsonModelValidation.compareCanonicalUnsigned64Decimals("100", "99"));
   }
 }

@@ -107,6 +107,8 @@ Deterministic CLI-side non-success examples are also checked in:
 - [examples/unsupported-book-format-version-error.json](./examples/unsupported-book-format-version-error.json)
 - [examples/pair-targets-conflict-rejection.json](./examples/pair-targets-conflict-rejection.json)
 - [examples/pair-target-leaf-portability-required-rejection.json](./examples/pair-target-leaf-portability-required-rejection.json)
+- [examples/source-artifact-identity-duplicated-rejection.json](./examples/source-artifact-identity-duplicated-rejection.json)
+- [examples/source-artifact-identity-changed-rejection.json](./examples/source-artifact-identity-changed-rejection.json)
 - [examples/maintenance-recovery-pending-error.json](./examples/maintenance-recovery-pending-error.json)
 - [examples/protected-book-pair-publication-uncertain-error.json](./examples/protected-book-pair-publication-uncertain-error.json)
 - [examples/protected-book-pair-publication-evidence-blocked-error.json](./examples/protected-book-pair-publication-evidence-blocked-error.json)
@@ -167,7 +169,9 @@ object, including through a hard link, receives this failure. The response ident
 role and canonical path in `details.artifactRole` and `details.artifactPath`.
 
 Choose an independent source artifact and rerun. Do not treat a hard-link alias as separate key or
-book custody; it cannot establish independent source authority.
+book custody; it cannot establish independent source authority. The checked-in
+[duplicate-source rejection example](./examples/source-artifact-identity-duplicated-rejection.json)
+shows the complete JSON envelope.
 
 ## Changed Maintenance Source Artifact
 
@@ -180,7 +184,9 @@ names the source role and its canonical path in `details.artifactRole` and
 
 Keep every selected source stable. Restore the trustworthy intended source if it changed, then
 rerun the complete maintenance command; do not treat a substituted or replacement file as the
-original source authority.
+original source authority. The checked-in
+[changed-source rejection example](./examples/source-artifact-identity-changed-rejection.json)
+shows the complete JSON envelope.
 
 ## Maintenance Recovery Pending
 

@@ -68,6 +68,9 @@ class CliPdfArtifactExceptionSerializationTest {
 
     assertEquals(requestedPath.toAbsolutePath().normalize(), restored.outputPath());
     assertEquals("--pdf-out", restored.artifactOptionName());
+    assertEquals(
+        requestedPath.resolveSibling(".existing.pdf-stage").toAbsolutePath().normalize(),
+        restored.retainedStage().retainedStagePath());
     FileAlreadyExistsException cause =
         assertInstanceOf(FileAlreadyExistsException.class, restored.getCause());
     assertEquals(requestedPath.toString(), cause.getFile());

@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.cli.json.CliDiscoveryHelpJsonModels;
 import dev.erst.fingrind.cli.json.CliEnvelopeJsonModels;
 import dev.erst.fingrind.cli.json.CliErrorJsonModels;
+import dev.erst.fingrind.cli.json.CliMaintenanceRejectionJsonModels;
 import dev.erst.fingrind.contract.discovery.MachineContract;
 import dev.erst.fingrind.contract.protocol.DiscoveryDetail;
 import dev.erst.fingrind.contract.protocol.ProtocolEnvelopeStatus;
@@ -90,6 +91,19 @@ class CliFailurePathContractTest {
                 null,
                 List.of(related),
                 null));
+  }
+
+  @Test
+  void equivalentPairTargetsHaveNoDuplicatedRelatedPath() {
+    CliEnvelopeFailurePaths paths =
+        java.util.Objects.requireNonNull(
+            CliEnvelopeFailurePaths.from(
+                new CliMaintenanceRejectionJsonModels.PairTargetsConflictDetails(
+                    "/books/live.sqlite", "/books/live.sqlite")),
+            "pair conflict paths");
+
+    assertEquals("/books/live.sqlite", paths.path());
+    assertEquals(List.of(), paths.relatedPaths());
   }
 
   @Test

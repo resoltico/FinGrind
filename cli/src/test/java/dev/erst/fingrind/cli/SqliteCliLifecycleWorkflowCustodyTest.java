@@ -8,7 +8,9 @@ import dev.erst.fingrind.contract.bookkeeping.AttestationCommit;
 import dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookCommand;
 import dev.erst.fingrind.contract.bookkeeping.OpenBookResult;
+import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.ContractDecision;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
 import dev.erst.fingrind.contract.runtime.OpenBookFailureDetails;
 import dev.erst.fingrind.core.attestation.AttestationCustodian;
 import dev.erst.fingrind.executor.AttestationGenesisFactory;
@@ -51,8 +53,8 @@ class SqliteCliLifecycleWorkflowCustodyTest extends CliBookWorkflowFixtureSuppor
             bookIdentity(),
             trustRoot,
             new AttestationCommit(trustRoot.headOrder(), trustRoot.operationHeadHex()));
-    SqliteCliLifecycleWorkflow workflow =
-        new SqliteCliLifecycleWorkflow(
+    SqliteCliOpenBookWorkflow workflow =
+        new SqliteCliOpenBookWorkflow(
             fixedClock(),
             new CliBookPassphraseResolver(
                 new ByteArrayInputStream(new byte[0]),
@@ -112,8 +114,8 @@ class SqliteCliLifecycleWorkflowCustodyTest extends CliBookWorkflowFixtureSuppor
         new SqliteOpenBookCompletionUncertainException(
             prebuiltOpenedOutcome,
             new IllegalStateException("simulated COMMIT acknowledgement loss"));
-    SqliteCliLifecycleWorkflow workflow =
-        new SqliteCliLifecycleWorkflow(
+    SqliteCliOpenBookWorkflow workflow =
+        new SqliteCliOpenBookWorkflow(
             fixedClock(),
             new CliBookPassphraseResolver(
                 new ByteArrayInputStream(new byte[0]),
@@ -156,8 +158,8 @@ class SqliteCliLifecycleWorkflowCustodyTest extends CliBookWorkflowFixtureSuppor
         AttestationGenesisFactory.prepare(bookIdentity(), fixedClock().instant(), List.of(founder));
     IllegalStateException storageFailure =
         new IllegalStateException("simulated pre-outcome failure");
-    SqliteCliLifecycleWorkflow workflow =
-        new SqliteCliLifecycleWorkflow(
+    SqliteCliOpenBookWorkflow workflow =
+        new SqliteCliOpenBookWorkflow(
             fixedClock(),
             new CliBookPassphraseResolver(
                 new ByteArrayInputStream(new byte[0]),
@@ -193,8 +195,8 @@ class SqliteCliLifecycleWorkflowCustodyTest extends CliBookWorkflowFixtureSuppor
     BookOpeningOutcome.Rejected returnedRejection =
         new BookOpeningOutcome.Rejected(
             new BookkeepingAdministrationRejection.BookAlreadyInitialized());
-    SqliteCliLifecycleWorkflow workflow =
-        new SqliteCliLifecycleWorkflow(
+    SqliteCliOpenBookWorkflow workflow =
+        new SqliteCliOpenBookWorkflow(
             fixedClock(),
             new CliBookPassphraseResolver(
                 new ByteArrayInputStream(new byte[0]),
@@ -214,6 +216,70 @@ class SqliteCliLifecycleWorkflowCustodyTest extends CliBookWorkflowFixtureSuppor
     assertTrue(Files.exists(founderKeyFile));
   }
 
+  @Test
+  void newBookSessionHandler_preservesAllSessionCloseAndGenesisPreparationAlternatives()
+      throws Exception {
+    Path bookPath = tempDirectory.resolve("handler-book.sqlite");
+    SqliteCliOpenBookWorkflow workflow =
+        new SqliteCliOpenBookWorkflow(
+            fixedClock(),
+            new CliBookPassphraseResolver(
+                new ByteArrayInputStream(new byte[0]),
+                prompt -> {
+                  throw new AssertionError("The decision mapper must not prompt for a passphrase.");
+                }));
+    CliNewBookSessionHandler handler =
+        new CliNewBookSessionHandler(
+            workflow,
+            new BookAccess(bookPath, BookAccess.PassphraseSource.StandardInput.INSTANCE, List.of()),
+            openBookCommand(),
+            new CliOpenBookSessionCloseFailureMapper(bookPath));
+    var rejection =
+        ContractErrors.Descriptor.INVALID_REQUEST.failure(
+            "Invalid opening request.", "Repair the request.", "--request-file");
+    RuntimeException closeFailure = new IllegalStateException("close failed");
+
+    assertEquals(
+        "open-book-preparation-artifacts-retained",
+        handler.rejected(rejection, closeFailure).requireRejected().code());
+    assertEquals(
+        "open-book-preparation-artifacts-retained",
+        handler
+            .workFailure(new IllegalStateException("work failed"), closeFailure)
+            .requireRejected()
+            .code());
+    assertEquals(
+        "open-book-preparation-artifacts-retained",
+        handler
+            .opened(
+                new SqliteCliOpenBookWorkflow.CompletedOpenBookExecution(
+                    new OpenBookResult.Rejected(
+                        new dev.erst.fingrind.contract.bookkeeping.BookAdministrationRejection
+                            .BookAlreadyInitialized())),
+                closeFailure)
+            .requireRejected()
+            .code());
+
+    RuntimeException completionFailure = new IllegalStateException("completion uncertain");
+    ContractDecision<SqliteCliOpenBookWorkflow.OpenBookExecution> uncertain =
+        handler.opened(
+            new SqliteCliOpenBookWorkflow.CompletionUncertainOpenBookExecution(
+                openedBookResult(fixedClock().instant()), completionFailure),
+            closeFailure);
+    assertInstanceOf(ContractDecision.Accepted.class, uncertain);
+    assertEquals(List.of(closeFailure), List.of(completionFailure.getSuppressed()));
+    assertInstanceOf(
+        ContractDecision.Accepted.class,
+        SqliteCliOpenBookWorkflow.executionAfterCloseFailure(
+            ContractDecision.accepted(openedBookResult(fixedClock().instant()))));
+
+    ContractDecision<SqliteCliOpenBookWorkflow.OpenBookExecution> preparationRejected =
+        handler.work(
+            failingOpenSession(new AssertionError("genesis rejection must precede storage")));
+    assertEquals(
+        "open-book-preparation-artifacts-retained", preparationRejected.requireRejected().code());
+  }
+
   private static SqliteAdministrationSession returnedOpeningSession(BookOpeningOutcome outcome) {
     return (SqliteAdministrationSession)
         Proxy.newProxyInstance(
@@ -230,6 +296,21 @@ class SqliteCliLifecycleWorkflowCustodyTest extends CliBookWorkflowFixtureSuppor
   }
 
   private static SqliteAdministrationSession failingOpenSession(RuntimeException failure) {
+    return (SqliteAdministrationSession)
+        Proxy.newProxyInstance(
+            Thread.currentThread().getContextClassLoader(),
+            new Class<?>[] {SqliteAdministrationSession.class},
+            (proxy, method, ignoredArguments) ->
+                switch (method.getName()) {
+                  case "openAttestedBook" -> throw failure;
+                  case "close" -> null;
+                  default ->
+                      throw new AssertionError(
+                          "Unexpected administration-session method: " + method.getName());
+                });
+  }
+
+  private static SqliteAdministrationSession failingOpenSession(Error failure) {
     return (SqliteAdministrationSession)
         Proxy.newProxyInstance(
             Thread.currentThread().getContextClassLoader(),

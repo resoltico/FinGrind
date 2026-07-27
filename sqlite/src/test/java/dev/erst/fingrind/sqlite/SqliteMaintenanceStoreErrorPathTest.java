@@ -37,6 +37,7 @@ import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -653,6 +654,50 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
         ProtectedBookMaintenancePathFailure.SOURCE_ARTIFACT_IDENTITY_DUPLICATED,
         rejection.pathFailure());
     assertFalse(Files.exists(directoryControl, java.nio.file.LinkOption.NOFOLLOW_LINKS));
+  }
+
+  @Test
+  void lockedSourceRevalidationRejectsAPhysicalSourceSubstitution() throws Exception {
+    Path source =
+        writeArtifact("source-identity-changed/live.sqlite", "original maintenance source");
+    Path replacement =
+        writeArtifact(
+            "source-identity-changed/replacement.sqlite", "replacement maintenance source");
+    Path normalizedSource =
+        maintenanceStore()
+            .normalizeExistingSource(
+                source, "bookFilePath", ProtectedBookMaintenanceArtifactRole.LIVE_BOOK);
+    String lockedIdentity = SqliteObjectCoordinationArtifacts.physicalIdentity(normalizedSource);
+    SqliteOwnedHeldLease heldSourceLease =
+        SqliteOwnedHeldLease.acquire(
+            new SqliteHeldLease(normalizedSource, lockedIdentity, () -> {}));
+    try {
+      Files.move(
+          replacement,
+          normalizedSource,
+          java.nio.file.StandardCopyOption.ATOMIC_MOVE,
+          java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+
+      SqliteCallerPathContractException rejection =
+          assertThrows(
+              SqliteCallerPathContractException.class,
+              () ->
+                  SqliteWorkflowScopeRequests.requireSourcesStillMatchLockedIdentities(
+                      new WorkflowSourceMembers(
+                          List.of(
+                              new WorkflowSourceMember(
+                                  normalizedSource,
+                                  ProtectedBookMaintenanceArtifactRole.LIVE_BOOK))),
+                      Map.of(
+                          SqliteProtectedBookPathIdentity.normalizedSpelling(normalizedSource),
+                          heldSourceLease)));
+
+      assertEquals(normalizedSource, rejection.requestedPath());
+      assertEquals(
+          SqliteCallerPathFailure.SOURCE_ARTIFACT_IDENTITY_CHANGED, rejection.pathFailure());
+    } finally {
+      heldSourceLease.release();
+    }
   }
 
   @Test

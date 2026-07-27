@@ -127,6 +127,60 @@ class CliFailureMapperTest {
   }
 
   @Test
+  void contractFailure_projectsRecoveryRecordAndRetentionForAnUnattemptedPair() {
+    Path bookTarget = Path.of("books/recovered.sqlite").toAbsolutePath().normalize();
+    Path secretTarget = Path.of("keys/recovered.book-key").toAbsolutePath().normalize();
+    dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention retention =
+        new dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRetention(
+            new ArtifactPublicationResult(
+                bookTarget,
+                new ArtifactPublicationRetention(bookTarget.resolveSibling(".book-stage"))),
+            new ArtifactPublicationResult(
+                secretTarget,
+                new ArtifactPublicationRetention(secretTarget.resolveSibling(".secret-stage"))));
+    CliFailure noPathFailure =
+        CliFailure.fromContractFailure(
+            new dev.erst.fingrind.contract.runtime.ContractFailure(
+                ContractErrors.Descriptor.INVALID_REQUEST,
+                "A retained-stage test failure.",
+                null,
+                null,
+                null,
+                null,
+                new ArtifactPublicationRetention(bookTarget.resolveSibling(".stage-only"))));
+    CliFailure pairFailure =
+        CliFailure.fromContractFailure(
+            ContractErrors.protectedBookPairPublicationUncertainFailure(
+                OperationId.RESTORE_BOOK,
+                new ContractFailureDetails.PairPublication(
+                    new ContractFailureDetails.PairPublicationMember(
+                        bookTarget, ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED),
+                    new ContractFailureDetails.PairPublicationMember(
+                        secretTarget, ProtectedBookPairPublicationMemberState.NOT_ATTEMPTED),
+                    dev.erst.fingrind.contract.bookkeeping
+                        .ProtectedBookPairPublicationRecoveryRecordState.DURABLY_RETAINED,
+                    retention)));
+
+    assertEquals(bookTarget.resolveSibling(".stage-only"), noPathFailure.retainedStage());
+    var details =
+        assertInstanceOf(
+            dev.erst.fingrind.cli.json.CliMaintenanceErrorJsonModels
+                .ProtectedBookPairPublicationUncertainDetails.class,
+            pairFailure.details());
+    assertEquals(
+        "durably-retained",
+        java.util.Objects.requireNonNull(
+                details.pairPublication().recoveryRecordState(), "recovery record state")
+            .wireValue());
+    assertEquals(
+        CliPublicPaths.absoluteValue(bookTarget),
+        java.util.Objects.requireNonNull(
+                details.pairPublication().pairPublicationRetention(), "pair publication retention")
+            .bookPublication()
+            .path());
+  }
+
+  @Test
   void runtimeFailure_mapsPdfExportFailuresToDedicatedPublicCode() {
     CliFailure failure =
         CliFailureMapper.runtimeFailure(

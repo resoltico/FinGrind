@@ -1,0 +1,15 @@
+{
+  "status": "rejected",
+  "code": "artifact-path-invalid",
+  "message": "The selected protected-book artifact path violates the filesystem contract for its declared role.",
+  "hint": "Choose distinct source artifacts: two selected source roles resolve to the same physical file, then rerun the maintenance command.",
+  "argument": null,
+  "details": {
+    "artifactRole": "live-book-key-source",
+    "artifactPath": "/workspace/sources/live-book.key",
+    "pathFailure": "source-artifact-identity-duplicated"
+  },
+  "path": "/workspace/sources/live-book.key",
+  "relatedPaths": [],
+  "category": "precondition"
+}

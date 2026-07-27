@@ -153,6 +153,21 @@ class CliAttestationKeyFileFailureMapperTest {
     assertSame(unknown, thrown);
   }
 
+  @Test
+  void creationFailure_rejectsAnImpossibleCheckedFailureFamily() {
+    AssertionError thrown =
+        assertThrows(
+            AssertionError.class,
+            () ->
+                CliAttestationKeyFileFailureMapper.creationFailure(
+                    new Exception("unexpected checked failure"),
+                    temporaryDirectory.resolve("operator.fgatk"),
+                    ProtocolOptions.Attestation.NEW_KEY_FILE));
+
+    assertEquals(
+        "Key-file creation must fail with IOException or RuntimeException.", thrown.getMessage());
+  }
+
   private static void assertFailure(
       ContractFailure failure, ContractErrors.Descriptor descriptor, Path expectedPath) {
     assertEquals(descriptor.code(), failure.code());

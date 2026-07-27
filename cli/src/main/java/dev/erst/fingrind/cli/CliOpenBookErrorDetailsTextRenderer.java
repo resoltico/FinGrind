@@ -96,12 +96,10 @@ final class CliOpenBookErrorDetailsTextRenderer {
       rows.add(
           List.of(
               "New founder key file", CliTextDisplay.serializedAbsolutePath(founderKey.path())));
-      if (founderKey.retainedStage() != null) {
-        rows.add(
-            List.of(
-                "Founder-key retained stage",
-                CliTextDisplay.serializedAbsolutePath(founderKey.retainedStage())));
-      }
+      rows.add(
+          List.of(
+              "Founder-key retained stage",
+              CliTextDisplay.serializedAbsolutePath(founderKey.retainedStage())));
     }
   }
 

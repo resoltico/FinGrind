@@ -13,6 +13,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Base64;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.JsonNode;
@@ -234,6 +235,29 @@ class FinGrindCliAttestationKeyFileWorkflowTest extends CliWorkflowFixtureSuppor
     assertEquals(
         ContractErrors.Descriptor.INVALID_ARTIFACT_OUTPUT_DIRECTORY.code(),
         new ObjectMapper().readTree(output.toByteArray()).path("code").stringValue());
+
+    output.reset();
+    Path parentFile = tempDirectory.resolve("not-a-directory");
+    Files.writeString(parentFile, "not a directory");
+    assertEquals(
+        6, cli.run(generateArguments(parentFile.resolve("operator.fgatk"), passphraseFilePath)));
+    assertEquals(
+        ContractErrors.Descriptor.INVALID_ARTIFACT_OUTPUT_DIRECTORY.code(),
+        new ObjectMapper().readTree(output.toByteArray()).path("code").stringValue());
+
+    output.reset();
+    Path publiclyWritableParent = tempDirectory.resolve("publicly-writable-output");
+    Files.createDirectory(publiclyWritableParent);
+    Files.setPosixFilePermissions(
+        publiclyWritableParent, PosixFilePermissions.fromString("rwxrwxrwx"));
+    assertEquals(
+        6,
+        cli.run(
+            generateArguments(
+                publiclyWritableParent.resolve("operator.fgatk"), passphraseFilePath)));
+    assertEquals(
+        ContractErrors.Descriptor.INVALID_ARTIFACT_OUTPUT_DIRECTORY.code(),
+        new ObjectMapper().readTree(output.toByteArray()).path("code").stringValue());
   }
 
   @Test
@@ -287,6 +311,29 @@ class FinGrindCliAttestationKeyFileWorkflowTest extends CliWorkflowFixtureSuppor
     assertNotEquals(
         CliPublicPaths.absoluteValue(requestedCredentialPath),
         invalidCredential.path("path").stringValue());
+  }
+
+  @Test
+  void canonicalPrivateCredentialPath_rejectsASymlinkParentBeforeResolution() throws Exception {
+    Path symlinkParent = tempDirectory.resolve("symlinked-output");
+    Files.createSymbolicLink(symlinkParent, tempDirectory);
+
+    assertTrue(
+        CliAttestationKeyFileWorkflow.canonicalPrivateCredentialPath(
+                symlinkParent.resolve("operator.fgatk"))
+            .isEmpty());
+  }
+
+  @Test
+  void canonicalPrivateCredentialPath_rejectsANonDirectoryParentBeforeResolution()
+      throws Exception {
+    Path nonDirectoryParent = tempDirectory.resolve("not-a-directory");
+    Files.writeString(nonDirectoryParent, "not a directory");
+
+    assertTrue(
+        CliAttestationKeyFileWorkflow.canonicalPrivateCredentialPath(
+                nonDirectoryParent.resolve("operator.fgatk"))
+            .isEmpty());
   }
 
   private static String[] generateArguments(Path keyFilePath, Path passphraseFilePath) {

@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystemException;
 import java.nio.file.Files;
@@ -105,6 +106,78 @@ class SqliteGeneratedSecretTargetTest {
     try (var paths = Files.list(tempDirectory)) {
       assertTrue(paths.findAny().isPresent());
     }
+  }
+
+  @Test
+  void retainedWitnessClassifiesOnlySupportedCapabilityFailureSignals() throws Exception {
+    Path atomicTarget = tempDirectory.resolve("atomic.sqlite");
+    AtomicMoveNotSupportedException atomicMoveFailure =
+        new AtomicMoveNotSupportedException(
+            atomicTarget.toString(), atomicTarget.toString(), "injected atomic move refusal");
+    SqlitePublicationCapabilityWitness.AcquisitionFailure atomicFailure =
+        assertThrows(
+            SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+            () ->
+                SqlitePublicationCapabilityWitness.acquire(
+                    java.util.List.of(
+                        SqlitePublicationCapabilityWitness.Requirement.atomicReplace(atomicTarget)),
+                    Files::createLink,
+                    (source, target) -> {
+                      throw atomicMoveFailure;
+                    }));
+    SqliteCallerPathContractException typedFailure =
+        Objects.requireNonNull(
+            SqlitePublicationCapabilityWitness.callerPathFailure(
+                atomicFailure, SqliteCallerPathFailure.ATOMIC_BOOK_PUBLICATION_UNSUPPORTED));
+    assertEquals(
+        SqliteCallerPathFailure.ATOMIC_BOOK_REPLACEMENT_UNSUPPORTED, typedFailure.pathFailure());
+    assertSame(atomicMoveFailure, typedFailure.getCause());
+
+    Path ordinaryTarget = tempDirectory.resolve("ordinary.key");
+    SqlitePublicationCapabilityWitness.AcquisitionFailure ordinaryFailure =
+        assertThrows(
+            SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+            () ->
+                SqlitePublicationCapabilityWitness.acquire(
+                    java.util.List.of(
+                        SqlitePublicationCapabilityWitness.Requirement.noReplace(ordinaryTarget)),
+                    (target, staged) -> {
+                      throw new FileSystemException(target.toString(), staged.toString(), null);
+                    },
+                    SqliteProtectedBookPublicationSupport::moveReplacing));
+    assertEquals(
+        null,
+        SqlitePublicationCapabilityWitness.callerPathFailure(
+            ordinaryFailure, SqliteCallerPathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED));
+  }
+
+  @Test
+  void retainedWitnessReleasesPreviouslyAcquiredWitnessesWhenALaterWitnessFails() throws Exception {
+    Path firstParent = Files.createDirectory(tempDirectory.resolve("first"));
+    Path secondParent = Files.createDirectory(tempDirectory.resolve("second"));
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(firstParent);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(secondParent);
+    java.util.concurrent.atomic.AtomicInteger linkAttempts =
+        new java.util.concurrent.atomic.AtomicInteger();
+
+    assertThrows(
+        SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+        () ->
+            SqlitePublicationCapabilityWitness.acquire(
+                java.util.List.of(
+                    SqlitePublicationCapabilityWitness.Requirement.noReplace(
+                        firstParent.resolve("first.key")),
+                    SqlitePublicationCapabilityWitness.Requirement.noReplace(
+                        secondParent.resolve("second.key"))),
+                (target, staged) -> {
+                  if (linkAttempts.incrementAndGet() == 2) {
+                    throw new IOException("injected later witness failure");
+                  }
+                  Files.createLink(target, staged);
+                },
+                SqliteProtectedBookPublicationSupport::moveReplacing));
+
+    assertEquals(2, linkAttempts.get());
   }
 
   @Test

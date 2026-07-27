@@ -15,6 +15,7 @@ import java.nio.file.Path;
 import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Objects;
+import java.util.Optional;
 
 /** Executes standalone attestation-credential generation and public identity inspection. */
 final class CliAttestationKeyFileWorkflow {
@@ -33,7 +34,7 @@ final class CliAttestationKeyFileWorkflow {
       Path passphraseFilePath,
       OutputMode outputMode) {
     Path normalizedKeyPath = normalized(keyFilePath);
-    Path canonicalKeyPath;
+    Optional<Path> canonicalKeyPath;
     try {
       canonicalKeyPath = canonicalPrivateCredentialPath(normalizedKeyPath);
     } catch (IOException
@@ -45,17 +46,24 @@ final class CliAttestationKeyFileWorkflow {
               normalizedKeyPath, ProtocolOptions.Attestation.NEW_KEY_FILE),
           outputMode);
     }
+    if (canonicalKeyPath.isEmpty()) {
+      return writeFailure(
+          CliAttestationKeyFileFailureMapper.invalidArtifactOutputDirectory(
+              normalizedKeyPath, ProtocolOptions.Attestation.NEW_KEY_FILE),
+          outputMode);
+    }
+    Path admittedKeyPath = canonicalKeyPath.orElseThrow();
     try {
       AttestationKeyFileCreation created =
           switch (Objects.requireNonNull(custodian, "custodian")) {
-            case FILE_PKCS8 -> AttestationKeyFiles.create(canonicalKeyPath, passphraseFilePath);
+            case FILE_PKCS8 -> AttestationKeyFiles.create(admittedKeyPath, passphraseFilePath);
           };
       responseWriter.writeGeneratedAttestationKeyFileResult(created, outputMode);
       return 0;
     } catch (IOException | RuntimeException exception) {
       return writeFailure(
           CliAttestationKeyFileFailureMapper.creationFailure(
-              exception, canonicalKeyPath, ProtocolOptions.Attestation.NEW_KEY_FILE),
+              exception, admittedKeyPath, ProtocolOptions.Attestation.NEW_KEY_FILE),
           outputMode);
     }
   }
@@ -96,17 +104,14 @@ final class CliAttestationKeyFileWorkflow {
     return Objects.requireNonNull(path, "path").toAbsolutePath().normalize();
   }
 
-  private static Path canonicalPrivateCredentialPath(Path keyFilePath) throws IOException {
+  static Optional<Path> canonicalPrivateCredentialPath(Path keyFilePath) throws IOException {
     Path parent = keyFilePath.getParent();
-    if (parent == null) {
-      throw new IllegalArgumentException("Attestation key file must have a parent directory.");
+    if (parent == null || !Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)) {
+      return Optional.empty();
     }
     Path fileName = keyFilePath.getFileName();
-    if (!Files.isDirectory(parent, LinkOption.NOFOLLOW_LINKS)) {
-      PrivateOutputDirectory.requireExistingOwnerOnly(parent);
-    }
     Path canonicalParent = parent.toRealPath();
     PrivateOutputDirectory.requireExistingOwnerOnly(canonicalParent);
-    return canonicalParent.resolve(fileName);
+    return Optional.of(canonicalParent.resolve(fileName));
   }
 }

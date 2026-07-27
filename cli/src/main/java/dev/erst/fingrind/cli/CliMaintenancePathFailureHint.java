@@ -64,10 +64,15 @@ final class CliMaintenancePathFailureHint {
             Map.entry(
                 BookMaintenancePathFailure.ATOMIC_BOOK_REPLACEMENT_UNSUPPORTED,
                 "Choose a path on a filesystem that supports atomic protected-book replacement, then rerun the maintenance command."));
-    if (!hints.keySet().equals(EnumSet.allOf(BookMaintenancePathFailure.class))) {
-      throw new ExceptionInInitializerError(
-          "Every maintenance path failure requires CLI guidance.");
+    return requireCompleteHints(hints);
+  }
+
+  static Map<BookMaintenancePathFailure, String> requireCompleteHints(
+      Map<BookMaintenancePathFailure, String> hints) {
+    Map<BookMaintenancePathFailure, String> checkedHints = Objects.requireNonNull(hints, "hints");
+    if (!checkedHints.keySet().equals(EnumSet.allOf(BookMaintenancePathFailure.class))) {
+      throw new IllegalArgumentException("Every maintenance path failure requires CLI guidance.");
     }
-    return hints;
+    return checkedHints;
   }
 }

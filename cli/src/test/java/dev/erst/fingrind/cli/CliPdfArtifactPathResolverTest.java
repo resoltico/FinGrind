@@ -44,4 +44,22 @@ class CliPdfArtifactPathResolverTest {
     assertEquals(requestedOutputPath.toAbsolutePath().normalize(), exception.outputPath());
     assertSame(failure, exception.getCause());
   }
+
+  @Test
+  void resolveSubmitsAMissingParentToOutputAdmissionBeforePhysicalResolution() {
+    Path requestedOutputPath = temporaryDirectory.resolve("missing").resolve("report.pdf");
+    java.util.concurrent.atomic.AtomicReference<Path> admitted =
+        new java.util.concurrent.atomic.AtomicReference<>();
+    CliPdfArtifactPathResolver resolver = new CliPdfArtifactPathResolver(admitted::set);
+
+    CliPdfExportException exception =
+        assertThrows(CliPdfExportException.class, () -> resolver.resolve(requestedOutputPath));
+
+    assertEquals(requestedOutputPath.toAbsolutePath().normalize(), exception.outputPath());
+    assertEquals(
+        Objects.requireNonNull(requestedOutputPath.getParent(), "requested output parent")
+            .toAbsolutePath()
+            .normalize(),
+        admitted.get());
+  }
 }

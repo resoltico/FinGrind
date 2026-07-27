@@ -53,10 +53,6 @@ public interface CliMaintenanceErrorJsonModels {
         throw new IllegalArgumentException(
             "Evidence-blocked pair-publication details require both members to be unestablished.");
       }
-      if (pairPublication.recoveryRecordState() != null) {
-        throw new IllegalArgumentException(
-            "Evidence-blocked pair-publication details cannot retain recovery-record state.");
-      }
     }
   }
 
@@ -83,10 +79,6 @@ public interface CliMaintenanceErrorJsonModels {
             "recoveryRecordState must be present exactly when neither pair member was attempted.");
       }
       boolean hasUnestablishedMember = hasUnestablishedMember(bookTarget, generatedSecretTarget);
-      if (hasUnestablishedMember && recoveryRecordState != null) {
-        throw new IllegalArgumentException(
-            "Unestablished pair members cannot retain recoveryRecordState.");
-      }
       if (hasUnestablishedMember && pairPublicationRetention != null) {
         throw new IllegalArgumentException(
             "Unestablished pair members cannot claim authoritative retained-stage evidence.");

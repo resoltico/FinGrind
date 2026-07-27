@@ -176,6 +176,48 @@ class CliFailureOutputRendererTest {
   }
 
   @Test
+  void renderFailureText_rendersFallbackRetainedStageAndEvidenceBlockedPairFacts() {
+    String fallbackPathText =
+        CliFailureOutputRenderer.renderFailureText(
+            new CliFailure(
+                "storage-runtime-failure",
+                "The protected artifact operation failed.",
+                null,
+                "--book-file",
+                new CliErrorJsonModels.InvalidRequestDetails(List.of("one request violation")),
+                java.nio.file.Path.of("books/live.sqlite"),
+                List.of(),
+                java.nio.file.Path.of("books/.live.sqlite-stage")));
+    assertTrue(fallbackPathText.contains("Retained stage"), fallbackPathText);
+    assertTrue(fallbackPathText.contains("<redacted>"), fallbackPathText);
+
+    String evidenceBlockedText =
+        CliFailureOutputRenderer.renderFailureText(
+            new CliFailure(
+                "protected-book-pair-publication-evidence-blocked",
+                "Pair publication evidence is insufficient.",
+                null,
+                null,
+                new CliMaintenanceErrorJsonModels
+                    .ProtectedBookPairPublicationEvidenceBlockedDetails(
+                    new CliMaintenanceErrorJsonModels.PairPublication(
+                        new CliMaintenanceErrorJsonModels.PairPublicationMember(
+                            "/books/live.sqlite",
+                            CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload
+                                .UNESTABLISHED),
+                        new CliMaintenanceErrorJsonModels.PairPublicationMember(
+                            "/keys/live.book-key",
+                            CliMaintenanceErrorJsonModels.PairPublicationMemberStatePayload
+                                .UNESTABLISHED),
+                        null,
+                        null))));
+    assertTrue(evidenceBlockedText.contains("Book target"), evidenceBlockedText);
+    assertTrue(evidenceBlockedText.contains("Generated secret target"), evidenceBlockedText);
+    assertFalse(evidenceBlockedText.contains("Recovery record state"), evidenceBlockedText);
+    assertFalse(evidenceBlockedText.contains("retained stage"), evidenceBlockedText);
+  }
+
+  @Test
   void renderRejectedText_rendersPostingAndAccountStateRejectionDetails() {
     assertRenderedNestedRepairableRejection(
         "account-state-violations",

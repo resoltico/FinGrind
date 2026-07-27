@@ -2,22 +2,27 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
+import java.io.IOException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystemException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.text.Normalizer;
 import java.text.Normalizer.Form;
+import java.util.List;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 /** Direct physical-identity and conservative absent-leaf admission coverage. */
-class SqliteProtectedBookPairPublicationTargetsTest {
-  @TempDir Path tempDirectory;
+class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTestSupport {
 
   @Test
   void exactRawLeafEqualityIsAConflictWithoutCreatingAnArtifact() throws Exception {
@@ -131,6 +136,280 @@ class SqliteProtectedBookPairPublicationTargetsTest {
 
     assertDirectoryEmpty(bookParent);
     assertDirectoryEmpty(secretParent);
+  }
+
+  @Test
+  void generatedSecretPreparation_preservesTypedPathRejectionsAndUnexpectedIoFailures() {
+    Path targetPath = tempDirectory.resolve("target.key");
+    SqliteCallerPathContractException pathFailure =
+        new SqliteCallerPathContractException(
+            targetPath,
+            SqliteCallerPathFailure.TARGET_OWNER_ONLY_REQUIRED,
+            "target must be owner-only");
+
+    ProtectedBookMaintenanceRejectionException rejection =
+        assertThrows(
+            ProtectedBookMaintenanceRejectionException.class,
+            () ->
+                SqliteProtectedBookPairPublicationTargets.prepareGeneratedSecretTarget(
+                    targetPath,
+                    ProtectedBookMaintenanceArtifactRole.NEW_BOOK_KEY_TARGET,
+                    ignored -> {
+                      throw pathFailure;
+                    }));
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid typedRejection =
+        assertInstanceOf(
+            ProtectedBookMaintenanceRejection.ArtifactPathInvalid.class, rejection.rejection());
+    assertEquals(
+        ProtectedBookMaintenanceArtifactRole.NEW_BOOK_KEY_TARGET, typedRejection.artifactRole());
+    assertEquals(
+        SqliteCallerPathFailure.TARGET_OWNER_ONLY_REQUIRED.maintenanceFailure(),
+        typedRejection.pathFailure());
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            SqliteProtectedBookPairPublicationTargets.prepareGeneratedSecretTarget(
+                targetPath,
+                ignored -> {
+                  throw new IOException("injected preparation failure");
+                }));
+  }
+
+  @Test
+  void reservations_translateOccupiedAndIoOutcomesByArtifactRole() throws Exception {
+    Path bookTarget = tempDirectory.resolve("backup.sqlite");
+    Path secretTarget = tempDirectory.resolve("backup.key");
+
+    ProtectedBookMaintenanceRejectionException bookCollision =
+        assertThrows(
+            ProtectedBookMaintenanceRejectionException.class,
+            () ->
+                SqliteProtectedBookPairPublicationTargets.reserveAbsentBookTarget(
+                    bookTarget,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    ignored -> {
+                      throw new FileAlreadyExistsException(bookTarget.toString());
+                    }));
+    assertEquals(
+        bookTarget,
+        assertInstanceOf(
+                ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists.class,
+                bookCollision.rejection())
+            .backupFilePath());
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            SqliteProtectedBookPairPublicationTargets.reserveAbsentBookTarget(
+                bookTarget,
+                ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                ignored -> {
+                  throw new IOException("injected reservation failure");
+                }));
+
+    assertEquals(
+        secretTarget,
+        assertThrows(
+                SqliteGeneratedSecretTargetOccupiedException.class,
+                () ->
+                    SqliteProtectedBookPairPublicationTargets.reserveAbsentSecretTarget(
+                        secretTarget,
+                        ignored -> {
+                          throw new FileAlreadyExistsException(secretTarget.toString());
+                        }))
+            .targetPath());
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            SqliteProtectedBookPairPublicationTargets.reserveAbsentSecretTarget(
+                secretTarget,
+                ignored -> {
+                  throw new IOException("injected secret reservation failure");
+                }));
+  }
+
+  @Test
+  void occupiedBookTargetRejection_acceptsOnlyBookArtifactRoles() {
+    Path targetPath = tempDirectory.resolve("target.sqlite");
+
+    assertInstanceOf(
+        ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists.class,
+        SqliteProtectedBookPairPublicationTargets.occupiedBookTargetRejection(
+            ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET, targetPath));
+    assertInstanceOf(
+        ProtectedBookMaintenanceRejection.BookDestinationOccupied.class,
+        SqliteProtectedBookPairPublicationTargets.occupiedBookTargetRejection(
+            ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET, targetPath));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            SqliteProtectedBookPairPublicationTargets.occupiedBookTargetRejection(
+                ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET, targetPath));
+  }
+
+  @Test
+  void prepublicationAdmissionRejectsConflictsAndMapsEachInvalidTargetToItsArtifactRole()
+      throws Exception {
+    Path bookTarget = tempDirectory.resolve("backup.sqlite");
+    Path secretTarget = tempDirectory.resolve("backup.key");
+
+    SqliteProtectedBookPairPublicationTargets.requirePrepublicationPairTargetAdmission(
+        bookTarget,
+        secretTarget,
+        ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+        ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET);
+
+    ProtectedBookMaintenanceRejectionException conflict =
+        assertThrows(
+            ProtectedBookMaintenanceRejectionException.class,
+            () ->
+                SqliteProtectedBookPairPublicationTargets.requirePrepublicationPairTargetAdmission(
+                    bookTarget,
+                    bookTarget,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET));
+    assertInstanceOf(
+        ProtectedBookMaintenanceRejection.PairTargetsConflict.class, conflict.rejection());
+
+    Path nonDirectoryParent = Files.writeString(tempDirectory.resolve("not-a-directory"), "data");
+    Path invalidBookTarget = nonDirectoryParent.resolve("backup.sqlite");
+    Path invalidSecretTarget = nonDirectoryParent.resolve("backup.key");
+    assertArtifactPathFailure(
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                SqliteProtectedBookPairPublicationTargets.requireRecoveryTargetSecurity(
+                    invalidBookTarget,
+                    secretTarget,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET)),
+        ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+        SqliteCallerPathFailure.PARENT_PATH_COLLISION);
+    assertArtifactPathFailure(
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                SqliteProtectedBookPairPublicationTargets.requirePrepublicationPairTargetAdmission(
+                    bookTarget,
+                    invalidSecretTarget,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET)),
+        ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+        SqliteCallerPathFailure.PARENT_PATH_COLLISION);
+    assertArtifactPathFailure(
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                SqliteProtectedBookPairPublicationTargets.requirePrepublicationPairTargetAdmission(
+                    tempDirectory.resolve("Book.sqlite"),
+                    tempDirectory.resolve("book.sqlite"),
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET)),
+        ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+        SqliteCallerPathFailure.PAIR_TARGET_LEAF_PORTABILITY_REQUIRED);
+  }
+
+  @Test
+  void capabilityAcquisitionFailuresPreserveTheExactArtifactAndPrimitiveRejection()
+      throws Exception {
+    Path bookTarget = tempDirectory.resolve("backup.sqlite");
+    Path secretTarget = tempDirectory.resolve("backup.key");
+
+    assertArtifactPathFailure(
+        SqliteProtectedBookPairPublicationTargets.capabilityAcquisitionFailure(
+            unsupportedWitnessFailure(
+                SqlitePublicationCapabilityWitness.Requirement.noReplace(bookTarget)),
+            bookTarget,
+            secretTarget,
+            dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy
+                .REQUIRE_ABSENT,
+            ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+            ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET),
+        ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+        SqliteCallerPathFailure.ATOMIC_BOOK_PUBLICATION_UNSUPPORTED);
+    assertArtifactPathFailure(
+        SqliteProtectedBookPairPublicationTargets.capabilityAcquisitionFailure(
+            unsupportedWitnessFailure(
+                SqlitePublicationCapabilityWitness.Requirement.atomicReplace(bookTarget)),
+            bookTarget,
+            secretTarget,
+            dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy
+                .REPLACE_SELECTED,
+            ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET,
+            ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET),
+        ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET,
+        SqliteCallerPathFailure.ATOMIC_BOOK_REPLACEMENT_UNSUPPORTED);
+    assertArtifactPathFailure(
+        SqliteProtectedBookPairPublicationTargets.capabilityAcquisitionFailure(
+            unsupportedWitnessFailure(
+                SqlitePublicationCapabilityWitness.Requirement.noReplace(secretTarget)),
+            bookTarget,
+            secretTarget,
+            dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy
+                .REQUIRE_ABSENT,
+            ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+            ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET),
+        ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+        SqliteCallerPathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED);
+
+    SqlitePublicationCapabilityWitness.AcquisitionFailure unexpectedFailure =
+        unexpectedWitnessFailure(
+            SqlitePublicationCapabilityWitness.Requirement.noReplace(bookTarget));
+    IllegalStateException genericFailure =
+        assertInstanceOf(
+            IllegalStateException.class,
+            SqliteProtectedBookPairPublicationTargets.capabilityAcquisitionFailure(
+                unexpectedFailure,
+                bookTarget,
+                secretTarget,
+                dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore
+                    .RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET));
+    assertEquals(unexpectedFailure, genericFailure.getCause());
+  }
+
+  private static void assertArtifactPathFailure(
+      RuntimeException failure,
+      ProtectedBookMaintenanceArtifactRole expectedRole,
+      SqliteCallerPathFailure expectedFailure) {
+    ProtectedBookMaintenanceRejectionException rejection =
+        assertInstanceOf(ProtectedBookMaintenanceRejectionException.class, failure);
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid typedRejection =
+        assertInstanceOf(
+            ProtectedBookMaintenanceRejection.ArtifactPathInvalid.class, rejection.rejection());
+    assertEquals(expectedRole, typedRejection.artifactRole());
+    assertEquals(expectedFailure.maintenanceFailure(), typedRejection.pathFailure());
+  }
+
+  private static SqlitePublicationCapabilityWitness.AcquisitionFailure unsupportedWitnessFailure(
+      SqlitePublicationCapabilityWitness.Requirement requirement) {
+    return assertThrows(
+        SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+        () ->
+            SqlitePublicationCapabilityWitness.acquire(
+                List.of(requirement),
+                (ignoredFinalPath, ignoredStagedPath) -> {
+                  throw new UnsupportedOperationException("injected unsupported primitive");
+                },
+                (ignoredSourcePath, ignoredTargetPath) -> {
+                  throw new UnsupportedOperationException("injected unsupported primitive");
+                }));
+  }
+
+  private static SqlitePublicationCapabilityWitness.AcquisitionFailure unexpectedWitnessFailure(
+      SqlitePublicationCapabilityWitness.Requirement requirement) {
+    return assertThrows(
+        SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+        () ->
+            SqlitePublicationCapabilityWitness.acquire(
+                List.of(requirement),
+                (ignoredFinalPath, ignoredStagedPath) -> {
+                  throw new IOException("injected unexpected primitive failure");
+                },
+                (ignoredSourcePath, ignoredTargetPath) -> {
+                  throw new IOException("injected unexpected primitive failure");
+                }));
   }
 
   private static void assertDirectoryEmpty(Path directory) throws java.io.IOException {
