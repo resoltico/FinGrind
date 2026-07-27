@@ -126,6 +126,58 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
   }
 
   @Test
+  void targetIdentityFailsClosedWhenItsProviderCannotReadOrCompareOneTarget() throws Exception {
+    try (AclFixtureFileSystem fileSystem =
+        AclFixtureFileSystem.withViews(java.util.Set.of("posix"))) {
+      AclFixturePath unreadableBookTarget = fileSystem.path("\\targets\\unreadable.sqlite");
+      Path unreadableSecretTarget = fileSystem.path("\\targets\\unreadable.key");
+      unreadableBookTarget.failReadAttributesWith(new IOException("injected unreadable target"));
+
+      assertTargetIdentityUnestablished(
+          unreadableBookTarget,
+          assertThrows(
+              SqliteCallerPathContractException.class,
+              () ->
+                  SqlitePairTargetIdentity.sameFinalTargetIdentity(
+                      unreadableBookTarget, unreadableSecretTarget)));
+
+      AclFixturePath existingBookTarget = fileSystem.path("\\targets\\existing.sqlite");
+      existingBookTarget.exists = true;
+      existingBookTarget.regularFile = true;
+      AclFixturePath existingSecretTarget = fileSystem.path("\\targets\\existing.key");
+      existingSecretTarget.exists = true;
+      existingSecretTarget.regularFile = true;
+      existingBookTarget.failSameFileWith(new IOException("injected target identity failure"));
+
+      assertTargetIdentityUnestablished(
+          existingBookTarget,
+          assertThrows(
+              SqliteCallerPathContractException.class,
+              () ->
+                  SqlitePairTargetIdentity.sameFinalTargetIdentity(
+                      existingBookTarget, existingSecretTarget)));
+
+      AclFixturePath bookParent = fileSystem.path("\\book-parent");
+      bookParent.exists = true;
+      bookParent.regularFile = false;
+      AclFixturePath secretParent = fileSystem.path("\\secret-parent");
+      secretParent.exists = true;
+      secretParent.regularFile = false;
+      bookParent.failSameFileWith(new IOException("injected parent identity failure"));
+      Path absentBookTarget = bookParent.resolve("book.sqlite");
+      Path absentSecretTarget = secretParent.resolve("book.key");
+
+      assertTargetIdentityUnestablished(
+          absentBookTarget,
+          assertThrows(
+              SqliteCallerPathContractException.class,
+              () ->
+                  SqlitePairTargetIdentity.sameFinalTargetIdentity(
+                      absentBookTarget, absentSecretTarget)));
+    }
+  }
+
+  @Test
   void distinctPhysicalParentsDoNotNeedThePortableSharedParentLeafGrammar() throws Exception {
     Path bookParent = Files.createDirectory(tempDirectory.resolve("book"));
     Path secretParent = Files.createDirectory(tempDirectory.resolve("secret"));
@@ -442,6 +494,12 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
             ProtectedBookMaintenanceRejection.ArtifactPathInvalid.class, rejection.rejection());
     assertEquals(expectedRole, typedRejection.artifactRole());
     assertEquals(expectedFailure.maintenanceFailure(), typedRejection.pathFailure());
+  }
+
+  private static void assertTargetIdentityUnestablished(
+      Path expectedTargetPath, SqliteCallerPathContractException exception) {
+    assertEquals(expectedTargetPath, exception.requestedPath());
+    assertEquals(SqliteCallerPathFailure.TARGET_IDENTITY_UNESTABLISHED, exception.pathFailure());
   }
 
   private static SqlitePublicationCapabilityWitness.AcquisitionFailure unsupportedWitnessFailure(

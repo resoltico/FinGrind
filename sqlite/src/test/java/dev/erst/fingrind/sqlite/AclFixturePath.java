@@ -18,6 +18,8 @@ public final class AclFixturePath extends AclFixtureAbstractPath {
   public Set<PosixFilePermission> posixPermissions = Set.of();
   private byte[] content = new byte[0];
   private @Nullable IOException deleteIfExistsFailure;
+  private @Nullable IOException readAttributesFailure;
+  private @Nullable IOException sameFileFailure;
   private @Nullable UnsupportedOperationException newFileChannelUnsupported;
   private @Nullable IOException tryLockFailure;
   private @Nullable IOException closeFailure;
@@ -64,6 +66,24 @@ public final class AclFixturePath extends AclFixtureAbstractPath {
 
   @Nullable IOException deleteIfExistsFailure() {
     return deleteIfExistsFailure;
+  }
+
+  AclFixturePath failReadAttributesWith(IOException exception) {
+    readAttributesFailure = Objects.requireNonNull(exception, "exception");
+    return this;
+  }
+
+  @Nullable IOException readAttributesFailure() {
+    return readAttributesFailure;
+  }
+
+  AclFixturePath failSameFileWith(IOException exception) {
+    sameFileFailure = Objects.requireNonNull(exception, "exception");
+    return this;
+  }
+
+  @Nullable IOException sameFileFailure() {
+    return sameFileFailure;
   }
 
   AclFixturePath preserveExistingEntryOnDeleteIfExists() {

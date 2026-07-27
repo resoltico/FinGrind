@@ -39,6 +39,10 @@ final class AclFixtureAttributeOperations {
   static <A extends BasicFileAttributes> A readAttributes(Path path, Class<A> type)
       throws IOException {
     AclFixturePath fixturePath = AclFixtureChannelOperations.fixturePath(path);
+    IOException readAttributesFailure = fixturePath.readAttributesFailure();
+    if (readAttributesFailure != null) {
+      throw readAttributesFailure;
+    }
     if (!fixturePath.exists) {
       throw new NoSuchFileException(path.toString());
     }
@@ -54,6 +58,10 @@ final class AclFixtureAttributeOperations {
 
   static Map<String, Object> readAttributes(Path path, String attributes) throws IOException {
     AclFixturePath fixturePath = AclFixtureChannelOperations.fixturePath(path);
+    IOException readAttributesFailure = fixturePath.readAttributesFailure();
+    if (readAttributesFailure != null) {
+      throw readAttributesFailure;
+    }
     if (!fixturePath.exists) {
       throw new NoSuchFileException(path.toString());
     }
