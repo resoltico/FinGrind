@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -15,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
@@ -205,6 +207,114 @@ class SqliteMaintenanceWorkflowScopeTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void scopeReleasesAnEarlierSourceWhenALaterSourceBecomesBusyAfterPreflight() throws Exception {
+    Path firstSource = writeArtifact("acquisition-race/a-source.sqlite", "first source");
+    Path laterSource = writeArtifact("acquisition-race/b-source.key", "later source");
+    Path bookTarget = managedTarget("acquisition-race/book.sqlite");
+    Path secretTarget = managedTarget("acquisition-race/book.key");
+    AtomicBoolean releasedFirstSource = new AtomicBoolean();
+    String firstSourceIdentity = SqliteObjectCoordinationArtifacts.physicalIdentity(firstSource);
+
+    SqliteWorkflowScopeBusy busy =
+        assertInstanceOf(
+            SqliteWorkflowScopeBusy.class,
+            SqliteMaintenanceWorkflowScopeAcquirer.acquire(
+                sourceMembers(firstSource, laterSource),
+                bookTarget,
+                ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                secretTarget,
+                ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                (requests, request) -> {
+                  if (request.artifactPath().equals(firstSource)) {
+                    return heldSource(firstSource, firstSourceIdentity, releasedFirstSource);
+                  }
+                  if (request.artifactPath().equals(laterSource)) {
+                    return new SqliteLeaseBusy(laterSource);
+                  }
+                  throw new AssertionError("Pair target must not be acquired after a busy source.");
+                }));
+
+    assertEquals(laterSource, busy.artifactPath());
+    assertEquals(ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_SOURCE, busy.artifactRole());
+    assertTrue(releasedFirstSource.get());
+  }
+
+  @Test
+  void scopeReleasesEveryHeldMemberWhenALaterTargetBecomesBusy() throws Exception {
+    Path source = writeArtifact("target-busy/source.sqlite", "source");
+    Path bookTarget = managedTarget("target-busy/a-book.sqlite");
+    Path secretTarget = managedTarget("target-busy/z-secret.key");
+    AtomicBoolean releasedSource = new AtomicBoolean();
+    AtomicBoolean releasedBookTarget = new AtomicBoolean();
+    String sourceIdentity = SqliteObjectCoordinationArtifacts.physicalIdentity(source);
+
+    SqliteWorkflowScopeBusy busy =
+        assertInstanceOf(
+            SqliteWorkflowScopeBusy.class,
+            SqliteMaintenanceWorkflowScopeAcquirer.acquire(
+                sourceMembers(source),
+                bookTarget,
+                ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                secretTarget,
+                ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                (requests, request) -> {
+                  if (request.artifactPath().equals(source)) {
+                    return heldSource(source, sourceIdentity, releasedSource);
+                  }
+                  if (request.artifactPath().equals(bookTarget)) {
+                    return new SqliteHeldLease(bookTarget, () -> releasedBookTarget.set(true));
+                  }
+                  if (request.artifactPath().equals(secretTarget)) {
+                    return new SqliteLeaseBusy(secretTarget);
+                  }
+                  throw new AssertionError("Unexpected workflow request: " + request);
+                }));
+
+    assertEquals(secretTarget, busy.artifactPath());
+    assertEquals(ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET, busy.artifactRole());
+    assertTrue(releasedSource.get());
+    assertTrue(releasedBookTarget.get());
+  }
+
+  @Test
+  void scopePreservesAReleaseFailureWhenTargetAcquisitionFails() throws Exception {
+    Path source = writeArtifact("release-failure/source.sqlite", "source");
+    Path bookTarget = managedTarget("release-failure/book.sqlite");
+    Path secretTarget = managedTarget("release-failure/book.key");
+    IllegalStateException primaryFailure =
+        new IllegalStateException("injected target acquisition failure");
+    IllegalStateException releaseFailure =
+        new IllegalStateException("injected source release failure");
+    String sourceIdentity = SqliteObjectCoordinationArtifacts.physicalIdentity(source);
+
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteMaintenanceWorkflowScopeAcquirer.acquire(
+                    sourceMembers(source),
+                    bookTarget,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    secretTarget,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                    (requests, request) -> {
+                      if (request.artifactPath().equals(source)) {
+                        return new SqliteHeldLease(
+                            source,
+                            sourceIdentity,
+                            () -> {
+                              throw releaseFailure;
+                            });
+                      }
+                      throw primaryFailure;
+                    }));
+
+    assertSame(primaryFailure, failure);
+    assertEquals(1, failure.getSuppressed().length);
+    assertSame(releaseFailure, failure.getSuppressed()[0]);
+  }
+
+  @Test
   void scopeRejectsNativeActivityOnEachDeclaredMemberBeforeAcquiringAnything() throws Exception {
     Path source = writeArtifact("activity-members/source.sqlite", "source");
     Path bookTarget = managedTarget("activity-members/book.sqlite");
@@ -296,9 +406,27 @@ class SqliteMaintenanceWorkflowScopeTest extends SqliteNativeBridgeTestSupport {
   }
 
   private static WorkflowSourceMembers sourceMembers(Path source) {
-    return new WorkflowSourceMembers(
-        java.util.List.of(
-            new WorkflowSourceMember(source, ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE)));
+    return sourceMembers(source, null);
+  }
+
+  private static WorkflowSourceMembers sourceMembers(
+      Path firstSource, @org.jspecify.annotations.Nullable Path secondSource) {
+    java.util.List<WorkflowSourceMember> members =
+        new java.util.ArrayList<>(
+            java.util.List.of(
+                new WorkflowSourceMember(
+                    firstSource, ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE)));
+    if (secondSource != null) {
+      members.add(
+          new WorkflowSourceMember(
+              secondSource, ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_SOURCE));
+    }
+    return new WorkflowSourceMembers(members);
+  }
+
+  private static SqliteHeldLease heldSource(
+      Path source, String sourceIdentity, AtomicBoolean released) {
+    return new SqliteHeldLease(source, sourceIdentity, () -> released.set(true));
   }
 
   private Path writeArtifact(String relativePath, String content) throws java.io.IOException {

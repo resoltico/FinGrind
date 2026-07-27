@@ -21,6 +21,30 @@ final class SqliteMaintenanceWorkflowScopeAcquirer {
       Path normalizedSecretTargetPath,
       ProtectedBookMaintenanceArtifactRole secretTargetArtifactRole)
       throws IOException {
+    return acquire(
+        normalizedSourceMembers,
+        normalizedBookTargetPath,
+        bookTargetArtifactRole,
+        normalizedSecretTargetPath,
+        secretTargetArtifactRole,
+        SqliteMaintenanceWorkflowScopeAcquirer::acquireRequest);
+  }
+
+  /**
+   * Acquires one workflow scope through an exact-request acquisition boundary.
+   *
+   * <p>The boundary preserves the production ordering while making lease races and release-failure
+   * semantics deterministic to prove. An implementation must return an outcome only for the
+   * supplied request; returning an unrelated busy artifact is rejected by this class.
+   */
+  static SqliteWorkflowScopeAcquisition acquire(
+      WorkflowSourceMembers normalizedSourceMembers,
+      Path normalizedBookTargetPath,
+      ProtectedBookMaintenanceArtifactRole bookTargetArtifactRole,
+      Path normalizedSecretTargetPath,
+      ProtectedBookMaintenanceArtifactRole secretTargetArtifactRole,
+      LeaseAcquirer leaseAcquirer)
+      throws IOException {
     WorkflowSourceMembers sourceMembers =
         Objects.requireNonNull(normalizedSourceMembers, "normalizedSourceMembers");
     Path bookTarget = Objects.requireNonNull(normalizedBookTargetPath, "normalizedBookTargetPath");
@@ -30,6 +54,7 @@ final class SqliteMaintenanceWorkflowScopeAcquirer {
         Objects.requireNonNull(normalizedSecretTargetPath, "normalizedSecretTargetPath");
     ProtectedBookMaintenanceArtifactRole secretTargetRole =
         Objects.requireNonNull(secretTargetArtifactRole, "secretTargetArtifactRole");
+    LeaseAcquirer checkedLeaseAcquirer = Objects.requireNonNull(leaseAcquirer, "leaseAcquirer");
     List<SqliteWorkflowScopeRequests.Request> requests =
         SqliteWorkflowScopeRequests.create(
             sourceMembers, bookTarget, bookTargetRole, secretTarget, secretTargetRole);
@@ -51,7 +76,8 @@ final class SqliteMaintenanceWorkflowScopeAcquirer {
     @org.jspecify.annotations.Nullable SqliteOwnedHeldLease secretTargetLease = null;
     try {
       SqliteWorkflowScopeAcquisition sourceResult =
-          acquireSources(requests, sourceRequests, sourceLeases, sourceLeasesBySpelling);
+          acquireSources(
+              requests, sourceRequests, sourceLeases, sourceLeasesBySpelling, checkedLeaseAcquirer);
       if (sourceResult != null) {
         return sourceResult;
       }
@@ -59,7 +85,7 @@ final class SqliteMaintenanceWorkflowScopeAcquirer {
           sourceMembers, sourceLeasesBySpelling);
       SqliteProtectedBookPairPublicationTargets.requirePrepublicationPairTargetAdmission(
           bookTarget, secretTarget, bookTargetRole, secretTargetRole);
-      TargetLeasePair targetLeases = acquireTargets(requests, targetRequests);
+      TargetLeasePair targetLeases = acquireTargets(requests, targetRequests, checkedLeaseAcquirer);
       if (targetLeases.busyMember() != null) {
         closeWorkflowLeases(secretTargetLease, bookTargetLease, sourceLeases);
         return busy(targetLeases.busyMember());
@@ -83,9 +109,10 @@ final class SqliteMaintenanceWorkflowScopeAcquirer {
       List<SqliteWorkflowScopeRequests.Request> requests,
       List<SqliteWorkflowScopeRequests.Request> sourceRequests,
       List<SqliteOwnedHeldLease> sourceLeases,
-      Map<String, SqliteOwnedHeldLease> sourceLeasesBySpelling) {
+      Map<String, SqliteOwnedHeldLease> sourceLeasesBySpelling,
+      LeaseAcquirer leaseAcquirer) {
     for (SqliteWorkflowScopeRequests.Request request : sourceRequests) {
-      SqliteProtectedBookLeaseAcquisition acquisition = acquireRequest(requests, request);
+      SqliteProtectedBookLeaseAcquisition acquisition = leaseAcquirer.acquire(requests, request);
       if (acquisition instanceof SqliteLeaseBusy busy) {
         closeSourceLeases(sourceLeases);
         return new SqliteWorkflowScopeBusy(busy.artifactPath(), request.artifactRole());
@@ -100,12 +127,13 @@ final class SqliteMaintenanceWorkflowScopeAcquirer {
 
   private static TargetLeasePair acquireTargets(
       List<SqliteWorkflowScopeRequests.Request> requests,
-      List<SqliteWorkflowScopeRequests.Request> targetRequests) {
+      List<SqliteWorkflowScopeRequests.Request> targetRequests,
+      LeaseAcquirer leaseAcquirer) {
     @org.jspecify.annotations.Nullable SqliteOwnedHeldLease bookTargetLease = null;
     @org.jspecify.annotations.Nullable SqliteOwnedHeldLease secretTargetLease = null;
     try {
       for (SqliteWorkflowScopeRequests.Request request : targetRequests) {
-        SqliteProtectedBookLeaseAcquisition acquisition = acquireRequest(requests, request);
+        SqliteProtectedBookLeaseAcquisition acquisition = leaseAcquirer.acquire(requests, request);
         if (acquisition instanceof SqliteLeaseBusy busy) {
           closePairLeases(secretTargetLease, bookTargetLease);
           return new TargetLeasePair(null, null, requestForBusy(busy, request));
@@ -136,6 +164,14 @@ final class SqliteMaintenanceWorkflowScopeAcquirer {
         request.artifactPath(),
         request.leaseIntent(),
         SqliteWorkflowScopeRequests.artifactsForDirectory(requests, request.directoryDomain()));
+  }
+
+  /** Acquires exactly one declared workflow member under its immutable admission scope. */
+  @FunctionalInterface
+  interface LeaseAcquirer {
+    SqliteProtectedBookLeaseAcquisition acquire(
+        List<SqliteWorkflowScopeRequests.Request> requests,
+        SqliteWorkflowScopeRequests.Request request);
   }
 
   private static SqliteWorkflowScopeBusy busy(SqliteWorkflowScopeRequests.Request request) {
