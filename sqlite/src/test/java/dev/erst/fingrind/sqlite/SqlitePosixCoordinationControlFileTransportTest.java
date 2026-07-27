@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 /** Behavioural coverage for the POSIX owner-only coordination-file transport. */
@@ -146,6 +147,114 @@ class SqlitePosixCoordinationControlFileTransportTest extends SqliteNativeBridge
     assertThrows(
         IOException.class,
         () -> SqlitePosixCoordinationFileSecurity.physicalObjectIdentity(symlink));
+  }
+
+  @Test
+  void controlProtocolRejectsHeaderOverlapsAndOversizedOrEmptyMagicBeforeOpeningFiles() {
+    Path controlPath = tempDirectory.resolve("protocol-validation.control");
+    byte[] magic = SqliteCoordinationControlFiles.magic("test-control", "geometry");
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> SqliteCoordinationControlFiles.activitySlotPosition(-1));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            SqliteCoordinationControlFiles.openOrCreateAndTryExclusiveLock(
+                controlPath,
+                new byte[0],
+                SqliteCoordinationControlFiles.maintenanceLockPosition(),
+                1L));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            SqliteCoordinationControlFiles.openExistingAndTryExclusiveLock(
+                controlPath,
+                new byte[(int) SqliteCoordinationControlFiles.CONTROL_LOCK_BASE],
+                SqliteCoordinationControlFiles.maintenanceLockPosition(),
+                1L));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            SqliteCoordinationControlFiles.openOrCreateAndTryExclusiveLock(
+                controlPath, magic, SqliteCoordinationControlFiles.CONTROL_LOCK_BASE - 1L, 1L));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            SqliteCoordinationControlFiles.openOrCreateAndTryExclusiveLock(
+                controlPath, magic, SqliteCoordinationControlFiles.maintenanceLockPosition(), 0L));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            SqliteCoordinationControlFiles.openOrCreateAndTryExclusiveLock(
+                controlPath,
+                magic,
+                SqliteCoordinationControlFiles.maintenanceLockPosition(),
+                Long.MAX_VALUE));
+    assertFalse(Files.exists(controlPath));
+  }
+
+  @Test
+  void opaqueControlHandlesReleaseAtMostOnceAndPreserveCloseFailureContext() throws Exception {
+    Path controlPath = tempDirectory.resolve("opaque-handle.control");
+    AtomicInteger successfulCloses = new AtomicInteger();
+    SqliteCoordinationControlFiles.LockedControlFile successful =
+        SqliteCoordinationControlFiles.lockedControlFile(
+            controlPath, successfulCloses::incrementAndGet);
+
+    successful.close();
+    successful.close();
+    assertEquals(1, successfulCloses.get());
+
+    IOException closeCause = new IOException("injected close failure");
+    AtomicInteger failingCloses = new AtomicInteger();
+    SqliteCoordinationControlFiles.LockedControlFile failing =
+        SqliteCoordinationControlFiles.lockedControlFile(
+            controlPath,
+            () -> {
+              failingCloses.incrementAndGet();
+              throw closeCause;
+            });
+
+    IOException failure = assertThrows(IOException.class, failing::close);
+    assertEquals(closeCause, failure.getCause());
+    assertEquals(1, failingCloses.get());
+    failing.close();
+    assertEquals(1, failingCloses.get());
+  }
+
+  @Test
+  void truncatedHeadersAndInvalidTransportLockGeometryLeaveNoLeakedChannel() throws Exception {
+    Path truncatedPath = tempDirectory.resolve("truncated.control");
+    Path geometryPath = tempDirectory.resolve("invalid-geometry.control");
+    byte[] magic = SqliteCoordinationControlFiles.magic("test-control", "truncated");
+
+    try (FileChannel channel =
+        SqlitePosixCoordinationFileSecurity.openNewOwnerOnlyProtocolFile(truncatedPath)) {
+      channel.write(ByteBuffer.wrap(new byte[] {1}));
+    }
+    IOException truncated =
+        assertThrows(
+            IOException.class,
+            () ->
+                SqlitePosixCoordinationControlFileTransport.requireExistingExactRecord(
+                    truncatedPath, magic));
+    assertTrue(
+        java.util.Objects.requireNonNull(truncated.getMessage(), "truncated-header message")
+            .contains("unexpected size"));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            SqlitePosixCoordinationControlFileTransport.openOrCreateAndTryExclusiveLock(
+                geometryPath, magic, -1L, 1L));
+    try (SqliteCoordinationControlFiles.LockedControlFile afterFailure =
+        java.util.Objects.requireNonNull(
+            SqlitePosixCoordinationControlFileTransport.openExistingAndTryExclusiveLock(
+                geometryPath, magic, SqliteCoordinationControlFiles.maintenanceLockPosition(), 1L),
+            "lock after invalid geometry")) {
+      assertTrue(Files.exists(geometryPath));
+    }
   }
 
   private Path ownerOnlyArtifact(String relativePath) throws IOException {
