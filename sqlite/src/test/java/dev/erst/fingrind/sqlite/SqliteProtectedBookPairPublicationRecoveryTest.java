@@ -1347,6 +1347,47 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
             SqliteProtectedBookPairPublicationEvidenceKind.COMPLETED));
   }
 
+  @Test
+  void evidenceStateDistinguishesClaimOnlyAndIncompleteRetainedOrCompletedEvidence()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord claimOnly = retainedRecord("evidence-state-claim");
+    assertFalse(SqlitePairPublicationEvidenceState.isCompleteClaimOnly(claimOnly));
+    assertFalse(SqlitePairPublicationEvidenceState.hasNoAuthorizationEvidence(claimOnly));
+
+    deleteEvidence(claimOnly, SqliteProtectedBookPairPublicationEvidenceKind.INTENT);
+    assertFalse(SqlitePairPublicationEvidenceState.isCompleteClaimOnly(claimOnly));
+    assertFalse(SqlitePairPublicationEvidenceState.hasNoAuthorizationEvidence(claimOnly));
+
+    deleteEvidence(claimOnly, SqliteProtectedBookPairPublicationEvidenceKind.RECOVERY);
+    assertTrue(SqlitePairPublicationEvidenceState.isCompleteClaimOnly(claimOnly));
+    assertTrue(SqlitePairPublicationEvidenceState.hasNoAuthorizationEvidence(claimOnly));
+
+    SqliteProtectedBookPairPublicationRecord incompleteRetained =
+        retainedRecord("evidence-state-retained");
+    SqliteProtectedBookPairPublicationEvidenceLifecycle.retainPrepublication(
+        incompleteRetained, (ignoredStep, ignoredParent) -> {});
+    Files.writeString(
+        incompleteRetained
+            .evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.RETAINED)
+            .getFirst(),
+        "changed retained evidence");
+    assertTrue(SqlitePairPublicationEvidenceState.retainedEvidenceIsIncomplete(incompleteRetained));
+
+    SqliteProtectedBookPairPublicationRecord incompleteCompleted =
+        retainedRecord("evidence-state-completed");
+    Files.createLink(incompleteCompleted.bookTargetPath, incompleteCompleted.bookStagePath);
+    Files.createLink(incompleteCompleted.secretTargetPath, incompleteCompleted.secretStagePath);
+    SqliteProtectedBookPairPublicationEvidenceLifecycle.confirmCompletedPublication(
+        incompleteCompleted, (ignoredStep, ignoredParent) -> {});
+    Files.writeString(
+        incompleteCompleted
+            .evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.COMPLETED)
+            .getFirst(),
+        "changed completed evidence");
+    assertTrue(
+        SqlitePairPublicationEvidenceState.completionEvidenceIsIncomplete(incompleteCompleted));
+  }
+
   private static SqliteProtectedBookPairPublicationRecovery recovery() {
     return new SqliteProtectedBookPairPublicationRecovery(
         (ignoredBook, ignoredSecret, ignoredBinding) -> true,
