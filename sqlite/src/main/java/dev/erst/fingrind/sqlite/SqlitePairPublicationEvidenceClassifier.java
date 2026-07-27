@@ -138,9 +138,6 @@ final class SqlitePairPublicationEvidenceClassifier {
         return kind;
       }
     }
-    if (SqlitePairPublicationEvidenceState.retainedEvidenceIsIncomplete(checkedRecord)) {
-      return SqliteProtectedBookPairPublicationEvidenceKind.RETAINED;
-    }
     if (SqlitePairPublicationEvidenceState.completionEvidenceIsIncomplete(checkedRecord)) {
       return SqliteProtectedBookPairPublicationEvidenceKind.COMPLETED;
     }

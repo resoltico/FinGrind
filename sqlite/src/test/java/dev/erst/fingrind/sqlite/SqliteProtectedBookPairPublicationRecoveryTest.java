@@ -999,6 +999,87 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
   }
 
   @Test
+  void evidenceClassifierIgnoresInertClaimResidueAndCompletedNonBackupPublications()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord claimOnly = retainedRecord("classifier-claim-only");
+    deleteEvidence(claimOnly, SqliteProtectedBookPairPublicationEvidenceKind.INTENT);
+    deleteEvidence(claimOnly, SqliteProtectedBookPairPublicationEvidenceKind.RECOVERY);
+
+    assertEquals(
+        SqlitePairPublicationEvidenceAbsent.INSTANCE,
+        SqlitePairPublicationEvidenceClassifier.classify(
+            claimOnly.bookTargetPath,
+            claimOnly.secretTargetPath,
+            Map.of(claimOnly.pairId, claimOnly)));
+
+    SqliteProtectedBookPairPublicationRecord completedRekey =
+        rekeyRecord("classifier-completed-rekey");
+    Files.delete(completedRekey.bookTargetPath);
+    Files.createLink(completedRekey.bookTargetPath, completedRekey.bookStagePath);
+    Files.createLink(completedRekey.secretTargetPath, completedRekey.secretStagePath);
+    SqliteProtectedBookPairPublicationEvidenceLifecycle.confirmCompletedPublication(
+        completedRekey, (ignoredStep, ignoredParent) -> {});
+
+    assertEquals(
+        SqlitePairPublicationEvidenceAbsent.INSTANCE,
+        SqlitePairPublicationEvidenceClassifier.classify(
+            completedRekey.bookTargetPath,
+            completedRekey.secretTargetPath,
+            Map.of(completedRekey.pairId, completedRekey)));
+  }
+
+  @Test
+  void evidenceClassifierDistinguishesPendingIncompleteAndCompletionUncertainEvidence()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord pending =
+        pairRecord("classifier-pending-other-target", false);
+
+    assertInstanceOf(
+        SqlitePairPublicationEvidenceOtherPending.class,
+        SqlitePairPublicationEvidenceClassifier.classify(
+            pending.bookTargetPath.resolveSibling("other-book.sqlite"),
+            pending.secretTargetPath.resolveSibling("other-book.key"),
+            Map.of(pending.pairId, pending)));
+
+    SqliteProtectedBookPairPublicationRecord incompleteClaim =
+        retainedRecord("classifier-incomplete-claim-terminal");
+    Files.writeString(
+        incompleteClaim
+            .evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.CLAIM)
+            .getFirst(),
+        "changed claim evidence");
+
+    assertEquals(
+        SqlitePairPublicationEvidenceUnsafe.INSTANCE,
+        SqlitePairPublicationEvidenceClassifier.classify(
+            incompleteClaim.bookTargetPath,
+            incompleteClaim.secretTargetPath,
+            Map.of(incompleteClaim.pairId, incompleteClaim)));
+
+    SqliteProtectedBookPairPublicationRecord incompleteCompletion =
+        retainedRecord("classifier-incomplete-completion");
+    SqliteProtectedBookPairPublicationEvidenceLifecycle.retainPrepublication(
+        incompleteCompletion, (ignoredStep, ignoredParent) -> {});
+    Files.createLink(incompleteCompletion.bookTargetPath, incompleteCompletion.bookStagePath);
+    Files.createLink(incompleteCompletion.secretTargetPath, incompleteCompletion.secretStagePath);
+    SqliteProtectedBookPairPublicationEvidenceLifecycle.confirmCompletedPublication(
+        incompleteCompletion, (ignoredStep, ignoredParent) -> {});
+    Files.writeString(
+        incompleteCompletion
+            .evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.COMPLETED)
+            .getFirst(),
+        "changed completed evidence");
+    Files.delete(incompleteCompletion.secretTargetPath);
+
+    assertInstanceOf(
+        SqlitePairPublicationEvidenceExactIncomplete.class,
+        SqlitePairPublicationEvidenceClassifier.classify(
+            incompleteCompletion.bookTargetPath,
+            incompleteCompletion.secretTargetPath,
+            Map.of(incompleteCompletion.pairId, incompleteCompletion)));
+  }
+
+  @Test
   void evidenceStatusRejectsAParseableEnvelopeWithTheWrongKindAndPinsEachDurabilityBarrier()
       throws Exception {
     SqliteProtectedBookPairPublicationRecord record = retainedRecord("evidence-status");
@@ -1137,6 +1218,15 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
         RestoredBookTargetPolicy.REPLACE_SELECTED,
         rekeyBinding(bookTarget, bookTarget.resolveSibling("source.book-key")),
         (ignoredStep, ignoredParent) -> {});
+  }
+
+  private static void deleteEvidence(
+      SqliteProtectedBookPairPublicationRecord record,
+      SqliteProtectedBookPairPublicationEvidenceKind evidenceKind)
+      throws IOException {
+    for (Path evidencePath : record.evidencePaths(evidenceKind)) {
+      Files.delete(evidencePath);
+    }
   }
 
   private Path absentTarget(String relativePath) throws IOException {
