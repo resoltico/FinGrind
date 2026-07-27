@@ -156,6 +156,44 @@ class SqliteBookKeyFileGeneratorTest {
   }
 
   @Test
+  void generateDecision_reportsUnconfirmedDirectoryDurabilityAfterTheFinalLinkRuntimeFailure() {
+    Path keyFile = tempDirectory.resolve("durability-runtime.book-key");
+
+    ContractFailure failure =
+        SqliteBookKeyFileGenerator.generateDecision(
+                keyFile,
+                Files::createLink,
+                ignored -> {
+                  throw new IllegalStateException("simulated directory force runtime failure");
+                })
+            .requireRejected();
+
+    assertEquals(
+        ContractErrors.Descriptor.ARTIFACT_PUBLICATION_DURABILITY_UNCERTAIN, failure.descriptor());
+    assertRetainedStage(failure, keyFile, true);
+  }
+
+  @Test
+  void generateDecision_reportsAnIndeterminateRuntimeFinalLinkAndRetainsBothNames()
+      throws Exception {
+    Path keyFile = tempDirectory.resolve("uncertain-runtime-link.book-key");
+
+    ContractFailure failure =
+        SqliteBookKeyFileGenerator.generateDecision(
+                keyFile,
+                (finalPath, stagedPath) -> {
+                  Files.createLink(finalPath, stagedPath);
+                  throw new IllegalStateException("simulated post-link runtime uncertainty");
+                },
+                ignored -> {})
+            .requireRejected();
+
+    assertEquals(
+        ContractErrors.Descriptor.ARTIFACT_PUBLICATION_OUTCOME_UNCERTAIN, failure.descriptor());
+    assertRetainedStage(failure, keyFile, true);
+  }
+
+  @Test
   void generateDecision_retainsTheStageWhenTheFinalLinkReportsACallerPathViolation() {
     Path keyFile = tempDirectory.resolve("link-path-violation.book-key");
     SqliteCallerPathContractException pathFailure =
