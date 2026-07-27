@@ -102,7 +102,7 @@ final class SqliteThreadMaintenanceLeases {
       admittedArtifactKeys.add(artifactKey(artifactPath));
     }
 
-    private void release(Path artifactPath) {
+    void release(Path artifactPath) {
       if (references <= 0) {
         throw new IllegalStateException(
             "The FinGrind maintenance directory lease was over-released.");
@@ -159,7 +159,7 @@ final class SqliteThreadMaintenanceLeases {
       return new ObjectLeaseReference(this);
     }
 
-    private void release() {
+    void release() {
       if (references <= 0) {
         throw new IllegalStateException("The FinGrind maintenance object lease was over-released.");
       }
