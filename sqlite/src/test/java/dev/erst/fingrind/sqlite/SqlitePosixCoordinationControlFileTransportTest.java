@@ -7,12 +7,16 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.FileAlreadyExistsException;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -254,6 +258,25 @@ class SqlitePosixCoordinationControlFileTransportTest extends SqliteNativeBridge
                 geometryPath, magic, SqliteCoordinationControlFiles.maintenanceLockPosition(), 1L),
             "lock after invalid geometry")) {
       assertTrue(Files.exists(geometryPath));
+    }
+  }
+
+  @Test
+  void physicalObjectCoordinationRejectsNonPosixFilesystemsRatherThanUsingOpaqueKeys()
+      throws Exception {
+    Path archive = tempDirectory.resolve("identity-without-posix.zip");
+    try (FileSystem zipFileSystem =
+        FileSystems.newFileSystem(URI.create("jar:" + archive.toUri()), Map.of("create", "true"))) {
+      Path artifact = Files.writeString(zipFileSystem.getPath("/book.sqlite"), "book");
+
+      IOException failure =
+          assertThrows(
+              IOException.class,
+              () -> SqlitePosixCoordinationFileSecurity.physicalObjectIdentity(artifact));
+
+      assertTrue(
+          java.util.Objects.requireNonNull(failure.getMessage(), "unsupported identity message")
+              .contains("requires explicit POSIX device/inode identity"));
     }
   }
 
