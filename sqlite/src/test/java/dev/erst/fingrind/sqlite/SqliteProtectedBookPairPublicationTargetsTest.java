@@ -229,6 +229,36 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
   }
 
   @Test
+  void preparationTranslatesAnAlreadyOccupiedGeneratedSecretBeforeRetainingResources()
+      throws Exception {
+    Path secretTarget = Files.writeString(tempDirectory.resolve("occupied-preparation.key"), "key");
+    Path bookTarget = tempDirectory.resolve("occupied-preparation.sqlite");
+
+    try (SqlitePairPublicationPreparationResources resources =
+        new SqlitePairPublicationPreparationResources()) {
+      ProtectedBookMaintenanceRejectionException rejection =
+          assertThrows(
+              ProtectedBookMaintenanceRejectionException.class,
+              () ->
+                  SqliteProtectedBookPairPublicationTargets.prepareWithHeldLeases(
+                      resources,
+                      secretTarget,
+                      bookTarget,
+                      dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore
+                          .RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                      ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                      ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET));
+
+      assertEquals(
+          secretTarget,
+          assertInstanceOf(
+                  ProtectedBookMaintenanceRejection.SecretTargetOccupied.class,
+                  rejection.rejection())
+              .secretTargetPath());
+    }
+  }
+
+  @Test
   void occupiedBookTargetRejection_acceptsOnlyBookArtifactRoles() {
     Path targetPath = tempDirectory.resolve("target.sqlite");
 

@@ -152,6 +152,24 @@ class SqliteGeneratedSecretTargetTest {
   }
 
   @Test
+  void retainedWitnessReportsAnInvalidRootTargetAsTheExactAcquisitionRequirement() {
+    SqlitePublicationCapabilityWitness.Requirement requirement =
+        SqlitePublicationCapabilityWitness.Requirement.noReplace(Path.of("/"));
+
+    SqlitePublicationCapabilityWitness.AcquisitionFailure failure =
+        assertThrows(
+            SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+            () ->
+                SqlitePublicationCapabilityWitness.acquire(
+                    java.util.List.of(requirement),
+                    Files::createLink,
+                    SqliteProtectedBookPublicationSupport::moveReplacing));
+
+    assertEquals(requirement, failure.requirement());
+    assertInstanceOf(NullPointerException.class, failure.getCause());
+  }
+
+  @Test
   void retainedWitnessReleasesPreviouslyAcquiredWitnessesWhenALaterWitnessFails() throws Exception {
     Path firstParent = Files.createDirectory(tempDirectory.resolve("first"));
     Path secondParent = Files.createDirectory(tempDirectory.resolve("second"));
