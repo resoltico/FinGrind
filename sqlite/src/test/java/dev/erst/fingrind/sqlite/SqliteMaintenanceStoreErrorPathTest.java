@@ -268,6 +268,35 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
   }
 
   @Test
+  void backupArtifactVerifierMapsEachInvalidSelectedSourceToItsOwnArtifactRole() throws Exception {
+    Path artifactDirectory = Files.createDirectory(tempDirectory.resolve("artifact-directory"));
+    Path keyDirectory = Files.createDirectory(tempDirectory.resolve("key-directory"));
+
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid artifactRejection =
+        assertInstanceOf(
+            ProtectedBookMaintenanceRejection.ArtifactPathInvalid.class,
+            assertThrows(
+                    ProtectedBookMaintenanceRejectionException.class,
+                    () ->
+                        SqliteBackupArtifactVerifier.normalizeBackupArtifactPath(artifactDirectory))
+                .rejection());
+    assertEquals(
+        ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE, artifactRejection.artifactRole());
+    assertEquals(artifactDirectory.toAbsolutePath().normalize(), artifactRejection.artifactPath());
+
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid keyRejection =
+        assertInstanceOf(
+            ProtectedBookMaintenanceRejection.ArtifactPathInvalid.class,
+            assertThrows(
+                    ProtectedBookMaintenanceRejectionException.class,
+                    () -> SqliteBackupArtifactVerifier.normalizeBackupKeyPath(keyDirectory))
+                .rejection());
+    assertEquals(
+        ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_SOURCE, keyRejection.artifactRole());
+    assertEquals(keyDirectory.toAbsolutePath().normalize(), keyRejection.artifactPath());
+  }
+
+  @Test
   void backupArtifactVerification_translatesArtifactReadAndSnapshotWriteIoFailures() {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
       AclFixturePath unreadableArtifact = fileSystem.path("\\backup.fgba");

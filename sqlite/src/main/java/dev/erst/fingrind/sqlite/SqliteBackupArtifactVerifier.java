@@ -82,7 +82,7 @@ final class SqliteBackupArtifactVerifier {
     }
   }
 
-  private static Path normalizeBackupArtifactPath(Path backupArtifactPath) {
+  static Path normalizeBackupArtifactPath(Path backupArtifactPath) {
     try {
       return SqliteBookMaintenanceFiles.normalizeExistingSource(
           backupArtifactPath, "backupFilePath");
@@ -92,7 +92,7 @@ final class SqliteBackupArtifactVerifier {
     }
   }
 
-  private static Path normalizeBackupKeyPath(Path backupKeyPath) {
+  static Path normalizeBackupKeyPath(Path backupKeyPath) {
     try {
       return SqliteBookMaintenanceFiles.normalizeExistingSource(backupKeyPath, "backupKeyFilePath");
     } catch (SqliteCallerPathContractException exception) {
