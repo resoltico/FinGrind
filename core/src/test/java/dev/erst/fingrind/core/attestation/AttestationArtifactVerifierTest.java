@@ -135,6 +135,17 @@ class AttestationArtifactVerifierTest {
                 ignored -> {
                   throw new IllegalStateException("reader failure");
                 }));
+    AttestationArtifactSnapshotReaderException sourceFailure =
+        assertThrows(
+            AttestationArtifactSnapshotReaderException.class,
+            () ->
+                AttestationArtifactVerifier.verifyBackupArtifact(
+                    artifact,
+                    ignored -> {
+                      throw new AttestationArtifactSnapshotReaderException(
+                          "Selected snapshot key cannot be decoded.");
+                    }));
+    assertEquals("Selected snapshot key cannot be decoded.", sourceFailure.getMessage());
     assertFailure(
         AttestationAuthorizationFailure.UNSUPPORTED_VERSION,
         () ->

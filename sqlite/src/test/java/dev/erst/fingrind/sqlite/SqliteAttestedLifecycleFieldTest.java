@@ -87,9 +87,10 @@ class SqliteAttestedLifecycleFieldTest extends SqliteArtifactPublicationTestSupp
                       .ArtifactVerificationFailed.class,
                   unrecognizedKeyFailure.rejection());
       assertEquals(
-          dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE,
+          dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole
+              .BACKUP_KEY_SOURCE,
           unrecognizedKeyRejection.artifactRole());
-      assertEquals(backupPath.toRealPath(), unrecognizedKeyRejection.artifactPath());
+      assertEquals(unrecognizedKeyPath.toRealPath(), unrecognizedKeyRejection.artifactPath());
 
       BookAccess wrongKeyAccess =
           bookAccess(

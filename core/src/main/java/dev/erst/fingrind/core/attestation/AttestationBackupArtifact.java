@@ -12,6 +12,9 @@ public final class AttestationBackupArtifact {
   /**
    * Verifies the artifact's container, snapshot digest, internal chain, chain binding, and BACKUP
    * quorum resolved from the snapshot itself.
+   *
+   * @throws AttestationArtifactSnapshotReaderException when the supplied reader establishes a
+   *     separately classified external-source failure
    */
   public static AttestationBackupArtifactVerification verify(
       byte[] artifact, AttestationArtifactSnapshotReader snapshotReader) {

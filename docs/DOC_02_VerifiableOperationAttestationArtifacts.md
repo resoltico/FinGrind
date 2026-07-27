@@ -2,10 +2,10 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: BOOK_OPERATION_ATTESTATION_ARTIFACTS
-updated: "2026-07-26"
+updated: "2026-07-27"
 scope:
   paths: ["contract", "core", "executor", "sqlite", "cli", "docs"]
-  symbols: ["ArtifactPublicationStages", "ArtifactPublicationRetention", "ArtifactPublicationResult", "ArtifactPublicationRetainedStageException", "ContractFailureDetails.ArtifactPublicationOutcomeUncertain", "ContractFailureDetails.ArtifactPublicationDurabilityUncertain", "ProtectedBookPairPublicationCompletion", "ProtectedBookPairPublicationRetention", "BackupManifest", "AttestationArtifactContainer", "AttestationBackupArtifact", "AttestationDirectoryDurability", "AttestationReceipt", "PrivateOutputDirectory", "PrivateOutputDirectory.Violation", "PrivateOutputDirectory.Violation.Kind", "VerifyAttestationReceiptResult"]
+  symbols: ["ArtifactPublicationStages", "ArtifactPublicationRetention", "ArtifactPublicationResult", "ArtifactPublicationRetainedStageException", "ContractFailureDetails.ArtifactPublicationOutcomeUncertain", "ContractFailureDetails.ArtifactPublicationDurabilityUncertain", "ProtectedBookPairPublicationCompletion", "ProtectedBookPairPublicationRetention", "BackupManifest", "AttestationArtifactContainer", "AttestationArtifactSnapshotReader", "AttestationArtifactSnapshotReaderException", "AttestationBackupArtifact", "AttestationDirectoryDurability", "AttestationReceipt", "PrivateOutputDirectory", "PrivateOutputDirectory.Violation", "PrivateOutputDirectory.Violation.Kind", "VerifyAttestationReceiptResult"]
 route:
   keywords: [verifiable-operation-attestation, backup-manifest, attestation-receipt, artifact-container, restore-book, backup-acknowledgement, receipt-anchor, no-clobber]
   questions: ["how is an attested backup artifact encoded", "how does FinGrind restore an attested snapshot", "what does an attestation receipt anchor", "which vectors prove backup and receipt envelopes"]
@@ -154,6 +154,29 @@ conflicting backup id after the exact-tuple check fails.
 
 A manifest-attested artifact is never unattested or orphaned. A retained stage never authorizes
 removal of itself or of a final member; no operation claims a published file disappeared.
+
+## `AttestationArtifactSnapshotReaderException`
+
+Runtime exception that preserves an explicitly classified external-source failure while a storage
+adapter opens a manifest-authenticated artifact snapshot.
+
+### Signature
+
+```java
+public class AttestationArtifactSnapshotReaderException extends RuntimeException
+```
+
+### Constraints
+
+- Trigger: The adapter has established a source-specific failure before it can return immutable
+  attestation evidence, such as an unreadable selected backup-key file.
+- Recovery: Correct or replace the reported selected source and rerun verification; do not infer
+  that the artifact is invalid from this exception alone.
+- State: Read-only; it never mutates the artifact or a protected book.
+- Compatibility: Public core adapter boundary. Ordinary reader runtime failures remain
+  `manifest-invalid`; adapters must not use this type for ambiguous snapshot or manifest failures.
+
+---
 
 ## Recovery-Pending Admission
 

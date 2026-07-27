@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: INDEX_ATTESTATION
-updated: "2026-07-26"
+updated: "2026-07-27"
 route:
   keywords: [fingrind, protected-book, attestation, verification, receipt, manifest, operation-envelope, signing, credential lifecycle, policy lifecycle]
   questions: ["where are protected-book attestation symbols documented", "which document owns attestation credential lifecycle", "which document owns attestation verification failures", "where are attestation receipt and manifest result types routed"]
@@ -23,6 +23,7 @@ canonical references without widening the general API index.
 | `AttestationAppendOutcome` | `DOC_02_VerifiableOperationAttestation.md` | `AttestationAppendOutcome` |
 | `AttestationAdmissionRejectedException` | `DOC_02_VerifiableOperationAttestationVerification.md` | `AttestationAdmissionRejectedException` |
 | `AttestationArtifactSnapshotReader` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `Backup Artifact Types` |
+| `AttestationArtifactSnapshotReaderException` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | `AttestationArtifactSnapshotReaderException` |
 | `ArtifactPublicationStages` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Private Artifact Output Admission And Retained Stage Evidence |
 | `ArtifactPublicationRetention` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Private Artifact Output Admission And Retained Stage Evidence |
 | `ArtifactPublicationResult` | `DOC_02_VerifiableOperationAttestationArtifacts.md` | Private Artifact Output Admission And Retained Stage Evidence |

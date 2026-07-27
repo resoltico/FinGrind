@@ -114,6 +114,8 @@ final class AttestationArtifactVerifier {
     try {
       return verifyEvidence(
           Objects.requireNonNull(snapshotReader, "snapshotReader").read(artifact.snapshot()));
+    } catch (AttestationArtifactSnapshotReaderException exception) {
+      throw exception;
     } catch (AttestationAuthorizationException exception) {
       if (exception.failure() == AttestationAuthorizationFailure.UNSUPPORTED_VERSION) {
         throw exception;

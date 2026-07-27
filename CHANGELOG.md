@@ -32,7 +32,7 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
-- Fixed attestation verification, receipt independence, and artifact publication reporting so each command preserves its exact structural or authorization cause, reports canonical physical locations, and never degrades a recognized protected-book or receipt failure into a generic runtime result.
+- Fixed attestation verification, receipt independence, and artifact publication reporting so each command preserves its exact structural or authorization cause, reports canonical physical locations, reports an unreadable selected backup-key source against that source rather than the backup artifact, and never degrades a recognized protected-book or receipt failure into a generic runtime result.
 - Fixed authorization diagnostics and signing boundaries: quorum, excess, capability, duplicate credential, key-principal, stale-head, and policy-capacity failures now have exact public codes, messages, and recovery guidance; reachable policies accept the complete one-to-64 distinct-credential range.
 - Fixed mutation and maintenance failure precedence so initialization, protected-book integrity, completion uncertainty, pair recovery, destination conflicts, and owner-only admission are reported before unsafe work continues or an unrelated credential/storage error masks the real condition.
 - Fixed attestation provenance presentation: posting and account-ledger queries carry their committing operation, text output presents the order inline, review findings group declarations without repeating immutable context, and CSV/JSON retain complete structured links.

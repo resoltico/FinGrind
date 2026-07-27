@@ -220,6 +220,38 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
   }
 
   @Test
+  void signedBackupArtifactWithAnUnusableSelectedKey_isClassifiedAsKeySourceFailure()
+      throws Exception {
+    Instant initializedAt = Instant.parse("2026-07-21T12:00:00Z");
+    AttestationEvidence genesis =
+        SqliteAttestationTestSupport.genesis(
+            SqlitePostingFactFixtureSupport.bookIdentity(), initializedAt);
+    AttestationVerification sourceVerification = AttestationVerifier.verifyBook(List.of(genesis));
+    Path artifactPath = tempDirectory.resolve("signed-unusable-key.fgba");
+    Files.write(
+        artifactPath,
+        SqliteAttestationTestSupport.signedBackupArtifact(
+            "not an encrypted SQLite book".getBytes(java.nio.charset.StandardCharsets.UTF_8),
+            sourceVerification,
+            UUID.fromString("e1292d51-bccd-414f-8c08-6381f5dc26fb")));
+    Path unusableKeyPath = writeArtifact("signed-unusable-key.key", "not a usable key");
+
+    ProtectedBookMaintenanceRejection.ArtifactVerificationFailed rejection =
+        assertInstanceOf(
+            ProtectedBookMaintenanceRejection.ArtifactVerificationFailed.class,
+            assertThrows(
+                    ProtectedBookMaintenanceRejectionException.class,
+                    () -> maintenanceStore().verifyBackupArtifact(artifactPath, unusableKeyPath))
+                .rejection());
+
+    assertEquals(ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_SOURCE, rejection.artifactRole());
+    assertEquals(unusableKeyPath.toAbsolutePath().normalize(), rejection.artifactPath());
+    assertEquals(
+        ProtectedBookVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED,
+        rejection.verificationFailure());
+  }
+
+  @Test
   void backupArtifactVerification_rejectsADirectorySourceBeforeAnySnapshotIsOpened()
       throws Exception {
     Path artifactDirectory = Files.createDirectory(tempDirectory.resolve("backup-directory"));

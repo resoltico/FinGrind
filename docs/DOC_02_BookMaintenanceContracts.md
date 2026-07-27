@@ -2,7 +2,7 @@
 afad: "5.0.1"
 version: "0.61.0"
 domain: BOOK_MAINTENANCE_CONTRACT
-updated: "2026-07-26"
+updated: "2026-07-27"
 route:
   keywords: [fingrind, maintenance, backup, restore, rekey, recovery, protected book, artifact, path, canonical parent, source-artifact-identity-duplicated, source-artifact-identity-changed, pair-targets-conflict, pair-target-leaf-portability-required, target-owner-only-required, protected-book-pair-publication-evidence-blocked, rejection, public path hint]
   questions: ["where are protected-book maintenance rejections documented", "how does fingrind report maintenance paths", "how does a maintenance path resolve to a canonical parent", "what does source-artifact-identity-duplicated mean", "what does source-artifact-identity-changed mean", "what does pair-targets-conflict mean", "what is the portable protected-book pair leaf rule", "what is PublicPathHint", "which contract owns backup and restore path failures"]
@@ -54,8 +54,11 @@ public sealed interface BookMaintenanceRejection
 - Boundary: `BookMaintenanceRejection.ArtifactPathInvalid`, `BookMaintenanceRejection.ArtifactBusy`,
   and `BookMaintenanceRejection.ArtifactVerificationFailed` retain artifact role, path failure or
   verification class, and machine paths as first-class facts instead of collapsing maintenance
-  verification into generic runtime failure text. `PairTargetsConflict` separately preserves each
-  normalized absolute submitted spelling, because a physical alias need not be lexically equal.
+  verification into generic runtime failure text. An unreadable selected backup-key source is an
+  `ArtifactVerificationFailed` result with role `backup-key-source` and that key's canonical path;
+  ambiguous failures while opening an otherwise readable encrypted snapshot remain attributed to
+  `backup-source`. `PairTargetsConflict` separately preserves each normalized absolute submitted
+  spelling, because a physical alias need not be lexically equal.
 
 ## `PublicPathHint`
 

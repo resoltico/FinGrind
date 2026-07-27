@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.core.attestation.AttestationArtifactSnapshotReader;
+import dev.erst.fingrind.core.attestation.AttestationArtifactSnapshotReaderException;
 import dev.erst.fingrind.core.attestation.AttestationBackupArtifact;
 import dev.erst.fingrind.core.attestation.AttestationBackupArtifactVerification;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
@@ -134,7 +135,8 @@ final class SqliteBackupArtifactVerifier {
   }
 
   /** Marks a selected backup-key failure without conflating it with an artifact failure. */
-  private static final class BackupKeyVerificationException extends RuntimeException {
+  private static final class BackupKeyVerificationException
+      extends AttestationArtifactSnapshotReaderException {
     private static final long serialVersionUID = 1L;
 
     private BackupKeyVerificationException(String message) {

@@ -10,6 +10,11 @@ import java.util.List;
  */
 @FunctionalInterface
 public interface AttestationArtifactSnapshotReader {
-  /** Returns the complete genesis-through-head evidence reconstructed from one raw snapshot. */
+  /**
+   * Returns the complete genesis-through-head evidence reconstructed from one raw snapshot.
+   *
+   * @throws AttestationArtifactSnapshotReaderException when the adapter has established a
+   *     separately classified external-source failure
+   */
   List<AttestationEvidence> read(byte[] snapshot);
 }
