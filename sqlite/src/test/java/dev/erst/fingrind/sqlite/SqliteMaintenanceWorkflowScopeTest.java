@@ -144,6 +144,67 @@ class SqliteMaintenanceWorkflowScopeTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void scopeReportsABusySourceBeforeItCanAcquireAnyPairTarget() throws Exception {
+    Path source = writeArtifact("busy-source/source.sqlite", "source");
+    Path bookTarget = managedTarget("busy-source-book/book.sqlite");
+    Path secretTarget = managedTarget("busy-source-secret/book.key");
+    CountDownLatch sourceLeaseHeld = new CountDownLatch(1);
+    CountDownLatch releaseSourceLease = new CountDownLatch(1);
+    AtomicReference<Throwable> holderFailure = new AtomicReference<>();
+    Thread holder =
+        new Thread(
+            () -> {
+              try (SqliteHeldLease ignored =
+                  assertInstanceOf(
+                      SqliteHeldLease.class,
+                      SqliteBookMaintenanceLease.acquire(
+                          source, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+                sourceLeaseHeld.countDown();
+                if (!awaitRelease(releaseSourceLease)) {
+                  holderFailure.set(new AssertionError("Timed out while holding the source."));
+                }
+              } catch (RuntimeException | AssertionError failure) {
+                holderFailure.set(failure);
+                sourceLeaseHeld.countDown();
+              }
+            });
+    holder.start();
+    assertTrue(sourceLeaseHeld.await(10, TimeUnit.SECONDS));
+    try {
+      assertTrue(holderFailure.get() == null, () -> "holder failed: " + holderFailure.get());
+      SqliteWorkflowScopeBusy busy =
+          assertInstanceOf(
+              SqliteWorkflowScopeBusy.class,
+              SqliteBookMaintenanceLease.acquireWorkflowScope(
+                  sourceMembers(source),
+                  bookTarget,
+                  ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                  secretTarget,
+                  ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET));
+      assertEquals(source, busy.artifactPath());
+      assertEquals(ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE, busy.artifactRole());
+
+      try (SqliteHeldLease acquiredBookTarget =
+              assertInstanceOf(
+                  SqliteHeldLease.class,
+                  SqliteBookMaintenanceLease.acquire(
+                      bookTarget, SqliteMaintenanceLeaseIntent.MANAGED_TARGET));
+          SqliteHeldLease acquiredSecretTarget =
+              assertInstanceOf(
+                  SqliteHeldLease.class,
+                  SqliteBookMaintenanceLease.acquire(
+                      secretTarget, SqliteMaintenanceLeaseIntent.MANAGED_TARGET))) {
+        assertEquals(bookTarget, acquiredBookTarget.artifactPath());
+        assertEquals(secretTarget, acquiredSecretTarget.artifactPath());
+      }
+    } finally {
+      releaseSourceLease.countDown();
+      holder.join(10_000L);
+    }
+    assertTrue(holderFailure.get() == null, () -> "holder failed: " + holderFailure.get());
+  }
+
+  @Test
   void scopeRejectsNativeActivityOnEachDeclaredMemberBeforeAcquiringAnything() throws Exception {
     Path source = writeArtifact("activity-members/source.sqlite", "source");
     Path bookTarget = managedTarget("activity-members/book.sqlite");
