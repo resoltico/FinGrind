@@ -457,6 +457,118 @@ class SqliteGeneratedSecretTargetTest {
   }
 
   @Test
+  void retainedWitnessRejectsTamperedDurableEvidenceWhenItIsReacquired() throws Exception {
+    Path noReplaceParent = Files.createDirectory(tempDirectory.resolve("reacquire-no-replace"));
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(noReplaceParent);
+    Path noReplaceTarget = noReplaceParent.resolve("book.key");
+    establishWitness(
+        noReplaceTarget, SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK);
+    Path source = publicationCapabilityState(noReplaceParent, ".source");
+    Path completion = publicationCapabilityState(noReplaceParent, ".complete");
+    byte[] sourceRecord = Files.readAllBytes(source);
+    Files.delete(completion);
+    SqliteCoordinationControlFiles.createAtomicallySecureRecord(completion, sourceRecord);
+
+    SqlitePublicationCapabilityWitness.AcquisitionFailure noReplaceFailure =
+        assertThrows(
+            SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+            () ->
+                SqlitePublicationCapabilityWitness.acquire(
+                    java.util.List.of(
+                        SqlitePublicationCapabilityWitness.Requirement.noReplace(noReplaceTarget)),
+                    Files::createLink,
+                    SqliteProtectedBookPublicationSupport::moveReplacing));
+    assertTrue(
+        Objects.requireNonNull(
+                Objects.requireNonNull(noReplaceFailure.getCause(), "no-replace failure cause")
+                    .getMessage(),
+                "no-replace failure message")
+            .contains("does not retain the source file identity"));
+
+    Path atomicResidueParent = Files.createDirectory(tempDirectory.resolve("reacquire-atomic"));
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(atomicResidueParent);
+    Path atomicTarget = atomicResidueParent.resolve("book.sqlite");
+    establishWitness(atomicTarget, SqlitePublicationCapabilityWitness.PrimitiveKind.ATOMIC_REPLACE);
+    Path atomicCompletion = publicationCapabilityState(atomicResidueParent, ".complete");
+    Path replacement =
+        atomicCompletion.resolveSibling(
+            atomicCompletion.getFileName().toString().replaceFirst("\\.complete$", ".replacement"));
+    Files.writeString(replacement, "unexpected replacement source");
+
+    SqlitePublicationCapabilityWitness.AcquisitionFailure atomicResidueFailure =
+        assertThrows(
+            SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+            () ->
+                SqlitePublicationCapabilityWitness.acquire(
+                    java.util.List.of(
+                        SqlitePublicationCapabilityWitness.Requirement.atomicReplace(atomicTarget)),
+                    Files::createLink,
+                    SqliteProtectedBookPublicationSupport::moveReplacing));
+    assertTrue(
+        Objects.requireNonNull(
+                Objects.requireNonNull(atomicResidueFailure.getCause(), "atomic residue cause")
+                    .getMessage(),
+                "atomic residue message")
+            .contains("impossible replacement source"));
+
+    Path malformedParent = Files.createDirectory(tempDirectory.resolve("reacquire-malformed"));
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(malformedParent);
+    Path malformedTarget = malformedParent.resolve("book.sqlite");
+    establishWitness(
+        malformedTarget, SqlitePublicationCapabilityWitness.PrimitiveKind.ATOMIC_REPLACE);
+    Path malformedCompletion = publicationCapabilityState(malformedParent, ".complete");
+    Files.delete(malformedCompletion);
+    SqliteCoordinationControlFiles.createAtomicallySecureRecord(
+        malformedCompletion,
+        new byte[Files.readAllBytes(publicationCapabilityState(malformedParent, ".prior")).length]);
+
+    SqlitePublicationCapabilityWitness.AcquisitionFailure malformedFailure =
+        assertThrows(
+            SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+            () ->
+                SqlitePublicationCapabilityWitness.acquire(
+                    java.util.List.of(
+                        SqlitePublicationCapabilityWitness.Requirement.atomicReplace(
+                            malformedTarget)),
+                    Files::createLink,
+                    SqliteProtectedBookPublicationSupport::moveReplacing));
+    assertTrue(
+        Objects.requireNonNull(
+                Objects.requireNonNull(malformedFailure.getCause(), "malformed failure cause")
+                    .getMessage(),
+                "malformed failure message")
+            .contains("unexpected immutable state"));
+  }
+
+  @Test
+  void retainedWitnessRejectsAParentReplacementThatLosesItsImmutableEvidence() throws Exception {
+    Path originalParent = Files.createDirectory(tempDirectory.resolve("identity-parent"));
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(originalParent);
+    Path targetPath = originalParent.resolve("book.key");
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses =
+        SqlitePublicationCapabilityWitness.acquire(
+            java.util.List.of(SqlitePublicationCapabilityWitness.Requirement.noReplace(targetPath)),
+            Files::createLink,
+            SqliteProtectedBookPublicationSupport::moveReplacing)) {
+      Files.move(originalParent, tempDirectory.resolve("identity-parent-retained"));
+      Files.createDirectory(originalParent);
+      SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(originalParent);
+
+      IOException failure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  witnesses.requireCurrent(
+                      targetPath,
+                      SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK));
+      assertTrue(
+          Objects.requireNonNull(failure.getMessage(), "identity failure message")
+              .contains("not valid"));
+    }
+  }
+
+  @Test
   void publishRetainingStage_translatesAnUnsupportedAtomicPrimitiveAndPreservesTheStagedSecret()
       throws Exception {
     Path targetPath = tempDirectory.resolve("unsupported-publish.key");
@@ -552,7 +664,24 @@ class SqliteGeneratedSecretTargetTest {
   }
 
   private Path publicationCapabilityState(String suffix) throws IOException {
-    try (var entries = Files.list(tempDirectory)) {
+    return publicationCapabilityState(tempDirectory, suffix);
+  }
+
+  private static void establishWitness(
+      Path targetPath, SqlitePublicationCapabilityWitness.PrimitiveKind primitiveKind)
+      throws IOException {
+    try (SqlitePublicationCapabilityWitness.Set ignored =
+        SqlitePublicationCapabilityWitness.acquire(
+            java.util.List.of(
+                new SqlitePublicationCapabilityWitness.Requirement(targetPath, primitiveKind)),
+            Files::createLink,
+            SqliteProtectedBookPublicationSupport::moveReplacing)) {
+      // The subsequent acquisition validates the retained immutable facts.
+    }
+  }
+
+  private static Path publicationCapabilityState(Path parent, String suffix) throws IOException {
+    try (var entries = Files.list(parent)) {
       return entries
           .filter(
               candidate ->
