@@ -16,6 +16,7 @@ import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationRecoveryReques
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -447,6 +448,90 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
     assertInstanceOf(ProtectedBookMaintenanceRejection.RecoveryPending.class, refusal.rejection());
     assertFalse(Files.exists(record.bookTargetPath));
     assertFalse(Files.exists(record.secretTargetPath));
+  }
+
+  @Test
+  void evidenceClassifierDistinguishesExactIncompleteAndUnsafeRecoveryEvidence() throws Exception {
+    SqliteProtectedBookPairPublicationRecord exact = retainedRecord("classifier-exact");
+
+    assertInstanceOf(
+        SqlitePairPublicationEvidenceExact.class,
+        SqlitePairPublicationEvidenceClassifier.classify(
+            exact.bookTargetPath, exact.secretTargetPath, Map.of(exact.pairId, exact)));
+
+    SqliteProtectedBookPairPublicationRecord duplicate =
+        SqliteProtectedBookPairPublicationRecord.create(
+            exact.bookTargetPath,
+            exact.secretTargetPath,
+            writeArtifact("classifier-exact/.other-book.stage", "other retained book stage"),
+            writeArtifact("classifier-exact/.other-secret.stage", "other retained secret stage"),
+            RestoredBookTargetPolicy.REQUIRE_ABSENT,
+            backupBinding(exact.bookTargetPath.resolveSibling("source.sqlite")),
+            (ignoredStep, ignoredParent) -> {});
+    assertEquals(
+        SqlitePairPublicationEvidenceUnsafe.INSTANCE,
+        SqlitePairPublicationEvidenceClassifier.classify(
+            exact.bookTargetPath,
+            exact.secretTargetPath,
+            Map.of(exact.pairId, exact, duplicate.pairId, duplicate)));
+
+    SqliteProtectedBookPairPublicationEvidenceLifecycle.retainPrepublication(
+        exact, (ignoredStep, ignoredParent) -> {});
+    assertEquals(
+        SqlitePairPublicationEvidenceAbsent.INSTANCE,
+        SqlitePairPublicationEvidenceClassifier.classify(
+            exact.bookTargetPath, exact.secretTargetPath, Map.of(exact.pairId, exact)));
+
+    Files.writeString(
+        exact.evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.RETAINED).getFirst(),
+        "changed retained evidence");
+    assertInstanceOf(
+        SqlitePairPublicationEvidenceExactIncomplete.class,
+        SqlitePairPublicationEvidenceClassifier.classify(
+            exact.bookTargetPath, exact.secretTargetPath, Map.of(exact.pairId, exact)));
+    assertInstanceOf(
+        SqlitePairPublicationEvidenceOtherPending.class,
+        SqlitePairPublicationEvidenceClassifier.classify(
+            exact.bookTargetPath.resolveSibling("other-book.sqlite"),
+            exact.secretTargetPath.resolveSibling("other-book.key"),
+            Map.of(exact.pairId, exact)));
+  }
+
+  @Test
+  void evidenceClassifierTreatsDurablyCompletedBackupAsAuthoritativeAndIncompleteClaimsAsUnsafe()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord completed = retainedRecord("classifier-completed");
+    Files.createLink(completed.bookTargetPath, completed.bookStagePath);
+    Files.createLink(completed.secretTargetPath, completed.secretStagePath);
+    SqliteProtectedBookPairPublicationEvidenceLifecycle.confirmCompletedPublication(
+        completed, (ignoredStep, ignoredParent) -> {});
+
+    assertInstanceOf(
+        SqlitePairPublicationEvidenceExact.class,
+        SqlitePairPublicationEvidenceClassifier.classify(
+            completed.bookTargetPath,
+            completed.secretTargetPath.resolveSibling("unrelated.key"),
+            Map.of(completed.pairId, completed)));
+
+    SqliteProtectedBookPairPublicationRecord partialClaim = retainedRecord("classifier-claim");
+    Files.writeString(
+        partialClaim.evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.CLAIM).getFirst(),
+        "changed claim evidence");
+    for (Path evidencePath :
+        partialClaim.evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.INTENT)) {
+      Files.delete(evidencePath);
+    }
+    for (Path evidencePath :
+        partialClaim.evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.RECOVERY)) {
+      Files.delete(evidencePath);
+    }
+
+    assertEquals(
+        SqlitePairPublicationEvidenceUnsafe.INSTANCE,
+        SqlitePairPublicationEvidenceClassifier.classify(
+            partialClaim.bookTargetPath,
+            partialClaim.secretTargetPath,
+            Map.of(partialClaim.pairId, partialClaim)));
   }
 
   private static SqliteProtectedBookPairPublicationRecovery recovery() {
