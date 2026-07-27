@@ -181,6 +181,129 @@ class SqliteGeneratedSecretTargetTest {
   }
 
   @Test
+  void retainedWitnessReusesCompletePrimitiveEvidenceAfterTheEarlierScopeCloses() throws Exception {
+    Path noReplaceTarget = tempDirectory.resolve("reused.key");
+    Path replacementTarget = tempDirectory.resolve("reused.sqlite");
+
+    try (SqlitePublicationCapabilityWitness.Set ignored =
+        SqlitePublicationCapabilityWitness.acquire(
+            java.util.List.of(
+                SqlitePublicationCapabilityWitness.Requirement.noReplace(noReplaceTarget),
+                SqlitePublicationCapabilityWitness.Requirement.atomicReplace(replacementTarget)),
+            Files::createLink,
+            SqliteProtectedBookPublicationSupport::moveReplacing)) {
+      // Closing the scope releases only its locks; its exact immutable capability facts remain.
+    }
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses =
+        SqlitePublicationCapabilityWitness.acquire(
+            java.util.List.of(
+                SqlitePublicationCapabilityWitness.Requirement.noReplace(noReplaceTarget),
+                SqlitePublicationCapabilityWitness.Requirement.atomicReplace(replacementTarget)),
+            Files::createLink,
+            SqliteProtectedBookPublicationSupport::moveReplacing)) {
+      witnesses.requireCurrent(
+          noReplaceTarget, SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK);
+      witnesses.requireCurrent(
+          replacementTarget, SqlitePublicationCapabilityWitness.PrimitiveKind.ATOMIC_REPLACE);
+    }
+  }
+
+  @Test
+  void retainedWitnessAcceptsAConcurrentExactNoReplaceCompletion() throws Exception {
+    Path targetPath = tempDirectory.resolve("concurrent-exact.key");
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses =
+        SqlitePublicationCapabilityWitness.acquire(
+            java.util.List.of(SqlitePublicationCapabilityWitness.Requirement.noReplace(targetPath)),
+            (completion, source) -> {
+              Files.createLink(completion, source);
+              throw new FileAlreadyExistsException(completion.toString());
+            },
+            SqliteProtectedBookPublicationSupport::moveReplacing)) {
+      witnesses.requireCurrent(
+          targetPath, SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK);
+    }
+  }
+
+  @Test
+  void retainedWitnessFailsClosedOnRetiredRandomProbeResidue() throws Exception {
+    Path targetPath = tempDirectory.resolve("legacy-residue.key");
+    Files.writeString(
+        tempDirectory.resolve(".fingrind-book-no-replace-probe-abandoned"), "retired probe");
+
+    SqlitePublicationCapabilityWitness.AcquisitionFailure failure =
+        assertThrows(
+            SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+            () ->
+                SqlitePublicationCapabilityWitness.acquire(
+                    java.util.List.of(
+                        SqlitePublicationCapabilityWitness.Requirement.noReplace(targetPath)),
+                    Files::createLink,
+                    SqliteProtectedBookPublicationSupport::moveReplacing));
+
+    assertTrue(
+        Objects.requireNonNull(
+                Objects.requireNonNull(failure.getCause(), "capability failure cause").getMessage(),
+                "capability failure message")
+            .contains("Retired random publication-capability probe residue"));
+    assertFalse(Files.exists(targetPath));
+  }
+
+  @Test
+  void retainedWitnessRejectsFinalPublicationChecksAfterItCloses() throws Exception {
+    Path targetPath = tempDirectory.resolve("closed.key");
+    SqlitePublicationCapabilityWitness.Set witnesses =
+        SqlitePublicationCapabilityWitness.acquire(
+            java.util.List.of(SqlitePublicationCapabilityWitness.Requirement.noReplace(targetPath)),
+            Files::createLink,
+            SqliteProtectedBookPublicationSupport::moveReplacing);
+    witnesses.close();
+    witnesses.close();
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                witnesses.requireCurrent(
+                    targetPath, SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK));
+
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage(), "closed witness message")
+            .contains("closed"));
+  }
+
+  @Test
+  void retainedWitnessPreservesAnUpstreamCallerPathFailure() throws Exception {
+    Path targetPath = tempDirectory.resolve("path-failure.key");
+    SqliteCallerPathContractException upstream =
+        new SqliteCallerPathContractException(
+            targetPath,
+            SqliteCallerPathFailure.TARGET_OWNER_ONLY_REQUIRED,
+            "injected caller path failure");
+
+    SqlitePublicationCapabilityWitness.AcquisitionFailure failure =
+        assertThrows(
+            SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+            () ->
+                SqlitePublicationCapabilityWitness.acquire(
+                    java.util.List.of(
+                        SqlitePublicationCapabilityWitness.Requirement.noReplace(targetPath)),
+                    (completion, source) -> {
+                      throw upstream;
+                    },
+                    SqliteProtectedBookPublicationSupport::moveReplacing));
+    SqliteCallerPathContractException translated =
+        Objects.requireNonNull(
+            SqlitePublicationCapabilityWitness.callerPathFailure(
+                failure, SqliteCallerPathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED));
+
+    assertEquals(targetPath.toAbsolutePath().normalize(), translated.requestedPath());
+    assertEquals(SqliteCallerPathFailure.TARGET_OWNER_ONLY_REQUIRED, translated.pathFailure());
+    assertSame(upstream, translated.getCause());
+  }
+
+  @Test
   void retainedWitness_refusesAnUnadmittedSiblingEvenWhenItSharesTheWitnessParent()
       throws Exception {
     Path admittedTarget = tempDirectory.resolve("admitted.key");

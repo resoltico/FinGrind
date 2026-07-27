@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState;
+import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRecoveryRecordState;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
@@ -12,6 +14,7 @@ import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationRecoveryReques
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -229,6 +232,51 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
                 ProtectedBookMaintenanceArtifactRole.NEW_BOOK_KEY_TARGET));
   }
 
+  @Test
+  void retainedPairRecordCarriesItsStagesIntoUncertainAndPrepublicationOutcomes() throws Exception {
+    SqliteProtectedBookPairPublicationRecord record = retainedRecord("retained-outcomes");
+
+    SqlitePairPublicationReconciliationCompletionUncertain derivedUncertainty =
+        assertInstanceOf(
+            SqlitePairPublicationReconciliationCompletionUncertain.class,
+            SqliteProtectedBookPairPublicationRecovery.completionUncertain(record));
+    assertEquals(
+        ProtectedBookPairPublicationMemberState.OUTCOME_UNCERTAIN,
+        derivedUncertainty.bookArtifactState());
+    assertEquals(
+        ProtectedBookPairPublicationMemberState.OUTCOME_UNCERTAIN,
+        derivedUncertainty.secretArtifactState());
+    var derivedRetention =
+        Objects.requireNonNull(
+            derivedUncertainty.pairPublicationRetention(), "derived uncertainty retention");
+    assertEquals(
+        record.bookStagePath, derivedRetention.bookPublication().retention().retainedStagePath());
+    assertEquals(
+        record.secretStagePath,
+        derivedRetention.generatedSecretPublication().retention().retainedStagePath());
+
+    SqlitePairPublicationReconciliationCompletionUncertain explicitUncertainty =
+        SqliteProtectedBookPairPublicationRecovery.completionUncertain(
+            record,
+            ProtectedBookPairPublicationMemberState.PUBLISHED_DURABLE,
+            ProtectedBookPairPublicationMemberState.OUTCOME_UNCERTAIN);
+    assertEquals(
+        ProtectedBookPairPublicationMemberState.PUBLISHED_DURABLE,
+        explicitUncertainty.bookArtifactState());
+    assertEquals(
+        ProtectedBookPairPublicationMemberState.OUTCOME_UNCERTAIN,
+        explicitUncertainty.secretArtifactState());
+
+    SqlitePairPublicationReconciliationPrepublicationRecoveryRequired prepublication =
+        SqliteProtectedBookPairPublicationRecovery.prepublicationRecoveryRequired(
+            record, ProtectedBookPairPublicationRecoveryRecordState.DURABLY_RETAINED);
+    assertEquals(
+        ProtectedBookPairPublicationRecoveryRecordState.DURABLY_RETAINED,
+        prepublication.recoveryRecordState());
+    assertEquals(record.bookTargetPath, prepublication.bookArtifactPath());
+    assertEquals(record.secretTargetPath, prepublication.secretArtifactPath());
+  }
+
   private static SqliteProtectedBookPairPublicationRecovery recovery() {
     return new SqliteProtectedBookPairPublicationRecovery(
         (ignoredBook, ignoredSecret, ignoredBinding) -> true,
@@ -246,6 +294,24 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
         bookPath.resolveSibling("source-backup.sqlite"),
         bookPath.resolveSibling("source-backup.key"),
         backupBinding(bookPath).acknowledgement());
+  }
+
+  private SqliteProtectedBookPairPublicationRecord retainedRecord(String directoryName)
+      throws IOException {
+    Path bookTarget = absentTarget(directoryName + "/book.sqlite");
+    Path secretTarget = absentTarget(directoryName + "/book.key");
+    Path bookStage = writeArtifact(directoryName + "/.book.stage", "retained book stage");
+    Path secretStage = writeArtifact(directoryName + "/.secret.stage", "retained secret stage");
+    SqliteOwnedStagedArtifact.recordExisting(bookTarget, bookStage);
+    SqliteOwnedStagedArtifact.recordExisting(secretTarget, secretStage);
+    return SqliteProtectedBookPairPublicationRecord.create(
+        bookTarget,
+        secretTarget,
+        bookStage,
+        secretStage,
+        RestoredBookTargetPolicy.REQUIRE_ABSENT,
+        backupBinding(bookTarget.resolveSibling("source.sqlite")),
+        (ignoredStep, ignoredParent) -> {});
   }
 
   private Path absentTarget(String relativePath) throws IOException {
