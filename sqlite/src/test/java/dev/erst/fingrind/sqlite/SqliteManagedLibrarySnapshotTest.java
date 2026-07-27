@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -110,6 +111,30 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
               PosixFilePermission.OWNER_WRITE,
               PosixFilePermission.OWNER_EXECUTE),
           ((AclFixturePath) snapshotDirectory).posixPermissions);
+    }
+  }
+
+  @Test
+  void createPrivateSnapshotDirectory_reportsItsSelectedTempRootWhenPrivateCreationFails()
+      throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath tempRoot = fileSystem.path("\\snapshot-temp");
+      tempRoot.exists = true;
+      tempRoot.regularFile = false;
+      fileSystem.onPathCreated(
+          path -> path.failCreateDirectoryWith(new IOException("injected snapshot directory refusal")));
+
+      ManagedSqliteRuntimeUnavailableException failure =
+          assertThrows(
+              ManagedSqliteRuntimeUnavailableException.class,
+              () ->
+                  SqliteManagedLibrarySnapshotSecurity.createPrivateSnapshotDirectory(
+                      tempRoot, true));
+
+      assertTrue(
+          Objects.requireNonNull(failure.getMessage())
+              .contains("could not create a private managed SQLite verification snapshot directory"));
+      assertInstanceOf(IOException.class, failure.getCause());
     }
   }
 
