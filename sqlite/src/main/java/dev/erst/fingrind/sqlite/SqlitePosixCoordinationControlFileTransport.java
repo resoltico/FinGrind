@@ -110,7 +110,13 @@ final class SqlitePosixCoordinationControlFileTransport {
     }
   }
 
-  private static void releaseLockAndChannel(FileLock lock, FileChannel channel) throws IOException {
+  /**
+   * Releases the retained native lock and descriptor, preserving every failure from that boundary.
+   *
+   * <p>Package visibility lets the filesystem fault suite exercise both independently failing
+   * resources without widening the public coordination protocol surface.
+   */
+  static void releaseLockAndChannel(FileLock lock, FileChannel channel) throws IOException {
     IOException failure = null;
     try {
       lock.release();

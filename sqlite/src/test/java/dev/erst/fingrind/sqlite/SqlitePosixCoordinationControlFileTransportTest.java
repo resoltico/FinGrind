@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -364,6 +365,52 @@ class SqlitePosixCoordinationControlFileTransportTest extends SqliteNativeBridge
   }
 
   @Test
+  void lockReleasePreservesFailuresFromBothTheLockAndItsRetainedChannel() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath controlPath = fileSystem.path("\\controls\\failing-release.control");
+      controlPath.exists = true;
+      controlPath.regularFile = true;
+      IOException lockFailure = new IOException("injected lock release failure");
+      IOException channelFailure = new IOException("injected channel close failure");
+      FailingCloseFixtureFileChannel channel =
+          new FailingCloseFixtureFileChannel(controlPath, channelFailure);
+
+      IOException failure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  SqlitePosixCoordinationControlFileTransport.releaseLockAndChannel(
+                      new FailingFixtureFileLock(channel, lockFailure), channel));
+
+      assertEquals(lockFailure, failure);
+      assertEquals(1, failure.getSuppressed().length);
+      assertEquals(channelFailure, failure.getSuppressed()[0]);
+    }
+  }
+
+  @Test
+  void lockReleaseReportsAChannelFailureWhenTheLockItselfReleasesCleanly() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath controlPath = fileSystem.path("\\controls\\channel-only-release.control");
+      controlPath.exists = true;
+      controlPath.regularFile = true;
+      IOException channelFailure = new IOException("injected channel close failure");
+      FailingCloseFixtureFileChannel channel =
+          new FailingCloseFixtureFileChannel(controlPath, channelFailure);
+
+      IOException failure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  SqlitePosixCoordinationControlFileTransport.releaseLockAndChannel(
+                      new FailingFixtureFileLock(channel, null), channel));
+
+      assertEquals(channelFailure, failure);
+      assertEquals(0, failure.getSuppressed().length);
+    }
+  }
+
+  @Test
   void truncatedHeadersAndInvalidTransportLockGeometryLeaveNoLeakedChannel() throws Exception {
     Path truncatedPath = tempDirectory.resolve("truncated.control");
     Path geometryPath = tempDirectory.resolve("invalid-geometry.control");
@@ -426,5 +473,45 @@ class SqlitePosixCoordinationControlFileTransportTest extends SqliteNativeBridge
     SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(parent);
     SqliteBookFileSecurity.createNewOwnerOnlyBookFile(artifactPath);
     return artifactPath;
+  }
+
+  /** Fixture descriptor that reports a close failure after the release boundary consumes it. */
+  private static final class FailingCloseFixtureFileChannel extends AclFixtureFileChannel {
+    private final IOException closeFailure;
+
+    private FailingCloseFixtureFileChannel(AclFixturePath path, IOException closeFailure) {
+      super(path, new AclFixtureSeekableByteChannel(path));
+      this.closeFailure = closeFailure;
+    }
+
+    @Override
+    protected void implCloseChannel() throws IOException {
+      throw closeFailure;
+    }
+  }
+
+  /** Fixture lock that may fail exactly once when the transport releases it. */
+  private static final class FailingFixtureFileLock extends FileLock {
+    private final @org.jspecify.annotations.Nullable IOException releaseFailure;
+    private boolean valid = true;
+
+    private FailingFixtureFileLock(
+        FileChannel channel, @org.jspecify.annotations.Nullable IOException releaseFailure) {
+      super(channel, 0L, 1L, false);
+      this.releaseFailure = releaseFailure;
+    }
+
+    @Override
+    public boolean isValid() {
+      return valid;
+    }
+
+    @Override
+    public void release() throws IOException {
+      valid = false;
+      if (releaseFailure != null) {
+        throw releaseFailure;
+      }
+    }
   }
 }
