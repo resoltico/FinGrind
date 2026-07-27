@@ -108,6 +108,16 @@ class BookAuditEventTest {
         "BOOK_OPENED audit events must not carry accountCode, postingId, or closeOperationOrder.",
         bookOpenedCloseOrderFailure.getMessage());
 
+    IllegalArgumentException bookOpenedPostingFailure =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new BookAuditEvent(
+                    FIXED_INSTANT, BookAuditEventKind.BOOK_OPENED, null, postingId, null));
+    assertEquals(
+        "BOOK_OPENED audit events must not carry accountCode, postingId, or closeOperationOrder.",
+        bookOpenedPostingFailure.getMessage());
+
     IllegalArgumentException accountDeclaredFailure =
         assertThrows(
             IllegalArgumentException.class,

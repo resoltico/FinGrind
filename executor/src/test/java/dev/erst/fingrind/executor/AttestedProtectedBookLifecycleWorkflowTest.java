@@ -138,6 +138,46 @@ class AttestedProtectedBookLifecycleWorkflowTest {
   }
 
   @Test
+  void rekeyRejectsInvalidLiveSourcesAndBusyPublicationScopes() throws IOException {
+    AttestationMaintenanceTestSupport.CredentialFixture credential = credential();
+    Path bookPath = temporaryDirectory.resolve("live/book.sqlite");
+    ProtectedBookAccess access =
+        ProtectedBookAccess.fromPublished(
+            AttestationMaintenanceTestSupport.bookAccess(bookPath, credential));
+    Path rekeyPath = temporaryDirectory.resolve("rekeyed/book.key");
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid sourceRejection =
+        new ProtectedBookMaintenanceRejection.ArtifactPathInvalid(
+            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+            bookPath,
+            ProtectedBookMaintenancePathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE);
+
+    AttestationMaintenanceTestSupport.Store invalidSource = store(bookPath, credential);
+    invalidSource.rejectExistingSourceNormalization(
+        bookPath, ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, sourceRejection);
+    try (var session = credential.openSession()) {
+      ProtectedBookRekeyOutcome.Rejected rejected =
+          assertInstanceOf(
+              ProtectedBookRekeyOutcome.Rejected.class,
+              accepted(
+                  new AttestedProtectedBookLifecycleWorkflow(CLOCK, invalidSource)
+                      .rekeyBook(access, rekeyPath, session)));
+      assertEquals(sourceRejection, rejected.rejection());
+    }
+
+    AttestationMaintenanceTestSupport.Store busy = store(bookPath, credential);
+    busy.setManagedLease(new LeaseBusy(bookPath));
+    try (var session = credential.openSession()) {
+      ProtectedBookRekeyOutcome.Rejected rejected =
+          assertInstanceOf(
+              ProtectedBookRekeyOutcome.Rejected.class,
+              accepted(
+                  new AttestedProtectedBookLifecycleWorkflow(CLOCK, busy)
+                      .rekeyBook(access, rekeyPath, session)));
+      assertInstanceOf(ProtectedBookMaintenanceRejection.ArtifactBusy.class, rejected.rejection());
+    }
+  }
+
+  @Test
   void backsUpResumesRestoresAndRekeysWithVerifiableDerivedChains() throws IOException {
     AttestationMaintenanceTestSupport.CredentialFixture credential = credential();
     Path bookPath = temporaryDirectory.resolve("live/book.sqlite");

@@ -263,6 +263,23 @@ class AttestedProtectedBookRegistryMutationWorkflowTest {
               accepted(workflow(busy).mutateRegistry(access, policyMutation(), session)));
       assertInstanceOf(ProtectedBookMaintenanceRejection.ArtifactBusy.class, rejected.rejection());
     }
+
+    AttestationMaintenanceTestSupport.Store invalidSource = store(bookPath, founder);
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid sourceRejection =
+        new ProtectedBookMaintenanceRejection.ArtifactPathInvalid(
+            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+            bookPath,
+            dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure
+                .ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE);
+    invalidSource.rejectExistingSourceNormalization(
+        bookPath, ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, sourceRejection);
+    try (var session = founder.openSession()) {
+      ProtectedBookRegistryMutationOutcome.Rejected rejected =
+          assertInstanceOf(
+              ProtectedBookRegistryMutationOutcome.Rejected.class,
+              accepted(workflow(invalidSource).mutateRegistry(access, policyMutation(), session)));
+      assertEquals(sourceRejection, rejected.rejection());
+    }
   }
 
   @Test

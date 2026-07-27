@@ -28,8 +28,10 @@ class AttestationFounderKeyTargetOccupiedExceptionTest {
         new AttestationKeyFileDestinationOccupiedException(
             keyFilePath, retainedStage, new FileAlreadyExistsException(keyFilePath.toString()));
 
-    AttestationFounderKeyTargetOccupiedException restored =
-        roundTrip(new AttestationFounderKeyTargetOccupiedException(keyFilePath, coreCollision));
+    AttestationFounderKeyTargetOccupiedException original =
+        new AttestationFounderKeyTargetOccupiedException(keyFilePath, coreCollision);
+    assertEquals(keyFilePath, original.keyFilePath());
+    AttestationFounderKeyTargetOccupiedException restored = roundTrip(original);
 
     assertEquals(keyFilePath, restored.keyFilePath());
     AttestationKeyFileDestinationOccupiedException restoredCoreCollision =

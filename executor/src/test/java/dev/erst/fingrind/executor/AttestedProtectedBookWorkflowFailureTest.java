@@ -12,7 +12,11 @@ import dev.erst.fingrind.contract.runtime.ContractFailureDetails;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
 import dev.erst.fingrind.core.attestation.AttestationAuthorizationFailure;
+import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
+import dev.erst.fingrind.core.attestation.AttestationLifecycleMutationProjection;
+import dev.erst.fingrind.core.attestation.AttestationOperationKind;
+import dev.erst.fingrind.core.attestation.AttestationVerifier;
 import dev.erst.fingrind.executor.maintenance.AttestedProtectedBookLifecycleWorkflow;
 import dev.erst.fingrind.executor.maintenance.BackupAcknowledgementConflictException;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
@@ -27,6 +31,7 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookRestoreOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookVerificationFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.LeaseBusy;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.VerificationFailure;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.VerifiedBook;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationFailureOutcome;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -118,6 +123,21 @@ class AttestedProtectedBookWorkflowFailureTest {
         access,
         credential,
         ProtectedBookMaintenanceRejection.ArtifactVerificationFailed.class);
+
+    AttestationMaintenanceTestSupport.Store invalidSource = store(credential);
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid sourceRejection =
+        new ProtectedBookMaintenanceRejection.ArtifactPathInvalid(
+            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+            bookPath(),
+            dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenancePathFailure
+                .ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE);
+    invalidSource.rejectExistingSourceNormalization(
+        bookPath(), ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, sourceRejection);
+    assertBackupRejection(
+        invalidSource,
+        access,
+        credential,
+        ProtectedBookMaintenanceRejection.ArtifactPathInvalid.class);
   }
 
   @Test
@@ -273,6 +293,41 @@ class AttestedProtectedBookWorkflowFailureTest {
         access,
         credential,
         ProtectedBookMaintenanceRejection.BackupAcknowledgementConflict.class);
+
+    AttestationMaintenanceTestSupport.Store conflictingAcknowledgement = store(credential);
+    var genesisVerification =
+        AttestationVerifier.verifyBook(conflictingAcknowledgement.liveEvidence());
+    AttestationBackupAcknowledgement retainedAcknowledgement =
+        new AttestationBackupAcknowledgement(
+            BACKUP_ID,
+            new byte[32],
+            genesisVerification.headOrder(),
+            genesisVerification.operationHead());
+    try (var session = credential.openSession()) {
+      try (VerifiedBook liveBook =
+          (VerifiedBook)
+              accepted(
+                  conflictingAcknowledgement.verifyInitializedBook(
+                      access, ProtectedBookMaintenanceArtifactRole.LIVE_BOOK))) {
+        conflictingAcknowledgement.appendAttestedOperation(
+            liveBook,
+            AttestationOperationKind.BACKUP_CREATED,
+            CLOCK.instant(),
+            AttestationLifecycleMutationProjection.backupBook(
+                AttestationOperationKind.BACKUP_CREATED.wireToken(), retainedAcknowledgement),
+            session,
+            retainedAcknowledgement);
+      }
+      ProtectedBookBackupOutcome.Rejected rejected =
+          assertInstanceOf(
+              ProtectedBookBackupOutcome.Rejected.class,
+              accepted(
+                  workflow(conflictingAcknowledgement)
+                      .backupBook(access, backupPath(), backupKeyPath(), BACKUP_ID, session)));
+      assertInstanceOf(
+          ProtectedBookMaintenanceRejection.BackupAcknowledgementConflict.class,
+          rejected.rejection());
+    }
   }
 
   @Test

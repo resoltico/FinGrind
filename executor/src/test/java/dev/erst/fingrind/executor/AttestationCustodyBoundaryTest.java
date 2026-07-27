@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput;
 import dev.erst.fingrind.contract.runtime.BookAccess;
 import dev.erst.fingrind.contract.runtime.OpenBookFailureDetails;
+import dev.erst.fingrind.core.ArtifactPublicationOutcomeUncertainException;
 import dev.erst.fingrind.core.ArtifactPublicationResult;
 import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.core.attestation.AttestationAdmissionRejectedException;
@@ -87,6 +88,56 @@ class AttestationCustodyBoundaryTest {
   }
 
   @Test
+  void validatesFounderInputsBeforeOpeningAndMapsAnOversizedCredentialSelectionToItsFirstPath()
+      throws IOException {
+    AttestationCredentialSource source = createCredentialSource("validated-founder");
+    AttestationFounderInput founder =
+        new AttestationFounderInput(
+            dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+            PRINCIPAL_ID,
+            source.encryptedKeyFilePath(),
+            source.passphraseFilePath());
+
+    AttestationGenesisFactory.validateFounderInputs(List.of(founder));
+    AttestationCredentialException failure =
+        assertThrows(
+            AttestationCredentialException.class,
+            () ->
+                AttestationSigningSessionFactory.open(
+                    java.util.Collections.nCopies(
+                        dev.erst.fingrind.core.attestation.AttestationAuthorizationLimits
+                                .MAXIMUM_QUORUM
+                            + 1,
+                        source)));
+    assertEquals(source.encryptedKeyFilePath(), failure.credentialPath());
+  }
+
+  @Test
+  void rejectsEmptyAndUnreadableMutationCredentialsAtTheCustodyBoundary() {
+    IllegalArgumentException emptySelection =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> AttestationMutationAuthorization.withAuthorizer(List.of(), ignored -> "unused"));
+    assertEquals(
+        "Protected-book mutation requires at least one attestation authorization credential.",
+        emptySelection.getMessage());
+
+    AttestationCredentialSource missingSource =
+        new AttestationCredentialSource(
+            dev.erst.fingrind.core.attestation.AttestationCustodian.FILE_PKCS8,
+            PRINCIPAL_ID,
+            temporaryDirectory.resolve("missing.fgatk"),
+            temporaryDirectory.resolve("missing.passphrase"));
+    AttestationCredentialException unreadable =
+        assertThrows(
+            AttestationCredentialException.class,
+            () ->
+                AttestationMutationAuthorization.withAuthorizer(
+                    List.of(missingSource), ignored -> "unused"));
+    assertEquals(missingSource.encryptedKeyFilePath(), unreadable.credentialPath());
+  }
+
+  @Test
   void preservesActionFailuresInsteadOfMisclassifyingThemAsCredentialFailures() throws IOException {
     AttestationCredentialSource source = createCredentialSource("action-source");
 
@@ -139,6 +190,75 @@ class AttestationCustodyBoundaryTest {
     assertEquals(
         List.of(retainedArtifact(retention.retainedStagePath(), retention)),
         observed.retainedFounderKeyArtifacts());
+  }
+
+  @Test
+  void genesisPreparationRetainsAnIndeterminateFounderCandidate() {
+    Path candidateKey = temporaryDirectory.resolve("indeterminate-founder.fgatk");
+    ArtifactPublicationRetention retention =
+        new ArtifactPublicationRetention(temporaryDirectory.resolve(".indeterminate-founder.tmp"));
+    ArtifactPublicationOutcomeUncertainException uncertainty =
+        new ArtifactPublicationOutcomeUncertainException(
+            candidateKey, retention, new IOException("simulated no-replace uncertainty"));
+
+    AttestationFounderKeyRetentionException observed =
+        assertThrows(
+            AttestationFounderKeyRetentionException.class,
+            () ->
+                AttestationGenesisFactory.prepare(
+                    ExecutorAccountingTestSupport.bookIdentity(),
+                    RECORDED_AT,
+                    List.of(founderInput(candidateKey)),
+                    new AttestationGenesisFactory.FounderCredentialAccess() {
+                      @Override
+                      public AttestationSigningCredentialOpening openExisting(
+                          AttestationFounderInput founder) {
+                        throw new AssertionError("The candidate founder key must be missing.");
+                      }
+
+                      @Override
+                      public AttestationSigningCredentialOpening openOrCreate(
+                          AttestationFounderInput founder) {
+                        throw uncertainty;
+                      }
+                    }));
+
+    assertSame(uncertainty, observed.getCause());
+    assertEquals(
+        List.of(retainedArtifact(candidateKey, retention)), observed.retainedFounderKeyArtifacts());
+  }
+
+  @Test
+  void genesisPreparationPreservesCredentialAndUnexpectedFailuresWithoutInventingArtifacts() {
+    Path credentialPath = temporaryDirectory.resolve("credential-failure.fgatk");
+    dev.erst.fingrind.core.attestation.AttestationCredentialUseException credentialUseFailure =
+        new dev.erst.fingrind.core.attestation.AttestationCredentialUseException(
+            credentialPath, "simulated credential use failure");
+
+    AttestationCredentialException credentialFailure =
+        assertThrows(
+            AttestationCredentialException.class,
+            () ->
+                AttestationGenesisFactory.prepare(
+                    ExecutorAccountingTestSupport.bookIdentity(),
+                    RECORDED_AT,
+                    List.of(founderInput(credentialPath)),
+                    failingFounderAccess(credentialUseFailure)));
+    assertEquals(credentialPath.toAbsolutePath().normalize(), credentialFailure.credentialPath());
+    assertSame(credentialUseFailure, credentialFailure.getCause());
+
+    Path runtimePath = temporaryDirectory.resolve("runtime-failure.fgatk");
+    IllegalStateException runtimeFailure = new IllegalStateException("simulated runtime failure");
+    IllegalStateException observed =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                AttestationGenesisFactory.prepare(
+                    ExecutorAccountingTestSupport.bookIdentity(),
+                    RECORDED_AT,
+                    List.of(founderInput(runtimePath)),
+                    failingFounderAccess(runtimeFailure)));
+    assertSame(runtimeFailure, observed);
   }
 
   @Test
@@ -278,6 +398,21 @@ class AttestationCustodyBoundaryTest {
         OpenBookFailureDetails.OpenBookPreparationArtifactRole.ATTESTATION_FOUNDER_KEY,
         path,
         retention);
+  }
+
+  private static AttestationGenesisFactory.FounderCredentialAccess failingFounderAccess(
+      RuntimeException failure) {
+    return new AttestationGenesisFactory.FounderCredentialAccess() {
+      @Override
+      public AttestationSigningCredentialOpening openExisting(AttestationFounderInput founder) {
+        throw new AssertionError("The candidate founder key must be missing.");
+      }
+
+      @Override
+      public AttestationSigningCredentialOpening openOrCreate(AttestationFounderInput founder) {
+        throw failure;
+      }
+    };
   }
 
   private AttestationCredentialSource createCredentialSource(String name) throws IOException {

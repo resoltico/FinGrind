@@ -137,6 +137,7 @@ class ProtectedBookMaintenancePublishedLanguageTranslatorTest {
                 BACKUP_PATH, List.of(Path.of("backup.fgba-wal"))),
             new ProtectedBookMaintenanceRejection.BackupSourceMatchesLiveBook(
                 BOOK_PATH, BACKUP_PATH),
+            new ProtectedBookMaintenanceRejection.PairTargetsConflict(BOOK_PATH, KEY_PATH),
             new ProtectedBookMaintenanceRejection.BackupAcknowledgementConflict(BACKUP_ID),
             new ProtectedBookMaintenanceRejection.BackupDestinationAlreadyExists(BACKUP_PATH),
             new ProtectedBookMaintenanceRejection.SecretTargetOccupied(KEY_PATH),

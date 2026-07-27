@@ -1,6 +1,7 @@
 package dev.erst.fingrind.executor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -147,6 +148,48 @@ class AttestationFounderCredentialsTest {
         observed.retainedFounderKeyArtifacts().getFirst();
     assertEquals(founderKeyPath.toAbsolutePath().normalize(), retainedArtifact.path());
     assertNull(retainedArtifact.retainedStage());
+  }
+
+  @Test
+  void validatesExistingAndMissingFounderInputsWithoutPublishingANewKey() throws Exception {
+    AttestationMaintenanceTestSupport.CredentialFixture existing =
+        AttestationMaintenanceTestSupport.createCredential(temporaryDirectory);
+    AttestationFounderInput existingFounder =
+        new AttestationFounderInput(
+            AttestationCustodian.FILE_PKCS8,
+            existing.source().principalId(),
+            existing.source().encryptedKeyFilePath(),
+            existing.source().passphraseFilePath());
+    AttestationFounderInput missingFounder =
+        founderInput(temporaryDirectory.resolve("missing-founder.fgatk"));
+    java.nio.file.Files.writeString(
+        missingFounder.passphraseFilePath(), "missing founder passphrase\n");
+
+    var opening = AttestationFounderCredentials.openExisting(existingFounder);
+    try (var credential = opening.credential()) {
+      assertEquals(existing.source().principalId(), credential.principalId());
+    }
+    AttestationFounderCredentials.validateForOpening(existingFounder);
+    AttestationFounderCredentials.validateForOpening(missingFounder);
+    assertFalse(java.nio.file.Files.exists(missingFounder.encryptedKeyFilePath()));
+  }
+
+  @Test
+  void mapsFounderValidationAndExistingCredentialFailuresToTheirSelectedKeyPath() {
+    Path missingKeyPath = temporaryDirectory.resolve("missing-founder.fgatk");
+    AttestationFounderInput missingFounder = founderInput(missingKeyPath);
+
+    AttestationCredentialException missingPassphrase =
+        assertThrows(
+            AttestationCredentialException.class,
+            () -> AttestationFounderCredentials.validateForOpening(missingFounder));
+    assertEquals(missingKeyPath.toAbsolutePath().normalize(), missingPassphrase.credentialPath());
+
+    AttestationCredentialException missingCredential =
+        assertThrows(
+            AttestationCredentialException.class,
+            () -> AttestationFounderCredentials.openExisting(missingFounder));
+    assertEquals(missingKeyPath.toAbsolutePath().normalize(), missingCredential.credentialPath());
   }
 
   private static void assertRetainedFounderKey(
