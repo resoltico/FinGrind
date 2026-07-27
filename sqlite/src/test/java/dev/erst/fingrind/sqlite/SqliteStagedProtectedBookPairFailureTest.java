@@ -745,7 +745,8 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
                 },
                 (step, parentDirectory) -> {})) {
       sealBackupForPublication(backupPair);
-      backupPair.commit(backupBinding(backupFinalPath));
+      var publishedBackup = backupPair.commit(backupBinding(backupFinalPath));
+      assertEquals(publishedBackup, backupPair.commit(backupBinding(backupFinalPath)));
     }
 
     assertTrue(Files.exists(backupFinalPath));
@@ -781,7 +782,11 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
                       replaceWithNonemptyDirectory(restoredKeyRecordPath);
                     },
                     SqliteProtectedBookPublicationSupport::moveReplacing))) {
-      restoredPair.commit(restoreBinding(restoredStagedPath, restoredKeyStagedPath));
+      var publishedRestore =
+          restoredPair.commit(restoreBinding(restoredStagedPath, restoredKeyStagedPath));
+      assertEquals(
+          publishedRestore,
+          restoredPair.commit(restoreBinding(restoredStagedPath, restoredKeyStagedPath)));
     }
 
     assertTrue(Files.exists(restoredFinalPath));
