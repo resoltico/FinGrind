@@ -42,7 +42,6 @@ final class SqliteBackupArtifactVerifier {
       checkedArtifactPath = normalizeBackupArtifactPath(normalizedBackupArtifactPath);
       checkedKeyPath = normalizeBackupKeyPath(normalizedBackupKeyFilePath);
       Path snapshotKeyPath = checkedKeyPath;
-      SqliteProtectedBookStagingFiles.requireRegularNonSymlinkFile(checkedArtifactPath);
       byte[] artifact = SqliteSecureRegularFileAccess.readAllBytes(checkedArtifactPath);
       try (SqliteVerifiedBackupSnapshot snapshot =
           new SqliteVerifiedBackupSnapshot(
@@ -69,9 +68,6 @@ final class SqliteBackupArtifactVerifier {
               checkedKeyPath,
               ProtectedBookVerificationFailure.PROTECTED_BOOK_VERIFICATION_FAILED),
           exception);
-    } catch (SqliteCallerPathContractException exception) {
-      throw SqliteProtectedBookMaintenanceArtifactStore.maintenanceRejection(
-          ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE, exception);
     } catch (RuntimeException exception) {
       throw new ProtectedBookMaintenanceRejectionException(
           new ProtectedBookMaintenanceRejection.ArtifactVerificationFailed(
