@@ -693,6 +693,60 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
   }
 
   @Test
+  void evidenceRepairRestoresObservedTerminalCopiesAndRetainsTheDurabilityFailure()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord record =
+        retainedCrossParentRecord("terminal-evidence-repair");
+    Files.createLink(record.bookTargetPath, record.bookStagePath);
+    Files.createLink(record.secretTargetPath, record.secretStagePath);
+    SqliteProtectedBookPairPublicationEvidenceLifecycle.retainPrepublication(
+        record, (ignoredStep, ignoredParent) -> {});
+    SqliteProtectedBookPairPublicationEvidenceLifecycle.confirmCompletedPublication(
+        record, (ignoredStep, ignoredParent) -> {});
+    Files.delete(
+        record.evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.RETAINED).getLast());
+    Files.delete(
+        record.evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.COMPLETED).getLast());
+
+    SqliteManagedTargetLeasesHeld leases =
+        assertInstanceOf(
+            SqliteManagedTargetLeasesHeld.class,
+            SqliteBookMaintenanceLease.acquireManagedTargetPair(
+                record.bookTargetPath, record.secretTargetPath));
+    try (SqliteHeldLease ignoredBookLease = leases.bookTargetLease();
+        SqliteHeldLease ignoredSecretLease = leases.secretTargetLease()) {
+      SqlitePairPublicationEvidenceRecovery.repairIncompleteEvidence(
+          record, (ignoredStep, ignoredParent) -> {});
+    }
+
+    assertTrue(
+        SqlitePairPublicationEvidenceStatus.hasComplete(
+            record, SqliteProtectedBookPairPublicationEvidenceKind.RETAINED));
+    assertTrue(
+        SqlitePairPublicationEvidenceStatus.hasComplete(
+            record, SqliteProtectedBookPairPublicationEvidenceKind.COMPLETED));
+    Path claimPath =
+        record.evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.CLAIM).getFirst();
+    SqliteProtectedBookPairPublicationRecord.RecoveryRecordDurabilityUnconfirmedException
+        durabilityFailure =
+            assertThrows(
+                SqliteProtectedBookPairPublicationRecord
+                    .RecoveryRecordDurabilityUnconfirmedException.class,
+                () ->
+                    SqlitePairPublicationEvidenceRecovery.forceCopy(
+                        record,
+                        SqliteProtectedBookPairPublicationEvidenceKind.CLAIM,
+                        claimPath,
+                        (ignoredStep, ignoredParent) -> {
+                          throw new IOException("directory force failed");
+                        }));
+    assertEquals(
+        "directory force failed",
+        Objects.requireNonNull(durabilityFailure.getCause(), "durability failure cause")
+            .getMessage());
+  }
+
+  @Test
   void workflowBlocksPartialPrepublicationVisibilityInsteadOfReinterpretingItAsNewWork()
       throws Exception {
     SqliteProtectedBookPairPublicationRecord record =
@@ -1274,6 +1328,25 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
   private SqliteProtectedBookPairPublicationRecord retainedRecord(String directoryName)
       throws IOException {
     return pairRecord(directoryName, true);
+  }
+
+  private SqliteProtectedBookPairPublicationRecord retainedCrossParentRecord(String directoryName)
+      throws IOException {
+    Path bookTarget = absentTarget(directoryName + "/book/book.sqlite");
+    Path secretTarget = absentTarget(directoryName + "/secret/book.key");
+    Path bookStage = writeArtifact(directoryName + "/book/.book.stage", "retained book stage");
+    Path secretStage =
+        writeArtifact(directoryName + "/secret/.secret.stage", "retained secret stage");
+    SqliteOwnedStagedArtifact.recordExisting(bookTarget, bookStage);
+    SqliteOwnedStagedArtifact.recordExisting(secretTarget, secretStage);
+    return SqliteProtectedBookPairPublicationRecord.create(
+        bookTarget,
+        secretTarget,
+        bookStage,
+        secretStage,
+        RestoredBookTargetPolicy.REQUIRE_ABSENT,
+        backupBinding(bookTarget.resolveSibling("source.sqlite")),
+        (ignoredStep, ignoredParent) -> {});
   }
 
   private SqliteProtectedBookPairPublicationRecord pairRecord(
