@@ -78,6 +78,12 @@ final class SqliteNativeConnectionActivityRegistry {
     if (registration == null) {
       return;
     }
+    if (!registration.claimClose()) {
+      throw new IllegalStateException(
+          "One SQLite native connection activity registration was already closed for "
+              + registration.diagnosticBookPath()
+              + ".");
+    }
     String objectIdentity = registration.objectIdentity();
     AtomicInteger activeObjectConnections = requireActiveObjectConnections(registration);
     decrementActiveConnections();

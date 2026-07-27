@@ -15,6 +15,7 @@ final class SqliteNativeActivityRegistration {
   private final Path diagnosticBookPath;
   private final String objectIdentity;
   private final SqliteBookActivityMarkers.@Nullable ActivityRegistration activityRegistration;
+  private boolean closed;
 
   SqliteNativeActivityRegistration(
       Path diagnosticBookPath,
@@ -39,6 +40,15 @@ final class SqliteNativeActivityRegistration {
 
   boolean publishesActivityMarker() {
     return activityRegistration != null;
+  }
+
+  /** Claims this exact native registration for its one permitted close transition. */
+  synchronized boolean claimClose() {
+    if (closed) {
+      return false;
+    }
+    closed = true;
+    return true;
   }
 
   void releaseActivityMarker() {

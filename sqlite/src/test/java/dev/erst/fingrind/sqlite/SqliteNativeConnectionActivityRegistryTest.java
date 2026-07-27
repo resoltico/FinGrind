@@ -5,8 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.net.URI;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
@@ -133,6 +137,60 @@ class SqliteNativeConnectionActivityRegistryTest extends SqliteNativeBridgeTestS
         Objects.requireNonNull(exception.getMessage(), "exception message")
             .contains("registry missing the physical book identity"));
     assertEquals(activeConnectionsBeforeClose, SqliteNativeRuntimeActivity.activeConnectionCount());
+  }
+
+  @Test
+  void closingOneRegistrationTwiceCannotConsumeAnotherConnectionsActivityCount() throws Exception {
+    Path bookPath = writeBook("duplicate-close/book.sqlite");
+    int activeConnectionsBeforeOpen = SqliteNativeRuntimeActivity.activeConnectionCount();
+    SqliteNativeActivityRegistration first =
+        SqliteNativeRuntimeActivity.recordOpeningConnection(bookPath, false);
+    SqliteNativeActivityRegistration second =
+        SqliteNativeRuntimeActivity.recordOpeningConnection(bookPath, false);
+
+    SqliteNativeRuntimeActivity.recordConnectionClosed(first);
+    try {
+      IllegalStateException duplicateClose =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteNativeRuntimeActivity.recordConnectionClosed(first));
+      assertTrue(
+          Objects.requireNonNull(duplicateClose.getMessage(), "duplicate-close message")
+              .contains("already closed"));
+      assertEquals(
+          activeConnectionsBeforeOpen + 1, SqliteNativeRuntimeActivity.activeConnectionCount());
+      assertEquals(1, SqliteNativeRuntimeActivity.activeConnectionCount(bookPath));
+    } finally {
+      SqliteNativeRuntimeActivity.recordConnectionClosed(second);
+    }
+    assertEquals(activeConnectionsBeforeOpen, SqliteNativeRuntimeActivity.activeConnectionCount());
+    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount(bookPath));
+  }
+
+  @Test
+  void nonPosixArtifactsCannotEnterOrQueryNativeActivityAccounting() throws Exception {
+    Path archive = tempDirectory.resolve("activity-without-posix.zip");
+    try (FileSystem zipFileSystem =
+        FileSystems.newFileSystem(URI.create("jar:" + archive.toUri()), Map.of("create", "true"))) {
+      Path artifact = Files.writeString(zipFileSystem.getPath("/book.sqlite"), "book");
+      int activeConnectionsBefore = SqliteNativeRuntimeActivity.activeConnectionCount();
+
+      IllegalStateException openFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteNativeRuntimeActivity.recordOpeningConnection(artifact, false));
+      assertTrue(
+          Objects.requireNonNull(openFailure.getMessage(), "open failure message")
+              .contains("physical identity"));
+      IllegalStateException queryFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteNativeRuntimeActivity.activeConnectionCount(artifact));
+      assertTrue(
+          Objects.requireNonNull(queryFailure.getMessage(), "query failure message")
+              .contains("activity query"));
+      assertEquals(activeConnectionsBefore, SqliteNativeRuntimeActivity.activeConnectionCount());
+    }
   }
 
   private Path writeBook(String relativePath) throws java.io.IOException {
