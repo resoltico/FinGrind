@@ -120,6 +120,44 @@ class SqlitePosixCoordinationControlFileTransportTest extends SqliteNativeBridge
   }
 
   @Test
+  void coordinationRecordsRejectNewPathsThatAlreadyContainBytes() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parent = fileSystem.path("\\controls");
+      parent.exists = true;
+      parent.regularFile = false;
+      parent.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE);
+      byte[] magic = SqliteCoordinationControlFiles.magic("fixture", "preexisting-bytes");
+
+      AclFixturePath immutableRecord = fileSystem.path("\\controls\\record.control");
+      immutableRecord.replaceContent(new byte[] {1});
+      IOException recordFailure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  SqlitePosixCoordinationControlFileTransport.createAtomicallySecureRecord(
+                      immutableRecord, magic));
+      assertTrue(
+          NullTestSupport.messageOf(recordFailure).contains("coordination record was not empty"));
+
+      AclFixturePath lockControl = fileSystem.path("\\controls\\lock.control");
+      lockControl.replaceContent(new byte[] {1});
+      IOException lockFailure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  SqlitePosixCoordinationControlFileTransport.openOrCreateAndTryExclusiveLock(
+                      lockControl, magic, 0L, 1L));
+      assertTrue(
+          NullTestSupport.messageOf(lockFailure)
+              .contains("coordination control file was not empty"));
+    }
+  }
+
+  @Test
   void physicalObjectIdentityIsStableAcrossHardLinksAndRejectsAbsentArtifacts() throws Exception {
     Path original = ownerOnlyArtifact("identity/original.sqlite");
     Path alias = tempDirectory.resolve("identity-alias/alias.sqlite");
