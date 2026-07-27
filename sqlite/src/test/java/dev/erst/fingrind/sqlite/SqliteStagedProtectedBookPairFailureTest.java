@@ -658,6 +658,74 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
   }
 
   @Test
+  void recoveryRecordPromotionFailureStopsBackupAndRestoreBeforeAnyFinalMember() throws Exception {
+    Path backupStagedPath = writeArtifact("record-promotion-failure/backup.stage", "backup");
+    Path backupKeyStagedPath =
+        writeArtifact("record-promotion-failure/backup.key.stage", "backup key");
+    Path backupFinalPath =
+        tempDirectory.resolve("record-promotion-failure").resolve("backup.sqlite");
+    Path backupKeyFinalPath =
+        tempDirectory.resolve("record-promotion-failure").resolve("backup.key");
+
+    try (SqliteStagedBackupPair backupPair =
+        SqliteStagedBackupPairFactory.create(
+            new SqliteStagedProtectedBookPairArtifacts(
+                SqliteOwnedStagedArtifact.recordExisting(backupFinalPath, backupStagedPath),
+                backupFinalPath,
+                SqliteOwnedStagedArtifact.recordExisting(backupKeyFinalPath, backupKeyStagedPath),
+                backupKeyFinalPath),
+            TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8),
+            VERIFICATION_SUPPORT,
+            Files::createLink,
+            Files::createLink,
+            null,
+            null,
+            recoveryRecordFailingDirectoryForcer(),
+            SqliteSecureRegularFileAccess::forceFile)) {
+      sealBackupForPublication(backupPair);
+      assertInstanceOf(
+          ProtectedBookPairPublicationFailureOutcome.PrepublicationRecoveryRequired.class,
+          backupPair.commit(backupBinding(backupFinalPath)));
+    }
+
+    assertFalse(Files.exists(backupFinalPath));
+    assertFalse(Files.exists(backupKeyFinalPath));
+
+    Path restoredStagedPath =
+        writeArtifact("record-promotion-failure/restore.stage", "restored book");
+    Path restoredKeyStagedPath =
+        writeArtifact("record-promotion-failure/restore.key.stage", "restored key");
+    Path restoredFinalPath =
+        tempDirectory.resolve("record-promotion-failure").resolve("restored.sqlite");
+    Path restoredKeyFinalPath =
+        tempDirectory.resolve("record-promotion-failure").resolve("restored.key");
+
+    try (SqliteStagedRestoredBookPair restoredPair =
+        SqliteStagedRestoredBookPairFactory.create(
+            new SqliteStagedProtectedBookPairArtifacts(
+                SqliteOwnedStagedArtifact.recordExisting(restoredFinalPath, restoredStagedPath),
+                restoredFinalPath,
+                SqliteOwnedStagedArtifact.recordExisting(
+                    restoredKeyFinalPath, restoredKeyStagedPath),
+                restoredKeyFinalPath),
+            RestoredBookTargetPolicy.REQUIRE_ABSENT,
+            TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8),
+            VERIFICATION_SUPPORT,
+            SqliteRestoredBookPairPublication.defaultOperators(),
+            null,
+            null,
+            recoveryRecordFailingDirectoryForcer(),
+            SqliteSecureRegularFileAccess::forceFile)) {
+      assertInstanceOf(
+          ProtectedBookPairPublicationFailureOutcome.PrepublicationRecoveryRequired.class,
+          restoredPair.commit(restoreBinding(restoredStagedPath, restoredKeyStagedPath)));
+    }
+
+    assertFalse(Files.exists(restoredFinalPath));
+    assertFalse(Files.exists(restoredKeyFinalPath));
+  }
+
+  @Test
   void recoveryRecordForceMutation_blocksEveryRestoredFinalPrimitive() throws Exception {
     Path stagedBookPath = writeArtifact("record-forcer-mutates/staged.sqlite", "restored book");
     Path stagedKeyPath = writeArtifact("record-forcer-mutates/staged.key", "restored key");
@@ -947,6 +1015,16 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
   private static SqliteBookPassphrase testPassphrase() {
     return SqliteBookPassphrase.fromUtf8Bytes(
         "staged protected-book pair", TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8));
+  }
+
+  private static SqliteProtectedBookPublicationSupport.PairDirectoryForcer
+      recoveryRecordFailingDirectoryForcer() {
+    return (step, parentDirectory) -> {
+      if (step
+          == SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep.RECOVERY_RECORD) {
+        throw new IOException("simulated recovery-record promotion failure");
+      }
+    };
   }
 
   private static void closeUnusedBackupPassphrase(SqliteStagedBackupPair stagedPair) {
