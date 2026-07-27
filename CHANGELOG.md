@@ -28,7 +28,7 @@ Historical release notes older than `0.31.0` live in:
 - Changed response discovery so machine clients obtain canonical request shapes, success and rejection detail vocabularies, capability requirements, command display labels, and plan-attestation outcomes from the full contract rather than reconstructing them from prose or parallel catalogs.
 - Changed fiscal close, interim-result sweeps, and lifecycle reversals so their accounting effects, provenance, authorization, and period boundaries are represented by the owning book model rather than inferred by adapter-side or raw-preplanned mutations.
 - Updated the managed native runtime to SQLite3 Multiple Ciphers `2.4.0` based on SQLite `3.53.4`, with the complete upstream amalgamation, source-ID, and per-file digest contract verified by the build and runtime surfaces.
-- Updated developer tooling to Ruff `0.16.0` and NullAway `0.13.8`.
+- Updated developer tooling to Ruff `0.16.0`, NullAway `0.13.8`, and Shadow `9.6.1`; updated the pinned GitHub Actions runtime to checkout `7.0.1`, setup-java `5.6.0`, setup-python `7.0.0`, and attest `4.2.0`.
 
 ### Fixed
 

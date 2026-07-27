@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: gradle/actions/wrapper-validation@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
 
   check:
@@ -30,7 +30,7 @@ jobs:
     timeout-minutes: 40
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Resolve Java toolchain version
         id: build-metadata
@@ -44,12 +44,12 @@ jobs:
           echo "java-version=${java_version}" >> "$GITHUB_OUTPUT"
           echo "python-version=${python_version}" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
         with:
           java-version: ${{ steps.build-metadata.outputs.java-version }}
           distribution: 'zulu'
 
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ steps.build-metadata.outputs.python-version }}
           cache: 'pip'
@@ -95,7 +95,7 @@ jobs:
       bundle-matrix-json: ${{ steps.release-plan.outputs.bundle-matrix-json }}
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Render canonical published bundle smoke matrix
         id: release-plan
@@ -124,7 +124,7 @@ jobs:
         include: ${{ fromJson(needs.prepare-published-bundle-smoke-matrix.outputs.bundle-matrix-json) }}
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Resolve Java toolchain version
         id: build-metadata
@@ -138,12 +138,12 @@ jobs:
           echo "java-version=${java_version}" >> "$GITHUB_OUTPUT"
           echo "python-version=${python_version}" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5.5.0
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
         with:
           java-version: ${{ steps.build-metadata.outputs.java-version }}
           distribution: 'zulu'
 
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: ${{ steps.build-metadata.outputs.python-version }}
           cache: 'pip'
@@ -336,7 +336,7 @@ jobs:
       changed: ${{ steps.filter.outputs.changed }}
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -373,7 +373,7 @@ jobs:
         if: needs.devcontainer-changes.outputs.changed != 'true'
         run: echo "No devcontainer-relevant changes detected; contributor devcontainer verification is a clean no-op."
 
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: needs.devcontainer-changes.outputs.changed == 'true'
 
       - name: Resolve Python toolchain version
@@ -386,7 +386,7 @@ jobs:
           [ -n "${python_version}" ]
           echo "python-version=${python_version}" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         if: needs.devcontainer-changes.outputs.changed == 'true'
         with:
           python-version: ${{ steps.build-metadata.outputs.python-version }}
