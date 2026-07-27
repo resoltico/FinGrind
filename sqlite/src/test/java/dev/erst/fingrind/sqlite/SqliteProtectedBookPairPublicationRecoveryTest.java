@@ -357,6 +357,98 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
     assertFalse(Files.exists(record.bookTargetPath));
   }
 
+  @Test
+  void exactRecoveryWorkflowPublishesOneOwnedStagedBackupPair() throws Exception {
+    SqliteProtectedBookPairPublicationRecord record = retainedRecord("workflow-recovery");
+
+    SqlitePairPublicationReconciliationRecovered recovered =
+        assertInstanceOf(
+            SqlitePairPublicationReconciliationRecovered.class,
+            recoveryWorkflow(true)
+                .recover(
+                    record,
+                    RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                    backupRequest(record.bookTargetPath),
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                    false));
+
+    assertTrue(recovered.binding().matches(backupRequest(record.bookTargetPath)));
+    assertTrue(Files.isSameFile(record.bookTargetPath, record.bookStagePath));
+    assertTrue(Files.isSameFile(record.secretTargetPath, record.secretStagePath));
+  }
+
+  @Test
+  void workflowTreatsCompletedBackupAsIdempotentAndRetainedPrepublicationAsNotPublished()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord completed = retainedRecord("workflow-completed");
+    Files.createLink(completed.bookTargetPath, completed.bookStagePath);
+    Files.createLink(completed.secretTargetPath, completed.secretStagePath);
+    SqliteProtectedBookPairPublicationEvidenceLifecycle.confirmCompletedPublication(
+        completed, (ignoredStep, ignoredParent) -> {});
+
+    assertInstanceOf(
+        SqlitePairPublicationReconciliationExistingCompleteBackup.class,
+        recoveryWorkflow(true)
+            .recover(
+                completed,
+                RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                backupRequest(completed.bookTargetPath),
+                ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                false));
+    assertEquals(
+        SqlitePairPublicationReconciliationAbsent.INSTANCE,
+        recoveryWorkflow(true)
+            .recover(
+                completed,
+                RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                restoreRequest(completed.bookTargetPath),
+                ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET,
+                ProtectedBookMaintenanceArtifactRole.NEW_BOOK_KEY_TARGET,
+                false));
+
+    SqliteProtectedBookPairPublicationRecord prepublication =
+        retainedRecord("workflow-prepublication");
+    SqliteProtectedBookPairPublicationEvidenceLifecycle.retainPrepublication(
+        prepublication, (ignoredStep, ignoredParent) -> {});
+    assertEquals(
+        SqlitePairPublicationReconciliationAbsent.INSTANCE,
+        recoveryWorkflow(true)
+            .recover(
+                prepublication,
+                RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                backupRequest(prepublication.bookTargetPath),
+                ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                false));
+  }
+
+  @Test
+  void workflowRefusesMismatchedRecoveryBeforeItPublishesEitherMember() throws Exception {
+    SqliteProtectedBookPairPublicationRecord record = retainedRecord("workflow-mismatch");
+    ProtectedBookPairPublicationRecoveryRequest.Backup mismatchedRequest =
+        new ProtectedBookPairPublicationRecoveryRequest.Backup(
+            record.bookTargetPath.resolveSibling("source.sqlite"), new UUID(0L, 2L));
+
+    ProtectedBookMaintenanceRejectionException refusal =
+        assertThrows(
+            ProtectedBookMaintenanceRejectionException.class,
+            () ->
+                recoveryWorkflow(true)
+                    .recover(
+                        record,
+                        RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                        mismatchedRequest,
+                        ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                        ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                        false));
+
+    assertInstanceOf(ProtectedBookMaintenanceRejection.RecoveryPending.class, refusal.rejection());
+    assertFalse(Files.exists(record.bookTargetPath));
+    assertFalse(Files.exists(record.secretTargetPath));
+  }
+
   private static SqliteProtectedBookPairPublicationRecovery recovery() {
     return new SqliteProtectedBookPairPublicationRecovery(
         (ignoredBook, ignoredSecret, ignoredBinding) -> true,
@@ -379,6 +471,14 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
   private static SqlitePairPublicationMemberReconciler reconciler(
       SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer) {
     return new SqlitePairPublicationMemberReconciler(directoryForcer, ignoredRecord -> {});
+  }
+
+  private static SqlitePairPublicationRecoveryWorkflow recoveryWorkflow(
+      boolean verifiesRecoveredPair) {
+    return new SqlitePairPublicationRecoveryWorkflow(
+        (ignoredBook, ignoredSecret, ignoredBinding) -> verifiesRecoveredPair,
+        (ignoredStep, ignoredParent) -> {},
+        ignoredRecord -> {});
   }
 
   private static SqlitePublicationCapabilityWitness.Set witnessesFor(
