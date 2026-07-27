@@ -718,6 +718,56 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
             Map.of(partialClaim.pairId, partialClaim)));
   }
 
+  @Test
+  void evidenceStatusRejectsAParseableEnvelopeWithTheWrongKindAndPinsEachDurabilityBarrier()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord record = retainedRecord("evidence-status");
+    Path claimPath =
+        record.evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.CLAIM).getFirst();
+    Path intentPath =
+        record.evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.INTENT).getFirst();
+
+    assertTrue(
+        SqlitePairPublicationEvidenceStatus.hasComplete(
+            record, SqliteProtectedBookPairPublicationEvidenceKind.CLAIM));
+    Files.writeString(claimPath, Files.readString(intentPath));
+    assertFalse(
+        SqlitePairPublicationEvidenceStatus.hasComplete(
+            record, SqliteProtectedBookPairPublicationEvidenceKind.CLAIM));
+    IOException wrongKind =
+        assertThrows(
+            IOException.class,
+            () ->
+                SqlitePairPublicationEvidenceStatus.requireExact(
+                    record, SqliteProtectedBookPairPublicationEvidenceKind.CLAIM, claimPath));
+    assertTrue(
+        Objects.requireNonNull(wrongKind.getMessage(), "wrong-kind evidence message")
+            .contains("evidence changed"));
+
+    assertEquals(
+        SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep.PAIR_STAGE_CLAIM,
+        SqlitePairPublicationEvidenceStatus.durabilityStep(
+            SqliteProtectedBookPairPublicationEvidenceKind.CLAIM));
+    assertEquals(
+        SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep.RECOVERY_INTENT,
+        SqlitePairPublicationEvidenceStatus.durabilityStep(
+            SqliteProtectedBookPairPublicationEvidenceKind.INTENT));
+    assertEquals(
+        SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep.RECOVERY_RECORD,
+        SqlitePairPublicationEvidenceStatus.durabilityStep(
+            SqliteProtectedBookPairPublicationEvidenceKind.RECOVERY));
+    assertEquals(
+        SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep
+            .PREPUBLICATION_RETENTION,
+        SqlitePairPublicationEvidenceStatus.durabilityStep(
+            SqliteProtectedBookPairPublicationEvidenceKind.RETAINED));
+    assertEquals(
+        SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep
+            .RECOVERY_TERMINAL_RETENTION,
+        SqlitePairPublicationEvidenceStatus.durabilityStep(
+            SqliteProtectedBookPairPublicationEvidenceKind.COMPLETED));
+  }
+
   private static SqliteProtectedBookPairPublicationRecovery recovery() {
     return new SqliteProtectedBookPairPublicationRecovery(
         (ignoredBook, ignoredSecret, ignoredBinding) -> true,
