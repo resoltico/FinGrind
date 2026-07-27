@@ -135,8 +135,38 @@ class SqliteNativeConnectionActivityRegistryTest extends SqliteNativeBridgeTestS
 
     assertTrue(
         Objects.requireNonNull(exception.getMessage(), "exception message")
-            .contains("registry missing the physical book identity"));
+            .contains("was not issued"));
     assertEquals(activeConnectionsBeforeClose, SqliteNativeRuntimeActivity.activeConnectionCount());
+  }
+
+  @Test
+  void anUnissuedRegistrationCannotConsumeOneOpenedConnectionsActivityCount() throws Exception {
+    Path bookPath = writeBook("forged-registration/book.sqlite");
+    int activeConnectionsBeforeOpen = SqliteNativeRuntimeActivity.activeConnectionCount();
+    SqliteNativeActivityRegistration opened =
+        SqliteNativeRuntimeActivity.recordOpeningConnection(bookPath, false);
+    SqliteNativeActivityRegistration forged =
+        new SqliteNativeActivityRegistration(
+            bookPath, SqliteObjectCoordinationArtifacts.physicalIdentity(bookPath), null);
+
+    try {
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteNativeRuntimeActivity.recordConnectionClosed(forged));
+
+      assertTrue(
+          Objects.requireNonNull(exception.getMessage(), "exception message")
+              .contains("was not issued"));
+      assertEquals(
+          activeConnectionsBeforeOpen + 1, SqliteNativeRuntimeActivity.activeConnectionCount());
+      assertEquals(1, SqliteNativeRuntimeActivity.activeConnectionCount(bookPath));
+    } finally {
+      SqliteNativeRuntimeActivity.recordConnectionClosed(opened);
+    }
+
+    assertEquals(activeConnectionsBeforeOpen, SqliteNativeRuntimeActivity.activeConnectionCount());
+    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount(bookPath));
   }
 
   @Test
