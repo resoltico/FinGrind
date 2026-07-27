@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -65,6 +66,38 @@ class SqliteBookFileSecurityTest {
       assertThrows(
           FileAlreadyExistsException.class,
           () -> SqliteBookFileSecurity.createNewOwnerOnlyBookFile(bookPath));
+    }
+  }
+
+  @Test
+  void createNewOwnerOnlyBookFileRejectsNonemptyAndUnsupportedExactCreationChannels()
+      throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      parentPath.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE);
+
+      AclFixturePath nonemptyBookPath = fileSystem.path("\\books\\nonempty.sqlite");
+      nonemptyBookPath.reportSizeAs(1L);
+      IOException nonemptyFailure =
+          assertThrows(
+              IOException.class,
+              () -> SqliteBookFileSecurity.createNewOwnerOnlyBookFile(nonemptyBookPath));
+      assertTrue(NullTestSupport.messageOf(nonemptyFailure).contains("was not empty"));
+
+      AclFixturePath unsupportedBookPath = fileSystem.path("\\books\\unsupported.sqlite");
+      unsupportedBookPath.failNewFileChannelWithUnsupportedOperation(
+          new UnsupportedOperationException("injected atomic creation refusal"));
+      assertPathFailure(
+          unsupportedBookPath,
+          SqliteCallerPathFailure.ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED,
+          "cannot atomically create",
+          () -> SqliteBookFileSecurity.createNewOwnerOnlyBookFile(unsupportedBookPath));
     }
   }
 
