@@ -35,6 +35,10 @@ final class AclFixtureChannelOperations {
   static FileChannel newFileChannel(
       Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
     AclFixturePath testPath = fixturePath(path);
+    UnsupportedOperationException unsupported = testPath.newFileChannelUnsupported();
+    if (unsupported != null) {
+      throw unsupported;
+    }
     SeekableByteChannel byteChannel = newByteChannel(testPath, options, attrs);
     return new AclFixtureFileChannel(testPath, (AclFixtureSeekableByteChannel) byteChannel);
   }

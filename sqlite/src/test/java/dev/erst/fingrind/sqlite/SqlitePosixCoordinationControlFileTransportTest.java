@@ -143,6 +143,62 @@ class SqlitePosixCoordinationControlFileTransportTest extends SqliteNativeBridge
   }
 
   @Test
+  void posixCoordinationSecurityRejectsUnsupportedNofollowChannelsAndOpaqueIdentities()
+      throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parent = fileSystem.path("\\controls");
+      parent.exists = true;
+      parent.regularFile = false;
+      parent.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE);
+      UnsupportedOperationException unsupported =
+          new UnsupportedOperationException("fixture cannot enforce NOFOLLOW_LINKS");
+
+      AclFixturePath newControl = fileSystem.path("\\controls\\new.control");
+      newControl.failNewFileChannelWithUnsupportedOperation(unsupported);
+      SqliteCallerPathContractException newFailure =
+          assertThrows(
+              SqliteCallerPathContractException.class,
+              () -> SqlitePosixCoordinationFileSecurity.openNewOwnerOnlyProtocolFile(newControl));
+      assertEquals(
+          SqliteCallerPathFailure.ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED,
+          newFailure.pathFailure());
+      assertEquals(unsupported, newFailure.getCause());
+
+      AclFixturePath existingControl = fileSystem.path("\\controls\\existing.control");
+      existingControl.exists = true;
+      existingControl.regularFile = true;
+      existingControl.posixPermissions =
+          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+      existingControl.failNewFileChannelWithUnsupportedOperation(unsupported);
+      SqliteCallerPathContractException existingFailure =
+          assertThrows(
+              SqliteCallerPathContractException.class,
+              () ->
+                  SqlitePosixCoordinationFileSecurity.openExistingSecureControlFile(
+                      existingControl));
+      assertEquals(
+          SqliteCallerPathFailure.ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED,
+          existingFailure.pathFailure());
+      assertEquals(unsupported, existingFailure.getCause());
+
+      AclFixturePath opaqueIdentity = fileSystem.path("\\controls\\opaque-identity.sqlite");
+      opaqueIdentity.exists = true;
+      opaqueIdentity.regularFile = true;
+      IOException identityFailure =
+          assertThrows(
+              IOException.class,
+              () -> SqlitePosixCoordinationFileSecurity.physicalObjectIdentity(opaqueIdentity));
+      assertTrue(
+          NullTestSupport.messageOf(identityFailure)
+              .contains("did not expose explicit POSIX device/inode identity"));
+    }
+  }
+
+  @Test
   void ownerOnlyProtocolFilesAreCreatedAtomicallyAndCanBeReopenedSecurely() throws Exception {
     Path controlPath = tempDirectory.resolve("protocol/reopen.control");
     Path parent = controlPath.getParent();

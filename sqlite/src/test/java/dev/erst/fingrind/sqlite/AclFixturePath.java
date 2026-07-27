@@ -18,6 +18,7 @@ public final class AclFixturePath extends AclFixtureAbstractPath {
   public Set<PosixFilePermission> posixPermissions = Set.of();
   private byte[] content = new byte[0];
   private @Nullable IOException deleteIfExistsFailure;
+  private @Nullable UnsupportedOperationException newFileChannelUnsupported;
   private boolean preserveExistingEntryOnDeleteIfExists;
   private final Deque<PlannedIOException> newByteChannelFailures = new ArrayDeque<>();
   private final Deque<IOException> createDirectoryFailures = new ArrayDeque<>();
@@ -73,6 +74,16 @@ public final class AclFixturePath extends AclFixtureAbstractPath {
 
   AclFixturePath failNewByteChannelWith(IOException exception) {
     return failNewByteChannelAfter(0, exception);
+  }
+
+  AclFixturePath failNewFileChannelWithUnsupportedOperation(
+      UnsupportedOperationException exception) {
+    newFileChannelUnsupported = Objects.requireNonNull(exception, "exception");
+    return this;
+  }
+
+  @Nullable UnsupportedOperationException newFileChannelUnsupported() {
+    return newFileChannelUnsupported;
   }
 
   AclFixturePath failCreateDirectoryWith(IOException exception) {
