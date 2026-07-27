@@ -64,6 +64,7 @@ final class FinGrindArchitectureTest {
           "dev.erst.fingrind.cli.LauncherInvocationArguments");
   private static final Set<String> MUTATION_ATTESTATION_BOUNDARIES =
       Set.of(
+          "dev.erst.fingrind.sqlite.SqliteStoreBookOpeningOperations",
           "dev.erst.fingrind.sqlite.SqliteStoreAdministrationMutationOperations",
           "dev.erst.fingrind.sqlite.SqliteStoreAccountRegistryMutationOperations",
           "dev.erst.fingrind.sqlite.SqliteStorePostingMutationOperations",

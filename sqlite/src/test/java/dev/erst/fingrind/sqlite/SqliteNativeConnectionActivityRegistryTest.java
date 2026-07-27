@@ -35,16 +35,19 @@ class SqliteNativeConnectionActivityRegistryTest extends SqliteNativeBridgeTestS
 
     assertEquals(physicalIdentity, SqliteObjectCoordinationArtifacts.physicalIdentity(alias));
     assertEquals(physicalIdentity, SqliteObjectCoordinationArtifacts.physicalIdentity(original));
+    int activeConnectionsBeforeOpen = SqliteNativeRuntimeActivity.activeConnectionCount();
 
     SqliteNativeActivityRegistration registration =
         SqliteNativeRuntimeActivity.recordOpeningConnection(original, false);
     try {
+      assertEquals(
+          activeConnectionsBeforeOpen + 1, SqliteNativeRuntimeActivity.activeConnectionCount());
       assertEquals(1, SqliteNativeRuntimeActivity.activeConnectionCount(original));
       assertEquals(1, SqliteNativeRuntimeActivity.activeConnectionCount(alias));
     } finally {
       SqliteNativeRuntimeActivity.recordConnectionClosed(registration);
     }
-    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount());
+    assertEquals(activeConnectionsBeforeOpen, SqliteNativeRuntimeActivity.activeConnectionCount());
     assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount(alias));
   }
 
@@ -53,13 +56,14 @@ class SqliteNativeConnectionActivityRegistryTest extends SqliteNativeBridgeTestS
       throws Exception {
     Path original = writeBook("renamed/book.sqlite");
     Path renamed = original.resolveSibling("renamed.sqlite");
+    int activeConnectionsBeforeOpen = SqliteNativeRuntimeActivity.activeConnectionCount();
     SqliteNativeActivityRegistration registration =
         SqliteNativeRuntimeActivity.recordOpeningConnection(original, false);
 
     Files.move(original, renamed);
     SqliteNativeRuntimeActivity.recordConnectionClosed(registration);
 
-    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount());
+    assertEquals(activeConnectionsBeforeOpen, SqliteNativeRuntimeActivity.activeConnectionCount());
     assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount(renamed));
   }
 
@@ -68,6 +72,7 @@ class SqliteNativeConnectionActivityRegistryTest extends SqliteNativeBridgeTestS
     Path bookPath = writeBook("retired-marker/book.sqlite");
     Path retiredControl = bookPath.resolveSibling(".fingrind-activity-v2-retired-identity.control");
     Files.writeString(retiredControl, "retired v2 activity control");
+    int activeConnectionsBeforeOpen = SqliteNativeRuntimeActivity.activeConnectionCount();
 
     IllegalStateException exception =
         assertThrows(
@@ -77,12 +82,13 @@ class SqliteNativeConnectionActivityRegistryTest extends SqliteNativeBridgeTestS
     assertTrue(
         Objects.requireNonNull(exception.getMessage(), "exception message")
             .contains("activity control-file slot"));
-    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount());
+    assertEquals(activeConnectionsBeforeOpen, SqliteNativeRuntimeActivity.activeConnectionCount());
   }
 
   @Test
   void closeRejectsOneRegistrationThatWasNeverOpened() throws Exception {
     Path bookPath = writeBook("missing-registration/book.sqlite");
+    int activeConnectionsBeforeClose = SqliteNativeRuntimeActivity.activeConnectionCount();
     SqliteNativeActivityRegistration unregistered =
         new SqliteNativeActivityRegistration(
             bookPath, SqliteObjectCoordinationArtifacts.physicalIdentity(bookPath), null);
@@ -95,7 +101,7 @@ class SqliteNativeConnectionActivityRegistryTest extends SqliteNativeBridgeTestS
     assertTrue(
         Objects.requireNonNull(exception.getMessage(), "exception message")
             .contains("registry missing the physical book identity"));
-    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount());
+    assertEquals(activeConnectionsBeforeClose, SqliteNativeRuntimeActivity.activeConnectionCount());
   }
 
   private Path writeBook(String relativePath) throws java.io.IOException {
