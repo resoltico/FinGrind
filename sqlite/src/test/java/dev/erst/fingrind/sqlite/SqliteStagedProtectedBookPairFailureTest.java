@@ -1074,6 +1074,41 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
   }
 
   @Test
+  void restoredBookMoveFailureAfterItsAttemptIsCompletionUncertain() throws Exception {
+    Path stagedBookPath = writeArtifact("restore-book-move-failure/staged.sqlite", "book");
+    Path stagedKeyPath = writeArtifact("restore-book-move-failure/staged.key", "key");
+    Path finalBookPath =
+        writeArtifact("restore-book-move-failure/book.sqlite", "selected original book");
+    Path finalKeyPath = tempDirectory.resolve("restore-book-move-failure").resolve("book.key");
+
+    try (SqliteStagedRestoredBookPair pair =
+        SqliteStagedRestoredBookPairFactory.create(
+            new SqliteStagedProtectedBookPairArtifacts(
+                SqliteOwnedStagedArtifact.recordExisting(finalBookPath, stagedBookPath),
+                finalBookPath,
+                SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath),
+                finalKeyPath),
+            RestoredBookTargetPolicy.REPLACE_SELECTED,
+            TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8),
+            VERIFICATION_SUPPORT,
+            new SqliteRestoredBookPairPublication.Operators(
+                Files::createLink,
+                Files::createLink,
+                (stagedPath, targetPath) -> {
+                  throw new IOException("simulated final book move failure");
+                }))) {
+      assertInstanceOf(
+          ProtectedBookPairPublicationFailureOutcome.CompletionUncertain.class,
+          pair.commit(rekeyBinding(finalBookPath, finalBookPath.resolveSibling("source.key"))));
+    }
+
+    assertEquals("selected original book", Files.readString(finalBookPath));
+    assertTrue(Files.exists(finalKeyPath));
+    assertTrue(Files.exists(stagedBookPath));
+    assertTrue(Files.exists(stagedKeyPath));
+  }
+
+  @Test
   void retainedRestoredPairCannotBeCommittedAfterItIsFinishedWithoutAPublicationOutcome()
       throws Exception {
     Path stagedBookPath = writeArtifact("restore-finished/staged.sqlite", "book");

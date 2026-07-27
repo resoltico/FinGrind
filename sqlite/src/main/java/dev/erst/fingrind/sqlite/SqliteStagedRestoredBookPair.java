@@ -191,6 +191,9 @@ final class SqliteStagedRestoredBookPair implements StagedRestoredBookPair {
       return finalizer.finishPostRecoveryFailure(bookAttempt, secretAttempt, true);
     }
     if (failure instanceof IOException) {
+      if (SqlitePairPublicationMemberAttempt.eitherAttempted(bookAttempt, secretAttempt)) {
+        return finalizer.finishCompletionUncertain(bookAttempt.state(), secretAttempt.state());
+      }
       return finalizer.finishPrepublicationRecoveryRequired();
     }
     return finalizer.finishPostRecoveryFailure(bookAttempt, secretAttempt, false);
