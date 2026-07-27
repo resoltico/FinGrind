@@ -1,8 +1,10 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationMemberState;
 import dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationRecoveryRecordState;
@@ -277,6 +279,84 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
     assertEquals(record.secretTargetPath, prepublication.secretArtifactPath());
   }
 
+  @Test
+  void retainedStagesPublishBothAbsentMembersOnlyAfterRecoveryEvidenceIsForced() throws Exception {
+    SqliteProtectedBookPairPublicationRecord record = retainedRecord("member-publication");
+    SqlitePairPublicationMemberReconciler reconciler =
+        reconciler((ignoredStep, ignoredParent) -> {});
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses = witnessesFor(record)) {
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.DURABLE,
+          reconciler.reconcileSecret(
+              record,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.DURABLE,
+          reconciler.reconcileBook(
+              record,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+    }
+
+    assertTrue(Files.isSameFile(record.secretTargetPath, record.secretStagePath));
+    assertTrue(Files.isSameFile(record.bookTargetPath, record.bookStagePath));
+  }
+
+  @Test
+  void memberRecoveryDoesNotPublishWhenItsEvidenceForceCannotBeConfirmed() throws Exception {
+    SqliteProtectedBookPairPublicationRecord record = retainedRecord("member-force-failure");
+    SqlitePairPublicationMemberReconciler reconciler =
+        reconciler(
+            (ignoredStep, ignoredParent) -> {
+              throw new IOException("injected recovery-evidence force failure");
+            });
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses = witnessesFor(record)) {
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.OUTCOME_UNCERTAIN,
+          reconciler.reconcileSecret(
+              record,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.OUTCOME_UNCERTAIN,
+          reconciler.reconcileBook(
+              record,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+    }
+
+    assertFalse(Files.exists(record.secretTargetPath));
+    assertFalse(Files.exists(record.bookTargetPath));
+  }
+
+  @Test
+  void memberRecoveryRefusesUnownedStagesEvenWhenTheirBytesMatchTheRecord() throws Exception {
+    SqliteProtectedBookPairPublicationRecord record = pairRecord("member-unowned", false);
+    SqlitePairPublicationMemberReconciler reconciler =
+        reconciler((ignoredStep, ignoredParent) -> {});
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses = witnessesFor(record)) {
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.OUTCOME_UNCERTAIN,
+          reconciler.reconcileSecret(
+              record,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.OUTCOME_UNCERTAIN,
+          reconciler.reconcileBook(
+              record,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+    }
+
+    assertFalse(Files.exists(record.secretTargetPath));
+    assertFalse(Files.exists(record.bookTargetPath));
+  }
+
   private static SqliteProtectedBookPairPublicationRecovery recovery() {
     return new SqliteProtectedBookPairPublicationRecovery(
         (ignoredBook, ignoredSecret, ignoredBinding) -> true,
@@ -296,14 +376,36 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
         backupBinding(bookPath).acknowledgement());
   }
 
+  private static SqlitePairPublicationMemberReconciler reconciler(
+      SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer) {
+    return new SqlitePairPublicationMemberReconciler(directoryForcer, ignoredRecord -> {});
+  }
+
+  private static SqlitePublicationCapabilityWitness.Set witnessesFor(
+      SqliteProtectedBookPairPublicationRecord record) throws IOException {
+    return SqlitePublicationCapabilityWitness.acquirePair(
+        record.bookTargetPath,
+        SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK,
+        record.secretTargetPath,
+        Files::createLink,
+        SqliteProtectedBookPublicationSupport::moveReplacing);
+  }
+
   private SqliteProtectedBookPairPublicationRecord retainedRecord(String directoryName)
       throws IOException {
+    return pairRecord(directoryName, true);
+  }
+
+  private SqliteProtectedBookPairPublicationRecord pairRecord(
+      String directoryName, boolean recordStageOwnership) throws IOException {
     Path bookTarget = absentTarget(directoryName + "/book.sqlite");
     Path secretTarget = absentTarget(directoryName + "/book.key");
     Path bookStage = writeArtifact(directoryName + "/.book.stage", "retained book stage");
     Path secretStage = writeArtifact(directoryName + "/.secret.stage", "retained secret stage");
-    SqliteOwnedStagedArtifact.recordExisting(bookTarget, bookStage);
-    SqliteOwnedStagedArtifact.recordExisting(secretTarget, secretStage);
+    if (recordStageOwnership) {
+      SqliteOwnedStagedArtifact.recordExisting(bookTarget, bookStage);
+      SqliteOwnedStagedArtifact.recordExisting(secretTarget, secretStage);
+    }
     return SqliteProtectedBookPairPublicationRecord.create(
         bookTarget,
         secretTarget,

@@ -304,6 +304,38 @@ class SqliteGeneratedSecretTargetTest {
   }
 
   @Test
+  void retainedWitnessRefusesOneConcurrentScopeAndReleasesTheCapabilityForLaterUse()
+      throws Exception {
+    Path targetPath = tempDirectory.resolve("exclusive.key");
+    SqlitePublicationCapabilityWitness.Set first =
+        SqlitePublicationCapabilityWitness.acquire(
+            java.util.List.of(SqlitePublicationCapabilityWitness.Requirement.noReplace(targetPath)),
+            Files::createLink,
+            SqliteProtectedBookPublicationSupport::moveReplacing);
+    try {
+      assertThrows(
+          SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+          () ->
+              SqlitePublicationCapabilityWitness.acquire(
+                  java.util.List.of(
+                      SqlitePublicationCapabilityWitness.Requirement.noReplace(targetPath)),
+                  Files::createLink,
+                  SqliteProtectedBookPublicationSupport::moveReplacing));
+    } finally {
+      first.close();
+    }
+
+    try (SqlitePublicationCapabilityWitness.Set afterRelease =
+        SqlitePublicationCapabilityWitness.acquire(
+            java.util.List.of(SqlitePublicationCapabilityWitness.Requirement.noReplace(targetPath)),
+            Files::createLink,
+            SqliteProtectedBookPublicationSupport::moveReplacing)) {
+      afterRelease.requireCurrent(
+          targetPath, SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK);
+    }
+  }
+
+  @Test
   void retainedWitness_refusesAnUnadmittedSiblingEvenWhenItSharesTheWitnessParent()
       throws Exception {
     Path admittedTarget = tempDirectory.resolve("admitted.key");

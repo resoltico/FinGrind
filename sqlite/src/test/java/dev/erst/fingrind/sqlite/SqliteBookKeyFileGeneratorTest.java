@@ -156,6 +156,53 @@ class SqliteBookKeyFileGeneratorTest {
   }
 
   @Test
+  void generateDecision_retainsTheStageWhenTheFinalLinkReportsACallerPathViolation() {
+    Path keyFile = tempDirectory.resolve("link-path-violation.book-key");
+    SqliteCallerPathContractException pathFailure =
+        new SqliteCallerPathContractException(
+            keyFile,
+            SqliteCallerPathFailure.TARGET_OWNER_ONLY_REQUIRED,
+            "injected final-link path violation");
+
+    ContractFailure failure =
+        SqliteBookKeyFileGenerator.generateDecision(
+                keyFile,
+                (finalPath, stagedPath) -> {
+                  throw pathFailure;
+                },
+                ignored -> {})
+            .requireRejected();
+
+    assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
+    assertRetainedStage(failure, keyFile, false);
+  }
+
+  @Test
+  void generateDecision_refusesRetiredWitnessResidueBeforeStagingNewSecretMaterial()
+      throws Exception {
+    Path keyFile = tempDirectory.resolve("legacy-witness-residue.book-key");
+    Files.writeString(
+        tempDirectory.resolve(".fingrind-no-replace-probe-abandoned"), "retired witness probe");
+
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () -> SqliteBookKeyFileGenerator.generateDecision(keyFile));
+
+    assertTrue(
+        java.util.Objects.requireNonNull(failure.getMessage(), "witness failure message")
+            .contains("publication witness"));
+    assertInstanceOf(
+        SqlitePublicationCapabilityWitness.AcquisitionFailure.class, failure.getCause());
+    assertFalse(Files.exists(keyFile));
+    try (Stream<Path> siblings = Files.list(tempDirectory)) {
+      assertFalse(
+          siblings.anyMatch(
+              path -> path.getFileName().toString().startsWith(".fingrind-generated-book-key-")));
+    }
+  }
+
+  @Test
   void generateIntoExistingOwnedStage_requiresPriorOwnerOnlyCreationWithoutRepairingIt()
       throws Exception {
     assumeTrue(supportsPosix(tempDirectory), "the host filesystem must expose POSIX permissions");
