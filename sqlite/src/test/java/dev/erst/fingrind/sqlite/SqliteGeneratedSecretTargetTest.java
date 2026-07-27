@@ -362,6 +362,101 @@ class SqliteGeneratedSecretTargetTest {
   }
 
   @Test
+  void retainedWitnessRejectsNoReplaceEvidenceWhoseCompletionWasReplaced() throws Exception {
+    Path targetPath = tempDirectory.resolve("replaced-completion.key");
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses =
+        SqlitePublicationCapabilityWitness.acquire(
+            java.util.List.of(SqlitePublicationCapabilityWitness.Requirement.noReplace(targetPath)),
+            Files::createLink,
+            SqliteProtectedBookPublicationSupport::moveReplacing)) {
+      Path completion = publicationCapabilityState(".complete");
+      byte[] exactRecord = Files.readAllBytes(completion);
+      Files.delete(completion);
+      SqliteCoordinationControlFiles.createAtomicallySecureRecord(completion, exactRecord);
+
+      IOException failure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  witnesses.requireCurrent(
+                      targetPath,
+                      SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK));
+      assertTrue(
+          Objects.requireNonNull(failure.getMessage(), "witness failure message")
+              .contains("no longer share one identity"));
+    }
+  }
+
+  @Test
+  void retainedWitnessRejectsAtomicReplacementEvidenceThatRetainsItsSource() throws Exception {
+    Path targetPath = tempDirectory.resolve("replacement-residue.sqlite");
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses =
+        SqlitePublicationCapabilityWitness.acquire(
+            java.util.List.of(
+                SqlitePublicationCapabilityWitness.Requirement.atomicReplace(targetPath)),
+            Files::createLink,
+            SqliteProtectedBookPublicationSupport::moveReplacing)) {
+      Path completion = publicationCapabilityState(".complete");
+      Path replacement =
+          completion.resolveSibling(
+              completion.getFileName().toString().replaceFirst("\\.complete$", ".replacement"));
+      Files.writeString(replacement, "unexpected atomic replacement residue");
+
+      IOException failure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  witnesses.requireCurrent(
+                      targetPath, SqlitePublicationCapabilityWitness.PrimitiveKind.ATOMIC_REPLACE));
+      assertTrue(
+          Objects.requireNonNull(failure.getMessage(), "witness failure message")
+              .contains("no longer complete"));
+    }
+  }
+
+  @Test
+  void retainedWitnessRefusesPrimitivesWhoseProbeDoesNotEstablishTheRequiredIdentity()
+      throws Exception {
+    Path noReplaceTarget = tempDirectory.resolve("non-atomic-no-replace.key");
+    SqlitePublicationCapabilityWitness.AcquisitionFailure noReplaceFailure =
+        assertThrows(
+            SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+            () ->
+                SqlitePublicationCapabilityWitness.acquire(
+                    java.util.List.of(
+                        SqlitePublicationCapabilityWitness.Requirement.noReplace(noReplaceTarget)),
+                    (completion, source) -> Files.copy(source, completion),
+                    SqliteProtectedBookPublicationSupport::moveReplacing));
+    assertTrue(
+        Objects.requireNonNull(
+                Objects.requireNonNull(noReplaceFailure.getCause(), "no-replace failure cause")
+                    .getMessage(),
+                "no-replace failure message")
+            .contains("does not retain the source file identity"));
+
+    Path atomicTarget = tempDirectory.resolve("non-atomic-replacement.sqlite");
+    SqlitePublicationCapabilityWitness.AcquisitionFailure atomicFailure =
+        assertThrows(
+            SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+            () ->
+                SqlitePublicationCapabilityWitness.acquire(
+                    java.util.List.of(
+                        SqlitePublicationCapabilityWitness.Requirement.atomicReplace(atomicTarget)),
+                    Files::createLink,
+                    (source, target) ->
+                        Files.copy(
+                            source, target, java.nio.file.StandardCopyOption.REPLACE_EXISTING)));
+    assertTrue(
+        Objects.requireNonNull(
+                Objects.requireNonNull(atomicFailure.getCause(), "atomic failure cause")
+                    .getMessage(),
+                "atomic failure message")
+            .contains("did not retain the replacement state"));
+  }
+
+  @Test
   void publishRetainingStage_translatesAnUnsupportedAtomicPrimitiveAndPreservesTheStagedSecret()
       throws Exception {
     Path targetPath = tempDirectory.resolve("unsupported-publish.key");
@@ -454,5 +549,20 @@ class SqliteGeneratedSecretTargetTest {
           finalPath, SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK);
       Files.createLink(finalPath, stagedPath);
     };
+  }
+
+  private Path publicationCapabilityState(String suffix) throws IOException {
+    try (var entries = Files.list(tempDirectory)) {
+      return entries
+          .filter(
+              candidate ->
+                  candidate
+                          .getFileName()
+                          .toString()
+                          .startsWith(".fingrind-publication-capability-v2-")
+                      && candidate.getFileName().toString().endsWith(suffix))
+          .findFirst()
+          .orElseThrow(() -> new AssertionError("Missing publication capability state " + suffix));
+    }
   }
 }
