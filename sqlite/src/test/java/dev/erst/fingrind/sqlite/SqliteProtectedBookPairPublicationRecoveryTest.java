@@ -635,6 +635,149 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
   }
 
   @Test
+  void workflowKeepsAMismatchedButFullyVisiblePairUncertainRatherThanReusingIt() throws Exception {
+    SqliteProtectedBookPairPublicationRecord record = retainedRecord("workflow-visible-mismatch");
+    Files.createLink(record.bookTargetPath, record.bookStagePath);
+    Files.createLink(record.secretTargetPath, record.secretStagePath);
+
+    SqlitePairPublicationReconciliationCompletionUncertain uncertain =
+        assertInstanceOf(
+            SqlitePairPublicationReconciliationCompletionUncertain.class,
+            recoveryWorkflow(true)
+                .recover(
+                    record,
+                    RestoredBookTargetPolicy.REPLACE_SELECTED,
+                    backupRequest(record.bookTargetPath),
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                    false));
+
+    assertEquals(
+        ProtectedBookPairPublicationMemberState.PUBLISHED_DURABILITY_UNCONFIRMED,
+        uncertain.bookArtifactState());
+    assertEquals(
+        ProtectedBookPairPublicationMemberState.PUBLISHED_DURABILITY_UNCONFIRMED,
+        uncertain.secretArtifactState());
+  }
+
+  @Test
+  void workflowKeepsVisibleOrStagedPairsUncertainWhenTheirStageOwnershipIsMissing()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord visible =
+        pairRecord("workflow-visible-unowned", false);
+    Files.createLink(visible.bookTargetPath, visible.bookStagePath);
+    Files.createLink(visible.secretTargetPath, visible.secretStagePath);
+
+    assertInstanceOf(
+        SqlitePairPublicationReconciliationCompletionUncertain.class,
+        recoveryWorkflow(true)
+            .recover(
+                visible,
+                RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                backupRequest(visible.bookTargetPath),
+                ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                false));
+
+    SqliteProtectedBookPairPublicationRecord staged = pairRecord("workflow-staged-unowned", false);
+    assertInstanceOf(
+        SqlitePairPublicationReconciliationCompletionUncertain.class,
+        recoveryWorkflow(true)
+            .recover(
+                staged,
+                RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                backupRequest(staged.bookTargetPath),
+                ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                false));
+  }
+
+  @Test
+  void workflowKeepsAPlanBlockedByForeignBookBytesUncertainWithoutPublishingTheSecret()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord record = retainedRecord("workflow-blocked-plan");
+    Files.writeString(record.bookTargetPath, "foreign book bytes");
+
+    SqlitePairPublicationReconciliationCompletionUncertain uncertain =
+        assertInstanceOf(
+            SqlitePairPublicationReconciliationCompletionUncertain.class,
+            recoveryWorkflow(true)
+                .recover(
+                    record,
+                    RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                    backupRequest(record.bookTargetPath),
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                    false));
+
+    assertEquals(
+        ProtectedBookPairPublicationMemberState.OUTCOME_UNCERTAIN, uncertain.bookArtifactState());
+    assertEquals(
+        ProtectedBookPairPublicationMemberState.OUTCOME_UNCERTAIN, uncertain.secretArtifactState());
+    assertFalse(Files.exists(record.secretTargetPath));
+  }
+
+  @Test
+  void workflowRetainsAnUncertainOutcomeWhenSecretOrBookPublicationCannotBeForced()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord secretFailure =
+        retainedRecord("workflow-secret-force-failure");
+    SqlitePairPublicationReconciliationCompletionUncertain secretUncertain =
+        assertInstanceOf(
+            SqlitePairPublicationReconciliationCompletionUncertain.class,
+            recoveryWorkflow(
+                    true,
+                    (step, ignoredParent) -> {
+                      if (step
+                          == SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep
+                              .GENERATED_SECRET_PUBLICATION) {
+                        throw new IOException("injected secret publication force failure");
+                      }
+                    })
+                .recover(
+                    secretFailure,
+                    RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                    backupRequest(secretFailure.bookTargetPath),
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                    false));
+    assertEquals(
+        ProtectedBookPairPublicationMemberState.OUTCOME_UNCERTAIN,
+        secretUncertain.bookArtifactState());
+    assertEquals(
+        ProtectedBookPairPublicationMemberState.PUBLISHED_DURABILITY_UNCONFIRMED,
+        secretUncertain.secretArtifactState());
+
+    SqliteProtectedBookPairPublicationRecord bookFailure =
+        retainedRecord("workflow-book-force-failure");
+    SqlitePairPublicationReconciliationCompletionUncertain bookUncertain =
+        assertInstanceOf(
+            SqlitePairPublicationReconciliationCompletionUncertain.class,
+            recoveryWorkflow(
+                    true,
+                    (step, ignoredParent) -> {
+                      if (step
+                          == SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep
+                              .BOOK_PUBLICATION) {
+                        throw new IOException("injected book publication force failure");
+                      }
+                    })
+                .recover(
+                    bookFailure,
+                    RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                    backupRequest(bookFailure.bookTargetPath),
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                    false));
+    assertEquals(
+        ProtectedBookPairPublicationMemberState.PUBLISHED_DURABILITY_UNCONFIRMED,
+        bookUncertain.bookArtifactState());
+    assertEquals(
+        ProtectedBookPairPublicationMemberState.PUBLISHED_DURABLE,
+        bookUncertain.secretArtifactState());
+  }
+
+  @Test
   void evidenceClassifierDistinguishesExactIncompleteAndUnsafeRecoveryEvidence() throws Exception {
     SqliteProtectedBookPairPublicationRecord exact = retainedRecord("classifier-exact");
 
