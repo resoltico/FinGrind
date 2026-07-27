@@ -165,6 +165,63 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void pairCoordinator_refusesPreexistingNativeActivityBeforeInvokingItsAcquirer()
+      throws Exception {
+    Path bookTarget = writeArtifact("coordinator-preflight/book.sqlite", "book bytes");
+    Path secretTarget = managedTarget("coordinator-preflight/book.key");
+    AtomicInteger acquirerCalls = new AtomicInteger();
+    SqliteNativeActivityRegistration activity =
+        SqliteNativeRuntimeActivity.recordOpeningConnection(bookTarget, true);
+    try {
+      SqliteManagedTargetLeasesBusy result =
+          assertInstanceOf(
+              SqliteManagedTargetLeasesBusy.class,
+              SqliteBookMaintenanceLease.acquireManagedTargetPair(
+                  bookTarget,
+                  secretTarget,
+                  target -> {
+                    acquirerCalls.incrementAndGet();
+                    return new SqliteHeldLease(target, () -> {});
+                  }));
+
+      assertEquals(bookTarget, result.artifactPath());
+      assertEquals(0, acquirerCalls.get());
+    } finally {
+      SqliteNativeRuntimeActivity.recordConnectionClosed(activity);
+    }
+  }
+
+  @Test
+  void pairCoordinator_releasesBothLeasesWhenActivityAppearsAfterAcquisition() throws Exception {
+    Path bookTarget = writeArtifact("coordinator-post-acquisition/book.sqlite", "book bytes");
+    Path secretTarget = managedTarget("coordinator-post-acquisition/book.key");
+    AtomicInteger acquirerCalls = new AtomicInteger();
+    AtomicInteger releasedLeases = new AtomicInteger();
+    AtomicReference<SqliteNativeActivityRegistration> activity = new AtomicReference<>();
+    try {
+      SqliteManagedTargetLeasesBusy result =
+          assertInstanceOf(
+              SqliteManagedTargetLeasesBusy.class,
+              SqliteBookMaintenanceLease.acquireManagedTargetPair(
+                  bookTarget,
+                  secretTarget,
+                  target -> {
+                    if (acquirerCalls.incrementAndGet() == 2) {
+                      activity.set(
+                          SqliteNativeRuntimeActivity.recordOpeningConnection(bookTarget, true));
+                    }
+                    return new SqliteHeldLease(target, releasedLeases::incrementAndGet);
+                  }));
+
+      assertEquals(bookTarget, result.artifactPath());
+      assertEquals(2, acquirerCalls.get());
+      assertEquals(2, releasedLeases.get());
+    } finally {
+      SqliteNativeRuntimeActivity.recordConnectionClosed(activity.get());
+    }
+  }
+
+  @Test
   void sameParentBackupTargetsNeverAuthorizeAnActiveLiveSourceRetain() throws Exception {
     Path source = writeArtifact("same-parent-backup/z-live.sqlite", "live book bytes");
     Path backupTarget = managedTarget("same-parent-backup/a-backup.sqlite");
