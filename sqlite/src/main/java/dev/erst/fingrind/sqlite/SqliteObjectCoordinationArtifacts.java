@@ -163,7 +163,8 @@ final class SqliteObjectCoordinationArtifacts {
       throw new IOException(
           "FinGrind could not create or validate its private object-coordination root at "
               + root
-              + ".",
+              + ": "
+              + Objects.requireNonNullElse(exception.getMessage(), "unspecified I/O failure"),
           exception);
     }
   }

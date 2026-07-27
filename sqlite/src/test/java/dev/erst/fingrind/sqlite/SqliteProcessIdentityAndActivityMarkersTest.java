@@ -184,6 +184,58 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
     }
   }
 
+  @Test
+  void retiredOrUnrecognizedObjectCoordinationResidueCannotBeSilentlyAdopted() throws Exception {
+    Path bookPath = writeProtectedBookPath("object-residue.sqlite");
+
+    Path v4Root = tempDirectory.resolve("object-protocol-v4");
+    Path retiredV3Root = tempDirectory.resolve("object-protocol-v3");
+    Files.createDirectory(retiredV3Root);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(retiredV3Root);
+    try (AutoCloseable ignored = SqliteObjectCoordinationArtifacts.installTestRoot(v4Root)) {
+      IOException failure =
+          assertThrows(
+              IOException.class,
+              () -> SqliteObjectCoordinationArtifacts.domainForExistingArtifact(bookPath));
+      assertTrue(
+          Objects.requireNonNull(failure.getMessage(), "retired namespace failure message")
+              .contains("Retired FinGrind object-coordination namespace"));
+    }
+    assertTrue(Files.exists(retiredV3Root, LinkOption.NOFOLLOW_LINKS));
+
+    Path residueRoot = tempDirectory.resolve("object-residue-v4");
+    Files.createDirectory(residueRoot);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(residueRoot);
+    Path retiredObject = residueRoot.resolve("object-v3-retained.control");
+    Files.writeString(retiredObject, "retired v3 control");
+    try (AutoCloseable ignored = SqliteObjectCoordinationArtifacts.installTestRoot(residueRoot)) {
+      IOException failure =
+          assertThrows(
+              IOException.class,
+              () -> SqliteObjectCoordinationArtifacts.domainForExistingArtifact(bookPath));
+      assertTrue(
+          Objects.requireNonNull(failure.getMessage(), "retired object failure message")
+              .contains("Retired FinGrind object-coordination state"));
+    }
+    assertTrue(Files.exists(retiredObject, LinkOption.NOFOLLOW_LINKS));
+
+    Path foreignRoot = tempDirectory.resolve("object-foreign-v4");
+    Files.createDirectory(foreignRoot);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(foreignRoot);
+    Path foreignState = foreignRoot.resolve("unrecognized.control");
+    Files.writeString(foreignState, "foreign control");
+    try (AutoCloseable ignored = SqliteObjectCoordinationArtifacts.installTestRoot(foreignRoot)) {
+      IOException failure =
+          assertThrows(
+              IOException.class,
+              () -> SqliteObjectCoordinationArtifacts.domainForExistingArtifact(bookPath));
+      assertTrue(
+          Objects.requireNonNull(failure.getMessage(), "foreign residue failure message")
+              .contains("Unexpected state exists"));
+    }
+    assertTrue(Files.exists(foreignState, LinkOption.NOFOLLOW_LINKS));
+  }
+
   private Path writeProtectedBookPath(String fileName) throws IOException {
     Path bookPath = tempDirectory.resolve(fileName).toAbsolutePath().normalize();
     Path parentPath = Objects.requireNonNull(bookPath.getParent(), "parentPath");
