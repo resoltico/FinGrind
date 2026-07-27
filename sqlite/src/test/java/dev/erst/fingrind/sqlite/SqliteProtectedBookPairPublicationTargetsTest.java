@@ -530,6 +530,45 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
     assertEquals(unexpected, genericFailure.getCause());
   }
 
+  @Test
+  void recoveryTargetSecurityFailsClosedWhenEitherTargetValidatorHasUnexpectedIo()
+      throws Exception {
+    Path bookTarget = tempDirectory.resolve("validator-failure.sqlite");
+    Path secretTarget = tempDirectory.resolve("validator-failure.key");
+    IOException bookFailure = new IOException("injected book target validation failure");
+
+    IllegalStateException bookException =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteProtectedBookPairPublicationTargets.requireRecoveryTargetSecurity(
+                    bookTarget,
+                    secretTarget,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                    ignored -> {
+                      throw bookFailure;
+                    },
+                    ignored -> {}));
+    assertEquals(bookFailure, bookException.getCause());
+
+    IOException secretFailure = new IOException("injected secret target validation failure");
+    IllegalStateException secretException =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteProtectedBookPairPublicationTargets.requireRecoveryTargetSecurity(
+                    bookTarget,
+                    secretTarget,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                    ignored -> {},
+                    ignored -> {
+                      throw secretFailure;
+                    }));
+    assertEquals(secretFailure, secretException.getCause());
+  }
+
   private static void assertArtifactPathFailure(
       RuntimeException failure,
       ProtectedBookMaintenanceArtifactRole expectedRole,

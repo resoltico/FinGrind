@@ -23,6 +23,13 @@ final class SqliteProtectedBookPairPublicationTargets {
         List<SqlitePublicationCapabilityWitness.Requirement> requirements) throws IOException;
   }
 
+  /** Validates one already-normalized final target before it enters pair-publication admission. */
+  @FunctionalInterface
+  interface TargetSecurityValidator {
+    /** Validates the selected final target's filesystem and owner-only parent contract. */
+    void validate(Path normalizedTargetPath) throws IOException;
+  }
+
   static PreparedPairPublication prepareWithHeldLeases(
       SqlitePairPublicationPreparationResources resources,
       Path secretTargetPath,
@@ -128,10 +135,47 @@ final class SqliteProtectedBookPairPublicationTargets {
       Path secretTargetPath,
       ProtectedBookMaintenanceArtifactRole bookArtifactRole,
       ProtectedBookMaintenanceArtifactRole secretArtifactRole) {
-    requireBookTargetSecurity(bookTargetPath, bookArtifactRole);
+    requireRecoveryTargetSecurity(
+        bookTargetPath,
+        secretTargetPath,
+        bookArtifactRole,
+        secretArtifactRole,
+        targetPath -> {
+          SqliteBookFileSecurity.requireSupportedSecureFilesystem(targetPath);
+          SqliteBookFileSecurity.requireExistingSecureParentDirectory(targetPath);
+        },
+        targetPath -> {
+          SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(targetPath);
+          SqliteBookKeyFileSecurity.requireExistingSecureParentDirectory(targetPath);
+        });
+  }
+
+  /**
+   * Validates pair targets through explicit filesystem boundaries before recovery mutates evidence.
+   *
+   * <p>The package-visible validators keep provider I/O failures accountable to the selected pair
+   * admission rather than allowing an untested fallback to reclassify a caller's target.
+   */
+  static void requireRecoveryTargetSecurity(
+      Path bookTargetPath,
+      Path secretTargetPath,
+      ProtectedBookMaintenanceArtifactRole bookArtifactRole,
+      ProtectedBookMaintenanceArtifactRole secretArtifactRole,
+      TargetSecurityValidator bookTargetSecurityValidator,
+      TargetSecurityValidator secretTargetSecurityValidator) {
     try {
-      SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(secretTargetPath);
-      SqliteBookKeyFileSecurity.requireExistingSecureParentDirectory(secretTargetPath);
+      Objects.requireNonNull(bookTargetSecurityValidator, "bookTargetSecurityValidator")
+          .validate(bookTargetPath);
+    } catch (SqliteCallerPathContractException exception) {
+      throw SqliteProtectedBookMaintenanceArtifactStore.maintenanceRejection(
+          Objects.requireNonNull(bookArtifactRole, "bookArtifactRole"), exception);
+    } catch (IOException exception) {
+      throw new IllegalStateException(
+          "Failed to revalidate protected-book pair recovery target directories.", exception);
+    }
+    try {
+      Objects.requireNonNull(secretTargetSecurityValidator, "secretTargetSecurityValidator")
+          .validate(secretTargetPath);
     } catch (SqliteCallerPathContractException exception) {
       throw SqliteProtectedBookMaintenanceArtifactStore.maintenanceRejection(
           Objects.requireNonNull(secretArtifactRole, "secretArtifactRole"), exception);
@@ -328,19 +372,5 @@ final class SqliteProtectedBookPairPublicationTargets {
           throw new IllegalArgumentException(
               "An absent protected-book target cannot use artifact role " + artifactRole + ".");
     };
-  }
-
-  private static void requireBookTargetSecurity(
-      Path bookTargetPath, ProtectedBookMaintenanceArtifactRole bookArtifactRole) {
-    try {
-      SqliteBookFileSecurity.requireSupportedSecureFilesystem(bookTargetPath);
-      SqliteBookFileSecurity.requireExistingSecureParentDirectory(bookTargetPath);
-    } catch (SqliteCallerPathContractException exception) {
-      throw SqliteProtectedBookMaintenanceArtifactStore.maintenanceRejection(
-          Objects.requireNonNull(bookArtifactRole, "bookArtifactRole"), exception);
-    } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Failed to revalidate protected-book pair recovery target directories.", exception);
-    }
   }
 }
