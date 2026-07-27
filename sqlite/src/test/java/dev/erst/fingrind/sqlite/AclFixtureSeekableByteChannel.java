@@ -32,6 +32,9 @@ final class AclFixtureSeekableByteChannel implements SeekableByteChannel {
     if (writeFailure != null) {
       throw writeFailure;
     }
+    if (path.consumeZeroProgressWrite()) {
+      return 0;
+    }
     int remaining = src.remaining();
     int start = Math.toIntExact(position);
     byte[] content = path.content();

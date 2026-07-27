@@ -92,6 +92,34 @@ class SqliteOwnedStageRecordTest {
   }
 
   @Test
+  void codec_failsClosedWhenOwnershipRecordWriteMakesNoProgress() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parent = fileSystem.path("\\records");
+      parent.exists = true;
+      parent.regularFile = false;
+      parent.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE);
+      AclFixturePath finalPath = fileSystem.path("\\records\\book.sqlite");
+      AclFixturePath stagedPath = fileSystem.path("\\records\\book.stage");
+      AclFixturePath ownerPath =
+          (AclFixturePath) SqliteOwnedStageRecordCodec.recordPath(finalPath, token(17));
+      ownerPath.returnZeroProgressFromNextWrite();
+
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteOwnedStageRecordCodec.write(finalPath, stagedPath, () -> token(17)));
+
+      assertTrue(NullTestSupport.messageOf(failure).contains("Failed to record"));
+      assertTrue(ownerPath.existsValue());
+      assertEquals(0, ownerPath.content().length);
+    }
+  }
+
+  @Test
   void codec_rejectsMalformedOrUnreadableRecords() throws Exception {
     Path finalPath = finalPath();
     Path stagedPath = tempDirectory.resolve("book.stage");
