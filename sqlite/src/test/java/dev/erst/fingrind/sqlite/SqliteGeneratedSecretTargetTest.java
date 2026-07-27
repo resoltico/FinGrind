@@ -354,6 +354,53 @@ class SqliteGeneratedSecretTargetTest {
   }
 
   @Test
+  void retainedWitnessRejectsPrimitiveMismatchesAndInvalidCapabilityFailureVocabulary()
+      throws Exception {
+    Path admittedTarget = tempDirectory.resolve("primitive-mismatch.key");
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses =
+        SqlitePublicationCapabilityWitness.acquire(
+            java.util.List.of(
+                SqlitePublicationCapabilityWitness.Requirement.noReplace(admittedTarget)),
+            Files::createLink,
+            SqliteProtectedBookPublicationSupport::moveReplacing)) {
+      IOException mismatch =
+          assertThrows(
+              IOException.class,
+              () ->
+                  witnesses.requireCurrent(
+                      admittedTarget,
+                      SqlitePublicationCapabilityWitness.PrimitiveKind.ATOMIC_REPLACE));
+
+      assertTrue(
+          Objects.requireNonNull(mismatch.getMessage(), "primitive mismatch message")
+              .contains("not admitted"));
+    }
+
+    Path unsupportedParent = Files.createDirectory(tempDirectory.resolve("invalid-vocabulary"));
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(unsupportedParent);
+    Path unsupportedTarget = unsupportedParent.resolve("invalid-vocabulary.key");
+    SqlitePublicationCapabilityWitness.AcquisitionFailure unsupported =
+        assertThrows(
+            SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+            () ->
+                SqlitePublicationCapabilityWitness.acquire(
+                    java.util.List.of(
+                        SqlitePublicationCapabilityWitness.Requirement.noReplace(
+                            unsupportedTarget)),
+                    (completion, source) -> {
+                      throw new UnsupportedOperationException("injected no-replace refusal");
+                    },
+                    SqliteProtectedBookPublicationSupport::moveReplacing));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            SqlitePublicationCapabilityWitness.callerPathFailure(
+                unsupported, SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY));
+  }
+
+  @Test
   void retainedWitness_refusesAnUnadmittedSiblingEvenWhenItSharesTheWitnessParent()
       throws Exception {
     Path admittedTarget = tempDirectory.resolve("admitted.key");
