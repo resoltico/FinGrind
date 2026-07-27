@@ -1162,6 +1162,43 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
         Objects.requireNonNull(wrongKind.getMessage(), "wrong-kind evidence message")
             .contains("evidence changed"));
 
+    SqliteProtectedBookPairPublicationRecord malformed =
+        retainedRecord("evidence-status-malformed");
+    Path malformedClaim =
+        malformed.evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.CLAIM).getFirst();
+    Files.writeString(malformedClaim, "not protected-book recovery evidence");
+    assertTrue(
+        SqlitePairPublicationEvidenceStatus.hasObserved(
+            malformed, SqliteProtectedBookPairPublicationEvidenceKind.CLAIM));
+    assertFalse(
+        SqlitePairPublicationEvidenceStatus.hasComplete(
+            malformed, SqliteProtectedBookPairPublicationEvidenceKind.CLAIM));
+    assertThrows(
+        IOException.class,
+        () ->
+            SqlitePairPublicationEvidenceStatus.requireComplete(
+                malformed, SqliteProtectedBookPairPublicationEvidenceKind.CLAIM));
+
+    SqliteProtectedBookPairPublicationRecord mismatched =
+        retainedRecord("evidence-status-mismatch");
+    SqliteProtectedBookPairPublicationRecord differentRecord =
+        retainedRecord("evidence-status-different-record");
+    Path mismatchedClaim =
+        mismatched.evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.CLAIM).getFirst();
+    Path differentClaim =
+        differentRecord
+            .evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.CLAIM)
+            .getFirst();
+    Files.writeString(mismatchedClaim, Files.readString(differentClaim));
+    assertFalse(
+        SqlitePairPublicationEvidenceStatus.hasComplete(
+            mismatched, SqliteProtectedBookPairPublicationEvidenceKind.CLAIM));
+    assertThrows(
+        IOException.class,
+        () ->
+            SqlitePairPublicationEvidenceStatus.requireExact(
+                mismatched, SqliteProtectedBookPairPublicationEvidenceKind.CLAIM, mismatchedClaim));
+
     assertEquals(
         SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep.PAIR_STAGE_CLAIM,
         SqlitePairPublicationEvidenceStatus.durabilityStep(
