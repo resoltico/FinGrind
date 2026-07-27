@@ -1,10 +1,13 @@
 package dev.erst.fingrind.sqlite;
 
 import java.io.IOException;
+import java.nio.file.Path;
 import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
@@ -20,6 +23,7 @@ public final class AclFixturePath extends AclFixtureAbstractPath {
   private @Nullable IOException deleteIfExistsFailure;
   private @Nullable IOException readAttributesFailure;
   private @Nullable IOException sameFileFailure;
+  private final Map<String, IOException> sameFileFailuresByOtherPath = new HashMap<>();
   private @Nullable UnsupportedOperationException newFileChannelUnsupported;
   private @Nullable IOException tryLockFailure;
   private @Nullable IOException closeFailure;
@@ -84,6 +88,18 @@ public final class AclFixturePath extends AclFixtureAbstractPath {
 
   @Nullable IOException sameFileFailure() {
     return sameFileFailure;
+  }
+
+  AclFixturePath failSameFileAgainst(Path otherPath, IOException exception) {
+    sameFileFailuresByOtherPath.put(
+        Objects.requireNonNull(otherPath, "otherPath").toString(),
+        Objects.requireNonNull(exception, "exception"));
+    return this;
+  }
+
+  @Nullable IOException sameFileFailureAgainst(Path otherPath) {
+    return sameFileFailuresByOtherPath.get(
+        Objects.requireNonNull(otherPath, "otherPath").toString());
   }
 
   AclFixturePath preserveExistingEntryOnDeleteIfExists() {

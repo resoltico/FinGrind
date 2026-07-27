@@ -64,7 +64,7 @@ final class SqliteOwnedStageRecordDecoder {
         && SqliteProtectedBookPathIdentity.sameExistingFilesystemObject(
             parent,
             Objects.requireNonNull(record.stagedPath().getParent(), "stagedPath parent"),
-            record.finalPath());
+            record.stagedPath());
   }
 
   private static Optional<Path> decode(FileSystem fileSystem, String line, String prefix) {

@@ -182,6 +182,29 @@ class SqliteOwnedStageRecordTest {
   }
 
   @Test
+  void codecPinsAStageParentIdentityFailureToTheRecordedStagePath() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath recordParent = privateFixtureDirectory(fileSystem, "\\records");
+      AclFixturePath stageParent = privateFixtureDirectory(fileSystem, "\\stages");
+      AclFixturePath finalPath = fileSystem.path("\\records\\book.sqlite");
+      AclFixturePath stagedPath = fileSystem.path("\\stages\\book.stage");
+      AclFixturePath recordPath =
+          (AclFixturePath) SqliteOwnedStageRecordCodec.recordPath(finalPath, token(18));
+      SqliteOwnedStageRecordCodec.write(finalPath, stagedPath, () -> token(18));
+      recordParent.failSameFileAgainst(
+          stageParent, new IOException("injected stage-parent identity failure"));
+
+      SqliteCallerPathContractException exception =
+          assertThrows(
+              SqliteCallerPathContractException.class,
+              () -> SqliteOwnedStageRecordCodec.readCurrent(recordPath));
+
+      assertEquals(SqliteCallerPathFailure.TARGET_IDENTITY_UNESTABLISHED, exception.pathFailure());
+      assertEquals(stagedPath.toAbsolutePath().normalize(), exception.requestedPath());
+    }
+  }
+
+  @Test
   void ownerResidueScanner_leavesValidOpaqueRecordsInertButFailsClosedForRetiredTargetRecords()
       throws Exception {
     Path finalPath = finalPath();
@@ -421,6 +444,19 @@ class SqliteOwnedStageRecordTest {
 
   private Path finalPath() {
     return tempDirectory.resolve("book.sqlite").toAbsolutePath().normalize();
+  }
+
+  private static AclFixturePath privateFixtureDirectory(
+      AclFixtureFileSystem fileSystem, String path) {
+    AclFixturePath directory = fileSystem.path(path);
+    directory.exists = true;
+    directory.regularFile = false;
+    directory.posixPermissions =
+        Set.of(
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE,
+            PosixFilePermission.OWNER_EXECUTE);
+    return directory;
   }
 
   private Path marker(Path finalPath, int token) {

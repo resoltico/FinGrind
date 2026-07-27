@@ -1362,6 +1362,12 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
     assertTrue(SqlitePairPublicationEvidenceState.isCompleteClaimOnly(claimOnly));
     assertTrue(SqlitePairPublicationEvidenceState.hasNoAuthorizationEvidence(claimOnly));
 
+    SqliteProtectedBookPairPublicationRecord retainedClaim =
+        retainedRecord("evidence-state-retained-claim");
+    SqliteProtectedBookPairPublicationEvidenceLifecycle.retainPrepublication(
+        retainedClaim, (ignoredStep, ignoredParent) -> {});
+    assertFalse(SqlitePairPublicationEvidenceState.isCompleteClaimOnly(retainedClaim));
+
     SqliteProtectedBookPairPublicationRecord incompleteRetained =
         retainedRecord("evidence-state-retained");
     SqliteProtectedBookPairPublicationEvidenceLifecycle.retainPrepublication(
