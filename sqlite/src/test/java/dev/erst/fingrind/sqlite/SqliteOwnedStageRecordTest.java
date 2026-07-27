@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -340,6 +341,37 @@ class SqliteOwnedStageRecordTest {
     assertTrue(
         SqliteOwnedStageRecord.findFor(tempDirectory.resolve("missing").resolve("book.sqlite"))
             .isEmpty());
+  }
+
+  @Test
+  void soleCurrentFinalTargetForStage_requiresOneRegularStageWithOneUnambiguousOwnerRecord()
+      throws Exception {
+    assertNull(
+        SqliteOwnedStageRecord.soleCurrentFinalTargetForStage(
+            tempDirectory.resolve("absent.stage")));
+
+    Path firstFinalPath = finalPath();
+    Path secondFinalPath = tempDirectory.resolve("second.sqlite");
+    Path stagePath = Files.createFile(tempDirectory.resolve("shared.stage"));
+    SqliteOwnedStageRecord first = SqliteOwnedStageRecord.recordExisting(firstFinalPath, stagePath);
+    try {
+      assertEquals(
+          firstFinalPath, SqliteOwnedStageRecord.soleCurrentFinalTargetForStage(stagePath));
+
+      SqliteOwnedStageRecord second =
+          SqliteOwnedStageRecord.recordExisting(secondFinalPath, stagePath);
+      try {
+        assertNull(SqliteOwnedStageRecord.soleCurrentFinalTargetForStage(stagePath));
+      } finally {
+        second.releaseRetained();
+      }
+    } finally {
+      first.releaseRetained();
+    }
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> SqliteOwnedStageRecord.recordExisting(firstFinalPath, firstFinalPath));
   }
 
   @Test
