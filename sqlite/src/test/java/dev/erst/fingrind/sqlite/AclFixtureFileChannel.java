@@ -10,10 +10,11 @@ import java.nio.channels.WritableByteChannel;
 
 /** Minimal file channel wrapper for fixture-backed file I/O tests. */
 class AclFixtureFileChannel extends FileChannel {
+  private final AclFixturePath path;
   private final AclFixtureSeekableByteChannel delegate;
 
   AclFixtureFileChannel(AclFixturePath path, AclFixtureSeekableByteChannel delegate) {
-    java.util.Objects.requireNonNull(path, "path");
+    this.path = java.util.Objects.requireNonNull(path, "path");
     this.delegate = java.util.Objects.requireNonNull(delegate, "delegate");
   }
 
@@ -50,7 +51,8 @@ class AclFixtureFileChannel extends FileChannel {
 
   @Override
   public long size() throws IOException {
-    return delegate.size();
+    Long reportedSize = path.reportedSize();
+    return reportedSize == null ? delegate.size() : reportedSize;
   }
 
   @Override
@@ -94,12 +96,20 @@ class AclFixtureFileChannel extends FileChannel {
 
   @Override
   public FileLock tryLock(long position, long size, boolean shared) throws IOException {
+    IOException tryLockFailure = path.tryLockFailure();
+    if (tryLockFailure != null) {
+      throw tryLockFailure;
+    }
     return new FixtureFileLock(this, position, size, shared);
   }
 
   @Override
   protected void implCloseChannel() throws IOException {
     delegate.close();
+    IOException closeFailure = path.closeFailure();
+    if (closeFailure != null) {
+      throw closeFailure;
+    }
   }
 
   /** Minimal lock handle so the ACL fixture can exercise file-lock paths. */

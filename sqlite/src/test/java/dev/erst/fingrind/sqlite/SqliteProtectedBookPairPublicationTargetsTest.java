@@ -240,6 +240,10 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
         ProtectedBookMaintenanceRejection.BookDestinationOccupied.class,
         SqliteProtectedBookPairPublicationTargets.occupiedBookTargetRejection(
             ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET, targetPath));
+    assertInstanceOf(
+        ProtectedBookMaintenanceRejection.BookDestinationOccupied.class,
+        SqliteProtectedBookPairPublicationTargets.occupiedBookTargetRejection(
+            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, targetPath));
     assertThrows(
         IllegalArgumentException.class,
         () ->
@@ -307,6 +311,17 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
                     ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET)),
         ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
         SqliteCallerPathFailure.PAIR_TARGET_LEAF_PORTABILITY_REQUIRED);
+    assertArtifactPathFailure(
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                SqliteProtectedBookPairPublicationTargets.requirePrepublicationPairTargetAdmission(
+                    tempDirectory.resolve("book.sqlite"),
+                    tempDirectory.resolve("Book.sqlite"),
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET)),
+        ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+        SqliteCallerPathFailure.PAIR_TARGET_LEAF_PORTABILITY_REQUIRED);
   }
 
   @Test
@@ -367,6 +382,23 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
                 ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
                 ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET));
     assertEquals(unexpectedFailure, genericFailure.getCause());
+
+    SqlitePublicationCapabilityWitness.AcquisitionFailure unadmittedFailure =
+        unexpectedWitnessFailure(
+            SqlitePublicationCapabilityWitness.Requirement.noReplace(
+                tempDirectory.resolve("unadmitted.key")));
+    IllegalStateException unadmittedTargetFailure =
+        assertInstanceOf(
+            IllegalStateException.class,
+            SqliteProtectedBookPairPublicationTargets.capabilityAcquisitionFailure(
+                unadmittedFailure,
+                bookTarget,
+                secretTarget,
+                dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore
+                    .RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET));
+    assertEquals(unadmittedFailure, unadmittedTargetFailure.getCause());
   }
 
   private static void assertArtifactPathFailure(

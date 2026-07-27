@@ -19,6 +19,9 @@ public final class AclFixturePath extends AclFixtureAbstractPath {
   private byte[] content = new byte[0];
   private @Nullable IOException deleteIfExistsFailure;
   private @Nullable UnsupportedOperationException newFileChannelUnsupported;
+  private @Nullable IOException tryLockFailure;
+  private @Nullable IOException closeFailure;
+  private @Nullable Long reportedSize;
   private boolean preserveExistingEntryOnDeleteIfExists;
   private final Deque<PlannedIOException> newByteChannelFailures = new ArrayDeque<>();
   private final Deque<IOException> createDirectoryFailures = new ArrayDeque<>();
@@ -84,6 +87,36 @@ public final class AclFixturePath extends AclFixtureAbstractPath {
 
   @Nullable UnsupportedOperationException newFileChannelUnsupported() {
     return newFileChannelUnsupported;
+  }
+
+  AclFixturePath failTryLockWith(IOException exception) {
+    tryLockFailure = Objects.requireNonNull(exception, "exception");
+    return this;
+  }
+
+  @Nullable IOException tryLockFailure() {
+    return tryLockFailure;
+  }
+
+  AclFixturePath failCloseWith(IOException exception) {
+    closeFailure = Objects.requireNonNull(exception, "exception");
+    return this;
+  }
+
+  @Nullable IOException closeFailure() {
+    return closeFailure;
+  }
+
+  AclFixturePath reportSizeAs(long size) {
+    if (size < 0L) {
+      throw new IllegalArgumentException("reported size must be non-negative");
+    }
+    reportedSize = size;
+    return this;
+  }
+
+  @Nullable Long reportedSize() {
+    return reportedSize;
   }
 
   AclFixturePath failCreateDirectoryWith(IOException exception) {

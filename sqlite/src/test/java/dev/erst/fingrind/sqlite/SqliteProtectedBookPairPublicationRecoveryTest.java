@@ -1026,6 +1026,20 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
             completedRekey.bookTargetPath,
             completedRekey.secretTargetPath,
             Map.of(completedRekey.pairId, completedRekey)));
+
+    SqliteProtectedBookPairPublicationRecord completedBackup =
+        retainedRecord("classifier-completed-unrelated-backup");
+    Files.createLink(completedBackup.bookTargetPath, completedBackup.bookStagePath);
+    Files.createLink(completedBackup.secretTargetPath, completedBackup.secretStagePath);
+    SqliteProtectedBookPairPublicationEvidenceLifecycle.confirmCompletedPublication(
+        completedBackup, (ignoredStep, ignoredParent) -> {});
+
+    assertEquals(
+        SqlitePairPublicationEvidenceAbsent.INSTANCE,
+        SqlitePairPublicationEvidenceClassifier.classify(
+            completedBackup.bookTargetPath.resolveSibling("unrelated.sqlite"),
+            completedBackup.secretTargetPath,
+            Map.of(completedBackup.pairId, completedBackup)));
   }
 
   @Test
@@ -1077,6 +1091,49 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
             incompleteCompletion.bookTargetPath,
             incompleteCompletion.secretTargetPath,
             Map.of(incompleteCompletion.pairId, incompleteCompletion)));
+
+    SqliteProtectedBookPairPublicationRecord partialCompleted =
+        retainedRecord("classifier-partial-completed");
+    SqliteProtectedBookPairPublicationEvidenceLifecycle.retainPrepublication(
+        partialCompleted, (ignoredStep, ignoredParent) -> {});
+    Files.createLink(partialCompleted.bookTargetPath, partialCompleted.bookStagePath);
+
+    assertInstanceOf(
+        SqlitePairPublicationEvidenceExact.class,
+        SqlitePairPublicationEvidenceClassifier.classify(
+            partialCompleted.bookTargetPath,
+            partialCompleted.secretTargetPath,
+            Map.of(partialCompleted.pairId, partialCompleted)));
+
+    SqliteProtectedBookPairPublicationRecord claimOnlyWithVisibleBook =
+        retainedRecord("classifier-claim-only-visible-book");
+    deleteEvidence(claimOnlyWithVisibleBook, SqliteProtectedBookPairPublicationEvidenceKind.INTENT);
+    deleteEvidence(
+        claimOnlyWithVisibleBook, SqliteProtectedBookPairPublicationEvidenceKind.RECOVERY);
+    Files.createLink(
+        claimOnlyWithVisibleBook.bookTargetPath, claimOnlyWithVisibleBook.bookStagePath);
+
+    assertEquals(
+        SqlitePairPublicationEvidenceUnsafe.INSTANCE,
+        SqlitePairPublicationEvidenceClassifier.classify(
+            claimOnlyWithVisibleBook.bookTargetPath,
+            claimOnlyWithVisibleBook.secretTargetPath,
+            Map.of(claimOnlyWithVisibleBook.pairId, claimOnlyWithVisibleBook)));
+
+    SqliteProtectedBookPairPublicationRecord incompleteIntent =
+        retainedRecord("classifier-incomplete-intent-terminal");
+    Files.writeString(
+        incompleteIntent
+            .evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.INTENT)
+            .getFirst(),
+        "changed intent evidence");
+
+    assertEquals(
+        SqlitePairPublicationEvidenceUnsafe.INSTANCE,
+        SqlitePairPublicationEvidenceClassifier.classify(
+            incompleteIntent.bookTargetPath,
+            incompleteIntent.secretTargetPath,
+            Map.of(incompleteIntent.pairId, incompleteIntent)));
   }
 
   @Test

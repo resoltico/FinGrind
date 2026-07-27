@@ -17,6 +17,7 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -117,6 +118,77 @@ class SqlitePosixCoordinationControlFileTransportTest extends SqliteNativeBridge
                   SqlitePosixCoordinationControlFileTransport.requireExistingExactRecord(
                       zeroRead, magic));
       assertTrue(NullTestSupport.messageOf(readFailure).contains("did not make read progress"));
+    }
+  }
+
+  @Test
+  void transportPreservesCloseFailuresWhileReportingInitializationValidationAndLockFailures()
+      throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parent = ownerOnlyFixtureParent(fileSystem);
+      byte[] magic = SqliteCoordinationControlFiles.magic("fixture", "close-failure");
+
+      IOException writeFailure = new IOException("injected initialization write failure");
+      IOException initializationCloseFailure =
+          new IOException("injected initialization close failure");
+      AclFixturePath initialization = fileSystem.path("\\controls\\initialization.control");
+      initialization.failWriteWith(writeFailure).failCloseWith(initializationCloseFailure);
+      IOException initializationFailure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  SqlitePosixCoordinationControlFileTransport.openOrCreateAndTryExclusiveLock(
+                      initialization, magic, 0L, 1L));
+      assertEquals(writeFailure, initializationFailure);
+      assertEquals(
+          List.of(initializationCloseFailure), List.of(initializationFailure.getSuppressed()));
+
+      IOException validationCloseFailure = new IOException("injected validation close failure");
+      AclFixturePath invalidExisting = fileSystem.path("\\controls\\invalid-existing.control");
+      invalidExisting.exists = true;
+      invalidExisting.regularFile = true;
+      invalidExisting.posixPermissions =
+          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+      invalidExisting.replaceContent(new byte[magic.length]);
+      invalidExisting.failCloseWith(validationCloseFailure);
+      IOException validationFailure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  SqlitePosixCoordinationControlFileTransport.openExistingAndTryExclusiveLock(
+                      invalidExisting, magic, 0L, 1L));
+      assertTrue(NullTestSupport.messageOf(validationFailure).contains("magic is invalid"));
+      assertEquals(List.of(validationCloseFailure), List.of(validationFailure.getSuppressed()));
+
+      IOException lockFailure = new IOException("injected lock failure");
+      IOException lockCloseFailure = new IOException("injected lock close failure");
+      AclFixturePath lockFailurePath = fileSystem.path("\\controls\\lock-failure.control");
+      lockFailurePath.failTryLockWith(lockFailure).failCloseWith(lockCloseFailure);
+      IOException retainedLockFailure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  SqlitePosixCoordinationControlFileTransport.openOrCreateAndTryExclusiveLock(
+                      lockFailurePath, magic, 0L, 1L));
+      assertEquals(lockFailure, retainedLockFailure);
+      assertEquals(List.of(lockCloseFailure), List.of(retainedLockFailure.getSuppressed()));
+
+      AclFixturePath truncated = fileSystem.path("\\controls\\truncated-read.control");
+      truncated.exists = true;
+      truncated.regularFile = true;
+      truncated.posixPermissions =
+          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+      truncated.replaceContent(new byte[] {1});
+      truncated.reportSizeAs(magic.length);
+      IOException truncatedFailure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  SqlitePosixCoordinationControlFileTransport.requireExistingExactRecord(
+                      truncated, magic));
+      assertTrue(NullTestSupport.messageOf(truncatedFailure).contains("ended unexpectedly"));
+
+      assertTrue(parent.existsValue());
     }
   }
 
@@ -473,6 +545,18 @@ class SqlitePosixCoordinationControlFileTransportTest extends SqliteNativeBridge
     SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(parent);
     SqliteBookFileSecurity.createNewOwnerOnlyBookFile(artifactPath);
     return artifactPath;
+  }
+
+  private static AclFixturePath ownerOnlyFixtureParent(AclFixtureFileSystem fileSystem) {
+    AclFixturePath parent = fileSystem.path("\\controls");
+    parent.exists = true;
+    parent.regularFile = false;
+    parent.posixPermissions =
+        Set.of(
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE,
+            PosixFilePermission.OWNER_EXECUTE);
+    return parent;
   }
 
   /** Fixture descriptor that reports a close failure after the release boundary consumes it. */
