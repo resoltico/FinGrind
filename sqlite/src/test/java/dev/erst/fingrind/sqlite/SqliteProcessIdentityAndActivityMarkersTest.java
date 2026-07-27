@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Objects;
 import org.junit.jupiter.api.Test;
 
@@ -234,6 +235,87 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
               .contains("Unexpected state exists"));
     }
     assertTrue(Files.exists(foreignState, LinkOption.NOFOLLOW_LINKS));
+  }
+
+  @Test
+  void objectControlAdmissionRejectsMalformedCurrentNamespaceNamesWithoutAdoptingThem()
+      throws Exception {
+    Path bookPath = writeProtectedBookPath("malformed-object-name.sqlite");
+
+    for (String malformedName :
+        java.util.List.of(
+            "object-v4-too-short.control", "object-v4-" + "g".repeat(64) + ".control")) {
+      Path root = tempDirectory.resolve("malformed-object-root-" + malformedName.hashCode());
+      Files.createDirectory(root);
+      SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(root);
+      Path residue = root.resolve(malformedName);
+      Files.writeString(residue, "malformed current namespace control");
+
+      try (AutoCloseable ignored = SqliteObjectCoordinationArtifacts.installTestRoot(root)) {
+        IOException failure =
+            assertThrows(
+                IOException.class,
+                () -> SqliteObjectCoordinationArtifacts.domainForExistingArtifact(bookPath));
+        assertTrue(
+            Objects.requireNonNull(failure.getMessage(), "malformed name failure message")
+                .contains("Unexpected state exists"));
+      }
+      assertTrue(Files.exists(residue, LinkOption.NOFOLLOW_LINKS));
+    }
+  }
+
+  @Test
+  void objectCoordinationRetainsOneExactDomainAndReleasesTestRootsInLifoOrder() throws Exception {
+    Path bookPath = writeProtectedBookPath("domain-and-lifo.sqlite");
+    Path outerRoot = tempDirectory.resolve("object-domain-outer");
+    Path innerRoot = tempDirectory.resolve("object-domain-inner");
+    AutoCloseable outer = SqliteObjectCoordinationArtifacts.installTestRoot(outerRoot);
+    AutoCloseable inner = SqliteObjectCoordinationArtifacts.installTestRoot(innerRoot);
+
+    try {
+      SqliteObjectCoordinationArtifacts.Domain domain =
+          SqliteObjectCoordinationArtifacts.domainForExistingArtifact(bookPath);
+      byte[] suppliedMagic = domain.magic();
+      suppliedMagic[0] ^= 1;
+      assertFalse(Arrays.equals(suppliedMagic, domain.magic()));
+
+      IllegalStateException outOfOrderClose =
+          assertThrows(IllegalStateException.class, outer::close);
+      assertTrue(
+          Objects.requireNonNull(outOfOrderClose.getMessage(), "out-of-order close message")
+              .contains("test root changed"));
+    } finally {
+      inner.close();
+      outer.close();
+    }
+  }
+
+  @Test
+  void directObjectCoordinationLeasesAndActivitySlotsObserveOnePhysicalControl() throws Exception {
+    Path bookPath = writeProtectedBookPath("direct-object-coordination.sqlite");
+    try (AutoCloseable ignored =
+        SqliteObjectCoordinationArtifacts.installTestRoot(
+            tempDirectory.resolve("direct-object-coordination-root"))) {
+      SqliteObjectCoordinationArtifacts.Domain domain =
+          SqliteObjectCoordinationArtifacts.domainForExistingArtifact(bookPath);
+      try (SqliteLeaseHandle maintenanceLease =
+          Objects.requireNonNull(
+              SqliteObjectCoordinationArtifacts.tryAcquireMaintenanceExclusion(bookPath),
+              "maintenance lease")) {
+        IOException activityBlockedByMaintenance =
+            assertThrows(
+                IOException.class,
+                () -> SqliteObjectCoordinationArtifacts.acquireActivitySlot(domain));
+        assertTrue(
+            Objects.requireNonNull(activityBlockedByMaintenance.getMessage(), "busy slot message")
+                .contains("No FinGrind object-coordination activity slot"));
+      }
+      try (SqliteObjectCoordinationArtifacts.ActivitySlot slot =
+          SqliteObjectCoordinationArtifacts.acquireActivitySlot(domain)) {
+        assertTrue(SqliteObjectCoordinationArtifacts.hasActiveSlot(bookPath));
+      }
+      assertFalse(SqliteObjectCoordinationArtifacts.hasActiveSlot(bookPath));
+    }
   }
 
   private Path writeProtectedBookPath(String fileName) throws IOException {
