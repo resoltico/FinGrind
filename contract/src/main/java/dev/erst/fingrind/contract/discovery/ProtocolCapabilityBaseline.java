@@ -5,15 +5,12 @@ import dev.erst.fingrind.contract.protocol.OperationId;
 import dev.erst.fingrind.contract.protocol.ProtocolCatalog;
 import dev.erst.fingrind.contract.protocol.ProtocolOperation;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.ObjectWriter;
 import tools.jackson.databind.json.JsonMapper;
@@ -45,28 +42,8 @@ final class ProtocolCapabilityBaseline {
 
   /** Synchronizes the complete baseline directory, removing stale generated JSON fragments. */
   static void sync(Path baselineDirectory) throws IOException {
-    Path targetDirectory = requireDirectory(baselineDirectory);
-    Map<Path, String> documents = renderedDocuments();
-    Files.createDirectories(targetDirectory);
-    removeStaleFragments(targetDirectory, documents.keySet());
-    for (Map.Entry<Path, String> document : documents.entrySet()) {
-      Path target = targetPath(targetDirectory, document.getKey());
-      Path parent = Objects.requireNonNull(target.getParent());
-      Files.createDirectories(parent);
-      if (!Files.isRegularFile(target) || !document.getValue().equals(Files.readString(target))) {
-        Files.writeString(target, document.getValue());
-      }
-    }
-  }
-
-  /** Resolves one rendered document only when it remains contained by the generated directory. */
-  private static Path targetPath(Path targetDirectory, Path relativeDocumentPath) {
-    Path target = targetDirectory.resolve(relativeDocumentPath).normalize();
-    if (!target.startsWith(targetDirectory)) {
-      throw new IllegalArgumentException(
-          "Capability baseline document path escapes its directory.");
-    }
-    return target;
+    ProtocolCapabilityBaselineDirectory.sync(
+        requireDirectory(baselineDirectory), renderedDocuments());
   }
 
   private static CapabilityBaselineSnapshot projectSnapshot(
@@ -113,22 +90,6 @@ final class ProtocolCapabilityBaseline {
           "Capability baseline directory must not be a filesystem root.");
     }
     return targetDirectory;
-  }
-
-  private static void removeStaleFragments(Path targetDirectory, Set<Path> expected)
-      throws IOException {
-    try (Stream<Path> paths = Files.walk(targetDirectory)) {
-      List<Path> staleFragments =
-          paths
-              .filter(Files::isRegularFile)
-              .map(targetDirectory::relativize)
-              .filter(path -> path.toString().endsWith(".json"))
-              .filter(path -> !expected.contains(path))
-              .toList();
-      for (Path staleFragment : staleFragments) {
-        Files.delete(targetDirectory.resolve(staleFragment));
-      }
-    }
   }
 
   private static String commandPath(OperationCategory category, CapabilityBaselineCommand command) {

@@ -188,15 +188,17 @@ class ProtocolCapabilityBaselineTest {
   void baselineDocumentTargetsRemainContainedByTheirGeneratedDirectory(@TempDir Path tempDir)
       throws Throwable {
     Path targetDirectory = tempDir.resolve("capability-baseline").toAbsolutePath().normalize();
-    MethodHandle targetPath = targetPathHandle();
 
     assertEquals(
         targetDirectory.resolve("commands/query/help.json"),
-        targetPath(targetPath, targetDirectory, Path.of("commands/query/help.json")));
+        ProtocolCapabilityBaselineDirectory.targetPath(
+            targetDirectory, Path.of("commands/query/help.json")));
     IllegalArgumentException escaped =
         assertThrows(
             IllegalArgumentException.class,
-            () -> targetPath(targetPath, targetDirectory, Path.of("../escaped.json")));
+            () ->
+                ProtocolCapabilityBaselineDirectory.targetPath(
+                    targetDirectory, Path.of("../escaped.json")));
 
     assertEquals("Capability baseline document path escapes its directory.", escaped.getMessage());
   }
@@ -249,15 +251,6 @@ class ProtocolCapabilityBaselineTest {
                 Map.class));
   }
 
-  private static MethodHandle targetPathHandle()
-      throws NoSuchMethodException, IllegalAccessException {
-    return MethodHandles.privateLookupIn(ProtocolCapabilityBaseline.class, MethodHandles.lookup())
-        .findStatic(
-            ProtocolCapabilityBaseline.class,
-            "targetPath",
-            MethodType.methodType(Path.class, Path.class, Path.class));
-  }
-
   private static ProtocolCapabilityBaseline.CapabilityBaselineSnapshot projectSnapshot(
       MethodHandle projectSnapshot,
       List<ProtocolOperation> operations,
@@ -265,11 +258,6 @@ class ProtocolCapabilityBaselineTest {
       throws Throwable {
     return (ProtocolCapabilityBaseline.CapabilityBaselineSnapshot)
         projectSnapshot.invokeExact(operations, descriptorsByOperation);
-  }
-
-  private static Path targetPath(
-      MethodHandle targetPath, Path targetDirectory, Path relativeDocumentPath) throws Throwable {
-    return (Path) targetPath.invokeExact(targetDirectory, relativeDocumentPath);
   }
 
   private static Path repositoryRoot() {
