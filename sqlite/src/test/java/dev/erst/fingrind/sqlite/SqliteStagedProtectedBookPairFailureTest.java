@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -794,6 +795,49 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
     assertTrue(Files.exists(restoredStagedPath));
     assertTrue(Files.exists(restoredKeyStagedPath));
     assertTrue(Files.isDirectory(restoredKeyRecordPath));
+  }
+
+  @Test
+  void stagedRestoredBookPair_refusesASelectedTargetChangedAfterRecoveryEvidence()
+      throws Exception {
+    Path stagedBookPath = writeArtifact("restore-selected-target-change/staged.sqlite", "book");
+    Path stagedKeyPath = writeArtifact("restore-selected-target-change/staged.key", "key");
+    Path finalBookPath =
+        writeArtifact("restore-selected-target-change/book.sqlite", "selected original book");
+    Path finalKeyPath = tempDirectory.resolve("restore-selected-target-change").resolve("book.key");
+    AtomicBoolean changedAfterRecoveryEvidence = new AtomicBoolean();
+
+    try (SqliteStagedRestoredBookPair pair =
+        SqliteStagedRestoredBookPairFactory.create(
+            new SqliteStagedProtectedBookPairArtifacts(
+                SqliteOwnedStagedArtifact.recordExisting(finalBookPath, stagedBookPath),
+                finalBookPath,
+                SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath),
+                finalKeyPath),
+            RestoredBookTargetPolicy.REPLACE_SELECTED,
+            TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8),
+            VERIFICATION_SUPPORT,
+            SqliteRestoredBookPairPublication.defaultOperators(),
+            null,
+            null,
+            (step, parentDirectory) -> {
+              if (step
+                      == SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep
+                          .RECOVERY_RECORD
+                  && changedAfterRecoveryEvidence.compareAndSet(false, true)) {
+                Files.writeString(finalBookPath, "selected replacement by another writer");
+              }
+            })) {
+      assertInstanceOf(
+          ProtectedBookPairPublicationFailureOutcome.PrepublicationRecoveryRequired.class,
+          pair.commit(rekeyBinding(finalBookPath, finalBookPath.resolveSibling("source.key"))));
+    }
+
+    assertTrue(changedAfterRecoveryEvidence.get());
+    assertEquals("selected replacement by another writer", Files.readString(finalBookPath));
+    assertFalse(Files.exists(finalKeyPath));
+    assertTrue(Files.exists(stagedBookPath));
+    assertTrue(Files.exists(stagedKeyPath));
   }
 
   @Test
