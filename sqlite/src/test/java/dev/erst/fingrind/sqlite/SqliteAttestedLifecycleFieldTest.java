@@ -118,15 +118,32 @@ class SqliteAttestedLifecycleFieldTest extends SqliteArtifactPublicationTestSupp
           acceptedValue(
               workflow.rekeyBook(localAccess(sourceAccess), rekeyedBookKeyPath, signingSession)));
 
-      assertInstanceOf(
-          ProtectedBookRestoreOutcome.Restored.class,
-          acceptedValue(
-              workflow.restoreBook(
-                  restoredBookPath,
-                  restoredBookKeyPath,
-                  backupPath,
-                  backupKeyPath,
-                  signingSession)));
+      ProtectedBookRestoreOutcome.Restored restored =
+          assertInstanceOf(
+              ProtectedBookRestoreOutcome.Restored.class,
+              acceptedValue(
+                  workflow.restoreBook(
+                      restoredBookPath,
+                      restoredBookKeyPath,
+                      backupPath,
+                      backupKeyPath,
+                      signingSession)));
+      removeCompletedPairEvidence(restoredBookPath);
+
+      ProtectedBookRestoreOutcome.Restored recoveredRestore =
+          assertInstanceOf(
+              ProtectedBookRestoreOutcome.Restored.class,
+              acceptedValue(
+                  workflow.restoreBook(
+                      restoredBookPath,
+                      restoredBookKeyPath,
+                      backupPath,
+                      backupKeyPath,
+                      signingSession)));
+      assertEquals(restored.attestationCommit(), recoveredRestore.attestationCommit());
+      assertEquals(
+          dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion.RECOVERED,
+          recoveredRestore.pairPublicationCompletion());
     }
 
     assertEquals(
@@ -136,6 +153,62 @@ class SqliteAttestedLifecycleFieldTest extends SqliteArtifactPublicationTestSupp
         2,
         attestationEvidence(store, bookAccessWithKey(restoredBookPath, restoredBookKeyPath))
             .size());
+  }
+
+  @Test
+  void backupRecoveryRevalidatesThePublishedPairAgainstItsSignedManifest() throws Exception {
+    Path sourceBookPath = tempDirectory.resolve("live").resolve("book.sqlite");
+    AttestationCredentialSource credential = createFounderCredential();
+    BookAccess sourceAccess = attestedBookAccess(sourceBookPath, credential);
+    initializeAttestedBook(sourceAccess, credential);
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+    AttestedProtectedBookLifecycleWorkflow workflow =
+        new AttestedProtectedBookLifecycleWorkflow(Clock.fixed(RECORDED_AT, ZoneOffset.UTC), store);
+    Path backupPath = tempDirectory.resolve("backup").resolve("book.fgba");
+    Path backupKeyPath = tempDirectory.resolve("backup").resolve("book.key");
+    UUID backupId = UUID.fromString("84107a08-c933-4277-a046-1aa4ea402a65");
+
+    try (AttestationSigningSession signingSession =
+        AttestationSigningSession.open(List.of(credential))) {
+      ProtectedBookBackupOutcome.BackedUp initialBackup =
+          assertInstanceOf(
+              ProtectedBookBackupOutcome.BackedUp.class,
+              acceptedValue(
+                  workflow.backupBook(
+                      localAccess(sourceAccess),
+                      backupPath,
+                      backupKeyPath,
+                      backupId,
+                      signingSession)));
+      SqliteProtectedBookPairPublicationRecord record =
+          assertInstanceOf(
+                  SqlitePairPublicationEvidenceExact.class,
+                  SqliteProtectedBookPairPublicationRecord.scanForAdmission(
+                      backupPath, backupKeyPath))
+              .record();
+      for (Path completedEvidencePath :
+          record.evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.COMPLETED)) {
+        Files.delete(completedEvidencePath);
+      }
+
+      ProtectedBookBackupOutcome.BackedUp recoveredBackup =
+          assertInstanceOf(
+              ProtectedBookBackupOutcome.BackedUp.class,
+              acceptedValue(
+                  workflow.backupBook(
+                      localAccess(sourceAccess),
+                      backupPath,
+                      backupKeyPath,
+                      backupId,
+                      signingSession)));
+
+      assertEquals(initialBackup.backupFilePath(), recoveredBackup.backupFilePath());
+      assertEquals(initialBackup.backupBookKeyFilePath(), recoveredBackup.backupBookKeyFilePath());
+      assertEquals(backupId, recoveredBackup.backupId());
+      assertEquals(
+          dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion.RECOVERED,
+          recoveredBackup.pairPublicationCompletion());
+    }
   }
 
   private AttestationCredentialSource createFounderCredential() throws IOException {
@@ -150,6 +223,27 @@ class SqliteAttestedLifecycleFieldTest extends SqliteArtifactPublicationTestSupp
         PRINCIPAL_ID,
         encryptedKeyPath,
         passphrasePath);
+  }
+
+  private static void removeCompletedPairEvidence(Path pairMemberPath) throws IOException {
+    List<Path> completedEvidencePaths;
+    try (var parentEntries = Files.list(pairMemberPath.getParent())) {
+      completedEvidencePaths =
+          parentEntries
+              .filter(
+                  candidate ->
+                      SqliteProtectedBookPairPublicationEvidenceKind.fromCurrentFileName(
+                              candidate.getFileName().toString())
+                          .filter(
+                              kind ->
+                                  kind == SqliteProtectedBookPairPublicationEvidenceKind.COMPLETED)
+                          .isPresent())
+              .toList();
+    }
+    assertEquals(1, completedEvidencePaths.size());
+    for (Path completedEvidencePath : completedEvidencePaths) {
+      Files.delete(completedEvidencePath);
+    }
   }
 
   private BookAccess attestedBookAccess(
