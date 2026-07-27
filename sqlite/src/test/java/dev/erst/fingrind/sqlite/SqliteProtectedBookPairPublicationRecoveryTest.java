@@ -359,6 +359,77 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
   }
 
   @Test
+  void matchedAndBlockedMemberPlansRespectTheirBoundedRecoveryActions() throws Exception {
+    SqliteProtectedBookPairPublicationRecord matched = retainedRecord("member-matched");
+    Files.createLink(matched.bookTargetPath, matched.bookStagePath);
+    Files.createLink(matched.secretTargetPath, matched.secretStagePath);
+    SqlitePairPublicationMemberReconciler reconciler =
+        reconciler((ignoredStep, ignoredParent) -> {});
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses = witnessesFor(matched)) {
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.DURABLE,
+          reconciler.reconcileSecret(
+              matched,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan
+                  .MATCHED_OR_FORCEABLE,
+              witnesses));
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.DURABLE,
+          reconciler.reconcileBook(
+              matched,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan
+                  .MATCHED_OR_FORCEABLE,
+              witnesses));
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.OUTCOME_UNCERTAIN,
+          reconciler.reconcileSecret(
+              matched,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.BLOCKED,
+              witnesses));
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.OUTCOME_UNCERTAIN,
+          reconciler.reconcileBook(
+              matched,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.BLOCKED,
+              witnesses));
+    }
+  }
+
+  @Test
+  void rekeyRecoveryPublishesTheGeneratedSecretBeforeAtomicallyReplacingTheSelectedBook()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord record = rekeyRecord("member-rekey");
+    SqlitePairPublicationMemberReconciler reconciler =
+        reconciler((ignoredStep, ignoredParent) -> {});
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses =
+        SqlitePairPublicationRecoveryCapabilities.acquire(
+            record,
+            SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+            SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+            ProtectedBookMaintenanceArtifactRole.NEW_BOOK_KEY_TARGET)) {
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.DURABLE,
+          reconciler.reconcileSecret(
+              record,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+      assertTrue(Files.isSameFile(record.secretTargetPath, record.secretStagePath));
+
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.DURABLE,
+          reconciler.reconcileBook(
+              record,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+    }
+
+    assertTrue(Files.isSameFile(record.bookTargetPath, record.bookStagePath));
+  }
+
+  @Test
   void exactRecoveryWorkflowPublishesOneOwnedStagedBackupPair() throws Exception {
     SqliteProtectedBookPairPublicationRecord record = retainedRecord("workflow-recovery");
 
@@ -598,6 +669,24 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
         secretStage,
         RestoredBookTargetPolicy.REQUIRE_ABSENT,
         backupBinding(bookTarget.resolveSibling("source.sqlite")),
+        (ignoredStep, ignoredParent) -> {});
+  }
+
+  private SqliteProtectedBookPairPublicationRecord rekeyRecord(String directoryName)
+      throws IOException {
+    Path bookTarget = writeArtifact(directoryName + "/book.sqlite", "selected source book");
+    Path secretTarget = absentTarget(directoryName + "/book.key");
+    Path bookStage = writeArtifact(directoryName + "/.book.stage", "rekeyed book");
+    Path secretStage = writeArtifact(directoryName + "/.secret.stage", "generated key");
+    SqliteOwnedStagedArtifact.recordExisting(bookTarget, bookStage);
+    SqliteOwnedStagedArtifact.recordExisting(secretTarget, secretStage);
+    return SqliteProtectedBookPairPublicationRecord.create(
+        bookTarget,
+        secretTarget,
+        bookStage,
+        secretStage,
+        RestoredBookTargetPolicy.REPLACE_SELECTED,
+        rekeyBinding(bookTarget, bookTarget.resolveSibling("source.book-key")),
         (ignoredStep, ignoredParent) -> {});
   }
 
