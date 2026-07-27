@@ -1,8 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
-import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationBinding;
 import dev.erst.fingrind.executor.spi.StagedPairPublicationCommitOutcome;
@@ -200,25 +198,6 @@ final class SqliteStagedRestoredBookPair implements StagedRestoredBookPair {
 
   private StagedPairPublicationCommitOutcome handlePreRecoveryFailure(Exception failure) {
     finalizer.finishAfterPreBoundaryFailure();
-    if (failure instanceof SqliteGeneratedSecretTargetOccupiedException occupied) {
-      throw new ProtectedBookMaintenanceRejectionException(
-          new ProtectedBookMaintenanceRejection.SecretTargetOccupied(occupied.targetPath()),
-          occupied);
-    }
-    if (failure instanceof SqliteCallerPathContractException pathFailure) {
-      throw new ProtectedBookMaintenanceRejectionException(
-          SqliteCallerPathFailureMapper.maintenanceRejection(
-              dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole
-                  .NEW_BOOK_KEY_TARGET,
-              pathFailure),
-          pathFailure);
-    }
-    if (failure instanceof java.nio.file.FileAlreadyExistsException collision) {
-      throw new ProtectedBookMaintenanceRejectionException(
-          new ProtectedBookMaintenanceRejection.BookDestinationOccupied(
-              publication.bookTargetPath()),
-          collision);
-    }
     return throwUnexpectedCommitFailure(failure);
   }
 
