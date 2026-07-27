@@ -203,6 +203,24 @@ class SqliteBookKeyFileGeneratorTest {
   }
 
   @Test
+  void generateDecision_mapsAnUnsupportedNoReplacePrimitiveToTheSelectedKeyTarget()
+      throws Exception {
+    Path keyFile = tempDirectory.resolve("unsupported-no-replace.book-key");
+
+    ContractFailure failure =
+        SqliteBookKeyFileGenerator.generateDecision(
+                keyFile,
+                (finalPath, stagedPath) -> {
+                  throw new UnsupportedOperationException("no-replace link is unavailable");
+                },
+                ignored -> {})
+            .requireRejected();
+
+    assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
+    assertFalse(Files.exists(keyFile));
+  }
+
+  @Test
   void generateIntoExistingOwnedStage_requiresPriorOwnerOnlyCreationWithoutRepairingIt()
       throws Exception {
     assumeTrue(supportsPosix(tempDirectory), "the host filesystem must expose POSIX permissions");
