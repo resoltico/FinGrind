@@ -522,6 +522,119 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
   }
 
   @Test
+  void workflowRepairsMissingMirroredEvidenceOnlyWhileBothExactTargetLeasesAreHeld()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord record = retainedRecord("workflow-evidence-repair");
+    Path missingIntent =
+        record.evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.INTENT).getFirst();
+    Files.delete(missingIntent);
+
+    SqliteManagedTargetLeasesHeld leases =
+        assertInstanceOf(
+            SqliteManagedTargetLeasesHeld.class,
+            SqliteBookMaintenanceLease.acquireManagedTargetPair(
+                record.bookTargetPath, record.secretTargetPath));
+    try (SqliteHeldLease ignoredBookLease = leases.bookTargetLease();
+        SqliteHeldLease ignoredSecretLease = leases.secretTargetLease()) {
+      assertInstanceOf(
+          SqlitePairPublicationReconciliationRecovered.class,
+          recoveryWorkflow(true)
+              .recover(
+                  record,
+                  RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                  backupRequest(record.bookTargetPath),
+                  ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                  ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                  true));
+    }
+
+    assertTrue(
+        SqliteProtectedBookPairPublicationEvidenceLifecycle.hasComplete(
+            record, SqliteProtectedBookPairPublicationEvidenceKind.INTENT));
+    assertTrue(Files.isSameFile(record.bookTargetPath, record.bookStagePath));
+    assertTrue(Files.isSameFile(record.secretTargetPath, record.secretStagePath));
+  }
+
+  @Test
+  void workflowBlocksPartialPrepublicationVisibilityInsteadOfReinterpretingItAsNewWork()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord record =
+        retainedRecord("workflow-partial-prepublication");
+    SqliteProtectedBookPairPublicationEvidenceLifecycle.retainPrepublication(
+        record, (ignoredStep, ignoredParent) -> {});
+    Files.createLink(record.bookTargetPath, record.bookStagePath);
+
+    SqlitePairPublicationReconciliationEvidenceBlocked blocked =
+        assertInstanceOf(
+            SqlitePairPublicationReconciliationEvidenceBlocked.class,
+            recoveryWorkflow(true)
+                .recover(
+                    record,
+                    RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                    backupRequest(record.bookTargetPath),
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                    false));
+
+    assertEquals(record.bookTargetPath, blocked.bookArtifactPath());
+    assertEquals(record.secretTargetPath, blocked.secretArtifactPath());
+  }
+
+  @Test
+  void workflowRecoversVisibleExactPairByForcingItsDirectoriesAndRecheckingItsBinding()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord record = retainedRecord("workflow-visible-pair");
+    Files.createLink(record.bookTargetPath, record.bookStagePath);
+    Files.createLink(record.secretTargetPath, record.secretStagePath);
+
+    SqlitePairPublicationReconciliationRecovered recovered =
+        assertInstanceOf(
+            SqlitePairPublicationReconciliationRecovered.class,
+            recoveryWorkflow(true)
+                .recover(
+                    record,
+                    RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                    backupRequest(record.bookTargetPath),
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                    false));
+
+    assertTrue(recovered.binding().matches(backupRequest(record.bookTargetPath)));
+  }
+
+  @Test
+  void workflowKeepsAVisiblePairUncertainWhenItsRecoveryDurabilityCannotBeConfirmed()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord record =
+        retainedRecord("workflow-visible-force-failure");
+    Files.createLink(record.bookTargetPath, record.bookStagePath);
+    Files.createLink(record.secretTargetPath, record.secretStagePath);
+
+    SqlitePairPublicationReconciliationCompletionUncertain uncertain =
+        assertInstanceOf(
+            SqlitePairPublicationReconciliationCompletionUncertain.class,
+            recoveryWorkflow(
+                    true,
+                    (ignoredStep, ignoredParent) -> {
+                      throw new IOException("injected visible-pair force failure");
+                    })
+                .recover(
+                    record,
+                    RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                    backupRequest(record.bookTargetPath),
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                    false));
+
+    assertEquals(
+        ProtectedBookPairPublicationMemberState.PUBLISHED_DURABILITY_UNCONFIRMED,
+        uncertain.bookArtifactState());
+    assertEquals(
+        ProtectedBookPairPublicationMemberState.PUBLISHED_DURABILITY_UNCONFIRMED,
+        uncertain.secretArtifactState());
+  }
+
+  @Test
   void evidenceClassifierDistinguishesExactIncompleteAndUnsafeRecoveryEvidence() throws Exception {
     SqliteProtectedBookPairPublicationRecord exact = retainedRecord("classifier-exact");
 
@@ -631,9 +744,15 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
 
   private static SqlitePairPublicationRecoveryWorkflow recoveryWorkflow(
       boolean verifiesRecoveredPair) {
+    return recoveryWorkflow(verifiesRecoveredPair, (ignoredStep, ignoredParent) -> {});
+  }
+
+  private static SqlitePairPublicationRecoveryWorkflow recoveryWorkflow(
+      boolean verifiesRecoveredPair,
+      SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer) {
     return new SqlitePairPublicationRecoveryWorkflow(
         (ignoredBook, ignoredSecret, ignoredBinding) -> verifiesRecoveredPair,
-        (ignoredStep, ignoredParent) -> {},
+        directoryForcer,
         ignoredRecord -> {});
   }
 
