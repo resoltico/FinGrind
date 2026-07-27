@@ -1300,6 +1300,29 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
             SqlitePairPublicationEvidenceStatus.requireExact(
                 mismatched, SqliteProtectedBookPairPublicationEvidenceKind.CLAIM, mismatchedClaim));
 
+    SqliteProtectedBookPairPublicationRecord samePathDifferentRecord =
+        retainedRecord("evidence-status-same-path-different-record");
+    Path samePathDifferentClaim =
+        samePathDifferentRecord
+            .evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.CLAIM)
+            .getFirst();
+    SqliteProtectedBookPairPublicationRecord alteredImmutableRecord =
+        withChangedBookDigest(samePathDifferentRecord);
+    Files.writeString(
+        samePathDifferentClaim,
+        SqliteProtectedBookPairPublicationEvidenceCodec.encoded(
+            alteredImmutableRecord, SqliteProtectedBookPairPublicationEvidenceKind.CLAIM));
+    assertFalse(
+        SqlitePairPublicationEvidenceStatus.hasComplete(
+            samePathDifferentRecord, SqliteProtectedBookPairPublicationEvidenceKind.CLAIM));
+    assertThrows(
+        IOException.class,
+        () ->
+            SqlitePairPublicationEvidenceStatus.requireExact(
+                samePathDifferentRecord,
+                SqliteProtectedBookPairPublicationEvidenceKind.CLAIM,
+                samePathDifferentClaim));
+
     assertEquals(
         SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep.PAIR_STAGE_CLAIM,
         SqlitePairPublicationEvidenceStatus.durabilityStep(
@@ -1414,6 +1437,24 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
         RestoredBookTargetPolicy.REQUIRE_ABSENT,
         backupBinding(bookTarget.resolveSibling("source.sqlite")),
         (ignoredStep, ignoredParent) -> {});
+  }
+
+  private static SqliteProtectedBookPairPublicationRecord withChangedBookDigest(
+      SqliteProtectedBookPairPublicationRecord original) {
+    byte[] changedBookDigest = original.bookDigest.clone();
+    changedBookDigest[0] ^= 1;
+    return new SqliteProtectedBookPairPublicationRecord(
+        new SqliteProtectedBookPairPublicationRecord.Components(
+            original.pairId,
+            new SqliteProtectedBookPairPublicationRecord.PairPaths(
+                original.bookTargetPath,
+                original.secretTargetPath,
+                original.bookStagePath,
+                original.secretStagePath),
+            new SqliteProtectedBookPairPublicationRecord.PairDigests(
+                changedBookDigest, original.secretDigest, original.replaceTargetDigest),
+            original.bookTargetPolicy,
+            original.binding));
   }
 
   private SqliteProtectedBookPairPublicationRecord rekeyRecord(String directoryName)

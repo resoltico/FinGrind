@@ -17,9 +17,8 @@ final class SqlitePairPublicationEvidenceStatus {
     for (Path evidencePath : Objects.requireNonNull(record, "record").evidencePaths(kind)) {
       Optional<SqliteProtectedBookPairPublicationEvidenceCodec.DecodedEvidence> decoded =
           SqliteProtectedBookPairPublicationEvidenceCodec.read(evidencePath);
-      if (decoded.isEmpty()
-          || decoded.orElseThrow().kind() != kind
-          || !record.sameImmutableRecord(decoded.orElseThrow().record())) {
+      // The codec admits evidence only when its wire kind is bound to this exact filename.
+      if (decoded.isEmpty() || !record.sameImmutableRecord(decoded.orElseThrow().record())) {
         return false;
       }
     }
@@ -52,9 +51,8 @@ final class SqlitePairPublicationEvidenceStatus {
       throws IOException {
     Optional<SqliteProtectedBookPairPublicationEvidenceCodec.DecodedEvidence> decoded =
         SqliteProtectedBookPairPublicationEvidenceCodec.read(evidencePath);
-    if (decoded.isEmpty()
-        || decoded.orElseThrow().kind() != kind
-        || !record.sameImmutableRecord(decoded.orElseThrow().record())) {
+    // The codec admits evidence only when its wire kind is bound to this exact filename.
+    if (decoded.isEmpty() || !record.sameImmutableRecord(decoded.orElseThrow().record())) {
       throw new IOException("Protected-book pair evidence changed while completing recovery.");
     }
   }
