@@ -120,9 +120,6 @@ final class SqliteOwnedStageRecord {
       return null;
     }
     Path parent = parentOf(normalizedStagedPath);
-    if (Files.notExists(parent, LinkOption.NOFOLLOW_LINKS)) {
-      return null;
-    }
     @Nullable Path matchedFinalTarget = null;
     int matches = 0;
     try (DirectoryStream<Path> children = Files.newDirectoryStream(parent)) {

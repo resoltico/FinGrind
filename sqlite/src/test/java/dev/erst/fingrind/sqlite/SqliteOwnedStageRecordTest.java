@@ -398,6 +398,24 @@ class SqliteOwnedStageRecordTest {
       parent.exists = true;
       parent.failNewDirectoryStreamWith(new IOException("directory stream failure"));
       assertThrows(IllegalStateException.class, () -> SqliteOwnedStageRecord.findFor(finalPath));
+
+      AclFixturePath stagePath = fileSystem.path("\\ownership\\stage.tmp");
+      stagePath.exists = true;
+      stagePath.regularFile = true;
+      AclFixturePath stageParent =
+          (AclFixturePath) Objects.requireNonNull(stagePath.getParent(), "stage parent");
+      stageParent.exists = true;
+      stageParent.regularFile = false;
+      stageParent.failNewDirectoryStreamWith(new IOException("owner record enumeration failure"));
+
+      IllegalStateException ownershipFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteOwnedStageRecord.soleCurrentFinalTargetForStage(stagePath));
+
+      assertTrue(
+          NullTestSupport.messageOf(ownershipFailure)
+              .contains("Failed to establish private FinGrind maintenance-stage ownership"));
     }
   }
 
