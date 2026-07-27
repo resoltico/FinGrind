@@ -78,6 +78,48 @@ class SqlitePosixCoordinationControlFileTransportTest extends SqliteNativeBridge
   }
 
   @Test
+  void immutableCoordinationRecordRejectsZeroProgressDuringItsExactWriteOrRead() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parent = fileSystem.path("\\controls");
+      parent.exists = true;
+      parent.regularFile = false;
+      parent.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE);
+      byte[] magic = SqliteCoordinationControlFiles.magic("fixture", "zero-progress");
+
+      AclFixturePath zeroWrite = fileSystem.path("\\controls\\zero-write.control");
+      zeroWrite.returnZeroProgressFromNextWrite();
+      IOException writeFailure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  SqlitePosixCoordinationControlFileTransport.createAtomicallySecureRecord(
+                      zeroWrite, magic));
+      assertTrue(
+          NullTestSupport.messageOf(writeFailure)
+              .contains("Failed to write the complete FinGrind coordination control-file magic"));
+
+      AclFixturePath zeroRead = fileSystem.path("\\controls\\zero-read.control");
+      zeroRead.exists = true;
+      zeroRead.regularFile = true;
+      zeroRead.posixPermissions =
+          Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE);
+      zeroRead.replaceContent(magic);
+      zeroRead.returnZeroProgressFromNextRead();
+      IOException readFailure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  SqlitePosixCoordinationControlFileTransport.requireExistingExactRecord(
+                      zeroRead, magic));
+      assertTrue(NullTestSupport.messageOf(readFailure).contains("did not make read progress"));
+    }
+  }
+
+  @Test
   void physicalObjectIdentityIsStableAcrossHardLinksAndRejectsAbsentArtifacts() throws Exception {
     Path original = ownerOnlyArtifact("identity/original.sqlite");
     Path alias = tempDirectory.resolve("identity-alias/alias.sqlite");

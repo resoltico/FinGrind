@@ -16,6 +16,9 @@ final class AclFixtureSeekableByteChannel implements SeekableByteChannel {
 
   @Override
   public int read(ByteBuffer dst) {
+    if (path.consumeZeroProgressRead()) {
+      return 0;
+    }
     byte[] content = path.content();
     if (position >= content.length) {
       return -1;

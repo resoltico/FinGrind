@@ -22,6 +22,7 @@ public final class AclFixturePath extends AclFixtureAbstractPath {
   private final Deque<PlannedIOException> newByteChannelFailures = new ArrayDeque<>();
   private final Deque<IOException> createDirectoryFailures = new ArrayDeque<>();
   private final Deque<PlannedIOException> writeFailures = new ArrayDeque<>();
+  private int zeroProgressReadCalls;
   private int zeroProgressWriteCalls;
   private @Nullable IOException newDirectoryStreamFailure;
   private @Nullable IOException directoryStreamCloseFailure;
@@ -129,6 +130,19 @@ public final class AclFixturePath extends AclFixtureAbstractPath {
   AclFixturePath returnZeroProgressFromNextWrite() {
     zeroProgressWriteCalls = Math.addExact(zeroProgressWriteCalls, 1);
     return this;
+  }
+
+  AclFixturePath returnZeroProgressFromNextRead() {
+    zeroProgressReadCalls = Math.addExact(zeroProgressReadCalls, 1);
+    return this;
+  }
+
+  boolean consumeZeroProgressRead() {
+    if (zeroProgressReadCalls == 0) {
+      return false;
+    }
+    zeroProgressReadCalls--;
+    return true;
   }
 
   boolean consumeZeroProgressWrite() {
