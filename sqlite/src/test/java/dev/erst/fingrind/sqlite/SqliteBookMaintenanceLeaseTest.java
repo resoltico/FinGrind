@@ -10,6 +10,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
@@ -110,6 +113,55 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
     held.secretTargetLease().close();
     assertTrue(Files.exists(leasePath));
     assertFalse(SqliteMaintenanceLeaseArtifacts.hasBlockingArtifact(parent.toRealPath()));
+  }
+
+  @Test
+  void pairCoordinatorReportsTheLaterExactBusyTargetAndReleasesEarlierOwnership() throws Exception {
+    Path secretTarget = managedTarget("coordinator-busy/a-secret/book.key");
+    Path bookTarget = managedTarget("coordinator-busy/z-book/book.sqlite");
+    List<Path> attemptedTargets = new ArrayList<>();
+    AtomicInteger releasedLeases = new AtomicInteger();
+
+    SqliteManagedTargetLeasesBusy result =
+        assertInstanceOf(
+            SqliteManagedTargetLeasesBusy.class,
+            SqliteBookMaintenanceLease.acquireManagedTargetPair(
+                bookTarget,
+                secretTarget,
+                target -> {
+                  attemptedTargets.add(target);
+                  if (attemptedTargets.size() == 2) {
+                    return new SqliteLeaseBusy(target);
+                  }
+                  return new SqliteHeldLease(target, releasedLeases::incrementAndGet);
+                }));
+
+    assertEquals(List.of(secretTarget, bookTarget), attemptedTargets);
+    assertEquals(bookTarget, result.artifactPath());
+    assertEquals(1, releasedLeases.get());
+  }
+
+  @Test
+  void pairCoordinatorTransfersBothExactLeasesToTheirBookAndSecretOwners() throws Exception {
+    Path bookTarget = managedTarget("coordinator-transfer/book.sqlite");
+    Path secretTarget = managedTarget("coordinator-transfer/book.key");
+    AtomicInteger releasedLeases = new AtomicInteger();
+
+    SqliteManagedTargetLeasesHeld result =
+        assertInstanceOf(
+            SqliteManagedTargetLeasesHeld.class,
+            SqliteBookMaintenanceLease.acquireManagedTargetPair(
+                bookTarget,
+                secretTarget,
+                target -> new SqliteHeldLease(target, releasedLeases::incrementAndGet)));
+
+    assertEquals(bookTarget, result.bookTargetLease().artifactPath());
+    assertEquals(secretTarget, result.secretTargetLease().artifactPath());
+    assertEquals(0, releasedLeases.get());
+
+    result.bookTargetLease().close();
+    result.secretTargetLease().close();
+    assertEquals(2, releasedLeases.get());
   }
 
   @Test
