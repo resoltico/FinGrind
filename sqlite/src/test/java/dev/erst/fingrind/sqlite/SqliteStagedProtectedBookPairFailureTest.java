@@ -1109,6 +1109,40 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
   }
 
   @Test
+  void backupBookLinkFailureAfterItsAttemptIsCompletionUncertain() throws Exception {
+    Path stagedBackupPath = writeArtifact("backup-book-link-failure/staged.sqlite", "backup");
+    Path stagedKeyPath = writeArtifact("backup-book-link-failure/staged.key", "key");
+    Path finalBackupPath =
+        tempDirectory.resolve("backup-book-link-failure").resolve("backup.sqlite");
+    Path finalKeyPath = tempDirectory.resolve("backup-book-link-failure").resolve("backup.key");
+
+    try (SqliteBookPassphrase passphrase = testPassphrase();
+        SqliteStagedBackupPair pair =
+            SqliteStagedBackupPairFactory.create(
+                SqliteOwnedStagedArtifact.recordExisting(finalBackupPath, stagedBackupPath),
+                finalBackupPath,
+                SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath),
+                finalKeyPath,
+                passphrase,
+                VERIFICATION_SUPPORT,
+                Files::createLink,
+                (finalPath, stagedPath) -> {
+                  throw new IOException("simulated final backup link failure");
+                },
+                (ignoredStep, ignoredParent) -> {})) {
+      sealBackupForPublication(pair);
+      assertInstanceOf(
+          ProtectedBookPairPublicationFailureOutcome.CompletionUncertain.class,
+          pair.commit(backupBinding(finalBackupPath)));
+    }
+
+    assertFalse(Files.exists(finalBackupPath));
+    assertTrue(Files.exists(finalKeyPath));
+    assertTrue(Files.exists(stagedBackupPath));
+    assertTrue(Files.exists(stagedKeyPath));
+  }
+
+  @Test
   void retainedRestoredPairCannotBeCommittedAfterItIsFinishedWithoutAPublicationOutcome()
       throws Exception {
     Path stagedBookPath = writeArtifact("restore-finished/staged.sqlite", "book");
