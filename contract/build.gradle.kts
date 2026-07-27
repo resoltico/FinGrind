@@ -69,7 +69,7 @@ tasks.register<JavaExec>("syncCapabilityBaseline") {
     args(
         rootProject.layout.projectDirectory
             .file(
-                "contract/src/main/resources/dev/erst/fingrind/contract/protocol/capability-baseline.json",
+                "contract/src/main/resources/dev/erst/fingrind/contract/protocol/capability-baseline",
             )
             .asFile
             .absolutePath,

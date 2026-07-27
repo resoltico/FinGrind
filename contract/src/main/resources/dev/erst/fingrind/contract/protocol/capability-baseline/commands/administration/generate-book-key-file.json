@@ -1,0 +1,22 @@
+{
+  "schemaVersion" : 3,
+  "category" : "administration",
+  "command" : {
+    "name" : "generate-book-key-file",
+    "displayLabel" : "Generate Book Key File",
+    "aliases" : [ ],
+    "options" : [ "--new-book-key-file <path>", "[--output <json|text>]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ {
+      "format" : "book-key-file",
+      "option" : "--new-book-key-file <path>",
+      "description" : "Publishes a newly generated owner-only UTF-8 book key file at an absent target path."
+    } ],
+    "summary" : "Create a new owner-only UTF-8 book key file with a generated high-entropy passphrase."
+  }
+}

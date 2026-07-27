@@ -26,10 +26,12 @@ class ProtocolCapabilityBaselineSyncMainTest {
 
   @Test
   void mainSynchronizesTheRequestedSnapshot(@TempDir Path tempDir) throws IOException {
-    Path snapshot = tempDir.resolve("nested/capability-baseline.json");
+    Path snapshot = tempDir.resolve("nested/capability-baseline");
 
     ProtocolCapabilityBaselineSyncMain.main(new String[] {snapshot.toString()});
 
-    assertEquals(ProtocolCapabilityBaseline.render(), Files.readString(snapshot));
+    for (var document : ProtocolCapabilityBaseline.renderedDocuments().entrySet()) {
+      assertEquals(document.getValue(), Files.readString(snapshot.resolve(document.getKey())));
+    }
   }
 }

@@ -1,0 +1,18 @@
+{
+  "schemaVersion" : 3,
+  "category" : "query",
+  "command" : {
+    "name" : "attestation-review",
+    "displayLabel" : "Attestation Review",
+    "aliases" : [ ],
+    "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "[--attestation-review-file <path>]", "[--output <json|text>]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ ],
+    "summary" : "Report non-persisted compromise-review findings from a structurally valid attestation chain."
+  }
+}

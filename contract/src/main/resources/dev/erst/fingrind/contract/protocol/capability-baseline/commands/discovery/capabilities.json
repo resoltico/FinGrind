@@ -1,0 +1,18 @@
+{
+  "schemaVersion" : 3,
+  "category" : "discovery",
+  "command" : {
+    "name" : "capabilities",
+    "displayLabel" : "Capabilities",
+    "aliases" : [ ],
+    "options" : [ "[--output <json|text>]", "[--detail <minimal|compact|full> (json only)]", "[--focus <overview|commands|storage|request-input|currency-model|bookkeeping-kernel|capability-catalog|response-contract> (json only)]", "[--category <discovery|administration|query|write> (json only)]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ ],
+    "summary" : "Print the canonical machine-readable contract for commands, request shapes, and responses."
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schemaVersion" : 3,
+  "category" : "query",
+  "command" : {
+    "name" : "list-postings",
+    "displayLabel" : "List Postings",
+    "aliases" : [ ],
+    "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "[--account-code <account-code>]", "[--effective-date-from <YYYY-MM-DD>]", "[--effective-date-to <YYYY-MM-DD>]", "[--limit <1-200>]", "[--cursor <cursor>]", "[--with-context]", "[--output <json|text|csv>]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text", "csv" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ ],
+    "summary" : "List a filtered page of committed postings in stable reverse-chronological order using keyset pagination."
+  }
+}

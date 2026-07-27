@@ -1,0 +1,22 @@
+{
+  "schemaVersion" : 3,
+  "category" : "query",
+  "command" : {
+    "name" : "latvian-payroll-register",
+    "displayLabel" : "Latvian Payroll Register",
+    "aliases" : [ ],
+    "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text", "csv" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ {
+      "format" : "pdf",
+      "option" : "--pdf-out <path>",
+      "description" : "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode."
+    } ],
+    "summary" : "Compute immutable Latvian payroll calculations and complete settlement posting lineage from the protected book's durable payroll facts."
+  }
+}

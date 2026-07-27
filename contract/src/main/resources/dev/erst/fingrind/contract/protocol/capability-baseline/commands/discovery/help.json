@@ -1,0 +1,18 @@
+{
+  "schemaVersion" : 3,
+  "category" : "discovery",
+  "command" : {
+    "name" : "help",
+    "displayLabel" : "Help",
+    "aliases" : [ "--help", "-h" ],
+    "options" : [ "[<command>]", "[--output <json|text>]", "[--detail <minimal|compact|full> (json only)]", "[--category <discovery|administration|query|write> (json only)]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ ],
+    "summary" : "Print command usage, examples, and workflow guidance."
+  }
+}

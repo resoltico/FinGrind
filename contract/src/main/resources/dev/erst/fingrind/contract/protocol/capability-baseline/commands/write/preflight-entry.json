@@ -1,0 +1,18 @@
+{
+  "schemaVersion" : 3,
+  "category" : "write",
+  "command" : {
+    "name" : "preflight-entry",
+    "displayLabel" : "Preflight Entry",
+    "aliases" : [ ],
+    "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "[--output <json|text>]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ ],
+    "summary" : "Validate a posting request from the typed business-entry family or the raw direct-journal path without committing it."
+  }
+}

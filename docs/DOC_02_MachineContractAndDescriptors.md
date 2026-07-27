@@ -52,8 +52,9 @@ stay semantically aligned without drifting away from the placeholder scaffold co
 
 `ProtocolCapabilityBaselineSyncMain` is the explicit build-tool entrypoint that synchronizes the
 release-smoke capability baseline from the typed `MachineContract` and `ProtocolCatalog` owners.
-It accepts exactly one destination path and writes only the canonical, deterministic JSON rendering;
-it is not a user-facing FinGrind CLI command or a second capability vocabulary.
+It accepts exactly one destination directory and writes one canonical index plus one deterministic
+JSON fragment per published command owner; it is not a user-facing FinGrind CLI command or a
+second capability vocabulary.
 
 ## `MachineContractAttestationTemplates`, `ContractAttestationRegistryTemplates`, And `ContractAttestationReviewTemplates`
 

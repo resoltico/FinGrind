@@ -1,0 +1,18 @@
+{
+  "schemaVersion" : 3,
+  "category" : "administration",
+  "command" : {
+    "name" : "fiscal-year-close",
+    "displayLabel" : "Fiscal-Year Close",
+    "aliases" : [ ],
+    "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--year <YYYY>", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ ],
+    "summary" : "Close the fiscal year by settling owner withdrawals into capital and accumulating current-year result into retained accumulated equity."
+  }
+}

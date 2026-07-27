@@ -1,0 +1,26 @@
+{
+  "schemaVersion" : 3,
+  "category" : "administration",
+  "command" : {
+    "name" : "backup-book",
+    "displayLabel" : "Backup Book",
+    "aliases" : [ ],
+    "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--backup-file <path>", "--new-backup-key-file <path>", "--backup-id <uuid>", "--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)", "[--output <json|text>]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ {
+      "format" : "backup-file",
+      "option" : "--backup-file <path>",
+      "description" : "Writes an encrypted backup-book copy to the selected destination without overwriting an existing file."
+    }, {
+      "format" : "backup-key-file",
+      "option" : "--new-backup-key-file <path>",
+      "description" : "Publishes the newly generated backup key file that reopens the exported backup copy."
+    } ],
+    "summary" : "Export a manifest-attested encrypted-book backup artifact without overwriting any existing destination."
+  }
+}

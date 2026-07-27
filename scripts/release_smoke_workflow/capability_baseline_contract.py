@@ -93,7 +93,7 @@ def _live_capabilities(baseline: dict[str, Any]) -> dict[str, Any]:
 
 def _synthetic_baseline() -> dict[str, Any]:
     return {
-        "schemaVersion": 2,
+        "schemaVersion": 3,
         "commands": {
             "discovery": [
                 {

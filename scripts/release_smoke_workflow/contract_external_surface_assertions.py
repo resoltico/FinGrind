@@ -4,6 +4,7 @@ import pathlib
 
 from .attestation_review_window_contract import assert_review_window_error_contract
 from .capability_baseline_contract import assert_capability_baseline_contract
+from .capability_baseline_loading_contract import assert_capability_baseline_loading_contract
 from .contract_bridge_test_suite import run_bridge_and_report_contracts
 from .contract_open_book_test import assert_attested_open_book_arguments
 from .discovery_runtime_assertions_contract import assert_discovery_runtime_assertions_contract
@@ -17,6 +18,7 @@ from .field_matrix.receipt_artifact_assertions_contract import assert_receipt_ar
 
 def assert_external_surface_contracts(repo_root: pathlib.Path) -> None:
     assert_capability_baseline_contract()
+    assert_capability_baseline_loading_contract()
     assert_field_matrix_contracts()
     assert_pdf_artifact_contract(repo_root)
     assert_pair_publication_retention_contract()

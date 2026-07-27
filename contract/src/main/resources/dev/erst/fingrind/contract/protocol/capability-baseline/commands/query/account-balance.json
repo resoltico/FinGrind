@@ -1,0 +1,22 @@
+{
+  "schemaVersion" : 3,
+  "category" : "query",
+  "command" : {
+    "name" : "account-balance",
+    "displayLabel" : "Account Balance",
+    "aliases" : [ ],
+    "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--account-code <account-code>", "[--effective-date-from <YYYY-MM-DD>]", "[--effective-date-to <YYYY-MM-DD>]", "[--posting-coverage <all-posting-kinds|non-closing-postings>]", "[--pdf-out <path>]", "[--output <json|text|csv>]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text", "csv" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ {
+      "format" : "pdf",
+      "option" : "--pdf-out <path>",
+      "description" : "Publishes a no-clobber PDF report from a private existing output parent whose resolved ancestry resists non-owner substitution, while preserving the command's selected stdout output mode."
+    } ],
+    "summary" : "Compute grouped per-currency balances for a declared account."
+  }
+}

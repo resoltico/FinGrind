@@ -11,17 +11,20 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.databind.ObjectWriter;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Builds the deterministic command-descriptor baseline consumed by release-smoke field coverage.
+ * Builds the deterministic per-command descriptor baseline consumed by release-smoke field
+ * coverage.
  */
 final class ProtocolCapabilityBaseline {
-  static final int SCHEMA_VERSION = 2;
-
+  static final int SCHEMA_VERSION = 3;
+  private static final Path INDEX_PATH = Path.of("index.json");
   private static final ObjectWriter JSON_WRITER =
       JsonMapper.builder().build().writerWithDefaultPrettyPrinter();
 
@@ -33,6 +36,31 @@ final class ProtocolCapabilityBaseline {
         MachineContractDomainDescriptors.commandCatalog().allCommands().stream()
             .collect(Collectors.toMap(CommandDescriptor::name, descriptor -> descriptor));
     return projectSnapshot(ProtocolCatalog.operations(), descriptorsByOperation);
+  }
+
+  /** Returns canonical relative resource paths and JSON documents for the complete baseline. */
+  static Map<Path, String> renderedDocuments() {
+    return renderedDocuments(snapshot());
+  }
+
+  /** Synchronizes the complete baseline directory, removing stale generated JSON fragments. */
+  static void sync(Path baselineDirectory) throws IOException {
+    Path targetDirectory = requireDirectory(baselineDirectory);
+    Map<Path, String> documents = renderedDocuments();
+    Files.createDirectories(targetDirectory);
+    removeStaleFragments(targetDirectory, documents.keySet());
+    for (Map.Entry<Path, String> document : documents.entrySet()) {
+      Path target = targetDirectory.resolve(document.getKey()).normalize();
+      if (!target.startsWith(targetDirectory)) {
+        throw new IllegalArgumentException(
+            "Capability baseline document path escapes its directory.");
+      }
+      Path parent = Objects.requireNonNull(target.getParent());
+      Files.createDirectories(parent);
+      if (!Files.isRegularFile(target) || !document.getValue().equals(Files.readString(target))) {
+        Files.writeString(target, document.getValue());
+      }
+    }
   }
 
   private static CapabilityBaselineSnapshot projectSnapshot(
@@ -51,24 +79,75 @@ final class ProtocolCapabilityBaseline {
     return new CapabilityBaselineSnapshot(SCHEMA_VERSION, commands);
   }
 
-  /** Renders the baseline as stable, pretty-printed JSON with one trailing newline. */
-  static String render() {
-    return JSON_WRITER.writeValueAsString(jsonDocument(snapshot())) + "\n";
+  private static Map<Path, String> renderedDocuments(CapabilityBaselineSnapshot snapshot) {
+    Map<Path, String> documents = new LinkedHashMap<>();
+    Map<String, List<String>> commandFiles = orderedMap();
+    for (OperationCategory category : OperationCategory.values()) {
+      List<CapabilityBaselineCommand> commands =
+          snapshot.commands().stream()
+              .filter(command -> command.category().equals(category.wireValue()))
+              .toList();
+      List<String> categoryFiles =
+          commands.stream().map(command -> commandPath(category, command)).toList();
+      commandFiles.put(category.wireValue(), categoryFiles);
+      for (CapabilityBaselineCommand command : commands) {
+        Path path = Path.of(commandPath(category, command));
+        documents.put(path, render(commandDocument(category, command)));
+      }
+    }
+    documents.put(INDEX_PATH, render(indexDocument(snapshot, commandFiles)));
+    return documents;
   }
 
-  /**
-   * Writes the baseline only when the selected snapshot path differs from the canonical rendering.
-   */
-  static void sync(Path snapshotPath) throws IOException {
-    Path target = Objects.requireNonNull(snapshotPath, "snapshotPath").toAbsolutePath().normalize();
-    Path parent =
-        Objects.requireNonNull(
-            target.getParent(), "capability baseline snapshot path must have a parent");
-    Files.createDirectories(parent);
-    String rendered = render();
-    if (!Files.isRegularFile(target) || !rendered.equals(Files.readString(target))) {
-      Files.writeString(target, rendered);
+  private static Path requireDirectory(Path baselineDirectory) {
+    Path targetDirectory =
+        Objects.requireNonNull(baselineDirectory, "baselineDirectory").toAbsolutePath().normalize();
+    if (targetDirectory.getParent() == null) {
+      throw new IllegalArgumentException(
+          "Capability baseline directory must not be a filesystem root.");
     }
+    return targetDirectory;
+  }
+
+  private static void removeStaleFragments(Path targetDirectory, Set<Path> expected)
+      throws IOException {
+    try (Stream<Path> paths = Files.walk(targetDirectory)) {
+      List<Path> staleFragments =
+          paths
+              .filter(Files::isRegularFile)
+              .map(targetDirectory::relativize)
+              .filter(path -> path.toString().endsWith(".json"))
+              .filter(path -> !expected.contains(path))
+              .toList();
+      for (Path staleFragment : staleFragments) {
+        Files.delete(targetDirectory.resolve(staleFragment));
+      }
+    }
+  }
+
+  private static String commandPath(OperationCategory category, CapabilityBaselineCommand command) {
+    return "commands/" + category.wireValue() + "/" + command.name() + ".json";
+  }
+
+  private static Map<String, Object> indexDocument(
+      CapabilityBaselineSnapshot snapshot, Map<String, List<String>> commandFiles) {
+    Map<String, Object> document = orderedMap();
+    document.put("schemaVersion", snapshot.schemaVersion());
+    document.put("commandFiles", commandFiles);
+    return document;
+  }
+
+  private static Map<String, Object> commandDocument(
+      OperationCategory category, CapabilityBaselineCommand command) {
+    Map<String, Object> document = orderedMap();
+    document.put("schemaVersion", SCHEMA_VERSION);
+    document.put("category", category.wireValue());
+    document.put("command", command.asJsonObject());
+    return document;
+  }
+
+  private static String render(Map<String, Object> document) {
+    return JSON_WRITER.writeValueAsString(document) + "\n";
   }
 
   private static CommandDescriptor requireDescriptor(
@@ -117,22 +196,6 @@ final class ProtocolCapabilityBaseline {
     }
     return new CapabilityBaselineSelectableOutputDefaults(
         defaults.interactiveTerminal().wireValue(), defaults.redirectedStdout().wireValue());
-  }
-
-  private static Map<String, Object> jsonDocument(CapabilityBaselineSnapshot snapshot) {
-    Map<String, List<Map<String, Object>>> commandGroups = orderedMap();
-    for (OperationCategory category : OperationCategory.values()) {
-      List<Map<String, Object>> group =
-          snapshot.commands().stream()
-              .filter(command -> command.category().equals(category.wireValue()))
-              .map(CapabilityBaselineCommand::asJsonObject)
-              .toList();
-      commandGroups.put(category.wireValue(), group);
-    }
-    Map<String, Object> document = orderedMap();
-    document.put("schemaVersion", snapshot.schemaVersion());
-    document.put("commands", commandGroups);
-    return document;
   }
 
   record CapabilityBaselineSnapshot(int schemaVersion, List<CapabilityBaselineCommand> commands) {

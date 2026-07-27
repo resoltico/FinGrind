@@ -1,0 +1,14 @@
+{
+  "schemaVersion" : 3,
+  "category" : "discovery",
+  "command" : {
+    "name" : "print-plan-template",
+    "displayLabel" : "Print Plan Template",
+    "aliases" : [ "--print-plan-template" ],
+    "options" : [ "[general|tax-setup|fixed-asset-setup|financing-setup]" ],
+    "executionMode" : "raw-json",
+    "outputModes" : [ ],
+    "artifactOutputs" : [ ],
+    "summary" : "Print a topic-specific executable ledger-plan scaffold JSON document."
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schemaVersion" : 3,
+  "category" : "write",
+  "command" : {
+    "name" : "execute-plan",
+    "displayLabel" : "Execute Plan",
+    "aliases" : [ ],
+    "options" : [ "--book-file <path>", "--book-key-file <path> | --book-passphrase-stdin | --book-passphrase-prompt", "--request-file <path|->", "[--attestation-custodian <file-pkcs8> --attestation-principal-id <uuid> --attestation-key-file <path> --attestation-passphrase-file <path> (repeat one through 64 aligned credential triplets under the selected custody)]", "[--output <json|text>]", "[--result-detail <summary|full>]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ ],
+    "summary" : "Execute an ordered AI-agent ledger plan inside a single atomic book transaction. Attestation credentials are required exactly when the request contains a mutating step and forbidden for a query-only or assertion-only plan. Summary output is the default; request the full execution journal explicitly when needed."
+  }
+}

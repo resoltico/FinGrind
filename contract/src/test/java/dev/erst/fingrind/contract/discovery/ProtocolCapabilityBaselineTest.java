@@ -17,6 +17,7 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -25,8 +26,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 /** Regression coverage for the protocol-owned release-smoke capability snapshot. */
 class ProtocolCapabilityBaselineTest {
-  private static final String SNAPSHOT_PATH =
-      "contract/src/main/resources/dev/erst/fingrind/contract/protocol/capability-baseline.json";
+  private static final String SNAPSHOT_DIRECTORY =
+      "contract/src/main/resources/dev/erst/fingrind/contract/protocol/capability-baseline";
 
   @Test
   void snapshotProjectsEveryProtocolOperationThroughItsMachineContractDescriptor() {
@@ -66,11 +67,23 @@ class ProtocolCapabilityBaselineTest {
   }
 
   @Test
-  void committedSnapshotMatchesTheCanonicalRendering() throws IOException {
-    Path snapshot = repositoryRoot().resolve(SNAPSHOT_PATH);
+  void committedSnapshotsMatchTheCanonicalRenderings() throws IOException {
+    Path snapshotDirectory = repositoryRoot().resolve(SNAPSHOT_DIRECTORY);
+    Map<Path, String> documents = ProtocolCapabilityBaseline.renderedDocuments();
 
-    assertTrue(Files.isRegularFile(snapshot));
-    assertEquals(ProtocolCapabilityBaseline.render(), Files.readString(snapshot));
+    assertTrue(Files.isDirectory(snapshotDirectory));
+    try (var paths = Files.walk(snapshotDirectory)) {
+      assertEquals(
+          documents.keySet(),
+          paths
+              .filter(Files::isRegularFile)
+              .map(snapshotDirectory::relativize)
+              .collect(Collectors.toCollection(LinkedHashSet::new)));
+    }
+    for (Map.Entry<Path, String> document : documents.entrySet()) {
+      assertEquals(
+          document.getValue(), Files.readString(snapshotDirectory.resolve(document.getKey())));
+    }
   }
 
   @Test
@@ -150,18 +163,25 @@ class ProtocolCapabilityBaselineTest {
   @Test
   void synchronizationIsIdempotentAndRejectsInvalidDestinations(@TempDir Path tempDir)
       throws IOException {
-    Path snapshot = tempDir.resolve("nested/capability-baseline.json");
+    Path snapshot = tempDir.resolve("nested/capability-baseline");
 
     ProtocolCapabilityBaseline.sync(snapshot);
-    String firstRendering = Files.readString(snapshot);
-    Files.writeString(snapshot, "not the canonical baseline");
+    Map<Path, String> documents = ProtocolCapabilityBaseline.renderedDocuments();
+    Path firstDocument = documents.keySet().iterator().next();
+    String firstRendering = Files.readString(snapshot.resolve(firstDocument));
+    Files.writeString(snapshot.resolve(firstDocument), "not the canonical baseline");
+    Path staleFragment = snapshot.resolve("commands/query/stale.json");
+    Files.createDirectories(staleFragment.getParent());
+    Files.writeString(staleFragment, "{}");
     ProtocolCapabilityBaseline.sync(snapshot);
 
-    assertEquals(ProtocolCapabilityBaseline.render(), firstRendering);
+    assertEquals(documents.get(firstDocument), firstRendering);
+    assertTrue(Files.notExists(staleFragment));
     ProtocolCapabilityBaseline.sync(snapshot);
-    assertEquals(firstRendering, Files.readString(snapshot));
+    assertEquals(firstRendering, Files.readString(snapshot.resolve(firstDocument)));
     assertThrows(NullPointerException.class, () -> ProtocolCapabilityBaseline.sync(nullOf()));
-    assertThrows(NullPointerException.class, () -> ProtocolCapabilityBaseline.sync(Path.of("/")));
+    assertThrows(
+        IllegalArgumentException.class, () -> ProtocolCapabilityBaseline.sync(Path.of("/")));
   }
 
   private static void assertSelectableOutputDefaults(

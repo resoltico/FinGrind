@@ -2,18 +2,12 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from .models import ReleaseSmokeFailure
+from .capability_baseline_loading import SCHEMA_VERSION, load_capability_baseline
 from .support import require, required_mapping
-
-_SCHEMA_VERSION = 2
-_BASELINE_RELATIVE_PATH = Path(
-    "contract/src/main/resources/dev/erst/fingrind/contract/protocol/capability-baseline.json"
-)
 
 
 def verify_capability_baseline(
@@ -22,7 +16,7 @@ def verify_capability_baseline(
     live_capabilities: Mapping[str, Any],
 ) -> None:
     """Require live full-capabilities command descriptors to exactly match the protocol baseline."""
-    baseline = _load_capability_baseline(repo_root)
+    baseline = load_capability_baseline(repo_root)
     assert_capability_baseline_matches_live(baseline, live_capabilities, label)
 
 
@@ -42,27 +36,6 @@ def assert_capability_baseline_matches_live(
     )
 
 
-def _load_capability_baseline(repo_root: Path) -> dict[str, Any]:
-    path = repo_root / _BASELINE_RELATIVE_PATH
-    try:
-        document = json.loads(path.read_text(encoding="utf-8"))
-    except FileNotFoundError as exc:
-        raise ReleaseSmokeFailure(f"missing Java-generated capability baseline: {path}") from exc
-    except OSError as exc:
-        raise ReleaseSmokeFailure(
-            f"could not read Java-generated capability baseline: {path}"
-        ) from exc
-    except json.JSONDecodeError as exc:
-        raise ReleaseSmokeFailure(
-            f"invalid Java-generated capability baseline JSON: {path}"
-        ) from exc
-    if not isinstance(document, dict):
-        raise ReleaseSmokeFailure(
-            f"Java-generated capability baseline must be one JSON object: {path}"
-        )
-    return document
-
-
 def _baseline_commands(baseline: Mapping[str, Any]) -> dict[str, Any]:
     require(
         set(baseline) == {"schemaVersion", "commands"},
@@ -70,7 +43,7 @@ def _baseline_commands(baseline: Mapping[str, Any]) -> dict[str, Any]:
     )
     schema_version = baseline.get("schemaVersion")
     require(
-        type(schema_version) is int and schema_version == _SCHEMA_VERSION,
+        type(schema_version) is int and schema_version == SCHEMA_VERSION,
         "Java-generated capability baseline has an unsupported schema version",
     )
     commands = required_mapping(dict(baseline), "commands")

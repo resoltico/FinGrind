@@ -1,0 +1,18 @@
+{
+  "schemaVersion" : 3,
+  "category" : "query",
+  "command" : {
+    "name" : "inspect-attestation-key-file",
+    "displayLabel" : "Inspect Attestation Key File",
+    "aliases" : [ ],
+    "options" : [ "--attestation-custodian <file-pkcs8>", "--attestation-key-file <path>", "[--output <json|text>]" ],
+    "executionMode" : "json-envelope",
+    "outputModes" : [ "json", "text" ],
+    "selectableOutputDefaults" : {
+      "interactiveTerminal" : "text",
+      "redirectedStdout" : "text"
+    },
+    "artifactOutputs" : [ ],
+    "summary" : "Read the non-secret Ed25519 public identity embedded in the selected encrypted attestation credential without loading private key material or a passphrase."
+  }
+}
