@@ -102,10 +102,6 @@ final class SqlitePublicationCapabilityWitness {
         Map<WitnessKey, Witness> witnesses,
         Map<WitnessKey, List<Requirement>> admittedRequirements) {
       this.witnesses = Collections.unmodifiableMap(new ConcurrentHashMap<>(witnesses));
-      if (!this.witnesses.keySet().equals(admittedRequirements.keySet())) {
-        throw new IllegalArgumentException(
-            "Every FinGrind publication capability witness must retain its exact admitted targets.");
-      }
       Map<WitnessKey, List<Path>> targets = new ConcurrentHashMap<>();
       for (Map.Entry<WitnessKey, List<Requirement>> entry : admittedRequirements.entrySet()) {
         targets.put(
@@ -352,10 +348,8 @@ final class SqlitePublicationCapabilityWitness {
     }
   }
 
-  private static void closeParentLease(@Nullable SqliteOwnedHeldLease parentLease) {
-    if (parentLease != null) {
-      parentLease.release();
-    }
+  private static void closeParentLease(SqliteOwnedHeldLease parentLease) {
+    Objects.requireNonNull(parentLease, "parentLease").release();
   }
 
   private static List<Requirement> requirementsFor(
@@ -454,18 +448,18 @@ final class SqlitePublicationCapabilityWitness {
     private final WitnessKey key;
     private final Path targetPath;
     private final SqliteCoordinationControlFiles.LockedControlFile control;
-    private final @Nullable SqliteHeldLease parentLease;
+    private final SqliteHeldLease parentLease;
     private boolean closed;
 
     private Witness(
         WitnessKey key,
         Path targetPath,
         SqliteCoordinationControlFiles.LockedControlFile control,
-        @Nullable SqliteHeldLease parentLease) {
+        SqliteHeldLease parentLease) {
       this.key = Objects.requireNonNull(key, "key");
       this.targetPath = Objects.requireNonNull(targetPath, "targetPath");
       this.control = Objects.requireNonNull(control, "control");
-      this.parentLease = parentLease;
+      this.parentLease = Objects.requireNonNull(parentLease, "parentLease");
     }
 
     private void establishOrValidate(
@@ -659,15 +653,13 @@ final class SqlitePublicationCapabilityWitness {
             new IllegalStateException(
                 "Failed to release one FinGrind publication capability witness lock.", exception);
       }
-      if (parentLease != null) {
-        try {
-          parentLease.close();
-        } catch (RuntimeException closeFailure) {
-          if (failure == null) {
-            failure = closeFailure;
-          } else {
-            failure.addSuppressed(closeFailure);
-          }
+      try {
+        parentLease.close();
+      } catch (RuntimeException closeFailure) {
+        if (failure == null) {
+          failure = closeFailure;
+        } else {
+          failure.addSuppressed(closeFailure);
         }
       }
       if (failure != null) {
