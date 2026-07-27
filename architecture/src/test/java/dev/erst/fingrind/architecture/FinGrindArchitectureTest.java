@@ -460,8 +460,7 @@ final class FinGrindArchitectureTest {
                 .anyMatch(
                     call ->
                         ATTESTATION_DIRECTORY_DURABILITY.equals(call.getTargetOwner().getName())
-                            || PAIR_PUBLICATION_DURABILITY.equals(
-                                call.getTargetOwner().getName()));
+                            || PAIR_PUBLICATION_DURABILITY.equals(call.getTargetOwner().getName()));
         if (!callsDirectoryDurability) {
           events.add(
               SimpleConditionEvent.violated(
