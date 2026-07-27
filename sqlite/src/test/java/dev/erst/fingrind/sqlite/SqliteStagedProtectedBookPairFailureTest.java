@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -746,8 +747,7 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
                 },
                 (step, parentDirectory) -> {})) {
       sealBackupForPublication(backupPair);
-      var publishedBackup = backupPair.commit(backupBinding(backupFinalPath));
-      assertEquals(publishedBackup, backupPair.commit(backupBinding(backupFinalPath)));
+      backupPair.commit(backupBinding(backupFinalPath));
     }
 
     assertTrue(Files.exists(backupFinalPath));
@@ -783,11 +783,7 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
                       replaceWithNonemptyDirectory(restoredKeyRecordPath);
                     },
                     SqliteProtectedBookPublicationSupport::moveReplacing))) {
-      var publishedRestore =
-          restoredPair.commit(restoreBinding(restoredStagedPath, restoredKeyStagedPath));
-      assertEquals(
-          publishedRestore,
-          restoredPair.commit(restoreBinding(restoredStagedPath, restoredKeyStagedPath)));
+      restoredPair.commit(restoreBinding(restoredStagedPath, restoredKeyStagedPath));
     }
 
     assertTrue(Files.exists(restoredFinalPath));
@@ -795,6 +791,58 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
     assertTrue(Files.exists(restoredStagedPath));
     assertTrue(Files.exists(restoredKeyStagedPath));
     assertTrue(Files.isDirectory(restoredKeyRecordPath));
+  }
+
+  @Test
+  void stagedPairCommitReturnsItsExactSuccessfulOutcomeOnReplay() throws Exception {
+    Path backupStagedPath = writeArtifact("replay-success/backup.stage", "backup");
+    Path backupKeyStagedPath = writeArtifact("replay-success/backup.key.stage", "key");
+    Path backupFinalPath = tempDirectory.resolve("replay-success").resolve("backup.sqlite");
+    Path backupKeyFinalPath = tempDirectory.resolve("replay-success").resolve("backup.key");
+
+    try (SqliteBookPassphrase passphrase = testPassphrase();
+        SqliteStagedBackupPair backupPair =
+            SqliteStagedBackupPairFactory.create(
+                SqliteOwnedStagedArtifact.recordExisting(backupFinalPath, backupStagedPath),
+                backupFinalPath,
+                SqliteOwnedStagedArtifact.recordExisting(backupKeyFinalPath, backupKeyStagedPath),
+                backupKeyFinalPath,
+                passphrase,
+                VERIFICATION_SUPPORT)) {
+      sealBackupForPublication(backupPair);
+      var published = backupPair.commit(backupBinding(backupFinalPath));
+      assertInstanceOf(
+          dev.erst.fingrind.executor.spi.StagedPairPublicationCommitOutcome.Published.class,
+          published);
+      assertSame(published, backupPair.commit(backupBinding(backupFinalPath)));
+    }
+
+    Path restoredStagedPath = writeArtifact("replay-success/restore.stage", "restored book");
+    Path restoredKeyStagedPath = writeArtifact("replay-success/restore.key.stage", "restored key");
+    Path restoredFinalPath = tempDirectory.resolve("replay-success").resolve("restored.sqlite");
+    Path restoredKeyFinalPath = tempDirectory.resolve("replay-success").resolve("restored.key");
+
+    try (SqliteBookPassphrase passphrase = testPassphrase();
+        SqliteStagedRestoredBookPair restoredPair =
+            SqliteStagedRestoredBookPairFactory.create(
+                new SqliteStagedProtectedBookPairArtifacts(
+                    SqliteOwnedStagedArtifact.recordExisting(restoredFinalPath, restoredStagedPath),
+                    restoredFinalPath,
+                    SqliteOwnedStagedArtifact.recordExisting(
+                        restoredKeyFinalPath, restoredKeyStagedPath),
+                    restoredKeyFinalPath),
+                RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                passphrase,
+                VERIFICATION_SUPPORT)) {
+      var published =
+          restoredPair.commit(restoreBinding(restoredStagedPath, restoredKeyStagedPath));
+      assertInstanceOf(
+          dev.erst.fingrind.executor.spi.StagedPairPublicationCommitOutcome.Published.class,
+          published);
+      assertSame(
+          published,
+          restoredPair.commit(restoreBinding(restoredStagedPath, restoredKeyStagedPath)));
+    }
   }
 
   @Test
