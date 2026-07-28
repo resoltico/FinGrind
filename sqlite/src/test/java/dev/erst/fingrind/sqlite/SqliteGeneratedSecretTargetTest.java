@@ -168,6 +168,23 @@ class SqliteGeneratedSecretTargetTest {
         null,
         SqlitePublicationCapabilityWitness.callerPathFailure(
             deniedFailure, SqliteCallerPathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED));
+
+    Path ioFailureTarget = tempDirectory.resolve("io-failure.key");
+    SqlitePublicationCapabilityWitness.AcquisitionFailure ioFailure =
+        assertThrows(
+            SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+            () ->
+                SqlitePublicationCapabilityWitness.acquire(
+                    java.util.List.of(
+                        SqlitePublicationCapabilityWitness.Requirement.noReplace(ioFailureTarget)),
+                    (target, staged) -> {
+                      throw new IOException("injected ordinary I/O failure");
+                    },
+                    SqliteProtectedBookPublicationSupport::moveReplacing));
+    assertEquals(
+        null,
+        SqlitePublicationCapabilityWitness.callerPathFailure(
+            ioFailure, SqliteCallerPathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED));
   }
 
   @Test
