@@ -260,6 +260,61 @@ class SqliteBookKeyFileGeneratorTest {
   }
 
   @Test
+  void generateDecision_classifiesAnUnsupportedWitnessPrimitiveBeforeStagingSecretMaterial()
+      throws Exception {
+    Path keyFile = tempDirectory.resolve("unsupported-witness.book-key");
+
+    ContractFailure failure =
+        SqliteBookKeyFileGenerator.generateDecision(
+                keyFile,
+                Files::createLink,
+                ignored -> {},
+                (ignoredFinalPath, ignoredEncodedPassphrase) -> {
+                  throw new AssertionError("A failed witness acquisition must precede staging.");
+                },
+                target ->
+                    SqlitePublicationCapabilityWitness.acquire(
+                        java.util.List.of(
+                            SqlitePublicationCapabilityWitness.Requirement.noReplace(target)),
+                        (finalPath, stagedPath) -> {
+                          throw new UnsupportedOperationException("injected unavailable link");
+                        },
+                        SqliteProtectedBookPublicationSupport::moveReplacing))
+            .requireRejected();
+
+    assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
+    assertFalse(Files.exists(keyFile));
+  }
+
+  @Test
+  void generateDecision_preservesOpaqueWitnessAcquisitionFailures() throws Exception {
+    Path keyFile = tempDirectory.resolve("opaque-witness.book-key");
+
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookKeyFileGenerator.generateDecision(
+                    keyFile,
+                    Files::createLink,
+                    ignored -> {},
+                    (ignoredFinalPath, ignoredEncodedPassphrase) -> {
+                      throw new AssertionError("A failed witness acquisition must precede staging.");
+                    },
+                    target ->
+                        SqlitePublicationCapabilityWitness.acquire(
+                            java.util.List.of(
+                                SqlitePublicationCapabilityWitness.Requirement.noReplace(target)),
+                            (finalPath, stagedPath) -> {
+                              throw new IOException("injected opaque witness failure");
+                            },
+                            SqliteProtectedBookPublicationSupport::moveReplacing)));
+
+    assertInstanceOf(SqlitePublicationCapabilityWitness.AcquisitionFailure.class, failure.getCause());
+    assertFalse(Files.exists(keyFile));
+  }
+
+  @Test
   void generateDecisionRetainsAndRejectsAStageThatNoLongerProvesOwnerOnlySecurity()
       throws Exception {
     assumeTrue(supportsPosix(tempDirectory), "the host filesystem must expose POSIX permissions");

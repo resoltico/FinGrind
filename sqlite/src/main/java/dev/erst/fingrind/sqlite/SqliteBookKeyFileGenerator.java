@@ -44,6 +44,14 @@ public final class SqliteBookKeyFileGenerator {
     ArtifactPublicationRetention create(Path normalizedBookKeyFilePath, byte[] encodedPassphrase);
   }
 
+  /** Injectable retained-witness acquisition boundary for publication-capability fault tests. */
+  @FunctionalInterface
+  interface PublicationCapabilityWitnessAcquirer {
+    /** Acquires the exact no-replace publication witness for one normalized key-file target. */
+    SqlitePublicationCapabilityWitness.Set acquire(Path normalizedBookKeyFilePath)
+        throws IOException;
+  }
+
   private SqliteBookKeyFileGenerator() {}
 
   /** Creates one new key file and returns non-secret metadata about the created artifact. */
@@ -71,7 +79,8 @@ public final class SqliteBookKeyFileGenerator {
         bookKeyFilePath,
         finalLinkCreator,
         parentDirectoryForcer,
-        SqliteBookKeyFileGenerator::createRetainedStage);
+        SqliteBookKeyFileGenerator::createRetainedStage,
+        SqliteBookKeyFileGenerator::acquirePublicationCapabilityWitness);
   }
 
   /**
@@ -85,9 +94,31 @@ public final class SqliteBookKeyFileGenerator {
       SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator finalLinkCreator,
       ParentDirectoryForcer parentDirectoryForcer,
       RetainedStageCreator retainedStageCreator) {
+    return generateDecision(
+        bookKeyFilePath,
+        finalLinkCreator,
+        parentDirectoryForcer,
+        retainedStageCreator,
+        SqliteBookKeyFileGenerator::acquirePublicationCapabilityWitness);
+  }
+
+  /**
+   * Creates one key file with an explicit retained-witness acquisition boundary.
+   *
+   * <p>The package-visible acquisition seam proves that storage capability failures are classified
+   * before secret material is staged, and that only recognized primitive refusals become caller
+   * path rejections.
+   */
+  static ContractDecision<GeneratedBookKeyFile> generateDecision(
+      Path bookKeyFilePath,
+      SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator finalLinkCreator,
+      ParentDirectoryForcer parentDirectoryForcer,
+      RetainedStageCreator retainedStageCreator,
+      PublicationCapabilityWitnessAcquirer capabilityWitnessAcquirer) {
     Objects.requireNonNull(finalLinkCreator, "finalLinkCreator");
     Objects.requireNonNull(parentDirectoryForcer, "parentDirectoryForcer");
     Objects.requireNonNull(retainedStageCreator, "retainedStageCreator");
+    Objects.requireNonNull(capabilityWitnessAcquirer, "capabilityWitnessAcquirer");
     Path normalizedPath = normalize(bookKeyFilePath);
     try {
       SqliteBookKeyFileSecurity.requireSupportedSecureFilesystem(normalizedPath);
@@ -104,10 +135,7 @@ public final class SqliteBookKeyFileGenerator {
       SqliteGeneratedSecretTarget secretTarget =
           SqliteGeneratedSecretTarget.requireAbsent(normalizedPath);
       try (SqlitePublicationCapabilityWitness.Set capabilityWitnesses =
-          SqlitePublicationCapabilityWitness.acquire(
-              List.of(SqlitePublicationCapabilityWitness.Requirement.noReplace(normalizedPath)),
-              Files::createLink,
-              SqliteProtectedBookPublicationSupport::moveReplacing)) {
+          capabilityWitnessAcquirer.acquire(normalizedPath)) {
         ArtifactPublicationRetention retention =
             retainedStageCreator.create(normalizedPath, encodedPassphrase);
         ContractDecision<Path> secureStage =
@@ -182,6 +210,14 @@ public final class SqliteBookKeyFileGenerator {
     } finally {
       Arrays.fill(encodedPassphrase, (byte) 0);
     }
+  }
+
+  private static SqlitePublicationCapabilityWitness.Set acquirePublicationCapabilityWitness(
+      Path normalizedPath) throws IOException {
+    return SqlitePublicationCapabilityWitness.acquire(
+        List.of(SqlitePublicationCapabilityWitness.Requirement.noReplace(normalizedPath)),
+        Files::createLink,
+        SqliteProtectedBookPublicationSupport::moveReplacing);
   }
 
   private static ArtifactPublicationRetention createRetainedStage(
