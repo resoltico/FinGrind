@@ -31,7 +31,10 @@ import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.WorkflowSour
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.AclEntry;
+import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.UserPrincipal;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -638,6 +641,79 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
   }
 
   @Test
+  void maintenanceArtifactStore_reportsSidecarsAndMapsDirectLeasePathFailures() throws Exception {
+    Path bookPath = writeArtifact("forwarded-blocking-artifacts.sqlite", "book");
+    Path backupPath = writeArtifact("forwarded-backup-artifacts.fgba", "backup");
+    Path bookJournal = bookPath.resolveSibling(bookPath.getFileName() + "-journal");
+    Path bookWal = bookPath.resolveSibling(bookPath.getFileName() + "-wal");
+    Path backupShm = backupPath.resolveSibling(backupPath.getFileName() + "-shm");
+    Files.writeString(bookJournal, "journal");
+    Files.writeString(bookWal, "wal");
+    Files.writeString(backupShm, "shm");
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+
+    assertEquals(List.of(bookJournal, bookWal), store.blockingArtifactsForBook(bookPath));
+    assertEquals(List.of(backupShm), store.blockingArtifactsForBackupSource(backupPath));
+
+    Path missingTarget = tempDirectory.resolve("missing-lease-parent").resolve("book.sqlite");
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid rejection =
+        assertInstanceOf(
+            ProtectedBookMaintenanceRejection.ArtifactPathInvalid.class,
+            assertThrows(
+                    ProtectedBookMaintenanceRejectionException.class,
+                    () ->
+                        store.acquireManagedArtifactLease(
+                            missingTarget, ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET))
+                .rejection());
+    assertEquals(ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET, rejection.artifactRole());
+    assertEquals(missingTarget.toAbsolutePath(), rejection.artifactPath());
+  }
+
+  @Test
+  void maintenanceFinalTargetNormalizationPreservesParentMetadataIoFailures() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+      AclFixturePath bookTarget = fileSystem.path("\\book-target\\backup.sqlite");
+      AclFixturePath bookParent =
+          assertInstanceOf(AclFixturePath.class, bookTarget.getParent());
+      bookParent.exists = true;
+      bookParent.overrideAclView = failingMaintenanceAclView();
+
+      IllegalStateException bookFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  store.normalizeFinalTarget(
+                      bookTarget,
+                      "backupFilePath",
+                      ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET));
+      assertEquals(
+          "Failed to prepare the protected-book maintenance target parent \\book-target\\backup.sqlite.",
+          bookFailure.getMessage());
+      assertInstanceOf(IOException.class, bookFailure.getCause());
+
+      AclFixturePath keyTarget = fileSystem.path("\\key-target\\backup.key");
+      AclFixturePath keyParent =
+          assertInstanceOf(AclFixturePath.class, keyTarget.getParent());
+      keyParent.exists = true;
+      keyParent.overrideAclView = failingMaintenanceAclView();
+
+      IllegalStateException keyFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  store.normalizeFinalTarget(
+                      keyTarget,
+                      "backupKeyFilePath",
+                      ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET));
+      assertEquals(
+          "Failed to prepare the protected-book maintenance target parent \\key-target\\backup.key.",
+          keyFailure.getMessage());
+      assertInstanceOf(IOException.class, keyFailure.getCause());
+    }
+  }
+
+  @Test
   void workflowScopeRejectsPairIdentityBeforeCreatingItsRetainedLeaseControlFile()
       throws Exception {
     Path source = writeArtifact("identity-source.sqlite", "maintenance source");
@@ -800,6 +876,35 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
     } catch (UnsupportedOperationException | java.nio.file.FileSystemException unavailable) {
       assumeTrue(false, "host filesystem cannot create symbolic links: " + unavailable);
     }
+  }
+
+  private static AclFileAttributeView failingMaintenanceAclView() {
+    return new AclFileAttributeView() {
+      @Override
+      public String name() {
+        return "acl";
+      }
+
+      @Override
+      public List<AclEntry> getAcl() throws IOException {
+        throw new IOException("injected maintenance ACL metadata failure");
+      }
+
+      @Override
+      public void setAcl(List<AclEntry> acl) throws IOException {
+        throw new IOException("injected maintenance ACL metadata failure");
+      }
+
+      @Override
+      public UserPrincipal getOwner() throws IOException {
+        throw new IOException("injected maintenance ACL metadata failure");
+      }
+
+      @Override
+      public void setOwner(UserPrincipal owner) throws IOException {
+        throw new IOException("injected maintenance ACL metadata failure");
+      }
+    };
   }
 
   private static void assertCreatedOwnerOnlyDirectory(Path directory) throws IOException {
