@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.EnumMap;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** Focused behavioral coverage for small SQLite ownership and evidence boundaries. */
@@ -125,5 +126,22 @@ class SqliteSmallBoundaryCoverageTest extends SqliteNativeBridgeTestSupport {
             () -> SqliteProtectedBookPairPublicationEvidenceKind.fromWireValue("unknown"));
 
     assertEquals("Unknown pair evidence kind.", exception.getMessage());
+  }
+
+  @Test
+  void aclSupportRejectsAFileSystemWithoutAnAclView() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath path = fileSystem.path("\\artifact.sqlite");
+      path.exists = true;
+      path.regularFile = true;
+      path.aclView = null;
+
+      IllegalStateException exception =
+          assertThrows(IllegalStateException.class, () -> SqliteBookAclSupport.aclView(path));
+
+      assertTrue(
+          java.util.Objects.requireNonNull(exception.getMessage(), "ACL failure message")
+              .contains("Windows owner-only ACLs"));
+    }
   }
 }
