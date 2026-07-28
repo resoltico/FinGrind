@@ -436,9 +436,20 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
                     artifact,
                     SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT,
                     List.of(artifact),
-                    ignored -> objectReference,
-                    (ignoredArtifact, ignoredObjectLease, ignoredDirectoryLease) -> {
-                      throw expected;
+                    new SqliteBookMaintenanceLease.ExistingArtifactObjectLeaseAcquirer() {
+                      @Override
+                      public SqliteThreadMaintenanceLeases.ObjectLeaseReference acquire(
+                          Path ignoredArtifact) {
+                        return objectReference;
+                      }
+
+                      @Override
+                      public SqliteHeldLease createHeldLease(
+                          Path ignoredArtifact,
+                          SqliteThreadMaintenanceLeases.ObjectLeaseReference ignoredObjectLease,
+                          SqliteOwnedHeldLease ignoredDirectoryLease) {
+                        throw expected;
+                      }
                     }));
     assertSame(expected, failure);
     assertEquals(1, objectControlCloses.get());

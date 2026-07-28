@@ -23,20 +23,19 @@ import java.util.Set;
 final class SqliteBookMaintenanceLease {
   private SqliteBookMaintenanceLease() {}
 
-  /** Resolves one existing artifact to a retained physical-object exclusion. */
+  /** Resolves and transfers one existing artifact's retained physical-object exclusion. */
   @FunctionalInterface
   interface ExistingArtifactObjectLeaseAcquirer {
     SqliteThreadMaintenanceLeases.@org.jspecify.annotations.Nullable ObjectLeaseReference acquire(
         Path existingArtifactPath) throws IOException;
-  }
 
-  /** Materializes the held artifact reference after both ownership layers are established. */
-  @FunctionalInterface
-  interface ExistingArtifactHeldLeaseFactory {
-    SqliteHeldLease create(
+    /** Transfers both established ownership layers into one release-once artifact lease. */
+    default SqliteHeldLease createHeldLease(
         Path artifactPath,
         SqliteThreadMaintenanceLeases.ObjectLeaseReference objectLease,
-        SqliteOwnedHeldLease directoryLease);
+        SqliteOwnedHeldLease directoryLease) {
+      return createHeldExistingArtifactLease(artifactPath, objectLease, directoryLease);
+    }
   }
 
   /** Acquires one raw physical-object control before it becomes thread-retained ownership. */
@@ -95,8 +94,7 @@ final class SqliteBookMaintenanceLease {
         leaseIntent,
         admittedArtifactPaths,
         false,
-        SqliteBookMaintenanceLease::acquireObjectLeaseReference,
-        SqliteBookMaintenanceLease::createHeldExistingArtifactLease);
+        SqliteBookMaintenanceLease::acquireObjectLeaseReference);
   }
 
   /**
@@ -115,30 +113,7 @@ final class SqliteBookMaintenanceLease {
         leaseIntent,
         admittedArtifactPaths,
         false,
-        objectLeaseAcquirer,
-        SqliteBookMaintenanceLease::createHeldExistingArtifactLease);
-  }
-
-  /**
-   * Acquires one exact admitted scope through explicit object-acquisition and ownership-transfer
-   * boundaries.
-   *
-   * <p>Package visibility lets ownership tests prove that an error after the object claim closes
-   * both claims in reverse acquisition order.
-   */
-  static SqliteProtectedBookLeaseAcquisition acquireWithAdmittedScope(
-      Path normalizedArtifactPath,
-      SqliteMaintenanceLeaseIntent leaseIntent,
-      List<Path> admittedArtifactPaths,
-      ExistingArtifactObjectLeaseAcquirer objectLeaseAcquirer,
-      ExistingArtifactHeldLeaseFactory heldLeaseFactory) {
-    return acquireWithAdmittedScope(
-        normalizedArtifactPath,
-        leaseIntent,
-        admittedArtifactPaths,
-        false,
-        objectLeaseAcquirer,
-        heldLeaseFactory);
+        objectLeaseAcquirer);
   }
 
   private static SqliteProtectedBookLeaseAcquisition
@@ -151,8 +126,7 @@ final class SqliteBookMaintenanceLease {
         leaseIntent,
         admittedArtifactPaths,
         true,
-        SqliteBookMaintenanceLease::acquireObjectLeaseReference,
-        SqliteBookMaintenanceLease::createHeldExistingArtifactLease);
+        SqliteBookMaintenanceLease::acquireObjectLeaseReference);
   }
 
   private static SqliteProtectedBookLeaseAcquisition acquireWithAdmittedScope(
@@ -160,8 +134,7 @@ final class SqliteBookMaintenanceLease {
       SqliteMaintenanceLeaseIntent leaseIntent,
       List<Path> admittedArtifactPaths,
       boolean allowsExplicitSiblingAdmission,
-      ExistingArtifactObjectLeaseAcquirer objectLeaseAcquirer,
-      ExistingArtifactHeldLeaseFactory heldLeaseFactory) {
+      ExistingArtifactObjectLeaseAcquirer objectLeaseAcquirer) {
     Path checkedArtifactPath =
         Objects.requireNonNull(normalizedArtifactPath, "normalizedArtifactPath");
     Objects.requireNonNull(leaseIntent, "leaseIntent");
@@ -169,8 +142,6 @@ final class SqliteBookMaintenanceLease {
         List.copyOf(Objects.requireNonNull(admittedArtifactPaths, "admittedArtifactPaths"));
     ExistingArtifactObjectLeaseAcquirer checkedObjectLeaseAcquirer =
         Objects.requireNonNull(objectLeaseAcquirer, "objectLeaseAcquirer");
-    ExistingArtifactHeldLeaseFactory checkedHeldLeaseFactory =
-        Objects.requireNonNull(heldLeaseFactory, "heldLeaseFactory");
     try {
       SqliteMaintenanceLeaseAuthority.validateArtifactForLeaseIntent(
           checkedArtifactPath, leaseIntent);
@@ -192,7 +163,8 @@ final class SqliteBookMaintenanceLease {
           directoryLease.release();
           return new SqliteLeaseBusy(checkedArtifactPath);
         }
-        return checkedHeldLeaseFactory.create(checkedArtifactPath, objectLease, directoryLease);
+        return checkedObjectLeaseAcquirer.createHeldLease(
+            checkedArtifactPath, objectLease, directoryLease);
       } catch (RuntimeException | Error failure) {
         List<SqliteRuntimeCloseSequence.CloseAction> closeActions = new ArrayList<>();
         if (objectLease != null) {
