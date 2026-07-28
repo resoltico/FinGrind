@@ -8,11 +8,10 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 
 /** Behavioral coverage for fail-closed discovery of protected-book pair evidence. */
-class SqliteProtectedBookPairPublicationEvidenceScannerTest {
-  @TempDir Path tempDirectory;
+class SqliteProtectedBookPairPublicationEvidenceScannerTest
+    extends SqliteArtifactPublicationTestSupport {
 
   @Test
   void absentSharedParentContributesNoEvidenceInsteadOfCreatingOrInspectingIt() {
@@ -46,5 +45,56 @@ class SqliteProtectedBookPairPublicationEvidenceScannerTest {
           failure.getMessage());
       assertSame(injected, failure.getCause());
     }
+  }
+
+  @Test
+  void scannerRejectsConflictingImmutableEvidenceForTheSamePairIdentity() throws Exception {
+    Path bookTarget = tempDirectory.resolve("conflicting-pair-evidence/book.sqlite");
+    Path secretTarget = tempDirectory.resolve("conflicting-pair-evidence/book.key");
+    Path bookStage = writeArtifact("conflicting-pair-evidence/.book.stage", "book stage");
+    Path secretStage = writeArtifact("conflicting-pair-evidence/.secret.stage", "secret stage");
+    SqliteOwnedStagedArtifact.recordExisting(bookTarget, bookStage);
+    SqliteOwnedStagedArtifact.recordExisting(secretTarget, secretStage);
+    SqliteProtectedBookPairPublicationRecord record =
+        SqliteProtectedBookPairPublicationRecord.create(
+            bookTarget,
+            secretTarget,
+            bookStage,
+            secretStage,
+            dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy
+                .REQUIRE_ABSENT,
+            backupBinding(bookTarget.resolveSibling("source.sqlite")),
+            (ignoredStep, ignoredParent) -> {});
+    SqliteProtectedBookPairPublicationRecord conflicting = withChangedBookDigest(record);
+    Path conflictingEvidence =
+        conflicting
+            .evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.RETAINED)
+            .getFirst();
+    java.nio.file.Files.writeString(
+        conflictingEvidence,
+        SqliteProtectedBookPairPublicationEvidenceCodec.encoded(
+            conflicting, SqliteProtectedBookPairPublicationEvidenceKind.RETAINED));
+
+    assertEquals(
+        SqlitePairPublicationEvidenceUnsafe.INSTANCE,
+        SqliteProtectedBookPairPublicationEvidenceScanner.scan(bookTarget, secretTarget));
+  }
+
+  private static SqliteProtectedBookPairPublicationRecord withChangedBookDigest(
+      SqliteProtectedBookPairPublicationRecord original) {
+    byte[] changedBookDigest = original.bookDigest.clone();
+    changedBookDigest[0] ^= 1;
+    return new SqliteProtectedBookPairPublicationRecord(
+        new SqliteProtectedBookPairPublicationRecord.Components(
+            original.pairId,
+            new SqliteProtectedBookPairPublicationRecord.PairPaths(
+                original.bookTargetPath,
+                original.secretTargetPath,
+                original.bookStagePath,
+                original.secretStagePath),
+            new SqliteProtectedBookPairPublicationRecord.PairDigests(
+                changedBookDigest, original.secretDigest, original.replaceTargetDigest),
+            original.bookTargetPolicy,
+            original.binding));
   }
 }
