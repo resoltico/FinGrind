@@ -758,6 +758,14 @@ class SqliteBookKeyFileGeneratorTest {
     assertEquals(
         SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY,
         missingParentDirectoryException.pathFailure());
+    Path filesystemRoot =
+        java.util.Objects.requireNonNull(tempDirectory.toAbsolutePath().getRoot(), "filesystem root");
+    SqliteCallerPathContractException rootWithoutParentException =
+        assertThrows(
+            SqliteCallerPathContractException.class,
+            () -> SqliteBookKeyFileSecurity.requireExistingSecureParentDirectory(filesystemRoot));
+    assertEquals(
+        SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY, rootWithoutParentException.pathFailure());
   }
 
   private static void assertRetainedStage(
