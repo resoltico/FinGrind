@@ -24,6 +24,7 @@ public class AclFixturePath extends AclFixtureAbstractPath {
   private @Nullable IOException deleteIfExistsFailure;
   private @Nullable IOException readAttributesFailure;
   private @Nullable IOException realPathFailure;
+  private @Nullable Path realPathOverride;
   private @Nullable IOException posixReadAttributesFailure;
   private @Nullable IOException sameFileFailure;
   private final Map<String, IOException> sameFileFailuresByOtherPath = new HashMap<>();
@@ -91,11 +92,20 @@ public class AclFixturePath extends AclFixtureAbstractPath {
     return this;
   }
 
+  AclFixturePath returnRealPath(Path path) {
+    realPathOverride = Objects.requireNonNull(path, "path");
+    return this;
+  }
+
   @Override
   public Path toRealPath(LinkOption... options) throws IOException {
     IOException failure = realPathFailure;
     if (failure != null) {
       throw failure;
+    }
+    Path override = realPathOverride;
+    if (override != null) {
+      return override;
     }
     return super.toRealPath(options);
   }

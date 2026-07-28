@@ -118,6 +118,33 @@ class SqliteBookMaintenanceFilesTest extends SqliteNativeBridgeTestSupport {
     }
   }
 
+  @Test
+  void optionalArtifactAdmissionRefusesAnExistingLeafWhoseCanonicalParentEscapes() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parent = fileSystem.path("\\private");
+      parent.exists = true;
+      parent.regularFile = false;
+      parent.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE);
+      AclFixturePath target = fileSystem.path("\\private\\book.sqlite");
+      target.exists = true;
+      target.regularFile = true;
+      target.returnRealPath(fileSystem.path("\\escaped\\book.sqlite"));
+
+      SqliteCallerPathContractException exception =
+          assertThrows(
+              SqliteCallerPathContractException.class,
+              () -> SqliteBookMaintenanceFiles.normalizeOptionalArtifact(target, "bookFilePath"));
+
+      assertEquals(
+          SqliteCallerPathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE,
+          exception.pathFailure());
+    }
+  }
+
   private Path privateParent(String name) throws java.io.IOException {
     Path parent = tempDirectory.resolve(name);
     Files.createDirectories(parent);
