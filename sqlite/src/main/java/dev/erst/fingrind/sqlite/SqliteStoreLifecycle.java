@@ -210,9 +210,6 @@ class SqliteStoreLifecycle extends SqliteStoreSessionStateTracker {
       rememberTerminalFailure(new ContractFailureException(callerPathFailure));
       return ContractDecision.rejected(callerPathFailure);
     } catch (SqliteNewBookDestinationOccupiedException exception) {
-      if (!context.accessMode().requiresAbsentNewBookTarget()) {
-        throw rememberTerminalFailure(exception);
-      }
       ContractFailure destinationFailure =
           ContractErrors.Descriptor.BOOK_DESTINATION_OCCUPIED.failureAt(
               exception.targetPath(),

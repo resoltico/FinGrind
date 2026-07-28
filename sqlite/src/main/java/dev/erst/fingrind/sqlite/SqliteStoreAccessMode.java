@@ -5,39 +5,36 @@ import java.util.Objects;
 /** SQLite open policies mapped from FinGrind command-level access intents. */
 enum SqliteStoreAccessMode {
   /** Opens one existing book in read-only mode. */
-  READ_ONLY(SqliteNativeOpenMode.READ_ONLY, true, false, false, true, false),
+  READ_ONLY(SqliteNativeOpenMode.READ_ONLY, true, false, false, true),
   /** Defers a missing read-only book open so a plan can emit its canonical journal rejection. */
-  PLAN_READ_ONLY(SqliteNativeOpenMode.READ_ONLY, true, false, false, true, false),
+  PLAN_READ_ONLY(SqliteNativeOpenMode.READ_ONLY, true, false, false, true),
   /** Opens one existing book for read/write mutations without creating new files. */
-  READ_WRITE_EXISTING(SqliteNativeOpenMode.READ_WRITE_EXISTING, false, true, false, true, false),
+  READ_WRITE_EXISTING(SqliteNativeOpenMode.READ_WRITE_EXISTING, false, true, false, true),
   /** Opens one book for read/write access and creates the file when needed. */
-  READ_WRITE_CREATE(SqliteNativeOpenMode.READ_WRITE_CREATE, false, true, true, false, false),
+  READ_WRITE_CREATE(SqliteNativeOpenMode.READ_WRITE_CREATE, false, true, true, false),
   /** Creates one new book only when its filesystem destination remains absent. */
   READ_WRITE_CREATE_EXCLUSIVE(
-      SqliteNativeOpenMode.READ_WRITE_CREATE_EXCLUSIVE, false, true, true, false, true),
+      SqliteNativeOpenMode.READ_WRITE_CREATE_EXCLUSIVE, false, true, true, false),
   /** Defers file creation until a plan mutation actually requires it. */
-  PLAN_EXECUTION(SqliteNativeOpenMode.READ_WRITE_CREATE, false, true, true, true, false);
+  PLAN_EXECUTION(SqliteNativeOpenMode.READ_WRITE_CREATE, false, true, true, true);
 
   private final SqliteNativeOpenMode nativeOpenMode;
   private final boolean queryOnly;
   private final boolean writable;
   private final boolean createsFiles;
   private final boolean defersMissingBookOpen;
-  private final boolean requiresAbsentNewBookTarget;
 
   SqliteStoreAccessMode(
       SqliteNativeOpenMode nativeOpenMode,
       boolean queryOnly,
       boolean writable,
       boolean createsFiles,
-      boolean defersMissingBookOpen,
-      boolean requiresAbsentNewBookTarget) {
+      boolean defersMissingBookOpen) {
     this.nativeOpenMode = Objects.requireNonNull(nativeOpenMode, "nativeOpenMode");
     this.queryOnly = queryOnly;
     this.writable = writable;
     this.createsFiles = createsFiles;
     this.defersMissingBookOpen = defersMissingBookOpen;
-    this.requiresAbsentNewBookTarget = requiresAbsentNewBookTarget;
   }
 
   SqliteNativeOpenMode nativeOpenMode() {
@@ -58,10 +55,6 @@ enum SqliteStoreAccessMode {
 
   boolean defersMissingBookOpen() {
     return defersMissingBookOpen;
-  }
-
-  boolean requiresAbsentNewBookTarget() {
-    return requiresAbsentNewBookTarget;
   }
 
   boolean usesOperationalBookStateGate() {
