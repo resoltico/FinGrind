@@ -1352,6 +1352,72 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
     assertEquals("occupied", Files.readString(originalBookContent));
   }
 
+  @Test
+  void restoredPairFailureDispositionDistinguishesEveryRecoveryBoundaryOutcome() {
+    Path targetPath = tempDirectory.resolve("disposition-target.key");
+
+    assertEquals(
+        SqliteStagedRestoredBookPair.CommitFailureDisposition.PREPUBLICATION_RECOVERY_REQUIRED,
+        SqliteStagedRestoredBookPair.failureDisposition(
+            new SqliteProtectedBookPairPublicationRecord
+                .RecoveryRecordDurabilityUnconfirmedException(new IOException("unconfirmed")),
+            false,
+            false));
+    assertEquals(
+        SqliteStagedRestoredBookPair.CommitFailureDisposition.PREPUBLICATION_RECOVERY_REQUIRED,
+        SqliteStagedRestoredBookPair.failureDisposition(
+            guardRejection(SqliteProtectedBookPublicationSupport.FinalMember.SECRET), true, false));
+    assertEquals(
+        SqliteStagedRestoredBookPair.CommitFailureDisposition.COMPLETION_UNCERTAIN,
+        SqliteStagedRestoredBookPair.failureDisposition(
+            guardRejection(SqliteProtectedBookPublicationSupport.FinalMember.BOOK), true, false));
+    assertEquals(
+        SqliteStagedRestoredBookPair.CommitFailureDisposition.PREBOUNDARY_UNEXPECTED,
+        SqliteStagedRestoredBookPair.failureDisposition(
+            new IOException("before recovery record"), false, false));
+
+    assertEquals(
+        SqliteStagedRestoredBookPair.CommitFailureDisposition.POSTPUBLICATION_RECOVERY_REQUIRED,
+        SqliteStagedRestoredBookPair.failureDisposition(
+            new SqliteGeneratedSecretTargetOccupiedException(targetPath), true, false));
+    assertEquals(
+        SqliteStagedRestoredBookPair.CommitFailureDisposition.POSTPUBLICATION_RECOVERY_REQUIRED,
+        SqliteStagedRestoredBookPair.failureDisposition(
+            new SqliteCallerPathContractException(
+                targetPath,
+                SqliteCallerPathFailure.TARGET_OWNER_ONLY_REQUIRED,
+                "selected target is not owner-only"),
+            true,
+            false));
+    assertEquals(
+        SqliteStagedRestoredBookPair.CommitFailureDisposition.POSTPUBLICATION_RECOVERY_REQUIRED,
+        SqliteStagedRestoredBookPair.failureDisposition(
+            new java.nio.file.FileAlreadyExistsException(targetPath.toString()), true, false));
+    assertEquals(
+        SqliteStagedRestoredBookPair.CommitFailureDisposition.PREPUBLICATION_RECOVERY_REQUIRED,
+        SqliteStagedRestoredBookPair.failureDisposition(
+            new IOException("before a final primitive"), true, false));
+    assertEquals(
+        SqliteStagedRestoredBookPair.CommitFailureDisposition.COMPLETION_UNCERTAIN,
+        SqliteStagedRestoredBookPair.failureDisposition(
+            new IOException("after a final primitive"), true, true));
+    assertEquals(
+        SqliteStagedRestoredBookPair.CommitFailureDisposition.POSTBOUNDARY_UNEXPECTED,
+        SqliteStagedRestoredBookPair.failureDisposition(
+            new IllegalStateException("post-boundary programming failure"), true, true));
+  }
+
+  private static SqliteProtectedBookPublicationSupport.FinalMemberPublicationGuardRejectedException
+      guardRejection(SqliteProtectedBookPublicationSupport.FinalMember member) {
+    return assertThrows(
+        SqliteProtectedBookPublicationSupport.FinalMemberPublicationGuardRejectedException.class,
+        () ->
+            SqliteProtectedBookPublicationSupport.requireGuard(
+                member, () -> {
+                  throw new IOException("injected final-member guard refusal");
+                }));
+  }
+
   private static SqliteBookPassphrase testPassphrase() {
     return SqliteBookPassphrase.fromUtf8Bytes(
         "staged protected-book pair", TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8));

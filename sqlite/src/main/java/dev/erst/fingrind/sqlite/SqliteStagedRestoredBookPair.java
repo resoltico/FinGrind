@@ -11,6 +11,14 @@ import java.util.Objects;
 
 /** Staged restored live-book pair that publishes one re-encrypted book and key file together. */
 final class SqliteStagedRestoredBookPair implements StagedRestoredBookPair {
+  enum CommitFailureDisposition {
+    PREPUBLICATION_RECOVERY_REQUIRED,
+    COMPLETION_UNCERTAIN,
+    POSTPUBLICATION_RECOVERY_REQUIRED,
+    PREBOUNDARY_UNEXPECTED,
+    POSTBOUNDARY_UNEXPECTED
+  }
+
   private final SqliteOwnedStagedArtifact stagedBookFile;
   private final SqliteOwnedStagedArtifact stagedBookKeyFile;
   private final SqliteProtectedBookVerificationSupport verificationSupport;
@@ -162,53 +170,64 @@ final class SqliteStagedRestoredBookPair implements StagedRestoredBookPair {
       boolean durableRecoveryBoundaryReached,
       SqlitePairPublicationMemberAttempt bookAttempt,
       SqlitePairPublicationMemberAttempt secretAttempt) {
-    if (failure
+    return switch (
+        failureDisposition(
+            failure,
+            durableRecoveryBoundaryReached,
+            SqlitePairPublicationMemberAttempt.eitherAttempted(bookAttempt, secretAttempt))) {
+      case PREPUBLICATION_RECOVERY_REQUIRED -> finalizer.finishPrepublicationRecoveryRequired();
+      case COMPLETION_UNCERTAIN ->
+          finalizer.finishCompletionUncertain(bookAttempt.state(), secretAttempt.state());
+      case POSTPUBLICATION_RECOVERY_REQUIRED ->
+          finalizer.finishPostRecoveryFailure(bookAttempt, secretAttempt, true);
+      case POSTBOUNDARY_UNEXPECTED ->
+          finalizer.finishPostRecoveryFailure(bookAttempt, secretAttempt, false);
+      case PREBOUNDARY_UNEXPECTED -> {
+        finalizer.finishAfterPreBoundaryFailure();
+        throw unexpectedPreboundaryFailure(failure);
+      }
+    };
+  }
+
+  static CommitFailureDisposition failureDisposition(
+      Exception failure,
+      boolean durableRecoveryBoundaryReached,
+      boolean finalMemberAttempted) {
+    Exception checkedFailure = Objects.requireNonNull(failure, "failure");
+    if (checkedFailure
         instanceof
         SqliteProtectedBookPairPublicationRecord.RecoveryRecordDurabilityUnconfirmedException) {
-      return finalizer.finishPrepublicationRecoveryRequired();
+      return CommitFailureDisposition.PREPUBLICATION_RECOVERY_REQUIRED;
     }
-    if (failure
+    if (checkedFailure
         instanceof
         SqliteProtectedBookPublicationSupport.FinalMemberPublicationGuardRejectedException
             guardFailure) {
       return guardFailure.member() == SqliteProtectedBookPublicationSupport.FinalMember.SECRET
-          ? finalizer.finishPrepublicationRecoveryRequired()
-          : finalizer.finishCompletionUncertain(bookAttempt.state(), secretAttempt.state());
+          ? CommitFailureDisposition.PREPUBLICATION_RECOVERY_REQUIRED
+          : CommitFailureDisposition.COMPLETION_UNCERTAIN;
     }
-    if (durableRecoveryBoundaryReached) {
-      return finishPostRecoveryFailure(failure, bookAttempt, secretAttempt);
+    if (!durableRecoveryBoundaryReached) {
+      return CommitFailureDisposition.PREBOUNDARY_UNEXPECTED;
     }
-    return handlePreRecoveryFailure(failure);
-  }
-
-  private StagedPairPublicationCommitOutcome finishPostRecoveryFailure(
-      Exception failure,
-      SqlitePairPublicationMemberAttempt bookAttempt,
-      SqlitePairPublicationMemberAttempt secretAttempt) {
-    if (failure instanceof SqliteGeneratedSecretTargetOccupiedException
+    if (checkedFailure instanceof SqliteGeneratedSecretTargetOccupiedException
         || failure instanceof SqliteCallerPathContractException
         || failure instanceof java.nio.file.FileAlreadyExistsException) {
-      return finalizer.finishPostRecoveryFailure(bookAttempt, secretAttempt, true);
+      return CommitFailureDisposition.POSTPUBLICATION_RECOVERY_REQUIRED;
     }
-    if (failure instanceof IOException) {
-      if (SqlitePairPublicationMemberAttempt.eitherAttempted(bookAttempt, secretAttempt)) {
-        return finalizer.finishCompletionUncertain(bookAttempt.state(), secretAttempt.state());
-      }
-      return finalizer.finishPrepublicationRecoveryRequired();
+    if (checkedFailure instanceof IOException) {
+      return finalMemberAttempted
+          ? CommitFailureDisposition.COMPLETION_UNCERTAIN
+          : CommitFailureDisposition.PREPUBLICATION_RECOVERY_REQUIRED;
     }
-    return finalizer.finishPostRecoveryFailure(bookAttempt, secretAttempt, false);
+    return CommitFailureDisposition.POSTBOUNDARY_UNEXPECTED;
   }
 
-  private StagedPairPublicationCommitOutcome handlePreRecoveryFailure(Exception failure) {
-    finalizer.finishAfterPreBoundaryFailure();
-    return throwUnexpectedCommitFailure(failure);
-  }
-
-  private StagedPairPublicationCommitOutcome throwUnexpectedCommitFailure(Exception failure) {
+  private RuntimeException unexpectedPreboundaryFailure(Exception failure) {
     if (failure instanceof RuntimeException runtimeFailure) {
-      throw runtimeFailure;
+      return runtimeFailure;
     }
-    throw new IllegalStateException(
+    return new IllegalStateException(
         "Failed to publish the restored FinGrind live-book pair at "
             + SqliteMachinePaths.absoluteValue(publication.bookTargetPath())
             + ".",
