@@ -153,7 +153,7 @@ final class SqlitePublicationCapabilityWitness {
       List<Requirement> requirements,
       SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator linkCreator,
       SqliteProtectedBookPublicationSupport.AtomicBookMover mover)
-      throws IOException {
+      throws AcquisitionFailure {
     List<Requirement> checkedRequirements = List.copyOf(requirements);
     Objects.requireNonNull(linkCreator, "linkCreator");
     Objects.requireNonNull(mover, "mover");
@@ -174,7 +174,7 @@ final class SqlitePublicationCapabilityWitness {
     Map<WitnessKey, Witness> acquired = new ConcurrentHashMap<>();
     try {
       return acquireAll(ordered, acquired, distinct, linkCreator, mover);
-    } catch (IOException | RuntimeException failure) {
+    } catch (AcquisitionFailure failure) {
       SqliteRuntimeCloseSequence.closeAllReversePreservingFailure(
           acquired.values().stream()
               .map(witness -> (SqliteRuntimeCloseSequence.CloseAction) witness::close)
@@ -190,7 +190,7 @@ final class SqlitePublicationCapabilityWitness {
       Map<WitnessKey, List<Requirement>> distinct,
       SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator linkCreator,
       SqliteProtectedBookPublicationSupport.AtomicBookMover mover)
-      throws IOException {
+      throws AcquisitionFailure {
     for (Map.Entry<WitnessKey, List<Requirement>> entry : ordered) {
       Requirement representative = entry.getValue().getFirst();
       try {

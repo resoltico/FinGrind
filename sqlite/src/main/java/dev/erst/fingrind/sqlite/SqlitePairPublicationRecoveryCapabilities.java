@@ -2,7 +2,6 @@ package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
-import java.io.IOException;
 
 /** Acquires only the primitive witnesses needed by the selected recovery plans. */
 final class SqlitePairPublicationRecoveryCapabilities {
@@ -31,10 +30,6 @@ final class SqlitePairPublicationRecoveryCapabilities {
           record.bookTargetPolicy,
           bookArtifactRole,
           secretArtifactRole);
-    } catch (IOException exception) {
-      throw new IllegalStateException(
-          "Failed to acquire retained FinGrind recovery publication capability witnesses.",
-          exception);
     }
   }
 
