@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -135,7 +136,7 @@ abstract class AclFixtureAbstractPath implements Path {
   }
 
   @Override
-  public Path toRealPath(LinkOption... options) {
+  public Path toRealPath(LinkOption... options) throws IOException {
     return toAbsolutePath();
   }
 

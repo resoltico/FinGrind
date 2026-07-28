@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import java.io.IOException;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.PosixFilePermission;
@@ -22,6 +23,7 @@ public class AclFixturePath extends AclFixtureAbstractPath {
   private byte[] content = new byte[0];
   private @Nullable IOException deleteIfExistsFailure;
   private @Nullable IOException readAttributesFailure;
+  private @Nullable IOException realPathFailure;
   private @Nullable IOException posixReadAttributesFailure;
   private @Nullable IOException sameFileFailure;
   private final Map<String, IOException> sameFileFailuresByOtherPath = new HashMap<>();
@@ -82,6 +84,20 @@ public class AclFixturePath extends AclFixtureAbstractPath {
 
   @Nullable IOException readAttributesFailure() {
     return readAttributesFailure;
+  }
+
+  AclFixturePath failToRealPathWith(IOException exception) {
+    realPathFailure = Objects.requireNonNull(exception, "exception");
+    return this;
+  }
+
+  @Override
+  public Path toRealPath(LinkOption... options) throws IOException {
+    IOException failure = realPathFailure;
+    if (failure != null) {
+      throw failure;
+    }
+    return super.toRealPath(options);
   }
 
   AclFixturePath failPosixReadAttributesWith(IOException exception) {
