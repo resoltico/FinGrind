@@ -15,6 +15,28 @@ import java.util.Objects;
  */
 abstract class SqliteProtectedBookMaintenanceArtifactStore
     implements ProtectedBookMaintenanceStore {
+  @FunctionalInterface
+  interface WorkflowScopeAcquirer {
+    SqliteWorkflowScopeAcquisition acquire(
+        WorkflowSourceMembers sourceMembers,
+        Path bookTargetPath,
+        ProtectedBookMaintenanceArtifactRole bookTargetArtifactRole,
+        Path secretTargetPath,
+        ProtectedBookMaintenanceArtifactRole secretTargetArtifactRole)
+        throws IOException;
+  }
+
+  private final WorkflowScopeAcquirer workflowScopeAcquirer;
+
+  SqliteProtectedBookMaintenanceArtifactStore() {
+    this(SqliteBookMaintenanceLease::acquireWorkflowScope);
+  }
+
+  SqliteProtectedBookMaintenanceArtifactStore(WorkflowScopeAcquirer workflowScopeAcquirer) {
+    this.workflowScopeAcquirer =
+        Objects.requireNonNull(workflowScopeAcquirer, "workflowScopeAcquirer");
+  }
+
   @Override
   public Path normalizeOptionalInspectionArtifact(
       Path path, String argumentName, ProtectedBookMaintenanceArtifactRole artifactRole) {
@@ -54,15 +76,27 @@ abstract class SqliteProtectedBookMaintenanceArtifactStore
 
   private static void ensureFinalTargetParent(
       Path requestedPath, ProtectedBookMaintenanceArtifactRole artifactRole) throws IOException {
-    switch (artifactRole) {
+    finalTargetParentAdmission(artifactRole).ensure(requestedPath);
+  }
+
+  private static FinalTargetParentAdmission finalTargetParentAdmission(
+      ProtectedBookMaintenanceArtifactRole artifactRole) {
+    return switch (Objects.requireNonNull(artifactRole, "artifactRole")) {
       case LIVE_BOOK, BACKUP_TARGET, RESTORED_TARGET ->
-          SqliteBookFileSecurity.ensureSecureParentDirectory(requestedPath);
+          SqliteBookFileSecurity::ensureSecureParentDirectory;
       case BACKUP_KEY_TARGET, NEW_BOOK_KEY_TARGET ->
-          SqliteBookKeyFileSecurity.ensureSecureParentDirectory(requestedPath);
+          SqliteBookKeyFileSecurity::ensureSecureParentDirectory;
       case LIVE_BOOK_KEY_SOURCE, BACKUP_SOURCE, BACKUP_KEY_SOURCE ->
-          throw new IllegalArgumentException(
-              "A protected-book maintenance source cannot use final-target normalization.");
-    }
+          requestedPath -> {
+            throw new IllegalArgumentException(
+                "A protected-book maintenance source cannot use final-target normalization.");
+          };
+    };
+  }
+
+  @FunctionalInterface
+  private interface FinalTargetParentAdmission {
+    void ensure(Path requestedPath) throws IOException;
   }
 
   @Override
@@ -127,7 +161,7 @@ abstract class SqliteProtectedBookMaintenanceArtifactStore
     ProtectedBookMaintenanceArtifactRole checkedSecretRole =
         Objects.requireNonNull(secretTargetArtifactRole, "secretTargetArtifactRole");
     try {
-      return SqliteBookMaintenanceLease.acquireWorkflowScope(
+      return workflowScopeAcquirer.acquire(
           checkedSourceMembers,
           checkedBookTarget,
           checkedBookRole,

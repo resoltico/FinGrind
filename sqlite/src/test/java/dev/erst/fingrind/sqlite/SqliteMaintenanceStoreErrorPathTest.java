@@ -847,6 +847,46 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
   }
 
   @Test
+  void workflowScopePreservesAnUnexpectedFilesystemIdentityFailure() {
+    IOException acquisitionFailure = new IOException("injected identity inspection failure");
+    SqliteProtectedBookMaintenanceStore store =
+        new SqliteProtectedBookMaintenanceStore(
+            KEY_FILE_RESOLVER,
+            (ignoredBook, ignoredKey, ignoredBinding) -> true,
+            (ignoredStep, ignoredParent) -> {},
+            ignoredRecord -> {},
+            (ignoredSources,
+                    ignoredBookTarget,
+                    ignoredBookRole,
+                    ignoredSecretTarget,
+                    ignoredSecretRole) -> {
+              throw acquisitionFailure;
+            });
+    Path source = tempDirectory.resolve("identity-failure-source.sqlite");
+    Path bookTarget = tempDirectory.resolve("identity-failure-target.sqlite");
+    Path secretTarget = tempDirectory.resolve("identity-failure-target.key");
+
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                store.acquireWorkflowScope(
+                    new WorkflowSourceMembers(
+                        List.of(
+                            new WorkflowSourceMember(
+                                source, ProtectedBookMaintenanceArtifactRole.BACKUP_SOURCE))),
+                    bookTarget,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    secretTarget,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET));
+
+    assertEquals(
+        "Failed to establish distinct physical identities for the protected-book maintenance sources.",
+        failure.getMessage());
+    assertSame(acquisitionFailure, failure.getCause());
+  }
+
+  @Test
   void lockedSourceRevalidationRejectsAPhysicalSourceSubstitution() throws Exception {
     Path source =
         writeArtifact("source-identity-changed/live.sqlite", "original maintenance source");

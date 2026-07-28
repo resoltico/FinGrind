@@ -59,6 +59,22 @@ public final class SqliteProtectedBookMaintenanceStore
           recoveredPairVerifier,
       SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer,
       SqliteProtectedBookPairPublicationRecord.RecoveryRecordFileForcer recoveryRecordFileForcer) {
+    this(
+        passphraseResolver,
+        recoveredPairVerifier,
+        directoryForcer,
+        recoveryRecordFileForcer,
+        SqliteBookMaintenanceLease::acquireWorkflowScope);
+  }
+
+  SqliteProtectedBookMaintenanceStore(
+      SqlitePassphraseResolver passphraseResolver,
+      SqliteProtectedBookPairPublicationPreparation.@Nullable RecoveredPairVerifier
+          recoveredPairVerifier,
+      SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer,
+      SqliteProtectedBookPairPublicationRecord.RecoveryRecordFileForcer recoveryRecordFileForcer,
+      SqliteProtectedBookMaintenanceArtifactStore.WorkflowScopeAcquirer workflowScopeAcquirer) {
+    super(workflowScopeAcquirer);
     this.passphraseResolver = Objects.requireNonNull(passphraseResolver, "passphraseResolver");
     this.verificationSupport = new SqliteProtectedBookVerificationSupport();
     this.backupArtifactVerifier = new SqliteBackupArtifactVerifier(verificationSupport);
