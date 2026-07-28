@@ -110,6 +110,46 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
   }
 
   @Test
+  void activityRegistrationRetainsTheCurrentThreadMaintenanceExclusion() throws Exception {
+    Path bookPath = writeProtectedBookPath("maintenance-owned-activity.sqlite");
+    try (AutoCloseable ignored =
+        SqliteObjectCoordinationArtifacts.installTestRoot(
+            tempDirectory.resolve("maintenance-owned-activity-root"))) {
+      String identity = SqliteObjectCoordinationArtifacts.physicalIdentity(bookPath);
+      SqliteLeaseHandle heldExclusion =
+          Objects.requireNonNull(
+              SqliteObjectCoordinationArtifacts.tryAcquireMaintenanceExclusion(bookPath),
+              "held maintenance exclusion");
+      SqliteThreadMaintenanceLeases.ObjectLease maintenanceLease =
+          new SqliteThreadMaintenanceLeases.ObjectLease(identity, heldExclusion);
+      SqliteThreadMaintenanceLeases.retainObjectLease(maintenanceLease);
+
+      try (SqliteBookActivityMarkers.ActivityRegistration registration =
+          SqliteBookActivityMarkers.acquireCurrentProcessActivity(bookPath)) {
+        assertEquals(identity, registration.objectIdentity());
+      }
+
+      assertNull(SqliteThreadMaintenanceLeases.objectLease(identity));
+    }
+  }
+
+  @Test
+  void activityHandlePreservesAuthorityFailuresAndRejectsOverRelease() {
+    SqliteBookActivityMarkers.ActivityHandle released =
+        new SqliteBookActivityMarkers.ActivityHandle(() -> {});
+    assertTrue(released.release());
+    assertThrows(IllegalStateException.class, released::release);
+
+    IOException releaseFailure = new IOException("activity authority close failure");
+    SqliteBookActivityMarkers.ActivityHandle failing =
+        new SqliteBookActivityMarkers.ActivityHandle(() -> {
+          throw releaseFailure;
+        });
+    IllegalStateException failure = assertThrows(IllegalStateException.class, failing::release);
+    assertEquals(releaseFailure, failure.getCause());
+  }
+
+  @Test
   void externalActivityQueryTreatsANonDirectoryParentAsInactiveWithoutProbingIt()
       throws Exception {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
@@ -156,6 +196,19 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
 
     assertTrue(SqliteBookActivityMarkers.hasExternalLiveMarker(bookPath));
     assertTrue(Files.exists(retiredControl, LinkOption.NOFOLLOW_LINKS));
+  }
+
+  @Test
+  void activityMarkerRecognitionRejectsNearMissNames() throws Exception {
+    Path bookPath = writeProtectedBookPath("marker-near-miss.sqlite");
+    Files.writeString(
+        bookPath.resolveSibling(bookPath.getFileName() + ".fingrind-activity-retired.not-marker"),
+        "not retired activity state");
+    Files.writeString(
+        bookPath.resolveSibling(".fingrind-activity-v2-retired.not-control"),
+        "not retired activity state");
+
+    assertFalse(SqliteBookActivityMarkers.hasExternalLiveMarker(bookPath));
   }
 
   @Test

@@ -57,11 +57,10 @@ final class SqliteBookActivityMarkers {
   private static void releaseCurrentProcessActivity(String objectIdentity) {
     ACTIVE_BY_DOMAIN_LOCK.lock();
     try {
-      @Nullable ActivityHandle handle = ACTIVE_BY_DOMAIN.get(objectIdentity);
-      if (handle == null) {
-        throw new IllegalStateException(
-            "The FinGrind SQLite book activity registration was not owned by this process.");
-      }
+      ActivityHandle handle =
+          Objects.requireNonNull(
+              ACTIVE_BY_DOMAIN.get(objectIdentity),
+              "The FinGrind SQLite book activity registration was not owned by this process.");
       if (handle.release()) {
         ACTIVE_BY_DOMAIN.remove(objectIdentity, handle);
       }
@@ -138,13 +137,10 @@ final class SqliteBookActivityMarkers {
   }
 
   private static Path requireParentDirectory(Path normalizedBookPath) {
-    Path parentDirectory = normalizedBookPath.getParent();
-    if (parentDirectory == null) {
-      throw new IllegalArgumentException(
-          "The FinGrind SQLite book path must resolve beneath a parent directory: "
-              + normalizedBookPath);
-    }
-    return parentDirectory;
+    return Objects.requireNonNull(
+        normalizedBookPath.getParent(),
+        "The FinGrind SQLite book path must resolve beneath a parent directory: "
+            + normalizedBookPath);
   }
 
   private record BookDomain(
@@ -181,39 +177,31 @@ final class SqliteBookActivityMarkers {
     }
   }
 
-  /** Ref-counted local ownership of one held activity slot or nested maintenance exclusion. */
-  private static final class ActivityHandle {
-    private final SqliteObjectCoordinationArtifacts.@Nullable ActivitySlot slot;
-    private final SqliteThreadMaintenanceLeases.@Nullable ObjectLeaseReference maintenanceLease;
+  /** Ref-counted local ownership of one retained activity or maintenance authority. */
+  static final class ActivityHandle {
+    private final ActivityAuthority authority;
     private int references = 1;
 
-    private ActivityHandle(
-        SqliteObjectCoordinationArtifacts.@Nullable ActivitySlot slot,
-        SqliteThreadMaintenanceLeases.@Nullable ObjectLeaseReference maintenanceLease) {
-      if ((slot == null) == (maintenanceLease == null)) {
-        throw new IllegalArgumentException(
-            "One FinGrind SQLite activity handle requires exactly one retained coordination authority.");
-      }
-      this.slot = slot;
-      this.maintenanceLease = maintenanceLease;
+    ActivityHandle(ActivityAuthority authority) {
+      this.authority = Objects.requireNonNull(authority, "authority");
     }
 
-    private static ActivityHandle forActivitySlot(
+    static ActivityHandle forActivitySlot(
         SqliteObjectCoordinationArtifacts.ActivitySlot slot) {
-      return new ActivityHandle(Objects.requireNonNull(slot, "slot"), null);
+      return new ActivityHandle(Objects.requireNonNull(slot, "slot")::close);
     }
 
-    private static ActivityHandle forMaintenanceLease(
+    static ActivityHandle forMaintenanceLease(
         SqliteThreadMaintenanceLeases.ObjectLeaseReference maintenanceLease) {
-      return new ActivityHandle(null, Objects.requireNonNull(maintenanceLease, "maintenanceLease"));
+      return new ActivityHandle(Objects.requireNonNull(maintenanceLease, "maintenanceLease")::release);
     }
 
-    private void retain() {
+    void retain() {
       references++;
     }
 
     /** Returns whether this handle was fully released. */
-    private boolean release() {
+    boolean release() {
       if (references <= 0) {
         throw new IllegalStateException(
             "The FinGrind SQLite book activity handle was over-released.");
@@ -222,17 +210,18 @@ final class SqliteBookActivityMarkers {
       if (references != 0) {
         return false;
       }
-      if (maintenanceLease != null) {
-        maintenanceLease.release();
-      } else {
-        try {
-          Objects.requireNonNull(slot, "slot").close();
-        } catch (IOException exception) {
-          throw new IllegalStateException(
-              "Failed to release one FinGrind SQLite book activity control-file slot.", exception);
-        }
+      try {
+        authority.release();
+      } catch (IOException exception) {
+        throw new IllegalStateException(
+            "Failed to release one FinGrind SQLite book activity control-file slot.", exception);
       }
       return true;
     }
+  }
+
+  @FunctionalInterface
+  interface ActivityAuthority {
+    void release() throws IOException;
   }
 }
