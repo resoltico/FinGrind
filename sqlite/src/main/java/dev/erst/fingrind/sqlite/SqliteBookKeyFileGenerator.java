@@ -44,6 +44,14 @@ public final class SqliteBookKeyFileGenerator {
     ArtifactPublicationRetention create(Path normalizedBookKeyFilePath, byte[] encodedPassphrase);
   }
 
+  /** Injectable private-stage write boundary for materialization-failure classification. */
+  @FunctionalInterface
+  interface PrivateStageWriter {
+    /** Materializes one fresh private stage beneath the selected owner-only parent directory. */
+    Path createAndWrite(Path parentDirectory, String prefix, String suffix, byte[] bytes)
+        throws IOException;
+  }
+
   /** Injectable retained-witness acquisition boundary for publication-capability fault tests. */
   @FunctionalInterface
   interface PublicationCapabilityWitnessAcquirer {
@@ -232,9 +240,16 @@ public final class SqliteBookKeyFileGenerator {
 
   private static ArtifactPublicationRetention createRetainedStage(
       Path normalizedPath, byte[] encodedPassphrase) {
+    return createRetainedStage(
+        normalizedPath, encodedPassphrase, ArtifactPublicationStages::createAndWrite);
+  }
+
+  /** Materializes one retained private stage while preserving its exact failure evidence. */
+  static ArtifactPublicationRetention createRetainedStage(
+      Path normalizedPath, byte[] encodedPassphrase, PrivateStageWriter privateStageWriter) {
     try {
       return new ArtifactPublicationRetention(
-          ArtifactPublicationStages.createAndWrite(
+          privateStageWriter.createAndWrite(
               requiredParent(normalizedPath), STAGE_PREFIX, STAGE_SUFFIX, encodedPassphrase));
     } catch (ArtifactPublicationRetainedStageException exception) {
       throw new SqliteBookKeyFileRetainedStageMaterializationFailure(

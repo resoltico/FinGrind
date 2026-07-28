@@ -16,6 +16,7 @@ import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.contract.runtime.GeneratedBookKeyFile;
 import dev.erst.fingrind.core.ArtifactPublicationResult;
 import dev.erst.fingrind.core.ArtifactPublicationRetention;
+import dev.erst.fingrind.core.ArtifactPublicationRetainedStageException;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -466,6 +467,58 @@ class SqliteBookKeyFileGeneratorTest {
     } finally {
       stage.releaseRetained();
     }
+  }
+
+  @Test
+  void createRetainedStage_preservesTheExactStageWhenThePrivateStageWriterRetainsIt()
+      throws Exception {
+    Path keyFile = tempDirectory.resolve("retained-stage-writer.book-key");
+    SqliteOwnedStagedArtifact stage =
+        SqliteOwnedStagedArtifact.create(keyFile, ".retained-stage-writer-", ".tmp");
+    try {
+      IOException writerFailure = new IOException("injected retained stage writer failure");
+      ArtifactPublicationRetainedStageException retainedStageFailure =
+          new ArtifactPublicationRetainedStageException(
+              new ArtifactPublicationRetention(stage.stagedPath()), writerFailure);
+
+      SqliteBookKeyFileRetainedStageMaterializationFailure failure =
+          assertThrows(
+              SqliteBookKeyFileRetainedStageMaterializationFailure.class,
+              () ->
+                  SqliteBookKeyFileGenerator.createRetainedStage(
+                      keyFile,
+                      new byte[] {1, 2, 3},
+                      (ignoredParent, ignoredPrefix, ignoredSuffix, ignoredBytes) -> {
+                        throw retainedStageFailure;
+                      }));
+
+      assertEquals(stage.stagedPath(), failure.retention().retainedStagePath());
+      assertEquals(retainedStageFailure, failure.getCause());
+    } finally {
+      stage.releaseRetained();
+    }
+  }
+
+  @Test
+  void createRetainedStage_preservesUnexpectedPrivateStageWriterFailures() {
+    Path keyFile = tempDirectory.resolve("unexpected-stage-writer.book-key");
+    IOException writerFailure = new IOException("injected stage writer failure");
+
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookKeyFileGenerator.createRetainedStage(
+                    keyFile,
+                    new byte[] {1, 2, 3},
+                    (ignoredParent, ignoredPrefix, ignoredSuffix, ignoredBytes) -> {
+                      throw writerFailure;
+                    }));
+
+    assertTrue(
+        java.util.Objects.requireNonNull(failure.getMessage(), "stage writer failure message")
+            .contains("private stage"));
+    assertEquals(writerFailure, failure.getCause());
   }
 
   @Test
