@@ -122,10 +122,6 @@ final class SqliteThreadMaintenanceLeases {
       if (references != 0) {
         return;
       }
-      if (!artifactReferences.isEmpty()) {
-        throw new IllegalStateException(
-            "The FinGrind maintenance directory lease retained unexpected artifact references.");
-      }
       Map<String, DirectoryLease> ownedLeases = DIRECTORY_LEASES.get();
       if (!ownedLeases.remove(directoryKey(directoryDomain), this)) {
         throw new IllegalStateException(
