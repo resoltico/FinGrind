@@ -49,7 +49,7 @@ final class SqliteProtectedBookStagingFiles {
     }
   }
 
-  private static <T> T runBackupStep(
+  static <T> T runBackupStep(
       SqliteProtectedBookStagingCheckpoint checkpoint, Supplier<T> operation) {
     try {
       return operation.get();

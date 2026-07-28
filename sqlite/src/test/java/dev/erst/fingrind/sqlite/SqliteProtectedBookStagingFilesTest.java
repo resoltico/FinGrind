@@ -4,8 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -42,6 +45,24 @@ class SqliteProtectedBookStagingFilesTest extends SqliteNativeBridgeTestSupport 
     assertEquals(
         SqliteProtectedBookStagingCheckpoint.BACKUP_STAGE_OPEN.failureMessage(),
         filesystemFailure.publicFailureMessage());
+  }
+
+  @Test
+  void backupExportStep_preservesTheActiveContractFailureWithoutReclassification() {
+    ContractFailureException expected =
+        new ContractFailureException(
+            ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.failure("injected contract failure", null, null));
+
+    assertSame(
+        expected,
+        assertThrows(
+            ContractFailureException.class,
+            () ->
+                SqliteProtectedBookStagingFiles.runBackupStep(
+                    SqliteProtectedBookStagingCheckpoint.BACKUP_COPY,
+                    () -> {
+                      throw expected;
+                    })));
   }
 
   @Test
@@ -177,6 +198,38 @@ class SqliteProtectedBookStagingFilesTest extends SqliteNativeBridgeTestSupport 
           "Failed to secure the parent directory for \\backup-key\\book.key.",
           backupKeyFailure.getMessage());
       assertInstanceOf(IOException.class, backupKeyFailure.getCause());
+
+      AclFixturePath existingBackupArtifact = fileSystem.path("\\existing-backup\\book.fgba");
+      AclFixturePath existingBackupParent =
+          assertInstanceOf(AclFixturePath.class, existingBackupArtifact.getParent());
+      existingBackupParent.exists = true;
+      existingBackupParent.overrideAclView = failingAclView();
+      IllegalStateException existingBackupFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteProtectedBookStagingFiles.requireExistingSecureBackupFileParentDirectory(
+                      existingBackupArtifact));
+      assertEquals(
+          "Failed to validate the existing parent directory for \\existing-backup\\book.fgba.",
+          existingBackupFailure.getMessage());
+      assertInstanceOf(IOException.class, existingBackupFailure.getCause());
+
+      AclFixturePath existingBackupKey = fileSystem.path("\\existing-backup-key\\book.key");
+      AclFixturePath existingBackupKeyParent =
+          assertInstanceOf(AclFixturePath.class, existingBackupKey.getParent());
+      existingBackupKeyParent.exists = true;
+      existingBackupKeyParent.overrideAclView = failingAclView();
+      IllegalStateException existingBackupKeyFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteProtectedBookStagingFiles.requireExistingSecureBackupKeyFileParentDirectory(
+                      existingBackupKey));
+      assertEquals(
+          "Failed to validate the existing parent directory for \\existing-backup-key\\book.key.",
+          existingBackupKeyFailure.getMessage());
+      assertInstanceOf(IOException.class, existingBackupKeyFailure.getCause());
     }
   }
 
