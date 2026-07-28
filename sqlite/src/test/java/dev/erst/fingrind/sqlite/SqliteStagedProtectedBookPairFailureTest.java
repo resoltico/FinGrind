@@ -658,6 +658,51 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
   }
 
   @Test
+  void stagedBackupPairWrapsACheckedFailureBeforeTheRecoveryBoundary() throws Exception {
+    Path stagedBackupPath = writeArtifact("backup-pre-boundary-io/staged.sqlite", "backup");
+    Path stagedKeyPath = writeArtifact("backup-pre-boundary-io/staged.key", "backup key");
+    Path finalBackupPath =
+        tempDirectory.resolve("backup-pre-boundary-io").resolve("backup.sqlite");
+    Path finalKeyPath = tempDirectory.resolve("backup-pre-boundary-io").resolve("backup.key");
+    IOException injected = new IOException("staged-member durability failed");
+
+    try (SqliteStagedBackupPair pair =
+        SqliteStagedBackupPairFactory.create(
+            new SqliteStagedProtectedBookPairArtifacts(
+                SqliteOwnedStagedArtifact.recordExisting(finalBackupPath, stagedBackupPath),
+                finalBackupPath,
+                SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath),
+                finalKeyPath),
+            TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8),
+            VERIFICATION_SUPPORT,
+            Files::createLink,
+            Files::createLink,
+            null,
+            null,
+            (step, ignoredParent) -> {
+              if (step
+                  == SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep
+                      .STAGED_MEMBER_DURABILITY) {
+                throw injected;
+              }
+            },
+            SqliteSecureRegularFileAccess::forceFile)) {
+      sealBackupForPublication(pair);
+
+      IllegalStateException failure =
+          assertThrows(IllegalStateException.class, () -> pair.commit(backupBinding(finalBackupPath)));
+
+      assertEquals("Failed to publish the staged FinGrind backup pair.", failure.getMessage());
+      assertSame(injected, failure.getCause());
+    }
+
+    assertFalse(Files.exists(finalBackupPath));
+    assertFalse(Files.exists(finalKeyPath));
+    assertTrue(Files.exists(stagedBackupPath));
+    assertTrue(Files.exists(stagedKeyPath));
+  }
+
+  @Test
   void recoveryRecordPromotionFailureStopsBackupAndRestoreBeforeAnyFinalMember() throws Exception {
     Path backupStagedPath = writeArtifact("record-promotion-failure/backup.stage", "backup");
     Path backupKeyStagedPath =
