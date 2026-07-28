@@ -100,8 +100,12 @@ class SqliteProtectedBookStagingFaultInjectionTest extends SqliteArtifactPublica
 
   @ParameterizedTest(name = "missing source: {0}")
   @MethodSource("missingSourceOperations")
-  void missingSourceNeverCreatesAStage(
-      String operation, MissingSourceStagingOperation stagingOperation) throws Exception {
+  void missingSourcePreservesOnlyStagesAllocatedBeforeItsFailure(
+      String operation,
+      SqliteProtectedBookStagingCheckpoint expectedCheckpoint,
+      boolean expectedBookStage,
+      MissingSourceStagingOperation stagingOperation)
+      throws Exception {
     Path missingSource = tempDirectory.resolve(operation).resolve("missing.sqlite");
     Path bookTarget = tempDirectory.resolve(operation).resolve("target.sqlite");
     Path keyTarget = tempDirectory.resolve(operation).resolve("target.key");
@@ -114,11 +118,10 @@ class SqliteProtectedBookStagingFaultInjectionTest extends SqliteArtifactPublica
       failure = stagingOperation.stage(missingSource, bookTarget, keyTarget, sourcePassphrase);
     }
 
-    assertEquals(
-        SqliteProtectedBookStagingCheckpoint.RESTORE_COPY.failureMessage(), failure.message());
+    assertEquals(expectedCheckpoint.failureMessage(), failure.message());
     assertFalse(Files.exists(bookTarget));
     assertFalse(Files.exists(keyTarget));
-    assertRetainedStageRecord(bookTarget, false);
+    assertRetainedStageRecord(bookTarget, expectedBookStage);
     assertRetainedStageRecord(keyTarget, false);
   }
 
@@ -285,7 +288,24 @@ class SqliteProtectedBookStagingFaultInjectionTest extends SqliteArtifactPublica
   private static Stream<Arguments> missingSourceOperations() {
     return Stream.of(
         Arguments.of(
+            "backup",
+            SqliteProtectedBookStagingCheckpoint.BACKUP_SOURCE_OPEN,
+            true,
+            (MissingSourceStagingOperation)
+                (source, bookTarget, keyTarget, passphrase) ->
+                    failedValue(
+                        SqliteProtectedBookBackupStaging.stageResolvedPair(
+                            source,
+                            bookTarget,
+                            keyTarget,
+                            passphrase,
+                            VERIFICATION_SUPPORT,
+                            checkpoint -> {},
+                            SqliteBookKeyFileGenerator::generate))),
+        Arguments.of(
             "restore",
+            SqliteProtectedBookStagingCheckpoint.RESTORE_COPY,
+            false,
             (MissingSourceStagingOperation)
                 (source, bookTarget, keyTarget, passphrase) ->
                     failedValue(
