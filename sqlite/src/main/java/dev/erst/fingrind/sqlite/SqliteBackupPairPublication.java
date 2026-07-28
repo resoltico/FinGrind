@@ -2,6 +2,7 @@ package dev.erst.fingrind.sqlite;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
@@ -74,11 +75,16 @@ final class SqliteBackupPairPublication {
   }
 
   void closeReservations() {
-    // Resources close in reverse declaration order: book before its paired key.
-    try (SqliteOwnedDestinationReservation ignoredKey = keyReservation;
-        SqliteOwnedDestinationReservation ignoredBook = bookReservation;
-        SqlitePublicationCapabilityWitness.Set ignoredCapabilityWitnesses = capabilityWitnesses) {
-      // Closing the resources releases the owned destination markers.
+    SqliteRuntimeCloseSequence.closeAll(
+        List.of(
+            capabilityWitnesses::close,
+            () -> closeReservation(bookReservation),
+            () -> closeReservation(keyReservation)));
+  }
+
+  private static void closeReservation(@Nullable SqliteOwnedDestinationReservation reservation) {
+    if (reservation != null) {
+      reservation.close();
     }
   }
 

@@ -4,6 +4,7 @@ import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBook
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
@@ -126,11 +127,16 @@ final class SqliteRestoredBookPairPublication {
   }
 
   void closeReservations() {
-    // Resources close in reverse declaration order: book before its paired secret.
-    try (SqliteOwnedDestinationReservation ignoredSecret = secretReservation;
-        SqliteOwnedDestinationReservation ignoredBook = bookReservation;
-        SqlitePublicationCapabilityWitness.Set ignoredCapabilityWitnesses = capabilityWitnesses) {
-      // Closing the resources releases the owned destination markers.
+    SqliteRuntimeCloseSequence.closeAll(
+        List.of(
+            capabilityWitnesses::close,
+            () -> closeReservation(bookReservation),
+            () -> closeReservation(secretReservation)));
+  }
+
+  private static void closeReservation(@Nullable SqliteOwnedDestinationReservation reservation) {
+    if (reservation != null) {
+      reservation.close();
     }
   }
 

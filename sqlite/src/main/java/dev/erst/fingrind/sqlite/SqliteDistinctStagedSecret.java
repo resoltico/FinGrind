@@ -53,14 +53,16 @@ final class SqliteDistinctStagedSecret {
       try {
         checkpointListener.reached(checkpoint);
         generator.generate(candidate.stagedPath());
-        try (SqliteBookPassphrase generatedPassphrase =
-            SqliteBookKeyFile.load(candidate.stagedPath())) {
+        SqliteBookPassphrase generatedPassphrase = SqliteBookKeyFile.load(candidate.stagedPath());
+        try {
           if (!generatedPassphrase.hasSameSecretAs(sourcePassphrase)) {
             selected = true;
             // The selected secret has one independent caller-owned instance. The temporary
             // inspection instance is zeroized as this scope exits.
             return new GeneratedSecret(candidate, generatedPassphrase.copy());
           }
+        } finally {
+          generatedPassphrase.close();
         }
       } finally {
         if (!selected) {
