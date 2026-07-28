@@ -153,7 +153,7 @@ public final class SqliteBookKeyFileGenerator {
                 + SqliteMachinePaths.absoluteValue(normalizedPath),
             exception);
       }
-      try (capabilityWitnesses) {
+      try {
         ArtifactPublicationRetention retention =
             retainedStageCreator.create(normalizedPath, encodedPassphrase);
         ContractDecision<Path> secureStage =
@@ -192,6 +192,8 @@ public final class SqliteBookKeyFileGenerator {
                 GENERATED_ENCODING,
                 GENERATED_ENTROPY_BITS,
                 SqliteBookKeyFileSecurity.generatedPermissionsDescriptor(normalizedPath)));
+      } finally {
+        capabilityWitnesses.close();
       }
     } catch (SqliteBookKeyFileRetainedStageMaterializationFailure exception) {
       return ContractDecision.rejected(
