@@ -68,6 +68,8 @@ class SqliteProtectedBookPairPublicationEvidenceCodecTest {
     assertUnreadable(record, canonical.replace("evidence-kind=claim", "evidence-kind=unexpected"));
     assertUnreadable(record, canonical.replaceFirst("book-target=", "\nbook-target="));
     assertUnreadable(record, canonical.replaceFirst("\n$", "\nbook-target=duplicate\n"));
+    assertUnreadable(record, canonical + "\n");
+    assertUnreadable(record, canonical.replaceFirst("book-target=", "="));
     assertUnreadable(
         record, canonical.replaceFirst("\n$", "\nreplace-target-digest=" + "0".repeat(64) + "\n"));
   }
