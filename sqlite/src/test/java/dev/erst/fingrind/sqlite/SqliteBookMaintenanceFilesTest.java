@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** Direct contracts for nofollow lexical admission of protected-book maintenance paths. */
@@ -89,6 +91,31 @@ class SqliteBookMaintenanceFilesTest extends SqliteNativeBridgeTestSupport {
             .pathFailure());
     assertTrue(Files.isSymbolicLink(symlinkTarget));
     assertTrue(Files.isRegularFile(regularTarget, LinkOption.NOFOLLOW_LINKS));
+  }
+
+  @Test
+  void optionalArtifactAdmissionMapsCanonicalParentResolutionFailureToTheCallerPath() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parent = fileSystem.path("\\private");
+      parent.exists = true;
+      parent.regularFile = false;
+      parent.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE);
+      AclFixturePath target = fileSystem.path("\\private\\book.sqlite");
+      target.exists = true;
+      target.regularFile = true;
+      target.failToRealPathWith(new java.io.IOException("injected canonical target failure"));
+
+      SqliteCallerPathContractException exception =
+          assertThrows(
+              SqliteCallerPathContractException.class,
+              () -> SqliteBookMaintenanceFiles.normalizeOptionalArtifact(target, "bookFilePath"));
+
+      assertEquals(SqliteCallerPathFailure.PARENT_PATH_COLLISION, exception.pathFailure());
+    }
   }
 
   private Path privateParent(String name) throws java.io.IOException {
