@@ -49,6 +49,30 @@ class SqliteProtectedBookPairPublicationEvidenceScannerTest
   }
 
   @Test
+  void scannerReportsCandidateEnumerationCloseFailureAfterCheckingForUnsafeOwnerResidue() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parent = fileSystem.path("\\close-failure-evidence");
+      parent.exists = true;
+      parent.regularFile = false;
+      IOException injected = new IOException("candidate evidence close failure");
+      parent.failDirectoryStreamCloseAfterSuccessfulCallsWith(1, injected);
+
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteProtectedBookPairPublicationEvidenceScanner.scan(
+                      fileSystem.path("\\close-failure-evidence\\book.sqlite"),
+                      fileSystem.path("\\close-failure-evidence\\book.key")));
+
+      assertEquals(
+          "Failed to inspect protected-book pair recovery evidence beside \\close-failure-evidence.",
+          failure.getMessage());
+      assertSame(injected, failure.getCause());
+    }
+  }
+
+  @Test
   void scannerRejectsConflictingImmutableEvidenceForTheSamePairIdentity() throws Exception {
     Path bookTarget = tempDirectory.resolve("conflicting-pair-evidence/book.sqlite");
     Path secretTarget = tempDirectory.resolve("conflicting-pair-evidence/book.key");
