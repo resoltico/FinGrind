@@ -161,23 +161,25 @@ final class SqlitePairPublicationEvidenceRecovery {
       if (Files.exists(evidencePath, LinkOption.NOFOLLOW_LINKS)) {
         SqlitePairPublicationEvidenceStatus.requireExact(record, kind, evidencePath);
       } else {
-        copyMissing(record, kind, evidencePath);
+        copyMissing(record, kind, evidencePath, Files::createLink);
       }
       forceCopy(record, kind, evidencePath, directoryForcer);
     }
   }
 
-  private static void copyMissing(
+  static void copyMissing(
       SqliteProtectedBookPairPublicationRecord record,
       SqliteProtectedBookPairPublicationEvidenceKind kind,
-      Path evidencePath)
+      Path evidencePath,
+      SqliteProtectedBookPairPublicationRecord.EvidenceLinkCreator evidenceLinkCreator)
       throws IOException {
     Path temporaryPath =
         SqliteProtectedBookPairPublicationEvidencePaths.temporaryPath(
             evidencePath, UUID.randomUUID());
     try {
       writeNew(temporaryPath, record, kind);
-      Files.createLink(evidencePath, temporaryPath);
+      Objects.requireNonNull(evidenceLinkCreator, "evidenceLinkCreator")
+          .create(evidencePath, temporaryPath);
     } catch (java.nio.file.FileAlreadyExistsException collision) {
       SqlitePairPublicationEvidenceStatus.requireExact(record, kind, evidencePath);
     }
