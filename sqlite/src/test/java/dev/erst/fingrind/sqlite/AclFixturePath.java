@@ -24,6 +24,7 @@ public class AclFixturePath extends AclFixtureAbstractPath {
   private @Nullable IOException deleteIfExistsFailure;
   private @Nullable IOException readAttributesFailure;
   private @Nullable IOException realPathFailure;
+  private final Deque<PlannedIOException> plannedRealPathFailures = new ArrayDeque<>();
   private @Nullable Path realPathOverride;
   private @Nullable IOException posixReadAttributesFailure;
   private @Nullable IOException sameFileFailure;
@@ -92,6 +93,13 @@ public class AclFixturePath extends AclFixtureAbstractPath {
     return this;
   }
 
+  AclFixturePath failToRealPathAfterSuccessfulCallsWith(
+      int successfulCallsBeforeFailure, IOException exception) {
+    plannedRealPathFailures.addLast(
+        new PlannedIOException(successfulCallsBeforeFailure, exception));
+    return this;
+  }
+
   AclFixturePath returnRealPath(Path path) {
     realPathOverride = Objects.requireNonNull(path, "path");
     return this;
@@ -103,11 +111,29 @@ public class AclFixturePath extends AclFixtureAbstractPath {
     if (failure != null) {
       throw failure;
     }
+    IOException plannedFailure = plannedRealPathFailure();
+    if (plannedFailure != null) {
+      throw plannedFailure;
+    }
     Path override = realPathOverride;
     if (override != null) {
       return override;
     }
     return super.toRealPath(options);
+  }
+
+  private @Nullable IOException plannedRealPathFailure() {
+    PlannedIOException plannedFailure = plannedRealPathFailures.peekFirst();
+    if (plannedFailure == null) {
+      return null;
+    }
+    if (plannedFailure.successfulCallsBeforeFailure() > 0) {
+      plannedRealPathFailures.removeFirst();
+      plannedRealPathFailures.addFirst(plannedFailure.afterSuccessfulCall());
+      return null;
+    }
+    plannedRealPathFailures.removeFirst();
+    return plannedFailure.exception();
   }
 
   AclFixturePath failPosixReadAttributesWith(IOException exception) {

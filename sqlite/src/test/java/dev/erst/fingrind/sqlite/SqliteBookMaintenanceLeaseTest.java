@@ -10,10 +10,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.runtime.ContractFailureException;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
@@ -115,6 +118,40 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
     held.secretTargetLease().close();
     assertTrue(Files.exists(leasePath));
     assertFalse(SqliteMaintenanceLeaseArtifacts.hasBlockingArtifact(parent.toRealPath()));
+  }
+
+  @Test
+  void pairCoordinatorReportsCanonicalParentResolutionFailureWithoutStartingAcquisition() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parent = fileSystem.path("\\managed-targets");
+      parent.exists = true;
+      parent.regularFile = false;
+      parent.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE);
+      IOException expected = new IOException("canonical managed target directory failed");
+      parent.failToRealPathAfterSuccessfulCallsWith(1, expected);
+      AclFixturePath bookTarget = fileSystem.path("\\managed-targets\\book.sqlite");
+      AclFixturePath secretTarget = fileSystem.path("\\managed-targets\\book.key");
+
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteBookMaintenanceLease.acquireManagedTargetPair(
+                      bookTarget,
+                      secretTarget,
+                      target -> {
+                        throw new AssertionError("Acquisition must not begin without a canonical parent.");
+                      }));
+
+      assertEquals(
+          "Failed to prepare one FinGrind protected-book maintenance directory domain.",
+          failure.getMessage());
+      assertSame(expected, failure.getCause());
+    }
   }
 
   @Test
