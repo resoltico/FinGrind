@@ -62,16 +62,8 @@ final class SqliteOwnedDestinationReservation implements AutoCloseable {
     if (closed) {
       return;
     }
-    try {
-      reservationStage.releaseRetained();
-      closed = true;
-    } catch (RuntimeException exception) {
-      throw new IllegalStateException(
-          "Failed to release one owned FinGrind destination reservation at "
-              + SqliteMachinePaths.absoluteValue(finalPath)
-              + ".",
-          exception);
-    }
+    reservationStage.releaseRetained();
+    closed = true;
   }
 
   private void requireOpen() {
