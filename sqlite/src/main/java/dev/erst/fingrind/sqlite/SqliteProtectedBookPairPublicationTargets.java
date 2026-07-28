@@ -103,17 +103,15 @@ final class SqliteProtectedBookPairPublicationTargets {
       PairPublicationWitnessAcquirer witnessAcquirer) {
     try {
       List<SqlitePublicationCapabilityWitness.Requirement> requirements = new ArrayList<>();
-      switch (bookTargetPolicy) {
-        case REQUIRE_ABSENT ->
-            requirements.add(
-                SqlitePublicationCapabilityWitness.Requirement.noReplace(bookTargetPath));
-        case REPLACE_SELECTED -> {
-          requirements.add(
-              SqlitePublicationCapabilityWitness.Requirement.atomicReplace(bookTargetPath));
-          requirements.add(
-              SqlitePublicationCapabilityWitness.Requirement.noReplace(bookTargetPath));
-        }
-      }
+      requirements.addAll(
+          switch (bookTargetPolicy) {
+            case REQUIRE_ABSENT ->
+                List.of(SqlitePublicationCapabilityWitness.Requirement.noReplace(bookTargetPath));
+            case REPLACE_SELECTED ->
+                List.of(
+                    SqlitePublicationCapabilityWitness.Requirement.atomicReplace(bookTargetPath),
+                    SqlitePublicationCapabilityWitness.Requirement.noReplace(bookTargetPath));
+          });
       requirements.add(SqlitePublicationCapabilityWitness.Requirement.noReplace(secretTargetPath));
       return Objects.requireNonNull(witnessAcquirer, "witnessAcquirer").acquire(requirements);
     } catch (SqlitePublicationCapabilityWitness.AcquisitionFailure failure) {

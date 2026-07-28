@@ -165,20 +165,19 @@ final class SqliteStagedRestoredBookPairFactory {
         Objects.requireNonNull(artifacts, "artifacts");
     try {
       List<SqlitePublicationCapabilityWitness.Requirement> requirements = new ArrayList<>();
-      switch (targetPolicy) {
-        case REQUIRE_ABSENT ->
-            requirements.add(
-                SqlitePublicationCapabilityWitness.Requirement.noReplace(
-                    checkedArtifacts.bookTargetPath()));
-        case REPLACE_SELECTED -> {
-          requirements.add(
-              SqlitePublicationCapabilityWitness.Requirement.atomicReplace(
-                  checkedArtifacts.bookTargetPath()));
-          requirements.add(
-              SqlitePublicationCapabilityWitness.Requirement.noReplace(
-                  checkedArtifacts.bookTargetPath()));
-        }
-      }
+      requirements.addAll(
+          switch (targetPolicy) {
+            case REQUIRE_ABSENT ->
+                List.of(
+                    SqlitePublicationCapabilityWitness.Requirement.noReplace(
+                        checkedArtifacts.bookTargetPath()));
+            case REPLACE_SELECTED ->
+                List.of(
+                    SqlitePublicationCapabilityWitness.Requirement.atomicReplace(
+                        checkedArtifacts.bookTargetPath()),
+                    SqlitePublicationCapabilityWitness.Requirement.noReplace(
+                        checkedArtifacts.bookTargetPath()));
+          });
       requirements.add(
           SqlitePublicationCapabilityWitness.Requirement.noReplace(
               checkedArtifacts.secretTargetPath()));
