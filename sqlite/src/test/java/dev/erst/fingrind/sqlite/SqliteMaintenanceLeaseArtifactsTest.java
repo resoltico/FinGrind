@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
@@ -99,6 +100,26 @@ class SqliteMaintenanceLeaseArtifactsTest extends SqliteNativeBridgeTestSupport 
     Path missing = tempDirectory.resolve("missing-directory");
 
     assertFalse(SqliteMaintenanceLeaseArtifacts.hasBlockingArtifact(missing));
+  }
+
+  @Test
+  void malformedCurrentControlFileBlocksRatherThanBeingAdopted() throws Exception {
+    Path parent = secureDirectory("malformed-current-control");
+    Path control = SqliteMaintenanceLeaseArtifacts.controlFilePath(parent.toRealPath());
+    Files.writeString(control, "not a FinGrind maintenance control record");
+
+    assertTrue(SqliteMaintenanceLeaseArtifacts.hasBlockingArtifact(parent.toRealPath()));
+    assertThrows(java.io.IOException.class, () -> SqliteMaintenanceLeaseArtifacts.acquire(parent));
+    assertEquals("not a FinGrind maintenance control record", Files.readString(control));
+  }
+
+  @Test
+  void nonDirectoryCannotBeUsedAsAMaintenanceLeaseDomain() throws Exception {
+    Path regularFile = Files.writeString(tempDirectory.resolve("not-a-directory"), "not a directory");
+
+    assertThrows(
+        SqliteCallerPathContractException.class,
+        () -> SqliteMaintenanceLeaseArtifacts.acquire(regularFile));
   }
 
   private Path secureDirectory(String name) throws java.io.IOException {
