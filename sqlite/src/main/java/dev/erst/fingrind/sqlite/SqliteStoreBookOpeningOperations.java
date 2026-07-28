@@ -39,6 +39,13 @@ final class SqliteStoreBookOpeningOperations {
         SqliteNativeDatabase activeDatabase, SqliteTransactionOwnership transactionOwnership);
   }
 
+  /** Observes the fresh post-COMMIT book state used to determine transaction custody. */
+  @FunctionalInterface
+  interface PostCommitBookStateObserver {
+    /** Returns the current state from an uncached observation of the active SQLite handle. */
+    SqliteBookState observe(SqliteNativeDatabase activeDatabase);
+  }
+
   private final SqliteStoreContext context;
   private final SqliteStoreLifecycle lifecycle;
   private final OpenedBookOutcomeFactory openedBookOutcomeFactory;
@@ -188,7 +195,7 @@ final class SqliteStoreBookOpeningOperations {
       openBookCommitter.commit(activeDatabase, transactionOwnership);
       return Optional.empty();
     } catch (RuntimeException commitFailure) {
-      rollbackAfterUnacknowledgedCommit(activeDatabase, transactionOwnership, commitFailure);
+      rollbackAfterUnacknowledgedCommit(activeDatabase, commitFailure);
       lifecycle.clearCachedState();
       if (commitFailureLeftProvablyBlankBook(activeDatabase, commitFailure)) {
         return Optional.of(commitFailure);
@@ -225,12 +232,7 @@ final class SqliteStoreBookOpeningOperations {
    * independent cleanup defect.
    */
   private static void rollbackAfterUnacknowledgedCommit(
-      SqliteNativeDatabase activeDatabase,
-      SqliteTransactionOwnership transactionOwnership,
-      RuntimeException commitFailure) {
-    if (transactionOwnership != SqliteTransactionOwnership.OWNED) {
-      return;
-    }
+      SqliteNativeDatabase activeDatabase, RuntimeException commitFailure) {
     try {
       activeDatabase.executeStatement("rollback");
     } catch (SqliteNativeException | IllegalStateException rollbackFailure) {
@@ -241,8 +243,18 @@ final class SqliteStoreBookOpeningOperations {
   /** Returns whether a fresh audited observation proves that the failed COMMIT left no book. */
   private boolean commitFailureLeftProvablyBlankBook(
       SqliteNativeDatabase activeDatabase, RuntimeException commitFailure) {
+    return hasProvedBlankBookAfterCommitFailure(
+        activeDatabase,
+        commitFailure,
+        database -> context.bookStateReader().snapshot(database).state());
+  }
+
+  static boolean hasProvedBlankBookAfterCommitFailure(
+      SqliteNativeDatabase activeDatabase,
+      RuntimeException commitFailure,
+      PostCommitBookStateObserver stateObserver) {
     try {
-      return context.bookStateReader().snapshot(activeDatabase).state()
+      return Objects.requireNonNull(stateObserver, "stateObserver").observe(activeDatabase)
           == SqliteBookState.BLANK_SQLITE;
     } catch (RuntimeException inspectionFailure) {
       commitFailure.addSuppressed(inspectionFailure);

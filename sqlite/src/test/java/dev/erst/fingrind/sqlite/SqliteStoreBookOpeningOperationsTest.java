@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -249,6 +250,24 @@ class SqliteStoreBookOpeningOperationsTest extends SqlitePostingFactStoreTestSup
           BookOpeningOutcome.Rejected.class,
           reopened.openAttestedBook(initializedAt, bookIdentity, List.of(), genesis));
     }
+  }
+
+  @Test
+  void postCommitStateInspectionFailureRetainsTheCommitFailureAsDiagnosticEvidence() {
+    IllegalStateException commitFailure = new IllegalStateException("commit acknowledgement lost");
+    IllegalStateException inspectionFailure = new IllegalStateException("post-commit inspection failed");
+
+    try (SchemaFailingDatabase database = new SchemaFailingDatabase()) {
+      assertFalse(
+          SqliteStoreBookOpeningOperations.hasProvedBlankBookAfterCommitFailure(
+              database,
+              commitFailure,
+              ignoredDatabase -> {
+                throw inspectionFailure;
+              }));
+    }
+
+    assertEquals(List.of(inspectionFailure), List.of(commitFailure.getSuppressed()));
   }
 
   /** Records transaction control while making only schema execution fail natively. */
