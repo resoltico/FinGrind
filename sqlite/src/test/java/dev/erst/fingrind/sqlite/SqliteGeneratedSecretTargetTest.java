@@ -128,6 +128,26 @@ class SqliteGeneratedSecretTargetTest {
   }
 
   @Test
+  void publishRetainingStage_preservesAnOrdinaryFilesystemFailure() throws Exception {
+    Path targetPath = tempDirectory.resolve("ordinary-filesystem-failure.key");
+    Path stagedPath = Files.writeString(tempDirectory.resolve("ordinary.stage"), "secret");
+    SqliteGeneratedSecretTarget target = SqliteGeneratedSecretTarget.requireAbsent(targetPath);
+    FileSystemException failure =
+        new FileSystemException(targetPath.toString(), stagedPath.toString(), "Permission denied");
+
+    FileSystemException thrown =
+        assertThrows(
+            FileSystemException.class,
+            () -> target.publishRetainingStage(stagedPath, (ignoredTarget, ignoredStage) -> {
+              throw failure;
+            }));
+
+    assertSame(failure, thrown);
+    assertTrue(Files.exists(stagedPath));
+    assertFalse(Files.exists(targetPath));
+  }
+
+  @Test
   void retainedWitness_mapsUnsupportedNoReplaceStorageToTheTypedSecretFailure() throws Exception {
     Path targetPath = tempDirectory.resolve("unsupported.key");
 

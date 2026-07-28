@@ -41,6 +41,22 @@ class SqliteMaintenanceLeaseArtifactsTest extends SqliteNativeBridgeTestSupport 
   }
 
   @Test
+  void ownedLeaseReleaseIsIdempotentAfterItClosesTheTransferredHandle() throws Exception {
+    Path parent = secureDirectory("owned-handle");
+    Path canonicalParent = parent.toRealPath(LinkOption.NOFOLLOW_LINKS);
+    SqliteLeaseHandle handle =
+        java.util.Objects.requireNonNull(
+            SqliteMaintenanceLeaseArtifacts.acquire(canonicalParent), "initial lease");
+    SqliteOwnedLeaseHandle ownedHandle =
+        java.util.Objects.requireNonNull(SqliteOwnedLeaseHandle.acquire(handle), "owned lease");
+
+    ownedHandle.release();
+    ownedHandle.release();
+
+    assertFalse(SqliteMaintenanceLeaseArtifacts.hasBlockingArtifact(canonicalParent));
+  }
+
+  @Test
   void retiredDirectoryLeaseResidueFailsClosedWithoutDeletion() throws Exception {
     Path parent = secureDirectory("retired-directory");
     Path retiredLease = parent.resolve(".fingrind-maintenance-directory-pid-999-start-0.lock");

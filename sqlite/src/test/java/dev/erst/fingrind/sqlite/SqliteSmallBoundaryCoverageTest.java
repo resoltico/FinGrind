@@ -126,6 +126,15 @@ class SqliteSmallBoundaryCoverageTest extends SqliteNativeBridgeTestSupport {
             () -> SqliteProtectedBookPairPublicationEvidenceKind.fromWireValue("unknown"));
 
     assertEquals("Unknown pair evidence kind.", exception.getMessage());
+
+    String malformedClaimFile =
+        SqliteProtectedBookPairPublicationEvidenceKind.CLAIM
+            .recordFileName(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))
+            .replace("00000000-0000-0000-0000-000000000001", "not-a-uuid");
+
+    assertTrue(
+        SqliteProtectedBookPairPublicationEvidenceKind.fromCurrentFileName(malformedClaimFile)
+            .isEmpty());
   }
 
   @Test
