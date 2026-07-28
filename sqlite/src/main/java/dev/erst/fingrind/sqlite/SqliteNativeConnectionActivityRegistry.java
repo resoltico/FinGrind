@@ -84,19 +84,11 @@ final class SqliteNativeConnectionActivityRegistry {
               "Failed to establish the physical identity for one SQLite native connection.",
               exception);
       rollbackOpeningConnection(
-          objectIdentity,
-          processCountIncremented,
-          objectCountIncremented,
-          activityRegistration,
-          failure);
+          objectIdentity, processCountIncremented, objectCountIncremented, activityRegistration);
       throw failure;
     } catch (RuntimeException | Error failure) {
       rollbackOpeningConnection(
-          objectIdentity,
-          processCountIncremented,
-          objectCountIncremented,
-          activityRegistration,
-          failure);
+          objectIdentity, processCountIncremented, objectCountIncremented, activityRegistration);
       throw failure;
     }
   }
@@ -156,8 +148,7 @@ final class SqliteNativeConnectionActivityRegistry {
       @Nullable String objectIdentity,
       boolean processCountIncremented,
       boolean objectCountIncremented,
-      SqliteBookActivityMarkers.@Nullable ActivityRegistration activityRegistration,
-      Throwable primaryFailure) {
+      SqliteBookActivityMarkers.@Nullable ActivityRegistration activityRegistration) {
     if (objectCountIncremented) {
       decrementActiveObjectConnectionsForRollback(
           Objects.requireNonNull(objectIdentity, "objectIdentity"));
@@ -166,11 +157,7 @@ final class SqliteNativeConnectionActivityRegistry {
       decrementActiveConnectionsForRollback();
     }
     if (activityRegistration != null) {
-      try {
-        activityRegistration.close();
-      } catch (RuntimeException | Error closeFailure) {
-        primaryFailure.addSuppressed(closeFailure);
-      }
+      activityRegistration.close();
     }
   }
 
