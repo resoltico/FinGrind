@@ -1,6 +1,8 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
@@ -23,6 +25,23 @@ class SqliteProtectedBookPathIdentityTest {
     }
   }
 
+  @Test
+  void sameParentSpellingThatTheProviderCannotProveAsOneObjectFailsClosed() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      Path firstParent = new DistinctIdentityFixturePath(fileSystem, "\\targets");
+      Path secondParent = new DistinctIdentityFixturePath(fileSystem, "\\targets");
+      Path firstTarget = new ParentOverrideFixturePath(fileSystem, "\\targets\\book.sqlite", firstParent);
+      Path secondTarget = new ParentOverrideFixturePath(fileSystem, "\\targets\\book.key", secondParent);
+
+      SqliteCallerPathContractException exception =
+          assertThrows(
+              SqliteCallerPathContractException.class,
+              () -> SqliteProtectedBookPathIdentity.distinctPhysicalParents(firstTarget, secondTarget));
+
+      assertEquals(SqliteCallerPathFailure.TARGET_IDENTITY_UNESTABLISHED, exception.pathFailure());
+    }
+  }
+
   /** Test-only path whose equality deliberately folds case to model hostile provider semantics. */
   private static final class CaseFoldingFixturePath extends AclFixtureAbstractPath {
     private CaseFoldingFixturePath(AclFixtureFileSystem fileSystem, String value) {
@@ -39,6 +58,38 @@ class SqliteProtectedBookPathIdentityTest {
     @Override
     public int hashCode() {
       return value.toLowerCase(java.util.Locale.ROOT).hashCode();
+    }
+  }
+
+  /** Test-only parent path whose spelling matches another path without claiming its identity. */
+  private static final class DistinctIdentityFixturePath extends AclFixturePath {
+    private DistinctIdentityFixturePath(AclFixtureFileSystem fileSystem, String value) {
+      super(fileSystem, value);
+    }
+
+    @Override
+    public boolean equals(Object other) {
+      return this == other;
+    }
+
+    @Override
+    public int hashCode() {
+      return System.identityHashCode(this);
+    }
+  }
+
+  /** Test-only target that supplies one explicit parent identity without provider path caching. */
+  private static final class ParentOverrideFixturePath extends AclFixtureAbstractPath {
+    private final Path parent;
+
+    private ParentOverrideFixturePath(AclFixtureFileSystem fileSystem, String value, Path parent) {
+      super(fileSystem, value);
+      this.parent = parent;
+    }
+
+    @Override
+    public Path getParent() {
+      return parent;
     }
   }
 }

@@ -13,7 +13,7 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 /** Minimal path implementation for the test ACL filesystem. */
-public final class AclFixturePath extends AclFixtureAbstractPath {
+public class AclFixturePath extends AclFixtureAbstractPath {
   public boolean exists;
   public boolean regularFile;
   public @Nullable AclFixtureView aclView;
