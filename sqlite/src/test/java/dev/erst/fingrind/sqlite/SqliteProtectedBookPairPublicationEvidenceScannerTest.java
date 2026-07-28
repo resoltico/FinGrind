@@ -6,8 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 /** Behavioral coverage for fail-closed discovery of protected-book pair evidence. */
@@ -22,6 +24,37 @@ class SqliteProtectedBookPairPublicationEvidenceScannerTest
         SqlitePairPublicationEvidenceAbsent.INSTANCE,
         SqliteProtectedBookPairPublicationEvidenceScanner.scan(
             absentParent.resolve("book.sqlite"), absentParent.resolve("book.key")));
+  }
+
+  @Test
+  void scannerIgnoresOrdinaryDirectoryEntriesWhileClassifyingAnExistingParentAsAbsent()
+      throws Exception {
+    Path parent = tempDirectory.resolve("ordinary-entry-evidence");
+    Files.createDirectories(parent);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(parent);
+    Files.writeString(parent.resolve("operator-notes.txt"), "not recovery evidence");
+
+    assertEquals(
+        SqlitePairPublicationEvidenceAbsent.INSTANCE,
+        SqliteProtectedBookPairPublicationEvidenceScanner.scan(
+            parent.resolve("book.sqlite"), parent.resolve("book.key")));
+  }
+
+  @Test
+  void scannerRejectsMalformedCurrentNamespaceEvidence() throws Exception {
+    Path parent = tempDirectory.resolve("malformed-evidence");
+    Files.createDirectories(parent);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(parent);
+    Files.writeString(
+        parent.resolve(
+            SqliteProtectedBookPairPublicationEvidenceKind.CLAIM.recordFileName(
+                UUID.randomUUID())),
+        "not immutable FinGrind pair evidence");
+
+    assertEquals(
+        SqlitePairPublicationEvidenceUnsafe.INSTANCE,
+        SqliteProtectedBookPairPublicationEvidenceScanner.scan(
+            parent.resolve("book.sqlite"), parent.resolve("book.key")));
   }
 
   @Test
