@@ -654,6 +654,60 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
   }
 
   @Test
+  void rekeyRecoveryFailsClosedWhenAtomicReplacementCollidesOrItsResultIsImmediatelyLost()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord collision = rekeyRecord("member-rekey-move-collision");
+    SqlitePairPublicationMemberReconciler collisionReconciler =
+        reconciler(
+            (ignoredStep, ignoredParent) -> {},
+            (ignoredBridge, target) -> {
+              throw new java.nio.file.FileAlreadyExistsException(target.toString());
+            });
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses =
+        SqlitePairPublicationRecoveryCapabilities.acquire(
+            collision,
+            SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+            SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+            ProtectedBookMaintenanceArtifactRole.NEW_BOOK_KEY_TARGET)) {
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.OUTCOME_UNCERTAIN,
+          collisionReconciler.reconcileBook(
+              collision,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+    }
+
+    SqliteProtectedBookPairPublicationRecord removed = rekeyRecord("member-rekey-move-removed");
+    SqlitePairPublicationMemberReconciler removedReconciler =
+        reconciler(
+            (ignoredStep, ignoredParent) -> {},
+            (replacementBridge, target) -> {
+              SqliteProtectedBookPublicationSupport.moveReplacing(replacementBridge, target);
+              Files.delete(target);
+            });
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses =
+        SqlitePairPublicationRecoveryCapabilities.acquire(
+            removed,
+            SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+            SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+            ProtectedBookMaintenanceArtifactRole.NEW_BOOK_KEY_TARGET)) {
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.OUTCOME_UNCERTAIN,
+          removedReconciler.reconcileBook(
+              removed,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+    }
+
+    assertFalse(Files.exists(removed.bookTargetPath));
+    assertTrue(Files.exists(removed.bookStagePath));
+  }
+
+  @Test
   void exactRecoveryWorkflowPublishesOneOwnedStagedBackupPair() throws Exception {
     SqliteProtectedBookPairPublicationRecord record = retainedRecord("workflow-recovery");
 
@@ -1965,7 +2019,13 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
 
   private static SqlitePairPublicationMemberReconciler reconciler(
       SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer) {
-    return new SqlitePairPublicationMemberReconciler(directoryForcer, ignoredRecord -> {});
+    return reconciler(directoryForcer, SqliteProtectedBookPublicationSupport::moveReplacing);
+  }
+
+  private static SqlitePairPublicationMemberReconciler reconciler(
+      SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer,
+      SqliteProtectedBookPublicationSupport.AtomicBookMover bookMover) {
+    return new SqlitePairPublicationMemberReconciler(directoryForcer, ignoredRecord -> {}, bookMover);
   }
 
   private static SqlitePairPublicationRecoveryWorkflow recoveryWorkflow(

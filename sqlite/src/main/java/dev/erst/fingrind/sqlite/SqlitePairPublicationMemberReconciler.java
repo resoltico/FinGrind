@@ -12,13 +12,25 @@ final class SqlitePairPublicationMemberReconciler {
   private final SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer;
   private final SqliteProtectedBookPairPublicationRecord.RecoveryRecordFileForcer
       recoveryRecordFileForcer;
+  private final SqliteProtectedBookPublicationSupport.AtomicBookMover bookMover;
 
   SqlitePairPublicationMemberReconciler(
       SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer,
       SqliteProtectedBookPairPublicationRecord.RecoveryRecordFileForcer recoveryRecordFileForcer) {
+    this(
+        directoryForcer,
+        recoveryRecordFileForcer,
+        SqliteProtectedBookPublicationSupport::moveReplacing);
+  }
+
+  SqlitePairPublicationMemberReconciler(
+      SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer,
+      SqliteProtectedBookPairPublicationRecord.RecoveryRecordFileForcer recoveryRecordFileForcer,
+      SqliteProtectedBookPublicationSupport.AtomicBookMover bookMover) {
     this.directoryForcer = Objects.requireNonNull(directoryForcer, "directoryForcer");
     this.recoveryRecordFileForcer =
         Objects.requireNonNull(recoveryRecordFileForcer, "recoveryRecordFileForcer");
+    this.bookMover = Objects.requireNonNull(bookMover, "bookMover");
   }
 
   SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation reconcileSecret(
@@ -153,7 +165,7 @@ final class SqlitePairPublicationMemberReconciler {
               record.bookStagePath, record.bookTargetPath, Files::createLink);
       capabilityWitnesses.requireCurrent(
           record.bookTargetPath, SqlitePublicationCapabilityWitness.PrimitiveKind.ATOMIC_REPLACE);
-      SqliteProtectedBookPublicationSupport.moveReplacing(replacementBridge, record.bookTargetPath);
+      bookMover.move(replacementBridge, record.bookTargetPath);
       return true;
     } catch (java.nio.file.FileAlreadyExistsException collision) {
       return record.finalBookMatches();
