@@ -118,7 +118,11 @@ final class AclFixtureFileSystemProvider extends FileSystemProvider {
   }
 
   @Override
-  public FileStore getFileStore(Path path) {
+  public FileStore getFileStore(Path path) throws IOException {
+    IOException failure = fileSystem.fileStoreFailure();
+    if (failure != null) {
+      throw failure;
+    }
     return new AclFixtureFileStore(fileSystem.supportedViews());
   }
 

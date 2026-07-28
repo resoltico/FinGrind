@@ -139,6 +139,54 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
   }
 
   @Test
+  void createPrivateSnapshotDirectory_refusesAnUnsupportedPrivateDirectoryCreationPrimitive()
+      throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath tempRoot = fileSystem.path("\\unsupported-snapshot-temp");
+      tempRoot.exists = true;
+      tempRoot.regularFile = false;
+      fileSystem.onPathCreated(
+          path ->
+              path.failCreateDirectoryWithUnsupportedOperation(
+                  new UnsupportedOperationException("injected unsupported private directory")));
+
+      ManagedSqliteRuntimeUnavailableException failure =
+          assertThrows(
+              ManagedSqliteRuntimeUnavailableException.class,
+              () ->
+                  SqliteManagedLibrarySnapshotSecurity.createPrivateSnapshotDirectory(
+                      tempRoot, true));
+
+      assertTrue(
+          Objects.requireNonNull(failure.getMessage())
+              .contains("does not support atomic POSIX owner-only file creation"));
+      assertInstanceOf(UnsupportedOperationException.class, failure.getCause());
+    }
+  }
+
+  @Test
+  void openNewPrivateSnapshotChannel_reportsTheFilesystemProbeFailure() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parent = fileSystem.path("\\unreadable-snapshot-parent");
+      parent.exists = true;
+      parent.regularFile = false;
+      Path snapshotPath = fileSystem.path("\\unreadable-snapshot-parent\\sqlite3.dll");
+      IOException probeFailure = new IOException("injected filesystem probe failure");
+      fileSystem.failFileStoreWith(probeFailure);
+
+      ManagedSqliteRuntimeUnavailableException failure =
+          assertThrows(
+              ManagedSqliteRuntimeUnavailableException.class,
+              () -> SqliteManagedLibrarySnapshotSecurity.openNewPrivateSnapshotChannel(snapshotPath));
+
+      assertTrue(
+          Objects.requireNonNull(failure.getMessage())
+              .contains("does not support atomic POSIX owner-only file creation"));
+      assertEquals(probeFailure, failure.getCause());
+    }
+  }
+
+  @Test
   void createPrivateSnapshotDirectory_rejectsAclOnlyFilesystemsBeforeCreatingAnyPath() {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
       AclFixturePath tempRoot = fileSystem.path("\\tmp");

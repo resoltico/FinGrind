@@ -31,6 +31,7 @@ public final class AclFixturePath extends AclFixtureAbstractPath {
   private boolean preserveExistingEntryOnDeleteIfExists;
   private final Deque<PlannedIOException> newByteChannelFailures = new ArrayDeque<>();
   private final Deque<IOException> createDirectoryFailures = new ArrayDeque<>();
+  private @Nullable UnsupportedOperationException createDirectoryUnsupported;
   private final Deque<PlannedIOException> writeFailures = new ArrayDeque<>();
   private int zeroProgressReadCalls;
   private int zeroProgressWriteCalls;
@@ -160,8 +161,18 @@ public final class AclFixturePath extends AclFixtureAbstractPath {
     return this;
   }
 
+  AclFixturePath failCreateDirectoryWithUnsupportedOperation(
+      UnsupportedOperationException exception) {
+    createDirectoryUnsupported = Objects.requireNonNull(exception, "exception");
+    return this;
+  }
+
   @Nullable IOException createDirectoryFailure() {
     return createDirectoryFailures.pollFirst();
+  }
+
+  @Nullable UnsupportedOperationException createDirectoryUnsupported() {
+    return createDirectoryUnsupported;
   }
 
   AclFixturePath failNewByteChannelAfter(int successfulCalls, IOException exception) {

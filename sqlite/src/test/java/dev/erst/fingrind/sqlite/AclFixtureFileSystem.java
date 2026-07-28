@@ -1,5 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
+import java.io.IOException;
 import java.nio.file.FileStore;
 import java.nio.file.FileSystem;
 import java.nio.file.Path;
@@ -28,6 +29,7 @@ public final class AclFixtureFileSystem extends FileSystem {
   public final UserPrincipal owner = new AclFixturePrincipal("owner");
   public final GroupPrincipal group = new AclFixtureGroup("group");
   private @Nullable Consumer<AclFixturePath> pathInitializer;
+  private @Nullable IOException fileStoreFailure;
   private boolean open = true;
 
   private AclFixtureFileSystem(Set<String> views) {
@@ -76,6 +78,15 @@ public final class AclFixtureFileSystem extends FileSystem {
   public AclFixtureFileSystem onPathCreated(Consumer<AclFixturePath> initializer) {
     pathInitializer = Objects.requireNonNull(initializer, "initializer");
     return this;
+  }
+
+  public AclFixtureFileSystem failFileStoreWith(IOException exception) {
+    fileStoreFailure = Objects.requireNonNull(exception, "exception");
+    return this;
+  }
+
+  @Nullable IOException fileStoreFailure() {
+    return fileStoreFailure;
   }
 
   public AclFixturePath path(String value) {
