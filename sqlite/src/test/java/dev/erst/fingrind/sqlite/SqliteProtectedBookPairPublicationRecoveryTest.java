@@ -396,6 +396,29 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
                   witnesses));
     }
 
+    SqliteProtectedBookPairPublicationRecord changedSecretStage =
+        retainedRecord("member-secret-stage-after-evidence");
+    AtomicInteger evidenceForceCalls = new AtomicInteger();
+    try (SqlitePublicationCapabilityWitness.Set witnesses = witnessesFor(changedSecretStage)) {
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.OUTCOME_UNCERTAIN,
+          reconciler(
+                  (ignoredStep, ignoredParent) -> {},
+                  evidencePath -> {
+                    SqliteSecureRegularFileAccess.forceFile(evidencePath);
+                    if (evidenceForceCalls.getAndIncrement() == 0) {
+                      Files.writeString(
+                          changedSecretStage.secretStagePath, "changed retained secret stage");
+                    }
+                  })
+              .reconcileSecret(
+                  changedSecretStage,
+                  SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan
+                      .PUBLISH_ELIGIBLE,
+                  witnesses));
+    }
+    assertTrue(evidenceForceCalls.get() > 0);
+
     SqliteProtectedBookPairPublicationRecord convergedRekey =
         rekeyRecord("member-rekey-converged-book");
     try (SqlitePublicationCapabilityWitness.Set witnesses =
@@ -2245,6 +2268,15 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
   private static SqlitePairPublicationMemberReconciler reconciler(
       SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer) {
     return reconciler(directoryForcer, SqliteProtectedBookPublicationSupport::moveReplacing);
+  }
+
+  private static SqlitePairPublicationMemberReconciler reconciler(
+      SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer,
+      SqliteProtectedBookPairPublicationRecord.RecoveryRecordFileForcer recoveryRecordFileForcer) {
+    return new SqlitePairPublicationMemberReconciler(
+        directoryForcer,
+        recoveryRecordFileForcer,
+        SqliteProtectedBookPublicationSupport::moveReplacing);
   }
 
   private static SqlitePairPublicationMemberReconciler reconciler(
