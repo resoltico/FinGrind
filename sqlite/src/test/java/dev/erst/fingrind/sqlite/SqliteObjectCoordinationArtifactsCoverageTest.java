@@ -50,6 +50,25 @@ class SqliteObjectCoordinationArtifactsCoverageTest extends SqliteNativeBridgeTe
   }
 
   @Test
+  void objectCoordinationRejectsAControlDigestBelowTheHexRange() throws Exception {
+    Path root = privateDirectory("punctuation-control-name");
+    Path artifact = Files.writeString(tempDirectory.resolve("punctuation-control-name.sqlite"), "book");
+
+    try (AutoCloseable ignoredRoot = SqliteObjectCoordinationArtifacts.installTestRoot(root)) {
+      Files.writeString(
+          root.resolve("object-v4-" + "a".repeat(63) + "!.control"), "invalid control");
+
+      IOException exception =
+          assertThrows(
+              IOException.class, () -> SqliteObjectCoordinationArtifacts.domainForExistingArtifact(artifact));
+
+      assertTrue(
+          java.util.Objects.requireNonNull(exception.getMessage(), "coordination failure message")
+              .contains("Unexpected state"));
+    }
+  }
+
+  @Test
   void objectCoordinationRetainsOneExclusiveMaintenanceControlForAnArtifact() throws Exception {
     Path root = privateDirectory("exclusive-maintenance-control");
     Path artifact =
