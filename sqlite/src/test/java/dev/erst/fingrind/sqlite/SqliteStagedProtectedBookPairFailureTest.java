@@ -892,6 +892,44 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
   }
 
   @Test
+  void restoredRecordForceFailureBeforeAnyFinalMemberRemainsPrepublicationRecoverable()
+      throws Exception {
+    Path stagedBookPath = writeArtifact("restore-pre-member-force-failure/staged.sqlite", "book");
+    Path stagedKeyPath = writeArtifact("restore-pre-member-force-failure/staged.key", "key");
+    Path finalBookPath =
+        tempDirectory.resolve("restore-pre-member-force-failure").resolve("restored.sqlite");
+    Path finalKeyPath =
+        tempDirectory.resolve("restore-pre-member-force-failure").resolve("restored.key");
+
+    try (SqliteStagedRestoredBookPair pair =
+        SqliteStagedRestoredBookPairFactory.create(
+            new SqliteStagedProtectedBookPairArtifacts(
+                SqliteOwnedStagedArtifact.recordExisting(finalBookPath, stagedBookPath),
+                finalBookPath,
+                SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath),
+                finalKeyPath),
+            RestoredBookTargetPolicy.REQUIRE_ABSENT,
+            TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8),
+            VERIFICATION_SUPPORT,
+            SqliteRestoredBookPairPublication.defaultOperators(),
+            null,
+            null,
+            (ignoredStep, ignoredParent) -> {},
+            ignoredEvidencePath -> {
+              throw new IOException("simulated recovery-evidence force failure");
+            })) {
+      assertInstanceOf(
+          ProtectedBookPairPublicationFailureOutcome.PrepublicationRecoveryRequired.class,
+          pair.commit(restoreBinding(stagedBookPath, stagedKeyPath)));
+    }
+
+    assertFalse(Files.exists(finalBookPath));
+    assertFalse(Files.exists(finalKeyPath));
+    assertTrue(Files.exists(stagedBookPath));
+    assertTrue(Files.exists(stagedKeyPath));
+  }
+
+  @Test
   void recoveryRecordForceMutation_blocksEveryRestoredFinalPrimitive() throws Exception {
     Path stagedBookPath = writeArtifact("record-forcer-mutates/staged.sqlite", "restored book");
     Path stagedKeyPath = writeArtifact("record-forcer-mutates/staged.key", "restored key");
