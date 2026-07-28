@@ -51,7 +51,6 @@ final class SqliteNativeConnectionActivityRegistry {
             .normalize();
     SqliteBookActivityMarkers.@Nullable ActivityRegistration activityRegistration = null;
     @Nullable String objectIdentity = null;
-    @Nullable AtomicInteger activeObjectConnections = null;
     boolean processCountIncremented = false;
     boolean objectCountIncremented = false;
     try {
@@ -65,15 +64,14 @@ final class SqliteNativeConnectionActivityRegistry {
       String resolvedObjectIdentity = Objects.requireNonNull(objectIdentity, "objectIdentity");
       ACTIVE_CONNECTIONS.incrementAndGet();
       processCountIncremented = true;
-      activeObjectConnections =
-          ACTIVE_CONNECTIONS_BY_OBJECT_IDENTITY.compute(
-              resolvedObjectIdentity,
-              (ignored, existingConnections) -> {
-                AtomicInteger connections =
-                    existingConnections == null ? new AtomicInteger() : existingConnections;
-                connections.incrementAndGet();
-                return connections;
-              });
+      ACTIVE_CONNECTIONS_BY_OBJECT_IDENTITY.compute(
+          resolvedObjectIdentity,
+          (ignored, existingConnections) -> {
+            AtomicInteger connections =
+                existingConnections == null ? new AtomicInteger() : existingConnections;
+            connections.incrementAndGet();
+            return connections;
+          });
       objectCountIncremented = true;
       SqliteNativeActivityRegistration registration =
           Objects.requireNonNull(registrationFactory, "registrationFactory")
@@ -87,7 +85,6 @@ final class SqliteNativeConnectionActivityRegistry {
               exception);
       rollbackOpeningConnection(
           objectIdentity,
-          activeObjectConnections,
           processCountIncremented,
           objectCountIncremented,
           activityRegistration,
@@ -96,7 +93,6 @@ final class SqliteNativeConnectionActivityRegistry {
     } catch (RuntimeException | Error failure) {
       rollbackOpeningConnection(
           objectIdentity,
-          activeObjectConnections,
           processCountIncremented,
           objectCountIncremented,
           activityRegistration,
@@ -158,7 +154,6 @@ final class SqliteNativeConnectionActivityRegistry {
 
   private static void rollbackOpeningConnection(
       @Nullable String objectIdentity,
-      @Nullable AtomicInteger activeObjectConnections,
       boolean processCountIncremented,
       boolean objectCountIncremented,
       SqliteBookActivityMarkers.@Nullable ActivityRegistration activityRegistration,
@@ -166,7 +161,6 @@ final class SqliteNativeConnectionActivityRegistry {
     if (objectCountIncremented) {
       decrementActiveObjectConnectionsForRollback(
           Objects.requireNonNull(objectIdentity, "objectIdentity"),
-          Objects.requireNonNull(activeObjectConnections, "activeObjectConnections"),
           primaryFailure);
     }
     if (processCountIncremented) {
@@ -202,17 +196,13 @@ final class SqliteNativeConnectionActivityRegistry {
   }
 
   private static void decrementActiveObjectConnectionsForRollback(
-      String objectIdentity, AtomicInteger expectedObjectConnections, Throwable primaryFailure) {
+      String objectIdentity, Throwable primaryFailure) {
     try {
       ACTIVE_CONNECTIONS_BY_OBJECT_IDENTITY.compute(
           objectIdentity,
           (ignored, activeObjectConnections) -> {
             AtomicInteger checkedObjectConnections =
                 Objects.requireNonNull(activeObjectConnections, "activeObjectConnections");
-            if (!Objects.equals(checkedObjectConnections, expectedObjectConnections)) {
-              throw new IllegalStateException(
-                  "SQLite active connection registry changed during opening rollback.");
-            }
             return checkedObjectConnections.decrementAndGet() == 0
                 ? null
                 : checkedObjectConnections;

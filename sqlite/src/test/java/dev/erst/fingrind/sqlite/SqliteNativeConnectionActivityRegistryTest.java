@@ -111,6 +111,26 @@ class SqliteNativeConnectionActivityRegistryTest extends SqliteNativeBridgeTestS
   }
 
   @Test
+  void tokenConstructionFailureAlsoReleasesItsAcquiredActivityMarker() throws Exception {
+    Path bookPath = writeBook("marker-token-construction-failure/book.sqlite");
+    int processCountBefore = SqliteNativeRuntimeActivity.activeConnectionCount();
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            SqliteNativeConnectionActivityRegistry.recordOpeningConnection(
+                bookPath,
+                true,
+                (diagnosticBookPath, objectIdentity, activityRegistration) -> {
+                  throw new IllegalStateException("injected marker token construction failure");
+                }));
+
+    assertEquals(processCountBefore, SqliteNativeRuntimeActivity.activeConnectionCount());
+    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount(bookPath));
+    assertFalse(SqliteNativeRuntimeActivity.hasExternalActiveConnections(bookPath));
+  }
+
+  @Test
   void nestedMarkerRegistrationsShareOnePhysicalSlotUntilTheLastClose() throws Exception {
     Path bookPath = writeBook("nested-marker/book.sqlite");
     int activeConnectionsBeforeOpen = SqliteNativeRuntimeActivity.activeConnectionCount();
