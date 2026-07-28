@@ -14,6 +14,16 @@ class SqliteBookMaintenanceFilesTest extends SqliteNativeBridgeTestSupport {
   @Test
   void existingSourceAdmissionDistinguishesMissingParentsFromParentCollisionsAndMissingLeaves()
       throws Exception {
+    Path filesystemRoot = java.util.Objects.requireNonNull(tempDirectory.getRoot(), "filesystem root");
+    assertEquals(
+        SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY,
+        assertThrows(
+                SqliteCallerPathContractException.class,
+                () ->
+                    SqliteBookMaintenanceFiles.normalizeExistingSource(
+                        filesystemRoot, "bookFilePath"))
+            .pathFailure());
+
     Path missingParentSource = tempDirectory.resolve("missing-parent").resolve("book.sqlite");
     assertEquals(
         SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY,

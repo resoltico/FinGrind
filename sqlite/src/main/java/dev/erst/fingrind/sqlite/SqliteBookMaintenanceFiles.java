@@ -122,11 +122,7 @@ final class SqliteBookMaintenanceFiles {
   }
 
   private static Path requiredFileName(Path requestedPath) {
-    Path fileName = requestedPath.getFileName();
-    if (fileName == null) {
-      throw missingParentDirectory(requestedPath);
-    }
-    return fileName;
+    return Objects.requireNonNull(requestedPath.getFileName(), "requestedPath fileName");
   }
 
   private static void requireExistingParentDirectory(Path requestedPath, Path parentDirectory) {
