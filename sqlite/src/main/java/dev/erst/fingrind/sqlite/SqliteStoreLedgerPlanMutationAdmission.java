@@ -62,14 +62,10 @@ final class SqliteStoreLedgerPlanMutationAdmission {
 
   void abortAttestedPlanOnChildFailure(RuntimeException failure) {
     lifecycle.requireOwnerThread();
-    RuntimeException checkedFailure = Objects.requireNonNull(failure, "failure");
+    Objects.requireNonNull(failure, "failure");
     if (!planExecution.activeAttestedPlan()) {
       return;
     }
-    try {
-      transactionLifecycle.rollback(lifecycle.publishedDatabase());
-    } catch (RuntimeException rollbackFailure) {
-      checkedFailure.addSuppressed(rollbackFailure);
-    }
+    transactionLifecycle.rollback(lifecycle.publishedDatabase());
   }
 }
