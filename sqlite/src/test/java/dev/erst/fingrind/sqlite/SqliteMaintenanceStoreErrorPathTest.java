@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -43,6 +44,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 /** Exercises real maintenance-store error handling at the durable attestation boundary. */
@@ -901,6 +903,78 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
 
     assertEquals(
         SqliteCallerPathFailure.ARTIFACT_MUST_BE_REGULAR_NON_SYMLINK_FILE, exception.pathFailure());
+  }
+
+  @Test
+  void maintenanceStoreMapsFinalTargetLeafRejectionAndReturnsHeldDirectLeases() throws Exception {
+    Path existingSource = writeArtifact("direct-lease-source.sqlite", "maintenance source");
+    Path managedTarget = existingSource.resolveSibling("direct-lease-target.sqlite");
+    Path directoryTarget = Files.createDirectory(existingSource.resolveSibling("directory-target"));
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+
+    ProtectedBookMaintenanceRejectionException finalTargetFailure =
+        assertThrows(
+            ProtectedBookMaintenanceRejectionException.class,
+            () ->
+                store.normalizeFinalTarget(
+                    directoryTarget,
+                    "restoredBookPath",
+                    ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET));
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid rejection =
+        assertInstanceOf(
+            ProtectedBookMaintenanceRejection.ArtifactPathInvalid.class,
+            finalTargetFailure.rejection());
+    assertEquals(ProtectedBookMaintenanceArtifactRole.RESTORED_TARGET, rejection.artifactRole());
+
+    try (ProtectedBookMaintenanceStore.HeldLease existingLease =
+        assertInstanceOf(
+            ProtectedBookMaintenanceStore.HeldLease.class,
+            store.acquireExistingArtifactLease(
+                existingSource, ProtectedBookMaintenanceArtifactRole.LIVE_BOOK))) {
+      assertEquals(existingSource, existingLease.artifactPath());
+    }
+    try (ProtectedBookMaintenanceStore.HeldLease managedLease =
+        assertInstanceOf(
+            ProtectedBookMaintenanceStore.HeldLease.class,
+            store.acquireManagedArtifactLease(
+                managedTarget, ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET))) {
+      assertEquals(managedTarget, managedLease.artifactPath());
+    }
+  }
+
+  @Test
+  void managedArtifactLeaseReportsBusyWhenAnotherThreadAlreadyHoldsItsDirectory() throws Exception {
+    Path target = tempDirectory.resolve("contended-managed-target.sqlite");
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+
+    try (ProtectedBookMaintenanceStore.HeldLease heldLease =
+        assertInstanceOf(
+            ProtectedBookMaintenanceStore.HeldLease.class,
+            store.acquireManagedArtifactLease(
+                target, ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET))) {
+      AtomicReference<ProtectedBookMaintenanceStore.LeaseAcquisition> acquisition =
+          new AtomicReference<>();
+      AtomicReference<Throwable> failure = new AtomicReference<>();
+      Thread contender =
+          Thread.ofPlatform()
+              .start(
+                  () -> {
+                    try {
+                      acquisition.set(
+                          store.acquireManagedArtifactLease(
+                              target, ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET));
+                    } catch (Throwable thrown) {
+                      failure.set(thrown);
+                    }
+                  });
+      contender.join(10_000L);
+
+      assertFalse(contender.isAlive(), "contended lease acquisition must not block");
+      assertNull(failure.get());
+      ProtectedBookMaintenanceStore.LeaseBusy busy =
+          assertInstanceOf(ProtectedBookMaintenanceStore.LeaseBusy.class, acquisition.get());
+      assertEquals(target, busy.artifactPath());
+    }
   }
 
   private static void createDirectorySymlinkOrSkip(Path link, Path target) throws IOException {
