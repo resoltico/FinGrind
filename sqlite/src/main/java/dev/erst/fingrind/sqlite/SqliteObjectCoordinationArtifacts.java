@@ -96,16 +96,16 @@ final class SqliteObjectCoordinationArtifacts {
       return false;
     }
     for (int slot = 0; slot < ACTIVITY_SLOT_COUNT; slot++) {
-      try (SqliteCoordinationControlFiles.@Nullable LockedControlFile probe =
+      SqliteCoordinationControlFiles.@Nullable LockedControlFile probe =
           SqliteCoordinationControlFiles.openExistingAndTryExclusiveLock(
               domain.controlPath(),
               domain.magic(),
               SqliteCoordinationControlFiles.activitySlotPosition(slot),
-              1L)) {
-        if (probe == null) {
-          return true;
-        }
+              1L);
+      if (probe == null) {
+        return true;
       }
+      probe.close();
     }
     return false;
   }

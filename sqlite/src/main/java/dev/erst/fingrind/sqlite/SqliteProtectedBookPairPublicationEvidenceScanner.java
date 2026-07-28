@@ -49,28 +49,8 @@ final class SqliteProtectedBookPairPublicationEvidenceScanner {
 
   private static boolean collect(
       Path parent, Map<UUID, SqliteProtectedBookPairPublicationRecord> records) {
-    try (DirectoryStream<Path> children = Files.newDirectoryStream(parent)) {
-      for (Path candidate : children) {
-        if (!SqliteProtectedBookPairPublicationEvidencePaths.isEvidenceShapedFile(candidate)) {
-          continue;
-        }
-        Optional<SqliteProtectedBookPairPublicationEvidenceCodec.DecodedEvidence> decoded =
-            SqliteProtectedBookPairPublicationEvidenceCodec.read(candidate);
-        if (decoded.isEmpty()) {
-          return false;
-        }
-        SqliteProtectedBookPairPublicationEvidenceCodec.DecodedEvidence evidence =
-            decoded.orElseThrow();
-        SqliteProtectedBookPairPublicationRecord previous =
-            records.putIfAbsent(evidence.record().pairId, evidence.record());
-        // The strict codec already established that this candidate is an exact canonical spelling
-        // of the decoded record's evidence path. Scanning only needs to reject a second, divergent
-        // immutable record for the same pair identity.
-        if (previous != null && !previous.sameImmutableRecord(evidence.record())) {
-          return false;
-        }
-      }
-      return true;
+    try {
+      return SqliteDirectoryStreams.read(parent, children -> collectEvidence(children, records));
     } catch (IOException exception) {
       throw new IllegalStateException(
           "Failed to inspect protected-book pair recovery evidence beside "
@@ -78,5 +58,30 @@ final class SqliteProtectedBookPairPublicationEvidenceScanner {
               + ".",
           exception);
     }
+  }
+
+  private static boolean collectEvidence(
+      DirectoryStream<Path> children, Map<UUID, SqliteProtectedBookPairPublicationRecord> records) {
+    for (Path candidate : children) {
+      if (!SqliteProtectedBookPairPublicationEvidencePaths.isEvidenceShapedFile(candidate)) {
+        continue;
+      }
+      Optional<SqliteProtectedBookPairPublicationEvidenceCodec.DecodedEvidence> decoded =
+          SqliteProtectedBookPairPublicationEvidenceCodec.read(candidate);
+      if (decoded.isEmpty()) {
+        return false;
+      }
+      SqliteProtectedBookPairPublicationEvidenceCodec.DecodedEvidence evidence =
+          decoded.orElseThrow();
+      SqliteProtectedBookPairPublicationRecord previous =
+          records.putIfAbsent(evidence.record().pairId, evidence.record());
+      // The strict codec already established that this candidate is an exact canonical spelling
+      // of the decoded record's evidence path. Scanning only needs to reject a second, divergent
+      // immutable record for the same pair identity.
+      if (previous != null && !previous.sameImmutableRecord(evidence.record())) {
+        return false;
+      }
+    }
+    return true;
   }
 }

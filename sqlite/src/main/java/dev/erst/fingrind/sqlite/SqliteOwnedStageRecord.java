@@ -1,13 +1,13 @@
 package dev.erst.fingrind.sqlite;
 
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Supplier;
 import org.jspecify.annotations.Nullable;
 
@@ -92,11 +92,16 @@ final class SqliteOwnedStageRecord {
       return List.of();
     }
     List<SqliteOwnedStageRecord> records = new ArrayList<>();
-    try (DirectoryStream<Path> children = Files.newDirectoryStream(parent)) {
-      for (Path candidate : children) {
-        SqliteOwnedStageRecordCodec.read(candidate, normalizedFinalPath).ifPresent(records::add);
-      }
-      return List.copyOf(records);
+    try {
+      return SqliteDirectoryStreams.read(
+          parent,
+          children -> {
+            for (Path candidate : children) {
+              SqliteOwnedStageRecordCodec.read(candidate, normalizedFinalPath)
+                  .ifPresent(records::add);
+            }
+            return List.copyOf(records);
+          });
     } catch (IOException exception) {
       throw new IllegalStateException(
           "Failed to recover owned maintenance stages beside "
@@ -120,24 +125,29 @@ final class SqliteOwnedStageRecord {
       return null;
     }
     Path parent = parentOf(normalizedStagedPath);
-    @Nullable Path matchedFinalTarget = null;
-    int matches = 0;
-    try (DirectoryStream<Path> children = Files.newDirectoryStream(parent)) {
-      for (Path candidate : children) {
-        SqliteOwnedStageRecordCodec.@Nullable CurrentOwnerRecord owner =
-            SqliteOwnedStageRecordCodec.readCurrent(candidate).orElse(null);
-        if (owner == null
-            || !SqliteProtectedBookPathIdentity.sameNormalizedSpelling(
-                owner.stagedPath(), normalizedStagedPath)) {
-          continue;
-        }
-        matches++;
-        if (matches > 1) {
-          return null;
-        }
-        matchedFinalTarget = owner.finalPath();
-      }
-      return matchedFinalTarget;
+    try {
+      return SqliteDirectoryStreams.read(
+              parent,
+              children -> {
+                Optional<Path> target = Optional.empty();
+                int matches = 0;
+                for (Path candidate : children) {
+                  SqliteOwnedStageRecordCodec.@Nullable CurrentOwnerRecord owner =
+                      SqliteOwnedStageRecordCodec.readCurrent(candidate).orElse(null);
+                  if (owner == null
+                      || !SqliteProtectedBookPathIdentity.sameNormalizedSpelling(
+                          owner.stagedPath(), normalizedStagedPath)) {
+                    continue;
+                  }
+                  matches++;
+                  if (matches > 1) {
+                    return Optional.<Path>empty();
+                  }
+                  target = Optional.of(owner.finalPath());
+                }
+                return target;
+              })
+          .orElse(null);
     } catch (IOException exception) {
       throw new IllegalStateException(
           "Failed to establish private FinGrind maintenance-stage ownership beside "
@@ -162,11 +172,20 @@ final class SqliteOwnedStageRecord {
       if (Files.notExists(parent, LinkOption.NOFOLLOW_LINKS)) {
         continue;
       }
-      try (DirectoryStream<Path> children = Files.newDirectoryStream(parent)) {
-        for (Path candidate : children) {
-          if (SqliteOwnedStageRecordCodec.isUnsafeOwnerRecordResidue(candidate)) {
-            return true;
-          }
+      try {
+        boolean unsafe =
+            SqliteDirectoryStreams.read(
+                parent,
+                children -> {
+                  for (Path candidate : children) {
+                    if (SqliteOwnedStageRecordCodec.isUnsafeOwnerRecordResidue(candidate)) {
+                      return true;
+                    }
+                  }
+                  return false;
+                });
+        if (unsafe) {
+          return true;
         }
       } catch (IOException exception) {
         throw new IllegalStateException(

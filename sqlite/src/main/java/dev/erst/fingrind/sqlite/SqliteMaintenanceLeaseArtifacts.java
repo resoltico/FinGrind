@@ -1,7 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -88,15 +87,17 @@ final class SqliteMaintenanceLeaseArtifacts {
     if (!Files.isDirectory(canonicalDirectory, LinkOption.NOFOLLOW_LINKS)) {
       return false;
     }
-    try (DirectoryStream<Path> entries = Files.newDirectoryStream(canonicalDirectory)) {
-      for (Path entry : entries) {
-        String name = Objects.requireNonNull(entry.getFileName(), "entry fileName").toString();
-        if (isRetiredLeaseName(name)) {
-          return true;
-        }
-      }
-    }
-    return false;
+    return SqliteDirectoryStreams.read(
+        canonicalDirectory,
+        entries -> {
+          for (Path entry : entries) {
+            String name = Objects.requireNonNull(entry.getFileName(), "entry fileName").toString();
+            if (isRetiredLeaseName(name)) {
+              return true;
+            }
+          }
+          return false;
+        });
   }
 
   /** Detects retired lease namespaces without parsing, deleting, or adopting their contents. */
