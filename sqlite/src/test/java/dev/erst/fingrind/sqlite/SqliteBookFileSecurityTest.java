@@ -156,6 +156,20 @@ class SqliteBookFileSecurityTest {
 
       assertEquals(SqliteCallerPathFailure.TARGET_OWNER_ONLY_REQUIRED, failure.pathFailure());
       assertEquals(sharedPermissions, bookPath.posixPermissions);
+
+      bookPath.posixPermissions = Set.of(PosixFilePermission.OWNER_WRITE);
+      assertPathFailure(
+          bookPath,
+          SqliteCallerPathFailure.TARGET_OWNER_ONLY_REQUIRED,
+          "must already use owner-only permissions",
+          () -> SqliteBookFileSecurity.requireSecureExistingBookFile(bookPath, false));
+
+      bookPath.posixPermissions = Set.of(PosixFilePermission.OWNER_READ);
+      assertPathFailure(
+          bookPath,
+          SqliteCallerPathFailure.TARGET_OWNER_ONLY_REQUIRED,
+          "must already use owner-only permissions",
+          () -> SqliteBookFileSecurity.requireSecureExistingBookFile(bookPath, true));
     }
   }
 
@@ -476,6 +490,43 @@ class SqliteBookFileSecurityTest {
                   AclEntry.newBuilder()
                       .setType(AclEntryType.ALLOW)
                       .setPrincipal(fileSystem.group)
+                      .setPermissions(AclEntryPermission.READ_DATA)
+                      .build()));
+
+      assertPathFailure(
+          bookPath,
+          SqliteCallerPathFailure.TARGET_OWNER_ONLY_REQUIRED,
+          "must already use owner-only permissions",
+          () -> SqliteBookFileSecurity.requireSecureExistingBookFile(bookPath, false));
+    }
+  }
+
+  @Test
+  void requireSecureExistingBookFile_rejectsAnAclWithoutOwnerAccess() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      AclFixturePath bookPath = fileSystem.path("\\books\\no-owner-access.sqlite");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      Objects.requireNonNull(parentPath.aclView)
+          .setAcl(
+              List.of(
+                  AclEntry.newBuilder()
+                      .setType(AclEntryType.ALLOW)
+                      .setPrincipal(fileSystem.owner)
+                      .setPermissions(
+                          AclEntryPermission.LIST_DIRECTORY,
+                          AclEntryPermission.ADD_FILE,
+                          AclEntryPermission.EXECUTE)
+                      .build()));
+      bookPath.exists = true;
+      bookPath.regularFile = true;
+      Objects.requireNonNull(bookPath.aclView)
+          .setAcl(
+              List.of(
+                  AclEntry.newBuilder()
+                      .setType(AclEntryType.DENY)
+                      .setPrincipal(fileSystem.owner)
                       .setPermissions(AclEntryPermission.READ_DATA)
                       .build()));
 
