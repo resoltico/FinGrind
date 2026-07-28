@@ -126,6 +126,19 @@ class SqliteProtectedBookPairPublicationTargetsTest extends SqliteNativeBridgeTe
   }
 
   @Test
+  void portableDistinctAbsentExtensionlessLeavesAreAdmittedWithoutCreatingAnArtifact()
+      throws Exception {
+    Path bookTarget = tempDirectory.resolve("book");
+    Path secretTarget = tempDirectory.resolve("secret");
+
+    assertFalse(SqlitePairTargetIdentity.sameFinalTargetIdentity(bookTarget, secretTarget));
+
+    assertFalse(Files.exists(bookTarget, LinkOption.NOFOLLOW_LINKS));
+    assertFalse(Files.exists(secretTarget, LinkOption.NOFOLLOW_LINKS));
+    assertDirectoryEmpty(tempDirectory);
+  }
+
+  @Test
   void targetIdentityFailsClosedWhenItsProviderCannotReadOrCompareOneTarget() throws Exception {
     try (AclFixtureFileSystem fileSystem =
         AclFixtureFileSystem.withViews(java.util.Set.of("posix"))) {

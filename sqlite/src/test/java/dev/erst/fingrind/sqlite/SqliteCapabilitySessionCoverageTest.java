@@ -67,6 +67,10 @@ class SqliteCapabilitySessionCoverageTest extends SqlitePostingFactStoreTestSupp
           assertInstanceOf(SqliteAdministrationCapabilitySession.class, administrationSession)
               .storeLifecycle());
       assertSame(
+          postingFactStore.storeBookOpeningOperations(),
+          assertInstanceOf(SqliteAdministrationCapabilitySession.class, administrationSession)
+              .storeBookOpeningOperations());
+      assertSame(
           postingFactStore.storeAdministrationMutationOperations(),
           assertInstanceOf(SqliteAdministrationCapabilitySession.class, administrationSession)
               .storeAdministrationMutationOperations());
