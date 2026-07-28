@@ -47,6 +47,16 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
   }
 
   @Test
+  void readOnlyOpenValidatesTheExistingBookParentBeforeOpening() throws Exception {
+    Path bookPath = createActivityBook("read-only-parent-validation.sqlite");
+
+    assertEquals(
+        SqliteNativeOpenMode.READ_ONLY.flags(),
+        SqliteNativeConnections.prepareBookPathForNativeOpen(
+            bookPath.toAbsolutePath().normalize(), SqliteNativeOpenMode.READ_ONLY));
+  }
+
+  @Test
   void close_releasesTheExactActivityRegistrationForOneOpenedHandle() throws Exception {
     AtomicInteger closeCalls = new AtomicInteger();
     Path bookPath = createActivityBook("native-close-registration.sqlite");
