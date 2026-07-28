@@ -1,7 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
 import java.io.IOException;
-import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
 import java.nio.file.Path;
@@ -9,6 +8,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Stream;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -105,17 +105,16 @@ final class SqliteBookActivityMarkers {
     String retiredMarkerPrefix =
         Objects.requireNonNull(artifactPath.getFileName(), "artifactPath fileName").toString()
             + RETIRED_ACTIVITY_MARKER_SEGMENT;
-    try (DirectoryStream<Path> entries = Files.newDirectoryStream(parentDirectory)) {
-      for (Path entry : entries) {
-        String name = Objects.requireNonNull(entry.getFileName(), "entry fileName").toString();
-        if ((name.startsWith(retiredMarkerPrefix) && name.endsWith(RETIRED_ACTIVITY_MARKER_SUFFIX))
-            || (name.startsWith(RETIRED_ACTIVITY_CONTROL_V2_PREFIX)
-                && name.endsWith(RETIRED_ACTIVITY_CONTROL_SUFFIX))) {
-          return true;
-        }
-      }
+    try (Stream<Path> entries = Files.list(parentDirectory)) {
+      return entries.anyMatch(entry -> isRetiredMarkerName(entry, retiredMarkerPrefix));
     }
-    return false;
+  }
+
+  private static boolean isRetiredMarkerName(Path entry, String retiredMarkerPrefix) {
+    String name = Objects.requireNonNull(entry.getFileName(), "entry fileName").toString();
+    return (name.startsWith(retiredMarkerPrefix) && name.endsWith(RETIRED_ACTIVITY_MARKER_SUFFIX))
+        || (name.startsWith(RETIRED_ACTIVITY_CONTROL_V2_PREFIX)
+            && name.endsWith(RETIRED_ACTIVITY_CONTROL_SUFFIX));
   }
 
   private static BookDomain domainFor(Path normalizedBookPath) throws IOException {
