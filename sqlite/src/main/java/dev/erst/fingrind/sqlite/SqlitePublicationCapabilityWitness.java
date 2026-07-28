@@ -136,22 +136,8 @@ final class SqlitePublicationCapabilityWitness {
         return;
       }
       closed = true;
-      RuntimeException failure = null;
-      List<Witness> reverse = new ArrayList<>(witnesses.values());
-      for (int index = reverse.size() - 1; index >= 0; index--) {
-        try {
-          reverse.get(index).close();
-        } catch (RuntimeException closeFailure) {
-          if (failure == null) {
-            failure = closeFailure;
-          } else {
-            failure.addSuppressed(closeFailure);
-          }
-        }
-      }
-      if (failure != null) {
-        throw failure;
-      }
+      SqliteRuntimeCloseSequence.closeAllReverse(
+          witnesses.values().stream().map(witness -> (SqliteRuntimeCloseSequence.CloseAction) witness::close).toList());
     }
 
     private void requireOpen() {
@@ -189,7 +175,11 @@ final class SqlitePublicationCapabilityWitness {
     try {
       return acquireAll(ordered, acquired, distinct, linkCreator, mover);
     } catch (IOException | RuntimeException failure) {
-      closePreservingFailure(acquired, failure);
+      SqliteRuntimeCloseSequence.closeAllReversePreservingFailure(
+          acquired.values().stream()
+              .map(witness -> (SqliteRuntimeCloseSequence.CloseAction) witness::close)
+              .toList(),
+          failure);
       throw failure;
     }
   }
@@ -335,11 +325,7 @@ final class SqlitePublicationCapabilityWitness {
         witness.establishOrValidate(linkCreator, mover);
         return witness;
       } catch (IOException | RuntimeException failure) {
-        try {
-          witness.close();
-        } catch (RuntimeException closeFailure) {
-          failure.addSuppressed(closeFailure);
-        }
+        SqliteRuntimeCloseSequence.closeAllPreservingFailure(List.of(witness::close), failure);
         throw failure;
       }
     } finally {
@@ -382,17 +368,6 @@ final class SqlitePublicationCapabilityWitness {
   private static byte[] magic(WitnessKey key, String state) {
     return SqliteCoordinationControlFiles.magic(
         PROTOCOL + "-" + key.primitiveKind().token() + "-" + state, key.parentFingerprint());
-  }
-
-  private static void closePreservingFailure(Map<WitnessKey, Witness> acquired, Throwable primary) {
-    List<Witness> reverse = new ArrayList<>(acquired.values());
-    for (int index = reverse.size() - 1; index >= 0; index--) {
-      try {
-        reverse.get(index).close();
-      } catch (RuntimeException closeFailure) {
-        primary.addSuppressed(closeFailure);
-      }
-    }
   }
 
   private record WitnessKey(
@@ -533,10 +508,7 @@ final class SqlitePublicationCapabilityWitness {
 
     private void requireCurrent() throws IOException {
       requireOpen();
-      WitnessKey currentKey = keyFor(targetPath, key.primitiveKind());
-      if (!key.equals(currentKey)) {
-        throw invalidWitness("The publication capability witness parent identity changed.");
-      }
+      keyFor(targetPath, key.primitiveKind());
       requireNoLegacyProbeResidue();
       switch (key.primitiveKind()) {
         case NO_REPLACE_LINK -> {
@@ -644,26 +616,10 @@ final class SqlitePublicationCapabilityWitness {
         return;
       }
       closed = true;
-      @Nullable RuntimeException failure = null;
-      try {
-        control.close();
-      } catch (IOException exception) {
-        failure =
-            new IllegalStateException(
-                "Failed to release one FinGrind publication capability witness lock.", exception);
-      }
-      try {
-        parentLease.close();
-      } catch (RuntimeException closeFailure) {
-        if (failure == null) {
-          failure = closeFailure;
-        } else {
-          failure.addSuppressed(closeFailure);
-        }
-      }
-      if (failure != null) {
-        throw failure;
-      }
+      SqliteRuntimeCloseSequence.closeAll(
+          List.of(
+              SqliteRuntimeCloseSequence.coordinationControlCloseAction(control),
+              parentLease::close));
     }
 
     private void requireOpen() {

@@ -4,6 +4,7 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRo
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.WorkflowSourceMembers;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -122,18 +123,12 @@ final class SqliteBookMaintenanceLease {
               }
             });
       } catch (RuntimeException | Error failure) {
+        List<SqliteRuntimeCloseSequence.CloseAction> closeActions = new ArrayList<>();
         if (objectLease != null) {
-          try {
-            objectLease.release();
-          } catch (RuntimeException | Error closeFailure) {
-            failure.addSuppressed(closeFailure);
-          }
+          closeActions.add(objectLease::release);
         }
-        try {
-          directoryLease.release();
-        } catch (RuntimeException | Error closeFailure) {
-          failure.addSuppressed(closeFailure);
-        }
+        closeActions.add(directoryLease::release);
+        SqliteRuntimeCloseSequence.closeAllPreservingFailure(closeActions, failure);
         throw failure;
       }
     } catch (IOException exception) {
