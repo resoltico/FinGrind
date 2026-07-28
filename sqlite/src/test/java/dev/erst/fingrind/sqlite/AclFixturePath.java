@@ -22,6 +22,7 @@ public final class AclFixturePath extends AclFixtureAbstractPath {
   private byte[] content = new byte[0];
   private @Nullable IOException deleteIfExistsFailure;
   private @Nullable IOException readAttributesFailure;
+  private @Nullable IOException posixReadAttributesFailure;
   private @Nullable IOException sameFileFailure;
   private final Map<String, IOException> sameFileFailuresByOtherPath = new HashMap<>();
   private @Nullable UnsupportedOperationException newFileChannelUnsupported;
@@ -80,6 +81,15 @@ public final class AclFixturePath extends AclFixtureAbstractPath {
 
   @Nullable IOException readAttributesFailure() {
     return readAttributesFailure;
+  }
+
+  AclFixturePath failPosixReadAttributesWith(IOException exception) {
+    posixReadAttributesFailure = Objects.requireNonNull(exception, "exception");
+    return this;
+  }
+
+  @Nullable IOException posixReadAttributesFailure() {
+    return posixReadAttributesFailure;
   }
 
   AclFixturePath failSameFileWith(IOException exception) {

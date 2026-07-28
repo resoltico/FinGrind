@@ -691,6 +691,33 @@ class SqliteBookKeyFileGeneratorTest {
   }
 
   @Test
+  void generateDecision_reportsUnexpectedParentPermissionInspectionFailure() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parent = fileSystem.path("\\keys");
+      parent.exists = true;
+      parent.regularFile = false;
+      parent.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE);
+      IOException failure = new IOException("injected POSIX permission inspection failure");
+      parent.failPosixReadAttributesWith(failure);
+
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () ->
+                  SqliteBookKeyFileGenerator.generateDecision(
+                      fileSystem.path("\\keys\\acme.book-key")));
+
+      assertEquals(failure, exception.getCause());
+      assertTrue(
+          String.valueOf(exception.getMessage()).contains("validate the private parent directory"));
+    }
+  }
+
+  @Test
   void generateDecision_refusesAclOnlyStageCreationRatherThanCreatingThenRepairingAcl()
       throws Exception {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {

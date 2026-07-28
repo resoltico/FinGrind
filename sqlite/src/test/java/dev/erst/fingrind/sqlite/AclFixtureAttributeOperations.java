@@ -50,6 +50,10 @@ final class AclFixtureAttributeOperations {
       return type.cast(new AclFixtureBasicFileAttributes(fixturePath));
     }
     if (type == PosixFileAttributes.class) {
+      IOException posixReadAttributesFailure = fixturePath.posixReadAttributesFailure();
+      if (posixReadAttributesFailure != null) {
+        throw posixReadAttributesFailure;
+      }
       return type.cast(new AclFixturePosixFileAttributes(fixturePath));
     }
     throw new UnsupportedOperationException(
