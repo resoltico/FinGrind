@@ -30,6 +30,22 @@ final class SqliteBookMaintenanceLease {
         Path existingArtifactPath) throws IOException;
   }
 
+  /** Materializes the held artifact reference after both ownership layers are established. */
+  @FunctionalInterface
+  interface ExistingArtifactHeldLeaseFactory {
+    SqliteHeldLease create(
+        Path artifactPath,
+        SqliteThreadMaintenanceLeases.ObjectLeaseReference objectLease,
+        SqliteOwnedHeldLease directoryLease);
+  }
+
+  /** Acquires one raw physical-object control before it becomes thread-retained ownership. */
+  @FunctionalInterface
+  interface ObjectMaintenanceExclusionAcquirer {
+    @org.jspecify.annotations.Nullable SqliteLeaseHandle acquire(
+        SqliteObjectCoordinationArtifacts.Domain domain) throws IOException;
+  }
+
   static SqliteProtectedBookLeaseAcquisition acquire(
       Path normalizedArtifactPath, SqliteMaintenanceLeaseIntent leaseIntent) {
     return acquireWithAdmittedScopeAllowingExplicitSiblingAdmission(
@@ -79,7 +95,8 @@ final class SqliteBookMaintenanceLease {
         leaseIntent,
         admittedArtifactPaths,
         false,
-        SqliteBookMaintenanceLease::acquireObjectLeaseReference);
+        SqliteBookMaintenanceLease::acquireObjectLeaseReference,
+        SqliteBookMaintenanceLease::createHeldExistingArtifactLease);
   }
 
   /**
@@ -98,7 +115,30 @@ final class SqliteBookMaintenanceLease {
         leaseIntent,
         admittedArtifactPaths,
         false,
-        objectLeaseAcquirer);
+        objectLeaseAcquirer,
+        SqliteBookMaintenanceLease::createHeldExistingArtifactLease);
+  }
+
+  /**
+   * Acquires one exact admitted scope through explicit object-acquisition and ownership-transfer
+   * boundaries.
+   *
+   * <p>Package visibility lets ownership tests prove that an error after the object claim closes
+   * both claims in reverse acquisition order.
+   */
+  static SqliteProtectedBookLeaseAcquisition acquireWithAdmittedScope(
+      Path normalizedArtifactPath,
+      SqliteMaintenanceLeaseIntent leaseIntent,
+      List<Path> admittedArtifactPaths,
+      ExistingArtifactObjectLeaseAcquirer objectLeaseAcquirer,
+      ExistingArtifactHeldLeaseFactory heldLeaseFactory) {
+    return acquireWithAdmittedScope(
+        normalizedArtifactPath,
+        leaseIntent,
+        admittedArtifactPaths,
+        false,
+        objectLeaseAcquirer,
+        heldLeaseFactory);
   }
 
   private static SqliteProtectedBookLeaseAcquisition
@@ -111,7 +151,8 @@ final class SqliteBookMaintenanceLease {
         leaseIntent,
         admittedArtifactPaths,
         true,
-        SqliteBookMaintenanceLease::acquireObjectLeaseReference);
+        SqliteBookMaintenanceLease::acquireObjectLeaseReference,
+        SqliteBookMaintenanceLease::createHeldExistingArtifactLease);
   }
 
   private static SqliteProtectedBookLeaseAcquisition acquireWithAdmittedScope(
@@ -119,7 +160,8 @@ final class SqliteBookMaintenanceLease {
       SqliteMaintenanceLeaseIntent leaseIntent,
       List<Path> admittedArtifactPaths,
       boolean allowsExplicitSiblingAdmission,
-      ExistingArtifactObjectLeaseAcquirer objectLeaseAcquirer) {
+      ExistingArtifactObjectLeaseAcquirer objectLeaseAcquirer,
+      ExistingArtifactHeldLeaseFactory heldLeaseFactory) {
     Path checkedArtifactPath =
         Objects.requireNonNull(normalizedArtifactPath, "normalizedArtifactPath");
     Objects.requireNonNull(leaseIntent, "leaseIntent");
@@ -127,6 +169,8 @@ final class SqliteBookMaintenanceLease {
         List.copyOf(Objects.requireNonNull(admittedArtifactPaths, "admittedArtifactPaths"));
     ExistingArtifactObjectLeaseAcquirer checkedObjectLeaseAcquirer =
         Objects.requireNonNull(objectLeaseAcquirer, "objectLeaseAcquirer");
+    ExistingArtifactHeldLeaseFactory checkedHeldLeaseFactory =
+        Objects.requireNonNull(heldLeaseFactory, "heldLeaseFactory");
     try {
       SqliteMaintenanceLeaseAuthority.validateArtifactForLeaseIntent(
           checkedArtifactPath, leaseIntent);
@@ -148,17 +192,7 @@ final class SqliteBookMaintenanceLease {
           directoryLease.release();
           return new SqliteLeaseBusy(checkedArtifactPath);
         }
-        SqliteThreadMaintenanceLeases.ObjectLeaseReference retainedObjectLease = objectLease;
-        return new SqliteHeldLease(
-            checkedArtifactPath,
-            retainedObjectLease.objectIdentity(),
-            () -> {
-              try {
-                retainedObjectLease.release();
-              } finally {
-                directoryLease.release();
-              }
-            });
+        return checkedHeldLeaseFactory.create(checkedArtifactPath, objectLease, directoryLease);
       } catch (RuntimeException | Error failure) {
         List<SqliteRuntimeCloseSequence.CloseAction> closeActions = new ArrayList<>();
         if (objectLease != null) {
@@ -238,6 +272,15 @@ final class SqliteBookMaintenanceLease {
    */
   private static SqliteThreadMaintenanceLeases.@org.jspecify.annotations.Nullable ObjectLeaseReference
       acquireObjectLeaseReference(Path existingArtifactPath) throws IOException {
+    return acquireObjectLeaseReference(
+        existingArtifactPath, SqliteObjectCoordinationArtifacts::tryAcquireMaintenanceExclusion);
+  }
+
+  /** Resolves and retains one object exclusion through its exact raw-control boundary. */
+  static SqliteThreadMaintenanceLeases.@org.jspecify.annotations.Nullable ObjectLeaseReference
+      acquireObjectLeaseReference(
+          Path existingArtifactPath, ObjectMaintenanceExclusionAcquirer maintenanceExclusionAcquirer)
+          throws IOException {
     SqliteObjectCoordinationArtifacts.Domain domain =
         SqliteObjectCoordinationArtifacts.domainForExistingArtifact(existingArtifactPath);
     SqliteThreadMaintenanceLeases.ObjectLease existingLease =
@@ -247,7 +290,8 @@ final class SqliteBookMaintenanceLease {
     }
     @org.jspecify.annotations.Nullable SqliteOwnedLeaseHandle leaseHandle =
         SqliteOwnedLeaseHandle.acquire(
-            SqliteObjectCoordinationArtifacts.tryAcquireMaintenanceExclusion(domain));
+            Objects.requireNonNull(maintenanceExclusionAcquirer, "maintenanceExclusionAcquirer")
+                .acquire(domain));
     if (leaseHandle == null) {
       return null;
     }
@@ -256,6 +300,26 @@ final class SqliteBookMaintenanceLease {
             domain.objectIdentity(), leaseHandle.transfer());
     SqliteThreadMaintenanceLeases.retainObjectLease(newLease);
     return newLease.retain();
+  }
+
+  private static SqliteHeldLease createHeldExistingArtifactLease(
+      Path artifactPath,
+      SqliteThreadMaintenanceLeases.ObjectLeaseReference objectLease,
+      SqliteOwnedHeldLease directoryLease) {
+    SqliteThreadMaintenanceLeases.ObjectLeaseReference retainedObjectLease =
+        Objects.requireNonNull(objectLease, "objectLease");
+    SqliteOwnedHeldLease retainedDirectoryLease =
+        Objects.requireNonNull(directoryLease, "directoryLease");
+    return new SqliteHeldLease(
+        Objects.requireNonNull(artifactPath, "artifactPath"),
+        retainedObjectLease.objectIdentity(),
+        () -> {
+          try {
+            retainedObjectLease.release();
+          } finally {
+            retainedDirectoryLease.release();
+          }
+        });
   }
 
   /**

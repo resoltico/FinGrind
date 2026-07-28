@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -412,6 +413,55 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void failureAfterObjectClaimReleasesBothOwnershipLayersInReverseOrder() throws Exception {
+    Path artifact = writeArtifact("injected-held-lease-failure/book.sqlite", "book bytes");
+    AtomicInteger objectControlCloses = new AtomicInteger();
+    Path objectControlPath = tempDirectory.resolve("injected-held-lease-failure.control");
+    SqliteLeaseHandle objectControl =
+        new SqliteLeaseHandle(
+            objectControlPath,
+            SqliteCoordinationControlFiles.lockedControlFile(
+                objectControlPath, objectControlCloses::incrementAndGet));
+    SqliteThreadMaintenanceLeases.ObjectLease objectLease =
+        new SqliteThreadMaintenanceLeases.ObjectLease("injected-object-identity", objectControl);
+    SqliteThreadMaintenanceLeases.retainObjectLease(objectLease);
+    SqliteThreadMaintenanceLeases.ObjectLeaseReference objectReference = objectLease.retain();
+    IllegalStateException expected = new IllegalStateException("injected held-lease failure");
+
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                    artifact,
+                    SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT,
+                    List.of(artifact),
+                    ignored -> objectReference,
+                    (ignoredArtifact, ignoredObjectLease, ignoredDirectoryLease) -> {
+                      throw expected;
+                    }));
+    assertSame(expected, failure);
+    assertEquals(1, objectControlCloses.get());
+    assertNull(SqliteThreadMaintenanceLeases.objectLease("injected-object-identity"));
+
+    try (SqliteHeldLease reacquired =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquire(
+                artifact, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      assertEquals(artifact, reacquired.artifactPath());
+    }
+  }
+
+  @Test
+  void rawObjectExclusionRefusalIsRepresentedBeforeThreadOwnershipExists() throws Exception {
+    Path artifact = writeArtifact("raw-object-exclusion-refusal/book.sqlite", "book bytes");
+
+    assertNull(
+        SqliteBookMaintenanceLease.acquireObjectLeaseReference(artifact, ignoredDomain -> null));
+  }
+
+  @Test
   void nestedSameThreadExistingArtifactLeasesRetainOnePhysicalObjectExclusion() throws Exception {
     Path artifact = writeArtifact("nested-object-lease/book.sqlite", "book bytes");
 
@@ -487,6 +537,56 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
       } finally {
         SqliteNativeRuntimeActivity.recordConnectionClosed(activity);
       }
+    }
+  }
+
+  @Test
+  void activePreAdmittedSiblingIsRejectedBeforeItsObjectExclusionIsConsidered() throws Exception {
+    Path first = writeArtifact("pre-admitted-activity/first.sqlite", "first");
+    Path activeSibling = writeArtifact("pre-admitted-activity/sibling.sqlite", "sibling");
+
+    try (SqliteHeldLease ignored =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                first,
+                SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT,
+                List.of(first, activeSibling)))) {
+      SqliteNativeActivityRegistration activity =
+          SqliteNativeRuntimeActivity.recordOpeningConnection(activeSibling, false);
+      try {
+        assertEquals(
+            activeSibling,
+            assertInstanceOf(
+                    SqliteLeaseBusy.class,
+                    SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                        activeSibling,
+                        SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT,
+                        List.of(first, activeSibling)))
+                .artifactPath());
+      } finally {
+        SqliteNativeRuntimeActivity.recordConnectionClosed(activity);
+      }
+    }
+  }
+
+  @Test
+  void explicitlyBroadenedCallerCannotOverrideAnExistingFixedAdmissionScope() throws Exception {
+    Path first = writeArtifact("fixed-admission/first.sqlite", "first");
+    Path excludedSibling = writeArtifact("fixed-admission/sibling.sqlite", "sibling");
+
+    try (SqliteHeldLease ignored =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                first, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT, List.of(first)))) {
+      assertEquals(
+          excludedSibling,
+          assertInstanceOf(
+                  SqliteLeaseBusy.class,
+                  SqliteBookMaintenanceLease.acquire(
+                      excludedSibling, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))
+              .artifactPath());
     }
   }
 
