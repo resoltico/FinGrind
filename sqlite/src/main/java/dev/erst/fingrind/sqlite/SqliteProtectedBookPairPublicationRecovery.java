@@ -104,7 +104,6 @@ final class SqliteProtectedBookPairPublicationRecovery {
       Path secretTargetPath) {
     if (expectedBookTargetPolicy != RestoredBookTargetPolicy.REPLACE_SELECTED
         || !targets.bookExists()
-        || !targets.secretExists()
         || hasUnboundStageResidue(bookTargetPath, secretTargetPath)) {
       return;
     }
@@ -136,9 +135,7 @@ final class SqliteProtectedBookPairPublicationRecovery {
 
   private static void rejectUnboundSecretWithoutBook(
       PairTargetPresence targets, Path bookTargetPath, Path secretTargetPath) {
-    if (targets.bookExists()
-        || !targets.secretExists()
-        || hasUnboundStageResidue(bookTargetPath, secretTargetPath)) {
+    if (targets.bookExists() || hasUnboundStageResidue(bookTargetPath, secretTargetPath)) {
       return;
     }
     throw secretTargetOccupied(secretTargetPath);

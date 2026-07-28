@@ -286,6 +286,13 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
         SqlitePairPublicationReconciliationEvidenceBlocked.class,
         SqliteProtectedBookPairPublicationRecovery.existingCompleteBackupOrEvidenceBlocked(
             backupRequest(directoryInsteadOfBook), directoryInsteadOfBook, secret));
+
+    Path directoryInsteadOfSecret =
+        Files.createDirectory(tempDirectory.resolve("complete-classification/secret-dir"));
+    assertInstanceOf(
+        SqlitePairPublicationReconciliationEvidenceBlocked.class,
+        SqliteProtectedBookPairPublicationRecovery.existingCompleteBackupOrEvidenceBlocked(
+            backupRequest(book), book, directoryInsteadOfSecret));
   }
 
   @Test
