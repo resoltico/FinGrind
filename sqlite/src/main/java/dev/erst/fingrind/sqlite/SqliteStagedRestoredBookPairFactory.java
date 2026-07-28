@@ -165,7 +165,7 @@ final class SqliteStagedRestoredBookPairFactory {
         Objects.requireNonNull(artifacts, "artifacts");
     try {
       List<SqlitePublicationCapabilityWitness.Requirement> requirements = new ArrayList<>();
-      switch (Objects.requireNonNull(targetPolicy, "targetPolicy")) {
+      switch (targetPolicy) {
         case REQUIRE_ABSENT ->
             requirements.add(
                 SqlitePublicationCapabilityWitness.Requirement.noReplace(
