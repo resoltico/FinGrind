@@ -595,6 +595,15 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
           excludedSibling,
           assertInstanceOf(
                   SqliteLeaseBusy.class,
+                  SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                      excludedSibling,
+                      SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT,
+                      List.of(excludedSibling)))
+              .artifactPath());
+      assertEquals(
+          excludedSibling,
+          assertInstanceOf(
+                  SqliteLeaseBusy.class,
                   SqliteBookMaintenanceLease.acquire(
                       excludedSibling, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))
               .artifactPath());
