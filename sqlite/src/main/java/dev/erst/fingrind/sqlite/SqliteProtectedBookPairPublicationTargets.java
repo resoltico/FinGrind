@@ -103,7 +103,7 @@ final class SqliteProtectedBookPairPublicationTargets {
       PairPublicationWitnessAcquirer witnessAcquirer) {
     try {
       List<SqlitePublicationCapabilityWitness.Requirement> requirements = new ArrayList<>();
-      switch (Objects.requireNonNull(bookTargetPolicy, "bookTargetPolicy")) {
+      switch (bookTargetPolicy) {
         case REQUIRE_ABSENT ->
             requirements.add(
                 SqlitePublicationCapabilityWitness.Requirement.noReplace(bookTargetPath));
