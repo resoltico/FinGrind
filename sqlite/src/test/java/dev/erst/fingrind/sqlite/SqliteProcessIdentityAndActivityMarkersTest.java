@@ -15,6 +15,7 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** Focused tests for process identity and retained activity-control coordination. */
@@ -99,6 +100,21 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
     registration.close();
 
     assertFalse(SqliteBookActivityMarkers.hasExternalLiveMarker(bookPath));
+  }
+
+  @Test
+  void externalActivityQueryTreatsANonDirectoryParentAsInactiveWithoutProbingIt()
+      throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath artifact = fileSystem.path("\\not-a-directory\\book.sqlite");
+      AclFixturePath parent = assertInstanceOf(AclFixturePath.class, artifact.getParent());
+      parent.exists = true;
+      parent.regularFile = true;
+      artifact.exists = true;
+      artifact.regularFile = true;
+
+      assertFalse(SqliteBookActivityMarkers.hasExternalLiveMarker(artifact));
+    }
   }
 
   @Test
