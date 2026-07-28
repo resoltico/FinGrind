@@ -12,6 +12,7 @@ import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
+import dev.erst.fingrind.executor.spi.StagedBackupPair;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -154,6 +155,39 @@ class SqliteProtectedBookStagingFaultInjectionTest extends SqliteArtifactPublica
     assertFalse(Files.exists(backupBookPath));
     assertFalse(Files.exists(backupKeyPath));
     assertRetainedStageRecord(backupBookPath, true);
+  }
+
+  @Test
+  void unreservedBackupStagingCreatesAnIndependentlyVerifiableRetainedPair() throws Exception {
+    SourceBook source = initializedSourceBook("unreserved-backup-success");
+    Path backupBookPath =
+        tempDirectory.resolve("unreserved-backup-success").resolve("backup.sqlite");
+    Path backupKeyPath =
+        tempDirectory.resolve("unreserved-backup-success").resolve("backup.key");
+
+    try (SqliteBookPassphrase sourcePassphrase = SqliteBookKeyFile.load(source.keyPath());
+        StagedBackupPair stagedBackup =
+            SqliteProtectedBookBackupStaging.stageResolvedPair(
+                    source.bookPath(),
+                    backupBookPath,
+                    backupKeyPath,
+                    sourcePassphrase,
+                    VERIFICATION_SUPPORT,
+                    checkpoint -> {},
+                    SqliteBookKeyFileGenerator::generateIntoExistingOwnedStage)
+                .fold(
+                    accepted -> accepted,
+                    failure -> {
+                      throw new AssertionError(
+                          "Expected independently staged backup success: " + failure.message());
+                    })) {
+      assertFalse(stagedBackup.snapshot().length == 0);
+      assertFalse(Files.exists(backupBookPath));
+      assertFalse(Files.exists(backupKeyPath));
+    }
+
+    assertRetainedStageRecord(backupBookPath, true);
+    assertRetainedStageRecord(backupKeyPath, true);
   }
 
   private static Stream<Arguments> backupStagingCheckpoints() {
