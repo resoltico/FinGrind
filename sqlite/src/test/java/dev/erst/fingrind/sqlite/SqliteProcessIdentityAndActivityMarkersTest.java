@@ -53,16 +53,21 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
     assertTrue(currentFromLease.isLive());
     assertTrue(unknownStartCurrent.isLive());
     assertTrue(currentFromLease.isLiveWhenUnlocked());
+    assertTrue(unknownStartCurrent.isLiveWhenUnlocked());
     assertFalse(mismatchedStartCurrent.isLiveWhenUnlocked());
     assertFalse(mismatchedStartCurrent.isLive());
     assertFalse(missingProcess.isLive());
     assertFalse(missingProcess.isLiveWhenUnlocked());
     assertNotEquals(mismatchedStartCurrent, currentFromLease);
     assertNotEquals(missingProcess, currentFromLease);
-    assertNotEquals("not-a-process-identity", currentFromLease);
+    assertFalse(currentFromLease.equals("not-a-process-identity"));
 
     assertNull(SqliteProcessIdentity.fromLeaseMetadata("startEpochMillis=1\n"));
     assertNull(SqliteProcessIdentity.fromLeaseMetadata("pid=not-a-number\n"));
+    assertEquals(
+        current,
+        SqliteProcessIdentity.fromLeaseMetadata(
+            "format=lease-v1\n" + current.leaseMetadataText()));
     assertNull(SqliteProcessIdentity.fromCoordinationToken("book.sqlite.marker"));
     assertNull(SqliteProcessIdentity.fromCoordinationToken("pid-1234"));
     assertNull(SqliteProcessIdentity.fromCoordinationToken("pid-NaN-start-1"));
