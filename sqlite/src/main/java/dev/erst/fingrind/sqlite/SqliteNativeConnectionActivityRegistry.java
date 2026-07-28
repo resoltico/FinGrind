@@ -160,8 +160,7 @@ final class SqliteNativeConnectionActivityRegistry {
       Throwable primaryFailure) {
     if (objectCountIncremented) {
       decrementActiveObjectConnectionsForRollback(
-          Objects.requireNonNull(objectIdentity, "objectIdentity"),
-          primaryFailure);
+          Objects.requireNonNull(objectIdentity, "objectIdentity"));
     }
     if (processCountIncremented) {
       decrementActiveConnectionsForRollback();
@@ -195,20 +194,13 @@ final class SqliteNativeConnectionActivityRegistry {
         });
   }
 
-  private static void decrementActiveObjectConnectionsForRollback(
-      String objectIdentity, Throwable primaryFailure) {
-    try {
-      ACTIVE_CONNECTIONS_BY_OBJECT_IDENTITY.compute(
-          objectIdentity,
-          (ignored, activeObjectConnections) -> {
-            AtomicInteger checkedObjectConnections =
-                Objects.requireNonNull(activeObjectConnections, "activeObjectConnections");
-            return checkedObjectConnections.decrementAndGet() == 0
-                ? null
-                : checkedObjectConnections;
-          });
-    } catch (RuntimeException rollbackFailure) {
-      primaryFailure.addSuppressed(rollbackFailure);
-    }
+  private static void decrementActiveObjectConnectionsForRollback(String objectIdentity) {
+    ACTIVE_CONNECTIONS_BY_OBJECT_IDENTITY.compute(
+        objectIdentity,
+        (ignored, activeObjectConnections) -> {
+          AtomicInteger checkedObjectConnections =
+              Objects.requireNonNull(activeObjectConnections, "activeObjectConnections");
+          return checkedObjectConnections.decrementAndGet() == 0 ? null : checkedObjectConnections;
+        });
   }
 }
