@@ -407,6 +407,52 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
   }
 
   @Test
+  void memberRecoveryAcceptsOnlyTheExpectedWinnerOfARaceForTheProtectedBook() throws Exception {
+    SqliteProtectedBookPairPublicationRecord matched = retainedRecord("member-book-race-match");
+    boolean[] matchedCollisionCreated = {false};
+    SqlitePairPublicationMemberReconciler matchedReconciler =
+        reconciler(
+            (ignoredStep, ignoredParent) -> {
+              if (!matchedCollisionCreated[0]) {
+                Files.createLink(matched.bookTargetPath, matched.bookStagePath);
+                matchedCollisionCreated[0] = true;
+              }
+            });
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses = witnessesFor(matched)) {
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.DURABLE,
+          matchedReconciler.reconcileBook(
+              matched,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+    }
+    assertTrue(Files.isSameFile(matched.bookTargetPath, matched.bookStagePath));
+
+    SqliteProtectedBookPairPublicationRecord foreign =
+        retainedRecord("member-book-race-foreign");
+    boolean[] foreignCollisionCreated = {false};
+    SqlitePairPublicationMemberReconciler foreignReconciler =
+        reconciler(
+            (ignoredStep, ignoredParent) -> {
+              if (!foreignCollisionCreated[0]) {
+                Files.writeString(foreign.bookTargetPath, "foreign protected book");
+                foreignCollisionCreated[0] = true;
+              }
+            });
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses = witnessesFor(foreign)) {
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.OUTCOME_UNCERTAIN,
+          foreignReconciler.reconcileBook(
+              foreign,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+    }
+    assertFalse(Files.isSameFile(foreign.bookTargetPath, foreign.bookStagePath));
+  }
+
+  @Test
   void memberRecoveryFailsClosedWhenAStagedBookOrItsFinalTargetChangesAfterPlanning()
       throws Exception {
     SqliteProtectedBookPairPublicationRecord targetChanged =
@@ -469,6 +515,39 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
               witnesses));
     }
     assertFalse(Files.exists(record.secretTargetPath));
+  }
+
+  @Test
+  void rekeyRecoveryRefusesBookReplacementWhenTheSelectedBookChangesAfterEvidenceForcing()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord record =
+        rekeyRecord("member-rekey-book-changed-during-replacement");
+    boolean[] changed = {false};
+    SqlitePairPublicationMemberReconciler reconciler =
+        reconciler(
+            (ignoredStep, ignoredParent) -> {
+              if (!changed[0]) {
+                Files.writeString(record.bookTargetPath, "changed live book after recovery proof");
+                changed[0] = true;
+              }
+            });
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses =
+        SqlitePairPublicationRecoveryCapabilities.acquire(
+            record,
+            SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+            SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+            ProtectedBookMaintenanceArtifactRole.NEW_BOOK_KEY_TARGET)) {
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.OUTCOME_UNCERTAIN,
+          reconciler.reconcileBook(
+              record,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+    }
+
+    assertFalse(Files.isSameFile(record.bookTargetPath, record.bookStagePath));
   }
 
   @Test
