@@ -156,79 +156,77 @@ final class SqliteCoordinationControlFiles {
   }
 
   /** Platform-native operations for one retained coordination protocol file. */
+  @SuppressWarnings("ImmutableEnumChecker") // Private constants hold only non-capturing method refs.
   enum CoordinationTransport {
-    WINDOWS {
-      @Override
-      @Nullable LockedControlFile openOrCreateAndTryExclusiveLock(
-          Path controlPath, byte[] magic, long position, long size) throws IOException {
-        return SqliteWindowsCoordinationFfmTransport.openOrCreateAndTryExclusiveLock(
-            controlPath, magic, position, size);
-      }
+    WINDOWS(
+        SqliteWindowsCoordinationFfmTransport::openOrCreateAndTryExclusiveLock,
+        SqliteWindowsCoordinationFfmTransport::openExistingAndTryExclusiveLock,
+        SqliteWindowsCoordinationFfmTransport::createAtomicallySecureRecord,
+        SqliteWindowsCoordinationFfmTransport::requireExistingExactRecord,
+        SqliteWindowsCoordinationFfmTransport::physicalObjectIdentity),
+    POSIX(
+        SqlitePosixCoordinationControlFileTransport::openOrCreateAndTryExclusiveLock,
+        SqlitePosixCoordinationControlFileTransport::openExistingAndTryExclusiveLock,
+        SqlitePosixCoordinationControlFileTransport::createAtomicallySecureRecord,
+        SqlitePosixCoordinationControlFileTransport::requireExistingExactRecord,
+        SqlitePosixCoordinationFileSecurity::physicalObjectIdentity);
 
-      @Override
-      @Nullable LockedControlFile openExistingAndTryExclusiveLock(
-          Path controlPath, byte[] magic, long position, long size) throws IOException {
-        return SqliteWindowsCoordinationFfmTransport.openExistingAndTryExclusiveLock(
-            controlPath, magic, position, size);
-      }
+    private final LockOperation openOrCreate;
+    private final LockOperation openExisting;
+    private final RecordOperation createRecord;
+    private final RecordOperation requireRecord;
+    private final ObjectIdentityOperation objectIdentity;
 
-      @Override
-      void createAtomicallySecureRecord(Path recordPath, byte[] magic) throws IOException {
-        SqliteWindowsCoordinationFfmTransport.createAtomicallySecureRecord(recordPath, magic);
-      }
+    CoordinationTransport(
+        LockOperation openOrCreate,
+        LockOperation openExisting,
+        RecordOperation createRecord,
+        RecordOperation requireRecord,
+        ObjectIdentityOperation objectIdentity) {
+      this.openOrCreate = Objects.requireNonNull(openOrCreate, "openOrCreate");
+      this.openExisting = Objects.requireNonNull(openExisting, "openExisting");
+      this.createRecord = Objects.requireNonNull(createRecord, "createRecord");
+      this.requireRecord = Objects.requireNonNull(requireRecord, "requireRecord");
+      this.objectIdentity = Objects.requireNonNull(objectIdentity, "objectIdentity");
+    }
 
-      @Override
-      void requireExistingExactRecord(Path recordPath, byte[] magic) throws IOException {
-        SqliteWindowsCoordinationFfmTransport.requireExistingExactRecord(recordPath, magic);
-      }
+    @Nullable LockedControlFile openOrCreateAndTryExclusiveLock(
+        Path controlPath, byte[] magic, long position, long size) throws IOException {
+      return openOrCreate.apply(controlPath, magic, position, size);
+    }
 
-      @Override
-      String physicalObjectIdentity(Path existingArtifactPath) throws IOException {
-        return SqliteWindowsCoordinationFfmTransport.physicalObjectIdentity(existingArtifactPath);
-      }
-    },
-    POSIX {
-      @Override
-      @Nullable LockedControlFile openOrCreateAndTryExclusiveLock(
-          Path controlPath, byte[] magic, long position, long size) throws IOException {
-        return SqlitePosixCoordinationControlFileTransport.openOrCreateAndTryExclusiveLock(
-            controlPath, magic, position, size);
-      }
+    @Nullable LockedControlFile openExistingAndTryExclusiveLock(
+        Path controlPath, byte[] magic, long position, long size) throws IOException {
+      return openExisting.apply(controlPath, magic, position, size);
+    }
 
-      @Override
-      @Nullable LockedControlFile openExistingAndTryExclusiveLock(
-          Path controlPath, byte[] magic, long position, long size) throws IOException {
-        return SqlitePosixCoordinationControlFileTransport.openExistingAndTryExclusiveLock(
-            controlPath, magic, position, size);
-      }
+    void createAtomicallySecureRecord(Path recordPath, byte[] magic) throws IOException {
+      createRecord.apply(recordPath, magic);
+    }
 
-      @Override
-      void createAtomicallySecureRecord(Path recordPath, byte[] magic) throws IOException {
-        SqlitePosixCoordinationControlFileTransport.createAtomicallySecureRecord(recordPath, magic);
-      }
+    void requireExistingExactRecord(Path recordPath, byte[] magic) throws IOException {
+      requireRecord.apply(recordPath, magic);
+    }
 
-      @Override
-      void requireExistingExactRecord(Path recordPath, byte[] magic) throws IOException {
-        SqlitePosixCoordinationControlFileTransport.requireExistingExactRecord(recordPath, magic);
-      }
+    String physicalObjectIdentity(Path existingArtifactPath) throws IOException {
+      return objectIdentity.apply(existingArtifactPath);
+    }
 
-      @Override
-      String physicalObjectIdentity(Path existingArtifactPath) throws IOException {
-        return SqlitePosixCoordinationFileSecurity.physicalObjectIdentity(existingArtifactPath);
-      }
-    };
+    @FunctionalInterface
+    private interface LockOperation {
+      @Nullable LockedControlFile apply(Path path, byte[] magic, long position, long size)
+          throws IOException;
+    }
 
-    abstract @Nullable LockedControlFile openOrCreateAndTryExclusiveLock(
-        Path controlPath, byte[] magic, long position, long size) throws IOException;
+    @FunctionalInterface
+    private interface RecordOperation {
+      void apply(Path path, byte[] magic) throws IOException;
+    }
 
-    abstract @Nullable LockedControlFile openExistingAndTryExclusiveLock(
-        Path controlPath, byte[] magic, long position, long size) throws IOException;
-
-    abstract void createAtomicallySecureRecord(Path recordPath, byte[] magic) throws IOException;
-
-    abstract void requireExistingExactRecord(Path recordPath, byte[] magic) throws IOException;
-
-    abstract String physicalObjectIdentity(Path existingArtifactPath) throws IOException;
+    @FunctionalInterface
+    private interface ObjectIdentityOperation {
+      String apply(Path path) throws IOException;
+    }
   }
 
   /** Closes one opaque retained control resource through its owning transport. */
