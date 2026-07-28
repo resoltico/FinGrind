@@ -1,7 +1,6 @@
 package dev.erst.fingrind.sqlite;
 
 import dev.erst.fingrind.contract.runtime.ContractErrors;
-import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.contract.runtime.ContractFailurePaths;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
@@ -29,14 +28,8 @@ final class SqliteProtectedBookStagingFailure {
             null));
   }
 
-  static void releaseAllRetainedPreservingContractFailure(
-      ContractFailureException exception,
-      @Nullable SqliteOwnedStagedArtifact first,
-      @Nullable SqliteOwnedStagedArtifact second) {
-    try {
-      SqliteOwnedStagedArtifact.releaseAllRetained(first, second);
-    } catch (RuntimeException releaseFailure) {
-      exception.addSuppressed(releaseFailure);
-    }
+  static void releaseAllRetained(
+      @Nullable SqliteOwnedStagedArtifact first, @Nullable SqliteOwnedStagedArtifact second) {
+    SqliteOwnedStagedArtifact.releaseAllRetained(first, second);
   }
 }

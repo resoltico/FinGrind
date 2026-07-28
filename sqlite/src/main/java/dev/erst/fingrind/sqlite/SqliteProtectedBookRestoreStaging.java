@@ -149,8 +149,7 @@ final class SqliteProtectedBookRestoreStaging {
         return MaintenanceDecision.accepted(stagedRestoredBookPair);
       }
     } catch (ContractFailureException exception) {
-      SqliteProtectedBookStagingFailure.releaseAllRetainedPreservingContractFailure(
-          exception, stagedBookFile, stagedBookKeyFile);
+      SqliteProtectedBookStagingFailure.releaseAllRetained(stagedBookFile, stagedBookKeyFile);
       throw exception;
     } catch (IOException | RuntimeException exception) {
       SqliteOwnedStagedArtifact.releaseAllRetained(stagedBookFile, stagedBookKeyFile);
