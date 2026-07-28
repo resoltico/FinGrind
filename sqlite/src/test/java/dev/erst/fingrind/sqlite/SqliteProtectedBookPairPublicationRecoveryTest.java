@@ -1379,6 +1379,99 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
   }
 
   @Test
+  void evidenceReservationStopsAfterItsBoundedClaimCollisionRetries() {
+    AtomicInteger claimCollisions = new AtomicInteger();
+
+    IOException failure =
+        assertThrows(
+            IOException.class,
+            () ->
+                reserveEvidence(
+                    "reservation-claim-collision",
+                    false,
+                    (evidencePath, temporaryPath) -> {
+                      claimCollisions.incrementAndGet();
+                      throw new java.nio.file.FileAlreadyExistsException(evidencePath.toString());
+                    }));
+
+    assertEquals(8, claimCollisions.get());
+    assertTrue(
+        Objects.requireNonNull(failure.getMessage(), "claim collision message")
+            .contains("Unable to reserve durable protected-book pair recovery evidence"));
+  }
+
+  @Test
+  void evidenceReservationFailsClosedWhenItsIntentCollidesAfterTheClaimIsDurable() {
+    SqliteProtectedBookPairPublicationRecord.RecoveryRecordDurabilityUnconfirmedException failure =
+        assertThrows(
+            SqliteProtectedBookPairPublicationRecord.RecoveryRecordDurabilityUnconfirmedException.class,
+            () ->
+                reserveEvidence(
+                    "reservation-intent-collision",
+                    false,
+                    (evidencePath, temporaryPath) -> {
+                      if (evidencePath.getFileName().toString().contains("pair-intent-")) {
+                        throw new java.nio.file.FileAlreadyExistsException(evidencePath.toString());
+                      }
+                      Files.createLink(evidencePath, temporaryPath);
+                    }));
+
+    assertTrue(
+        Objects.requireNonNull(
+                Objects.requireNonNull(failure.getCause(), "intent collision cause").getMessage(),
+                "intent collision message")
+            .contains("claim was durable but recovery intent collided"));
+  }
+
+  @Test
+  void evidenceReservationFailsClosedWhenOnlyOneMirroredCopyWasPromoted() {
+    AtomicInteger promotedCopies = new AtomicInteger();
+
+    SqliteProtectedBookPairPublicationRecord.RecoveryRecordDurabilityUnconfirmedException failure =
+        assertThrows(
+            SqliteProtectedBookPairPublicationRecord.RecoveryRecordDurabilityUnconfirmedException.class,
+            () ->
+                reserveEvidence(
+                    "reservation-partial-collision",
+                    true,
+                    (evidencePath, temporaryPath) -> {
+                      if (promotedCopies.getAndIncrement() == 1) {
+                        throw new java.nio.file.FileAlreadyExistsException(evidencePath.toString());
+                      }
+                      Files.createLink(evidencePath, temporaryPath);
+                    }));
+
+    assertInstanceOf(java.nio.file.FileAlreadyExistsException.class, failure.getCause());
+    assertEquals(2, promotedCopies.get());
+  }
+
+  @Test
+  void evidenceReservationPreservesAnIoFailureAfterOneMirroredCopyWasPromoted() {
+    AtomicInteger promotedCopies = new AtomicInteger();
+
+    SqliteProtectedBookPairPublicationRecord.RecoveryRecordDurabilityUnconfirmedException failure =
+        assertThrows(
+            SqliteProtectedBookPairPublicationRecord.RecoveryRecordDurabilityUnconfirmedException.class,
+            () ->
+                reserveEvidence(
+                    "reservation-partial-io-failure",
+                    true,
+                    (evidencePath, temporaryPath) -> {
+                      if (promotedCopies.getAndIncrement() == 1) {
+                        throw new IOException("injected mirrored-copy I/O failure");
+                      }
+                      Files.createLink(evidencePath, temporaryPath);
+                    }));
+
+    assertEquals(
+        "injected mirrored-copy I/O failure",
+        Objects.requireNonNull(
+            Objects.requireNonNull(failure.getCause(), "partial I/O failure cause").getMessage(),
+            "partial I/O failure message"));
+    assertEquals(2, promotedCopies.get());
+  }
+
+  @Test
   void workflowRetainsAnUncertainOutcomeWhenSecretOrBookPublicationCannotBeForced()
       throws Exception {
     SqliteProtectedBookPairPublicationRecord secretFailure =
@@ -1901,6 +1994,36 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
         RestoredBookTargetPolicy.REQUIRE_ABSENT,
         backupBinding(bookTarget.resolveSibling("source.sqlite")),
         (ignoredStep, ignoredParent) -> {});
+  }
+
+  private void reserveEvidence(
+      String directoryName,
+      boolean separateParents,
+      SqliteProtectedBookPairPublicationRecord.EvidenceLinkCreator evidenceLinkCreator)
+      throws IOException {
+    Path bookTarget =
+        absentTarget(
+            directoryName + (separateParents ? "/book-parent/book.sqlite" : "/book.sqlite"));
+    Path secretTarget =
+        absentTarget(
+            directoryName + (separateParents ? "/secret-parent/book.key" : "/book.key"));
+    Path bookStage =
+        writeArtifact(
+            directoryName + (separateParents ? "/book-parent/.book.stage" : "/.book.stage"),
+            "reservation book stage");
+    Path secretStage =
+        writeArtifact(
+            directoryName + (separateParents ? "/secret-parent/.secret.stage" : "/.secret.stage"),
+            "reservation secret stage");
+    SqliteProtectedBookPairPublicationRecord.create(
+        bookTarget,
+        secretTarget,
+        bookStage,
+        secretStage,
+        RestoredBookTargetPolicy.REQUIRE_ABSENT,
+        backupBinding(bookTarget.resolveSibling("source.sqlite")),
+        (ignoredStep, ignoredParent) -> {},
+        evidenceLinkCreator);
   }
 
   private SqliteProtectedBookPairPublicationRecord pairRecord(
