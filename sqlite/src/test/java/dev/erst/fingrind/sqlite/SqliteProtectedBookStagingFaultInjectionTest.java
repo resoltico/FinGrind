@@ -13,6 +13,7 @@ import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
 import dev.erst.fingrind.executor.spi.StagedBackupPair;
+import dev.erst.fingrind.executor.spi.StagedRestoredBookPair;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -188,6 +189,76 @@ class SqliteProtectedBookStagingFaultInjectionTest extends SqliteArtifactPublica
 
     assertRetainedStageRecord(backupBookPath, true);
     assertRetainedStageRecord(backupKeyPath, true);
+  }
+
+  @Test
+  void restoreSecretContractFailuresPreserveTheirExactFailureAndReleaseCreatedStages()
+      throws Exception {
+    SourceBook source = initializedSourceBook("restore-secret-contract-failure");
+    Path restoredBookPath =
+        tempDirectory.resolve("restore-secret-contract-failure").resolve("restored.sqlite");
+    Path restoredKeyPath =
+        tempDirectory.resolve("restore-secret-contract-failure").resolve("restored.key");
+    ContractFailureException expected =
+        new ContractFailureException(
+            ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.failure(
+                "injected restore secret contract failure", null, null));
+
+    try (SqliteBookPassphrase sourcePassphrase = SqliteBookKeyFile.load(source.keyPath())) {
+      assertSame(
+          expected,
+          assertThrows(
+              ContractFailureException.class,
+              () ->
+                  SqliteProtectedBookRestoreStaging.stageResolvedPair(
+                      source.bookPath(),
+                      restoredBookPath,
+                      restoredKeyPath,
+                      RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                      sourcePassphrase,
+                      VERIFICATION_SUPPORT,
+                      checkpoint -> {},
+                      ignored -> {
+                        throw expected;
+                      })));
+    }
+
+    assertFalse(Files.exists(restoredBookPath));
+    assertFalse(Files.exists(restoredKeyPath));
+    assertRetainedStageRecord(restoredBookPath, true);
+  }
+
+  @Test
+  void unreservedRestoreStagingCreatesAnIndependentlyVerifiableRetainedPair() throws Exception {
+    SourceBook source = initializedSourceBook("unreserved-restore-success");
+    Path restoredBookPath =
+        tempDirectory.resolve("unreserved-restore-success").resolve("restored.sqlite");
+    Path restoredKeyPath =
+        tempDirectory.resolve("unreserved-restore-success").resolve("restored.key");
+
+    try (SqliteBookPassphrase sourcePassphrase = SqliteBookKeyFile.load(source.keyPath());
+        StagedRestoredBookPair stagedRestore =
+            SqliteProtectedBookRestoreStaging.stageResolvedPair(
+                    source.bookPath(),
+                    restoredBookPath,
+                    restoredKeyPath,
+                    RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                    sourcePassphrase,
+                    VERIFICATION_SUPPORT,
+                    checkpoint -> {},
+                    SqliteBookKeyFileGenerator::generateIntoExistingOwnedStage)
+                .fold(
+                    accepted -> accepted,
+                    failure -> {
+                      throw new AssertionError(
+                          "Expected independently staged restore success: " + failure.message());
+                    })) {
+      assertFalse(Files.exists(restoredBookPath));
+      assertFalse(Files.exists(restoredKeyPath));
+    }
+
+    assertRetainedStageRecord(restoredBookPath, true);
+    assertRetainedStageRecord(restoredKeyPath, true);
   }
 
   private static Stream<Arguments> backupStagingCheckpoints() {
