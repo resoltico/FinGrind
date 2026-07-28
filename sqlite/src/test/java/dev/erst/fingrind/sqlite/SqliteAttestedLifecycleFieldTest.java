@@ -12,9 +12,14 @@ import dev.erst.fingrind.core.attestation.AttestationSigningSession;
 import dev.erst.fingrind.executor.AttestationGenesisFactory;
 import dev.erst.fingrind.executor.maintenance.AttestedProtectedBookLifecycleWorkflow;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookBackupOutcome;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRekeyOutcome;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookRestoreOutcome;
+import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
+import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationAdmission;
+import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationBinding;
+import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationRecoveryRequest;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -209,6 +214,55 @@ class SqliteAttestedLifecycleFieldTest extends SqliteArtifactPublicationTestSupp
       assertEquals(
           dev.erst.fingrind.contract.bookkeeping.ProtectedBookPairPublicationCompletion.RECOVERED,
           recoveredBackup.pairPublicationCompletion());
+    }
+  }
+
+  @Test
+  void rekeyRecoveryRevalidatesThePublishedBookWithItsReplacementKeyAndSignedHead()
+      throws Exception {
+    Path sourceBookPath = tempDirectory.resolve("live").resolve("book.sqlite");
+    Path rekeyedBookKeyPath = tempDirectory.resolve("live").resolve("book-rekeyed.key");
+    AttestationCredentialSource credential = createFounderCredential();
+    BookAccess sourceAccess = attestedBookAccess(sourceBookPath, credential);
+    initializeAttestedBook(sourceAccess, credential);
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+    AttestedProtectedBookLifecycleWorkflow workflow =
+        new AttestedProtectedBookLifecycleWorkflow(Clock.fixed(RECORDED_AT, ZoneOffset.UTC), store);
+
+    try (AttestationSigningSession signingSession =
+        AttestationSigningSession.open(List.of(credential))) {
+      ProtectedBookRekeyOutcome.Rekeyed rekeyed =
+          assertInstanceOf(
+              ProtectedBookRekeyOutcome.Rekeyed.class,
+              acceptedValue(
+                  workflow.rekeyBook(
+                      localAccess(sourceAccess), rekeyedBookKeyPath, signingSession)));
+      removeCompletedPairEvidence(sourceBookPath);
+      SqliteProtectedBookPairPublicationRecord record =
+          assertInstanceOf(
+                  SqlitePairPublicationEvidenceExact.class,
+                  SqliteProtectedBookPairPublicationRecord.scanForAdmission(
+                      sourceBookPath, rekeyedBookKeyPath))
+              .record();
+      ProtectedBookPairPublicationBinding.Rekey binding =
+          assertInstanceOf(ProtectedBookPairPublicationBinding.Rekey.class, record.binding);
+
+      ProtectedBookPairPublicationAdmission.Recovered recovered =
+          assertInstanceOf(
+              ProtectedBookPairPublicationAdmission.Recovered.class,
+              admitPairPublication(
+                  store,
+                  sourceBookPath,
+                  rekeyedBookKeyPath,
+                  RestoredBookTargetPolicy.REPLACE_SELECTED,
+                  new ProtectedBookPairPublicationRecoveryRequest.Rekey(binding.sourceIdentity()),
+                  ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+                  ProtectedBookMaintenanceArtifactRole.NEW_BOOK_KEY_TARGET));
+
+      ProtectedBookPairPublicationBinding.Rekey recoveredBinding =
+          assertInstanceOf(ProtectedBookPairPublicationBinding.Rekey.class, recovered.binding());
+      assertEquals(rekeyed.attestationCommit(), recoveredBinding.attestationCommit());
+      assertEquals(binding.sourceCommit(), recoveredBinding.sourceCommit());
     }
   }
 
