@@ -423,7 +423,6 @@ final class SqlitePublicationCapabilityWitness {
     private final Path targetPath;
     private final SqliteCoordinationControlFiles.LockedControlFile control;
     private final SqliteHeldLease parentLease;
-    private boolean closed;
 
     private Witness(
         WitnessKey key,
@@ -440,11 +439,11 @@ final class SqlitePublicationCapabilityWitness {
         SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator linkCreator,
         SqliteProtectedBookPublicationSupport.AtomicBookMover mover)
         throws IOException {
-      requireOpen();
       requireNoLegacyProbeResidue();
-      switch (key.primitiveKind()) {
-        case NO_REPLACE_LINK -> establishOrValidateNoReplace(linkCreator);
-        case ATOMIC_REPLACE -> establishOrValidateAtomicReplace(mover);
+      if (key.primitiveKind() == PrimitiveKind.NO_REPLACE_LINK) {
+        establishOrValidateNoReplace(linkCreator);
+      } else {
+        establishOrValidateAtomicReplace(mover);
       }
       requireCurrent();
     }
@@ -507,29 +506,25 @@ final class SqlitePublicationCapabilityWitness {
     }
 
     private void requireCurrent() throws IOException {
-      requireOpen();
       keyFor(targetPath, key.primitiveKind());
       requireNoLegacyProbeResidue();
-      switch (key.primitiveKind()) {
-        case NO_REPLACE_LINK -> {
-          byte[] sourceMagic = magic(key, "no-replace-source");
-          Path source = statePath("source");
-          Path completion = statePath("complete");
-          requireExactRecord(source, sourceMagic);
-          requireExactRecord(completion, sourceMagic);
-          if (!Files.isSameFile(source, completion)) {
-            throw invalidWitness("No-replace witness files no longer share one identity.");
-          }
+      if (key.primitiveKind() == PrimitiveKind.NO_REPLACE_LINK) {
+        byte[] sourceMagic = magic(key, "no-replace-source");
+        Path source = statePath("source");
+        Path completion = statePath("complete");
+        requireExactRecord(source, sourceMagic);
+        requireExactRecord(completion, sourceMagic);
+        if (!Files.isSameFile(source, completion)) {
+          throw invalidWitness("No-replace witness files no longer share one identity.");
         }
-        case ATOMIC_REPLACE -> {
-          byte[] priorMagic = magic(key, "atomic-replace-prior");
-          byte[] replacementMagic = magic(key, "atomic-replace-replacement");
-          requireExactRecord(statePath("prior"), priorMagic);
-          if (Files.exists(statePath("replacement"), LinkOption.NOFOLLOW_LINKS)
-              || recordState(statePath("complete"), priorMagic, replacementMagic)
-                  != RecordState.SECOND) {
-            throw invalidWitness("Atomic-replace witness is no longer complete.");
-          }
+      } else {
+        byte[] priorMagic = magic(key, "atomic-replace-prior");
+        byte[] replacementMagic = magic(key, "atomic-replace-replacement");
+        requireExactRecord(statePath("prior"), priorMagic);
+        if (Files.exists(statePath("replacement"), LinkOption.NOFOLLOW_LINKS)
+            || recordState(statePath("complete"), priorMagic, replacementMagic)
+                != RecordState.SECOND) {
+          throw invalidWitness("Atomic-replace witness is no longer complete.");
         }
       }
     }
@@ -612,20 +607,10 @@ final class SqlitePublicationCapabilityWitness {
 
     @Override
     public void close() {
-      if (closed) {
-        return;
-      }
-      closed = true;
       SqliteRuntimeCloseSequence.closeAll(
           List.of(
               SqliteRuntimeCloseSequence.coordinationControlCloseAction(control),
               parentLease::close));
-    }
-
-    private void requireOpen() {
-      if (closed) {
-        throw new IllegalStateException("The FinGrind publication capability witness is closed.");
-      }
     }
   }
 

@@ -151,6 +151,23 @@ class SqliteGeneratedSecretTargetTest {
         null,
         SqlitePublicationCapabilityWitness.callerPathFailure(
             ordinaryFailure, SqliteCallerPathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED));
+
+    Path deniedTarget = tempDirectory.resolve("denied.key");
+    SqlitePublicationCapabilityWitness.AcquisitionFailure deniedFailure =
+        assertThrows(
+            SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+            () ->
+                SqlitePublicationCapabilityWitness.acquire(
+                    java.util.List.of(
+                        SqlitePublicationCapabilityWitness.Requirement.noReplace(deniedTarget)),
+                    (target, staged) -> {
+                      throw new FileSystemException(target.toString(), staged.toString(), "Permission denied");
+                    },
+                    SqliteProtectedBookPublicationSupport::moveReplacing));
+    assertEquals(
+        null,
+        SqlitePublicationCapabilityWitness.callerPathFailure(
+            deniedFailure, SqliteCallerPathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED));
   }
 
   @Test
@@ -599,6 +616,53 @@ class SqliteGeneratedSecretTargetTest {
                     .getMessage(),
                 "atomic failure message")
             .contains("did not retain the replacement state"));
+
+    Path incompleteAtomicTarget = tempDirectory.resolve("incomplete-atomic-replacement.sqlite");
+    SqlitePublicationCapabilityWitness.AcquisitionFailure incompleteAtomicFailure =
+        assertThrows(
+            SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+            () ->
+                SqlitePublicationCapabilityWitness.acquire(
+                    java.util.List.of(
+                        SqlitePublicationCapabilityWitness.Requirement.atomicReplace(
+                            incompleteAtomicTarget)),
+                    Files::createLink,
+                    (source, target) -> Files.delete(source)));
+    assertTrue(
+        Objects.requireNonNull(
+                Objects.requireNonNull(
+                        incompleteAtomicFailure.getCause(), "incomplete atomic failure cause")
+                    .getMessage(),
+                "incomplete atomic failure message")
+            .contains("witness"));
+  }
+
+  @Test
+  void retainedWitnessRejectsAtomicCompletionThatRevertedToItsPriorState() throws Exception {
+    Path targetPath = tempDirectory.resolve("reverted-atomic-completion.sqlite");
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses =
+        SqlitePublicationCapabilityWitness.acquire(
+            java.util.List.of(
+                SqlitePublicationCapabilityWitness.Requirement.atomicReplace(targetPath)),
+            Files::createLink,
+            SqliteProtectedBookPublicationSupport::moveReplacing)) {
+      Path completion = publicationCapabilityState(".complete");
+      Path prior = publicationCapabilityState(".prior");
+      byte[] priorRecord = Files.readAllBytes(prior);
+      Files.delete(completion);
+      SqliteCoordinationControlFiles.createAtomicallySecureRecord(completion, priorRecord);
+
+      IOException failure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  witnesses.requireCurrent(
+                      targetPath, SqlitePublicationCapabilityWitness.PrimitiveKind.ATOMIC_REPLACE));
+      assertTrue(
+          Objects.requireNonNull(failure.getMessage(), "witness failure message")
+              .contains("no longer complete"));
+    }
   }
 
   @Test
