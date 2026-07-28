@@ -212,6 +212,26 @@ class SqliteGeneratedSecretTargetTest {
         null,
         SqlitePublicationCapabilityWitness.callerPathFailure(
             ioFailure, SqliteCallerPathFailure.ATOMIC_SECRET_PUBLICATION_UNSUPPORTED));
+
+    Path ordinaryAtomicTarget = tempDirectory.resolve("ordinary-atomic.sqlite");
+    SqlitePublicationCapabilityWitness.AcquisitionFailure ordinaryAtomicFailure =
+        assertThrows(
+            SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+            () ->
+                SqlitePublicationCapabilityWitness.acquire(
+                    java.util.List.of(
+                        SqlitePublicationCapabilityWitness.Requirement.atomicReplace(
+                            ordinaryAtomicTarget)),
+                    Files::createLink,
+                    (source, target) -> {
+                      throw new FileSystemException(
+                          source.toString(), target.toString(), "Permission denied");
+                    }));
+    assertEquals(
+        null,
+        SqlitePublicationCapabilityWitness.callerPathFailure(
+            ordinaryAtomicFailure,
+            SqliteCallerPathFailure.ATOMIC_BOOK_REPLACEMENT_UNSUPPORTED));
   }
 
   @Test
