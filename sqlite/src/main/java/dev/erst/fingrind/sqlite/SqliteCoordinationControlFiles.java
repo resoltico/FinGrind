@@ -48,46 +48,30 @@ final class SqliteCoordinationControlFiles {
   static @Nullable LockedControlFile openOrCreateAndTryExclusiveLock(
       Path controlPath, byte[] magic, long position, long size) throws IOException {
     requireProtocolLockRange(position, size);
-    return isWindows()
-        ? SqliteWindowsCoordinationFfmTransport.openOrCreateAndTryExclusiveLock(
-            controlPath, checkedMagic(magic), position, size)
-        : SqlitePosixCoordinationControlFileTransport.openOrCreateAndTryExclusiveLock(
-            controlPath, checkedMagic(magic), position, size);
+    return currentTransport()
+        .openOrCreateAndTryExclusiveLock(controlPath, checkedMagic(magic), position, size);
   }
 
   /** Opens one existing exact control file and attempts its exclusive protocol lock. */
   static @Nullable LockedControlFile openExistingAndTryExclusiveLock(
       Path controlPath, byte[] magic, long position, long size) throws IOException {
     requireProtocolLockRange(position, size);
-    return isWindows()
-        ? SqliteWindowsCoordinationFfmTransport.openExistingAndTryExclusiveLock(
-            controlPath, checkedMagic(magic), position, size)
-        : SqlitePosixCoordinationControlFileTransport.openExistingAndTryExclusiveLock(
-            controlPath, checkedMagic(magic), position, size);
+    return currentTransport()
+        .openExistingAndTryExclusiveLock(controlPath, checkedMagic(magic), position, size);
   }
 
   /** Creates one immutable owner-only record through the platform's exact creation boundary. */
   static void createAtomicallySecureRecord(Path recordPath, byte[] magic) throws IOException {
     Path checkedPath = Objects.requireNonNull(recordPath, "recordPath");
     byte[] checkedMagic = checkedMagic(magic);
-    if (isWindows()) {
-      SqliteWindowsCoordinationFfmTransport.createAtomicallySecureRecord(checkedPath, checkedMagic);
-      return;
-    }
-    SqlitePosixCoordinationControlFileTransport.createAtomicallySecureRecord(
-        checkedPath, checkedMagic);
+    currentTransport().createAtomicallySecureRecord(checkedPath, checkedMagic);
   }
 
   /** Validates one existing owner-only immutable record without exposing its transport. */
   static void requireExistingExactRecord(Path recordPath, byte[] magic) throws IOException {
     Path checkedPath = Objects.requireNonNull(recordPath, "recordPath");
     byte[] checkedMagic = checkedMagic(magic);
-    if (isWindows()) {
-      SqliteWindowsCoordinationFfmTransport.requireExistingExactRecord(checkedPath, checkedMagic);
-      return;
-    }
-    SqlitePosixCoordinationControlFileTransport.requireExistingExactRecord(
-        checkedPath, checkedMagic);
+    currentTransport().requireExistingExactRecord(checkedPath, checkedMagic);
   }
 
   /**
@@ -126,10 +110,7 @@ final class SqliteCoordinationControlFiles {
    */
   static String physicalObjectIdentity(Path existingArtifactPath) throws IOException {
     Path checkedPath = Objects.requireNonNull(existingArtifactPath, "existingArtifactPath");
-    if (isWindows()) {
-      return SqliteWindowsCoordinationFfmTransport.physicalObjectIdentity(checkedPath);
-    }
-    return SqlitePosixCoordinationFileSecurity.physicalObjectIdentity(checkedPath);
+    return currentTransport().physicalObjectIdentity(checkedPath);
   }
 
   /** Returns the stable binding for a canonical real directory path. */
@@ -144,6 +125,14 @@ final class SqliteCoordinationControlFiles {
         .equals(
             SqliteHostPlatformDescriptor.supportedOperatingSystemId(
                 System.getProperty("os.name", "")));
+  }
+
+  static CoordinationTransport transportFor(boolean windows) {
+    return windows ? CoordinationTransport.WINDOWS : CoordinationTransport.POSIX;
+  }
+
+  private static CoordinationTransport currentTransport() {
+    return transportFor(isWindows());
   }
 
   static LockedControlFile lockedControlFile(Path controlPath, CloseOperation closeOperation) {
@@ -164,6 +153,82 @@ final class SqliteCoordinationControlFiles {
           "Coordination control-file magic must fit wholly inside the immutable header.");
     }
     return checkedMagic;
+  }
+
+  /** Platform-native operations for one retained coordination protocol file. */
+  enum CoordinationTransport {
+    WINDOWS {
+      @Override
+      @Nullable LockedControlFile openOrCreateAndTryExclusiveLock(
+          Path controlPath, byte[] magic, long position, long size) throws IOException {
+        return SqliteWindowsCoordinationFfmTransport.openOrCreateAndTryExclusiveLock(
+            controlPath, magic, position, size);
+      }
+
+      @Override
+      @Nullable LockedControlFile openExistingAndTryExclusiveLock(
+          Path controlPath, byte[] magic, long position, long size) throws IOException {
+        return SqliteWindowsCoordinationFfmTransport.openExistingAndTryExclusiveLock(
+            controlPath, magic, position, size);
+      }
+
+      @Override
+      void createAtomicallySecureRecord(Path recordPath, byte[] magic) throws IOException {
+        SqliteWindowsCoordinationFfmTransport.createAtomicallySecureRecord(recordPath, magic);
+      }
+
+      @Override
+      void requireExistingExactRecord(Path recordPath, byte[] magic) throws IOException {
+        SqliteWindowsCoordinationFfmTransport.requireExistingExactRecord(recordPath, magic);
+      }
+
+      @Override
+      String physicalObjectIdentity(Path existingArtifactPath) throws IOException {
+        return SqliteWindowsCoordinationFfmTransport.physicalObjectIdentity(existingArtifactPath);
+      }
+    },
+    POSIX {
+      @Override
+      @Nullable LockedControlFile openOrCreateAndTryExclusiveLock(
+          Path controlPath, byte[] magic, long position, long size) throws IOException {
+        return SqlitePosixCoordinationControlFileTransport.openOrCreateAndTryExclusiveLock(
+            controlPath, magic, position, size);
+      }
+
+      @Override
+      @Nullable LockedControlFile openExistingAndTryExclusiveLock(
+          Path controlPath, byte[] magic, long position, long size) throws IOException {
+        return SqlitePosixCoordinationControlFileTransport.openExistingAndTryExclusiveLock(
+            controlPath, magic, position, size);
+      }
+
+      @Override
+      void createAtomicallySecureRecord(Path recordPath, byte[] magic) throws IOException {
+        SqlitePosixCoordinationControlFileTransport.createAtomicallySecureRecord(recordPath, magic);
+      }
+
+      @Override
+      void requireExistingExactRecord(Path recordPath, byte[] magic) throws IOException {
+        SqlitePosixCoordinationControlFileTransport.requireExistingExactRecord(recordPath, magic);
+      }
+
+      @Override
+      String physicalObjectIdentity(Path existingArtifactPath) throws IOException {
+        return SqlitePosixCoordinationFileSecurity.physicalObjectIdentity(existingArtifactPath);
+      }
+    };
+
+    abstract @Nullable LockedControlFile openOrCreateAndTryExclusiveLock(
+        Path controlPath, byte[] magic, long position, long size) throws IOException;
+
+    abstract @Nullable LockedControlFile openExistingAndTryExclusiveLock(
+        Path controlPath, byte[] magic, long position, long size) throws IOException;
+
+    abstract void createAtomicallySecureRecord(Path recordPath, byte[] magic) throws IOException;
+
+    abstract void requireExistingExactRecord(Path recordPath, byte[] magic) throws IOException;
+
+    abstract String physicalObjectIdentity(Path existingArtifactPath) throws IOException;
   }
 
   /** Closes one opaque retained control resource through its owning transport. */

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import java.io.IOException;
 import java.net.URI;
@@ -25,6 +26,31 @@ import org.junit.jupiter.api.Test;
 
 /** Behavioural coverage for the POSIX owner-only coordination-file transport. */
 class SqlitePosixCoordinationControlFileTransportTest extends SqliteNativeBridgeTestSupport {
+  @Test
+  void platformTransportSelectionKeepsEachNativeBoundaryExplicit() {
+    assertEquals(
+        SqliteCoordinationControlFiles.CoordinationTransport.POSIX,
+        SqliteCoordinationControlFiles.transportFor(false));
+    assertEquals(
+        SqliteCoordinationControlFiles.CoordinationTransport.WINDOWS,
+        SqliteCoordinationControlFiles.transportFor(true));
+  }
+
+  @Test
+  void windowsTransportNeverFallsBackToPosixOnANonWindowsHost() throws Exception {
+    assumeFalse(SqliteCoordinationControlFiles.isWindows());
+    Path controlPath = tempDirectory.resolve("windows-boundary.control");
+    byte[] magic = SqliteCoordinationControlFiles.magic("test-control", "windows-boundary");
+    SqliteCoordinationControlFiles.CoordinationTransport windows =
+        SqliteCoordinationControlFiles.transportFor(true);
+
+    assertWindowsNativeBoundary(() -> windows.openOrCreateAndTryExclusiveLock(controlPath, magic, 4_096L, 1L));
+    assertWindowsNativeBoundary(() -> windows.openExistingAndTryExclusiveLock(controlPath, magic, 4_096L, 1L));
+    assertWindowsNativeBoundary(() -> windows.createAtomicallySecureRecord(controlPath, magic));
+    assertWindowsNativeBoundary(() -> windows.requireExistingExactRecord(controlPath, magic));
+    assertWindowsNativeBoundary(() -> windows.physicalObjectIdentity(controlPath));
+  }
+
   @Test
   void controlLockRetainsOneExactRecordAndExcludesAnotherProcessLocalClaim() throws Exception {
     Path controlPath = tempDirectory.resolve("coordination.control");
@@ -51,6 +77,18 @@ class SqlitePosixCoordinationControlFileTransportTest extends SqliteNativeBridge
             "control lock after first release")) {
       SqlitePosixCoordinationControlFileTransport.requireExistingExactRecord(controlPath, magic);
     }
+  }
+
+  private static void assertWindowsNativeBoundary(ThrowingIoOperation operation) {
+    IOException failure = assertThrows(IOException.class, operation::run);
+    assertTrue(
+        NullTestSupport.messageOf(failure).contains("could not load Windows native library"),
+        "The selected Windows transport must reach its Win32 boundary rather than substitute POSIX.");
+  }
+
+  @FunctionalInterface
+  private interface ThrowingIoOperation {
+    void run() throws IOException;
   }
 
   @Test
