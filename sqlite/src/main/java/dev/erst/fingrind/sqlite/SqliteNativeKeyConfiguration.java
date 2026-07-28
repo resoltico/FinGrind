@@ -74,7 +74,7 @@ final class SqliteNativeKeyConfiguration {
         });
   }
 
-  private static void suppressCloseFailure(
+  static void suppressCloseFailure(
       MemorySegment databaseHandle, SqliteNativeApi sqliteApi, Throwable primaryFailure) {
     if (databaseHandle.equals(MemorySegment.NULL)) {
       return;

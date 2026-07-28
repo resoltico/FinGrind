@@ -229,7 +229,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
   void configureOpenedDatabase_cleanupCloseSkipsNullHandle() throws Throwable {
     RuntimeException primaryFailure = new RuntimeException("primary failure");
 
-    invokeKeyConfigurationSuppressCloseFailure(
+    SqliteNativeKeyConfiguration.suppressCloseFailure(
         MemorySegment.NULL, SqliteNativeBootstrap.api(), primaryFailure);
 
     assertEquals(0, primaryFailure.getSuppressed().length);
@@ -244,7 +244,7 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                 new IllegalStateException("close boom"), int.class, MemorySegment.class));
     RuntimeException primaryFailure = new RuntimeException("primary failure");
 
-    invokeKeyConfigurationSuppressCloseFailure(
+    SqliteNativeKeyConfiguration.suppressCloseFailure(
         MemorySegment.ofAddress(1L), sqliteApi, primaryFailure);
 
     assertEquals(1, primaryFailure.getSuppressed().length);
@@ -584,7 +584,8 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                 closeCalls));
     RuntimeException primaryFailure = new RuntimeException("primary failure");
 
-    invokeConnectionSuppressCloseFailure(MemorySegment.ofAddress(1L), sqliteApi, primaryFailure);
+    SqliteNativeConnections.suppressCloseFailure(
+        MemorySegment.ofAddress(1L), sqliteApi, primaryFailure);
 
     assertEquals(1, closeCalls.get());
     assertEquals(0, primaryFailure.getSuppressed().length);
@@ -606,7 +607,8 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                 closeCalls));
     RuntimeException primaryFailure = new RuntimeException("primary failure");
 
-    invokeConnectionSuppressCloseFailure(MemorySegment.ofAddress(1L), sqliteApi, primaryFailure);
+    SqliteNativeConnections.suppressCloseFailure(
+        MemorySegment.ofAddress(1L), sqliteApi, primaryFailure);
 
     assertEquals(1, closeCalls.get());
     assertEquals(1, primaryFailure.getSuppressed().length);
@@ -722,34 +724,6 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
     SqliteBookFileSecurity.createNewOwnerOnlyBookFile(bookPath);
     java.nio.file.Files.writeString(bookPath, "book");
     return bookPath;
-  }
-
-  private static void invokeConnectionSuppressCloseFailure(
-      MemorySegment databaseHandle, SqliteNativeApi sqliteApi, Throwable primaryFailure)
-      throws Throwable {
-    MethodHandles.Lookup lookup =
-        MethodHandles.privateLookupIn(SqliteNativeConnections.class, MethodHandles.lookup());
-    lookup
-        .findStatic(
-            SqliteNativeConnections.class,
-            "suppressCloseFailure",
-            MethodType.methodType(
-                void.class, MemorySegment.class, SqliteNativeApi.class, Throwable.class))
-        .invokeExact(databaseHandle, sqliteApi, primaryFailure);
-  }
-
-  private static void invokeKeyConfigurationSuppressCloseFailure(
-      MemorySegment databaseHandle, SqliteNativeApi sqliteApi, Throwable primaryFailure)
-      throws Throwable {
-    MethodHandles.Lookup lookup =
-        MethodHandles.privateLookupIn(SqliteNativeKeyConfiguration.class, MethodHandles.lookup());
-    lookup
-        .findStatic(
-            SqliteNativeKeyConfiguration.class,
-            "suppressCloseFailure",
-            MethodType.methodType(
-                void.class, MemorySegment.class, SqliteNativeApi.class, Throwable.class))
-        .invokeExact(databaseHandle, sqliteApi, primaryFailure);
   }
 
   private static void ownerOnlyDirectoryAcl(

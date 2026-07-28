@@ -188,7 +188,7 @@ final class SqliteNativeConnections {
                 .invoke(filename, databasePointer, nativeOpenFlags, MemorySegment.NULL));
   }
 
-  private static void suppressCloseFailure(
+  static void suppressCloseFailure(
       MemorySegment databaseHandle, SqliteNativeApi sqliteApi, Throwable primaryFailure) {
     if (databaseHandle.equals(MemorySegment.NULL)) {
       return;
