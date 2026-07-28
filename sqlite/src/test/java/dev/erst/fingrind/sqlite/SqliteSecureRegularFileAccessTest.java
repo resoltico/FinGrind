@@ -9,7 +9,9 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 /** Behavioral tests for bounded nofollow reads and writes of FinGrind-owned recovery records. */
@@ -78,5 +80,51 @@ class SqliteSecureRegularFileAccessTest extends SqliteNativeBridgeTestSupport {
     assertTrue(
         java.util.Objects.requireNonNull(refusal.getMessage(), "non-regular refusal message")
             .contains("regular non-symlink"));
+  }
+
+  @Test
+  void nofollowProviderRefusalsAndNonemptyNewStagesFailClosed() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath readPath = fileSystem.path("\\evidence\\read.control");
+      readPath.exists = true;
+      readPath.regularFile = true;
+      UnsupportedOperationException readRefusal =
+          new UnsupportedOperationException("injected nofollow input refusal");
+      readPath.failNewByteChannelWithUnsupportedOperation(readRefusal);
+
+      IOException readFailure =
+          assertThrows(IOException.class, () -> SqliteSecureRegularFileAccess.openRead(readPath));
+      assertEquals(readRefusal, readFailure.getCause());
+
+      AclFixturePath writePath = fileSystem.path("\\evidence\\write.control");
+      writePath.exists = true;
+      writePath.regularFile = true;
+      UnsupportedOperationException writeRefusal =
+          new UnsupportedOperationException("injected nofollow channel refusal");
+      writePath.failNewFileChannelWithUnsupportedOperation(writeRefusal);
+
+      IOException writeFailure =
+          assertThrows(IOException.class, () -> SqliteSecureRegularFileAccess.openWrite(writePath));
+      assertEquals(writeRefusal, writeFailure.getCause());
+
+      AclFixturePath parent = fileSystem.path("\\stages");
+      parent.exists = true;
+      parent.regularFile = false;
+      parent.posixPermissions =
+          Set.of(
+              PosixFilePermission.OWNER_READ,
+              PosixFilePermission.OWNER_WRITE,
+              PosixFilePermission.OWNER_EXECUTE);
+      AclFixturePath nonemptyNewStage = fileSystem.path("\\stages\\new.stage");
+      nonemptyNewStage.reportSizeAs(1L);
+
+      IOException stageFailure =
+          assertThrows(
+              IOException.class,
+              () -> SqliteSecureRegularFileAccess.createNewEmptyFile(nonemptyNewStage));
+      assertTrue(
+          java.util.Objects.requireNonNull(stageFailure.getMessage(), "new-stage refusal message")
+              .contains("was not empty"));
+    }
   }
 }

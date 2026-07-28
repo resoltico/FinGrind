@@ -26,6 +26,7 @@ public class AclFixturePath extends AclFixtureAbstractPath {
   private @Nullable IOException sameFileFailure;
   private final Map<String, IOException> sameFileFailuresByOtherPath = new HashMap<>();
   private @Nullable UnsupportedOperationException newFileChannelUnsupported;
+  private @Nullable UnsupportedOperationException newByteChannelUnsupported;
   private @Nullable IOException tryLockFailure;
   private @Nullable IOException closeFailure;
   private @Nullable Long reportedSize;
@@ -134,6 +135,16 @@ public class AclFixturePath extends AclFixtureAbstractPath {
 
   @Nullable UnsupportedOperationException newFileChannelUnsupported() {
     return newFileChannelUnsupported;
+  }
+
+  AclFixturePath failNewByteChannelWithUnsupportedOperation(
+      UnsupportedOperationException exception) {
+    newByteChannelUnsupported = Objects.requireNonNull(exception, "exception");
+    return this;
+  }
+
+  @Nullable UnsupportedOperationException newByteChannelUnsupported() {
+    return newByteChannelUnsupported;
   }
 
   AclFixturePath failTryLockWith(IOException exception) {
