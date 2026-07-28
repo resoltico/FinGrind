@@ -39,7 +39,7 @@ public class AclFixturePath extends AclFixtureAbstractPath {
   private final Deque<PlannedIOException> writeFailures = new ArrayDeque<>();
   private int zeroProgressReadCalls;
   private int zeroProgressWriteCalls;
-  private @Nullable IOException newDirectoryStreamFailure;
+  private final Deque<PlannedIOException> newDirectoryStreamFailures = new ArrayDeque<>();
   private @Nullable IOException directoryStreamCloseFailure;
   private final Deque<IOException> moveFailures = new ArrayDeque<>();
 
@@ -282,12 +282,28 @@ public class AclFixturePath extends AclFixtureAbstractPath {
   }
 
   AclFixturePath failNewDirectoryStreamWith(IOException exception) {
-    newDirectoryStreamFailure = Objects.requireNonNull(exception, "exception");
+    return failNewDirectoryStreamAfterSuccessfulCallsWith(0, exception);
+  }
+
+  AclFixturePath failNewDirectoryStreamAfterSuccessfulCallsWith(
+      int successfulCallsBeforeFailure, IOException exception) {
+    newDirectoryStreamFailures.addLast(
+        new PlannedIOException(successfulCallsBeforeFailure, Objects.requireNonNull(exception, "exception")));
     return this;
   }
 
   @Nullable IOException newDirectoryStreamFailure() {
-    return newDirectoryStreamFailure;
+    PlannedIOException plannedFailure = newDirectoryStreamFailures.peekFirst();
+    if (plannedFailure == null) {
+      return null;
+    }
+    if (plannedFailure.successfulCallsBeforeFailure() > 0) {
+      newDirectoryStreamFailures.removeFirst();
+      newDirectoryStreamFailures.addFirst(plannedFailure.afterSuccessfulCall());
+      return null;
+    }
+    newDirectoryStreamFailures.removeFirst();
+    return plannedFailure.exception();
   }
 
   AclFixturePath failDirectoryStreamCloseWith(IOException exception) {
