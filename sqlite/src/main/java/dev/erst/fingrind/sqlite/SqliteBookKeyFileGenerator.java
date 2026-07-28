@@ -134,8 +134,18 @@ public final class SqliteBookKeyFileGenerator {
       SqliteBookKeyFileSecurity.requireExistingSecureParentDirectory(normalizedPath);
       SqliteGeneratedSecretTarget secretTarget =
           SqliteGeneratedSecretTarget.requireAbsent(normalizedPath);
-      try (SqlitePublicationCapabilityWitness.Set capabilityWitnesses =
-          capabilityWitnessAcquirer.acquire(normalizedPath)) {
+      SqlitePublicationCapabilityWitness.Set capabilityWitnesses;
+      try {
+        capabilityWitnesses = capabilityWitnessAcquirer.acquire(normalizedPath);
+      } catch (SqlitePublicationCapabilityWitness.AcquisitionFailure exception) {
+        throw exception;
+      } catch (IOException exception) {
+        throw new IllegalStateException(
+            "Failed to establish the retained FinGrind generated-secret publication witness: "
+                + SqliteMachinePaths.absoluteValue(normalizedPath),
+            exception);
+      }
+      try (capabilityWitnesses) {
         ArtifactPublicationRetention retention =
             retainedStageCreator.create(normalizedPath, encodedPassphrase);
         ContractDecision<Path> secureStage =

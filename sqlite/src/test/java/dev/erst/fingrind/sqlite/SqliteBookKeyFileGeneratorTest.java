@@ -315,6 +315,33 @@ class SqliteBookKeyFileGeneratorTest {
   }
 
   @Test
+  void generateDecision_preservesUnexpectedWitnessAcquisitionFailures() {
+    Path keyFile = tempDirectory.resolve("unexpected-witness-failure.book-key");
+    IOException witnessFailure = new IOException("injected unexpected witness failure");
+
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookKeyFileGenerator.generateDecision(
+                    keyFile,
+                    Files::createLink,
+                    ignored -> {},
+                    (ignoredFinalPath, ignoredEncodedPassphrase) -> {
+                      throw new AssertionError("An unavailable witness must precede staging.");
+                    },
+                    ignored -> {
+                      throw witnessFailure;
+                    }));
+
+    assertTrue(
+        java.util.Objects.requireNonNull(failure.getMessage(), "witness failure message")
+            .contains("publication witness"));
+    assertEquals(witnessFailure, failure.getCause());
+    assertFalse(Files.exists(keyFile));
+  }
+
+  @Test
   void generateDecision_retainsTheStageWhenTheFinalWitnessCheckDetectsReplacedEvidence()
       throws Exception {
     Path keyFile = tempDirectory.resolve("replaced-final-witness.book-key");
@@ -353,6 +380,36 @@ class SqliteBookKeyFileGeneratorTest {
       assertRetainedStage(failure, keyFile, false);
     } finally {
       stage.releaseRetained();
+    }
+  }
+
+  @Test
+  void generateDecision_retainsAnAdmittedStageWhosePublicationFactHasNoSharedParent()
+      throws Exception {
+    Path keyFile = tempDirectory.resolve("foreign-parent-fact.book-key");
+    Path foreignParent = Files.createDirectory(tempDirectory.resolve("foreign-stage-parent"));
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(foreignParent);
+    SqliteOwnedStagedArtifact foreignStage =
+        SqliteOwnedStagedArtifact.create(
+            foreignParent.resolve("foreign-stage-owner"), ".foreign-stage-", ".tmp");
+    try {
+      ContractFailure failure =
+          SqliteBookKeyFileGenerator.generateDecision(
+                  keyFile,
+                  Files::createLink,
+                  ignored -> {},
+                  (ignoredFinalPath, ignoredEncodedPassphrase) ->
+                      new ArtifactPublicationRetention(foreignStage.stagedPath()))
+              .requireRejected();
+
+      assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
+      assertEquals(
+          foreignStage.stagedPath(),
+          java.util.Objects.requireNonNull(failure.retainedStage(), "retained stage")
+              .retainedStagePath());
+      assertFalse(Files.exists(keyFile));
+    } finally {
+      foreignStage.releaseRetained();
     }
   }
 
