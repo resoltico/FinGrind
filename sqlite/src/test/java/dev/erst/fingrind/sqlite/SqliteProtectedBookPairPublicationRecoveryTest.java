@@ -1918,6 +1918,20 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
         SqlitePairPublicationEvidenceClassifier.classify(
             exact.bookTargetPath, exact.secretTargetPath, Map.of(exact.pairId, exact)));
 
+    SqliteProtectedBookPairPublicationRecord retainedWithOnlySecretVisible =
+        retainedRecord("classifier-retained-only-secret-visible");
+    SqliteProtectedBookPairPublicationEvidenceLifecycle.retainPrepublication(
+        retainedWithOnlySecretVisible, (ignoredStep, ignoredParent) -> {});
+    Files.createLink(
+        retainedWithOnlySecretVisible.secretTargetPath,
+        retainedWithOnlySecretVisible.secretStagePath);
+    assertInstanceOf(
+        SqlitePairPublicationEvidenceExact.class,
+        SqlitePairPublicationEvidenceClassifier.classify(
+            retainedWithOnlySecretVisible.bookTargetPath,
+            retainedWithOnlySecretVisible.secretTargetPath,
+            Map.of(retainedWithOnlySecretVisible.pairId, retainedWithOnlySecretVisible)));
+
     Files.writeString(
         exact.evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.RETAINED).getFirst(),
         "changed retained evidence");
@@ -1983,6 +1997,20 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
             claimOnly.bookTargetPath,
             claimOnly.secretTargetPath,
             Map.of(claimOnly.pairId, claimOnly)));
+
+    SqliteProtectedBookPairPublicationRecord claimOnlyWithVisibleSecret =
+        retainedRecord("classifier-claim-only-visible-secret");
+    deleteEvidence(claimOnlyWithVisibleSecret, SqliteProtectedBookPairPublicationEvidenceKind.INTENT);
+    deleteEvidence(
+        claimOnlyWithVisibleSecret, SqliteProtectedBookPairPublicationEvidenceKind.RECOVERY);
+    Files.createLink(
+        claimOnlyWithVisibleSecret.secretTargetPath, claimOnlyWithVisibleSecret.secretStagePath);
+    assertEquals(
+        SqlitePairPublicationEvidenceUnsafe.INSTANCE,
+        SqlitePairPublicationEvidenceClassifier.classify(
+            claimOnlyWithVisibleSecret.bookTargetPath,
+            claimOnlyWithVisibleSecret.secretTargetPath,
+            Map.of(claimOnlyWithVisibleSecret.pairId, claimOnlyWithVisibleSecret)));
 
     SqliteProtectedBookPairPublicationRecord completedRekey =
         rekeyRecord("classifier-completed-rekey");
