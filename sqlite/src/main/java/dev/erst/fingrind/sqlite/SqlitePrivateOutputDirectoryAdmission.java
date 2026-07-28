@@ -18,7 +18,8 @@ final class SqlitePrivateOutputDirectoryAdmission {
           checkedRequestedPath,
           checkedParentDirectory,
           "The FinGrind protected-book path requires a private, non-mutable parent ancestry: ",
-          violation);
+          violation,
+          false);
     }
   }
 
@@ -33,7 +34,8 @@ final class SqlitePrivateOutputDirectoryAdmission {
           checkedRequestedPath,
           checkedPlannedParentDirectory,
           "The FinGrind protected-book path requires a private, non-mutable parent ancestry before directory creation: ",
-          violation);
+          violation,
+          true);
     }
   }
 
@@ -49,19 +51,29 @@ final class SqlitePrivateOutputDirectoryAdmission {
       Path requestedPath,
       Path parentDirectory,
       String messagePrefix,
-      PrivateOutputDirectory.Violation violation) {
+      PrivateOutputDirectory.Violation violation,
+      boolean directoryCreationWasAttempted) {
     SqliteCallerPathFailure failure =
-        switch (violation.kind()) {
-          case PATH_COLLISION -> SqliteCallerPathFailure.PARENT_PATH_COLLISION;
-          case OWNER_ONLY_REQUIRED ->
-              violation.getCause() instanceof UnsupportedOperationException
-                  ? SqliteCallerPathFailure.ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED
-                  : SqliteCallerPathFailure.PARENT_OWNER_ONLY_REQUIRED;
-        };
+        failureFor(
+            violation.kind(), violation.getCause(), directoryCreationWasAttempted);
     return new SqliteCallerPathContractException(
         requestedPath,
         failure,
         messagePrefix + SqliteMachinePaths.absoluteValue(parentDirectory),
         violation);
+  }
+
+  static SqliteCallerPathFailure failureFor(
+      PrivateOutputDirectory.Violation.Kind violationKind,
+      @org.jspecify.annotations.Nullable Throwable violationCause,
+      boolean directoryCreationWasAttempted) {
+    return switch (violationKind) {
+      case PATH_COLLISION -> SqliteCallerPathFailure.PARENT_PATH_COLLISION;
+      case OWNER_ONLY_REQUIRED ->
+          directoryCreationWasAttempted
+                  && violationCause instanceof UnsupportedOperationException
+              ? SqliteCallerPathFailure.ATOMIC_OWNER_ONLY_PROTOCOL_FILE_CREATION_UNSUPPORTED
+              : SqliteCallerPathFailure.PARENT_OWNER_ONLY_REQUIRED;
+    };
   }
 }
