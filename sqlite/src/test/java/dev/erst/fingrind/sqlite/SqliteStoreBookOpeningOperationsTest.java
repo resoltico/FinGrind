@@ -179,6 +179,38 @@ class SqliteStoreBookOpeningOperationsTest extends SqlitePostingFactStoreTestSup
   }
 
   @Test
+  void openAttestedBook_rethrowsNonNativeCommitFailureAfterItsProvedRollback() {
+    Path bookPath = tempDirectory.resolve("commit-runtime-rollback-proved-blank.sqlite");
+    Instant initializedAt = Instant.parse("2026-07-26T12:07:00Z");
+    var bookIdentity = SqlitePostingFactFixtureSupport.bookIdentity();
+    AttestationEvidence genesis = SqliteAttestationTestSupport.genesis(bookIdentity, initializedAt);
+    IllegalStateException commitFailure =
+        new IllegalStateException("simulated pre-durability runtime commit failure");
+
+    try (SqlitePostingFactStore store = openStore(bookAccess(bookPath))) {
+      SqliteStoreBookOpeningOperations operations =
+          new SqliteStoreBookOpeningOperations(
+              store.storeContext(),
+              store.storeLifecycle(),
+              (ignoredDatabase, ignoredTransactionOwnership) -> {
+                throw commitFailure;
+              });
+
+      assertSame(
+          commitFailure,
+          assertThrows(
+              IllegalStateException.class,
+              () -> operations.openAttestedBook(initializedAt, bookIdentity, List.of(), genesis)));
+
+      BookOpeningOutcome.Opened retried =
+          assertInstanceOf(
+              BookOpeningOutcome.Opened.class,
+              store.openAttestedBook(initializedAt, bookIdentity, List.of(), genesis));
+      assertEquals(initializedAt, retried.initializedAt());
+    }
+  }
+
+  @Test
   void openAttestedBook_postCommitAcknowledgementFailureRetainsTheInitializedExclusiveBook()
       throws Exception {
     Path bookPath = tempDirectory.resolve("commit-acknowledgement-loss.sqlite");
