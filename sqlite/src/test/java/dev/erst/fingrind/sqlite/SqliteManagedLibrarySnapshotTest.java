@@ -365,6 +365,31 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
   }
 
   @Test
+  void verifiedSnapshot_reportsAnUnreadableSnapshotAtTheImmediatePreLoadDigestCheck()
+      throws Exception {
+    Path libraryPath = writeLibrary("preload-missing.dylib", "trusted managed sqlite");
+    writeSiblingChecksum(libraryPath);
+    SqliteVerifiedLibrarySnapshot snapshot =
+        SqliteVerifiedLibrarySnapshot.copyOf(
+            new SqliteLibraryTarget(
+                "managed-only",
+                SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                libraryPath.toString()),
+            libraryPath,
+            SqliteManagedLibraryIdentity.checksumPath(libraryPath));
+    Files.delete(snapshot.snapshotLibraryPath());
+
+    ManagedSqliteRuntimeUnavailableException exception =
+        assertThrows(
+            ManagedSqliteRuntimeUnavailableException.class,
+            snapshot::requireCurrentBytesMatchVerifiedDigestBeforePathLoad);
+
+    assertTrue(
+        Objects.requireNonNull(exception.getMessage())
+            .contains("could not revalidate the retained managed SQLite snapshot"));
+  }
+
+  @Test
   void verifiedSnapshot_copyOfWithInjectedSnapshotDirectory_retainsIncompleteAttempt() {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
       AclFixturePath sourceLibraryPath = fileSystem.path("\\source\\sqlite3.dll");

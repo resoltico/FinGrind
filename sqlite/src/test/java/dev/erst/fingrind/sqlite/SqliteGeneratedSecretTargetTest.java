@@ -643,6 +643,57 @@ class SqliteGeneratedSecretTargetTest {
   }
 
   @Test
+  void retainedWitnessRejectsAnAtomicReplacementWhoseCompletionDisappearsBeforeConfirmation()
+      throws Exception {
+    Path targetPath = tempDirectory.resolve("missing-atomic-completion.sqlite");
+
+    SqlitePublicationCapabilityWitness.AcquisitionFailure failure =
+        assertThrows(
+            SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+            () ->
+                SqlitePublicationCapabilityWitness.acquire(
+                    java.util.List.of(
+                        SqlitePublicationCapabilityWitness.Requirement.atomicReplace(targetPath)),
+                    Files::createLink,
+                    (replacement, completion) -> {
+                      SqliteProtectedBookPublicationSupport.moveReplacing(replacement, completion);
+                      Files.delete(completion);
+                    }));
+
+    assertTrue(
+        Objects.requireNonNull(
+                Objects.requireNonNull(failure.getCause(), "atomic completion failure cause")
+                    .getMessage(),
+                "atomic completion failure message")
+            .contains("did not retain the replacement state"));
+  }
+
+  @Test
+  void retainedWitnessRejectsAnAtomicCompletionThatDisappearsAfterAcquisition() throws Exception {
+    Path targetPath = tempDirectory.resolve("deleted-atomic-completion.sqlite");
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses =
+        SqlitePublicationCapabilityWitness.acquire(
+            java.util.List.of(
+                SqlitePublicationCapabilityWitness.Requirement.atomicReplace(targetPath)),
+            Files::createLink,
+            SqliteProtectedBookPublicationSupport::moveReplacing)) {
+      Files.delete(publicationCapabilityState(".complete"));
+
+      IOException failure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  witnesses.requireCurrent(
+                      targetPath, SqlitePublicationCapabilityWitness.PrimitiveKind.ATOMIC_REPLACE));
+
+      assertTrue(
+          Objects.requireNonNull(failure.getMessage(), "witness failure message")
+              .contains("no longer complete"));
+    }
+  }
+
+  @Test
   void retainedWitnessRefusesPrimitivesWhoseProbeDoesNotEstablishTheRequiredIdentity()
       throws Exception {
     Path noReplaceTarget = tempDirectory.resolve("non-atomic-no-replace.key");
