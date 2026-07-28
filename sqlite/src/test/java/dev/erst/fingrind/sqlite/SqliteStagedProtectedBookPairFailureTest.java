@@ -1140,11 +1140,10 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
             SqliteRestoredBookPairPublication.defaultOperators(),
             null,
             null,
-            (step, parentDirectory) -> {
-              if (step
-                      == SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep
-                          .RECOVERY_RECORD
-                  && changedAfterRecoveryEvidence.compareAndSet(false, true)) {
+            (ignoredStep, ignoredParent) -> {},
+            recordPath -> {
+              SqliteSecureRegularFileAccess.forceFile(recordPath);
+              if (changedAfterRecoveryEvidence.compareAndSet(false, true)) {
                 Files.writeString(finalBookPath, "selected replacement by another writer");
               }
             })) {
@@ -1156,6 +1155,89 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
     assertTrue(changedAfterRecoveryEvidence.get());
     assertEquals("selected replacement by another writer", Files.readString(finalBookPath));
     assertFalse(Files.exists(finalKeyPath));
+    assertTrue(Files.exists(stagedBookPath));
+    assertTrue(Files.exists(stagedKeyPath));
+  }
+
+  @Test
+  void stagedRestoredBookPair_retainsEvidenceWhenUnexpectedFailureFollowsSecretPublication()
+      throws Exception {
+    Path stagedBookPath = writeArtifact("restore-post-boundary-runtime/staged.sqlite", "book");
+    Path stagedKeyPath = writeArtifact("restore-post-boundary-runtime/staged.key", "key");
+    Path finalBookPath =
+        writeArtifact("restore-post-boundary-runtime/book.sqlite", "selected original book");
+    Path finalKeyPath = tempDirectory.resolve("restore-post-boundary-runtime").resolve("book.key");
+
+    try (SqliteStagedRestoredBookPair pair =
+        SqliteStagedRestoredBookPairFactory.create(
+            new SqliteStagedProtectedBookPairArtifacts(
+                SqliteOwnedStagedArtifact.recordExisting(finalBookPath, stagedBookPath),
+                finalBookPath,
+                SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath),
+                finalKeyPath),
+            RestoredBookTargetPolicy.REPLACE_SELECTED,
+            TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8),
+            VERIFICATION_SUPPORT,
+            SqliteRestoredBookPairPublication.defaultOperators(),
+            null,
+            null,
+            (step, ignoredParent) -> {
+              if (step
+                  == SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep
+                      .GENERATED_SECRET_PUBLICATION) {
+                throw new IllegalStateException("simulated post-publication runtime failure");
+              }
+            })) {
+      assertInstanceOf(
+          ProtectedBookPairPublicationFailureOutcome.CompletionUncertain.class,
+          pair.commit(rekeyBinding(finalBookPath, finalBookPath.resolveSibling("source.key"))));
+    }
+
+    assertTrue(Files.exists(finalKeyPath));
+    assertTrue(Files.exists(stagedBookPath));
+    assertTrue(Files.exists(stagedKeyPath));
+  }
+
+  @Test
+  void stagedRestoredBookPair_acceptsASelectedTargetAlreadyConvergedToTheStagedBook()
+      throws Exception {
+    Path stagedBookPath = writeArtifact("restore-selected-target-converged/staged.sqlite", "book");
+    Path stagedKeyPath = writeArtifact("restore-selected-target-converged/staged.key", "key");
+    Path finalBookPath =
+        writeArtifact("restore-selected-target-converged/book.sqlite", "selected original book");
+    Path finalKeyPath =
+        tempDirectory.resolve("restore-selected-target-converged").resolve("book.key");
+    AtomicBoolean convergedAfterRecoveryEvidence = new AtomicBoolean();
+
+    try (SqliteStagedRestoredBookPair pair =
+        SqliteStagedRestoredBookPairFactory.create(
+            new SqliteStagedProtectedBookPairArtifacts(
+                SqliteOwnedStagedArtifact.recordExisting(finalBookPath, stagedBookPath),
+                finalBookPath,
+                SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath),
+                finalKeyPath),
+            RestoredBookTargetPolicy.REPLACE_SELECTED,
+            TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8),
+            VERIFICATION_SUPPORT,
+            SqliteRestoredBookPairPublication.defaultOperators(),
+            null,
+            null,
+            (step, ignoredParent) -> {
+              if (step
+                      == SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep
+                          .RECOVERY_RECORD
+                  && convergedAfterRecoveryEvidence.compareAndSet(false, true)) {
+                Files.writeString(finalBookPath, "book");
+              }
+            })) {
+      assertInstanceOf(
+          dev.erst.fingrind.executor.spi.StagedPairPublicationCommitOutcome.Published.class,
+          pair.commit(rekeyBinding(finalBookPath, finalBookPath.resolveSibling("source.key"))));
+    }
+
+    assertTrue(convergedAfterRecoveryEvidence.get());
+    assertEquals("book", Files.readString(finalBookPath));
+    assertTrue(Files.exists(finalKeyPath));
     assertTrue(Files.exists(stagedBookPath));
     assertTrue(Files.exists(stagedKeyPath));
   }
