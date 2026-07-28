@@ -405,6 +405,11 @@ class SqliteBookFileSecurityTest {
       List<AclEntry> originalAcl =
           List.of(
               AclEntry.newBuilder()
+                  .setType(AclEntryType.DENY)
+                  .setPrincipal(fileSystem.owner)
+                  .setPermissions(AclEntryPermission.READ_DATA)
+                  .build(),
+              AclEntry.newBuilder()
                   .setType(AclEntryType.ALLOW)
                   .setPrincipal(fileSystem.owner)
                   .setPermissions(
@@ -423,8 +428,62 @@ class SqliteBookFileSecurityTest {
 
       assertDoesNotThrow(
           () -> SqliteBookFileSecurity.requireSecureExistingBookFile(bookPath, true));
+      assertDoesNotThrow(
+          () -> SqliteBookFileSecurity.requireSecureExistingBookFile(bookPath, false));
 
       assertEquals(originalAcl, Objects.requireNonNull(bookPath.aclView).getAcl());
+    }
+  }
+
+  @Test
+  void requireSecureExistingBookFile_rejectsAclReadAccessForANonOwner() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      AclFixturePath bookPath = fileSystem.path("\\books\\shared.sqlite");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      Objects.requireNonNull(parentPath.aclView)
+          .setAcl(
+              List.of(
+                  AclEntry.newBuilder()
+                      .setType(AclEntryType.ALLOW)
+                      .setPrincipal(fileSystem.owner)
+                      .setPermissions(
+                          AclEntryPermission.LIST_DIRECTORY,
+                          AclEntryPermission.ADD_FILE,
+                          AclEntryPermission.EXECUTE)
+                      .build()));
+      bookPath.exists = true;
+      bookPath.regularFile = true;
+      Objects.requireNonNull(bookPath.aclView)
+          .setAcl(
+              List.of(
+                  AclEntry.newBuilder()
+                      .setType(AclEntryType.ALLOW)
+                      .setPrincipal(fileSystem.owner)
+                      .setPermissions(
+                          AclEntryPermission.READ_DATA,
+                          AclEntryPermission.WRITE_DATA,
+                          AclEntryPermission.APPEND_DATA,
+                          AclEntryPermission.READ_NAMED_ATTRS,
+                          AclEntryPermission.WRITE_NAMED_ATTRS,
+                          AclEntryPermission.READ_ATTRIBUTES,
+                          AclEntryPermission.WRITE_ATTRIBUTES,
+                          AclEntryPermission.DELETE,
+                          AclEntryPermission.READ_ACL,
+                          AclEntryPermission.SYNCHRONIZE)
+                      .build(),
+                  AclEntry.newBuilder()
+                      .setType(AclEntryType.ALLOW)
+                      .setPrincipal(fileSystem.group)
+                      .setPermissions(AclEntryPermission.READ_DATA)
+                      .build()));
+
+      assertPathFailure(
+          bookPath,
+          SqliteCallerPathFailure.TARGET_OWNER_ONLY_REQUIRED,
+          "must already use owner-only permissions",
+          () -> SqliteBookFileSecurity.requireSecureExistingBookFile(bookPath, false));
     }
   }
 
