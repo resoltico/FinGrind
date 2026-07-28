@@ -315,6 +315,48 @@ class SqliteBookKeyFileGeneratorTest {
   }
 
   @Test
+  void generateDecision_retainsTheStageWhenTheFinalWitnessCheckDetectsReplacedEvidence()
+      throws Exception {
+    Path keyFile = tempDirectory.resolve("replaced-final-witness.book-key");
+    SqliteOwnedStagedArtifact stage =
+        SqliteOwnedStagedArtifact.create(keyFile, ".injected-final-witness-", ".tmp");
+    try {
+      ContractFailure failure =
+          SqliteBookKeyFileGenerator.generateDecision(
+                  keyFile,
+                  Files::createLink,
+                  ignored -> {},
+                  (ignoredFinalPath, ignoredEncodedPassphrase) ->
+                      new ArtifactPublicationRetention(stage.stagedPath()),
+                  target -> {
+                    SqlitePublicationCapabilityWitness.Set witnesses =
+                        SqlitePublicationCapabilityWitness.acquire(
+                            java.util.List.of(
+                                SqlitePublicationCapabilityWitness.Requirement.noReplace(target)),
+                            Files::createLink,
+                            SqliteProtectedBookPublicationSupport::moveReplacing);
+                    try {
+                      replacePublicationCapabilityCompletion();
+                      return witnesses;
+                    } catch (IOException | RuntimeException failureDuringReplacement) {
+                      try {
+                        witnesses.close();
+                      } catch (RuntimeException closeFailure) {
+                        failureDuringReplacement.addSuppressed(closeFailure);
+                      }
+                      throw failureDuringReplacement;
+                    }
+                  })
+              .requireRejected();
+
+      assertEquals(ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE, failure.descriptor());
+      assertRetainedStage(failure, keyFile, false);
+    } finally {
+      stage.releaseRetained();
+    }
+  }
+
+  @Test
   void generateDecisionRetainsAndRejectsAStageThatNoLongerProvesOwnerOnlySecurity()
       throws Exception {
     assumeTrue(supportsPosix(tempDirectory), "the host filesystem must expose POSIX permissions");
@@ -593,5 +635,25 @@ class SqliteBookKeyFileGeneratorTest {
 
   private static boolean supportsPosix(Path path) {
     return path.getFileSystem().supportedFileAttributeViews().contains("posix");
+  }
+
+  private void replacePublicationCapabilityCompletion() throws IOException {
+    Path completion;
+    try (Stream<Path> entries = Files.list(tempDirectory)) {
+      completion =
+          entries
+              .filter(
+                  candidate -> {
+                    String name = candidate.getFileName().toString();
+                    return name.startsWith(".fingrind-publication-capability-v2-")
+                        && name.endsWith(".complete");
+                  })
+              .findFirst()
+              .orElseThrow(
+                  () -> new AssertionError("Missing publication capability completion evidence."));
+    }
+    byte[] record = Files.readAllBytes(completion);
+    Files.delete(completion);
+    SqliteCoordinationControlFiles.createAtomicallySecureRecord(completion, record);
   }
 }
