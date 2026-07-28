@@ -249,6 +249,26 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
   }
 
   @Test
+  void backupArtifactVerifier_preservesUnexpectedKeyLoaderFailuresAsKeySourceEvidence()
+      throws Exception {
+    Path keyPath = writeArtifact("unexpected-key-loader.key", "not reached");
+    IllegalStateException loaderFailure = new IllegalStateException("injected key loader failure");
+
+    RuntimeException failure =
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                SqliteBackupArtifactVerifier.loadBackupKey(
+                    keyPath,
+                    ignored -> {
+                      throw loaderFailure;
+                    }));
+
+    assertEquals("Backup artifact key cannot be opened.", failure.getMessage());
+    assertSame(loaderFailure, failure.getCause());
+  }
+
+  @Test
   void backupArtifactVerification_rejectsADirectorySourceBeforeAnySnapshotIsOpened()
       throws Exception {
     Path artifactDirectory = Files.createDirectory(tempDirectory.resolve("backup-directory"));

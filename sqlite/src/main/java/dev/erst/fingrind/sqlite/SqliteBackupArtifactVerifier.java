@@ -118,8 +118,18 @@ final class SqliteBackupArtifactVerifier {
 
   /** Loads only the separately selected backup-key source under its own failure classification. */
   private static SqliteBookPassphrase loadBackupKey(Path backupKeyPath) {
+    return loadBackupKey(backupKeyPath, SqliteBookKeyFile::loadDecision);
+  }
+
+  /**
+   * Loads one selected backup key while preserving an unexpected loader failure as key-source
+   * evidence rather than conflating it with a backup-artifact failure.
+   */
+  static SqliteBookPassphrase loadBackupKey(Path backupKeyPath, BackupKeyLoader backupKeyLoader) {
+    Objects.requireNonNull(backupKeyLoader, "backupKeyLoader");
     try {
-      return SqliteBookKeyFile.loadDecision(backupKeyPath)
+      return backupKeyLoader
+          .load(backupKeyPath)
           .fold(Optional::of, ignored -> Optional.<SqliteBookPassphrase>empty())
           .orElseThrow(
               () -> new BackupKeyVerificationException("Backup artifact key cannot be opened."));
@@ -128,6 +138,13 @@ final class SqliteBackupArtifactVerifier {
     } catch (RuntimeException exception) {
       throw new BackupKeyVerificationException("Backup artifact key cannot be opened.", exception);
     }
+  }
+
+  /** Resolves one separately selected backup-key path to its accepted passphrase decision. */
+  @FunctionalInterface
+  interface BackupKeyLoader {
+    /** Loads the selected key path without changing its role-specific failure classification. */
+    dev.erst.fingrind.contract.runtime.ContractDecision<SqliteBookPassphrase> load(Path keyPath);
   }
 
   /** Marks a selected backup-key failure without conflating it with an artifact failure. */
