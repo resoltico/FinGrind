@@ -284,6 +284,38 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
   }
 
   @Test
+  void recoverySupport_blocksChangedStagesAndChangedReplaceTargetsAndRequiresBothOwnedStages()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord changedBookStage =
+        retainedRecord("recovery-support-changed-book-stage");
+    Files.writeString(changedBookStage.bookStagePath, "changed retained book stage");
+    assertEquals(
+        SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.BLOCKED,
+        SqliteProtectedBookPairPublicationRecoverySupport.bookPlan(changedBookStage));
+
+    SqliteProtectedBookPairPublicationRecord changedReplaceTarget =
+        rekeyRecord("recovery-support-changed-replace-target");
+    assertEquals(
+        SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+        SqliteProtectedBookPairPublicationRecoverySupport.bookPlan(changedReplaceTarget));
+    Files.writeString(changedReplaceTarget.bookTargetPath, "changed selected live book");
+    assertEquals(
+        SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.BLOCKED,
+        SqliteProtectedBookPairPublicationRecoverySupport.bookPlan(changedReplaceTarget));
+
+    SqliteProtectedBookPairPublicationRecord onlyBookStageOwned =
+        pairRecord("recovery-support-only-book-stage-owned", false);
+    SqliteOwnedStagedArtifact bookStage =
+        SqliteOwnedStagedArtifact.recordExisting(
+            onlyBookStageOwned.bookTargetPath, onlyBookStageOwned.bookStagePath);
+    try {
+      assertFalse(SqliteProtectedBookPairPublicationRecoverySupport.hasOwnedStages(onlyBookStageOwned));
+    } finally {
+      bookStage.releaseRetained();
+    }
+  }
+
+  @Test
   void retainedStagesPublishBothAbsentMembersOnlyAfterRecoveryEvidenceIsForced() throws Exception {
     SqliteProtectedBookPairPublicationRecord record = retainedRecord("member-publication");
     SqlitePairPublicationMemberReconciler reconciler =
