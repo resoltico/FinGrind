@@ -1065,6 +1065,22 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
         Objects.requireNonNull(changedFinalMember.getMessage(), "changed-member message")
             .contains("final members changed"));
 
+    SqliteProtectedBookPairPublicationRecord changedSecret = retainedRecord("completion-secret-change");
+    Files.createLink(changedSecret.bookTargetPath, changedSecret.bookStagePath);
+    Files.createLink(changedSecret.secretTargetPath, changedSecret.secretStagePath);
+    Files.delete(changedSecret.secretTargetPath);
+    Files.writeString(changedSecret.secretTargetPath, "changed final secret");
+
+    IOException changedFinalSecret =
+        assertThrows(
+            IOException.class,
+            () ->
+                SqliteProtectedBookPairPublicationEvidenceLifecycle.confirmCompletedPublication(
+                    changedSecret, (ignoredStep, ignoredParent) -> {}));
+    assertTrue(
+        Objects.requireNonNull(changedFinalSecret.getMessage(), "changed-secret message")
+            .contains("final members changed"));
+
     String oversizedSegment =
         "x".repeat(SqliteSecureRegularFileAccess.MAXIMUM_RECOVERY_METADATA_BYTES);
     SqliteProtectedBookPairPublicationRecord oversizedRecord =
