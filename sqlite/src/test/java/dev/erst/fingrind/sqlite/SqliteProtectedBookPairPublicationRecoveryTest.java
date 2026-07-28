@@ -146,6 +146,33 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
   }
 
   @Test
+  void rekeyRecoveryRefusesAnAbsentTargetPolicyBeforeItCanReclassifyTheLiveBook()
+      throws Exception {
+    Path liveBook = writeArtifact("invalid-rekey-policy/live.sqlite", "selected live book");
+    Path occupiedSecret = writeArtifact("invalid-rekey-policy/new.key", "occupied generated key");
+    ProtectedBookPairPublicationRecoveryRequest.Rekey request =
+        new ProtectedBookPairPublicationRecoveryRequest.Rekey(
+            rekeyBinding(liveBook, liveBook.resolveSibling("live.key")).sourceIdentity());
+
+    IllegalStateException exception =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                recovery()
+                    .reconcile(
+                        liveBook,
+                        occupiedSecret,
+                        RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                        request,
+                        ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+                        ProtectedBookMaintenanceArtifactRole.NEW_BOOK_KEY_TARGET));
+
+    assertEquals(
+        "A rekey pair publication must replace its selected live book target.",
+        exception.getMessage());
+  }
+
+  @Test
   void unboundGeneratedSecretIsRefusedUnlessItsStageEvidenceRequiresFailClosedReview()
       throws Exception {
     Path occupiedSecret = writeArtifact("secret/occupied.key", "caller-owned key artifact");
