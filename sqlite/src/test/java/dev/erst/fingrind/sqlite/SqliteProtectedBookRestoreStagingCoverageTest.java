@@ -243,6 +243,44 @@ class SqliteProtectedBookRestoreStagingCoverageTest extends SqliteArtifactPublic
   }
 
   @Test
+  void preparedRestoreStagingRetainsItsAllocatedBookStageWhenTheSourceCannotBeRead()
+      throws Exception {
+    SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+    Path missingSourceBookPath =
+        tempDirectory.resolve("prepared-copy-failure").resolve("missing-source.sqlite");
+    Path restoredBookPath =
+        tempDirectory.resolve("prepared-copy-failure").resolve("restored.sqlite");
+    Path restoredKeyPath = tempDirectory.resolve("prepared-copy-failure").resolve("restored.key");
+    Path restoredParent =
+        java.util.Objects.requireNonNull(restoredBookPath.getParent(), "restoredBookPath parent");
+    Files.createDirectories(restoredParent);
+    SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(restoredParent);
+
+    try (ProtectedBookMaintenanceStore.PreparedPairPublication preparedPublication =
+            prepareRestoredBookPair(
+                store, restoredBookPath, restoredKeyPath, RestoredBookTargetPolicy.REQUIRE_ABSENT);
+        SqliteBookPassphrase sourcePassphrase =
+            SqliteBookPassphrase.fromUtf8Bytes(
+                "prepared restore copy failure", TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8))) {
+      MaintenanceFailure failure =
+          failedValue(
+              SqliteProtectedBookRestoreStaging.stageResolvedPair(
+                  missingSourceBookPath,
+                  fixturePreparedPublication(preparedPublication),
+                  sourcePassphrase,
+                  VERIFICATION_SUPPORT));
+
+      assertEquals(ContractErrors.Descriptor.STORAGE_RUNTIME_FAILURE, failure.descriptor());
+      assertEquals(
+          SqliteProtectedBookStagingCheckpoint.RESTORE_COPY.failureMessage(), failure.message());
+    }
+
+    assertFalse(Files.exists(restoredBookPath));
+    assertFalse(Files.exists(restoredKeyPath));
+    assertTrue(countMatchingChildren(restoredParent, ".restore-") > 0L);
+  }
+
+  @Test
   void stagedRestoredBookPair_verifiesPublishesAndReencryptsOverAnExistingBook() throws Exception {
     SqliteProtectedBookMaintenanceStore store = maintenanceStore();
     Path sourceBookPath = tempDirectory.resolve("restore-success").resolve("source.sqlite");
