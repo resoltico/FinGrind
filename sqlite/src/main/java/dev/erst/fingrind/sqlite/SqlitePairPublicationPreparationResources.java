@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.HeldLease;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
@@ -56,15 +57,15 @@ final class SqlitePairPublicationPreparationResources implements AutoCloseable {
         takeCapabilityWitnesses();
     @Nullable SqliteOwnedDestinationReservation closingSecretReservation = takeSecretReservation();
     @Nullable SqliteOwnedDestinationReservation closingBookReservation = takeBookReservation();
-    // Resources close in reverse declaration order: book, secret, book lease, then secret lease.
-    try (HeldLease ignoredSecretLease = closingSecretTargetLease;
-        HeldLease ignoredBookLease = closingBookTargetLease;
-        SqlitePublicationCapabilityWitness.Set ignoredCapabilityWitnesses =
-            closingCapabilityWitnesses;
-        SqliteOwnedDestinationReservation ignoredSecretReservation = closingSecretReservation;
-        SqliteOwnedDestinationReservation ignoredBookReservation = closingBookReservation) {
-      // Closing releases only resources that were not transferred to the prepared publication.
-    }
+    // Resources close in reverse declaration order: book, secret, witnesses, book lease, secret
+    // lease. Only resources not transferred to the prepared publication are released here.
+    SqliteRuntimeCloseSequence.closeAll(
+        List.of(
+            () -> closeReservation(closingBookReservation),
+            () -> closeReservation(closingSecretReservation),
+            () -> closeWitnesses(closingCapabilityWitnesses),
+            () -> closeLease(closingBookTargetLease),
+            () -> closeLease(closingSecretTargetLease)));
   }
 
   private @Nullable HeldLease takeBookTargetLease() {
@@ -95,6 +96,24 @@ final class SqlitePairPublicationPreparationResources implements AutoCloseable {
     SqliteOwnedDestinationReservation reservation = secretReservation;
     secretReservation = null;
     return reservation;
+  }
+
+  private static void closeReservation(@Nullable SqliteOwnedDestinationReservation reservation) {
+    if (reservation != null) {
+      reservation.close();
+    }
+  }
+
+  private static void closeWitnesses(SqlitePublicationCapabilityWitness.@Nullable Set witnesses) {
+    if (witnesses != null) {
+      witnesses.close();
+    }
+  }
+
+  private static void closeLease(@Nullable HeldLease lease) {
+    if (lease != null) {
+      lease.close();
+    }
   }
 
   private static <T> T requireUnsetAndNonNull(@Nullable T existing, T value, String name) {
