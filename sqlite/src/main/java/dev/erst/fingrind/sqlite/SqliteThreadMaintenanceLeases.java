@@ -109,7 +109,7 @@ final class SqliteThreadMaintenanceLeases {
       }
       String artifactKey = artifactKey(artifactPath);
       Integer artifactReferenceCount = artifactReferences.get(artifactKey);
-      if (artifactReferenceCount == null || artifactReferenceCount <= 0) {
+      if (artifactReferenceCount == null) {
         throw new IllegalStateException(
             "The FinGrind maintenance artifact lease ownership changed unexpectedly.");
       }
