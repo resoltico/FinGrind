@@ -662,6 +662,29 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
   }
 
   @Test
+  void workflowRejectsIncompleteEvidenceWhenTheRequestedTargetPolicyChanged() throws Exception {
+    SqliteProtectedBookPairPublicationRecord record =
+        retainedRecord("workflow-incomplete-policy-mismatch");
+
+    ProtectedBookMaintenanceRejectionException refusal =
+        assertThrows(
+            ProtectedBookMaintenanceRejectionException.class,
+            () ->
+                recoveryWorkflow(true)
+                    .recover(
+                        record,
+                        RestoredBookTargetPolicy.REPLACE_SELECTED,
+                        backupRequest(record.bookTargetPath),
+                        ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                        ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                        true));
+
+    assertInstanceOf(ProtectedBookMaintenanceRejection.RecoveryPending.class, refusal.rejection());
+    assertFalse(Files.exists(record.bookTargetPath));
+    assertFalse(Files.exists(record.secretTargetPath));
+  }
+
+  @Test
   void workflowRepairsMissingMirroredEvidenceOnlyWhileBothExactTargetLeasesAreHeld()
       throws Exception {
     SqliteProtectedBookPairPublicationRecord record = retainedRecord("workflow-evidence-repair");
@@ -693,6 +716,40 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
             record, SqliteProtectedBookPairPublicationEvidenceKind.INTENT));
     assertTrue(Files.isSameFile(record.bookTargetPath, record.bookStagePath));
     assertTrue(Files.isSameFile(record.secretTargetPath, record.secretStagePath));
+  }
+
+  @Test
+  void workflowBlocksIncompleteEvidenceWhenItsDurabilityRepairCannotBeConfirmed()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord record =
+        retainedRecord("workflow-evidence-repair-force-failure");
+    Files.delete(record.evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.INTENT).getFirst());
+
+    SqliteManagedTargetLeasesHeld leases =
+        assertInstanceOf(
+            SqliteManagedTargetLeasesHeld.class,
+            SqliteBookMaintenanceLease.acquireManagedTargetPair(
+                record.bookTargetPath, record.secretTargetPath));
+    try (SqliteHeldLease ignoredBookLease = leases.bookTargetLease();
+        SqliteHeldLease ignoredSecretLease = leases.secretTargetLease()) {
+      assertInstanceOf(
+          SqlitePairPublicationReconciliationEvidenceBlocked.class,
+          recoveryWorkflow(
+                  true,
+                  (ignoredStep, ignoredParent) -> {
+                    throw new IOException("injected incomplete-evidence durability failure");
+                  })
+              .recover(
+                  record,
+                  RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                  backupRequest(record.bookTargetPath),
+                  ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                  ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                  true));
+    }
+
+    assertFalse(Files.exists(record.bookTargetPath));
+    assertFalse(Files.exists(record.secretTargetPath));
   }
 
   @Test
@@ -1125,6 +1182,38 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
     assertEquals(
         ProtectedBookPairPublicationMemberState.PUBLISHED_DURABILITY_UNCONFIRMED,
         uncertain.secretArtifactState());
+
+    SqliteProtectedBookPairPublicationRecord bookForceFailure =
+        retainedRecord("workflow-visible-book-force-failure");
+    Files.createLink(bookForceFailure.bookTargetPath, bookForceFailure.bookStagePath);
+    Files.createLink(bookForceFailure.secretTargetPath, bookForceFailure.secretStagePath);
+
+    SqlitePairPublicationReconciliationCompletionUncertain bookUncertain =
+        assertInstanceOf(
+            SqlitePairPublicationReconciliationCompletionUncertain.class,
+            recoveryWorkflow(
+                    true,
+                    (step, ignoredParent) -> {
+                      if (step
+                          == SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep
+                              .BOOK_PUBLICATION) {
+                        throw new IOException("injected visible-book durability failure");
+                      }
+                    })
+                .recover(
+                    bookForceFailure,
+                    RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                    backupRequest(bookForceFailure.bookTargetPath),
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                    false));
+
+    assertEquals(
+        ProtectedBookPairPublicationMemberState.PUBLISHED_DURABILITY_UNCONFIRMED,
+        bookUncertain.bookArtifactState());
+    assertEquals(
+        ProtectedBookPairPublicationMemberState.PUBLISHED_DURABLE,
+        bookUncertain.secretArtifactState());
   }
 
   @Test
