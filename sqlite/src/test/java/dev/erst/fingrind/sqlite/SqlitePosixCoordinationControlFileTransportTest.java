@@ -38,7 +38,7 @@ class SqlitePosixCoordinationControlFileTransportTest extends SqliteNativeBridge
 
   @Test
   void windowsTransportNeverFallsBackToPosixOnANonWindowsHost() throws Exception {
-    assumeFalse(SqliteCoordinationControlFiles.isWindows());
+    assumeFalse(FileSystems.getDefault().getSeparator().equals("\\\\"));
     Path controlPath = tempDirectory.resolve("windows-boundary.control");
     byte[] magic = SqliteCoordinationControlFiles.magic("test-control", "windows-boundary");
     SqliteCoordinationControlFiles.CoordinationTransport windows =
