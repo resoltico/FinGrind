@@ -333,6 +333,28 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void nestedSameThreadExistingArtifactLeasesRetainOnePhysicalObjectExclusion() throws Exception {
+    Path artifact = writeArtifact("nested-object-lease/book.sqlite", "book bytes");
+
+    try (SqliteHeldLease first =
+            assertInstanceOf(
+                SqliteHeldLease.class,
+                SqliteBookMaintenanceLease.acquire(
+                    artifact, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
+        SqliteHeldLease second =
+            assertInstanceOf(
+                SqliteHeldLease.class,
+                SqliteBookMaintenanceLease.acquire(
+                    artifact, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      first.close();
+      assertEquals(artifact, second.artifactPath());
+      assertTrue(SqliteMaintenanceLeaseAuthority.hasBlockingActivity(artifact));
+    }
+
+    assertFalse(SqliteMaintenanceLeaseAuthority.hasBlockingActivity(artifact));
+  }
+
+  @Test
   void sameDirectoryAdmissionScopeMustContainItsExactArtifactAndNoOtherDomain() throws Exception {
     Path artifact = managedTarget("admission-scope/artifact.sqlite");
     Path sibling = managedTarget("admission-scope/sibling.key");
