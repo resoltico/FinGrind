@@ -708,6 +708,82 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
   }
 
   @Test
+  void memberRecoveryRejectsChangedStagesAndFailsClosedOnPostBoundaryReplacementIo()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord occupiedSecret = retainedRecord("member-secret-occupied");
+    SqlitePairPublicationMemberReconciler reconciler =
+        reconciler((ignoredStep, ignoredParent) -> {});
+    try (SqlitePublicationCapabilityWitness.Set witnesses = witnessesFor(occupiedSecret)) {
+      Files.writeString(occupiedSecret.secretTargetPath, "foreign generated secret");
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.OUTCOME_UNCERTAIN,
+          reconciler.reconcileSecret(
+              occupiedSecret,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+    }
+
+    SqliteProtectedBookPairPublicationRecord changedSecret = retainedRecord("member-secret-stage");
+    try (SqlitePublicationCapabilityWitness.Set witnesses = witnessesFor(changedSecret)) {
+      Files.writeString(changedSecret.secretStagePath, "changed retained secret");
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.OUTCOME_UNCERTAIN,
+          reconciler.reconcileSecret(
+              changedSecret,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+    }
+
+    SqliteProtectedBookPairPublicationRecord changedRekeyStage =
+        rekeyRecord("member-rekey-stage");
+    boolean[] stageChanged = {false};
+    SqlitePairPublicationMemberReconciler stageChangedReconciler =
+        reconciler(
+            (ignoredStep, ignoredParent) -> {
+              if (!stageChanged[0]) {
+                Files.writeString(changedRekeyStage.bookStagePath, "changed rekeyed book");
+                stageChanged[0] = true;
+              }
+            });
+    try (SqlitePublicationCapabilityWitness.Set witnesses =
+        SqlitePairPublicationRecoveryCapabilities.acquire(
+            changedRekeyStage,
+            SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+            SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+            ProtectedBookMaintenanceArtifactRole.NEW_BOOK_KEY_TARGET)) {
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.OUTCOME_UNCERTAIN,
+          stageChangedReconciler.reconcileBook(
+              changedRekeyStage,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+    }
+
+    SqliteProtectedBookPairPublicationRecord replacementIo = rekeyRecord("member-rekey-move-io");
+    SqlitePairPublicationMemberReconciler replacementIoReconciler =
+        reconciler(
+            (ignoredStep, ignoredParent) -> {},
+            (ignoredBridge, ignoredTarget) -> {
+              throw new IOException("injected atomic replacement I/O failure");
+            });
+    try (SqlitePublicationCapabilityWitness.Set witnesses =
+        SqlitePairPublicationRecoveryCapabilities.acquire(
+            replacementIo,
+            SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+            SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+            ProtectedBookMaintenanceArtifactRole.NEW_BOOK_KEY_TARGET)) {
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.OUTCOME_UNCERTAIN,
+          replacementIoReconciler.reconcileBook(
+              replacementIo,
+              SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+              witnesses));
+    }
+  }
+
+  @Test
   void exactRecoveryWorkflowPublishesOneOwnedStagedBackupPair() throws Exception {
     SqliteProtectedBookPairPublicationRecord record = retainedRecord("workflow-recovery");
 
