@@ -188,7 +188,7 @@ final class SqliteProtectedBookRestoreStaging {
   }
 
   /** Copies one nofollow source into an exact already-owned stage and force-confirms its bytes. */
-  private static void copySourceIntoExistingOwnedStage(Path sourcePath, Path stagedPath)
+  static void copySourceIntoExistingOwnedStage(Path sourcePath, Path stagedPath)
       throws IOException {
     try (InputStream source = SqliteSecureRegularFileAccess.openRead(sourcePath);
         FileChannel destination = SqliteSecureRegularFileAccess.openTruncatingWrite(stagedPath)) {

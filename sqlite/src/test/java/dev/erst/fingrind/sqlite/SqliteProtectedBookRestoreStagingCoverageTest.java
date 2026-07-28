@@ -25,11 +25,53 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /** Focused coverage for SQLite restore staging, publication, and retained-stage evidence. */
 class SqliteProtectedBookRestoreStagingCoverageTest extends SqliteArtifactPublicationTestSupport {
+
+  @Test
+  void exactStageCopyRejectsZeroProgressFromEitherTheSourceOrDestination() {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath zeroProgressSource = fileSystem.path("\\restore\\zero-read.sqlite");
+      zeroProgressSource.exists = true;
+      zeroProgressSource.regularFile = true;
+      zeroProgressSource.replaceContent("source bytes".getBytes(StandardCharsets.UTF_8));
+      zeroProgressSource.returnZeroProgressFromNextRead();
+      AclFixturePath readStage = fileSystem.path("\\restore\\read-stage.sqlite");
+      readStage.exists = true;
+      readStage.regularFile = true;
+
+      IOException readFailure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  SqliteProtectedBookRestoreStaging.copySourceIntoExistingOwnedStage(
+                      zeroProgressSource, readStage));
+      assertEquals(
+          "Failed to read the complete protected-book restore source.", readFailure.getMessage());
+
+      AclFixturePath source = fileSystem.path("\\restore\\source.sqlite");
+      source.exists = true;
+      source.regularFile = true;
+      source.replaceContent("source bytes".getBytes(StandardCharsets.UTF_8));
+      AclFixturePath zeroProgressStage = fileSystem.path("\\restore\\zero-write-stage.sqlite");
+      zeroProgressStage.exists = true;
+      zeroProgressStage.regularFile = true;
+      zeroProgressStage.returnZeroProgressFromNextWrite();
+
+      IOException writeFailure =
+          assertThrows(
+              IOException.class,
+              () ->
+                  SqliteProtectedBookRestoreStaging.copySourceIntoExistingOwnedStage(
+                      source, zeroProgressStage));
+      assertEquals(
+          "Failed to write the complete protected-book restore stage.", writeFailure.getMessage());
+    }
+  }
 
   @Test
   void stageRestoredBookPair_translatesManagedTargetPathRejections() throws Exception {
