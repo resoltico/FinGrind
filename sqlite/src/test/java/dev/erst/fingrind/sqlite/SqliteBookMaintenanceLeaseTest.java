@@ -305,6 +305,34 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void externallyHeldObjectExclusionReleasesTheDirectoryAdmissionBeforeReportingBusy()
+      throws Exception {
+    Path artifact = writeArtifact("object-exclusion-busy/book.sqlite", "book bytes");
+    SqliteObjectCoordinationArtifacts.Domain domain =
+        SqliteObjectCoordinationArtifacts.domainForExistingArtifact(artifact);
+
+    try (SqliteLeaseHandle externallyHeldExclusion =
+        java.util.Objects.requireNonNull(
+            SqliteObjectCoordinationArtifacts.tryAcquireMaintenanceExclusion(domain),
+            "direct object exclusion")) {
+      SqliteLeaseBusy busy =
+          assertInstanceOf(
+              SqliteLeaseBusy.class,
+              SqliteBookMaintenanceLease.acquire(
+                  artifact, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
+      assertEquals(artifact, busy.artifactPath());
+    }
+
+    try (SqliteHeldLease reacquired =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquire(
+                artifact, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      assertEquals(artifact, reacquired.artifactPath());
+    }
+  }
+
+  @Test
   void sameDirectoryAdmissionScopeMustContainItsExactArtifactAndNoOtherDomain() throws Exception {
     Path artifact = managedTarget("admission-scope/artifact.sqlite");
     Path sibling = managedTarget("admission-scope/sibling.key");
