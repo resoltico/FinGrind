@@ -474,6 +474,39 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
   }
 
   @Test
+  void verification_rejectsARegularBookReplacedByADirectoryAfterPassphraseResolution()
+      throws Exception {
+    Path bookPath = writeArtifact("replaced-live-book.sqlite", "temporary book bytes");
+    SqliteProtectedBookMaintenanceStore store =
+        new SqliteProtectedBookMaintenanceStore(
+            (resolvedBookPath, passphraseSource, intent) -> {
+              try {
+                Files.delete(resolvedBookPath);
+                Files.createDirectory(resolvedBookPath);
+              } catch (IOException exception) {
+                throw new java.io.UncheckedIOException(exception);
+              }
+              return ContractDecision.accepted(
+                  SqliteBookPassphrase.fromUtf8Bytes(
+                      "replaced regular book test",
+                      TEST_BOOK_KEY.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+            });
+
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid rejection =
+        assertInstanceOf(
+            ProtectedBookMaintenanceRejection.ArtifactPathInvalid.class,
+            assertThrows(
+                    ProtectedBookMaintenanceRejectionException.class,
+                    () ->
+                        store.verifyInitializedBook(
+                            localAccess(bookAccess(bookPath)),
+                            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK))
+                .rejection());
+    assertEquals(ProtectedBookMaintenanceArtifactRole.LIVE_BOOK, rejection.artifactRole());
+    assertEquals(bookPath, rejection.artifactPath());
+  }
+
+  @Test
   void maintenanceNormalization_resolvesAnExistingLeafToItsCanonicalFilesystemSpelling()
       throws Exception {
     Path canonicalLeaf = writeArtifact("Canonical-book.sqlite", "canonical spelling");
