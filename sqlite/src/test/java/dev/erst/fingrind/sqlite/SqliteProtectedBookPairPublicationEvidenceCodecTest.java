@@ -48,6 +48,26 @@ class SqliteProtectedBookPairPublicationEvidenceCodecTest {
   }
 
   @Test
+  void readsAnExactCanonicalStandardInputRekeyEvidenceCopy() throws Exception {
+    SqliteProtectedBookPairPublicationRecord record = rekeyRecord();
+    Path evidencePath = evidencePath(record);
+    Files.writeString(
+        evidencePath,
+        SqliteProtectedBookPairPublicationEvidenceCodec.encoded(
+            record, SqliteProtectedBookPairPublicationEvidenceKind.CLAIM));
+
+    SqliteProtectedBookPairPublicationEvidenceCodec.DecodedEvidence decoded =
+        SqliteProtectedBookPairPublicationEvidenceCodec.read(evidencePath).orElseThrow();
+    ProtectedBookPairPublicationBinding.Rekey binding =
+        (ProtectedBookPairPublicationBinding.Rekey) decoded.record().binding;
+
+    assertEquals(
+        ProtectedBookPairPublicationSourceIdentity.Kind.STANDARD_INPUT,
+        binding.sourceIdentity().passphraseSourceKind());
+    assertEquals(null, binding.sourceIdentity().keyFilePath());
+  }
+
+  @Test
   void rejectsMalformedAndNonCanonicalCurrentEvidenceWithoutEscapingTheBoundary() throws Exception {
     SqliteProtectedBookPairPublicationRecord record = backupRecord();
     String canonical =
