@@ -703,6 +703,55 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
   }
 
   @Test
+  void stagedRestoredBookPairWrapsACheckedFailureBeforeTheRecoveryBoundary() throws Exception {
+    Path stagedBookPath = writeArtifact("restore-pre-boundary-io/staged.sqlite", "restored book");
+    Path stagedKeyPath = writeArtifact("restore-pre-boundary-io/staged.key", "restored key");
+    Path finalBookPath =
+        tempDirectory.resolve("restore-pre-boundary-io").resolve("restored.sqlite");
+    Path finalKeyPath = tempDirectory.resolve("restore-pre-boundary-io").resolve("restored.key");
+    IOException injected = new IOException("staged-member durability failed");
+
+    try (SqliteStagedRestoredBookPair pair =
+        SqliteStagedRestoredBookPairFactory.create(
+            new SqliteStagedProtectedBookPairArtifacts(
+                SqliteOwnedStagedArtifact.recordExisting(finalBookPath, stagedBookPath),
+                finalBookPath,
+                SqliteOwnedStagedArtifact.recordExisting(finalKeyPath, stagedKeyPath),
+                finalKeyPath),
+            RestoredBookTargetPolicy.REQUIRE_ABSENT,
+            TEST_BOOK_KEY.getBytes(StandardCharsets.UTF_8),
+            VERIFICATION_SUPPORT,
+            SqliteRestoredBookPairPublication.defaultOperators(),
+            null,
+            null,
+            (step, ignoredParent) -> {
+              if (step
+                  == SqliteProtectedBookPublicationSupport.PairPublicationDurabilityStep
+                      .STAGED_MEMBER_DURABILITY) {
+                throw injected;
+              }
+            },
+            SqliteSecureRegularFileAccess::forceFile)) {
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class,
+              () -> pair.commit(restoreBinding(stagedBookPath, stagedKeyPath)));
+
+      assertEquals(
+          "Failed to publish the restored FinGrind live-book pair at "
+              + finalBookPath.toAbsolutePath()
+              + ".",
+          failure.getMessage());
+      assertSame(injected, failure.getCause());
+    }
+
+    assertFalse(Files.exists(finalBookPath));
+    assertFalse(Files.exists(finalKeyPath));
+    assertTrue(Files.exists(stagedBookPath));
+    assertTrue(Files.exists(stagedKeyPath));
+  }
+
+  @Test
   void recoveryRecordPromotionFailureStopsBackupAndRestoreBeforeAnyFinalMember() throws Exception {
     Path backupStagedPath = writeArtifact("record-promotion-failure/backup.stage", "backup");
     Path backupKeyStagedPath =
