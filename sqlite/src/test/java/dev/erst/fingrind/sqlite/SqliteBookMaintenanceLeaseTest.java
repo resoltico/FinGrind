@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -322,6 +323,84 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
                   artifact, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT));
       assertEquals(artifact, busy.artifactPath());
     }
+
+    try (SqliteHeldLease reacquired =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquire(
+                artifact, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      assertEquals(artifact, reacquired.artifactPath());
+    }
+  }
+
+  @Test
+  void refusedObjectExclusionReleasesTheDirectoryAdmissionBeforeReportingBusy()
+      throws Exception {
+    Path artifact = writeArtifact("injected-object-exclusion-busy/book.sqlite", "book bytes");
+
+    SqliteLeaseBusy busy =
+        assertInstanceOf(
+            SqliteLeaseBusy.class,
+            SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                artifact,
+                SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT,
+                List.of(artifact),
+                ignored -> null));
+    assertEquals(artifact, busy.artifactPath());
+
+    try (SqliteHeldLease reacquired =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquire(
+                artifact, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      assertEquals(artifact, reacquired.artifactPath());
+    }
+  }
+
+  @Test
+  void objectExclusionRuntimeFailureReleasesTheDirectoryAdmission() throws Exception {
+    Path artifact = writeArtifact("injected-object-exclusion-runtime/book.sqlite", "book bytes");
+    IllegalStateException expected = new IllegalStateException("injected object exclusion failure");
+
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                    artifact,
+                    SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT,
+                    List.of(artifact),
+                    ignored -> {
+                      throw expected;
+                    }));
+    assertSame(expected, failure);
+
+    try (SqliteHeldLease reacquired =
+        assertInstanceOf(
+            SqliteHeldLease.class,
+            SqliteBookMaintenanceLease.acquire(
+                artifact, SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT))) {
+      assertEquals(artifact, reacquired.artifactPath());
+    }
+  }
+
+  @Test
+  void objectExclusionIoFailureIsPreservedAfterDirectoryAdmissionCleanup() throws Exception {
+    Path artifact = writeArtifact("injected-object-exclusion-io/book.sqlite", "book bytes");
+    java.io.IOException expected = new java.io.IOException("injected object exclusion I/O failure");
+
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteBookMaintenanceLease.acquireWithAdmittedScope(
+                    artifact,
+                    SqliteMaintenanceLeaseIntent.EXISTING_ARTIFACT,
+                    List.of(artifact),
+                    ignored -> {
+                      throw expected;
+                    }));
+    assertSame(expected, failure.getCause());
 
     try (SqliteHeldLease reacquired =
         assertInstanceOf(

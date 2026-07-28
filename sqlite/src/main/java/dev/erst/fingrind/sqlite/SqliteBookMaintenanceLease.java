@@ -23,6 +23,13 @@ import java.util.Set;
 final class SqliteBookMaintenanceLease {
   private SqliteBookMaintenanceLease() {}
 
+  /** Resolves one existing artifact to a retained physical-object exclusion. */
+  @FunctionalInterface
+  interface ExistingArtifactObjectLeaseAcquirer {
+    SqliteThreadMaintenanceLeases.@org.jspecify.annotations.Nullable ObjectLeaseReference acquire(
+        Path existingArtifactPath) throws IOException;
+  }
+
   static SqliteProtectedBookLeaseAcquisition acquire(
       Path normalizedArtifactPath, SqliteMaintenanceLeaseIntent leaseIntent) {
     return acquireWithAdmittedScopeAllowingExplicitSiblingAdmission(
@@ -68,7 +75,30 @@ final class SqliteBookMaintenanceLease {
       SqliteMaintenanceLeaseIntent leaseIntent,
       List<Path> admittedArtifactPaths) {
     return acquireWithAdmittedScope(
-        normalizedArtifactPath, leaseIntent, admittedArtifactPaths, false);
+        normalizedArtifactPath,
+        leaseIntent,
+        admittedArtifactPaths,
+        false,
+        SqliteBookMaintenanceLease::acquireObjectLeaseReference);
+  }
+
+  /**
+   * Acquires one exact admitted scope through the supplied physical-object exclusion boundary.
+   *
+   * <p>Package visibility lets ownership tests prove cleanup after an object-control refusal or
+   * failure without weakening the production protocol boundary.
+   */
+  static SqliteProtectedBookLeaseAcquisition acquireWithAdmittedScope(
+      Path normalizedArtifactPath,
+      SqliteMaintenanceLeaseIntent leaseIntent,
+      List<Path> admittedArtifactPaths,
+      ExistingArtifactObjectLeaseAcquirer objectLeaseAcquirer) {
+    return acquireWithAdmittedScope(
+        normalizedArtifactPath,
+        leaseIntent,
+        admittedArtifactPaths,
+        false,
+        objectLeaseAcquirer);
   }
 
   private static SqliteProtectedBookLeaseAcquisition
@@ -77,19 +107,26 @@ final class SqliteBookMaintenanceLease {
           SqliteMaintenanceLeaseIntent leaseIntent,
           List<Path> admittedArtifactPaths) {
     return acquireWithAdmittedScope(
-        normalizedArtifactPath, leaseIntent, admittedArtifactPaths, true);
+        normalizedArtifactPath,
+        leaseIntent,
+        admittedArtifactPaths,
+        true,
+        SqliteBookMaintenanceLease::acquireObjectLeaseReference);
   }
 
   private static SqliteProtectedBookLeaseAcquisition acquireWithAdmittedScope(
       Path normalizedArtifactPath,
       SqliteMaintenanceLeaseIntent leaseIntent,
       List<Path> admittedArtifactPaths,
-      boolean allowsExplicitSiblingAdmission) {
+      boolean allowsExplicitSiblingAdmission,
+      ExistingArtifactObjectLeaseAcquirer objectLeaseAcquirer) {
     Path checkedArtifactPath =
         Objects.requireNonNull(normalizedArtifactPath, "normalizedArtifactPath");
     Objects.requireNonNull(leaseIntent, "leaseIntent");
     List<Path> checkedAdmittedArtifacts =
         List.copyOf(Objects.requireNonNull(admittedArtifactPaths, "admittedArtifactPaths"));
+    ExistingArtifactObjectLeaseAcquirer checkedObjectLeaseAcquirer =
+        Objects.requireNonNull(objectLeaseAcquirer, "objectLeaseAcquirer");
     try {
       SqliteMaintenanceLeaseAuthority.validateArtifactForLeaseIntent(
           checkedArtifactPath, leaseIntent);
@@ -106,7 +143,7 @@ final class SqliteBookMaintenanceLease {
       SqliteThreadMaintenanceLeases.@org.jspecify.annotations.Nullable ObjectLeaseReference
           objectLease = null;
       try {
-        objectLease = acquireObjectLeaseReference(checkedArtifactPath);
+        objectLease = checkedObjectLeaseAcquirer.acquire(checkedArtifactPath);
         if (objectLease == null) {
           directoryLease.release();
           return new SqliteLeaseBusy(checkedArtifactPath);
