@@ -97,7 +97,6 @@ final class SqliteWorkflowScopeRequests {
   static void requireSourcesStillMatchLockedIdentities(
       WorkflowSourceMembers sourceMembers, java.util.Map<String, SqliteOwnedHeldLease> sourceLeases)
       throws IOException {
-    List<CurrentSourceIdentity> currentIdentities = new ArrayList<>();
     for (WorkflowSourceMember sourceMember : sourceMembers.members()) {
       String spelling =
           SqliteProtectedBookPathIdentity.normalizedSpelling(sourceMember.artifactPath());
@@ -116,13 +115,6 @@ final class SqliteWorkflowScopeRequests {
             "The selected protected-book maintenance source no longer resolves to the physical artifact whose maintenance exclusion was acquired: "
                 + sourceMember.artifactPath()
                 + ".");
-      }
-      currentIdentities.add(new CurrentSourceIdentity(sourceMember, currentIdentity));
-    }
-    Set<String> identities = new HashSet<>();
-    for (CurrentSourceIdentity currentIdentity : currentIdentities) {
-      if (!identities.add(currentIdentity.physicalIdentity())) {
-        throw duplicatedSource(currentIdentity.sourceMember());
       }
     }
   }
@@ -188,6 +180,4 @@ final class SqliteWorkflowScopeRequests {
     SECRET
   }
 
-  private record CurrentSourceIdentity(
-      WorkflowSourceMember sourceMember, String physicalIdentity) {}
 }
