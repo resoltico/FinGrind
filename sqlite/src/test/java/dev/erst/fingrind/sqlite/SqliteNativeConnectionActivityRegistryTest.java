@@ -90,6 +90,27 @@ class SqliteNativeConnectionActivityRegistryTest extends SqliteNativeBridgeTestS
   }
 
   @Test
+  void tokenConstructionFailureRollsBackBothNativeActivityCounters() throws Exception {
+    Path bookPath = writeBook("token-construction-failure/book.sqlite");
+    int processCountBefore = SqliteNativeRuntimeActivity.activeConnectionCount();
+
+    IllegalStateException failure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteNativeConnectionActivityRegistry.recordOpeningConnection(
+                    bookPath,
+                    false,
+                    (diagnosticBookPath, objectIdentity, activityRegistration) -> {
+                      throw new IllegalStateException("injected token construction failure");
+                    }));
+
+    assertEquals("injected token construction failure", failure.getMessage());
+    assertEquals(processCountBefore, SqliteNativeRuntimeActivity.activeConnectionCount());
+    assertEquals(0, SqliteNativeRuntimeActivity.activeConnectionCount(bookPath));
+  }
+
+  @Test
   void nestedMarkerRegistrationsShareOnePhysicalSlotUntilTheLastClose() throws Exception {
     Path bookPath = writeBook("nested-marker/book.sqlite");
     int activeConnectionsBeforeOpen = SqliteNativeRuntimeActivity.activeConnectionCount();

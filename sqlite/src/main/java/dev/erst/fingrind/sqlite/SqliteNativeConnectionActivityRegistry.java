@@ -21,9 +21,30 @@ final class SqliteNativeConnectionActivityRegistry {
 
   private SqliteNativeConnectionActivityRegistry() {}
 
+  /** Constructs the close token after the process and physical-object counts are retained. */
+  @FunctionalInterface
+  interface ActivityRegistrationFactory {
+    /** Returns the exact token that may release one successfully opened native connection. */
+    SqliteNativeActivityRegistration create(
+        Path diagnosticBookPath,
+        String objectIdentity,
+        SqliteBookActivityMarkers.@Nullable ActivityRegistration activityRegistration);
+  }
+
   /** Registers one opening connection and returns the exact token required to close it. */
   static SqliteNativeActivityRegistration recordOpeningConnection(
       Path normalizedBookPath, boolean publishesActivityMarker) {
+    return recordOpeningConnection(
+        normalizedBookPath,
+        publishesActivityMarker,
+        SqliteNativeActivityRegistration::new);
+  }
+
+  /** Records one opening connection through an explicit close-token construction boundary. */
+  static SqliteNativeActivityRegistration recordOpeningConnection(
+      Path normalizedBookPath,
+      boolean publishesActivityMarker,
+      ActivityRegistrationFactory registrationFactory) {
     Path checkedBookPath =
         Objects.requireNonNull(normalizedBookPath, "normalizedBookPath")
             .toAbsolutePath()
@@ -31,7 +52,6 @@ final class SqliteNativeConnectionActivityRegistry {
     SqliteBookActivityMarkers.@Nullable ActivityRegistration activityRegistration = null;
     @Nullable String objectIdentity = null;
     @Nullable AtomicInteger activeObjectConnections = null;
-    @Nullable SqliteNativeActivityRegistration registration = null;
     boolean processCountIncremented = false;
     boolean objectCountIncremented = false;
     try {
@@ -55,9 +75,9 @@ final class SqliteNativeConnectionActivityRegistry {
                 return connections;
               });
       objectCountIncremented = true;
-      registration =
-          new SqliteNativeActivityRegistration(
-              checkedBookPath, resolvedObjectIdentity, activityRegistration);
+      SqliteNativeActivityRegistration registration =
+          Objects.requireNonNull(registrationFactory, "registrationFactory")
+              .create(checkedBookPath, resolvedObjectIdentity, activityRegistration);
       ACTIVE_REGISTRATIONS.add(registration);
       return registration;
     } catch (IOException exception) {
@@ -70,7 +90,6 @@ final class SqliteNativeConnectionActivityRegistry {
           activeObjectConnections,
           processCountIncremented,
           objectCountIncremented,
-          registration,
           activityRegistration,
           failure);
       throw failure;
@@ -80,7 +99,6 @@ final class SqliteNativeConnectionActivityRegistry {
           activeObjectConnections,
           processCountIncremented,
           objectCountIncremented,
-          registration,
           activityRegistration,
           failure);
       throw failure;
@@ -143,12 +161,8 @@ final class SqliteNativeConnectionActivityRegistry {
       @Nullable AtomicInteger activeObjectConnections,
       boolean processCountIncremented,
       boolean objectCountIncremented,
-      @Nullable SqliteNativeActivityRegistration registration,
       SqliteBookActivityMarkers.@Nullable ActivityRegistration activityRegistration,
       Throwable primaryFailure) {
-    if (registration != null) {
-      ACTIVE_REGISTRATIONS.remove(registration);
-    }
     if (objectCountIncremented) {
       decrementActiveObjectConnectionsForRollback(
           Objects.requireNonNull(objectIdentity, "objectIdentity"),
