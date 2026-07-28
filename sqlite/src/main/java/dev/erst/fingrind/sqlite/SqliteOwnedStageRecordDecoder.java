@@ -51,10 +51,9 @@ final class SqliteOwnedStageRecordDecoder {
 
   private static boolean remainsBesideRecord(
       Path recordPath, SqliteOwnedStageRecordCodec.CurrentOwnerRecord record) throws IOException {
-    Path parent = recordPath.getParent();
-    if (parent == null
-        || SqliteProtectedBookPathIdentity.sameNormalizedSpelling(
-            record.finalPath(), record.stagedPath())) {
+    Path parent = Objects.requireNonNull(recordPath.getParent(), "recordPath parent");
+    if (SqliteProtectedBookPathIdentity.sameNormalizedSpelling(
+        record.finalPath(), record.stagedPath())) {
       return false;
     }
     return SqliteProtectedBookPathIdentity.sameExistingFilesystemObject(
