@@ -380,6 +380,27 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
   }
 
   @Test
+  void rekeyAdmissionTreatsUnboundStageResidueAsEvidenceBlockedRatherThanASecretCollision()
+      throws Exception {
+    Path bookTarget = writeArtifact("rekey-unbound-stage/book.sqlite", "selected live book");
+    Path secretTarget = writeArtifact("rekey-unbound-stage/book.key", "occupied generated secret");
+    Path secretStage = writeArtifact("rekey-unbound-stage/.book.key.stage", "retained key stage");
+    SqliteOwnedStagedArtifact.recordExisting(secretTarget, secretStage);
+
+    assertInstanceOf(
+        SqlitePairPublicationReconciliationEvidenceBlocked.class,
+        recovery()
+            .reconcile(
+                bookTarget,
+                secretTarget,
+                RestoredBookTargetPolicy.REPLACE_SELECTED,
+                new ProtectedBookPairPublicationRecoveryRequest.Rekey(
+                    rekeyBinding(bookTarget, bookTarget.resolveSibling("source.key")).sourceIdentity()),
+                ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+                ProtectedBookMaintenanceArtifactRole.NEW_BOOK_KEY_TARGET));
+  }
+
+  @Test
   void memberRecoveryRechecksStageAndRekeyTargetFactsAtTheFinalPublicationBoundary()
       throws Exception {
     SqliteProtectedBookPairPublicationRecord changedBookStage =
