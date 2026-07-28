@@ -16,11 +16,11 @@ final class SqliteManagedTargetLeaseCoordinator {
       List<Request> requests = requests(bookTargetPath, secretTargetPath);
       return acquire(
           requests,
-          targetPath ->
+          request ->
               SqliteBookMaintenanceLease.acquireWithAdmittedScope(
-                  targetPath,
+                  request.path(),
                   SqliteMaintenanceLeaseIntent.MANAGED_TARGET,
-                  targetsInSameDirectory(requests, targetPath)));
+                  targetsInSameDirectory(requests, request)));
     } catch (IOException exception) {
       throw new IllegalStateException(
           "Failed to prepare one FinGrind protected-book maintenance directory domain.", exception);
@@ -31,10 +31,12 @@ final class SqliteManagedTargetLeaseCoordinator {
       Path bookTargetPath,
       Path secretTargetPath,
       SqliteManagedTargetLeaseAcquirer targetLeaseAcquirer) {
+    SqliteManagedTargetLeaseAcquirer checkedTargetLeaseAcquirer =
+        Objects.requireNonNull(targetLeaseAcquirer, "targetLeaseAcquirer");
     try {
       return acquire(
           requests(bookTargetPath, secretTargetPath),
-          Objects.requireNonNull(targetLeaseAcquirer, "targetLeaseAcquirer"));
+          request -> checkedTargetLeaseAcquirer.acquire(request.path()));
     } catch (IOException exception) {
       throw new IllegalStateException(
           "Failed to prepare one FinGrind protected-book maintenance directory domain.", exception);
@@ -42,7 +44,7 @@ final class SqliteManagedTargetLeaseCoordinator {
   }
 
   private static SqliteManagedTargetLeasePair acquire(
-      List<Request> requests, SqliteManagedTargetLeaseAcquirer targetLeaseAcquirer) {
+      List<Request> requests, RequestLeaseAcquirer targetLeaseAcquirer) {
     @org.jspecify.annotations.Nullable Path preflightBusyTarget = firstBusy(requests);
     if (preflightBusyTarget != null) {
       return new SqliteManagedTargetLeasesBusy(preflightBusyTarget);
@@ -52,7 +54,7 @@ final class SqliteManagedTargetLeaseCoordinator {
     try {
       for (Request request : requests) {
         SqliteProtectedBookLeaseAcquisition acquisition =
-            targetLeaseAcquirer.acquire(request.path());
+            targetLeaseAcquirer.acquire(request);
         if (acquisition instanceof SqliteLeaseBusy busy) {
           releasePair(secretLease, bookLease);
           return new SqliteManagedTargetLeasesBusy(busy.artifactPath());
@@ -106,34 +108,19 @@ final class SqliteManagedTargetLeaseCoordinator {
     return List.copyOf(requests);
   }
 
-  private static List<Path> targetsInSameDirectory(List<Request> requests, Path targetPath) {
-    Path checkedTargetPath = Objects.requireNonNull(targetPath, "targetPath");
-    for (Request request : requests) {
-      if (SqliteProtectedBookPathIdentity.sameNormalizedSpelling(
-          request.path(), checkedTargetPath)) {
-        return requests.stream()
-            .filter(
-                candidate ->
-                    SqliteProtectedBookPathIdentity.sameNormalizedSpelling(
-                        candidate.directoryDomain(), request.directoryDomain()))
-            .map(Request::path)
-            .toList();
-      }
-    }
-    throw new IllegalArgumentException(
-        "One FinGrind managed-target lease acquisition was requested for an unadmitted target: "
-            + checkedTargetPath
-            + ".");
+  private static List<Path> targetsInSameDirectory(List<Request> requests, Request request) {
+    Request checkedRequest = Objects.requireNonNull(request, "request");
+    return requests.stream()
+        .filter(
+            candidate ->
+                SqliteProtectedBookPathIdentity.sameNormalizedSpelling(
+                    candidate.directoryDomain(), checkedRequest.directoryDomain()))
+        .map(Request::path)
+        .toList();
   }
 
   private static @org.jspecify.annotations.Nullable Path firstBusy(List<Request> requests) {
-    List<Path> checkedTargets = new ArrayList<>();
     for (Request request : requests) {
-      if (SqliteProtectedBookPathIdentity.containsNormalizedSpelling(
-          checkedTargets, request.path())) {
-        continue;
-      }
-      checkedTargets.add(request.path());
       if (SqliteMaintenanceLeaseAuthority.hasBlockingActivity(request.path())) {
         return request.path();
       }
@@ -157,5 +144,11 @@ final class SqliteManagedTargetLeaseCoordinator {
       Objects.requireNonNull(path, "path");
       Objects.requireNonNull(directoryDomain, "directoryDomain");
     }
+  }
+
+  /** Acquires one lease using an already validated request from this exact acquisition set. */
+  @FunctionalInterface
+  private interface RequestLeaseAcquirer {
+    SqliteProtectedBookLeaseAcquisition acquire(Request request);
   }
 }
