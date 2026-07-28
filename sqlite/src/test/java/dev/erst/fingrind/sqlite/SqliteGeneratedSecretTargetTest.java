@@ -821,6 +821,60 @@ class SqliteGeneratedSecretTargetTest {
   }
 
   @Test
+  void retainedWitnessAcceptsAnExactRecordCreatedByARacingProcess() throws Exception {
+    Path targetPath = tempDirectory.resolve("record-creation-race.key");
+    java.util.concurrent.atomic.AtomicInteger recordCreationAttempts =
+        new java.util.concurrent.atomic.AtomicInteger();
+
+    try (SqlitePublicationCapabilityWitness.Set witnesses =
+        SqlitePublicationCapabilityWitness.acquire(
+            java.util.List.of(SqlitePublicationCapabilityWitness.Requirement.noReplace(targetPath)),
+            Files::createLink,
+            SqliteProtectedBookPublicationSupport::moveReplacing,
+            (recordPath, magic) -> {
+              SqliteCoordinationControlFiles.createAtomicallySecureRecord(recordPath, magic);
+              if (recordCreationAttempts.getAndIncrement() == 0) {
+                throw new FileAlreadyExistsException(recordPath.toString());
+              }
+            },
+            ignoredParent -> {})) {
+      witnesses.requireCurrent(
+          targetPath, SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK);
+    }
+
+    assertEquals(1, recordCreationAttempts.get());
+  }
+
+  @Test
+  void retainedWitnessRejectsAnAtomicCompletionRemovedAfterItsDurabilityBoundary() throws Exception {
+    Path targetPath = tempDirectory.resolve("partial-atomic-witness.sqlite");
+    java.util.concurrent.atomic.AtomicInteger parentForceCount =
+        new java.util.concurrent.atomic.AtomicInteger();
+
+    SqlitePublicationCapabilityWitness.AcquisitionFailure failure =
+        assertThrows(
+            SqlitePublicationCapabilityWitness.AcquisitionFailure.class,
+            () ->
+                SqlitePublicationCapabilityWitness.acquire(
+                    java.util.List.of(
+                        SqlitePublicationCapabilityWitness.Requirement.atomicReplace(targetPath)),
+                    Files::createLink,
+                    SqliteProtectedBookPublicationSupport::moveReplacing,
+                    SqliteCoordinationControlFiles::createAtomicallySecureRecord,
+                    ignoredParent -> {
+                      if (parentForceCount.getAndIncrement() == 1) {
+                        Files.delete(publicationCapabilityState(".complete"));
+                      }
+                    }));
+
+    assertTrue(
+        Objects.requireNonNull(
+                Objects.requireNonNull(failure.getCause(), "partial-state failure cause").getMessage(),
+                "partial-state failure message")
+            .contains("impossible partial state"));
+  }
+
+  @Test
   void retainedWitnessRejectsTamperedDurableEvidenceWhenItIsReacquired() throws Exception {
     Path noReplaceParent = Files.createDirectory(tempDirectory.resolve("reacquire-no-replace"));
     SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(noReplaceParent);

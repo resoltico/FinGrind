@@ -65,6 +65,18 @@ final class SqlitePublicationCapabilityWitness {
     }
   }
 
+  /** Creates one exact immutable witness record without adopting a pre-existing entry. */
+  @FunctionalInterface
+  interface SecureRecordCreator {
+    void create(Path path, byte[] expectedMagic) throws IOException;
+  }
+
+  /** Makes one witness-parent directory mutation durable before validation continues. */
+  @FunctionalInterface
+  interface ParentDirectoryForcer {
+    void force(Path parentDirectory) throws IOException;
+  }
+
   /**
    * Identifies the exact admitted target whose primitive could not establish its retained witness.
    *
@@ -154,9 +166,26 @@ final class SqlitePublicationCapabilityWitness {
       SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator linkCreator,
       SqliteProtectedBookPublicationSupport.AtomicBookMover mover)
       throws AcquisitionFailure {
+    return acquire(
+        requirements,
+        linkCreator,
+        mover,
+        SqliteCoordinationControlFiles::createAtomicallySecureRecord,
+        AttestationDirectoryDurability::force);
+  }
+
+  static Set acquire(
+      List<Requirement> requirements,
+      SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator linkCreator,
+      SqliteProtectedBookPublicationSupport.AtomicBookMover mover,
+      SecureRecordCreator recordCreator,
+      ParentDirectoryForcer parentDirectoryForcer)
+      throws AcquisitionFailure {
     List<Requirement> checkedRequirements = List.copyOf(requirements);
     Objects.requireNonNull(linkCreator, "linkCreator");
     Objects.requireNonNull(mover, "mover");
+    Objects.requireNonNull(recordCreator, "recordCreator");
+    Objects.requireNonNull(parentDirectoryForcer, "parentDirectoryForcer");
     Map<WitnessKey, List<Requirement>> distinct = new ConcurrentHashMap<>();
     for (Requirement requirement : checkedRequirements) {
       Requirement checkedRequirement = Objects.requireNonNull(requirement, "requirement");
@@ -173,7 +202,14 @@ final class SqlitePublicationCapabilityWitness {
     ordered.sort(Map.Entry.comparingByKey());
     Map<WitnessKey, Witness> acquired = new ConcurrentHashMap<>();
     try {
-      return acquireAll(ordered, acquired, distinct, linkCreator, mover);
+      return acquireAll(
+          ordered,
+          acquired,
+          distinct,
+          linkCreator,
+          mover,
+          recordCreator,
+          parentDirectoryForcer);
     } catch (AcquisitionFailure failure) {
       SqliteRuntimeCloseSequence.closeAllReversePreservingFailure(
           acquired.values().stream()
@@ -189,7 +225,9 @@ final class SqlitePublicationCapabilityWitness {
       Map<WitnessKey, Witness> acquired,
       Map<WitnessKey, List<Requirement>> distinct,
       SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator linkCreator,
-      SqliteProtectedBookPublicationSupport.AtomicBookMover mover)
+      SqliteProtectedBookPublicationSupport.AtomicBookMover mover,
+      SecureRecordCreator recordCreator,
+      ParentDirectoryForcer parentDirectoryForcer)
       throws AcquisitionFailure {
     for (Map.Entry<WitnessKey, List<Requirement>> entry : ordered) {
       Requirement representative = entry.getValue().getFirst();
@@ -201,7 +239,9 @@ final class SqlitePublicationCapabilityWitness {
                 entry.getValue(),
                 AcquisitionScope.admittedTargetPaths(entry.getKey(), distinct),
                 linkCreator,
-                mover));
+                mover,
+                recordCreator,
+                parentDirectoryForcer));
       } catch (IOException | RuntimeException failure) {
         throw new AcquisitionFailure(representative, failure);
       }
@@ -287,7 +327,9 @@ final class SqlitePublicationCapabilityWitness {
       List<Requirement> requirements,
       List<Path> admittedTargetPaths,
       SqliteProtectedBookPublicationSupport.NoReplaceLinkCreator linkCreator,
-      SqliteProtectedBookPublicationSupport.AtomicBookMover mover)
+      SqliteProtectedBookPublicationSupport.AtomicBookMover mover,
+      SecureRecordCreator recordCreator,
+      ParentDirectoryForcer parentDirectoryForcer)
       throws IOException {
     LOCAL_ACQUISITION_LOCK.lock();
     try {
@@ -320,7 +362,13 @@ final class SqlitePublicationCapabilityWitness {
             "One FinGrind publication capability witness is busy: " + controlPath + ".");
       }
       Witness witness =
-          new Witness(key, representative.targetPath(), control.transfer(), parentLease.transfer());
+          new Witness(
+              key,
+              representative.targetPath(),
+              control.transfer(),
+              parentLease.transfer(),
+              recordCreator,
+              parentDirectoryForcer);
       try {
         witness.establishOrValidate(linkCreator, mover);
         return witness;
@@ -423,16 +471,23 @@ final class SqlitePublicationCapabilityWitness {
     private final Path targetPath;
     private final SqliteCoordinationControlFiles.LockedControlFile control;
     private final SqliteHeldLease parentLease;
+    private final SecureRecordCreator recordCreator;
+    private final ParentDirectoryForcer parentDirectoryForcer;
 
     private Witness(
         WitnessKey key,
         Path targetPath,
         SqliteCoordinationControlFiles.LockedControlFile control,
-        SqliteHeldLease parentLease) {
+        SqliteHeldLease parentLease,
+        SecureRecordCreator recordCreator,
+        ParentDirectoryForcer parentDirectoryForcer) {
       this.key = Objects.requireNonNull(key, "key");
       this.targetPath = Objects.requireNonNull(targetPath, "targetPath");
       this.control = Objects.requireNonNull(control, "control");
       this.parentLease = Objects.requireNonNull(parentLease, "parentLease");
+      this.recordCreator = Objects.requireNonNull(recordCreator, "recordCreator");
+      this.parentDirectoryForcer =
+          Objects.requireNonNull(parentDirectoryForcer, "parentDirectoryForcer");
     }
 
     private void establishOrValidate(
@@ -535,7 +590,7 @@ final class SqlitePublicationCapabilityWitness {
         return;
       }
       try {
-        SqliteCoordinationControlFiles.createAtomicallySecureRecord(path, expectedMagic);
+        recordCreator.create(path, expectedMagic);
         forceParent();
       } catch (FileAlreadyExistsException collision) {
         requireExactRecord(path, expectedMagic);
@@ -589,7 +644,7 @@ final class SqlitePublicationCapabilityWitness {
     }
 
     private void forceParent() throws IOException {
-      AttestationDirectoryDurability.force(key.parentDirectory());
+      parentDirectoryForcer.force(key.parentDirectory());
     }
 
     private IOException invalidWitness(String message) {
