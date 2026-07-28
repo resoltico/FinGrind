@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.IOException;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandles;
@@ -266,6 +267,85 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
           SqliteNativeOpenMode.READ_WRITE_EXISTING.flags(),
           SqliteNativeConnections.prepareBookPathForNativeOpen(
               bookPath.toAbsolutePath().normalize(), SqliteNativeOpenMode.READ_WRITE_EXISTING));
+    }
+  }
+
+  @Test
+  void prepareBookPathPreservesParentBookAndCreationIoFailures() throws Exception {
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      parentPath.overrideAclView = failingAclView();
+      AclFixturePath bookPath = fileSystem.path("\\books\\book.sqlite");
+
+      SqliteStorageFailureException parentFailure =
+          assertThrows(
+              SqliteStorageFailureException.class,
+              () ->
+                  SqliteNativeConnections.prepareBookPathForNativeOpen(
+                      bookPath.toAbsolutePath().normalize(),
+                      SqliteNativeOpenMode.READ_WRITE_EXISTING));
+      assertEquals(
+          "parent metadata failure",
+          Objects.requireNonNull(parentFailure.getCause(), "parent failure cause").getMessage());
+    }
+
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      ownerOnlyDirectoryAcl(fileSystem, parentPath);
+      AclFixturePath bookPath = fileSystem.path("\\books\\book.sqlite");
+      bookPath.exists = true;
+      bookPath.regularFile = true;
+      bookPath.overrideAclView = failingAclView();
+
+      SqliteStorageFailureException bookFailure =
+          assertThrows(
+              SqliteStorageFailureException.class,
+              () ->
+                  SqliteNativeConnections.prepareBookPathForNativeOpen(
+                      bookPath.toAbsolutePath().normalize(),
+                      SqliteNativeOpenMode.READ_WRITE_EXISTING_STAGE));
+      assertEquals(
+          "parent metadata failure",
+          Objects.requireNonNull(bookFailure.getCause(), "book failure cause").getMessage());
+    }
+
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parentPath = fileSystem.path("\\books");
+      parentPath.exists = true;
+      parentPath.regularFile = false;
+      parentPath.posixPermissions =
+          Set.of(
+              java.nio.file.attribute.PosixFilePermission.OWNER_READ,
+              java.nio.file.attribute.PosixFilePermission.OWNER_WRITE,
+              java.nio.file.attribute.PosixFilePermission.OWNER_EXECUTE);
+      AclFixturePath createPath = fileSystem.path("\\books\\create.sqlite");
+      createPath.failNewByteChannelWith(new IOException("create failure"));
+      AclFixturePath exclusivePath = fileSystem.path("\\books\\exclusive.sqlite");
+      exclusivePath.failNewByteChannelWith(new IOException("exclusive creation failure"));
+
+      SqliteStorageFailureException createFailure =
+          assertThrows(
+              SqliteStorageFailureException.class,
+              () ->
+                  SqliteNativeConnections.prepareBookPathForNativeOpen(
+                      createPath.toAbsolutePath().normalize(), SqliteNativeOpenMode.READ_WRITE_CREATE));
+      assertEquals(
+          "create failure",
+          Objects.requireNonNull(createFailure.getCause(), "create failure cause").getMessage());
+      SqliteStorageFailureException exclusiveFailure =
+          assertThrows(
+              SqliteStorageFailureException.class,
+              () ->
+                  SqliteNativeConnections.prepareBookPathForNativeOpen(
+                      exclusivePath.toAbsolutePath().normalize(),
+                      SqliteNativeOpenMode.READ_WRITE_CREATE_EXCLUSIVE));
+      assertEquals(
+          "exclusive creation failure",
+          Objects.requireNonNull(exclusiveFailure.getCause(), "exclusive failure cause").getMessage());
     }
   }
 
@@ -685,6 +765,35 @@ class SqliteNativeOpenFailureHandlingTest extends SqliteNativeBridgeTestSupport 
                         AclEntryPermission.ADD_FILE,
                         AclEntryPermission.EXECUTE)
                     .build()));
+  }
+
+  private static AclFileAttributeView failingAclView() {
+    return new AclFileAttributeView() {
+      @Override
+      public String name() {
+        return "acl";
+      }
+
+      @Override
+      public List<AclEntry> getAcl() throws IOException {
+        throw new IOException("parent metadata failure");
+      }
+
+      @Override
+      public void setAcl(List<AclEntry> acl) throws IOException {
+        throw new IOException("parent metadata failure");
+      }
+
+      @Override
+      public UserPrincipal getOwner() throws IOException {
+        throw new IOException("parent metadata failure");
+      }
+
+      @Override
+      public void setOwner(UserPrincipal owner) throws IOException {
+        throw new IOException("parent metadata failure");
+      }
+    };
   }
 
   private static AclFileAttributeView ownerOnlyBookAclWithForbiddenRepair(
