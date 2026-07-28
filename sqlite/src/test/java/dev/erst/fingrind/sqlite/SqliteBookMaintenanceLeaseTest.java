@@ -151,6 +151,20 @@ class SqliteBookMaintenanceLeaseTest extends SqliteNativeBridgeTestSupport {
           "Failed to prepare one FinGrind protected-book maintenance directory domain.",
           failure.getMessage());
       assertSame(expected, failure.getCause());
+
+      IOException productionExpected =
+          new IOException("production canonical managed target directory failed");
+      parent.failToRealPathAfterSuccessfulCallsWith(1, productionExpected);
+
+      IllegalStateException productionFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteBookMaintenanceLease.acquireManagedTargetPair(bookTarget, secretTarget));
+
+      assertEquals(
+          "Failed to prepare one FinGrind protected-book maintenance directory domain.",
+          productionFailure.getMessage());
+      assertSame(productionExpected, productionFailure.getCause());
     }
   }
 
