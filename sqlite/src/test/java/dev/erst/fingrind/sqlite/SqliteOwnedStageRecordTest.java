@@ -182,6 +182,16 @@ class SqliteOwnedStageRecordTest {
   }
 
   @Test
+  void codecRejectsAnOwnerRecordThatAliasesItsFinalArtifactAsTheStage() {
+    Path finalPath = finalPath();
+    Path recordPath = marker(finalPath, 19);
+
+    SqliteOwnedStageRecordCodec.write(finalPath, finalPath, () -> token(19));
+
+    assertTrue(SqliteOwnedStageRecordCodec.readCurrent(recordPath).isEmpty());
+  }
+
+  @Test
   void codecPinsAStageParentIdentityFailureToTheRecordedStagePath() {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
       AclFixturePath recordParent = privateFixtureDirectory(fileSystem, "\\records");
