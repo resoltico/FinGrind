@@ -43,10 +43,6 @@ final class SqliteProcessIdentity {
         parsedStartEpochMillis == null ? UNKNOWN_START_EPOCH_MILLIS : parsedStartEpochMillis);
   }
 
-  static @Nullable SqliteProcessIdentity fromActivityMarkerFileName(String markerFileName) {
-    return fromCoordinationToken(markerFileName);
-  }
-
   String leaseMetadataText() {
     return "pid=" + pid + "\nstartEpochMillis=" + startEpochMillis + "\n";
   }
@@ -76,14 +72,6 @@ final class SqliteProcessIdentity {
       return null;
     }
     return new SqliteProcessIdentity(parsedPid, parsedStartEpochMillis);
-  }
-
-  String activityMarkerFileToken() {
-    return coordinationToken();
-  }
-
-  static String activityMarkerFileToken(long pid, long startEpochMillis) {
-    return coordinationToken(pid, startEpochMillis);
   }
 
   boolean isCurrentProcess() {

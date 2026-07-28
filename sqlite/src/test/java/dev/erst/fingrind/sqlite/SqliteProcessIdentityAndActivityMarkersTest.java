@@ -31,10 +31,6 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
         assertInstanceOf(
             SqliteProcessIdentity.class,
             SqliteProcessIdentity.fromCoordinationToken(current.coordinationToken()));
-    SqliteProcessIdentity currentFromActivityMarker =
-        assertInstanceOf(
-            SqliteProcessIdentity.class,
-            SqliteProcessIdentity.fromActivityMarkerFileName(current.activityMarkerFileToken()));
     SqliteProcessIdentity unknownStartCurrent =
         assertInstanceOf(
             SqliteProcessIdentity.class,
@@ -52,8 +48,6 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
     assertEquals(current, currentFromLease);
     assertEquals(current.hashCode(), currentFromLease.hashCode());
     assertEquals(current.coordinationToken(), currentFromLegacyMarker.coordinationToken());
-    assertEquals(current.coordinationToken(), currentFromActivityMarker.coordinationToken());
-    assertEquals("pid-12-start-34", SqliteProcessIdentity.activityMarkerFileToken(12L, 34L));
     assertTrue(currentFromLease.isCurrentProcess());
     assertTrue(currentFromLegacyMarker.isCurrentProcess());
     assertTrue(currentFromLease.isLive());
