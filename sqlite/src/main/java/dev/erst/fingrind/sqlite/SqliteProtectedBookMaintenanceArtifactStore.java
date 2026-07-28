@@ -28,10 +28,6 @@ abstract class SqliteProtectedBookMaintenanceArtifactStore
 
   private final WorkflowScopeAcquirer workflowScopeAcquirer;
 
-  SqliteProtectedBookMaintenanceArtifactStore() {
-    this(SqliteBookMaintenanceLease::acquireWorkflowScope);
-  }
-
   SqliteProtectedBookMaintenanceArtifactStore(WorkflowScopeAcquirer workflowScopeAcquirer) {
     this.workflowScopeAcquirer =
         Objects.requireNonNull(workflowScopeAcquirer, "workflowScopeAcquirer");
