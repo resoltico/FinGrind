@@ -196,6 +196,42 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
   }
 
   @Test
+  void preparationResourcesReleaseEveryUntransferredReservationLeaseAndWitness() throws Exception {
+    Path bookTarget = absentTarget("preparation-resources/book.sqlite");
+    Path secretTarget = absentTarget("preparation-resources/book.key");
+    SqliteOwnedDestinationReservation bookReservation =
+        SqliteOwnedDestinationReservation.reserve(bookTarget);
+    SqliteOwnedDestinationReservation secretReservation =
+        SqliteOwnedDestinationReservation.reserve(secretTarget);
+    CountingLease bookLease = new CountingLease(bookTarget);
+    CountingLease secretLease = new CountingLease(secretTarget);
+    SqlitePublicationCapabilityWitness.Set witnesses =
+        witnessesForPair(
+            bookTarget,
+            SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK,
+            secretTarget);
+
+    try (SqlitePairPublicationPreparationResources resources =
+        new SqlitePairPublicationPreparationResources()) {
+      resources.holdBookReservation(bookReservation);
+      resources.holdSecretReservation(secretReservation);
+      resources.holdCapabilityWitnesses(witnesses);
+      resources.holdBookTargetLease(bookLease);
+      resources.holdSecretTargetLease(secretLease);
+    }
+
+    assertEquals(1, bookLease.closeCount().get());
+    assertEquals(1, secretLease.closeCount().get());
+    assertThrows(IllegalStateException.class, () -> bookReservation.createStage(".stage-", ".tmp"));
+    assertThrows(IllegalStateException.class, () -> secretReservation.createStage(".stage-", ".tmp"));
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            witnesses.requireCurrent(
+                bookTarget, SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK));
+  }
+
+  @Test
   void preparationResourceOwnershipRejectsDuplicateCaptures() {
     CountingLease lease = new CountingLease(tempDirectory.resolve("resources/book.sqlite"));
     try (CountingLease ignoredLease = lease;
