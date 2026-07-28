@@ -266,6 +266,29 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
   }
 
   @Test
+  void existingCompleteBackupClassificationRequiresBothRegularMembersAndABackupRequest()
+      throws Exception {
+    Path book = writeArtifact("complete-classification/backup.sqlite", "backup bytes");
+    Path secret = writeArtifact("complete-classification/backup.key", "backup key");
+
+    assertInstanceOf(
+        SqlitePairPublicationReconciliationExistingCompleteBackup.class,
+        SqliteProtectedBookPairPublicationRecovery.existingCompleteBackupOrEvidenceBlocked(
+            backupRequest(book), book, secret));
+    assertInstanceOf(
+        SqlitePairPublicationReconciliationEvidenceBlocked.class,
+        SqliteProtectedBookPairPublicationRecovery.existingCompleteBackupOrEvidenceBlocked(
+            restoreRequest(book), book, secret));
+
+    Path directoryInsteadOfBook =
+        Files.createDirectory(tempDirectory.resolve("complete-classification/dir"));
+    assertInstanceOf(
+        SqlitePairPublicationReconciliationEvidenceBlocked.class,
+        SqliteProtectedBookPairPublicationRecovery.existingCompleteBackupOrEvidenceBlocked(
+            backupRequest(directoryInsteadOfBook), directoryInsteadOfBook, secret));
+  }
+
+  @Test
   void retainedPairRecordCarriesItsStagesIntoUncertainAndPrepublicationOutcomes() throws Exception {
     SqliteProtectedBookPairPublicationRecord record = retainedRecord("retained-outcomes");
 

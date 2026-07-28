@@ -150,7 +150,7 @@ final class SqliteProtectedBookPairPublicationRecovery {
         new ProtectedBookMaintenanceRejection.SecretTargetOccupied(secretTargetPath));
   }
 
-  private static SqlitePairPublicationReconciliation existingCompleteBackupOrEvidenceBlocked(
+  static SqlitePairPublicationReconciliation existingCompleteBackupOrEvidenceBlocked(
       ProtectedBookPairPublicationRecoveryRequest request,
       Path bookTargetPath,
       Path secretTargetPath) {

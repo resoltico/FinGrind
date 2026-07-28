@@ -46,13 +46,27 @@ final class SqlitePosixCoordinationFileSecurity {
   }
 
   static String physicalObjectIdentity(Path existingArtifactPath) throws IOException {
+    return physicalObjectIdentity(
+        existingArtifactPath,
+        path -> Files.readAttributes(path, "unix:dev,ino", LinkOption.NOFOLLOW_LINKS));
+  }
+
+  /**
+   * Reads one POSIX physical identity through an explicit provider boundary.
+   *
+   * <p>The boundary makes malformed provider attribute responses fail closed under the same
+   * contract as a real filesystem response.
+   */
+  static String physicalObjectIdentity(
+      Path existingArtifactPath, PosixIdentityAttributeReader attributeReader) throws IOException {
     Path checkedPath = requireExistingRegularArtifact(existingArtifactPath);
+    PosixIdentityAttributeReader checkedReader =
+        Objects.requireNonNull(attributeReader, "attributeReader");
     if (!SqliteBookFilesystemSupport.supportsPosix(checkedPath)) {
       throw new IOException(
           "FinGrind physical-object coordination requires explicit POSIX device/inode identity or a Windows native handle.");
     }
-    Map<String, Object> attributes =
-        Files.readAttributes(checkedPath, "unix:dev,ino", LinkOption.NOFOLLOW_LINKS);
+    Map<String, Object> attributes = checkedReader.read(checkedPath);
     Object device = attributes.get("dev");
     Object inode = attributes.get("ino");
     if (!(device instanceof Number deviceNumber) || !(inode instanceof Number inodeNumber)) {
@@ -63,6 +77,12 @@ final class SqlitePosixCoordinationFileSecurity {
         + Long.toUnsignedString(deviceNumber.longValue())
         + ":ino="
         + Long.toUnsignedString(inodeNumber.longValue());
+  }
+
+  /** Reads the exact POSIX identity attributes exposed by one filesystem provider. */
+  @FunctionalInterface
+  interface PosixIdentityAttributeReader {
+    Map<String, Object> read(Path path) throws IOException;
   }
 
   private static Path requireExistingRegularArtifact(Path existingArtifactPath) throws IOException {

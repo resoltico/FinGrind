@@ -292,6 +292,22 @@ class SqlitePosixCoordinationControlFileTransportTest extends SqliteNativeBridge
   }
 
   @Test
+  void physicalObjectIdentityRejectsAProviderResponseWithANonNumericInode() throws Exception {
+    Path artifact = ownerOnlyArtifact("identity/malformed-provider.sqlite");
+
+    IOException failure =
+        assertThrows(
+            IOException.class,
+            () ->
+                SqlitePosixCoordinationFileSecurity.physicalObjectIdentity(
+                    artifact, ignored -> Map.of("dev", 7L, "ino", "not-a-number")));
+
+    assertTrue(
+        NullTestSupport.messageOf(failure)
+            .contains("did not expose explicit POSIX device/inode identity"));
+  }
+
+  @Test
   void posixCoordinationSecurityRejectsUnsupportedNofollowChannelsAndOpaqueIdentities()
       throws Exception {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
