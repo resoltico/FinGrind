@@ -58,6 +58,30 @@ class SqliteProtectedBookPairPublicationEvidenceScannerTest
   }
 
   @Test
+  void scannerAcceptsTheMirroredImmutableCopiesOfOnePairRecord() throws Exception {
+    Path bookTarget = tempDirectory.resolve("mirrored-pair-evidence/book.sqlite");
+    Path secretTarget = tempDirectory.resolve("mirrored-pair-evidence/book.key");
+    Path bookStage = writeArtifact("mirrored-pair-evidence/.book.stage", "book stage");
+    Path secretStage = writeArtifact("mirrored-pair-evidence/.secret.stage", "secret stage");
+    SqliteOwnedStagedArtifact.recordExisting(bookTarget, bookStage);
+    SqliteOwnedStagedArtifact.recordExisting(secretTarget, secretStage);
+
+    SqliteProtectedBookPairPublicationRecord.create(
+        bookTarget,
+        secretTarget,
+        bookStage,
+        secretStage,
+        dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy
+            .REQUIRE_ABSENT,
+        backupBinding(bookTarget.resolveSibling("source.sqlite")),
+        (ignoredStep, ignoredParent) -> {});
+
+    assertFalse(
+        SqliteProtectedBookPairPublicationEvidenceScanner.scan(bookTarget, secretTarget)
+            instanceof SqlitePairPublicationEvidenceUnsafe);
+  }
+
+  @Test
   void scannerReportsCandidateEnumerationFailureAfterCheckingForUnsafeOwnerResidue() {
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
       AclFixturePath parent = fileSystem.path("\\evidence");
