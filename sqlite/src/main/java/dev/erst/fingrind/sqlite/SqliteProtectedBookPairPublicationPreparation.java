@@ -6,7 +6,6 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionE
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationAdmission;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationBinding;
-import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationFailureOutcome;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationRecoveryRequest;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -104,49 +103,21 @@ final class SqliteProtectedBookPairPublicationPreparation {
                 checkedSecretRole);
       } catch (SqliteCallerPathContractException exception) {
         throw SqliteProtectedBookMaintenanceArtifactStore.maintenanceRejection(
-            SqliteProtectedBookPathIdentity.sameNormalizedSpelling(
-                    exception.requestedPath(), secretTargetPath)
-                ? checkedSecretRole
-                : checkedBookRole,
+            SqlitePairPublicationAdmissionMapper.roleForRecoveryPathFailure(
+                exception, secretTargetPath, checkedBookRole, checkedSecretRole),
             exception);
       }
-      return switch (reconciliation) {
-        case SqlitePairPublicationReconciliationAbsent _ ->
-            new ProtectedBookPairPublicationAdmission.Prepared(
-                SqliteProtectedBookPairPublicationTargets.prepareWithHeldLeases(
-                    resources,
-                    secretTargetPath,
-                    bookTargetPath,
-                    checkedPolicy,
-                    checkedBookRole,
-                    checkedSecretRole));
-        case SqlitePairPublicationReconciliationRecovered recovered ->
-            new ProtectedBookPairPublicationAdmission.Recovered(
-                recovered.binding(), recovered.retention());
-        case SqlitePairPublicationReconciliationExistingCompleteBackup existing ->
-            new ProtectedBookPairPublicationAdmission.ExistingCompleteBackup(
-                existing.backupArtifactPath(), existing.backupKeyPath());
-        case SqlitePairPublicationReconciliationPrepublicationRecoveryRequired prepublication ->
-            new ProtectedBookPairPublicationFailureOutcome.PrepublicationRecoveryRequired(
-                prepublication.bookArtifactPath(),
-                prepublication.secretArtifactPath(),
-                prepublication.recoveryRecordState(),
-                prepublication.pairPublicationRetention());
-        case SqlitePairPublicationReconciliationEvidenceBlocked blocked ->
-            new ProtectedBookPairPublicationFailureOutcome.EvidenceBlocked(
-                blocked.bookArtifactPath(),
-                blocked.bookArtifactState(),
-                blocked.secretArtifactPath(),
-                blocked.secretArtifactState(),
-                blocked.pairPublicationRetention());
-        case SqlitePairPublicationReconciliationCompletionUncertain uncertain ->
-            new ProtectedBookPairPublicationFailureOutcome.CompletionUncertain(
-                uncertain.bookArtifactPath(),
-                uncertain.bookArtifactState(),
-                uncertain.secretArtifactPath(),
-                uncertain.secretArtifactState(),
-                uncertain.pairPublicationRetention());
-      };
+      if (reconciliation instanceof SqlitePairPublicationReconciliationAbsent) {
+        return new ProtectedBookPairPublicationAdmission.Prepared(
+            SqliteProtectedBookPairPublicationTargets.prepareWithHeldLeases(
+                resources,
+                secretTargetPath,
+                bookTargetPath,
+                checkedPolicy,
+                checkedBookRole,
+                checkedSecretRole));
+      }
+      return SqlitePairPublicationAdmissionMapper.fromRecoveredReconciliation(reconciliation);
     }
   }
 

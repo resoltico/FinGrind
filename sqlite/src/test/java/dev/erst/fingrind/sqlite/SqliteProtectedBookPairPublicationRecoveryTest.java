@@ -12,6 +12,8 @@ import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRo
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
+import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationAdmission;
+import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationFailureOutcome;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationRecoveryRequest;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -902,6 +904,70 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
                         false));
 
     assertInstanceOf(ProtectedBookMaintenanceRejection.RecoveryPending.class, rejection.rejection());
+  }
+
+  @Test
+  void admissionMapperPreservesEveryRecoveredOutcomeAndTheExactPathRole() throws Exception {
+    SqliteProtectedBookPairPublicationRecord record = retainedRecord("admission-mapper");
+    SqlitePairPublicationReconciliationCompletionUncertain uncertain =
+        SqliteProtectedBookPairPublicationRecovery.completionUncertain(
+            record,
+            ProtectedBookPairPublicationMemberState.PUBLISHED_DURABLE,
+            ProtectedBookPairPublicationMemberState.PUBLISHED_DURABLE);
+    var retention =
+        Objects.requireNonNull(uncertain.pairPublicationRetention(), "retained publication stages");
+
+    assertInstanceOf(
+        ProtectedBookPairPublicationAdmission.Recovered.class,
+        SqlitePairPublicationAdmissionMapper.fromRecoveredReconciliation(
+            new SqlitePairPublicationReconciliationRecovered(record.binding, retention)));
+    assertInstanceOf(
+        ProtectedBookPairPublicationAdmission.ExistingCompleteBackup.class,
+        SqlitePairPublicationAdmissionMapper.fromRecoveredReconciliation(
+            new SqlitePairPublicationReconciliationExistingCompleteBackup(
+                record.bookTargetPath, record.secretTargetPath)));
+    assertInstanceOf(
+        ProtectedBookPairPublicationFailureOutcome.PrepublicationRecoveryRequired.class,
+        SqlitePairPublicationAdmissionMapper.fromRecoveredReconciliation(
+            SqliteProtectedBookPairPublicationRecovery.prepublicationRecoveryRequired(
+                record, ProtectedBookPairPublicationRecoveryRecordState.DURABLY_RETAINED)));
+    assertInstanceOf(
+        ProtectedBookPairPublicationFailureOutcome.EvidenceBlocked.class,
+        SqlitePairPublicationAdmissionMapper.fromRecoveredReconciliation(
+            SqliteProtectedBookPairPublicationRecovery.evidenceBlocked(record)));
+    assertInstanceOf(
+        ProtectedBookPairPublicationFailureOutcome.CompletionUncertain.class,
+        SqlitePairPublicationAdmissionMapper.fromRecoveredReconciliation(uncertain));
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            SqlitePairPublicationAdmissionMapper.fromRecoveredReconciliation(
+                SqlitePairPublicationReconciliationAbsent.INSTANCE));
+
+    SqliteCallerPathContractException secretFailure =
+        new SqliteCallerPathContractException(
+            record.secretTargetPath,
+            SqliteCallerPathFailure.PARENT_PATH_COLLISION,
+            "secret target parent changed");
+    SqliteCallerPathContractException bookFailure =
+        new SqliteCallerPathContractException(
+            record.bookTargetPath,
+            SqliteCallerPathFailure.PARENT_PATH_COLLISION,
+            "book target parent changed");
+    assertEquals(
+        ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+        SqlitePairPublicationAdmissionMapper.roleForRecoveryPathFailure(
+            secretFailure,
+            record.secretTargetPath,
+            ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+            ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET));
+    assertEquals(
+        ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+        SqlitePairPublicationAdmissionMapper.roleForRecoveryPathFailure(
+            bookFailure,
+            record.secretTargetPath,
+            ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+            ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET));
   }
 
   @Test
