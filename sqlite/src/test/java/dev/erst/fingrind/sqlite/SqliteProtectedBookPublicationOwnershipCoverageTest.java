@@ -136,6 +136,33 @@ class SqliteProtectedBookPublicationOwnershipCoverageTest
   }
 
   @Test
+  void pairPublishersReleaseTheirWitnessesWhenNoDestinationReservationWasNeeded()
+      throws Exception {
+    Path backupTarget = absentTarget("pair-publisher/unreserved-backup.key");
+    SqliteBackupPairPublication backupPublication =
+        new SqliteBackupPairPublication(
+            Files::createLink,
+            Files::createLink,
+            null,
+            null,
+            witnessesForNoReplace(backupTarget));
+    backupPublication.closeReservations();
+
+    Path restoredBookTarget = absentTarget("pair-publisher/unreserved-restored.sqlite");
+    Path restoredSecretTarget = absentTarget("pair-publisher/unreserved-restored.key");
+    SqliteRestoredBookPairPublication restoredPublication =
+        new SqliteRestoredBookPairPublication(
+            restoredBookTarget,
+            restoredSecretTarget,
+            RestoredBookTargetPolicy.REPLACE_SELECTED,
+            SqliteRestoredBookPairPublication.defaultOperators(),
+            null,
+            null,
+            witnessesForNoReplace(restoredSecretTarget));
+    restoredPublication.closeReservations();
+  }
+
+  @Test
   void preparedPublicationCreatesUnreservedBookStagesAndReleasesTransferredResources()
       throws Exception {
     Path bookTarget = absentTarget("prepared/book.sqlite");
