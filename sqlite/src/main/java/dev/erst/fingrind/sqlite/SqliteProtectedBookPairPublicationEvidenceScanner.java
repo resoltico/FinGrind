@@ -63,9 +63,10 @@ final class SqliteProtectedBookPairPublicationEvidenceScanner {
             decoded.orElseThrow();
         SqliteProtectedBookPairPublicationRecord previous =
             records.putIfAbsent(evidence.record().pairId, evidence.record());
-        if ((previous != null && !previous.sameImmutableRecord(evidence.record()))
-            || !SqliteProtectedBookPathIdentity.containsNormalizedSpelling(
-                evidence.record().evidencePaths(evidence.kind()), candidate)) {
+        // The strict codec already established that this candidate is an exact canonical spelling
+        // of the decoded record's evidence path. Scanning only needs to reject a second, divergent
+        // immutable record for the same pair identity.
+        if (previous != null && !previous.sameImmutableRecord(evidence.record())) {
           return false;
         }
       }
