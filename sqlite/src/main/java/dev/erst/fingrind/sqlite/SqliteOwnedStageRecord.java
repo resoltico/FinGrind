@@ -54,7 +54,7 @@ final class SqliteOwnedStageRecord {
   /**
    * Creates the stage once; a collision leaves opaque residue untouched and asks for a new name.
    */
-  private static boolean createStageIfAbsent(Path finalPath, Path stagedPath) {
+  static boolean createStageIfAbsent(Path finalPath, Path stagedPath) {
     try {
       SqliteSecureRegularFileAccess.createNewEmptyFile(stagedPath);
       return true;
@@ -244,7 +244,8 @@ final class SqliteOwnedStageRecord {
     }
   }
 
-  private static void forceRegularFile(Path path, String description) throws IOException {
+  /** Forces one retained regular artifact at a publication durability boundary. */
+  static void forceRegularFile(Path path, String description) throws IOException {
     if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) {
       throw new IOException("The " + description + " is no longer a regular file.");
     }

@@ -276,6 +276,19 @@ class SqliteOwnedStageRecordTest {
         () ->
             SqliteOwnedStageRecord.recordExisting(
                 finalPath, tempDirectory.resolve("other-parent").resolve("stage.tmp")));
+    Path oversizedFinalPath =
+        tempDirectory.resolve("x".repeat(SqliteSecureRegularFileAccess.MAXIMUM_RECOVERY_METADATA_BYTES));
+    IllegalStateException ownerRecordFailure =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                SqliteOwnedStageRecord.create(
+                    oversizedFinalPath, () -> tempDirectory.resolve("oversized.stage")));
+    assertTrue(NullTestSupport.messageOf(ownerRecordFailure).contains("Failed to create"));
+
+    assertThrows(
+        IOException.class,
+        () -> SqliteOwnedStageRecord.forceRegularFile(tempDirectory.resolve("missing.stage"), "stage"));
 
     try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("basic"))) {
       AclFixturePath aclFinalPath = fileSystem.path("\\stages\\book.sqlite");
@@ -287,6 +300,23 @@ class SqliteOwnedStageRecordTest {
               SqliteCallerPathContractException.class,
               () -> SqliteOwnedStageRecord.create(aclFinalPath, () -> failingStage));
       assertEquals(SqliteCallerPathFailure.MISSING_PARENT_DIRECTORY, stageFailure.pathFailure());
+    }
+
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("posix"))) {
+      AclFixturePath parent = privateFixtureDirectory(fileSystem, "\\stages");
+      AclFixturePath aclFinalPath = fileSystem.path("\\stages\\book.sqlite");
+      AclFixturePath failingStage = fileSystem.path("\\stages\\stage-create.tmp");
+      failingStage.failNewByteChannelWith(new IOException("stage create failure"));
+
+      IllegalStateException stageCreationFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteOwnedStageRecord.create(aclFinalPath, () -> failingStage));
+
+      assertTrue(
+          NullTestSupport.messageOf(stageCreationFailure)
+              .contains("Failed to create one owned maintenance stage"));
+      assertTrue(parent.existsValue());
     }
 
     try (AclFixtureFileSystem fileSystem =
@@ -439,6 +469,23 @@ class SqliteOwnedStageRecordTest {
       assertTrue(
           NullTestSupport.messageOf(ownershipFailure)
               .contains("Failed to establish private FinGrind maintenance-stage ownership"));
+
+      AclFixturePath residueFirst = fileSystem.path("\\residue\\book.sqlite");
+      AclFixturePath residueSecond = fileSystem.path("\\residue\\book.key");
+      AclFixturePath residueParent =
+          (AclFixturePath) Objects.requireNonNull(residueFirst.getParent(), "residue parent");
+      residueParent.exists = true;
+      residueParent.regularFile = false;
+      residueParent.failNewDirectoryStreamWith(new IOException("residue enumeration failure"));
+
+      IllegalStateException residueFailure =
+          assertThrows(
+              IllegalStateException.class,
+              () -> SqliteOwnedStageRecord.hasUnsafeOwnerRecordResidue(residueFirst, residueSecond));
+
+      assertTrue(
+          NullTestSupport.messageOf(residueFailure)
+              .contains("Failed to inspect protected-book stage-owner evidence"));
     }
   }
 
