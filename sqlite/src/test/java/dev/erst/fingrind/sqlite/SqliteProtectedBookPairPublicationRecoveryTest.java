@@ -350,6 +350,13 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
         SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.BLOCKED,
         SqliteProtectedBookPairPublicationRecoverySupport.bookPlan(changedBookStage));
 
+    SqliteProtectedBookPairPublicationRecord changedSecretStage =
+        retainedRecord("recovery-support-changed-secret-stage");
+    Files.writeString(changedSecretStage.secretStagePath, "changed retained secret stage");
+    assertEquals(
+        SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.BLOCKED,
+        SqliteProtectedBookPairPublicationRecoverySupport.secretPlan(changedSecretStage));
+
     SqliteProtectedBookPairPublicationRecord changedReplaceTarget =
         rekeyRecord("recovery-support-changed-replace-target");
     assertEquals(
@@ -370,6 +377,47 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
     } finally {
       bookStage.releaseRetained();
     }
+  }
+
+  @Test
+  void memberRecoveryRechecksStageAndRekeyTargetFactsAtTheFinalPublicationBoundary()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord changedBookStage =
+        retainedRecord("member-book-stage-preflight");
+    Files.writeString(changedBookStage.bookStagePath, "changed retained book stage");
+    try (SqlitePublicationCapabilityWitness.Set witnesses = witnessesFor(changedBookStage)) {
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.OUTCOME_UNCERTAIN,
+          reconciler((ignoredStep, ignoredParent) -> {})
+              .reconcileBook(
+                  changedBookStage,
+                  SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan
+                      .PUBLISH_ELIGIBLE,
+                  witnesses));
+    }
+
+    SqliteProtectedBookPairPublicationRecord convergedRekey =
+        rekeyRecord("member-rekey-converged-book");
+    try (SqlitePublicationCapabilityWitness.Set witnesses =
+        SqlitePairPublicationRecoveryCapabilities.acquire(
+            convergedRekey,
+            SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+            SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan.PUBLISH_ELIGIBLE,
+            ProtectedBookMaintenanceArtifactRole.LIVE_BOOK,
+            ProtectedBookMaintenanceArtifactRole.NEW_BOOK_KEY_TARGET)) {
+      Files.writeString(
+          convergedRekey.bookTargetPath, Files.readString(convergedRekey.bookStagePath));
+      assertEquals(
+          SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation.DURABLE,
+          reconciler((ignoredStep, ignoredParent) -> {})
+              .reconcileSecret(
+                  convergedRekey,
+                  SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan
+                      .PUBLISH_ELIGIBLE,
+                  witnesses));
+    }
+
+    assertTrue(Files.isSameFile(convergedRekey.secretTargetPath, convergedRekey.secretStagePath));
   }
 
   @Test
@@ -859,6 +907,34 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
     assertTrue(recovered.binding().matches(backupRequest(record.bookTargetPath)));
     assertTrue(Files.isSameFile(record.bookTargetPath, record.bookStagePath));
     assertTrue(Files.isSameFile(record.secretTargetPath, record.secretStagePath));
+  }
+
+  @Test
+  void recoveryWorkflowReleasesCapabilitiesWhenPostreconciliationVerificationFails()
+      throws Exception {
+    SqliteProtectedBookPairPublicationRecord record = retainedRecord("workflow-verifier-fault");
+    AtomicInteger verificationCalls = new AtomicInteger();
+    AssertionError injected = new AssertionError("simulated verifier fault");
+
+    AssertionError observed =
+        assertThrows(
+            AssertionError.class,
+            () ->
+                recoveryWorkflow(
+                        (ignoredBook, ignoredSecret, ignoredBinding) ->
+                            verificationCalls.getAndIncrement() == 0
+                                ? true
+                                : throwVerifierFault(injected))
+                    .recover(
+                        record,
+                        RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                        backupRequest(record.bookTargetPath),
+                        ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                        ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                        false));
+
+    assertEquals(injected, observed);
+    assertEquals(2, verificationCalls.get());
   }
 
   @Test
@@ -2351,6 +2427,10 @@ class SqliteProtectedBookPairPublicationRecoveryTest extends SqliteArtifactPubli
     for (Path evidencePath : record.evidencePaths(evidenceKind)) {
       Files.delete(evidencePath);
     }
+  }
+
+  private static boolean throwVerifierFault(AssertionError failure) {
+    throw failure;
   }
 
   private Path absentTarget(String relativePath) throws IOException {
