@@ -138,10 +138,14 @@ final class SqliteMaintenanceWorkflowScopeAcquirer {
           closePairLeases(secretTargetLease, bookTargetLease);
           return new TargetLeasePair(null, null, requestForBusy(busy, request));
         }
-        switch (targetRequest.target()) {
-          case BOOK -> bookTargetLease = SqliteOwnedHeldLease.acquire(acquisition);
-          case SECRET -> secretTargetLease = SqliteOwnedHeldLease.acquire(acquisition);
-        }
+        TargetLeasePair updated =
+            withAcquiredTargetLease(
+                targetRequest.target(),
+                SqliteOwnedHeldLease.acquire(acquisition),
+                bookTargetLease,
+                secretTargetLease);
+        bookTargetLease = updated.bookTargetLease();
+        secretTargetLease = updated.secretTargetLease();
       }
       TargetLeasePair acquired =
           new TargetLeasePair(
@@ -163,6 +167,17 @@ final class SqliteMaintenanceWorkflowScopeAcquirer {
         request.artifactPath(),
         request.leaseIntent(),
         SqliteWorkflowScopeRequests.artifactsForDirectory(requests, request.directoryDomain()));
+  }
+
+  private static TargetLeasePair withAcquiredTargetLease(
+      SqliteWorkflowScopeRequests.Target target,
+      SqliteOwnedHeldLease acquiredLease,
+      @org.jspecify.annotations.Nullable SqliteOwnedHeldLease bookTargetLease,
+      @org.jspecify.annotations.Nullable SqliteOwnedHeldLease secretTargetLease) {
+    return switch (target) {
+      case BOOK -> new TargetLeasePair(acquiredLease, secretTargetLease, null);
+      case SECRET -> new TargetLeasePair(bookTargetLease, acquiredLease, null);
+    };
   }
 
   /** Acquires exactly one declared workflow member under its immutable admission scope. */
