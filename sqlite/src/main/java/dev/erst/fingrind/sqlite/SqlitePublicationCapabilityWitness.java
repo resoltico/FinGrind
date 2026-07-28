@@ -370,10 +370,10 @@ final class SqlitePublicationCapabilityWitness {
         PROTOCOL + "-" + key.primitiveKind().token() + "-" + state, key.parentFingerprint());
   }
 
-  private record WitnessKey(
+  record WitnessKey(
       Path parentDirectory, String parentFingerprint, PrimitiveKind primitiveKind)
       implements Comparable<WitnessKey> {
-    private WitnessKey {
+    WitnessKey {
       Objects.requireNonNull(parentDirectory, "parentDirectory");
       Objects.requireNonNull(parentFingerprint, "parentFingerprint");
       Objects.requireNonNull(primitiveKind, "primitiveKind");

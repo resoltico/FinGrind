@@ -3,6 +3,7 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -28,6 +29,32 @@ class SqliteGeneratedSecretTargetTest {
   void hardenTempDirectory() {
     tempDirectory =
         SqliteTestPrivateDirectorySupport.canonicalizeAndHardenOwnerOnlyDirectory(tempDirectory);
+  }
+
+  @Test
+  void witnessKeyEqualityUsesOnlyTheCanonicalParentFingerprintAndPrimitive() {
+    Path parent = tempDirectory.resolve("witness-key-parent");
+    SqlitePublicationCapabilityWitness.WitnessKey first =
+        new SqlitePublicationCapabilityWitness.WitnessKey(
+            parent, "canonical-parent", SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK);
+
+    assertEquals(
+        first,
+        new SqlitePublicationCapabilityWitness.WitnessKey(
+            parent.resolve("alternate-spelling"),
+            "canonical-parent",
+            SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK));
+    assertNotEquals(first, "not a witness key");
+    assertNotEquals(
+        first,
+        new SqlitePublicationCapabilityWitness.WitnessKey(
+            parent, "other-parent", SqlitePublicationCapabilityWitness.PrimitiveKind.NO_REPLACE_LINK));
+    assertNotEquals(
+        first,
+        new SqlitePublicationCapabilityWitness.WitnessKey(
+            parent,
+            "canonical-parent",
+            SqlitePublicationCapabilityWitness.PrimitiveKind.ATOMIC_REPLACE));
   }
 
   @Test
