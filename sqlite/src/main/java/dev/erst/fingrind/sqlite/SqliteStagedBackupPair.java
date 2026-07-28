@@ -12,6 +12,15 @@ import org.jspecify.annotations.Nullable;
 
 /** Staged encrypted backup pair implementation. */
 final class SqliteStagedBackupPair implements StagedBackupPair {
+  enum CommitFailureDisposition {
+    PREPUBLICATION_RECOVERY_REQUIRED,
+    DURABLY_RETAINED_PREPUBLICATION,
+    COMPLETION_UNCERTAIN,
+    POSTPUBLICATION_RECOVERY_REQUIRED,
+    PREBOUNDARY_UNEXPECTED,
+    POSTBOUNDARY_UNEXPECTED
+  }
+
   private final SqliteOwnedStagedArtifact stagedBackupFile;
   private final Path finalBackupFilePath;
   private final SqliteOwnedStagedArtifact stagedBackupBookKeyFile;
@@ -110,48 +119,54 @@ final class SqliteStagedBackupPair implements StagedBackupPair {
       PublicationProgress progress,
       SqlitePairPublicationMemberAttempt bookAttempt,
       SqlitePairPublicationMemberAttempt secretAttempt) {
-    if (failure
+    return switch (failureDisposition(failure, progress.recoveryBoundaryReached())) {
+      case PREPUBLICATION_RECOVERY_REQUIRED -> finalizer.finishPrepublicationRecoveryRequired();
+      case DURABLY_RETAINED_PREPUBLICATION -> finalizer.finishDurablyRetainedPrepublication();
+      case COMPLETION_UNCERTAIN ->
+          finalizer.finishCompletionUncertain(bookAttempt.state(), secretAttempt.state());
+      case POSTPUBLICATION_RECOVERY_REQUIRED ->
+          finalizer.finishPostRecoveryFailure(bookAttempt, secretAttempt, true);
+      case POSTBOUNDARY_UNEXPECTED ->
+          finalizer.finishPostRecoveryFailure(bookAttempt, secretAttempt, false);
+      case PREBOUNDARY_UNEXPECTED -> {
+        finalizer.finishAfterPreBoundaryFailure();
+        throw unexpectedPreboundaryFailure(failure);
+      }
+    };
+  }
+
+  static CommitFailureDisposition failureDisposition(
+      Exception failure, boolean recoveryBoundaryReached) {
+    Exception checkedFailure = Objects.requireNonNull(failure, "failure");
+    if (checkedFailure
         instanceof
         SqliteProtectedBookPairPublicationRecord.RecoveryRecordDurabilityUnconfirmedException) {
-      return finalizer.finishPrepublicationRecoveryRequired();
+      return CommitFailureDisposition.PREPUBLICATION_RECOVERY_REQUIRED;
     }
-    if (failure
+    if (checkedFailure
         instanceof
         SqliteProtectedBookPublicationSupport.FinalMemberPublicationGuardRejectedException
             guardFailure) {
       return guardFailure.member() == SqliteProtectedBookPublicationSupport.FinalMember.SECRET
-          ? finalizer.finishDurablyRetainedPrepublication()
-          : finalizer.finishCompletionUncertain(bookAttempt.state(), secretAttempt.state());
+          ? CommitFailureDisposition.DURABLY_RETAINED_PREPUBLICATION
+          : CommitFailureDisposition.COMPLETION_UNCERTAIN;
     }
-    if (progress.recoveryBoundaryReached()) {
-      return finishFailureAfterRecoveryBoundary(failure, bookAttempt, secretAttempt);
+    if (!recoveryBoundaryReached) {
+      return CommitFailureDisposition.PREBOUNDARY_UNEXPECTED;
     }
-    return handlePreBoundaryFailure(failure);
+    if (checkedFailure instanceof SqliteGeneratedSecretTargetOccupiedException
+        || checkedFailure instanceof SqliteCallerPathContractException
+        || checkedFailure instanceof java.nio.file.FileAlreadyExistsException) {
+      return CommitFailureDisposition.POSTPUBLICATION_RECOVERY_REQUIRED;
+    }
+    return CommitFailureDisposition.POSTBOUNDARY_UNEXPECTED;
   }
 
-  private StagedPairPublicationCommitOutcome finishFailureAfterRecoveryBoundary(
-      Exception failure,
-      SqlitePairPublicationMemberAttempt bookAttempt,
-      SqlitePairPublicationMemberAttempt secretAttempt) {
-    if (failure instanceof SqliteGeneratedSecretTargetOccupiedException
-        || failure instanceof SqliteCallerPathContractException
-        || failure instanceof java.nio.file.FileAlreadyExistsException) {
-      return finalizer.finishPostRecoveryFailure(bookAttempt, secretAttempt, true);
-    }
-    return finalizer.finishPostRecoveryFailure(bookAttempt, secretAttempt, false);
-  }
-
-  private StagedPairPublicationCommitOutcome handlePreBoundaryFailure(Exception failure) {
-    finalizer.finishAfterPreBoundaryFailure();
-    return throwUnexpectedCommitFailure(failure);
-  }
-
-  private static StagedPairPublicationCommitOutcome throwUnexpectedCommitFailure(
-      Exception failure) {
+  private static RuntimeException unexpectedPreboundaryFailure(Exception failure) {
     if (failure instanceof RuntimeException runtimeFailure) {
-      throw runtimeFailure;
+      return runtimeFailure;
     }
-    throw new IllegalStateException("Failed to publish the staged FinGrind backup pair.", failure);
+    return new IllegalStateException("Failed to publish the staged FinGrind backup pair.", failure);
   }
 
   private void publishBoundPair(

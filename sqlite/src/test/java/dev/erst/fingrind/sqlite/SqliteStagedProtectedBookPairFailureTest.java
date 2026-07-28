@@ -1407,6 +1407,53 @@ class SqliteStagedProtectedBookPairFailureTest extends SqliteArtifactPublication
             new IllegalStateException("post-boundary programming failure"), true, true));
   }
 
+  @Test
+  void backupPairFailureDispositionDistinguishesEveryRecoveryBoundaryOutcome() {
+    Path targetPath = tempDirectory.resolve("backup-disposition-target.key");
+
+    assertEquals(
+        SqliteStagedBackupPair.CommitFailureDisposition.PREPUBLICATION_RECOVERY_REQUIRED,
+        SqliteStagedBackupPair.failureDisposition(
+            new SqliteProtectedBookPairPublicationRecord
+                .RecoveryRecordDurabilityUnconfirmedException(new IOException("unconfirmed")),
+            false));
+    assertEquals(
+        SqliteStagedBackupPair.CommitFailureDisposition.DURABLY_RETAINED_PREPUBLICATION,
+        SqliteStagedBackupPair.failureDisposition(
+            guardRejection(SqliteProtectedBookPublicationSupport.FinalMember.SECRET), true));
+    assertEquals(
+        SqliteStagedBackupPair.CommitFailureDisposition.COMPLETION_UNCERTAIN,
+        SqliteStagedBackupPair.failureDisposition(
+            guardRejection(SqliteProtectedBookPublicationSupport.FinalMember.BOOK), true));
+    assertEquals(
+        SqliteStagedBackupPair.CommitFailureDisposition.PREBOUNDARY_UNEXPECTED,
+        SqliteStagedBackupPair.failureDisposition(new IOException("before recovery record"), false));
+
+    assertEquals(
+        SqliteStagedBackupPair.CommitFailureDisposition.POSTPUBLICATION_RECOVERY_REQUIRED,
+        SqliteStagedBackupPair.failureDisposition(
+            new SqliteGeneratedSecretTargetOccupiedException(targetPath), true));
+    assertEquals(
+        SqliteStagedBackupPair.CommitFailureDisposition.POSTPUBLICATION_RECOVERY_REQUIRED,
+        SqliteStagedBackupPair.failureDisposition(
+            new SqliteCallerPathContractException(
+                targetPath,
+                SqliteCallerPathFailure.TARGET_OWNER_ONLY_REQUIRED,
+                "selected target is not owner-only"),
+            true));
+    assertEquals(
+        SqliteStagedBackupPair.CommitFailureDisposition.POSTPUBLICATION_RECOVERY_REQUIRED,
+        SqliteStagedBackupPair.failureDisposition(
+            new java.nio.file.FileAlreadyExistsException(targetPath.toString()), true));
+    assertEquals(
+        SqliteStagedBackupPair.CommitFailureDisposition.POSTBOUNDARY_UNEXPECTED,
+        SqliteStagedBackupPair.failureDisposition(new IOException("after recovery record"), true));
+    assertEquals(
+        SqliteStagedBackupPair.CommitFailureDisposition.POSTBOUNDARY_UNEXPECTED,
+        SqliteStagedBackupPair.failureDisposition(
+            new IllegalStateException("post-boundary programming failure"), true));
+  }
+
   private static SqliteProtectedBookPublicationSupport.FinalMemberPublicationGuardRejectedException
       guardRejection(SqliteProtectedBookPublicationSupport.FinalMember member) {
     return assertThrows(
