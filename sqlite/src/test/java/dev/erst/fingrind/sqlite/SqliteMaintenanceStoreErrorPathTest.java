@@ -909,8 +909,14 @@ class SqliteMaintenanceStoreErrorPathTest extends SqliteArtifactPublicationTestS
   void maintenanceStoreMapsFinalTargetLeafRejectionAndReturnsHeldDirectLeases() throws Exception {
     Path existingSource = writeArtifact("direct-lease-source.sqlite", "maintenance source");
     Path managedTarget = existingSource.resolveSibling("direct-lease-target.sqlite");
+    Path liveBookTarget = existingSource.resolveSibling("direct-live-book-target.sqlite");
     Path directoryTarget = Files.createDirectory(existingSource.resolveSibling("directory-target"));
     SqliteProtectedBookMaintenanceStore store = maintenanceStore();
+
+    assertEquals(
+        liveBookTarget,
+        store.normalizeFinalTarget(
+            liveBookTarget, "liveBookPath", ProtectedBookMaintenanceArtifactRole.LIVE_BOOK));
 
     ProtectedBookMaintenanceRejectionException finalTargetFailure =
         assertThrows(
