@@ -147,12 +147,11 @@ final class SqliteObjectCoordinationArtifacts {
     Path root = configuredRoot();
     requireNoRetiredNamespace(root);
     try {
-      Path canonicalRoot;
-      if (SqliteCoordinationControlFiles.isWindows()) {
-        canonicalRoot = SqliteWindowsCoordinationFfmTransport.createOrValidatePrivateRoot(root);
-      } else {
-        canonicalRoot = createOrValidatePrivatePosixRoot(root);
-      }
+      Path canonicalRoot =
+          createOrValidatePrivateRoot(
+              root,
+              SqliteCoordinationControlFiles.isWindows(),
+              SqliteWindowsCoordinationFfmTransport::createOrValidatePrivateRoot);
       requireNoRetiredObjectResidue(canonicalRoot);
       return canonicalRoot;
     } catch (PrivateOutputDirectory.Violation violation) {
@@ -169,7 +168,17 @@ final class SqliteObjectCoordinationArtifacts {
     }
   }
 
-  private static Path createOrValidatePrivatePosixRoot(Path root) throws IOException {
+  /** Selects the host-native private-root initializer without exposing a mutable root setting. */
+  static Path createOrValidatePrivateRoot(
+      Path root, boolean isWindows, PrivateRootInitializer windowsInitializer) throws IOException {
+    Objects.requireNonNull(windowsInitializer, "windowsInitializer");
+    return isWindows
+        ? windowsInitializer.createOrValidate(root)
+        : createOrValidatePrivatePosixRoot(root);
+  }
+
+  /** Creates or validates the POSIX-only private coordination root. */
+  static Path createOrValidatePrivatePosixRoot(Path root) throws IOException {
     if (Files.exists(root, LinkOption.NOFOLLOW_LINKS)) {
       PrivateOutputDirectory.requireExistingOwnerOnly(root);
     } else {
@@ -244,7 +253,8 @@ final class SqliteObjectCoordinationArtifacts {
     return true;
   }
 
-  private static Path configuredRoot() throws IOException {
+  /** Resolves the process-wide root, with test scopes taking precedence over the user-home root. */
+  static Path configuredRoot() throws IOException {
     TEST_ROOT_LOCK.lock();
     try {
       @Nullable Path testRoot = TEST_ROOT_STACK.peekLast();
@@ -254,7 +264,11 @@ final class SqliteObjectCoordinationArtifacts {
     } finally {
       TEST_ROOT_LOCK.unlock();
     }
-    String userHome = System.getProperty("user.home");
+    return userHomeRoot(System.getProperty("user.home"));
+  }
+
+  /** Derives the production root from one supplied user-home value. */
+  static Path userHomeRoot(@Nullable String userHome) throws IOException {
     if (userHome == null || userHome.isBlank()) {
       throw new IOException("FinGrind cannot resolve a per-user object-coordination root.");
     }
@@ -269,6 +283,12 @@ final class SqliteObjectCoordinationArtifacts {
   private static @Nullable ActivitySlot activitySlot(
       SqliteCoordinationControlFiles.@Nullable LockedControlFile lockedControl) {
     return lockedControl == null ? null : new ActivitySlot(lockedControl);
+  }
+
+  /** Initializes one private root using the platform-specific primitive selected by the caller. */
+  @FunctionalInterface
+  interface PrivateRootInitializer {
+    Path createOrValidate(Path root) throws IOException;
   }
 
   /** Immutable v4 control domain for one explicit physical artifact identity. */

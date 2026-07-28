@@ -272,7 +272,9 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
 
     for (String malformedName :
         java.util.List.of(
-            "object-v4-too-short.control", "object-v4-" + "g".repeat(64) + ".control")) {
+            "object-v4-no-control-suffix",
+            "object-v4-too-short.control",
+            "object-v4-" + "g".repeat(64) + ".control")) {
       Path root = tempDirectory.resolve("malformed-object-root-" + malformedName.hashCode());
       Files.createDirectory(root);
       SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(root);
@@ -344,6 +346,67 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
       }
       assertFalse(SqliteObjectCoordinationArtifacts.hasActiveSlot(bookPath));
     }
+  }
+
+  @Test
+  void objectCoordinationRootSelectionAndEmptyControlsRemainFailClosed() throws Exception {
+    Path bookPath = writeProtectedBookPath("object-root-selection.sqlite");
+    Path testRoot = tempDirectory.resolve("empty-object-coordination-root");
+    try (AutoCloseable ignored = SqliteObjectCoordinationArtifacts.installTestRoot(testRoot)) {
+      SqliteObjectCoordinationArtifacts.Domain domain =
+          SqliteObjectCoordinationArtifacts.domainForExistingArtifact(bookPath);
+
+      assertFalse(Files.exists(domain.controlPath(), LinkOption.NOFOLLOW_LINKS));
+      assertFalse(SqliteObjectCoordinationArtifacts.hasActiveSlot(bookPath));
+
+      Files.writeString(testRoot.resolve("object-v4-" + "a".repeat(64) + ".control"), "other object");
+      assertEquals(
+          domain.objectIdentity(),
+          SqliteObjectCoordinationArtifacts.domainForExistingArtifact(bookPath).objectIdentity());
+    }
+
+    Path selectedRoot = tempDirectory.resolve("selected-windows-root");
+    assertEquals(
+        selectedRoot,
+        SqliteObjectCoordinationArtifacts.createOrValidatePrivateRoot(
+            tempDirectory.resolve("unused-root"), true, ignored -> selectedRoot));
+
+    try (AclFixtureFileSystem fileSystem = AclFixtureFileSystem.withViews(Set.of("acl"))) {
+      AclFixturePath unsupportedRoot = fileSystem.path("\\unsupported\\coordination-root");
+      IOException failure =
+          assertThrows(
+              IOException.class,
+              () -> SqliteObjectCoordinationArtifacts.createOrValidatePrivatePosixRoot(unsupportedRoot));
+      assertTrue(
+          Objects.requireNonNull(failure.getMessage(), "unsupported-root message")
+              .contains("requires POSIX owner-only root creation"));
+    }
+  }
+
+  @Test
+  void objectCoordinationRejectsEveryRetiredStateVariantAndMissingUserHome() throws Exception {
+    Path bookPath = writeProtectedBookPath("object-retired-variants.sqlite");
+    for (String retiredName :
+        java.util.List.of(
+            "object-v2-retained.control", ".fingrind-object-registry-v4.control")) {
+      Path root = tempDirectory.resolve("retired-object-" + retiredName.hashCode());
+      Files.createDirectory(root);
+      SqliteTestPrivateDirectorySupport.hardenOwnerOnlyDirectory(root);
+      Files.writeString(root.resolve(retiredName), "retired object-coordination state");
+
+      try (AutoCloseable ignored = SqliteObjectCoordinationArtifacts.installTestRoot(root)) {
+        IOException failure =
+            assertThrows(
+                IOException.class,
+                () -> SqliteObjectCoordinationArtifacts.domainForExistingArtifact(bookPath));
+        assertTrue(
+            Objects.requireNonNull(failure.getMessage(), "retired-state message")
+                .contains("Retired FinGrind object-coordination state"));
+      }
+    }
+
+    assertThrows(IOException.class, () -> SqliteObjectCoordinationArtifacts.userHomeRoot(null));
+    assertThrows(IOException.class, () -> SqliteObjectCoordinationArtifacts.userHomeRoot(""));
   }
 
   private Path writeProtectedBookPath(String fileName) throws IOException {
