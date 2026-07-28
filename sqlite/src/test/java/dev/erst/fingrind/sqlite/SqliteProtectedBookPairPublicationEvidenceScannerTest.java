@@ -1,6 +1,7 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -75,6 +76,7 @@ class SqliteProtectedBookPairPublicationEvidenceScannerTest
         SqliteProtectedBookPairPublicationEvidenceCodec.encoded(
             conflicting, SqliteProtectedBookPairPublicationEvidenceKind.RETAINED));
 
+    assertFalse(SqliteOwnedStageRecord.hasUnsafeOwnerRecordResidue(bookTarget, secretTarget));
     assertEquals(
         SqlitePairPublicationEvidenceUnsafe.INSTANCE,
         SqliteProtectedBookPairPublicationEvidenceScanner.scan(bookTarget, secretTarget));
