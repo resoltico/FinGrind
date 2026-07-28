@@ -6,6 +6,7 @@ import dev.erst.fingrind.core.ArtifactPublicationRetention;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationRecoveryRequest;
+import java.util.List;
 import java.util.Objects;
 
 /** Drives exact-record recovery after admission has selected a single pair publication. */
@@ -159,25 +160,35 @@ final class SqlitePairPublicationRecoveryWorkflow {
       SqliteProtectedBookPairPublicationRecoverySupport.MemberRecoveryPlan secretPlan,
       ProtectedBookMaintenanceArtifactRole bookArtifactRole,
       ProtectedBookMaintenanceArtifactRole secretArtifactRole) {
-    try (SqlitePublicationCapabilityWitness.Set capabilityWitnesses =
+    SqlitePublicationCapabilityWitness.Set capabilityWitnesses =
         SqlitePairPublicationRecoveryCapabilities.acquire(
-            record, bookPlan, secretPlan, bookArtifactRole, secretArtifactRole)) {
+            record, bookPlan, secretPlan, bookArtifactRole, secretArtifactRole);
+    SqlitePairPublicationReconciliation reconciliation;
+    try {
       SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation secret =
           memberReconciler.reconcileSecret(record, secretPlan, capabilityWitnesses);
       if (!secret.isDurable()) {
-        return SqliteProtectedBookPairPublicationRecovery.completionUncertain(
-            record,
-            SqliteProtectedBookPairPublicationRecoverySupport.bookState(record),
-            secret.state());
+        reconciliation =
+            SqliteProtectedBookPairPublicationRecovery.completionUncertain(
+                record,
+                SqliteProtectedBookPairPublicationRecoverySupport.bookState(record),
+                secret.state());
+      } else {
+        SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation book =
+            memberReconciler.reconcileBook(record, bookPlan, capabilityWitnesses);
+        reconciliation =
+            !book.isDurable() || !recoveryProof.verifiesRecordBoundPair(record)
+                ? SqliteProtectedBookPairPublicationRecovery.completionUncertain(
+                    record, book.state(), secret.state())
+                : recovered(record);
       }
-      SqliteProtectedBookPairPublicationRecoverySupport.MemberReconciliation book =
-          memberReconciler.reconcileBook(record, bookPlan, capabilityWitnesses);
-      if (!book.isDurable() || !recoveryProof.verifiesRecordBoundPair(record)) {
-        return SqliteProtectedBookPairPublicationRecovery.completionUncertain(
-            record, book.state(), secret.state());
-      }
-      return recovered(record);
+    } catch (RuntimeException | Error failure) {
+      SqliteRuntimeCloseSequence.closeAllPreservingFailure(
+          List.of(capabilityWitnesses::close), failure);
+      throw failure;
     }
+    capabilityWitnesses.close();
+    return reconciliation;
   }
 
   private SqlitePairPublicationReconciliation mismatch(
