@@ -90,6 +90,18 @@ class SqliteProcessIdentityAndActivityMarkersTest extends SqliteNativeBridgeTest
   }
 
   @Test
+  void activityRegistrationCloseIsIdempotent() throws Exception {
+    Path bookPath = writeProtectedBookPath("idempotent-close.sqlite");
+    SqliteBookActivityMarkers.ActivityRegistration registration =
+        SqliteBookActivityMarkers.acquireCurrentProcessActivity(bookPath);
+
+    registration.close();
+    registration.close();
+
+    assertFalse(SqliteBookActivityMarkers.hasExternalLiveMarker(bookPath));
+  }
+
+  @Test
   void retiredActivityMarkerResidueFailsClosedWithoutDeletion() throws Exception {
     Path bookPath = writeProtectedBookPath("retired-marker.sqlite");
     Path retiredMarker =
