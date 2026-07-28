@@ -64,6 +64,25 @@ class SqliteMaintenanceLeaseArtifactsTest extends SqliteNativeBridgeTestSupport 
   }
 
   @Test
+  void exactRetiredControlAndRawLeaseNamesEachFailClosedWithoutDeletion() throws Exception {
+    Path retiredV3Directory = secureDirectory("retired-v3-directory-control");
+    Path retiredV3Control = retiredV3Directory.resolve(".fingrind-maintenance-directory-v3.control");
+    Files.writeString(retiredV3Control, "retired v3 control contents");
+
+    assertTrue(SqliteMaintenanceLeaseArtifacts.hasBlockingArtifact(retiredV3Directory.toRealPath()));
+    assertNull(SqliteMaintenanceLeaseArtifacts.acquire(retiredV3Directory.toRealPath()));
+    assertTrue(Files.exists(retiredV3Control, LinkOption.NOFOLLOW_LINKS));
+
+    Path rawLeaseDirectory = secureDirectory("retired-exact-raw-lease");
+    Path rawLease = rawLeaseDirectory.resolve(".fingrind-maintenance.lock");
+    Files.writeString(rawLease, "retired raw lease contents");
+
+    assertTrue(SqliteMaintenanceLeaseArtifacts.hasBlockingArtifact(rawLeaseDirectory.toRealPath()));
+    assertNull(SqliteMaintenanceLeaseArtifacts.acquire(rawLeaseDirectory.toRealPath()));
+    assertTrue(Files.exists(rawLease, LinkOption.NOFOLLOW_LINKS));
+  }
+
+  @Test
   void retiredRawTargetLeaseResidueFailsClosedWithoutDeletion() throws Exception {
     Path parent = secureDirectory("retired-raw");
     Path retired = parent.resolve("book.sqlite.fingrind-maintenance.lock");
