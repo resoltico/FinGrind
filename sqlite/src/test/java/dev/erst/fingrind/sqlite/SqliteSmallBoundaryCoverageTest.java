@@ -111,4 +111,19 @@ class SqliteSmallBoundaryCoverageTest extends SqliteNativeBridgeTestSupport {
           kind.isMandatoryRecoveryEvidence());
     }
   }
+
+  @Test
+  void evidenceKindsRejectUnknownWireValues() {
+    for (SqliteProtectedBookPairPublicationEvidenceKind kind :
+        SqliteProtectedBookPairPublicationEvidenceKind.values()) {
+      assertEquals(kind, SqliteProtectedBookPairPublicationEvidenceKind.fromWireValue(kind.wireValue()));
+    }
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> SqliteProtectedBookPairPublicationEvidenceKind.fromWireValue("unknown"));
+
+    assertEquals("Unknown pair evidence kind.", exception.getMessage());
+  }
 }

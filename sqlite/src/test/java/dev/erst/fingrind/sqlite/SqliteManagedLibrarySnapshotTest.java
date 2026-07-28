@@ -250,6 +250,33 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
   }
 
   @Test
+  void verifiedSnapshot_recordRejectsAnInvalidVerifiedDigest() throws Exception {
+    Path snapshotDirectory = Files.createDirectory(tempDirectory.resolve("invalid-digest-snapshot"));
+    Path libraryPath = snapshotDirectory.resolve("library.dylib");
+    Path checksumPath = snapshotDirectory.resolve("library.dylib.sha256");
+    Files.writeString(libraryPath, "library", StandardCharsets.UTF_8);
+    Files.writeString(checksumPath, "checksum", StandardCharsets.UTF_8);
+
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new SqliteVerifiedLibrarySnapshot(
+                    new SqliteLibraryTarget(
+                        "managed-only",
+                        SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                        libraryPath.toString()),
+                    snapshotDirectory,
+                    libraryPath,
+                    checksumPath,
+                    "not-a-digest"));
+
+    assertEquals(
+        "snapshotLibrarySha256 must be one lowercase 64-character SHA-256 digest.",
+        exception.getMessage());
+  }
+
+  @Test
   void verifiedSnapshot_copyOfRetainsAnIncompleteOwnerOnlyAttemptAfterCopyFailure()
       throws Exception {
     Path libraryPath = writeLibrary("libsqlite3.so.0", "sqlite3mc");
