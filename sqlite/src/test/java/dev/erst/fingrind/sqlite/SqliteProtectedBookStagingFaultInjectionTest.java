@@ -3,8 +3,12 @@ package dev.erst.fingrind.sqlite;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.contract.runtime.ContractErrors;
+import dev.erst.fingrind.contract.runtime.ContractFailureException;
 import dev.erst.fingrind.executor.maintenance.MaintenanceDecision;
 import dev.erst.fingrind.executor.maintenance.MaintenanceFailure;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
@@ -12,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -113,6 +118,42 @@ class SqliteProtectedBookStagingFaultInjectionTest extends SqliteArtifactPublica
     assertFalse(Files.exists(keyTarget));
     assertRetainedStageRecord(bookTarget, false);
     assertRetainedStageRecord(keyTarget, false);
+  }
+
+  @Test
+  void backupSecretContractFailuresPreserveTheirExactFailureAndReleaseCreatedStages()
+      throws Exception {
+    SourceBook source = initializedSourceBook("backup-secret-contract-failure");
+    Path backupBookPath =
+        tempDirectory.resolve("backup-secret-contract-failure").resolve("backup.sqlite");
+    Path backupKeyPath =
+        tempDirectory.resolve("backup-secret-contract-failure").resolve("backup.key");
+    ContractFailureException expected =
+        new ContractFailureException(
+            ContractErrors.Descriptor.INVALID_BOOK_KEY_FILE.failure(
+                "injected backup secret contract failure", null, null));
+
+    try (SqliteBookPassphrase sourcePassphrase = SqliteBookKeyFile.load(source.keyPath())) {
+      assertSame(
+          expected,
+          assertThrows(
+              ContractFailureException.class,
+              () ->
+                  SqliteProtectedBookBackupStaging.stageResolvedPair(
+                      source.bookPath(),
+                      backupBookPath,
+                      backupKeyPath,
+                      sourcePassphrase,
+                      VERIFICATION_SUPPORT,
+                      checkpoint -> {},
+                      ignored -> {
+                        throw expected;
+                      })));
+    }
+
+    assertFalse(Files.exists(backupBookPath));
+    assertFalse(Files.exists(backupKeyPath));
+    assertRetainedStageRecord(backupBookPath, true);
   }
 
   private static Stream<Arguments> backupStagingCheckpoints() {
