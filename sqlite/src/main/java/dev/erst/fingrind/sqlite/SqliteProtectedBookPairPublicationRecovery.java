@@ -16,7 +16,8 @@ import java.nio.file.Path;
 import java.util.Objects;
 
 /** Classifies durable pair-publication evidence before admission can reserve new targets. */
-final class SqliteProtectedBookPairPublicationRecovery {
+final class SqliteProtectedBookPairPublicationRecovery
+    implements SqliteProtectedBookPairPublicationPreparation.PairPublicationRecovery {
   private final SqliteProtectedBookPairPublicationRecoveryPublisher publisher;
 
   SqliteProtectedBookPairPublicationRecovery(
@@ -28,7 +29,8 @@ final class SqliteProtectedBookPairPublicationRecovery {
             recoveredPairVerifier, directoryForcer, recoveryRecordFileForcer);
   }
 
-  SqlitePairPublicationReconciliation reconcile(
+  @Override
+  public SqlitePairPublicationReconciliation reconcile(
       Path bookTargetPath,
       Path secretTargetPath,
       RestoredBookTargetPolicy expectedBookTargetPolicy,

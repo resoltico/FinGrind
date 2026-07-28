@@ -23,6 +23,18 @@ final class SqliteProtectedBookPairPublicationPreparation {
         ProtectedBookPairPublicationBinding binding);
   }
 
+  /** Reconciles durable pair-publication evidence before any new target is reserved. */
+  @FunctionalInterface
+  interface PairPublicationRecovery {
+    SqlitePairPublicationReconciliation reconcile(
+        Path bookTargetPath,
+        Path secretTargetPath,
+        RestoredBookTargetPolicy expectedBookTargetPolicy,
+        ProtectedBookPairPublicationRecoveryRequest request,
+        ProtectedBookMaintenanceArtifactRole bookArtifactRole,
+        ProtectedBookMaintenanceArtifactRole secretArtifactRole);
+  }
+
   /** Performs one generated-secret preflight action that can fail with filesystem I/O. */
   @FunctionalInterface
   interface GeneratedSecretTargetPreparation {
@@ -40,19 +52,23 @@ final class SqliteProtectedBookPairPublicationPreparation {
   }
 
   private final SqliteProtectedBookMaintenanceArtifactStore artifactStore;
-  private final SqliteProtectedBookPairPublicationRecovery recovery;
-  private final SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer;
+  private final PairPublicationRecovery recovery;
 
   SqliteProtectedBookPairPublicationPreparation(
       SqliteProtectedBookMaintenanceArtifactStore artifactStore,
       RecoveredPairVerifier recoveredPairVerifier,
       SqliteProtectedBookPublicationSupport.PairDirectoryForcer directoryForcer,
       SqliteProtectedBookPairPublicationRecord.RecoveryRecordFileForcer recoveryRecordFileForcer) {
-    this.artifactStore = Objects.requireNonNull(artifactStore, "artifactStore");
-    this.directoryForcer = Objects.requireNonNull(directoryForcer, "directoryForcer");
-    recovery =
+    this(
+        artifactStore,
         new SqliteProtectedBookPairPublicationRecovery(
-            recoveredPairVerifier, this.directoryForcer, recoveryRecordFileForcer);
+            recoveredPairVerifier, directoryForcer, recoveryRecordFileForcer));
+  }
+
+  SqliteProtectedBookPairPublicationPreparation(
+      SqliteProtectedBookMaintenanceArtifactStore artifactStore, PairPublicationRecovery recovery) {
+    this.artifactStore = Objects.requireNonNull(artifactStore, "artifactStore");
+    this.recovery = Objects.requireNonNull(recovery, "recovery");
   }
 
   /**

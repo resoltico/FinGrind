@@ -86,7 +86,7 @@ public final class SqliteProtectedBookMaintenanceStore
             recoveryRecordFileForcer);
   }
 
-  private boolean verifiesRecoveredPair(
+  boolean verifiesRecoveredPair(
       Path normalizedBookTargetPath,
       Path normalizedSecretTargetPath,
       ProtectedBookPairPublicationBinding binding) {

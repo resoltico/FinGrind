@@ -1,8 +1,11 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejection;
+import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceRejectionException;
 import dev.erst.fingrind.executor.maintenance.ProtectedBookMaintenanceArtifactRole;
 import dev.erst.fingrind.executor.spi.ProtectedBookMaintenanceStore.RestoredBookTargetPolicy;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationRecoveryRequest;
@@ -57,6 +60,66 @@ class SqliteProtectedBookWorkflowScopeTest extends SqliteArtifactPublicationTest
     } finally {
       consumed.close();
     }
+  }
+
+  @Test
+  void recoveryPathFailuresRetainTheirExactTargetRoleAtTheAdmissionBoundary() {
+    Path bookTarget = tempDirectory.resolve("recovery-book.sqlite");
+    Path secretTarget = tempDirectory.resolve("recovery-book.key");
+
+    assertRecoveryPathFailureRole(
+        bookTarget,
+        bookTarget,
+        secretTarget,
+        ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET);
+    assertRecoveryPathFailureRole(
+        secretTarget,
+        bookTarget,
+        secretTarget,
+        ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET);
+  }
+
+  private void assertRecoveryPathFailureRole(
+      Path failurePath,
+      Path bookTarget,
+      Path secretTarget,
+      ProtectedBookMaintenanceArtifactRole expectedRole) {
+    SqliteCallerPathContractException expected =
+        new SqliteCallerPathContractException(
+            failurePath, SqliteCallerPathFailure.PARENT_PATH_COLLISION, "recovery path changed");
+    SqliteProtectedBookPairPublicationPreparation preparation =
+        new SqliteProtectedBookPairPublicationPreparation(
+            maintenanceStore(),
+            (ignoredBook,
+                    ignoredSecret,
+                    ignoredPolicy,
+                    ignoredRequest,
+                    ignoredBookRole,
+                    ignoredSecretRole) -> {
+              throw expected;
+            });
+
+    ProtectedBookMaintenanceRejectionException failure =
+        assertThrows(
+            ProtectedBookMaintenanceRejectionException.class,
+            () ->
+                preparation.admit(
+                    bookTarget,
+                    secretTarget,
+                    RestoredBookTargetPolicy.REQUIRE_ABSENT,
+                    new ProtectedBookPairPublicationRecoveryRequest.Backup(
+                        tempDirectory.resolve("source.sqlite"), UUID.randomUUID()),
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_TARGET,
+                    ProtectedBookMaintenanceArtifactRole.BACKUP_KEY_TARGET,
+                    new SqliteTargetAdmissionLeases(
+                        new SqliteHeldLease(bookTarget, () -> {}),
+                        new SqliteHeldLease(secretTarget, () -> {}))));
+
+    ProtectedBookMaintenanceRejection.ArtifactPathInvalid rejection =
+        assertInstanceOf(
+            ProtectedBookMaintenanceRejection.ArtifactPathInvalid.class, failure.rejection());
+    assertEquals(expectedRole, rejection.artifactRole());
+    assertEquals(failurePath.toAbsolutePath().normalize(), rejection.artifactPath());
   }
 
   private SqliteProtectedBookWorkflowScope scope(Path source, Path bookTarget, Path secretTarget) {

@@ -65,11 +65,10 @@ final class SqliteNativeConnections {
   private static void establishOpenParentDirectory(
       Path normalizedBookPath, SqliteNativeOpenMode openMode) {
     try {
-      switch (Objects.requireNonNull(openMode, "openMode")) {
-        case READ_WRITE_CREATE, READ_WRITE_CREATE_EXCLUSIVE ->
-            SqliteBookFileSecurity.ensureSecureParentDirectory(normalizedBookPath);
-        case READ_ONLY, READ_WRITE_EXISTING, READ_WRITE_EXISTING_STAGE ->
-            SqliteBookFileSecurity.requireExistingSecureParentDirectory(normalizedBookPath);
+      if (Objects.requireNonNull(openMode, "openMode").createsParentDirectory()) {
+        SqliteBookFileSecurity.ensureSecureParentDirectory(normalizedBookPath);
+      } else {
+        SqliteBookFileSecurity.requireExistingSecureParentDirectory(normalizedBookPath);
       }
     } catch (IOException exception) {
       throw new SqliteStorageFailureException(

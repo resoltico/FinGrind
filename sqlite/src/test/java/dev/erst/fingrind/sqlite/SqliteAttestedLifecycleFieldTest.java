@@ -1,11 +1,14 @@
 package dev.erst.fingrind.sqlite;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.erst.fingrind.contract.bookkeeping.AttestationFounderInput;
 import dev.erst.fingrind.contract.runtime.BookAccess;
+import dev.erst.fingrind.core.attestation.AttestationBackupAcknowledgement;
 import dev.erst.fingrind.core.attestation.AttestationCredentialSource;
 import dev.erst.fingrind.core.attestation.AttestationEvidence;
 import dev.erst.fingrind.core.attestation.AttestationSigningSession;
@@ -21,6 +24,7 @@ import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationAdmission;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationBinding;
 import dev.erst.fingrind.executor.spi.ProtectedBookPairPublicationRecoveryRequest;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
@@ -192,6 +196,8 @@ class SqliteAttestedLifecycleFieldTest extends SqliteArtifactPublicationTestSupp
                   SqliteProtectedBookPairPublicationRecord.scanForAdmission(
                       backupPath, backupKeyPath))
               .record();
+      assertRecoveredBackupVerifierRefusesEveryMismatchedEvidence(
+          store, sourceAccess, sourceBookPath, backupPath, backupKeyPath, record);
       for (Path completedEvidencePath :
           record.evidencePaths(SqliteProtectedBookPairPublicationEvidenceKind.COMPLETED)) {
         Files.delete(completedEvidencePath);
@@ -278,6 +284,93 @@ class SqliteAttestedLifecycleFieldTest extends SqliteArtifactPublicationTestSupp
         PRINCIPAL_ID,
         encryptedKeyPath,
         passphrasePath);
+  }
+
+  private void assertRecoveredBackupVerifierRefusesEveryMismatchedEvidence(
+      SqliteProtectedBookMaintenanceStore store,
+      BookAccess sourceAccess,
+      Path sourceBookPath,
+      Path backupPath,
+      Path backupKeyPath,
+      SqliteProtectedBookPairPublicationRecord record)
+      throws IOException {
+    ProtectedBookPairPublicationBinding.Backup binding =
+        assertInstanceOf(ProtectedBookPairPublicationBinding.Backup.class, record.binding);
+    AttestationBackupAcknowledgement acknowledgement = binding.acknowledgement();
+    assertTrue(store.verifiesRecoveredPair(backupPath, backupKeyPath, binding));
+
+    assertFalse(
+        store.verifiesRecoveredPair(
+            backupPath,
+            backupKeyPath,
+            backupBinding(
+                binding,
+                new AttestationBackupAcknowledgement(
+                    new UUID(0L, 1L),
+                    acknowledgement.backupArtifactDigest(),
+                    acknowledgement.sourceOrder(),
+                    acknowledgement.sourceOperationHead()))));
+    assertFalse(
+        store.verifiesRecoveredPair(
+            backupPath,
+            backupKeyPath,
+            backupBinding(
+                binding,
+                new AttestationBackupAcknowledgement(
+                    acknowledgement.backupId(),
+                    altered(acknowledgement.backupArtifactDigest()),
+                    acknowledgement.sourceOrder(),
+                    acknowledgement.sourceOperationHead()))));
+    assertFalse(
+        store.verifiesRecoveredPair(
+            backupPath,
+            backupKeyPath,
+            backupBinding(
+                binding,
+                new AttestationBackupAcknowledgement(
+                    acknowledgement.backupId(),
+                    acknowledgement.backupArtifactDigest(),
+                    acknowledgement.sourceOrder().add(BigInteger.ONE),
+                    acknowledgement.sourceOperationHead()))));
+    assertFalse(
+        store.verifiesRecoveredPair(
+            backupPath,
+            backupKeyPath,
+            backupBinding(
+                binding,
+                new AttestationBackupAcknowledgement(
+                    acknowledgement.backupId(),
+                    acknowledgement.backupArtifactDigest(),
+                    acknowledgement.sourceOrder(),
+                    altered(acknowledgement.sourceOperationHead())))));
+
+    Path malformedKeyPath = tempDirectory.resolve("backup").resolve("malformed.key");
+    Files.writeString(malformedKeyPath, "not a FinGrind book key");
+    assertFalse(store.verifiesRecoveredPair(backupPath, malformedKeyPath, binding));
+
+    Path nonBookPath = tempDirectory.resolve("backup").resolve("non-book.sqlite");
+    SqliteBookFileSecurity.createNewOwnerOnlyBookFile(nonBookPath);
+    assertFalse(store.verifiesRecoveredPair(nonBookPath, backupKeyPath, binding));
+    assertFalse(
+        store.verifiesRecoveredPair(
+            tempDirectory.resolve("missing-backup.fgba"), backupKeyPath, binding));
+
+    Path sourceKeyPath =
+        ((BookAccess.PassphraseSource.KeyFile) sourceAccess.passphraseSource()).bookKeyFilePath();
+    assertFalse(store.verifiesRecoveredPair(sourceBookPath, sourceKeyPath, binding));
+  }
+
+  private static ProtectedBookPairPublicationBinding.Backup backupBinding(
+      ProtectedBookPairPublicationBinding.Backup binding,
+      AttestationBackupAcknowledgement acknowledgement) {
+    return new ProtectedBookPairPublicationBinding.Backup(
+        binding.sourceBookPath(), acknowledgement);
+  }
+
+  private static byte[] altered(byte[] value) {
+    byte[] altered = value.clone();
+    altered[0] ^= 1;
+    return altered;
   }
 
   private static void removeCompletedPairEvidence(Path pairMemberPath) throws IOException {
