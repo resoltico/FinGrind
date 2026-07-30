@@ -122,7 +122,7 @@ class WindowsTrustedAclPrincipalResolverTest {
   }
 
   @Test
-  void admitsOnlyAnObservedAclPrincipalMatchedByTheCanonicalTokenSid() throws IOException {
+  void admitsOnlyAnObservedAclPrincipalMatchedByTheCurrentTokenSid() throws IOException {
     UserPrincipal currentTokenUser = () -> "localized-current-user";
     PrivateOutputDirectory.AclState aclState =
         new PrivateOutputDirectory.AclState(COLLABORATOR, List.of(allowEntry(currentTokenUser)));
@@ -132,25 +132,28 @@ class WindowsTrustedAclPrincipalResolverTest {
         WindowsTrustedAclPrincipalResolver.permittedAclMutationPrincipalsForCreation(
             "Windows 11",
             aclState,
-            () ->
-                new WindowsCurrentTokenUserIdentity(
-                    "S-1-5-21-7-8-9-10", "LOCALIZED-CURRENT-USER")));
+            () -> candidate -> candidate.getName().equals(currentTokenUser.getName())));
     assertEquals(
         List.of(COLLABORATOR),
         WindowsTrustedAclPrincipalResolver.permittedAclMutationPrincipalsForCreation(
             "Windows 11",
             new PrivateOutputDirectory.AclState(COLLABORATOR, List.of()),
-            () ->
-                new WindowsCurrentTokenUserIdentity(
-                    "S-1-5-21-7-8-9-10", "localized-current-user")));
+            () -> candidate -> candidate.getName().equals(currentTokenUser.getName())));
+    assertEquals(
+        List.of(COLLABORATOR),
+        WindowsTrustedAclPrincipalResolver.permittedAclMutationPrincipalsForCreation(
+            "Windows 11",
+            new PrivateOutputDirectory.AclState(COLLABORATOR, List.of()),
+            () -> candidate -> candidate.getName().equals(COLLABORATOR.getName())));
     assertEquals(
         List.of(COLLABORATOR),
         WindowsTrustedAclPrincipalResolver.permittedAclMutationPrincipalsForCreation(
             "Linux",
             aclState,
-            () -> {
-              throw new AssertionError("non-Windows creation must not resolve a token user");
-            }));
+            () ->
+                candidate -> {
+                  throw new AssertionError("non-Windows creation must not resolve a token user");
+                }));
     assertThrows(
         IOException.class,
         () ->
@@ -158,14 +161,19 @@ class WindowsTrustedAclPrincipalResolverTest {
                 "Windows 11",
                 aclState,
                 () ->
-                    new WindowsCurrentTokenUserIdentity("localized-current-user", "current-user")));
+                    candidate -> {
+                      throw new IOException("native current-token lookup failed");
+                    }));
     assertThrows(
         IOException.class,
         () ->
             WindowsTrustedAclPrincipalResolver.permittedAclMutationPrincipalsForCreation(
                 "Windows 11",
                 aclState,
-                () -> new WindowsCurrentTokenUserIdentity("S-1-5-21-7-8-9-10", " ")));
+                () ->
+                    candidate -> {
+                      throw new IOException("native ACL-principal lookup failed");
+                    }));
   }
 
   @Test

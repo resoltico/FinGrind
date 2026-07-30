@@ -176,34 +176,31 @@ class NioPrivateOutputDirectoryFilesystemAccessTest {
             "Linux",
             temporaryDirectory,
             aclState,
-            () -> {
-              throw new AssertionError("non-Windows creation must not resolve a token user");
-            }));
+            () ->
+                candidate -> {
+                  throw new AssertionError("non-Windows creation must not resolve a token user");
+                }));
     assertEquals(
         List.of(OWNER, CURRENT_TOKEN_USER),
         NioPrivateOutputDirectoryFilesystemAccess.permittedAclMutationPrincipalsForCreation(
             "Windows Server 2025",
             temporaryDirectory,
             aclState,
-            () ->
-                new WindowsCurrentTokenUserIdentity(
-                    "S-1-5-21-7-8-9-10", "domain\\CURRENT-token-user")));
+            () -> candidate -> candidate.getName().equalsIgnoreCase(CURRENT_TOKEN_USER.getName())));
     assertEquals(
         List.of(OWNER),
         NioPrivateOutputDirectoryFilesystemAccess.permittedAclMutationPrincipalsForCreation(
             "Windows Server 2025",
             temporaryDirectory,
             new PrivateOutputDirectory.AclState(OWNER, List.of()),
-            () ->
-                new WindowsCurrentTokenUserIdentity(
-                    "S-1-5-21-7-8-9-10", "DOMAIN\\current-token-user")));
+            () -> candidate -> candidate.getName().equalsIgnoreCase(CURRENT_TOKEN_USER.getName())));
     assertEquals(
         List.of(OWNER),
         NioPrivateOutputDirectoryFilesystemAccess.permittedAclMutationPrincipalsForCreation(
             "Windows Server 2025",
             temporaryDirectory,
             new PrivateOutputDirectory.AclState(OWNER, List.of()),
-            () -> new WindowsCurrentTokenUserIdentity("S-1-5-21-7-8-9-10", "owner")));
+            () -> candidate -> candidate.getName().equalsIgnoreCase(OWNER.getName())));
   }
 
   private static AclEntry allowEntry(UserPrincipal principal) {

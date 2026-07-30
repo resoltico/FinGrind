@@ -13,6 +13,7 @@ final class WindowsPrivateOutputFileNative {
   static final int ERROR_FILE_EXISTS = 80;
   static final int ERROR_ALREADY_EXISTS = 183;
   static final int ERROR_INSUFFICIENT_BUFFER = 122;
+  static final int ERROR_NONE_MAPPED = 1_332;
   static final int ERROR_LOCK_VIOLATION = 33;
   static final int GENERIC_READ = 0x8000_0000;
   static final int GENERIC_WRITE = 0x4000_0000;
@@ -40,6 +41,7 @@ final class WindowsPrivateOutputFileNative {
   static final int ACCESS_ALLOWED_ACE_TYPE = 0;
   static final int FILE_ALL_ACCESS = 0x001f_01ff;
   static final int MAXIMUM_SID_STRING_BYTES = 2_048;
+  static final int MAXIMUM_SID_BINARY_BYTES = 68;
   static final int MAXIMUM_ACCOUNT_NAME_CHARACTERS = 32_768;
   static final int MAXIMUM_TRANSFER_BYTES = 64 * 1024;
 

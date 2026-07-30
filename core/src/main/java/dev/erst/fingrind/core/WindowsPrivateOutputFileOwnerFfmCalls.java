@@ -55,23 +55,23 @@ final class WindowsPrivateOutputFileOwnerFfmCalls implements WindowsPrivateOutpu
   }
 
   @Override
-  public WindowsPrivateOutputFileNative.Result<Integer> lookupAccountSidW(
+  public WindowsPrivateOutputFileNative.Result<Integer> lookupAccountNameW(
       MemorySegment systemName,
+      MemorySegment accountName,
       MemorySegment sid,
+      MemorySegment sidBytes,
       MemorySegment referencedDomainName,
       MemorySegment referencedDomainNameCharacters,
-      MemorySegment accountName,
-      MemorySegment accountNameCharacters,
       MemorySegment sidNameUse)
       throws IOException {
     return WindowsPrivateOutputFileFfmInvocation.invokeInt(
-        bindings.lookupAccountSidW,
+        bindings.lookupAccountNameW,
         systemName,
+        accountName,
         sid,
+        sidBytes,
         referencedDomainName,
         referencedDomainNameCharacters,
-        accountName,
-        accountNameCharacters,
         sidNameUse);
   }
 

@@ -68,7 +68,7 @@ class WindowsPrivateOutputFileFfmCallsTest {
           7,
           calls
               .ownerCalls()
-              .lookupAccountSidW(value, value, value, value, value, value, value)
+              .lookupAccountNameW(value, value, value, value, value, value, value)
               .value());
       assertEquals(
           7,

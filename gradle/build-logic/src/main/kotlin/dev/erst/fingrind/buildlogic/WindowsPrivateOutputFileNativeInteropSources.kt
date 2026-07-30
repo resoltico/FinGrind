@@ -20,7 +20,8 @@ internal object WindowsPrivateOutputFileNativeInteropSources {
         )
     private val ownerAndProofClasses =
         setOf(
-            "WindowsPrivateOutputFileAccountNameResolver",
+            "WindowsCurrentTokenAclPrincipalMatcher",
+            "WindowsPrivateOutputFileAccountSidResolver",
             "WindowsPrivateOutputFileOwner",
             "WindowsPrivateOutputFileOwnerBindings",
             "WindowsPrivateOutputFileOwnerCalls",
@@ -44,7 +45,7 @@ internal object WindowsPrivateOutputFileNativeInteropSources {
             "WindowsPrivateOutputFileBindingContractTest",
             "WindowsPrivateOutputFileCallTestSupport",
             "WindowsPrivateOutputFileCloseFailingArena",
-            "WindowsPrivateOutputFileCurrentTokenIdentityTest",
+            "WindowsCurrentTokenAclPrincipalMatcherTest",
             "WindowsPrivateOutputFileFfmCallsTest",
             "WindowsPrivateOutputFileFfmTransportTest",
             "WindowsPrivateOutputFileFfmTransportResourceLifecycleTest",

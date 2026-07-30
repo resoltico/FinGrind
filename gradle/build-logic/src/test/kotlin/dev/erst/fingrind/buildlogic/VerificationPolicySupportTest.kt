@@ -141,11 +141,11 @@ class VerificationPolicySupportTest {
 
         writeSource(
             projectDirectory,
-            "dev/erst/fingrind/core/WindowsPrivateOutputFileAccountNameResolver.java",
+            "dev/erst/fingrind/core/WindowsPrivateOutputFileAccountSidResolver.java",
             """
             package dev.erst.fingrind.core;
             import java.lang.foreign.Arena;
-            final class WindowsPrivateOutputFileAccountNameResolver {}
+            final class WindowsPrivateOutputFileAccountSidResolver {}
             """.trimIndent(),
         )
 
@@ -227,7 +227,7 @@ class VerificationPolicySupportTest {
             "WindowsPrivateOutputFileBindingContractTest",
             "WindowsPrivateOutputFileCallTestSupport",
             "WindowsPrivateOutputFileCloseFailingArena",
-            "WindowsPrivateOutputFileCurrentTokenIdentityTest",
+            "WindowsCurrentTokenAclPrincipalMatcherTest",
             "WindowsPrivateOutputFileFfmCallsTest",
             "WindowsPrivateOutputFileFfmTransportTest",
             "WindowsPrivateOutputFileFfmTransportResourceLifecycleTest",

@@ -136,15 +136,15 @@ final class WindowsPrivateOutputFileCallTestSupport {
     }
 
     @Override
-    public WindowsPrivateOutputFileNative.Result<Integer> lookupAccountSidW(
+    public WindowsPrivateOutputFileNative.Result<Integer> lookupAccountNameW(
         MemorySegment systemName,
+        MemorySegment accountName,
         MemorySegment sid,
+        MemorySegment sidBytes,
         MemorySegment referencedDomainName,
         MemorySegment referencedDomainNameCharacters,
-        MemorySegment accountName,
-        MemorySegment accountNameCharacters,
         MemorySegment sidNameUse) {
-      throw unexpected("LookupAccountSidW");
+      throw unexpected("LookupAccountNameW");
     }
 
     @Override

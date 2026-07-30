@@ -29,14 +29,14 @@ interface WindowsPrivateOutputFileOwnerCalls {
   WindowsPrivateOutputFileNative.Result<Integer> convertSidToStringSidW(
       MemorySegment sid, MemorySegment sidText) throws IOException;
 
-  /** Invokes Win32 {@code LookupAccountSidW}. */
-  WindowsPrivateOutputFileNative.Result<Integer> lookupAccountSidW(
+  /** Invokes Win32 {@code LookupAccountNameW}. */
+  WindowsPrivateOutputFileNative.Result<Integer> lookupAccountNameW(
       MemorySegment systemName,
+      MemorySegment accountName,
       MemorySegment sid,
+      MemorySegment sidBytes,
       MemorySegment referencedDomainName,
       MemorySegment referencedDomainNameCharacters,
-      MemorySegment accountName,
-      MemorySegment accountNameCharacters,
       MemorySegment sidNameUse)
       throws IOException;
 

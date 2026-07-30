@@ -57,13 +57,13 @@ final class WindowsTrustedAclPrincipalResolver {
 
   /**
    * Returns the ACL owner and, on Windows, the observed ACL principal that is the current token
-   * user. The token identity originates from a native SID; no second NIO account-name lookup is
-   * allowed because it can disagree with the principal implementation that supplied the ACL.
+   * user. The token matcher resolves the observed principal and current token to native SIDs, so a
+   * display-name spelling cannot authorize ACL mutation.
    */
   static List<UserPrincipal> permittedAclMutationPrincipalsForCreation(
       String operatingSystemName,
       PrivateOutputDirectory.AclState aclState,
-      CurrentTokenUserIdentitySource tokenUserSource)
+      CurrentTokenUserPrincipalMatcherSource tokenUserMatcherSource)
       throws IOException {
     PrivateOutputDirectory.AclState checkedAclState = Objects.requireNonNull(aclState, "aclState");
     UserPrincipal aclOwner = checkedAclState.owner();
@@ -71,19 +71,24 @@ final class WindowsTrustedAclPrincipalResolver {
       return List.of(aclOwner);
     }
 
-    String currentTokenAccountName = currentTokenAccountName(tokenUserSource);
-    List<UserPrincipal> observedPrincipals = new ArrayList<>();
-    observedPrincipals.add(aclOwner);
-    checkedAclState.entries().forEach(entry -> observedPrincipals.add(entry.principal()));
-    for (UserPrincipal observedPrincipal : observedPrincipals) {
-      UserPrincipal checkedPrincipal = Objects.requireNonNull(observedPrincipal, "ACL principal");
-      String observedAccountName =
-          Objects.requireNonNull(checkedPrincipal.getName(), "ACL principal account name");
-      if (observedAccountName.equalsIgnoreCase(currentTokenAccountName)) {
-        return aclOwner.equals(checkedPrincipal)
-            ? List.of(aclOwner)
-            : List.of(aclOwner, checkedPrincipal);
+    CurrentTokenUserPrincipalMatcherSource checkedMatcherSource =
+        Objects.requireNonNull(tokenUserMatcherSource, "tokenUserMatcherSource");
+    CurrentTokenUserPrincipalMatcher matcher =
+        Objects.requireNonNull(checkedMatcherSource.acquire(), "current-token user matcher");
+    try {
+      List<UserPrincipal> observedPrincipals = new ArrayList<>();
+      observedPrincipals.add(aclOwner);
+      checkedAclState.entries().forEach(entry -> observedPrincipals.add(entry.principal()));
+      for (UserPrincipal observedPrincipal : observedPrincipals) {
+        UserPrincipal checkedPrincipal = Objects.requireNonNull(observedPrincipal, "ACL principal");
+        if (matcher.matchesCurrentToken(checkedPrincipal)) {
+          return aclOwner.equals(checkedPrincipal)
+              ? List.of(aclOwner)
+              : List.of(aclOwner, checkedPrincipal);
+        }
       }
+    } finally {
+      matcher.release();
     }
     return List.of(aclOwner);
   }
@@ -124,20 +129,6 @@ final class WindowsTrustedAclPrincipalResolver {
     return Objects.requireNonNull(operatingSystemName, "operatingSystemName")
         .toLowerCase(Locale.ROOT)
         .contains("windows");
-  }
-
-  private static String currentTokenAccountName(CurrentTokenUserIdentitySource tokenUserSource)
-      throws IOException {
-    WindowsCurrentTokenUserIdentity identity =
-        Objects.requireNonNull(tokenUserSource, "tokenUserSource").currentTokenUserIdentity();
-    String sid = identity.sidText();
-    if (!sid.matches("S-1-(?:[0-9]+-)*[0-9]+")) {
-      throw new IOException("Windows returned a noncanonical current token-user SID.");
-    }
-    if (identity.accountName().isBlank()) {
-      throw new IOException("Windows returned an empty current token-user account name.");
-    }
-    return identity.accountName();
   }
 
   static boolean isTrusted(UserPrincipal candidate, PrincipalLookup lookup) throws IOException {
@@ -190,12 +181,22 @@ final class WindowsTrustedAclPrincipalResolver {
     UserPrincipal lookup(String identifier) throws IOException;
   }
 
-  /**
-   * Supplies one SID-authorized current-token identity without exposing arbitrary ACL identities.
-   */
+  /** Acquires one current-token matcher for a complete private-directory ACL decision. */
   @FunctionalInterface
-  interface CurrentTokenUserIdentitySource {
-    /** Returns the current token user's native SID and its OS-resolved account principal name. */
-    WindowsCurrentTokenUserIdentity currentTokenUserIdentity() throws IOException;
+  interface CurrentTokenUserPrincipalMatcherSource {
+    /** Acquires the native current-token matcher for this one complete ACL snapshot. */
+    CurrentTokenUserPrincipalMatcher acquire() throws IOException;
+  }
+
+  /** Matches observed ACL principals to the current Windows token through native SIDs. */
+  @FunctionalInterface
+  interface CurrentTokenUserPrincipalMatcher {
+    /** Returns whether this exact observed principal has the current process token SID. */
+    boolean matchesCurrentToken(UserPrincipal principal) throws IOException;
+
+    /** Releases the native current-token capability after its ACL decision completes. */
+    default void release() throws IOException {
+      // Stateless matchers retain no native capability.
+    }
   }
 }

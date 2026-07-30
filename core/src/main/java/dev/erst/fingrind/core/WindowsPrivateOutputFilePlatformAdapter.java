@@ -46,8 +46,9 @@ final class WindowsPrivateOutputFilePlatformAdapter
         WindowsPrivateOutputDirectoryFfmTransport.operationsFor(callTableSource.calls()));
   }
 
-  WindowsCurrentTokenUserIdentity currentTokenUserIdentity() throws IOException {
-    return WindowsCurrentTokenUserIdentity.resolve(callTableSource.calls());
+  WindowsCurrentTokenAclPrincipalMatcher acquireCurrentTokenAclPrincipalMatcher()
+      throws IOException {
+    return WindowsCurrentTokenAclPrincipalMatcher.acquire(callTableSource.calls());
   }
 
   /** Supplies a fresh, production-native runtime for each protected output operation. */

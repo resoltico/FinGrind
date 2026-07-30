@@ -728,9 +728,6 @@ class WindowsPrivateOutputFileFfmTransportTest {
 
     /** Deterministic current-token-user Win32 calls backed by the enclosing synthetic model. */
     private final class SyntheticOwnerCalls implements WindowsPrivateOutputFileOwnerCalls {
-      private static final String ACCOUNT_DOMAIN = "RUNNER";
-      private static final String ACCOUNT_NAME = "runneradmin";
-
       @Override
       public WindowsPrivateOutputFileNative.Result<Long> getCurrentProcess() {
         record("getCurrentProcess");
@@ -778,25 +775,22 @@ class WindowsPrivateOutputFileFfmTransportTest {
       }
 
       @Override
-      public WindowsPrivateOutputFileNative.Result<Integer> lookupAccountSidW(
+      public WindowsPrivateOutputFileNative.Result<Integer> lookupAccountNameW(
           MemorySegment systemName,
+          MemorySegment accountName,
           MemorySegment sid,
+          MemorySegment sidBytes,
           MemorySegment referencedDomainName,
           MemorySegment referencedDomainNameCharacters,
-          MemorySegment accountName,
-          MemorySegment accountNameCharacters,
           MemorySegment sidNameUse) {
-        record("lookupAccountSidW");
-        int domainCharacterCount = ACCOUNT_DOMAIN.length() + 1;
-        int nameCharacterCount = ACCOUNT_NAME.length() + 1;
-        referencedDomainNameCharacters.set(ValueLayout.JAVA_INT, 0L, domainCharacterCount);
-        accountNameCharacters.set(ValueLayout.JAVA_INT, 0L, nameCharacterCount);
-        if (referencedDomainName.address() == 0L && accountName.address() == 0L) {
+        record("lookupAccountNameW");
+        sidBytes.set(ValueLayout.JAVA_INT, 0L, Long.BYTES);
+        referencedDomainNameCharacters.set(ValueLayout.JAVA_INT, 0L, 1);
+        if (sid.address() == 0L) {
           return new WindowsPrivateOutputFileNative.Result<>(
               0, WindowsPrivateOutputFileNative.ERROR_INSUFFICIENT_BUFFER);
         }
-        writeWide(referencedDomainName, ACCOUNT_DOMAIN);
-        writeWide(accountName, ACCOUNT_NAME);
+        sid.set(ValueLayout.JAVA_BYTE, 0L, (byte) 1);
         return intResult(1);
       }
 
@@ -815,11 +809,6 @@ class WindowsPrivateOutputFileFfmTransportTest {
         descriptorLength.set(ValueLayout.JAVA_INT, 0L, 8);
         return scenario.owner.descriptorConversionResult;
       }
-    }
-
-    private void writeWide(MemorySegment destination, String value) {
-      byte[] bytes = (value + "\0").getBytes(StandardCharsets.UTF_16LE);
-      destination.asSlice(0L, bytes.length).asByteBuffer().put(bytes);
     }
 
     /** Deterministic security-proof Win32 calls backed by the enclosing synthetic model. */

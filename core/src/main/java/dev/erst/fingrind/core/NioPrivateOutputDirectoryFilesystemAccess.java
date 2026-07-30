@@ -19,9 +19,10 @@ import org.jspecify.annotations.Nullable;
 final class NioPrivateOutputDirectoryFilesystemAccess
     implements PrivateOutputDirectory.FilesystemAccess {
   private static final int UNIX_STICKY_BIT = 0x200;
-  private static final WindowsTrustedAclPrincipalResolver.CurrentTokenUserIdentitySource
-      CURRENT_TOKEN_USER_IDENTITY_SOURCE =
-          WindowsPrivateOutputFilePlatformAdapter.PRODUCTION::currentTokenUserIdentity;
+  private static final WindowsTrustedAclPrincipalResolver.CurrentTokenUserPrincipalMatcherSource
+      CURRENT_TOKEN_USER_PRINCIPAL_MATCHER_SOURCE =
+          WindowsPrivateOutputFilePlatformAdapter.PRODUCTION
+              ::acquireCurrentTokenAclPrincipalMatcher;
   private final PosixAttributesReader posixAttributesReader;
   private final UnixAttributeReader unixAttributeReader;
   private final AclViewReader aclViewReader;
@@ -129,18 +130,21 @@ final class NioPrivateOutputDirectoryFilesystemAccess
         System.getProperty("os.name", ""),
         Objects.requireNonNull(path, "path"),
         Objects.requireNonNull(aclState, "aclState"),
-        CURRENT_TOKEN_USER_IDENTITY_SOURCE);
+        CURRENT_TOKEN_USER_PRINCIPAL_MATCHER_SOURCE);
   }
 
   static List<UserPrincipal> permittedAclMutationPrincipalsForCreation(
       String operatingSystemName,
       Path path,
       PrivateOutputDirectory.AclState aclState,
-      WindowsTrustedAclPrincipalResolver.CurrentTokenUserIdentitySource tokenUserSource)
+      WindowsTrustedAclPrincipalResolver.CurrentTokenUserPrincipalMatcherSource
+          tokenUserMatcherSource)
       throws IOException {
     Objects.requireNonNull(path, "path");
     return WindowsTrustedAclPrincipalResolver.permittedAclMutationPrincipalsForCreation(
-        operatingSystemName, Objects.requireNonNull(aclState, "aclState"), tokenUserSource);
+        operatingSystemName,
+        Objects.requireNonNull(aclState, "aclState"),
+        Objects.requireNonNull(tokenUserMatcherSource, "tokenUserMatcherSource"));
   }
 
   @Override

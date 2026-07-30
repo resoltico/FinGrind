@@ -14,7 +14,7 @@ final class WindowsPrivateOutputFileOwnerBindings {
   final MethodHandle getTokenInformation;
   final MethodHandle localFree;
   final MethodHandle convertSidToStringSidW;
-  final MethodHandle lookupAccountSidW;
+  final MethodHandle lookupAccountNameW;
   final MethodHandle convertStringSecurityDescriptorToSecurityDescriptorW;
 
   WindowsPrivateOutputFileOwnerBindings(MethodHandle... calls) {
@@ -30,7 +30,7 @@ final class WindowsPrivateOutputFileOwnerBindings {
     getTokenInformation = calls[2];
     localFree = calls[3];
     convertSidToStringSidW = calls[4];
-    lookupAccountSidW = calls[5];
+    lookupAccountNameW = calls[5];
     convertStringSecurityDescriptorToSecurityDescriptorW = calls[6];
   }
 
@@ -67,7 +67,7 @@ final class WindowsPrivateOutputFileOwnerBindings {
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS)),
         binder.captured(
             advapi32,
-            "LookupAccountSidW",
+            "LookupAccountNameW",
             FunctionDescriptor.of(
                 ValueLayout.JAVA_INT,
                 ValueLayout.ADDRESS,

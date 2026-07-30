@@ -199,9 +199,9 @@ public final class PrivateOutputDirectory {
      * created.
      *
      * <p>The default admits only the ancestor's ACL owner. Windows may additionally admit an ACL
-     * principal whose account name matches the current process token user's stable-SID-derived
-     * canonical account name, because profile directories can be administered by a different ACL
-     * owner while remaining the current user's private creation namespace.
+     * principal whose native SID exactly matches the current process token, because profile
+     * directories can be administered by a different ACL owner while remaining the current user's
+     * private creation namespace.
      */
     default List<UserPrincipal> permittedAclMutationPrincipalsForCreation(
         Path path, AclState aclState) throws IOException {
