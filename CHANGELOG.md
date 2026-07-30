@@ -46,6 +46,7 @@ Historical release notes older than `0.31.0` live in:
 
 ### Fixed
 
+- Fixed protected attestation-key and artifact publication on Windows. FinGrind now recognizes only the SID-backed LocalSystem and built-in Administrators principals as the operating-system trust boundary around an otherwise private output directory, and opens a directory with the write access required for its durability flush. Caller-selected ACLs remain validation-only and no untrusted principal is admitted.
 - Fixed no-clobber maintenance precedence for caller-owned ordinary files and completed pair-publication history. `backup-book`, `restore-book`, and `rekey-book` generated-key targets now report their exact occupied-target rejection before any FinGrind-artifact security inspection, leaving the existing file, retained historical evidence, and every other requested target unchanged.
 - Fixed JaCoCo coverage admission so the quality gate rejects zero-line reports, filtered or partially executed test runs, and root aggregates that omit a direct production Java module; coverage evidence now comes only from one complete fresh test invocation.
 - Fixed protected-book maintenance diagnostics so unreadable selected sources and final targets are identified as their exact artifact role, artifact-publication failures retain canonical physical locations, and recognized protected-book failures do not collapse into generic runtime results.

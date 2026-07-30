@@ -9,6 +9,7 @@ import java.nio.file.attribute.AclFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.PosixFileAttributes;
 import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.UserPrincipal;
 import java.util.Objects;
 import java.util.Set;
 import org.jspecify.annotations.Nullable;
@@ -108,6 +109,13 @@ final class NioPrivateOutputDirectoryFilesystemAccess
       throw new IOException("The filesystem did not provide an ACL view for the output directory.");
     }
     return new PrivateOutputDirectory.AclState(view.getOwner(), view.getAcl());
+  }
+
+  @Override
+  public boolean isTrustedAclMutationPrincipal(Path path, UserPrincipal principal)
+      throws IOException {
+    return WindowsTrustedAclPrincipalResolver.isTrustedForCurrentPlatform(
+        Objects.requireNonNull(path, "path"), Objects.requireNonNull(principal, "principal"));
   }
 
   /** Reads POSIX attributes for one output-directory path. */

@@ -184,6 +184,15 @@ public final class PrivateOutputDirectory {
 
     /** Reads the owning principal and complete ACL for a directory. */
     AclState readAcl(Path path) throws IOException;
+
+    /**
+     * Reports whether one Windows operating-system principal is part of the trusted computing base
+     * for private-output ancestry.
+     *
+     * <p>Implementations must return {@code false} unless they can identify the principal from the
+     * platform's stable security identity rather than from a display name.
+     */
+    boolean isTrustedAclMutationPrincipal(Path path, UserPrincipal principal) throws IOException;
   }
 
   /** Closed nofollow state for one lexical output-path component. */

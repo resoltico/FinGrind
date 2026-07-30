@@ -2,6 +2,7 @@ package dev.erst.fingrind.core;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.attribute.AclEntry;
 import java.nio.file.attribute.AclEntryPermission;
 import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.PosixFilePermission;
@@ -66,7 +67,7 @@ final class PrivateOutputDirectorySecurity {
     }
     if (filesystemAccess.supportsAcl(directory)) {
       PrivateOutputDirectory.AclState aclState = filesystemAccess.readAcl(directory);
-      requirePrivateAclDirectory(directory, aclState);
+      requirePrivateAclDirectory(directory, aclState, filesystemAccess);
       aclOwner = aclState.owner();
       accessModelAvailable = true;
     }
@@ -98,6 +99,7 @@ final class PrivateOutputDirectorySecurity {
             descendant,
             aclState,
             aclState.owner(),
+            filesystemAccess,
             "must deny non-owner mutation in the output creation ancestry");
         accessModelAvailable = true;
       }
@@ -148,7 +150,10 @@ final class PrivateOutputDirectorySecurity {
               "must share the output directory's ACL access model throughout the output ancestry");
         }
         requireOutputOwnerAclMutationDenied(
-            checkedAncestor, filesystemAccess.readAcl(checkedAncestor), outputAclOwner);
+            checkedAncestor,
+            filesystemAccess.readAcl(checkedAncestor),
+            outputAclOwner,
+            filesystemAccess);
         accessModelAvailable = true;
       }
       if (!accessModelAvailable) {
@@ -176,8 +181,10 @@ final class PrivateOutputDirectorySecurity {
   }
 
   private static void requirePrivateAclDirectory(
-      Path directory, PrivateOutputDirectory.AclState aclState)
-      throws PrivateOutputDirectory.Violation {
+      Path directory,
+      PrivateOutputDirectory.AclState aclState,
+      PrivateOutputDirectory.FilesystemAccess filesystemAccess)
+      throws IOException {
     boolean ownerCanWriteAndTraverse =
         aclState.entries().stream()
             .filter(entry -> entry.type() == AclEntryType.ALLOW)
@@ -187,17 +194,14 @@ final class PrivateOutputDirectorySecurity {
       throw PrivateOutputDirectoryFailures.requirement(
           directory, "must grant its owner directory traversal and write access");
     }
-    boolean nonOwnerCanAccess =
-        aclState.entries().stream()
-            .filter(entry -> entry.type() == AclEntryType.ALLOW)
-            .filter(entry -> !aclState.owner().equals(entry.principal()))
-            .anyMatch(
-                entry ->
-                    NON_OWNER_DIRECTORY_ACCESS_PERMISSIONS.stream()
-                        .anyMatch(entry.permissions()::contains));
-    if (nonOwnerCanAccess) {
-      throw PrivateOutputDirectoryFailures.requirement(
-          directory, "must grant directory access only to its owner");
+    for (AclEntry entry : aclState.entries()) {
+      if (entry.type() == AclEntryType.ALLOW
+          && !aclState.owner().equals(entry.principal())
+          && !filesystemAccess.isTrustedAclMutationPrincipal(directory, entry.principal())
+          && hasAnyPermission(entry, NON_OWNER_DIRECTORY_ACCESS_PERMISSIONS)) {
+        throw PrivateOutputDirectoryFailures.requirement(
+            directory, "must grant directory access only to its owner");
+      }
     }
   }
 
@@ -243,34 +247,44 @@ final class PrivateOutputDirectorySecurity {
   }
 
   private static void requireOutputOwnerAclMutationDenied(
-      Path directory, PrivateOutputDirectory.AclState aclState, UserPrincipal outputOwner)
-      throws PrivateOutputDirectory.Violation {
-    if (!aclState.owner().equals(outputOwner)) {
+      Path directory,
+      PrivateOutputDirectory.AclState aclState,
+      UserPrincipal outputOwner,
+      PrivateOutputDirectory.FilesystemAccess filesystemAccess)
+      throws IOException {
+    if (!aclState.owner().equals(outputOwner)
+        && !filesystemAccess.isTrustedAclMutationPrincipal(directory, aclState.owner())) {
       throw PrivateOutputDirectoryFailures.requirement(
           directory,
-          "must be owned by the output-directory owner and deny non-owner mutation in the output ancestry");
+          "must be owned by the output-directory owner or a trusted operating-system principal and deny non-owner mutation in the output ancestry");
     }
     requireAclMutationDeniedExcept(
-        directory, aclState, outputOwner, "must deny non-owner mutation in the output ancestry");
+        directory,
+        aclState,
+        outputOwner,
+        filesystemAccess,
+        "must deny non-owner mutation in the output ancestry");
   }
 
   private static void requireAclMutationDeniedExcept(
       Path directory,
       PrivateOutputDirectory.AclState aclState,
       UserPrincipal permittedPrincipal,
+      PrivateOutputDirectory.FilesystemAccess filesystemAccess,
       String requirement)
-      throws PrivateOutputDirectory.Violation {
-    boolean otherPrincipalCanMutate =
-        aclState.entries().stream()
-            .filter(entry -> entry.type() == AclEntryType.ALLOW)
-            .filter(entry -> !permittedPrincipal.equals(entry.principal()))
-            .anyMatch(
-                entry ->
-                    NON_OWNER_DIRECTORY_MUTATION_PERMISSIONS.stream()
-                        .anyMatch(entry.permissions()::contains));
-    if (otherPrincipalCanMutate) {
-      throw PrivateOutputDirectoryFailures.requirement(directory, requirement);
+      throws IOException {
+    for (AclEntry entry : aclState.entries()) {
+      if (entry.type() == AclEntryType.ALLOW
+          && !permittedPrincipal.equals(entry.principal())
+          && !filesystemAccess.isTrustedAclMutationPrincipal(directory, entry.principal())
+          && hasAnyPermission(entry, NON_OWNER_DIRECTORY_MUTATION_PERMISSIONS)) {
+        throw PrivateOutputDirectoryFailures.requirement(directory, requirement);
+      }
     }
+  }
+
+  private static boolean hasAnyPermission(AclEntry entry, Set<AclEntryPermission> permissions) {
+    return permissions.stream().anyMatch(entry.permissions()::contains);
   }
 
   record OutputDirectorySecurityIdentity(

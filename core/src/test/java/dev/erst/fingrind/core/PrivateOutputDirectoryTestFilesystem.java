@@ -33,6 +33,7 @@ final class PrivateOutputDirectoryTestFilesystem {
         new ConcurrentHashMap<>();
     private final Map<Path, PrivateOutputDirectory.AclState> acls = new ConcurrentHashMap<>();
     private final Set<Path> aclSupportedPaths = ConcurrentHashMap.newKeySet();
+    private final Set<UserPrincipal> trustedAclMutationPrincipals = ConcurrentHashMap.newKeySet();
     private final Map<Path, IOException> noFollowEntryKindFailures = new ConcurrentHashMap<>();
     private @Nullable IOException realPathIoFailure;
     private @Nullable RuntimeException realPathRuntimeFailure;
@@ -77,6 +78,10 @@ final class PrivateOutputDirectoryTestFilesystem {
 
     void markAclSupported(Path path) {
       aclSupportedPaths.add(path);
+    }
+
+    void trustAclMutationPrincipal(UserPrincipal principal) {
+      trustedAclMutationPrincipals.add(Objects.requireNonNull(principal, "principal"));
     }
 
     void markDirectory(Path path) {
@@ -186,6 +191,11 @@ final class PrivateOutputDirectoryTestFilesystem {
         throw new IOException("No ACL was configured for " + path + ".");
       }
       return state;
+    }
+
+    @Override
+    public boolean isTrustedAclMutationPrincipal(Path path, UserPrincipal principal) {
+      return trustedAclMutationPrincipals.contains(principal);
     }
   }
 }

@@ -230,7 +230,7 @@ The direct-Java wrapper remains useful for:
 
 That wrapper resolves the active CLI build directory and then runs the prepared application module
 through the same Gradle-owned Java 26 toolchain executable as the source-checkout wrapper. It
-grants native access only to the `fingrind` module and keeps the same managed-SQLite
+grants native access only to the shaded `dev.erst.fingrind.cli` application module and keeps the same managed-SQLite
 auto-discovery path as the source-checkout wrapper. Launches moved away from the prepared checkout
 layout are unsupported rather than repaired through ambient native-library overrides. The wrapper
 uses the same source-hash and runtime-manifest guards as the source-checkout wrapper, so stale

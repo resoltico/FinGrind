@@ -213,30 +213,42 @@ class AttestationDirectoryDurabilityTest {
   }
 
   @Test
-  void bindsTheRealPosixSymbolsAndValidatesTheWindowsDeclaration() throws Exception {
+  void bindsTheCurrentPlatformAndValidatesTheForeignPlatformDeclaration() throws Exception {
     AttestationDirectoryFfmTransport.NativeCallBinder binder =
         AttestationDirectoryFfmTransport.nativeCallBinder();
-    AttestationDirectoryDurability.PlatformBinding posix =
-        binder.bind(
-            AttestationDirectoryFfmTransport.PlatformSpec.POSIX,
-            Linker.nativeLinker().defaultLookup());
-    try (AttestationDirectoryDurability.DirectoryHandle handle = posix.open(temporaryDirectory)) {
-      assertFalse(posix.isInvalid(handle));
-      assertEquals(0, posix.flush(handle));
-      assertEquals(0, posix.close(handle));
+    AttestationDirectoryDurability.OperatingSystem operatingSystem =
+        AttestationDirectoryDurability.operatingSystem(System.getProperty("os.name", ""));
+    AttestationDirectoryFfmTransport.PlatformSpec currentSpecification =
+        AttestationDirectoryFfmTransport.PlatformSpec.forOperatingSystem(operatingSystem);
+    SymbolLookup currentLookup =
+        currentSpecification.usesDefaultLookup()
+            ? Linker.nativeLinker().defaultLookup()
+            : AttestationDirectoryFfmTransport.libraryLookup(currentSpecification.libraryName());
+    AttestationDirectoryDurability.PlatformBinding current =
+        binder.bind(currentSpecification, currentLookup);
+    try (AttestationDirectoryDurability.DirectoryHandle handle = current.open(temporaryDirectory)) {
+      assertFalse(current.isInvalid(handle));
+      assertEquals(0, current.flush(handle));
+      assertEquals(0, current.close(handle));
     }
 
-    SymbolLookup defaultLookup = Linker.nativeLinker().defaultLookup();
+    AttestationDirectoryFfmTransport.PlatformSpec foreignSpecification =
+        currentSpecification == AttestationDirectoryFfmTransport.PlatformSpec.POSIX
+            ? AttestationDirectoryFfmTransport.PlatformSpec.WINDOWS
+            : AttestationDirectoryFfmTransport.PlatformSpec.POSIX;
     SymbolLookup aliases =
         symbol ->
-            defaultLookup.find(
+            currentLookup.find(
                 switch (symbol) {
-                  case "CreateFileW" -> "open";
-                  case "FlushFileBuffers" -> "fsync";
-                  case "CloseHandle" -> "close";
+                  case "CreateFileW" -> currentSpecification.openSymbol();
+                  case "FlushFileBuffers" -> currentSpecification.flushSymbol();
+                  case "CloseHandle" -> currentSpecification.closeSymbol();
+                  case "open" -> currentSpecification.openSymbol();
+                  case "fsync" -> currentSpecification.flushSymbol();
+                  case "close" -> currentSpecification.closeSymbol();
                   default -> symbol;
                 });
-    assertNotNull(binder.bind(AttestationDirectoryFfmTransport.PlatformSpec.WINDOWS, aliases));
+    assertNotNull(binder.bind(foreignSpecification, aliases));
 
     IOException missingSymbol =
         assertThrows(

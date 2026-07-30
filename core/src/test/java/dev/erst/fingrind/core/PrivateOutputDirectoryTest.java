@@ -27,6 +27,8 @@ class PrivateOutputDirectoryTest {
   private static final UserPrincipal OWNER = () -> "owner";
   private static final UserPrincipal COLLABORATOR = () -> "collaborator";
   private static final UserPrincipal SUPERUSER = () -> "root";
+  private static final UserPrincipal WINDOWS_LOCAL_SYSTEM = () -> "local-system";
+  private static final UserPrincipal WINDOWS_ADMINISTRATORS = () -> "administrators";
   private static final Set<PosixFilePermission> OWNER_ONLY_DIRECTORY =
       Set.of(
           PosixFilePermission.OWNER_READ,
@@ -373,6 +375,38 @@ class PrivateOutputDirectoryTest {
     assertTrue(
         Objects.requireNonNull(exception.getMessage(), "exception message")
             .contains("owned by the output-directory owner"));
+  }
+
+  @Test
+  void admission_acceptsOnlyTrustedWindowsPrincipalsAlongsideTheOutputOwner() {
+    FakeFilesystemAccess filesystem = lexicalFilesystem();
+    filesystem.trustAclMutationPrincipal(WINDOWS_LOCAL_SYSTEM);
+    filesystem.trustAclMutationPrincipal(WINDOWS_ADMINISTRATORS);
+    PrivateOutputDirectory.AclState protectedOutputAcl =
+        new PrivateOutputDirectory.AclState(
+            OWNER,
+            List.of(
+                ownerAllowsAll(),
+                allowed(WINDOWS_LOCAL_SYSTEM, AclEntryPermission.values()),
+                allowed(WINDOWS_ADMINISTRATORS, AclEntryPermission.values()),
+                allowed(COLLABORATOR)));
+    for (Path path : List.of(OUTPUT)) {
+      filesystem.putAcl(path, protectedOutputAcl);
+    }
+    PrivateOutputDirectory.AclState trustedAncestorAcl =
+        new PrivateOutputDirectory.AclState(
+            WINDOWS_LOCAL_SYSTEM,
+            List.of(
+                allowed(OWNER, AclEntryPermission.LIST_DIRECTORY, AclEntryPermission.EXECUTE),
+                allowed(WINDOWS_LOCAL_SYSTEM, AclEntryPermission.values()),
+                allowed(WINDOWS_ADMINISTRATORS, AclEntryPermission.values()),
+                allowed(
+                    COLLABORATOR, AclEntryPermission.LIST_DIRECTORY, AclEntryPermission.EXECUTE)));
+    for (Path path : List.of(Path.of("/"), ROOT, ANCESTOR)) {
+      filesystem.putAcl(path, trustedAncestorAcl);
+    }
+
+    assertDoesNotThrow(() -> PrivateOutputDirectory.requireExistingOwnerOnly(OUTPUT, filesystem));
   }
 
   @Test

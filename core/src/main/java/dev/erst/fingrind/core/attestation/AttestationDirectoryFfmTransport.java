@@ -69,7 +69,7 @@ final class AttestationDirectoryFfmTransport {
     WINDOWS(false, "kernel32", "CreateFileW", "FlushFileBuffers", "CloseHandle");
 
     private static final int OPEN_READ_ONLY = 0;
-    private static final int GENERIC_READ = 0x80000000;
+    private static final int GENERIC_WRITE = 0x40000000;
     private static final int FILE_SHARE_READ_WRITE_DELETE = 0x00000007;
     private static final int OPEN_EXISTING = 3;
     private static final int FILE_FLAG_BACKUP_SEMANTICS = 0x02000000;
@@ -165,7 +165,7 @@ final class AttestationDirectoryFfmTransport {
         case WINDOWS ->
             new Object[] {
               path,
-              GENERIC_READ,
+              GENERIC_WRITE,
               FILE_SHARE_READ_WRITE_DELETE,
               MemorySegment.NULL,
               OPEN_EXISTING,

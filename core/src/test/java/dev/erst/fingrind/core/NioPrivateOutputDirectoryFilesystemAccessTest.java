@@ -65,6 +65,7 @@ class NioPrivateOutputDirectoryFilesystemAccessTest {
     } else {
       assertThrows(IOException.class, () -> access.readAcl(temporaryDirectory));
     }
+    assertFalse(access.isTrustedAclMutationPrincipal(temporaryDirectory, OWNER));
   }
 
   @Test

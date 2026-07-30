@@ -583,7 +583,7 @@ the public FinGrind download contract:
 That wrapper resolves the active CLI build directory and then runs the prepared application module
 through the same Gradle-owned Java 26 toolchain executable that the source-checkout wrapper uses.
 When the module stays under the prepared checkout layout, it auto-discovers the managed SQLite
-library and grants native access only to the `fingrind` module. Like the source-checkout wrapper,
+library and grants native access only to the shaded `dev.erst.fingrind.cli` application module. Like the source-checkout wrapper,
 it refreshes the cached raw JAR, runtime manifest, and managed SQLite runtime before execution
 when the current checkout has moved.
 

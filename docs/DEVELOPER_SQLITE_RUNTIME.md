@@ -42,7 +42,7 @@ owns the public runtime and session API reference.
   runtime manifest, and managed runtime when the checkout has moved past the prepared build.
 - `./scripts/direct-java-cli.sh` and `./scripts/direct-java-cli.ps1` are the supported
   non-bundle Java entrypoints. They use the Gradle-owned Java 26 executable, prepare the managed
-  runtime, grant native access only to module `fingrind`, and refresh stale checkout artifacts.
+  runtime, grant native access only to the shaded `dev.erst.fingrind.cli` application module, and refresh stale checkout artifacts.
 - `:cli:bundleCliArchive` is the public-artifact packaging entrypoint. `:cli:shadowJar` packages
   Java only; standalone local verification must run `prepareManagedSqlite` first, after which a
   JAR beneath the prepared checkout resolves the managed library automatically.
@@ -55,8 +55,8 @@ transaction scope, exposes typed SQLite results, and keeps the design intentiona
 without an ORM, generic SQL abstraction, or JNI glue.
 
 Managed targets build SQLite 3.53.4 / SQLite3 Multiple Ciphers 2.4.0 on macOS and Linux. Bundle,
-container, source-checkout, and direct-Java launchers grant native access only to module
-`fingrind`; selected Gradle `Test` and `JavaExec` owners retain explicit classpath-era native-access
+container, source-checkout, and direct-Java launchers grant native access only to the shaded
+`dev.erst.fingrind.cli` application module; selected Gradle `Test` and `JavaExec` owners retain explicit classpath-era native-access
 flags because they execute from the unnamed module. Controlled surfaces resolve managed libraries
 only through `fingrind.bundle.home` or source-checkout discovery. Public bundle archives and the
 public container image package a private `jlink` runtime, so they never depend on ambient host Java.
