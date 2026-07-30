@@ -102,7 +102,7 @@ grep -Fq 'ArgumentList.Add("-X")' "${msvc_setup_support_script}" || die \
     "repo-owned MSVC support no longer forces UTF-8 for its isolated policy wire"
 grep -Fq 'ArgumentList.Add("utf8")' "${msvc_setup_support_script}" || die \
     "repo-owned MSVC support no longer selects Python UTF-8 mode for its policy wire"
-grep -Fq '"/v:off"' "${msvc_setup_support_script}" || die \
+grep -Fq '/v:off /s /c $CommandLine' "${msvc_setup_support_script}" || die \
     "repo-owned MSVC support no longer disables delayed command expansion before running VsDevCmd"
 grep -Fq 'StandardOutputEncoding ([System.Text.Encoding]::Unicode)' "${msvc_setup_support_script}" || die \
     "repo-owned MSVC support no longer decodes cmd /u environment output as UTF-16"
@@ -202,6 +202,7 @@ if command -v pwsh >/dev/null 2>&1; then
                 -Arch "x64" `
                 -HostArch "arm64"
             $script:vsDevCmdInvocationArguments = $null
+            $script:vsDevCmdInvocationRawArgumentLine = $null
             $script:vsDevCmdInvocationOutputEncodingCodePage = $null
             $script:vsDevCmdInvocationErrorEncodingCodePage = $null
             $script:vsWhereInvocationArguments = $null
@@ -210,7 +211,8 @@ if command -v pwsh >/dev/null 2>&1; then
                     [string]$ExecutablePath,
                     [string[]]$Arguments,
                     [System.Text.Encoding]$StandardOutputEncoding,
-                    [System.Text.Encoding]$StandardErrorEncoding
+                    [System.Text.Encoding]$StandardErrorEncoding,
+                    [string]$RawArgumentLine
                 )
 
                 if ($ExecutablePath -eq "C:\Visual Studio Installer\vswhere.exe") {
@@ -224,7 +226,8 @@ if command -v pwsh >/dev/null 2>&1; then
                 if ($ExecutablePath -ne "cmd.exe") {
                     throw "unexpected native executable: $ExecutablePath"
                 }
-                $script:vsDevCmdInvocationArguments = @($Arguments)
+                $script:vsDevCmdInvocationArguments = if ($null -eq $Arguments) { @() } else { @($Arguments) }
+                $script:vsDevCmdInvocationRawArgumentLine = $RawArgumentLine
                 $script:vsDevCmdInvocationOutputEncodingCodePage = $StandardOutputEncoding.CodePage
                 $script:vsDevCmdInvocationErrorEncodingCodePage = $StandardErrorEncoding.CodePage
                 return [pscustomobject]@{
@@ -290,7 +293,8 @@ if command -v pwsh >/dev/null 2>&1; then
                         [string]$ExecutablePath,
                         [string[]]$Arguments,
                         [System.Text.Encoding]$StandardOutputEncoding,
-                        [System.Text.Encoding]$StandardErrorEncoding
+                        [System.Text.Encoding]$StandardErrorEncoding,
+                        [string]$RawArgumentLine
                     )
 
                     return [pscustomobject]@{
@@ -312,6 +316,7 @@ if command -v pwsh >/dev/null 2>&1; then
                 vsWhereInstallation = $vsWhereInstallation
                 vsWhereInvocationArguments = @($script:vsWhereInvocationArguments)
                 vsDevCmdInvocationArguments = @($script:vsDevCmdInvocationArguments)
+                vsDevCmdInvocationRawArgumentLine = $script:vsDevCmdInvocationRawArgumentLine
                 vsDevCmdInvocationOutputEncodingCodePage = $script:vsDevCmdInvocationOutputEncodingCodePage
                 vsDevCmdInvocationErrorEncodingCodePage = $script:vsDevCmdInvocationErrorEncodingCodePage
                 environmentText = $environmentText
@@ -349,16 +354,10 @@ if payload["vsWhereInstallation"] != r"C:\Rīga Visual Studio\2022\BuildTools":
     raise SystemExit("MSVC adapter lost a Unicode vswhere installation path")
 if payload["vsWhereInvocationArguments"] != expected_vswhere_invocation_arguments:
     raise SystemExit("MSVC adapter no longer requests UTF-8 vswhere output")
-expected_vsdevcmd_invocation_arguments = [
-    "/d",
-    "/u",
-    "/v:off",
-    "/s",
-    "/c",
-    expected_command_line,
-]
-if payload["vsDevCmdInvocationArguments"] != expected_vsdevcmd_invocation_arguments:
-    raise SystemExit("MSVC adapter no longer disables delayed command expansion for VsDevCmd")
+if payload["vsDevCmdInvocationArguments"]:
+    raise SystemExit("MSVC adapter no longer reserves raw cmd command lines for the validated VsDevCmd boundary")
+if payload["vsDevCmdInvocationRawArgumentLine"] != f"/d /u /v:off /s /c {expected_command_line}":
+    raise SystemExit("MSVC adapter changed the validated raw cmd command line for VsDevCmd")
 if payload["vsDevCmdInvocationOutputEncodingCodePage"] != 1200:
     raise SystemExit("MSVC adapter no longer decodes cmd /u environment output as UTF-16")
 if payload["vsDevCmdInvocationErrorEncodingCodePage"] != 1200:

@@ -50,14 +50,17 @@ function Invoke-FinGrindNativeProcess {
         [ValidateNotNullOrEmpty()]
         [string]$ExecutablePath,
 
-        [Parameter(Mandatory = $true)]
+        [Parameter()]
         [string[]]$Arguments,
 
         [Parameter()]
         [System.Text.Encoding]$StandardOutputEncoding,
 
         [Parameter()]
-        [System.Text.Encoding]$StandardErrorEncoding
+        [System.Text.Encoding]$StandardErrorEncoding,
+
+        [Parameter()]
+        [string]$RawArgumentLine
     )
 
     $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
@@ -67,6 +70,14 @@ function Invoke-FinGrindNativeProcess {
     if ($null -eq $StandardErrorEncoding) {
         $StandardErrorEncoding = $utf8NoBom
     }
+    $hasArgumentList = $null -ne $Arguments -and $Arguments.Count -gt 0
+    $hasRawArgumentLine = -not [string]::IsNullOrEmpty($RawArgumentLine)
+    if ($hasArgumentList -and $hasRawArgumentLine) {
+        Assert-FinGrindMsvcSetupFailure "native process arguments must use either ArgumentList or one raw argument line"
+    }
+    if (-not $hasArgumentList -and -not $hasRawArgumentLine) {
+        Assert-FinGrindMsvcSetupFailure "native process invocation requires arguments"
+    }
     $processStartInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $processStartInfo.FileName = $ExecutablePath
     $processStartInfo.UseShellExecute = $false
@@ -74,8 +85,12 @@ function Invoke-FinGrindNativeProcess {
     $processStartInfo.RedirectStandardError = $true
     $processStartInfo.StandardOutputEncoding = $StandardOutputEncoding
     $processStartInfo.StandardErrorEncoding = $StandardErrorEncoding
-    foreach ($argument in $Arguments) {
-        $null = $processStartInfo.ArgumentList.Add($argument)
+    if ($hasRawArgumentLine) {
+        $processStartInfo.Arguments = $RawArgumentLine
+    } else {
+        foreach ($argument in $Arguments) {
+            $null = $processStartInfo.ArgumentList.Add($argument)
+        }
     }
 
     $process = [System.Diagnostics.Process]::new()
@@ -282,15 +297,12 @@ function Invoke-FinGrindVsDevCmdEnvironmentDump {
         [string]$HostArch
     )
 
-    # cmd /u makes the internal set command emit UTF-16 on the redirected output stream.
-    $result = Invoke-FinGrindNativeProcess -ExecutablePath "cmd.exe" -Arguments @(
-        "/d",
-        "/u",
-        "/v:off",
-        "/s",
-        "/c",
-        $CommandLine
-    ) -StandardOutputEncoding ([System.Text.Encoding]::Unicode) `
+    # CommandLine is policy-rendered from a cmd-safe batch path and architecture tokens. It
+    # must remain raw because ArgumentList escapes the inner batch-path quotes for cmd.exe.
+    # cmd /u makes the internal set command emit UTF-16 on redirected output and error streams.
+    $result = Invoke-FinGrindNativeProcess -ExecutablePath "cmd.exe" `
+        -RawArgumentLine "/d /u /v:off /s /c $CommandLine" `
+        -StandardOutputEncoding ([System.Text.Encoding]::Unicode) `
         -StandardErrorEncoding ([System.Text.Encoding]::Unicode)
     if ($result.ExitCode -ne 0) {
         $diagnostic = $result.StandardError.Trim()
