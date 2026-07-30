@@ -63,11 +63,11 @@ class MsvcSetupPolicyDiscoveryTest(unittest.TestCase):
 
     def test_command_line_accepts_safe_tokens_and_rejects_command_syntax(self) -> None:
         self.assertEqual(
-            r'"C:\VS\VsDevCmd.bat" -arch=x64 -host_arch=arm64 >nul && set',
+            r'call "C:\VS\VsDevCmd.bat" -arch=x64 -host_arch=arm64 >nul && set',
             discovery.render_vsdevcmd_command_line(r"C:\VS\VsDevCmd.bat", "x64", "arm64"),
         )
         self.assertEqual(
-            r'"C:\Rīga\VsDevCmd.bat" -arch=x64 -host_arch=arm64 >nul && set',
+            r'call "C:\Rīga\VsDevCmd.bat" -arch=x64 -host_arch=arm64 >nul && set',
             discovery.render_vsdevcmd_command_line(r"C:\Rīga\VsDevCmd.bat", "x64", "arm64"),
         )
         self.assertEqual(

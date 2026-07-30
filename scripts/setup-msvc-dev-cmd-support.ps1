@@ -54,12 +54,18 @@ function Invoke-FinGrindNativeProcess {
         [string[]]$Arguments,
 
         [Parameter()]
-        [System.Text.Encoding]$StandardOutputEncoding
+        [System.Text.Encoding]$StandardOutputEncoding,
+
+        [Parameter()]
+        [System.Text.Encoding]$StandardErrorEncoding
     )
 
     $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
     if ($null -eq $StandardOutputEncoding) {
         $StandardOutputEncoding = $utf8NoBom
+    }
+    if ($null -eq $StandardErrorEncoding) {
+        $StandardErrorEncoding = $utf8NoBom
     }
     $processStartInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $processStartInfo.FileName = $ExecutablePath
@@ -67,7 +73,7 @@ function Invoke-FinGrindNativeProcess {
     $processStartInfo.RedirectStandardOutput = $true
     $processStartInfo.RedirectStandardError = $true
     $processStartInfo.StandardOutputEncoding = $StandardOutputEncoding
-    $processStartInfo.StandardErrorEncoding = $utf8NoBom
+    $processStartInfo.StandardErrorEncoding = $StandardErrorEncoding
     foreach ($argument in $Arguments) {
         $null = $processStartInfo.ArgumentList.Add($argument)
     }
@@ -284,7 +290,8 @@ function Invoke-FinGrindVsDevCmdEnvironmentDump {
         "/s",
         "/c",
         $CommandLine
-    ) -StandardOutputEncoding ([System.Text.Encoding]::Unicode)
+    ) -StandardOutputEncoding ([System.Text.Encoding]::Unicode) `
+        -StandardErrorEncoding ([System.Text.Encoding]::Unicode)
     if ($result.ExitCode -ne 0) {
         $diagnostic = $result.StandardError.Trim()
         if ([string]::IsNullOrWhiteSpace($diagnostic)) {

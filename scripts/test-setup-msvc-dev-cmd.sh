@@ -203,12 +203,14 @@ if command -v pwsh >/dev/null 2>&1; then
                 -HostArch "arm64"
             $script:vsDevCmdInvocationArguments = $null
             $script:vsDevCmdInvocationOutputEncodingCodePage = $null
+            $script:vsDevCmdInvocationErrorEncodingCodePage = $null
             $script:vsWhereInvocationArguments = $null
             function Invoke-FinGrindNativeProcess {
                 param(
                     [string]$ExecutablePath,
                     [string[]]$Arguments,
-                    [System.Text.Encoding]$StandardOutputEncoding
+                    [System.Text.Encoding]$StandardOutputEncoding,
+                    [System.Text.Encoding]$StandardErrorEncoding
                 )
 
                 if ($ExecutablePath -eq "C:\Visual Studio Installer\vswhere.exe") {
@@ -224,6 +226,7 @@ if command -v pwsh >/dev/null 2>&1; then
                 }
                 $script:vsDevCmdInvocationArguments = @($Arguments)
                 $script:vsDevCmdInvocationOutputEncodingCodePage = $StandardOutputEncoding.CodePage
+                $script:vsDevCmdInvocationErrorEncodingCodePage = $StandardErrorEncoding.CodePage
                 return [pscustomobject]@{
                     ExitCode = 0
                     StandardOutput = "VSCMD_VER=17.12.3`nFINGRIND_UNICODE=Rīga"
@@ -286,7 +289,8 @@ if command -v pwsh >/dev/null 2>&1; then
                     param(
                         [string]$ExecutablePath,
                         [string[]]$Arguments,
-                        [System.Text.Encoding]$StandardOutputEncoding
+                        [System.Text.Encoding]$StandardOutputEncoding,
+                        [System.Text.Encoding]$StandardErrorEncoding
                     )
 
                     return [pscustomobject]@{
@@ -309,6 +313,7 @@ if command -v pwsh >/dev/null 2>&1; then
                 vsWhereInvocationArguments = @($script:vsWhereInvocationArguments)
                 vsDevCmdInvocationArguments = @($script:vsDevCmdInvocationArguments)
                 vsDevCmdInvocationOutputEncodingCodePage = $script:vsDevCmdInvocationOutputEncodingCodePage
+                vsDevCmdInvocationErrorEncodingCodePage = $script:vsDevCmdInvocationErrorEncodingCodePage
                 environmentText = $environmentText
                 exportedEnvironmentText = $exportedEnvironmentText
                 missingVersionFailure = $missingVersionFailure
@@ -325,7 +330,7 @@ import sys
 
 payload = json.loads(sys.argv[1])
 expected_command_line = (
-    r'"C:\Rīga Visual Studio\2022\BuildTools\Common7\Tools\VsDevCmd.bat" '
+    r'call "C:\Rīga Visual Studio\2022\BuildTools\Common7\Tools\VsDevCmd.bat" '
     r"-arch=x64 -host_arch=arm64 >nul && set"
 )
 if payload["commandLine"] != expected_command_line:
@@ -356,6 +361,8 @@ if payload["vsDevCmdInvocationArguments"] != expected_vsdevcmd_invocation_argume
     raise SystemExit("MSVC adapter no longer disables delayed command expansion for VsDevCmd")
 if payload["vsDevCmdInvocationOutputEncodingCodePage"] != 1200:
     raise SystemExit("MSVC adapter no longer decodes cmd /u environment output as UTF-16")
+if payload["vsDevCmdInvocationErrorEncodingCodePage"] != 1200:
+    raise SystemExit("MSVC adapter no longer decodes cmd /u diagnostics as UTF-16")
 expected_environment = (
     "VSCMD_VER<<__FINGRIND_ENV__\n17.12.3\n__FINGRIND_ENV__\n"
     "FINGRIND_UNICODE<<__FINGRIND_ENV__\nRīga\n__FINGRIND_ENV__\n"

@@ -65,7 +65,7 @@ class MsvcSetupPolicyTransportTest(unittest.TestCase):
             ),
         )
         self.assertEqual(
-            {"commandLine": r'"C:\Rīga\VsDevCmd.bat" -arch=x64 -host_arch=x64 >nul && set'},
+            {"commandLine": r'call "C:\Rīga\VsDevCmd.bat" -arch=x64 -host_arch=x64 >nul && set'},
             policy.execute_request(
                 {
                     "operation": "command-line",

@@ -89,7 +89,7 @@ def render_vsdevcmd_command_line(vsdevcmd_path: str, arch: str, host_arch: str) 
         )
     checked_arch = validate_architecture_token(arch, "Arch")
     checked_host_arch = validate_architecture_token(host_arch, "HostArch")
-    return f'"{vsdevcmd_path}" -arch={checked_arch} -host_arch={checked_host_arch} >nul && set'
+    return f'call "{vsdevcmd_path}" -arch={checked_arch} -host_arch={checked_host_arch} >nul && set'
 
 
 def validate_architecture_token(value: str, parameter_name: str) -> str:
