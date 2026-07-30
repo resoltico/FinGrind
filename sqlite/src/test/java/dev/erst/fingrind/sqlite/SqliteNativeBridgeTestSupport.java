@@ -148,6 +148,10 @@ class SqliteNativeBridgeTestSupport {
     return SqliteNativeHandleFixtures.recordShutdownCall(shutdownCalls);
   }
 
+  static int recordSuccessfulShutdownCall(AtomicInteger shutdownCalls) {
+    return SqliteNativeHandleFixtures.recordSuccessfulShutdownCall(shutdownCalls);
+  }
+
   static int recordCloseCall(AtomicInteger closeCalls, MemorySegment databaseHandle) {
     return SqliteNativeHandleFixtures.recordCloseCall(closeCalls, databaseHandle);
   }

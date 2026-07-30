@@ -25,6 +25,7 @@ internal fun Project.configureJavaCoverageConventions() {
         usesService(coverageExecutionLedger)
         modularity.inferModulePath.set(true)
         useJUnitPlatform()
+        systemProperty("java.io.tmpdir", temporaryDir.absolutePath)
         val jacocoDestinationFile =
             FinGrindFilesystemLayout.jacocoDestinationFile(project, name)
         extensions.configure(JacocoTaskExtension::class.java) {

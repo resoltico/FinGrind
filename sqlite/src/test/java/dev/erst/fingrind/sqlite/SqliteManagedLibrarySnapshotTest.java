@@ -386,6 +386,97 @@ class SqliteManagedLibrarySnapshotTest extends SqliteManagedLibraryIdentityTestS
   }
 
   @Test
+  void verifiedSnapshot_releaseAfterNativeRuntimeCloseRemovesOnlyItsKnownArtifacts()
+      throws Exception {
+    Path libraryPath = writeLibrary("release-after-close.dylib", "sqlite3mc");
+    writeSiblingChecksum(libraryPath);
+    SqliteVerifiedLibrarySnapshot snapshot =
+        SqliteVerifiedLibrarySnapshot.copyOf(
+            new SqliteLibraryTarget(
+                "managed-only",
+                SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                libraryPath.toString()),
+            libraryPath,
+            SqliteManagedLibraryIdentity.checksumPath(libraryPath));
+    Path unexpectedPath = snapshot.snapshotDirectory().resolve("unexpected-evidence");
+    Files.writeString(unexpectedPath, "retain this evidence", StandardCharsets.UTF_8);
+
+    snapshot.releaseAfterNativeRuntimeClose();
+
+    assertFalse(Files.exists(snapshot.snapshotLibraryPath()));
+    assertFalse(Files.exists(snapshot.snapshotChecksumPath()));
+    assertTrue(Files.isDirectory(snapshot.snapshotDirectory()));
+    assertEquals("retain this evidence", Files.readString(unexpectedPath, StandardCharsets.UTF_8));
+  }
+
+  @Test
+  void verifiedSnapshot_releaseAfterNativeRuntimeCloseRemovesAnUnchangedSnapshotAndToleratesRetry()
+      throws Exception {
+    Path libraryPath = writeLibrary("release-complete.dylib", "sqlite3mc");
+    writeSiblingChecksum(libraryPath);
+    SqliteVerifiedLibrarySnapshot snapshot =
+        SqliteVerifiedLibrarySnapshot.copyOf(
+            new SqliteLibraryTarget(
+                "managed-only",
+                SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                libraryPath.toString()),
+            libraryPath,
+            SqliteManagedLibraryIdentity.checksumPath(libraryPath));
+
+    snapshot.releaseAfterNativeRuntimeClose();
+
+    assertFalse(Files.exists(snapshot.snapshotDirectory()));
+    snapshot.releaseAfterNativeRuntimeClose();
+  }
+
+  @Test
+  void verifiedSnapshot_releaseAfterNativeRuntimeCloseRetainsAnAlteredLibrarySnapshot()
+      throws Exception {
+    Path libraryPath = writeLibrary("release-altered-library.dylib", "sqlite3mc");
+    writeSiblingChecksum(libraryPath);
+    SqliteVerifiedLibrarySnapshot snapshot =
+        SqliteVerifiedLibrarySnapshot.copyOf(
+            new SqliteLibraryTarget(
+                "managed-only",
+                SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                libraryPath.toString()),
+            libraryPath,
+            SqliteManagedLibraryIdentity.checksumPath(libraryPath));
+    Files.writeString(snapshot.snapshotLibraryPath(), "altered", StandardCharsets.UTF_8);
+
+    snapshot.releaseAfterNativeRuntimeClose();
+
+    assertTrue(Files.isRegularFile(snapshot.snapshotLibraryPath()));
+    assertTrue(Files.isRegularFile(snapshot.snapshotChecksumPath()));
+    assertTrue(Files.isDirectory(snapshot.snapshotDirectory()));
+  }
+
+  @Test
+  void verifiedSnapshot_releaseAfterNativeRuntimeCloseRetainsAnAlteredChecksumSnapshot()
+      throws Exception {
+    Path libraryPath = writeLibrary("release-altered-checksum.dylib", "sqlite3mc");
+    writeSiblingChecksum(libraryPath);
+    SqliteVerifiedLibrarySnapshot snapshot =
+        SqliteVerifiedLibrarySnapshot.copyOf(
+            new SqliteLibraryTarget(
+                "managed-only",
+                SqliteRuntimeProvenance.SOURCE_CHECKOUT_MANAGED,
+                libraryPath.toString()),
+            libraryPath,
+            SqliteManagedLibraryIdentity.checksumPath(libraryPath));
+    Files.writeString(
+        snapshot.snapshotChecksumPath(),
+        "0".repeat(64) + "  " + snapshot.snapshotLibraryPath().getFileName(),
+        StandardCharsets.UTF_8);
+
+    snapshot.releaseAfterNativeRuntimeClose();
+
+    assertTrue(Files.isRegularFile(snapshot.snapshotLibraryPath()));
+    assertTrue(Files.isRegularFile(snapshot.snapshotChecksumPath()));
+    assertTrue(Files.isDirectory(snapshot.snapshotDirectory()));
+  }
+
+  @Test
   void verifiedSnapshot_rejectsAReplacementAtTheImmediatePreLoadDigestCheck() throws Exception {
     Path libraryPath = writeLibrary("preload.dylib", "trusted managed sqlite");
     writeSiblingChecksum(libraryPath);

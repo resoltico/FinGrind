@@ -3,6 +3,7 @@ package dev.erst.fingrind.core;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.attribute.AclEntry;
+import java.nio.file.attribute.AclEntryFlag;
 import java.nio.file.attribute.AclEntryPermission;
 import java.nio.file.attribute.AclEntryType;
 import java.nio.file.attribute.PosixFilePermission;
@@ -188,6 +189,7 @@ final class PrivateOutputDirectorySecurity {
     boolean ownerCanWriteAndTraverse =
         aclState.entries().stream()
             .filter(entry -> entry.type() == AclEntryType.ALLOW)
+            .filter(PrivateOutputDirectorySecurity::isEffective)
             .filter(entry -> aclState.owner().equals(entry.principal()))
             .anyMatch(entry -> entry.permissions().containsAll(REQUIRED_OWNER_ACL_PERMISSIONS));
     if (!ownerCanWriteAndTraverse) {
@@ -196,6 +198,7 @@ final class PrivateOutputDirectorySecurity {
     }
     for (AclEntry entry : aclState.entries()) {
       if (entry.type() == AclEntryType.ALLOW
+          && isEffective(entry)
           && !aclState.owner().equals(entry.principal())
           && !filesystemAccess.isTrustedAclMutationPrincipal(directory, entry.principal())
           && hasAnyPermission(entry, NON_OWNER_DIRECTORY_ACCESS_PERMISSIONS)) {
@@ -275,6 +278,7 @@ final class PrivateOutputDirectorySecurity {
       throws IOException {
     for (AclEntry entry : aclState.entries()) {
       if (entry.type() == AclEntryType.ALLOW
+          && isEffective(entry)
           && !permittedPrincipal.equals(entry.principal())
           && !filesystemAccess.isTrustedAclMutationPrincipal(directory, entry.principal())
           && hasAnyPermission(entry, NON_OWNER_DIRECTORY_MUTATION_PERMISSIONS)) {
@@ -285,6 +289,10 @@ final class PrivateOutputDirectorySecurity {
 
   private static boolean hasAnyPermission(AclEntry entry, Set<AclEntryPermission> permissions) {
     return permissions.stream().anyMatch(entry.permissions()::contains);
+  }
+
+  private static boolean isEffective(AclEntry entry) {
+    return !entry.flags().contains(AclEntryFlag.INHERIT_ONLY);
   }
 
   record OutputDirectorySecurityIdentity(

@@ -61,6 +61,22 @@ class AppTest {
   }
 
   @Test
+  void runReleasesProcessResourcesAfterTheCliReturns() {
+    AtomicBoolean released = new AtomicBoolean(false);
+    App app =
+        new App(
+            runtimeEnvironment -> args -> 0,
+            exitCode -> {},
+            System.err,
+            args -> args,
+            () -> released.set(true));
+
+    app.run(new String[] {"help"}, RUNTIME_ENVIRONMENT);
+
+    assertTrue(released.get());
+  }
+
+  @Test
   void defaultConstructorInitializesWithProductionDefaults() {
     assertNotNull(new App());
   }
@@ -135,19 +151,20 @@ class AppTest {
   }
 
   @Test
-  void mainMethodRunsEndToEndWithHelpCommand() throws IOException {
-    SystemStreams previousStreams = new SystemStreams(System.in, System.out, System.err);
-    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-    try (PrintStream redirectedOut = new PrintStream(outputStream, false, StandardCharsets.UTF_8)) {
-      System.setIn(new ByteArrayInputStream(new byte[0]));
-      System.setOut(redirectedOut);
-      App.main(new String[] {"help", "--output", "text"});
-    } finally {
-      System.setIn(previousStreams.in());
-      System.setOut(previousStreams.out());
-      System.setErr(previousStreams.err());
+  void mainMethodRunsEndToEndWithHelpCommandInItsOwnProcess()
+      throws IOException, InterruptedException {
+    Process process =
+        new ProcessBuilder(
+                CliChildJvmSupport.childJavaCommand(App.class, "help", "--output", "text"))
+            .redirectErrorStream(true)
+            .start();
+    String output;
+    try (process;
+        InputStream outputStream = process.getInputStream()) {
+      output = new String(outputStream.readAllBytes(), StandardCharsets.UTF_8);
+      assertEquals(0, process.waitFor());
     }
 
-    assertTrue(outputStream.toString(StandardCharsets.UTF_8).contains("FinGrind Help"));
+    assertTrue(output.contains("FinGrind Help"));
   }
 }

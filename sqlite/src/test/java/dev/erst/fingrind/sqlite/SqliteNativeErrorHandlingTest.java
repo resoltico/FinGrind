@@ -309,6 +309,22 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
   }
 
   @Test
+  void shutdownQuietly_reportsANonOkNativeShutdownResult() {
+    List<String> cleanupReports = new ArrayList<>();
+
+    assertDoesNotThrow(
+        () ->
+            SqliteNativeBootstrap.shutdownQuietly(
+                constantMethodHandle(SqliteNativeResultCode.code("BUSY")),
+                (action, exception) -> cleanupReports.add(action + "|" + exception.getMessage())));
+
+    assertEquals(
+        List.of(
+            "shutting down the process-scoped SQLite runtime|SQLite process-scoped runtime shutdown returned SQLITE_BUSY."),
+        cleanupReports);
+  }
+
+  @Test
   void shutdownQuietly_invokesSuccessfulNativeShutdownWithoutReportingFailures() throws Exception {
     AtomicInteger shutdownCalls = new AtomicInteger();
     List<String> cleanupReports = new ArrayList<>();
@@ -317,7 +333,7 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
             MethodHandles.lookup()
                 .findStatic(
                     SqliteNativeBridgeTestSupport.class,
-                    "recordShutdownCall",
+                    "recordSuccessfulShutdownCall",
                     MethodType.methodType(int.class, AtomicInteger.class)),
             0,
             shutdownCalls);
@@ -377,7 +393,8 @@ class SqliteNativeErrorHandlingTest extends SqliteNativeBridgeTestSupport {
                         "managed",
                         dev.erst.fingrind.contract.protocol.SqliteRuntimeProvenance
                             .SOURCE_CHECKOUT_MANAGED,
-                        tempDirectory.resolve("missing/libsqlite3.dylib").toString())));
+                        tempDirectory.resolve("missing/libsqlite3.dylib").toString()),
+                    ignoredSnapshot -> {}));
     assertNotNull(exception.getMessage());
   }
 

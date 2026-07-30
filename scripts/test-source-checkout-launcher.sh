@@ -97,6 +97,9 @@ tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/fingrind-source-checkout-launcher.XXXXXX")
 # exposes its physical temporary directory through the /var alias, so carry the real path after
 # creating this isolated fixture rather than silently weakening the caller-path contract.
 tmp_dir="$(cd -P -- "${tmp_dir}" && pwd)"
+readonly managed_sqlite_snapshot_audit_marker="${tmp_dir}/managed-sqlite-snapshot-audit.marker"
+readonly managed_sqlite_snapshot_parent="$(dirname "${tmp_dir}")"
+touch "${managed_sqlite_snapshot_audit_marker}"
 cleanup() {
     chmod -R u+rwx "${tmp_dir}" 2>/dev/null || true
     rm -rf "${tmp_dir}" 2>/dev/null || true
@@ -503,5 +506,16 @@ python3 "${launcher_contract_test_support}" \
     --document "${raw_jar_open_stderr}" \
     --label 'raw java -jar open-book' \
     --stream diagnostics
+
+new_managed_sqlite_snapshots="$(
+    find "${managed_sqlite_snapshot_parent}" \
+        -maxdepth 1 \
+        -type d \
+        -name 'fingrind-managed-sqlite-*' \
+        -newer "${managed_sqlite_snapshot_audit_marker}" \
+        -print
+)"
+[[ -z "${new_managed_sqlite_snapshots}" ]] || die \
+    "launcher commands retained managed SQLite runtime snapshots after their terminal cleanup: ${new_managed_sqlite_snapshots}"
 
 printf 'source-checkout launcher regression: success\n'

@@ -49,7 +49,10 @@ interface ReceiptArtifactPathAccess {
       return false;
     }
     Path componentPath = root;
-    for (Path component : root.relativize(parent)) {
+    for (Path component : parent) {
+      if (isTraversalComponent(component)) {
+        return false;
+      }
       componentPath = componentPath.resolve(component);
       if (!readBasicAttributesNoFollow(componentPath).isDirectory()) {
         return false;
@@ -61,6 +64,11 @@ interface ReceiptArtifactPathAccess {
   /** Resolves one caller path to the provider's absolute spelling before lexical admission. */
   default Path toAbsolutePath(Path path) {
     return Objects.requireNonNull(path, "path").toAbsolutePath();
+  }
+
+  private static boolean isTraversalComponent(Path component) {
+    String spelling = component.toString();
+    return ".".equals(spelling) || "..".equals(spelling);
   }
 
   /** Resolves a filesystem path to its canonical target after no-follow admission. */

@@ -144,6 +144,24 @@ class AttestationReceiptVerificationOperationsTest {
               throw new AssertionError("A traversal receipt path must not be read.");
             },
             ReceiptArtifactPathAccess.FILE_SYSTEM));
+    assertInvalid(
+        AttestationReceiptVerificationOperations.verify(
+            book,
+            realDirectory.resolve("..").resolve("real-receipts").resolve("receipt.fgar"),
+            List.of(),
+            ignored -> {
+              throw new AssertionError("A traversal receipt path must not be read.");
+            },
+            ReceiptArtifactPathAccess.FILE_SYSTEM));
+    assertInvalid(
+        AttestationReceiptVerificationOperations.verify(
+            book,
+            realDirectory.resolve(".").resolve("receipt.fgar"),
+            List.of(),
+            ignored -> {
+              throw new AssertionError("A dot-component receipt path must not be read.");
+            },
+            ReceiptArtifactPathAccess.FILE_SYSTEM));
     assertTrue(
         Files.isRegularFile(physicalReceipt, LinkOption.NOFOLLOW_LINKS),
         "The refusal must leave the physical receipt unchanged.");

@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -14,10 +16,11 @@ import java.util.function.Supplier;
 /**
  * Immutable private verification copy of one selected managed SQLite library and checksum.
  *
- * <p>Every copy lives in a fresh owner-only directory and is deliberately retained. Snapshot
- * creation has no pathname cleanup or replacement authority: a later actor can replace a name after
- * this process creates it, so deletion or overwrite would violate the verified-library trust
- * boundary.
+ * <p>Every copy lives in a fresh owner-only directory and remains retained while the native-library
+ * arena can resolve it. Snapshot creation has no pathname cleanup or replacement authority: a later
+ * actor can replace a name after this process creates it, so deletion or overwrite during
+ * verification would violate the verified-library trust boundary. After that arena closes, the
+ * runtime removes only the exact verified library, checksum, and now-empty private directory.
  */
 record SqliteVerifiedLibrarySnapshot(
     SqliteLibraryTarget sourceTarget,
@@ -155,5 +158,54 @@ record SqliteVerifiedLibrarySnapshot(
   SqliteLibraryTarget runtimeTarget() {
     return new SqliteLibraryTarget(
         sourceTarget.mode(), sourceTarget.provenance(), snapshotLibraryPath.toString());
+  }
+
+  /**
+   * Releases this fully verified snapshot after its native-library arena has closed.
+   *
+   * <p>This deliberately does not recursively remove the directory: a changed namespace must retain
+   * every unexpected entry as evidence rather than allowing the runtime to delete it.
+   */
+  void releaseAfterNativeRuntimeClose() {
+    if (Files.notExists(snapshotDirectory, LinkOption.NOFOLLOW_LINKS)) {
+      return;
+    }
+    try {
+      PrivateOutputDirectory.requireExistingOwnerOnly(snapshotDirectory);
+      requireCurrentArtifactsMatchVerifiedSnapshot();
+      Files.deleteIfExists(snapshotLibraryPath);
+      Files.deleteIfExists(snapshotChecksumPath);
+      Files.deleteIfExists(snapshotDirectory);
+    } catch (IOException | RuntimeException exception) {
+      SqliteBestEffort.reportRetainedEvidenceReleaseFailure(
+          "releasing one verified managed SQLite runtime snapshot", exception);
+    }
+  }
+
+  /** Re-admits and revalidates both artifacts before their private namespace is released. */
+  private void requireCurrentArtifactsMatchVerifiedSnapshot() throws IOException {
+    try (PrivateOutputFile.OpenedFile snapshotLibrary =
+            PrivateOutputFile.openExisting(
+                snapshotLibraryPath, PrivateOutputFile.Access.READ_ONLY);
+        PrivateOutputFile.OpenedFile snapshotChecksum =
+            PrivateOutputFile.openExisting(
+                snapshotChecksumPath, PrivateOutputFile.Access.READ_ONLY)) {
+      snapshotLibrary.position(0L);
+      String actualLibrarySha256 =
+          CryptographicPrimitives.sha256Hex(Channels.newInputStream(snapshotLibrary));
+      if (!snapshotLibrarySha256.equals(actualLibrarySha256)) {
+        throw new IOException(
+            "The verified managed SQLite library snapshot changed before its private namespace could be released.");
+      }
+      String declaredLibrarySha256 =
+          SqliteManagedLibraryDigestSupport.expectedSha256(
+              SqliteManagedLibrarySnapshotSecurity.readUtf8LinesFromExactChannel(snapshotChecksum),
+              "private managed SQLite checksum snapshot at " + snapshotChecksumPath,
+              snapshotLibraryPath.getFileName().toString());
+      if (!snapshotLibrarySha256.equals(declaredLibrarySha256)) {
+        throw new IOException(
+            "The verified managed SQLite checksum snapshot changed before its private namespace could be released.");
+      }
+    }
   }
 }

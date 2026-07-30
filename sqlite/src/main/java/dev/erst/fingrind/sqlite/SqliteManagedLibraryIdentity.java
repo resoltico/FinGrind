@@ -13,8 +13,8 @@ final class SqliteManagedLibraryIdentity {
   }
 
   /**
-   * Returns a fresh, retained owner-only snapshot whose copied sibling checksum verifies the copied
-   * library bytes.
+   * Returns a fresh owner-only snapshot whose copied sibling checksum verifies the copied library
+   * bytes and which remains until the process-scoped native runtime closes.
    *
    * <p>A verification failure retains the incomplete snapshot attempt. The process must not delete
    * a pathname after another actor could have replaced it.
